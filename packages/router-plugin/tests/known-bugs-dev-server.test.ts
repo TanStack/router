@@ -39,8 +39,10 @@ describe('a dev server compiling an edited route out of order', () => {
    */
   async function loadRouteModules(server: DevServer) {
     const urls = [route]
-    for (let index = 0; index < urls.length; index++) {
-      const code = withoutTimestamps(await server.transform(urls[index]!))
+    // (The array's iterator reads its length at each step: it also visits
+    // the requests pushed below.)
+    for (const url of urls) {
+      const code = withoutTimestamps(await server.transform(url))
       for (const { specifier } of importRequests(code)) {
         if (
           specifier.replace(/\?.*$/, '') === route &&

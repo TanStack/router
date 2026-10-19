@@ -340,8 +340,8 @@ describe('handleRouteUpdate', () => {
   // does not have them, and the route keeps them across the update.
   it("keeps the lazy options the route tree gave the route when the route's file is edited", async () => {
     const LazyComponent = () => 'lazy component'
-    const lazyImporter = vi.fn(
-      async () => ({ options: { component: LazyComponent } }) as any,
+    const lazyImporter = vi.fn(() =>
+      Promise.resolve({ options: { component: LazyComponent } } as any),
     )
     const rootRoute = new BaseRootRoute({})
     const itemRoute = new BaseRoute({
@@ -622,11 +622,14 @@ describe('handleRouteUpdate', () => {
       container.remove()
     })
     onTestFinished(async () => {
+      // React's async act() also waits for the updates the callback queues
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
         reactRoot.unmount()
       })
     })
 
+    // eslint-disable-next-line @typescript-eslint/require-await
     await act(async () => {
       reactRoot.render(
         createElement(RouterContextProvider, {

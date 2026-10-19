@@ -543,7 +543,7 @@ async function viteServer(
   // Vite's own handler of an invalidation runs first and sends its answer
   // (an update or a full reload) before this listener runs.
   let invalidations = 0
-  server.vite.environments.client!.hot.on('vite:invalidate', () => {
+  server.vite.environments.client.hot.on('vite:invalidate', () => {
     invalidations++
   })
   const clientMessages = (type: 'update' | 'full-reload') => () =>

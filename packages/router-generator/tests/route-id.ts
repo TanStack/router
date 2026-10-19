@@ -48,7 +48,7 @@ function unwrap(node: Node | null | undefined): Node | undefined {
 /** The value of a string literal or a template literal without expressions. */
 function stringValue(node: Node | undefined) {
   if (node?.type === 'Literal' && typeof node.value === 'string') {
-    return node.value as string
+    return node.value
   }
   if (node?.type === 'TemplateLiteral' && node.expressions.length === 0) {
     return node.quasis[0].value.cooked as string
@@ -192,6 +192,6 @@ function findRouteCall(code: string, fileName: string) {
 }
 
 /** The route id a route file passes to its route constructor. */
-export async function routeIdOf(code: string): Promise<string | undefined> {
-  return routeCallOf(code).id
+export function routeIdOf(code: string): Promise<string | undefined> {
+  return Promise.resolve(routeCallOf(code).id)
 }

@@ -111,7 +111,7 @@ export async function servedRouterPackageUrl(
   target: Config['target'] = 'react',
 ): Promise<string> {
   const resolved =
-    await server.vite.environments.client!.pluginContainer.resolveId(
+    await server.vite.environments.client.pluginContainer.resolveId(
       `@tanstack/${target}-router`,
       path.join(server.root, 'routes/__root.tsx'),
     )

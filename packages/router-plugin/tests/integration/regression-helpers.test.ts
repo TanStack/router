@@ -7,8 +7,8 @@
  * (`route-hmr-page.ts`).
  */
 import { describe, expect, it } from 'vitest'
-import { buildAndRun, head } from '../regression-helpers'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import { buildAndRun, head } from '../regression-helpers'
 import { openRouteHmrPage } from '../route-hmr-page'
 
 describe('buildAndRun', () => {

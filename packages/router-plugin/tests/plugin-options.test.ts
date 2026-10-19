@@ -2,7 +2,6 @@
  * Router plugin options and entry points, through real builds: what each
  * option changes in the output or on disk.
  */
-import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -17,15 +16,11 @@ import {
   servedRouterPackageUrl,
 } from './dev-server'
 import { compileRouteModules, head } from './regression-helpers'
-import type { BuildResult } from '@tanstack/compiler-test-utils/build-harness'
 import type { RouterPluginOptions } from './build-harness'
 
 const timeout = 120_000
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
-
-const read = (app: BuildResult, file: string) =>
-  readFile(path.join(app.root, file), 'utf8').catch(() => null)
 
 // TanStack Start splits each environment with its own code splitter, scoped
 // with `environmentName` and sharing one router plugin context
