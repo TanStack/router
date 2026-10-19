@@ -1,12 +1,12 @@
 /**
- * Known route HMR and React Refresh bugs. Each test asserts correct behaviour
- * for a bug on main and is marked .fails; remove .fails when the bug is fixed.
+ * Known route HMR bugs of the modules the compiler emits for development.
+ * Each test asserts correct behaviour for a bug on main and is marked
+ * .fails; remove .fails when the bug is fixed.
  *
- * Route HMR keeps the previous `component` (and the other component options)
- * so that React Refresh can patch it in place; a component React Refresh does
- * not register keeps rendering the old code until a full reload. Pins of what
- * the page shows run a real dev server and a real browser page
- * (`route-hmr-page.ts`): integration/known-bugs-route-hmr.test.ts.
+ * Pins of what the page shows after an edit (React Refresh keeping state,
+ * lowercase, inline and exported components) run a real dev server and a
+ * real browser page (`route-hmr-page.ts`):
+ * integration/known-bugs-route-hmr.test.ts.
  */
 import { describe, expect, test } from 'vitest'
 import {
@@ -18,126 +18,6 @@ import {
   routeSpecifier,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
-
-/**
- * Whether a component React Refresh registered renders what the route's
- * `option` renders (the component a split option loads is not reachable
- * through the router's public API).
- */
-async function rendersRegistered(
-  route: Awaited<ReturnType<typeof loadRoute>>,
-  option: string,
-) {
-  const rendered = await route.render(option)
-  for (const type of route.registered.keys()) {
-    const html = await renderComponent(type).catch(() => undefined)
-    if (html === rendered) {
-      return true
-    }
-  }
-  return false
-}
-
-describe('React Refresh registration', () => {
-  // Inline components that are not plain functions (`memo(...)`, ...):
-  // pinned in a real page below ("route HMR in a real page").
-
-  /**
-   * Loads, with React HMR and React Refresh, a route whose `component` option
-   * is `name`, declared by `declaration`, and returns whether a component
-   * React Refresh registers renders what the route's component renders.
-   */
-  async function splitComponentRegistration(declaration: string, name: string) {
-    const route = await loadRoute(
-      `${head}${declaration}
-export const Route = createFileRoute('/')({ component: ${name} })`,
-      { hmr: true, refresh: true },
-    )
-    await expectValidModules(route.modules)
-    return rendersRegistered(route, 'component')
-  }
-
-  // Source: add-hmr snapshot fixture createFileRoute-lowercase-components:
-  // with the default groupings, the lowercase `component` and
-  // `errorComponent` are split and `pendingComponent` stays in the route
-  // module; each one is registered.
-  test('registers lowercase function components, split and unsplit, with the default groupings', async () => {
-    const route = await loadRoute(
-      `${head}export const Route = createFileRoute('/')({
-  pendingComponent: pendingComponent,
-  errorComponent: errorComponent,
-  component: component,
-})
-function pendingComponent() {
-  return <div>Pending</div>
-}
-function errorComponent() {
-  return <div>Error</div>
-}
-function component() {
-  return <div>Hello</div>
-}`,
-      { hmr: true, refresh: true },
-    )
-    await expectValidModules(route.modules)
-    expect(await route.groups()).toEqual([['component'], ['errorComponent']])
-    for (const [option, text] of [
-      ['component', 'Hello'],
-      ['errorComponent', 'Error'],
-      ['pendingComponent', 'Pending'],
-    ]) {
-      expect(await route.render(option!)).toBe(`<div>${text}</div>`)
-      expect(await rendersRegistered(route, option!), option).toBe(true)
-    }
-  })
-
-  // Control for the lowercase pin below (same harness).
-  test('registers a PascalCase split component', async () => {
-    expect(
-      await splitComponentRegistration(`const Page = () => <p>hi</p>`, 'Page'),
-    ).toBe(true)
-  })
-
-  // Control for the lowercase pin below: lowercase function declarations
-  // of each split component option are registered.
-  test.each(['component', 'pendingComponent', 'errorComponent'])(
-    'registers a split %s declared as a lowercase function',
-    async (option) => {
-      const route = await loadRoute(
-        `${head}export const Route = createFileRoute('/')({
-  codeSplitGroupings: [['component'], ['pendingComponent'], ['errorComponent']],
-  ${option},
-})
-function ${option}() {
-  return <div>lowercase function declaration</div>
-}`,
-        { hmr: true, refresh: true },
-      )
-      await expectValidModules(route.modules)
-      expect(await route.isLazy(option)).toBe(true)
-      expect(await rendersRegistered(route, option)).toBe(true)
-    },
-  )
-
-  // Bug: a lowercase component declared as a variable keeps its name in its
-  // split chunk, and React Refresh registers PascalCase names only (a
-  // lowercase `function` declaration is renamed, a variable is not).
-  // Impact: edits to the component are not hot-updated; the cached lazy
-  // component keeps rendering the old code until a reload.
-  // Source: ReactFreshBabelPlugin-test "only registers pascal case functions"
-  test.fails.each([
-    ['an arrow function', `const page = () => <p>hi</p>`],
-    [
-      'a function expression',
-      `const page = function page() {\n  return <p>hi</p>\n}`,
-    ],
-  ])(
-    'registers a lowercase split component declared as %s',
-    async (_, declaration) => {
-      expect(await splitComponentRegistration(declaration, 'page')).toBe(true)
-    },
-  )
-})
 
 describe('generated code', () => {
   /** Evaluates the route module compiled with HMR and returns its route. */
@@ -296,17 +176,14 @@ export const Route = createFileRoute('/')({
   )
 
   // Bug: same root cause as the pin above, for a lowercase component that
-  // the split `component` and the unsplit `pendingComponent` share. Both
-  // options must be registered: a lowercase `pendingComponent` that React
-  // Refresh never registers, or a renamed copy in the chunk (another
-  // function than the pendingComponent), is still this bug.
+  // the split `component` and the unsplit `pendingComponent` share.
   // Impact: in development, the route's component chunk fails to load
-  // (SyntaxError: Export 'SplitComponent' is not defined), or the pending
-  // component loses its state on hot updates.
+  // (SyntaxError: Export 'SplitComponent' is not defined).
   // Source: #8504 react-refresh-route-components ("that is also the unsplit
-  // pendingComponent"), which checks the chunk's registration only.
+  // pendingComponent"). That edits of both show in place: the page pin in
+  // integration/known-bugs-route-hmr.test.ts.
   test.fails(
-    'a lowercase function component that is also the unsplit pendingComponent is registered in both',
+    'a lowercase function component that is also the unsplit pendingComponent renders as both',
     async () => {
       const route = await loadRoute(
         `${head}function page() {
@@ -320,9 +197,6 @@ export const Route = createFileRoute('/')({ component: page, pendingComponent: p
         await route.render('component'),
         await route.render('pendingComponent'),
       ]).toEqual(['<p>hi</p>', '<p>hi</p>'])
-      expect(await rendersRegistered(route, 'component')).toBe(true)
-      // Not split: the option is the component React renders
-      expect(route.registered.has(route.options.pendingComponent)).toBe(true)
     },
   )
 
@@ -336,9 +210,11 @@ export const Route = createFileRoute('/')({ component: page, pendingComponent: p
   // declarations" (`export { Baz }`); #8504 react-refresh-route-components
   // ("keeps a component exported by specifier in the route module"), where it
   // passes. Whether the component is split is the code splitter's goal; either
-  // way the export and the route render the same, registered component.
+  // way a module importing the export and the route render the same
+  // component. That edits show in place: the page pin in
+  // integration/known-bugs-route-hmr.test.ts.
   test.fails(
-    'a component exported by an export list is the registered component the route renders',
+    'a component exported by an export list renders for a module importing it and as the route component',
     async () => {
       const route = await loadRoute(
         `${head}const page = () => <p>hi</p>
@@ -348,9 +224,10 @@ export const Route = createFileRoute('/')({ component: page })`,
       )
       await expectValidModules(route.modules)
       expect(await route.render('component')).toBe('<p>hi</p>')
-      expect(await renderComponent(route.exports.page)).toBe('<p>hi</p>')
-      expect(route.registered.has(route.exports.page)).toBe(true)
-      expect(await rendersRegistered(route, 'component')).toBe(true)
+      const { page } = await route.importFromRoute(
+        `export { page } from '${routeSpecifier}'`,
+      )
+      expect(await renderComponent(page)).toBe('<p>hi</p>')
     },
   )
 

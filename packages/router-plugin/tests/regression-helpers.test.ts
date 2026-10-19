@@ -10,7 +10,6 @@ import {
   compileRouteModules,
   componentModules,
   evaluateModule,
-  expectRegisteredRouteOption,
   expectValidModules,
   head,
   importRequests,
@@ -328,27 +327,6 @@ describe('output validation', () => {
     await expect(
       expectValidModules({ chunk: 'export const read = () => APP_VERSION' }),
     ).rejects.toThrow()
-  })
-})
-
-describe('expectRegisteredRouteOption', () => {
-  it('rejects a component React Refresh does not register', async () => {
-    await expect(
-      expectRegisteredRouteOption(
-        `${head}export const Route = createFileRoute('/')({ component: () => null })`,
-        'component',
-      ),
-    ).rejects.toThrow('is not a component React Refresh registers')
-  })
-
-  it('returns the name React Refresh registers the component under', async () => {
-    expect(
-      await expectRegisteredRouteOption(
-        `${head}function Page() { return null }
-export const Route = createFileRoute('/')({ component: Page })`,
-        'component',
-      ),
-    ).toBe('Page')
   })
 })
 

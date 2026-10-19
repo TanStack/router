@@ -8,6 +8,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { buildAndRun, head } from '../regression-helpers'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { openRouteHmrPage } from '../route-hmr-page'
 
 describe('buildAndRun', () => {
@@ -123,7 +124,10 @@ export const Route = createFileRoute('/')({ component: Page })
         ready: 'exported page',
       })
       expect(
-        app.warnings().some((warning) => warning.includes('routes/index.tsx')),
+        findDiagnostics(app.warnings(), {
+          file: 'routes/index.tsx',
+          root: app.root,
+        }).length > 0,
       ).toBe(true)
     }, 60_000)
 

@@ -16,6 +16,7 @@
  * Concurrent: each pin has its own dev server and page, and mostly waits.
  */
 import { describe, test } from 'vitest'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { openRouteHmrPage } from '../route-hmr-page'
 import type { TestContext } from 'vitest'
 import type { EditResult, RouteHmrPageOptions } from '../route-hmr-page'
@@ -200,6 +201,125 @@ export const Route = createRootRoute({
   )
 
   /**
+   * A route at `/` whose component is `page`, declared by `declaration`
+   * (whose body names the version), with the other route `options`.
+   */
+  const lowercaseRoute =
+    (declaration: (body: string) => string, options = '', exports = '') =>
+    (
+      version: string,
+    ) => `import { createFileRoute } from '@tanstack/react-router'
+${declaration(`{
+  return <p>page ${version}</p>
+}`)}
+${exports}
+export const Route = createFileRoute('/')({ component: page${options} })
+`
+
+  // Bug: a lowercase split component declared as a variable keeps its name
+  // in its split chunk, and React Refresh registers PascalCase names only (a
+  // lowercase `function` declaration is renamed, a variable is not); route
+  // HMR keeps the lazy component for React Refresh to patch, which it
+  // cannot.
+  // Impact: edits to the component do not show until a reload.
+  // Source: ReactFreshBabelPlugin-test "only registers pascal case
+  // functions"; the former in-process pin "registers a lowercase split
+  // component declared as %s" (V1 HMR-17: React Refresh's registrations,
+  // read, are not what the page shows). Controls: the lowercase function
+  // declaration (split) and the unsplit variables of
+  // route-hmr-browser-names.test.ts.
+  // Any fix passes: the edit shows without a full reload or errors.
+  test.fails.for([
+    {
+      name: 'an arrow function',
+      declaration: (body: string) => `const page = () => ${body}`,
+    },
+    {
+      name: 'a function expression',
+      declaration: (body: string) => `const page = function page() ${body}`,
+    },
+  ])(
+    'vite: an edit of a split component declared lowercase as $name shows in place',
+    async ({ declaration }, { expect, onTestFinished }: TestContext) => {
+      expect(
+        await editRoute(
+          {
+            file: 'routes/index.tsx',
+            route: lowercaseRoute(declaration),
+            shows: (version) => `page ${version}`,
+          },
+          onTestFinished,
+        ),
+      ).toEqual(inPlace)
+    },
+  )
+
+  // Bug: React HMR renames a lowercase `function` component in its split
+  // chunk, also when the component is the unsplit `pendingComponent` too,
+  // so the chunk exports a binding nothing declares (the in-process pin
+  // "a lowercase function component that is also the unsplit
+  // pendingComponent renders as both", known-bugs-route-hmr.test.ts).
+  // Impact: in development, the route's component chunk fails to load
+  // (SyntaxError: Export 'SplitComponent' is not defined): the page never
+  // shows the route.
+  // Source: #8504 react-refresh-route-components ("that is also the unsplit
+  // pendingComponent"); V1 HMR-17 (registration read in process).
+  // Any fix passes: the page shows the route, and an edit shows in place.
+  test.fails(
+    'vite: a lowercase function component that is also the unsplit pendingComponent renders, and an edit shows in place',
+    async ({ expect, onTestFinished }: TestContext) => {
+      expect(
+        await editRoute(
+          {
+            file: 'routes/index.tsx',
+            route: lowercaseRoute(
+              (body) => `function page() ${body}`,
+              ', pendingComponent: page',
+            ),
+            shows: (version) => `page ${version}`,
+            // The page never shows the route
+            readyTimeout: 4_000,
+          },
+          onTestFinished,
+        ),
+      ).toEqual(inPlace)
+    },
+  )
+
+  // Bug: with React HMR, the code splitter moves a component exported by an
+  // export list (`export { page }`) into its chunk and leaves the export
+  // list in the route module (the in-process pin "a component exported by
+  // an export list renders for a module importing it and as the route
+  // component", known-bugs-route-hmr.test.ts).
+  // Impact: in development, the route module fails to load (SyntaxError:
+  // Export 'page' is not defined): the page never shows the route.
+  // Source: ReactFreshBabelPlugin-test "registers top-level exported function
+  // declarations" (`export { Baz }`); V1 HMR-17. Unsplit: route-hmr-browser
+  // -names.test.ts.
+  // Any fix passes: the page shows the route, and an edit shows in place.
+  test.fails(
+    'vite: a split component exported by an export list renders, and an edit shows in place',
+    async ({ expect, onTestFinished }: TestContext) => {
+      expect(
+        await editRoute(
+          {
+            file: 'routes/index.tsx',
+            route: lowercaseRoute(
+              (body) => `const page = () => ${body}`,
+              '',
+              'export { page }',
+            ),
+            shows: (version) => `page ${version}`,
+            // The page never shows the route
+            readyTimeout: 4_000,
+          },
+          onTestFinished,
+        ),
+      ).toEqual(inPlace)
+    },
+  )
+
+  /**
    * A route file of `target` at `/` whose loader and component name the
    * version of the file; the component declares its own `Page`.
    */
@@ -355,7 +475,10 @@ export const Route = makeRoute()
         ready: 'helper v1 data v1',
       })
       const reported = () =>
-        app.warnings().some((warning) => warning.includes('routes/index.tsx'))
+        findDiagnostics(app.warnings(), {
+          file: 'routes/index.tsx',
+          root: app.root,
+        }).length > 0
       let result
       try {
         result = await app.edit(

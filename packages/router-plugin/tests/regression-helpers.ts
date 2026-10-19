@@ -10,8 +10,7 @@
  */
 import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
 import { frameworkTransform } from '@tanstack/compiler-test-utils/render'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
-import { parseSync, transformWithOxc } from 'vite'
+import { parseSync } from 'vite'
 import { expect } from 'vitest'
 import { build, routeApp } from './build-harness'
 import {
@@ -116,30 +115,6 @@ export async function evaluateRouteModule(
   return { exports, Route, registered }
 }
 
-/**
- * Applies Vite's Oxc React Refresh transform (the one `@vitejs/plugin-react`
- * uses) and returns the registered component names and the hook signature
- * arguments of each signed binding.
- */
-export async function reactRefresh(code: string) {
-  const result = await transformWithOxc(code, 'route.tsx', {
-    jsx: {
-      runtime: 'automatic',
-      development: true,
-      refresh: { emitFullSignatures: true },
-    },
-  })
-  const registered = [
-    ...result.code.matchAll(/\$RefreshReg\$\(\w+, "([^"]+)"\)/g),
-  ].map((match) => match[1]!)
-  const signatures = new Map(
-    [...result.code.matchAll(/\b_s\d*\((\w+), ([\s\S]*?)\);\n/g)].map(
-      (match) => [match[1]!, match[2]!] as const,
-    ),
-  )
-  return { registered, signatures }
-}
-
 /** Parses a module, asserting that it has no syntax errors. */
 export function parseModule(code: string): ESTree.Program {
   const { program, errors } = parseSync('route.tsx', code, {
@@ -160,25 +135,6 @@ export async function getRouteOption(
 ) {
   const { Route } = await evaluateRouteModule(code, stubs)
   return Route.options[option] as unknown
-}
-
-/**
- * Asserts that the module is valid and that React Refresh registers the
- * value of the `option` of the `Route` it creates, so that edits of that
- * component hot-update. Returns the name it is registered under.
- */
-export async function expectRegisteredRouteOption(
-  code: string,
-  option: string,
-) {
-  expect(await getModuleErrors(code)).toEqual([])
-  const { Route, registered } = await evaluateRouteModule(code)
-  const name = registered.get(Route.options[option])
-  expect(
-    name,
-    `\`${option}\` is not a component React Refresh registers (registered: ${[...registered.values()].join(', ')})`,
-  ).toBeDefined()
-  return name!
 }
 
 /**

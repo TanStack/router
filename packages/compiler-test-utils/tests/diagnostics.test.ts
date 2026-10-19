@@ -90,6 +90,33 @@ describe('real channels', () => {
     })
   })
 
+  test('overlapping captureConsole calls each get what is logged while they run, and the last one restores the console', async () => {
+    const before = console.warn
+    let releaseFirst!: () => void
+    const first = captureConsole(async () => {
+      console.warn('first only')
+      await new Promise<void>((resolve) => {
+        releaseFirst = resolve
+      })
+      console.warn('after the second ended')
+    })
+    const second = await captureConsole(() => {
+      console.warn('both')
+    })
+    expect(console.warn).not.toBe(before)
+    releaseFirst()
+    const { diagnostics } = await first
+    expect(console.warn).toBe(before)
+    expect(second.diagnostics.map((diagnostic) => diagnostic.text)).toEqual([
+      'both',
+    ])
+    expect(diagnostics.map((diagnostic) => diagnostic.text)).toEqual([
+      'first only',
+      'both',
+      'after the second ended',
+    ])
+  })
+
   test('an aggregated build error is one error; its warnings and a result’s messages are their own', () => {
     const failure = Object.assign(
       new Error('vite build failed:\nsrc/a.ts (2:3): Unexpected token'),

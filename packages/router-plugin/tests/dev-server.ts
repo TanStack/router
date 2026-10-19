@@ -9,6 +9,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
+import { importerSource } from '@tanstack/compiler-test-utils/importers'
 import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
 import { expect, onTestFinished } from 'vitest'
@@ -51,20 +52,27 @@ export interface RouterDevServerOptions extends Omit<
 }
 
 /**
- * Starts a dev server on `routes/page.tsx` holding `route` and imports the
- * route module in the SSR environment, with the dev server (the route module
- * resolves the real router package of the target, a dependency of this
- * package).
+ * Starts a dev server on `routes/page.tsx` holding `route`, with a second
+ * module of the app, `importer.ts`, importing `names` from the route module
+ * (`importerSource`: named, `default`), and imports that module in the SSR
+ * environment, with the dev server (the route module resolves the real
+ * router package of the target, a dependency of this package). Returns the
+ * importer's live bindings: what a module importing the route file gets.
  */
-export async function importRouteModule(
+export async function importFromRouteModule(
   route: string,
+  names: Array<string>,
   pluginOptions: Partial<Config> = {},
 ) {
   const server = await routerDevServer({
     pluginOptions,
-    files: { 'routes/page.tsx': route },
+    files: {
+      'routes/page.tsx': route,
+      'importer.ts': importerSource('./routes/page', names),
+    },
   })
-  return { server, routeModule: await server.import('/routes/page.tsx') }
+  const { bindings } = await server.import('/importer.ts')
+  return { server, imported: bindings as Record<string, any> }
 }
 
 /**
@@ -124,30 +132,36 @@ export async function renderRouteComponent(component: any): Promise<string> {
 }
 
 /**
- * Serves `route` as `routes/page.tsx` (`importRouteModule`, with React HMR,
- * `autoCodeSplitting` and the component and the loader in their own chunks)
- * and asserts that each export named in `exported` is a component the given
- * route options render as: the export is the option's value, or (a split
- * option) the real router's lazy component of it, rendering the same HTML
- * once loaded; the page at `/page` renders through the real router.
+ * Serves `route` as `routes/page.tsx` (with React HMR, `autoCodeSplitting`
+ * and the component and the loader in their own chunks) with a module that
+ * imports the exports named in `exported` and the route
+ * (`importFromRouteModule`), and asserts that each imported export is a
+ * component the given route options render as: the option's value is the
+ * imported component, or (a split option) renders the same HTML once
+ * loaded; the page at `/page` renders the route's component through the
+ * real router.
  */
 export async function expectExportedRouteOptions(
   route: string,
   exported: Record<string, Array<string>>,
   autoCodeSplitting: boolean,
 ) {
-  const { server, routeModule } = await importRouteModule(route, {
-    autoCodeSplitting,
-    codeSplittingOptions: { defaultBehavior: [['component'], ['loader']] },
-  })
+  const { server, imported } = await importFromRouteModule(
+    route,
+    [...Object.keys(exported), 'Route'],
+    {
+      autoCodeSplitting,
+      codeSplittingOptions: { defaultBehavior: [['component'], ['loader']] },
+    },
+  )
+  const { Route } = imported
   for (const [name, keys] of Object.entries(exported)) {
-    expect(routeModule).toHaveProperty(name)
-    expect(routeModule[name], `${name} is a component`).toBeTypeOf('function')
-    const rendered = await renderRouteComponent(routeModule[name])
+    expect(imported[name], `${name} is a component`).toBeTypeOf('function')
+    const rendered = await renderRouteComponent(imported[name])
+    expect(rendered, `${name} renders`).not.toBe('')
     for (const key of keys) {
-      const option = routeModule.Route.options[key]
-      if (option !== routeModule[name]) {
-        expect(option, `${key} is the lazy ${name}`).toHaveProperty('preload')
+      const option = Route.options[key]
+      if (option !== imported[name]) {
         expect(
           await renderRouteComponent(option),
           `${key} renders as ${name}`,
@@ -156,14 +170,15 @@ export async function expectExportedRouteOptions(
     }
   }
   expect(await renderRoutePath(server, '/page')).toContain(
-    await renderRouteComponent(routeModule.Route.options.component),
+    await renderRouteComponent(Route.options.component),
   )
 }
 
 /**
  * A route file case of `expectExportedRouteOptions`: `declaration` declares
- * and exports components, `options` are the route options, and `exported`
- * maps each export to the route options whose value it is.
+ * and exports components (each rendering something of its own), `options`
+ * are the route options, and `exported` maps each export to the route
+ * options whose value it is.
  */
 export type ExportedRouteOptionsCase = {
   name: string
@@ -182,14 +197,14 @@ export const exportedComponentsLostWhenSplit: Array<ExportedRouteOptionsCase> =
     {
       name: 'class',
       declaration: `import { Component } from 'react'
-export class component extends Component { render() { return null } }`,
+export class component extends Component { render() { return <p>class</p> } }`,
       options: 'component',
       exported: { component: ['component'] },
     },
     {
       name: 'aliased',
       declaration:
-        'function component() { return null }; export { component as View }',
+        'function component() { return <p>aliased</p> }; export { component as View }',
       options: 'component',
       exported: { View: ['component'] },
     },
@@ -197,11 +212,13 @@ export class component extends Component { render() { return null } }`,
 
 /**
  * Serves a route whose `beforeLoad` and split `loader` call an exported,
- * overloaded and aliased function, and asserts that the exports and both
+ * overloaded and aliased function, with a module importing the function,
+ * its alias and the route (`importFromRouteModule`), and asserts that the
+ * imported function and alias are the same working function, and that both
  * options keep working.
  */
 export async function expectSharedOverloads(autoCodeSplitting: boolean) {
-  const { routeModule } = await importRouteModule(
+  const { imported } = await importFromRouteModule(
     `import { createFileRoute } from '@tanstack/react-router'
 export function helper(value: string): string
 export function helper(value: number): number
@@ -212,14 +229,16 @@ export const Route = createFileRoute('/page')({
   beforeLoad: () => helper('before'),
   loader: () => helper(42),
 })`,
+    ['helper', 'helperAlias', 'Route'],
     {
       autoCodeSplitting,
       codeSplittingOptions: { defaultBehavior: [['component'], ['loader']] },
     },
   )
-  expect(routeModule.helperAlias).toBe(routeModule.helper)
-  expect(routeModule.Route.options.beforeLoad()).toBe('before')
-  expect(await routeModule.Route.options.loader()).toBe(42)
+  expect(imported.helper('imported')).toBe('imported')
+  expect(imported.helperAlias).toBe(imported.helper)
+  expect(imported.Route.options.beforeLoad()).toBe('before')
+  expect(await imported.Route.options.loader()).toBe(42)
 }
 
 /**

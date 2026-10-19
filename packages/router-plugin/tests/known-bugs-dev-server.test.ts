@@ -4,21 +4,20 @@
  * .fails; remove .fails when the bug is fixed. Each pin has a control test
  * that runs the same harness on a case that works.
  */
+import * as React from 'react'
+import * as jsxDevRuntime from 'react/jsx-dev-runtime'
+import * as jsxRuntime from 'react/jsx-runtime'
 import { describe, expect, test } from 'vitest'
+import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
 import {
   expectExportedRouteOptions,
   expectSharedOverloads,
   exportedComponentsLostWhenSplit,
+  renderRouteComponent,
   rootRoute,
   routerDevServer,
 } from './dev-server'
-import {
-  exportedNames,
-  head,
-  importRequests,
-  importedNames,
-} from './regression-helpers'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
+import { head, importRequests } from './regression-helpers'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 
 const timeout = 30_000
@@ -36,9 +35,9 @@ describe('a dev server compiling an edited route out of order', () => {
    * The route module and the modules of the route file it reaches through
    * static and dynamic imports (its split chunks and the modules they share,
    * whatever their URLs), breadth first, as a page loading the route and
-   * its chunks requests them.
+   * its chunks requests them: the dev server compiles each one now.
    */
-  async function routeModuleUrls(server: DevServer) {
+  async function loadRouteModules(server: DevServer) {
     const urls = [route]
     for (let index = 0; index < urls.length; index++) {
       const code = withoutTimestamps(await server.transform(urls[index]!))
@@ -55,88 +54,101 @@ describe('a dev server compiling an edited route out of order', () => {
   }
 
   /**
-   * Requests `urls` in order (modules of the route file): errors, exports
-   * and the names imported from each of the other modules of the route file
-   * (`modules`), by URL.
+   * Loads the served route module as a page does (`evaluateServed`: the
+   * client environment's modules as the dev server last compiled them,
+   * linked as ES modules, split chunks imported when the router loads
+   * them), and renders its `component` and, when the route has one, its
+   * `errorComponent` with React, once loaded. The router package is the
+   * one the SSR environment loads, and React this process's (which the SSR
+   * environment loads too): the same packages a page gets.
    */
-  async function inspect(
-    server: DevServer,
-    urls: Array<string>,
-    modules: Array<string>,
-  ) {
-    const inspected: Record<
-      string,
-      {
-        errors: Array<string>
-        exports: Array<string>
-        fromRouteModules: Record<string, Array<string>>
-      }
-    > = {}
-    for (const url of urls) {
-      const code = withoutTimestamps(await server.transform(url))
-      inspected[url] = {
-        errors: await getModuleErrors(code),
-        exports: exportedNames(code),
-        fromRouteModules: Object.fromEntries(
-          modules
-            .filter((imported) => imported !== url)
-            .map((imported) => [imported, importedNames(code, imported)]),
-        ),
-      }
+  async function renderServedRoute(server: DevServer) {
+    const packages: Array<[RegExp, Record<string, unknown>]> = [
+      [
+        /\/react-router\/dist\/esm\/index(?:\.dev)?\.js$/,
+        await server.import('@tanstack/react-router'),
+      ],
+      [/\/react\/jsx-dev-runtime\.js$/, jsxDevRuntime],
+      [/\/react\/jsx-runtime\.js$/, jsxRuntime],
+      [/\/react\/index\.js$/, React],
+    ]
+    const { Route } = await evaluateServed(server, route, {
+      skip: /^\/@fs\//,
+      fallbackStub: (specifier) => {
+        const found = packages.find(([url]) => url.test(specifier))
+        if (!found) {
+          throw new Error(`the route imports ${specifier}`)
+        }
+        return found[1]
+      },
+    })
+    const rendered = [await renderRouteComponent(Route.options.component)]
+    if (Route.options.errorComponent) {
+      rendered.push(await renderRouteComponent(Route.options.errorComponent))
     }
-    return inspected
+    return rendered
   }
 
-  const twoCards = `${head}function CardA() { return <b>A</b> }
-function CardB() { return <i>B</i> }
-export const Route = createFileRoute('/page')({
-  component: () => <p><CardA /><CardB /></p>,
-  errorComponent: () => <p><CardA /><CardB /></p>,
-})
-`
-  const oneCard = `${head}function CardA() { return <b>A</b> }
-export const Route = createFileRoute('/page')({
-  component: () => <p><CardA /></p>,
-  errorComponent: () => <p><CardA /></p>,
-})
-`
-
   /**
-   * Loads the route modules in order (the URLs the route module imports, as
-   * the first load finds them), edits the route from `before` to `after`
-   * (default `twoCards` to `oneCard`), requests them again in the order
-   * `reorder` gives, and compares them with what a dev server started after
-   * the edit compiles.
+   * Serves `before` as `routes/page.tsx`, loads the route's modules as a
+   * page does, edits the route to `after`, requests the route's modules
+   * again in the order `reorder` gives (a page re-requests the modules the
+   * edit invalidated; unbundled Vite dev fetches them in parallel, in no
+   * fixed order, and keeps each result until the next edit), then loads the
+   * route as a page does and renders its components.
    */
-  async function editAndCompare(
+  async function editOutOfOrder(
     reorder: (urls: Array<string>) => Array<string>,
-    { before = twoCards, after = oneCard } = {},
+    before: string,
+    after: string,
   ) {
     const server = await routerDevServer({
       files: { 'routes/page.tsx': before },
     })
-    // The page loads: the route module first, then the modules it imports
-    const urls = await routeModuleUrls(server)
+    const urls = await loadRouteModules(server)
     expect(urls.length).toBeGreaterThan(1)
-    await inspect(server, urls, urls)
     await server.edit({ 'routes/page.tsx': after })
-    const edited = await inspect(server, reorder(urls), urls)
-
-    const fresh = await routerDevServer({
-      files: { 'routes/page.tsx': after },
-    })
-    const expected = await inspect(fresh, urls, urls)
-    for (const module of Object.values(expected)) {
-      expect(module.errors).toEqual([])
+    for (const url of reorder(urls)) {
+      await server.transform(url)
     }
-    expect(edited).toEqual(expected)
+    return renderServedRoute(server)
   }
 
-  // Control for the pin below (same harness): requested in import order.
-  test(
-    'compiles the shared module and chunks requested after the route module from the edited source',
-    async () => {
-      await editAndCompare((urls) => urls)
+  /** The route module after the modules of the route file it imports. */
+  const routeModuleLast = (urls: Array<string>) => [...urls.slice(1), route]
+
+  /**
+   * A route whose split `component` and `errorComponent` render the cards
+   * `CardA` and, with `cardB`, `CardB`, which counts its renders in module
+   * state: the two chunks share it.
+   */
+  const cards = (cardB: boolean) => `${head}function CardA() { return <b>A</b> }
+${cardB ? 'let renders = 0\nfunction CardB() { renders++; return <i>{"B" + renders}</i> }\n' : ''}export const Route = createFileRoute('/page')({
+  component: () => <p><CardA />${cardB ? '<CardB />' : ''}</p>,
+  errorComponent: () => <p><CardA />${cardB ? '<CardB />' : ''}</p>,
+})
+`
+
+  // Controls for the pins below (same harness): requested in import order.
+  test.each([
+    {
+      name: 'removing a component two split options render',
+      before: cards(true),
+      after: cards(false),
+      expected: ['<p><b>A</b></p>', '<p><b>A</b></p>'],
+    },
+    {
+      name: 'adding a component two split options render',
+      before: cards(false),
+      after: cards(true),
+      expected: ['<p><b>A</b><i>B1</i></p>', '<p><b>A</b><i>B2</i></p>'],
+    },
+  ])(
+    'a page loading the route module first renders the edited route after $name',
+    async ({ before, after, expected }) => {
+      expect(await editOutOfOrder((urls) => urls, before, after)).toEqual(
+        expected,
+      )
     },
     timeout,
   )
@@ -152,27 +164,31 @@ export const Route = createFileRoute('/page')({
   // compiles the new source with the previous set: a removed binding is still
   // exported ("Export 'CardB' is not defined") and the page stays broken until
   // the next edit or a restart; an added one is copied into each chunk instead
-  // of shared (two module states).
+  // of shared (two module states: each chunk's `CardB` counts its own
+  // renders).
   // Source: gap DV8 (gaps/dev-hmr.md); #8504 code-splitter-plugin-pipeline
   // .test.ts ("a dev server compiling an edited route out of order").
+  // Any fix passes: the page renders the edited route, with one module
+  // state for what the split options share.
   test.fails.each([
     {
       name: 'removing a component two split options render',
-      before: twoCards,
-      after: oneCard,
+      before: cards(true),
+      after: cards(false),
+      expected: ['<p><b>A</b></p>', '<p><b>A</b></p>'],
     },
     {
       name: 'adding a component two split options render',
-      before: oneCard,
-      after: twoCards,
+      before: cards(false),
+      after: cards(true),
+      expected: ['<p><b>A</b><i>B1</i></p>', '<p><b>A</b><i>B2</i></p>'],
     },
   ])(
-    'compiles the shared module and chunks requested before the route module from the edited source after $name',
-    async ({ before, after }) => {
-      await editAndCompare((urls) => [...urls.slice(1), route], {
-        before,
-        after,
-      })
+    'a page loading the modules of the route file before the route module renders the edited route after $name',
+    async ({ before, after, expected }) => {
+      expect(await editOutOfOrder(routeModuleLast, before, after)).toEqual(
+        expected,
+      )
     },
     timeout,
   )
@@ -184,19 +200,22 @@ export const Route = createFileRoute('/page')({
   // reach the race. Source: the #8504 probe (hybrid shared modules; #8504
   // code-splitter-plugin-pipeline.test.ts, first row).
   test(
-    'compiles the modules requested before the route module from the edited source after removing a helper of an exported component a split component renders',
+    'a page loading the modules of the route file before the route module renders the edited route after removing a helper of an exported component a split component renders',
     async () => {
-      await editAndCompare((urls) => [...urls.slice(1), route], {
-        before: `${head}const prefix = 'a'
+      expect(
+        await editOutOfOrder(
+          routeModuleLast,
+          `${head}const prefix = 'a'
 const suffix = 'b'
 export function Card() { return <b>{prefix}{suffix}</b> }
 export const Route = createFileRoute('/page')({ component: () => <Card /> })
 `,
-        after: `${head}const prefix = 'a'
+          `${head}const prefix = 'a'
 export function Card() { return <b>{prefix}</b> }
 export const Route = createFileRoute('/page')({ component: () => <Card /> })
 `,
-      })
+        ),
+      ).toEqual(['<b>a</b>'])
     },
     timeout,
   )
@@ -264,8 +283,27 @@ describe('router config file', () => {
 `
 
   /**
+   * The route the app's generated route tree (`routeTree.gen.ts`) matches
+   * at `pathname`: the real router over the tree, in the dev server's SSR
+   * environment, after `router.load()`.
+   */
+  async function matchedRoute(server: DevServer, pathname: string) {
+    const { routeTree } = await server.import('/routeTree.gen.ts')
+    const { createMemoryHistory, createRouter } = await server.import(
+      '@tanstack/react-router',
+    )
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: [pathname] }),
+    })
+    await router.load()
+    return router.state.matches.at(-1)?.fullPath
+  }
+
+  /**
    * Starts with `tsr.config.json` reading the routes from `routes/`, then
-   * points it to `pages/`, with `edits`. Returns the route tree afterwards.
+   * points it to `pages/`, with `edits`. Returns the route the route tree
+   * matches at `/about` afterwards (none before: `/about` is in `pages/`).
    */
   async function moveRoutesDirectory(edits: Record<string, string> = {}) {
     const server = await routerDevServer({
@@ -277,12 +315,10 @@ describe('router config file', () => {
         'pages/about.tsx': route('/about'),
       },
     })
-    expect(await server.read('routeTree.gen.ts')).not.toContain(
-      "fullPath: '/about'",
-    )
+    expect(await matchedRoute(server, '/about')).not.toBe('/about')
     await server.edit({ 'tsr.config.json': config('./pages') })
     await server.edit(edits)
-    return server.read('routeTree.gen.ts')
+    return matchedRoute(server, '/about')
   }
 
   // Control for the pin below (same harness): the next route file edit
@@ -294,7 +330,7 @@ describe('router config file', () => {
         await moveRoutesDirectory({
           'pages/about.tsx': route('/about') + '\n',
         }),
-      ).toContain("fullPath: '/about'")
+      ).toBe('/about')
     },
     timeout,
   )
@@ -309,7 +345,7 @@ describe('router config file', () => {
   test.fails(
     'a tsr.config.json edit generates the route tree with the new configuration',
     async () => {
-      expect(await moveRoutesDirectory()).toContain("fullPath: '/about'")
+      expect(await moveRoutesDirectory()).toBe('/about')
     },
     timeout,
   )

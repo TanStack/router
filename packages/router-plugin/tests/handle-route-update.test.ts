@@ -16,7 +16,6 @@ import {
   RouterCore,
   createNonReactiveMutableStore,
   createNonReactiveReadonlyStore,
-  trimPathRight,
 } from '@tanstack/router-core'
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { Fragment, act, createElement } from 'react'
@@ -44,45 +43,6 @@ const getStoreConfig: GetStoreConfig = () => ({
 
 function asAnyRoute<TRoute>(route: TRoute): TRoute & AnyRoute {
   return route as unknown as TRoute & AnyRoute
-}
-
-function createTestHistory() {
-  const location = {
-    href: '/',
-    pathname: '/',
-    search: '',
-    hash: '',
-    state: { __TSR_index: 0 },
-  }
-
-  return {
-    location,
-    length: 1,
-    subscribers: new Set(),
-    subscribe: () => () => {},
-    push: () => {},
-    replace: () => {},
-    go: () => {},
-    back: () => {},
-    forward: () => {},
-    canGoBack: () => false,
-    createHref: (href: string) => href,
-    block: () => () => {},
-    flush: () => {},
-    destroy: () => {},
-    notify: () => {},
-  }
-}
-
-function createTestRouter<TRouteTree>(routeTree: TRouteTree) {
-  return new RouterCore(
-    {
-      routeTree: asAnyRoute(routeTree),
-      history: createTestHistory() as any,
-      isServer: true,
-    },
-    getStoreConfig,
-  )
 }
 
 function createClientTestRouter<TRouteTree>(
@@ -178,15 +138,47 @@ function hotUpdateRoute(
 /** The id the route tree gives the root route. */
 const rootRouteId = '__root__'
 
-function getProcessedTreeRouteForPath(
+/**
+ * Navigates `router` to `to` (a path, or a route template with `params`)
+ * and returns the route of the deepest match, and the routes whose search
+ * middleware ran for the destination (see `markSearch`).
+ */
+async function visit(
   router: RouterCore<any, any, any, any, any>,
-  path: string,
+  to: string,
+  params?: Record<string, string>,
 ) {
-  return router.buildRouteTree().routesByPath[path]?.id
+  await router.navigate({ to, params } as never)
+  return {
+    leaf: router.state.matches.at(-1)?.routeId,
+    dest: Object.keys(router.state.location.search).sort(),
+  }
 }
 
+/**
+ * Route options whose search middleware adds the key `dest` to the
+ * location's search: navigating to a path or a route template applies the
+ * middlewares of the routes the router resolves the destination to.
+ */
+const markSearch = (dest: string) => ({
+  search: {
+    middlewares: [
+      ({
+        search,
+        next,
+      }: {
+        search: object
+        next: (search: object) => object
+      }) => ({
+        ...next(search),
+        [dest]: 1,
+      }),
+    ],
+  },
+})
+
 describe('handleRouteUpdate', () => {
-  it('keeps routesByPath pointed at an index route when a pathless layout updates', () => {
+  it('keeps matching and resolving an index route and the route under a pathless layout when the layout updates', async () => {
     const rootRoute = new BaseRootRoute({})
     const parentRoute = new BaseRoute({
       getParentRoute: () => asAnyRoute(rootRoute),
@@ -199,10 +191,12 @@ describe('handleRouteUpdate', () => {
     const newRoute = new BaseRoute({
       getParentRoute: () => asAnyRoute(pathlessRoute),
       path: 'new',
+      ...markSearch('new'),
     })
     const indexRoute = new BaseRoute({
       getParentRoute: () => asAnyRoute(parentRoute),
       path: '/',
+      ...markSearch('index'),
     })
     const routeTree = rootRoute.addChildren([
       parentRoute.addChildren([
@@ -210,23 +204,31 @@ describe('handleRouteUpdate', () => {
         asAnyRoute(indexRoute),
       ]),
     ])
-    const router = createTestRouter(routeTree)
-    const key = trimPathRight(indexRoute.fullPath)
-
-    expect(router.routesByPath[key]?.id).toBe(indexRoute.id)
+    const router = createClientTestRouter(routeTree, '/')
+    const routes = async () => [
+      await visit(router, '/livestock/1/medicine'),
+      await visit(router, '/livestock/$farmId/medicine', { farmId: '1' }),
+      await visit(router, '/livestock/$farmId/medicine/new', { farmId: '1' }),
+      await visit(router, '/livestock/1/medicine/new'),
+    ]
+    const expected = [
+      { leaf: indexRoute.id, dest: ['index'] },
+      { leaf: indexRoute.id, dest: ['index'] },
+      { leaf: newRoute.id, dest: ['new'] },
+      { leaf: newRoute.id, dest: ['new'] },
+    ]
+    await router.load()
+    expect(await routes()).toEqual(expected)
 
     hotUpdateRoute(router, pathlessRoute.id, { staticData: { hot: true } })
     expect((router.routesById as any)[pathlessRoute.id].options).toMatchObject({
       staticData: { hot: true },
     })
 
-    expect(router.routesByPath[key]?.id).toBe(indexRoute.id)
-    expect(router.routesByPath[key]?.id).toBe(
-      getProcessedTreeRouteForPath(router, key),
-    )
+    expect(await routes()).toEqual(expected)
   })
 
-  it('keeps an index route winning the trimmed path key when its parent updates', () => {
+  it('keeps matching and resolving an index route when its parent updates', async () => {
     const rootRoute = new BaseRootRoute({})
     const parentRoute = new BaseRoute({
       getParentRoute: () => asAnyRoute(rootRoute),
@@ -235,27 +237,30 @@ describe('handleRouteUpdate', () => {
     const indexRoute = new BaseRoute({
       getParentRoute: () => asAnyRoute(parentRoute),
       path: '/',
+      ...markSearch('index'),
     })
     const routeTree = rootRoute.addChildren([
       parentRoute.addChildren([asAnyRoute(indexRoute)]),
     ])
-    const router = createTestRouter(routeTree)
-    const key = trimPathRight(indexRoute.fullPath)
-
-    expect(router.routesByPath[key]?.id).toBe(indexRoute.id)
+    const router = createClientTestRouter(routeTree, '/')
+    const expected = { leaf: indexRoute.id, dest: ['index'] }
+    await router.load()
+    expect(await visit(router, '/path')).toEqual(expected)
 
     hotUpdateRoute(router, parentRoute.id, { staticData: { hot: true } })
     expect((router.routesById as any)[parentRoute.id].options).toMatchObject({
       staticData: { hot: true },
     })
 
-    expect(router.routesByPath[key]?.id).toBe(indexRoute.id)
-    expect(router.routesByPath[key]?.id).toBe(
-      getProcessedTreeRouteForPath(router, key),
-    )
+    await vi.waitFor(() => {
+      expect(router.state.matches.at(-1)?.routeId).toBe(indexRoute.id)
+    })
+    expect(await visit(router, '/')).toMatchObject({ leaf: rootRoute.id })
+    expect(await visit(router, '/path')).toEqual(expected)
+    expect(await visit(router, '/path/')).toEqual(expected)
   })
 
-  it('refreshes matching data when params.parse changes', () => {
+  it('refreshes matching data when params.parse changes', async () => {
     const rootRoute = new BaseRootRoute({})
     const itemRoute = new BaseRoute({
       getParentRoute: () => asAnyRoute(rootRoute),
@@ -267,15 +272,16 @@ describe('handleRouteUpdate', () => {
       },
     })
     const routeTree = rootRoute.addChildren([asAnyRoute(itemRoute)])
-    const router = createTestRouter(routeTree)
-
-    expect(router.getMatchedRoutes('/items/abc')[2]?.id).toBeUndefined()
+    const router = createClientTestRouter(routeTree, '/items/1')
+    await router.load()
+    expect(router.state.matches.at(-1)?.routeId).toBe(itemRoute.id)
+    expect((await visit(router, '/items/abc')).leaf).not.toBe(itemRoute.id)
 
     hotUpdateRoute(router, itemRoute.id, {
       params: { parse: ({ itemId }: { itemId: string }) => ({ itemId }) },
     })
 
-    expect(router.getMatchedRoutes('/items/abc')[2]?.id).toBe(itemRoute.id)
+    expect((await visit(router, '/items/abc')).leaf).toBe(itemRoute.id)
   })
 
   // E.g. a page with several routers, or a route the live route tree does
@@ -306,14 +312,15 @@ describe('handleRouteUpdate', () => {
     })
   })
 
-  it('hydrates the hot module route export with generated route tree state', () => {
+  it('hydrates the hot module route export with generated route tree state', async () => {
     const rootRoute = new BaseRootRoute({})
     const itemRoute = new BaseRoute({
       getParentRoute: () => asAnyRoute(rootRoute),
       path: '/items/$itemId',
     })
     const routeTree = rootRoute.addChildren([asAnyRoute(itemRoute)])
-    const router = createTestRouter(routeTree)
+    const router = createClientTestRouter(routeTree, '/items/1')
+    await router.load()
 
     const { Route } = hotUpdateRoute(router, itemRoute.id)
     const newRoute = Route as unknown as AnyRoute
@@ -341,17 +348,25 @@ describe('handleRouteUpdate', () => {
       getParentRoute: () => asAnyRoute(rootRoute),
       path: '/items/$itemId',
     }).lazy(lazyImporter)
-    const router = createTestRouter(
+    const router = createClientTestRouter(
       rootRoute.addChildren([asAnyRoute(itemRoute)]),
+      '/items/1',
     )
     const liveOptions = () => (router.routesById as any)[itemRoute.id].options
 
-    await router.loadRouteChunk(itemRoute)
+    // Loading the active route loads its lazy options
+    await router.load()
     expect(liveOptions().component).toBe(LazyComponent)
 
     hotUpdateRoute(router, itemRoute.id, { loader: () => 'edited' })
-    await router.loadRouteChunk(itemRoute)
-    expect(liveOptions().loader()).toBe('edited')
+    await vi.waitFor(() => {
+      expect(router.state.matches.at(-1)).toMatchObject({
+        routeId: itemRoute.id,
+        loaderData: 'edited',
+      })
+    })
+    await router.navigate({ to: '/items/$itemId', params: { itemId: '2' } })
+    expect(router.state.matches.at(-1)?.loaderData).toBe('edited')
     expect(liveOptions().component).toBe(LazyComponent)
   })
 

@@ -1,10 +1,12 @@
 /**
  * Route HMR keeps the previous `component` (and the other component options)
- * so that React Refresh can patch it in place. That only works when the value
- * is bound to a top-level name React Refresh registers. These tests compile
- * route files with the HMR transforms, then run Vite's Oxc React Refresh
- * transform (the one `@vitejs/plugin-react` uses) on the output to see which
- * components are registered and how their hook signatures are computed.
+ * so that React Refresh can patch it in place. Whether an edit shows in
+ * place with the component's state is tested on a real page
+ * (integration/route-hmr-browser-names.test.ts,
+ * integration/route-hmr-browser-options.test.ts). Here: the route modules
+ * the HMR transforms emit keep the route's components working, and modules
+ * importing the route module's exports get the components the route uses
+ * (a real importer module in a Vite dev server running the real plugin).
  */
 import { describe, expect, it } from 'vitest'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
@@ -12,168 +14,55 @@ import {
   expectExportedRouteOptions,
   expectSharedOverloads,
   exportedComponentsLostWhenSplit,
+  importFromRouteModule,
 } from './dev-server'
 import {
-  compileRouteModules,
   evaluateModule,
-  evaluateRouteModule,
-  expectRegisteredRouteOption,
-  exportedNames,
   getRouteOption,
   head,
-  loadRoute,
-  reactRefresh,
   renderComponent,
-  routeFile,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
-
 import type { ExportedRouteOptionsCase } from './dev-server'
 
-/** Compiles every module the code splitter emits, with React HMR. */
-async function compileWithCodeSplitting(code: string) {
-  return (await compileRouteModules(code, { hmr: true })).modules
-}
-
-describe('React Refresh registers route components', () => {
-  // Source: React Refresh ReactFreshBabelPlugin-test "registers top-level
-  // variable declarations with function expressions" and "... with arrow functions"
-  it.each([
-    ['an arrow function', `() => <p>hi</p>`],
-    ['an anonymous function expression', `function () { return <p>hi</p> }`],
-    ['a parenthesized arrow function', `(() => <p>hi</p>)`],
-  ])('written inline as %s', async (_, component) => {
-    const code = await transformWithRouteHmrPlugin(
-      `${head}export const Route = createFileRoute('/')({ component: ${component} })`,
-    )
-    await expectRegisteredRouteOption(code, 'component')
-  })
-
-  it('for every inline component option of a root route, under distinct names', async () => {
-    const options = {
-      component: '() => <p>component</p>',
-      pendingComponent: '() => <p>pending</p>',
-      errorComponent: '({ error }) => <p>{String(error)}</p>',
-      notFoundComponent: '() => <p>not found</p>',
-      shellComponent: '({ children }) => <html><body>{children}</body></html>',
-    }
-    const { reference } = await compileWithCodeSplitting(
-      `import { createRootRoute } from '@tanstack/react-router'
-export const Route = createRootRoute({
-${Object.entries(options)
-  .map(([key, value]) => `  ${key}: ${value},`)
-  .join('\n')}
-})`,
-    )
-    const bindings = new Set<string>()
-    for (const option of Object.keys(options)) {
-      bindings.add(await expectRegisteredRouteOption(reference!, option))
-    }
-    expect(bindings.size).toBe(Object.keys(options).length)
-  })
-
-  // Source: add-hmr snapshot fixture createRootRoute-lowercase-components.
-  it('for every lowercase function component of a root route, under distinct names', async () => {
-    const options = [
-      'shellComponent',
-      'pendingComponent',
-      'errorComponent',
-      'component',
-    ]
-    const { reference } = await compileWithCodeSplitting(
-      `import { createRootRoute } from '@tanstack/react-router'
-export const Route = createRootRoute({
-${options.map((option) => `  ${option}: ${option},`).join('\n')}
-})
-${options
-  .map(
-    (option) =>
-      `function ${option}({ children }) {\n  return <div>{children}${option}</div>\n}`,
-  )
-  .join('\n')}`,
-    )
-    const bindings = new Set<string>()
-    for (const option of options) {
-      bindings.add(await expectRegisteredRouteOption(reference!, option))
-      const component = await getRouteOption(reference!, option)
-      expect(await renderComponent(component)).toBe(`<div>${option}</div>`)
-    }
-    expect(bindings.size).toBe(options.length)
-  })
-
-  // Source: add-hmr snapshot fixture createRootRouteWithContext-type-args.
-  it('of a root route created with context type arguments', async () => {
-    const { reference } = await compileWithCodeSplitting(
-      `import { createRootRouteWithContext } from '@tanstack/react-router'
-interface MyRouterContext {
-  auth: boolean
-}
-export const Route = createRootRouteWithContext<MyRouterContext>()({
-  component: () => <div>root</div>,
-})`,
-    )
-    await expectRegisteredRouteOption(reference!, 'component')
-  })
-
-  // Source: ReactFreshBabelPlugin-test "only registers pascal case functions"
-  // and "uses original function declaration if it get reassigned"
-  it.each([
-    ['a const arrow function', `const page = () => <p>hi</p>`, 'tsx'],
-    [
-      'a function expression that names itself',
-      `const page = function page() { return <p>{typeof page}</p> }`,
-      'tsx',
-    ],
-    // TypeScript rejects assigning to a function declaration (TS2630).
-    [
-      'a reassigned function declaration',
-      `import { connect } from './connect'\nfunction page() { return <p>hi</p> }\npage = connect(page)`,
-      'jsx',
-    ],
-    [
-      'an overloaded function declaration',
-      `import type * as React from 'react'\nfunction page(props: { title?: string }): React.JSX.Element\nfunction page(props: any) { return <p>{props.title}</p> }`,
-      'tsx',
-    ],
-  ])(
-    'declared lowercase as %s, by renaming it',
-    async (_, declaration, extension) => {
-      const code = await transformWithRouteHmrPlugin(
-        `${head}${declaration}\nexport const Route = createFileRoute('/')({ component: page })`,
-        { target: 'react' },
-        routeFile('index').replace(/\.tsx$/, `.${extension}`),
-      )
-      await expectRegisteredRouteOption(code, 'component')
-    },
-  )
-
+describe('route HMR keeps route components working under their names', () => {
   // Source: ReactFreshBabelPlugin-test "registers top-level exported function
-  // declarations" and "registers top-level exported named arrow functions"
+  // declarations" and "registers top-level exported named arrow functions";
+  // the former "renamed lowercase and exported (%s), keeping what importers
+  // get". That an edit shows in place: integration/route-hmr-browser
+  // -names.test.ts.
   it.each([
-    ['export function page', `export function page() { return <p>hi</p> }`],
-    ['export { page }', `const page = () => <p>hi</p>\nexport { page }`],
+    [
+      'export function page',
+      `export function page() { return <p>hi</p> }`,
+      'page',
+    ],
+    [
+      'export { page }',
+      `const page = () => <p>hi</p>\nexport { page }`,
+      'page',
+    ],
     [
       'export default page',
       `function page() { return <p>hi</p> }\nexport default page`,
+      'default',
     ],
   ])(
-    'renamed lowercase and exported (%s), keeping what importers get',
-    async (_, declaration) => {
-      const source = `${head}${declaration}\nexport const Route = createFileRoute('/')({ component: page })`
-      const code = await transformWithRouteHmrPlugin(source)
-      await expectRegisteredRouteOption(code, 'component')
-      // Modules importing the component get the one the route renders.
-      const { exports, Route } = await evaluateRouteModule(code)
-      const imported = exportedNames(source).filter((name) => name !== 'Route')
-      expect(imported.length).toBeGreaterThan(0)
-      for (const name of imported) {
-        expect(exports[name], name).toBe(Route.options.component)
-      }
+    'a lowercase component exported as %s is what a module importing it gets (autoCodeSplitting: false)',
+    async (_, declaration, name) => {
+      const { imported } = await importFromRouteModule(
+        `${head}${declaration}\nexport const Route = createFileRoute('/page')({ component: page })`,
+        [name, 'Route'],
+        { autoCodeSplitting: false },
+      )
+      expect(imported[name]).toBe(imported.Route.options.component)
+      expect(await renderComponent(imported[name])).toBe('<p>hi</p>')
     },
+    30_000,
   )
 
   // Source: ReactFreshBabelPlugin-test "does not consider require-like methods to be HOCs"
-  it('but leaves an imported lowercase component to the module that declares it', async () => {
+  it('leaves an imported lowercase component to the module that declares it', async () => {
     const code = await transformWithRouteHmrPlugin(
       `${head}import { page } from './page'
 export const Route = createFileRoute('/')({ component: page })`,
@@ -184,8 +73,9 @@ export const Route = createFileRoute('/')({ component: page })`,
     ).toBe(page)
   })
 
-  // Source: ReactFreshBabelPlugin-test "registers top-level function declarations"
-  it('renames only the component binding, not an inner binding with its name', async () => {
+  // Source: ReactFreshBabelPlugin-test "registers top-level function
+  // declarations" (an inner binding with the component's name)
+  it('keeps an inner binding named like the lowercase component working', async () => {
     const code = await transformWithRouteHmrPlugin(
       `${head}function page() {
   const page = 'inner-marker'
@@ -193,7 +83,7 @@ export const Route = createFileRoute('/')({ component: page })`,
 }
 export const Route = createFileRoute('/')({ component: page })`,
     )
-    await expectRegisteredRouteOption(code, 'component')
+    expect(await getModuleErrors(code)).toEqual([])
     const { Route } = await evaluateModule(code, {
       '@tanstack/react-router': {
         createFileRoute: () => (options: unknown) => ({ options }),
@@ -203,67 +93,17 @@ export const Route = createFileRoute('/')({ component: page })`,
       '<p>inner-marker</p>',
     )
   })
-
-  // Source: ReactFreshIntegration-test "preserves state ..." (families are
-  // matched by registration name)
-  it('names hoisted components after their option, so adding options keeps the family', async () => {
-    const before = await transformWithRouteHmrPlugin(
-      `${head}export const Route = createFileRoute('/')({ component: () => <p>v1</p> })`,
-    )
-    const after = await transformWithRouteHmrPlugin(
-      `${head}export const Route = createFileRoute('/')({
-  pendingComponent: () => <p>pending</p>,
-  errorComponent: () => <p>error</p>,
-  component: () => <p>v2</p>,
-})`,
-    )
-    expect(await expectRegisteredRouteOption(after, 'component')).toBe(
-      await expectRegisteredRouteOption(before, 'component'),
-    )
-  })
-
-  // Source: ReactFreshBabelPlugin-test "includes custom hooks into the signatures"
-  it('with the hook signature of the component the user wrote, also in the split chunk', async () => {
-    const declarations = `import { useState } from 'react'
-const format = (n: number) => String(n)
-function useCounter() {
-  const [count] = useState(0)
-  return format(count)
-}`
-    const component = `() => {
-  const count = useCounter()
-  return <p>{count}</p>
-}`
-    const { signatures } = await reactRefresh(
-      `${declarations}\nconst Page = ${component}\nexport const Route = {}`,
-    )
-    const expected = signatures.get('Page')
-    expect(expected).toBeDefined()
-    // The loader shares `format` with the component's hook.
-    const source = `${head}${declarations}
-export const Route = createFileRoute('/')({
-  loader: () => format(1),
-  component: ${component},
-})`
-
-    const hmr = await transformWithRouteHmrPlugin(source)
-    const hoisted = await expectRegisteredRouteOption(hmr, 'component')
-    expect((await reactRefresh(hmr)).signatures.get(hoisted)).toBe(expected)
-
-    const route = await loadRoute(source, { hmr: true })
-    const chunkSignatures = await Promise.all(
-      (await route.loadedBy('component')).map(async (code) => [
-        ...(await reactRefresh(code)).signatures.values(),
-      ]),
-    )
-    expect(chunkSignatures.flat()).toContain(expected)
-  })
 })
 
-// Split route components written inline in a memo / forwardRef call, and
-// inline root route components: route-hmr-browser.test.ts (a real page). A
-// route file creates one route (ruling 2026-10-18): no test of components
-// of other routes a function of the file creates.
+// Inline, root route, lowercase and exported route components, options
+// added beside a component and custom hooks, as React Refresh patches them
+// on a real page: integration/route-hmr-browser-names.test.ts and
+// integration/route-hmr-browser-options.test.ts (they replace the checks of
+// which names React Refresh's transform registered and of the hook
+// signatures it computed, V1 HMR-17). Split route components written inline
+// in a memo / forwardRef call: route-hmr-browser.test.ts. A route file
+// creates one route (ruling 2026-10-18): no test of components of other
+// routes a function of the file creates.
 
 // A route module stays a React Refresh boundary in Vite:
 // route-hmr-browser.test.ts (a real page).
@@ -288,8 +128,9 @@ describe('route HMR leaves options React Refresh does not handle as they are', (
 /**
  * React HMR renames and hoists route components, and may split them out of
  * the route module. Modules that import the route module's exports still need
- * them, as the same values the route options use. These tests load the route
- * module from a Vite dev server running the real plugin.
+ * them, as the same values the route options use. These tests serve the
+ * route file and a module importing its exports from a Vite dev server
+ * running the real plugin (`importFromRouteModule`).
  *
  * Source: #8504 react-refresh-route-components "route module exports with
  * React HMR and autoCodeSplitting". The class, aliased and overload-alias
@@ -302,33 +143,34 @@ describe.each([true, false])(
     const cases: Array<ExportedRouteOptionsCase> = [
       {
         name: 'function',
-        declaration: 'export function component() { return null }',
+        declaration: 'export function component() { return <p>function</p> }',
         options: 'component',
         exported: { component: ['component'] },
       },
       {
         name: 'overloaded function',
         declaration:
-          'export function component(): null; export function component() { return null }',
+          "import type { ReactNode } from 'react'\nexport function component(): ReactNode\nexport function component() { return <p>overloaded</p> }",
         options: 'component',
         exported: { component: ['component'] },
       },
       {
         name: 'function used by two options',
-        declaration: 'export function component() { return null }',
+        declaration:
+          'export function component() { return <p>two options</p> }',
         options: 'component, errorComponent: component',
         exported: { component: ['component', 'errorComponent'] },
       },
       {
         name: 'variable',
-        declaration: 'export const component = () => null',
+        declaration: 'export const component = () => <p>variable</p>',
         options: 'component',
         exported: { component: ['component'] },
       },
       {
         name: 'variables declared together',
         declaration:
-          'export const component = () => null, pendingComponent = () => null',
+          'export const component = () => <p>component</p>, pendingComponent = () => <p>pending</p>',
         options: 'component, pendingComponent',
         exported: {
           component: ['component'],
@@ -337,7 +179,8 @@ describe.each([true, false])(
       },
       {
         name: 'default',
-        declaration: 'export default function component() { return null }',
+        declaration:
+          'export default function component() { return <p>default</p> }',
         options: 'component',
         exported: { default: ['component'] },
       },
