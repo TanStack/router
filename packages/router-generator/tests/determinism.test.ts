@@ -81,11 +81,13 @@ async function withListingOrder<T>(
   run: () => Promise<T>,
 ) {
   const readdir = fsp.readdir
+  const listed = async (...args: Array<any>) =>
+    order(
+      await (readdir as (...args: Array<any>) => Promise<Array<any>>)(...args),
+    )
   const spy = vi
     .spyOn(fsp, 'readdir')
-    .mockImplementation(async (...args: Parameters<typeof readdir>) =>
-      order((await readdir(...args)) as Array<unknown>),
-    )
+    .mockImplementation(listed as unknown as typeof readdir)
   // (`import * as fsp from 'node:fs/promises'` sees the change only once
   // the module's ES exports are synced with its object)
   syncBuiltinESMExports()
