@@ -1,7 +1,13 @@
+/**
+ * Writes of the generator racing with the user's saves, and the atomic
+ * publication of route files and the route tree (SPEC J1.6, J1.16): real
+ * files, with the generator's `fs` option as the narrow boundary where a
+ * save, a reader or a fault comes in.
+ */
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, onTestFinished } from 'vitest'
 
 import { Generator, getConfig } from '../src'
 import { routeIdOf } from './route-id'
@@ -307,113 +313,240 @@ describe('a route file saved while the generator fixes it', () => {
   })
 })
 
-describe('route files the generator rewrites', () => {
-  it.skipIf(process.platform === 'win32')('keep their file mode', async () => {
-    const { root, postsRoutePath, config } = await createApp(
-      postsRouteSource.replace("'/posts'", "'/old'"),
-    )
-    await fs.chmod(postsRoutePath, 0o600)
-    await new Generator({ config, root }).run()
+// (The mode and owner of rewritten route files: outside the compiler test
+// corpus, tests/outside-compiler-corpus/file-metadata.test.ts.)
 
-    expect(await routeIdOf(await fs.readFile(postsRoutePath, 'utf8'))).toBe(
-      '/posts',
-    )
-    expect((await fs.stat(postsRoutePath)).mode & 0o777).toBe(0o600)
-  })
-
-  /**
-   * A filesystem whose files have owners: real files, with their owners kept
-   * in `owners` (files without an entry belong to the current user, 1000).
-   * `chown` fails with `chownError` when given.
-   */
-  function filesystemWithOwners(
-    owners: Map<string, { uid: number; gid: number }>,
-    chownError?: string,
-  ) {
-    const currentUser = { uid: 1000, gid: 1000 }
-    const key = (filePath: string) => path.resolve(filePath)
-    return {
+/**
+ * The real filesystem as the generator's `fs` option, with a reader of
+ * `watched` files during each write and rename the generator makes: each
+ * write is made in two halves, and between them, and before and after each
+ * rename, the reader reads every watched file (`seen` records what it read,
+ * by file; `null` for a missing file). `fault` may make an operation fail
+ * instead (after the first half, for a write).
+ */
+function filesystemWithReader(
+  watched: Array<string>,
+  fault?: (
+    operation: 'writeFile' | 'rename',
+    paths: Array<string>,
+  ) => NodeJS.ErrnoException | undefined,
+) {
+  const seen = new Map<string, Set<string | null>>(
+    watched.map((file) => [file, new Set()]),
+  )
+  const readAll = async () => {
+    for (const file of watched) {
+      const content = await fs.readFile(file, 'utf8').catch(() => null)
+      seen.get(file)!.add(content)
+    }
+  }
+  return {
+    seen,
+    fs: {
       rename: async (oldPath: string, newPath: string) => {
+        await readAll()
+        const error = fault?.('rename', [oldPath, newPath])
+        if (error) {
+          throw error
+        }
         await fs.rename(oldPath, newPath)
-        owners.set(key(newPath), owners.get(key(oldPath)) ?? currentUser)
-        owners.delete(key(oldPath))
+        await readAll()
       },
-      writeFile: (filePath: string, content: string) =>
-        fs.writeFile(filePath, content),
+      writeFile: async (filePath: string, content: string) => {
+        const half = Math.ceil(content.length / 2)
+        await fs.writeFile(filePath, content.slice(0, half))
+        await readAll()
+        const error = fault?.('writeFile', [filePath])
+        if (error) {
+          throw error
+        }
+        await fs.appendFile(filePath, content.slice(half))
+      },
       readFile: (filePath: string) => readFileWithStat(filePath),
       stat: async (filePath: string) => {
         const stat = await fs.stat(filePath, { bigint: true })
-        const owner = owners.get(key(filePath)) ?? currentUser
-        return { mtimeMs: stat.mtimeMs, mode: Number(stat.mode), ...owner }
+        return {
+          mtimeMs: stat.mtimeMs,
+          mode: Number(stat.mode),
+          uid: Number(stat.uid),
+          gid: Number(stat.gid),
+        }
       },
       chmod: (filePath: string, mode: number) => fs.chmod(filePath, mode),
-      chown: async (filePath: string, uid: number, gid: number) => {
-        if (chownError) {
-          throw Object.assign(new Error(`chown ${chownError}`), {
-            code: chownError,
-          })
-        }
-        owners.set(key(filePath), { uid, gid })
-      },
-    }
+      chown: (filePath: string, uid: number, gid: number) =>
+        fs.chown(filePath, uid, gid),
+    },
   }
+}
+
+/**
+ * An app whose next run rewrites both a route file (`routes/posts.tsx`, a
+ * wrong id) and the route tree (a new route, `routes/about.tsx`): the tree
+ * of a first run and the files before the next run.
+ */
+async function appBeforeRewrite(tmpDir?: string) {
+  const { root, postsRoutePath, config } = await createApp(postsRouteSource)
+  if (tmpDir) {
+    config.tmpDir = tmpDir
+  }
+  await new Generator({ config, root }).run()
+  await fs.writeFile(
+    postsRoutePath,
+    postsRouteSource.replace("'/posts'", "'/old'"),
+  )
+  await fs.writeFile(
+    path.join(root, 'routes/about.tsx'),
+    postsRouteSource.replace("'/posts'", "'/about'"),
+  )
+  const files = [postsRoutePath, config.generatedRouteTree]
+  const before = await Promise.all(
+    files.map((file) => fs.readFile(file, 'utf8')),
+  )
+  return { root, config, files, before }
+}
+
+// SPEC J1.6: a route file and the route tree are published atomically: a
+// reader never sees a half-written file, also when a publication fails.
+describe('publication of route files and the route tree', () => {
+  it('a reader during the publications sees only the complete old or new contents', async () => {
+    const { root, config, files, before } = await appBeforeRewrite()
+    const { seen, fs: readerFs } = filesystemWithReader(files)
+    await new Generator({ config, root, fs: readerFs }).run()
+
+    const after = await Promise.all(
+      files.map((file) => fs.readFile(file, 'utf8')),
+    )
+    expect(await routeIdOf(after[0]!)).toBe('/posts')
+    expect(await routesOf(config.generatedRouteTree)).toEqual({
+      __root__: 'routes/__root.tsx',
+      '/about': 'routes/about.tsx',
+      '/posts': 'routes/posts.tsx',
+    })
+    for (const [index, file] of files.entries()) {
+      const contents = [...seen.get(file)!]
+      expect(contents.length, file).toBeGreaterThan(0)
+      for (const content of contents) {
+        expect([before[index], after[index]], file).toContain(content)
+      }
+    }
+  })
 
   it.each([
-    { owner: { uid: 1001, gid: 1000 } },
-    { owner: { uid: 1000, gid: 1001 } },
-  ])('keep their owner $owner', async ({ owner }) => {
-    const { root, postsRoutePath, config } = await createApp(
-      postsRouteSource.replace("'/posts'", "'/old'"),
-    )
-    const owners = new Map([[postsRoutePath, owner]])
-    await new Generator({
-      config,
-      root,
-      fs: filesystemWithOwners(owners),
-    }).run()
+    {
+      name: 'a write that fails half-way (disk full)',
+      fault: (operation: string) =>
+        operation === 'writeFile'
+          ? Object.assign(new Error('ENOSPC: no space left on device'), {
+              code: 'ENOSPC',
+            })
+          : undefined,
+    },
+    {
+      name: 'a rename that fails',
+      fault: (operation: string) =>
+        operation === 'rename'
+          ? Object.assign(new Error('EIO: i/o error, rename'), {
+              code: 'EIO',
+            })
+          : undefined,
+    },
+  ])(
+    'after $name, the route file and the route tree hold their complete old contents',
+    async ({ fault }) => {
+      const { root, config, files, before } = await appBeforeRewrite()
+      const { seen, fs: faultyFs } = filesystemWithReader(files, fault)
+      await new Generator({ config, root, fs: faultyFs })
+        .run()
+        .catch(() => {})
 
-    expect(await routeIdOf(await fs.readFile(postsRoutePath, 'utf8'))).toBe(
-      '/posts',
-    )
-    expect(owners.get(postsRoutePath)).toEqual(owner)
-  })
+      for (const [index, file] of files.entries()) {
+        expect(await fs.readFile(file, 'utf8'), file).toBe(before[index])
+        for (const content of seen.get(file)!) {
+          expect(content, file).toBe(before[index])
+        }
+      }
+    },
+  )
 
-  it('are still fixed, with a warning, when their owner cannot be given back', async () => {
-    const { root, postsRoutePath, config } = await createApp(
-      postsRouteSource.replace("'/posts'", "'/old'"),
-    )
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    try {
-      await new Generator({
-        config,
-        root,
-        fs: filesystemWithOwners(
-          new Map([[postsRoutePath, { uid: 0, gid: 0 }]]),
-          'EPERM',
-        ),
-      }).run()
-      expect(warn.mock.calls.flat().join('\n')).toContain('chown')
-    } finally {
-      warn.mockRestore()
+  /**
+   * A writable directory on another filesystem than `dir` (its device
+   * differs), if the host has one: the system's temporary directory, shared
+   * memory, or this package's directory.
+   */
+  async function directoryOnAnotherDevice(dir: string) {
+    const { dev } = await fs.stat(dir)
+    for (const candidate of [os.tmpdir(), '/dev/shm', process.cwd()]) {
+      const stat = await fs.stat(candidate).catch(() => undefined)
+      if (stat?.isDirectory() && stat.dev !== dev) {
+        const tmpDir = await fs
+          .mkdtemp(path.join(candidate, 'tsr-generator-tmp-'))
+          .catch(() => undefined)
+        if (tmpDir) {
+          onTestFinished(() => fs.rm(tmpDir, { recursive: true, force: true }))
+          return tmpDir
+        }
+      }
     }
-    expect(await routeIdOf(await fs.readFile(postsRoutePath, 'utf8'))).toBe(
-      '/posts',
-    )
-  })
+    return undefined
+  }
 
-  it('are left as they are when giving their owner back fails otherwise, and the run fails', async () => {
-    const source = postsRouteSource.replace("'/posts'", "'/old'")
-    const { root, postsRoutePath, config } = await createApp(source)
-    await expect(
-      new Generator({
-        config,
-        root,
-        fs: filesystemWithOwners(
-          new Map([[postsRoutePath, { uid: 0, gid: 0 }]]),
-          'EIO',
-        ),
-      }).run(),
-    ).rejects.toThrow('chown EIO')
-    await expect(fs.readFile(postsRoutePath, 'utf8')).resolves.toBe(source)
-  })
+  // Bug (K-19): with `tmpDir` on another filesystem than the app (e.g. the
+  // app on a disk and TSR_TMP_DIR on a tmpfs), every publication fails:
+  // renaming the temporary file onto the route file or the route tree fails
+  // with EXDEV, and the run fails. The atomic fallback is to write the
+  // temporary file beside the destination and rename it there (DECISIONS
+  // 2026-10-18 K-19; SPEC J1.16); a copy over the destination is not atomic
+  // (the destination file must be replaced, not rewritten in place). On a
+  // host with a single filesystem, a fault makes renames across
+  // directories fail with EXDEV instead.
+  // Source: src/generator.ts:1203-1290 (`safeFileWrite` renames from
+  // `getTempFileName`'s file in `config.tmpDir`).
+  // Impact: route generation fails until tmpDir is moved to the app's
+  // filesystem (api/file-based-routing.md `tmpDir` names no such limit).
+  it.fails(
+    'with tmpDir on another filesystem, the route file and the route tree are replaced atomically',
+    async () => {
+      // (the apps of these tests are in the system's temporary directory)
+      const otherDevice = await directoryOnAnotherDevice(os.tmpdir())
+      const tmpDir =
+        otherDevice ??
+        (await fs.mkdtemp(path.join(os.tmpdir(), 'tsr-generator-tmp-')))
+      onTestFinished(() => fs.rm(tmpDir, { recursive: true, force: true }))
+      const { root, config, files, before } = await appBeforeRewrite(tmpDir)
+      const inodes = await Promise.all(
+        files.map(async (file) => (await fs.stat(file)).ino),
+      )
+      const { seen, fs: readerFs } = filesystemWithReader(
+        files,
+        otherDevice
+          ? undefined
+          : (operation, [from, to]) =>
+              operation === 'rename' &&
+              path.dirname(from!) !== path.dirname(to!)
+                ? Object.assign(
+                    new Error('EXDEV: cross-device link not permitted'),
+                    { code: 'EXDEV' },
+                  )
+                : undefined,
+      )
+      await new Generator({ config, root, fs: readerFs }).run()
+
+      const after = await Promise.all(
+        files.map((file) => fs.readFile(file, 'utf8')),
+      )
+      expect(await routeIdOf(after[0]!)).toBe('/posts')
+      expect(await routesOf(config.generatedRouteTree)).toEqual({
+        __root__: 'routes/__root.tsx',
+        '/about': 'routes/about.tsx',
+        '/posts': 'routes/posts.tsx',
+      })
+      for (const [index, file] of files.entries()) {
+        // (replaced by a rename, not rewritten in place or copied over)
+        expect((await fs.stat(file)).ino, file).not.toBe(inodes[index])
+        for (const content of seen.get(file)!) {
+          expect([before[index], after[index]], file).toContain(content)
+        }
+      }
+    },
+  )
 })
