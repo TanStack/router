@@ -846,11 +846,10 @@ return beforeFocus`,
   // place by the compiler) is the reference: the framework's behaviour.
   // Source: FIX-PLAN V2-19 (SPEC J5.8, J5.4)
   test('split children follow their parent through updates and a reorder, like unsplit ones', async () => {
-    const [split, reference] = await Promise.all(
-      ['updates', 'updatesReference'].map((name) =>
-        app.hydrate(name, { script: updatesScript }),
-      ),
-    )
+    const [split, reference] = await Promise.all([
+      app.hydrate('updates', { script: updatesScript }),
+      app.hydrate('updatesReference', { script: updatesScript }),
+    ])
     expect(reference.result).toEqual(updatesExpected)
     for (const page of [split, reference]) {
       expect({
