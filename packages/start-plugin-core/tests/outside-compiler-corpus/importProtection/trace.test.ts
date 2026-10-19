@@ -1,11 +1,28 @@
+/**
+ * Internal controls (SPEC §8, V1 ip S14/S24): not part of the compiler test
+ * corpus. They call exported internals of import protection (the import
+ * graph, the trace builder and the report formatter) and give no clause
+ * coverage; a correct rewrite may drop them. The outcomes they stand for
+ * are checked on real reports: the chain from an entry and its depth
+ * (`integration/importProtection/reported-location.test.ts`,
+ * `build-options.test.ts` "maxTraceDepth"), the rule and the direction of
+ * the suggestions (`integration/importProtection/build.test.ts`, default
+ * rules), the sections (`importProtection/violation-report.ts`). Reports
+ * are read by their sections and through the diagnostic oracle, never by
+ * their sentences (SPEC J6.12).
+ */
 import { describe, expect, test } from 'vitest'
+import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   ImportGraph,
   buildTrace,
   formatViolation,
-} from '../../src/import-protection/trace'
-import { violationReports } from './violation-report'
-import type { ViolationInfo } from '../../src/import-protection/trace'
+} from '../../../src/import-protection/trace'
+import {
+  suggestedDirections,
+  violationReports,
+} from '../../importProtection/violation-report'
+import type { ViolationInfo } from '../../../src/import-protection/trace'
 
 describe('ImportGraph', () => {
   test('addEdge and reverse lookup', () => {
@@ -119,21 +136,6 @@ describe('buildTrace', () => {
     expect(trace[trace.length - 1]!.file).toBe('/src/violations/edge-a.ts')
   })
 
-  test('respects maxDepth', () => {
-    const graph = new ImportGraph()
-    graph.addEntry('/entry')
-
-    // Chain: /entry -> /a -> /b -> /c -> /d -> /e
-    graph.addEdge('/a', '/entry', './a')
-    graph.addEdge('/b', '/a', './b')
-    graph.addEdge('/c', '/b', './c')
-    graph.addEdge('/d', '/c', './d')
-    graph.addEdge('/e', '/d', './e')
-
-    const trace = buildTrace(graph, '/e', 2)
-    expect(trace.length).toBeLessThanOrEqual(4)
-  })
-
   test('handles single node with no importers', () => {
     const graph = new ImportGraph()
     const trace = buildTrace(graph, '/orphan')
@@ -172,19 +174,6 @@ describe('buildTrace', () => {
     const trace = buildTrace(graph, '/leaf')
     expect(trace[0]!.file).toBe('/entry')
     expect(trace[trace.length - 1]!.file).toBe('/leaf')
-  })
-
-  test('handles cycles without infinite loop', () => {
-    const graph = new ImportGraph()
-    graph.addEntry('/entry')
-    graph.addEdge('/a', '/entry', './a')
-    graph.addEdge('/b', '/a', './b')
-    graph.addEdge('/a', '/b', './a') // cycle: /a -> /b -> /a
-
-    const trace = buildTrace(graph, '/b')
-    // Should terminate and produce a trace ending at /b
-    expect(trace[trace.length - 1]!.file).toBe('/b')
-    expect(trace.length).toBeGreaterThanOrEqual(2)
   })
 
   test('handles fully disconnected node (no edges at all)', () => {
@@ -228,7 +217,7 @@ describe('formatViolation', () => {
         ],
       }),
     ])
-    expect(formatted).toContain('specifier pattern')
+    expect(suggestedDirections(formatted)).toEqual(['server'])
   })
 
   test('formats file violation correctly', () => {
@@ -246,14 +235,13 @@ describe('formatViolation', () => {
 
     const formatted = formatViolation(info, '/project')
 
-    expect(formatted).toContain('file pattern')
-    expect(formatted).toContain('**/*.server.*')
-    expect(formatted).toContain('src/secret.server.ts')
-    expect(formatted).toContain('Suggestions:')
-    expect(formatted).toContain('createServerFn().handler')
-    expect(formatted).toContain('createServerOnlyFn')
-    expect(formatted).toContain('createIsomorphicFn')
-    expect(formatted).toContain('Move the server-only import')
+    // The rule and the resolved file, by name; a server-side fix.
+    expectDiagnostic(formatted, {
+      names: ['**/*.server.*'],
+      file: 'src/secret.server.ts',
+      root: '/project',
+    })
+    expect(suggestedDirections(formatted)).toEqual(['server'])
   })
 
   test('formats marker violation correctly', () => {
@@ -269,10 +257,10 @@ describe('formatViolation', () => {
 
     const formatted = formatViolation(info, '/project')
 
-    expect(formatted).toContain('marker')
-    expect(formatted).toContain('restricted to the opposite environment')
-    expect(formatted).toContain('Suggestions:')
-    expect(formatted).toContain('createServerFn')
+    expectDiagnostic(formatted, {
+      names: ['@tanstack/react-start/server-only'],
+    })
+    expect(suggestedDirections(formatted)).toEqual(['server'])
   })
 
   test('client-in-server violation includes client-only suggestions', () => {
@@ -290,11 +278,8 @@ describe('formatViolation', () => {
 
     const formatted = formatViolation(info, '/project')
 
-    expect(formatted).toContain('Suggestions:')
-    expect(formatted).toContain('createClientOnlyFn')
-    expect(formatted).toContain('createIsomorphicFn')
-    expect(formatted).toContain('Move the client-only import')
-    expect(formatted).not.toContain('<ClientOnly')
+    expectDiagnostic(formatted, { names: ['**/*.client.*'] })
+    expect(suggestedDirections(formatted)).toEqual(['client'])
   })
 
   test('env is printed with env type suffix', () => {
@@ -341,12 +326,7 @@ describe('formatViolation', () => {
 
     const formatted = formatViolation(info, '/project')
 
-    expect(formatted).toContain('Suggestions:')
-    expect(formatted).toContain(
-      '<ClientOnly fallback={<Loading />}>...</ClientOnly>',
-    )
-    expect(formatted).toContain('createClientOnlyFn')
-    expect(formatted).toContain('createIsomorphicFn')
+    expect(suggestedDirections(formatted)).toEqual(['client'])
   })
 
   test('specifier violation in client env gets server-in-client suggestions', () => {
@@ -363,10 +343,7 @@ describe('formatViolation', () => {
 
     const formatted = formatViolation(info, '/project')
 
-    expect(formatted).toContain('Suggestions:')
-    expect(formatted).toContain('createServerFn')
-    expect(formatted).toContain('createServerOnlyFn')
-    expect(formatted).toContain('createIsomorphicFn')
+    expect(suggestedDirections(formatted)).toEqual(['server'])
   })
 
   test('marker violation in server env gets client-in-server suggestions', () => {
@@ -382,40 +359,10 @@ describe('formatViolation', () => {
 
     const formatted = formatViolation(info, '/project')
 
-    expect(formatted).toContain('Suggestions:')
-    expect(formatted).toContain('createClientOnlyFn')
-    expect(formatted).toContain('createIsomorphicFn')
-  })
-
-  test('relativizes absolute-path specifiers in Import line and trace steps', () => {
-    // When an alias (e.g. ~/) is resolved by a transform plugin before
-    // resolveId, the specifier stored in the graph can be an absolute path.
-    // formatViolation should display it as a root-relative path.
-    const info: ViolationInfo = {
-      env: 'client',
-      envType: 'client',
-      type: 'file',
-      behavior: 'error',
-      pattern: '**/client/**',
-      specifier: '/project/src/utils/prisma',
-      importer: '/project/src/routes/signup.tsx',
-      resolved: '/project/src/utils/prisma.ts',
-      trace: [
-        { file: '/project/src/routes/signup.tsx' },
-        {
-          file: '/project/src/routes/signup.tsx',
-          specifier: '/project/src/utils/prisma',
-        },
-      ],
-    }
-
-    const formatted = formatViolation(info, '/project')
-
-    expect(formatted).toContain('Import: "src/utils/prisma"')
-    expect(formatted).not.toContain('Import: "/project/src/utils/prisma"')
-
-    expect(formatted).toContain('(import "src/utils/prisma")')
-    expect(formatted).not.toContain('(import "/project/src/utils/prisma")')
+    expectDiagnostic(formatted, {
+      names: ['@tanstack/react-start/client-only'],
+    })
+    expect(suggestedDirections(formatted)).toEqual(['client'])
   })
 
   test('leaves non-absolute specifiers unchanged', () => {
@@ -437,7 +384,11 @@ describe('formatViolation', () => {
 
     const formatted = formatViolation(info, '/project')
 
-    expect(formatted).toContain('Import: "@tanstack/react-start/server"')
-    expect(formatted).toContain('(import "./secret.server")')
+    expect(violationReports(formatted)).toEqual([
+      expect.objectContaining({
+        specifier: '@tanstack/react-start/server',
+        trace: [expect.objectContaining({ imports: './secret.server' })],
+      }),
+    ])
   })
 })

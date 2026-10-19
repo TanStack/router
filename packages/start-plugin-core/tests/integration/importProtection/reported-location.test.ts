@@ -9,6 +9,7 @@
  * Rsbuild: original source first), so each case runs on both.
  */
 import { describe, expect, test } from 'vitest'
+import { mentionsFile } from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../../build-harness'
 import { startRsbuildDevServer } from '../../rsbuild-dev-server'
 import {
@@ -86,8 +87,68 @@ export default function Secret() {
 interface LocationCase {
   name: string
   code: string
-  /** The locations the report may point at (`src/a.tsx:line:column`). */
+  /**
+   * The genuine surviving uses the report may point at
+   * (`src/a.tsx:line:column`, or `src/a.tsx:line` for any column of the
+   * line); the static import of the denied module is accepted too
+   * (`isRelevantLocation`).
+   */
   expected: Array<string>
+}
+
+/**
+ * Whether a reported `file:line:column` is a relevant place for the
+ * violation of the module `file`, whose source is `code` (SPEC J6.5; V1 ip
+ * S08): one of the genuine surviving `uses`, or the original import of the
+ * denied module (any column of the import statement's line). Never a type
+ * position, a use inside a removed boundary, an unrelated member named
+ * like the import, nor compiled coordinates.
+ */
+function isRelevantLocation(
+  reported: string,
+  file: string,
+  code: string,
+  uses: Array<string>,
+) {
+  const lines = code.split(/\r\n|[\n\r]/)
+  const importLines = lines.flatMap((line, index) =>
+    /^import\b.*\bfrom\s+['"]\.\/(secret\.server|widget\.client)['"]/.test(line)
+      ? [index + 1]
+      : [],
+  )
+  // The file may be spelled any way that names it (SPEC §5.7: absolute,
+  // project-relative, a bundler's source URL).
+  const [, reportedFile = '', line, column] =
+    /^(.*):(\d+):(\d+)$/.exec(reported) ?? []
+  if (!mentionsFile(reportedFile, file)) {
+    return false
+  }
+  /** `file:line:column`, or `file:line` for any column of the line. */
+  const isAt = (location: string) => {
+    const [, expectedLine, expectedColumn] =
+      /:(\d+)(?::(\d+))?$/.exec(location) ?? []
+    return (
+      expectedLine === line &&
+      (expectedColumn === undefined || expectedColumn === column)
+    )
+  }
+  return (
+    uses.some(isAt) || importLines.some((importLine) => isAt(`:${importLine}`))
+  )
+}
+
+/** Fails unless one violation is reported, at a relevant location. */
+function expectRelevantLocation(
+  reported: Array<string>,
+  code: string,
+  uses: Array<string>,
+  file = 'src/a.tsx',
+) {
+  expect(reported).toHaveLength(1)
+  expect(
+    isRelevantLocation(reported[0]!, file, code, uses),
+    `${reported[0]} is the import or one of ${uses.join(', ')}`,
+  ).toBe(true)
 }
 
 const at = (code: string, line: number, needle: string) =>
@@ -127,6 +188,47 @@ import { secret } from './secret.server'
 export const fn = createIsomorphicFn().client(() => secret())
 `
 
+const unicode =
+  "import { secret } from './secret.server'\r\n" +
+  '// 👨‍👩‍👧 𝒳𝒴 日本語\r\n' +
+  "\texport const label = '🎉'; export const value = () => secret()\r\n"
+
+// (Each shadowing binding is read like the real use, so a lookup that
+// prefers calls cannot step over a shadow it does not see: V4 red-astra/19.)
+const catchShadow = `import { secret } from './secret.server'
+export const run = () => {
+  try { return 1 } catch (secret) { console.log(secret) }
+}
+export const leak = secret
+`
+
+const scopeShadow = `import { secret } from './secret.server'
+export const inner = (secret: unknown) => secret
+export function hoisted() {
+  if (Math.random() > 2) {
+    var secret = 1
+  }
+  return secret
+}
+export const leak = secret
+`
+
+const wrappedBoundary = `import { createServerOnlyFn } from '@tanstack/react-start'
+import { secret } from './secret.server'
+const wrap = <T,>(fn: T) => fn
+const run = (fn: () => unknown) => fn()
+export const a = createServerOnlyFn(wrap(() => secret()))
+export const b = run(() => secret())
+`
+
+const dynamicImport = `export const load = () =>
+  import('./secret.server', { with: {} })
+`
+
+const reExport = `export const one = 1
+export { secret } from './secret.server'
+`
+
 const cases: Record<string, LocationCase> = {
   afterHandler: {
     name: 'a use after a server fn handler (the handler is not reported)',
@@ -164,6 +266,44 @@ const cases: Record<string, LocationCase> = {
     code: afterHandler.replaceAll('\n', '\r'),
     expected: [at(afterHandler, 4, 'secret()')],
   },
+  // Ported from the internal usage lookup (V1 ip S24): columns count UTF-16
+  // code units (what editors and source maps count) after astral
+  // characters, a tab and CRLF line endings.
+  unicode: {
+    name: 'a use after astral characters and a tab, with CRLF line endings',
+    code: unicode,
+    expected: [at(unicode, 3, 'secret()')],
+  },
+  catchShadow: {
+    name: 'a use after a catch clause parameter named like the import',
+    code: catchShadow,
+    expected: [at(catchShadow, 5, 'secret')],
+  },
+  scopeShadow: {
+    name: 'a use after a parameter and a hoisted var named like the import',
+    code: scopeShadow,
+    expected: [at(scopeShadow, 9, 'secret')],
+  },
+  // The client compile removes a `createServerOnlyFn(...)` call whatever
+  // its argument is, so a use inside a wrapped function is gone (V1 ip
+  // S26, replacing the internal pin on the original-source lookup).
+  wrappedBoundary: {
+    name: 'a use after a createServerOnlyFn whose function is wrapped in a call',
+    code: wrappedBoundary,
+    expected: [at(wrappedBoundary, 6, 'secret()')],
+  },
+  // Other import forms (V1 ip S14): the dynamic import (with import
+  // attributes) and the re-export are the uses, on their line.
+  dynamicImport: {
+    name: 'a dynamic import with import attributes',
+    code: dynamicImport,
+    expected: [`src/a.tsx:2`],
+  },
+  reExport: {
+    name: 'a re-export',
+    code: reExport,
+    expected: [`src/a.tsx:2`],
+  },
 }
 
 const channels: Array<Channel> = [
@@ -177,20 +317,24 @@ const channels: Array<Channel> = [
 const rows = (names: Array<string>, on: Array<Channel>) =>
   names.flatMap((name) => on.map((channel) => ({ ...cases[name]!, channel })))
 
-describe('the reported location of a violation is the leaking use', () => {
+describe('the reported location of a violation is the leaking use or the import', () => {
   // Source (lookAlike, isomorphicClient): moved from
   // analysis.usage.test.ts, which rebuilt the Vite plugin's location
   // lookup from internals (audit F-H3).
   test.each([
     ...rows(['afterHandler', 'loneCr', 'isomorphicClient'], channels),
+    ...rows(['unicode', 'catchShadow', 'scopeShadow', 'reExport'], channels),
+    ...rows(['wrappedBoundary', 'dynamicImport'], ['vite dev', 'vite build']),
     ...rows(['lookAlike'], ['vite dev', 'vite build']),
     ...rows(['typePosition', 'jsxElement'], ['vite dev', 'vite build']),
   ])(
     '$channel: $name',
     async ({ channel, code, expected }) => {
-      const reported = await reportedLocations(channel, code)
-      expect(reported).toHaveLength(1)
-      expect(expected).toContain(reported[0])
+      expectRelevantLocation(
+        await reportedLocations(channel, code),
+        code,
+        expected,
+      )
     },
     timeout,
   )
@@ -207,9 +351,11 @@ describe('the reported location of a violation is the leaking use', () => {
   test.fails.each(rows(['memberProperty'], channels))(
     '$channel: $name',
     async ({ channel, code, expected }) => {
-      const reported = await reportedLocations(channel, code)
-      expect(reported).toHaveLength(1)
-      expect(expected).toContain(reported[0])
+      expectRelevantLocation(
+        await reportedLocations(channel, code),
+        code,
+        expected,
+      )
     },
     timeout,
   )
@@ -228,9 +374,11 @@ describe('the reported location of a violation is the leaking use', () => {
   test.fails.each(rows(['lookAlike'], ['rsbuild dev', 'rsbuild build']))(
     '$channel: $name',
     async ({ channel, code, expected }) => {
-      const reported = await reportedLocations(channel, code)
-      expect(reported).toHaveLength(1)
-      expect(expected).toContain(reported[0])
+      expectRelevantLocation(
+        await reportedLocations(channel, code),
+        code,
+        expected,
+      )
     },
     timeout,
   )
@@ -251,9 +399,49 @@ describe('the reported location of a violation is the leaking use', () => {
   )(
     '$channel: $name',
     async ({ channel, code, expected }) => {
-      const reported = await reportedLocations(channel, code)
-      expect(reported).toHaveLength(1)
-      expect(expected).toContain(reported[0])
+      expectRelevantLocation(
+        await reportedLocations(channel, code),
+        code,
+        expected,
+      )
+    },
+    timeout,
+  )
+
+  // Bug (Rsbuild): the original-source usage lookup, which the Rsbuild
+  // adapter tries first, skips only functions passed directly to a
+  // compiler-safe boundary call (`isInsideCompilerSafeBoundaryNodes`,
+  // import-protection/analysis.ts), but the client compile removes the
+  // whole `createServerOnlyFn(...)` call, whatever its argument (here a
+  // function wrapped in `wrap(...)`), so the use inside it never runs in
+  // the client; the lookup reports it (src/a.tsx:5:48) instead of the leak
+  // on line 6.
+  // Impact: on Rsbuild, the violation points at code the client never runs,
+  // not at the leak (location only).
+  // Source: mutation round 3 ip-analysis pin P2, reproduced on a real app
+  // (V1 ip S26; the internal pin on the lookup is removed).
+  //
+  // Bug (Rsbuild): a dynamic import of a denied module is reported neither
+  // on the line of the `import()` nor at a static import: the dev server
+  // reports the first column of the module (src/a.tsx:1:1), a build
+  // compiled-code coordinates (src/a.tsx:1:33, a column line 1 does not
+  // have).
+  // Impact: on Rsbuild, the violation of a lazily loaded denied module
+  // points at the wrong line.
+  // Source: V1 ip S14 (an input shape the internal index tests had).
+  test.fails.each(
+    rows(
+      ['wrappedBoundary', 'dynamicImport'],
+      ['rsbuild dev', 'rsbuild build'],
+    ),
+  )(
+    '$channel: $name',
+    async ({ channel, code, expected }) => {
+      expectRelevantLocation(
+        await reportedLocations(channel, code),
+        code,
+        expected,
+      )
     },
     timeout,
   )
@@ -298,7 +486,7 @@ export const fn = myServerFn.handler(async () => secret())
 // on the server, at that use.
 // Source: V1 ip S16 (the compiler-removal rows of analysis.usage.test.ts had
 // no server-side twin on a real adapter).
-describe('the reported location of a server violation is the leaking use', () => {
+describe('the reported location of a server violation is the leaking use or the import', () => {
   type ServerChannel = 'vite dev' | 'vite build' | 'rsbuild build'
   const serverChannels: Array<ServerChannel> = [
     'vite dev',
@@ -357,11 +545,16 @@ export const fn = createClientOnlyFn(() => widget())
   }
 
   test.each(serverChannels)(
-    '%s: a use outside createClientOnlyFn is reported on the server at the use; the use inside is not',
+    '%s: a use outside createClientOnlyFn is reported on the server at the use or the import; the use inside is not',
     async (channel) => {
-      expect(await serverReports(channel, insideAndOutside)).toEqual([
-        `server ${locationIn('src/a.ts', insideAndOutside, 4, 'widget()')}`,
-      ])
+      const reports = await serverReports(channel, insideAndOutside)
+      expect(reports.map((report) => report.split(' ')[0])).toEqual(['server'])
+      expectRelevantLocation(
+        reports.map((report) => report.split(' ')[1]!),
+        insideAndOutside,
+        [locationIn('src/a.ts', insideAndOutside, 4, 'widget()')],
+        'src/a.ts',
+      )
     },
     timeout,
   )
@@ -404,6 +597,22 @@ async function buildReport(
 /** The modules of the steps of `trace`, without their locations. */
 const modulesOf = (trace: Array<ReportedTraceStep>) =>
   trace.map(({ at }) => at.replace(/:\d+:\d+$/, ''))
+
+/**
+ * The steps of a trace from the app's entry `src/entry.ts` on (a build's
+ * trace may start at the harness's own client entry, which imports it).
+ */
+const fromEntry = (modules: Array<string>) =>
+  modules.slice(Math.max(0, modules.indexOf('src/entry.ts')))
+
+/**
+ * The real import chains from the entry to `src/s.ts` in the app where
+ * `src/a.ts` imports `src/s.ts` directly and through `src/c.ts`.
+ */
+const realChains = [
+  ['src/entry.ts', 'src/a.ts', 'src/s.ts'],
+  ['src/entry.ts', 'src/a.ts', 'src/c.ts', 'src/s.ts'],
+]
 
 const secretServer = {
   'src/secret.server.ts': `export const secret = () => 'secret'\n`,
@@ -488,8 +697,11 @@ describe.each(startBundlers)(
       timeout,
     )
 
+    // Any real chain from the entry to the importer will do, not
+    // necessarily the shortest (SPEC J6.5; V1 ip S07): `src/a.ts` imports
+    // `src/s.ts` directly and through `src/c.ts`.
     test(
-      'the trace is the shortest import chain',
+      'the trace is a real import chain from the entry to the importer',
       async () => {
         const { trace } = await buildReport(bundler, {
           ...secretServer,
@@ -503,11 +715,7 @@ export const page = () => c() + s()
 `,
           'src/entry.ts': `export * from './a'\n`,
         })
-        expect(modulesOf(trace).slice(-3)).toEqual([
-          'src/entry.ts',
-          'src/a.ts',
-          'src/s.ts',
-        ])
+        expect(realChains).toContainEqual(fromEntry(modulesOf(trace)))
       },
       timeout,
     )

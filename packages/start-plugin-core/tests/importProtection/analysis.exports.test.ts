@@ -1,7 +1,7 @@
 /**
  * The names the mock modules of import protection expose, in process: every
  * name an importer uses from a denied source, every export of a denied file
- * (and the import sources of a module). Each exposed name is a safe mock
+ * Each exposed name is a safe mock
  * (`mock-helpers.ts`). The names the mocks miss (reserved words, namespace
  * re-exports, enums and namespaces, a member read before the import) are
  * pinned on real apps: integration/importProtection/known-bugs.test.ts,
@@ -9,11 +9,6 @@
  */
 import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
 import { describe, expect, test } from 'vitest'
-
-import {
-  getImportSpecifierLocationFromResult,
-  getImportSources,
-} from '../../src/import-protection/analysis'
 import {
   evaluateWithMock,
   expectSafeMock,
@@ -244,18 +239,4 @@ export { local as "foo-bar" }`,
 export const secret = 1`)
     expectSafeMock(mock.secret)
   })
-})
-
-test('namespace and default re-exports are import sources', () => {
-  const code = [
-    `export * as ns from 'denied-a'`,
-    `export { default } from 'denied-b'`,
-    `export type { OnlyType } from 'denied-c'`,
-  ].join('\n')
-  expect(getImportSources(code)).toEqual(['denied-a', 'denied-b'])
-  const result = { code, map: undefined, originalCode: undefined }
-  expect(getImportSpecifierLocationFromResult(result, 'denied-a')).toBe(
-    code.indexOf('denied-a'),
-  )
-  expect(getImportSpecifierLocationFromResult(result, 'denied-c')).toBe(-1)
 })

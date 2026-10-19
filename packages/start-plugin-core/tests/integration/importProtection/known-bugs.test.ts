@@ -1,11 +1,10 @@
-// Slow-tier half of this suite: the tests that need a real tool. Its
-// in-process tests are in ../../importProtection/known-bugs.test.ts (fast tier).
 /**
  * Known import-protection bugs. Each test asserts correct behaviour for a bug
  * on main and is marked .fails; remove .fails when the bug is fixed. A mock
  * is told by what it does (`mock-helpers.ts`, `describeValue`: `a safe
  * mock`), and a report by its sections (`violation-report.ts`).
  */
+import { createRequire } from 'node:module'
 import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
@@ -27,6 +26,8 @@ import {
 import type { RsbuildConfig } from '@rsbuild/core'
 import type { StartBuild } from '../../build-harness'
 import type { ImportProtectionOptions } from '../../../src/schema'
+
+const require = createRequire(import.meta.url)
 
 /**
  * Start's import protection options of a build that denies `files` to the
@@ -269,7 +270,10 @@ describe('Rsbuild dev', () => {
   const timeout = 60_000
   const compileTimeout = timeout
 
-  /** A module type of the app's own: an Rspack rule compiles `.page` files as JavaScript (like `.mdx` through its loader). */
+  /**
+   * A custom module type of the app: an Rspack rule takes `.page` files as
+   * JavaScript (no other compiler; the real MDX loader is below).
+   */
   const pageModules: RsbuildConfig = {
     tools: {
       rspack: {
@@ -281,7 +285,7 @@ describe('Rsbuild dev', () => {
   // Control for the pins below (same config and import protection): a
   // module of that type is compiled, and its code runs in the client.
   test(
-    'a module of another type without a denied import runs in the client',
+    'a module of a custom type without a denied import runs in the client',
     async () => {
       const server = await startRsbuildDevServer({
         compileTimeout,
@@ -304,9 +308,10 @@ describe('Rsbuild dev', () => {
   // Bug: Rsbuild import protection checks importers by file extension
   // (`isImportProtectionSourceFile`, rsbuild/import-protection.ts, only
   // JS/TS extensions), and its loader rule only rewrites those files, so an
-  // importer of another module type that compiles to JS (e.g. `.mdx`) is
-  // never checked: a denied file is mocked (the file rule) but not reported,
-  // and a denied specifier is neither reported nor mocked.
+  // importer of another module type that compiles to JS (a custom type
+  // here, `.mdx` through its real loader below) is never checked: a denied
+  // file is mocked (the file rule) but not reported, and a denied specifier
+  // is neither reported nor mocked.
   // Impact: behavior "error" does not fail for denied imports of such
   // modules, and the real code of a denied specifier runs on the client.
   // Source: mutation run R3, ip-rsbuild R2 (REPORT §6 #2); the JS/TS
@@ -333,7 +338,7 @@ describe('Rsbuild dev', () => {
       },
     },
   ])(
-    'a module of another type importing $name is reported, and its real code does not run',
+    'a module of a custom type importing $name is reported, and its real code does not run',
     async ({ files }) => {
       const server = await startRsbuildDevServer({
         compileTimeout,
@@ -355,6 +360,107 @@ describe('Rsbuild dev', () => {
         ),
         ranRealCode: messages.some((message) => message.includes('MARK_')),
       }).toEqual({ reported: ['client src/home.page'], ranRealCode: false })
+    },
+    timeout,
+  )
+
+  /** MDX pages through the real MDX loader, as an Rsbuild app adds it. */
+  const mdxModules: RsbuildConfig = {
+    tools: {
+      rspack: {
+        module: {
+          rules: [
+            {
+              test: /\.mdx$/,
+              use: [{ loader: require.resolve('@mdx-js/loader') }],
+            },
+          ],
+        },
+      },
+    },
+  }
+
+  // The same bug through the real `@mdx-js/loader` (V1 ip S23): the page is
+  // compiled from MDX, with the loader's source map; a report names the page
+  // and, if located, the import (line 3) or the use (4:27) in the .mdx
+  // source (SPEC J6.5).
+  test.fails.each<{ name: string; files: Record<string, string> }>([
+    {
+      name: 'a denied file',
+      files: {
+        'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+        'src/home.mdx': `# Home
+
+import { secret } from './secret.server'
+export const page = () => secret()
+`,
+      },
+    },
+    {
+      name: 'a denied specifier',
+      files: {
+        'node_modules/db-lib/package.json': JSON.stringify({
+          name: 'db-lib',
+          type: 'module',
+          exports: { '.': './index.js' },
+        }),
+        'node_modules/db-lib/index.js': `export const secret = () => 'MARK_LIB'\n`,
+        'src/home.mdx': `# Home
+
+import { secret } from 'db-lib'
+export const page = () => secret()
+`,
+      },
+    },
+  ])(
+    'an .mdx page importing $name is reported in its source, and its real code does not run',
+    async ({ files }) => {
+      const server = await startRsbuildDevServer({
+        compileTimeout,
+        importProtection: {
+          behavior: 'error',
+          client: { specifiers: ['db-lib'] },
+        },
+        config: mdxModules,
+        files: {
+          ...files,
+          'src/entry.ts': `import { page } from './home.mdx'\nconsole.log(page())\n`,
+        },
+      })
+      const messages = await runRsbuildClient(server)
+      expect({
+        reported: reportedViolations(server.errors).map(
+          ({ environment, importer }) => `${environment} ${importer}`,
+        ),
+        ranRealCode: messages.some((message) => message.includes('MARK_')),
+      }).toEqual({
+        reported: [
+          expect.stringMatching(/^client src\/home\.mdx(?::3:\d+|:4:27)?$/),
+        ],
+        ranRealCode: false,
+      })
+    },
+    timeout,
+  )
+
+  // Control for the pins above (same loader): the page compiles and runs.
+  test(
+    'an .mdx page without a denied import runs in the client',
+    async () => {
+      const server = await startRsbuildDevServer({
+        compileTimeout,
+        importProtection: { behavior: 'error' },
+        config: mdxModules,
+        files: {
+          'src/home.mdx': `# Home
+
+export const page = () => 'MARK_PAGE'
+`,
+          'src/entry.ts': `import { page } from './home.mdx'\nconsole.log(page())\n`,
+        },
+      })
+      expect(server.errors).toEqual([])
+      expect(await runRsbuildClient(server)).toEqual(['MARK_PAGE'])
     },
     timeout,
   )
@@ -538,6 +644,23 @@ export const epsilon = () => ({ deep: () => 'MARK_SECRET' })
 
   const mock = 'a safe mock'
 
+  /** A custom JSX runtime whose `jsx` renders `MARK_CUSTOM_JSX`. */
+  const customJsx = {
+    'node_modules/custom-jsx/package.json': JSON.stringify({
+      name: 'custom-jsx',
+      type: 'module',
+      exports: {
+        './jsx-runtime': './jsx-runtime.js',
+        './jsx-dev-runtime': './jsx-runtime.js',
+      },
+    }),
+    'node_modules/custom-jsx/jsx-runtime.js': `export const Fragment = Symbol('Fragment')
+export const jsx = () => 'MARK_CUSTOM_JSX'
+export const jsxs = jsx
+export const jsxDEV = jsx
+`,
+  }
+
   interface TwinCase {
     files: Record<string, string>
     importProtection?: ImportProtectionOptions
@@ -547,7 +670,7 @@ export const epsilon = () => ({ deep: () => 'MARK_SECRET' })
 
   const twins: Record<string, TwinCase> = {
     // Twin of the rewrite pin "a denied namespace re-export keeps its
-    // exported name" (known-bugs.test.ts, fast tier, until W2-i).
+    // exported name" (a former in-process pin).
     'a module re-exporting a denied file as a namespace': {
       files: {
         'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
@@ -592,24 +715,12 @@ export const read = () => [api.eval(), api.arguments()]
       },
       expected: [mock, mock],
     },
-    // Twin of "a JSX pragma that leads a denied import stays in effect": the
-    // page renders with the runtime its pragma names (a custom JSX runtime
-    // is valid user input).
+    // A JSX pragma leading a denied import: the page renders with the
+    // runtime its pragma names (a custom JSX runtime is valid user input),
+    // whatever the rewrite does with the comment (SPEC J2.16, §5 item 5).
     'a JSX pragma leading a denied import': {
       files: {
-        'node_modules/custom-jsx/package.json': JSON.stringify({
-          name: 'custom-jsx',
-          type: 'module',
-          exports: {
-            './jsx-runtime': './jsx-runtime.js',
-            './jsx-dev-runtime': './jsx-runtime.js',
-          },
-        }),
-        'node_modules/custom-jsx/jsx-runtime.js': `export const Fragment = Symbol('Fragment')
-export const jsx = () => 'MARK_CUSTOM_JSX'
-export const jsxs = jsx
-export const jsxDEV = jsx
-`,
+        ...customJsx,
         'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
         'src/page.tsx': `/** @jsxImportSource custom-jsx */
 import { secret } from './secret.server'
@@ -621,6 +732,43 @@ export const read = () => [Page()]
       },
       expected: ['MARK_CUSTOM_JSX'],
     },
+    // The same pragma leading the import of a denied specifier, which is
+    // rewritten in the importer itself (a denied file is mocked in its own
+    // module instead).
+    'a JSX pragma leading the import of a denied specifier': {
+      files: {
+        ...customJsx,
+        ...deniedDependency('db-lib'),
+        'src/page.tsx': `/** @jsxImportSource custom-jsx */
+import { query } from 'db-lib'
+export const Page = () => <div>{String(query())}</div>
+`,
+        'src/entry.ts': `import { Page } from './page'
+export const read = () => [Page()]
+`,
+      },
+      importProtection: { client: { specifiers: ['db-lib'] } },
+      expected: ['MARK_CUSTOM_JSX'],
+    },
+    // The pragma after a directive (a regression of the Yuku migration, PR
+    // #8504, kept the comment of this shape only).
+    'a JSX pragma after a directive, leading the import of a denied specifier':
+      {
+        files: {
+          ...customJsx,
+          ...deniedDependency('db-lib'),
+          'src/page.tsx': `'use client'
+/** @jsxImportSource custom-jsx */
+import { query } from 'db-lib'
+export const Page = () => <div>{String(query())}</div>
+`,
+          'src/entry.ts': `import { Page } from './page'
+export const read = () => [Page()]
+`,
+        },
+        importProtection: { client: { specifiers: ['db-lib'] } },
+        expected: ['MARK_CUSTOM_JSX'],
+      },
     // Twin of "a namespace member read before the import".
     'a namespace member read in a function declared before the import': {
       files: {
@@ -677,9 +825,11 @@ export const read = () => [Color.Red, Util.x]
 
   /**
    * The channels on which main fails each twin (`.fails`, red reason in
-   * brackets). The JSX pragma twin passes everywhere: with the default JSX
-   * pipeline, JSX is compiled before import protection rewrites the import
-   * (the internal pin needs a JSX plugin that runs after the rewrite).
+   * brackets). The JSX pragma twins pass everywhere: Vite (Oxc) and Rsbuild
+   * (SWC) compile JSX before import protection rewrites the import. (A
+   * former in-process pin, "a JSX pragma that leads a denied import stays in
+   * effect", needed a JSX plugin that runs after the rewrite; none of the
+   * available real plugins does, so it was removed, V1 ip S12.)
    */
   const failsOn: Record<string, Array<string>> = {
     // Bug: the dev rewrite of the importer drops `export * as ns` (the

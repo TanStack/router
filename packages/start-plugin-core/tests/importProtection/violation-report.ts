@@ -12,6 +12,7 @@
  * tests that need the user-visible text (what is logged, how often, the
  * displayed trace and frame) read it through this adapter.
  */
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 
 export interface ReportedViolation {
   /** `client` or `server`. */
@@ -255,4 +256,33 @@ function parseCodeFrame(lines: Array<string>): ReportedCodeFrame | undefined {
         .find((line) => line.trim())
         ?.trim() ?? '',
   }
+}
+
+/**
+ * The APIs a report's suggestions may name for each direction of a fix
+ * (SPEC J6.5, J6.12: the per-direction actionable suggestion is kept, its
+ * wording is free): a server-only import in the client is fixed by keeping
+ * the code on the server, a client-only import on the server by keeping it
+ * on the client. `createIsomorphicFn` serves both and tells nothing.
+ */
+const directionApis = {
+  server: ['createServerFn', 'createServerOnlyFn'],
+  client: ['createClientOnlyFn', 'ClientOnly'],
+} as const
+
+/**
+ * The directions the suggestions of a report point to: `server` when it
+ * names an API that keeps code on the server, `client` when it names one
+ * that keeps code on the client (whole identifiers, through the shared
+ * diagnostic oracle). A report for the right direction gives exactly that
+ * one.
+ */
+export function suggestedDirections(
+  text: string,
+): Array<keyof typeof directionApis> {
+  return (['server', 'client'] as const).filter((direction) =>
+    directionApis[direction].some(
+      (api) => findDiagnostics(text, { names: [api] }).length > 0,
+    ),
+  )
 }

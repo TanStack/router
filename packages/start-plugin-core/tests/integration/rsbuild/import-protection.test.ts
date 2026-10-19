@@ -1,16 +1,29 @@
+import { createRequire } from 'node:module'
 import path from 'node:path'
+import vm from 'node:vm'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import {
+  diagnosticsOf,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart } from '../../build-harness'
 import {
+  describeValuePrelude,
+  expectMockAccess,
+} from '../../importProtection/mock-helpers'
+import {
   distinct,
+  expectMarkerViolation,
   rejection,
   reportedViolations,
+  violationReports,
 } from '../../importProtection/start-apps'
 import {
   runRsbuildClient,
   startRsbuildDevServer,
   startRsbuildStartDevServer,
 } from '../../rsbuild-dev-server'
+import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import type { ViolationInfo } from '../../../src/import-protection/trace'
 import type { ImportProtectionOptions } from '../../../src/schema'
@@ -139,6 +152,107 @@ console.log(read())
   timeout,
 )
 
+// `mockAccess` applies wherever a mock is served, the server environments of
+// a dev server included (SPEC J6.3; user ruling 2026-10-19 "mock mode always
+// logs"): the SSR mock of a `.client` file reports its use in the server
+// console as configured.
+describe('Rsbuild dev with Start: an SSR import of a .client file: mockAccess', () => {
+  /**
+   * Runs the SSR output of a dev server with `mockAccess` in Node (a VM
+   * context) and calls the mocked `widget`: what it is, and what the call
+   * logged, as warnings and errors.
+   */
+  async function useOnTheServer(
+    mockAccess: NonNullable<ImportProtectionOptions>['mockAccess'],
+  ) {
+    const server = await startRsbuildStartDevServer({
+      compileTimeout,
+      start: { importProtection: { mockAccess } },
+      files: {
+        'src/widget.client.ts': `export const widget = () => 'MARK_CLIENT'\n`,
+        'src/entry.ts': `import { widget } from './widget.client'
+export const read = () => widget()
+;(globalThis as Record<string, unknown>).read = read
+`,
+      },
+    })
+    expect(server.errors).toEqual([])
+    const messages: Array<string> = []
+    const record =
+      (level: string) =>
+      (...args: Array<unknown>) => {
+        messages.push(
+          `${level}: ${args
+            .map((arg) =>
+              // errors of the VM context are not `instanceof Error` here
+              typeof arg === 'object' && arg !== null && 'message' in arg
+                ? String(arg.message)
+                : String(arg),
+            )
+            .join(' ')}`,
+        )
+      }
+    // The SSR output is a CommonJS bundle for Node.
+    const module = { exports: {} }
+    const context = vm.createContext({
+      console: {
+        log: record('log'),
+        warn: record('warn'),
+        error: record('error'),
+      },
+      module,
+      exports: module.exports,
+      require: createRequire(path.join(server.root, 'index.js')),
+    })
+    context.globalThis = context
+    for (const code of Object.values(await server.outputs('ssr'))) {
+      vm.runInContext(code, context)
+    }
+    const read = vm.runInContext(
+      `${describeValuePrelude}\ndescribeValue(read(), 'MARK_')`,
+      context,
+    ) as string
+    return {
+      read,
+      logged: consoleDiagnostics(messages).filter(
+        ({ severity }) => severity !== 'info',
+      ),
+    }
+  }
+
+  test.each([
+    { mockAccess: undefined, severity: 'error' },
+    { mockAccess: 'error', severity: 'error' },
+    { mockAccess: 'warn', severity: 'warning' },
+  ] as const)(
+    '$mockAccess: the server gets a safe mock, and using it is reported as an $severity naming the import',
+    async ({ mockAccess, severity }) => {
+      const { read, logged } = await useOnTheServer(mockAccess)
+      expect(read).toBe('a safe mock')
+      expect(distinct(logged.map((diagnostic) => diagnostic.severity))).toEqual(
+        [severity],
+      )
+      expectMockAccess(logged, {
+        severity,
+        specifier: './widget.client',
+        file: 'src/widget.client.ts',
+      })
+    },
+    timeout,
+  )
+
+  test(
+    'off: the server gets a safe mock, and using it is not reported',
+    async () => {
+      expect(await useOnTheServer('off')).toEqual({
+        read: 'a safe mock',
+        logged: [],
+      })
+    },
+    timeout,
+  )
+})
+
 // Source: round 4 mutation testing (rsbuild host, `behavior` in dev).
 describe('Rsbuild dev: behavior', () => {
   test.each<{
@@ -210,25 +324,39 @@ console.log(secret(), other)
     timeout,
   )
 
+  // The compile ends (import protection neither hangs nor crashes on a
+  // module that is gone) with an error naming the missing module, as a file
+  // or as its specifier; every error is about it (extra diagnostics about
+  // the missing module are fine, SPEC G5; V1 ip S21).
   // Source: round 4 mutation testing (rsbuild host, entries without a
   // module).
   test.each([
-    { module: 'the entry module', file: 'src/entry.ts' },
-    { module: 'an imported module', file: 'src/other.ts' },
+    { module: 'the entry module', file: 'src/entry.ts', specifier: undefined },
+    {
+      module: 'an imported module',
+      file: 'src/other.ts',
+      specifier: './other',
+    },
   ])(
-    'a compile in which $module is missing reports only that',
-    async ({ file }) => {
+    'a compile in which $module is missing fails, naming it',
+    async ({ file, specifier }) => {
       const server = await startRsbuildDevServer({
         compileTimeout,
         importProtection: {},
         files: app,
       })
       await server.edit({ [file]: null })
-      expect(server.errors).toEqual([
-        expect.stringMatching(
-          new RegExp(`Module not found.*${path.basename(file, '.ts')}`),
-        ),
-      ])
+      const errors = diagnosticsOf(server.errors)
+      const namesTheModule = (diagnostic: Diagnostic) =>
+        findDiagnostics(diagnostic, { file, root: server.root }).length > 0 ||
+        (specifier !== undefined &&
+          findDiagnostics(diagnostic, { names: [specifier] }).length > 0)
+      expect(errors).not.toEqual([])
+      expect(
+        errors
+          .filter((error) => !namesTheModule(error))
+          .map(({ text }) => text),
+      ).toEqual([])
     },
     timeout,
   )
@@ -270,13 +398,26 @@ console.log(secret(), other)
 // Rsbuild's `source.transformImport` rewrites a library's named imports
 // into imports of its submodules (`import { button } from 'ui-lib'` ->
 // `import { button } from 'ui-lib/button'`) before import protection sees
-// the module.
-// Source: round 4 mutation testing (rsbuild host, the location of a
-// rewritten import).
+// the module. A specifier rule matches the specifier the user wrote; the
+// file and marker rules apply to the module the rewritten import resolves
+// to (SPEC J6.1). The report names the importer at the original import or
+// at the use of its binding (J6.5).
+// Source: round 4 mutation testing (rsbuild host); V1 ip S06 (a rule on the
+// rewritten specifier `ui-lib/button` is no rule the user writes).
 describe('Rsbuild build: an import source.transformImport rewrites', () => {
-  /** Builds an entry using `button` of `ui-lib`, denying `specifiers`. */
-  const build = (specifiers: Array<string | RegExp>) =>
-    buildStart({
+  /**
+   * Builds an entry using `button` of `ui-lib` with Start's
+   * `importProtection` options. `ui-lib/button.js` starts with `head` (e.g.
+   * a marker import). The library is a dependency, or, with `local`, a
+   * directory of the project the app aliases `ui-lib` to (a monorepo
+   * package, say), whose files import protection checks by default.
+   */
+  const build = (
+    importProtection: ImportProtectionOptions,
+    { head = '', local = false } = {},
+  ) => {
+    const dir = local ? 'src/ui-lib' : 'node_modules/ui-lib'
+    return buildStart({
       bundler: 'rsbuild',
       files: {
         'node_modules/ui-lib/package.json': JSON.stringify({
@@ -284,15 +425,16 @@ describe('Rsbuild build: an import source.transformImport rewrites', () => {
           type: 'module',
           exports: { '.': './index.js', './*': './*.js' },
         }),
-        'node_modules/ui-lib/index.js': `export { button } from './button.js'\n`,
-        'node_modules/ui-lib/button.js': `export const button = () => 'MARK_SECRET'\n`,
+        [`${dir}/index.js`]: `export { button } from './button.js'\n`,
+        [`${dir}/button.js`]: `${head}export const button = () => 'MARK_SECRET'\n`,
         'src/entry.ts': `import { button } from 'ui-lib'
 export const read = () => button()
 `,
       },
       entry: 'src/entry.ts',
-      start: { importProtection: { client: { specifiers } } },
+      start: { importProtection },
       rsbuildConfig: {
+        resolve: local ? { alias: { 'ui-lib': `./${dir}` } } : {},
         source: {
           transformImport: [
             {
@@ -304,37 +446,64 @@ export const read = () => button()
         },
       },
     })
-  let rewrittenDenied: Promise<Error> | undefined
-  /** The build error when the rewritten specifier is denied, built once. */
-  const rewrittenDeniedError = () =>
-    (rewrittenDenied ??= rejection(build([/^ui-lib\//])))
+  }
 
-  test('denied as rewritten, it is reported on the line of its use', async () => {
-    expect(reportedViolations((await rewrittenDeniedError()).message)).toEqual([
+  /** The import of `ui-lib` (any column of line 1) or the use `button()`. */
+  const atImportOrUse = expect.stringMatching(/^src\/entry\.ts:(?:1:\d+|2:27)$/)
+
+  let fileRuleError: Promise<Error> | undefined
+  /** The build error when the file rule denies `ui-lib/button.js`, built once. */
+  const fileRuleDenied = () =>
+    // `excludeFiles: []`: the checks see dependencies (J6.10).
+    (fileRuleError ??= rejection(
+      build({ client: { files: ['**/ui-lib/button.js'], excludeFiles: [] } }),
+    ))
+
+  test('the file rule denies the module it resolves to: the build fails, naming the importer', async () => {
+    expect(reportedViolations((await fileRuleDenied()).message)).toEqual([
       {
         environment: 'client',
-        importer: expect.stringMatching(/^src\/entry\.ts:2:\d+$/),
+        importer: expect.stringMatching(/^src\/entry\.ts\b/),
       },
     ])
   }, 60_000)
 
-  // Bug: the report points at `read` (src/entry.ts:2:16), not at the use of
-  // the import (`button()`, 2:27), which is what other violations point at.
-  // The location is only found in the rewritten code (through the mock
-  // module's path), whose positions do not map back to the use (a build
-  // without source maps).
+  // Bug: the report of a denied import `source.transformImport` rewrote
+  // points at neither the import nor the use of its binding
+  // (`src/entry.ts:2:25`, the arrow of `read`; the use `button()` is at
+  // 2:27): the location is only found in the rewritten code (through the
+  // mock module's path), whose positions do not map back to the source.
   // Source: rsbuild/import-protection.ts resolveImporterLocation
-  // (transformedSources lookup).
+  // (transformedSources lookup); round 4 mutation testing.
   // Impact: low; the code frame's caret points at the wrong column.
   test.fails(
-    'denied as rewritten, it is reported at its use',
+    'the file rule denies the module it resolves to: the importer is reported at the import or the use',
     async () => {
-      expect(
-        reportedViolations((await rewrittenDeniedError()).message),
-      ).toEqual([{ environment: 'client', importer: 'src/entry.ts:2:27' }])
+      expect(reportedViolations((await fileRuleDenied()).message)).toEqual([
+        { environment: 'client', importer: atImportOrUse },
+      ])
     },
     60_000,
   )
+
+  test('the module it resolves to is marked server-only: the build fails, naming the module and the importer', async () => {
+    const error = await rejection(
+      build(
+        {},
+        {
+          head: `import '@tanstack/react-start/server-only'\n`,
+          local: true,
+        },
+      ),
+    )
+    const [report, ...others] = violationReports(error.message)
+    expect(others).toEqual([])
+    expect(report!.environment).toBe('client')
+    expectMarkerViolation(report!, {
+      marker: 'src/ui-lib/button.js:1',
+      use: 'src/entry.ts:2:27',
+    })
+  }, 60_000)
 
   // Bug: a specifier denied as the user wrote it is not denied once
   // `source.transformImport` rewrote it: the loader matches the specifiers
@@ -346,16 +515,14 @@ export const read = () => button()
   // Impact: a client.specifiers rule on a library the app also lists in
   // source.transformImport is silently bypassed.
   test.fails(
-    'denied as written, the build fails on it',
+    'denied as written, the build fails on it, reporting the importer at the import or the use',
     async () => {
       expect(
-        reportedViolations((await rejection(build(['ui-lib']))).message),
-      ).toEqual([
-        {
-          environment: 'client',
-          importer: expect.stringMatching(/^src\/entry\.ts/),
-        },
-      ])
+        reportedViolations(
+          (await rejection(build({ client: { specifiers: ['ui-lib'] } })))
+            .message,
+        ),
+      ).toEqual([{ environment: 'client', importer: atImportOrUse }])
     },
     60_000,
   )
@@ -415,35 +582,49 @@ console.log(a(), b(), query())
       },
     })
     expect(server.errors).toEqual([])
-    const messages = await runRsbuildClient(server)
+    const messages = await runRsbuildClient(server, { levels: true })
     expect(messages.filter((message) => message.includes('MARK_'))).toEqual([])
-    expect(
-      [
-        ...new Set(
-          messages
-            .filter((message) =>
-              message.includes('Mocked import used in dev client'),
-            )
-            .map((message) => /Denied import: "([^"]+)"/.exec(message)?.[1]),
-        ),
-      ].sort(),
-    ).toEqual(['db-lib', 'src/a.server.ts', 'src/b.server.ts'])
+    const logged = consoleDiagnostics(messages)
+    for (const denied of [
+      { specifier: './a.server', file: 'src/a.server.ts' },
+      { specifier: './b.server', file: 'src/b.server.ts' },
+      { specifier: 'db-lib' },
+    ]) {
+      expectMockAccess(logged, {
+        severity: 'error',
+        ...denied,
+      })
+    }
   },
   timeout,
 )
+
+/**
+ * What a client run logged (`runRsbuildClient` with `levels`), as
+ * diagnostics of the shared oracle, by console method.
+ */
+function consoleDiagnostics(messages: Array<string>): Array<Diagnostic> {
+  return messages.flatMap((message) => {
+    const [, level, text] = /^(\w+): ([\s\S]*)$/.exec(message)!
+    return diagnosticsOf(
+      text!,
+      level === 'error' ? 'error' : level === 'warn' ? 'warning' : 'info',
+    )
+  })
+}
 
 // Source: round 4 mutation testing (rsbuild host, `mockAccess`).
 describe('Rsbuild dev: mockAccess', () => {
   test.each<{
     mockAccess: NonNullable<ImportProtectionOptions>['mockAccess']
-    reports: Array<string>
+    reports: Array<'error' | 'warning'>
   }>([
     { mockAccess: undefined, reports: ['error'] },
     { mockAccess: 'error', reports: ['error'] },
-    { mockAccess: 'warn', reports: ['warn'] },
+    { mockAccess: 'warn', reports: ['warning'] },
     { mockAccess: 'off', reports: [] },
   ])(
-    '$mockAccess: the use of a mocked import is reported with console $reports',
+    '$mockAccess: the use of a mocked import is reported as $reports',
     async ({ mockAccess, reports }) => {
       const server = await startRsbuildDevServer({
         compileTimeout,
@@ -470,26 +651,23 @@ console.log(a(), query())
       expect(messages.filter((message) => message.includes('MARK_'))).toEqual(
         [],
       )
-      // Each denied import (the file and the specifier), by console method.
-      expect(
-        [
-          ...new Set(
-            messages
-              .filter((message) =>
-                message.includes('Mocked import used in dev client'),
-              )
-              .map(
-                (message) =>
-                  `${message.slice(0, message.indexOf(':'))} ${/Denied import: "([^"]+)"/.exec(message)?.[1]}`,
-              ),
-          ),
-        ].sort(),
-      ).toEqual(
-        reports.flatMap((level) => [
-          `${level} db-lib`,
-          `${level} src/a.server.ts`,
-        ]),
+      // The severities logged, and each denied import (the file and the
+      // specifier) named by a diagnostic of that severity.
+      const logged = consoleDiagnostics(messages).filter(
+        ({ severity }) => severity !== 'info',
       )
+      expect(distinct(logged.map(({ severity }) => severity))).toEqual(reports)
+      for (const severity of reports) {
+        for (const denied of [
+          { specifier: './a.server', file: 'src/a.server.ts' },
+          { specifier: 'db-lib' },
+        ]) {
+          expectMockAccess(logged, {
+            severity,
+            ...denied,
+          })
+        }
+      }
     },
     timeout,
   )

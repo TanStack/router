@@ -7,8 +7,15 @@
  */
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
+import {
+  diagnosticsOf,
+  expectDiagnostic,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../../build-harness'
-import { describeValuePrelude } from '../../importProtection/mock-helpers'
+import {
+  describeValuePrelude,
+  mockAccessDiagnostics,
+} from '../../importProtection/mock-helpers'
 import {
   distinct,
   expectMarkerViolation,
@@ -16,6 +23,8 @@ import {
   reportedViolations,
   violationReports,
 } from '../../importProtection/start-apps'
+import { suggestedDirections } from '../../importProtection/violation-report'
+import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import type { TanStackStartInputConfig } from '../../../src/schema'
 import type { ViolationInfo } from '../../../src/import-protection/trace'
 
@@ -166,9 +175,13 @@ export const value = 1
           start: importProtection(),
         }),
       )
-      expect(error.message).toContain('src/both.ts')
-      expect(error.message).toContain('server-only')
-      expect(error.message).toContain('client-only')
+      // The markers by name (`server-only`, `client-only`, or their full
+      // specifiers), whatever the wording.
+      expectDiagnostic(error, {
+        severity: 'error',
+        file: 'src/both.ts',
+        names: ['server-only', 'client-only'],
+      })
     },
     timeout,
   )
@@ -180,11 +193,20 @@ export const value = 1
 // Source: oracle-gaps H2 / gap IP1 (the default rules were never built in
 // error mode: every build test replaced `client.files`).
 describe.each(startBundlers)('%s build, default rules', (bundler) => {
-  test.each<{ name: string; files: Record<string, string>; reported: string }>([
+  // Each report names the rule that matched (the file pattern, or the
+  // denied specifier) and suggests a fix in the right direction (SPEC J6.5,
+  // J6.12), whatever its wording.
+  test.each<{
+    name: string
+    files: Record<string, string>
+    reported: string
+    rule: string
+  }>([
     {
       name: 'a client import of a *.server.* file',
       files: appUsing('a denied file'),
       reported: 'src/entry.ts:2:27',
+      rule: '**/*.server.*',
     },
     {
       name: 'a client import of a *.server.* file in a dot directory',
@@ -195,6 +217,7 @@ export const read = () => secret()
 `,
       },
       reported: 'src/entry.ts:2:27',
+      rule: '**/*.server.*',
     },
     {
       name: 'a client import of @tanstack/react-start/server',
@@ -204,16 +227,54 @@ export const read = () => getRequest()
 `,
       },
       reported: 'src/entry.ts:2:27',
+      rule: '@tanstack/react-start/server',
     },
   ])(
-    '$name fails the build, naming the importer at the use',
-    async ({ files, reported }) => {
-      const error = await rejection(
+    '$name fails the build, naming the importer at the use, the rule and a server-side fix',
+    async ({ files, reported, rule }) => {
+      const report = await failureReport(
         buildStart({ bundler, files, entry: 'src/entry.ts' }),
       )
-      expect(reportedViolations(error.message)).toEqual([
-        { environment: 'client', importer: reported },
-      ])
+      expect({
+        environment: report.environment,
+        importer: report.importer,
+        suggests: suggestedDirections(report.text),
+      }).toEqual({
+        environment: 'client',
+        importer: reported,
+        suggests: ['server'],
+      })
+      expectDiagnostic(report.text, { names: [rule] })
+    },
+    timeout,
+  )
+
+  test(
+    'a server import of a *.client.* file fails the build, naming the importer at the use, the rule and a client-side fix',
+    async () => {
+      const report = await failureReport(
+        buildStart({
+          bundler,
+          files: {
+            'src/widget.client.ts': `export const widget = () => 'MARK_CLIENT'\n`,
+            'src/server.ts': `import { widget } from './widget.client'
+export const read = () => widget()
+`,
+            'src/client.ts': `export const read = () => 'client'\n`,
+          },
+          entry: { client: 'src/client.ts', ssr: 'src/server.ts' },
+        }),
+      )
+      expect({
+        environment: report.environment,
+        importer: report.importer,
+        suggests: suggestedDirections(report.text),
+      }).toEqual({
+        environment: 'server',
+        importer: 'src/server.ts:2:27',
+        suggests: ['client'],
+      })
+      expectDiagnostic(report.text, { names: ['**/*.client.*'] })
     },
     timeout,
   )
@@ -232,6 +293,10 @@ export const read = () => getRequest()
       expectMarkerViolation(report, {
         marker: 'src/marked.ts:1',
         use: 'src/entry.ts:2:27',
+      })
+      expect(suggestedDirections(report.text)).toEqual(['server'])
+      expectDiagnostic(report.text, {
+        names: ['@tanstack/react-start/server-only'],
       })
     },
     timeout,
@@ -257,6 +322,10 @@ export const read = () => secret()
       expectMarkerViolation(report, {
         marker: 'src/marked.ts:1',
         use: 'src/server.ts:2:27',
+      })
+      expect(suggestedDirections(report.text)).toEqual(['client'])
+      expectDiagnostic(report.text, {
+        names: ['@tanstack/react-start/client-only'],
       })
     },
     timeout,
@@ -379,7 +448,9 @@ describe.each(startBundlers)('%s build, mock mode', (bundler) => {
    * What the environment that imports `secret` gets for it in a mock-mode
    * build with `mockAccess`: whether a warning was reported, whether the
    * real code is in the bundle and its initializer ran, what the import is
-   * (`a safe mock`), and what using it (a call) logged, by console method.
+   * (`a safe mock`), the severities of what using it (a call) logged to the
+   * console, and the texts of those that do not name the
+   * denied import (`mockAccessDiagnostics`; their prose is free).
    */
   async function mockedRead(
     denied: MockedImport,
@@ -405,7 +476,10 @@ export const read = () => secret
 const logged = []
 for (const level of ['warn', 'error']) {
   console[level] = (...args) => {
-    logged.push(level + ': ' + (args[0] instanceof Error ? args[0].message : String(args[0])))
+    logged.push({
+      level,
+      text: args.map((arg) => (arg instanceof Error ? arg.message : String(arg))).join(' '),
+    })
   }
 }
 const secret = entry.read()
@@ -415,15 +489,31 @@ return { read, ran: globalThis.secretLoaded ?? null, logged }`)
     const { read, ran, logged } = result as {
       read: string
       ran: unknown
-      logged: Array<string>
+      logged: Array<{ level: 'warn' | 'error'; text: string }>
     }
+    const diagnostics = logged.flatMap(({ level, text }) =>
+      diagnosticsOf(text, level === 'warn' ? 'warning' : 'error'),
+    )
+    const deniedFile = Object.keys(denied.files).find((file) =>
+      /\.[cm]?[jt]sx?$/.test(file),
+    )
+    const identified = (diagnostic: Diagnostic) =>
+      mockAccessDiagnostics([diagnostic], {
+        severity: diagnostic.severity,
+        specifier: denied.importedAs,
+        file: deniedFile,
+      }).length > 0
     return {
       warned: reportedViolations(built[env].warnings).length > 0,
       hasRealCode: built[env].where('MARK_SECRET') !== 'nowhere',
       ran,
       read,
-      /** The console methods a use of the mock logged with, each once. */
-      loggedWith: distinct(logged.map((entry) => entry.split(':')[0]!)),
+      /** The console severities a use of the mock logged with, each once. */
+      loggedWith: distinct(diagnostics.map(({ severity }) => severity)),
+      /** What it logged that does not name the denied import. */
+      unidentified: diagnostics
+        .filter((diagnostic) => !identified(diagnostic))
+        .map(({ text }) => text),
     }
   }
 
@@ -434,6 +524,7 @@ return { read, ran: globalThis.secretLoaded ?? null, logged }`)
     ran: null,
     read: 'a safe mock',
     loggedWith: [],
+    unidentified: [],
   }
 
   const deniedFile = (extension: string): MockedImport => ({
@@ -457,6 +548,13 @@ export const secret = () => 'MARK_SECRET'
       },
       imports: `import './style.css'\n`,
     },
+    'a denied .client file imported by the server': {
+      importedAs: './widget.client',
+      files: {
+        'src/widget.client.ts': `export const secret = () => 'MARK_SECRET'\n`,
+      },
+      env: 'ssr',
+    },
   }
 
   test.each(Object.keys(deniedFiles))(
@@ -477,17 +575,27 @@ export const secret = () => 'MARK_SECRET'
   // Impact: in a production build with `behavior: { build: 'mock' }`, code
   // that runs on a mocked import does so without any console diagnostic;
   // the warning at build time is the only trace of it.
-  // Source: V1 ip S02 (the rows above demanded silence with the default).
-  test.fails.each([
-    { mockAccess: undefined, method: 'error' },
-    { mockAccess: 'error', method: 'error' },
-    { mockAccess: 'warn', method: 'warn' },
-  ] as const)(
-    'with mockAccess $mockAccess, using the mock of a denied file is reported with console.$method',
-    async ({ mockAccess, method }) => {
-      expect(
-        await mockedRead(deniedModules['a denied file'], mockAccess),
-      ).toEqual({ ...mocked, loggedWith: [method] })
+  // Source: V1 ip S02 (the rows above demanded silence with the default);
+  // the server rows: user ruling 2026-10-19 "mock mode always logs" (client
+  // and server, dev and build).
+  test.fails.each(
+    (
+      [
+        { mockAccess: undefined, severity: 'error' },
+        { mockAccess: 'error', severity: 'error' },
+        { mockAccess: 'warn', severity: 'warning' },
+      ] as const
+    ).flatMap((row) => [
+      { ...row, denied: 'a denied file' },
+      { ...row, denied: 'a denied .client file imported by the server' },
+    ]),
+  )(
+    'with mockAccess $mockAccess, using the mock of $denied is reported as an $severity naming the import',
+    async ({ mockAccess, severity, denied }) => {
+      expect(await mockedRead(deniedFiles[denied]!, mockAccess)).toEqual({
+        ...mocked,
+        loggedWith: [severity],
+      })
     },
     timeout,
   )
@@ -934,8 +1042,10 @@ console.log('client')
     timeout,
   )
 
+  // The build fails and names the broken file at its line (an actionable
+  // error, SPEC G5); other diagnostics may come with it (V1 ip S21).
   test(
-    'imported by a module that fails to compile: the build reports the compile error only',
+    'imported by a module that fails to compile: the build fails, naming the broken file and line',
     async () => {
       const error = await rejection(
         buildStart({
@@ -950,8 +1060,11 @@ export const read = ( => secret()
           entry: 'src/entry.ts',
         }),
       )
-      expect(error.message).toContain('src/broken.ts')
-      expect(reportedViolations(error.message)).toEqual([])
+      expectDiagnostic(error, {
+        severity: 'error',
+        file: 'src/broken.ts',
+        position: { line: 2 },
+      })
     },
     timeout,
   )

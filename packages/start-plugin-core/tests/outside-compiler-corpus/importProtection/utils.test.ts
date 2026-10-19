@@ -1,6 +1,18 @@
+/**
+ * Internal control (SPEC §8, V1 ip S24): not part of the compiler test
+ * corpus. It calls exported internal helpers of import protection (pattern
+ * dedupe, query stripping, resolution and source candidates, file denial,
+ * deferral policy, violation dedupe keys, import-source extraction, path
+ * helpers, caches) and gives no clause coverage; a correct rewrite may drop
+ * it. Their outcomes are checked on real apps under
+ * integration/importProtection/.
+ */
 import { describe, expect, test } from 'vitest'
-import { getImportSources } from '../../src/import-protection/analysis'
-import { escapeRegExp } from '../../src/utils'
+import {
+  getImportSources,
+  getImportSpecifierLocationFromResult,
+} from '../../../src/import-protection/analysis'
+import { escapeRegExp } from '../../../src/utils'
 
 import {
   buildResolutionCandidates,
@@ -18,9 +30,9 @@ import {
   stripQuery,
   stripQueryAndHash,
   withoutKnownExtension,
-} from '../../src/import-protection/utils'
-import { compileMatchers } from '../../src/import-protection/matchers'
-import { formatViolation } from '../../src/import-protection/trace'
+} from '../../../src/import-protection/utils'
+import { compileMatchers } from '../../../src/import-protection/matchers'
+import { formatViolation } from '../../../src/import-protection/trace'
 
 describe('dedupePatterns', () => {
   test('dedupes strings and preserves first occurrence order', () => {
@@ -443,4 +455,18 @@ describe('relativizePath', () => {
   test('returns empty string when path equals root + slash', () => {
     expect(relativizePath('/Users/foo/project/', '/Users/foo/project')).toBe('')
   })
+})
+
+test('namespace and default re-exports are import sources', () => {
+  const code = [
+    `export * as ns from 'denied-a'`,
+    `export { default } from 'denied-b'`,
+    `export type { OnlyType } from 'denied-c'`,
+  ].join('\n')
+  expect(getImportSources(code)).toEqual(['denied-a', 'denied-b'])
+  const result = { code, map: undefined, originalCode: undefined }
+  expect(getImportSpecifierLocationFromResult(result, 'denied-a')).toBe(
+    code.indexOf('denied-a'),
+  )
+  expect(getImportSpecifierLocationFromResult(result, 'denied-c')).toBe(-1)
 })
