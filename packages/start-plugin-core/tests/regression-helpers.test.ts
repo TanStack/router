@@ -3,13 +3,17 @@
  * checks behaviour through public contracts, not through the printed form of
  * the compiled code or generated names.
  */
-import { stripVTControlCharacters } from 'node:util'
 import { describe, expect, test } from 'vitest'
 import {
-  callerRpcId,
+  expectMapsTo,
+  positionAt,
+  tokenOffsets,
+} from '@tanstack/compiler-test-utils/source-maps'
+import {
   callProvider,
   callReportedServerFns,
   callServerFnThroughCallers,
+  callerRpcId,
   compileAll,
   compileErrorMessage,
   compileFor,
@@ -18,9 +22,11 @@ import {
   createServerGraph,
   evaluateModule,
   expectClientRendersLikeServer,
+  expectCompileError,
   getChunkIds,
   importSources,
   loadChunk,
+  moduleLoads,
   renderClient,
   renderServer,
 } from './regression-helpers'
@@ -188,21 +194,69 @@ export const fn = createServerFn().handler(async () => 'handler')`,
   })
 })
 
-// Source: #8504 declaration-sites.test.ts "compileErrorMessage drops the
-// code frame that quotes the source"
-test('compileErrorMessage drops the code frame that quotes the source', async () => {
-  const error = await compileFor(
-    'client',
-    `import { createServerFn } from '@tanstack/react-start'
+describe('compile error oracles', () => {
+  const source = `import { createServerFn } from '@tanstack/react-start'
 const args: Array<() => unknown> = []
-export const fn = createServerFn().handler(...args)`,
-  ).catch((caught: unknown) => caught)
-  expect(stripVTControlCharacters((error as Error).message)).toContain(
-    'export const fn',
-  )
-  const message = compileErrorMessage(error)
-  expect(message).toMatch(/handler\(\) must be called with an expression/)
-  expect(message).not.toContain('export const fn')
+export const fn = createServerFn().handler(...args)`
+  /** A compile error with a code frame quoting line 3 of `source`. */
+  const framed = (message: string) =>
+    new Error(`${message}
+  1 | import { createServerFn } from '@tanstack/react-start'
+  2 | const args: Array<() => unknown> = []
+> 3 | export const fn = createServerFn().handler(...args)
+    |                   ^^^^^^^^^^^^^^`)
+
+  // Synthetic errors (SPEC §8): the control is about the helpers, not about
+  // what the compiler says today.
+  test('compileErrorMessage drops the code frame that quotes the source', () => {
+    const message = compileErrorMessage(framed('MARK_SENTENCE'))
+    expect(message).toBe('MARK_SENTENCE')
+  })
+
+  test('expectCompileError accepts an error naming the API at its line', () => {
+    expectCompileError(framed('createServerFn cannot be used here'), {
+      source,
+      at: 'createServerFn()',
+      names: ['createServerFn'],
+    })
+  })
+
+  test('expectCompileError rejects an error that names the API only in the quoted source', () => {
+    expect(() =>
+      expectCompileError(framed('the arguments cannot be spread'), {
+        source,
+        at: 'createServerFn()',
+        names: ['createServerFn'],
+      }),
+    ).toThrow('createServerFn')
+  })
+
+  test('expectCompileError rejects an error pointing at another line', () => {
+    expect(() =>
+      expectCompileError(framed('createServerFn cannot be used here'), {
+        source,
+        at: 2,
+        names: ['createServerFn'],
+      }),
+    ).toThrow('line 2')
+  })
+
+  test('expectCompileError rejects an error without a position', () => {
+    expect(() =>
+      expectCompileError(new Error('createServerFn cannot be used here'), {
+        source,
+        at: 'createServerFn()',
+        names: ['createServerFn'],
+      }),
+    ).toThrow('line 3')
+  })
+
+  test('expectCompileError reads a real compile error of the Start compiler', async () => {
+    const error = await compileFor('client', source).catch(
+      (caught: unknown) => caught,
+    )
+    expectCompileError(error, { source, at: '...args', names: ['handler'] })
+  })
 })
 
 /** A compiled module and the server fns its compilation reported. */
@@ -279,14 +333,20 @@ export const fn = createServerFn().handler(async () => 'called')`
 })
 
 describe('compileFor', () => {
+  // Internal control of the helper: it hands on the compiler's map (map
+  // layout is free, SPEC G6), and `null` for a module the compiler leaves
+  // untouched (the hosts' convention, not a compiler requirement).
   test('returns the source map of the compiled code, and none for an untouched module', async () => {
     const compiled = await compileFor(
       'client',
       `import { createServerFn } from '@tanstack/react-start'
 export const fn = createServerFn().handler(async () => 'secret')`,
     )
-    expect(compiled.map?.sources).toEqual(['/test/src/module.tsx'])
-    expect(compiled.map?.mappings).not.toBe('')
+    const [offset] = tokenOffsets(compiled.code!, { identifier: 'fn' })
+    expectMapsTo(compiled.map as never, positionAt(compiled.code!, offset!), {
+      file: '/test/src/module.tsx',
+      line: 2,
+    })
     expect(await compileFor('client', 'export const a = 1')).toMatchObject({
       code: null,
       map: null,
@@ -308,18 +368,16 @@ export const rpc = createClientRpc('id-1')`,
     ).rejects.toThrow('createClientRpc(id-1) in the server runtime')
   })
 
-  test('callerRpcId reads the id of a caller, and nothing else', async () => {
+  // The id of Start's server-fn metadata, whatever other fields it carries
+  // (SPEC §5.19); an uncompiled server fn has none.
+  test('callerRpcId reads the id of a caller, and none of an uncompiled server fn', async () => {
     const module =
       await evaluateModule(`import { createServerFn } from '@tanstack/react-start'
 import { createClientRpc } from '@tanstack/react-start/client-rpc'
-import { createServerRpc } from '@tanstack/react-start/server-rpc'
 export const caller = createServerFn().handler(createClientRpc('id-1'))
-export const inPlace = createServerFn().handler(async () => 'handler')
-const provider_handler = createServerRpc({ id: 'id-2', name: 'provider' }, (opts) => provider.__executeServer(opts))
-export const provider = createServerFn().handler(provider_handler, async () => 'handler')`)
+export const inPlace = createServerFn().handler(async () => 'handler')`)
     expect(callerRpcId(module.caller)).toBe('id-1')
     expect(callerRpcId(module.inPlace)).toBeUndefined()
-    expect(callerRpcId(module.provider)).toBeUndefined()
   })
 
   // Start's createServerFn.ts: `__executeServer` runs the validator and .server() of
@@ -426,6 +484,54 @@ export * from './a'
 import '@tanstack/react-start'
 export const load = () => import('./lazy')`),
   ).toEqual(['./a', './a', './b', './types'])
+})
+
+// The S06 load oracle: what evaluating a compiled module loads, observed
+// through the module linker, not an inventory of its import declarations.
+describe('moduleLoads', () => {
+  test('lists the static imports of the module and of the modules it links, and the targets of its dynamic imports', async () => {
+    const loads = await moduleLoads(
+      `import { a } from './a'
+import './side-effect'
+export { b } from './b'
+export const load = () => import('./lazy')
+export const value = a`,
+      { files: { '/test/src/a.ts': `export { a } from './deep'` } },
+    )
+    expect(loads).toEqual(
+      expect.arrayContaining([
+        '/test/src/a.ts',
+        './deep',
+        './side-effect',
+        './b',
+        './lazy',
+      ]),
+    )
+  })
+
+  test('does not list modules a type-only import or a string names', async () => {
+    const loads = await moduleLoads(`import type { T } from './types'
+const text = "import x from './in-a-string'"
+export const value: T | string = text`)
+    expect(loads).not.toContain('./types')
+    expect(loads).not.toContain('./in-a-string')
+  })
+
+  // With verbatimModuleSyntax, `import { type X }` keeps the module as a
+  // side-effect import (ruling L3: the compiler should drop it).
+  test('lists a module imported with type specifiers only', async () => {
+    expect(
+      await moduleLoads(`import { type T } from './types'
+export const value: T | undefined = undefined`),
+    ).toContain('./types')
+  })
+
+  test('lists a forbidden module whose top-level code throws', async () => {
+    expect(
+      await moduleLoads(`import { db } from './db.server'
+export const value = db.x()`),
+    ).toContain('./db.server')
+  })
 })
 
 describe('<Hydrate> helpers', () => {

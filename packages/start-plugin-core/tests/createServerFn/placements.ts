@@ -111,8 +111,9 @@ fn = createServerFn().handler(async () => db.inner())`,
     name: 'the handler of another server fn',
     code: `export const outer = createServerFn().handler(async () => {
   const inner = createServerFn().handler(async () => db.inner())
-  return typeof inner
+  return await inner()
 })`,
+    read: (module) => module.outer,
     nested: true,
     declarator: true,
   },
@@ -124,6 +125,7 @@ function register(fn: unknown) {
   registered.push(fn)
 }
 register(createServerFn().handler(async () => db.inner()))`,
+    read: (module) => module.registered[0],
   },
   {
     // Source: Next.js server-actions fixtures server-graph/18, /19; #8504
@@ -132,30 +134,37 @@ register(createServerFn().handler(async () => db.inner()))`,
     code: `export function Page() {
   return <form action={createServerFn().handler(async () => db.inner()) as any} />
 }`,
+    // The element the page renders (React's), its `action` prop.
+    read: (module) => module.Page().props.action,
   },
   {
     // Source: #8504 declaration-sites.test.ts
     name: 'a conditional initializer',
     code: `export const fn = Math.random() < 2 ? createServerFn().handler(async () => db.inner()) : null`,
+    read: (module) => module.fn,
   },
   {
     // Source: Next.js server-actions fixtures server-graph/56; #8504
     // declaration-sites.test.ts
     name: 'an object destructuring declarator',
     code: `export const { fn } = { fn: createServerFn().handler(async () => db.inner()) }`,
+    read: (module) => module.fn,
   },
   {
     // Source: Next.js server-actions fixtures server-graph/20; #8504
     // declaration-sites.test.ts
     name: 'an array destructuring declarator',
     code: `export const [fn] = [createServerFn().handler(async () => db.inner())]`,
+    read: (module) => module.fn,
   },
 ]
 
 /**
  * A server fn nested in a function whose handler reads a local of that
- * function: it cannot run on its own in the provider, so the compiler must
- * reject it.
+ * function (`id`): it cannot be hoisted as it is. The compiler either keeps
+ * the complete RPC semantics safely (each `make(id)` instance calls a server
+ * handler that sees its own `id`, and nothing leaks) or rejects it with a
+ * clear error naming the capture (SPEC J4.6, §5.13; user ruling D13).
  */
 export const capturingPlacement: Placement = {
   name: 'a function body, with a handler reading a local of the function',

@@ -3,14 +3,18 @@
  * into its client, SSR caller and server-function provider outputs, split
  * `<Hydrate>` children into chunks, and evaluate compiled modules (linked as
  * real ES modules, `@tanstack/compiler-test-utils/module-linker`) against a
- * Start's runtime (`./start-runtime`). Import inspection (`imports.ts`),
- * diagnostics (`diagnostics.ts`), source maps (`source-maps.ts`) and the
- * `<Hydrate>` chunk rendering (`render.ts`) live in their own modules and
- * are re-exported here.
+ * Start's runtime (`./start-runtime`) and the real packages (React, the
+ * routers). Import inspection (`imports.ts`), diagnostics
+ * (`diagnostics.ts`), source maps (`source-maps.ts`) and the `<Hydrate>`
+ * chunk rendering (`render.ts`) live in their own modules and are
+ * re-exported here.
  */
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
 import { parseSync } from 'vite'
 import { expect } from 'vitest'
+import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import {
   StartCompiler,
   detectKindsInCode,
@@ -23,7 +27,7 @@ import {
   createSsrRpc,
   startClientCore,
 } from './start-runtime'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
+import { moduleRequests } from './imports'
 import type {
   ModuleGraphOptions,
   ModuleStub,
@@ -39,14 +43,16 @@ import type {
 export { importSources } from './imports'
 export {
   compileErrorMessage,
+  expectCompileError,
+  expectSourceError,
+  withoutQuotedSource,
   serverOnlyModule,
-  misplacedServerFnRejection,
   expectOutputsFreeOfHandler,
   expectNoClientHandler,
   serverOnlyError,
   clientOnlyError,
 } from './diagnostics'
-export type { OutputResult } from './diagnostics'
+export type { MisplacementOptions, OutputResult } from './diagnostics'
 export {
   getChunkIds,
   loadChunk,
@@ -332,87 +338,58 @@ function startRuntime(
 }
 
 /**
- * The id of the RPC a caller's server fn calls: Start's caller metadata
- * (`serverFnMeta`, only the id). `undefined` when the server fn is no RPC
- * caller (e.g. its handler was left in place).
+ * The id of the RPC a caller's server fn calls: the id of Start's server-fn
+ * metadata (`serverFnMeta.id`; other metadata fields are free).
+ * `undefined` when the server fn carries no id (e.g. an uncompiled one,
+ * whose handler is left in place). Tests that need the call to reach the
+ * server prove it through the reported handler (`callServerFnThroughCallers`,
+ * `callFromClient`).
  */
 export function callerRpcId(fn: unknown): string | undefined {
   if (typeof fn !== 'function') {
     return undefined
   }
   const meta = (fn as { serverFnMeta?: Record<string, unknown> }).serverFnMeta
-  if (
-    meta === undefined ||
-    typeof meta.id !== 'string' ||
-    Object.keys(meta).length !== 1
-  ) {
-    return undefined
-  }
-  return meta.id
+  return typeof meta?.id === 'string' ? meta.id : undefined
 }
 
 /**
- * Deprecated JSX stand-in (the linker's `runtime` option) of the graphs
- * that link no real packages, for the suites that still compare rendered
- * strings (FIX-PLAN S09: the Start compiler suites move to real rendering
- * in wave 3; the `<Hydrate>` and `<ClientOnly>` suites render with the real
- * packages, `render.ts`): intrinsic elements render as tags with their
- * props (other than `children` and React's `key`) as JSON with sorted keys,
- * functions as `"<function>"`; components are called with their props.
+ * Where the real packages of the test graphs resolve from (this package's
+ * dependencies: `react`, `react-dom`, the routers).
  */
-const jsxToText = `const __Fragment = Symbol('Fragment')
-const __attributes = (props) => {
-  const names = Object.keys(props ?? {}).filter((name) => name !== 'children' && name !== 'key').sort()
-  if (names.length === 0) return ''
-  return ' ' + JSON.stringify(
-    Object.fromEntries(names.map((name) => [name, props[name]])),
-    (_, value) => (typeof value === 'function' ? '<function>' : value),
-  )
-}
-const __jsx = (type, props, ...children) => {
-  const text = children.flat(Infinity).filter((c) => c != null && c !== false && c !== true).join('')
-  if (type === __Fragment) return text
-  if (typeof type === 'function') return type(children.length ? { ...props, children: text } : { ...props })
-  if (typeof type !== 'string') throw new Error('cannot render ' + String(type))
-  return '<' + type + __attributes(props) + '>' + text + '</' + type + '>'
-}
-`
+const testPackagesDir = path.dirname(fileURLToPath(import.meta.url))
 
 /**
  * A graph of linked modules (`createModuleGraph`) whose imports resolve to
  * `stubs` (by specifier) over the Start runtime of `framework`
- * (default `react`). A graph that links the real packages (`packages`)
- * compiles JSX with React's automatic runtime and renders with the real
- * React; any other renders JSX through `runtime` (default: the deprecated
- * `jsxToText`).
+ * (default `react`), then to the real packages (`packages`, by default
+ * this package's): JSX compiles with React's automatic runtime and renders
+ * with the real React.
  */
 export function createTestModuleGraph(
   options: ModuleGraphOptions & { framework?: Framework; env?: RuntimeEnv },
 ) {
   const { framework = 'react', env, ...graphOptions } = options
   return createModuleGraph({
+    packages: testPackagesDir,
     ...graphOptions,
     stubs: { ...startRuntime(framework, env), ...graphOptions.stubs },
-    runtime:
-      graphOptions.runtime ??
-      (graphOptions.packages === undefined ? jsxToText : undefined),
   })
 }
 
 /**
  * Evaluates a compiled module like a bundler would: TypeScript is erased, JSX
- * becomes calls of `runtime` (which defines `__jsx` and `__Fragment`), and
- * every import is linked, as a real ES module, to the Start runtime
- * of `framework` (default `react`) for `env` (default `client`), to `stubs`
- * (by specifier; `.json` string stubs are JSON modules) or to the project
- * modules `files` (by absolute id, linked as they are). Every call evaluates
- * a fresh instance, even for identical code.
+ * compiles with React's automatic runtime, and every import is linked, as a
+ * real ES module, to the Start runtime of `framework` (default `react`) for
+ * `env` (default `client`), to `stubs` (by specifier; `.json` string stubs
+ * are JSON modules), to the project modules `files` (by absolute id, linked
+ * as they are) or to the real packages (`react`, the routers). Every call
+ * evaluates a fresh instance, even for identical code.
  */
 export async function evaluateModule(
   code: string,
   stubs: Record<string, ModuleStub> = {},
   options: {
-    runtime?: string
     framework?: Framework
     env?: RuntimeEnv
     files?: Record<string, string>
@@ -421,10 +398,68 @@ export async function evaluateModule(
   return createTestModuleGraph({
     modules: { ...options.files, [moduleId]: code },
     stubs,
-    runtime: options.runtime ?? jsxToText,
     framework: options.framework,
     env: options.env,
   }).import(moduleId)
+}
+
+/**
+ * Renders a React node (e.g. what an evaluated module's component returns)
+ * to static HTML with the real `react-dom/server`.
+ */
+export async function renderToHtml(node: unknown) {
+  const graph = createTestModuleGraph({})
+  const { renderToStaticMarkup } = await graph.importPackage('react-dom/server')
+  return renderToStaticMarkup(node) as string
+}
+
+/**
+ * The modules evaluating the compiled module `code` (as `env`, default
+ * `client`) loads: every module it, and the project modules and stubs it
+ * links, request statically when they link, plus the targets of the dynamic
+ * `import()`s it names (a bundle emits a chunk for each). Imports that are
+ * neither `stubs`, `files` nor real packages link to empty stubs, so a
+ * forbidden module the compiler left behind is observed, not a link error.
+ * Type-only syntax (`import type`, erased with the TypeScript) is no load;
+ * an `import { type X }` declaration still loads its module
+ * (`verbatimModuleSyntax`, see the module linker). Compare with
+ * `expectNotLoaded` (`@tanstack/compiler-test-utils/importers`).
+ */
+export async function moduleLoads(
+  code: string,
+  options: {
+    stubs?: Record<string, ModuleStub>
+    files?: Record<string, string>
+    framework?: Framework
+    env?: RuntimeEnv
+    /**
+     * `false`: TypeScript is erased like in a project without
+     * `verbatimModuleSyntax` (imports nothing reads go too).
+     */
+    verbatimModuleSyntax?: boolean
+    /** Id of the module (default `/test/src/module.tsx`). */
+    id?: string
+  } = {},
+) {
+  const id = options.id ?? moduleId
+  const graph = createTestModuleGraph({
+    modules: { ...options.files, [id]: code },
+    stubs: options.stubs,
+    framework: options.framework,
+    env: options.env,
+    verbatimModuleSyntax: options.verbatimModuleSyntax,
+    fallbackStub: (_specifier, names) =>
+      Object.fromEntries([...names].map((name) => [name, undefined])),
+  })
+  // Linking requests every static import; what evaluating does is not the
+  // question here (a leaked server module may well throw). A module that
+  // does not parse or link never evaluates: that fails.
+  await graph.import(id).catch((error: unknown) => {
+    if (!graph.evaluated.includes(id)) {
+      throw error
+    }
+  })
+  return [...new Set([...graph.requested, ...moduleRequests(code).dynamic])]
 }
 
 function isServerOutputs(value: object): value is ServerOutputs {

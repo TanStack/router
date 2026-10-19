@@ -30,6 +30,7 @@
  * it; it checks the modules of the source directory (`src`) only.
  */
 import { AsyncLocalStorage } from 'node:async_hooks'
+import { mkdir, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -80,16 +81,9 @@ export const reactStartPackage = workspacePackage('@tanstack/react-start')
  * (`workspacePackageLinks`), so the app bundles and runs the built package
  * with its own export conditions. Its dependencies
  * (`@tanstack/start-client-core`, `@tanstack/start-server-core`, ...)
- * resolve from its real path, as in an installed app. An app whose `files`
- * bring their own `@tanstack/react-start` (hydrate-build.test.ts:
- * `<Hydrate>` rendered by a stand-in React) keeps it.
+ * resolve from its real path, as in an installed app.
  */
-export function startRuntimeLinks(
-  files: Record<string, string> = {},
-): Record<string, string> {
-  if ('node_modules/@tanstack/react-start/package.json' in files) {
-    return {}
-  }
+export function startRuntimeLinks(): Record<string, string> {
   return workspacePackageLinks(['@tanstack/react-start'])
 }
 
@@ -281,6 +275,13 @@ export interface StartBuildOptions {
 export interface StartBuild {
   client: BuildResult
   ssr: BuildResult
+  /**
+   * Builds the same app again, in the same directory with the same options
+   * and a new plugin instance, after writing `edits` (app files by path;
+   * `null` deletes one). The output directories are reused: read what this
+   * build's results need before rebuilding.
+   */
+  rebuild: (edits?: Record<string, string | null>) => Promise<StartBuild>
 }
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
@@ -387,7 +388,7 @@ export async function buildStart(
       ...(bundler === 'rsbuild' && testLoaderFiles),
       ...files,
     },
-    symlinks: startRuntimeLinks(files),
+    symlinks: startRuntimeLinks(),
   })
   const mode = options.mode ?? 'production'
   const target: BuildTarget = {
@@ -402,13 +403,28 @@ export async function buildStart(
     watchEdits: options.watchEdits,
     cwd: options.cwd,
   }
+  return buildAt(app, bundler, target, options.builds ?? 1)
+}
+
+/**
+ * Builds the app at `app.root` `builds` times in a row (a new plugin
+ * instance each time) and describes the last build. Its `rebuild` writes
+ * edits into the same directory and builds again.
+ */
+async function buildAt(
+  app: Awaited<ReturnType<typeof createApp>>,
+  bundler: StartBundler,
+  target: BuildTarget,
+  builds: number,
+): Promise<StartBuild> {
+  const { mode } = target
   const warnings = { client: [], ssr: [] } as Record<Env, Array<string>>
   const consoleMessages: Array<string> = []
   let started = performance.now()
   let outputs = await withBuildEnvironment(mode, consoleMessages, () =>
     builders[bundler](target, warnings),
   )
-  for (let build = 1; build < (options.builds ?? 1); build++) {
+  for (let build = 1; build < builds; build++) {
     warnings.client.length = 0
     warnings.ssr.length = 0
     consoleMessages.length = 0
@@ -439,6 +455,18 @@ export async function buildStart(
   return {
     client: await describe('client'),
     ssr: { ...ssr, run: (script = '') => ssr.run(inRequestContext(script)) },
+    rebuild: async (edits = {}) => {
+      for (const [file, content] of Object.entries(edits)) {
+        const absolute = path.join(app.root, file)
+        if (content === null) {
+          await rm(absolute, { force: true })
+        } else {
+          await mkdir(path.dirname(absolute), { recursive: true })
+          await writeFile(absolute, content)
+        }
+      }
+      return buildAt(app, bundler, target, 1)
+    },
   }
 }
 

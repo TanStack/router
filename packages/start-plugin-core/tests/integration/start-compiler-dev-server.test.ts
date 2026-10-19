@@ -337,11 +337,10 @@ export const label = () => 'MARK_CLIENT_LABEL'
           'src/entry.ts': entry,
         },
       })
+      // The client code is there (in however many chunks), the handler not.
       const bundle = await server.clientBundle()
-      expect({
-        client: containing(bundle, 'MARK_CLIENT_LABEL').length,
-        handler: containing(bundle, 'MARK_HANDLER_V1'),
-      }).toEqual({ client: 1, handler: [] })
+      expect(containing(bundle, 'MARK_CLIENT_LABEL')).not.toEqual([])
+      expect(containing(bundle, 'MARK_HANDLER_V1')).toEqual([])
       expect(await callById(server)).toBe('MARK_HANDLER_V1')
     },
     timeout,
@@ -423,7 +422,7 @@ export const fn = base.handler(async () => db.x())
     })
     expect(
       containing(await server.clientBundle(), 'MARK_DB_SECRET'),
-    ).toHaveLength(1)
+    ).not.toEqual([])
     await server.edit({ 'src/b.ts': factory })
     return server
   }

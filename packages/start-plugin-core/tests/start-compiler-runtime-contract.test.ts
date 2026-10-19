@@ -34,7 +34,7 @@ describe('the stand-ins carry what Start creates', () => {
     const { rpc } =
       await evaluateModule(`import { createClientRpc } from '@tanstack/react-start/client-rpc'
 export const rpc = createClientRpc('id-1')`)
-    const real = createClientRpc('id-1') as object
+    const real = createClientRpc('id-1')
     expect(rpc).toBeTypeOf('function')
     expect(metadata(rpc)).toEqual(metadata(real))
     expect(metadata(real)).toMatchObject({ serverFnMeta: { id: 'id-1' } })
@@ -126,10 +126,12 @@ export const fail = createServerFn().handler(async () => {
   throw new Error('handler failed')
 })`)
     const graph = createServerGraph(compiled)
-    const provider = await graph.provider()
-    const [handler] = Object.values(provider).filter(
-      (value) => typeof value === 'function',
-    )
+    // The handler the id the client calls names (the provider's other
+    // exports, whatever they are, are not it).
+    const [reported] = Object.values(compiled.serverFns)
+    const handler = (await graph.import(reported!.extractedFilename))[
+      reported!.functionName
+    ]
     const response = await handler({ data: undefined })
     expect(response).toEqual({ error: new Error('handler failed') })
     expect(() => serverFnResult(response)).toThrow('handler failed')

@@ -1,21 +1,28 @@
 /**
- * Server fn ids are deterministic (R4): they depend on the module's path
- * relative to the project root, whatever the root and the path style the
- * bundler gives the compiler (Rsbuild passes Windows paths with `\`, Vite
- * with `/`), and the client RPC of each server fn carries the id its
- * provider handler answers to, whatever order the environments compile the
- * modules in. Generated function names are not asserted.
- * Source: oracle-gaps H3 (round 2).
+ * Server fn ids (SPEC J4.4, G4): deterministic for an unchanged project
+ * (same root and configuration, whatever order the modules are compiled
+ * in), and within a build the client RPC of each server fn carries the id
+ * its provider handler answers to. A project at another root (or with the
+ * other path style a bundler gives the compiler: Rsbuild passes Windows
+ * paths with `\`, Vite with `/`) compiles correctly too, but its opaque
+ * ids need not equal the first root's (G4: relocation is correctness, not
+ * id equality). Generated function names are not asserted.
+ * Source: oracle-gaps H3 (round 2); FIX-PLAN S01, S02.
  */
 import { describe, expect, test } from 'vitest'
+import {
+  expectDeterministic,
+  expectRelocatable,
+  reorderedRecords,
+} from '@tanstack/compiler-test-utils/determinism'
 import { detectKindsInCode } from '../src/start-compiler/compiler'
 import {
   createStartCompiler,
   mergeServerFnsById,
 } from '../src/start-compiler/host'
 import {
-  callerRpcId,
   callReportedServerFns,
+  callerRpcId,
   createServerGraph,
   evaluateModule,
   serverFnResult,
@@ -128,35 +135,54 @@ describe('server fn ids', () => {
     { name: 'a Windows root with slashes', root: 'C:/app', sep: '/' },
   ] as const
 
-  test('are the same under every root and path style, on the client and the provider', async () => {
-    const results: Record<string, Awaited<ReturnType<typeof compileUnder>>> = {}
-    for (const { name, root, sep } of layouts) {
-      results[name] = await compileUnder(root, sep)
-    }
-    const [first] = Object.values(results)
-    expect(first!.handlerIds).toEqual([first!.rpc])
-    for (const [name, result] of Object.entries(results)) {
-      expect(result, name).toEqual({
-        rpc: first!.rpc,
-        handlerIds: [first!.rpc],
-        called: ['from the server'],
-      })
-    }
+  test('compile correctly under every root and path style: the client and the provider agree on the id', async () => {
+    await expectRelocatable(
+      layouts.map(({ root }) => root),
+      (root) =>
+        compileUnder(root, layouts.find((layout) => layout.root === root)!.sep),
+      {
+        check: (result) => {
+          expect(result.rpc).toEqual(expect.any(String))
+          expect(result.handlerIds).toEqual([result.rpc])
+        },
+        portable: (result) => result.called,
+      },
+    )
   })
 
+  test('are deterministic for an unchanged project, whatever order its modules are compiled in', async () => {
+    const modules = {
+      '/app/src/a.ts': serverFnModule('a', 'from a'),
+      '/app/src/b.ts': serverFnModule('b', 'from b'),
+      '/app/src/c/a.ts': serverFnModule('a', 'from c/a'),
+    }
+    await expectDeterministic(reorderedRecords(modules), async ({ record }) => {
+      const registry: Record<string, ServerFn> = {}
+      const client = compilerFor('client', '/app', registry)
+      const ids: Record<string, string> = {}
+      for (const [id, code] of Object.entries(record)) {
+        const module = await evaluateModule((await client(code, id))!)
+        ids[id] = callerRpcId(module.a ?? module.b)!
+      }
+      return ids
+    })
+  })
+
+  // The id `generateFunctionId` returns is the one the clients call and the
+  // provider answers to; which spelling of the file name it receives
+  // (relative or absolute, separators) is not specified (J4.4).
   test.each(layouts)(
-    'a custom generateFunctionId gets the path relative to $name, with / separators',
+    'a custom generateFunctionId under $name gives the id clients and the provider use',
     async ({ root, sep }) => {
-      const filenames: Array<string> = []
+      const returned: Array<string> = []
       const result = await compileUnder(root, sep, {
-        generateFunctionId: ({ filename }) => {
-          filenames.push(filename)
-          return `custom:${filename}`
+        generateFunctionId: ({ filename, functionName }) => {
+          const id = `custom:${filename}:${functionName}`
+          returned.push(id)
+          return id
         },
       })
-      expect(new Set(filenames)).toEqual(new Set(['src/fns.ts']))
-      // The id it returns (unique here) is the one clients call.
-      expect(result.rpc).toBe('custom:src/fns.ts')
+      expect(returned).toContain(result.rpc)
       expect(result.handlerIds).toEqual([result.rpc])
       expect(result.called).toEqual(['from the server'])
     },

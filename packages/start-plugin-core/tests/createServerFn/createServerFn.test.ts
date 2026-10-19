@@ -1,5 +1,5 @@
-import { stripVTControlCharacters } from 'node:util'
 import { describe, expect, test } from 'vitest'
+import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   StartCompiler,
   getLookupKindsForEnv,
@@ -8,10 +8,10 @@ import { getLookupConfigurationsForEnv } from '../../src/start-compiler/config'
 import { mergeServerFnsById } from '../../src/start-compiler/host'
 import { generateServerFnResolverModule } from '../../src/start-compiler/server-fn-resolver-module'
 import {
-  callerRpcId,
   callFromClient,
   callProvider,
   callReportedServerFns,
+  callerRpcId,
   compileAll,
   compileFor,
   compileServer,
@@ -19,7 +19,9 @@ import {
   createStartCompiler,
   evaluateModule,
   evaluateProvider,
-  importSources,
+  expectCompileError,
+  moduleLoads,
+  outputs,
   serverFnResult,
   startClientCore,
 } from '../regression-helpers'
@@ -37,8 +39,12 @@ function getDefaultTestOptions(env: 'client' | 'server') {
 }
 
 describe('createServerFn compiles correctly', () => {
-  // Editors count \n, \r\n, a lone \r, U+2028 and U+2029 as line
-  // terminators, so diagnostic locations must count every one.
+  // A server fn without its handler (`.handler()` type-checks against the
+  // real declarations, so this is input a user can write) is a compile
+  // error at the server fn, naming the API (SPEC G5). Editors count \n,
+  // \r\n, a lone \r, U+2028 and U+2029 as line terminators, so the
+  // reported line and column must count every one. Prose, frame layout and
+  // context length are free (§5.7).
   test.each([
     ['\\n', '\n'],
     ['\\r\\n', '\r\n'],
@@ -48,38 +54,54 @@ describe('createServerFn compiles correctly', () => {
   ])(
     'reports the location of a diagnostic with %s line endings',
     async (_name, eol) => {
-      const error = await compileFor(
-        'client',
-        [
-          `import { createServerFn } from '@tanstack/react-start'`,
-          `export const { fn } = createServerFn().handler(async () => 1)`,
-        ].join(eol),
-      ).catch((caught: unknown) => caught)
-
-      expect(error).toBeInstanceOf(Error)
-      // The location: line 2 and its source on one line of the message,
-      // whatever the code frame format.
-      expect(stripVTControlCharacters((error as Error).message)).toMatch(
-        /\b2\b[^\n]*export const \{ fn \}/,
+      const source = [
+        `import { createServerFn } from '@tanstack/react-start'`,
+        `export const fn = createServerFn().handler()`,
+      ].join(eol)
+      const error = await compileFor('client', source).catch(
+        (caught: unknown) => caught,
       )
+      expectCompileError(error, {
+        source,
+        at: 'createServerFn()',
+        column: true,
+        names: ['createServerFn'],
+      })
     },
   )
 
   test('reports the location of a diagnostic deep in the module', async () => {
-    const error = await compileFor(
-      'client',
-      [
-        `import { createServerFn } from '@tanstack/react-start'`,
-        ...Array.from({ length: 10 }, (_, i) => `export const v${i} = ${i}`),
-        `export const { fn } = createServerFn().handler(async () => 1)`,
-      ].join('\n'),
-    ).catch((caught: unknown) => caught)
+    const source = [
+      `import { createServerFn } from '@tanstack/react-start'`,
+      ...Array.from({ length: 10 }, (_, i) => `export const v${i} = ${i}`),
+      `export const fn = createServerFn().handler()`,
+    ].join('\n')
+    const error = await compileFor('client', source).catch(
+      (caught: unknown) => caught,
+    )
+    expectCompileError(error, {
+      source,
+      at: 'createServerFn()',
+      column: true,
+      names: ['createServerFn'],
+    })
+  })
 
-    expect(error).toBeInstanceOf(Error)
-    const message = stripVTControlCharacters((error as Error).message)
-    expect(message).toMatch(/\b12\b[^\n]*export const \{ fn \}/)
-    // It points at that line: it does not quote the whole module.
-    expect(message).not.toContain('export const v0 = 0')
+  // Malformed-input diagnostic control (SPEC §8, G5): destructuring a server
+  // fn is a type error (tsc against the real declarations: TS2339 "Property
+  // 'fn' does not exist on type 'OptionalFetcher<...>'"). It only has to
+  // fail clearly, naming the API, at the declaration.
+  test('rejects a destructured server fn', async () => {
+    const source = `import { createServerFn } from '@tanstack/react-start'
+export const { fn } = createServerFn().handler(async () => 1)`
+    const error = await compileFor('client', source).catch(
+      (caught: unknown) => caught,
+    )
+    expectCompileError(error, {
+      source,
+      at: '{ fn }',
+      names: ['createServerFn'],
+    })
   })
 
   test('should not remove handler identifier bindings that are still referenced', async () => {
@@ -91,7 +113,6 @@ export const getUsersFn = createServerFn().handler(getUsers)
 export const ref = getUsers`)
     const stubs = { './server': { getUsers: async () => 'users' } }
 
-    expect(importSources(compiled.client)).toEqual(['./server'])
     const client = await evaluateModule(compiled.client, stubs)
     expect(client.ref).toBe(stubs['./server'].getUsers)
     expect(callerRpcId(client.getUsersFn)).toEqual(expect.any(String))
@@ -388,16 +409,21 @@ export const greet = createServerFn().handler(async () => 'hi')`
     },
   )
 
+  // `.handler()` type-checks (tsc against the real declarations), so this
+  // is a user error the compiler reports at the server fn (SPEC G5).
   test('require a handler function', async () => {
-    await expect(
-      compileFor(
-        'client',
-        `import { createServerFn } from '@tanstack/react-start'
-export const greet = createServerFn().handler()`,
-      ),
-    ).rejects.toThrow(
-      'createServerFn must be called with a "handler" property!',
-    )
+    const source = `import { createServerFn } from '@tanstack/react-start'
+export const greet = createServerFn().handler()`
+    for (const output of outputs) {
+      const error = await compileFor(output, source).catch(
+        (caught: unknown) => caught,
+      )
+      expectCompileError(error, {
+        source,
+        at: 'createServerFn()',
+        names: ['createServerFn'],
+      })
+    }
   })
 })
 
@@ -496,12 +522,8 @@ function RouteComponent() {
   }
   return <button onClick={handleClick}>{JSON.stringify(results)}</button>
 }`
-    const stubs = {
-      '@tanstack/react-router': {
-        createFileRoute: () => (options: unknown) => ({ options }),
-      },
-      react: { useState: () => [undefined, () => {}] },
-    }
+    // The real router (`createFileRoute`) and React.
+    const stubs = {}
     const compiled = await compileAll(code)
     expect(await callProvider(compiled, 'getServerEnv', stubs)).toBe('server')
     expect(await callProvider(compiled, 'getServerEcho', stubs, 'hello')).toBe(
@@ -563,7 +585,12 @@ export const base = createServerFn()`,
 import { db } from './db.server'
 export const fn = base${call}async () => db.x())`
         const compiled = await compileAll(code, { files })
-        expect(importSources(compiled.client)).not.toContain('./db.server')
+        expectNotLoaded(
+          await moduleLoads(compiled.client, {
+            stubs: { './builder': { base: startClientCore.createServerFn() } },
+          }),
+          ['./db.server'],
+        )
         expect(Object.keys(compiled.serverFns)).toHaveLength(1)
         expect(
           await callProvider(compiled, 'fn', {

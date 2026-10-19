@@ -136,9 +136,9 @@ describe.each(startBundlers)('%s build', (bundler) => {
   )
 
   /**
-   * A route whose component and loader each carry a marker, and each read a
-   * module of their own that records when it loads (\`loadMarker\`): a
-   * module only one option reads loads with that option's code.
+   * A route whose loader and component each read a module of their own
+   * that records when it loads (`loadMarker`): what loads, and when, is
+   * observed at run time, not through chunk names (FIX-PLAN S47).
    */
   const routeFiles = {
     'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
@@ -172,7 +172,12 @@ export { renderPath } from '../harness/render'
     {
       name: 'by default',
       router: {},
-      expected: { loader: 'eager', component: 'lazy', withComponent: false },
+      expected: {
+        loader: 'eager',
+        component: 'lazy',
+        loaderBringsComponent: false,
+        componentBringsLoader: false,
+      },
     },
     {
       name: 'with a defaultBehavior grouping the loader with the component',
@@ -183,7 +188,12 @@ export { renderPath } from '../harness/render'
           >,
         },
       },
-      expected: { loader: 'lazy', component: 'lazy', withComponent: true },
+      expected: {
+        loader: 'lazy',
+        component: 'lazy',
+        loaderBringsComponent: true,
+        componentBringsLoader: true,
+      },
     },
   ])(
     'router.codeSplittingOptions: the client and SSR builds load the route loader and component $name',
@@ -194,30 +204,48 @@ export { renderPath } from '../harness/render'
         entry: 'src/entry.ts',
         start: { router },
       })
-      // Whether the loader's code loads with the component's (one group):
-      // not loaded with the route, and loaded once the router preloads the
-      // component (V1 start S47: observed at run time, not by chunk names).
-      const groupScript = `const loaded = () => [...${loadedModulesExpression}]
+      /**
+       * What loads with the app (eager) or later (lazy), and whether loading
+       * one option (running the loader, preloading the component) loads the
+       * other's code too (one group). Each direction gets a fresh run.
+       */
+      const placementScript = (load: string, other: string, key: string) =>
+        `const loaded = () => [...${loadedModulesExpression}]
+const atStart = loaded()
 const route = Object.values(entry.getRouter().routeTree.children).find(
   (candidate) => candidate.options.id === '/',
 )
-const atStart = loaded()
-await route.options.component.preload()
-return !atStart.includes('loader') && loaded().includes('loader')`
-      /** Where a build has the loader and the component, and their group. */
+await ${load}
+return {
+  loader: atStart.includes('loader') ? 'eager' : 'lazy',
+  component: atStart.includes('component') ? 'eager' : 'lazy',
+  ${key}: !atStart.includes('${other}') && loaded().includes('${other}'),
+}`
       const placement = async (build: StartBuild['client']) => ({
-        loader: build.where('MARK_LOADER'),
-        component: build.where('MARK_COMPONENT'),
-        withComponent: (await build.run(groupScript)).result,
+        ...((
+          await build.run(
+            placementScript(
+              'route.options.loader()',
+              'component',
+              'loaderBringsComponent',
+            ),
+          )
+        ).result as object),
+        ...((
+          await build.run(
+            placementScript(
+              'route.options.component.preload()',
+              'loader',
+              'componentBringsLoader',
+            ),
+          )
+        ).result as object),
       })
       // Source: mutation round 3 start-router H for the SSR build.
       expect({
         client: await placement(client),
         ssr: await placement(ssr),
-      }).toEqual({
-        client: expected,
-        ssr: expected,
-      })
+      }).toEqual({ client: expected, ssr: expected })
       // Wherever they are, the route's loader and component still run: the
       // real router renders the page at `/`.
       const script = `const route = Object.values(entry.getRouter().routeTree.children).find(
