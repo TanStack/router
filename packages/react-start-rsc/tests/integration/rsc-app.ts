@@ -24,7 +24,11 @@ import rsc from '@vitejs/plugin-rsc'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
-import { mergeConfig } from 'vite'
+import {
+  createApp,
+  withBuildEnvironment,
+} from '@tanstack/compiler-test-utils/build-harness'
+import { createBuilder, mergeConfig, preview } from 'vite'
 import {
   workspacePackage,
   workspacePackageLinks,
@@ -171,6 +175,77 @@ export async function startRscDevServer(
       react(),
     ],
   })
+}
+
+export interface RscPreviewServer {
+  /** The app root. */
+  root: string
+  /** The URL Start's preview server listens on. */
+  url: string
+  /** What the build logged (warnings and errors). */
+  messages: Array<string>
+}
+
+/**
+ * Builds a React Start app with RSC enabled, of `files` over `rscAppFiles`,
+ * for production as `vite build` does (the `client`, `ssr` and `rsc`
+ * environments, `buildApp()`), and serves the build with `vite preview`
+ * (Start's own preview server runs the built server entry). The test
+ * process runs with `NODE_ENV=production` until the cleanup, as `vite
+ * preview` does, so the server's React matches the client's.
+ */
+export async function startRscPreviewServer(options: {
+  files: Record<string, string>
+  start?: Record<string, unknown>
+  config?: Record<string, unknown>
+  registerCleanup?: (cleanup: () => Promise<void>) => void
+}): Promise<RscPreviewServer> {
+  const registerCleanup = options.registerCleanup ?? onTestFinished
+  const tanstackStart = await tanstackStartVitePlugin()
+  const app = await createApp({
+    dir: harnessDir,
+    prefix: '.rsc-preview-server-',
+    registerCleanup,
+    files: { ...rscAppFiles, ...options.files },
+    symlinks: workspacePackageLinks([
+      '@tanstack/react-start',
+      '@tanstack/react-start-rsc',
+    ]),
+  })
+  const config = () =>
+    mergeConfig(
+      {
+        root: app.root,
+        configFile: false,
+        logLevel: 'warn',
+        plugins: [
+          tanstackStart({ ...options.start, rsc: { enabled: true } }),
+          rsc(),
+          react(),
+        ],
+      },
+      options.config ?? {},
+    )
+  const messages: Array<string> = []
+  await withBuildEnvironment('production', messages, async () => {
+    const builder = await createBuilder(config())
+    await builder.buildApp()
+  })
+  const nodeEnv = process.env.NODE_ENV
+  process.env.NODE_ENV = 'production'
+  const server = await preview({
+    ...config(),
+    preview: { port: 0, host: '127.0.0.1' },
+  })
+  registerCleanup(async () => {
+    await server.close()
+    process.env.NODE_ENV = nodeEnv
+  })
+  const url = server.resolvedUrls?.local[0]
+  if (!url) {
+    throw new Error('the preview server does not listen')
+  }
+  return { root: app.root, url, messages }
 }
 
 export interface RscRsbuildDevServerOptions extends Omit<
