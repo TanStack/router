@@ -348,7 +348,7 @@ for (const depth of [4, 16]) {
               await run(sample!)
             },
           ).run({
-            time: 500,
+            time: Number(process.env.SSR_LIFECYCLE_BENCH_TIME_MS ?? 500),
             iterations: 100,
             warmupTime: 200,
             warmupIterations: 20,
