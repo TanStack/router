@@ -20,6 +20,7 @@ const config = defineConfig({
     dir: './tests',
     watch: false,
     reporters: ['default', '@tanstack/compiler-test-utils/budget-reporter'],
+    globalSetup: ['./tests/generator-tmp-dir.ts'],
     projects: [
       {
         // Fast tier (`test:unit`): compiles and evaluates in process; a Vite
