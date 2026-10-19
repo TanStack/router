@@ -7,9 +7,11 @@ import {
   createServerGraph,
   createStartCompiler,
   evaluateModule,
-  importSources,
+  expectCompileError,
+  moduleLoads,
   startClientCore,
 } from '../regression-helpers'
+import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   declaredNames,
   getModuleErrors,
@@ -44,18 +46,19 @@ const middlewareFactoryStub = {
 }
 
 describe('createMiddleware compiles correctly', () => {
+  // Malformed-input diagnostic control (SPEC §8, G5): `.validator()`
+  // without a validator is a type error (tsc against the real declarations:
+  // TS2554 "Expected 1 arguments, but got 0"). It only has to fail clearly,
+  // naming the API.
   test('requires an argument for validator()', async () => {
-    await expect(
-      compileCode(
-        'client',
-        `import { createMiddleware } from '@tanstack/react-start'
+    const source = `import { createMiddleware } from '@tanstack/react-start'
 const myMiddleware = createMiddleware({ type: 'function' })
   .validator()
-  .server(async ({ next }) => next())`,
-      ),
-    ).rejects.toThrow(
-      'createMiddleware().validator() must be called with a validator!',
+  .server(async ({ next }) => next())`
+    const error = await compileCode('client', source).catch(
+      (caught: unknown) => caught,
     )
+    expectCompileError(error, { source, at: undefined, names: ['validator'] })
   })
 
   test('keeps a middleware without a server function on the client', async () => {
@@ -201,7 +204,7 @@ export const fnMw = createMiddleware({ type: 'function' })
     foo()
     return next()
   })`)
-    expect(importSources(client)).toEqual([])
+    expectNotLoaded(await moduleLoads(client, { stubs }), ['@some/lib'])
     expect(module.fnMw.options.type).toBe('function')
     expect(module.fnMw.options.client()).toBe('client')
     expect(module.fnMw.options.server).toBeUndefined()
@@ -233,7 +236,7 @@ function zodValidator(schema: unknown, fn: (input: unknown) => unknown) {
 export const withWrapper = createMiddleware({ type: 'function' })
   .client(() => 'wrapper')
   .server(zodValidator(z.number(), (input) => ({ 'you gave': input })))`)
-    expect(importSources(client)).toEqual([])
+    expectNotLoaded(await moduleLoads(client, { stubs }), ['zod'])
     expect(declaredNames(client)).not.toContain('abstractedFunction')
     expect(declaredNames(client)).not.toContain('zodValidator')
     const names = ['withFunction', 'withArrow', 'withVariable', 'withWrapper']
@@ -260,7 +263,7 @@ export const withValidator = createMiddleware({ type: 'function' })
   .validator(z.number())
   .client(() => 'client')
   .server(({ data, next }) => next({ context: { value: data + 1 } }))`)
-    expect(importSources(client)).toEqual([])
+    expectNotLoaded(await moduleLoads(client, { stubs }), ['zod'])
     expect(module.withValidator.options.validator).toBeUndefined()
     expect(module.withValidator.options.server).toBeUndefined()
     expect(module.withValidator.options.client()).toBe('client')
@@ -289,7 +292,7 @@ export const createAuthMiddleware = (requiredRole) => {
 export const topLevelMiddleware = createMiddleware({ type: 'function' })
   .client(() => 'topLevel')
   .server(async ({ next }) => next())`)
-    expect(importSources(client)).toEqual([])
+    expectNotLoaded(await moduleLoads(client, { stubs }), ['./auth.server'])
     expect(module.createPublicRateLimitMiddleware('ip').options).toEqual({
       type: 'function',
     })
@@ -319,7 +322,7 @@ export const requestMw = startInstance
     audit('request')
     return next({ context: { requestMw: 'yes' } })
   })`)
-    expect(importSources(client)).toEqual([])
+    expectNotLoaded(await moduleLoads(client, { stubs }), ['./audit.server'])
     expect(module.serverFnMw.options.client).toBeTypeOf('function')
     expect(module.serverFnMw.options.server).toBeUndefined()
     expect(module.requestMw.options).toEqual({ type: 'request' })
@@ -353,7 +356,10 @@ export const fn = createServerFn({ method: 'POST' })
     './db.server': { db: { user: (from: string) => `user(${from})` } },
     './check.server': { check: (data: string) => `checked(${data})` },
   }
-  expect(importSources(compiled.client)).toEqual([])
+  expectNotLoaded(await moduleLoads(compiled.client), [
+    './db.server',
+    './check.server',
+  ])
   expect(compiled.client).not.toMatch(/db\.user|check\(/)
   const expected = ['checked(input)', 'user(client)', 'base']
   expect(

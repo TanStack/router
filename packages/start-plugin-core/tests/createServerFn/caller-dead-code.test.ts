@@ -7,16 +7,19 @@ import {
   compileCode,
   evaluateModule,
   evaluateProvider,
-  importSources,
+  moduleLoads,
 } from '../regression-helpers'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
+import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import type { ModuleStub } from '../regression-helpers'
 
 // The client replaces a server fn handler with an RPC, then drops the module
 // code only the handler read, so server-only imports never reach it. Code the
 // client still reads must survive with its values. The SSR caller may do the
 // same or keep the handler in place: calling the server fn from it runs the
-// handler either way.
+// handler either way. "Drops" is observed as loading: the module the client
+// output loads when it is evaluated (`moduleLoads`), never as an inventory
+// of its import declarations (FIX-PLAN S06).
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 const dbServer = `export const db = { x: () => 'x' }`
@@ -33,20 +36,36 @@ export const fn = createServerFn().handler(async () => {
   const format = (value: unknown) => \`local:\${value}\`
   return format(db.x())
 })`,
-      client: ['./format'],
+      forbidden: ['./db.server'],
+      check: async (client: string) =>
+        expect(
+          (
+            await evaluateModule(client, {
+              './format': { format: (value: string) => `format:${value}` },
+            })
+          ).label,
+        ).toBe('format:x'),
       expected: 'local:x',
     },
     {
+      // The client reads the server module itself (`clientDb`): it stays.
       name: 'a handler parameter shadows an import the client uses',
       code: `import { db } from './db.server'
 export const fn = createServerFn().handler(async ({ data: db }: { data: string }) => db)
 export const clientDb = db`,
-      client: ['./db.server'],
+      forbidden: [],
+      check: async (client: string) => {
+        const db = { x: () => 'x' }
+        expect(
+          (await evaluateModule(client, { './db.server': { db } })).clientDb,
+        ).toBe(db)
+      },
       expected: 'param',
     },
-  ])('when $name', async ({ code, client, expected }) => {
+  ])('when $name', async ({ code, forbidden, check, expected }) => {
     const compiled = await compileAll(`${head}${code}`)
-    expect(importSources(compiled.client)).toEqual(client)
+    expectNotLoaded(await moduleLoads(compiled.client), forbidden)
+    await check(compiled.client)
     expect(
       await callProvider(compiled, 'fn', { './db.server': dbServer }, 'param'),
     ).toBe(expected)
@@ -283,7 +302,7 @@ export const fn = createServerFn().handler(async () => db.x())
 ${code}`,
       )
       expect(await getModuleErrors(client!)).toEqual([])
-      expect(importSources(client!)).toEqual(Object.keys(stubs))
+      expectNotLoaded(await moduleLoads(client!, { stubs }), ['./db.server'])
       check?.(await evaluateModule(client!, stubs))
     },
   )
@@ -342,7 +361,7 @@ export const fn = createServerFn().handler(async () => db.x())
 ${code}`,
     )
     expect(await getModuleErrors(client!)).toEqual([])
-    expect(importSources(client!)).toEqual([])
+    expectNotLoaded(await moduleLoads(client!), ['./db.server'])
     check(await evaluateModule(client!))
   })
 
@@ -375,7 +394,11 @@ export const value = clientDefault`,
     async ({ code, client, value }) => {
       const compiled = await compileAll(`${head}${code}
 export const fn = createServerFn().handler(async (): Promise<Session | null> => verify())`)
-      expect(importSources(compiled.client)).toEqual(client)
+      // The server module loads only for a value the client reads.
+      const loads = await moduleLoads(compiled.client)
+      if (client.length === 0) {
+        expectNotLoaded(loads, ['./server-module'])
+      }
       expect(compiled.client).not.toMatch(/\bverify\b/)
       // `verify` is the default export where the module imports it as such.
       const verify = `() => 'verified'`
@@ -411,7 +434,10 @@ export const fn = createServerFn({ method: 'POST' })
   .middleware([auth])
   .validator((data: unknown) => schema.parse(data))
   .handler(async ({ data, context }) => [data, context.user, context.from])`)
-    expect(importSources(compiled.client)).toEqual([])
+    expectNotLoaded(await moduleLoads(compiled.client), [
+      './db.server',
+      './schema.server',
+    ])
     const calls: Array<string> = []
     const stubs = {
       './db.server': {
@@ -446,7 +472,7 @@ export const fn = createServerFn({ method: 'POST' })
       const compiled =
         await compileAll(`${head}import { schema } from './schema'
 export const fn = ${wrap(`createServerFn().validator(schema)`)}.handler(async ({ data }) => data)`)
-      expect(importSources(compiled.client)).toEqual([])
+      expectNotLoaded(await moduleLoads(compiled.client), ['./schema'])
       expect(
         await callProvider(
           compiled,
@@ -485,7 +511,7 @@ export const other = withPost.handler(async ({ data }) => data)`,
         await compileAll(`${head}import { schema } from './schema'
 const withPost = createServerFn({ method: 'POST' }).validator(schema)
 ${handlers}`)
-      expect(importSources(compiled.client)).toEqual([])
+      expectNotLoaded(await moduleLoads(compiled.client), ['./schema'])
       expect(
         await callProvider(
           compiled,
@@ -546,7 +572,7 @@ import { db } from './db.server'
 export const fn = createServerFn().handler(async () => db.x())
 ${code}`,
   )
-  expect(importSources(client!)).toEqual(['./store'])
+  expectNotLoaded(await moduleLoads(client!), ['./db.server'])
   const module = await evaluateModule(client!, {
     './store': `export const store = { value: 'store' }`,
   })
@@ -628,7 +654,7 @@ const { db: { apiKey = readSecret() } = {}, theme } = config`,
 ${code}
 export const fn = createServerFn().handler(async () => apiKey)
 export const currentTheme = theme`)
-      expect(importSources(compiled.client)).toEqual(['./config'])
+      expectNotLoaded(await moduleLoads(compiled.client), ['./secrets.server'])
       const client = await evaluateModule(compiled.client, {
         './config': `export const config = { theme: 'dark', list: [undefined, 'dark'] }`,
       })
@@ -655,7 +681,7 @@ function session() {
   return session.id
 }
 export const getReport = createServerFn().handler(async () => session())`)
-      expect(importSources(compiled.client)).toEqual([])
+      expectNotLoaded(await moduleLoads(compiled.client), ['./server-only'])
       expect(compiled.client).not.toContain('readSecret')
       expect(
         await callServerFnThroughCallers(
@@ -681,7 +707,7 @@ function load(id = defaultId()) { return id }
 function unusedA(): number { return unusedB() }
 function unusedB(): number { return unusedA() }
 export const fn = createServerFn().handler(async () => [walk(3), loop(2), load()])`)
-    expect(importSources(compiled.client)).toEqual([])
+    expectNotLoaded(await moduleLoads(compiled.client), ['./secret.server'])
     expect(
       await callServerFnThroughCallers(compiled, (module) => module.fn, {
         './secret.server': `export const secret = 'secret'; export const defaultId = () => 'id'`,
@@ -717,7 +743,7 @@ export const fn = createServerFn().handler(async () => {
 })
 export const clientB = clientCopy`)
     const stubs = { './db.server': { serverValue: () => 'value' } }
-    expect(importSources(compiled.client)).toEqual(['./db.server'])
+    // The client reads `clientCopy = a`, so it keeps `serverValue()`.
     expect((await evaluateModule(compiled.client, stubs)).clientB).toBe('value')
     // Two calls on one server instance: the handler updates its own `hits`.
     const provider = await evaluateProvider(compiled, stubs)
@@ -750,7 +776,7 @@ switch (process.env.MODE) {
     var mode = readMode()
 }
 export const fn = createServerFn().handler(async () => [flag, conn, mode])`)
-    expect(importSources(compiled.client)).toEqual([])
+    expectNotLoaded(await moduleLoads(compiled.client), ['./db.server'])
     for (const call of calls) {
       expect(compiled.client).not.toContain(call)
     }

@@ -13,8 +13,10 @@ import {
   directivePrologue,
   evaluateModule,
   evaluateProvider,
-  importSources,
+  moduleLoads,
 } from '../regression-helpers'
+import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
+import { expectDeterministic } from '@tanstack/compiler-test-utils/determinism'
 
 // Callers keep the module's exports: the client gets each server fn as an
 // RPC, and calling one from the SSR caller runs its handler; the provider
@@ -127,7 +129,7 @@ const fn = createServerFn().handler(async () => 'fn')`)
   test('a server fn built from a sibling declarator', async () => {
     const compiled = await compileAll(`${head}import { db } from './db.server'
 export const base = createServerFn(), fn = base.handler(async () => db.x())`)
-    expect(importSources(compiled.client)).toEqual([])
+    expectNotLoaded(await moduleLoads(compiled.client), ['./db.server'])
     expect(
       await callProvider(compiled, 'fn', {
         './db.server': `export const db = { x: () => 'x' }`,
@@ -174,9 +176,8 @@ export const fn = createServerFn().handler(async () => secrets.key)`)
       './data.json': `{ "data": true }`,
       './secrets.json': `{ "key": "s3cret" }`,
     }
-    expect(importSources(compiled.client)).toEqual([
-      './config.json',
-      './data.json',
+    expectNotLoaded(await moduleLoads(compiled.client, { stubs }), [
+      './secrets.json',
     ])
     const client = await evaluateModule(compiled.client, stubs)
     expect([client.theme, client.data]).toEqual(['dark', { data: true }])
@@ -226,7 +227,9 @@ export type CreatePostInput = z.infer<typeof postSchema>
 export const createPost = createServerFn().handler(async () =>
   postSchema.parse({ category: 'news' }),
 )`)
-    expect(importSources(compiled.client)).not.toContain('./PostService')
+    expectNotLoaded(await moduleLoads(compiled.client, { stubs }), [
+      './PostService',
+    ])
     expect(await callProvider(compiled, 'createPost', stubs)).toEqual({
       category: 'news',
     })
@@ -250,7 +253,6 @@ export const fn = createServerFn().handler(async () => 'fn')`)
     }
     try {
       for (const output of ['client', 'ssr'] as const) {
-        expect(importSources(compiled[output]), output).toEqual(['./polyfill'])
         ran.length = 0
         await evaluateModule(compiled[output], stubs)
         expect(ran, output).toEqual(['polyfill', 'side-effect-marker'])
@@ -327,14 +329,13 @@ describe('directives', () => {
     'module directives stay first in the callers: $directives',
     async ({ prologue, directives }) => {
       const code = `${prologue}${head}export const fn = createServerFn().handler(async () => 1)`
-      const prologuePattern = new RegExp(
-        String.raw`^(?:\s*//[^\n]*\n)*` +
-          directives
-            .map((directive) => String.raw`\s*['"]${directive}['"];?`)
-            .join(''),
-      )
+      // Each directive still leads the module, read from the parsed module
+      // (their order within the prologue is free, SPEC §5.5).
       for (const output of ['client', 'ssr'] as const) {
-        expect(await compileCode(output, code)).toMatch(prologuePattern)
+        const compiled = (await compileCode(output, code))!
+        expect(directivePrologue(compiled).sort(), output).toEqual(
+          [...directives].sort(),
+        )
       }
     },
   )
@@ -369,20 +370,35 @@ describe('server function ids', () => {
     )
   }
 
+  // Ids are repeatable for unchanged input, and within each version of a
+  // module the callers and the provider agree on them (SPEC J4.4, G4).
+  // Editing the module (here: adding a server fn above the others) changes
+  // the effective input, so ids need not survive the edit.
   // Source: SolidStart compile.spec.ts "keeps ids of existing functions when a
   // function is added above them", "keeps production ids stable ..."
+  // (FIX-PLAN S04: their edit-stability is not required).
   test.each(['build', 'dev'] as const)(
-    '%s: ids of existing server fns survive adding one above them',
+    '%s: ids are repeatable for unchanged input, and each version of a module runs its own handlers by id',
     async (mode) => {
-      const existing = `export const load = createServerFn().handler(async () => 1)
-export const save = createServerFn().handler(async () => 2)`
-      const before = await idsOf(existing, { mode })
-      const after = await idsOf(
-        `export const added = createServerFn().handler(async () => 0)\n${existing}`,
-        { mode },
-      )
-      expect(after).toHaveLength(3)
-      expect(after).toEqual(expect.arrayContaining(before))
+      const existing = `export const load = createServerFn().handler(async () => 'load')
+export const save = createServerFn().handler(async () => 'save')`
+      const versions = [
+        existing,
+        `export const added = createServerFn().handler(async () => 'added')\n${existing}`,
+      ]
+      for (const version of versions) {
+        const code = `${head}${version}`
+        await expectDeterministic([1, 2, 3], () => idsOf(version, { mode }))
+        const compiled = await compileAll(code, { mode })
+        const client = await evaluateModule(compiled.client)
+        const names = Object.keys(client)
+        for (const name of names) {
+          expect(
+            await callServerFnThroughCallers(compiled, (module) => module[name]),
+            name,
+          ).toBe(name)
+        }
+      }
     },
   )
 
@@ -468,7 +484,9 @@ const n = <number>(1 as unknown)
 export const fn = createServerFn().handler(async () => [n, db.x()])`,
         { id },
       )
-      expect(importSources(compiled.client)).toEqual([])
+      expectNotLoaded(await moduleLoads(compiled.client, { id }), [
+        './db.server',
+      ])
       expect(
         await callServerFnThroughCallers(compiled, (module) => module.fn, {
           './db.server': { db: { x: () => 'x' } },

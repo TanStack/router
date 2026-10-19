@@ -11,7 +11,8 @@ import {
   compileServer,
   createStartCompiler,
   evaluateModule,
-  importSources,
+  expectCompileError,
+  moduleLoads,
   outputs,
   serverOnlyError,
   settle,
@@ -19,12 +20,31 @@ import {
 } from './regression-helpers'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import { envRestrictionError } from '@tanstack/compiler-test-utils/diagnostics'
+import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import type { ModuleStub, Output } from './regression-helpers'
 
 // Each output keeps the implementation of its own environment (and only the
 // imports that implementation reads) and replaces the other one with a stub
 // that throws. The compiler only rewrites calls it can resolve to a Start
-// factory, through any chain of project modules.
+// factory, through any chain of project modules. "Only its imports" is
+// observed as loading (`moduleLoads`): the client output never loads a
+// server-only module, the SSR output never a client-only one.
+
+/** The client output loads none of `forbidden` (default: `./db.server`). */
+async function expectClientFree(
+  client: string,
+  forbidden = ['./db.server'],
+  options: Parameters<typeof moduleLoads>[1] = {},
+) {
+  expectNotLoaded(await moduleLoads(client, options), forbidden)
+}
+
+/** The SSR output does not load the client-only module. */
+async function expectSsrFree(ssr: string) {
+  expectNotLoaded(await moduleLoads(ssr, { env: 'server' }), [
+    './chart.client',
+  ])
+}
 
 const head = `import { createClientOnlyFn, createIsomorphicFn, createServerOnlyFn } from '@tanstack/react-start'\n`
 type Wrap = (expression: string) => string
@@ -52,13 +72,13 @@ export { serverValue as exposed }`,
         './chart.client': `export const draw = (x) => 'draw:' + x`,
         './db.server': `export const query = (x) => 'query:' + x`,
       }
-      expect(importSources(compiled.client)).toEqual(['./chart.client'])
+      await expectClientFree(compiled.client)
       const client = await evaluateModule(compiled.client, stubs)
       expect([client.clientValue(), settle(client.exposed)]).toEqual([
         'draw:1',
         serverOnlyError,
       ])
-      expect(importSources(compiled.ssr)).not.toContain('./chart.client')
+      await expectSsrFree(compiled.ssr)
       const ssr = await evaluateModule(compiled.ssr, stubs)
       expect([settle(ssr.clientValue), ssr.exposed()]).toEqual([
         clientOnlyError,
@@ -75,14 +95,12 @@ export { serverValue as exposed }`,
 export default createServerOnlyFn(() => db.x())`,
       client: serverOnlyError,
       server: 'db',
-      clientImports: [],
     },
     {
       code: `import { chart } from './chart.client'
 export default createClientOnlyFn(() => chart())`,
       client: 'chart',
       server: clientOnlyError,
-      clientImports: ['./chart.client'],
     },
     {
       code: `import { db } from './db.server'
@@ -90,14 +108,13 @@ import { chart } from './chart.client'
 export default createIsomorphicFn().server(() => db.x()).client(() => chart())`,
       client: 'chart',
       server: 'db',
-      clientImports: ['./chart.client'],
     },
   ])(
     'a default-exported function: $code',
-    async ({ code, client, server, clientImports }) => {
+    async ({ code, client, server }) => {
       const compiled = await compileAll(`${head}${code}`)
-      expect(importSources(compiled.client)).toEqual(clientImports)
-      expect(importSources(compiled.ssr)).not.toContain('./chart.client')
+      await expectClientFree(compiled.client)
+      await expectSsrFree(compiled.ssr)
       const stubs = {
         './db.server': `export const db = { x: () => 'db' }`,
         './chart.client': `export const chart = () => 'chart'`,
@@ -124,7 +141,7 @@ export default createMiddleware().server(async ({ next }) => {
 })`,
     )
     expect(await getModuleErrors(client!)).toEqual([])
-    expect(importSources(client!)).toEqual([])
+    await expectClientFree(client!)
     // The middleware records no server implementation.
     expect((await evaluateModule(client!)).default.options).toEqual({
       type: 'request',
@@ -188,6 +205,7 @@ export default createMiddleware().server(async ({ next }) => {
       },
       { name: 'satisfies', wrap: (x: string) => `(${x} satisfies unknown)` },
     ]
+    const serverModules = ['./db.server', './check.server']
     const serverResult = { context: 'db:SERVER_SECRET' }
     const clientResult = { sendContext: 'client' }
 
@@ -249,7 +267,7 @@ export default createMiddleware().server(async ({ next }) => {
       async ({ chain, wrap, clientLinks, ssrLinks }) => {
         const code = middlewareModule(chain(wrap))
         const client = await runLinks('client', code)
-        expect(importSources(client.compiled)).toEqual([])
+        await expectClientFree(client.compiled, serverModules, { id })
         expect(client.compiled).not.toMatch(/SERVER_SECRET|VALIDATOR_SECRET/)
         expect(client.links).toEqual(clientLinks)
         expect((await runLinks('ssr', code)).links).toEqual(ssrLinks)
@@ -275,7 +293,7 @@ export default createMiddleware().server(async ({ next }) => {
         )
         const kept = middleware ? { middleware: [] } : {}
         const client = await runLinks('client', code)
-        expect(importSources(client.compiled)).toEqual([])
+        await expectClientFree(client.compiled, serverModules, { id })
         expect(client.compiled).not.toMatch(/SERVER_SECRET|VALIDATOR_SECRET/)
         expect(client.links).toEqual({ ...kept, client: clientResult })
         expect((await runLinks('ssr', code)).links).toEqual({
@@ -304,7 +322,7 @@ export default createMiddleware().server(async ({ next }) => {
     test('the client strips a .server() link of a builder stored in a variable', async () => {
       const code = builderVariableModule(clientLink, serverLink)
       const client = await runLinks('client', code)
-      expect(importSources(client.compiled)).toEqual([])
+      await expectClientFree(client.compiled, serverModules, { id })
       expect(client.compiled).not.toMatch(/SERVER_SECRET/)
       expect(client.links).toEqual({ client: clientResult })
       expect((await runLinks('ssr', code)).links).toEqual({
@@ -326,7 +344,7 @@ export default createMiddleware().server(async ({ next }) => {
       async () => {
         const code = builderVariableModule(validatorLink, serverLink)
         const client = await runLinks('client', code)
-        expect(importSources(client.compiled)).toEqual([])
+        await expectClientFree(client.compiled, serverModules, { id })
         expect(client.compiled).not.toMatch(/SERVER_SECRET|VALIDATOR_SECRET/)
         expect(client.links).toEqual({})
         expect((await runLinks('ssr', code)).links).toEqual({
@@ -479,9 +497,9 @@ export const fn = ${chain}`
         client: (await compileCode('client', source)) ?? source,
         ssr: (await compileCode('ssr', source)) ?? source,
       }
-      expect(importSources(compiled.client)).not.toContain('./db.server')
+      await expectClientFree(compiled.client)
       expect(compiled.client).not.toContain('SERVER_SECRET')
-      expect(importSources(compiled.ssr)).not.toContain('./chart.client')
+      await expectSsrFree(compiled.ssr)
       expect(settle((await evaluateModule(compiled.client, stubs)).fn)).toEqual(
         client,
       )
@@ -535,7 +553,7 @@ export class Api extends Base {
       expect((await evaluateModule(compiled.client, stubs)).makeDraw()()).toBe(
         'chart',
       )
-      expect(importSources(compiled.ssr)).not.toContain('./chart.client')
+      await expectSsrFree(compiled.ssr)
       const ssr = await evaluateModule(compiled.ssr, stubs)
       expect(settle(() => ssr.makeDraw()())).toEqual(clientOnlyError)
     },
@@ -546,7 +564,7 @@ export class Api extends Base {
 const wrap = <T,>(fn: T) => fn
 export const read = wrap(wrap(createServerOnlyFn(() => db.secret())))`)
     const stubs = { './db.server': { db: { secret: () => 'secret' } } }
-    expect(importSources(compiled.client)).not.toContain('./db.server')
+    await expectClientFree(compiled.client)
     expect(settle((await evaluateModule(compiled.client, stubs)).read)).toEqual(
       serverOnlyError,
     )
@@ -582,10 +600,10 @@ export const mw = createMiddleware().server(async ({ next }) =>
       './db.server': `export const db = { x: () => 'x' }`,
     }
     const client = await compileCode('client', code)
-    expect(importSources(client!)).toEqual(['./chart.client'])
+    await expectClientFree(client!)
     expect((await evaluateModule(client!, stubs)).iso()).toBe('drawn')
     const ssr = await compileCode('ssr', code)
-    expect(importSources(ssr!)).toEqual(['./db.server'])
+    await expectSsrFree(ssr!)
     const ssrModule = await evaluateModule(ssr!, stubs)
     expect([
       ssrModule.iso(),
@@ -616,7 +634,7 @@ export function getValue(flag: boolean) {
 }`,
     )
     expect(await getModuleErrors(client!)).toEqual([])
-    expect(importSources(client!)).toEqual([])
+    await expectClientFree(client!)
     expect(client).not.toMatch(/\b(?:connect|serverCall)\b/)
     expect((await evaluateModule(client!)).getValue(true)).toBe('client')
   })
@@ -657,7 +675,9 @@ function settle(run: () => unknown) {
     async () => {
       const server = await compileServer(envFnsInHandler)
       expect(await getModuleErrors(server.provider)).toEqual([])
-      expect(importSources(server.provider)).not.toContain('./chart.client')
+      expectNotLoaded(await moduleLoads(server.provider, { env: 'server' }), [
+        './chart.client',
+      ])
       expect(
         await callProvider(server, 'fn', {
           './db.server': `export const db = { now: () => 'now', read: () => 'read' }`,
@@ -721,60 +741,44 @@ export const value = createServerOnlyFn(() => 'mine')`,
     },
   )
 
-  // Where the missing implementation runs (the server: SSR; the client), the
-  // compiler rejects it. The other environment never runs it: it may reject
-  // it too, or compile to a module whose env-only fn throws there and whose
-  // isomorphic fn runs that environment's implementation (or none).
+  // Malformed-input diagnostic controls (SPEC §8, G5): an env function
+  // without its implementation is a type error (tsc against the real
+  // declarations: TS2554 "Expected 1 arguments, but got 0" for each row).
+  // Where the missing implementation would run (the server: SSR; the
+  // client), compiling fails clearly, naming the API. Nothing is required
+  // of the other environment for such input.
   // Source: Waku vite-plugin-allow-server.test.ts "throws when allowServer
   // receives zero arguments"; replaces envOnly.test.ts and
   // createIsomorphicFn.test.ts "should error if implementation not provided"
-  test.each<{
-    code: string
-    error: string
-    runsOn: Output
-    elsewhere: unknown
-  }>([
+  test.each<{ code: string; api: string; runsOn: Output }>([
     {
       code: `export const none = createServerOnlyFn()`,
-      error: 'createServerOnlyFn() must be called with a function!',
+      api: 'createServerOnlyFn',
       runsOn: 'ssr',
-      elsewhere: serverOnlyError,
     },
     {
       code: `export const none = createIsomorphicFn().server().client(() => 1)`,
-      error:
-        'createIsomorphicFn().server(func) must be called with a function!',
+      api: 'createIsomorphicFn',
       runsOn: 'ssr',
-      elsewhere: 1,
     },
     {
       code: `export const none = createClientOnlyFn()`,
-      error: 'createClientOnlyFn() must be called with a function!',
+      api: 'createClientOnlyFn',
       runsOn: 'client',
-      elsewhere: clientOnlyError,
     },
     {
       code: `export const none = createIsomorphicFn().client()`,
-      error:
-        'createIsomorphicFn().client(func) must be called with a function!',
+      api: 'createIsomorphicFn',
       runsOn: 'client',
-      elsewhere: undefined,
     },
   ])(
     'a missing implementation is rejected where it runs: $code',
-    async ({ code, error, runsOn, elsewhere }) => {
-      await expect(compileCode(runsOn, `${head}${code}`)).rejects.toThrow(error)
-      const other = runsOn === 'client' ? 'ssr' : 'client'
-      const compiled = await compileCode(other, `${head}${code}`).catch(
-        (thrown: Error) => thrown,
+    async ({ code, api, runsOn }) => {
+      const source = `${head}${code}`
+      const error = await compileCode(runsOn, source).catch(
+        (thrown: unknown) => thrown,
       )
-      if (compiled instanceof Error) {
-        expect(compiled.message).toContain(error)
-        return
-      }
-      expect(
-        settle((await evaluateModule(compiled ?? `${head}${code}`)).none),
-      ).toEqual(elsewhere)
+      expectCompileError(error, { source, at: undefined, names: [api] })
     },
   )
 })
@@ -805,7 +809,6 @@ export const logged = mw.server(async ({ next }) => {
   db.log()
   return next()
 })`,
-      imports: ['./mw'],
       serverFns: 0,
     },
     {
@@ -819,7 +822,6 @@ export default authed`,
       code: `import authed from './builders'
 import { db } from './db.server'
 export const fn = authed.handler(async () => db.x())`,
-      imports: ['./builders'],
       serverFns: 1,
     },
     ...(['client', 'ssr'] as const).map((output) => ({
@@ -832,8 +834,6 @@ export const fn = authed.handler(async () => db.x())`,
 import { db } from './db.server'
 export const fn = F.createServerFn().handler(async () => db.x())
 export const iso = F.createIsomorphicFn().server(() => db.w()).client(() => 'client')`,
-      imports:
-        output === 'client' ? ['./factories'] : ['./db.server', './factories'],
       serverFns: 1,
     })),
     {
@@ -849,7 +849,6 @@ import type * as F from './f'
 import { db } from './db.server'
 export const fn = csf().handler(async () => db.x() as F.types.Register)
 export const s = so(() => db.y())`,
-      imports: ['./f'],
       serverFns: 1,
     },
     {
@@ -864,13 +863,14 @@ export const createFooServerFn = createServerFn`,
       code: `import { createFooServerFn } from './factory'
 import { db } from './db.server'
 export const fn = createFooServerFn().handler(async () => db.x())`,
-      imports: ['./factory'],
       serverFns: 1,
     },
-  ])('$output: $name', async ({ output, files, code, imports, serverFns }) => {
+  ])('$output: $name', async ({ output, files, code, serverFns }) => {
     const compiled = await compileFor(output, code, { files })
     expect(await getModuleErrors(compiled.code!)).toEqual([])
-    expect(importSources(compiled.code!)).toEqual(imports)
+    if (output === 'client') {
+      await expectClientFree(compiled.code!, ['./db.server'], { files })
+    }
     expect(Object.keys(compiled.serverFns)).toHaveLength(serverFns)
     // The server fn is called through an RPC by the reported id, which runs
     // the handler on the server (project modules linked as they are).
@@ -994,7 +994,10 @@ export const fn = createServerFn().handler(async () => db.x())
 export const serverOnly = createServerOnlyFn(() => 'server-only-marker')`
       const compiled = await compileAll(source, { files })
       expect(Object.keys(compiled.serverFns)).toHaveLength(1)
-      expect(importSources(compiled.client)).toEqual(['./start'])
+      await expectClientFree(compiled.client, ['./db.server'], {
+        files,
+        stubs,
+      })
       const linked = { ...stubs, './db.server': { db: { x: () => 'x' } } }
       expect(
         await callServerFnThroughCallers(

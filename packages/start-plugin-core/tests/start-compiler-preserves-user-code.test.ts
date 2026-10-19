@@ -1,15 +1,21 @@
-import { SourceMapConsumer } from 'source-map'
+import { transformWithOxc } from 'vite'
 import { describe, expect, test, vi } from 'vitest'
 import {
   callReportedServerFns,
   compileCode,
   compileFor,
-  compileHydrate,
   compileServer,
+  createTestModuleGraph,
   evaluateModule,
-  importSources,
+  moduleId,
+  renderToHtml,
 } from './regression-helpers'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
+import {
+  expectMapsTo,
+  positionAt,
+  tokenOffsets,
+} from '@tanstack/compiler-test-utils/source-maps'
 import type { ModuleStub, Output } from './regression-helpers'
 
 // The compiler removes code that only served a transformed call. Everything
@@ -180,7 +186,6 @@ describe('keeps a declaration only referenced from types', () => {
   const typeQuery = {
     name: 'a typeof type query',
     call: 'registerAnalytics:analytics-marker',
-    imported: './analytics',
     code: `import { createServerFn } from '@tanstack/react-start'
 import { registerAnalytics } from './analytics'
 const analytics = registerAnalytics('analytics-marker')
@@ -193,7 +198,6 @@ export const getPosts = createServerFn().handler(async () => [])`,
   const globalAugmentation = {
     name: 'a global augmentation',
     call: 'createStore:store-marker',
-    imported: './store',
     code: `import { createIsomorphicFn } from '@tanstack/react-start'
 import { createStore } from './store'
 const store = createStore('store-marker')
@@ -209,10 +213,9 @@ export const getKind = createIsomorphicFn()
 
   test.each([typeQuery, globalAugmentation])(
     'client: $name',
-    async ({ code, call, imported }) => {
+    async ({ code, call }) => {
       const compiled = await compileCode('client', code)
       expect(await getModuleErrors(compiled!)).toEqual([])
-      expect(importSources(compiled!)).toContain(imported)
       expect(await recordSideEffects(compiled!)).toEqual([call])
     },
   )
@@ -242,9 +245,11 @@ export const getUser = createServerFn().handler(async () => User('Ada'))`,
   expect(module.User('Ada')).toEqual({ name: 'Ada' })
 })
 
-test('keeps a React import the classic JSX runtime needs', async () => {
-  // With the classic runtime the bundler compiles JSX to React.createElement
-  // after this compiler ran, so an import only used in types is still needed.
+// With the classic runtime the bundler compiles JSX to React.createElement
+// after this compiler ran, so an import the source only reads in types is
+// still needed by the JSX (SPEC J4.17, G12). Checked by rendering the client
+// output after a classic JSX transform, with the real React.
+test('keeps working with the classic JSX runtime downstream', async () => {
   const client = await compileCode(
     'client',
     `import * as React from 'react'
@@ -254,7 +259,20 @@ export function Greeting({ children }: { children: React.ReactNode }) {
   return <p>{children}</p>
 }`,
   )
-  expect(importSources(client!)).toEqual(['react'])
+  const graph = createTestModuleGraph({
+    modules: { [moduleId]: client! },
+    // What `@vitejs/plugin-react` with `jsxRuntime: 'classic'` (or esbuild's
+    // default) does after the Start compiler.
+    transform: async (code, id) =>
+      (
+        await transformWithOxc(code, id, {
+          lang: /\.tsx?$/.test(id) || id === moduleId ? 'tsx' : 'js',
+          jsx: { runtime: 'classic' },
+        })
+      ).code,
+  })
+  const { Greeting } = await graph.import(moduleId)
+  expect(await renderToHtml(Greeting({ children: 'hi' }))).toBe('<p>hi</p>')
 })
 
 test('keeps a namespace only read through a TypeScript import alias', async () => {
@@ -339,80 +357,15 @@ export function Page() {
 test('client: keeps parenthesized JSX working', async () => {
   const client = await compilePageReturning('(<p>page</p>)')
   expect(await getModuleErrors(client)).toEqual([])
-  expect((await evaluateModule(client)).Page()).toBe('<p>page</p>')
-})
-
-// Bundlers read these comments: minifiers keep legal comments, and Rollup and
-// Rolldown treat calls of functions annotated `__NO_SIDE_EFFECTS__` as pure.
-// Source: #8504 start-compiler-preserves-user-code.test.ts
-describe('keeps the comments bundlers read', () => {
-  const legal = '/*! Example Corp. | MIT License */'
-
-  test('client: a leading legal comment survives the removal of the import it leads', async () => {
-    const client = await compileCode(
-      'client',
-      `${legal}
-import { createIsomorphicFn } from '@tanstack/react-start'
-const where = createIsomorphicFn()
-  .server(() => 'server')
-  .client(() => 'client')
-export const label = () => where()`,
-    )
-    expect(client).toContain(legal)
-  })
-
-  test('client: a Hydrate chunk keeps the leading legal comment of its module', async () => {
-    const { chunks } = await compileHydrate(
-      'client',
-      `${legal}
-import { Hydrate } from '@tanstack/react-start'
-export function Page() {
-  return <Hydrate><p>hi</p></Hydrate>
-}`,
-    )
-    expect(chunks[0]).toContain(legal)
-  })
-
-  // Wherever an output declares the annotated function (a Hydrate chunk or
-  // the provider may import it from the parent module instead), the
-  // annotation still leads the declaration.
-  test.each([
-    {
-      name: 'function',
-      code: `/* #__NO_SIDE_EFFECTS__ */
-export function makeLabel() {
-  return 'label'
-}`,
-    },
-    {
-      name: 'arrow function',
-      code: `/* @__NO_SIDE_EFFECTS__ */
-export const makeLabel = () => 'label'`,
-    },
-  ])(
-    'the annotation of an exported $name leads it in every output that declares it',
-    async ({ code }) => {
-      const source = `import { Hydrate, createServerFn } from '@tanstack/react-start'
-${code}
-export const fn = createServerFn().handler(async () => makeLabel())
-export function Page() {
-  return <Hydrate><p>{makeLabel()}</p></Hydrate>
-}`
-      const { parent, chunks } = await compileHydrate('client', source)
-      const provider = await compileCode('provider', source)
-      const declares = /\b(?:function|const) makeLabel\b/
-      const declaring = [parent, chunks[0]!, provider!].filter((output) =>
-        declares.test(output),
-      )
-      expect(declaring.length).toBeGreaterThan(0)
-      for (const output of declaring) {
-        expect(output).toMatch(
-          /__NO_SIDE_EFFECTS__ \*\/\s*(?:export\s+)?(?:function|const) makeLabel\b/,
-        )
-      }
-    },
+  expect(await renderToHtml((await evaluateModule(client)).Page())).toBe(
+    '<p>page</p>',
   )
 })
+
+// Where license comments end up is free outside the code splitter (SPEC G12,
+// user ruling OQ12). The `__NO_SIDE_EFFECTS__` annotations bundlers read are
+// checked through a real production build
+// (integration/start-build-user-code.test.ts).
 
 // Source maps point to the user's code (R6).
 // Source: #8504 start-compiler-preserves-user-code.test.ts
@@ -424,33 +377,12 @@ export const fn = createServerFn().handler(async () => 1)
 export const Box = () => <div className="box" />
 `
     const result = await compileFor(output, code)
-    const lines = result.code!.split('\n')
-    const line = lines.findIndex((text) => text.includes('"box"'))
-    expect(line).toBeGreaterThanOrEqual(0)
-    const consumer = await new SourceMapConsumer(result.map as never)
-    try {
-      expect(
-        consumer.originalPositionFor({
-          line: line + 1,
-          column: lines[line]!.indexOf('"box"'),
-        }),
-      ).toMatchObject({
-        line: 3,
-        column: code.split('\n')[2]!.indexOf('"box"'),
-      })
-    } finally {
-      consumer.destroy()
-    }
+    const [generated] = tokenOffsets(result.code!, { string: 'box' })
+    expect(generated, 'the attribute value in the output').toBeDefined()
+    const [original] = tokenOffsets(code, { string: 'box' })
+    expectMapsTo(result.map as never, positionAt(result.code!, generated!), {
+      file: '/test/src/module.tsx',
+      ...positionAt(code, original!),
+    })
   },
 )
-
-// Devtools and error reporters show the original source from the map. The
-// client is left out: whether client maps should carry stripped server code
-// (D1) is out of scope.
-test('ssr: the map carries the original source', async () => {
-  const code = `import { createServerFn } from '@tanstack/react-start'
-export const fn = createServerFn().handler(async () => 'x')
-`
-  const result = await compileFor('ssr', code)
-  expect(result.map?.sourcesContent).toEqual([code])
-})

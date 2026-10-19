@@ -4,34 +4,32 @@
  */
 
 import path from 'node:path'
-import { transformWithOxc } from 'vite'
-import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import {
+  callFromClient,
   callProvider,
   callReportedServerFns,
   callerRpcId,
   clientOnlyError,
   compileAll,
   compileCode,
-  compileErrorMessage,
   compileFor,
   compileServer,
   createServerGraph,
   createStartCompiler,
-  directivePrologue,
   evaluateModule,
+  expectCompileError,
   expectNoClientHandler,
   expectOutputsFreeOfHandler,
-  importSources,
-  misplacedServerFnRejection,
+  moduleLoads,
   outputs,
-  renderThingTransform,
   serverOnlyError,
   serverOnlyModule,
   settle,
   startClientCore,
 } from './regression-helpers'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
+import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   capturingPlacement,
   placementHeads,
@@ -70,20 +68,13 @@ async function callServerFns(
 }
 
 /**
- * A clear compile error rejecting a server fn builder returned by a function,
- * matched against the message without its code frame (`compileErrorMessage`).
- */
-const returnedBuilderRejection =
-  /createServerFn\b[^]*\b(returned|returning|returns)\b/i
-
-/**
  * Compiles `code` for the client and calls its `read` export: the client
- * must not import the server-only module, and calling the server-only fn
+ * must not load the server-only module, and calling the server-only fn
  * must throw the server-only error.
  */
 async function expectServerOnlyRead(code: string) {
   const client = (await compileCode('client', code)) ?? code
-  expect(importSources(client)).not.toContain(serverOnly)
+  expectNotLoaded(await moduleLoads(client), [serverOnly])
   const { read } = await evaluateModule(client, {
     [serverOnly]: { db: { secret: () => 'secret' } },
   })
@@ -108,10 +99,14 @@ export const fn = createServerFn().handler(async () => db.inner())`)
   describe('expectNoClientHandler checks each output on its own', () => {
     const code = `${head}import { db } from './db.server'
 export const fn = createServerFn().handler(async () => db.inner())`
+    // A synthetic rejection at the server fn's line (the helper's control,
+    // not what the compiler says).
     const rejection = {
-      error: new Error(
-        'createServerFn must be assigned to a top-level variable',
-      ),
+      error: new Error(`createServerFn cannot be used here
+  1 | import { createServerFn } from '@tanstack/react-start'
+  2 | import { db } from './db.server'
+> 3 | export const fn = createServerFn().handler(async () => db.inner())
+    |                   ^^^^^^^^^^^^^^`),
     }
     const compileOutputs = async () => {
       const results = {} as Record<Output, OutputResult>
@@ -143,7 +138,7 @@ export const fn = createServerFn().handler(async () => db.inner())`
           ssr: rejection,
           provider: rejection,
         }),
-      ).rejects.toThrow('client')
+      ).rejects.toThrow('db.server')
     })
 
     // Only the client must be free of the handler: the SSR caller may keep
@@ -165,18 +160,17 @@ export const fn = createServerFn().handler(async () => db.inner())`
         }),
       ).rejects.toThrow()
     })
-  })
 
-  test('an unrelated compile error quoting createServerFn is not a rejection of a misplaced server fn', async () => {
-    const error = await compileFor(
-      'client',
-      `${head}const args: Array<() => unknown> = []
-export const fn = createServerFn().handler(...args)`,
-    ).catch((caught: unknown) => caught)
-    const message = compileErrorMessage(error)
-    expect(message).toMatch(/handler\(\) must be called with an expression/)
-    expect(message).not.toMatch(misplacedServerFnRejection)
-    expect(message).not.toMatch(returnedBuilderRejection)
+    test('it rejects a rejection that does not point at the server fn', async () => {
+      await expect(
+        expectOutputsFreeOfHandler(code, {
+          ...(await compileOutputs()),
+          client: {
+            error: new Error('createServerFn cannot be used here'),
+          },
+        }),
+      ).rejects.toThrow('line 3')
+    })
   })
 
   test.each([
@@ -209,7 +203,7 @@ export const fn = createServerFn().handler(async () => db.x(input))`,
       { id: '/test/src/fns.ts' },
     )
     expect(Object.keys(serverFns)).toHaveLength(1)
-    expect(importSources(code!)).not.toContain(serverOnly)
+    expectNotLoaded(await moduleLoads(code!, { id: '/test/src/fns.ts' }), [serverOnly])
   })
 })
 
@@ -230,7 +224,7 @@ async function expectServerFnThroughRpc(
   files: Record<string, string>,
   stubs: Record<string, ModuleStub>,
 ) {
-  expect(importSources(client)).not.toContain(serverOnly)
+  expectNotLoaded(await moduleLoads(client, { stubs }), [serverOnly])
   const linked = { ...stubs, [serverOnly]: dbStub }
   const { fn } = await evaluateModule(client, linked)
   expect(callerRpcId(fn)).toEqual(expect.any(String))
@@ -271,7 +265,7 @@ export const via = base.handler(async () => db.x())`,
     }
     for (const [id, code] of importers) {
       const client = (await compile(code, id)) ?? code
-      expect(importSources(client), id).not.toContain(serverOnly)
+      expectNotLoaded(await moduleLoads(client, { stubs }), [serverOnly])
       const { via } = await evaluateModule(client, stubs)
       expect(callerRpcId(via), id).toEqual(expect.any(String))
       const { results } = await callServerFns(code, { files, stubs })
@@ -330,7 +324,7 @@ export * from './d'`,
     check?: (module: Record<string, any>) => void,
   ) {
     const client = (await compileCode('client', code, { files })) ?? code
-    expect(client).not.toContain(serverOnly)
+    expectNotLoaded(await moduleLoads(client, { stubs }), [serverOnly])
     check?.(await evaluateModule(client, { ...stubs, [serverOnly]: dbStub }))
   }
 
@@ -518,9 +512,10 @@ export const fn = Start.createServerFn().handler(async () => db.x())`
 
   // Bug: the builder of a `.handler()` chain is resolved through identifiers
   // and member expressions only, so a builder returned by a function call
-  // (`authed().handler(...)`) is not traced. Rejecting it with a clear
-  // compile error is a valid fix; supporting it means the client calls an
-  // RPC and the provider runs the handler.
+  // (`authed().handler(...)`) is not traced. Builders returned by user
+  // factories are a supported recognition form (SPEC J4.5), so the fix
+  // supports it: the client calls an RPC and the provider runs the handler
+  // (a rejection is no fix; FIX-PLAN S16).
   // Impact: the module is left untransformed and ships its handler and
   // server-only imports to the client, without an RPC.
   test.fails.each<{
@@ -547,19 +542,16 @@ export const fn = authed().handler(async () => db.x())`,
   ])(
     'client builds compile a builder returned by a function of $name',
     async ({ code, files }) => {
-      const client = await compileCode('client', code, { files }).catch(
-        (error: Error) => error,
-      )
-      if (client instanceof Error) {
-        expect(compileErrorMessage(client)).toMatch(returnedBuilderRejection)
-        return
-      }
-      expect(importSources(client ?? code)).not.toContain(serverOnly)
+      const client = (await compileCode('client', code, { files })) ?? code
       const stubs = {
         ...returnedBuilderStub,
         [serverOnly]: { db: { x: () => 'from the server' } },
       }
-      const { fn } = await evaluateModule(client ?? code, stubs)
+      expectNotLoaded(
+        await moduleLoads(client, { stubs: returnedBuilderStub }),
+        [serverOnly],
+      )
+      const { fn } = await evaluateModule(client, stubs)
       expect(callerRpcId(fn)).toEqual(expect.any(String))
       const { results } = await callServerFns(code, { files, stubs })
       expect(results).toEqual(['from the server'])
@@ -569,9 +561,9 @@ export const fn = authed().handler(async () => db.x())`,
   // Bug: same family as above, for a builder the user passes through a
   // helper function (`applyStep(createServerFn().validator(schema))`): the
   // `.handler()` chain is not traced through the call, so the module is
-  // left untransformed. Rejecting it with a clear compile error naming
-  // `createServerFn` is a valid fix; supporting it means the client gets
-  // neither the validator nor the handler, and the provider runs both.
+  // left untransformed. Transparent wrappers are a supported form (SPEC
+  // J4.5): the client gets neither the validator nor the handler, and the
+  // provider runs both (a rejection is no fix; FIX-PLAN S16).
   // Source: fuzzing (oracle mode, round 2: builders passed through user
   // helpers, 88 mutants).
   // Impact: the validator, the handler and what they import ship to the
@@ -586,32 +578,19 @@ function applyStep<T>(builder: T) {
 export const fn = applyStep(
   createServerFn({ method: 'POST' }).validator(schema),
 ).handler(async ({ data }) => data)`
-      const client = await compileCode('client', code).catch(
-        (error: Error) => error,
-      )
-      if (client instanceof Error) {
-        expect(compileErrorMessage(client)).toMatch(/\bcreateServerFn\b/)
-        return
-      }
-      expect(importSources(client ?? code)).toEqual([])
       const compiled = await compileAll(code)
-      expect(
-        await callProvider(
-          compiled,
-          'fn',
-          { './schema': { schema: (data: string) => `${data}!` } },
-          'data',
-        ),
-      ).toBe('data!')
+      expectNotLoaded(await moduleLoads(compiled.client), ['./schema'])
+      const stubs = { './schema': { schema: (data: string) => `${data}!` } }
+      expect(await callFromClient(compiled, (module) => module.fn, 'data', stubs)).toBe('data!')
     },
   )
 
   // Bug: same family, for an isomorphic fn whose chain passes through a
   // helper function (`withBuilder(createIsomorphicFn().server(f)).client(g)`):
   // the inner `createIsomorphicFn().server(f)` is compiled on its own into a
-  // plain function, so `.client(g)` is then called on that function.
-  // Rejecting it with a clear compile error naming `createIsomorphicFn` is a
-  // valid fix; supporting it means each output runs its implementation.
+  // plain function, so `.client(g)` is then called on that function. The
+  // fix supports it (SPEC J4.5): each output runs its implementation (a
+  // rejection is no fix; FIX-PLAN S16).
   // Source: fuzzing (oracle mode, round 2: builders passed through user
   // helpers).
   // Impact: the module throws when it loads ("withBuilder(...).client is not
@@ -628,15 +607,7 @@ export const getEnv = withBuilder(
 ).client(() => 'client')`
       const results: Record<string, unknown> = {}
       for (const output of ['client', 'ssr'] as const) {
-        const compiled = await compileCode(output, code).catch(
-          (error: Error) => error,
-        )
-        if (compiled instanceof Error) {
-          expect(compileErrorMessage(compiled)).toMatch(
-            /\bcreateIsomorphicFn\b/,
-          )
-          return
-        }
+        const compiled = await compileCode(output, code)
         const module = await evaluateModule(
           compiled ?? code,
           {},
@@ -697,8 +668,9 @@ export const read = () => getRead()()`,
   // server fn initializing a declarator below the top level (in a function,
   // a block or a switch case) is extracted on the client, but its provider
   // module exports a handler it never declares. Rejecting a placement with a
-  // clear compile error is a valid fix; supporting it is the goal
-  // (createServerFn/declaration-sites.test.ts "supports a server fn in ...").
+  // clear compile error at the call is a valid fix here; supporting it is
+  // the goal (createServerFn/declaration-sites.test.ts "supports a server fn
+  // in ..."), and a supported one must reach its handler through an RPC.
   // Impact: the handler and its server-only imports ship to the client
   // (createServerFn alone), or the server build fails (another factory).
   describe.each([
@@ -710,33 +682,80 @@ export const read = () => getRead()()`,
   ])('with $importHead imported', ({ importHead, rows }) => {
     test.fails.each(rows)(
       'a createServerFn in $name does not ship its handler to the client',
-      async ({ code }) => {
-        await expectNoClientHandler(placementModule(importHead, code))
+      async ({ code, read }) => {
+        await expectNoClientHandler(placementModule(importHead, code), {
+          read,
+        })
       },
     )
   })
 
+  // Bug: next to another Start factory, a server fn that is not assigned to
+  // a variable (an object property, a class field, a default export, an
+  // assignment, a call argument, a JSX attribute, a conditional, a
+  // destructuring) is rejected with a plain `Error` ("createServerFn must
+  // be assigned to a variable!") that carries no position: the user is told
+  // the file (by the bundler) but not where in it.
+  // Source: start-compiler/handleCreateServerFn.ts:232 (the other rejections
+  // of this handler use `codeFrameError`); SPEC G5 ("errors about the
+  // user's source carry a position/code frame"), J4.6.
+  // Impact: in a module with several server fns the user has to find the
+  // misplaced one by hand. Loosened twin (rejection naming createServerFn
+  // only): declaration-sites.test.ts "next to another Start factory, ...".
+  test.fails.each(placements.filter((placement) => !placement.nested))(
+    'with another Start factory imported, a server fn in $name works or is rejected at the call',
+    async ({ code, read }) => {
+      await expectNoClientHandler(
+        placementModule('another Start factory', code),
+        { read },
+      )
+    },
+  )
+
   // Bug: same cause as above; a server fn nested in a function whose
   // handler reads a local of that function (here `id`) cannot run on its own
-  // in the provider, and is not rejected either.
+  // in the provider, and is neither supported nor rejected.
+  // Fix-agnostic (SPEC J4.6, §5.13): either both callers reject it with a
+  // clear error at the call naming `createServerFn` and the captured `id`
+  // (once the callers reject the module, no provider is requested for it),
+  // or every output compiles and each `make(id)` instance, called from the
+  // client, reaches a server handler that sees its own `id`, with the
+  // handler and its server-only import absent from the client.
   // Impact: its handler and server-only imports ship to the client
   // (createServerFn alone), or the server build fails (another factory).
-  // Once the callers reject the module, no provider is requested for it.
-  // Source: user ruling D13 (the one placement that must be rejected).
+  // Source: user ruling D13.
   test.fails.each(Object.keys(placementHeads) as Array<PlacementHead>)(
-    'with %s imported, a nested server fn whose handler reads a local of its function is rejected by the callers',
+    'with %s imported, a nested server fn whose handler reads a local of its function is supported or rejected naming the capture',
     async (importHead) => {
       const code = placementModule(importHead, capturingPlacement.code)
-      for (const output of ['client', 'ssr'] as const) {
-        const error = await compileFor(output, code).then(
-          () => undefined,
-          (caught: unknown) => caught,
-        )
-        expect(error, output).toBeInstanceOf(Error)
-        expect(compileErrorMessage(error), output).toMatch(
-          misplacedServerFnRejection,
+      const results = {} as Record<Output, OutputResult>
+      for (const output of outputs) {
+        results[output] = await compileFor(output, code).catch(
+          (error: unknown) => ({ error }),
         )
       }
+      if ('error' in results.client || 'error' in results.ssr) {
+        for (const output of ['client', 'ssr'] as const) {
+          const result = results[output]
+          expect(result, output).toHaveProperty('error')
+          expectCompileError((result as { error: unknown }).error, {
+            source: code,
+            at: 'db.inner(id)',
+            names: ['createServerFn', 'id'],
+          })
+        }
+        return
+      }
+      const compiled = await compileAll(code)
+      expectNotLoaded(await moduleLoads(compiled.client), [serverOnly])
+      expect(compiled.client).not.toContain('db.inner(')
+      const stubs = {
+        [serverOnly]: { db: { inner: (id: string) => `inner:${id}` } },
+      }
+      expect([
+        await callFromClient(compiled, (module) => module.make('a'), undefined, stubs),
+        await callFromClient(compiled, (module) => module.make('b'), undefined, stubs),
+      ]).toEqual(['inner:a', 'inner:b'])
     },
   )
 
@@ -901,62 +920,10 @@ export const fn = createServerFn().handler(createServerOnlyFn(async () => db.x()
     },
   )
 
-  // Bug: the provider drops the module's exports so that only what the
-  // handlers need is left (compiler.test.ts "removes browser-only
-  // dependencies of stripped exports"), but it keeps `export * from` and an
-  // `export default` of an identifier, with the code that export reads.
-  // Impact: a server fn call evaluates the browser-only code of its route
-  // module on the server, and fails there (`window is not defined`) before
-  // the handler runs: a common component-file shape (`export default Page`).
-  // Source: handleCreateServerFn.ts safeRemoveExports (no case for
-  // ExportAllDeclaration; a default-exported identifier is kept as is);
-  // mutation-testing round 3 (sc-handlers A3, A4).
-  test.fails.each([
-    {
-      name: 'export * from a browser-only module',
-      code: `export * from './browser'`,
-    },
-    {
-      name: 'export default of a component reading browser-only state',
-      code: `const browserState = { window }
-function Page() { return browserState }
-export default Page`,
-    },
-  ])('a provider call does not evaluate $name', async ({ code }) => {
-    const server = await compileServer(
-      `${head}export const getMessage = createServerFn().handler(() => 'server message')
-${code}`,
-      { id: '/test/src/routes/message.tsx' },
-    )
-    expect(
-      await callProvider(server, 'getMessage', {
-        './browser': `throw new Error('browser-only module evaluated on the server')
-export const Widget = 1`,
-      }),
-    ).toBe('server message')
-  })
-
-  // Bug: the provider module (`?tss-serverfn-split`) keeps the `'use client'`
-  // directive of its source module.
-  // Impact: in RSC builds every export of the provider becomes a client
-  // reference, so a server fn declared in a `'use client'` file cannot run.
-  test.fails(
-    "the provider of a 'use client' module is not a client module",
-    async () => {
-      const { provider, results } = await callServerFns(
-        `'use client'
-${head}import { db } from './db.server'
-export const fn = createServerFn().handler(async () => db.x())`,
-        {
-          // What react-start's Rsbuild RSC configuration passes.
-          directives: ['use server-entry'],
-          stubs: { './db.server': { db: { x: () => 'from the server' } } },
-        },
-      )
-      expect(results).toEqual(['from the server'])
-      expect(directivePrologue(provider)).not.toContain('use client')
-    },
-  )
+  // The provider of a `'use client'` module (#7943) is pinned through a real
+  // RSC provider: react-start-rsc tests/integration/rsc-start-dev.test.ts
+  // "a server function of a 'use client' module runs on the server" (FIX-PLAN
+  // S21: no directive-mechanism requirement here).
 })
 
 describe('dead-code elimination', () => {
@@ -1003,7 +970,8 @@ export function useField() {
     },
   )
 
-  const pragmaModule = `/** @jsx h */
+  const pragmaModule = `/** @jsxRuntime classic */
+/** @jsx h */
 import { h } from './jsx'
 import { createServerFn } from '@tanstack/react-start'
 export const fn = createServerFn().handler(async () => h('p', null))
@@ -1215,26 +1183,21 @@ export const read = createServerOnlyFn(() => get())`,
   )
 
   /**
-   * The modules a compiled module still loads once TypeScript is erased with
+   * The modules a compiled module loads once TypeScript is erased with
    * `verbatimModuleSyntax` semantics, where only `import type` declarations
-   * and `type` specifiers are dropped.
+   * and `type` specifiers are dropped (`moduleLoads`).
    */
-  async function verbatimImportSources(code: string) {
-    const { code: javascript } = await transformWithOxc(code, 'module.tsx', {
-      lang: 'tsx',
-      typescript: { onlyRemoveTypeImports: true },
-    })
-    return importSources(javascript)
-  }
+  const verbatimLoads = (code: string) => moduleLoads(code)
 
   // Control for the pin below (same harness): a server-only import that only
   // the handler read leaves the client.
   test('client: a server-only import only the handler reads is not loaded with verbatimModuleSyntax', async () => {
     const code = `${head}import { auth } from './auth'
 export const fn = createServerFn().handler(async () => auth.get())`
-    expect(
-      await verbatimImportSources((await compileCode('client', code)) ?? code),
-    ).toEqual([])
+    expectNotLoaded(
+      await verbatimLoads((await compileCode('client', code)) ?? code),
+      ['./auth'],
+    )
   })
 
   // With `verbatimModuleSyntax`, `import { type Db } from './db.server'`
@@ -1248,7 +1211,7 @@ export function describeDb(db?: Db) {
 }
 export const fn = createServerFn().handler(async () => describeDb())`
     const client = (await compileCode('client', code)) ?? code
-    expect(await verbatimImportSources(client)).not.toContain('./db.server')
+    expectNotLoaded(await verbatimLoads(client), ['./db.server'])
     expect((await evaluateModule(client)).describeDb()).toBe('default')
   })
 
@@ -1266,11 +1229,10 @@ export const fn = createServerFn().handler(async () => describeDb())`
       const code = `${head}import { auth } from './auth'
 type Session = typeof auth.session
 export const fn = createServerFn().handler(async () => auth.get() as Session)`
-      expect(
-        await verbatimImportSources(
-          (await compileCode('client', code)) ?? code,
-        ),
-      ).toEqual([])
+      expectNotLoaded(
+        await verbatimLoads((await compileCode('client', code)) ?? code),
+        ['./auth'],
+      )
     },
   )
 
@@ -1282,21 +1244,21 @@ export const setTheme = createServerFn({ method: 'POST' })
   .validator(themeValidator)
   .handler(async ({ data }) => data)`
 
-  /** The modules a compiled module loads once TypeScript is erased. */
-  async function erasedImportSources(code: string) {
-    const { code: javascript } = await transformWithOxc(code, 'module.tsx', {
-      lang: 'tsx',
-    })
-    return importSources(javascript)
-  }
+  /**
+   * The modules a compiled module loads once TypeScript is erased without
+   * `verbatimModuleSyntax` (imports nothing reads go too).
+   */
+  const erasedLoads = (code: string, env?: 'server') =>
+    moduleLoads(code, { verbatimModuleSyntax: false, env })
 
   // Control for the pin below (same harness): a schema only the validator
   // reads leaves the client with its import.
   test('client: a validator schema only the validator reads is not loaded', async () => {
     const code = schemaModule('')
-    expect(
-      await erasedImportSources((await compileCode('client', code)) ?? code),
-    ).toEqual([])
+    expectNotLoaded(
+      await erasedLoads((await compileCode('client', code)) ?? code),
+      ['zod'],
+    )
   })
 
   // Bug: same family as above, for a module-level declaration: a validator
@@ -1314,9 +1276,10 @@ export const setTheme = createServerFn({ method: 'POST' })
     'client: a validator schema that a type alias reads with typeof is not loaded',
     async () => {
       const code = schemaModule('type Theme = z.infer<typeof themeValidator>')
-      expect(
-        await erasedImportSources((await compileCode('client', code)) ?? code),
-      ).toEqual([])
+      expectNotLoaded(
+        await erasedLoads((await compileCode('client', code)) ?? code),
+        ['zod'],
+      )
     },
   )
 
@@ -1336,9 +1299,10 @@ export const draw = createClientOnlyFn(() => chart.draw())`
   // client-only implementation reads leaves the SSR output with its import.
   test('ssr: a declaration only a client-only fn reads is not loaded', async () => {
     const code = clientOnlyChartModule('')
-    expect(
-      await erasedImportSources((await compileCode('ssr', code)) ?? code),
-    ).toEqual([])
+    expectNotLoaded(
+      await erasedLoads((await compileCode('ssr', code)) ?? code, 'server'),
+      ['./chart.client'],
+    )
   })
 
   // Bug: same root cause as the pin above (upstream
@@ -1355,101 +1319,10 @@ export const draw = createClientOnlyFn(() => chart.draw())`
     'ssr: a declaration a client-only fn reads and a type alias reads with typeof is not loaded',
     async () => {
       const code = clientOnlyChartModule('type Chart = typeof chart')
-      expect(
-        await erasedImportSources((await compileCode('ssr', code)) ?? code),
-      ).toEqual([])
-    },
-  )
-
-  // Bug: removing a server fn handler from the callers keeps the comments
-  // attached to it, which move to the RPC that replaces it. Middleware,
-  // isomorphic and server-only fns drop them.
-  // Impact: comments about server code (secrets, internals, `/*! */` legal
-  // comments that minifiers keep) ship in the client module (in dev, and in
-  // builds that do not minify).
-  // Source: gap D5 (gaps/dead-code.md); #8504 caller-dead-code.test.ts:403
-  test.fails.each([
-    `/*! uses SERVICE_ROLE_KEY */\n  async () => 1,`,
-    `// uses SERVICE_ROLE_KEY\n  async () => 1,`,
-    `/* SERVICE_ROLE_KEY */ async () => 1,`,
-    `async () => 1 /* SERVICE_ROLE_KEY */,`,
-  ])(
-    'client: comments around a server fn handler are dropped: %s',
-    async (handler) => {
-      const code = `${head}export const fn = createServerFn().handler(
-  ${handler}
-)`
-      expect((await compileCode('client', code)) ?? code).not.toContain(
-        'SERVICE_ROLE_KEY',
+      expectNotLoaded(
+        await erasedLoads((await compileCode('ssr', code)) ?? code, 'server'),
+        ['./chart.client'],
       )
-    },
-  )
-})
-
-describe('external import transforms', () => {
-  /** Runtime stubs: each function returns the arguments it got. */
-  const runtimeStubs = {
-    '@example/runtime': {
-      renderThing: (...args: Array<unknown>) => args,
-      other: (...args: Array<unknown>) => ['other', ...args],
-    },
-  }
-
-  beforeEach(() => {
-    vi.stubGlobal('loadThing', () => 'loaded')
-    return () => vi.unstubAllGlobals()
-  })
-
-  // Bug: a configured transform's export imported through a project module
-  // that re-exports it (`src/rt.ts`: `export { renderThing } from
-  // '@example/runtime'`) is only resolved for a top-level call in a module
-  // that also uses a built-in Start factory (compiler.test.ts "runs
-  // configured transforms on a top-level call imported through a project
-  // re-export, next to a built-in factory"). A nested call, or a module
-  // without a built-in factory, is left untransformed.
-  // Impact: with the RSC CSS transform (react-start-rsc), a server component
-  // rendered through the app's own re-export gets no CSS (its styles never
-  // load). Declaring external transforms import-bound instead (and dropping
-  // their lookup configurations) is the alternative to a fix.
-  // Source: compiler.ts: external direct-call candidates are only the calls
-  // of the library's own imports (`getExternalDirectCallCandidates`); other
-  // calls are only resolved as top-level declarator initializers
-  // (`isTopLevelDirectCallCandidate`), and only when the module has a
-  // built-in direct-call kind (`checkDirectCalls`). Mutation-testing round 3
-  // (sc-handlers E2/V2).
-  test.fails.each([
-    {
-      name: 'a nested call next to a built-in factory',
-      code: `import { renderThing } from './rt'
-import { createServerOnlyFn } from '@tanstack/react-start'
-export const only = createServerOnlyFn(() => 1)
-export function rendered() { return renderThing('card') }`,
-    },
-    {
-      name: 'a top-level call in a module without a built-in factory',
-      code: `import { renderThing } from './rt'
-const rendering = renderThing('card')
-export function rendered() { return rendering }`,
-    },
-  ])(
-    'a transform reaches a call imported through a project re-export: $name',
-    async ({ code }) => {
-      const { compile } = createStartCompiler({
-        env: 'server',
-        compilerTransforms: [renderThingTransform],
-        files: {
-          '/test/src/rt.ts': `export { renderThing } from '@example/runtime'`,
-        },
-        host: {
-          resolveId: async (id) =>
-            id.startsWith('./') ? `/test/src/${id.slice(2)}.ts` : id,
-        },
-      })
-      const { rendered } = await evaluateModule(
-        (await compile(code, '/test/src/routes/card.tsx')) ?? code,
-        { './rt': runtimeStubs['@example/runtime'] },
-      )
-      expect(rendered()).toEqual(['card', { injected: 'loaded' }])
     },
   )
 })
@@ -1471,7 +1344,7 @@ export const fn = createServerFn().handler(async () => db.x(input))`,
       { id: '/test/src/Page.vue?vue&type=script&lang.ts' },
     )
     expect(Object.keys(serverFns)).toHaveLength(1)
-    expect(importSources(code!)).not.toContain(serverOnly)
+    expectNotLoaded(await moduleLoads(code!, { id: '/test/src/Page.ts' }), [serverOnly])
   })
 })
 

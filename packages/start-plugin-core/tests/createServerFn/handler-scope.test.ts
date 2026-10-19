@@ -8,10 +8,11 @@ import {
   createServerGraph,
   evaluateModule,
   evaluateProvider,
-  importSources,
+  moduleLoads,
   outputs,
 } from '../regression-helpers'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
+import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import type { Output } from '../regression-helpers'
 
 // The provider module runs the extracted handler: it must keep every module
@@ -34,7 +35,7 @@ enum Role {
   Admin = 'admin',
 }
 export const fn = createServerFn().handler(async () => [ns.x, counter, Repo.get(), Role.Admin])`)
-  expect(importSources(compiled.client)).toEqual([])
+  expectNotLoaded(await moduleLoads(compiled.client), ['./ns'])
   expect(
     await callProvider(compiled, 'fn', { './ns': `export const x = 'ns'` }),
   ).toEqual(['ns', 4, 'repo', 'admin'])
@@ -47,16 +48,19 @@ const handlerStubs = {
 }
 
 /**
- * Compiles a module with the server fn `fn`: the client imports nothing and
- * calls it through its RPC, whose id runs the handler on the server, as does
- * calling it from the SSR caller (`callServerFnThroughCallers`). Returns what
- * the handler returns.
+ * Compiles a module with the server fn `fn`: the client loads none of the
+ * server modules the handler reads and calls it through its RPC, whose id
+ * runs the handler on the server, as does calling it from the SSR caller
+ * (`callServerFnThroughCallers`). Returns what the handler returns.
  */
 async function callHandler(code: string) {
   const compiled = await compileAll(
     `${head}${code.includes('db.') ? `import { db } from './db.server'\n` : ''}${code}`,
   )
-  expect(importSources(compiled.client), 'client').toEqual([])
+  expectNotLoaded(
+    await moduleLoads(compiled.client),
+    Object.keys(handlerStubs),
+  )
   return callServerFnThroughCallers(
     compiled,
     (module) => module.fn,
@@ -204,7 +208,7 @@ export const fn = createServerFn().handler(async () => <string>identity(<unknown
       output,
     ).toEqual([])
   }
-  expect(importSources(compiled.client)).toEqual([])
+  expectNotLoaded(await moduleLoads(compiled.client, { id }), ['./db.server'])
   // Linked under the `.ts` id, the modules are evaluated as TypeScript.
   const server = { ssr: compiled.ssr, provider: compiled.provider, id }
   const stubs = { './db.server': dbServer }
