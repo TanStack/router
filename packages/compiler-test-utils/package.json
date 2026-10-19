@@ -52,7 +52,6 @@
     "@rsbuild/core": "catalog:",
     "esbuild": "^0.28.2",
     "globals": "^16.2.0",
-    "jsdom": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
     "webpack": "^5.104.1"
