@@ -9,6 +9,7 @@ import {
   BuildError,
   bundlers,
 } from '@tanstack/compiler-test-utils/build-harness'
+import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { build, buildWithRsbuild, routeApp } from '../build-harness'
 import { head } from '../regression-helpers'
 import type {
@@ -132,16 +133,14 @@ test(
 // nothing. The code splitter's esbuild adapter also never initialises its
 // config (no `esbuild` hook calls `initUserConfig`), so it would throw once
 // it saw a route file.
-// Splitting, or telling the user that esbuild cannot (a build error or a
-// warning naming esbuild and `autoCodeSplitting`), are both valid fixes
-// (decision D3 (c)).
+// Splitting, or refusing clearly (a build error naming esbuild and
+// `autoCodeSplitting`), are both valid fixes (decision D3 (c), SPEC J2.18);
+// a warning on a successful unsplit build is not a refusal.
 // Impact: `tanstackRouter({ autoCodeSplitting: true })` with esbuild bundles
 // every route component into the entry, without telling the user.
 test.fails.each(['ssr', 'client'] as const)(
-  'router plugin with esbuild loads a split component lazily and renders it, or says it cannot (%s)',
+  'router plugin with esbuild loads a split component lazily and renders it, or refuses naming esbuild and the option (%s)',
   async (env) => {
-    const saysEsbuildCannotSplit = (message: string) =>
-      /esbuild/i.test(message) && /autoCodeSplitting/.test(message)
     let app: BuildResult
     try {
       app = await build({
@@ -150,17 +149,10 @@ test.fails.each(['ssr', 'client'] as const)(
         files: routeApp(splitRoute, { env, files: { 'heavy.ts': heavy } }),
       })
     } catch (error) {
-      if (
-        error instanceof BuildError &&
-        error.errors.some(saysEsbuildCannotSplit)
-      ) {
-        return
+      if (!(error instanceof BuildError)) {
+        throw error
       }
-      throw error
-    }
-    if (
-      [...app.warnings, ...app.consoleMessages].some(saysEsbuildCannotSplit)
-    ) {
+      expectDiagnostic(error, { names: ['esbuild', 'autoCodeSplitting'] })
       return
     }
     expect(await describeSplitRoute(app, env)).toEqual(splitRouteExpected[env])

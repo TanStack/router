@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  captureConsole,
+  expectDiagnostic,
+} from '@tanstack/compiler-test-utils/diagnostics'
+import {
   compileRouteModules,
   declaredNames,
   evaluateModule,
@@ -576,10 +580,14 @@ export const Route = createFileRoute('/')({
     expect(await route.render('component')).toBe('<p>22</p>')
   })
 
-  // Source: React Router remove-exports-test.ts "iife with dependencies"
+  // Source: React Router remove-exports-test.ts "iife with dependencies".
+  // The IIFE has no purity hint, so a compiler may also keep it eager, once,
+  // and warn once naming the file and the option (J2.8); splitting it with
+  // its dependencies is the better outcome.
   it('moves a component created by an IIFE with its dependencies, next to a helper the loader uses too', async () => {
-    const route = await loadRoute(
-      `${head}import { removedLib } from 'removed-lib'
+    const { result: route, diagnostics } = await captureConsole(() =>
+      loadRoute(
+        `${head}import { removedLib } from 'removed-lib'
 import { keptLib } from 'kept-lib'
 import { sharedLib } from 'shared-lib'
 const sharedUtil = (value?: unknown) => sharedLib(value)
@@ -594,21 +602,32 @@ export const Route = createFileRoute('/')({
   component: Page,
 })
 `,
-      {
-        stubs: {
-          'removed-lib': { removedLib: () => 'removed' },
-          'kept-lib': { keptLib: () => 'kept' },
-          'shared-lib': { sharedLib: (value: unknown) => `shared:${value}` },
+        {
+          stubs: {
+            'removed-lib': { removedLib: () => 'removed' },
+            'kept-lib': { keptLib: () => 'kept' },
+            'shared-lib': { sharedLib: (value: unknown) => `shared:${value}` },
+          },
         },
-      },
+      ),
     )
     const { modules } = route
-    // Nothing that loads with the route requests what only the component
-    // reads, nothing the component loads requests what only the loader reads.
-    expect(route.eager).not.toContain('removed-lib')
-    expect(
-      (await route.loadedBy('component')).flatMap(importSources),
-    ).not.toContain('kept-lib')
+    if (await route.isLazy('component')) {
+      // Nothing that loads with the route requests what only the component
+      // reads, nothing the component loads requests what only the loader
+      // reads.
+      expect(route.eager).not.toContain('removed-lib')
+      expect(
+        (await route.loadedBy('component')).flatMap(importSources),
+      ).not.toContain('kept-lib')
+    } else {
+      expectDiagnostic(diagnostics, {
+        severity: 'warning',
+        file: route.ids.reference!,
+        names: ['component'],
+        times: 1,
+      })
+    }
     await expectValidModules(modules)
     expect([route.options.loader(), await route.render('component')]).toEqual([
       'shared:kept',

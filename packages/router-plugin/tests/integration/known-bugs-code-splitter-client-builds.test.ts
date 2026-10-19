@@ -6,6 +6,7 @@
  */
 
 import { describe, expect, test } from 'vitest'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { build, routeApp } from '../build-harness'
 import { head } from '../regression-helpers'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
@@ -83,11 +84,12 @@ export const Route = createFileRoute('/')({
           { env: 'client' },
         ),
       })
-      const reported = [...app.warnings, ...app.consoleMessages].some(
-        (message) =>
-          message.includes('routes/index.tsx') &&
-          /\b(?:component|Page)\b/.test(message),
-      )
+      const reported =
+        findDiagnostics([...app.warnings, ...app.consoleMessages], {
+          file: 'routes/index.tsx',
+          root: app.root,
+          names: ['component'],
+        }).length > 0
       expect({
         lazy: app.where('MARK_PAGE') === 'lazy',
         reported,
@@ -124,11 +126,12 @@ export function PostErrorComponent() {
       const { result: lazy } = await app.run(
         `return typeof entry.Route.options.errorComponent.preload === 'function'`,
       )
-      const reported = [...app.warnings, ...app.consoleMessages].some(
-        (message) =>
-          message.includes('routes/index.tsx') &&
-          /\b(?:PostErrorComponent|errorComponent)\b/.test(message),
-      )
+      const reported =
+        findDiagnostics([...app.warnings, ...app.consoleMessages], {
+          file: 'routes/index.tsx',
+          root: app.root,
+          names: ['errorComponent'],
+        }).length > 0
       const placement = app.where('MARK_POST_ERROR_END')
       expect(['lazy', 'eager']).toContain(placement)
       expect({ splitOrReported: lazy === true || reported }).toEqual({

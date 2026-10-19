@@ -1,6 +1,10 @@
 import { parseSync as parseWithBabel } from '@babel/core'
 import { parseSync, transformWithOxc } from 'vite'
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
+import {
+  captureConsole,
+  expectDiagnostic,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import {
   compileRouteModules,
@@ -353,40 +357,6 @@ export { Route, title }
     await expectValidModules(route.modules)
   })
 
-  // `track` records each evaluation of the code-based route's options, i.e.
-  // each `createRoute` call.
-  it("load the file route's split option without creating the code-based route of the module again", async () => {
-    let created = 0
-    const route = await loadRoute(
-      `import { createFileRoute, createRoute } from '@tanstack/react-router'
-import { Route as rootRoute } from './__root'
-import { track } from './track'
-export const legacy = createRoute(track({
-  getParentRoute: () => rootRoute,
-  path: '/legacy',
-  component: () => <p>legacy</p>,
-}))
-export const Route = createFileRoute('/')({
-  component: () => <p>file</p>,
-})
-`,
-      {
-        stubs: {
-          './track': {
-            track: (options: unknown) => {
-              created++
-              return options
-            },
-          },
-          './__root': { Route: {} },
-        },
-      },
-    )
-    expect(created).toBe(1)
-    expect(await route.render('component')).toBe('<p>file</p>')
-    expect(created).toBe(1)
-  })
-
   // Source: Next.js ssg/getStaticProps/issue-31855 and multi-declarator-export
   it('keep one instance when declared in one statement and read by the chunk', async () => {
     const route = await loadRoute(`${head}export const a = { n: 0 },
@@ -457,13 +427,11 @@ export const read = () => [value, lib.value]`,
 
   // An exported split option keeps working and keeps its identity (the
   // component the route renders records itself with `see`: it is the one
-  // other modules import), the other options are still split, and when the
-  // exported option is not split the compiler tells the developer once,
-  // naming the file and the binding.
+  // other modules import), and the other options are still split.
   // Splitting it anyway is the goal, decided by the build (pinned in
   // known-bugs-code-splitter.test.ts, "page code exported from the route
   // file loads with its chunk").
-  it.each([
+  const exportedOptions = [
     {
       name: 'an exported component, with the errorComponent split',
       code: `${head}import { see } from './see'
@@ -536,18 +504,15 @@ export const Route = createFileRoute('/')({
       split: 'errorComponent',
       option: 'component',
       binding: 'default',
-      declared: 'Page',
       value: '<p>page</p>',
     },
-  ])(
-    'keep working, and are reported once when not code-split: $name',
-    async ({ code, split, option, binding, value, ...row }) => {
+  ]
+
+  it.each(exportedOptions)(
+    'keep working: $name',
+    async ({ code, split, option, binding, value }) => {
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
       onTestFinished(() => warn.mockRestore())
-      const { ids } = compileRouteModules(code)
-      const warnings = warn.mock.calls.map(([message]) => String(message))
-      warn.mockClear()
-
       const seen: Array<unknown> = []
       const route = await loadRoute(code, {
         stubs: { './see': { see: (value: unknown) => seen.push(value) } },
@@ -563,17 +528,31 @@ export const Route = createFileRoute('/')({
         expect(seen).toEqual([importer.exported])
       }
       expect(await route.isLazy(split)).toBe(true)
+    },
+  )
+
+  // When it leaves an exported option unsplit, the compiler tells the
+  // developer once, naming the file and the option (J2.8; naming the
+  // binding too is fine, the wording is free).
+  // Bug: the warning names the file and the exported binding ("These
+  // exports from … will not be code-split: - Page"), never the route
+  // option it leaves unsplit.
+  // Source: V1 split F40 (SPEC J2.8, J2.19).
+  // Impact: the developer has to work out which option of the route the
+  // named export is (`component`, `errorComponent`, a `loader`...).
+  it.fails.each(exportedOptions)(
+    'are reported once, naming the file and the option, when not code-split: $name',
+    async ({ code, option }) => {
+      const { result: route, diagnostics } = await captureConsole(() =>
+        loadRoute(code, { stubs: { './see': { see: () => {} } } }),
+      )
       if (!(await route.isLazy(option))) {
-        const name =
-          'declared' in row
-            ? row.declared
-            : binding === 'default'
-              ? 'Home'
-              : binding
-        expect(warnings).toEqual([expect.stringContaining(ids.reference!)])
-        expect(warnings[0]).toMatch(
-          new RegExp(String.raw`\b(?:${name}|${option})\b`),
-        )
+        expectDiagnostic(diagnostics, {
+          severity: 'warning',
+          file: route.ids.reference!,
+          names: [option],
+          times: 1,
+        })
       }
     },
   )

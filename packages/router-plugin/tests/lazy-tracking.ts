@@ -58,6 +58,7 @@ import {
 import { transformWithOxc } from 'vite'
 import { createRouteGraphCompiler, labelRouteModules } from './plugin-host'
 import type { ModuleStub } from '@tanstack/compiler-test-utils/module-linker'
+import type { ProjectJsx } from '@tanstack/compiler-test-utils/validate-module'
 import type { CompileOptions, RouteGraph, TargetFramework } from './plugin-host'
 
 /**
@@ -162,6 +163,31 @@ export type LoadRouteOptions = CompileOptions & {
    * `createModuleGraph`).
    */
   verbatimModuleSyntax?: boolean
+  /**
+   * The JSX settings of the route's project, which Vite's transform starts
+   * from before it reads each module's own pragmas (React apps only; default
+   * React's automatic runtime, as `@vitejs/plugin-react` configures it): e.g.
+   * `{ runtime: 'classic' }` for a project whose tsconfig selects the classic
+   * runtime, where a lone `@jsx` pragma applies.
+   */
+  jsx?: ProjectJsx
+}
+
+/**
+ * Vite's transform (Oxc) started from the project's JSX settings (`jsx` of
+ * `LoadRouteOptions`), erasing TypeScript like the linker's default.
+ */
+function projectJsxTransform(options: LoadRouteOptions) {
+  return async (code: string, id: string) => {
+    const result = await transformWithOxc(code, 'module', {
+      lang: moduleLang(id),
+      jsx: { runtime: 'automatic', importSource: 'react', ...options.jsx },
+      typescript: {
+        onlyRemoveTypeImports: options.verbatimModuleSyntax ?? true,
+      },
+    })
+    return result.code
+  }
 }
 
 /** Import specifier of the route file in the modules `importFromRoute` adds. */
@@ -253,7 +279,9 @@ async function linkRoute(
           transform: (code: string, id: string) =>
             transformWithReactRefresh(code, id, options.verbatimModuleSyntax),
         }
-      : { transform: frameworkTransform(framework, packagesDirectory) }),
+      : options.jsx
+        ? { transform: projectJsxTransform(options) }
+        : { transform: frameworkTransform(framework, packagesDirectory) }),
   })
   const exports = await moduleGraph.import(graph.id)
   const Route = exports.Route as

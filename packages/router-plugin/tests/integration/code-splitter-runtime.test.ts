@@ -106,16 +106,18 @@ export function render() {
       source.split('\n').findIndex((line) => line.includes('throw new Error')) +
       1
     const entryUrl = pathToFileURL(path.join(root, 'dist/entry.mjs')).href
-    // When `createComponentLabel()` runs (with the route module or with the
-    // component's chunk) is free; that every initialiser runs exactly once,
-    // and the ones the route module reads before it is used, is not.
+    // When each initialiser runs (with the route module, or with the first
+    // module that needs it) is free (SPEC G3); that every initialiser runs
+    // exactly once, and that the state the entry re-exports is ready when
+    // the entry has loaded, is not.
     // In a child process that never outlives the test worker
     const { stdout } = await runNodeProgram(
       `import assert from 'node:assert/strict'
 const messages = []
 console.log = (message) => messages.push(message)
 const { Route, render, firstState, secondState, 'odd-name': oddState } = await import(${JSON.stringify(entryUrl)})
-assert.deepEqual(messages.filter((message) => message !== 'shared-runtime:component'), ['shared-runtime:seed', 'shared-runtime:state', 'shared-runtime:reference'])
+assert.deepEqual(messages, [...new Set(messages)])
+assert.ok(messages.includes('shared-runtime:reference'))
 const state = Route.options.beforeLoad({})
 assert.strictEqual(firstState, state)
 assert.strictEqual(secondState, state)

@@ -6,6 +6,7 @@
  */
 import { BuildError } from '@tanstack/compiler-test-utils/build-harness'
 import { describe, expect, test } from 'vitest'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { build, routeApp } from '../build-harness'
 import { head } from '../regression-helpers'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
@@ -219,20 +220,22 @@ export const Route = createFileRoute('/')({
 
 describe('production builds', () => {
   /**
-   * A production client build of a route the code splitter warns about
-   * (today: an exported component it cannot split), with `NODE_ENV` as
-   * given (`null`: unset); returns whether the build warned, naming the
-   * route file, and where the app's absolute path (which the warning names)
-   * is in the bundle.
+   * A production client build, with `NODE_ENV` as given (`null`: unset), of
+   * a route whose exported component the app's entry imports eagerly
+   * (`export * from './routes/index'`): a pattern the compiler may leave
+   * unsplit, telling the user at build time (J2.8). Mounts the route in the
+   * browser; returns whether the component was split, whether the build
+   * warned naming the route file, and whether the page logged a diagnostic
+   * naming the route file (a development warning shipped in the bundle).
    */
-  async function warningPlacement(bundler: Bundler, nodeEnv?: null) {
+  async function productionWarnings(bundler: Bundler, nodeEnv?: null) {
     const app = await build({
       bundler,
       env: 'client',
       nodeEnv,
       files: routeApp(
         `${head}export function Page() {
-  return <p>page</p>
+  return <p>MARK_PAGE</p>
 }
 export const Route = createFileRoute('/')({
   component: Page,
@@ -242,24 +245,30 @@ export const Route = createFileRoute('/')({
         { env: 'client' },
       ),
     })
+    const run = await app.run(
+      'await entry.mount(entry.Route.options.component)',
+    )
+    expect(run.html).toContain('MARK_PAGE')
+    const namingRoute = { file: 'routes/index.tsx', root: app.root }
     return {
-      warned: [...app.warnings, ...app.consoleMessages].some((message) =>
-        message.includes('routes/index.tsx'),
-      ),
-      appPath: app.where(app.root),
+      split: app.where('MARK_PAGE') === 'lazy',
+      // The option name is pinned in code-splitter-imports-exports.test.ts
+      warned:
+        findDiagnostics([...app.warnings, ...app.consoleMessages], namingRoute)
+          .length > 0,
+      loggedInPage: findDiagnostics(run.logs, namingRoute).length > 0,
     }
   }
 
-  // Control for the pin below: with `NODE_ENV=production` exported. Its
-  // first assertion is a precondition of both tests, not a requirement:
-  // without a warning, the bundle has nothing to leak, so once the code
-  // splitter splits this route, use another route it warns about.
+  // Control for the pin below: with `NODE_ENV=production` exported, the
+  // build warns when it leaves the exported component eager (never when it
+  // splits it), and the page logs nothing.
   test.each(['rspack', 'webpack'] as const)(
-    'a production client bundle has no development warning (%s)',
+    'a production client bundle logs no development warning in the page; the build warns when the exported component stays eager (%s)',
     async (bundler) => {
-      const { warned, appPath } = await warningPlacement(bundler)
-      expect(warned, 'precondition: the route makes the build warn').toBe(true)
-      expect(appPath).toBe('nowhere')
+      const { split, warned, loggedInPage } = await productionWarnings(bundler)
+      expect(split || warned).toBe(true)
+      expect(loggedInPage).toBe(false)
     },
     60_000,
   )
@@ -273,9 +282,9 @@ export const Route = createFileRoute('/')({
   // `NODE_ENV` log a development warning in every user's console, with the
   // developer's absolute file path.
   test.fails.each(['rspack', 'webpack'] as const)(
-    'a production client bundle has no development warning when NODE_ENV is unset (%s)',
+    'a production client bundle logs no development warning in the page when NODE_ENV is unset (%s)',
     async (bundler) => {
-      expect((await warningPlacement(bundler, null)).appPath).toBe('nowhere')
+      expect((await productionWarnings(bundler, null)).loggedInPage).toBe(false)
     },
     60_000,
   )

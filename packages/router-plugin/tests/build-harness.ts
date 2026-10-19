@@ -13,6 +13,7 @@
  * `vite-plugin-solid` (Vite) or `babel-preset-solid` (webpack, Rspack), Vue
  * with the automatic JSX runtime of `vue`.
  */
+import { writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -26,8 +27,10 @@ import {
   statsOptions,
   withBuildEnvironment,
 } from '@tanstack/compiler-test-utils/build-harness'
+import { mergeRsbuildConfig } from '@rsbuild/core'
 import { onTestFinished } from 'vitest'
 import type {
+  App,
   AppInfo,
   AppOptions,
   BuildEnv,
@@ -37,7 +40,7 @@ import type {
   EmittedChunk,
   StatsJson,
 } from '@tanstack/compiler-test-utils/build-harness'
-import type { RsbuildPlugin } from '@rsbuild/core'
+import type { RsbuildConfig, RsbuildPlugin } from '@rsbuild/core'
 import type { Config } from '../src/core/config'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
@@ -322,22 +325,39 @@ export async function buildWithRsbuild(
      * Rsbuild CLI sets it; `null` unsets it).
      */
     nodeEnv?: string | null
+    /**
+     * Builds an app that already exists at this root (its files as they
+     * are; `files` is ignored) instead of writing a new one, e.g. to build
+     * the same app again with a persistent build cache. The caller owns the
+     * directory.
+     */
+    root?: string
+    /** Rsbuild configuration merged over the harness's. */
+    rsbuildConfig?: RsbuildConfig
   },
 ): Promise<BuildResult> {
   const { pluginOptions = {}, nodeEnv = 'production' } = options
-  const app = await createApp({
-    dir: harnessDir,
-    prefix: '.build-harness-rsbuild-',
-    registerCleanup: options.registerCleanup ?? onTestFinished,
-    packageJson: options.packageJson,
-    sideEffects: options.sideEffects,
-    files: {
-      ...options.files,
-      'harness-entry.ts': `import * as entry from './entry'
+  const harnessEntry = `import * as entry from './entry'
 ;(globalThis as any).${rsbuildEntryGlobal} = entry
-`,
-    },
-  })
+`
+  let app: App
+  if (options.root === undefined) {
+    app = await createApp({
+      dir: harnessDir,
+      prefix: '.build-harness-rsbuild-',
+      registerCleanup: options.registerCleanup ?? onTestFinished,
+      packageJson: options.packageJson,
+      sideEffects: options.sideEffects,
+      files: { ...options.files, 'harness-entry.ts': harnessEntry },
+    })
+  } else {
+    await writeFile(path.join(options.root, 'harness-entry.ts'), harnessEntry)
+    app = {
+      root: options.root,
+      bundle: () => Promise.reject(new Error('not an app of the harness')),
+      dispose: () => Promise.resolve(),
+    }
+  }
   try {
     const { createRsbuild } = await import('@rsbuild/core')
     const { tanstackRouter } = await import('../src/rspack')
@@ -369,37 +389,40 @@ export async function buildWithRsbuild(
         const rsbuild = await createRsbuild({
           cwd: app.root,
           loadEnv: false,
-          rsbuildConfig: {
-            root: app.root,
-            mode: 'production',
-            logLevel: 'silent',
-            source: { entry: { index: './harness-entry.ts' } },
-            output: { module: true },
-            tools: {
-              htmlPlugin: false,
-              swc: {
-                jsc: { transform: { react: { runtime: 'automatic' } } },
+          rsbuildConfig: mergeRsbuildConfig(
+            {
+              root: app.root,
+              mode: 'production',
+              logLevel: 'silent',
+              source: { entry: { index: './harness-entry.ts' } },
+              output: { module: true },
+              tools: {
+                htmlPlugin: false,
+                swc: {
+                  jsc: { transform: { react: { runtime: 'automatic' } } },
+                },
+                rspack: {
+                  plugins: [
+                    tanstackRouter({
+                      target: 'react',
+                      autoCodeSplitting: true,
+                      ...pluginOptions,
+                      routesDirectory: path.resolve(
+                        app.root,
+                        pluginOptions.routesDirectory ?? 'routes',
+                      ),
+                      generatedRouteTree: path.resolve(
+                        app.root,
+                        pluginOptions.generatedRouteTree ?? 'routeTree.gen.ts',
+                      ),
+                    }),
+                  ],
+                },
               },
-              rspack: {
-                plugins: [
-                  tanstackRouter({
-                    target: 'react',
-                    autoCodeSplitting: true,
-                    ...pluginOptions,
-                    routesDirectory: path.resolve(
-                      app.root,
-                      pluginOptions.routesDirectory ?? 'routes',
-                    ),
-                    generatedRouteTree: path.resolve(
-                      app.root,
-                      pluginOptions.generatedRouteTree ?? 'routeTree.gen.ts',
-                    ),
-                  }),
-                ],
-              },
+              plugins: [outputPlugin],
             },
-            plugins: [outputPlugin],
-          },
+            options.rsbuildConfig ?? {},
+          ),
         })
         await rsbuild.build()
       } catch (error) {

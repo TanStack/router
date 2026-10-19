@@ -578,7 +578,7 @@ ${groupings}  loader: () => 'data',
   // known-bugs-code-splitter.test.ts; until then the route is refused
   // clearly, never split with other groupings.
   it('of the route given through a variable are honoured or refused with an error naming codeSplitGroupings', async () => {
-    const code = `${head}const groupings = [['loader'], ['component']]
+    const code = `${head}const groupings: Array<Array<'loader' | 'component'>> = [['loader'], ['component']]
 export const Route = createFileRoute('/')({
   codeSplitGroupings: groupings,
   loader: () => 'data',

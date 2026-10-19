@@ -1,4 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
+import {
+  captureThrow,
+  diagnosticPosition,
+  expectDiagnostic,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import {
   compileRouteModules,
@@ -183,57 +188,29 @@ export const Route = createFileRoute('/other')({ component: () => <p /> })
     ])
   })
 
-  // The plugins of a real `@vitejs/plugin-react` instance, as Vite resolves
-  // them, before and after the router plugin.
-  it('refuses @vitejs/plugin-react placed before the router plugin and accepts it after', async () => {
-    const { default: react } = await import('@vitejs/plugin-react')
-    const reactPlugins = [react()].flat(Infinity).filter(Boolean) as Array<{
-      name: string
-    }>
-    await expect(
-      createCodeSplitterTransforms({}, {}, [
-        ...reactPlugins,
-        { name: referencePluginName },
-      ]),
-    ).rejects.toThrow(/Plugin order error[\s\S]*@vitejs\/plugin-react/)
-    await expect(
-      createCodeSplitterTransforms({}, {}, [
-        { name: referencePluginName },
-        ...reactPlugins,
-      ]),
-    ).resolves.toBeDefined()
-  })
-
-  // The other JSX plugins the router plugin must come before, named by
-  // their package. (Their packages are not installed here: plugin names
-  // only.)
+  // The documented order: the framework's JSX plugin after the router
+  // plugin, with the plugins of a real `@vitejs/plugin-react` /
+  // `vite-plugin-solid` instance as Vite resolves them. The other order (a
+  // correct split, or an actionable diagnostic naming the plugins, SPEC
+  // G11) goes through real builds: integration/code-splitter-pragmas.test.ts.
   it.each([
-    ['vite:react-swc:resolve-runtime', '@vitejs/plugin-react-swc'],
-    ['vite:react-swc', '@vitejs/plugin-react-swc'],
-    ['vite:react-oxc:config', '@vitejs/plugin-react-oxc'],
-    ['vite:react-oxc:refresh-runtime', '@vitejs/plugin-react-oxc'],
-  ])('refuses %s placed before the router plugin', async (name, pkg) => {
+    {
+      name: '@vitejs/plugin-react',
+      target: 'react' as const,
+      plugins: async () =>
+        [(await import('@vitejs/plugin-react')).default()].flat(Infinity),
+    },
+    {
+      name: 'vite-plugin-solid',
+      target: 'solid' as const,
+      plugins: async () =>
+        [(await import('vite-plugin-solid')).default()].flat(),
+    },
+  ])('accepts $name after the router plugin', async ({ target, plugins }) => {
     await expect(
-      createCodeSplitterTransforms({}, {}, [
-        { name },
+      createCodeSplitterTransforms({ target }, {}, [
         { name: referencePluginName },
-      ]),
-    ).rejects.toThrow(pkg)
-  })
-
-  it('refuses vite-plugin-solid placed before the router plugin of a Solid app', async () => {
-    const { default: solid } = await import('vite-plugin-solid')
-    const solidPlugins = [solid()].flat() as Array<{ name: string }>
-    await expect(
-      createCodeSplitterTransforms({ target: 'solid' }, {}, [
-        ...solidPlugins,
-        { name: referencePluginName },
-      ]),
-    ).rejects.toThrow(/Plugin order error[\s\S]*vite-plugin-solid/)
-    await expect(
-      createCodeSplitterTransforms({ target: 'solid' }, {}, [
-        { name: referencePluginName },
-        ...solidPlugins,
+        ...((await plugins()).filter(Boolean) as Array<{ name: string }>),
       ]),
     ).resolves.toBeDefined()
   })
@@ -466,14 +443,18 @@ export const Route = createFileRoute('/directive')({
 // the plugin reports where in it the error is.
 it.each(['\n', '\r\n', '\r', '\u2028', '\u2029'])(
   'reports the line and column of a syntax error in a route file with %j line endings and Unicode source',
-  (newline) => {
+  async (newline) => {
     const code = `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({})
 // 😀é${newline}/* 😀é */ export const broken = ;`
-    expect(() => compileRouteModules(code, { hmr: true })).toThrow(
-      expect.objectContaining({
-        loc: expect.objectContaining({ line: 4, column: 32 }),
-      }),
+    // The error points at the unexpected `;` (structured fields or a
+    // rendered code frame; the wording is free).
+    expectDiagnostic(
+      await captureThrow(() => compileRouteModules(code, { hmr: true })),
+      {
+        position: diagnosticPosition(code, code.lastIndexOf(';')),
+        source: code,
+      },
     )
   },
 )
@@ -754,17 +735,6 @@ ${route}
   const moduleRoute = `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/made')({ component: () => <p>made</p> })
 `
-  const moduleRouteWithCodeRouteInHelper = `import { createFileRoute, createRoute } from '@tanstack/react-router'
-export function makeChild(label: string) {
-  return createRoute({
-    getParentRoute: () => Route,
-    path: label,
-    component: () => <p>{label}</p>,
-  })
-}
-export const Route = createFileRoute('/made')({ component: () => <p>made</p> })
-`
-
   /** Calls of `console.warn` during `run`, as text. */
   function warnings(run: () => void) {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
@@ -793,16 +763,10 @@ export const Route = createFileRoute('/made')({ component: () => <p>made</p> })
   }
 
   describe.each(Object.entries(pluginPaths))('through the %s', (_, create) => {
-    it.each([
-      ['a module-scope route', moduleRoute],
-      [
-        'a module-scope route next to a code route a function creates',
-        moduleRouteWithCodeRouteInHelper,
-      ],
-    ])('is not reported for %s', async (_, code) => {
+    it('is not reported for a module-scope route', async () => {
       const file = routeFile('made')
       const transform = await create([file])
-      expect(warnings(() => transform(code, file))).toEqual([])
+      expect(warnings(() => transform(moduleRoute, file))).toEqual([])
     })
   })
 

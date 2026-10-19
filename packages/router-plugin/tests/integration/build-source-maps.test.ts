@@ -1,18 +1,23 @@
 /**
  * Source maps of real client builds point at the code the user wrote: an
  * error thrown inside a split route component maps, through the emitted
- * source map of the chunk it runs in, to the line of the throw in the route
- * file. (That the maps name split code by the route file, without the
- * virtual module's query, is pinned in known-bugs-code-splitter.test.ts,
- * "source maps".)
+ * source map of the chunk it runs in, to the line (and, unminified, the
+ * column) of the throw in the route file, also when another plugin
+ * transformed the file before the router plugin (composed maps). Map
+ * layout, `names` and granularity are free (SPEC G6, §5.14). (That the maps
+ * name split code by the route file, without the virtual module's query, is
+ * pinned in known-bugs-code-splitter.test.ts, "source maps".)
  */
 import { describe, expect, test } from 'vitest'
+import { originalFrameOf } from '@tanstack/compiler-test-utils/build-harness'
 import {
-  namedSegments,
-  originalFrameOf,
-} from '@tanstack/compiler-test-utils/build-harness'
+  findNodes,
+  positionAt,
+} from '@tanstack/compiler-test-utils/source-maps'
 import { build, routeApp, routeHead } from '../build-harness'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
+import type { SyntaxNode } from '@tanstack/compiler-test-utils/source-maps'
+import type { RouterPluginOptions } from '../build-harness'
 
 const timeout = 60_000
 
@@ -45,9 +50,46 @@ export async function mountError(component: any) {
 }
 `
 
-/** 1-based line of the first occurrence of `needle` in `code`. */
-function lineOf(code: string, needle: string) {
-  return code.slice(0, code.indexOf(needle)).split('\n').length
+/**
+ * Where the error of the first `throw` statement of `code` is created (its
+ * `new Error(...)`, which a stack frame points at): 1-based line and column,
+ * as `originalFrameOf` reports them.
+ */
+function thrownAt(code: string) {
+  const [statement] = findNodes(
+    code,
+    (node) => node.type === 'ThrowStatement',
+    { filename: 'route.tsx' },
+  )
+  const { line, column } = positionAt(
+    code,
+    (statement!.argument as SyntaxNode).start,
+  )
+  return { line, column: column + 1 }
+}
+
+/**
+ * Asserts that the innermost frame of `stack` in a chunk of `app` maps to
+ * the throw of `source` (`routes/index.tsx`): its line always, its column
+ * unless the build minified (minifiers map the throw to different tokens of
+ * the statement).
+ */
+function expectFrameAtThrow(
+  app: Parameters<typeof originalFrameOf>[0],
+  stack: unknown,
+  source: string,
+  { minify }: { minify: boolean },
+) {
+  const { file, line, column } = originalFrameOf(app, stack as string) ?? {}
+  const expected = thrownAt(source)
+  expect(
+    minify ? { file, line } : { file, line, column },
+    `the frame of ${String(stack).split('\n')[1]?.trim()}`,
+  ).toEqual(
+    minify
+      ? { file: 'routes/index.tsx', line: expected.line }
+      : { file: 'routes/index.tsx', ...expected },
+  )
 }
 
 const builds = [
@@ -58,17 +100,22 @@ const builds = [
 /**
  * Builds the route for the client with source maps, mounts its split
  * component, which throws, and maps the error's stack frame through the
- * emitted source map.
+ * emitted source map. `routerPlugins` puts other plugins around the router
+ * plugin.
  */
 async function expectThrowMapsToRouteFile(
   bundler: Bundler,
-  { minify }: { minify: boolean },
+  options: {
+    minify: boolean
+    routerPlugins?: (config: RouterPluginOptions) => Array<unknown>
+  },
 ) {
   const app = await build({
     bundler,
     env: 'client',
-    minify,
+    minify: options.minify,
     sourcemap: true,
+    routerPlugins: options.routerPlugins,
     files: routeApp(route, {
       env: 'client',
       files: {
@@ -82,13 +129,7 @@ async function expectThrowMapsToRouteFile(
     'return await entry.mountError(entry.Route.options.component)',
   )
   expect(stack).toMatch(/MARK_PAGE_THROW MARK_LABEL/)
-  // The column is left out: minifiers map the throw to different tokens of
-  // the statement.
-  const { file, line } = originalFrameOf(app, stack as string) ?? {}
-  expect({ file, line }).toEqual({
-    file: 'routes/index.tsx',
-    line: lineOf(route, `throw new Error('MARK_PAGE_THROW`),
-  })
+  expectFrameAtThrow(app, stack, route, options)
 }
 
 // Control for the pins below.
@@ -96,6 +137,31 @@ describe('vite', () => {
   test.each(builds)(
     'a throw in a split component maps to its line in the route file ($name)',
     (options) => expectThrowMapsToRouteFile('vite', options),
+    timeout,
+  )
+
+  // A plugin that transforms the route file before the router plugin (here
+  // Babel erasing TypeScript, with its own map): the maps compose, and the
+  // frame still resolves to the user's line and column.
+  test(
+    'a throw in a split component maps to its line in the route file through the map of a plugin before the router plugin (unminified)',
+    async () => {
+      const [{ default: babel }, { tanstackRouter }] = await Promise.all([
+        import('@rolldown/plugin-babel'),
+        import('../../src/vite'),
+      ])
+      // @ts-expect-error -- the preset ships no type declarations
+      const { default: typescript } = await import('@babel/preset-typescript')
+      await expectThrowMapsToRouteFile('vite', {
+        minify: false,
+        routerPlugins: (config) => [
+          babel({
+            presets: [[typescript, { allExtensions: true, isTSX: true }]],
+          }),
+          tanstackRouter(config),
+        ],
+      })
+    },
     timeout,
   )
 
@@ -133,7 +199,7 @@ export const Route = createFileRoute('/')({
       marker: 'MARK_SHARED_THROW',
     },
   ])(
-    'a throw in $name maps to its line in the route file',
+    'a throw in $name maps to its line and column in the route file',
     async ({ route: source, marker }) => {
       const app = await build({
         bundler: 'vite',
@@ -152,48 +218,7 @@ export const Route = createFileRoute('/')({
         `try { entry.Route.options.loader() } catch (error) { return error.stack }`,
       )
       expect(stack).toMatch(marker)
-      const { file, line } = originalFrameOf(app, stack as string) ?? {}
-      expect({ file, line }).toEqual({
-        file: 'routes/index.tsx',
-        line: lineOf(source, `throw new Error('${marker}`),
-      })
-    },
-    timeout,
-  )
-
-  // Devtools and error trackers show a minified variable by its original
-  // name through the map's `names`. Source: the #8504 probe (Y-names).
-  test(
-    'a minified split component parameter keeps its name in the map',
-    async () => {
-      const source = `${routeHead()}function Page(props: { title?: string }) {
-  return <p>{props.title ?? 'MARK_NAMED_PAGE'}</p>
-}
-export const Route = createFileRoute('/')({ component: Page })
-`
-      const app = await build({
-        bundler: 'vite',
-        env: 'client',
-        minify: true,
-        sourcemap: true,
-        files: routeApp(source, { env: 'client' }),
-      })
-      const chunk = app.chunks.find((candidate) =>
-        candidate.code.includes('MARK_NAMED_PAGE'),
-      )!
-      // The minifier renamed the parameter.
-      expect(chunk.code).not.toMatch(/\bprops\b/)
-      const line = lineOf(source, 'function Page(props')
-      const column = source.split('\n')[line - 1]!.indexOf('props')
-      expect(
-        namedSegments(chunk.map!)
-          .filter(
-            (segment) =>
-              segment.name === 'props' &&
-              segment.source.split('?')[0]!.endsWith('routes/index.tsx'),
-          )
-          .map((segment) => [segment.line, segment.column]),
-      ).toContainEqual([line, column])
+      expectFrameAtThrow(app, stack, source, { minify: false })
     },
     timeout,
   )
