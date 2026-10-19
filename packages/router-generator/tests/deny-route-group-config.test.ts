@@ -1,32 +1,35 @@
+/**
+ * A standalone route file named like a route group (`(group).tsx`): route
+ * groups are documented as directories only (routing/routing-concepts.md
+ * :627-643, routing/file-naming-conventions.md:15), so this form is
+ * undocumented and must never fail silently (SPEC §2.2): a failed run or a
+ * warning naming the file (the run then still gives a route tree the
+ * router loads). No channel is required. Route group directories are tested
+ * in real-router.test.ts and route-paths.test.ts.
+ */
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
 
 import { Generator, getConfig } from '../src'
-import type { Config } from '../src'
+import { routesOf } from './route-tree'
 
 function makeFolderDir(folder: string) {
   return join(process.cwd(), 'tests', 'deny-route-group-config', folder)
 }
 
-function setupConfig(
-  folder: string,
-  inlineConfig: Partial<Omit<Config, 'routesDirectory'>> = {},
-) {
-  const { generatedRouteTree = `/routeTree.gen.ts`, ...rest } = inlineConfig
+function setupConfig(folder: string) {
   const dir = makeFolderDir(folder)
-
-  const config = getConfig({
-    disableLogging: true,
+  return getConfig({
+    disableLogging: false,
     routesDirectory: dir,
-    generatedRouteTree: dir + generatedRouteTree,
-    ...rest,
+    generatedRouteTree: dir + '/routeTree.gen.ts',
   })
-  return config
 }
 
-// A route file for a route group (`(group).tsx`) is rejected; the error
-// names the file (its wording is free).
-describe('deny-route-group-config throws', () => {
+describe('route files named like a route group', () => {
+  // (The file names have parentheses, which the shared diagnostics oracle
+  // does not read as paths: the file is matched as a path suffix.)
   const testCases = [
     { folder: 'flat-flat', file: /\(group\)\.tsx/ },
     { folder: 'nested-flat', file: /\(group\)\.tsx/ },
@@ -35,18 +38,27 @@ describe('deny-route-group-config throws', () => {
   ]
 
   it.each(testCases)(
-    'should throw an error naming the route group file for the folder: $folder',
+    'a (group).tsx route file is reported by name: $folder',
     async ({ folder, file }) => {
       const config = setupConfig(folder)
-      const folderRoot = makeFolderDir(folder)
-
-      const generator = new Generator({ config, root: folderRoot })
-      const error = await generator.run().then(
-        () => undefined,
-        (e: unknown) => e as Error,
+      const generator = new Generator({ config, root: makeFolderDir(folder) })
+      const { result: error, diagnostics } = await captureConsole(() =>
+        generator.run().then(
+          () => undefined,
+          (e: unknown) => e as Error,
+        ),
       )
-      expect(error).toBeInstanceOf(Error)
-      expect(error!.message).toMatch(file)
+      if (error) {
+        expect(error.message).toMatch(file)
+      } else {
+        expect(
+          diagnostics.some(
+            (diagnostic) =>
+              diagnostic.severity !== 'info' && file.test(diagnostic.text),
+          ),
+        ).toBe(true)
+        await routesOf(config.generatedRouteTree)
+      }
     },
   )
 })

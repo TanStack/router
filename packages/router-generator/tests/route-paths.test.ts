@@ -148,6 +148,39 @@ describe('underscores', () => {
       '/_api/_auth/users': '/_api/users',
     })
   })
+
+  // Escapes and un-nesting in directory route files under pathless
+  // layouts (file-naming-conventions.md: `_` prefix pathless, `_` suffix
+  // un-nesting, `[x]` escapes); ported from the helper tests of utils.ts.
+  test('escaped and trailing underscores under pathless layouts keep or drop their underscores as escaped', async () => {
+    const root = await appWithRoutes([
+      '_layout.tsx',
+      '_layout/[_][_]foo.tsx',
+      '_layout/bar_/index.tsx',
+      '_layout/[_]baz[_]/index.tsx',
+      '[_]a/bar[_]/[_baz_]/index.tsx',
+      '[_]auth/_admin.tsx',
+      '[_]auth/_admin/dashboard.tsx',
+    ])
+    const { generatedRouteTree } = await generate(root)
+
+    const urls = await urlsOf(generatedRouteTree)
+    const routes = await routesOf(generatedRouteTree)
+    expect(
+      Object.fromEntries(
+        Object.entries(routes).map(([id, file]) => [file, urls[id]]),
+      ),
+    ).toEqual({
+      'routes/__root.tsx': '/',
+      'routes/_layout.tsx': '/',
+      'routes/_layout/[_][_]foo.tsx': '/__foo',
+      'routes/_layout/bar_/index.tsx': '/bar/',
+      'routes/_layout/[_]baz[_]/index.tsx': '/_baz_/',
+      'routes/[_]a/bar[_]/[_baz_]/index.tsx': '/_a/bar_/_baz_/',
+      'routes/[_]auth/_admin.tsx': '/_auth',
+      'routes/[_]auth/_admin/dashboard.tsx': '/_auth/dashboard',
+    })
+  })
 })
 
 describe('virtual route paths', () => {
@@ -169,6 +202,30 @@ describe('virtual route paths', () => {
       __root__: '/',
       '/docs/intro': '/docs/intro',
       '/api/v1/': '/api/v1/',
+    })
+  })
+
+  // In a virtual route path a dot is a literal character, and a bracket
+  // escape stands for its content (no file-route separators apply).
+  test('dots and bracket escapes in virtual route paths are literal characters of the URL', async () => {
+    const root = await appWithRoutes(['a.tsx', 'b.tsx'])
+    const { generatedRouteTree } = await generate(root, {
+      virtualRouteConfig: virtualRootRoute('__root.tsx', [
+        virtualRoute('/files.json', 'a.tsx'),
+        virtualRoute('/pathless[.]layout', 'b.tsx'),
+      ]),
+    })
+
+    const urls = await urlsOf(generatedRouteTree)
+    const routes = await routesOf(generatedRouteTree)
+    expect(
+      Object.fromEntries(
+        Object.entries(routes).map(([id, file]) => [file, urls[id]]),
+      ),
+    ).toEqual({
+      'routes/__root.tsx': '/',
+      'routes/a.tsx': '/files.json',
+      'routes/b.tsx': '/pathless.layout',
     })
   })
 
