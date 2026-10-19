@@ -193,11 +193,13 @@ const unicode =
   '// 👨‍👩‍👧 𝒳𝒴 日本語\r\n' +
   "\texport const label = '🎉'; export const value = () => secret()\r\n"
 
+// (Each shadowing binding is read like the real use, so a lookup that
+// prefers calls cannot step over a shadow it does not see: V4 red-astra/19.)
 const catchShadow = `import { secret } from './secret.server'
 export const run = () => {
-  try { return 1 } catch (secret) { return secret }
+  try { return 1 } catch (secret) { console.log(secret) }
 }
-export const leak = () => secret()
+export const leak = secret
 `
 
 const scopeShadow = `import { secret } from './secret.server'
@@ -208,7 +210,7 @@ export function hoisted() {
   }
   return secret
 }
-export const leak = () => secret()
+export const leak = secret
 `
 
 const wrappedBoundary = `import { createServerOnlyFn } from '@tanstack/react-start'
@@ -275,12 +277,12 @@ const cases: Record<string, LocationCase> = {
   catchShadow: {
     name: 'a use after a catch clause parameter named like the import',
     code: catchShadow,
-    expected: [at(catchShadow, 5, 'secret()')],
+    expected: [at(catchShadow, 5, 'secret')],
   },
   scopeShadow: {
     name: 'a use after a parameter and a hoisted var named like the import',
     code: scopeShadow,
-    expected: [at(scopeShadow, 9, 'secret()')],
+    expected: [at(scopeShadow, 9, 'secret')],
   },
   // The client compile removes a `createServerOnlyFn(...)` call whatever
   // its argument is, so a use inside a wrapped function is gone (V1 ip
