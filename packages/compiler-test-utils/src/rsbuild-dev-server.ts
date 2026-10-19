@@ -14,18 +14,12 @@
  * the apps live in (where their imports resolve).
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs'
-import {
-  mkdir,
-  readFile,
-  readdir,
-  rename,
-  rm,
-  writeFile,
-} from 'node:fs/promises'
+import { mkdir, readFile, readdir, rename, rm } from 'node:fs/promises'
 import { createServer } from 'node:net'
 import path from 'node:path'
 import { createRsbuild, mergeRsbuildConfig } from '@rsbuild/core'
 import { createApp } from './build-harness'
+import { saveAppFile } from './save-file'
 import type { AppOptions } from './build-harness'
 import type { AddressInfo } from 'node:net'
 import type {
@@ -415,8 +409,7 @@ export async function createRsbuildDevServer(
       if (code === null) {
         await rm(absolute, { force: true })
       } else {
-        await mkdir(path.dirname(absolute), { recursive: true })
-        await writeFile(absolute, code)
+        await saveAppFile(root, absolute, code)
       }
     }
   }
@@ -807,8 +800,7 @@ export function trackCompiles(): CompileTracker {
           if (code === null) {
             await rm(file, { force: true })
           } else {
-            await mkdir(path.dirname(file), { recursive: true })
-            await writeFile(file, code)
+            await saveAppFile(root, file, code)
           }
         }
       } catch (error) {
