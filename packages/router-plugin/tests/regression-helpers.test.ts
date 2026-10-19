@@ -282,12 +282,15 @@ export const Route = createFileRoute('/')({
     expect(route.evaluated).toEqual([route.ids.reference, route.ids['lazy 1']])
   })
 
+  // (A root component is not the control: splitting it is free, SPEC J2.7.)
   it('returns an option that is not split as it is', async () => {
     const route =
-      await loadRoute(`import { createRootRoute } from '@tanstack/react-router'
-export const Route = createRootRoute({ component: () => <p>root</p> })`)
+      await loadRoute(`${head}export const Route = createFileRoute('/')({
+  codeSplitGroupings: [],
+  component: () => <p>unsplit</p>,
+})`)
     expect(await route.isLazy('component')).toBe(false)
-    expect(await route.render('component')).toBe('<p>root</p>')
+    expect(await route.render('component')).toBe('<p>unsplit</p>')
   })
 })
 

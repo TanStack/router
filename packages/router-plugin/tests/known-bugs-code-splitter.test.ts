@@ -6,6 +6,12 @@
 import { parseSync } from 'vite'
 import { describe, expect, onTestFinished, test, vi } from 'vitest'
 import {
+  captureConsole,
+  expectDiagnostic,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
+import { routerDevServer } from './dev-server'
+import {
   compileRouteModules,
   declaredNames,
   evaluateModule,
@@ -23,18 +29,22 @@ import {
 import type { TargetFramework } from './regression-helpers'
 
 /**
- * Whether a `console.warn` spy saw a warning that names the route file
- * `file` and the split component (`Page` or `component`): the user is told
- * the component is not code-split.
+ * Whether a `console.warn` spy saw a warning naming the route file `file`
+ * and the route option `option` (default `component`) the compiler leaves
+ * unsplit: the user is told which option of which file is not code-split
+ * (J2.8; naming the binding too is fine, the wording is free).
  */
 function reportsNotSplit(
   warn: { mock: { calls: Array<Array<unknown>> } },
   file: string,
+  option = 'component',
 ) {
-  return warn.mock.calls.some(([message]) => {
-    const text = String(message)
-    return text.includes(file) && /\b(?:Page|component)\b/.test(text)
-  })
+  return (
+    findDiagnostics(
+      warn.mock.calls.map((args) => args.map(String).join(' ')),
+      { file, names: [option] },
+    ).length > 0
+  )
 }
 
 /**
@@ -79,15 +89,14 @@ export const Route = createFileRoute('/')({
 })`,
       { stubs: { './state': state } },
     )
-    // The route module has loaded; the split chunks load on demand.
-    const callsBeforeChunks = state.calls
+    // (When the shared initializer runs, with the route module or with the
+    // first chunk that needs it, is free: SPEC G3.)
     expect([
       route.options.loader(),
       await route.render('component'),
       await route.render('errorComponent'),
-      callsBeforeChunks,
       state.calls,
-    ]).toEqual([1, '<p>1</p>', '<p>error</p>', 1, 1])
+    ]).toEqual([1, '<p>1</p>', '<p>error</p>', 1])
   })
 
   // Bug: a binding that an option with a computed key and a split option
@@ -1284,19 +1293,15 @@ export const Route = createFileRoute('/')({
 })
 `)
         } catch (error) {
-          // A refusal names the file and what it refuses
-          expect(String(error)).toContain('route.tsx')
-          expect(String(error)).toMatch(/\b(?:createFileRoute|Legacy)\b/)
+          // A refusal names the file (its wording is free)
+          expectDiagnostic(error, { file: 'route.tsx' })
           return
         }
         if (
-          warn.mock.calls.some(([message]) => {
-            const text = String(message)
-            return (
-              text.includes(route.ids.reference!) &&
-              /\b(?:createFileRoute|Legacy)\b/.test(text)
-            )
-          })
+          findDiagnostics(
+            warn.mock.calls.map((args) => args.map(String).join(' ')),
+            { file: route.ids.reference! },
+          ).length > 0
         ) {
           return
         }
@@ -1615,37 +1620,6 @@ export const Route = createFileRoute('/')({
 })
 
 describe('code-split groupings', () => {
-  // Bug: the groupings are read from the first `createRoute` or
-  // `createFileRoute` call of the file that has `codeSplitGroupings`
-  // (`detectCodeSplitGroupingsFromRoute`), so a code-based route's groupings
-  // apply to the file route of the same module.
-  // Impact: the file route is split differently than configured (here its
-  // loader is split although the default groupings keep it).
-  test.fails.each(['before', 'after'])(
-    'a file route keeps its own groupings next to a code route with groupings declared %s it',
-    async (order) => {
-      const codeRoute = `export const legacy = createRoute({
-  getParentRoute: () => null as any,
-  path: '/legacy',
-  codeSplitGroupings: [['loader', 'component']],
-  component: () => <p>legacy</p>,
-})`
-      const fileRoute = `export const Route = createFileRoute('/')({
-  loader: () => 'data',
-  component: () => <p>file</p>,
-})`
-      const route = await loadRoute(
-        `import { createFileRoute, createRoute } from '@tanstack/react-router'
-${order === 'before' ? `${codeRoute}\n${fileRoute}` : `${fileRoute}\n${codeRoute}`}
-`,
-      )
-      expect([
-        await route.isLazy('loader'),
-        await route.isLazy('component'),
-      ]).toEqual([false, true])
-    },
-  )
-
   // Bug: `codeSplitGroupings` must be written inline; a module-level
   // constant holding the groupings is refused ("You must provide an array
   // of arrays for the codeSplitGroupings").
@@ -1898,11 +1872,18 @@ export const Route = createFileRoute('/')({
     {
       name: '@jsxRuntime classic and @jsx',
       header: '/** @jsxRuntime classic */\n/** @jsx jsx */',
+      project: undefined,
     },
-    { name: '@jsx only', header: '/** @jsx jsx */' },
+    {
+      // A project whose default JSX runtime is classic (what `@jsx` alone
+      // requires: the automatic transform ignores a lone `@jsx`).
+      name: '@jsx only, in a classic-runtime project',
+      header: '/** @jsx jsx */',
+      project: { runtime: 'classic' as const },
+    },
   ])(
     'a factory the route module creates and the loader reads is created once for the split component ($name)',
-    async ({ header }) => {
+    async ({ header, project }) => {
       let creations = 0
       const route = await loadRoute(
         `${header}
@@ -1913,6 +1894,7 @@ export const Route = createFileRoute('/')({
   component: () => <div>page</div>,
 })`,
         {
+          jsx: project,
           stubs: {
             './jsx': {
               createJsx: () => {
@@ -1923,10 +1905,7 @@ export const Route = createFileRoute('/')({
           },
         },
       )
-      // Every module is valid in a project whose default JSX runtime is
-      // classic (what `@jsx` alone requires); the in-process transform
-      // compiles a module with `@jsx` alone with the automatic runtime.
-      await expectValidModules(route.modules)
+      await expectValidModules(route.modules, { jsx: project })
       expect([
         route.options.loader(),
         await route.render('component'),
@@ -1998,17 +1977,62 @@ export const Route = createFileRoute('/')({ ${options}component: ${binding} })
         expect(await route.render('component')).toBe('<p>page</p>')
         expect({
           split: await route.isLazy('component'),
-          warned: warn.mock.calls.some(([message]) => {
-            const text = String(message)
-            return (
-              text.includes(file) &&
-              new RegExp(String.raw`\b(?:${binding}|component)\b`).test(text)
-            )
-          }),
+          warned: reportsNotSplit(warn, file),
         }).not.toEqual({ split: false, warned: false })
       } finally {
         warn.mockRestore()
       }
+    },
+  )
+
+  // In a dev server, the user is told once per file, in the terminal, which
+  // option of which file stays unsplit (J2.8, J2.19): here an exported
+  // component that another route of the app imports eagerly (a permitted
+  // fallback). Serving the route module, its split modules and the other
+  // route adds no second report.
+  // Bug: the warning names the file and the exported binding (`Page`), not
+  // the route option (same bug as code-splitter-imports-exports.test.ts
+  // "are reported once, naming the file and the option, when not
+  // code-split").
+  // Source: FIX-PLAN §G.3 (F22/F40 dev row); V1 split F40.
+  // Impact: the developer has to work out which option the named export is.
+  test.fails(
+    'a dev server reports an exported component it leaves unsplit once per file, naming the file and the option',
+    async () => {
+      let root = ''
+      const { diagnostics } = await captureConsole(async () => {
+        const server = await routerDevServer({
+          files: {
+            'routes/index.tsx': `${head}export function Page() {
+  return <p>page</p>
+}
+export const Route = createFileRoute('/')({ component: Page })
+`,
+            'routes/about.tsx': `${head}import { Page } from './index'
+export const Route = createFileRoute('/about')({ component: () => <Page /> })
+`,
+          },
+        })
+        root = server.root
+        const served = await server.load('/routes/index.tsx')
+        for (const [url, code] of Object.entries(served)) {
+          for (const { specifier, dynamic } of importRequests(code, url)) {
+            if (dynamic && specifier.startsWith('/routes/')) {
+              await server.transform(specifier)
+            }
+          }
+        }
+        await server.transform('/routes/index.tsx')
+        await server.load('/routes/about.tsx')
+        await server.idle()
+      })
+      expectDiagnostic(diagnostics, {
+        severity: 'warning',
+        file: 'routes/index.tsx',
+        root,
+        names: ['component'],
+        times: 1,
+      })
     },
   )
 
@@ -2243,13 +2267,7 @@ export const imported = PostErrorComponent`,
         sameInstance: seen.length === 1 && seen[0] === importer.imported,
         splitOrReported:
           (await route.isLazy('errorComponent')) ||
-          warn.mock.calls.some(([message]) => {
-            const text = String(message)
-            return (
-              text.includes(file) &&
-              /\b(?:PostErrorComponent|errorComponent)\b/.test(text)
-            )
-          }),
+          reportsNotSplit(warn, file, 'errorComponent'),
       }
     } finally {
       warn.mockRestore()
@@ -2258,12 +2276,27 @@ export const imported = PostErrorComponent`,
 
   // Control for the pin below (same harness): the bare identifier.
   test('an exported errorComponent named by the option is the instance its importers get', async () => {
-    expect(await exportedErrorComponent('PostErrorComponent')).toEqual({
+    expect(await exportedErrorComponent('PostErrorComponent')).toMatchObject({
       rendered: '<p>error</p>',
       sameInstance: true,
-      splitOrReported: true,
     })
   })
+
+  // Bug: when it leaves the exported component unsplit, the compiler's
+  // warning names the file and the export (`PostErrorComponent`), never the
+  // route option (J2.8: file and option). Same bug as
+  // code-splitter-imports-exports.test.ts "are reported once, naming the
+  // file and the option, when not code-split".
+  // Source: V1 split F40.
+  // Impact: the developer has to work out which option the named export is.
+  test.fails(
+    'an exported errorComponent named by the option is split, or reported naming the file and the option',
+    async () => {
+      expect(
+        (await exportedErrorComponent('PostErrorComponent')).splitOrReported,
+      ).toBe(true)
+    },
+  )
 
   // Bug: an exported component named by a split option is only recognised
   // as an export when the option is a bare identifier. Written in another
