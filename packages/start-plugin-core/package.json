@@ -60,7 +60,8 @@
           "^build",
           {
             "projects": [
-              "@tanstack/react-start"
+              "@tanstack/react-start",
+              "@tanstack/solid-start"
             ],
             "target": "build"
           }
@@ -150,17 +151,22 @@
     "@mdx-js/loader": "^3.1.1",
     "@mdx-js/rollup": "^3.1.1",
     "@rsbuild/core": "catalog:",
+    "@rsbuild/plugin-babel": "^1.1.2",
+    "@rsbuild/plugin-react": "^2.0.0",
+    "@rsbuild/plugin-solid": "^1.1.1",
     "@types/babel__code-frame": "^7.0.6",
     "@types/babel__core": "^7.20.5",
     "@types/node": ">=20",
     "@types/picomatch": "^4.0.2",
     "vite": "*",
+    "vite-plugin-solid": "catalog:",
     "@tanstack/compiler-test-utils": "workspace:*",
     "@tanstack/react-router": "workspace:*",
     "@tanstack/vite-config": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "solid-js": "catalog:",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "catalog:",
     "@arethetypeswrong/cli": "catalog:",

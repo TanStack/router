@@ -13,13 +13,19 @@ import {
   getChunkIds,
   importSources,
   loadChunk,
+  moduleId,
   renderClient,
   renderServer,
   renderSource,
   serverOnlyModule,
   withoutHydrationIds,
 } from './regression-helpers'
-import { originalPositionOf, positionOf } from './hydrate-helpers'
+import {
+  expectMapsTo,
+  positionAt,
+  tokenOffsets,
+} from '@tanstack/compiler-test-utils/source-maps'
+import type { SourceMapInput } from '@tanstack/compiler-test-utils/source-maps'
 
 // On the client `<Hydrate>` children move into a lazily loaded chunk module
 // and the parent renders the chunk component in their place; on the server
@@ -79,7 +85,7 @@ export function Page() {
   })
 
   // Source: #8504 hydrate-split-modules.test.ts
-  test("client: the directive prologue stays first in the parent module and 'use client' in the split chunk", async () => {
+  test("client: the directives stay in the prologue of the parent module, and 'use client' in the split chunk", async () => {
     const { parent, plugin } = await compileHydrate(
       'client',
       `'use client'
@@ -89,12 +95,16 @@ export function Page() {
   return <Hydrate when={load()}><Chart /></Hydrate>
 }`,
     )
-    expect(directivePrologue(parent)).toEqual(['use client', 'use strict'])
+    // Both directives stay in the prologue (before any statement); their
+    // order is free (SPEC §5.5).
+    expect(directivePrologue(parent)).toEqual(
+      expect.arrayContaining(['use client', 'use strict']),
+    )
     // The chunk as the bundler compiles it.
     const chunk =
       (await compileFirstChunk(plugin, parent)).code ??
       loadChunk(plugin, 'client', getChunkIds(parent)[0]!)!
-    expect(directivePrologue(chunk)[0]).toBe('use client')
+    expect(directivePrologue(chunk)).toContain('use client')
   })
 
   test('client: the split shorthand splits the children', async () => {
@@ -106,9 +116,9 @@ export function Page() {
   })
 
   // An object that may be observed elsewhere (shared, or returned by a call)
-  // may keep its fallback on the server; the boundaries still render their
-  // children. Stripping the fallback of an object only Hydrate spreads read
-  // is the goal (pinned below); seeing through calls is best effort.
+  // may keep its fallback on the server (SPEC J5.3, deferred-hydration docs:
+  // "the compiler may keep them"); the boundaries still render their
+  // children.
   test.each([
     {
       name: 'shared by two boundaries',
@@ -134,22 +144,6 @@ export function Page() { return <Hydrate when={load()} {...opts}><p>child</p></H
       for (const child of children) {
         expect(server.html).toContain(child)
       }
-    },
-  )
-
-  // Goal (N14): an object only `<Hydrate>` spreads read is used for its
-  // props only, so its client-only fallback is removed from the server
-  // module, like the fallback of an object spread once.
-  test.fails(
-    'server: a fallback in a spread object shared by two boundaries is removed',
-    async () => {
-      const { parent } = await compileHydrate(
-        'server',
-        `${head}const opts = { fallback: <p>server-fallback</p> }
-export function Page() { return <><Hydrate when={load()} {...opts}><p>a</p></Hydrate><Hydrate when={load()} {...opts}><p>b</p></Hydrate></> }`,
-      )
-      expect(await getModuleErrors(parent)).toEqual([])
-      expect(parent).not.toContain('server-fallback')
     },
   )
 
@@ -415,9 +409,25 @@ export function Page() {
     expect(client.html).toContain('<ul><li>A</li><li>B</li>iife</ul>')
   })
 
-  // `children` is a required prop: a boundary without children is a mistake
-  // a JavaScript user can make. It renders nothing and keeps its props, or
-  // is rejected clearly. Leaving it unsplit is valid too.
+  // `null` children are valid (TypeScript accepts `children={null}` and
+  // `{null}`): both environments render the empty boundary the source
+  // renders.
+  // Source: FIX-PLAN HYD-13 (null-child control)
+  test('client: boundaries with null children render like the source', async () => {
+    const { client } = await expectRendersLikeSource(
+      `${head}import { idle } from '@tanstack/react-start/hydration'
+export function Page() {
+  return <div><Hydrate when={idle()} children={null} /><Hydrate when={idle()}>{null}</Hydrate></div>
+}`,
+      { split: false },
+    )
+    expect(client.html.match(/data-ts-hydrate-id=/g)).toHaveLength(2)
+  })
+
+  // Not a supported input (TypeScript rejects all three: `children` is a
+  // required prop), but a mistake a JavaScript user can make: a boundary
+  // without children renders nothing and keeps its props, or is rejected
+  // clearly. Leaving it unsplit is valid too.
   // Source: #8504 hydrate-split-modules.test.ts (self-closing row, "a
   // self-closing boundary without a children prop keeps its props")
   test('client: empty, self-closing and comment-only boundaries render nothing and keep their props, or are rejected clearly', async () => {
@@ -501,16 +511,22 @@ export function Page() {
   })
 
   // Code in the chunk and in the parent maps back to where the user wrote
-  // it.
-  // Source: #8504 hydrate-split-modules.test.ts (gap H26); gap M1
+  // it: the throws of a handler in the parent and of one in the children,
+  // located by their parsed string tokens (whatever the printing), resolve
+  // through each output's map to their line and column in the source file.
+  // Real stack traces of a built page: hydrate-build.test.ts.
+  // Source: #8504 hydrate-split-modules.test.ts (gap H26); gap M1; FIX-PLAN
+  // HYD-21
   test('client: the source maps of the chunk and the parent point at the original code', async () => {
     const source = `${head}import { visible } from '@tanstack/react-start/hydration'
 export function Page() {
+  const fail = () => {
+    throw new Error('parent-throw')
+  }
   return (
-    <main>
-      <aside>parent-marker</aside>
+    <main onClick={fail}>
       <Hydrate when={visible()}>
-        <p>chunk-marker</p>
+        <button onClick={() => { throw new Error('child-throw') }}>x</button>
       </Hydrate>
     </main>
   )
@@ -521,22 +537,41 @@ export function Page() {
       compilerPlugins: [plugin],
     })
     const parent = (await transform(source))!
-    const chunk = plugin.loadVirtualModule!({
-      id: getChunkIds(parent.code)[0]!,
-      root: '/test',
-      env: 'client',
-      envName: 'client',
-    })!
-    const original = (needle: string) => ({
-      source: '/test/src/module.tsx',
-      ...positionOf(source, needle),
-    })
-    expect(await originalPositionOf(chunk, '<p>chunk-marker')).toEqual(
-      original('<p>chunk-marker'),
+    const chunks = getChunkIds(parent.code).map(
+      (id) =>
+        plugin.loadVirtualModule!({
+          id,
+          root: '/test',
+          env: 'client',
+          envName: 'client',
+        })!,
     )
-    expect(await originalPositionOf(parent, '<aside>parent-marker')).toEqual(
-      original('<aside>parent-marker'),
-    )
+    /** Asserts every occurrence of `marker` in `output` maps to the source's. */
+    const expectMarkersMapped = (
+      output: { code: string; map?: unknown },
+      marker: string,
+    ) => {
+      const offsets = tokenOffsets(output.code, { string: marker })
+      const original = positionAt(source, source.indexOf(`'${marker}'`))
+      for (const offset of offsets) {
+        expectMapsTo(
+          output.map as SourceMapInput,
+          positionAt(output.code, offset),
+          { file: moduleId, line: original.line, column: original.column },
+        )
+      }
+      return offsets.length
+    }
+    // The handler of the parent stays in the parent; the children's is in
+    // a chunk (wherever else either is copied, it maps back too).
+    expect(expectMarkersMapped(parent, 'parent-throw')).toBeGreaterThan(0)
+    expectMarkersMapped(parent, 'child-throw')
+    let inChunks = 0
+    for (const chunk of chunks) {
+      inChunks += expectMarkersMapped(chunk, 'child-throw')
+      expectMarkersMapped(chunk, 'parent-throw')
+    }
+    expect(inChunks).toBeGreaterThan(0)
   })
 
   test('client: the chunks of a module stay loadable after another module is compiled', async () => {

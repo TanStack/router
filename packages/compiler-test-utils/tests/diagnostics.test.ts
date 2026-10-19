@@ -241,6 +241,14 @@ export const value = a(
   4 | )`,
     ],
     [
+      'Babel code frame inside a report box (Rspack)',
+      `./src/a.ts:   × Module build failed:
+  ╰─▶   × Error:    2 | export const value = a(
+        │ >  3 |   createServerFn().handler(() => 1),
+        │      |   ^^^^^^^^^^^^^^ nested server fn
+        │    4 | )`,
+    ],
+    [
       'unmarked frame with a caret line',
       `src/a.ts
 2  |  export const value = a(

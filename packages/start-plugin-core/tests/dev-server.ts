@@ -15,6 +15,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
+import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
 import { onTestFinished } from 'vitest'
 import { startCompilerPlugin } from '../src/vite/start-compiler-plugin/plugin'
 import { tanStackStartVite } from '../src/vite/plugin'
@@ -84,6 +85,14 @@ export interface StartDevServerOptions extends Omit<
    * transform).
    */
   compilerTransforms?: Array<StartCompilerImportTransform>
+  /**
+   * The Start framework package of the app (default `react`): the compiler
+   * and Start's plugin get its framework, and `solid` links the built
+   * `@tanstack/solid-start` and `@tanstack/solid-router` (a Solid app's
+   * dependencies; its JSX plugin, `vite-plugin-solid`, comes from
+   * `plugins`).
+   */
+  framework?: 'react' | 'solid'
 }
 
 /**
@@ -139,15 +148,19 @@ export const Route = createRootRoute()
 `,
 }
 
-/** Start's Vite plugin with the core options `@tanstack/react-start` passes. */
+/**
+ * Start's Vite plugin with the core options `@tanstack/react-start` passes
+ * (or `@tanstack/solid-start`, with `framework: 'solid'`).
+ */
 export function startPlugin(
   root: string,
   start: TanStackStartViteInputConfig,
   compilerTransforms: Array<StartCompilerImportTransform> | undefined,
+  framework: 'react' | 'solid' = 'react',
 ) {
   return tanStackStartVite(
     {
-      framework: 'react',
+      framework,
       defaultEntryPaths: {
         client: path.join(root, 'harness/client-entry.ts'),
         server: path.join(root, 'harness/server-entry.ts'),
@@ -176,6 +189,7 @@ export function startDevServer(
     providerEnvName = 'ssr',
     start,
     compilerTransforms,
+    framework = 'react',
     ...devServerOptions
   } = options
   /** Server environments Vite does not create by default. */
@@ -191,12 +205,20 @@ export function startDevServer(
       ...(start && startPluginFiles),
       ...files,
     },
-    symlinks: { ...startRuntimeLinks(), ...devServerOptions.symlinks },
+    symlinks: {
+      ...startRuntimeLinks(),
+      ...(framework === 'solid' &&
+        workspacePackageLinks([
+          '@tanstack/solid-start',
+          '@tanstack/solid-router',
+        ])),
+      ...devServerOptions.symlinks,
+    },
     plugins: ({ root }) => [
       start
-        ? startPlugin(root, start, compilerTransforms)
+        ? startPlugin(root, start, compilerTransforms, framework)
         : startCompilerPlugin({
-            framework: 'react',
+            framework,
             environments,
             providerEnvName,
           }),
@@ -206,14 +228,14 @@ export function startDevServer(
         // Start's SSR RPC (`createSsrRpc`) imports the resolver virtual
         // module
         config: () => ({
-          ssr: { noExternal: ['@tanstack/react-start'] },
+          ssr: { noExternal: [`@tanstack/${framework}-start`] },
           ...(extraEnvironments.length > 0 && {
             environments: Object.fromEntries(
               extraEnvironments.map((name) => [
                 name,
                 {
                   consumer: 'server' as const,
-                  resolve: { noExternal: ['@tanstack/react-start'] },
+                  resolve: { noExternal: [`@tanstack/${framework}-start`] },
                 },
               ]),
             ),

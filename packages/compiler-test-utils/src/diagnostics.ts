@@ -600,6 +600,19 @@ function reportsPosition(
 }
 
 /**
+ * A line of a code frame quoted inside another tool's report box (Rspack
+ * prints a loader's error in a box whose lines start with `│`), without
+ * the box; any other line as it is.
+ */
+function unboxed(line: string) {
+  const inner = line.replace(/^\s*[│┃]/, '')
+  return inner !== line &&
+    (/^\s*>?\s*\d+\s*[|│]/.test(inner) || /^\s*>?\s*[|│]\s*\^/.test(inner))
+    ? inner
+    : line
+}
+
+/**
  * Whether a code frame in `text` marks `line` (a `>` marker, or a `^`
  * marker line below it) and, when `column` and `source` are known, puts a
  * `^` under that column.
@@ -610,7 +623,7 @@ function frameReportsPosition(
   column: number | undefined,
   source: string | undefined,
 ) {
-  const lines = text.split(/\r?\n/)
+  const lines = text.split(/\r?\n/).map(unboxed)
   for (let index = 0; index < lines.length; index++) {
     const frameLine = /^\s*(>)?\s*(\d+)\s*[|│]/.exec(lines[index]!)
     if (!frameLine || Number(frameLine[2]) !== line) {

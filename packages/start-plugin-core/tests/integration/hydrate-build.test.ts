@@ -14,6 +14,11 @@ import { afterAll, describe, expect, onTestFinished, test } from 'vitest'
 import react from '@vitejs/plugin-react'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { originalFrameOf } from '@tanstack/compiler-test-utils/build-harness'
+import {
+  captureThrow,
+  diagnosticPosition,
+  expectDiagnostic,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../build-harness'
 import { startDevServer } from '../dev-server'
 import { startRsbuildDevServer } from '../rsbuild-dev-server'
@@ -477,6 +482,60 @@ describe.each(startBundlers)('%s build', (bundler: StartBundler) => {
           .slice(0, throwingPage.indexOf('chart.missing'))
           .split('\n').length,
       })
+    },
+    timeout,
+  )
+
+  // Children the compiler cannot extract fail the build with an error that
+  // names the user's file and the line of the boundary, and the unsafe
+  // pattern (SPEC J5.5, G5; what the message must say besides:
+  // hydrate-boundary-forms.test.ts "children that cannot be split").
+  // Source: FIX-PLAN HYD-07 (file + position, A9)
+  test.each([
+    {
+      name: 'a function child',
+      children: '{() => <p>child</p>}',
+      pattern: /function/i,
+    },
+    {
+      name: 'a hook call',
+      children: '<p>{useThing()}</p>',
+      pattern: /\bhooks?\b/i,
+    },
+  ])(
+    'client: $name in a boundary fails the build, naming the file and line',
+    async ({ children, pattern }) => {
+      const page = `import { Hydrate } from '@tanstack/react-start'
+import { idle } from '@tanstack/react-start/hydration'
+import { useThing } from '../hooks'
+export function Page() {
+  return (
+    <main>
+      <Hydrate when={idle()}>${children}</Hydrate>
+    </main>
+  )
+}
+`
+      const diagnostics = await captureThrow(() =>
+        buildStart({
+          bundler,
+          entry,
+          files: {
+            ...pageEntries,
+            'src/hooks.ts': `import { useId } from 'react'\nexport const useThing = () => useId()\n`,
+            'src/pages/unsafe.tsx': page,
+            'src/pages.ts': `export { Page as unsafe } from './pages/unsafe'\n`,
+          },
+        }),
+      )
+      const diagnostic = expectDiagnostic(diagnostics, {
+        severity: 'error',
+        file: 'src/pages/unsafe.tsx',
+        distinctFrom: ['src/pages.ts'],
+        position: { line: diagnosticPosition(page, '<Hydrate').line },
+        source: page,
+      })
+      expect(diagnostic.text).toMatch(pattern)
     },
     timeout,
   )
