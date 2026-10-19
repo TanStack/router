@@ -257,11 +257,20 @@ export async function startRscRsbuildDevServer(
   }
 }
 
+/** The HTTP requests of a page in flight, and when that last changed. */
+interface Network {
+  pending: Set<unknown>
+  changed: number
+}
+
+const networks = new WeakMap<BrowserPage, Network>()
+
 /**
  * Opens `pathname` of a dev server with `browser` in a real page, closed
  * when the current test finishes unless `registerCleanup` says otherwise.
+ * The page's requests from then on are tracked for `settledValue`.
  */
-export function openRscPage(
+export async function openRscPage(
   server: Pick<DevServer | RsbuildDevServer, 'url'>,
   pathname: string,
   options: { registerCleanup?: (cleanup: () => Promise<void>) => void } = {},
@@ -269,9 +278,63 @@ export function openRscPage(
   if (!server.url) {
     throw new Error('the dev server does not listen: start it with `browser`')
   }
-  return openPage(new URL(pathname, server.url).href, {
+  const page = await openPage(new URL(pathname, server.url).href, {
     registerCleanup: options.registerCleanup ?? onTestFinished,
   })
+  const network: Network = { pending: new Set(), changed: Date.now() }
+  page.page.on('request', (request) => {
+    network.pending.add(request)
+    network.changed = Date.now()
+  })
+  const done = (request: unknown) => {
+    if (network.pending.delete(request)) {
+      network.changed = Date.now()
+    }
+  }
+  page.page.on('requestfinished', done)
+  page.page.on('requestfailed', done)
+  networks.set(page, network)
+  return page
+}
+
+/**
+ * Reads `read()` until `accept` takes its value, or until the page's
+ * network has settled (no request in flight for `quiet` ms, default 500)
+ * and one more read still does not: then whatever the page will show
+ * without another request, e.g. a stylesheet that never arrives. Gives up
+ * after `timeout` ms (default 15 000). Gives the last value read; the test
+ * asserts on it. For pages of `openRscPage`.
+ */
+export async function settledValue<T>(
+  page: BrowserPage,
+  read: () => Promise<T>,
+  accept: (value: T) => boolean,
+  { quiet = 500, timeout = 15_000 } = {},
+): Promise<T> {
+  const network = networks.get(page)
+  if (!network) {
+    throw new Error('settledValue needs a page of openRscPage')
+  }
+  const deadline = Date.now() + timeout
+  for (;;) {
+    const settled =
+      network.pending.size === 0 && Date.now() - network.changed >= quiet
+    let value: T | undefined
+    let readable = true
+    try {
+      value = await read()
+    } catch (error) {
+      // The page is (re)loading
+      readable = false
+      if (Date.now() > deadline) {
+        throw error
+      }
+    }
+    if (readable && (accept(value as T) || settled || Date.now() > deadline)) {
+      return value as T
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  }
 }
 
 /**
