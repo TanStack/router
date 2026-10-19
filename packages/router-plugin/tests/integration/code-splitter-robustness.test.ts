@@ -30,6 +30,10 @@ async function buildApp(bundler: BundlerName) {
   const app = await build({
     bundler,
     env: 'client',
+    // No outcome here depends on webpack's minifier (terser), which takes
+    // most of a webpack build: generation, placement of live code and the
+    // rendering.
+    ...(bundler === 'webpack' && { minify: false }),
     // Files outlive the test that built them; the result is all we keep
     registerCleanup: undefined,
     files: {
