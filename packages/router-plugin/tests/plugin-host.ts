@@ -16,6 +16,7 @@ import { createRouterGeneratorPlugin } from '../src/core/router-generator-plugin
 import { createRouterHmrPlugin } from '../src/core/router-hmr-plugin'
 import { createRouterPluginContext } from '../src/core/router-plugin-context'
 import { normalizePath } from '../src/core/utils'
+import type { ModuleErrorOptions } from '@tanstack/compiler-test-utils/validate-module'
 import type { Config, DeletableNodes } from '../src/core/config'
 import type { TransformResult, UnpluginOptions } from 'unplugin'
 
@@ -520,15 +521,21 @@ export function countAcrossModules(
  * Asserts that every module is valid, reporting the errors by module name.
  * For the modules of `compileRouteModules`, the globals the route file reads
  * itself may be read by its modules too, and a name the route file binds
- * must not lose its binding in them (`source` of `getModuleErrors`).
+ * must not lose its binding in them (`source` of `getModuleErrors`). `jsx`
+ * gives the JSX settings of the route's project (default: React's automatic
+ * runtime), which decide what the modules' JSX pragmas mean.
  */
-export async function expectValidModules(modules: Record<string, string>) {
+export async function expectValidModules(
+  modules: Record<string, string>,
+  options: Pick<ModuleErrorOptions, 'jsx'> = {},
+) {
   const source = routeSources.get(modules)
   const filename = source ? `module.${moduleLang(source.id)}` : undefined
   const errors: Record<string, Array<string>> = {}
   for (const [name, code] of Object.entries(modules)) {
     errors[name] = await getModuleErrors(code, filename, {
       source: source?.code,
+      jsx: options.jsx,
     })
   }
   expect(errors).toEqual(

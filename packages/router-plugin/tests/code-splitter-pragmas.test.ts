@@ -1,44 +1,70 @@
-import { transformWithOxc } from 'vite'
+// Fast-tier half of this suite. The real-project rows (a JSX transform that
+// reads pragmas anywhere, React Refresh and solid-refresh pragmas in a page)
+// are in integration/code-splitter-pragmas.test.ts.
+import {
+  captureConsole,
+  expectDiagnostic,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { describe, expect, it } from 'vitest'
 import {
   compileRouteModules,
-  componentModules,
+  evaluateModule,
   head,
   loadRoute,
-  transformWithRouteHmrPlugin,
+  renderComponent,
 } from './regression-helpers'
+import type { Stubs } from './lazy-tracking'
 
-const styledRoute = (
-  header: string,
-) => `${header}export const Route = createFileRoute('/pragma')({
-  component: () => <div css={{ color: 'red' }}>styled</div>,
-})
-`
-
-/** Compiles JSX like Vite 8 (Oxc) does, with React's automatic runtime by default. */
-async function compileJsx(code: string) {
-  const { code: javascript } = await transformWithOxc(code, 'chunk.tsx', {
-    jsx: { runtime: 'automatic', importSource: 'react' },
-  })
-  return javascript
-}
-
-/** The JSX runtime module a compiled module imports, if any. */
-async function jsxRuntimeOf(code: string) {
-  return (await compileJsx(code)).match(
-    /from ["']([^"']+\/jsx-(?:dev-)?runtime)["']/,
-  )?.[1]
+/**
+ * The untouched route file evaluated through the project's real JSX
+ * transform (Vite's, which reads leading pragmas only) with the real React
+ * and the real `@emotion/react`: its route's options.
+ */
+async function untouchedOptions(code: string, stubs: Stubs = {}) {
+  const { Route } = (await evaluateModule(code, stubs)) as Record<string, any>
+  return Route.options as Record<string, any>
 }
 
 /**
- * The JSX runtimes the modules loading the route's component import, once
- * compiled (modules without JSX import none).
+ * The route file's component rendered as the untouched file renders it
+ * (`untouchedOptions`), server-rendered.
  */
-async function componentJsxRuntimes(code: string) {
-  const runtimes = await Promise.all(
-    (await componentModules(code)).map(jsxRuntimeOf),
+async function renderUntouched(code: string, stubs: Stubs = {}) {
+  return renderComponent((await untouchedOptions(code, stubs)).component)
+}
+
+/**
+ * Whether Emotion styled the markup: rendered on the server, Emotion
+ * inlines a style element in front of the element it styles; the project's
+ * default JSX runtime leaves a `css` prop as a plain attribute instead.
+ */
+const emotionStyled = (html: string) => /<style\b/.test(html)
+
+/**
+ * Loads the route (splitting it) and asserts that its component renders
+ * what the untouched file renders, through the same real transform and
+ * renderer: the JSX runtime decision of the file (its pragmas, leading or
+ * not, as the project's transform reads them) holds in every module holding
+ * its JSX (SPEC J2.16). A component left unsplit is accepted with a warning
+ * naming the file and the option (D-04, J2.8). Returns the rendering.
+ */
+async function expectRendersLikeUntouched(
+  code: string,
+  options: Parameters<typeof loadRoute>[1] = {},
+) {
+  const untouched = await renderUntouched(code, options.stubs)
+  const { result: route, diagnostics } = await captureConsole(() =>
+    loadRoute(code, options),
   )
-  return runtimes.filter((runtime) => runtime !== undefined)
+  if (!(await route.isLazy('component'))) {
+    expectDiagnostic(diagnostics, {
+      severity: 'warning',
+      file: route.ids.reference!,
+      names: ['component'],
+    })
+  }
+  expect(await route.render('component')).toBe(untouched)
+  return untouched
 }
 
 // JSX pragmas apply per module: the code splitter runs before the bundler's
@@ -46,6 +72,13 @@ async function componentJsxRuntimes(code: string) {
 // without the pragma compiles its JSX with the project default runtime (e.g.
 // `css` props are no longer handled by Emotion).
 describe('split modules keep file-level JSX pragmas', () => {
+  const styledRoute = (
+    header: string,
+  ) => `${header}export const Route = createFileRoute('/pragma')({
+  component: () => <div css={{ color: 'red' }}>styled</div>,
+})
+`
+
   it.each([
     ['on the first import', `/** @jsxImportSource @emotion/react */\n${head}`],
     ['as a line comment', `// @jsxImportSource @emotion/react\n${head}`],
@@ -54,37 +87,48 @@ describe('split modules keep file-level JSX pragmas', () => {
       `/**\n * Header\n * @jsxImportSource @emotion/react\n */\n${head}`,
     ],
   ])('keeps @jsxImportSource %s in effect', async (_, header) => {
-    expect(await componentJsxRuntimes(styledRoute(header))).toEqual([
-      '@emotion/react/jsx-runtime',
-    ])
+    const rendered = await expectRendersLikeUntouched(styledRoute(header))
+    expect(emotionStyled(rendered)).toBe(true)
   })
 
-  it('keeps @jsxImportSource written after the imports', async () => {
-    // Oxc only reads leading pragmas; esbuild and Babel read them anywhere.
-    const modules = await componentModules(
-      styledRoute(`${head}/** @jsxImportSource @emotion/react */\n`),
-    )
-    const withJsx = modules.filter((code) => code.includes('styled'))
-    expect(withJsx.length).toBeGreaterThan(0)
-    for (const code of withJsx) {
-      expect(code).toContain('@jsxImportSource @emotion/react')
-    }
-  })
+  // D-04 (J2.16): what a pragma written after the imports means is the
+  // project's JSX transform's decision. Vite's (Oxc) reads leading pragmas
+  // only, so the untouched file renders with React's runtime, and so must
+  // the split component: the pragma must not become effective in a chunk.
+  // A project whose transform reads pragmas anywhere:
+  // integration/code-splitter-pragmas.test.ts.
+  // Bug: the chunk of the split component starts with the pragma comment
+  // (the imports above it in the route file are gone from the chunk), so
+  // Oxc reads it there: the split component renders with Emotion's runtime
+  // where the untouched file renders with React's.
+  // Source: V1 split F12 (D-04 ruled 2026-10-18).
+  // Impact: with Vite 8, a `css` prop that the untouched route ignored is
+  // styled once the component is split (or the reverse once the user
+  // relies on the unsplit behaviour): the route renders differently split.
+  it.fails(
+    'keeps a @jsxImportSource written after the imports as ineffective as in the untouched file (leading-pragma project)',
+    async () => {
+      const rendered = await expectRendersLikeUntouched(
+        styledRoute(`${head}/** @jsxImportSource @emotion/react */\n`),
+      )
+      expect(emotionStyled(rendered)).toBe(false)
+    },
+  )
 
+  // The component calls the factory itself too, so the chunk keeps its
+  // import whatever dead-code elimination counts as a use (a chunk whose
+  // only use of the factory is its JSX: pinned in
+  // known-bugs-code-splitter.test.ts, "classic JSX pragmas").
   it('keeps @jsxRuntime classic and @jsx pragmas in effect', async () => {
-    const modules = await componentModules(
-      styledRoute(`/** @jsxRuntime classic */
+    const rendered =
+      await expectRendersLikeUntouched(`/** @jsxRuntime classic */
 /** @jsx jsx */
 ${head}import { jsx } from '@emotion/react'
-`),
-    )
-    const compiled = await Promise.all(modules.map(compileJsx))
-    expect(await Promise.all(modules.map(jsxRuntimeOf))).toEqual(
-      modules.map(() => undefined),
-    )
-    expect(compiled.some((code) => /\bjsx\(\s*["']div["']/.test(code))).toBe(
-      true,
-    )
+export const Route = createFileRoute('/pragma')({
+  component: () => <div css={{ color: 'red' }}>{jsx('b', null, 'styled')}</div>,
+})
+`)
+    expect(emotionStyled(rendered)).toBe(true)
   })
 
   const sharedJsxRoute = `/** @jsxImportSource @emotion/react */
@@ -96,14 +140,13 @@ export const Route = createFileRoute('/pragma')({
 `
 
   it('keeps the pragma in effect for JSX the loader and the component share', async () => {
-    const { modules } = compileRouteModules(sharedJsxRoute)
-    // Whichever modules hold the shared JSX compile it with the pragma.
-    const holders = Object.values(modules).filter((code) =>
-      code.includes('<svg'),
-    )
-    expect(holders.length).toBeGreaterThan(0)
-    expect(await Promise.all(holders.map(jsxRuntimeOf))).toEqual(
-      holders.map(() => '@emotion/react/jsx-runtime'),
+    const untouched = await untouchedOptions(sharedJsxRoute)
+    const untouchedIcon = await renderComponent(() => untouched.loader().icon)
+    expect(emotionStyled(untouchedIcon)).toBe(true)
+    const route = await loadRoute(sharedJsxRoute)
+    // Whichever module holds the shared JSX compiles it with the pragma.
+    expect(await renderComponent(() => route.options.loader().icon)).toBe(
+      untouchedIcon,
     )
   })
 
@@ -117,19 +160,8 @@ export const Route = createFileRoute('/pragma')({
   it.fails(
     'keeps the pragma in effect in every module that contains JSX',
     async () => {
-      const { modules } = compileRouteModules(sharedJsxRoute)
-      const runtimes: Record<string, string | undefined> = {}
-      for (const [name, code] of Object.entries(modules)) {
-        runtimes[name] = await jsxRuntimeOf(code)
-      }
-      // Modules without JSX import no runtime.
-      const withJsx = Object.entries(runtimes).filter(([, runtime]) => runtime)
-      expect(withJsx.length).toBeGreaterThan(0)
-      expect(Object.fromEntries(withJsx)).toEqual(
-        Object.fromEntries(
-          withJsx.map(([name]) => [name, '@emotion/react/jsx-runtime']),
-        ),
-      )
+      const rendered = await expectRendersLikeUntouched(sharedJsxRoute)
+      expect(emotionStyled(rendered)).toBe(true)
     },
   )
 })
@@ -197,70 +229,48 @@ export const Route = createFileRoute('/')({
   )
 })
 
-// React Refresh and solid-refresh read these comments per module, so every
-// module holding route code must keep them. Compile-level: the Solid router
-// cannot be linked in process (its runtime under Solid is covered by
-// integration/build-frameworks.test.ts); the component's module is the one
-// holding its JSX.
-describe('split modules keep HMR pragma comments', () => {
-  const solidHead = `import { createFileRoute } from '@tanstack/solid-router'\n`
-  const page = `function Page() {
+// License comments stay in the route module when the splitter moves or
+// removes the code below them (R-14, SPEC G12): minifiers keep legal
+// comments in the modules that carry them, so the route module keeps the
+// notice of the code it no longer holds. Copies in other modules and other
+// orphaned comments are free. Source: #8504.
+describe('the route module keeps the license comments of the route file', () => {
+  it('leading the file', () => {
+    const legal = '/*! Example Corp. | MIT License */'
+    const { modules } = compileRouteModules(
+      `${legal}\n${head}export const Route = createFileRoute('/')({
+  component: () => <p>page</p>,
+})`,
+    )
+    expect(Object.keys(modules).length).toBeGreaterThan(1)
+    expect(modules.reference).toContain(legal)
+  })
+
+  it.each([
+    {
+      name: 'above a component the splitter moves into its chunk',
+      legal: '/** @license Example Corp. | MIT License */',
+      route: (legal: string) => `${head}${legal}
+function Page() {
   return <p>page</p>
 }
 export const Route = createFileRoute('/')({ component: Page })
-`
-  it.each([
-    {
-      // Source: React Refresh ReactFreshIntegration-test "resets state on every
-      // edit with @refresh reset annotation"
-      name: 'a /* @refresh reset */ file header for React Refresh',
-      target: 'react',
-      code: `/* @refresh reset */\n${head}${page}`,
-      pragma: '@refresh reset',
+`,
     },
     {
-      // Source: solid-refresh tests/client/vite.test.ts "@refresh reload should work"
-      name: 'a // @refresh reload file header for solid-refresh',
-      target: 'solid',
-      code: `// @refresh reload\n${solidHead}${page}`,
-      pragma: '@refresh reload',
-    },
-    {
-      // Source: solid-refresh tests/client/vite.test.ts "should skip
-      // FunctionDeclaration with @refresh reload"
-      name: 'a // @refresh reload comment above the split component',
-      target: 'solid',
-      code: `${solidHead}// @refresh reload\n${page}`,
-      pragma: '@refresh reload',
-    },
-  ] as const)('keeps $name', ({ target, code, pragma }) => {
-    expect(transformWithRouteHmrPlugin(code, { target })).toContain(pragma)
-    const { modules } = compileRouteModules(code, {
-      hmr: true,
-      targetFramework: target,
-    })
-    expect(modules.reference).toContain(pragma)
-    const holders = Object.entries(modules).filter(
-      ([name, module]) =>
-        name !== 'reference' && module.includes('<p>page</p>'),
-    )
-    expect(holders.length).toBeGreaterThan(0)
-    for (const [name, module] of holders) {
-      expect(module, name).toContain(pragma)
-    }
-  })
-})
-
-// Minifiers keep legal comments in the modules that carry them. Source: #8504.
-it('split modules keep the leading legal comment of the route file', () => {
-  const legal = '/*! Example Corp. | MIT License */'
-  const { modules } = compileRouteModules(
-    `${legal}\n${head}export const Route = createFileRoute('/')({
+      name: 'above a declaration a deleted route option alone read',
+      legal: '/* @preserve Example Corp. | MIT License */',
+      route: (legal: string) => `${head}${legal}
+const ssr = () => false
+export const Route = createFileRoute('/')({
+  ssr,
   component: () => <p>page</p>,
-})`,
-  )
-  expect(Object.keys(modules).length).toBeGreaterThan(1)
-  for (const [name, code] of Object.entries(modules)) {
-    expect(code, name).toContain(legal)
-  }
+})
+`,
+      deleteNodes: ['ssr' as const],
+    },
+  ])('$name', ({ legal, route, deleteNodes }) => {
+    const { modules } = compileRouteModules(route(legal), { deleteNodes })
+    expect(modules.reference).toContain(legal)
+  })
 })
