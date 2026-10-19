@@ -570,7 +570,7 @@ export const Route = createFileRoute('/')({
 // Each component counts its mounts in a state initializer (React runs it on
 // mount only; React Refresh keeps the state and re-runs effects): a body
 // edit React Refresh patches in place mounts nothing anew. Unsplit inline memo / forwardRef
-// components: pinned in known-bugs-route-hmr.test.ts.
+// components: pinned in known-bugs-route-hmr-components.test.ts.
 describe.concurrent('vite: an edited React route component written', () => {
   const mounted = `useState(() => (window.mounts = (window.mounts ?? 0) + 1))`
   const rows = [

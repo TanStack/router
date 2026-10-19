@@ -11,7 +11,7 @@
  * react-refresh-route-components.test.ts and known-bugs-route-hmr.test.ts
  * (V1 HMR-17): those read which names React Refresh's transform registered,
  * which neither shows new code nor kept state. Pins: known-bugs-route-hmr
- * .test.ts (integration). What modules importing the exports get:
+ * -components.test.ts (integration). What modules importing the exports get:
  * react-refresh-route-components.test.ts.
  *
  * Concurrent: each test has its own dev server and page, and mostly waits.
@@ -161,7 +161,7 @@ export const Route = createFileRoute('/')({ component: page })
   // -components "declared lowercase as %s, by renaming it" and "renamed
   // lowercase and exported (%s)". The split rows of the lowercase
   // variables, and `export { page }` split: pinned in
-  // known-bugs-route-hmr.test.ts.
+  // known-bugs-route-hmr-components.test.ts.
   test.for([
     ...[false, true].flatMap((autoCodeSplitting) => [
       {

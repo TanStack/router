@@ -110,7 +110,8 @@ export const Route = createFileRoute('/')({ component: page })`,
 
 describe('route HMR leaves options React Refresh does not handle as they are', () => {
   // Loosened: the method keeps working. Being refreshable is the goal pinned
-  // by the "method shorthand" rows of known-bugs-route-hmr.test.ts.
+  // by the "method shorthand" rows of
+  // integration/known-bugs-route-hmr-components.test.ts.
   it('keeps a method-shorthand component option working', async () => {
     const code = await transformWithRouteHmrPlugin(
       `${head}export const Route = createFileRoute('/')({

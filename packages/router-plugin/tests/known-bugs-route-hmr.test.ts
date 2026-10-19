@@ -181,7 +181,7 @@ export const Route = createFileRoute('/')({
   // (SyntaxError: Export 'SplitComponent' is not defined).
   // Source: #8504 react-refresh-route-components ("that is also the unsplit
   // pendingComponent"). That edits of both show in place: the page pin in
-  // integration/known-bugs-route-hmr.test.ts.
+  // integration/known-bugs-route-hmr-components.test.ts.
   test.fails(
     'a lowercase function component that is also the unsplit pendingComponent renders as both',
     async () => {
@@ -212,7 +212,7 @@ export const Route = createFileRoute('/')({ component: page, pendingComponent: p
   // passes. Whether the component is split is the code splitter's goal; either
   // way a module importing the export and the route render the same
   // component. That edits show in place: the page pin in
-  // integration/known-bugs-route-hmr.test.ts.
+  // integration/known-bugs-route-hmr-components.test.ts.
   test.fails(
     'a component exported by an export list renders for a module importing it and as the route component',
     async () => {
