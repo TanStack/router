@@ -74,6 +74,9 @@ const run = () =>
         // a removal landing while Rspack compiles is lost (FOLLOWUPS
         // "UPSTREAM (W3-harness2)": watchpack 2.5.2 vendored by Rspack).
         // Merge the steps back once Rspack bundles watchpack >= 2.6.
+        // (Settled first too: a compile the previous step still has
+        // pending would pause the watcher while the removal lands.)
+        await server.settle()
         await server.edit({ 'src/secret.server.ts': null })
         await server.settle()
         await server.edit({ 'src/secret.server.ts': secretServerModule })

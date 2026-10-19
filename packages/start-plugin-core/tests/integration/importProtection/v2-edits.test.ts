@@ -318,7 +318,10 @@ describe('rsbuild dev', () => {
         // compiles the previous one can be lost (FOLLOWUPS "UPSTREAM
         // (W3-harness2)": watchpack 2.5.2 vendored by Rspack, fixed in
         // 2.6.0). Merge the deletions, then the recreations, back into one
-        // edit each once Rspack bundles watchpack >= 2.6.
+        // edit each once Rspack bundles watchpack >= 2.6. (Settled first
+        // too: a compile the start or the previous step still has pending
+        // would pause the watcher while the first removal lands.)
+        await server.settle()
         await server.edit({ 'src/secret.server.ts': null })
         await server.settle()
         await server.edit({ 'src/widget.client.ts': null })
