@@ -1196,6 +1196,121 @@ export const read = () => widget()
   timeout,
 )
 
+// Dependencies (SPEC J6.10): files under `node_modules` skip the file and
+// marker checks by default, a dependency marking itself server-only
+// included; `excludeFiles: []` checks them. The build rows are in
+// build-options.test.ts ("excludeFiles").
+// Source: V1 F J6.10 (no dev row).
+describe('a client import of a dependency that marks itself server-only', () => {
+  const app = {
+    'node_modules/db-lib/package.json': JSON.stringify({
+      name: 'db-lib',
+      type: 'module',
+      exports: { '.': './index.js' },
+    }),
+    'node_modules/db-lib/index.js': `import '@tanstack/react-start/server-only'
+export const query = () => 'MARK_LIB'
+`,
+    'src/a.ts': `import { query } from 'db-lib'
+export const read = () => query()
+`,
+    'src/entry.ts': `export * from './a'\n`,
+  }
+  /** What the client evaluates without loading: Vite's client only. */
+  const notDependencies = /^\/@(vite|react-refresh)\b/
+  /**
+   * The dependency is served as it is, not pre-bundled (as for a package
+   * an app lists in `optimizeDeps.exclude`; the harness pre-bundles
+   * nothing).
+   */
+  const options = { config: { optimizeDeps: { exclude: ['db-lib'] } } }
+
+  // Bug: in dev, the Vite adapter checks the server-only marker a
+  // dependency imports when it resolves the marker import, whatever
+  // `excludeFiles` says (vite/import-protection-plugin/plugin.ts, marker
+  // handling in `resolveId`; the build twin is pinned in
+  // build-options.test.ts), and then reads the importer's code from
+  // Vite's `getModuleInfo(importer).code`, which the dev server does not
+  // support: loading the dependency throws "[vite] The "code" property of
+  // ModuleInfo is not supported."
+  // Impact: in dev, a client module importing a dependency that marks
+  // itself server-only and is not pre-bundled (`optimizeDeps.exclude`)
+  // fails to load with an internal error, by default and with
+  // `excludeFiles: []` alike.
+  // Source: V1 F J6.10 (the dev row was missing).
+  test.fails(
+    'by default, is not logged, and the client gets the real module',
+    async () => {
+      const server = await startProtectedDevServer(app, {}, options)
+      const module = await evaluateServed(server, '/src/entry.ts', {
+        skip: notDependencies,
+      })
+      expect(module.read()).toBe('MARK_LIB')
+      expect(loggedViolations(server.logs)).toEqual([])
+    },
+    timeout,
+  )
+
+  test.fails(
+    'with excludeFiles: [], is logged, and the client gets a safe mock',
+    async () => {
+      const server = await startProtectedDevServer(
+        app,
+        { client: { excludeFiles: [] }, mockAccess: 'off' },
+        options,
+      )
+      const module = await evaluateServed(server, '/src/entry.ts', {
+        skip: notDependencies,
+      })
+      expectSafeMock(module.read(), 'MARK_LIB')
+      expect(
+        loggedViolations(server.logs).map((violation) =>
+          violation.replace(/:.*/, ''),
+        ),
+      ).toEqual([
+        expect.stringMatching(
+          /^client (?:src\/a|node_modules\/db-lib\/index)\b/,
+        ),
+      ])
+    },
+    timeout,
+  )
+})
+
+// The violations a dev server logs for a module both environments load do
+// not depend on which environment transforms it first (SPEC J6.11).
+// Source: V1 F J6.11 (per-environment first-transform order, no row).
+describe('a module the client and the server both load', () => {
+  /** `src/a.ts` uses a denied file of each environment. */
+  const app = {
+    'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+    'src/widget.client.ts': `export const widget = () => 'MARK_CLIENT'\n`,
+    'src/a.ts': `import { secret } from './secret.server'
+import { widget } from './widget.client'
+export const read = () => [secret(), widget()]
+`,
+    'src/entry.ts': `export * from './a'\n`,
+  }
+
+  test.each([
+    ['client', 'ssr'],
+    ['ssr', 'client'],
+  ])(
+    'loaded by the %s first, then by the %s, each environment logs its violation',
+    async (first, second) => {
+      const server = await startProtectedDevServer(app)
+      await server.load('/src/entry.ts', { environment: first })
+      await server.load('/src/entry.ts', { environment: second })
+      expect(
+        loggedViolations(server.logs)
+          .map((violation) => violation.replace(/:.*/, ''))
+          .sort(),
+      ).toEqual(['client src/a.ts', 'server src/a.ts'])
+    },
+    timeout,
+  )
+})
+
 // `mockAccess` applies wherever a mock is served, the server environments
 // included (SPEC J6.3; schema.ts documents it for `behavior: 'mock'`
 // without a client restriction): the mock an SSR import of a `.client` file
