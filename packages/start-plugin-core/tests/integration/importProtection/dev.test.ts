@@ -7,8 +7,8 @@
  * before the modules it imports.
  */
 import path from 'node:path'
-import mdx from '@mdx-js/rollup'
 import { createRequire } from 'node:module'
+import mdx from '@mdx-js/rollup'
 import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
 import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
 import { afterEach, describe, expect, test, vi } from 'vitest'

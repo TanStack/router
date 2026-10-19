@@ -193,15 +193,15 @@ export const read = () => widget()
         )
       }
     // The SSR output is a CommonJS bundle for Node.
-    const module = { exports: {} }
+    const cjs = { exports: {} }
     const context = vm.createContext({
       console: {
         log: record('log'),
         warn: record('warn'),
         error: record('error'),
       },
-      module,
-      exports: module.exports,
+      module: cjs,
+      exports: cjs.exports,
       require: createRequire(path.join(server.root, 'index.js')),
     })
     context.globalThis = context

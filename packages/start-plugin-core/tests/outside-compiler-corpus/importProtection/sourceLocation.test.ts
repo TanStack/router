@@ -11,10 +11,10 @@
  */
 import { describe, expect, test } from 'vitest'
 import {
-  createImportSpecifierLocationIndex,
   ImportLocCache,
   buildCodeSnippet,
   buildLineIndex,
+  createImportSpecifierLocationIndex,
   findPostCompileUsageLocation,
   normalizeSourceMap,
   pickOriginalCodeFromSourcesContent,

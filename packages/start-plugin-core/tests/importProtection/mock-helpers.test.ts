@@ -15,7 +15,6 @@ import {
   expectSafeMock,
   isSafeMock,
   probeMock,
-  probeMockPrelude,
   safeMock,
   selfMock,
 } from './mock-helpers'

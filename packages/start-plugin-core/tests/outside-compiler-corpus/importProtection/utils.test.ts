@@ -19,11 +19,11 @@ import {
   buildSourceCandidates,
   canonicalizeResolvedId,
   checkFileDenial,
-  dedupeViolationKey,
   dedupePatterns,
+  dedupeViolationKey,
   getOrCreate,
-  isInsideDirectory,
   isFileExcluded,
+  isInsideDirectory,
   normalizeFilePath,
   relativizePath,
   shouldDeferViolation,
@@ -32,7 +32,6 @@ import {
   withoutKnownExtension,
 } from '../../../src/import-protection/utils'
 import { compileMatchers } from '../../../src/import-protection/matchers'
-import { formatViolation } from '../../../src/import-protection/trace'
 
 describe('dedupePatterns', () => {
   test('dedupes strings and preserves first occurrence order', () => {
