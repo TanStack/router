@@ -1209,6 +1209,12 @@ A serialization adapter can restore a pending thenable, so transported serial
 results still pass through the shared promise check.
 The shared `isPromise` predicate recognizes object and callable thenables. It
 reads `then` without invoking it; native promises perform result assimilation.
+
+Detection and native assimilation can read `.then` separately. Lifecycle results
+must keep that property stable throughout those reads. Getters that change its
+value are unsupported. This contract preserves the direct path for synchronous
+results.
+
 The listener and slot are cleared on every exit, including successful
 publication of a handoff, so the handoff cannot retain the last awaited value.
 Development failure diagnostics are cleared on every exit. Neither the handoff
