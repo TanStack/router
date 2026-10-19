@@ -1042,8 +1042,10 @@ console.log('client')
     timeout,
   )
 
+  // The build fails and names the broken file at its line (an actionable
+  // error, SPEC G5); other diagnostics may come with it (V1 ip S21).
   test(
-    'imported by a module that fails to compile: the build reports the compile error only',
+    'imported by a module that fails to compile: the build fails, naming the broken file and line',
     async () => {
       const error = await rejection(
         buildStart({
@@ -1058,8 +1060,11 @@ export const read = ( => secret()
           entry: 'src/entry.ts',
         }),
       )
-      expect(error.message).toContain('src/broken.ts')
-      expect(reportedViolations(error.message)).toEqual([])
+      expectDiagnostic(error, {
+        severity: 'error',
+        file: 'src/broken.ts',
+        position: { line: 2 },
+      })
     },
     timeout,
   )
