@@ -31,6 +31,7 @@ import {
   startProtectedDevServer,
   violationReports,
 } from '../../importProtection/start-apps'
+import { suggestedDirections } from '../../importProtection/violation-report'
 import type { ViolationReport } from '../../importProtection/violation-report'
 import type { ImportProtectionOptions } from '../../../src/schema'
 import type { ViolationInfo } from '../../../src/import-protection/trace'
@@ -89,6 +90,14 @@ describe('a client import of a denied file', () => {
       const client = await server.load('/src/entry.ts')
       expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
       expect(loggedViolations(server.logs)).toEqual([`client ${deniedFileUse}`])
+      // A server-side fix is suggested (SPEC J6.5, J6.12), whatever the words.
+      expect(
+        distinct(
+          violationReports(server.logs).map(({ text }) =>
+            suggestedDirections(text).join(),
+          ),
+        ),
+      ).toEqual(['server'])
     },
     timeout,
   )
@@ -1124,6 +1133,14 @@ export const read = () => widget()
     const served = await server.load('/src/entry.ts', { environment: 'rsc' })
     expect(modulesContaining(served, 'MARK_CLIENT')).toEqual([])
     expect(loggedViolations(server.logs)).toEqual(['server src/fn.ts:2:27'])
+    // A client-side fix is suggested (SPEC J6.5, J6.12), whatever the words.
+    expect(
+      distinct(
+        violationReports(server.logs).map(({ text }) =>
+          suggestedDirections(text).join(),
+        ),
+      ),
+    ).toEqual(['client'])
   },
   timeout,
 )

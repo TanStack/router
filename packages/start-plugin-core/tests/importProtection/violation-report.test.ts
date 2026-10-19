@@ -10,6 +10,7 @@ import { describe, expect, test } from 'vitest'
 import { formatViolation } from '../../src/import-protection/trace'
 import {
   reportedViolations,
+  suggestedDirections,
   violationReports,
   violationTexts,
 } from './violation-report'
@@ -239,5 +240,26 @@ Fix: ...`
     expect(() =>
       violationReports(report.replace('  > 4 |', '    4 |')),
     ).toThrow(/caret/)
+  })
+})
+
+describe('suggestedDirections', () => {
+  test.each([
+    {
+      text: 'Wrap it in createServerFn().handler(...) or createIsomorphicFn()',
+      directions: ['server'],
+    },
+    { text: 'or createServerOnlyFn(() => ...)', directions: ['server'] },
+    { text: 'Render it in <ClientOnly>', directions: ['client'] },
+    { text: 'use createClientOnlyFn', directions: ['client'] },
+    { text: 'createIsomorphicFn() only', directions: [] },
+    {
+      text: 'createServerFn or createClientOnlyFn',
+      directions: ['server', 'client'],
+    },
+    // Whole names only.
+    { text: 'myCreateServerFnHelper', directions: [] },
+  ])('$text: $directions', ({ text, directions }) => {
+    expect(suggestedDirections(text)).toEqual(directions)
   })
 })
