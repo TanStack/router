@@ -86,16 +86,21 @@ function normalizePath(file: string) {
   return file.replaceAll('\\', '/')
 }
 
-/** Directory of the temporary projects of this test process. */
+/**
+ * Directory of the temporary projects of this test file, removed after the
+ * file (the hook registers while the test file imports this module).
+ */
 let projectsDir: string | undefined
 function projectRoot() {
-  if (!projectsDir) {
-    const dir = mkdtempSync(path.join(tmpdir(), 'tsr-plugin-host-'))
-    projectsDir = dir
-    process.once('exit', () => rmSync(dir, { recursive: true, force: true }))
-  }
+  projectsDir ??= mkdtempSync(path.join(tmpdir(), 'tsr-plugin-host-'))
   return projectsDir
 }
+afterAll(() => {
+  if (projectsDir) {
+    rmSync(projectsDir, { recursive: true, force: true })
+    projectsDir = undefined
+  }
+})
 
 /**
  * Runs `close` when the current test ends, or (outside a test) after the
