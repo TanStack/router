@@ -34,7 +34,7 @@
     "test:types:ts59": "node ../../node_modules/typescript59/lib/tsc.js -p tsconfig.legacy.json",
     "test:types:ts60": "tsc6 -p tsconfig.legacy.json",
     "test:types:ts70": "tsc -p tsconfig.legacy.json",
-    "test:unit": "vitest --project unit --typecheck false && vitest run --project unit --typecheck.only",
+    "test:unit": "vitest --project unit && vitest run --project types",
     "test:integration": "vitest --project integration",
     "test:unit:dev": "pnpm run test:unit --watch --hideSkippedTests",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",

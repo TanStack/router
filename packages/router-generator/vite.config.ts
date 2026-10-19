@@ -10,7 +10,8 @@ const config = defineConfig({
     reporters: ['default', '@tanstack/compiler-test-utils/budget-reporter'],
     // Test files share a worker's modules (the router packages, Vite): every
     // test works in its own temporary app and restores its spies and env
-    // stubs, and the route tree helpers start a fresh Vite server per load.
+    // stubs, and the route tree helpers share Vite servers only where they
+    // forget the app's modules first.
     isolate: false,
     projects: [
       {
@@ -20,7 +21,16 @@ const config = defineConfig({
         test: {
           name: 'unit',
           exclude: [...configDefaults.exclude, 'integration/**'],
-          typecheck: { enabled: true },
+        },
+      },
+      {
+        // Fast tier, after `unit` (`test:unit`): the type tests of the
+        // route trees the `unit` run generated (tests/generator/**/*.test-d.ts).
+        extends: true,
+        test: {
+          name: 'types',
+          include: [],
+          typecheck: { enabled: true, only: true },
         },
       },
       {
@@ -31,6 +41,7 @@ const config = defineConfig({
         test: {
           name: 'integration',
           include: ['integration/**/*.test.ts'],
+          typecheck: { enabled: false },
           testTimeout: 30_000,
           hookTimeout: 30_000,
         },
