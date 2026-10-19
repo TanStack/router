@@ -2351,39 +2351,25 @@ export async function hydrate(router: AnyRouter): Promise<void> {
   let ignored: Array<[number, AnyRoute, string, unknown]> | undefined
   let failure: unknown
   try {
-    let location!: AnyRouter['latestLocation']
-    let candidates!: Array<AnyRouteMatch>
-    let handoffHistoryHref!: string
-    let handoffHistoryState: unknown
-    try {
-      await wait(
-        Promise.resolve(
-          router.options.hydrate?.(dehydratedRouter!.dehydratedData),
-        ),
-      )
-      if (!isCurrent()) {
-        return
-      }
-      // Hydration trusts transported context and beforeLoad. The raw history
-      // entry owns the handoff; route structure is verified after rematching.
-      const historyLocation = router.history.location
-      handoffHistoryHref = historyLocation.href
-      handoffHistoryState = historyLocation.state
-      router.updateLatestLocation()
-      location = router.latestLocation
-      router.stores.location.set(location)
-      candidates = router.matchRoutes(location, {
-        _controller: controller,
-      })
-    } catch (cause) {
-      if (isCurrent()) {
-        router._preflight = undefined
-      }
-      controller.abort(cause)
-      if (cause !== signal) {
-        throw cause
-      }
+    await wait(
+      Promise.resolve(
+        router.options.hydrate?.(dehydratedRouter!.dehydratedData),
+      ),
+    )
+    if (!isCurrent()) {
+      return
     }
+    // Hydration trusts transported context and beforeLoad. The raw history
+    // entry owns the handoff; route structure is verified after rematching.
+    const historyLocation = router.history.location
+    const handoffHistoryHref = historyLocation.href
+    const handoffHistoryState = historyLocation.state
+    router.updateLatestLocation()
+    const location = router.latestLocation
+    router.stores.location.set(location)
+    const candidates = router.matchRoutes(location, {
+      _controller: controller,
+    })
     if (!isCurrent()) {
       return
     }
@@ -2506,15 +2492,11 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       }
     })
     let chunkFailure = 0
-    try {
-      while (
-        chunkFailure < chunks.length &&
-        (await wait(chunks[chunkFailure]!))
-      ) {
-        chunkFailure++
-      }
-    } catch {
-      return
+    while (
+      chunkFailure < chunks.length &&
+      (await wait(chunks[chunkFailure]!))
+    ) {
+      chunkFailure++
     }
     if (!isCurrent()) {
       return
@@ -2865,6 +2847,16 @@ export async function hydrate(router: AnyRouter): Promise<void> {
         router.stores.resolvedLocation.set(router.stores.location.get())
       }
     })
+  } catch (cause) {
+    // An interrupted reconstruction owns no handoff. Supersession leaves the
+    // replacement preflight untouched; application failures still propagate.
+    if (isCurrent()) {
+      router._preflight = undefined
+      controller.abort(cause)
+    }
+    if (cause !== signal) {
+      throw cause
+    }
   } finally {
     if (process.env.NODE_ENV !== 'production') {
       failure = undefined
