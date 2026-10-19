@@ -1,6 +1,6 @@
 import path from 'node:path'
 import * as fsp from 'node:fs/promises'
-import { existsSync, mkdirSync } from 'node:fs'
+import { existsSync, mkdirSync, realpathSync } from 'node:fs'
 import crypto from 'node:crypto'
 import { rootRouteId } from '@tanstack/router-core'
 import { logging } from './logger'
@@ -188,6 +188,14 @@ interface CrawlingResult {
   acc: HandleNodeAccumulator
 }
 
+function realpathOrUndefined(filePath: string): string | undefined {
+  try {
+    return replaceBackslash(realpathSync(filePath))
+  } catch {
+    return undefined
+  }
+}
+
 export class Generator {
   /**
    * why do we have two caches for the route files?
@@ -296,12 +304,39 @@ export class Generator {
   }
 
   public getRoutesByFileMap(): GetRoutesByFileMapResult {
-    return new Map(
-      [...this.routeNodeCache.entries()].map(([filePath, cacheEntry]) => [
-        filePath,
-        { routeId: cacheEntry.routeId },
-      ]),
-    )
+    const routesByFile: GetRoutesByFileMapResult = new Map()
+    for (const [filePath, cacheEntry] of this.routeNodeCache.entries()) {
+      routesByFile.set(filePath, { routeId: cacheEntry.routeId })
+    }
+    // A route file reached through a symlink (a Bazel sandbox, a
+    // pnpm-linked source tree, Nix) is scanned under its link path, but a
+    // bundler that resolves symlinks — Vite's default — hands its transform
+    // hooks the real path. The consumers of this map (the code splitter,
+    // whose client-side stripping of `server.handlers` hangs off the
+    // lookup, and route HMR) look up by that id, so each entry is also
+    // keyed under its real path. A scanned path always wins over an alias,
+    // and a real path that two scanned routes with different ids resolve
+    // to gets no alias at all: better a miss than the wrong route.
+    const ambiguousRealPaths = new Set<string>()
+    for (const [filePath, cacheEntry] of this.routeNodeCache.entries()) {
+      const realPath = realpathOrUndefined(filePath)
+      if (
+        realPath === undefined ||
+        realPath === filePath ||
+        this.routeNodeCache.has(realPath) ||
+        ambiguousRealPaths.has(realPath)
+      ) {
+        continue
+      }
+      const existing = routesByFile.get(realPath)
+      if (existing !== undefined && existing.routeId !== cacheEntry.routeId) {
+        ambiguousRealPaths.add(realPath)
+        routesByFile.delete(realPath)
+        continue
+      }
+      routesByFile.set(realPath, { routeId: cacheEntry.routeId })
+    }
+    return routesByFile
   }
 
   public async run(event?: GeneratorEvent): Promise<void> {
