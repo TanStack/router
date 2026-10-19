@@ -14730,6 +14730,9 @@ importers:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
         version: 0.18.4
+      '@tanstack/compiler-test-utils':
+        specifier: workspace:*
+        version: link:../compiler-test-utils
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router

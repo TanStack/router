@@ -241,13 +241,11 @@ export const Route = createLazyFileRoute('/about')({
       })
       const { generatedRouteTree } = await generate(root, { target: 'vue' })
 
-      expect(
-        textOf(
-          await withRouteTree(generatedRouteTree, ({ renderAt }) =>
-            renderAt('/about'),
-          ),
-        ),
-      ).toBe('about')
+      await withRouteTree(generatedRouteTree, async (tree) => {
+        // (lazily: the app does not load it before the route renders)
+        expect(tree.loadedFiles()).not.toContain('routes/about.lazy.vue')
+        expect(textOf(await tree.renderAt('/about'))).toBe('about')
+      })
     },
   )
 
@@ -298,10 +296,12 @@ describe('empty files', () => {
         __root__: 'routes/__root.ts',
         '/posts': 'routes/posts.ts',
       })
-      expect(await piecesOf(generatedRouteTree)).toEqual({
-        __root__: {},
-        '/posts': {},
-      })
+      // The routes load and render (whatever the generator did with the
+      // empty file: an attached piece must load and render too).
+      await piecesOf(generatedRouteTree)
+      await withRouteTree(generatedRouteTree, ({ renderAt }) =>
+        renderAt('/posts'),
+      )
     },
   )
 

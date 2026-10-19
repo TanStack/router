@@ -105,8 +105,8 @@ export const pagesApp = (target: 'react' | 'solid'): Case => ({
     '/posts/1': ['root', 'posts', 'post'],
     '/login': ['root', 'auth', 'login'],
   },
-  // (React: the same routes' types are checked by the first case of
-  // real-router.test.ts)
+  // (React: the types of the same routes are checked by the first case of
+  // integration/route-types.test.ts)
   types: target === 'solid',
 })
 
@@ -188,6 +188,26 @@ async function checkRouter(
  * ids, and for each route the same full path and parent as `expected`.
  */
 async function checkTypes(root: string, expected: Case['expected']) {
+  expect(
+    await typeErrorsOf(
+      root,
+      'src/checks.ts',
+      `/// <reference path="./vue-shim.d.ts" />
+${routeTypeChecks('./routeTree.gen', expected)}`,
+    ),
+  ).toEqual([])
+}
+
+/**
+ * A module that type-checks only if the route tree `tree` (an import
+ * specifier) types the routes of `expected` (route id to full path and
+ * parent id) alike: the same route ids, and for each route the same full
+ * path and parent.
+ */
+export function routeTypeChecks(
+  tree: string,
+  expected: Record<string, readonly [string, string | null, ...Array<unknown>]>,
+) {
   const ids = Object.keys(expected)
   const checks = ids.map((id, i) => {
     const [fullPath, parent] = expected[id]!
@@ -198,16 +218,9 @@ async function checkTypes(root: string, expected: Case['expected']) {
     return `export type Check${i} = Expect<Equal<${actual}, ${wanted}>>
 export const check${i}: ${wanted} = null as unknown as ${actual}`
   })
-  expect(
-    await typeErrorsOf(
-      root,
-      'src/checks.ts',
-      `/// <reference path="./vue-shim.d.ts" />
-import type { FileRoutesById } from './routeTree.gen'
+  return `import type { FileRoutesById } from ${JSON.stringify(tree)}
 ${typeAssertions}
 export type Ids = Expect<Equal<keyof FileRoutesById, ${ids.map((id) => JSON.stringify(id)).join(' | ')}>>
 ${checks.join('\n')}
-`,
-    ),
-  ).toEqual([])
+`
 }

@@ -68,6 +68,34 @@ function nameOf(node: Node) {
  * when the file does not parse or exports no such `Route`.
  */
 export function routeCallOf(code: string, fileName = 'route.tsx'): RouteCall {
+  const { constructor, id } = findRouteCall(code, fileName)
+  return { constructor, id }
+}
+
+/** Where a route file's route constructor call is in its source. */
+export interface RouteCallSpans {
+  /** The callee of the constructor call (`createFileRoute`, `R.createFileRoute`). */
+  callee: [start: number, end: number]
+  /** The constructor's first argument (the route id), if it has one. */
+  id: [start: number, end: number] | undefined
+}
+
+/**
+ * The source spans of the callee and the id argument of the route
+ * constructor call `code` exports as `Route` (see `routeCallOf`).
+ */
+export function routeCallSpansOf(
+  code: string,
+  fileName = 'route.tsx',
+): RouteCallSpans {
+  const { callee, idArgument } = findRouteCall(code, fileName)
+  return {
+    callee: [callee.start, callee.end],
+    id: idArgument && [idArgument.start, idArgument.end],
+  }
+}
+
+function findRouteCall(code: string, fileName: string) {
   const { program, errors } = parseSync(fileName, code)
   if (errors.length) {
     throw new Error(errors.map((error) => error.message).join('\n'))
@@ -153,12 +181,13 @@ export function routeCallOf(code: string, fileName = 'route.tsx'): RouteCall {
   ) {
     constructor = callee.property.name
   }
+  const idArgument: Node | undefined =
+    constructorCall === call ? undefined : constructorCall.arguments[0]
   return {
     constructor,
-    id:
-      constructorCall === call
-        ? undefined
-        : stringValue(unwrap(constructorCall.arguments[0])),
+    id: stringValue(unwrap(idArgument)),
+    callee: constructorCall.callee as Node,
+    idArgument,
   }
 }
 

@@ -4,8 +4,11 @@
  * groups, pathless layouts, and token and param validation, read from the
  * evaluated route tree.
  */
-import path from 'node:path'
-import { describe, expect, test, vi } from 'vitest'
+import { describe, expect, test } from 'vitest'
+import {
+  captureThrow,
+  expectDiagnostic,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import {
   index,
   layout,
@@ -14,8 +17,8 @@ import {
   route as virtualRoute,
 } from '@tanstack/virtual-file-routes'
 import { createApp, fileRoute, generate, lazyFileRoute, rootRoute } from './app'
+import { checkApp, page } from './real-router'
 import { matchesOf, routesOf, urlsOf } from './route-tree'
-import { typeAssertions, typeErrorsOf } from './type-check'
 import type { Config } from '../src'
 
 /** An app with a root route and a route file for each of `files`. */
@@ -144,6 +147,39 @@ describe('underscores', () => {
       '/_api/_auth/users': '/_api/users',
     })
   })
+
+  // Escapes and un-nesting in directory route files under pathless
+  // layouts (file-naming-conventions.md: `_` prefix pathless, `_` suffix
+  // un-nesting, `[x]` escapes); ported from the helper tests of utils.ts.
+  test('escaped and trailing underscores under pathless layouts keep or drop their underscores as escaped', async () => {
+    const root = await appWithRoutes([
+      '_layout.tsx',
+      '_layout/[_][_]foo.tsx',
+      '_layout/bar_/index.tsx',
+      '_layout/[_]baz[_]/index.tsx',
+      '[_]a/bar[_]/[_baz_]/index.tsx',
+      '[_]auth/_admin.tsx',
+      '[_]auth/_admin/dashboard.tsx',
+    ])
+    const { generatedRouteTree } = await generate(root)
+
+    const urls = await urlsOf(generatedRouteTree)
+    const routes = await routesOf(generatedRouteTree)
+    expect(
+      Object.fromEntries(
+        Object.entries(routes).map(([id, file]) => [file, urls[id]]),
+      ),
+    ).toEqual({
+      'routes/__root.tsx': '/',
+      'routes/_layout.tsx': '/',
+      'routes/_layout/[_][_]foo.tsx': '/__foo',
+      'routes/_layout/bar_/index.tsx': '/bar/',
+      'routes/_layout/[_]baz[_]/index.tsx': '/_baz_/',
+      'routes/[_]a/bar[_]/[_baz_]/index.tsx': '/_a/bar_/_baz_/',
+      'routes/[_]auth/_admin.tsx': '/_auth',
+      'routes/[_]auth/_admin/dashboard.tsx': '/_auth/dashboard',
+    })
+  })
 })
 
 describe('virtual route paths', () => {
@@ -165,6 +201,30 @@ describe('virtual route paths', () => {
       __root__: '/',
       '/docs/intro': '/docs/intro',
       '/api/v1/': '/api/v1/',
+    })
+  })
+
+  // In a virtual route path a dot is a literal character, and a bracket
+  // escape stands for its content (no file-route separators apply).
+  test('dots and bracket escapes in virtual route paths are literal characters of the URL', async () => {
+    const root = await appWithRoutes(['a.tsx', 'b.tsx'])
+    const { generatedRouteTree } = await generate(root, {
+      virtualRouteConfig: virtualRootRoute('__root.tsx', [
+        virtualRoute('/files.json', 'a.tsx'),
+        virtualRoute('/pathless[.]layout', 'b.tsx'),
+      ]),
+    })
+
+    const urls = await urlsOf(generatedRouteTree)
+    const routes = await routesOf(generatedRouteTree)
+    expect(
+      Object.fromEntries(
+        Object.entries(routes).map(([id, file]) => [file, urls[id]]),
+      ),
+    ).toEqual({
+      'routes/__root.tsx': '/',
+      'routes/a.tsx': '/files.json',
+      'routes/b.tsx': '/pathless.layout',
     })
   })
 
@@ -208,6 +268,7 @@ describe('layouts and groups', () => {
     })
   })
 
+  // Control for the pins below (same harness, no index route).
   test('a pathless layout without child routes yet is added to the route tree', async () => {
     const root = await appWithRoutes(['about.tsx', '_auth.tsx'])
     const { generatedRouteTree } = await generate(root)
@@ -218,6 +279,171 @@ describe('layouts and groups', () => {
       '/_auth': 'routes/_auth.tsx',
     })
   })
+
+  // Bug: a pathless layout file without children yet (`_auth.tsx` or
+  // `_auth.lazy.tsx`) next to the index route fails the generator with
+  // "Conflicting configuration paths were found" for `/` (the layout's full
+  // path is `/`, like the index route's), although the layout matches no URL
+  // of its own. A childless pathless layout is a valid, if useless, route
+  // (DECISIONS 2026-10-18 "childless pathless layout"; SPEC J1.15;
+  // routing/file-naming-conventions.md:35).
+  // Source: src/utils.ts:1101-1125 (`checkRouteFullPathUniqueness` compares
+  // the inferred full paths of all routes, pathless layouts included).
+  // Impact: creating `_auth.tsx` before its first child route stops route
+  // generation for the whole app.
+  test.fails.each([
+    { name: '_auth.tsx', file: '_auth.tsx', constructor: 'createFileRoute' },
+    {
+      name: '_auth.lazy.tsx',
+      file: '_auth.lazy.tsx',
+      constructor: 'createLazyFileRoute',
+    },
+  ])(
+    'a pathless layout without child routes yet ($name) next to the index route is added to the route tree',
+    ({ file, constructor }) =>
+      checkApp({
+        name: `a childless ${file} next to the index route`,
+        files: {
+          'src/routes/__root.tsx': page(
+            'react',
+            'createRootRoute',
+            'root',
+            true,
+          ),
+          'src/routes/index.tsx': page('react', 'createFileRoute', 'home'),
+          [`src/routes/${file}`]: page('react', constructor, 'auth', true),
+        },
+        expected: {
+          __root__: ['/', null],
+          '/': ['/', '__root__'],
+          '/_auth': ['/', '__root__'],
+        },
+        visits: { '/': '/' },
+        pages: { '/': ['root', 'home'] },
+      }),
+    60_000,
+  )
+
+  // A pathless layout under a route that exists only as a lazy route file
+  // (`posts.lazy.tsx`, no `posts.tsx`) nests under the lazy-only route's
+  // virtual anchor (guide/code-splitting.md:222-224; DECISIONS 2026-10-18
+  // PIN-A; SPEC J1.14). Control for the pin below.
+  test(
+    'a pathless layout under a route with only a lazy route file nests under that route',
+    () =>
+      checkApp(
+        {
+          name: 'a pathless layout under a lazy-only route',
+          files: {
+            'src/routes/__root.tsx': page(
+              'react',
+              'createRootRoute',
+              'root',
+              true,
+            ),
+            'src/routes/posts.lazy.tsx': page(
+              'react',
+              'createLazyFileRoute',
+              'posts',
+              true,
+            ),
+            'src/routes/posts/_layout.tsx': page(
+              'react',
+              'createFileRoute',
+              'layout',
+              true,
+            ),
+            'src/routes/posts/_layout/child.tsx': page(
+              'react',
+              'createFileRoute',
+              'child',
+            ),
+          },
+          expected: {
+            __root__: ['/', null],
+            '/posts': ['/posts', '__root__'],
+            '/posts/_layout': ['/posts', '/posts'],
+            '/posts/_layout/child': ['/posts/child', '/posts/_layout'],
+          },
+          visits: { '/posts/child': '/posts/_layout/child' },
+          pages: { '/posts/child': ['root', 'posts', 'layout', 'child'] },
+        },
+        // (the types of the same shapes: the pin below)
+        { types: false },
+      ),
+    60_000,
+  )
+
+  // Bug (PIN-A): a pathless layout one directory below a lazy-only route
+  // (`app/posts.lazy.tsx`, no `app/posts.tsx`, and
+  // `app/posts/drafts/_layout.tsx` with children) is attached to the next
+  // real ancestor (`/app`) instead of to the lazy-only route's virtual anchor
+  // `/app/posts`, so `/app/posts/drafts/child` renders without the
+  // `/app/posts` page around it (same rule as the control above:
+  // guide/code-splitting.md:222-224; DECISIONS 2026-10-18 PIN-A; SPEC J1.14).
+  // Distinct from the G1 pin above (a lazy-only pathless layout losing its
+  // directory path).
+  // Source: src/generator.ts:1561-1606 (`isPathlessLayoutWithPath`: the
+  // search for the layout's parent skips virtual routes, which include the
+  // anchors of lazy-only routes).
+  // Impact: the lazy-only route's component (its layout) and its loaders do
+  // not wrap the pages under such a layout.
+  test.fails(
+    'a pathless layout in a directory under a route with only a lazy route file nests under that route',
+    () =>
+      checkApp({
+        name: 'a pathless layout in a directory under a lazy-only route',
+        files: {
+          'src/routes/__root.tsx': page(
+            'react',
+            'createRootRoute',
+            'root',
+            true,
+          ),
+          'src/routes/app.tsx': page('react', 'createFileRoute', 'app', true),
+          'src/routes/app/posts.lazy.tsx': page(
+            'react',
+            'createLazyFileRoute',
+            'posts',
+            true,
+          ),
+          'src/routes/app/posts/drafts/_layout.tsx': page(
+            'react',
+            'createFileRoute',
+            'layout',
+            true,
+          ),
+          'src/routes/app/posts/drafts/_layout/child.tsx': page(
+            'react',
+            'createFileRoute',
+            'child',
+          ),
+        },
+        expected: {
+          __root__: ['/', null],
+          '/app': ['/app', '__root__'],
+          '/app/posts': ['/app/posts', '/app'],
+          '/app/posts/drafts/_layout': ['/app/posts/drafts', '/app/posts'],
+          '/app/posts/drafts/_layout/child': [
+            '/app/posts/drafts/child',
+            '/app/posts/drafts/_layout',
+          ],
+        },
+        visits: {
+          '/app/posts/drafts/child': '/app/posts/drafts/_layout/child',
+        },
+        pages: {
+          '/app/posts/drafts/child': [
+            'root',
+            'app',
+            'posts',
+            'layout',
+            'child',
+          ],
+        },
+      }),
+    60_000,
+  )
 
   // A layout with a piece file only (no route file) still adds no path
   // segment, and is no page of its own.
@@ -339,18 +565,21 @@ describe('layouts and groups', () => {
 })
 
 describe('conflicting routes', () => {
+  // (Files are named absolute or project-relative, telling same-named files
+  // apart, SPEC J1.7, §5.7.)
   test('routes with the same URL fail the generator with an error naming both files', async () => {
     const root = await appWithRoutes(['index.tsx', '_auth/index.tsx'])
 
-    const error = await generate(root).then(
-      () => undefined,
-      (e: unknown) => e as Error,
-    )
-    expect(error).toBeInstanceOf(Error)
-    expect(error?.message).toContain(path.join(root, 'src/routes/index.tsx'))
-    expect(error?.message).toContain(
-      path.join(root, 'src/routes/_auth/index.tsx'),
-    )
+    const error = await captureThrow(() => generate(root))
+    const files = ['src/routes/index.tsx', 'src/routes/_auth/index.tsx']
+    for (const file of files) {
+      expectDiagnostic(error, {
+        severity: 'error',
+        file,
+        root,
+        distinctFrom: files.filter((other) => other !== file),
+      })
+    }
   })
 
   // The docs' example of a physical directory merged at the current level
@@ -392,20 +621,23 @@ describe('conflicting routes', () => {
   test('a route of a directory merged at the current level with the path of a virtual route fails the generator with an error naming both files', async () => {
     const root = await appWithRoutes(['about.tsx', 'features/about.tsx'])
 
-    const error = await generate(root, {
-      virtualRouteConfig: virtualRootRoute('__root.tsx', [
-        virtualRoute('/about', 'about.tsx'),
-        physical('', 'features'),
-      ]),
-    }).then(
-      () => undefined,
-      (e: unknown) => e as Error,
+    const error = await captureThrow(() =>
+      generate(root, {
+        virtualRouteConfig: virtualRootRoute('__root.tsx', [
+          virtualRoute('/about', 'about.tsx'),
+          physical('', 'features'),
+        ]),
+      }),
     )
-    expect(error).toBeInstanceOf(Error)
-    expect(error?.message).toContain(path.join(root, 'src/routes/about.tsx'))
-    expect(error?.message).toContain(
-      path.join(root, 'src/routes/features/about.tsx'),
-    )
+    const files = ['src/routes/about.tsx', 'src/routes/features/about.tsx']
+    for (const file of files) {
+      expectDiagnostic(error, {
+        severity: 'error',
+        file,
+        root,
+        distinctFrom: files.filter((other) => other !== file),
+      })
+    }
   })
 
   // (A layout route file at the root of a directory merged at the current
@@ -557,97 +789,11 @@ describe('token options', () => {
   // tests/outside-compiler-corpus/config-options.test.ts.)
 })
 
-describe('param names', () => {
-  test('only invalid param names in braces get a warning', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const root = await appWithRoutes([
-      '{-$locale}/about.tsx',
-      'posts/{$postId}.tsx',
-      'files/prefix{$}.tsx',
-      'opt/{-$}.tsx',
-      'users/user-{$user-name}.tsx',
-      // No params: a route without `$`, and a `$` inside a static segment
-      'about.tsx',
-      'prices/usd-$.tsx',
-    ])
-    try {
-      await generate(root, { disableLogging: false })
-      const warnings = warn.mock.calls
-        .map((call) => call.join(' '))
-        .filter((message) => message.includes('param'))
-      expect(warnings).toHaveLength(1)
-      expect(warnings[0]).toContain('user-name')
-    } finally {
-      warn.mockRestore()
-    }
-  })
-})
+// (Warnings about param names that are no identifiers, e.g. `$user-name`:
+// neither required nor forbidden, SPEC J1.12; characterised outside the
+// compiler test corpus, tests/outside-compiler-corpus/param-name-warnings.test.ts.
+// The routes of such files: the invalid-param-names fixture,
+// generator.test.ts.)
 
-// The route tree's types, checked by the real TypeScript compiler with the
-// real router types: the whole app type-checks, and a `to` or full path
-// stands for the right route (its `id`).
-describe('FileRoutesByTo', () => {
-  test('`to` of an index route is the index route, not a route under pathless layouts with the same path', async () => {
-    const root = await appWithRoutes([
-      'posts/index.tsx',
-      '_a.tsx',
-      '_a/_b.tsx',
-      '_a/_b/posts.tsx',
-    ])
-    await generate(root)
-
-    expect(
-      await typeErrorsOf(
-        root,
-        'src/checks.ts',
-        `import type { FileRoutesByTo } from './routeTree.gen'
-${typeAssertions}
-export type Check = Expect<Equal<FileRoutesByTo['/posts']['id'], '/posts/'>>
-`,
-      ),
-    ).toEqual([])
-  }, 30_000)
-
-  test('`to` of a route is the route, not its own pathless layout', async () => {
-    const root = await appWithRoutes([
-      'foo.tsx',
-      'foo/_auth.tsx',
-      'foo/_auth/bar.tsx',
-    ])
-    await generate(root)
-
-    expect(
-      await typeErrorsOf(
-        root,
-        'src/checks.ts',
-        `import type { FileRoutesByTo } from './routeTree.gen'
-${typeAssertions}
-export type Check = Expect<Equal<FileRoutesByTo['/foo']['id'], '/foo'>>
-`,
-      ),
-    ).toEqual([])
-  }, 30_000)
-})
-
-describe('FileRoutesByFullPath', () => {
-  test('the full path `/` is the index route, not a pathless layout with only a lazy file', async () => {
-    const root = await createApp({
-      'src/routes/__root.tsx': rootRoute(),
-      'src/routes/index.tsx': fileRoute('/'),
-      'src/routes/_auth.lazy.tsx': lazyFileRoute('/_auth'),
-      'src/routes/_auth/login.tsx': fileRoute('/_auth/login'),
-    })
-    await generate(root)
-
-    expect(
-      await typeErrorsOf(
-        root,
-        'src/checks.ts',
-        `import type { FileRoutesByFullPath } from './routeTree.gen'
-${typeAssertions}
-export type Check = Expect<Equal<FileRoutesByFullPath['/']['id'], '/'>>
-`,
-      ),
-    ).toEqual([])
-  }, 30_000)
-})
+// (The route tree types of these shapes, FileRoutesByTo and
+// FileRoutesByFullPath: integration/route-types.test.ts.)

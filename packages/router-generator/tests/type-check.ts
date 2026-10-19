@@ -13,6 +13,39 @@ const nodeModules = path.resolve(import.meta.dirname, '../node_modules')
 let previousProgram: ts.Program | undefined
 
 /**
+ * A strict program over `rootNames` and the modules they import, resolving
+ * packages from the nearest `node_modules` (in a test app: this package's
+ * dependencies).
+ */
+function createProgram(
+  rootNames: Array<string>,
+  lib = ['lib.es2022.d.ts', 'lib.dom.d.ts'],
+) {
+  const program = ts.createProgram({
+    rootNames,
+    options: {
+      strict: true,
+      noEmit: true,
+      skipLibCheck: true,
+      jsx: ts.JsxEmit.ReactJSX,
+      module: ts.ModuleKind.ESNext,
+      moduleResolution: ts.ModuleResolutionKind.Bundler,
+      target: ts.ScriptTarget.ES2022,
+      lib,
+      types: [],
+    },
+    // (the package type definitions of the previous check are reused)
+    oldProgram: previousProgram,
+  })
+  previousProgram = program
+  return program
+}
+
+function messageOf(diagnostic: ts.Diagnostic) {
+  return ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')
+}
+
+/**
  * Writes `code` to `file` (path relative to the app root) and type-checks it,
  * with the modules it imports (such as the route tree and the route files),
  * in a strict project resolving packages from this package's dependencies.
@@ -27,32 +60,37 @@ export async function typeErrorsOf(root: string, file: string, code: string) {
     },
   )
   await writeFile(path.join(root, file), code)
-  const program = ts.createProgram({
-    rootNames: [path.join(root, file)],
-    options: {
-      strict: true,
-      noEmit: true,
-      skipLibCheck: true,
-      jsx: ts.JsxEmit.ReactJSX,
-      module: ts.ModuleKind.ESNext,
-      moduleResolution: ts.ModuleResolutionKind.Bundler,
-      target: ts.ScriptTarget.ES2022,
-      lib: ['lib.es2022.d.ts', 'lib.dom.d.ts'],
-      types: [],
-    },
-    // (the package type definitions of the previous check are reused)
-    oldProgram: previousProgram,
-  })
-  previousProgram = program
-  return ts.getPreEmitDiagnostics(program).map((diagnostic) => {
-    const message = ts.flattenDiagnosticMessageText(
-      diagnostic.messageText,
-      '\n',
+  const program = createProgram([path.join(root, file)])
+  return ts
+    .getPreEmitDiagnostics(program)
+    .map((diagnostic) =>
+      diagnostic.file
+        ? `${path.relative(root, diagnostic.file.fileName)}: ${messageOf(diagnostic)}`
+        : messageOf(diagnostic),
     )
-    return diagnostic.file
-      ? `${path.relative(root, diagnostic.file.fileName)}: ${message}`
-      : message
-  })
+}
+
+/**
+ * Type-checks the given modules (absolute paths) in one program, with the
+ * modules they import, like `typeErrorsOf`, but reports only the errors in
+ * the given modules themselves (not in the modules they import), by module.
+ */
+export function typeErrorsOfModules(files: Array<string>, lib?: Array<string>) {
+  const program = createProgram(files, lib)
+  const errors = new Map<string, Array<string>>()
+  for (const file of files) {
+    const sourceFile = program.getSourceFile(file)
+    errors.set(
+      file,
+      sourceFile
+        ? [
+            ...program.getSyntacticDiagnostics(sourceFile),
+            ...program.getSemanticDiagnostics(sourceFile),
+          ].map(messageOf)
+        : ['not found'],
+    )
+  }
+  return errors
 }
 
 /**

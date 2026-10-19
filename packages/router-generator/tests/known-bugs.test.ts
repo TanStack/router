@@ -7,6 +7,10 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { parseSync } from 'vite'
 import { describe, expect, test, vi } from 'vitest'
+import {
+  diagnosticsOf,
+  expectDiagnostic,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { Generator, getConfig } from '../src'
 import { routeIdOf } from './route-id'
 import { routesOf } from './route-tree'
@@ -44,6 +48,7 @@ export const Route = createRootRoute()`,
       written: await readFile(path.join(root, 'routes/moved.tsx'), 'utf8'),
       routes: await routesOf(config.generatedRouteTree),
       warnings,
+      file: path.join(root, 'routes/moved.tsx'),
     }
   } finally {
     warn.mockRestore()
@@ -63,9 +68,9 @@ describe('route files without a Route export', () => {
   test.each(['export const helper = 1', 'const helper = 1\nexport { helper }'])(
     'a route file without a Route export is left out with a warning: %s',
     async (code) => {
-      const { routes, warnings } = await generateMovedRoute(code)
+      const { routes, warnings, file } = await generateMovedRoute(code)
       expect(routes).toEqual({ __root__: 'routes/__root.tsx' })
-      expect(warnings.join('\n')).toContain('moved.tsx')
+      expectDiagnostic(diagnosticsOf(warnings, 'warning'), { file })
     },
   )
 })

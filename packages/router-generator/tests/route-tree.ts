@@ -27,6 +27,9 @@ import type { ModuleRunner } from 'vite/module-runner'
 /** This package's dependencies, for apps to import their packages from. */
 const nodeModules = path.resolve(import.meta.dirname, '../node_modules')
 
+/** This package's directory: the app root of the generator fixtures. */
+const packageRoot = await realpath(path.resolve(import.meta.dirname, '..'))
+
 /** The entry file of a router package, and the framework it is for. */
 const routerPackageFile =
   /[\\/](react|solid|vue)-router[\\/]dist[\\/][^\\/]+[\\/]index(?:\.dev)?\.[cm]?jsx?$/
@@ -131,12 +134,16 @@ async function createAppServer(frameworks: Frameworks, root: string) {
 }
 
 /**
- * The dev server Solid apps share in a worker: they bundle the Solid
- * router's sources for the server, and compiling them again for every load
- * would take most of a second. Nothing of an app is reused between loads
- * (`withModule`).
+ * The dev servers apps share in a worker, by root and frameworks: the
+ * shared Solid server (rooted at the temporary directory: Solid apps bundle
+ * the Solid router's sources for the server, and compiling them again for
+ * every load would take most of a second), and the servers of the apps in
+ * this package (the generator fixtures, which share this package's root:
+ * creating a server took most of the time of loading a fixture's tree).
+ * Other apps (in temporary directories) get a server of their own. Nothing
+ * of an app is reused between loads (`withModule`).
  */
-let solidServer: Promise<ViteDevServer> | undefined
+const sharedServers = new Map<string, Promise<ViteDevServer>>()
 
 /** A module of the app, loaded by a Vite server of the app. */
 interface LoadedModule {
@@ -150,7 +157,7 @@ interface LoadedModule {
  * Loads `file` (absolute path) like its app's dev server does for server
  * rendering, with a Vite server configured for the app's frameworks (from
  * the sources next to `file`) and a fresh module runner: a new server rooted
- * at the app, or for a Solid app the shared Solid server, which first forgets
+ * at the app, or a shared server (`sharedServers`), which first forgets
  * every module of the app so that an edited or regenerated file is
  * transformed again. JSX in the `.tsx`/`.jsx` files of a React or Vue app
  * compiles with Vite's default (React) transform. Runs `use` with the module.
@@ -162,12 +169,19 @@ async function withModule<T>(
   const root = await appRootOf(file)
   const realFile = await realpath(file)
   const frameworks = await frameworksIn(path.dirname(realFile))
+  const serverRoot =
+    frameworks.solid && !frameworks.vue
+      ? await realpath(tmpdir())
+      : root === packageRoot
+        ? root
+        : undefined
   let server: ViteDevServer
-  if (frameworks.solid && !frameworks.vue) {
-    solidServer ??= realpath(tmpdir()).then((dir) =>
-      createAppServer(frameworks, dir),
-    )
-    server = await solidServer
+  if (serverRoot) {
+    const key = JSON.stringify([serverRoot, frameworks])
+    if (!sharedServers.has(key)) {
+      sharedServers.set(key, createAppServer(frameworks, serverRoot))
+    }
+    server = await sharedServers.get(key)!
     const { moduleGraph } = server.environments.ssr
     for (const module of moduleGraph.idToModuleMap.values()) {
       if (
@@ -190,7 +204,7 @@ async function withModule<T>(
     return await use({ exports, runner })
   } finally {
     await runner.close()
-    if (server !== (await solidServer)) {
+    if (!serverRoot) {
       await server.close()
     }
   }
@@ -265,6 +279,11 @@ export interface LoadedRouteTree {
    * creates itself.
    */
   fileOf: (routeId: string) => string | null
+  /**
+   * The app's own modules (not packages) the app has evaluated so far,
+   * relative to the tree and `/` separated, sorted.
+   */
+  loadedFiles: () => Array<string>
   /** Imports a module of the app (absolute path) like the tree's imports. */
   import: (file: string) => Promise<Record<string, any>>
   /**
@@ -312,6 +331,11 @@ export function withRouteTree<T>(
       }
       return null
     }
+    const loadedFiles = () =>
+      [...runner.evaluatedModules.fileToModulesMap.keys()]
+        .filter((file) => !/[\\/]node_modules[\\/]/.test(file))
+        .map((file) => path.relative(treeDir, file).replaceAll(path.sep, '/'))
+        .sort()
     /** Renders `Component` with `props` with the framework's renderer. */
     const renderElement = async (Component: any, props: object = {}) => {
       if (framework === 'vue') {
@@ -346,6 +370,7 @@ export function withRouteTree<T>(
       routerPackage,
       framework,
       fileOf,
+      loadedFiles,
       import: (file) => runner.import(file),
       render: async (component: any) => {
         await component?.preload?.()
@@ -408,4 +433,45 @@ export function matchesOf(
   return withRouteTree(treeFile, ({ router }) =>
     router.matchRoutes(pathname).map((match) => match.routeId),
   )
+}
+
+/** A route of the router, as an app observes it. */
+export interface ObservedRoute {
+  /** The URL path it matches, with its parents'. */
+  fullPath: string
+  /** Its parent route's id; null for the root route. */
+  parent: string | null
+  /** The file whose `Route` it is (relative to the tree); null if none. */
+  file: string | null
+  /**
+   * The app files that load only once the router loads the route
+   * (`loadRouteChunk`): its lazy route file and lazy components.
+   */
+  lazy: Array<string>
+}
+
+/**
+ * The routes of the router built from the generated route tree at
+ * `treeFile`, by route id: full path, parent, route file, and the app files
+ * that load lazily with the route (routes are loaded in route id order; a
+ * route's lazy files are those no route loaded before).
+ */
+export function observeRouteTree(
+  treeFile: string,
+): Promise<Record<string, ObservedRoute>> {
+  return withRouteTree(treeFile, async ({ router, fileOf, loadedFiles }) => {
+    const observed: Record<string, ObservedRoute> = {}
+    for (const id of Object.keys(router.routesById).sort()) {
+      const route = router.routesById[id]!
+      const before = new Set(loadedFiles())
+      await router.loadRouteChunk(route)
+      observed[id] = {
+        fullPath: route.fullPath,
+        parent: route.parentRoute?.id ?? null,
+        file: fileOf(id),
+        lazy: loadedFiles().filter((file) => !before.has(file)),
+      }
+    }
+    return observed
+  })
 }

@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/_root-index/$id')({
+export const Route = createFileRoute("/_root-index/$id")({
   component: () => 'Root Id',
 })

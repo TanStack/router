@@ -1,88 +1,27 @@
-import { parseSync, transformWithOxc } from 'vite'
+/**
+ * Scaffolds of new, empty route files (SPEC J1.3): each becomes a working
+ * route of its target, checked through the real router and the target's own
+ * server renderer (route-tree.ts): the root route renders its child routes,
+ * every route renders something (what is free), and the files follow
+ * `quoteStyle` and `semicolons`.
+ */
+import { parseSync } from 'vite'
 import { describe, expect, it } from 'vitest'
 import { createApp, generate, read } from './app'
-import { routesOf } from './route-tree'
-import type { Config } from '../src'
+import { routeCallOf, routeCallSpansOf } from './route-id'
+import { routesOf, withRouteTree } from './route-tree'
 
-/** A rendered element: its type and children (strings or elements). */
-interface Rendered {
-  type: unknown
-  children: Array<Rendered | string>
-}
-
-/**
- * Evaluates a scaffolded route file for `target` and renders its route
- * component once. The file may import only the target's router package
- * (stubbed: route constructors, `Outlet`) and the target's framework
- * (stubbed: Vue's `h`; Solid's JSX compiles like React's, to a stub JSX
- * runtime, so only the structure of the rendered output is meaningful); like
- * a bundler of an app without other packages, any other import fails.
- * Returns the route (its id and the constructor that created it) and the
- * text and elements it renders.
- */
-async function evaluateScaffold(code: string, target: Config['target']) {
-  const element = `const element = (type, children) => ({ type, children: [children ?? []].flat(Infinity).filter((c) => c != null && c !== false) })`
-  const stubs: Record<string, string> = {
-    [`@tanstack/${target}-router`]: `export const createFileRoute = (id) => (options) => ({ id, options, createdWith: 'createFileRoute' })
-export const createLazyFileRoute = (id) => (options) => ({ id, options, createdWith: 'createLazyFileRoute' })
-export const createRootRoute = (options) => ({ id: '__root__', options })
-export const Outlet = 'Outlet'`,
-    ...(target === 'vue'
-      ? {
-          vue: `${element}\nexport const h = (type, props, children) => element(type, children)`,
-        }
-      : {
-          [target === 'solid' ? 'solid-js' : 'react']: `export {}`,
-          'react/jsx-runtime': `${element}
-export const jsx = (type, props) => element(type, props.children)
-export const jsxs = jsx
-export const Fragment = 'Fragment'`,
-        }),
-  }
-  const { code: javascript } = await transformWithOxc(code, 'route.tsx')
-  const { module, errors } = parseSync('route.js', javascript)
-  expect(errors).toEqual([])
-  let linked = javascript
-  for (const statement of [...module.staticImports].sort(
-    (a, b) => b.moduleRequest.start - a.moduleRequest.start,
-  )) {
-    const specifier = statement.moduleRequest.value
-    const stub = stubs[specifier]
-    if (stub === undefined) {
-      throw new Error(`The scaffolded file imports "${specifier}"`)
-    }
-    linked =
-      linked.slice(0, statement.moduleRequest.start) +
-      JSON.stringify(`data:text/javascript,${encodeURIComponent(stub)}`) +
-      linked.slice(statement.moduleRequest.end)
-  }
-  const { Route } = await import(
-    /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(linked)}`
-  )
-  const rendered: Rendered = Route.options.component()
-  const text: Array<string> = []
-  const types: Array<unknown> = []
-  const visit = (node: Rendered | string) => {
-    if (typeof node === 'string') {
-      text.push(node)
-    } else {
-      types.push(node.type)
-      node.children.forEach(visit)
-    }
-  }
-  visit(rendered)
-  return {
-    id: Route.id,
-    createdWith: Route.createdWith,
-    text: text.join(''),
-    types,
-  }
-}
+/** The text of server-rendered `html`: its text nodes, joined. */
+const textOf = (html: string) =>
+  html
+    .replace(/<!--.*?-->/gs, '')
+    .replace(/<[^>]*>/g, '')
+    .trim()
 
 // A new, empty route, lazy route or root route file is scaffolded into a
-// working route for each target: the file evaluates to a Route created with
-// the right constructor and id, whose component renders something (the root
-// route's renders an Outlet). What it renders is free.
+// working route for each target: the file creates its Route with the right
+// constructor and id, its component renders something, and the root
+// route's component renders the child route's.
 describe.each(['react', 'solid', 'vue'] as const)(
   'scaffolded %s routes',
   (target) => {
@@ -97,19 +36,26 @@ describe.each(['react', 'solid', 'vue'] as const)(
       const { generatedRouteTree } = await generate(root, { target })
 
       const scaffolded = async (file: string) =>
-        evaluateScaffold(await read(root, `src/routes/${file}`), target)
-      const rootFile = await scaffolded('__root.tsx')
-      expect(rootFile.id).toBe('__root__')
-      expect(rootFile.types).toContain('Outlet')
-      for (const [file, id, createdWith] of [
-        ['posts.tsx', '/posts', 'createFileRoute'],
-        ['about.lazy.tsx', '/about', 'createLazyFileRoute'],
-        ['{-$locale}/contact.tsx', '/{-$locale}/contact', 'createFileRoute'],
-        ['{-$locale}/help.lazy.tsx', '/{-$locale}/help', 'createLazyFileRoute'],
-      ]) {
-        const route = await scaffolded(file!)
-        expect([route.id, route.createdWith]).toEqual([id, createdWith])
-        expect(route.text.length + route.types.length).toBeGreaterThan(0)
+        routeCallOf(await read(root, `src/routes/${file}`))
+      expect((await scaffolded('__root.tsx')).constructor).toBe(
+        'createRootRoute',
+      )
+      const pages = {
+        '/posts': ['posts.tsx', '/posts', 'createFileRoute'],
+        '/about': ['about.lazy.tsx', '/about', 'createLazyFileRoute'],
+        '/fr/contact': [
+          '{-$locale}/contact.tsx',
+          '/{-$locale}/contact',
+          'createFileRoute',
+        ],
+        '/help': [
+          '{-$locale}/help.lazy.tsx',
+          '/{-$locale}/help',
+          'createLazyFileRoute',
+        ],
+      } as const
+      for (const [file, id, constructor] of Object.values(pages)) {
+        expect(await scaffolded(file)).toEqual({ constructor, id })
       }
       expect(await routesOf(generatedRouteTree)).toEqual({
         __root__: 'routes/__root.tsx',
@@ -118,11 +64,24 @@ describe.each(['react', 'solid', 'vue'] as const)(
         '/{-$locale}/contact': 'routes/{-$locale}/contact.tsx',
         '/{-$locale}/help': null,
       })
-    })
+
+      await withRouteTree(generatedRouteTree, async (tree) => {
+        for (const [url, [, id]] of Object.entries(pages)) {
+          const route = tree.router.routesById[id]!
+          await tree.router.loadRouteChunk(route)
+          const page = textOf(await tree.render(route.options.component))
+          expect(page, id).not.toBe('')
+          // (the root route's component renders its child route's)
+          expect(textOf(await tree.renderAt(url)), url).toContain(page)
+        }
+      })
+    }, 30_000)
 
     // The docs (file-based-routing.md, `quoteStyle` and `semicolons`): "when
     // you first create a new route, those files will be formatted with the
-    // quote style you specify" / "with semicolons".
+    // quote style you specify" / "with semicolons". The route id argument
+    // is the generator's edit of the file (SPEC J1.2: its quote character
+    // is free), so it is left out.
     it.each([
       { quoteStyle: 'single', semicolons: false },
       { quoteStyle: 'double', semicolons: true },
@@ -138,7 +97,9 @@ describe.each(['react', 'solid', 'vue'] as const)(
         for (const file of files) {
           const code = await read(root, `src/routes/${file}`)
           const style = codeStyle(code)
-          expect(style.quotes).toEqual([quoteStyle === 'single' ? "'" : '"'])
+          expect(style.quotes, file).toEqual([
+            quoteStyle === 'single' ? "'" : '"',
+          ])
           expect(style.statements).toBeGreaterThan(0)
           expect(style.withSemicolon).toBe(semicolons ? style.statements : 0)
         }
@@ -150,13 +111,15 @@ describe.each(['react', 'solid', 'vue'] as const)(
 /**
  * The quote characters of the string literals of `code` without quote
  * characters in them (a formatter may quote the others either way to avoid
- * escapes; JSX attribute values aside), and how many of its statements that end with a semicolon in
- * a file using them (imports, expressions, returns, variable declarations
- * outside loop heads) there are, and end with one.
+ * escapes; JSX attribute values and the route id argument aside), and how
+ * many of its statements that end with a semicolon in a file using them
+ * (imports, expressions, returns, variable declarations outside loop heads)
+ * there are, and end with one.
  */
 function codeStyle(code: string) {
   const { program, errors } = parseSync('route.tsx', code)
   expect(errors).toEqual([])
+  const id = routeCallSpansOf(code).id
   const quotes = new Set<string>()
   let statements = 0
   let withSemicolon = 0
@@ -175,7 +138,8 @@ function codeStyle(code: string) {
     if (
       record.type === 'Literal' &&
       typeof record.value === 'string' &&
-      !/["']/.test(record.value)
+      !/["']/.test(record.value) &&
+      !(id && record.start >= id[0] && record.end <= id[1])
     ) {
       quotes.add(String(record.raw)[0]!)
     }
