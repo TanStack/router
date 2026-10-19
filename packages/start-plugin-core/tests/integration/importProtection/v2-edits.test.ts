@@ -16,10 +16,7 @@
  * seen by a browser page are in v2-edits-page.test.ts.
  */
 import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
-import {
-  captureConsole,
-  findDiagnostics,
-} from '@tanstack/compiler-test-utils/diagnostics'
+import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
 import { afterAll, describe, expect, test } from 'vitest'
 import { servedStartRuntime, startDevServer } from '../../dev-server'
 import {
@@ -301,8 +298,6 @@ describe('rsbuild dev', () => {
     })
     const outcomes: Array<StepOutcome> = []
     for (const [index, step] of steps.entries()) {
-      // The reports of the step: from its edit on
-      let since = 0
       if (index > 0) {
         // Known upstream flake (FOLLOWUPS "Rspack loses a file removal
         // that lands while a compile runs"): a removal that lands while
@@ -312,7 +307,6 @@ describe('rsbuild dev', () => {
           'src/secret.server.ts': null,
           'src/widget.client.ts': null,
         })
-        since = server.diagnostics.length
         // Recreated with the step's edit (W3-ip-v2): recreated on their
         // own, under load the second file was never compiled (very likely
         // the same mechanism: a change landing while the watcher is paused,
@@ -328,10 +322,13 @@ describe('rsbuild dev', () => {
         expect(ran).toEqual({ result: expect.anything() })
         return (ran as { result: Record<string, string> }).result
       }
-      // The warnings of the compiles of the step's edit
-      const warnings = findDiagnostics(server.diagnostics.slice(since), {
-        severity: 'warning',
-      })
+      // The warnings of the last compile: with `log: 'always'` it reports
+      // every violation of the step's state. Not `diagnostics.slice(since)`:
+      // the files of one edit are written one by one and the watcher may
+      // compile in between (Rsbuild's `aggregateTimeout: 0`), and that
+      // compile correctly reports the transient state (targets back, the
+      // importers' live uses not removed yet), which is not a stale report.
+      const warnings = server.warnings
       outcomes.push({
         client: {
           values: values(await runInClient(server, observeScript)),
