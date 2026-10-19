@@ -235,7 +235,7 @@ export async function captureConsole<T>(
 ): Promise<{ result: T; diagnostics: Array<Diagnostic> }> {
   const diagnostics: Array<Diagnostic> = []
   activeCaptures.add(diagnostics)
-  consoleSpies ??= (
+  const spies = (consoleSpies ??= (
     Object.keys(consoleSeverities) as Array<keyof typeof consoleSeverities>
   ).map((method) =>
     vi.spyOn(console, method).mockImplementation((...args: Array<unknown>) => {
@@ -258,13 +258,13 @@ export async function captureConsole<T>(
         capture.push(diagnostic)
       }
     }),
-  )
+  ))
   try {
     return { result: await run(), diagnostics }
   } finally {
     activeCaptures.delete(diagnostics)
-    if (activeCaptures.size === 0 && consoleSpies) {
-      for (const spy of consoleSpies) {
+    if (activeCaptures.size === 0) {
+      for (const spy of spies) {
         spy.mockRestore()
       }
       consoleSpies = undefined
