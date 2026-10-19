@@ -55,35 +55,31 @@ export const Route = createFileRoute('/')({
     return app.where('MARK_SERVER_SECRET')
   }
 
-  // Control for the build-level canary below.
-  test.each(clientBundlers)(
-    'a client build has no server code of an `ssr` property (%s)',
-    async (bundler) => {
-      expect(await secretPlacement(bundler, 'ssr: () => !!readSecret()')).toBe(
-        'nowhere',
-      )
-    },
-    60_000,
-  )
+  // Whether a server-only option reaches the client bundle is the router
+  // transform's decision (an option it keeps stays referenced by the route
+  // options), so one bundler shows it (speedup 7: the Rspack and webpack
+  // cells of the two tests below were decided by the same transform as
+  // their Vite cells).
 
-  // Bug: build-level canary of the method pin above (same root cause).
+  // Control for the build-level canary below.
+  test('a client build has no server code of an `ssr` property (vite)', async () => {
+    expect(await secretPlacement('vite', 'ssr: () => !!readSecret()')).toBe(
+      'nowhere',
+    )
+  }, 60_000)
+
+  // Bug: build-level canary of the method pin in
+  // ../known-bugs-code-splitter.test.ts (same root cause).
   // Impact: the server code of an `ssr()` method reaches the client bundle.
-  test.fails.each(clientBundlers)(
-    'a client build has no server code of an `ssr()` method (%s)',
-    async (bundler) => {
-      expect(
-        await secretPlacement(bundler, 'ssr() { return !!readSecret() }'),
-      ).toBe('nowhere')
-    },
-    60_000,
-  )
+  test.fails('a client build has no server code of an `ssr()` method (vite)', async () => {
+    expect(
+      await secretPlacement('vite', 'ssr() { return !!readSecret() }'),
+    ).toBe('nowhere')
+  }, 60_000)
 
   // Bug: build-level canary of the typed-wrapper pin in
   // ../known-bugs-code-splitter.test.ts (same root cause: options wrapped in
-  // a cast or `satisfies` are not read). Whether the server handler ships
-  // is decided by the router transform (the options object keeps
-  // referencing it), so one bundler shows it (speedup 7: the Rspack and
-  // webpack cells are decided by the same transform as the Vite cell).
+  // a cast or `satisfies` are not read; one bundler, as above).
   // Impact: the server handler and its server-only import reach the client
   // bundle.
   test.fails.each(['as never', 'as any', 'satisfies object'])(

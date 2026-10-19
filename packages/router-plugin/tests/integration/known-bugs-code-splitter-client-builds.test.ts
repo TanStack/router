@@ -103,11 +103,14 @@ describe('exported bindings', () => {
   // in both the entry chunk and the split chunk. One instance (split, or
   // unsplit with a warning naming the route file, decision D11) is the goal.
   // Impact: the component's code ships twice and runs as two components.
-  test.fails.each(clientBundlers)(
-    'an exported errorComponent written as `PostErrorComponent as any` is in the client once (%s build)',
-    async (bundler) => {
+  // Whether the option is lazy or reported is the router transform's
+  // decision, so one bundler shows it (speedup 7: the Rspack and webpack
+  // cells were decided by the same transform as this Vite cell).
+  test.fails(
+    'an exported errorComponent written as `PostErrorComponent as any` is in the client once (vite build)',
+    async () => {
       const app = await build({
-        bundler,
+        bundler: 'vite',
         env: 'client',
         files: routeApp(
           `${head}export const Route = createFileRoute('/posts/$postId')({
