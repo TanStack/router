@@ -347,31 +347,11 @@ export const Route = createFileRoute('/')({
 `)
   })
 
-  // Bug: a `let` that only the loader (or a helper only the loader calls)
-  // assigns moves to the module the route module and the split component
-  // share, so the assignment in the route module assigns an imported
-  // binding ("Assignment to constant variable"). A writer the component
-  // references too moves with the binding and works (above).
-  // Source: found while adding the test above (V4 red-astra/24).
-  // Impact: a route whose loader caches into a module-level `let` the split
-  // component reads throws on load.
-  it.fails(
-    'a computed key that is the only read of a binding the loader assigns directly sees the assignment',
-    async () => {
-      await expectKeySeesReassignment(`${head}let kind = 'initial'
-export const Route = createFileRoute('/')({
-  loader: () => {
-    kind = 'loaded'
-    return kind
-  },
-  component: () => {
-    const obj = { [kind]: true }
-    return <button>{Object.keys(obj).join()}</button>
-  },
-})
-`)
-    },
-  )
+  // (A `let` the loader itself assigns, read by the split component, moves
+  // to the shared module, and the route module assigns an import: a main
+  // bug, pinned once in integration/known-bugs-code-splitter-ssr-builds.test.ts
+  // "a let the loader reassigns stays writable…". A writer the component
+  // references too moves with the binding and works, above.)
 
   // A computed key that is the only read of a binding the loader shares:
   // the split component sees the one binding, and its initializer runs
