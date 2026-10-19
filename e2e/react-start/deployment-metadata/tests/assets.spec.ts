@@ -22,6 +22,17 @@ async function loadAssetUrls(page: Page) {
   )
 }
 
+async function loadModulePreloadUrls(page: Page) {
+  await page.goto('/')
+
+  const hrefs = await page
+    .locator('link[rel="modulepreload"]')
+    .evaluateAll((links) => links.map((link) => (link as HTMLLinkElement).href))
+  expect(hrefs.length).toBeGreaterThan(0)
+
+  return hrefs.map((href) => new URL(href))
+}
+
 test.describe('deployment metadata assets', () => {
   test.skip(!deploymentMetadataEnabled)
 
@@ -35,6 +46,12 @@ test.describe('deployment metadata assets', () => {
       ).toBe(DEPLOYMENT_ID)
     }
   })
+
+  test('tags modulepreload urls with the query carrier', async ({ page }) => {
+    for (const url of await loadModulePreloadUrls(page)) {
+      expect(url.searchParams.get(QUERY_CARRIER), `${url}`).toBe(DEPLOYMENT_ID)
+    }
+  })
 })
 
 test.describe('no deployment metadata assets', () => {
@@ -45,6 +62,12 @@ test.describe('no deployment metadata assets', () => {
 
     for (const [index, asset] of assets.entries()) {
       expect(urls[index].search, `${asset.name}: ${urls[index]}`).toBe('')
+    }
+  })
+
+  test('does not tag modulepreload urls', async ({ page }) => {
+    for (const url of await loadModulePreloadUrls(page)) {
+      expect(url.search, `${url}`).toBe('')
     }
   })
 })

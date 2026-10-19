@@ -7,6 +7,7 @@ import {
 } from '../src/vite/deployment-metadata'
 import {
   generateDeploymentMetadataModule,
+  getDeploymentQuery,
   resolveDeploymentMetadata,
 } from '../src/deployment-metadata-module'
 
@@ -210,28 +211,42 @@ describe('generateDeploymentMetadataModule', () => {
   })
 })
 
-describe('createDeploymentRenderBuiltUrl', () => {
+describe('getDeploymentQuery', () => {
   const headerCarrier = { type: 'header', name: 'x-deployment-id' } as const
   const queryCarrier = { type: 'query', name: 'dpl' } as const
 
-  test('tags built urls with the first query carrier', () => {
-    const renderBuiltUrl = createDeploymentRenderBuiltUrl({
-      deploymentMetadata: {
+  test('encodes the first query carrier', () => {
+    expect(
+      getDeploymentQuery({
         value: 'dpl 123',
         carriers: [headerCarrier, queryCarrier],
-      },
+      }),
+    ).toBe('dpl=dpl%20123')
+  })
+
+  test('returns undefined without a query carrier', () => {
+    expect(
+      getDeploymentQuery({ value: 'dpl_123', carriers: [headerCarrier] }),
+    ).toBeUndefined()
+  })
+})
+
+describe('createDeploymentRenderBuiltUrl', () => {
+  test('tags built urls with the deployment query', () => {
+    const renderBuiltUrl = createDeploymentRenderBuiltUrl({
+      deploymentQuery: 'dpl=dpl_123',
       publicBase: '/app/',
       hasUserRenderBuiltUrl: false,
     })
 
     expect(renderBuiltUrl?.('assets/logo-abc.svg')).toBe(
-      '/app/assets/logo-abc.svg?dpl=dpl%20123',
+      '/app/assets/logo-abc.svg?dpl=dpl_123',
     )
   })
 
   test('joins an absolute url base', () => {
     const renderBuiltUrl = createDeploymentRenderBuiltUrl({
-      deploymentMetadata: { value: 'dpl_123', carriers: [queryCarrier] },
+      deploymentQuery: 'dpl=dpl_123',
       publicBase: 'https://cdn.example.com/app',
       hasUserRenderBuiltUrl: false,
     })
@@ -241,21 +256,10 @@ describe('createDeploymentRenderBuiltUrl', () => {
     )
   })
 
-  test('leaves built urls alone without a query carrier', () => {
-    expect(
-      createDeploymentRenderBuiltUrl({
-        deploymentMetadata: { value: 'dpl_123', carriers: [headerCarrier] },
-        publicBase: '/',
-        hasUserRenderBuiltUrl: false,
-      }),
-    ).toBeUndefined()
-    expect(warn).not.toHaveBeenCalled()
-  })
-
   test('keeps a user configured renderBuiltUrl and warns', () => {
     expect(
       createDeploymentRenderBuiltUrl({
-        deploymentMetadata: { value: 'dpl_123', carriers: [queryCarrier] },
+        deploymentQuery: 'dpl=dpl_123',
         publicBase: '/',
         hasUserRenderBuiltUrl: true,
       }),

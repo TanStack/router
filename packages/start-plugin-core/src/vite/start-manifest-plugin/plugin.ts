@@ -20,6 +20,7 @@ type StartManifestEnvironment = {
 
 export function startManifestPlugin(opts: {
   getConfig: GetConfigFn
+  getDeploymentQuery: () => string | undefined
 }): PluginOption {
   let clientBuild: NormalizedClientBuild | undefined
   let cssCodeSplitDisabledFileName: string | undefined
@@ -87,6 +88,7 @@ export function startManifestPlugin(opts: {
           clientBuild,
           routeTreeRoutes,
           basePath: resolvedStartConfig.basePaths.publicBase,
+          preloadQuery: opts.getDeploymentQuery(),
           inlineCss: startConfig.server.build.inlineCss,
           additionalRouteAssets: getViteAdditionalRouteAssets({
             cssCodeSplitDisabledFileName,

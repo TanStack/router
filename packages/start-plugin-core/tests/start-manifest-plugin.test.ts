@@ -18,6 +18,7 @@ describe('startManifestPlugin', () => {
     (enabled) => {
       vi.stubGlobal('TSS_ROUTES_MANIFEST', { __root__: {} })
       const plugins = startManifestPlugin({
+        getDeploymentQuery: () => undefined,
         getConfig: () =>
           ({
             resolvedStartConfig: { basePaths: { publicBase: '/assets' } },
@@ -101,6 +102,7 @@ describe('startManifestPlugin', () => {
 function loadDevManifest(opts: { bundledDev: boolean; basePath?: string }) {
   const basePath = opts.basePath ?? '/'
   const plugins = startManifestPlugin({
+    getDeploymentQuery: () => undefined,
     getConfig: () =>
       ({
         resolvedStartConfig: {

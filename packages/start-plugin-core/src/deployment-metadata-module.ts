@@ -46,3 +46,17 @@ export async function resolveDeploymentMetadata(
 
   return { value, carriers }
 }
+
+export function getDeploymentQuery(
+  deploymentMetadata: ResolvedDeploymentMetadata,
+): string | undefined {
+  const queryCarrier = deploymentMetadata.carriers.find(
+    (carrier) => carrier.type === 'query',
+  )
+
+  if (!queryCarrier) {
+    return undefined
+  }
+
+  return `${encodeURIComponent(queryCarrier.name)}=${encodeURIComponent(deploymentMetadata.value)}`
+}

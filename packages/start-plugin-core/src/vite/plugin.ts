@@ -15,6 +15,7 @@ import {
 } from '../planning'
 import {
   generateDeploymentMetadataModule,
+  getDeploymentQuery,
   resolveDeploymentMetadata,
 } from '../deployment-metadata-module'
 import { importProtectionPlugin } from './import-protection-plugin/plugin'
@@ -76,6 +77,7 @@ export function tanStackStartVite(
   let needsDevBaseRewrite = false
 
   let deploymentMetadata: ResolvedDeploymentMetadata | undefined
+  let deploymentQuery: string | undefined
 
   const environments: Array<{
     name: string
@@ -133,8 +135,12 @@ export function tanStackStartVite(
           }
 
           if (deploymentMetadata) {
+            deploymentQuery = getDeploymentQuery(deploymentMetadata)
+          }
+
+          if (deploymentQuery) {
             renderBuiltUrl = createDeploymentRenderBuiltUrl({
-              deploymentMetadata,
+              deploymentQuery,
               publicBase: resolvedStartConfig.basePaths.publicBase,
               hasUserRenderBuiltUrl: Boolean(
                 viteConfig.experimental?.renderBuiltUrl,
@@ -283,6 +289,7 @@ export function tanStackStartVite(
     }),
     startManifestPlugin({
       getConfig,
+      getDeploymentQuery: () => deploymentQuery,
     }),
     createVirtualModule({
       name: 'tanstack-start-core:deployment-metadata',
