@@ -221,8 +221,10 @@ RUN_ROUTE_TREE_RETENTION=1 CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-cor
 ```
 
 This workload covers 10,000 deep dynamic and shallow static routes, retains the
-route objects and lookup maps through collection, and reports five samples per
-shape. It measures retained JS heap beyond the original route objects, rather
+route objects and lookup maps through collection, and reports one sample per fresh process. Set
+`ROUTE_TREE_RETENTION_SHAPE=shallow` for shallow routes; the default is deep.
+Repeat fresh invocations to collect multiple samples. Do not repeat trees within
+one worker, because previous-tree lifetimes can contaminate heap subtraction. It measures retained JS heap beyond the original route objects, rather
 than CodSpeed's native allocation metrics. Compare identical Node versions and
 sources, and inspect sample variance before drawing conclusions.
 

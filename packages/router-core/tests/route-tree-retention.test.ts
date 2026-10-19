@@ -51,19 +51,18 @@ async function measureRetainedTree(shape: 'deep' | 'shallow') {
 
 // A diagnostic retained-JS-heap workload, separate from native allocation
 // benchmarks. Run in an isolated fork with --execArgv=--expose-gc.
-for (const shape of ['deep', 'shallow'] as const) {
-  it.skipIf(process.env.RUN_ROUTE_TREE_RETENTION !== '1' || !globalThis.gc)(
-    `retains ${shape} route matching data for a small session and a complete traversal`,
-    async () => {
-      const samples = []
-      for (let sample = 0; sample < 5; sample++) {
-        samples.push(await measureRetainedTree(shape))
-      }
-      console.log(
-        'route-tree retained heap bytes',
-        shape,
-        JSON.stringify(samples),
-      )
-    },
-  )
-}
+// Each invocation measures exactly one tree in a fresh worker. Repeating this
+// function in one process can collect a previous tree after the next baseline.
+const shape =
+  process.env.ROUTE_TREE_RETENTION_SHAPE === 'shallow' ? 'shallow' : 'deep'
+it.skipIf(process.env.RUN_ROUTE_TREE_RETENTION !== '1' || !globalThis.gc)(
+  `retains ${shape} route matching data for a small session and a complete traversal`,
+  async () => {
+    const sample = await measureRetainedTree(shape)
+    console.log(
+      'route-tree retained heap bytes',
+      shape,
+      JSON.stringify([sample]),
+    )
+  },
+)
