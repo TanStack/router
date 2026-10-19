@@ -18,7 +18,7 @@ describe('load config tests', () => {
     },
   ] satisfies TestCases)(
     'should load config correctly: $folder',
-    async ({ folder }) => {
+    ({ folder }) => {
       const absPath = makeFolderDir(folder)
       const resolvedConfig = getConfig({}, absPath)
       expect(resolvedConfig).toEqual(

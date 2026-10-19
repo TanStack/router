@@ -673,7 +673,7 @@ export const Route = createFileRoute('/old')({})`
       // (the router package exports the uses are bound to)
       expect(
         exports.uses.map((value: unknown) =>
-          Object.keys(router!).find((name) => router![name] === value),
+          Object.keys(router).find((name) => router![name] === value),
         ),
       ).toEqual(bound)
       expect(withoutImports(result.output)).toBe(
@@ -833,7 +833,7 @@ export const Route = createFileRoute('/old')({})`,
 export type Props = LinkProps
 export const Route = createFileRoute('/old')({})`,
     },
-  ])('type imports stay type-only: $name', async ({ source }) => {
+  ])('type imports stay type-only: $name', ({ source }) => {
     const output = modifiedOutput(transformTo(source))
 
     expect(valueImports(output, '@tanstack/react-router')).toEqual([
@@ -868,7 +868,7 @@ export const Route = createFileRoute('/old')({})`,
     },
   ])(
     'a missing constructor import is added on its own line, with $name',
-    async ({ newline, lines }) => {
+    ({ newline, lines }) => {
       const output = modifiedOutput(transformTo(lines.join(newline)))
 
       const outputLines = output.split(newline)
@@ -896,7 +896,7 @@ export const Route = createFileRoute('/new')({})`,
     ]).toContain(modifiedOutput(transformTo(source)))
   })
 
-  it('a stale import declaration on the line of another one, removed or not, leaves valid code', async () => {
+  it('a stale import declaration on the line of another one, removed or not, leaves valid code', () => {
     const output = modifiedOutput(
       transformTo(
         `import { createLazyFileRoute } from ${routerPackage}; import { createFileRoute } from ${routerPackage}
@@ -923,7 +923,7 @@ export const link = Link`
     ]).toContain(modifiedOutput(transformTo(source)))
   })
 
-  it('an added constructor import ends with a semicolon in a file using them', async () => {
+  it('an added constructor import ends with a semicolon in a file using them', () => {
     const source = `import * as Router from ${routerPackage};
 export const r = Router;
 export const Route = createFileRoute('/old')({});`
@@ -959,7 +959,7 @@ export const Route = createFileRoute('/old')({})`
     ]).toContain(modifiedOutput(transformTo(source)))
   })
 
-  it('a stale import next to an aliased import of the constructor leaves the constructor bound once', async () => {
+  it('a stale import next to an aliased import of the constructor leaves the constructor bound once', () => {
     const output = modifiedOutput(
       transformTo(`import { Link, createLazyFileRoute } from ${routerPackage}
 import { createFileRoute as cfr } from ${routerPackage}

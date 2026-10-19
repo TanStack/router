@@ -28,7 +28,7 @@ import {
   withBuildEnvironment,
 } from '@tanstack/compiler-test-utils/build-harness'
 import { mergeRsbuildConfig } from '@rsbuild/core'
-import { onTestFinished } from 'vitest'
+import { inject, onTestFinished } from 'vitest'
 import type {
   App,
   AppInfo,
@@ -196,6 +196,8 @@ export async function build(
         const config: RouterPluginOptions = {
           target: framework,
           autoCodeSplitting: true,
+          // This run's directory (tests/generator-tmp-dir.ts)
+          tmpDir: inject('generatorTmpDir'),
           ...pluginOptions,
           // The webpack, Rspack and esbuild adapters resolve these against
           // the working directory
@@ -406,6 +408,7 @@ export async function buildWithRsbuild(
                     tanstackRouter({
                       target: 'react',
                       autoCodeSplitting: true,
+                      tmpDir: inject('generatorTmpDir'),
                       ...pluginOptions,
                       routesDirectory: path.resolve(
                         app.root,

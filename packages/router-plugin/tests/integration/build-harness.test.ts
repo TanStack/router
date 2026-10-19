@@ -74,15 +74,22 @@ const splitRouteExpected = {
 describe.each(bundlers.filter((bundler) => bundler !== 'esbuild'))(
   'router plugin with %s',
   (bundler) => {
-    test.each(['ssr', 'client'] as const)(
-      'loads a split component lazily and renders it (%s)',
-      async (env) => {
-        expect(await buildSplitRoute(bundler, env)).toEqual(
-          splitRouteExpected[env],
-        )
-      },
-      timeout,
-    )
+    // Vite and Rspack: the same harness call and outcome as the React cells
+    // of build-frameworks.test.ts ("<bundler> react ssr/client build the
+    // split component loads lazily and renders"), which decide it (speedup
+    // 6). webpack here builds minified, as an app does (build-frameworks
+    // builds webpack unminified).
+    if (bundler === 'webpack') {
+      test.each(['ssr', 'client'] as const)(
+        'loads a split component lazily and renders it (%s)',
+        async (env) => {
+          expect(await buildSplitRoute(bundler, env)).toEqual(
+            splitRouteExpected[env],
+          )
+        },
+        timeout,
+      )
+    }
 
     // The router plugin reports what it cannot split with `console.warn`;
     // here a plugin option the build calls warns.

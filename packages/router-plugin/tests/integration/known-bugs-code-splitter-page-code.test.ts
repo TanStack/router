@@ -499,25 +499,39 @@ export const Route = createFileRoute('/imports-exported')({ component: Page })
       // Source: the #8504 probe (memos/splitter.md B6).
       // Impact: the app's entry throws when it loads ("Page is not
       // defined").
-      test.fails(
-        `${displayName.name} loads with its chunk and renders the property`,
-        async () => {
-          const built = await clientBuild(bundler, {
-            sideEffects,
-            files: {
-              'routes/__root.tsx': rootRoute,
-              [`routes/${displayName.file}.tsx`]: displayName.route,
-              'entry.ts': mountEntry,
-            },
-          })
-          const { html } = await built.run(`await entry.mount('/display-name')`)
-          expect({ placement: built.where(displayName.marker), html }).toEqual({
-            placement: 'lazy',
-            html: `<div id="root"><div>${displayName.marker}PageDisplay</div></div>`,
-          })
-        },
-        timeout,
-      )
+      // One cell (Vite, no hint; speedup 7): the route module reading the
+      // undeclared `Page` is the transform's output, the same for every
+      // bundler and hint (in process: "top-level writes to the split
+      // component (property assignment) stay with the binding they write",
+      // ../known-bugs-code-splitter.test.ts), and where a fixed route's
+      // component lands is the bundler's, which the controls above decide
+      // in every bundler and hint.
+      if (bundler === 'vite' && sideEffects === undefined) {
+        test.fails(
+          `${displayName.name} loads with its chunk and renders the property`,
+          async () => {
+            const built = await clientBuild(bundler, {
+              sideEffects,
+              files: {
+                'routes/__root.tsx': rootRoute,
+                [`routes/${displayName.file}.tsx`]: displayName.route,
+                'entry.ts': mountEntry,
+              },
+            })
+            const { html } = await built.run(
+              `await entry.mount('/display-name')`,
+            )
+            expect({
+              placement: built.where(displayName.marker),
+              html,
+            }).toEqual({
+              placement: 'lazy',
+              html: `<div id="root"><div>${displayName.marker}PageDisplay</div></div>`,
+            })
+          },
+          timeout,
+        )
+      }
 
       test.fails.each([...exported, ...unsplit])(
         '$name loads with its chunk',

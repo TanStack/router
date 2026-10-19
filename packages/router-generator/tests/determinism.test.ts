@@ -18,9 +18,9 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { describe, onTestFinished, test, vi } from 'vitest'
 import { expectDeterministic } from '@tanstack/compiler-test-utils/determinism'
+import { Generator } from '../src'
 import { configOf, fileRoute, lazyFileRoute, rootRoute } from './app'
 import { observeRouteTree } from './route-tree'
-import { Generator } from '../src'
 
 /**
  * Route files whose routes tie on everything but their names (siblings of
@@ -77,7 +77,7 @@ async function generateFresh(root: string) {
  * hash).
  */
 async function withListingOrder<T>(
-  order: <E>(entries: Array<E>) => Array<E>,
+  order: <TEntry>(entries: Array<TEntry>) => Array<TEntry>,
   run: () => Promise<T>,
 ) {
   const readdir = fsp.readdir

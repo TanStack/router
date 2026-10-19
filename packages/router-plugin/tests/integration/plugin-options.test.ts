@@ -57,6 +57,11 @@ async function buildRoute(
 const read = (app: BuildResult, file: string) =>
   readFile(path.join(app.root, file), 'utf8').catch(() => null)
 
+// Every cell per bundler entry, `undefined` included: each entry (Vite,
+// Rspack, webpack) takes the user's options through its own code before the
+// default applies, so an entry could resolve an absent option differently;
+// the harness itself turns splitting on, so these are the only checks of
+// the default per entry.
 describe.each([false, undefined])(
   'autoCodeSplitting: %s',
   (autoCodeSplitting) => {

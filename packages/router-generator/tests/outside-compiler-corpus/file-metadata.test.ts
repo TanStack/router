@@ -110,13 +110,16 @@ describe('route files the generator rewrites', () => {
         return { mtimeMs: stat.mtimeMs, mode: Number(stat.mode), ...owner }
       },
       chmod: (filePath: string, mode: number) => fs.chmod(filePath, mode),
-      chown: async (filePath: string, uid: number, gid: number) => {
+      chown: (filePath: string, uid: number, gid: number) => {
         if (chownError) {
-          throw Object.assign(new Error(`chown ${chownError}`), {
-            code: chownError,
-          })
+          return Promise.reject(
+            Object.assign(new Error(`chown ${chownError}`), {
+              code: chownError,
+            }),
+          )
         }
         owners.set(key(filePath), { uid, gid })
+        return Promise.resolve()
       },
     }
   }

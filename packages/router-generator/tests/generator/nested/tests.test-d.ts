@@ -10,27 +10,35 @@ import {
   useRouteContext,
   useSearch,
 } from '@tanstack/react-router'
-import type { FileRoutesByPath, MakeRouteMatch } from '@tanstack/react-router'
 import { expectTypeOf, test } from 'vitest'
 import { routeTree } from './routeTree.gen'
+import type { FileRoutesByPath, MakeRouteMatch } from '@tanstack/react-router'
 import type { FileRouteTypes } from './routeTree.gen'
 
+// Read for its type only (`typeof`)
+// eslint-disable-next-line unused-imports/no-unused-vars
 const defaultRouter = createRouter({
   routeTree,
 })
 
 type DefaultRouter = typeof defaultRouter
 
+// Read for its type only (`typeof`)
+// eslint-disable-next-line unused-imports/no-unused-vars
 const alwaysTrailingSlashRouter = createRouter({
   routeTree,
   trailingSlash: 'always',
 })
 
+// Read for its type only (`typeof`)
+// eslint-disable-next-line unused-imports/no-unused-vars
 const neverTrailingSlashRouter = createRouter({
   routeTree,
   trailingSlash: 'never',
 })
 
+// Read for its type only (`typeof`)
+// eslint-disable-next-line unused-imports/no-unused-vars
 const preserveTrailingSlashRouter = createRouter({
   routeTree,
   trailingSlash: 'preserve',
