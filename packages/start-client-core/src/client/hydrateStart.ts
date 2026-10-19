@@ -13,10 +13,8 @@ import type { AnyStartInstanceOptions } from '../createStart'
 type HotContext = {
   data?: Record<string, unknown>
   dispose?: (cb: (data: Record<string, unknown>) => void) => void
-  // Vite
+  // Vite (Rsbuild dev does not emit the dev styles link)
   on?: (event: string, cb: (payload?: unknown) => void) => void
-  // webpack / rspack
-  addStatusHandler?: (cb: (status: string) => void) => void
 }
 
 declare global {
@@ -72,19 +70,7 @@ function hydrateStartWithHmr(): Promise<AnyRouter> {
   }
 
   // Tell HeadContent that the SSR dev styles snapshot is outdated.
-  if (hot.on) {
-    hot.on('vite:afterUpdate', markDevStylesStale)
-  } else if (hot.addStatusHandler) {
-    let applied = false
-    hot.addStatusHandler((status) => {
-      if (status === 'apply') {
-        applied = true
-      } else if (status === 'idle' && applied) {
-        applied = false
-        markDevStylesStale()
-      }
-    })
-  }
+  hot.on?.('vite:afterUpdate', markDevStylesStale)
 
   const key = 'tss-hydrate-start-promise'
   const hotData = (hot.data ??= {})

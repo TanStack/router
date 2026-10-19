@@ -6,25 +6,33 @@ export const DEV_STYLES_ATTR = 'data-tanstack-router-dev-styles'
 // The dev styles link is a snapshot of the SSR-collected CSS. It must stay until
 // the bundler injected the same styles on the client (server-rendered lazy
 // components may still be loading after hydration), and becomes stale after HMR.
-// The flag covers listeners that mount after the update; the window event
-// reaches them across duplicated copies of this module.
-const DEV_STYLES_STALE_EVENT = 'tanstack-router:dev-styles-stale'
+// Kept as state so a HeadContent that mounts after the update still drops it.
 let devStylesStale = false
+let devStylesStaleListeners: Array<() => void> = []
 
-/** @internal Called by the Start client runtime once an HMR update is applied. */
+/** Called by the Start client runtime once an HMR update is applied. */
 export function markDevStylesStale() {
+  if (devStylesStale) {
+    return
+  }
   devStylesStale = true
-  window.dispatchEvent(new Event(DEV_STYLES_STALE_EVENT))
+  const listeners = devStylesStaleListeners
+  devStylesStaleListeners = []
+  listeners.forEach((listener) => listener())
 }
 
-/** @internal Runs `callback` once the dev styles are stale, immediately if they already are. */
+/** Runs `callback` once the dev styles are stale, immediately if they already are. */
 export function onDevStylesStale(callback: () => void): () => void {
   if (devStylesStale) {
     callback()
     return () => {}
   }
-  window.addEventListener(DEV_STYLES_STALE_EVENT, callback, { once: true })
-  return () => window.removeEventListener(DEV_STYLES_STALE_EVENT, callback)
+  devStylesStaleListeners.push(callback)
+  return () => {
+    devStylesStaleListeners = devStylesStaleListeners.filter(
+      (listener) => listener !== callback,
+    )
+  }
 }
 
 export type AssetCrossOriginConfig =
