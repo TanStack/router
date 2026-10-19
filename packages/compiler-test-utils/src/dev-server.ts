@@ -7,8 +7,9 @@
  * then requests modules per environment and reports the HMR payloads sent to
  * each environment.
  *
- * Nothing replays file events: `write()` writes files, the watcher reports
- * them, and `settle()` waits for the server, by events only:
+ * Nothing replays file events: `write()` saves files atomically, as editors
+ * do (`./save-file`: the watcher never sees a half-written file), the
+ * watcher reports them, and `settle()` waits for the server, by events only:
  * - each file the test wrote is reported by the watcher (a test writes like
  *   a user, a moment after the last change the watcher reported: chokidar
  *   drops a second change of a file within that moment);
@@ -54,6 +55,7 @@ import {
 } from 'vite'
 import { createApp } from './build-harness'
 import { createModuleGraph } from './module-linker'
+import { saveAppFile } from './save-file'
 import type { AppOptions } from './build-harness'
 import type { ModuleGraphOptions, ModuleStub } from './module-linker'
 import type {
@@ -146,7 +148,8 @@ export interface DevServer {
    * Waits until the watcher has reported every file written since the last
    * call (by the test or by plugins) and the server has handled each event
    * (see the module comment). Rejects with the error that stopped the
-   * handling of an event. Returns the HMR payloads sent meanwhile. Not
+   * handling of an event. Returns the HMR payloads sent since the first
+   * write since the last call (or since the call). Not
    * available with `server.hmr: false` (then nothing tells when Vite handled
    * an event, and the server runs without a watcher).
    */
@@ -821,7 +824,8 @@ export async function createDevServer(
    * and until the dev engine bundled the current files.
    */
   async function settleBundle() {
-    const from = hmr.length
+    const from = writtenFrom ?? hmr.length
+    writtenFrom = undefined
     /** Whether Vite's watcher watches a file (plugins may make it watch). */
     const watched = (absolute: string) =>
       path.dirname(absolute) in vite.watcher.getWatched()
@@ -858,7 +862,8 @@ export async function createDevServer(
         'settle() and edit() need the file watcher and HMR, which a server with `server.hmr: false` runs without',
       )
     }
-    const from = hmr.length
+    const from = writtenFrom ?? hmr.length
+    writtenFrom = undefined
     for (let round = 0; ; round++) {
       await waitForExpected()
       await waitForHandling()
@@ -890,10 +895,18 @@ export async function createDevServer(
     return hmr.slice(from)
   }
 
+  /**
+   * `hmr.length` when the first write since the last `settle()` began: the
+   * server may handle (and send the payloads of) a write before `settle()`
+   * is called.
+   */
+  let writtenFrom: number | undefined
+
   async function write(files: Record<string, string | null>) {
     if (watching || devEngineWatching) {
       await userPace()
     }
+    writtenFrom ??= hmr.length
     for (const [relative, code] of Object.entries(files)) {
       const absolute = file(relative)
       const exists = await lstat(absolute).then(
@@ -908,8 +921,7 @@ export async function createDevServer(
         continue
       }
       expect(absolute)
-      await mkdir(path.dirname(absolute), { recursive: true })
-      await writeFile(absolute, code)
+      await saveAppFile(root, absolute, code)
     }
   }
 
@@ -1013,6 +1025,7 @@ export async function createDevServer(
       if (watching || devEngineWatching) {
         await userPace()
       }
+      writtenFrom ??= hmr.length
       const target = file(to)
       expect(file(from))
       expect(target)
