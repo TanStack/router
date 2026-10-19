@@ -131,15 +131,27 @@ describe.each(startBundlers)('%s build', (bundler) => {
     timeout,
   )
 
-  /** A route whose component and loader each carry a marker. */
+  /**
+   * A route whose loader and component each read a module that records when
+   * it loads (`globalThis.__loaded`): what loads, and when, is observed at
+   * run time, not through chunk names (FIX-PLAN S47).
+   */
   const routeFiles = {
     'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute()
 `,
+    'src/loader-dep.ts': `;(globalThis.__loaded ??= []).push('loader')
+export const load = () => 'MARK_LOADER'
+`,
+    'src/component-dep.ts': `;(globalThis.__loaded ??= []).push('component')
+export const render = () => 'MARK_COMPONENT'
+`,
     'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { load } from '../loader-dep'
+import { render } from '../component-dep'
 export const Route = createFileRoute('/')({
-  loader: () => 'MARK_LOADER',
-  component: () => 'MARK_COMPONENT',
+  loader: () => load(),
+  component: () => render(),
 })
 `,
     'src/router.ts': `import { routeTree } from './routeTree.gen'
@@ -160,7 +172,7 @@ export { renderPath } from '../harness/render'
     {
       name: 'by default',
       router: {},
-      expected: { loader: 'eager', component: 'lazy', oneChunk: false },
+      expected: { loader: 'eager', component: 'lazy', together: false },
     },
     {
       name: 'with a defaultBehavior grouping the loader with the component',
@@ -171,7 +183,7 @@ export { renderPath } from '../harness/render'
           >,
         },
       },
-      expected: { loader: 'lazy', component: 'lazy', oneChunk: true },
+      expected: { loader: 'lazy', component: 'lazy', together: true },
     },
   ])(
     'router.codeSplittingOptions: the client and SSR builds load the route loader and component $name',
@@ -182,19 +194,26 @@ export { renderPath } from '../harness/render'
         entry: 'src/entry.ts',
         start: { router },
       })
-      /** Where a build has the loader and the component. */
-      const placement = (build: StartBuild['client']) => ({
-        loader: build.where('MARK_LOADER'),
-        component: build.where('MARK_COMPONENT'),
-        oneChunk:
-          build.locate('MARK_LOADER').lazy[0] ===
-          build.locate('MARK_COMPONENT').lazy[0],
-      })
+      /**
+       * What loads with the app (eager) or later (lazy), and whether running
+       * the loader makes the component's code available too (one group).
+       */
+      const placementScript = `const loaded = () => [...(globalThis.__loaded ?? [])]
+const atStart = loaded()
+const route = Object.values(entry.getRouter().routeTree.children).find(
+  (candidate) => candidate.options.id === '/',
+)
+await route.options.loader()
+return {
+  loader: atStart.includes('loader') ? 'eager' : 'lazy',
+  component: atStart.includes('component') ? 'eager' : 'lazy',
+  together: !atStart.includes('component') && loaded().includes('component'),
+}`
       // Source: mutation round 3 start-router H for the SSR build.
-      expect({ client: placement(client), ssr: placement(ssr) }).toEqual({
-        client: expected,
-        ssr: expected,
-      })
+      expect({
+        client: (await client.run(placementScript)).result,
+        ssr: (await ssr.run(placementScript)).result,
+      }).toEqual({ client: expected, ssr: expected })
       // Wherever they are, the route's loader and component still run: the
       // real router renders the page at `/`.
       const script = `const route = Object.values(entry.getRouter().routeTree.children).find(

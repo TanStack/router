@@ -2,6 +2,8 @@ import { transformWithOxc } from 'vite'
 import { describe, expect, test, vi } from 'vitest'
 import {
   callReportedServerFns,
+  callServerFnThroughCallers,
+  compileAll,
   compileCode,
   compileFor,
   compileServer,
@@ -288,6 +290,49 @@ export const label = red
 export const fn = createServerFn().handler(async () => red)`,
   )
   expect((await evaluateModule(client!)).label).toBe('red')
+})
+
+// A JSON import written with the deprecated `assert` keyword (Node 22+ and
+// the bundlers only read `with`) keeps working in every output (user ruling
+// D9: `assert` stays supported; dropping it once nobody writes it is fine).
+// Source: FIX-PLAN V2-23.
+test('an import attribute written with assert keeps working in every output', async () => {
+  const compiled =
+    await compileAll(`import { createServerFn } from '@tanstack/react-start'
+import config from './config.json' assert { type: 'json' }
+import secrets from './secrets.json' assert { type: 'json' }
+export const theme = config.theme
+export const fn = createServerFn().handler(async () => secrets.key)`)
+  const stubs = {
+    './config.json': `{ "theme": "dark" }`,
+    './secrets.json': `{ "key": "MARK_KEY" }`,
+  }
+  expect((await evaluateModule(compiled.client, stubs)).theme).toBe('dark')
+  expect(
+    await callServerFnThroughCallers(compiled, (module) => module.fn, stubs),
+  ).toBe('MARK_KEY')
+})
+
+// Decorated classes (TypeScript `experimentalDecorators`) next to a server
+// fn: every output is a valid module (running them, decorators included, is
+// checked through real builds: integration/start-build-user-code.test.ts).
+// Source: FIX-PLAN V2-23.
+test('decorated classes next to a server fn compile to valid modules', async () => {
+  await compileAll(`import { createServerFn } from '@tanstack/react-start'
+const tag = (name: string) => (target: unknown) => target
+@tag('repository')
+class Repository {
+  read() {
+    return 'from repository'
+  }
+}
+@tag('widget')
+export class Widget {
+  @tag('method') label() {
+    return 'widget'
+  }
+}
+export const fn = createServerFn().handler(async () => new Repository().read())`)
 })
 
 // Bug: the client output prints an asserted update operand without its
