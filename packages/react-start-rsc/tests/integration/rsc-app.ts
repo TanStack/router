@@ -121,9 +121,9 @@ export interface RscDevServerOptions extends Omit<
 /**
  * Starts a Vite dev server on a React Start app with RSC enabled, of
  * `files` over `rscAppFiles`. Without `browser`, the server runs in
- * middleware mode and `settle()`/`edit()` replay file events; the `rsc`
- * environment is runnable (`server.import(url, 'rsc')` runs a module in the
- * provider).
+ * middleware mode (Vite's watcher still reports `write()`s, which
+ * `settle()` waits for); the `rsc` environment is runnable
+ * (`server.import(url, 'rsc')` runs a module in the provider).
  */
 export async function startRscDevServer(
   options: RscDevServerOptions,
