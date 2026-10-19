@@ -2,6 +2,17 @@ import React from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { act, render } from '@testing-library/react'
 
+import { createFromReadableStream as browserDecode } from '@vitejs/plugin-rsc/browser'
+
+import {
+  createCompositeFromStream,
+  createServerComponentFromStream,
+} from '../src/createServerComponentFromStream'
+import {
+  SERVER_COMPONENT_CSS_HREFS,
+  SERVER_COMPONENT_JS_PRELOADS,
+} from '../src/ServerComponentTypes'
+
 // Force the client implementation to be used in tests.
 vi.mock('@tanstack/start-client-core', () => {
   return {
@@ -33,17 +44,6 @@ vi.mock('@vitejs/plugin-rsc/ssr', () => {
     createFromReadableStream: vi.fn(),
   }
 })
-
-import { createFromReadableStream as browserDecode } from '@vitejs/plugin-rsc/browser'
-
-import {
-  createCompositeFromStream,
-  createServerComponentFromStream,
-} from '../src/createServerComponentFromStream'
-import {
-  SERVER_COMPONENT_CSS_HREFS,
-  SERVER_COMPONENT_JS_PRELOADS,
-} from '../src/ServerComponentTypes'
 
 describe('ServerComponent (client)', () => {
   it('decodes a stream only once', async () => {
@@ -91,7 +91,7 @@ describe('ServerComponent (client)', () => {
     resolvePromise!(React.createElement('div', null, 'ok'))
   })
 
-  it('defers decode when SSR asset deps are provided', async () => {
+  it('defers decode when SSR asset deps are provided', () => {
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
         controller.close()

@@ -1,30 +1,51 @@
+/**
+ * Types of `renderServerComponent` as an app uses it
+ * (guide/server-components.md): what a server function returns is a value
+ * the page renders inline (`{Renderable}`), alone or as part of an object.
+ * Checked by `test:types` (`tsc -p tests`), not run.
+ *
+ * The calls are in functions nothing runs; only the types they infer are
+ * read.
+ */
 import { expectTypeOf, test } from 'vitest'
-import type { ReactElement } from 'react'
+import { CompositeComponent, renderServerComponent } from '../src/index'
+import type { ReactNode } from 'react'
 
-import { renderServerComponent } from '../src/renderServerComponent.stub'
-import type {
-  RenderServerComponentElement,
-  RenderServerComponentResult,
-} from '../src/ServerComponentTypes'
+function Greeting(props: { name: string }) {
+  return <h1>Hello {props.name}</h1>
+}
 
-test('renderServerComponent infers nested access type', () => {
-  function MyServerComponent(_props: {}): any {
-    throw new Error('not executed')
+test('the result renders inline', () => {
+  const _greeting = () => renderServerComponent(<Greeting name="MARK" />)
+  const Renderable = null as unknown as Awaited<ReturnType<typeof _greeting>>
+  expectTypeOf(Renderable).toExtend<ReactNode>()
+  void (<main>{Renderable}</main>)
+})
+
+test('results returned together each render inline', () => {
+  const _layout = async () => {
+    const [Header, Content] = await Promise.all([
+      renderServerComponent(<header>MARK_HEADER</header>),
+      renderServerComponent(<Greeting name="MARK" />),
+    ])
+    return { Header, Content }
   }
+  const { Header, Content } = null as unknown as Awaited<
+    ReturnType<typeof _layout>
+  >
+  expectTypeOf(Header).toExtend<ReactNode>()
+  expectTypeOf(Content).toExtend<ReactNode>()
+  void (
+    <>
+      {Header}
+      {Content}
+    </>
+  )
+})
 
-  const element = null as unknown as RenderServerComponentElement<{
-    foo: { bar: ReactElement }
-  }>
-
-  const dataPromise = renderServerComponent(element)
-
-  type Data = Awaited<typeof dataPromise>
-
-  // nested selection
-  expectTypeOf<Data>().toHaveProperty('foo')
-  expectTypeOf<Data['foo']>().toHaveProperty('bar')
-
-  // also: directly renderable at top-level
-  type MustBeRenderable = true
-  expectTypeOf<MustBeRenderable>().toEqualTypeOf<true>()
+test('the result is not a composite source', () => {
+  const _greeting = () => renderServerComponent(<Greeting name="MARK" />)
+  const Renderable = null as unknown as Awaited<ReturnType<typeof _greeting>>
+  // @ts-expect-error renderables take no slots: use createCompositeComponent
+  void (<CompositeComponent src={Renderable} />)
 })

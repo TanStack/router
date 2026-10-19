@@ -1,15 +1,19 @@
 /**
- * Start with a separate server function provider (SPEC J4.2, J4.3, J3.6):
+ * Start with a separate server function provider (SPEC J4.2, J4.3, J4.16):
  * a React Start app with RSC enabled on a Vite dev server (`rsc-app.ts`),
  * where the `rsc` environment runs the handlers, SSR forwards its calls to
  * it, and a real page calls them from the browser. Outcomes only: what the
- * page shows, what a call by id answers, whether the page reloaded.
+ * page shows, what a call by id answers, what the browser loaded. Edits
+ * are in rsc-start-hmr.test.ts.
  */
 import { describe, expect, test } from 'vitest'
-import { describeHmr } from '@tanstack/compiler-test-utils/dev-server'
-import { openRscPage, startRscDevServer, waitForHydration } from './rsc-app'
+import {
+  openRscPage,
+  settledValue,
+  startRscDevServer,
+  waitForHydration,
+} from './rsc-app'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
-import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 
 /**
  * A dependency whose entry differs by export condition: the environment a
@@ -27,7 +31,11 @@ const envMarkerPackage = {
       },
     },
   }),
-  'node_modules/env-marker/react-server.js': `export const where = () => 'MARK_REACT_SERVER'\n`,
+  // Counts its initialisations (all environments of a Vite dev server run
+  // in the test process).
+  'node_modules/env-marker/react-server.js': `globalThis.__envMarkerInits = (globalThis.__envMarkerInits ?? 0) + 1
+export const where = () => 'MARK_REACT_SERVER:' + globalThis.__envMarkerInits
+`,
   'node_modules/env-marker/browser.js': `export const where = () => 'MARK_BROWSER'\n`,
   'node_modules/env-marker/default.js': `export const where = () => 'MARK_DEFAULT'\n`,
 }
@@ -66,29 +74,25 @@ async function callFromPage(browser: BrowserPage, expected: string) {
   await browser.waitForText(expected, { selector: '[data-testid=called]' })
 }
 
-/** The HMR messages telling the client to reload the page. */
-const fullReloads = (server: DevServer) =>
-  describeHmr(
-    server.hmr.filter(
-      (message) =>
-        message.environment === 'client' && message.type === 'full-reload',
-    ),
-  )
-
 describe('Vite dev: a separate RSC provider', () => {
-  // J4.3: SSR (the loader during the page render) and a client call both
-  // run the handler in the provider, with its module-resolution conditions
-  // (`react-server`), not SSR's or the browser's.
+  // J4.3, J4.16: SSR (the loader during the page render) and a client call
+  // both run the handler in the provider, with its module-resolution
+  // conditions (`react-server`), and the provider initialises the package
+  // once; SSR's own code gets the `default` entry and the browser's the
+  // `browser` entry, and no client script has another environment's entry.
   // Source: start S11, S18 (case 3), S40; V2-12 (c).
-  test('a handler runs in the provider environment, whether SSR or the browser calls it', async () => {
+  test('each environment runs its own entry of a dependency; the provider runs the handler, whether SSR or the browser calls it', async () => {
     const server = await startRscDevServer({
       browser: true,
-      // Bundled into the provider like Start's own packages are
-      // (`environments.rsc.resolve.noExternal`): in dev, Vite's module
-      // runner imports an externalised dependency natively, with Node's
-      // conditions, not the environment's.
       config: {
+        // Bundled into the provider like Start's own packages are
+        // (`environments.rsc.resolve.noExternal`): in dev, Vite's module
+        // runner imports an externalised dependency natively, with Node's
+        // conditions, not the environment's.
         environments: { rsc: { resolve: { noExternal: ['env-marker'] } } },
+        // The page imports it too: pre-bundled up front, as Vite does once
+        // a page discovers it.
+        optimizeDeps: { include: ['env-marker'] },
       },
       files: {
         ...envMarkerPackage,
@@ -96,13 +100,64 @@ describe('Vite dev: a separate RSC provider', () => {
 import { where } from 'env-marker'
 export const greet = createServerFn().handler(() => where())
 `,
-        'src/routes/index.tsx': page(''),
+        'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
+import { where } from 'env-marker'
+import { greet } from '../fns'
+export const Route = createFileRoute('/')({
+  loader: async () => ({ own: where(), provider: await greet() }),
+  component: Page,
+})
+function Page() {
+  const data = Route.useLoaderData()
+  const [called, setCalled] = useState('')
+  const [browser, setBrowser] = useState('')
+  return (
+    <main>
+      <p data-testid="label">ssr {data.own} provider {data.provider}</p>
+      <p data-testid="called">called {called}</p>
+      <p data-testid="browser">browser {browser}</p>
+      <button data-testid="call" onClick={() => greet().then(setCalled)}>call</button>
+      <button data-testid="where" onClick={() => setBrowser(where())}>where</button>
+    </main>
+  )
+}
+`,
       },
     })
     const browser = await openRscPage(server, '/')
-    await browser.waitForText('label MARK_REACT_SERVER')
+    await browser.waitForText('ssr MARK_DEFAULT provider MARK_REACT_SERVER:1', {
+      selector: '[data-testid=label]',
+    })
     await waitForHydration(browser)
-    await callFromPage(browser, 'called MARK_REACT_SERVER')
+    await callFromPage(browser, 'called MARK_REACT_SERVER:1')
+    await browser.page.locator('[data-testid=where]').click()
+    await browser.waitForText('browser MARK_BROWSER', {
+      selector: '[data-testid=browser]',
+    })
+
+    // What the browser loaded as code (not the server fn answers)
+    const scripts = await browser.page.evaluate(() =>
+      performance
+        .getEntriesByType('resource')
+        .filter(
+          (entry) =>
+            !['fetch', 'xmlhttprequest'].includes(
+              (entry as PerformanceResourceTiming).initiatorType,
+            ),
+        )
+        .map((entry) => new URL(entry.name).pathname),
+    )
+    const leaks: Array<string> = []
+    for (const script of scripts) {
+      const { body } = await server.fetch(script)
+      if (/MARK_REACT_SERVER|MARK_DEFAULT/.test(body)) {
+        leaks.push(script)
+      }
+    }
+    // The check covers the dependency's browser entry
+    expect(scripts.some((script) => script.includes('env-marker'))).toBe(true)
+    expect(leaks).toEqual([])
     expect(browser.errors).toEqual([])
   })
 
@@ -192,76 +247,14 @@ export const Route = createFileRoute('/')({ component: () => <main><Widget /></m
       await browser.waitForText('widget')
       await waitForHydration(browser)
       await browser.page.locator('[data-testid=widget]').click()
-      await browser.waitForText('widget MARK_WIDGET_DATA', { timeout: 5_000 })
+      // The answer, or what the page shows once its requests are done
+      expect(
+        await settledValue(
+          browser,
+          () => browser.text('[data-testid=widget]'),
+          (text) => text.includes('MARK_WIDGET_DATA'),
+        ),
+      ).toBe('widget MARK_WIDGET_DATA')
     },
   )
-})
-
-describe('Vite dev: edits with a separate RSC provider (SPEC J3.6)', () => {
-  const route = (
-    handler: string,
-    text: string,
-  ) => `import { createFileRoute } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
-import { useState } from 'react'
-const getLabel = createServerFn().handler(() => '${handler}')
-export const Route = createFileRoute('/')({
-  loader: () => getLabel(),
-  component: Page,
-})
-function Page() {
-  const label = Route.useLoaderData()
-  const [called, setCalled] = useState('')
-  const [count, setCount] = useState(0)
-  return (
-    <main>
-      <p data-testid="text">${text} {label}</p>
-      <p data-testid="called">called {called}</p>
-      <button data-testid="call" onClick={() => getLabel().then(setCalled)}>call</button>
-      <button data-testid="count" onClick={() => setCount(count + 1)}>count {count}</button>
-    </main>
-  )
-}
-`
-
-  // A route module that also declares a server function: editing the
-  // handler makes the next call run the new code; editing the component
-  // hot-updates the page, keeping its state; no full reload either way
-  // (user ruling 2026-10-18).
-  // Source: SPEC J3.6, V2-13 (#7618 as quoted), start S12 on Vite.
-  test('a handler edit reaches the next call and a component edit hot-updates, without a full reload', async () => {
-    const server = await startRscDevServer({
-      browser: true,
-      files: { 'src/routes/index.tsx': route('MARK_HANDLER_V1', 'Page v1') },
-    })
-    const browser = await openRscPage(server, '/')
-    await browser.waitForText('Page v1 MARK_HANDLER_V1')
-    await waitForHydration(browser)
-    await browser.page.locator('[data-testid=count]').click()
-    await browser.page.locator('[data-testid=count]').click()
-    await browser.waitForText('count 2')
-    await callFromPage(browser, 'called MARK_HANDLER_V1')
-
-    // The handler
-    await server.write({
-      'src/routes/index.tsx': route('MARK_HANDLER_V2', 'Page v1'),
-    })
-    await callFromPage(browser, 'called MARK_HANDLER_V2')
-    expect(fullReloads(server)).toEqual([])
-    // The client's module of the route never has the handler (J4.12)
-    expect(
-      await server.transform('/src/routes/index.tsx', 'client'),
-    ).not.toContain('MARK_HANDLER_V2')
-
-    // The component
-    await server.write({
-      'src/routes/index.tsx': route('MARK_HANDLER_V2', 'Page v2'),
-    })
-    await browser.waitForText('Page v2', { selector: '[data-testid=text]' })
-    expect(await browser.text('[data-testid=count]')).toBe('count 2')
-
-    expect(browser.loads()).toBe(1)
-    expect(fullReloads(server)).toEqual([])
-    expect(browser.errors).toEqual([])
-  })
 })

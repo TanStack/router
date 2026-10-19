@@ -17,7 +17,7 @@ describe('SlotContext', () => {
       )
 
       const result = screen.getByTestId('result')
-      const ctx = JSON.parse(result.textContent!)
+      const ctx = JSON.parse(String(result.textContent))
       expect(ctx.implementations).toEqual({ foo: 'bar' })
       expect(ctx.strict).toBe(false)
     })
@@ -80,7 +80,9 @@ describe('SlotContext', () => {
     it('should access nested implementations', () => {
       function Consumer() {
         const ctx = useSlotContext()
-        const nested = ctx?.implementations.nested as { deep: string }
+        const nested = ctx?.implementations.nested as
+          | { deep: string }
+          | undefined
         return <div data-testid="deep">{nested?.deep}</div>
       }
 
@@ -96,7 +98,9 @@ describe('SlotContext', () => {
     it('should access function implementations', () => {
       function Consumer() {
         const ctx = useSlotContext()
-        const fn = ctx?.implementations.renderItem as (n: number) => string
+        const fn = ctx?.implementations.renderItem as
+          | ((n: number) => string)
+          | undefined
         return <div data-testid="fn-result">{fn?.(42)}</div>
       }
 

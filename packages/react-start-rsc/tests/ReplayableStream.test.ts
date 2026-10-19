@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  ReplayableStream,
   REPLAYABLE_STREAM_MARKER,
+  ReplayableStream,
 } from '../src/ReplayableStream'
 
 describe('ReplayableStream', () => {
@@ -20,7 +20,7 @@ describe('ReplayableStream', () => {
       const reader = replay.getReader()
 
       const chunks: Array<Uint8Array> = []
-      while (true) {
+      for (;;) {
         const { done, value } = await reader.read()
         if (done) break
         chunks.push(value)
@@ -60,12 +60,12 @@ describe('ReplayableStream', () => {
       if (!r2c1.done) chunks2.push(r2c1.value)
 
       // Read remaining from both
-      while (true) {
+      for (;;) {
         const { done, value } = await reader1.read()
         if (done) break
         chunks1.push(value)
       }
-      while (true) {
+      for (;;) {
         const { done, value } = await reader2.read()
         if (done) break
         chunks2.push(value)
@@ -106,7 +106,7 @@ describe('ReplayableStream', () => {
       const reader2 = replay2.getReader()
 
       const chunks: Array<Uint8Array> = []
-      while (true) {
+      for (;;) {
         const { done, value } = await reader2.read()
         if (done) break
         chunks.push(value)
@@ -288,7 +288,7 @@ describe('ReplayableStream', () => {
       const reader = replay.getReader()
 
       const chunks: Array<Uint8Array> = []
-      while (true) {
+      for (;;) {
         const { done, value } = await reader.read()
         if (done) break
         chunks.push(value)
@@ -334,7 +334,7 @@ describe('ReplayableStream', () => {
       const reader = replay.getReader()
 
       const chunks: Array<Uint8Array> = []
-      while (true) {
+      for (;;) {
         const { done, value } = await reader.read()
         if (done) break
         chunks.push(value)

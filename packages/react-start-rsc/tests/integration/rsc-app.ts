@@ -24,7 +24,11 @@ import rsc from '@vitejs/plugin-rsc'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
-import { mergeConfig } from 'vite'
+import {
+  createApp,
+  withBuildEnvironment,
+} from '@tanstack/compiler-test-utils/build-harness'
+import { createBuilder, mergeConfig, preview } from 'vite'
 import {
   workspacePackage,
   workspacePackageLinks,
@@ -173,6 +177,77 @@ export async function startRscDevServer(
   })
 }
 
+export interface RscPreviewServer {
+  /** The app root. */
+  root: string
+  /** The URL Start's preview server listens on. */
+  url: string
+  /** What the build logged (warnings and errors). */
+  messages: Array<string>
+}
+
+/**
+ * Builds a React Start app with RSC enabled, of `files` over `rscAppFiles`,
+ * for production as `vite build` does (the `client`, `ssr` and `rsc`
+ * environments, `buildApp()`), and serves the build with `vite preview`
+ * (Start's own preview server runs the built server entry). The test
+ * process runs with `NODE_ENV=production` until the cleanup, as `vite
+ * preview` does, so the server's React matches the client's.
+ */
+export async function startRscPreviewServer(options: {
+  files: Record<string, string>
+  start?: Record<string, unknown>
+  config?: Record<string, unknown>
+  registerCleanup?: (cleanup: () => Promise<void>) => void
+}): Promise<RscPreviewServer> {
+  const registerCleanup = options.registerCleanup ?? onTestFinished
+  const tanstackStart = await tanstackStartVitePlugin()
+  const app = await createApp({
+    dir: harnessDir,
+    prefix: '.rsc-preview-server-',
+    registerCleanup,
+    files: { ...rscAppFiles, ...options.files },
+    symlinks: workspacePackageLinks([
+      '@tanstack/react-start',
+      '@tanstack/react-start-rsc',
+    ]),
+  })
+  const config = () =>
+    mergeConfig(
+      {
+        root: app.root,
+        configFile: false,
+        logLevel: 'warn',
+        plugins: [
+          tanstackStart({ ...options.start, rsc: { enabled: true } }),
+          rsc(),
+          react(),
+        ],
+      },
+      options.config ?? {},
+    )
+  const messages: Array<string> = []
+  await withBuildEnvironment('production', messages, async () => {
+    const builder = await createBuilder(config())
+    await builder.buildApp()
+  })
+  const nodeEnv = process.env.NODE_ENV
+  process.env.NODE_ENV = 'production'
+  const server = await preview({
+    ...config(),
+    preview: { port: 0, host: '127.0.0.1' },
+  })
+  registerCleanup(async () => {
+    await server.close()
+    process.env.NODE_ENV = nodeEnv
+  })
+  const url = server.resolvedUrls?.local[0]
+  if (!url) {
+    throw new Error('the preview server does not listen')
+  }
+  return { root: app.root, url, messages }
+}
+
 export interface RscRsbuildDevServerOptions extends Omit<
   RsbuildDevServerOptions,
   'dir' | 'plugins' | 'entry'
@@ -257,11 +332,20 @@ export async function startRscRsbuildDevServer(
   }
 }
 
+/** The HTTP requests of a page in flight, and when that last changed. */
+interface Network {
+  pending: Set<unknown>
+  changed: number
+}
+
+const networks = new WeakMap<BrowserPage, Network>()
+
 /**
  * Opens `pathname` of a dev server with `browser` in a real page, closed
  * when the current test finishes unless `registerCleanup` says otherwise.
+ * The page's requests from then on are tracked for `settledValue`.
  */
-export function openRscPage(
+export async function openRscPage(
   server: Pick<DevServer | RsbuildDevServer, 'url'>,
   pathname: string,
   options: { registerCleanup?: (cleanup: () => Promise<void>) => void } = {},
@@ -269,9 +353,63 @@ export function openRscPage(
   if (!server.url) {
     throw new Error('the dev server does not listen: start it with `browser`')
   }
-  return openPage(new URL(pathname, server.url).href, {
+  const page = await openPage(new URL(pathname, server.url).href, {
     registerCleanup: options.registerCleanup ?? onTestFinished,
   })
+  const network: Network = { pending: new Set(), changed: Date.now() }
+  page.page.on('request', (request) => {
+    network.pending.add(request)
+    network.changed = Date.now()
+  })
+  const done = (request: unknown) => {
+    if (network.pending.delete(request)) {
+      network.changed = Date.now()
+    }
+  }
+  page.page.on('requestfinished', done)
+  page.page.on('requestfailed', done)
+  networks.set(page, network)
+  return page
+}
+
+/**
+ * Reads `read()` until `accept` takes its value, or until the page's
+ * network has settled (no request in flight for `quiet` ms, default 500)
+ * and one more read still does not: then whatever the page will show
+ * without another request, e.g. a stylesheet that never arrives. Gives up
+ * after `timeout` ms (default 15 000). Gives the last value read; the test
+ * asserts on it. For pages of `openRscPage`.
+ */
+export async function settledValue<T>(
+  page: BrowserPage,
+  read: () => Promise<T>,
+  accept: (value: T) => boolean,
+  { quiet = 500, timeout = 15_000 } = {},
+): Promise<T> {
+  const network = networks.get(page)
+  if (!network) {
+    throw new Error('settledValue needs a page of openRscPage')
+  }
+  const deadline = Date.now() + timeout
+  for (;;) {
+    const settled =
+      network.pending.size === 0 && Date.now() - network.changed >= quiet
+    let value: T | undefined
+    let readable = true
+    try {
+      value = await read()
+    } catch (error) {
+      // The page is (re)loading
+      readable = false
+      if (Date.now() > deadline) {
+        throw error
+      }
+    }
+    if (readable && (accept(value as T) || settled || Date.now() > deadline)) {
+      return value as T
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  }
 }
 
 /**

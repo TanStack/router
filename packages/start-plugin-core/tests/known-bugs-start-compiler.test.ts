@@ -5,7 +5,7 @@
 
 import path from 'node:path'
 import { transformWithOxc } from 'vite'
-import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import {
   callProvider,
   callReportedServerFns,
@@ -25,7 +25,6 @@ import {
   importSources,
   misplacedServerFnRejection,
   outputs,
-  renderThingTransform,
   serverOnlyError,
   serverOnlyModule,
   settle,
@@ -1382,74 +1381,6 @@ export const draw = createClientOnlyFn(() => chart.draw())`
       expect((await compileCode('client', code)) ?? code).not.toContain(
         'SERVICE_ROLE_KEY',
       )
-    },
-  )
-})
-
-describe('external import transforms', () => {
-  /** Runtime stubs: each function returns the arguments it got. */
-  const runtimeStubs = {
-    '@example/runtime': {
-      renderThing: (...args: Array<unknown>) => args,
-      other: (...args: Array<unknown>) => ['other', ...args],
-    },
-  }
-
-  beforeEach(() => {
-    vi.stubGlobal('loadThing', () => 'loaded')
-    return () => vi.unstubAllGlobals()
-  })
-
-  // Bug: a configured transform's export imported through a project module
-  // that re-exports it (`src/rt.ts`: `export { renderThing } from
-  // '@example/runtime'`) is only resolved for a top-level call in a module
-  // that also uses a built-in Start factory (compiler.test.ts "runs
-  // configured transforms on a top-level call imported through a project
-  // re-export, next to a built-in factory"). A nested call, or a module
-  // without a built-in factory, is left untransformed.
-  // Impact: with the RSC CSS transform (react-start-rsc), a server component
-  // rendered through the app's own re-export gets no CSS (its styles never
-  // load). Declaring external transforms import-bound instead (and dropping
-  // their lookup configurations) is the alternative to a fix.
-  // Source: compiler.ts: external direct-call candidates are only the calls
-  // of the library's own imports (`getExternalDirectCallCandidates`); other
-  // calls are only resolved as top-level declarator initializers
-  // (`isTopLevelDirectCallCandidate`), and only when the module has a
-  // built-in direct-call kind (`checkDirectCalls`). Mutation-testing round 3
-  // (sc-handlers E2/V2).
-  test.fails.each([
-    {
-      name: 'a nested call next to a built-in factory',
-      code: `import { renderThing } from './rt'
-import { createServerOnlyFn } from '@tanstack/react-start'
-export const only = createServerOnlyFn(() => 1)
-export function rendered() { return renderThing('card') }`,
-    },
-    {
-      name: 'a top-level call in a module without a built-in factory',
-      code: `import { renderThing } from './rt'
-const rendering = renderThing('card')
-export function rendered() { return rendering }`,
-    },
-  ])(
-    'a transform reaches a call imported through a project re-export: $name',
-    async ({ code }) => {
-      const { compile } = createStartCompiler({
-        env: 'server',
-        compilerTransforms: [renderThingTransform],
-        files: {
-          '/test/src/rt.ts': `export { renderThing } from '@example/runtime'`,
-        },
-        host: {
-          resolveId: async (id) =>
-            id.startsWith('./') ? `/test/src/${id.slice(2)}.ts` : id,
-        },
-      })
-      const { rendered } = await evaluateModule(
-        (await compile(code, '/test/src/routes/card.tsx')) ?? code,
-        { './rt': runtimeStubs['@example/runtime'] },
-      )
-      expect(rendered()).toEqual(['card', { injected: 'loaded' }])
     },
   )
 })

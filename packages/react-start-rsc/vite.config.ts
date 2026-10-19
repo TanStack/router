@@ -35,12 +35,12 @@ const config = defineConfig({
     reporters: ['default', '@tanstack/compiler-test-utils/budget-reporter'],
     projects: [
       {
-        // Fast tier (`test:unit`): the runtime's unit tests (jsdom) and the
-        // in-process compiler tests.
+        // Fast tier (`test:unit`): the runtime's unit tests (jsdom). The type
+        // tests (`*.test-d.tsx`) are checked by `test:types` (`tsc -p tests`).
         extends: true,
         test: {
           name: 'unit',
-          include: ['**/*.{test-d,test,spec}.?(c|m)[jt]s?(x)'],
+          include: ['**/*.{test,spec}.?(c|m)[jt]s?(x)'],
           exclude: [...configDefaults.exclude, 'tests/integration/**'],
           environment: 'jsdom',
           setupFiles: ['./tests/setup.ts'],
