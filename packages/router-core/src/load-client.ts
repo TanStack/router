@@ -401,6 +401,35 @@ function getSerialContext(
   }
 }
 
+function getLoaderContext(
+  router: AnyRouter,
+  lane: ContextualizedLane,
+  match: WorkMatch,
+  route: AnyRoute,
+  controller: AbortController,
+  parentMatchPromise: Promise<WorkMatch> | undefined,
+  preload: boolean,
+): LoaderFnContext {
+  const location = lane[0 /* location */]
+  return {
+    params: match.params,
+    location,
+    navigate: (opts: any) =>
+      router.navigate({
+        ...opts,
+        _fromLocation: location,
+      }),
+    cause: preload ? ('preload' as const) : match.cause,
+    abortController: controller,
+    preload,
+    deps: match.loaderDeps,
+    parentMatchPromise: parentMatchPromise as any,
+    context: match.context,
+    route,
+    ...router.options.additionalContext,
+  }
+}
+
 async function contextualize(
   router: AnyRouter,
   lane: MatchedLane,
@@ -656,35 +685,6 @@ function setFetching(
   const presented = store?.get()
   if (presented?.id === match.id) {
     store!.set({ ...presented, isFetching: value })
-  }
-}
-
-function getLoaderContext(
-  router: AnyRouter,
-  lane: ContextualizedLane,
-  match: WorkMatch,
-  route: AnyRoute,
-  controller: AbortController,
-  parentMatchPromise: Promise<WorkMatch> | undefined,
-  preload: boolean,
-): LoaderFnContext {
-  const location = lane[0 /* location */]
-  return {
-    params: match.params,
-    location,
-    navigate: (opts: any) =>
-      router.navigate({
-        ...opts,
-        _fromLocation: location,
-      }),
-    cause: preload ? ('preload' as const) : match.cause,
-    abortController: controller,
-    preload,
-    deps: match.loaderDeps,
-    parentMatchPromise: parentMatchPromise as any,
-    context: match.context,
-    route,
-    ...router.options.additionalContext,
   }
 }
 
