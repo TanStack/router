@@ -331,14 +331,15 @@ export const itemsRoute = createRoute({
 export const routeTree = root.addChildren([itemsRoute])
 `,
     'src/items.ts': `export const fetchItems = () => ['item']\n`,
-    // A factory of the same name from an unrelated module.
-    'src/unrelated-factory.tsx': `import { createFileRoute } from './not-the-router'
+    // A factory of the same name from an unrelated package.
+    'src/unrelated-factory.tsx': `import { createFileRoute } from 'other-router'
 export const Route = createFileRoute('/unrelated')({
   loader: () => 'unrelated data',
   component: () => <p>unrelated</p>,
 })
 `,
-    'src/not-the-router.ts': `export const createFileRoute = (path: string) => (options: Record<string, unknown>) => ({ path, options })\n`,
+    'node_modules/other-router/package.json': `{ "name": "other-router", "type": "module", "exports": "./index.js" }\n`,
+    'node_modules/other-router/index.js': `export const createFileRoute = (path) => (options) => ({ path, options })\n`,
     // A locally declared factory shadowing the router's name.
     'src/shadowed-factory.tsx': `function createFileRoute(path: string) {
   return (options: Record<string, unknown>) => ({ path, options })
@@ -365,7 +366,7 @@ export const doubled = [1, 2].map(function double(value) {
 `,
   }
   const unowned = Object.keys(files).filter(
-    (file) => file !== 'routes/index.tsx',
+    (file) => file !== 'routes/index.tsx' && !file.startsWith('node_modules/'),
   )
 
   it.each([
