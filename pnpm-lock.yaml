@@ -15470,6 +15470,15 @@ importers:
       '@rsbuild/core':
         specifier: 'catalog:'
         version: 2.2.5
+      '@rsbuild/plugin-babel':
+        specifier: ^1.1.2
+        version: 1.1.2(@rsbuild/core@2.2.5)(supports-color@10.2.2)
+      '@rsbuild/plugin-react':
+        specifier: ^2.0.0
+        version: 2.0.0(@rsbuild/core@2.2.5)(@rspack/core@2.2.7(@swc/helpers@0.5.23))
+      '@rsbuild/plugin-solid':
+        specifier: ^1.1.1
+        version: 1.1.1(@babel/core@7.29.7(supports-color@10.2.2))(@rsbuild/core@2.2.5)(solid-js@1.9.12)(supports-color@10.2.2)
       '@tanstack/compiler-test-utils':
         specifier: workspace:*
         version: link:../compiler-test-utils
