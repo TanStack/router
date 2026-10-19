@@ -13,6 +13,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import vm from 'node:vm'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
+import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
 import { onTestFinished } from 'vitest'
 import { registerImportProtection } from '../src/rsbuild/import-protection'
 import { registerStartCompilerTransforms } from '../src/rsbuild/start-compiler-host'
@@ -172,7 +173,10 @@ export function startRsbuildDevServer(
  * generated server fn resolver. Both entries import `src/entry.ts`; the
  * server entry also imports the server fn resolver, as Start's server
  * handler does. `src/router.ts` and `src/routes/__root.tsx` are stubs unless
- * the app has them.
+ * the app has them. With `framework: 'solid'`, Start's plugin gets the
+ * Solid framework and the built `@tanstack/solid-start` and
+ * `@tanstack/solid-router` are linked (Solid's JSX plugins come from
+ * `config`).
  */
 export function startRsbuildStartDevServer(
   options: Omit<RsbuildDevServerOptions, 'dir' | 'plugins'> & {
@@ -183,15 +187,31 @@ export function startRsbuildStartDevServer(
     compilerTransforms?: Array<StartCompilerImportTransform>
     /** The app's Start options (`tanStackStart(options)`). */
     start?: TanStackStartRsbuildInputConfig
+    /** The Start framework package of the app (default `react`). */
+    framework?: 'react' | 'solid'
   },
 ): Promise<RsbuildDevServer> {
-  const { files, compilerTransforms, start, ...devServerOptions } = options
+  const {
+    files,
+    compilerTransforms,
+    start,
+    framework = 'react',
+    ...devServerOptions
+  } = options
   return createRsbuildDevServer({
     dir: harnessDir,
     prefix: '.start-rsbuild-start-dev-server-',
     registerCleanup: onTestFinished,
     ...devServerOptions,
-    symlinks: { ...startRuntimeLinks(), ...devServerOptions.symlinks },
+    symlinks: {
+      ...startRuntimeLinks(),
+      ...(framework === 'solid' &&
+        workspacePackageLinks([
+          '@tanstack/solid-start',
+          '@tanstack/solid-router',
+        ])),
+      ...devServerOptions.symlinks,
+    },
     files: {
       ...testLoaderFiles,
       'harness/client-entry.ts': `import '../src/entry'\n`,
@@ -209,7 +229,7 @@ export const Route = createRootRoute()
     plugins: ({ root }) => [
       tanStackStartRsbuild(
         {
-          framework: 'react',
+          framework,
           defaultEntryPaths: {
             client: path.join(root, 'harness/client-entry.ts'),
             server: path.join(root, 'harness/server-entry.ts'),

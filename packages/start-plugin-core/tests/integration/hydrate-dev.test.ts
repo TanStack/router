@@ -13,12 +13,10 @@
  *   route component's boundaries hydrate the server's HTML (splitter
  *   composition, FIX-PLAN HYD-04).
  *
- * The React edit row also runs on Start's Rsbuild dev server (React Refresh
- * from `@rsbuild/plugin-react`). A Solid Start page served by Start's Rsbuild
- * dev server does not hydrate here even without `<Hydrate>` ("template is
- * not a function"; see the W3-hydrate report), so the Solid edit row is
- * Vite only; Solid on Rsbuild is covered by production builds
- * (hydrate-pages-solid-rsbuild.test.ts).
+ * The edit rows also run on Start's Rsbuild dev server: React Refresh from
+ * `@rsbuild/plugin-react`, Solid's hot updates from `@rsbuild/plugin-solid`
+ * (with `@rsbuild/plugin-babel`, configured like a Solid Start app,
+ * `solidAppConfig`).
  */
 import react from '@vitejs/plugin-react'
 import solid from 'vite-plugin-solid'
@@ -28,6 +26,7 @@ import { describeHmr } from '@tanstack/compiler-test-utils/dev-server'
 import { pluginReact } from '@rsbuild/plugin-react'
 import { startDevServer, startServerEntryFiles } from '../dev-server'
 import { startRsbuildStartDevServer } from '../rsbuild-dev-server'
+import { solidAppConfig } from './hydrate-pages'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 
 const timeout = 60_000
@@ -508,6 +507,39 @@ export const Route = createFileRoute('/')({ component: Widgets })
         selector: '[data-testid=hydrated]',
       })
       expectEditsReached(await editLoadedChild(server, browser, reactWidgets))
+      expect(server.errors).toEqual([])
+      expect(browser.loads()).toBe(1)
+      expect(browser.errors).toEqual([])
+    },
+    timeout,
+  )
+
+  // Source: FIX-PLAN V2-20 (Rsbuild, Solid)
+  test(
+    'Solid: a loaded child hot-updates in place, and a sibling opened later shows the edited version',
+    async () => {
+      const server = await startRsbuildStartDevServer({
+        framework: 'solid',
+        hmr: true,
+        browser: true,
+        config: {
+          ...solidAppConfig.rsbuildConfig,
+          // Start serves the pages, not an HTML template.
+          tools: { htmlPlugin: false },
+        },
+        files: {
+          ...solidApp,
+          'src/widgets.tsx': solidWidgets('<i>v1</i>', 'capture-v1'),
+        },
+      })
+      expect(server.errors).toEqual([])
+      const browser = await openPage(server.url!, {
+        registerCleanup: onTestFinished,
+      })
+      await browser.waitForText('hydrated', {
+        selector: '[data-testid=hydrated]',
+      })
+      expectEditsReached(await editLoadedChild(server, browser, solidWidgets))
       expect(server.errors).toEqual([])
       expect(browser.loads()).toBe(1)
       expect(browser.errors).toEqual([])
