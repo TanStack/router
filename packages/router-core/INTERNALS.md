@@ -351,7 +351,7 @@ uses the active preload entry as its additional authority.
 Client `beforeLoad` only installs a cancellable wait for Promise results.
 A synchronous `beforeLoad` result still crosses an `await` before the cancellation check:
 a hook can queue a replacement navigation before its loader is planned.
-Promise detection assumes ordinary Promise behavior.
+Serial phases share `isPromise` detection before adding cancellable waits.
 
 A completed client preload never stores reusable `beforeLoad` output. When its
 loader data enters the route cache, the merged context is discarded; the
@@ -804,14 +804,17 @@ executing them.
 
 Pending UI is presentation, not partial semantic commit.
 
-An exact successful match remains successful while `beforeLoad` or a blocking
-loader revalidates it only when the same successful, non-not-found prefix is in
+An exact successful match remains successful while asynchronous route context,
+`beforeLoad`, or a blocking loader revalidates it only when the same successful,
+non-not-found prefix is in
 both the transaction's committed base and its starting presentation.
 `isFetching` exposes that work without replacing its rendered UI. A cache-only
 success, a different match ID, or a success hidden below a terminal boundary has
 no retained presentation and remains eligible for pending UI. Explicit
-force-pending invalidation already changes the committed generation to pending
-and therefore overrides retention.
+force-pending invalidation changes the committed generation to pending and
+therefore overrides retention. This includes opted-in context revalidation;
+initial context-only matching still waits for actual asynchronous work before
+presenting pending state.
 
 The initial pending offer for a fuzzy not-found lane waits until lazy route
 options resolve its boundary. This prevents a provisional ancestor boundary
@@ -1198,11 +1201,21 @@ unsupported rather than blocked.
 
 The identity of `_preflight` proves that reconstruction is still current. A
 replacement installs itself before aborting the prior controller. The same
-controller interrupts asynchronous application hydration, chunk work, and
-serial context/`beforeLoad` handlers or transforms through the common `waitFor`
-mechanism. A promise need not observe the signal itself: cancellation stops the
-router's wait while retaining rejection handling for late settlement. It does
-not stop application work that ignores the signal. Loader work goes through
+controller interrupts asynchronous application hydration, chunk work, serial
+context/`beforeLoad` handlers or transforms, ordered loader consumption, and
+asset projection. These phases share one abort listener and one slot for the
+currently awaited promise. Immediate results do not need a cancellation wrapper.
+A serialization adapter can restore a pending thenable, so transported serial
+results still pass through the shared promise check.
+The shared `isPromise` predicate recognizes object and callable thenables. It
+reads `then` without invoking it; native promises perform result assimilation.
+The listener and slot are cleared on every exit, including successful
+publication of a handoff, so the handoff cannot retain the last awaited value.
+Development failure diagnostics are cleared on every exit. Neither the handoff
+nor abandoned loader work must retain an Error or input referenced by its cause.
+A promise need not observe the signal itself: cancellation stops the router's
+wait while retaining rejection handling for late settlement. It does not stop
+application work that ignores the signal. Loader work goes through
 `loadResource`. Normal lanes wait cancellably per consumer; hydration owns the
 cancellable wait where it consumes the ordered ancestor prefix. Detached
 descendants then have no owner-signal listener retaining their abandoned wire
@@ -1266,6 +1279,13 @@ shell uses the same prefix protocol for its root-only payload; the framework is
 responsible for serving a shell that applies to the document. Core does not
 serialize a second URL identity. Instead, hydration bounds reconstruction to
 the local lane and validates every transported position with a compact match ID.
+
+Verification can cover at most the first unresolved match beyond the accepted
+prefix. Context preparation and asset verification keep separate bounds: a
+failed chunk can exclude that route from context reconstruction while its
+verified identity still limits document assets. Handoff validation checks every
+committed identity, then at most one additional verified asset position. The
+asset bound must never replace full committed-prefix identity validation.
 
 A mismatch ends the accepted prefix and leaves the local suffix for normal
 client loading. A longer server lane is accepted only through a local global
@@ -1350,20 +1370,20 @@ The two-phase transfer proceeds as follows:
    probes the handoff without consuming it.
 2. It installs its own `_preflight`, emits the events, matches a private lane,
    and asks the handoff to finish the transfer.
-3. Finish revalidates handoff identity, transaction absence, hydration
-   controller liveness, captured location identity, and the exact committed
-   owner.
-4. On rejection, the handoff clears itself before aborting its controller,
-   so abort listeners cannot reenter and claim a rejected handoff.
+3. Finish consumes the handoff slot before revalidating transaction absence,
+   hydration controller liveness, captured location identity, and the exact
+   committed owner. The same handoff cannot be claimed twice.
+4. On rejection, finish aborts its controller after consuming the slot, so abort
+   listeners cannot reenter and claim a rejected handoff.
 5. On acceptance, the accepted matches replace the planner's private copies. A
    successfully reconstructed terminal handoff owns the complete local branch,
    even though its SSR payload was prefix-capped, so it has no local suffix to
    remove. For a non-terminal handoff, the remaining suffix stays in the lane
    and transfers to the hydration controller so one signal owns the
    continuation.
-6. The handoff remains available across synchronous reentrancy until the
-   current load installs `_tx`. That load installs `_tx` before clearing the
-   handoff; stale planners may release only their own private work.
+6. After the transfer, the planner rechecks its preflight before installing
+   `_tx`. A synchronous successor replaces and aborts the planner's preflight;
+   a stale planner releases only its own private work.
 
 This ordering closes the gap between hydration publication and client
 transaction installation without making the handoff an independent completion
