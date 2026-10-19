@@ -191,7 +191,7 @@ export function startDevServer(
       ...(start && startPluginFiles),
       ...files,
     },
-    symlinks: { ...startRuntimeLinks(files), ...devServerOptions.symlinks },
+    symlinks: { ...startRuntimeLinks(), ...devServerOptions.symlinks },
     plugins: ({ root }) => [
       start
         ? startPlugin(root, start, compilerTransforms)

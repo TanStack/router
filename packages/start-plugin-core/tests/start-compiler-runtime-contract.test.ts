@@ -126,10 +126,12 @@ export const fail = createServerFn().handler(async () => {
   throw new Error('handler failed')
 })`)
     const graph = createServerGraph(compiled)
-    const provider = await graph.provider()
-    const [handler] = Object.values(provider).filter(
-      (value) => typeof value === 'function',
-    )
+    // The handler the id the client calls names (the provider's other
+    // exports, whatever they are, are not it).
+    const [reported] = Object.values(compiled.serverFns)
+    const handler = (await graph.import(reported!.extractedFilename))[
+      reported!.functionName
+    ]
     const response = await handler({ data: undefined })
     expect(response).toEqual({ error: new Error('handler failed') })
     expect(() => serverFnResult(response)).toThrow('handler failed')

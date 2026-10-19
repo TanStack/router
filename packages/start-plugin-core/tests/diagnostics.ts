@@ -13,6 +13,7 @@ import {
   diagnosticPosition,
   diagnosticsOf,
   expectDiagnostic,
+  mismatches,
   identifiesEnvRestriction,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
@@ -105,6 +106,41 @@ export function expectCompileError(
   expectDiagnostic(withoutQuotedSource(diagnostic!.text, expected.source), {
     names: expected.names,
   })
+}
+
+/**
+ * Asserts that `error` (a build error, any shape `diagnosticsOf` reads)
+ * reports one of `sites`: a diagnostic names the site's file and the line
+ * of `at` in its `source`, and names `names` in its own words. For a
+ * mistake the fix may report at either end (a library or its caller).
+ */
+export function expectSourceError(
+  error: unknown,
+  expected: {
+    names: Array<string>
+    sites: Array<{ file: string; source: string; at: string }>
+  },
+) {
+  const sources = expected.sites.map((site) => site.source).join('\n')
+  const diagnostics = diagnosticsOf(error)
+  const reported = expected.sites.some((site) =>
+    diagnostics.some(
+      (diagnostic) =>
+        mismatches(diagnostic, {
+          file: site.file,
+          position: { line: diagnosticPosition(site.source, site.at).line },
+          source: site.source,
+        }).length === 0 &&
+        mismatches(
+          { ...diagnostic, text: withoutQuotedSource(diagnostic.text, sources) },
+          { names: expected.names },
+        ).length === 0,
+    ),
+  )
+  expect(
+    reported,
+    `a diagnostic naming ${expected.names.join(', ')} at ${expected.sites.map((site) => `${site.file} (${site.at})`).join(' or ')}:\n${diagnostics.map((diagnostic) => diagnostic.text).join('\n---\n')}`,
+  ).toBe(true)
 }
 
 /** Server-only module the server fns of the misplacement tests read. */

@@ -29,7 +29,6 @@ test.each([
   {
     name: 'a block comment',
     output: 'client',
-    kept: '@jsxImportSource @emotion/react',
     code: `/** @jsxImportSource @emotion/react */
 import { createIsomorphicFn } from '@tanstack/react-start'
 const where = createIsomorphicFn()
@@ -42,7 +41,6 @@ export function Card() {
   {
     name: 'a line comment',
     output: 'ssr',
-    kept: '@jsxImportSource @emotion/react',
     code: `// @jsxImportSource @emotion/react
 import { createClientOnlyFn } from '@tanstack/react-start'
 const track = createClientOnlyFn(() => window.alert('tracked'))
@@ -53,7 +51,6 @@ export function Button() {
   {
     name: 'a file header comment',
     output: 'client',
-    kept: 'Copyright Example Corp.',
     code: `/**
  * Copyright Example Corp.
  * @jsxImportSource @emotion/react
@@ -66,10 +63,9 @@ export function Panel() {
   },
 ] as const)(
   '$output: a @jsxImportSource pragma in $name survives the removal of the import it sits on',
-  async ({ output, code, kept }) => {
+  async ({ output, code }) => {
     const compiled = await compileCode(output, code)
     expect(await jsxRuntimeOf(compiled!)).toBe('@emotion/react/jsx-runtime')
-    expect(compiled).toContain(kept)
   },
 )
 
@@ -161,6 +157,9 @@ export function Card() {
     </div>
   )
 }`
+// The effective runtime decision is what counts (SPEC J2.16, D-04), read
+// through Oxc, Vite 8's JSX transform; whether the comment text survives is
+// free (FIX-PLAN S30).
 const hydrateParentImports = [
   {
     name: 'moves into a Hydrate chunk',
@@ -173,20 +172,6 @@ import { Hydrate } from '@tanstack/react-start'`,
 import { Widget } from './widget'`,
   },
 ]
-
-// Vite 7 and earlier transform JSX with esbuild, which honours the pragma
-// wherever it appears: the comment itself must survive, whether the import it
-// sits on moves into the chunk or stays.
-// Source: #8504 start-compiler-jsx-pragma.test.ts (adds the second row)
-test.each(hydrateParentImports)(
-  'client: the parent keeps the pragma when the import it sits on $name',
-  async ({ imports }) => {
-    const parent = await compileCode('client', hydrateParent(imports), {
-      compilerPlugins: [createHydrateCompilerPlugin()],
-    })
-    expect(parent).toContain('@jsxImportSource @emotion/react')
-  },
-)
 
 // Bug: the parent's Hydrate chunk loaders are inserted above the pragma
 // comment that leads the file.

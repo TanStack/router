@@ -5,6 +5,11 @@
  */
 import { describe, expect, test } from 'vitest'
 import {
+  expectMapsTo,
+  positionAt,
+  tokenOffsets,
+} from '@tanstack/compiler-test-utils/source-maps'
+import {
   callerRpcId,
   callProvider,
   callReportedServerFns,
@@ -328,14 +333,20 @@ export const fn = createServerFn().handler(async () => 'called')`
 })
 
 describe('compileFor', () => {
+  // Internal control of the helper: it hands on the compiler's map (map
+  // layout is free, SPEC G6), and `null` for a module the compiler leaves
+  // untouched (the hosts' convention, not a compiler requirement).
   test('returns the source map of the compiled code, and none for an untouched module', async () => {
     const compiled = await compileFor(
       'client',
       `import { createServerFn } from '@tanstack/react-start'
 export const fn = createServerFn().handler(async () => 'secret')`,
     )
-    expect(compiled.map?.sources).toEqual(['/test/src/module.tsx'])
-    expect(compiled.map?.mappings).not.toBe('')
+    const [offset] = tokenOffsets(compiled.code!, { identifier: 'fn' })
+    expectMapsTo(compiled.map as never, positionAt(compiled.code!, offset!), {
+      file: '/test/src/module.tsx',
+      line: 2,
+    })
     expect(await compileFor('client', 'export const a = 1')).toMatchObject({
       code: null,
       map: null,

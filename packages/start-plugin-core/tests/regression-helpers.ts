@@ -45,6 +45,7 @@ export { importSources } from './imports'
 export {
   compileErrorMessage,
   expectCompileError,
+  expectSourceError,
   withoutQuotedSource,
   serverOnlyModule,
   expectOutputsFreeOfHandler,

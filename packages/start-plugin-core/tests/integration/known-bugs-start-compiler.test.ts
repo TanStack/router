@@ -24,7 +24,7 @@ import {
   startPluginFiles,
   startServerEntryFiles,
 } from '../dev-server'
-import { callerRpcId, misplacedServerFnRejection } from '../regression-helpers'
+import { callerRpcId, expectSourceError } from '../regression-helpers'
 import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
 import type { ModuleStub } from '../regression-helpers'
 
@@ -239,8 +239,8 @@ return {
   // server-only module) is callable over HTTP by anyone who learns its id,
   // bypassing what the server code around it checks.
   // Source: user ruling D6 (only server fns client code references are
-  // HTTP-callable); the RSC-provider variant is pinned in
-  // createServerFn/createServerFn.test.ts.
+  // HTTP-callable); the RSC-provider variant is pinned through a real RSC
+  // provider in react-start-rsc tests/integration/rsc-start-dev.test.ts.
   test.fails(
     'SSR: a server fn only server code references is not callable over HTTP',
     async () => {
@@ -260,27 +260,73 @@ return {
   // it is missing from the resolver. Rsbuild rebuilds the resolver after the
   // SSR compilation found every server fn.
   // Impact: in production, calling it throws "Server function info not
-  // found" (works in dev).
-  // Source: issue #7213.
-  ;(bundler === 'vite' ? test.fails : test)(
-    'SSR: a server fn that only another server fn calls is callable',
-    async () => {
-      const { ssr } = await buildStart({
-        bundler,
-        files: {
-          'inner.ts': `${head}export const inner = createServerFn().handler(async () => 'inner')
-`,
-          'outer.ts': `${head}import { inner } from './inner'
+  // found" (works in dev), from SSR code and over HTTP alike.
+  // Source: issue #7213; SPEC J4.2 ("in any module processing order", G4).
+  // The caller #7213 quotes, a middleware `.server()` of another module,
+  // works on both bundlers today (regression rows, not pinned): Vite finds
+  // that server fn before it generates the resolver.
+  const innerFn = `${head}export const inner = createServerFn().handler(async () => 'inner')
+`
+  const calledByServerCode = {
+    'another server fn': {
+      'inner.ts': innerFn,
+      'outer.ts': `${head}import { inner } from './inner'
 export const outer = createServerFn().handler(async () => 'outer:' + (await inner()))
 `,
-          'entry.ts': `export { outer } from './outer'\n`,
+    },
+    'a middleware .server() of another module': {
+      'inner.ts': innerFn,
+      'auth.ts': `import { createMiddleware } from '@tanstack/react-start'
+import { inner } from './inner'
+export const auth = createMiddleware({ type: 'function' }).server(async ({ next }) =>
+  next({ context: { inner: await inner() } }),
+)
+`,
+      'outer.ts': `${head}import { auth } from './auth'
+export const outer = createServerFn()
+  .middleware([auth])
+  .handler(async ({ context }) => 'outer:' + context.inner)
+`,
+    },
+  }
+  describe.each(Object.entries(calledByServerCode))(
+    'SSR: a server fn that only %s calls',
+    (caller, modules) => {
+      const files = (order: 'as written' | 'reversed') => {
+        const entries = Object.entries({
+          ...modules,
+          'client-entry.ts': `export { outer } from './outer'\n`,
+          'ssr-entry.ts': `export { outer } from './outer'
+${callByIdExports}`,
+        })
+        return Object.fromEntries(
+          order === 'reversed' ? entries.reverse() : entries,
+        )
+      }
+
+      ;(bundler === 'vite' && caller === 'another server fn' ? test.fails : test).each([
+        'as written',
+        'reversed',
+      ] as const)(
+        'is callable, the app files written %s',
+        async (order) => {
+          const { ssr } = await buildStart({
+            bundler,
+            files: files(order),
+            entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+          })
+          const { result } = await ssr.run(`${callByIdPrelude}return {
+  fromSsr: await entry.outer(),
+  overHttp: await callById(entry.outer.serverFnMeta.id),
+}`)
+          expect(result).toEqual({
+            fromSsr: 'outer:inner',
+            overHttp: 'outer:inner',
+          })
         },
-      })
-      expect((await ssr.run(`return await entry.outer()`)).result).toBe(
-        'outer:inner',
+        timeout,
       )
     },
-    timeout,
   )
 
   // Control: start-build-env-separation.test.ts "a library's server fn"
@@ -294,6 +340,15 @@ export const outer = createServerFn().handler(async () => 'outer:' + (await inne
   // client bundle and run there instead of on the server.
   // Source: lost-cases-campaign item 13 (b); user ruling D13 (a server fn
   // created inside a function is supported, or rejected clearly).
+  const wrapperLibrary = `import { createServerFn } from '@tanstack/react-start'
+export function createLoggedServerFn(handler) {
+  return createServerFn().handler(handler)
+}
+`
+  const wrapperUser = `import { createLoggedServerFn } from 'wrapper-lib'
+import { db } from './db'
+export const fn = createLoggedServerFn(async () => db.secret())
+`
   test.fails(
     'a server fn created by a library function: the handler is not in the client bundle, or the build fails clearly',
     async () => {
@@ -313,16 +368,9 @@ export const outer = createServerFn().handler(async () => 'outer:' + (await inne
             exports: './index.js',
             peerDependencies: { '@tanstack/react-start': '*' },
           }),
-          'node_modules/wrapper-lib/index.js': `import { createServerFn } from '@tanstack/react-start'
-export function createLoggedServerFn(handler) {
-  return createServerFn().handler(handler)
-}
-`,
+          'node_modules/wrapper-lib/index.js': wrapperLibrary,
           'src/db.ts': `export const db = { secret: () => 'MARK_WRAPPED_HANDLER' }\n`,
-          'src/fns.ts': `import { createLoggedServerFn } from 'wrapper-lib'
-import { db } from './db'
-export const fn = createLoggedServerFn(async () => db.secret())
-`,
+          'src/fns.ts': wrapperUser,
           'src/entry.ts': `export { fn } from './fns'\n`,
         },
         entry: 'src/entry.ts',
@@ -331,13 +379,26 @@ export const fn = createLoggedServerFn(async () => db.secret())
           client: client.where('MARK_WRAPPED_HANDLER'),
           ssr: (await ssr.run(`return await entry.fn()`)).result,
         }),
-        (error: unknown) => ({ error: String(error) }),
+        (error: unknown) => ({ error }),
       )
       if ('error' in outcome) {
-        expect(outcome.error).toMatch(misplacedServerFnRejection)
-        expect(outcome.error).not.toMatch(
-          /Expected createServerFn declaration in a statement list/,
-        )
+        // A clear build error at the server fn: in the library, or at the
+        // user's call of the library function (SPEC G5).
+        expectSourceError(outcome.error, {
+          names: ['createServerFn'],
+          sites: [
+            {
+              file: 'node_modules/wrapper-lib/index.js',
+              source: wrapperLibrary,
+              at: 'createServerFn()',
+            },
+            {
+              file: 'src/fns.ts',
+              source: wrapperUser,
+              at: 'createLoggedServerFn(async',
+            },
+          ],
+        })
       } else {
         expect(outcome).toEqual({
           client: 'nowhere',

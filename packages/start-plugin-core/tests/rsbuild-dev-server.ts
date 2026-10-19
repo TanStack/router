@@ -128,7 +128,7 @@ export function startRsbuildDevServer(
       },
       ...devServerOptions.config,
     },
-    symlinks: { ...startRuntimeLinks(files), ...devServerOptions.symlinks },
+    symlinks: { ...startRuntimeLinks(), ...devServerOptions.symlinks },
     files: {
       ...testLoaderFiles,
       ...files,
@@ -188,7 +188,7 @@ export function startRsbuildStartDevServer(
     prefix: '.start-rsbuild-start-dev-server-',
     registerCleanup: onTestFinished,
     ...devServerOptions,
-    symlinks: { ...startRuntimeLinks(files), ...devServerOptions.symlinks },
+    symlinks: { ...startRuntimeLinks(), ...devServerOptions.symlinks },
     files: {
       ...testLoaderFiles,
       'harness/client-entry.ts': `import '../src/entry'\n`,
