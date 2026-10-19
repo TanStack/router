@@ -2507,14 +2507,15 @@ export async function hydrate(router: AnyRouter): Promise<void> {
 
     // The first pending match is already visible, so prepare its route context
     // without granting its beforeLoad or loader any hydration authority.
-    const contextEnd = Math.max(
+    // After a chunk cut, its index is the committed length. Otherwise
+    // verification can include the first pending match. The presentation
+    // boundary always gets context when it is the first uncommitted match.
+    const contextEnd =
       pendingBoundary === committed.length
         ? committed.length + 1
-        : committed.length,
-      // `chunks.length` keeps the pre-retry committed length, so a smaller
-      // `chunkFailure` is the exclusive bound of the verified context prefix.
-      chunkFailure < chunks.length ? chunkFailure : verifiedAssetEnd,
-    )
+        : chunkFailure < chunks.length
+          ? chunkFailure
+          : verifiedAssetEnd
     // A transported result passes through its `hydrate` transform, if any. A
     // lifecycle the server ran without transporting it re-runs in place. Callers
     // reach the re-run only with a defined option.
@@ -2761,7 +2762,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       isTerminal && committed.length === shared ? candidates : committed
     let presented = needsClientLoad ? candidates : committedMatches
     let dataOnlyAssetEnd: number | undefined
-    if (needsClientLoad && pendingBoundary !== undefined) {
+    if (pendingBoundary !== undefined) {
       const boundary = presented[pendingBoundary]!
       // A verified descendant proves this data-only boundary was nonterminal.
       dataOnlyAssetEnd =
