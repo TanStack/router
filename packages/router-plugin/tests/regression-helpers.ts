@@ -29,7 +29,6 @@ export {
   expectValidModules,
   importSources,
   importedNames,
-  exportedNames,
   routeFile,
   transformWithRouteHmrPlugin,
   createRouteHmrTransform,
