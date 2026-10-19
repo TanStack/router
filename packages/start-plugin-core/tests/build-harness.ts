@@ -270,6 +270,12 @@ export interface StartBuildOptions {
    * `vite build` run in the app directory).
    */
   cwd?: string
+  /**
+   * Directory name prefix of the temporary app (default
+   * `.start-build-harness-<bundler>-`), e.g. one with characters a project
+   * path may carry.
+   */
+  prefix?: string
 }
 
 export interface StartBuild {
@@ -379,7 +385,7 @@ export async function buildStart(
     typeof entry === 'object' ? entry : { client: entry, ssr: entry }
   const app = await createApp({
     dir: harnessDir,
-    prefix: `.start-build-harness-${bundler}-`,
+    prefix: options.prefix ?? `.start-build-harness-${bundler}-`,
     registerCleanup: options.registerCleanup ?? onTestFinished,
     packageJson: options.packageJson,
     sideEffects: options.sideEffects,
