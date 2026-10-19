@@ -26,6 +26,7 @@ import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { format } from 'node:util'
 import { runNodeProgram } from './run-node'
+import { savingDirectory } from './save-file'
 import type { AddressInfo } from 'node:net'
 import type { BrowserPage } from './browser'
 
@@ -285,7 +286,11 @@ export async function createApp(options: AppOptions): Promise<App> {
   const root = await mkdtemp(
     path.join(options.dir, options.prefix ?? '.build-harness-'),
   )
-  const dispose = () => rm(root, { recursive: true, force: true })
+  const dispose = async () => {
+    await rm(root, { recursive: true, force: true })
+    // What the dev-server harnesses saved the app's files through
+    await rm(savingDirectory(root), { recursive: true, force: true })
+  }
   options.registerCleanup?.(dispose)
   try {
     const packageJson =
