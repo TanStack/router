@@ -122,10 +122,7 @@ class BoundaryReached extends Error {}
  * what Vite does with the router plugin's output afterwards is not under
  * test.
  */
-export function boundaryRecorder(
-  recorded: Map<string, string>,
-  stop = false,
-) {
+export function boundaryRecorder(recorded: Map<string, string>, stop = false) {
   return {
     name: 'test:router-transform-boundary',
     enforce: 'pre',
@@ -372,22 +369,24 @@ export function createRouterHost(options: CompileOptions = {}): RouterHost {
     return transformToBoundary(await server!, recorded, source, moduleId)
   }
 
-  const resolveImport = (id: string) => async (specifier: string, importer: string) => {
-    if (!isPathSpecifier(specifier)) {
-      return undefined
-    }
-    if (elsewhere.has(id)) {
-      // A module id from another machine: its modules are named by its id.
-      return normalizePath(withoutQuery(specifier)) === normalizePath(id)
-        ? `${id}${specifier.slice(withoutQuery(specifier).length)}`
+  const resolveImport =
+    (id: string) => async (specifier: string, importer: string) => {
+      if (!isPathSpecifier(specifier)) {
+        return undefined
+      }
+      if (elsewhere.has(id)) {
+        // A module id from another machine: its modules are named by its id.
+        return normalizePath(withoutQuery(specifier)) === normalizePath(id)
+          ? `${id}${specifier.slice(withoutQuery(specifier).length)}`
+          : undefined
+      }
+      const resolved = (
+        await (await container()).resolveId(specifier, importer)
+      )?.id
+      return resolved !== undefined && withoutQuery(resolved) === id
+        ? resolved
         : undefined
     }
-    const resolved = (await (await container()).resolveId(specifier, importer))
-      ?.id
-    return resolved !== undefined && withoutQuery(resolved) === id
-      ? resolved
-      : undefined
-  }
 
   return {
     emit,
@@ -648,10 +647,9 @@ export async function transformWithRouteHmrPlugin(
   options: Partial<Config> = { target: 'react' },
   file = routeFile('index'),
 ) {
-  const output = await (await createRouteHmrTransform(options, [file]))(
-    code,
-    file,
-  )
+  const output = await (
+    await createRouteHmrTransform(options, [file])
+  )(code, file)
   if (output === null) {
     throw new Error('expected the route HMR plugin to transform the route')
   }

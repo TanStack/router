@@ -81,9 +81,9 @@ export const Route = createFileRoute('/other')({ component: () => <p /> })
       { filename: 'other.tsx', routeId: '/other' },
     )
     expect(fresh.modules.size).toBeGreaterThan(1)
-    expect(
-      (await reused.compile(routeSource('first'), first)).modules,
-    ).toEqual(fresh.modules)
+    expect((await reused.compile(routeSource('first'), first)).modules).toEqual(
+      fresh.modules,
+    )
   })
 
   it('splits by the plugin-level splitBehavior for the route id', async () => {
@@ -258,10 +258,10 @@ const PostsComponent = () => {
   return <ul>{${read}.length}<Outlet /></ul>
 }
 `
-        const { modules } = (await compileRouteModules(code, {
+        const { modules } = await compileRouteModules(code, {
           targetFramework: framework,
           routeId: '/posts',
-        }))
+        })
         await expectValidModules(modules)
         for (const [name, module] of Object.entries(modules)) {
           for (const other of otherRouters) {
@@ -389,7 +389,9 @@ export const doubled = [1, 2].map(function double(value) {
       const lazy = await server.import('/routes/posts.lazy.tsx')
       // The router plugin left each module as it was (the router transform
       // boundary, before Vite's own transforms).
-      for (const file of unowned.filter((file) => !file.endsWith('.lazy.tsx'))) {
+      for (const file of unowned.filter(
+        (file) => !file.endsWith('.lazy.tsx'),
+      )) {
         const id = path.join(server.root, file)
         expect(recorded.get(id), file).toBe(files[file as keyof typeof files])
       }
@@ -397,8 +399,8 @@ export const doubled = [1, 2].map(function double(value) {
       // from another module of the file.
       const lazyId = path.join(server.root, 'routes/posts.lazy.tsx')
       expect(
-        importRequests(recorded.get(lazyId)!, lazyId).filter(
-          ({ specifier }) => specifier.split('?')[0]!.endsWith('posts.lazy.tsx'),
+        importRequests(recorded.get(lazyId)!, lazyId).filter(({ specifier }) =>
+          specifier.split('?')[0]!.endsWith('posts.lazy.tsx'),
         ),
       ).toEqual([])
       let redirected: unknown
@@ -453,7 +455,7 @@ export const doubled = [1, 2].map(function double(value) {
 // Shape of the deleted code-splitter snapshot fixture directive-prologue. A
 // directive only applies as the first statement of a module.
 it('keeps the directive prologue of a route file first in every module', async () => {
-  const { modules } = (await compileRouteModules(`'use client'
+  const { modules } = await compileRouteModules(`'use client'
 
 import { createFileRoute } from '@tanstack/react-router'
 
@@ -464,7 +466,7 @@ export const Route = createFileRoute('/directive')({
   component: () => <div>{label}</div>,
   errorComponent: () => <div>error</div>,
 })
-`))
+`)
   expect(Object.keys(modules).length).toBeGreaterThan(1)
   for (const [name, code] of Object.entries(modules)) {
     const [first] = parseModule(code).body
@@ -481,7 +483,7 @@ export const Route = createFileRoute('/directive')({
 it.each([false, true])(
   'keeps the whole directive prologue first (hmr: %s)',
   async (hmr) => {
-    const { modules } = (await compileRouteModules(
+    const { modules } = await compileRouteModules(
       `'use client'
 'use strict'
 import { createFileRoute } from '@tanstack/react-router'
@@ -490,7 +492,7 @@ export const Route = createFileRoute('/directive')({
 })
 `,
       { hmr },
-    ))
+    )
     const prologue = (code: string) => {
       const directives: Array<string> = []
       for (const statement of parseModule(code).body) {
@@ -538,7 +540,8 @@ export const Route = createRootRoute()
       )
       await expectValidModules(route.modules)
       // Another module of the app builds the route tree on the root route.
-      const app = await route.importFromRoute(`import { createMemoryHistory, createRoute, createRouter } from '@tanstack/react-router'
+      const app =
+        await route.importFromRoute(`import { createMemoryHistory, createRoute, createRouter } from '@tanstack/react-router'
 import { Route } from '${routeSpecifier}'
 export { RouterProvider } from '@tanstack/react-router'
 const child = createRoute({
@@ -604,7 +607,7 @@ export const Route = createFileRoute('/hmr')({
   // import fixes TypeScript's "inferred type cannot be named" error); #8504
   // (a guard against a printer bug, yuku-toolchain/yuku#258).
   it('keeps a route with an empty type-only import valid', async () => {
-    const output = (await transformWithRouteHmrPlugin(
+    const output = await transformWithRouteHmrPlugin(
       `import type {} from 'zod'
 import { createFileRoute } from '@tanstack/solid-router'
 export const Route = createFileRoute('/hmr')({
@@ -613,7 +616,7 @@ export const Route = createFileRoute('/hmr')({
 `,
       { target: 'solid' },
       routeFile('hmr'),
-    ))
+    )
     expect(await getModuleErrors(output)).toEqual([])
     const { Route } = await evaluateModule(output, routerStubs('solid'), {
       framework: 'solid',

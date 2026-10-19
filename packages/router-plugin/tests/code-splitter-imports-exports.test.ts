@@ -57,7 +57,9 @@ export const Route = createFileRoute('/')({
     expect(
       route.eagerModules.flatMap((code) => importedNames(code, './messages')),
     ).not.toEqual(
-      expect.arrayContaining([expect.stringMatching(/^(?:default|targetMessage|namespaced|\*)$/)]),
+      expect.arrayContaining([
+        expect.stringMatching(/^(?:default|targetMessage|namespaced|\*)$/),
+      ]),
     )
     expect(
       route.eagerModules.flatMap((code) => importedNames(code, './other')),
@@ -150,11 +152,11 @@ export const Route = createFileRoute('/')({
   // macro), so they move with the import.
   it('keeps the attributes of an import moved into the chunk', async () => {
     const { modules } =
-      (await compileRouteModules(`${head}import { test } from './test' with { type: 'macro' }
+      await compileRouteModules(`${head}import { test } from './test' with { type: 'macro' }
 export const Route = createFileRoute('/')({
   component: () => test,
 })
-`))
+`)
     expect(importSources(modules.reference!)).not.toContain('./test')
     // Every module that imports `./test` imports it with the attribute.
     const attributes = Object.values(modules).flatMap((code) =>
@@ -212,7 +214,9 @@ export const Route = createFileRoute('/')({
     { name: 'split component modules', compile: componentModules },
     {
       name: 'route module compiled for HMR',
-      compile: async (code: string) => [(await transformWithRouteHmrPlugin(code))],
+      compile: async (code: string) => [
+        await transformWithRouteHmrPlugin(code),
+      ],
     },
   ])(
     'keeps the React import of the $name for classic JSX',
@@ -550,7 +554,7 @@ export const Route = createFileRoute('/')({
     async ({ code, split, option, binding, value, ...row }) => {
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
       onTestFinished(() => warn.mockRestore())
-      const { ids } = (await compileRouteModules(code))
+      const { ids } = await compileRouteModules(code)
       const warnings = warn.mock.calls.map(([message]) => String(message))
       warn.mockClear()
 
@@ -947,7 +951,10 @@ export const Route = createFileRoute('/posts')({
         `export { Post } from '${routeSpecifier}'`,
       )
       expect(other.Post('1')).toEqual({ id: '1' })
-      const hmr = await evaluateModule((await transformWithRouteHmrPlugin(code)), stubs)
+      const hmr = await evaluateModule(
+        await transformWithRouteHmrPlugin(code),
+        stubs,
+      )
       expect(hmr.Post!('2')).toEqual({ id: '2' })
     },
   )
@@ -976,14 +983,14 @@ export const Route = createFileRoute('/')({
     // accept decorators before the `export` keyword: every emitted module
     // must still parse with them.
     const { modules } =
-      (await compileRouteModules(`${head}import { injectable } from 'tsyringe'
+      await compileRouteModules(`${head}import { injectable } from 'tsyringe'
 import { observable } from 'mobx'
 @injectable() export class Store { @observable count = 0 }
 export const Route = createFileRoute('/')({
   loader: () => new Store().count,
   component: () => <div />,
 })
-`))
+`)
     expect(Object.keys(modules).length).toBeGreaterThan(1)
     for (const code of Object.values(modules)) {
       expect(() =>
@@ -1001,13 +1008,13 @@ export const Route = createFileRoute('/')({
   // them). Compiled only: the module evaluator does not run `accessor`.
   it('compiles a class with an auto-accessor field that the split component uses', async () => {
     const { modules } =
-      (await compileRouteModules(`${head}class Store { accessor count = 1 }
+      await compileRouteModules(`${head}class Store { accessor count = 1 }
 const store = new Store()
 export const Route = createFileRoute('/')({
   loader: () => store,
   component: () => <p>{store.count}</p>,
 })
-`))
+`)
     await expectValidModules(modules)
   })
 })

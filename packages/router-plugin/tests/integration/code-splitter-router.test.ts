@@ -223,7 +223,11 @@ export async function renderPreloaded() {
   // lazyRouteComponent show their pending component, and wait for a
   // request, on every navigation the router had preloaded (intent
   // preloading no longer avoids the waterfall).
-  test.fails('renders without a new request or a pending fallback once the router preloaded it', async () => {
-    expect(await renderPreloaded(true)).toEqual(preloaded)
-  }, 120_000)
+  test.fails(
+    'renders without a new request or a pending fallback once the router preloaded it',
+    async () => {
+      expect(await renderPreloaded(true)).toEqual(preloaded)
+    },
+    120_000,
+  )
 })

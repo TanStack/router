@@ -27,7 +27,8 @@ describe('compileRouteModules', () => {
   // What the host finds is what the router plugin's output reaches; how
   // many modules a compiler emits is free (SPEC §5.3).
   it('returns the modules the output imports, and only those', async () => {
-    const { modules, ids, graph } = await compileRouteModules(`${head}const shared = { value: 1 }
+    const { modules, ids, graph } =
+      await compileRouteModules(`${head}const shared = { value: 1 }
 export const Route = createFileRoute('/')({
   loader: () => shared.value,
   component: () => <p>{shared.value}</p>,
@@ -317,9 +318,9 @@ export const Route = createRootRoute({ component: () => <p>root</p> })`)
 describe('output validation', () => {
   it('lets the modules of a route read the globals the route file reads', async () => {
     const { modules } =
-      (await compileRouteModules(`${head}export const Route = createFileRoute('/')({
+      await compileRouteModules(`${head}export const Route = createFileRoute('/')({
   component: () => <p>{APP_VERSION}</p>,
-})`))
+})`)
     await expectValidModules(modules)
     await expect(
       expectValidModules({ chunk: 'export const read = () => APP_VERSION' }),
@@ -400,11 +401,11 @@ export const Route = createFileRoute('/')({
     expect(await grouped.groups()).toEqual([['component', 'loader']])
     expect(await (await grouped.load('loader'))()).toBe('data')
 
-    const unsplit = (await compileRouteModules(route, {
+    const unsplit = await compileRouteModules(route, {
       pluginOptions: {
         codeSplittingOptions: { splitBehavior: () => [] },
       },
-    }))
+    })
     expect(Object.keys(unsplit.modules)).toEqual(['reference'])
   })
 })

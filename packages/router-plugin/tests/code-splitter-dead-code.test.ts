@@ -30,7 +30,6 @@ async function renderSplitComponent(code: string) {
   return (await loadRoute(code)).render('component')
 }
 
-
 describe('the reference module only drops code that splitting left unused', () => {
   describe.each(hmrModes)('with hmr: $hmr', ({ hmr }) => {
     it.each([
@@ -183,7 +182,9 @@ function pong(): number { return ping() }
 export const Route = createFileRoute('/')({ component: () => <p>{helper()}</p> })
 `
   it('keeps the modules of unused functions, one calling a helper of the split component, valid', async () => {
-    await expectValidModules((await compileRouteModules(unusedFunctions)).modules)
+    await expectValidModules(
+      (await compileRouteModules(unusedFunctions)).modules,
+    )
     await expectValidModules(
       (await compileRouteModules(unusedFunctions, { hmr: true })).modules,
     )
@@ -349,7 +350,7 @@ export const Route = createFileRoute('/')({
     {
       name: 'a route module compiled for HMR',
       load: async (code: string, stubs: Record<string, any>) => {
-        const output = (await transformWithRouteHmrPlugin(code))
+        const output = await transformWithRouteHmrPlugin(code)
         await evaluateModule(output, stubs)
         return output
       },

@@ -25,11 +25,7 @@ describe('server-only route options on the client', () => {
    * reads a server secret (its options object followed by `cast`, e.g.
    * `as any`).
    */
-  async function secretPlacement(
-    bundler: Bundler,
-    option: string,
-    cast = '',
-  ) {
+  async function secretPlacement(bundler: Bundler, option: string, cast = '') {
     const app = await build({
       bundler,
       env: 'client',
@@ -71,11 +67,15 @@ export const Route = createFileRoute('/')({
   // Bug: build-level canary of the method pin in
   // ../known-bugs-code-splitter.test.ts (same root cause).
   // Impact: the server code of an `ssr()` method reaches the client bundle.
-  test.fails('a client build has no server code of an `ssr()` method (vite)', async () => {
-    expect(
-      await secretPlacement('vite', 'ssr() { return !!readSecret() }'),
-    ).toBe('nowhere')
-  }, 60_000)
+  test.fails(
+    'a client build has no server code of an `ssr()` method (vite)',
+    async () => {
+      expect(
+        await secretPlacement('vite', 'ssr() { return !!readSecret() }'),
+      ).toBe('nowhere')
+    },
+    60_000,
+  )
 
   // Bug: build-level canary of the typed-wrapper pin in
   // ../known-bugs-code-splitter.test.ts (same root cause: options wrapped in

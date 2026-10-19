@@ -96,7 +96,7 @@ export const Route = createFileRoute('/pragma')({
 `
 
   it('keeps the pragma in effect for JSX the loader and the component share', async () => {
-    const { modules } = (await compileRouteModules(sharedJsxRoute))
+    const { modules } = await compileRouteModules(sharedJsxRoute)
     // Whichever modules hold the shared JSX compile it with the pragma.
     const holders = Object.values(modules).filter((code) =>
       code.includes('<svg'),
@@ -117,7 +117,7 @@ export const Route = createFileRoute('/pragma')({
   it.fails(
     'keeps the pragma in effect in every module that contains JSX',
     async () => {
-      const { modules } = (await compileRouteModules(sharedJsxRoute))
+      const { modules } = await compileRouteModules(sharedJsxRoute)
       const runtimes: Record<string, string | undefined> = {}
       for (const [name, code] of Object.entries(modules)) {
         runtimes[name] = await jsxRuntimeOf(code)
@@ -234,11 +234,13 @@ export const Route = createFileRoute('/')({ component: Page })
       pragma: '@refresh reload',
     },
   ] as const)('keeps $name', async ({ target, code, pragma }) => {
-    expect((await transformWithRouteHmrPlugin(code, { target }))).toContain(pragma)
-    const { modules } = (await compileRouteModules(code, {
+    expect(await transformWithRouteHmrPlugin(code, { target })).toContain(
+      pragma,
+    )
+    const { modules } = await compileRouteModules(code, {
       hmr: true,
       targetFramework: target,
-    }))
+    })
     expect(modules.reference).toContain(pragma)
     const holders = Object.entries(modules).filter(
       ([name, module]) =>
@@ -254,11 +256,11 @@ export const Route = createFileRoute('/')({ component: Page })
 // Minifiers keep legal comments in the modules that carry them. Source: #8504.
 it('split modules keep the leading legal comment of the route file', async () => {
   const legal = '/*! Example Corp. | MIT License */'
-  const { modules } = (await compileRouteModules(
+  const { modules } = await compileRouteModules(
     `${legal}\n${head}export const Route = createFileRoute('/')({
   component: () => <p>page</p>,
 })`,
-  ))
+  )
   expect(Object.keys(modules).length).toBeGreaterThan(1)
   for (const [name, code] of Object.entries(modules)) {
     expect(code, name).toContain(legal)

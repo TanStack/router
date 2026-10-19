@@ -16,7 +16,9 @@ import { tanstackRouter } from '../../src/vite'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 
-const aboutRoute = (label: string) => `import { createFileRoute } from '@tanstack/react-router'
+const aboutRoute = (
+  label: string,
+) => `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/about')({
   component: About,
 })

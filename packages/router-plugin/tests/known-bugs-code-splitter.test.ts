@@ -37,7 +37,6 @@ function reportsNotSplit(
   })
 }
 
-
 /** Stubs `./state`, counting the calls of `init` and `register`. */
 function stateStub() {
   const state = {
@@ -667,13 +666,13 @@ export const Route = createFileRoute('/')({
     async () => {
       const calls: Array<unknown> = []
       await evaluateModule(
-        (await transformWithRouteHmrPlugin(`${head}import { init } from './init'
+        await transformWithRouteHmrPlugin(`${head}import { init } from './init'
 const analytics = init('analytics')
 export type Analytics = typeof analytics
 export const Route = createFileRoute('/')({
   component: () => <p>component</p>,
 })
-`)),
+`),
         {
           './init': {
             init: (value: unknown) => {
@@ -1350,7 +1349,7 @@ export const Route = createFileRoute('/')({ component: Page })
     'split chunks do not re-export or declare the re-exports and default class of the route file',
     async () => {
       const { graph } =
-        (await compileRouteModules(`${head}export { getPaths, a as getProps } from './lib'
+        await compileRouteModules(`${head}export { getPaths, a as getProps } from './lib'
 export { foo, bar as baz } from './lib'
 export { helper } from './default-lib'
 export default class Test {
@@ -1362,7 +1361,7 @@ export const Route = createFileRoute('/')({
   component: () => <div>home</div>,
   errorComponent: () => <div>error</div>,
 })
-`))
+`)
       /** Sources a module imports or re-exports from. */
       const requested = (code: string) => [
         ...importSources(code),
@@ -2043,7 +2042,11 @@ export const Route = createFileRoute('/')({
         rendered: await route.render('component'),
         imported: useTitle(),
         sameInstance: seen.length === 1 && seen[0] === useTitle,
-      }).toEqual({ rendered: '<p>title</p>', imported: 'title', sameInstance: true })
+      }).toEqual({
+        rendered: '<p>title</p>',
+        imported: 'title',
+        sameInstance: true,
+      })
     },
   )
 
@@ -2316,10 +2319,10 @@ describe('TypeScript-only syntax', () => {
   // splitting is on.
   test.fails('a decorator after `export` compiles', async () => {
     const { modules } =
-      (await compileRouteModules(`${head}import { injectable } from 'tsyringe'
+      await compileRouteModules(`${head}import { injectable } from 'tsyringe'
 export @injectable() class Store {}
 export const Route = createFileRoute('/')({ component: () => <div /> })
-`))
+`)
     await expectValidModules(modules)
   })
 
@@ -2333,7 +2336,7 @@ export const Route = createFileRoute('/')({ component: () => <div /> })
     'a class with a parameter decorator that the split component uses compiles into parseable modules',
     async () => {
       const { modules } =
-        (await compileRouteModules(`${head}import { Inject } from './di'
+        await compileRouteModules(`${head}import { Inject } from './di'
 class Service {
   constructor(@Inject() readonly dep: unknown) {}
 }
@@ -2341,7 +2344,7 @@ export const Route = createFileRoute('/')({
   loader: () => 'data',
   component: () => <p>{String(new Service(1).dep)}</p>,
 })
-`))
+`)
       expect(Object.keys(modules).length).toBeGreaterThan(1)
       for (const code of Object.values(modules)) {
         parseModule(code)
@@ -2362,11 +2365,11 @@ export const Route = createFileRoute('/')({
   ])(
     'a type-only import re-exported as `export { Settings }` is erased (%s)',
     async (importDeclaration) => {
-      const { modules } = (await compileRouteModules(`${head}${importDeclaration}
+      const { modules } = await compileRouteModules(`${head}${importDeclaration}
 export { Settings }
 export const Route = createFileRoute('/')({
   component: () => <p>index</p>,
-})`))
+})`)
       await expectValidModules(modules)
     },
   )
@@ -2397,16 +2400,19 @@ export const Route = createFileRoute('/')({
 })`,
       source: './server/db',
     },
-  ])('split chunks do not import what only $name reads', async ({ code, source }) => {
-    const { graph } = (await compileRouteModules(`${head}${code}\n`))
-    const chunks = [...graph.importKinds]
-      .filter(([, kind]) => kind === 'dynamic')
-      .map(([id]) => graph.modules.get(id)!)
-    expect(chunks.length).toBeGreaterThan(0)
-    expect(
-      chunks.filter((chunk) => importSources(chunk).includes(source)),
-    ).toEqual([])
-  })
+  ])(
+    'split chunks do not import what only $name reads',
+    async ({ code, source }) => {
+      const { graph } = await compileRouteModules(`${head}${code}\n`)
+      const chunks = [...graph.importKinds]
+        .filter(([, kind]) => kind === 'dynamic')
+        .map(([id]) => graph.modules.get(id)!)
+      expect(chunks.length).toBeGreaterThan(0)
+      expect(
+        chunks.filter((chunk) => importSources(chunk).includes(source)),
+      ).toEqual([])
+    },
+  )
 
   // Bug: the split chunk declares a namespace the split component reads
   // without its body. Source: #8504 (code-splitter-imports-exports.test.ts),
@@ -3165,14 +3171,14 @@ ${serverOptions}
   // checked here, the built Solid app runs in
   // integration/build-frameworks.test.ts.
   test('server-only options of a Solid file route written as properties are removed with their imports', async () => {
-    const { modules } = (await compileRouteModules(
+    const { modules } = await compileRouteModules(
       `import { createFileRoute } from '@tanstack/solid-router'
 import { db } from './secret-db'
 export const Route = createFileRoute('/')({
 ${serverOptions}
 })`,
       { deleteNodes, targetFramework: 'solid' },
-    ))
+    )
     expect(
       Object.values(modules).filter((module) =>
         importSources(module).includes('./secret-db'),
