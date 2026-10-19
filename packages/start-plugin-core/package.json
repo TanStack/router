@@ -60,7 +60,8 @@
           "^build",
           {
             "projects": [
-              "@tanstack/react-start"
+              "@tanstack/react-start",
+              "@tanstack/solid-start"
             ],
             "target": "build"
           }
@@ -155,12 +156,14 @@
     "@types/node": ">=20",
     "@types/picomatch": "^4.0.2",
     "vite": "*",
+    "vite-plugin-solid": "catalog:",
     "@tanstack/compiler-test-utils": "workspace:*",
     "@tanstack/react-router": "workspace:*",
     "@tanstack/vite-config": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "solid-js": "catalog:",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "catalog:",
     "@arethetypeswrong/cli": "catalog:",
