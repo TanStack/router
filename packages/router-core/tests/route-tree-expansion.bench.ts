@@ -52,7 +52,13 @@ for (const shape of ['shallow', 'shared', 'competing'] as const) {
         () => {
           findRouteMatch(pathFor(0), processed)
         },
-      ).run({ time: 500, warmupTime: 200, throws: true })
+      ).run({
+        time: 0,
+        iterations: 64,
+        warmupTime: 0,
+        warmupIterations: 16,
+        throws: true,
+      })
     })
 
     test('cold miss after registration', async ({ bench }) => {
@@ -67,7 +73,13 @@ for (const shape of ['shallow', 'shared', 'competing'] as const) {
         () => {
           findRouteMatch('/unknown/never', processed)
         },
-      ).run({ time: 500, warmupTime: 200, throws: true })
+      ).run({
+        time: 0,
+        iterations: 64,
+        warmupTime: 0,
+        warmupIterations: 16,
+        throws: true,
+      })
     })
 
     test('warm matching with uncached params or fuzzy suffixes', async ({
