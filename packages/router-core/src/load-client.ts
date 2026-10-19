@@ -2333,7 +2333,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
   const signal = controller.signal
   let interrupt: ((cause: AbortSignal) => void) | undefined
   const abort = () => interrupt?.(signal)
-  signal.addEventListener('abort', abort, { once: true })
+  signal.addEventListener('abort', abort)
   const wait = <T>(value: T | PromiseLike<T>): T | Promise<T> => {
     if (!isPromise(value)) {
       return value as T
