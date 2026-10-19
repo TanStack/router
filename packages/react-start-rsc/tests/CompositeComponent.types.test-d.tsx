@@ -1,7 +1,7 @@
 import { expectTypeOf, test } from 'vitest'
 
-import type { ComponentProps } from 'react'
 import { CompositeComponent } from '../src/CompositeComponent'
+import type { ComponentProps } from 'react'
 import type { CompositeComponentResult } from '../src/ServerComponentTypes'
 
 test('CompositeComponent infers slot props from src', () => {
@@ -11,15 +11,15 @@ test('CompositeComponent infers slot props from src', () => {
     footer: () => React.ReactNode
   }) => React.ReactNode
 
-  const src = null as unknown as CompositeComponentResult<Post>
+  type Src = CompositeComponentResult<Post>
 
   expectTypeOf(CompositeComponent).toBeFunction()
 
-  type Props = ComponentProps<typeof CompositeComponent<typeof src>>
+  type Props = ComponentProps<typeof CompositeComponent<Src>>
 
   // Type-level: ensure inferred props include slots
   type Expected = {
-    src: typeof src
+    src: Src
     children?: React.ReactNode
     header: (title: string) => React.ReactNode
     footer: () => React.ReactNode

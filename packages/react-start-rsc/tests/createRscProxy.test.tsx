@@ -3,124 +3,40 @@ import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { ReactElement, ReactLazy } from '../src/reactSymbols'
 
-import { createRscProxy } from '../src/createRscProxy'
 import { awaitLazyElements } from '../src/awaitLazyElements'
+import { CompositeComponent } from '../src/CompositeComponent'
+import { createRscProxy } from '../src/createRscProxy'
 
-describe('createRscProxy prop access', () => {
-  it('tracks which props React accesses during rendering', () => {
-    const accessedProps: Array<string | symbol> = []
-    const tree = React.createElement('div', null, 'test content')
+describe('createRscProxy rendering', () => {
+  it('a renderable proxy renders its tree inline', () => {
+    const node = createRscProxy(() => <p>MARK_TREE</p>, { renderable: true })
 
-    // Create a proxy that tracks all property access
-    const trackingProxy = new Proxy(function RscProxy() {}, {
-      get(_target, prop) {
-        accessedProps.push(prop)
+    render(<main>{node}</main>)
 
-        // Return values that allow React to proceed
-        if (prop === 'then') return undefined
-        if (prop === 'constructor') return Function
-        if (prop === Symbol.toStringTag) return 'RscProxy'
-        if (prop === Symbol.toPrimitive) return () => 'RscProxy'
-        if (prop === 'toString') return () => 'RscProxy'
-        if (prop === 'valueOf') return () => _target
-        if (prop === 'displayName') return 'RscProxy'
-        if (prop === 'name') return 'RscProxy'
-        if (prop === 'length') return 0
-        if (prop === 'contextTypes') return undefined
-        if (prop === 'childContextTypes') return undefined
-        if (prop === 'getDerivedStateFromProps') return undefined
-        if (prop === 'defaultProps') return undefined
-        if (prop === 'propTypes') return undefined
-        if (prop === 'getDefaultProps') return undefined
-        if (typeof prop === 'symbol') return undefined
-
-        return undefined
-      },
-      apply() {
-        // Return actual React element when called
-        return tree
-      },
-      has() {
-        return true
-      },
-      getPrototypeOf() {
-        return Function.prototype
-      },
-    })
-
-    function Wrapper() {
-      const Component = trackingProxy as any
-      return <Component />
-    }
-
-    render(<Wrapper />)
-
-    expect(screen.getByText('test content')).toBeDefined()
-
-    const uniqueProps = [...new Set(accessedProps.map((p) => String(p)))]
-
-    // Keep this strict: it proves what React probes in this env.
-    // This is NOT a contract for our proxy implementation.
-    expect(uniqueProps.sort()).toEqual(
-      [
-        '$$typeof',
-        'Symbol(Symbol.toStringTag)',
-        'childContextTypes',
-        'contextType',
-        'contextTypes',
-        'displayName',
-        'getDerivedStateFromProps',
-        'prototype',
-      ].sort(),
-    )
+    expect(screen.getByRole('main').textContent).toBe('MARK_TREE')
   })
 
-  it('renders correctly with minimal prop handling', () => {
-    const tree = React.createElement('div', null, 'minimal test')
+  it('a nested selection of a renderable proxy renders that part only', () => {
+    const node = createRscProxy(
+      () => ({ header: <h1>MARK_HEADER</h1>, footer: <p>MARK_FOOTER</p> }),
+      { renderable: true },
+    )
 
-    // Test with ONLY the critical props - no DevTools props
-    const minimalProxy = new Proxy(function RscProxy() {}, {
-      get(_target, prop) {
-        // Critical props only
-        if (prop === 'then') return undefined
-        if (prop === 'constructor') return Function
+    render(<main>{node.footer}</main>)
 
-        // Legacy class component props
-        switch (prop) {
-          case 'contextTypes':
-          case 'childContextTypes':
-          case 'getDerivedStateFromProps':
-          case 'defaultProps':
-          case 'propTypes':
-          case 'getDefaultProps':
-            return undefined
-        }
+    expect(screen.getByRole('main').textContent).toBe('MARK_FOOTER')
+  })
 
-        // Unknown symbols
-        if (typeof prop === 'symbol') return undefined
+  it('a composite proxy renders through CompositeComponent', () => {
+    const src = createRscProxy(() => <p>MARK_COMPOSITE</p>, { stream: {} })
 
-        return undefined
-      },
-      apply() {
-        return tree
-      },
-      has() {
-        return true
-      },
-      getPrototypeOf() {
-        return Function.prototype
-      },
-    })
+    render(
+      <main>
+        <CompositeComponent src={src} />
+      </main>,
+    )
 
-    function Wrapper() {
-      const Component = minimalProxy as any
-      return <Component />
-    }
-
-    // This should render without errors even with minimal props
-    render(<Wrapper />)
-
-    expect(screen.getByText('minimal test')).toBeDefined()
+    expect(screen.getByRole('main').textContent).toBe('MARK_COMPOSITE')
   })
 })
 
