@@ -266,6 +266,83 @@ describe('a route file saved while the generator fixes it', () => {
     })
   })
 
+  // Bug: when the user's save makes the generator's fix unnecessary (the
+  // saved file already has the right id), the generator abandons its write
+  // and never removes the temporary file it prepared for it.
+  // Source: src/generator.ts `safeFileWrite` (writes the temporary file,
+  // then throws `rerun` on the modification check without removing it; the
+  // rerun finds nothing to write).
+  // Impact: every such save leaves a copy of a route file in the app's
+  // `tmpDir` (by default `.tanstack/tmp` in the project), accumulating over
+  // a dev session.
+  it.fails(
+    'leaves no file behind when the save makes the fix unnecessary',
+    async () => {
+      const { root, postsRoutePath, config } = await createApp(
+        postsRouteSource.replace("'/posts'", "'/old'"),
+      )
+      let saved = false
+      const generator = new Generator({
+        config,
+        root,
+        fs: {
+          rename: (oldPath, newPath) => fs.rename(oldPath, newPath),
+          writeFile: (filePath, content) => fs.writeFile(filePath, content),
+          readFile: async (filePath) => {
+            const result = await readFileWithStat(filePath)
+            if (!saved && path.resolve(filePath) === postsRoutePath) {
+              // The user fixes the id and saves right after the generator
+              // read the file.
+              saved = true
+              await fs.writeFile(postsRoutePath, savedPostsRouteSource)
+              const savedAt = new Date(Date.now() + 10_000)
+              await fs.utimes(postsRoutePath, savedAt, savedAt)
+            }
+            return result
+          },
+          stat: async (filePath) => {
+            const stat = await fs.stat(filePath, { bigint: true })
+            return {
+              mtimeMs: stat.mtimeMs,
+              mode: Number(stat.mode),
+              uid: Number(stat.uid),
+              gid: Number(stat.gid),
+            }
+          },
+          chmod: (filePath, mode) => fs.chmod(filePath, mode),
+          chown: (filePath, uid, gid) => fs.chown(filePath, uid, gid),
+        },
+      })
+
+      await generator.run()
+
+      expect(saved).toBe(true)
+      await expect(fs.readFile(postsRoutePath, 'utf8')).resolves.toBe(
+        savedPostsRouteSource,
+      )
+      // Only the app's files, wherever a temporary file was written (read
+      // before `routesOf` links `node_modules` into the app)
+      const files = await fs.readdir(root, {
+        recursive: true,
+        withFileTypes: true,
+      })
+      expect(
+        files
+          .filter((entry) => entry.isFile())
+          .map((entry) =>
+            path
+              .relative(root, path.join(entry.parentPath, entry.name))
+              .replaceAll(path.sep, '/'),
+          )
+          .sort(),
+      ).toEqual(['routeTree.gen.ts', 'routes/__root.tsx', 'routes/posts.tsx'])
+      expect(await routesOf(config.generatedRouteTree)).toEqual({
+        __root__: 'routes/__root.tsx',
+        '/posts': 'routes/posts.tsx',
+      })
+    },
+  )
+
   it('on a filesystem with 1 s timestamps, is not overwritten when the save completes during the read', async () => {
     const { root, postsRoutePath, config } = await createApp(postsRouteSource)
     let saveRacesNextRead = false

@@ -4,3 +4,4 @@
 - Run the complete `test:unit` target after generator changes. Its runtime phase generates fixture route trees before typechecking their consumers; `test:types` excludes the generator fixtures.
 - Add generation cases under `tests/generator/<case>/`. Read [`tests/generator.test.ts`](tests/generator.test.ts) for per-case configuration and preprocessing. Change route inputs/configuration or templates, then regenerate route trees and expected snapshots through the test harness.
 - `preprocess()` recreates selected route files for `file-modification*` and `custom-scaffolding`. Edit their templates/configuration/preprocessing when changing those inputs; edits to recreated files are overwritten.
+- To run one test file or `-t` filter quickly, the slow-tier load gate and the test budgets: [compiler-test-utils/AGENTS.md](../compiler-test-utils/AGENTS.md).

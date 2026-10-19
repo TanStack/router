@@ -1,26 +1,28 @@
 {
-  "$comment": "Vitest durations in seconds (Nx overhead not included) of the compiler test tiers. dev: default workers on a developer machine; ci: 1 worker on a 2-vCPU agent. Each entry is [target, hard]. slowFileHardCi: hard limit of any slow-tier file at 1 worker. Read by src/budget-reporter.ts; report-only for now.",
-  "slowFileHardCi": 15,
+  "$comment": "Local iteration budgets of the compiler test tiers (DECISIONS 2026-10-19), in seconds of Vitest duration at `workers` (--maxWorkers): per package, `unit` (fast tier) and `integration` (slow tier) as [target, hard]; `slowFileHard`: any slow-tier file; `editToResultHard`: edit to result of one fast-tier file, Nx included. Set from quiet-machine runs on 2026-10-19 (W3-budgets) with headroom. Runs at other worker counts (CI, one worker) are reported, never enforced. Read by src/budget-reporter.ts: report-only, except with COMPILER_TEST_BUDGETS=strict on a quiet machine.",
+  "workers": 4,
+  "slowFileHard": 15,
+  "editToResultHard": 10,
   "packages": {
     "@tanstack/router-plugin": {
-      "unit": { "dev": [4, 8], "ci": [10, 20] },
-      "integration": { "ci": [60, 120] }
+      "unit": [7.5, 10],
+      "integration": [60, 80]
     },
     "@tanstack/start-plugin-core": {
-      "unit": { "dev": [4, 8], "ci": [12, 20] },
-      "integration": { "ci": [45, 90] }
+      "unit": [5.5, 8],
+      "integration": [65, 90]
     },
     "@tanstack/router-generator": {
-      "unit": { "dev": [3, 6], "ci": [6, 10] },
-      "integration": { "ci": [20, 40] }
+      "unit": [3, 5],
+      "integration": [8, 12]
     },
     "@tanstack/react-start-rsc": {
-      "unit": { "dev": [2, 4], "ci": [4, 8] },
-      "integration": { "ci": [30, 60] }
+      "unit": [1, 2],
+      "integration": [13, 20]
     },
     "@tanstack/compiler-test-utils": {
-      "unit": { "dev": [2, 4], "ci": [4, 8] },
-      "integration": { "ci": [10, 20] }
+      "unit": [2.5, 4],
+      "integration": [9, 15]
     }
   }
 }

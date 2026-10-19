@@ -1,26 +1,38 @@
 /**
- * A Vitest reporter that compares the duration of a compiler test tier with
- * its budget (`test-budgets.json`): the run's duration against the tier's
- * target and hard limit, and, at one worker, each slow-tier file against the
- * per-file hard limit. Report-only: it prints the comparison and never fails
- * the run.
+ * A Vitest reporter that compares a compiler test run with its budget
+ * (`test-budgets.json`), for local iteration at the budgets' worker count:
+ *
+ * - a whole tier (every file of the tier, no `-t` filter): its duration
+ *   against the package's target and hard limit for the tier;
+ * - each slow-tier file: its time against the per-file hard limit;
+ * - a partial fast-tier run (the inner loop: a file or a `-t` filter): the
+ *   time since the Vitest process started, a lower bound of edit to result
+ *   (Nx adds its own startup), against the edit-to-result hard limit.
  *
  * The tier is the Vitest project: `integration` is the slow tier, any other
- * project the fast tier. The machine is `ci` at one worker, `dev` otherwise.
+ * project the fast tier. Runs at another worker count (CI, one worker) are
+ * reported only.
+ *
+ * By default the reporter never fails a run: wall-clock times move with the
+ * machine's load, and a test run must not fail because other runs share the
+ * machine. With `COMPILER_TEST_BUDGETS=strict`, a run over a hard limit (or
+ * not at the budgets' worker count) fails; strict mode is meant for a quiet
+ * machine.
  */
 import { readFileSync } from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Reporter, TestModule, Vitest } from 'vitest/node'
 
 type Limits = [target: number, hard: number]
+type Tier = 'unit' | 'integration'
 
 interface Budgets {
-  slowFileHardCi: number
-  packages: Record<
-    string,
-    Record<'unit' | 'integration', { dev?: Limits; ci?: Limits }>
-  >
+  workers: number
+  slowFileHard: number
+  editToResultHard: number
+  packages: Record<string, Record<Tier, Limits>>
 }
 
 const budgets: Budgets = JSON.parse(
@@ -30,22 +42,15 @@ const budgets: Budgets = JSON.parse(
   ),
 )
 
+/** The 1-minute load average under which strict mode is meant to run. */
+const quietLoad = 4
+
 function packageName(root: string) {
   return (
     JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')) as {
       name: string
     }
   ).name
-}
-
-function verdict(seconds: number, [target, hard]: Limits) {
-  if (seconds > hard) {
-    return `over the hard limit (${hard} s)`
-  }
-  if (seconds > target) {
-    return `over target (${target} s), under the hard limit (${hard} s)`
-  }
-  return `within target (${target} s)`
 }
 
 /** The time a test module took: environment, setup, import and its tests. */
@@ -61,6 +66,9 @@ function moduleSeconds(testModule: TestModule) {
   )
 }
 
+const tierOf = (projectName: string): Tier =>
+  projectName === 'integration' ? 'integration' : 'unit'
+
 export default class BudgetReporter implements Reporter {
   private vitest!: Vitest
   private start = 0
@@ -73,46 +81,119 @@ export default class BudgetReporter implements Reporter {
     this.start = performance.now()
   }
 
-  onTestRunEnd(testModules: ReadonlyArray<TestModule>) {
+  async onTestRunEnd(testModules: ReadonlyArray<TestModule>) {
     const seconds = (performance.now() - this.start) / 1000
     const name = packageName(this.vitest.config.root)
     const packageBudgets = budgets.packages[name]
     if (!packageBudgets || testModules.length === 0) {
       return
     }
-    const tiers = new Set(
-      testModules.map((m) =>
-        m.project.name === 'integration' ? 'integration' : 'unit',
-      ),
-    )
-    const machine = this.vitest.config.maxWorkers <= 1 ? 'ci' : 'dev'
+    const strict = process.env.COMPILER_TEST_BUDGETS === 'strict'
+    const workers = this.vitest.config.maxWorkers
+    const atBudgetWorkers = workers === budgets.workers
     const lines: Array<string> = []
-    if (tiers.size === 1) {
-      const tier = [...tiers][0] as 'unit' | 'integration'
-      const limits = packageBudgets[tier][machine]
-      lines.push(
-        limits
-          ? `${name} ${tier}: ${seconds.toFixed(1)} s at ${this.vitest.config.maxWorkers} worker(s), ${verdict(seconds, limits)} [${machine}]`
-          : `${name} ${tier}: ${seconds.toFixed(1)} s at ${this.vitest.config.maxWorkers} worker(s), no ${machine} budget`,
-      )
-    } else {
-      lines.push(
-        `${name}: ${seconds.toFixed(1)} s for both tiers; run one tier to compare it with its budget`,
-      )
-    }
-    if (machine === 'ci') {
-      for (const testModule of testModules) {
-        const fileSeconds = moduleSeconds(testModule)
-        if (
-          testModule.project.name === 'integration' &&
-          fileSeconds > budgets.slowFileHardCi
-        ) {
-          lines.push(
-            `  ${path.relative(this.vitest.config.root, testModule.moduleId)}: ${fileSeconds.toFixed(1)} s, over the per-file hard limit (${budgets.slowFileHardCi} s)`,
-          )
-        }
+    const failures: Array<string> = []
+    const check = (line: string, over: boolean) => {
+      lines.push(line)
+      if (over && atBudgetWorkers) {
+        failures.push(line)
       }
     }
-    this.vitest.logger.log(`\nTest budget (report only)\n${lines.join('\n')}`)
+
+    const tiers = new Set(testModules.map((m) => tierOf(m.project.name)))
+    const at = `at ${workers} worker${workers === 1 ? '' : 's'}`
+    if (tiers.size > 1) {
+      lines.push(
+        `${name}: ${seconds.toFixed(1)} s for both tiers ${at}; run one tier to compare it with its budget`,
+      )
+    } else {
+      const tier = [...tiers][0]!
+      const [target, hard] = packageBudgets[tier]
+      const ran = new Set(testModules.map((m) => m.moduleId))
+      const all = new Set<string>()
+      for (const project of this.vitest.projects) {
+        if (tierOf(project.name) === tier) {
+          const files = await project.globTestFiles()
+          for (const file of [
+            ...files.testFiles,
+            ...files.typecheckTestFiles,
+          ]) {
+            all.add(file)
+          }
+        }
+      }
+      const filtered = this.vitest.config.testNamePattern !== undefined
+      const partial = filtered || ran.size < all.size
+      const tierLine = `${name} ${tier}: ${seconds.toFixed(1)} s ${at}`
+      if (partial) {
+        lines.push(
+          `${tierLine}, ${ran.size} of ${all.size} files${filtered ? ', -t filter' : ''}: a partial run, no tier budget`,
+        )
+      } else if (!atBudgetWorkers) {
+        lines.push(
+          `${tierLine}: reported only (the budgets are for --maxWorkers=${budgets.workers}: target ${target} s, hard limit ${hard} s)`,
+        )
+      } else {
+        check(
+          `${tierLine}: ${seconds > hard ? 'OVER the hard limit' : seconds > target ? 'over target, under the hard limit' : 'within target'} (target ${target} s, hard limit ${hard} s)`,
+          seconds > hard,
+        )
+      }
+      if (tier === 'unit' && partial) {
+        // From the Vitest process's start: config, workers, imports, tests
+        const sinceStart = process.uptime()
+        check(
+          `  edit to result, Vitest's part ${at}: ${sinceStart.toFixed(1)} s since the Vitest process started (hard limit ${budgets.editToResultHard} s with Nx's startup on top)`,
+          sinceStart > budgets.editToResultHard,
+        )
+      }
+    }
+
+    let slowestFile: [string, number] | undefined
+    for (const testModule of testModules) {
+      if (testModule.project.name !== 'integration') {
+        continue
+      }
+      const fileSeconds = moduleSeconds(testModule)
+      const file = path.relative(this.vitest.config.root, testModule.moduleId)
+      if (!slowestFile || fileSeconds > slowestFile[1]) {
+        slowestFile = [file, fileSeconds]
+      }
+      if (fileSeconds > budgets.slowFileHard) {
+        check(
+          `  ${file}: ${fileSeconds.toFixed(1)} s ${at}, OVER the per-file hard limit (${budgets.slowFileHard} s)${atBudgetWorkers ? '' : ', reported only'}`,
+          true,
+        )
+      }
+    }
+    if (slowestFile && slowestFile[1] <= budgets.slowFileHard) {
+      lines.push(
+        `  slowest file: ${slowestFile[0]} ${slowestFile[1].toFixed(1)} s (per-file hard limit ${budgets.slowFileHard} s)`,
+      )
+    }
+
+    if (!strict) {
+      this.vitest.logger.log(
+        `\nTest budget (report only; COMPILER_TEST_BUDGETS=strict fails over a hard limit)\n${lines.join('\n')}`,
+      )
+      return
+    }
+    const [load] = os.loadavg()
+    if (!atBudgetWorkers) {
+      failures.push(
+        `strict mode measures at --maxWorkers=${budgets.workers}, this run used ${workers}`,
+      )
+    }
+    this.vitest.logger.log(
+      `\nTest budget (strict; meant for a quiet machine: 1-minute load below ${quietLoad} and no other test runs; the load now is ${load!.toFixed(1)}${load! >= quietLoad ? ', so a failure may be the load' : ''})\n${lines.join('\n')}`,
+    )
+    if (failures.length > 0) {
+      this.vitest.logger.error(
+        `\nTest budget exceeded (strict):\n${failures.map((line) => `  ${line.trim()}`).join('\n')}`,
+      )
+      process.exitCode = 1
+    } else {
+      this.vitest.logger.log('Test budget (strict): passed')
+    }
   }
 }
