@@ -81,24 +81,27 @@ const hmrProbes = {
 `,
 }
 
-/** How the app mounts the router into `#app`, per framework. */
+/**
+ * How the app mounts the router into `#app`, per framework, with the router
+ * options `ROUTER_OPTIONS` stands for.
+ */
 const mains: Record<TargetFramework, string> = {
   react: `import { createRoot } from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
-const router = createRouter({ routeTree })
+const router = createRouter({ routeTree, ROUTER_OPTIONS })
 createRoot(document.getElementById('app')!).render(<RouterProvider router={router} />)
 `,
   solid: `import { render } from 'solid-js/web'
 import { RouterProvider, createRouter } from '@tanstack/solid-router'
 import { routeTree } from './routeTree.gen'
-const router = createRouter({ routeTree })
+const router = createRouter({ routeTree, ROUTER_OPTIONS })
 render(() => <RouterProvider router={router} />, document.getElementById('app')!)
 `,
   vue: `import { createApp } from 'vue'
 import { RouterProvider, createRouter } from '@tanstack/vue-router'
 import { routeTree } from './routeTree.gen'
-const router = createRouter({ routeTree })
+const router = createRouter({ routeTree, ROUTER_OPTIONS })
 createApp({ setup: () => () => <RouterProvider router={router} /> }).mount('#app')
 `,
 }
@@ -184,6 +187,11 @@ export interface RouteHmrPageOptions {
    * an entry mounting the router into `#app`.
    */
   files: Record<string, string>
+  /**
+   * More options of the app's router, as source (e.g. `defaultErrorComponent:
+   * () => null`), in the default `main.tsx`.
+   */
+  routerOptions?: string
   /** Text the app shows once it rendered. */
   ready: string | RegExp
   /** How long the app may take to show `ready` (default 15 s). */
@@ -304,7 +312,7 @@ export async function openRouteHmrPage(
   const target = options.target ?? 'react'
   const bundler = options.bundler ?? 'vite'
   const files = {
-    'main.tsx': `${mains[target]}${hmrProbes[bundler]}`,
+    'main.tsx': `${mains[target].replace('ROUTER_OPTIONS', options.routerOptions ?? '')}${hmrProbes[bundler]}`,
     'routes/__root.tsx': `import { createRootRoute } from '@tanstack/${target}-router'
 export const Route = createRootRoute({})
 `,
@@ -620,4 +628,19 @@ async function rsbuildServer(
     root: server.root,
     warnings: () => [...allWarnings],
   }
+}
+
+/**
+ * A statement for the body of a React component (with `useState` in scope)
+ * that counts the component's mounts under `name` (`mountsOf`): a state
+ * initializer, which React runs when it mounts the component only. React
+ * Refresh keeps the state of a component it patches in place, so a body
+ * edit it patches mounts nothing anew; a remount counts again.
+ */
+export const countMounts = (name: string) =>
+  `useState(() => { const mounts = (window.__mounts ??= {}); mounts[${JSON.stringify(name)}] = (mounts[${JSON.stringify(name)}] ?? 0) + 1 })`
+
+/** The mounts `countMounts` counted in the page, by name. */
+export function mountsOf(app: RouteHmrPage): Promise<Record<string, number>> {
+  return app.evaluate('window.__mounts ?? {}')
 }
