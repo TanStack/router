@@ -10,11 +10,15 @@ import path from 'node:path'
 import mdx from '@mdx-js/rollup'
 import { createRequire } from 'node:module'
 import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
+import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { startDevServer } from '../../dev-server'
 import {
   describeValue,
+  expectMockAccess,
   expectSafeMock,
+  mockAccessDiagnostics,
+  warningsAndErrors,
 } from '../../importProtection/mock-helpers'
 import {
   distinct,
@@ -60,23 +64,6 @@ function loggedViolations(logs: Array<string>) {
 /** The modules of the trace of `report`, without locations. */
 const traceModules = (report: ViolationReport) =>
   report.trace.map(({ at }) => at.replace(/:\d+:\d+$/, ''))
-
-/**
- * Captures what the dev mocks report to the browser console (`mockAccess`),
- * silenced: the messages, by console method. Call before evaluating.
- */
-function captureMockAccess() {
-  const logged: Array<{ method: 'error' | 'warn'; message: string }> = []
-  for (const method of ['error', 'warn'] as const) {
-    vi.spyOn(console, method).mockImplementation((message: unknown) => {
-      logged.push({
-        method,
-        message: message instanceof Error ? message.message : String(message),
-      })
-    })
-  }
-  return logged
-}
 
 /**
  * `src/a.ts` uses `secret` of the denied file `src/secret.server.ts`; the
@@ -592,27 +579,25 @@ export const request = () => getRequest()
     'is a mock that reports its use in the browser console, naming the import, like the mock of the denied file',
     async () => {
       const server = await startProtectedDevServer(deniedSpecifierApp)
-      const logged = captureMockAccess()
-      const module = await evaluateServed(server, '/src/entry.ts')
-      expect(logged).toEqual([])
-      expectSafeMock(module.request(), 'MARK_SECRET')
-      expectSafeMock(module.read(), 'MARK_SECRET')
-      const errors = logged
-        .filter(({ method }) => method === 'error')
-        .map(({ message }) => message)
-      const reports = errors
-        .filter((error) => error.includes('Mocked import used in dev client'))
-        .map((error) => ({
-          denied: /Denied import: "([^"]+)"/.exec(error)?.[1],
-          access: /Access: (.*)/.exec(error)?.[1],
-        }))
-      expect(reports).toContainEqual({
-        denied: '@tanstack/react-start/server',
-        access: expect.stringMatching(/\bgetRequest\(\)/),
+      const { result: module, diagnostics: loading } = await captureConsole(
+        () => evaluateServed(server, '/src/entry.ts'),
+      )
+      expect(warningsAndErrors(loading)).toEqual([])
+      const { diagnostics } = await captureConsole(() => {
+        expectSafeMock(module.request(), 'MARK_SECRET')
+        expectSafeMock(module.read(), 'MARK_SECRET')
       })
-      expect(reports).toContainEqual({
-        denied: 'src/secret.server.ts',
-        access: expect.stringMatching(/\bsecret\(\)/),
+      const access = { severity: 'error' } as const
+      expectMockAccess(diagnostics, {
+        ...access,
+        specifier: '@tanstack/react-start/server',
+        root: server.root,
+      })
+      expectMockAccess(diagnostics, {
+        ...access,
+        specifier: './secret.server',
+        file: 'src/secret.server.ts',
+        root: server.root,
       })
     },
     timeout,
@@ -622,25 +607,30 @@ export const request = () => getRequest()
   // report their use.
   // Source: mutation run R4 (spc:4859, the option ignored).
   test.each([
-    { mockAccess: 'warn', expected: { errors: false, warnings: true } },
-    { mockAccess: 'off', expected: { errors: false, warnings: false } },
+    { mockAccess: 'warn', severities: ['warning'] },
+    { mockAccess: 'off', severities: [] },
   ] as const)(
-    'with mockAccess $mockAccess, the mocks report their use with console.warn: $expected.warnings, console.error: $expected.errors',
-    async ({ mockAccess, expected }) => {
+    'with mockAccess $mockAccess, using the mocks logs $severities',
+    async ({ mockAccess, severities }) => {
       const server = await startProtectedDevServer(deniedSpecifierApp, {
         mockAccess,
       })
-      const logged = captureMockAccess()
-      const module = await evaluateServed(server, '/src/entry.ts')
-      expectSafeMock(module.request(), 'MARK_SECRET')
-      expectSafeMock(module.read(), 'MARK_SECRET')
-      const reports = logged.filter(({ message }) =>
-        message.includes('Mocked import used in dev client'),
+      const { diagnostics } = await captureConsole(async () => {
+        const module = await evaluateServed(server, '/src/entry.ts')
+        expectSafeMock(module.request(), 'MARK_SECRET')
+        expectSafeMock(module.read(), 'MARK_SECRET')
+      })
+      const logged = warningsAndErrors(diagnostics)
+      expect(distinct(logged.map(({ severity }) => severity))).toEqual(
+        severities,
       )
-      expect({
-        errors: reports.some(({ method }) => method === 'error'),
-        warnings: reports.some(({ method }) => method === 'warn'),
-      }).toEqual(expected)
+      for (const severity of severities) {
+        expectMockAccess(logged, {
+          severity,
+          specifier: '@tanstack/react-start/server',
+          root: server.root,
+        })
+      }
     },
     timeout,
   )
@@ -656,13 +646,17 @@ export const read = () => [getRequest()]
 `,
         'src/entry.ts': `export * from './a'\n`,
       })
-      captureMockAccess()
+      // (what the mocks log is silenced: the rows above check it)
       const described = async () =>
         (
-          (
-            await evaluateServed(server, '/src/entry.ts')
-          ).read() as Array<unknown>
-        ).map((value) => describeValue(value, 'MARK_'))
+          await captureConsole(async () =>
+            (
+              (
+                await evaluateServed(server, '/src/entry.ts')
+              ).read() as Array<unknown>
+            ).map((value) => describeValue(value, 'MARK_')),
+          )
+        ).result
       expect(await described()).toEqual(['a safe mock'])
       await server.edit({
         'src/a.ts': `import { getRequest, getResponse } from '@tanstack/react-start/server'
@@ -752,9 +746,10 @@ export const request = () => getRequest()
         {},
         { plugins },
       )
-      captureMockAccess()
-      const module = await evaluateServed(server, '/src/entry.ts', stubs)
-      expectSafeMock(module.request(), 'MARK_')
+      await captureConsole(async () => {
+        const module = await evaluateServed(server, '/src/entry.ts', stubs)
+        expectSafeMock(module.request(), 'MARK_')
+      })
       expect(
         reportedViolations(server.logs).map(({ importer }) => importer),
       ).toContainEqual(expect.stringMatching(/^src\/page\.mdx/))
@@ -1140,8 +1135,8 @@ export const read = () => widget()
 describe('an SSR import of a .client file: mockAccess', () => {
   /**
    * Imports the app in the SSR environment and calls the mocked `widget`;
-   * what it is, and what the call logged (by console method), with
-   * `mockAccess`.
+   * what it is, the severities of what the call logged, and whether each
+   * names the denied import, with `mockAccess`.
    */
   async function useOnTheServer(mockAccess: 'error' | 'warn' | 'off') {
     const server = await startProtectedDevServer(
@@ -1155,14 +1150,23 @@ export const read = () => widget()
       { mockAccess },
     )
     const module = await server.import('/src/entry.ts', 'ssr')
-    const logged = captureMockAccess()
-    const value = module.read()
+    // (described inside: a mock is a thenable that resolves to itself, never
+    // awaited)
+    const { result: read, diagnostics } = await captureConsole(() =>
+      describeValue(module.read(), 'MARK_'),
+    )
+    const logged = warningsAndErrors(diagnostics)
     return {
-      read: describeValue(value, 'MARK_'),
-      loggedWith: distinct(
-        logged
-          .filter(({ message }) => message.includes('Mocked import used'))
-          .map(({ method }) => method),
+      read,
+      loggedWith: distinct(logged.map(({ severity }) => severity)),
+      unidentified: logged.filter(
+        (diagnostic) =>
+          mockAccessDiagnostics([diagnostic], {
+            severity: diagnostic.severity,
+            specifier: './widget.client',
+            file: 'src/widget.client.ts',
+            root: server.root,
+          }).length === 0,
       ),
     }
   }
@@ -1174,6 +1178,7 @@ export const read = () => widget()
       expect(await useOnTheServer('off')).toEqual({
         read: 'a safe mock',
         loggedWith: [],
+        unidentified: [],
       })
     },
     timeout,
@@ -1187,16 +1192,18 @@ export const read = () => widget()
   // Impact: on the server (SSR, the server fn provider), code that runs on
   // a mocked client-only import does so without any console diagnostic; the
   // violation warning of the dev server is the only trace of it.
-  // Source: V1 ip S03 (the unit row demanded that silence).
+  // Source: V1 ip S03 (the unit row demanded that silence); user ruling
+  // 2026-10-19 "mock mode always logs".
   test.fails.each([
-    { mockAccess: 'error', method: 'error' },
-    { mockAccess: 'warn', method: 'warn' },
+    { mockAccess: 'error', severity: 'error' },
+    { mockAccess: 'warn', severity: 'warning' },
   ] as const)(
-    '$mockAccess: the server gets a safe mock, and using it is reported with console.$method',
-    async ({ mockAccess, method }) => {
+    '$mockAccess: the server gets a safe mock, and using it is reported as an $severity naming the import',
+    async ({ mockAccess, severity }) => {
       expect(await useOnTheServer(mockAccess)).toEqual({
         read: 'a safe mock',
-        loggedWith: [method],
+        loggedWith: [severity],
+        unidentified: [],
       })
     },
     timeout,
@@ -1733,10 +1740,11 @@ export const leak = () => secret()
         files: leakApp('src/router.ts'),
         config: { server: { hmr: false } },
       })
-      const logged = captureMockAccess()
-      const router = await evaluateServed(server, '/src/router.ts')
-      expectSafeMock(router.getRouter()(), 'MARK_')
-      expect(logged).toEqual([])
+      const { diagnostics } = await captureConsole(async () => {
+        const router = await evaluateServed(server, '/src/router.ts')
+        expectSafeMock(router.getRouter()(), 'MARK_')
+      })
+      expect(warningsAndErrors(diagnostics)).toEqual([])
       expect(receivedViolations(violations, server.root)).toEqual([
         `client ${leakUse}`,
       ])

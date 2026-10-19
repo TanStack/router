@@ -23,6 +23,7 @@
  * an importer gets, not the generated code.
  */
 import { expect } from 'vitest'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
 import {
   getMockExportNamesBySource,
@@ -38,6 +39,10 @@ import {
   loadResolvedVirtualModule,
   resolveInternalVirtualModuleId,
 } from '../../src/vite/import-protection-plugin/virtualModules'
+import type {
+  Diagnostic,
+  Severity,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import type { ModuleStub } from '@tanstack/compiler-test-utils/module-linker'
 
 /**
@@ -170,6 +175,68 @@ export function describeValue(value: unknown, secret?: string): string {
 /** `describeValue` for `probeMockPrelude` scripts. */
 export const describeValuePrelude = `${probeMockPrelude}const describeValue = ${describeValue.toString()}
 `
+
+/**
+ * What identifies the runtime diagnostic of a use of a mock: its severity
+ * and the denied import. (Which importer used the mock is not required: the
+ * violation report names it, SPEC J6.5; main's mock of a denied file names
+ * the denied file in its place.)
+ */
+export interface MockAccessExpectation {
+  /** The console severity (`mockAccess: 'error'` or `'warn'`). */
+  severity: Severity
+  /** The denied import as the importer wrote it. */
+  specifier: string
+  /** The file the denied import resolves to, when it is a file. */
+  file?: string
+  /** The project root `file` is relative to. */
+  root?: string
+}
+
+/**
+ * The runtime diagnostics of a use of a mock (SPEC J6.3, `mockAccess`)
+ * among `diagnostics` (what the console received while the app ran, read
+ * by the shared A9 oracle `@tanstack/compiler-test-utils/diagnostics`):
+ * those of the expected severity that name the denied import, as written
+ * (`specifier`, a whole name) or as the file it resolves to (`file`). The
+ * prose and whether a file is spelled absolute or relative are free (SPEC
+ * §5.7, J6.12).
+ */
+export function mockAccessDiagnostics(
+  diagnostics: Array<Diagnostic>,
+  expected: MockAccessExpectation,
+): Array<Diagnostic> {
+  const { severity, specifier, file, root } = expected
+  return findDiagnostics(diagnostics, { severity }).filter(
+    (diagnostic) =>
+      findDiagnostics(diagnostic, { names: [specifier] }).length > 0 ||
+      (file !== undefined &&
+        findDiagnostics(diagnostic, { file, root }).length > 0),
+  )
+}
+
+/**
+ * Fails, listing what the console received, unless a runtime diagnostic of
+ * a use of a mock meets `expected` (`mockAccessDiagnostics`).
+ */
+export function expectMockAccess(
+  diagnostics: Array<Diagnostic>,
+  expected: MockAccessExpectation,
+): void {
+  expect(
+    mockAccessDiagnostics(diagnostics, expected).length,
+    `a ${expected.severity} naming ${expected.file ?? expected.specifier}, among:\n${diagnostics
+      .map(({ severity, text }) => `[${severity}] ${text}`)
+      .join('\n')}`,
+  ).toBeGreaterThan(0)
+}
+
+/**
+ * The console diagnostics of warning or error severity: what `mockAccess`
+ * may log (`off` logs none of them).
+ */
+export const warningsAndErrors = (diagnostics: Array<Diagnostic>) =>
+  diagnostics.filter(({ severity }) => severity !== 'info')
 
 /**
  * Evaluates `importer` with each denied import `source` (one specifier or

@@ -15,10 +15,13 @@ import {
   loadSilentMockModule,
   mockRuntimeModuleIdFromViolation,
 } from '../../src/import-protection/virtualModules'
+import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   evaluateMockModule,
   evaluateWithMock,
+  expectMockAccess,
   expectSafeMock,
+  warningsAndErrors,
 } from './mock-helpers'
 import type { ViolationInfo } from '../../src/import-protection/trace'
 
@@ -78,42 +81,31 @@ const violation: ViolationInfo = {
   ],
 }
 
-/**
- * Silences `console.warn` and `console.error`; the returned function reads
- * the messages of the errors logged since, by console method.
- */
-function captureConsole() {
-  const spies = {
-    warn: vi.spyOn(console, 'warn').mockImplementation(() => {}),
-    error: vi.spyOn(console, 'error').mockImplementation(() => {}),
-  }
-  const messages = (spy: (typeof spies)['warn']) =>
-    spy.mock.calls.map(([logged]) => String((logged as Error).message))
-  return () => ({ warn: messages(spies.warn), error: messages(spies.error) })
-}
-
 // In dev, the mock served in place of a denied file imports a mock runtime
 // chosen for the violation (`mockAccess`): each use of the mock reports the
-// violation in the browser console.
+// violation in the browser console. What is reported is read through the
+// shared diagnostic oracle: the severity and the denied
+// import, never the prose (SPEC J6.3, J6.12).
 describe('the dev mock of a denied file', () => {
   /**
    * Evaluates the dev mock of a denied file exporting `getSecret`, for
    * `violation` with the `mockAccess` mode `mode`, uses it (default: calls
-   * `getSecret()`), and returns the messages the use logged, by console
-   * method.
+   * `getSecret()`), and returns what the use logged as warnings and errors.
    */
   async function useDevMock(
     mode: 'error' | 'warn' | 'off',
     info: ViolationInfo = violation,
     use: (mod: Record<string, any>) => unknown = (mod) => mod.getSecret(),
   ) {
-    const output = captureConsole()
     const runtimeId = mockRuntimeModuleIdFromViolation(info, mode, '/project')
     const mod = await evaluateMockModule(
       generateDevSelfDenialModule(['getSecret'], runtimeId).code,
     )
-    use(mod)
-    return output()
+    // (never await a mock: it is a thenable that resolves to itself)
+    const { diagnostics } = await captureConsole(() => {
+      use(mod)
+    })
+    return warningsAndErrors(diagnostics)
   }
 
   test('is a safe mock, whatever mockAccess', async () => {
@@ -126,23 +118,14 @@ describe('the dev mock of a denied file', () => {
   })
 
   test.each([
-    { mode: 'error', method: 'error' },
-    { mode: 'warn', method: 'warn' },
+    { mode: 'error', severity: 'error' },
+    { mode: 'warn', severity: 'warning' },
   ] as const)(
-    'mockAccess $mode: a use in the client is reported with console.$method, naming the import, importer and trace',
-    async ({ mode, method }) => {
-      const output = await useDevMock(mode)
-      expect(output[method === 'error' ? 'warn' : 'error']).toEqual([])
-      expect(output[method]).toEqual([expect.any(String)])
-      expect(output[method][0]).toContain('Mocked import used in dev client')
-      for (const text of [
-        './secret.server',
-        '/project/src/routes/index.tsx',
-        'src/main.tsx',
-        'src/routes/index.tsx:5:10',
-      ]) {
-        expect(output[method][0]).toContain(text)
-      }
+    'mockAccess $mode: a use in the client is reported as an $severity naming the import',
+    async ({ mode, severity }) => {
+      const logged = await useDevMock(mode)
+      expect(severities(logged)).toEqual([severity])
+      expectMockAccess(logged, access(severity))
     },
   )
 
@@ -157,21 +140,33 @@ describe('the dev mock of a denied file', () => {
       },
     },
   ])('$name is reported as a use', async ({ use }) => {
-    expect(await useDevMock('error', violation, use)).toEqual({
-      warn: [],
-      error: [expect.stringContaining('Mocked import used in dev client')],
-    })
+    const logged = await useDevMock('error', violation, use)
+    expect(severities(logged)).toEqual(['error'])
+    expectMockAccess(logged, access('error'))
   })
 
   test('mockAccess off: a use is not reported', async () => {
-    expect(await useDevMock('off')).toEqual({ warn: [], error: [] })
+    expect(await useDevMock('off')).toEqual([])
   })
 })
+
+/** The distinct severities of `diagnostics`, in order. */
+const severities = (diagnostics: Array<{ severity: string }>) => [
+  ...new Set(diagnostics.map(({ severity }) => severity)),
+]
+
+/** The runtime diagnostic of a use of `violation`'s mock. */
+function access(severity: 'error' | 'warning') {
+  return {
+    severity,
+    specifier: violation.specifier,
+    root: '/project',
+  }
+}
 
 // In dev, an importer of a denied module links against a mock edge exporting
 // the names it uses, as members of the mock runtime chosen for the violation.
 test('the dev mock edge of a denied import reports a use in the client', async () => {
-  const output = captureConsole()
   const { read } = await evaluateWithMock(
     `import { secret } from './secret.server'
 export const read = () => secret()`,
@@ -184,9 +179,10 @@ export const read = () => secret()`,
       ),
     },
   )
-  read()
-  expect(output()).toEqual({
-    warn: [],
-    error: [expect.stringContaining('Mocked import used in dev client')],
+  const { diagnostics } = await captureConsole(() => {
+    read()
   })
+  const logged = warningsAndErrors(diagnostics)
+  expect(severities(logged)).toEqual(['error'])
+  expectMockAccess(logged, access('error'))
 })

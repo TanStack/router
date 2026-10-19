@@ -20,6 +20,7 @@ import { tanStackStartRsbuild } from '../src/rsbuild/plugin'
 import { startRuntimeLinks } from './build-harness'
 import { testLoaderFiles, useTestLoaders } from './rsbuild-test-loaders'
 import type { ImportProtectionOptions } from '../src/schema'
+import type { TanStackStartRsbuildInputConfig } from '../src/rsbuild/schema'
 import type { GenerateFunctionIdFnOptional } from '../src/start-compiler/types'
 import type { StartCompilerImportTransform } from '../src/types'
 import type {
@@ -180,9 +181,11 @@ export function startRsbuildStartDevServer(
      * package passes to Start's plugin (e.g. React's RSC CSS transform).
      */
     compilerTransforms?: Array<StartCompilerImportTransform>
+    /** The app's Start options (`tanStackStart(options)`). */
+    start?: TanStackStartRsbuildInputConfig
   },
 ): Promise<RsbuildDevServer> {
-  const { files, compilerTransforms, ...devServerOptions } = options
+  const { files, compilerTransforms, start, ...devServerOptions } = options
   return createRsbuildDevServer({
     dir: harnessDir,
     prefix: '.start-rsbuild-start-dev-server-',
@@ -204,17 +207,20 @@ export const Route = createRootRoute()
       ...files,
     },
     plugins: ({ root }) => [
-      tanStackStartRsbuild({
-        framework: 'react',
-        defaultEntryPaths: {
-          client: path.join(root, 'harness/client-entry.ts'),
-          server: path.join(root, 'harness/server-entry.ts'),
-          start: path.join(root, 'harness/start.ts'),
+      tanStackStartRsbuild(
+        {
+          framework: 'react',
+          defaultEntryPaths: {
+            client: path.join(root, 'harness/client-entry.ts'),
+            server: path.join(root, 'harness/server-entry.ts'),
+            start: path.join(root, 'harness/start.ts'),
+          },
+          providerEnvironmentName: 'ssr',
+          ssrIsProvider: true,
+          compilerTransforms,
         },
-        providerEnvironmentName: 'ssr',
-        ssrIsProvider: true,
-        compilerTransforms,
-      }),
+        start,
+      ),
       useTestLoaders(root),
     ],
   })

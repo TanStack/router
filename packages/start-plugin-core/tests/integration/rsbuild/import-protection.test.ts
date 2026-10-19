@@ -1,6 +1,13 @@
+import { createRequire } from 'node:module'
 import path from 'node:path'
+import vm from 'node:vm'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { diagnosticsOf } from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart } from '../../build-harness'
+import {
+  describeValuePrelude,
+  expectMockAccess,
+} from '../../importProtection/mock-helpers'
 import {
   distinct,
   rejection,
@@ -11,6 +18,7 @@ import {
   startRsbuildDevServer,
   startRsbuildStartDevServer,
 } from '../../rsbuild-dev-server'
+import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import type { ViolationInfo } from '../../../src/import-protection/trace'
 import type { ImportProtectionOptions } from '../../../src/schema'
@@ -138,6 +146,107 @@ console.log(read())
   },
   timeout,
 )
+
+// `mockAccess` applies wherever a mock is served, the server environments of
+// a dev server included (SPEC J6.3; user ruling 2026-10-19 "mock mode always
+// logs"): the SSR mock of a `.client` file reports its use in the server
+// console as configured.
+describe('Rsbuild dev with Start: an SSR import of a .client file: mockAccess', () => {
+  /**
+   * Runs the SSR output of a dev server with `mockAccess` in Node (a VM
+   * context) and calls the mocked `widget`: what it is, and what the call
+   * logged, as warnings and errors.
+   */
+  async function useOnTheServer(
+    mockAccess: NonNullable<ImportProtectionOptions>['mockAccess'],
+  ) {
+    const server = await startRsbuildStartDevServer({
+      compileTimeout,
+      start: { importProtection: { mockAccess } },
+      files: {
+        'src/widget.client.ts': `export const widget = () => 'MARK_CLIENT'\n`,
+        'src/entry.ts': `import { widget } from './widget.client'
+export const read = () => widget()
+;(globalThis as Record<string, unknown>).read = read
+`,
+      },
+    })
+    expect(server.errors).toEqual([])
+    const messages: Array<string> = []
+    const record =
+      (level: string) =>
+      (...args: Array<unknown>) => {
+        messages.push(
+          `${level}: ${args
+            .map((arg) =>
+              // errors of the VM context are not `instanceof Error` here
+              typeof arg === 'object' && arg !== null && 'message' in arg
+                ? String(arg.message)
+                : String(arg),
+            )
+            .join(' ')}`,
+        )
+      }
+    // The SSR output is a CommonJS bundle for Node.
+    const module = { exports: {} }
+    const context = vm.createContext({
+      console: {
+        log: record('log'),
+        warn: record('warn'),
+        error: record('error'),
+      },
+      module,
+      exports: module.exports,
+      require: createRequire(path.join(server.root, 'index.js')),
+    })
+    context.globalThis = context
+    for (const code of Object.values(await server.outputs('ssr'))) {
+      vm.runInContext(code, context)
+    }
+    const read = vm.runInContext(
+      `${describeValuePrelude}\ndescribeValue(read(), 'MARK_')`,
+      context,
+    ) as string
+    return {
+      read,
+      logged: consoleDiagnostics(messages).filter(
+        ({ severity }) => severity !== 'info',
+      ),
+    }
+  }
+
+  test.each([
+    { mockAccess: undefined, severity: 'error' },
+    { mockAccess: 'error', severity: 'error' },
+    { mockAccess: 'warn', severity: 'warning' },
+  ] as const)(
+    '$mockAccess: the server gets a safe mock, and using it is reported as an $severity naming the import',
+    async ({ mockAccess, severity }) => {
+      const { read, logged } = await useOnTheServer(mockAccess)
+      expect(read).toBe('a safe mock')
+      expect(distinct(logged.map((diagnostic) => diagnostic.severity))).toEqual(
+        [severity],
+      )
+      expectMockAccess(logged, {
+        severity,
+        specifier: './widget.client',
+        file: 'src/widget.client.ts',
+      })
+    },
+    timeout,
+  )
+
+  test(
+    'off: the server gets a safe mock, and using it is not reported',
+    async () => {
+      expect(await useOnTheServer('off')).toEqual({
+        read: 'a safe mock',
+        logged: [],
+      })
+    },
+    timeout,
+  )
+})
 
 // Source: round 4 mutation testing (rsbuild host, `behavior` in dev).
 describe('Rsbuild dev: behavior', () => {
@@ -415,35 +524,49 @@ console.log(a(), b(), query())
       },
     })
     expect(server.errors).toEqual([])
-    const messages = await runRsbuildClient(server)
+    const messages = await runRsbuildClient(server, { levels: true })
     expect(messages.filter((message) => message.includes('MARK_'))).toEqual([])
-    expect(
-      [
-        ...new Set(
-          messages
-            .filter((message) =>
-              message.includes('Mocked import used in dev client'),
-            )
-            .map((message) => /Denied import: "([^"]+)"/.exec(message)?.[1]),
-        ),
-      ].sort(),
-    ).toEqual(['db-lib', 'src/a.server.ts', 'src/b.server.ts'])
+    const logged = consoleDiagnostics(messages)
+    for (const denied of [
+      { specifier: './a.server', file: 'src/a.server.ts' },
+      { specifier: './b.server', file: 'src/b.server.ts' },
+      { specifier: 'db-lib' },
+    ]) {
+      expectMockAccess(logged, {
+        severity: 'error',
+        ...denied,
+      })
+    }
   },
   timeout,
 )
+
+/**
+ * What a client run logged (`runRsbuildClient` with `levels`), as
+ * diagnostics of the shared oracle, by console method.
+ */
+function consoleDiagnostics(messages: Array<string>): Array<Diagnostic> {
+  return messages.flatMap((message) => {
+    const [, level, text] = /^(\w+): ([\s\S]*)$/.exec(message)!
+    return diagnosticsOf(
+      text!,
+      level === 'error' ? 'error' : level === 'warn' ? 'warning' : 'info',
+    )
+  })
+}
 
 // Source: round 4 mutation testing (rsbuild host, `mockAccess`).
 describe('Rsbuild dev: mockAccess', () => {
   test.each<{
     mockAccess: NonNullable<ImportProtectionOptions>['mockAccess']
-    reports: Array<string>
+    reports: Array<'error' | 'warning'>
   }>([
     { mockAccess: undefined, reports: ['error'] },
     { mockAccess: 'error', reports: ['error'] },
-    { mockAccess: 'warn', reports: ['warn'] },
+    { mockAccess: 'warn', reports: ['warning'] },
     { mockAccess: 'off', reports: [] },
   ])(
-    '$mockAccess: the use of a mocked import is reported with console $reports',
+    '$mockAccess: the use of a mocked import is reported as $reports',
     async ({ mockAccess, reports }) => {
       const server = await startRsbuildDevServer({
         compileTimeout,
@@ -470,26 +593,23 @@ console.log(a(), query())
       expect(messages.filter((message) => message.includes('MARK_'))).toEqual(
         [],
       )
-      // Each denied import (the file and the specifier), by console method.
-      expect(
-        [
-          ...new Set(
-            messages
-              .filter((message) =>
-                message.includes('Mocked import used in dev client'),
-              )
-              .map(
-                (message) =>
-                  `${message.slice(0, message.indexOf(':'))} ${/Denied import: "([^"]+)"/.exec(message)?.[1]}`,
-              ),
-          ),
-        ].sort(),
-      ).toEqual(
-        reports.flatMap((level) => [
-          `${level} db-lib`,
-          `${level} src/a.server.ts`,
-        ]),
+      // The severities logged, and each denied import (the file and the
+      // specifier) named by a diagnostic of that severity.
+      const logged = consoleDiagnostics(messages).filter(
+        ({ severity }) => severity !== 'info',
       )
+      expect(distinct(logged.map(({ severity }) => severity))).toEqual(reports)
+      for (const severity of reports) {
+        for (const denied of [
+          { specifier: './a.server', file: 'src/a.server.ts' },
+          { specifier: 'db-lib' },
+        ]) {
+          expectMockAccess(logged, {
+            severity,
+            ...denied,
+          })
+        }
+      }
     },
     timeout,
   )
