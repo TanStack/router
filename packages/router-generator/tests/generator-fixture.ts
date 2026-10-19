@@ -1,7 +1,7 @@
 /**
  * Shared test helper: the generator fixtures (tests/generator/<name>), each
  * an app with its own configuration, shared by generator.test.ts (routes)
- * and integration/fixture-types.test.ts (types). A fixture runs in its own
+ * and integration/fixture-types-*.test.ts (types). A fixture runs in its own
  * directory or in a copy (`copyFixture`); the expected routes are in
  * generator-fixtures.ts.
  */

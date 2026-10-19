@@ -105,8 +105,8 @@ export const pagesApp = (target: 'react' | 'solid'): Case => ({
     '/posts/1': ['root', 'posts', 'post'],
     '/login': ['root', 'auth', 'login'],
   },
-  // (React: the same routes' types are checked by the first case of
-  // real-router.test.ts)
+  // (React: the types of the same routes are checked by the first case of
+  // integration/route-types.test.ts)
   types: target === 'solid',
 })
 

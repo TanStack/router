@@ -7,7 +7,7 @@
  * fail with an error naming the files (J1.7). Route files the generator
  * edits or scaffolds are checked for what the edit may change
  * (owned-edits.ts) and for the custom templates. The trees' types are
- * checked against the same routes in integration/fixture-types.test.ts
+ * checked against the same routes in integration/fixture-types-*.test.ts
  * (J1.13).
  */
 import fs from 'node:fs/promises'
