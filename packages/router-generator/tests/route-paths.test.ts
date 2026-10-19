@@ -19,7 +19,6 @@ import {
 import { createApp, fileRoute, generate, lazyFileRoute, rootRoute } from './app'
 import { checkApp, page } from './real-router'
 import { matchesOf, routesOf, urlsOf } from './route-tree'
-import { typeAssertions, typeErrorsOf } from './type-check'
 import type { Config } from '../src'
 
 /** An app with a root route and a route file for each of `files`. */
@@ -771,71 +770,5 @@ describe('token options', () => {
 // The routes of such files: the invalid-param-names fixture,
 // generator.test.ts.)
 
-// The route tree's types, checked by the real TypeScript compiler with the
-// real router types: the whole app type-checks, and a `to` or full path
-// stands for the right route (its `id`).
-describe('FileRoutesByTo', () => {
-  test('`to` of an index route is the index route, not a route under pathless layouts with the same path', async () => {
-    const root = await appWithRoutes([
-      'posts/index.tsx',
-      '_a.tsx',
-      '_a/_b.tsx',
-      '_a/_b/posts.tsx',
-    ])
-    await generate(root)
-
-    expect(
-      await typeErrorsOf(
-        root,
-        'src/checks.ts',
-        `import type { FileRoutesByTo } from './routeTree.gen'
-${typeAssertions}
-export type Check = Expect<Equal<FileRoutesByTo['/posts']['id'], '/posts/'>>
-`,
-      ),
-    ).toEqual([])
-  }, 30_000)
-
-  test('`to` of a route is the route, not its own pathless layout', async () => {
-    const root = await appWithRoutes([
-      'foo.tsx',
-      'foo/_auth.tsx',
-      'foo/_auth/bar.tsx',
-    ])
-    await generate(root)
-
-    expect(
-      await typeErrorsOf(
-        root,
-        'src/checks.ts',
-        `import type { FileRoutesByTo } from './routeTree.gen'
-${typeAssertions}
-export type Check = Expect<Equal<FileRoutesByTo['/foo']['id'], '/foo'>>
-`,
-      ),
-    ).toEqual([])
-  }, 30_000)
-})
-
-describe('FileRoutesByFullPath', () => {
-  test('the full path `/` is the index route, not a pathless layout with only a lazy file', async () => {
-    const root = await createApp({
-      'src/routes/__root.tsx': rootRoute(),
-      'src/routes/index.tsx': fileRoute('/'),
-      'src/routes/_auth.lazy.tsx': lazyFileRoute('/_auth'),
-      'src/routes/_auth/login.tsx': fileRoute('/_auth/login'),
-    })
-    await generate(root)
-
-    expect(
-      await typeErrorsOf(
-        root,
-        'src/checks.ts',
-        `import type { FileRoutesByFullPath } from './routeTree.gen'
-${typeAssertions}
-export type Check = Expect<Equal<FileRoutesByFullPath['/']['id'], '/'>>
-`,
-      ),
-    ).toEqual([])
-  }, 30_000)
-})
+// (The route tree types of these shapes, FileRoutesByTo and
+// FileRoutesByFullPath: integration/route-types.test.ts.)

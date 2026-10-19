@@ -27,6 +27,9 @@ import type { ModuleRunner } from 'vite/module-runner'
 /** This package's dependencies, for apps to import their packages from. */
 const nodeModules = path.resolve(import.meta.dirname, '../node_modules')
 
+/** This package's directory: the app root of the generator fixtures. */
+const packageRoot = await realpath(path.resolve(import.meta.dirname, '..'))
+
 /** The entry file of a router package, and the framework it is for. */
 const routerPackageFile =
   /[\\/](react|solid|vue)-router[\\/]dist[\\/][^\\/]+[\\/]index(?:\.dev)?\.[cm]?jsx?$/
@@ -131,12 +134,16 @@ async function createAppServer(frameworks: Frameworks, root: string) {
 }
 
 /**
- * The dev server Solid apps share in a worker: they bundle the Solid
- * router's sources for the server, and compiling them again for every load
- * would take most of a second. Nothing of an app is reused between loads
- * (`withModule`).
+ * The dev servers apps share in a worker, by root and frameworks: the
+ * shared Solid server (rooted at the temporary directory: Solid apps bundle
+ * the Solid router's sources for the server, and compiling them again for
+ * every load would take most of a second), and the servers of the apps in
+ * this package (the generator fixtures, which share this package's root:
+ * creating a server took most of the time of loading a fixture's tree).
+ * Other apps (in temporary directories) get a server of their own. Nothing
+ * of an app is reused between loads (`withModule`).
  */
-let solidServer: Promise<ViteDevServer> | undefined
+const sharedServers = new Map<string, Promise<ViteDevServer>>()
 
 /** A module of the app, loaded by a Vite server of the app. */
 interface LoadedModule {
@@ -150,7 +157,7 @@ interface LoadedModule {
  * Loads `file` (absolute path) like its app's dev server does for server
  * rendering, with a Vite server configured for the app's frameworks (from
  * the sources next to `file`) and a fresh module runner: a new server rooted
- * at the app, or for a Solid app the shared Solid server, which first forgets
+ * at the app, or a shared server (`sharedServers`), which first forgets
  * every module of the app so that an edited or regenerated file is
  * transformed again. JSX in the `.tsx`/`.jsx` files of a React or Vue app
  * compiles with Vite's default (React) transform. Runs `use` with the module.
@@ -162,12 +169,19 @@ async function withModule<T>(
   const root = await appRootOf(file)
   const realFile = await realpath(file)
   const frameworks = await frameworksIn(path.dirname(realFile))
+  const serverRoot =
+    frameworks.solid && !frameworks.vue
+      ? await realpath(tmpdir())
+      : root === packageRoot
+        ? root
+        : undefined
   let server: ViteDevServer
-  if (frameworks.solid && !frameworks.vue) {
-    solidServer ??= realpath(tmpdir()).then((dir) =>
-      createAppServer(frameworks, dir),
-    )
-    server = await solidServer
+  if (serverRoot) {
+    const key = JSON.stringify([serverRoot, frameworks])
+    if (!sharedServers.has(key)) {
+      sharedServers.set(key, createAppServer(frameworks, serverRoot))
+    }
+    server = await sharedServers.get(key)!
     const { moduleGraph } = server.environments.ssr
     for (const module of moduleGraph.idToModuleMap.values()) {
       if (
@@ -190,7 +204,7 @@ async function withModule<T>(
     return await use({ exports, runner })
   } finally {
     await runner.close()
-    if (server !== (await solidServer)) {
+    if (!serverRoot) {
       await server.close()
     }
   }
