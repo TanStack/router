@@ -9,13 +9,13 @@
  * integration/importProtection/{build,dev}.test.ts.
  */
 import { afterEach, describe, expect, test, vi } from 'vitest'
+import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   generateDevSelfDenialModule,
   generateSelfContainedMockModule,
   loadSilentMockModule,
   mockRuntimeModuleIdFromViolation,
 } from '../../src/import-protection/virtualModules'
-import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   evaluateMockModule,
   evaluateWithMock,

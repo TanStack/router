@@ -6,6 +6,7 @@
  */
 import { createRequire } from 'node:module'
 import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import {
@@ -354,7 +355,9 @@ describe('Rsbuild dev', () => {
       })
       const messages = await runRsbuildClient(server)
       expect({
-        reported: reportedViolations(server.errors).map(
+        reported: reportedViolations(
+          findDiagnostics(server.diagnostics, { severity: 'error' }),
+        ).map(
           ({ environment, importer }) =>
             `${environment} ${importer.replace(/:.*/, '')}`,
         ),
@@ -429,9 +432,9 @@ export const page = () => secret()
       })
       const messages = await runRsbuildClient(server)
       expect({
-        reported: reportedViolations(server.errors).map(
-          ({ environment, importer }) => `${environment} ${importer}`,
-        ),
+        reported: reportedViolations(
+          findDiagnostics(server.diagnostics, { severity: 'error' }),
+        ).map(({ environment, importer }) => `${environment} ${importer}`),
         ranRealCode: messages.some((message) => message.includes('MARK_')),
       }).toEqual({
         reported: [
@@ -489,7 +492,10 @@ export const page = () => 'MARK_PAGE'
           'src/entry.ts': `import { secret } from './secret.server'\nconsole.log(secret())\n`,
         },
       }).then(
-        (server) => server.errors.join('\n'),
+        (server) =>
+          findDiagnostics(server.diagnostics, { severity: 'error' })
+            .map(({ text }) => text)
+            .join('\n'),
         (error: Error) => error.message,
       )
       expect(outcome).toContain('MARK_THROWN')

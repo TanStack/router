@@ -202,3 +202,48 @@ test('settle() rejects while a plugin writes a file the compiles read on each co
   await server.write({ 'src/source.ts': `export const source = 'V2'\n` })
   await expect(server.settle()).rejects.toThrow(/keeps compiling/)
 }, 30_000)
+
+// A plugin that reports a problem once (Start's import protection with
+// `log: 'once'`) reports it in the first compile that sees it; a dev server
+// compiles again on its own, so the diagnostics of every compile are kept.
+test('diagnostics keeps the reports of every compile; errors and warnings hold the last compile', async () => {
+  let compile = 0
+  const server = await createRsbuildDevServer({
+    dir: testsDir,
+    registerCleanup: onTestFinished,
+    files: { 'src/entry.ts': `console.log('MARK_V1')\n` },
+    plugins: [
+      {
+        name: 'reports-once',
+        setup(api) {
+          api.processAssets({ stage: 'report' }, ({ compilation }) => {
+            compile++
+            if (compile === 1) {
+              compilation.warnings.push(
+                new Error('MARK_WARNING_FIRST') as never,
+              )
+              compilation.errors.push(new Error('MARK_ERROR_FIRST') as never)
+            }
+          })
+        },
+      },
+    ],
+  })
+  const texts = (diagnostics: Array<{ severity: string; text: string }>) =>
+    diagnostics.map(({ severity, text }) => `${severity}: ${text}`)
+  expect(texts(server.diagnostics)).toEqual([
+    expect.stringMatching(/^error: [\s\S]*MARK_ERROR_FIRST/),
+    expect.stringMatching(/^warning: [\s\S]*MARK_WARNING_FIRST/),
+  ])
+
+  const since = server.diagnostics.length
+  await server.edit({ 'src/entry.ts': `console.log('MARK_V2')\n` })
+
+  expect(server.errors).toEqual([])
+  expect(server.warnings).toEqual([])
+  expect(texts(server.diagnostics).slice(0, 2)).toEqual([
+    expect.stringMatching(/^error: [\s\S]*MARK_ERROR_FIRST/),
+    expect.stringMatching(/^warning: [\s\S]*MARK_WARNING_FIRST/),
+  ])
+  expect(server.diagnostics.slice(since)).toEqual([])
+}, 30_000)

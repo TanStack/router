@@ -92,7 +92,7 @@ export async function startProtectedDevServer(
       : [{ name: providerEnvironment, type: 'server' as const }]),
   ]
   const violations: Array<ViolationInfo> = []
-  const userOnViolation = importProtection?.onViolation
+  const userOnViolation = importProtection.onViolation
   const recording: ImportProtectionOptions = {
     ...importProtection,
     onViolation: (info) => {

@@ -23,7 +23,7 @@
  *   handling its event, or when chokidar dropped a change of it); until a
  *   round sees no new event.
  * A plugin that keeps writing files on each event never settles (an error
- * after 10 rounds).
+ * after `settleRounds` rounds, 10 by default).
  *
  * In Vite's full-bundle dev (`bundledDev`), Rolldown's dev engine watches
  * the modules it bundled and Vite's watcher watches what plugins add to it:
@@ -91,6 +91,13 @@ export interface DevServerOptions extends AppOptions {
    * an event that never comes. Default 20 000.
    */
   eventTimeout?: number
+  /**
+   * Rounds of file events after which `settle()` gives up on an app whose
+   * files keep changing (a plugin rewriting a file on each event). Default
+   * 10: enough for the chains plugins write (a generated file read by
+   * another plugin); a control test of that failure lowers it.
+   */
+  settleRounds?: number
   /**
    * Serves the client environment in Vite's full-bundle dev mode
    * (`experimental.bundledDev`: Rolldown's dev engine bundles it) from
@@ -258,6 +265,7 @@ export async function createDevServer(
   const { plugins = [], config = {}, bundledDev, browser = false } = options
   const listen = options.listen ?? browser
   const eventTimeout = options.eventTimeout ?? 20_000
+  const settleRounds = options.settleRounds ?? 10
   // Vite handles file events with HMR only: without it, nothing tells when
   // the server has handled one, so the server runs without a watcher. In
   // full-bundle dev, Vite's watcher watches only what plugins add to it, and
@@ -884,9 +892,9 @@ export async function createDevServer(
       if (events.length === before) {
         break
       }
-      if (round === 10) {
+      if (round === settleRounds) {
         throw new Error(
-          `the app's files keep changing after 10 rounds of file events: ${[
+          `the app's files keep changing after ${settleRounds} rounds of file events: ${[
             ...new Set(events.slice(before).map((event) => event.file)),
           ].join(', ')}`,
         )

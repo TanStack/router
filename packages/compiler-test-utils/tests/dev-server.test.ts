@@ -207,10 +207,15 @@ describe('dev server harness', () => {
           )
         },
       }
-      const server = await createDevServer({ files, plugins: [rewriter] })
+      // (3 rounds: a loop shows after the first; 10 would wait ~1.4 s more)
+      const server = await createDevServer({
+        files,
+        plugins: [rewriter],
+        settleRounds: 3,
+      })
       await expect(
         server.edit({ 'leaf.ts': `export const leaf = 'v2'\n` }),
-      ).rejects.toThrow(/keep changing after 10 rounds[\s\S]*generated\.ts/)
+      ).rejects.toThrow(/keep changing after 3 rounds[\s\S]*generated\.ts/)
     },
     timeout,
   )

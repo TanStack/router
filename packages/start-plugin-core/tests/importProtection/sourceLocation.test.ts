@@ -9,9 +9,9 @@
 import { transformWithOxc } from 'vite'
 import { describe, expect, test } from 'vitest'
 import {
-  createImportSpecifierLocationIndex,
   ImportLocCache,
   addTraceImportLocations,
+  createImportSpecifierLocationIndex,
   findImportStatementLocationFromTransformed,
   findOriginalUsageLocation,
   findPostCompileUsageLocation,
