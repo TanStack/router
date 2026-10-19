@@ -254,11 +254,12 @@ describe('the trace of a client import of a denied file', () => {
   )
 
   // The dev twin of the build test in reported-location.test.ts "the trace is
-  // the shortest import chain".
+  // a real import chain from the entry to the importer": any real chain will
+  // do, not necessarily the shortest (SPEC J6.5; V1 ip S07).
   // Source: r5-gaps N8 (spc:4072, 4073: the module graph search revisits
   // modules).
   test(
-    'is the shortest import chain',
+    'is a real import chain from the entry to the importer',
     async () => {
       const server = await startProtectedDevServer(
         {
@@ -284,11 +285,10 @@ export const page = () => c() + s()
       const reports = violationReports(server.logs)
       expect(reports).not.toEqual([])
       for (const report of reports) {
-        expect(traceModules(report)).toEqual([
-          'src/entry.ts',
-          'src/a.ts',
-          'src/s.ts',
-        ])
+        expect([
+          ['src/entry.ts', 'src/a.ts', 'src/s.ts'],
+          ['src/entry.ts', 'src/a.ts', 'src/c.ts', 'src/s.ts'],
+        ]).toContainEqual(traceModules(report))
       }
     },
     timeout,
@@ -933,6 +933,19 @@ export const read = () => secret()
   })
   const serverOnly = `import '@tanstack/react-start/server-only'\n`
 
+  /**
+   * A logged report of the client import of the marked `src/<marked>.ts` by
+   * `src/<importer>.ts` (whose line 1 imports it and whose line 2 uses it at
+   * column 27): at the importer's use, at its import (SPEC J6.5, V1 ip S08),
+   * or at the marked module (audit F ASK-1).
+   */
+  const markerReport = (importer: string, marked: string) =>
+    expect.stringMatching(
+      new RegExp(
+        `^client src/(?:${importer}\\.ts:(?:1:\\d+|2:27)|${marked}\\.ts\\b)`,
+      ),
+    )
+
   // Control for the pins below (same harness): once the server knows the
   // module is server-only, its importers get a mock.
   test(
@@ -953,7 +966,9 @@ export const read = () => secret()
     async () => {
       const server = await startProtectedDevServer(markedApp(serverOnly))
       await server.load('/src/entry.ts')
-      expect(loggedViolations(server.logs)).toContain('client src/a.ts:2:27')
+      expect(loggedViolations(server.logs)).toContainEqual(
+        markerReport('a', 'b'),
+      )
     },
     timeout,
   )
@@ -974,8 +989,8 @@ export const peek = () => other()
       await server.load('/src/entry.ts')
       expect(loggedViolations(server.logs)).toEqual(
         expect.arrayContaining([
-          'client src/a.ts:2:27',
-          'client src/c.ts:2:27',
+          markerReport('a', 'b'),
+          markerReport('c', 'd'),
         ]),
       )
     },
@@ -1044,10 +1059,7 @@ export const peek = () => other()
     'after an edit adds the marker, the violation is logged',
     async () => {
       const { reported } = await addMarkerByAnEdit()
-      // (at the importer's use, or at the marker: audit F ASK-1)
-      expect(reported).toContainEqual(
-        expect.stringMatching(/^client src\/(a\.ts:2:27|b\.ts\b)/),
-      )
+      expect(reported).toContainEqual(markerReport('a', 'b'))
     },
     timeout,
   )
