@@ -10,7 +10,10 @@
  * dev (its sync twin is pinned in dev.test.ts).
  */
 import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
-import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  captureConsole,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { afterAll, afterEach, describe, expect, test } from 'vitest'
 import { startDevServer } from '../../dev-server'
 import {
@@ -21,7 +24,7 @@ import {
   runInClient,
   startRsbuildStartDevServer,
 } from '../../rsbuild-dev-server'
-import { reportedImporters, rsbuildDevLog, runRsbuildSsr } from './v2-hosts'
+import { reportedImporters, runRsbuildSsr } from './v2-hosts'
 import type { ImportProtectionOptions } from '../../../src/schema'
 import type { ViolationInfo } from '../../../src/import-protection/trace'
 
@@ -103,7 +106,7 @@ describe('rsbuild dev', () => {
     (started ??= startRsbuildStartDevServer({
       compileTimeout,
       files: app,
-      start: { importProtection: { ...importProtection, ...rsbuildDevLog } },
+      start: { importProtection },
       registerCleanup: (cleanup) => {
         dispose = cleanup
       },
@@ -116,7 +119,10 @@ describe('rsbuild dev', () => {
     expect(ran).toEqual({ result: expect.anything() })
     return {
       value: (ran as { result: Record<string, string> }).result[name],
-      reported: reportedImporters(server.warnings, 'client').includes(importer),
+      reported: reportedImporters(
+        findDiagnostics(server.diagnostics, { severity: 'warning' }),
+        'client',
+      ).includes(importer),
     }
   }
 
@@ -180,7 +186,10 @@ describe('rsbuild dev', () => {
       const ran = await runRsbuildSsr(server, readScript)
       expect({
         ran,
-        reported: reportedImporters(server.warnings, 'server'),
+        reported: reportedImporters(
+          findDiagnostics(server.diagnostics, { severity: 'warning' }),
+          'server',
+        ),
       }).toEqual({
         ran: { result: { handler: 'a safe mock' } },
         reported: ['src/app/handler.ts'],

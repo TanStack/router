@@ -602,8 +602,6 @@ async function rsbuildServer(
     ],
   })
   let updates = 0
-  /** Warnings of every compile so far (`server.warnings` holds the last). */
-  const allWarnings = [...server.warnings]
   const hotUpdateChunks = async () =>
     Object.keys(await server.hotUpdates()).length
   return {
@@ -614,7 +612,6 @@ async function rsbuildServer(
       const before = await hotUpdateChunks()
       await server.write(edited)
       await server.settle()
-      allWarnings.push(...server.warnings)
       if ((await hotUpdateChunks()) > before) {
         updates++
       }
@@ -626,7 +623,11 @@ async function rsbuildServer(
     // A webpack-style invalidation is applied within the client's update
     invalidations: () => 0,
     root: server.root,
-    warnings: () => [...allWarnings],
+    // Every compile's (the page's edits settle before they are read)
+    warnings: () =>
+      server.diagnostics
+        .filter((diagnostic) => diagnostic.severity === 'warning')
+        .map((diagnostic) => diagnostic.text),
   }
 }
 

@@ -12,7 +12,10 @@
  * and dev servers with Start's whole plugin.
  */
 import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
-import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  captureConsole,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { afterAll, afterEach, describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import { startDevServer } from '../../dev-server'
@@ -24,7 +27,8 @@ import {
   runInClient,
   startRsbuildStartDevServer,
 } from '../../rsbuild-dev-server'
-import { reportedImporters, rsbuildDevLog, runRsbuildSsr } from './v2-hosts'
+import { reportedImporters, runRsbuildSsr } from './v2-hosts'
+import type { ReportOutput } from '../../importProtection/violation-report'
 import type { StartBuild } from '../../build-harness'
 import type { ImportProtectionOptions } from '../../../src/schema'
 
@@ -121,7 +125,7 @@ interface Read {
 function outcome(
   environment: 'client' | 'server',
   read: Read,
-  output: string | Array<string>,
+  output: ReportOutput,
 ) {
   const reported = reportedImporters(output, environment)
   const isReported = (importer: string, marked?: string) =>
@@ -304,7 +308,7 @@ describe('rsbuild dev', () => {
     (started ??= startRsbuildStartDevServer({
       compileTimeout,
       files: app,
-      start: { importProtection: { ...importProtection, ...rsbuildDevLog } },
+      start: { importProtection },
       registerCleanup: (cleanup) => {
         dispose = cleanup
       },
@@ -317,7 +321,11 @@ describe('rsbuild dev', () => {
       const ran = await runInClient(server, readScript(usesOf.client))
       expect(ran).toEqual({ result: expect.anything() })
       expect(
-        outcome('client', (ran as { result: Read }).result, server.warnings),
+        outcome(
+          'client',
+          (ran as { result: Read }).result,
+          findDiagnostics(server.diagnostics, { severity: 'warning' }),
+        ),
       ).toEqual(expected.client)
     },
     timeout,
@@ -330,7 +338,11 @@ describe('rsbuild dev', () => {
       const ran = await runRsbuildSsr(server, readScript(usesOf.server))
       expect(ran).toEqual({ result: expect.anything() })
       expect(
-        outcome('server', (ran as { result: Read }).result, server.warnings),
+        outcome(
+          'server',
+          (ran as { result: Read }).result,
+          findDiagnostics(server.diagnostics, { severity: 'warning' }),
+        ),
       ).toEqual(expected.server)
     },
     timeout,

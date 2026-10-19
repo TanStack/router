@@ -12,7 +12,10 @@
  * tests that need the user-visible text (what is logged, how often, the
  * displayed trace and frame) read it through this adapter.
  */
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  diagnosticsOf,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
 
 export interface ReportedViolation {
   /** `client` or `server`. */
@@ -93,14 +96,22 @@ function isHeader(line: string): boolean {
 }
 
 /**
- * Splits `output` into candidate report blocks: each log entry of an array
- * on its own; within a text, a block starts at a header line (the first
- * line of a paragraph that is not a section of a report, or any line
- * announcing import protection).
+ * What the reports are read from: the text a user sees (a log, an error
+ * message), log entries, or anything `diagnosticsOf` reads (diagnostics, an
+ * Rsbuild dev server's `diagnostics`, an error, a build result), each
+ * diagnostic's text on its own.
  */
-function blocks(output: string | Array<string>): Array<Array<string>> {
-  if (Array.isArray(output)) {
-    return output.flatMap(blocks)
+export type ReportOutput = string | Array<string> | unknown
+
+/**
+ * Splits `output` into candidate report blocks: each log entry of an array
+ * (or each diagnostic's text) on its own; within a text, a block starts at
+ * a header line (the first line of a paragraph that is not a section of a
+ * report, or any line announcing import protection).
+ */
+function blocks(output: ReportOutput): Array<Array<string>> {
+  if (typeof output !== 'string') {
+    return diagnosticsOf(output).flatMap(({ text }) => blocks(text))
   }
   const text = output
     // Rsbuild boxes the lines of an error with `│`
@@ -147,15 +158,13 @@ function isCandidate(block: Array<string>): boolean {
 }
 
 /** The violation reports in `output`, in order. */
-export function violationReports(
-  output: string | Array<string>,
-): Array<ViolationReport> {
+export function violationReports(output: ReportOutput): Array<ViolationReport> {
   return blocks(output).filter(isCandidate).flatMap(parseReport)
 }
 
 /** `environment` and `importer` of each report in `output`, in order. */
 export function reportedViolations(
-  output: string | Array<string>,
+  output: ReportOutput,
 ): Array<ReportedViolation> {
   return violationReports(output).map(({ environment, importer }) => ({
     environment,
@@ -164,7 +173,7 @@ export function reportedViolations(
 }
 
 /** The text of each report in `output`, in order. */
-export function violationTexts(output: string | Array<string>): Array<string> {
+export function violationTexts(output: ReportOutput): Array<string> {
   return violationReports(output).map(({ text }) => text)
 }
 

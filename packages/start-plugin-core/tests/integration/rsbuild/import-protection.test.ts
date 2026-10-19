@@ -139,9 +139,9 @@ console.log(read())
     expect(server.errors).toEqual([])
     expect(
       distinct(
-        reportedViolations(server.warnings).map(
-          ({ environment, importer }) => `${environment} ${importer}`,
-        ),
+        reportedViolations(
+          findDiagnostics(server.diagnostics, { severity: 'warning' }),
+        ).map(({ environment, importer }) => `${environment} ${importer}`),
       ),
     ).toEqual(['server src/entry.ts:2:27'])
     const code = async (environment: string) =>
@@ -275,13 +275,18 @@ console.log(secret())
 `,
         },
       })
+      const severityOf = { warnings: 'warning', errors: 'error' } as const
       const other = reportedAs === 'errors' ? 'warnings' : 'errors'
+      const reported = (as: typeof reportedAs) =>
+        reportedViolations(
+          findDiagnostics(server.diagnostics, { severity: severityOf[as] }),
+        )
       expect(
-        reportedViolations(server[reportedAs]).map(
+        reported(reportedAs).map(
           ({ environment, importer }) => `${environment} ${importer}`,
         ),
       ).toEqual(['client src/entry.ts:2:13'])
-      expect(reportedViolations(server[other])).toEqual([])
+      expect(reported(other)).toEqual([])
     },
     timeout,
   )
@@ -312,14 +317,22 @@ console.log(secret(), other)
         importProtection: { log },
         files: app,
       })
-      const reported = () =>
-        reportedViolations(server.warnings).map(
-          ({ environment, importer }) => `${environment} ${importer}`,
+      // Which violations the compiles since `since` report (a dev server
+      // may compile more than once for one edit; the same report in each
+      // counts once).
+      const reported = (since: number) =>
+        distinct(
+          reportedViolations(
+            findDiagnostics(server.diagnostics.slice(since), {
+              severity: 'warning',
+            }),
+          ).map(({ environment, importer }) => `${environment} ${importer}`),
         )
-      expect(reported()).toEqual(['client src/entry.ts:3:13'])
+      expect(reported(0)).toEqual(['client src/entry.ts:3:13'])
+      const since = server.diagnostics.length
       await server.edit({ 'src/other.ts': `export const other = 2\n` })
       expect(server.rebuilt).toContain('src/other.ts')
-      expect(reported()).toEqual(afterRebuild)
+      expect(reported(since)).toEqual(afterRebuild)
     },
     timeout,
   )

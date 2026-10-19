@@ -16,7 +16,10 @@
  * seen by a browser page are in v2-edits-page.test.ts.
  */
 import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
-import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  captureConsole,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { afterAll, describe, expect, test } from 'vitest'
 import { servedStartRuntime, startDevServer } from '../../dev-server'
 import {
@@ -27,7 +30,7 @@ import {
   runInClient,
   startRsbuildStartDevServer,
 } from '../../rsbuild-dev-server'
-import { reportedImporters, rsbuildDevLog, runRsbuildSsr } from './v2-hosts'
+import { reportedImporters, runRsbuildSsr } from './v2-hosts'
 
 const timeout = 60_000
 const compileTimeout = timeout
@@ -251,9 +254,6 @@ describe('vite dev', () => {
         const served = await server.load('/src/router.ts')
         await server.idle()
         const logs = server.logs.slice(since)
-        if (index === 2) {
-          console.info('DEBUGLOGS', JSON.stringify(logs, null, 1))
-        }
         outcomes.push({
           client: {
             values: result.clientValues,
@@ -294,22 +294,29 @@ describe('rsbuild dev', () => {
       files: app,
       // `log: 'always'`: each compile reports what it finds, so a stale
       // violation shows in the compile of the step that removed it.
-      start: { importProtection: { ...rsbuildDevLog, mockAccess: 'off' } },
+      start: { importProtection: { log: 'always', mockAccess: 'off' } },
       registerCleanup: (cleanup) => {
         dispose = cleanup
       },
     })
     const outcomes: Array<StepOutcome> = []
     for (const [index, step] of steps.entries()) {
+      // The reports of the step: from its edit on
+      let since = 0
       if (index > 0) {
+        // Known upstream flake (FOLLOWUPS "Rspack loses a file removal
+        // that lands while a compile runs"): a removal that lands while
+        // the watcher is paused for a compile is never reported, and the
+        // first removal starts a compile at once. Not worked around here.
         await server.edit({
           'src/secret.server.ts': null,
           'src/widget.client.ts': null,
         })
-        // Recreated with the step's edit: recreated on their own after the
-        // compile that failed to resolve them, under load no compile ever
-        // included them (60 s; Rspack's watcher of missing files, outside
-        // import protection), while the edited importers are watched and
+        since = server.diagnostics.length
+        // Recreated with the step's edit (W3-ip-v2): recreated on their
+        // own, under load the second file was never compiled (very likely
+        // the same mechanism: a change landing while the watcher is paused,
+        // with an mtime before the compile's start); the edited importers
         // resolve them again.
         await server.edit({
           'src/secret.server.ts': secretServer(index),
@@ -321,8 +328,10 @@ describe('rsbuild dev', () => {
         expect(ran).toEqual({ result: expect.anything() })
         return (ran as { result: Record<string, string> }).result
       }
-      // The warnings of the compile of the step's edit
-      const warnings = [...server.warnings]
+      // The warnings of the compiles of the step's edit
+      const warnings = findDiagnostics(server.diagnostics.slice(since), {
+        severity: 'warning',
+      })
       outcomes.push({
         client: {
           values: values(await runInClient(server, observeScript)),

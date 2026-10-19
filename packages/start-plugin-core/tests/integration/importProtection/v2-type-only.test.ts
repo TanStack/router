@@ -10,7 +10,10 @@
  * dev servers with Start's whole plugin.
  */
 import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
-import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  captureConsole,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { afterAll, afterEach, describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import { servedStartRuntime, startDevServer } from '../../dev-server'
@@ -22,7 +25,7 @@ import {
   runInClient,
   startRsbuildStartDevServer,
 } from '../../rsbuild-dev-server'
-import { reportedImporters, rsbuildDevLog } from './v2-hosts'
+import { reportedImporters } from './v2-hosts'
 import type { StartBuild } from '../../build-harness'
 
 const timeout = 60_000
@@ -165,7 +168,6 @@ describe('rsbuild dev', () => {
       const server = await startRsbuildStartDevServer({
         compileTimeout,
         files: app,
-        start: { importProtection: rsbuildDevLog },
       })
       expect(server.errors).toEqual([])
       const { result } = await captureConsole(() =>
@@ -173,7 +175,10 @@ describe('rsbuild dev', () => {
       )
       expect({
         ...(result as { result: Omit<Outcome, 'reported'> }).result,
-        reported: reportedImporters(server.warnings, 'client'),
+        reported: reportedImporters(
+          findDiagnostics(server.diagnostics, { severity: 'warning' }),
+          'client',
+        ),
       }).toEqual(expected)
     },
     timeout,

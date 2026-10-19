@@ -8,23 +8,16 @@ import { createRequire } from 'node:module'
 import path from 'node:path'
 import vm from 'node:vm'
 import { reportedViolations } from '../../importProtection/start-apps'
+import type { ReportOutput } from '../../importProtection/violation-report'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
 /**
- * The import protection options of the Rsbuild dev servers: `log: 'always'`.
- * An Rsbuild dev server may compile again right after its first compile (a
- * module rebuilt for a file a plugin wrote), and the harness keeps the
- * diagnostics of the last compile only: with the default `'once'`, that
- * compile does not report a violation again.
- */
-export const rsbuildDevLog = { log: 'always' } as const
-
-/**
  * The importers of the violations reported for `environment` (`client` or
- * `server`) in `output`, without their locations, each once, sorted.
+ * `server`) in `output` (text, log entries, or an Rsbuild dev server's
+ * `diagnostics`), without their locations, each once, sorted.
  */
 export function reportedImporters(
-  output: string | Array<string>,
+  output: ReportOutput,
   environment: 'client' | 'server',
 ): Array<string> {
   return [

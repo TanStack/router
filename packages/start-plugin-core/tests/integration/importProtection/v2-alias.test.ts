@@ -20,7 +20,10 @@ import {
   createDevServer,
   evaluateServed,
 } from '@tanstack/compiler-test-utils/dev-server'
-import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  captureConsole,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { afterEach, describe, expect, onTestFinished, test } from 'vitest'
 import { buildStart, startRuntimeLinks } from '../../build-harness'
 import { startPlugin, startPluginFiles } from '../../dev-server'
@@ -34,8 +37,8 @@ import {
   runInClient,
   startRsbuildStartDevServer,
 } from '../../rsbuild-dev-server'
-import { rsbuildDevLog } from './v2-hosts'
 import type { ImportProtectionOptions } from '../../../src/schema'
+import type { ReportOutput } from '../../importProtection/violation-report'
 import type { PluginOption } from 'vite'
 
 const timeout = 60_000
@@ -95,7 +98,7 @@ const expectedReport = {
   ),
 }
 
-const reportsOf = (output: string | Array<string>) =>
+const reportsOf = (output: ReportOutput) =>
   violationReports(output).map(({ environment, specifier, importer }) => ({
     environment,
     specifier,
@@ -253,7 +256,6 @@ describe('rsbuild: tsconfig paths', () => {
       const server = await startRsbuildStartDevServer({
         compileTimeout,
         files: aliasApp,
-        start: { importProtection: rsbuildDevLog },
       })
       expect(server.errors).toEqual([])
       // The probe of `expectSafeMock`, run where the mock lives.
@@ -268,7 +270,9 @@ return {
         ),
       )
       expect(result).toEqual({ result: { probe: safeMock, loaded: null } })
-      expect(reportsOf(server.warnings)).toEqual([expectedReport])
+      expect(
+        reportsOf(findDiagnostics(server.diagnostics, { severity: 'warning' })),
+      ).toEqual([expectedReport])
     },
     timeout,
   )
@@ -279,11 +283,11 @@ return {
       const server = await startRsbuildStartDevServer({
         compileTimeout,
         files: aliasApp,
-        start: {
-          importProtection: { ...rsbuildDevLog, behavior: { dev: 'error' } },
-        },
+        start: { importProtection: { behavior: { dev: 'error' } } },
       })
-      expect(reportsOf(server.errors)).toEqual([expectedReport])
+      expect(
+        reportsOf(findDiagnostics(server.diagnostics, { severity: 'error' })),
+      ).toEqual([expectedReport])
     },
     timeout,
   )

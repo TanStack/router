@@ -8,6 +8,7 @@
  * planned warning is dev-only, user ruling D8). Its errors fail the build.
  */
 import { describe, expect, test } from 'vitest'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../build-harness'
 import { warnMeTransform as warningTransform } from '../compiler-transforms-seam'
 import { startDevServer } from '../dev-server'
@@ -136,7 +137,14 @@ describe("dev servers with Start's plugin", () => {
         compilerTransforms: [warningTransform],
         files,
       })
-      expect(named(server.warnings)).toEqual(['warned'])
+      // Every compile's warnings (none is lost to a later compile)
+      expect(
+        named(
+          findDiagnostics(server.diagnostics, { severity: 'warning' }).map(
+            ({ text }) => text,
+          ),
+        ),
+      ).toEqual(['warned'])
     },
     timeout,
   )

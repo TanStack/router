@@ -9,7 +9,10 @@
  * Rsbuild: original source first), so each case runs on both.
  */
 import { describe, expect, test } from 'vitest'
-import { mentionsFile } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  findDiagnostics,
+  mentionsFile,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../../build-harness'
 import { startRsbuildDevServer } from '../../rsbuild-dev-server'
 import {
@@ -22,6 +25,7 @@ import {
 } from '../../importProtection/start-apps'
 import type { StartBuildOptions, StartBundler } from '../../build-harness'
 import type {
+  ReportOutput,
   ReportedTraceStep,
   ViolationReport,
 } from '../../importProtection/violation-report'
@@ -50,7 +54,7 @@ export default function Secret() {
     'src/a.tsx': code,
     'src/entry.ts': `export * from './a'\n`,
   }
-  let output: string | Array<string>
+  let output: ReportOutput
   if (channel === 'vite dev') {
     const server = await startProtectedDevServer(files)
     await server.load('/src/entry.ts')
@@ -63,10 +67,13 @@ export default function Secret() {
       config: { output: { sourceMap: { js: 'cheap-module-source-map' } } },
     })
     // (a compile that fails for another reason fails the test)
+    const errors = findDiagnostics(server.diagnostics, { severity: 'error' })
     expect(
-      server.errors.filter((error) => !error.includes('[import-protection]')),
+      errors
+        .map(({ text }) => text)
+        .filter((error) => !error.includes('[import-protection]')),
     ).toEqual([])
-    output = server.errors
+    output = errors
   } else {
     const bundler = channel === 'vite build' ? 'vite' : 'rsbuild'
     // (a build without any violation succeeds)
