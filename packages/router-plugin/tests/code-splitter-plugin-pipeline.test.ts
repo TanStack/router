@@ -21,6 +21,7 @@ import {
   parseModule,
   renderComponent,
   routeFile,
+  routeSpecifier,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
 import type { PluginOption } from 'vite'
@@ -519,6 +520,43 @@ export const Route = createFileRoute('/')({})
     )
   },
 )
+
+// The most common root route (1,891 corpus files, V2-30): `createRootRoute()`
+// without options. Through the plugin it stays a valid module that
+// evaluates, and the real router renders its child through the default
+// `Outlet` (SPEC J2.1, J2.7).
+describe('a root route created without options', () => {
+  it.each([false, true])(
+    'renders its child through the default Outlet (hmr: %s)',
+    async (hmr) => {
+      const route = await loadRoute(
+        `import { createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute()
+`,
+        { filename: 'routes/__root.tsx', routeId: '__root__', hmr },
+      )
+      await expectValidModules(route.modules)
+      // Another module of the app builds the route tree on the root route.
+      const app = await route.importFromRoute(`import { createMemoryHistory, createRoute, createRouter } from '@tanstack/react-router'
+import { Route } from '${routeSpecifier}'
+export { RouterProvider } from '@tanstack/react-router'
+const child = createRoute({
+  getParentRoute: () => Route,
+  path: '/',
+  component: () => <p>child</p>,
+})
+export const router = createRouter({
+  routeTree: Route.addChildren([child]),
+  history: createMemoryHistory({ initialEntries: ['/'] }),
+})
+`)
+      await app.router.load()
+      expect(
+        await renderComponent(app.RouterProvider, { router: app.router }),
+      ).toBe('<p>child</p>')
+    },
+  )
+})
 
 describe('route HMR plugin without code splitting', () => {
   async function transformWith(

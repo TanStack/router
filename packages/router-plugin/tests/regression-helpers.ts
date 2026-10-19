@@ -27,12 +27,8 @@ import type { Stubs } from './lazy-tracking'
 export {
   importRequests,
   compileRouteModules,
-  eagerModuleIds,
-  eagerImportSources,
-  countAcrossModules,
   expectValidModules,
   importSources,
-  routeModuleSources,
   importedNames,
   exportedNames,
   routeFile,
