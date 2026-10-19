@@ -16,6 +16,7 @@
  * Concurrent: each pin has its own dev server and page, and mostly waits.
  */
 import { describe, test } from 'vitest'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { openRouteHmrPage } from '../route-hmr-page'
 import type { TestContext } from 'vitest'
 import type { EditResult, RouteHmrPageOptions } from '../route-hmr-page'
@@ -355,7 +356,10 @@ export const Route = makeRoute()
         ready: 'helper v1 data v1',
       })
       const reported = () =>
-        app.warnings().some((warning) => warning.includes('routes/index.tsx'))
+        findDiagnostics(app.warnings(), {
+          file: 'routes/index.tsx',
+          root: app.root,
+        }).length > 0
       let result
       try {
         result = await app.edit(

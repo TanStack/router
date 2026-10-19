@@ -15,6 +15,7 @@
  * (which scanned a build for the hot API).
  */
 import { describe, it } from 'vitest'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { openRouteHmrPage } from '../route-hmr-page'
 import type { TestContext } from 'vitest'
 import type { RouteHmrPageOptions } from '../route-hmr-page'
@@ -235,7 +236,10 @@ export const Route = (() =>
           ready: `${shape} v1 data v1`,
         })
         const reported = () =>
-          app.warnings().some((warning) => warning.includes('routes/index.tsx'))
+          findDiagnostics(app.warnings(), {
+            file: 'routes/index.tsx',
+            root: app.root,
+          }).length > 0
         let result
         try {
           result = await app.edit(

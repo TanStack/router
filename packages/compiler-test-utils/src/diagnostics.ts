@@ -218,20 +218,28 @@ const consoleSeverities = {
   debug: 'info',
 } as const
 
+/** The diagnostics arrays of the `captureConsole` calls running now. */
+const activeCaptures = new Set<Array<Diagnostic>>()
+/** The console spies, installed while a capture runs. */
+let consoleSpies: Array<{ mockRestore: () => void }> | undefined
+
 /**
  * Runs `run` and collects what it logs through `console` (silenced), as
  * diagnostics. Console methods are restored afterwards, also when `run`
- * throws.
+ * throws. Captures may overlap (concurrent tests): each one gets what is
+ * logged while it runs, and the console is restored when the last one
+ * ends.
  */
 export async function captureConsole<T>(
   run: () => T | Promise<T>,
 ): Promise<{ result: T; diagnostics: Array<Diagnostic> }> {
   const diagnostics: Array<Diagnostic> = []
-  const spies = (
+  activeCaptures.add(diagnostics)
+  consoleSpies ??= (
     Object.keys(consoleSeverities) as Array<keyof typeof consoleSeverities>
   ).map((method) =>
     vi.spyOn(console, method).mockImplementation((...args: Array<unknown>) => {
-      diagnostics.push({
+      const diagnostic: Diagnostic = {
         severity: consoleSeverities[method],
         text: stripVTControlCharacters(
           args
@@ -245,14 +253,21 @@ export async function captureConsole<T>(
             .join(' '),
         ),
         raw: args,
-      })
+      }
+      for (const capture of activeCaptures) {
+        capture.push(diagnostic)
+      }
     }),
   )
   try {
     return { result: await run(), diagnostics }
   } finally {
-    for (const spy of spies) {
-      spy.mockRestore()
+    activeCaptures.delete(diagnostics)
+    if (activeCaptures.size === 0 && consoleSpies) {
+      for (const spy of consoleSpies) {
+        spy.mockRestore()
+      }
+      consoleSpies = undefined
     }
   }
 }
