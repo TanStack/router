@@ -15,18 +15,13 @@ describe('production builds', () => {
   /**
    * Builds a production client bundle with automatic code splitting on or
    * off (off: the route HMR plugin's case), the plugin's own `addHmr`
-   * default and `NODE_ENV` as given (`null`: unset), and returns where a
-   * bundler HMR API is used.
+   * default and `NODE_ENV=production` (the harness's default for a
+   * production build), and returns where a bundler HMR API is used.
    */
-  async function hmrPlacement(
-    bundler: Bundler,
-    autoCodeSplitting: boolean,
-    nodeEnv?: null,
-  ) {
+  async function hmrPlacement(bundler: Bundler, autoCodeSplitting: boolean) {
     const app = await build({
       bundler,
       env: 'client',
-      nodeEnv,
       pluginOptions: {
         autoCodeSplitting,
         codeSplittingOptions: { addHmr: undefined },
@@ -46,7 +41,7 @@ export const Route = createFileRoute('/')({ component: Page })
   // No Vite rows: Vite replaces `import.meta.hot` with `undefined` in a
   // build and drops the code it guards, so they could not fail.
 
-  // Control for the pin below: with `NODE_ENV=production` exported.
+  // Control for the pin cited below: with `NODE_ENV=production` exported.
   test.each(['rspack', 'webpack'] as const)(
     'a production client bundle has no route HMR code (%s)',
     async (bundler) => {
@@ -66,18 +61,12 @@ export const Route = createFileRoute('/')({ component: Page })
     60_000,
   )
 
-  // Bug: with automatic code splitting off, the composed router plugin adds
-  // the route HMR plugin unless `NODE_ENV` is `production` when the plugin is
-  // created (`router-composed-plugin.ts`), instead of following the
-  // bundler's mode. webpack and Rspack set `NODE_ENV` only inside the bundle.
-  // Source: gap CC-P1 / routes.md R7.
-  // Impact: webpack/Rspack production bundles built from a shell without
-  // `NODE_ENV` ship the route HMR code of every route.
-  test.fails.each(['rspack', 'webpack'] as const)(
-    'a production client bundle has no route HMR code when NODE_ENV is unset (%s)',
-    async (bundler) => {
-      expect(await hmrPlacement(bundler, false, null)).toBe('nowhere')
-    },
-    60_000,
-  )
+  // The pin of the control above (`NODE_ENV` unset: the route HMR plugin
+  // follows `NODE_ENV` at plugin creation, not the bundler's mode; gap CC-P1
+  // / routes.md R7) is "rspack/webpack a production react client bundle
+  // without code splitting has no dev-only code" in
+  // build-production.test.ts and build-production-webpack.test.ts: the same
+  // build (React, automatic code splitting off, the plugin's `addHmr`
+  // default, `NODE_ENV` unset), whose check of the bundlers' hot APIs
+  // includes this one's.
 })
