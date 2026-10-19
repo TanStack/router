@@ -224,6 +224,13 @@ export interface StartBuildOptions {
   packageJson?: Record<string, unknown> | null
   /** Shorthand for `packageJson.sideEffects`. */
   sideEffects?: boolean | Array<string>
+  /**
+   * Symbolic links of the app besides Start's runtime (`startRuntimeLinks`),
+   * by path relative to the app root (see `AppOptions.symlinks`), e.g. a
+   * workspace package a library of the app depends on, or a package
+   * directory of the app linked into its `node_modules`.
+   */
+  symlinks?: Record<string, string>
   mode?: BuildMode
   /** Default `mode === 'production'`. */
   minify?: boolean
@@ -388,7 +395,7 @@ export async function buildStart(
       ...(bundler === 'rsbuild' && testLoaderFiles),
       ...files,
     },
-    symlinks: startRuntimeLinks(),
+    symlinks: { ...startRuntimeLinks(), ...options.symlinks },
   })
   const mode = options.mode ?? 'production'
   const target: BuildTarget = {
