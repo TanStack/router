@@ -719,7 +719,7 @@ async function buildWithRsbuild(
         warnings.ssr.length = 0
         await compiles.edit(target.root, target.watchEdits, watchTimeout)
       } finally {
-        await watching?.close()
+        await watching.close()
       }
     } else {
       await rsbuild.build()

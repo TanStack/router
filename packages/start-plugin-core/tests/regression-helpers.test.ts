@@ -15,7 +15,6 @@ import {
   callServerFnThroughCallers,
   callerRpcId,
   compileAll,
-  compileErrorMessage,
   compileFor,
   compileHydrate,
   compileServer,
@@ -208,11 +207,6 @@ export const fn = createServerFn().handler(...args)`
 
   // Synthetic errors (SPEC §8): the control is about the helpers, not about
   // what the compiler says today.
-  test('compileErrorMessage drops the code frame that quotes the source', () => {
-    const message = compileErrorMessage(framed('MARK_SENTENCE'))
-    expect(message).toBe('MARK_SENTENCE')
-  })
-
   test('expectCompileError accepts an error naming the API at its line', () => {
     expectCompileError(framed('createServerFn cannot be used here'), {
       source,

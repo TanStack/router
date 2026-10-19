@@ -1,9 +1,14 @@
 import { afterEach, describe, expect, test } from 'vitest'
+import { diagnosticsOf } from '@tanstack/compiler-test-utils/diagnostics'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
+import {
+  expectMapsTo,
+  positionAt,
+  tokenOffsets,
+} from '@tanstack/compiler-test-utils/source-maps'
 import { createHydrateCompilerPlugin } from '../src/hydrate-when-transform'
 import {
   compileCode,
-  compileErrorMessage,
   compileFirstChunk,
   compileHydrate,
   createStartCompiler,
@@ -19,12 +24,8 @@ import {
   renderSource,
   serverOnlyModule,
   withoutHydrationIds,
+  withoutQuotedSource,
 } from './regression-helpers'
-import {
-  expectMapsTo,
-  positionAt,
-  tokenOffsets,
-} from '@tanstack/compiler-test-utils/source-maps'
 import type { SourceMapInput } from '@tanstack/compiler-test-utils/source-maps'
 
 // On the client `<Hydrate>` children move into a lazily loaded chunk module
@@ -438,7 +439,8 @@ export function Page() {
     const errors: Array<string> = []
     for (const env of ['client', 'server'] as const) {
       await compileHydrate(env, code).catch((error: unknown) => {
-        errors.push(compileErrorMessage(error))
+        // What the error says, without the lines quoting the source.
+        errors.push(withoutQuotedSource(diagnosticsOf(error)[0]!.text, code))
       })
     }
     if (errors.length > 0) {

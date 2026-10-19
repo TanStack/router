@@ -42,7 +42,6 @@ import type {
 
 export { importSources } from './imports'
 export {
-  compileErrorMessage,
   expectCompileError,
   expectSourceError,
   withoutQuotedSource,
@@ -646,7 +645,7 @@ export async function callServerFnThroughCallers(
   const handler = (
     await createServerGraph(compiled, stubs).import(reported!.extractedFilename)
   )[reported!.functionName] as ProviderHandler
-  expect(handler?.serverFnMeta?.id, 'provider handler id').toBe(functionId)
+  expect(handler.serverFnMeta?.id, 'provider handler id').toBe(functionId)
   const result = serverFnResult(await handler({ data: undefined }))
   const ssr = read(await createServerGraph(compiled, stubs).ssr())
   expect(ssr, 'ssr').toBeTypeOf('function')

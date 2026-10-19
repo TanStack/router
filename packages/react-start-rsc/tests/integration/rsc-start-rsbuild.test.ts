@@ -6,9 +6,8 @@
  * J3.6, V2-13). The Vite counterparts are rsc-start-dev.test.ts and
  * rsc-start-hmr.test.ts.
  *
- * Not here: a component edit keeping state (V2-13's other half) needs React
- * Refresh, which a React Start app on Rsbuild gets from
- * `@rsbuild/plugin-react`; this package cannot resolve it.
+ * A component edit keeping state (V2-13's other half, with React Refresh
+ * from `@rsbuild/plugin-react`) is in rsc-start-hmr.test.ts.
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import {

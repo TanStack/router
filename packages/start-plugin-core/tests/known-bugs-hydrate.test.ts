@@ -9,15 +9,17 @@
  * server output renders (hydration ids included) once its chunks loaded.
  */
 import { describe, expect, test } from 'vitest'
+import { diagnosticsOf } from '@tanstack/compiler-test-utils/diagnostics'
 import {
-  compileErrorMessage,
   compileHydrate,
+  expectCompileError,
   expectRenderedThroughChunks,
   expectRendersLikeSource,
   renderClient,
   renderServer,
   renderSource,
   startPackage,
+  withoutQuotedSource,
 } from './regression-helpers'
 import { generatedNames } from './hydrate-helpers'
 
@@ -35,13 +37,40 @@ import { idle } from '@tanstack/react-start/hydration'
 `
 
 /**
- * Clear compile errors that a fix may reject split children with, matched
- * against the message without its code frame (`compileErrorMessage`).
+ * Clear compile errors that a fix may reject split children with: the
+ * names the error gives in its own words, without the code frame quoting
+ * the source (`expectCompileError`); either of `await` and `async` for
+ * `await` in the children.
  */
 const rejections = {
-  arguments: /\bHydrate\b[^]*\barguments\b/,
-  await: /\bHydrate\b[^]*\b(await|async)\b/,
-  Route: /\bHydrate\b[^]*\bRoute\b/,
+  arguments: [['Hydrate', 'arguments']],
+  await: [
+    ['Hydrate', 'await'],
+    ['Hydrate', 'async'],
+  ],
+  Route: [['Hydrate', 'Route']],
+}
+
+/**
+ * Asserts that `error` is a compile error about `source` that names every
+ * name of one of `alternatives` (`expectCompileError`; position free, as
+ * the fix may report the boundary or the read).
+ */
+function expectRejection(
+  error: unknown,
+  source: string,
+  alternatives: Array<Array<string>>,
+) {
+  const failures: Array<unknown> = []
+  for (const names of alternatives) {
+    try {
+      expectCompileError(error, { source, at: undefined, names })
+      return
+    } catch (failure) {
+      failures.push(failure)
+    }
+  }
+  throw failures[0]
 }
 
 /**
@@ -60,19 +89,20 @@ function expectNoUnusedChunks(client: {
 
 describe('harness controls', () => {
   test('client: the rejection matchers ignore the code frame of an unrelated error', async () => {
-    const error = await compileHydrate(
-      'client',
-      `${head}import { createFileRoute } from '@tanstack/react-router'
+    const code = `${head}import { createFileRoute } from '@tanstack/react-router'
 import { loadData } from './data'
 export const Route = createFileRoute('/')({ component: Page })
 export async function Page() {
   return <Hydrate when={load()}>{async () => <p>{arguments[0]}{Route.id}{await loadData()}</p>}</Hydrate>
-}`,
-    ).catch((caught: unknown) => caught)
-    const message = compileErrorMessage(error)
-    expect(message).toMatch(/function/)
+}`
+    const error = await compileHydrate('client', code).catch(
+      (caught: unknown) => caught,
+    )
+    expect(withoutQuotedSource(diagnosticsOf(error)[0]!.text, code)).toMatch(
+      /function/,
+    )
     for (const rejection of Object.values(rejections)) {
-      expect(message).not.toMatch(rejection)
+      expect(() => expectRejection(error, code, rejection)).toThrow()
     }
   })
 })
@@ -607,7 +637,7 @@ export function Icons({ ids }) {
         (error: Error) => error,
       )
       if (compiled instanceof Error) {
-        expect(compileErrorMessage(compiled)).toMatch(rejections.arguments)
+        expectRejection(compiled, code, rejections.arguments)
         return
       }
       const { client } = await expectRendersLikeSource(code, {
@@ -670,7 +700,7 @@ export async function Page() {
         (error: Error) => error,
       )
       if (compiled instanceof Error) {
-        expect(compileErrorMessage(compiled)).toMatch(rejections.await)
+        expectRejection(compiled, code, rejections.await)
         return
       }
       // Every emitted module is valid, and the client renders like the
