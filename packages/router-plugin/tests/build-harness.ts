@@ -196,6 +196,9 @@ export async function build(
         const config: RouterPluginOptions = {
           target: framework,
           autoCodeSplitting: true,
+          // The generator's temporary files go with the app, not to the
+          // working directory's `.tanstack/tmp`
+          tmpDir: path.join(app.root, '.tanstack', 'tmp'),
           ...pluginOptions,
           // The webpack, Rspack and esbuild adapters resolve these against
           // the working directory
@@ -406,6 +409,7 @@ export async function buildWithRsbuild(
                     tanstackRouter({
                       target: 'react',
                       autoCodeSplitting: true,
+                      tmpDir: path.join(app.root, '.tanstack', 'tmp'),
                       ...pluginOptions,
                       routesDirectory: path.resolve(
                         app.root,
