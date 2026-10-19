@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest'
+import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   StartCompiler,
   getLookupKindsForEnv,
@@ -7,10 +8,10 @@ import { getLookupConfigurationsForEnv } from '../../src/start-compiler/config'
 import { mergeServerFnsById } from '../../src/start-compiler/host'
 import { generateServerFnResolverModule } from '../../src/start-compiler/server-fn-resolver-module'
 import {
-  callerRpcId,
   callFromClient,
   callProvider,
   callReportedServerFns,
+  callerRpcId,
   compileAll,
   compileFor,
   compileServer,
@@ -24,7 +25,6 @@ import {
   serverFnResult,
   startClientCore,
 } from '../regression-helpers'
-import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import type { ServerFn } from '../../src/start-compiler/types'
 
 // Default test options for StartCompiler

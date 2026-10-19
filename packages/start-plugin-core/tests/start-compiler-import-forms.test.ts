@@ -9,9 +9,11 @@
  * envOnlyExportedAlias (N1; gaps SF5, MW4, CO4, SF24).
  */
 import { describe, expect, test } from 'vitest'
+import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
+import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
-  callerRpcId,
   callProvider,
+  callerRpcId,
   clientOnlyError,
   compileFor,
   createServerGraph,
@@ -21,8 +23,6 @@ import {
   serverOnlyError,
   settle,
 } from './regression-helpers'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
-import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import type { Framework, ModuleStub, Output } from './regression-helpers'
 import type { ServerFn } from '../src/start-compiler/types'
 

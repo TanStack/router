@@ -34,7 +34,7 @@ describe('the stand-ins carry what Start creates', () => {
     const { rpc } =
       await evaluateModule(`import { createClientRpc } from '@tanstack/react-start/client-rpc'
 export const rpc = createClientRpc('id-1')`)
-    const real = createClientRpc('id-1') as object
+    const real = createClientRpc('id-1')
     expect(rpc).toBeTypeOf('function')
     expect(metadata(rpc)).toEqual(metadata(real))
     expect(metadata(real)).toMatchObject({ serverFnMeta: { id: 'id-1' } })

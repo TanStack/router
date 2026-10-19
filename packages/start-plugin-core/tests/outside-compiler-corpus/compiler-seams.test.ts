@@ -12,7 +12,11 @@
  * real RSC provider (react-start-rsc tests/integration/rsc-start-dev.test.ts).
  */
 import { beforeEach, describe, expect, test, vi } from 'vitest'
-import { detectKindsInCode } from '../../src/start-compiler/compiler'
+import {
+  StartCompiler,
+  detectKindsInCode,
+  getLookupKindsForEnv,
+} from '../../src/start-compiler/compiler'
 import { createStartCompiler as createHostCompiler } from '../../src/start-compiler/host'
 import {
   callProvider,
@@ -23,10 +27,6 @@ import {
   renderThingTransform,
   renderToHtml,
 } from '../regression-helpers'
-import {
-  StartCompiler,
-  getLookupKindsForEnv,
-} from '../../src/start-compiler/compiler'
 import { getLookupConfigurationsForEnv } from '../../src/start-compiler/config'
 import type { StartCompilerImportTransform } from '../../src/types'
 
@@ -137,11 +137,7 @@ export const rendered = renderThing(<Card />)`)
     const module = await evaluateModule(result!, runtimeStubs)
     expect(
       await asHtml([module.value, module.curried, module.rendered]),
-    ).toEqual([
-      1,
-      3,
-      ['card', injected],
-    ])
+    ).toEqual([1, 3, ['card', injected]])
   })
 
   // The other shapes (a nested call; a module without a built-in factory)

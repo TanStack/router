@@ -10,19 +10,19 @@
  * Source: oracle-gaps H3 (round 2); FIX-PLAN S01, S02.
  */
 import { describe, expect, test } from 'vitest'
+import {
+  expectDeterministic,
+  expectRelocatable,
+  reorderedRecords,
+} from '@tanstack/compiler-test-utils/determinism'
 import { detectKindsInCode } from '../src/start-compiler/compiler'
 import {
   createStartCompiler,
   mergeServerFnsById,
 } from '../src/start-compiler/host'
 import {
-  expectDeterministic,
-  expectRelocatable,
-  reorderedRecords,
-} from '@tanstack/compiler-test-utils/determinism'
-import {
-  callerRpcId,
   callReportedServerFns,
+  callerRpcId,
   createServerGraph,
   evaluateModule,
   serverFnResult,
@@ -156,19 +156,16 @@ describe('server fn ids', () => {
       '/app/src/b.ts': serverFnModule('b', 'from b'),
       '/app/src/c/a.ts': serverFnModule('a', 'from c/a'),
     }
-    await expectDeterministic(
-      reorderedRecords(modules),
-      async ({ record }) => {
-        const registry: Record<string, ServerFn> = {}
-        const client = compilerFor('client', '/app', registry)
-        const ids: Record<string, string> = {}
-        for (const [id, code] of Object.entries(record)) {
-          const module = await evaluateModule((await client(code, id))!)
-          ids[id] = callerRpcId(module.a ?? module.b)!
-        }
-        return ids
-      },
-    )
+    await expectDeterministic(reorderedRecords(modules), async ({ record }) => {
+      const registry: Record<string, ServerFn> = {}
+      const client = compilerFor('client', '/app', registry)
+      const ids: Record<string, string> = {}
+      for (const [id, code] of Object.entries(record)) {
+        const module = await evaluateModule((await client(code, id))!)
+        ids[id] = callerRpcId(module.a ?? module.b)!
+      }
+      return ids
+    })
   })
 
   // The id `generateFunctionId` returns is the one the clients call and the

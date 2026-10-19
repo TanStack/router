@@ -1,4 +1,9 @@
 import { describe, expect, test } from 'vitest'
+import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
+import {
+  declaredNames,
+  getModuleErrors,
+} from '@tanstack/compiler-test-utils/validate-module'
 import { StartCompiler } from '../../src/start-compiler/compiler'
 import {
   callFromClient,
@@ -11,11 +16,6 @@ import {
   moduleLoads,
   startClientCore,
 } from '../regression-helpers'
-import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
-import {
-  declaredNames,
-  getModuleErrors,
-} from '@tanstack/compiler-test-utils/validate-module'
 
 // Default test options for StartCompiler
 function getDefaultTestOptions(env: 'client' | 'server') {

@@ -5,9 +5,10 @@
 
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
+import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
+import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   callFromClient,
-  callProvider,
   callReportedServerFns,
   callerRpcId,
   clientOnlyError,
@@ -28,8 +29,6 @@ import {
   settle,
   startClientCore,
 } from './regression-helpers'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
-import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   capturingPlacement,
   placementHeads,
@@ -203,7 +202,9 @@ export const fn = createServerFn().handler(async () => db.x(input))`,
       { id: '/test/src/fns.ts' },
     )
     expect(Object.keys(serverFns)).toHaveLength(1)
-    expectNotLoaded(await moduleLoads(code!, { id: '/test/src/fns.ts' }), [serverOnly])
+    expectNotLoaded(await moduleLoads(code!, { id: '/test/src/fns.ts' }), [
+      serverOnly,
+    ])
   })
 })
 
@@ -581,7 +582,9 @@ export const fn = applyStep(
       const compiled = await compileAll(code)
       expectNotLoaded(await moduleLoads(compiled.client), ['./schema'])
       const stubs = { './schema': { schema: (data: string) => `${data}!` } }
-      expect(await callFromClient(compiled, (module) => module.fn, 'data', stubs)).toBe('data!')
+      expect(
+        await callFromClient(compiled, (module) => module.fn, 'data', stubs),
+      ).toBe('data!')
     },
   )
 
@@ -753,8 +756,18 @@ export const read = () => getRead()()`,
         [serverOnly]: { db: { inner: (id: string) => `inner:${id}` } },
       }
       expect([
-        await callFromClient(compiled, (module) => module.make('a'), undefined, stubs),
-        await callFromClient(compiled, (module) => module.make('b'), undefined, stubs),
+        await callFromClient(
+          compiled,
+          (module) => module.make('a'),
+          undefined,
+          stubs,
+        ),
+        await callFromClient(
+          compiled,
+          (module) => module.make('b'),
+          undefined,
+          stubs,
+        ),
       ]).toEqual(['inner:a', 'inner:b'])
     },
   )
@@ -1344,7 +1357,9 @@ export const fn = createServerFn().handler(async () => db.x(input))`,
       { id: '/test/src/Page.vue?vue&type=script&lang.ts' },
     )
     expect(Object.keys(serverFns)).toHaveLength(1)
-    expectNotLoaded(await moduleLoads(code!, { id: '/test/src/Page.ts' }), [serverOnly])
+    expectNotLoaded(await moduleLoads(code!, { id: '/test/src/Page.ts' }), [
+      serverOnly,
+    ])
   })
 })
 
@@ -1389,7 +1404,7 @@ exports.run = function (app) {
       // Runs a CommonJS module (sloppy mode) and reads what `run` reads.
       const evaluate = (source: string) => {
         const module = { exports: {} as any }
-        // eslint-disable-next-line @typescript-eslint/no-implied-eval
+
         new Function('module', 'exports', source)(module, module.exports)
         return run(module)
       }

@@ -15,7 +15,6 @@ import {
   callByIdPrelude,
   startBundlers,
 } from '../build-harness'
-import type { StartBuild } from '../build-harness'
 
 const timeout = 60_000
 

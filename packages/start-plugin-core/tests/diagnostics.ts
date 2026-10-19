@@ -13,12 +13,10 @@ import {
   diagnosticPosition,
   diagnosticsOf,
   expectDiagnostic,
-  mismatches,
   identifiesEnvRestriction,
+  mismatches,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
-import type { Environment } from '@tanstack/compiler-test-utils/diagnostics'
-import type { ServerFn } from '../src/start-compiler/types'
 import {
   Thrown,
   callReportedServerFns,
@@ -28,6 +26,8 @@ import {
   moduleLoads,
   outputs,
 } from './regression-helpers'
+import type { Environment } from '@tanstack/compiler-test-utils/diagnostics'
+import type { ServerFn } from '../src/start-compiler/types'
 import type { Output } from './regression-helpers'
 
 /**
@@ -132,7 +132,10 @@ export function expectSourceError(
           source: site.source,
         }).length === 0 &&
         mismatches(
-          { ...diagnostic, text: withoutQuotedSource(diagnostic.text, sources) },
+          {
+            ...diagnostic,
+            text: withoutQuotedSource(diagnostic.text, sources),
+          },
           { names: expected.names },
         ).length === 0,
     ),

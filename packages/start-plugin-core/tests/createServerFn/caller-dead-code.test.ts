@@ -1,4 +1,6 @@
 import { describe, expect, test, vi } from 'vitest'
+import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
+import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   callFromClient,
   callProvider,
@@ -9,8 +11,6 @@ import {
   evaluateProvider,
   moduleLoads,
 } from '../regression-helpers'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
-import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import type { ModuleStub } from '../regression-helpers'
 
 // The client replaces a server fn handler with an RPC, then drops the module

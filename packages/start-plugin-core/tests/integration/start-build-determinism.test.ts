@@ -126,7 +126,10 @@ describe.each(startBundlers)('%s build', (bundler) => {
       expect(chunksOf(again)).toEqual(firstChunks)
       // The entry imports the modules in the opposite order: same ids.
       await expectDeterministic(
-        [firstObservation, await observe(await again.rebuild(entries(['b', 'a'])))],
+        [
+          firstObservation,
+          await observe(await again.rebuild(entries(['b', 'a']))),
+        ],
         (observation) => observation,
       )
     },

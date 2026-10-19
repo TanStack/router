@@ -6,6 +6,8 @@
  * never ships its handler to the client.
  */
 import { describe, expect, test } from 'vitest'
+import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
+import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   callProvider,
   callServerFnThroughCallers,
@@ -19,8 +21,6 @@ import {
   outputs,
 } from '../regression-helpers'
 import { placementModule, placements } from './placements'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
-import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import type { ServerFn } from '../../src/start-compiler/types'
 import type { PlacementHead } from './placements'
 
@@ -183,7 +183,10 @@ test.each<PlacementHead>(['createServerFn alone', 'another Start factory'])(
 // Impact: the build fails for a module whose server fn the user can only
 // write unwrapped.
 // Source: FIX-PLAN S16 (Sol F17); declaration-sites "wrapped in two calls".
-test.fails.each<PlacementHead>(['createServerFn alone', 'another Start factory'])(
+test.fails.each<PlacementHead>([
+  'createServerFn alone',
+  'another Start factory',
+])(
   'with %s imported, a server fn wrapped in two calls works like an unwrapped one',
   async (importHead) => {
     const compiled = await compileAll(placementModule(importHead, wrappedTwice))
@@ -233,9 +236,9 @@ describe.each<PlacementHead>(['createServerFn alone', 'another Start factory'])(
     )('supports a server fn in $name', async ({ code, read }) => {
       const compiled = await compileEach(placementModule(importHead, code))
       expectNotLoaded(await moduleLoads(compiled.client), ['./db.server'])
-      expect(
-        await callServerFnThroughCallers(compiled, read!, dbStubs),
-      ).toBe('inner')
+      expect(await callServerFnThroughCallers(compiled, read!, dbStubs)).toBe(
+        'inner',
+      )
     })
   },
 )

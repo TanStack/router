@@ -1,4 +1,6 @@
 import { expect, test } from 'vitest'
+import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
+import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   callProvider,
   callServerFnThroughCallers,
@@ -11,8 +13,6 @@ import {
   moduleLoads,
   outputs,
 } from '../regression-helpers'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
-import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import type { Output } from '../regression-helpers'
 
 // The provider module runs the extracted handler: it must keep every module
@@ -57,10 +57,7 @@ async function callHandler(code: string) {
   const compiled = await compileAll(
     `${head}${code.includes('db.') ? `import { db } from './db.server'\n` : ''}${code}`,
   )
-  expectNotLoaded(
-    await moduleLoads(compiled.client),
-    Object.keys(handlerStubs),
-  )
+  expectNotLoaded(await moduleLoads(compiled.client), Object.keys(handlerStubs))
   return callServerFnThroughCallers(
     compiled,
     (module) => module.fn,

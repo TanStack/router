@@ -1,5 +1,11 @@
 import { transformWithOxc } from 'vite'
 import { describe, expect, test, vi } from 'vitest'
+import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
+import {
+  expectMapsTo,
+  positionAt,
+  tokenOffsets,
+} from '@tanstack/compiler-test-utils/source-maps'
 import {
   callReportedServerFns,
   callServerFnThroughCallers,
@@ -12,12 +18,6 @@ import {
   moduleId,
   renderToHtml,
 } from './regression-helpers'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
-import {
-  expectMapsTo,
-  positionAt,
-  tokenOffsets,
-} from '@tanstack/compiler-test-utils/source-maps'
 import type { ModuleStub, Output } from './regression-helpers'
 
 // The compiler removes code that only served a transformed call. Everything

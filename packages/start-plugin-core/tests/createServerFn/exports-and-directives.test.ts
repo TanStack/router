@@ -1,10 +1,12 @@
 import { parseSync } from 'vite'
 import { describe, expect, test, vi } from 'vitest'
+import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
+import { expectDeterministic } from '@tanstack/compiler-test-utils/determinism'
 import {
-  callerRpcId,
   callProvider,
   callReportedServerFns,
   callServerFnThroughCallers,
+  callerRpcId,
   compileAll,
   compileCode,
   compileFor,
@@ -15,8 +17,6 @@ import {
   evaluateProvider,
   moduleLoads,
 } from '../regression-helpers'
-import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
-import { expectDeterministic } from '@tanstack/compiler-test-utils/determinism'
 
 // Callers keep the module's exports: the client gets each server fn as an
 // RPC, and calling one from the SSR caller runs its handler; the provider
@@ -394,7 +394,10 @@ export const save = createServerFn().handler(async () => 'save')`
         const names = Object.keys(client)
         for (const name of names) {
           expect(
-            await callServerFnThroughCallers(compiled, (module) => module[name]),
+            await callServerFnThroughCallers(
+              compiled,
+              (module) => module[name],
+            ),
             name,
           ).toBe(name)
         }

@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url'
 import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
 import { parseSync } from 'vite'
 import { expect } from 'vitest'
+import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import {
   StartCompiler,
   detectKindsInCode,
@@ -26,7 +27,7 @@ import {
   createSsrRpc,
   startClientCore,
 } from './start-runtime'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
+import { moduleRequests } from './imports'
 import type {
   ModuleGraphOptions,
   ModuleStub,
@@ -38,8 +39,6 @@ import type {
   StartCompilerPlugin,
   StartCompilerTransformResult,
 } from '../src/types'
-
-import { moduleRequests } from './imports'
 
 export { importSources } from './imports'
 export {

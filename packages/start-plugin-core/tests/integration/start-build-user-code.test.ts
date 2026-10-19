@@ -79,7 +79,8 @@ ${callByIdExports}`,
         entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
       })
       const tracked = `[...(globalThis.__tracked ?? [])]`
-      const clientRun = await client.run(`const values = [entry.clientLabel(), entry.plainUsed()]
+      const clientRun =
+        await client.run(`const values = [entry.clientLabel(), entry.plainUsed()]
 return { values, tracked: ${tracked} }`)
       const ssrRun = await ssr.run(`${callByIdPrelude}const values = [
   await callById(entry.fn.serverFnMeta.id),
@@ -88,7 +89,9 @@ return { values, tracked: ${tracked} }`)
 return { values, tracked: ${tracked} }`)
       // The control: the bundler drops the plain module's unused call.
       for (const run of [clientRun, ssrRun]) {
-        expect(run.result.tracked).not.toContain('plain-unused')
+        expect(
+          (run.result as { tracked: Array<string> }).tracked,
+        ).not.toContain('plain-unused')
       }
       expect({ client: clientRun.result, ssr: ssrRun.result }).toEqual({
         client: {
@@ -120,14 +123,14 @@ export function tag(name: string) {
 }
 `
     return buildStart({
-        bundler,
-        files: {
-          'tsconfig.json': JSON.stringify({
-            compilerOptions: { experimentalDecorators: true },
-          }),
-          'src/decorators.ts': decorators,
-          'src/config.json': `{ "theme": "dark" }`,
-          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+      bundler,
+      files: {
+        'tsconfig.json': JSON.stringify({
+          compilerOptions: { experimentalDecorators: true },
+        }),
+        'src/decorators.ts': decorators,
+        'src/config.json': `{ "theme": "dark" }`,
+        'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
 import { tag, tagged } from './decorators'
 import config from './config.json' assert { type: 'json' }
 
@@ -151,14 +154,14 @@ export const fn = createServerFn().handler(async () => [
   [...tagged].sort(),
 ])
 `,
-          'src/client-entry.ts': `export { fn, Widget } from './fns'
+        'src/client-entry.ts': `export { fn, Widget } from './fns'
 export { tagged } from './decorators'
 `,
-          'src/ssr-entry.ts': `export { fn } from './fns'
+        'src/ssr-entry.ts': `export { fn } from './fns'
 ${callByIdExports}`,
-        },
-        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-      })
+      },
+      entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+    })
   }
 
   // Every output parses and runs: the decorators run, the JSON import

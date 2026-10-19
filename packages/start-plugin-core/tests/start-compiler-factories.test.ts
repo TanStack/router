@@ -1,9 +1,12 @@
 import { transformWithOxc } from 'vite'
 import { describe, expect, test } from 'vitest'
+import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
+import { envRestrictionError } from '@tanstack/compiler-test-utils/diagnostics'
+import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
-  callerRpcId,
   callProvider,
   callServerFnThroughCallers,
+  callerRpcId,
   clientOnlyError,
   compileAll,
   compileCode,
@@ -13,14 +16,10 @@ import {
   evaluateModule,
   expectCompileError,
   moduleLoads,
-  outputs,
   serverOnlyError,
   settle,
   startClientCore,
 } from './regression-helpers'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
-import { envRestrictionError } from '@tanstack/compiler-test-utils/diagnostics'
-import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import type { ModuleStub, Output } from './regression-helpers'
 
 // Each output keeps the implementation of its own environment (and only the
@@ -41,9 +40,7 @@ async function expectClientFree(
 
 /** The SSR output does not load the client-only module. */
 async function expectSsrFree(ssr: string) {
-  expectNotLoaded(await moduleLoads(ssr, { env: 'server' }), [
-    './chart.client',
-  ])
+  expectNotLoaded(await moduleLoads(ssr, { env: 'server' }), ['./chart.client'])
 }
 
 const head = `import { createClientOnlyFn, createIsomorphicFn, createServerOnlyFn } from '@tanstack/react-start'\n`
@@ -109,24 +106,21 @@ export default createIsomorphicFn().server(() => db.x()).client(() => chart())`,
       client: 'chart',
       server: 'db',
     },
-  ])(
-    'a default-exported function: $code',
-    async ({ code, client, server }) => {
-      const compiled = await compileAll(`${head}${code}`)
-      await expectClientFree(compiled.client)
-      await expectSsrFree(compiled.ssr)
-      const stubs = {
-        './db.server': `export const db = { x: () => 'db' }`,
-        './chart.client': `export const chart = () => 'chart'`,
-      }
-      expect(
-        settle((await evaluateModule(compiled.client, stubs)).default),
-      ).toEqual(client)
-      expect(
-        settle((await evaluateModule(compiled.ssr, stubs)).default),
-      ).toEqual(server)
-    },
-  )
+  ])('a default-exported function: $code', async ({ code, client, server }) => {
+    const compiled = await compileAll(`${head}${code}`)
+    await expectClientFree(compiled.client)
+    await expectSsrFree(compiled.ssr)
+    const stubs = {
+      './db.server': `export const db = { x: () => 'db' }`,
+      './chart.client': `export const chart = () => 'chart'`,
+    }
+    expect(
+      settle((await evaluateModule(compiled.client, stubs)).default),
+    ).toEqual(client)
+    expect(settle((await evaluateModule(compiled.ssr, stubs)).default)).toEqual(
+      server,
+    )
+  })
 
   // Source: Waku vite-plugin-allow-server.test.ts "handles default allowServer
   // export" (middleware variant)
@@ -789,7 +783,6 @@ describe('factories resolved through project modules', () => {
     output: Output
     files: Record<string, string>
     code: string
-    imports: Array<string>
     serverFns: number
   }>([
     {

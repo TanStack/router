@@ -1,27 +1,24 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import {
   StartCompiler,
   detectKindsInCode,
   getLookupKindsForEnv,
 } from '../src/start-compiler/compiler'
 import { getLookupConfigurationsForEnv } from '../src/start-compiler/config'
-import { createStartCompiler as createHostCompiler } from '../src/start-compiler/host'
 import {
-  callerRpcId,
   callProvider,
+  callerRpcId,
   clientOnlyError,
   compileCode,
   compileFor,
   compileServer,
   createStartCompiler,
-  directivePrologue,
   evaluateModule,
   renderThingTransform,
   serverOnlyError,
   settle,
   settleAsync,
 } from './regression-helpers'
-import type { StartCompilerImportTransform } from '../src/types'
 
 /** A Start factory left uncompiled: calling it fails the test. */
 const uncompiled = () => {

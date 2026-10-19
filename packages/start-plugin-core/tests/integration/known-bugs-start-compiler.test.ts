@@ -9,6 +9,7 @@ import path from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { createServer, isRunnableDevEnvironment } from 'vite'
 import { describe, expect, test, vi } from 'vitest'
+import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
 import { startCompilerPlugin } from '../../src/vite/start-compiler-plugin/plugin'
 import {
   buildStart,
@@ -25,7 +26,6 @@ import {
   startServerEntryFiles,
 } from '../dev-server'
 import { callerRpcId, expectSourceError } from '../regression-helpers'
-import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
 import type { ModuleStub } from '../regression-helpers'
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
@@ -304,10 +304,10 @@ ${callByIdExports}`,
         )
       }
 
-      ;(bundler === 'vite' && caller === 'another server fn' ? test.fails : test).each([
-        'as written',
-        'reversed',
-      ] as const)(
+      ;(bundler === 'vite' && caller === 'another server fn'
+        ? test.fails
+        : test
+      ).each(['as written', 'reversed'] as const)(
         'is callable, the app files written %s',
         async (order) => {
           const { ssr } = await buildStart({
