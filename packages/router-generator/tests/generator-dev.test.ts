@@ -25,6 +25,7 @@ import {
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { Generator } from '../src'
 import { configOf, createApp, fileRoute, read, rootRoute, save } from './app'
+import { expectOnlyOwnedEdits } from './owned-edits'
 import { routeIdOf } from './route-id'
 import { observeRouteTree, routesOf } from './route-tree'
 import type { Config } from '../src'
@@ -166,7 +167,9 @@ export const Route = (`
     await save(root, 'src/routes/posts.tsx', fileRoute('/wrong'))
     await generator.run({ type: 'update', path: posts })
 
-    expect(await read(root, 'src/routes/posts.tsx')).toBe(fileRoute('/posts'))
+    const written = await read(root, 'src/routes/posts.tsx')
+    expectOnlyOwnedEdits(fileRoute('/wrong'), written)
+    expect(await routeIdOf(written)).toBe('/posts')
     expect(await routesOf(config.generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
       '/posts': 'routes/posts.tsx',

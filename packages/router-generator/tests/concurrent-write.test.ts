@@ -10,6 +10,7 @@ import path from 'node:path'
 import { afterEach, describe, expect, it, onTestFinished } from 'vitest'
 
 import { Generator, getConfig } from '../src'
+import { expectOnlyOwnedEdits } from './owned-edits'
 import { routeIdOf } from './route-id'
 import { routesOf } from './route-tree'
 
@@ -252,9 +253,13 @@ describe('a route file saved while the generator fixes it', () => {
     await generator.run()
 
     expect(saved).toBe(true)
-    await expect(fs.readFile(postsRoutePath, 'utf8')).resolves.toBe(
-      savedPostsRouteSource,
+    // The saved file, with its id fixed (the quotes of the id are free).
+    const written = await fs.readFile(postsRoutePath, 'utf8')
+    expectOnlyOwnedEdits(
+      savedPostsRouteSource.replace("'/posts'", "'/wrong'"),
+      written,
     )
+    expect(await routeIdOf(written)).toBe('/posts')
     expect(await routesOf(config.generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
       '/posts': 'routes/posts.tsx',
