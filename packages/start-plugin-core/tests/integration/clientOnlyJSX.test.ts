@@ -5,6 +5,7 @@
  * throwing on the server, is clientOnlyJSX/clientOnlyJSX.test.ts).
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { reportedViolations } from '../importProtection/start-apps'
 import { buildHydrationApp } from './hydrate-pages'
 import type { HydrationApp } from './hydrate-pages'
 
@@ -83,6 +84,17 @@ export function Page() {
     </div>
   )
 }`,
+  clientFile: `import { ClientOnly } from '@tanstack/react-router'
+import { Chart } from '../chart.client'
+export function Page() {
+  return (
+    <div>
+      <ClientOnly fallback={<div>Loading...</div>}>
+        <Chart />
+      </ClientOnly>
+    </div>
+  )
+}`,
   renamed: `import { ClientOnly as CO } from '@tanstack/react-router'
 import { WindowSize } from '../WindowSize'
 export function Page() {
@@ -111,6 +123,7 @@ beforeAll(async () => {
       ...library('inner-lib', { InnerWidget: 'inner-el' }),
       'src/utils.ts': `export const formatData = () => 'data'\n`,
       'src/WindowSize.tsx': `export const WindowSize = () => <size-el />\n`,
+      'src/chart.client.tsx': `export const Chart = () => <client-chart-el data-mark="MARK_CLIENT_CHART" />\n`,
     },
     registerCleanup: (cleanup) => cleanups.push(cleanup),
   })
@@ -151,6 +164,12 @@ describe('<ClientOnly> in a hydrated page', () => {
       server: '<div><div>Loading...</div></div>',
       client: '<div><size-el></size-el></div>',
     },
+    {
+      name: 'clientFile',
+      server: '<div><div>Loading...</div></div>',
+      client:
+        '<div><client-chart-el data-mark="MARK_CLIENT_CHART"></client-chart-el></div>',
+    },
   ])(
     '$name: the server renders the fallback and the hydrated page the children',
     async ({ name, server, client }) => {
@@ -163,4 +182,21 @@ describe('<ClientOnly> in a hydrated page', () => {
       }).toEqual({ html: client, recoverableErrors: [], consoleErrors: [] })
     },
   )
+})
+
+// A module import protection denies on the server (`*.client.*`) that only
+// the children of a `<ClientOnly>` use is eliminated from the server build
+// (the build above reports no import-protection violation: by default a
+// violation fails a build) and its code is not in the server bundle.
+// Source: DECISIONS 2026-10-18 "Server-side *.client.* imports"
+test('a *.client.* module only ClientOnly children use is not in the server build', () => {
+  expect(
+    reportedViolations([
+      ...app.build.client.warnings,
+      ...app.build.ssr.warnings,
+      ...app.build.ssr.consoleMessages,
+    ]),
+  ).toEqual([])
+  expect(app.build.ssr.where('MARK_CLIENT_CHART')).toBe('nowhere')
+  expect(app.build.client.where('MARK_CLIENT_CHART')).not.toBe('nowhere')
 })
