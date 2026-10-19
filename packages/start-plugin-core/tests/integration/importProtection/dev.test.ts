@@ -8,7 +8,6 @@
  */
 import path from 'node:path'
 import mdx from '@mdx-js/rollup'
-import { SourceMapGenerator } from 'source-map'
 import { createRequire } from 'node:module'
 import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
 import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
@@ -679,9 +678,9 @@ export const read = () => [getRequest(), getResponse()]
 // real MDX plugin (`@mdx-js/rollup`), before the Start plugins like a user
 // lists it; its output imports React's JSX runtime.
 describe('a module of another compiler (`.mdx`)', () => {
-  // With source maps, as Vite's MDX setups enable them (MDX's
-  // `SourceMapGenerator` option): report positions are in `src/page.mdx`.
-  const mdxPlugin: Plugin = { enforce: 'pre', ...mdx({ SourceMapGenerator }) }
+  // `@mdx-js/rollup` always emits source maps: report positions can be in
+  // `src/page.mdx`.
+  const mdxPlugin: Plugin = { enforce: 'pre', ...mdx() }
   const plugins = [mdxPlugin]
   /** An MDX page whose import and use of the denied file follow prose. */
   const page = `# Title
