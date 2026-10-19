@@ -2536,7 +2536,7 @@ export class RouterCore<
             d.status === 'error' ||
             d.status === 'notFound') &&
           route &&
-          routeNeedsLoad(route)
+          (routeNeedsLoad(route) || route.options.context?.revalidate)
             ? ({ status: 'pending', error: undefined } as const)
             : undefined),
         }
