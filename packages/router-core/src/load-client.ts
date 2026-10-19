@@ -2341,7 +2341,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     return new Promise<T>((resolve, reject) => {
       interrupt = reject
       if (signal.aborted) {
-        reject(signal)
+        abort()
       }
       Promise.resolve(value).then(resolve, reject)
     })
