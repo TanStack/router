@@ -1237,7 +1237,7 @@ describe('hydration: lifecycle transport by presence', () => {
       expect(router.state.resolvedLocation?.pathname).toBe('/page')
     })
 
-    test.each(['beforeLoad', 'loader'] as const)(
+    test.each(['context', 'beforeLoad', 'loader'] as const)(
       'in development, a throwing %s hydrate warns once that the client load runs the route again',
       async (lifecycle) => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
@@ -1253,6 +1253,7 @@ describe('hydration: lifecycle transport by presence', () => {
         const pageRoute = new BaseRoute({
           getParentRoute: () => rootRoute,
           path: '/page',
+          context: lifecycle === 'context' ? option : undefined,
           beforeLoad: lifecycle === 'beforeLoad' ? option : undefined,
           loader: lifecycle === 'loader' ? option : undefined,
         })
@@ -1263,9 +1264,11 @@ describe('hydration: lifecycle transport by presence', () => {
         })
         installPayload(router, [
           {},
-          lifecycle === 'beforeLoad'
-            ? { b: { value: 'server' } }
-            : { l: { value: 'server' } },
+          {
+            [{ context: 'm', beforeLoad: 'b', loader: 'l' }[lifecycle]]: {
+              value: 'server',
+            },
+          },
         ])
 
         await hydrate(router)

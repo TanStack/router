@@ -1,6 +1,13 @@
 import { describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute, lazyFn, redirect } from '../src'
+import {
+  BaseRootRoute,
+  BaseRoute,
+  SearchParamError,
+  createControlledPromise,
+  lazyFn,
+  redirect,
+} from '../src'
 import { createTestRouter } from './routerTestUtils'
 import type { AnyRouteMatch } from '../src'
 
@@ -163,6 +170,109 @@ describe('client lane: lifecycle object form', () => {
       context: { ready: true },
     })
   })
+
+  test('an async context and beforeLoad present pending until both settle', async () => {
+    const context = createControlledPromise<{ fromContext: string }>()
+    const beforeLoad = createControlledPromise<{ fromBeforeLoad: string }>()
+    const beforeLoadEntered = createControlledPromise<void>()
+    const rootRoute = new BaseRootRoute({})
+    const pageRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/page',
+      pendingMs: 0,
+      pendingComponent: () => 'pending',
+      context: () => context,
+      beforeLoad: () => {
+        beforeLoadEntered.resolve()
+        return beforeLoad
+      },
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([pageRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+    await router.load()
+
+    const navigation = router.navigate({ to: '/page' })
+    await vi.waitFor(() => {
+      expect(findMatch(router.state.matches, pageRoute.id)).toMatchObject({
+        status: 'pending',
+        isFetching: 'beforeLoad',
+      })
+    })
+
+    context.resolve({ fromContext: 'ctx' })
+    await beforeLoadEntered
+    await new Promise((resolve) => setTimeout(resolve))
+    expect(findMatch(router.state.matches, pageRoute.id)).toMatchObject({
+      status: 'pending',
+      isFetching: 'beforeLoad',
+    })
+
+    beforeLoad.resolve({ fromBeforeLoad: 'bl' })
+    await navigation
+
+    expect(router.state.status).toBe('idle')
+    expect(findMatch(router.state.matches, pageRoute.id)).toMatchObject({
+      status: 'success',
+      isFetching: false,
+      context: { fromContext: 'ctx', fromBeforeLoad: 'bl' },
+    })
+  })
+
+  test.each(['navigate', 'preload'] as const)(
+    'a search validation error after an async context fails the route (%s)',
+    async (mode) => {
+      const onError = vi.fn()
+      const beforeLoad = vi.fn()
+      const loader = vi.fn()
+      const rootRoute = new BaseRootRoute({})
+      const pageRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/page',
+        validateSearch: (search: Record<string, unknown>) => {
+          if (search.page === 'bad') {
+            throw new Error('invalid page')
+          }
+          return { page: search.page as string | undefined }
+        },
+        context: async () => {
+          await Promise.resolve()
+          return { ready: true }
+        },
+        beforeLoad,
+        loader,
+        onError,
+        errorComponent: () => 'error',
+      })
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([pageRoute]),
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+      })
+      await router.load()
+
+      if (mode === 'navigate') {
+        await router.navigate({ to: '/page', search: { page: 'bad' } })
+        expect(router.state.status).toBe('idle')
+        expect(findMatch(router.state.matches, pageRoute.id)).toMatchObject({
+          status: 'error',
+          isFetching: false,
+          context: { ready: true },
+        })
+        for (const match of router.state.matches) {
+          expect(match.isFetching).toBe(false)
+        }
+      } else {
+        await router.preloadRoute({ to: '/page', search: { page: 'bad' } })
+        expect(router.state.location.pathname).toBe('/')
+      }
+
+      expect(onError).toHaveBeenCalledTimes(1)
+      expect(onError.mock.calls[0]![0]).toBeInstanceOf(SearchParamError)
+      expect(beforeLoad).not.toHaveBeenCalled()
+      expect(loader).not.toHaveBeenCalled()
+    },
+  )
 
   test('an error thrown by an async context becomes an error match', async () => {
     const error = new Error('context failed')
@@ -380,6 +490,29 @@ describe('client lane: context revalidate on router.invalidate()', () => {
       expect(getContext()).toEqual({ runs: 1 })
       expect(runs).toBe(1)
     }
+  })
+
+  test('a context that returns nothing is memoized like any contribution', async () => {
+    const plain = vi.fn(() => undefined)
+    const { router, getContext } = setup(plain)
+
+    await router.load()
+    await router.load()
+    await router.invalidate()
+    await router.navigate({ to: '/other' })
+    await router.navigate({ to: '/page' })
+    expect(getContext()).toEqual({})
+    expect(plain).toHaveBeenCalledTimes(1)
+
+    const handler = vi.fn(() => undefined)
+    const revalidating = setup({ handler, revalidate: true })
+
+    await revalidating.router.load()
+    await revalidating.router.load()
+    expect(handler).toHaveBeenCalledTimes(1)
+    await revalidating.router.invalidate()
+    expect(handler).toHaveBeenCalledTimes(2)
+    expect(revalidating.getContext()).toEqual({})
   })
 
   test('revalidate: true re-runs the handler on router.invalidate() only', async () => {

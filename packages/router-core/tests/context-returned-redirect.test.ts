@@ -1,6 +1,6 @@
 import { createMemoryHistory } from '@tanstack/history'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { BaseRootRoute, BaseRoute, redirect } from '../src'
+import { BaseRootRoute, BaseRoute, isRedirect, redirect } from '../src'
 import { hydrate } from '../src/ssr/client'
 import { createTestRouter, dehydrateToBootstrap } from './routerTestUtils'
 
@@ -17,7 +17,7 @@ describe('returned context redirects', () => {
   )(
     'keeps inherited context when a terminal route context $step returns a redirect (async: $asynchronous)',
     async ({ step, asynchronous }) => {
-      vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
       const beforeLoad = vi.fn()
       const onError = vi.fn()
       const clientContext = vi.fn(() => redirect({ to: '/target' }))
@@ -69,6 +69,15 @@ describe('returned context redirects', () => {
         expect(clientContext).toHaveBeenCalledTimes(1)
         expect(beforeLoad).not.toHaveBeenCalled()
         expect(onError).not.toHaveBeenCalled()
+        // The ignored redirect is reported once, attributed to its step.
+        const hydrationWarnings = warn.mock.calls.filter(([message]) =>
+          String(message).includes('failed during hydration'),
+        )
+        expect(hydrationWarnings).toHaveLength(1)
+        expect(hydrationWarnings[0]![0]).toContain(
+          `the \`${step === 'hydrate' ? 'context.hydrate' : 'context'}\` of route "/page" failed during hydration and is ignored`,
+        )
+        expect(isRedirect(hydrationWarnings[0]![1])).toBe(true)
       } finally {
         router.history.destroy()
       }

@@ -460,7 +460,8 @@ async function contextualize(
       const contextOption = route.options.context
       const revalidate = match._ctxInvalid && contextOption?.revalidate
       let routeContext = match._ctx
-      if (contextOption && (!routeContext || revalidate)) {
+      // A cached contribution re-runs only through `revalidate`.
+      if (routeContext ? revalidate : contextOption) {
         let value = (
           typeof revalidate === 'function'
             ? revalidate
@@ -518,72 +519,60 @@ async function contextualize(
         ...parentContext,
         ...routeContext,
       }
+      if (signal.aborted) {
+        return [index, CANCELED_OUTCOME]
+      }
+      // A validation error fails the route like a throwing lifecycle.
+      const validationError = match.paramsError ?? match.searchError
+      if (validationError !== undefined) {
+        throw validationError
+      }
+      // Object form `{ handler }` or a plain function.
+      const beforeLoadOption = route.options.beforeLoad
+      const beforeLoad = beforeLoadOption?.handler || beforeLoadOption
+      if (beforeLoad) {
+        if (index >= retainedEnd) {
+          match.status = 'pending'
+          options[7 /* onReady */]?.()
+        }
+        setFetching(router, match, 'beforeLoad', options[0 /* controller */])
+        const value = beforeLoad({
+          ...common,
+          search: match.search,
+          context: match.context,
+          ...router.options.additionalContext,
+        })
+        // Always await to give a queued replacement navigation one microtask to
+        // kick in before checking cancellation, even for synchronous context.
+        const result = await (isPromise(value) ? waitFor(value, signal) : value)
+        if (signal.aborted) {
+          return [index, CANCELED_OUTCOME]
+        }
+        const outcome = materializeRedirect(
+          router,
+          lane,
+          route,
+          normalize(result, false, route.id),
+          options,
+        )
+        if (outcome[0 /* kind */] !== SUCCESS) {
+          releaseFlight(router, match)
+          return [index, outcome]
+        }
+        match.context = {
+          ...match.context,
+          ...result,
+        }
+      }
     } catch (cause) {
       releaseFlight(router, match)
       return [index, normalizeLaneError(router, lane, route, cause, options)]
     } finally {
+      // Async context and beforeLoad share one pending reservation.
       match.status = previousStatus
       if (match.isFetching === 'beforeLoad') {
         setFetching(router, match, false, options[0 /* controller */])
       }
-    }
-    if (signal.aborted) {
-      return [index, CANCELED_OUTCOME]
-    }
-    const validationError = match.paramsError ?? match.searchError
-    if (validationError !== undefined) {
-      releaseFlight(router, match)
-      return [
-        index,
-        normalizeLaneError(router, lane, route, validationError, options),
-      ]
-    }
-    // Object form `{ handler }` or a plain function.
-    const beforeLoadOption = route.options.beforeLoad
-    const beforeLoad = beforeLoadOption?.handler || beforeLoadOption
-    if (!beforeLoad) {
-      continue
-    }
-
-    if (index >= retainedEnd) {
-      match.status = 'pending'
-      options[7 /* onReady */]?.()
-    }
-    try {
-      setFetching(router, match, 'beforeLoad', options[0 /* controller */])
-      const value = beforeLoad({
-        ...common,
-        search: match.search,
-        context: match.context,
-        ...router.options.additionalContext,
-      })
-      // Always await to give a queued replacement navigation one microtask to
-      // kick in before checking cancellation, even for synchronous context.
-      const result = await (isPromise(value) ? waitFor(value, signal) : value)
-      if (signal.aborted) {
-        return [index, CANCELED_OUTCOME]
-      }
-      const outcome = materializeRedirect(
-        router,
-        lane,
-        route,
-        normalize(result, false, route.id),
-        options,
-      )
-      if (outcome[0 /* kind */] !== SUCCESS) {
-        releaseFlight(router, match)
-        return [index, outcome]
-      }
-      match.context = {
-        ...match.context,
-        ...result,
-      }
-    } catch (cause) {
-      releaseFlight(router, match)
-      return [index, normalizeLaneError(router, lane, route, cause, options)]
-    } finally {
-      match.status = previousStatus
-      setFetching(router, match, false, options[0 /* controller */])
     }
   }
 
@@ -2554,43 +2543,46 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       // context failure of the pending match past the committed prefix is
       // ignored too: the client load runs that match again.
       const terminal = match.status !== 'success' || (match._notFound && !index)
+      let routeContext
       try {
-        let routeContext
-        try {
-          if (route.options.context) {
-            routeContext = await wait(
-              step(route.options.context, dehydrated, 'm', () => ({
-                ...(common ??= getSerialContext(
-                  router,
-                  lane,
-                  match,
-                  laneOptions,
-                )),
-                deps: match.loaderDeps,
-                context: parentContext,
-                ...router.options.additionalContext,
-              })),
-            )
-            if (isRedirect(routeContext)) {
-              throw routeContext
-            }
-            match._ctx = routeContext || {}
+        if (route.options.context) {
+          const value = await wait(
+            step(route.options.context, dehydrated, 'm', () => ({
+              ...(common ??= getSerialContext(
+                router,
+                lane,
+                match,
+                laneOptions,
+              )),
+              deps: match.loaderDeps,
+              context: parentContext,
+              ...router.options.additionalContext,
+            })),
+          )
+          if (isRedirect(value)) {
+            throw value
           }
-        } catch (cause) {
-          if (!terminal) {
-            throw cause
-          }
-          routeContext = undefined
-          // The pending match past the committed prefix is left to the client load.
-          if (process.env.NODE_ENV !== 'production' && dehydrated) {
-            ;(ignored ??= []).push([
-              index,
-              route,
-              'm' in dehydrated ? 'context.hydrate' : 'context',
-              cause,
-            ])
-          }
+          routeContext = match._ctx = value || {}
         }
+      } catch (cause) {
+        if (!terminal) {
+          failed = index
+          if (process.env.NODE_ENV !== 'production') {
+            failure = cause
+          }
+          break
+        }
+        // The pending match past the committed prefix is left to the client load.
+        if (process.env.NODE_ENV !== 'production' && dehydrated) {
+          ;(ignored ??= []).push([
+            index,
+            route,
+            'm' in dehydrated ? 'context.hydrate' : 'context',
+            cause,
+          ])
+        }
+      }
+      try {
         match.context = {
           ...parentContext,
           ...routeContext,
