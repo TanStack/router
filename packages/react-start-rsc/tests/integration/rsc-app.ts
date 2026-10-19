@@ -235,7 +235,10 @@ export async function startRscPreviewServer(options: {
   process.env.NODE_ENV = 'production'
   const server = await preview({
     ...config(),
-    preview: { port: 0, host: '127.0.0.1' },
+    // Vite's default port: the server binds the next free port itself
+    // (`port: 0` makes Vite 8 probe a port and bind it after, which another
+    // process can take meanwhile).
+    preview: { host: '127.0.0.1' },
   })
   registerCleanup(async () => {
     await server.close()

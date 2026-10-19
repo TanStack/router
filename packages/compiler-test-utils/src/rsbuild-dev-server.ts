@@ -15,17 +15,18 @@
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { mkdir, readFile, readdir, rename, rm } from 'node:fs/promises'
-import { createServer } from 'node:net'
+import { createServer } from 'node:http'
 import path from 'node:path'
 import { createRsbuild, mergeRsbuildConfig } from '@rsbuild/core'
 import { createApp } from './build-harness'
 import { saveAppFile } from './save-file'
 import type { AppOptions } from './build-harness'
-import type { AddressInfo } from 'node:net'
+import type { AddressInfo, Socket } from 'node:net'
 import type {
   RsbuildConfig,
   RsbuildInstance,
   RsbuildPlugin,
+  RsbuildDevServer as RsbuildServer,
   Rspack,
 } from '@rsbuild/core'
 
@@ -326,6 +327,8 @@ export async function createRsbuildDevServer(
   let rsbuild: RsbuildInstance
   let server: Awaited<ReturnType<RsbuildInstance['createDevServer']>>
   let url: string | undefined
+  /** The HTTP server of a page (`browser` only). */
+  let http: Awaited<ReturnType<typeof serve>> | undefined
   /** The dev server once created, closed if its first compile fails. */
   let created: typeof server | undefined
   try {
@@ -345,7 +348,15 @@ export async function createRsbuildDevServer(
           },
           server: {
             printUrls: false,
-            ...(browser && { port: await freePort() }),
+            // With a page, the harness serves Rsbuild's middlewares and
+            // WebSocket from a server of its own (Rsbuild's custom server
+            // API), which binds a port the system assigns. Rsbuild's own
+            // `listen()` binds the port it found free when the dev server
+            // was created, before the first compile: another process can
+            // take it meanwhile (EADDRINUSE). Its HMR client connects to
+            // the page's port. (`port: 0`: Rsbuild's port search, whose
+            // result nothing binds, always finds one.)
+            ...(browser && { middlewareMode: true, port: 0 }),
           },
           // Rsbuild's default source maps in development, as in an app
           output: { minify: false },
@@ -363,7 +374,8 @@ export async function createRsbuildDevServer(
     created = server
     await compiles.first(compileTimeout)
     if (browser) {
-      url = (await server.listen()).urls[0]
+      http = await serve(server)
+      url = http.url
     }
   } catch (error) {
     try {
@@ -380,6 +392,7 @@ export async function createRsbuildDevServer(
     closed ??= (async () => {
       try {
         await server.close()
+        await http?.close()
       } finally {
         await app.dispose()
       }
@@ -817,19 +830,38 @@ export function trackCompiles(): CompileTracker {
 }
 
 /**
- * A port nothing listens on now (Rsbuild takes the next free port after it if
- * another server took it meanwhile).
+ * Serves a dev server created in `middlewareMode` (its middlewares and HMR
+ * WebSocket) over HTTP on a port the system assigns as the server binds it,
+ * as Rsbuild documents for a custom server.
  */
-function freePort() {
-  return new Promise<number>((resolve, reject) => {
-    const probe = createServer()
-    probe.unref()
-    probe.on('error', reject)
-    probe.listen(0, () => {
-      const { port } = probe.address() as AddressInfo
-      probe.close(() => resolve(port))
-    })
+async function serve(devServer: RsbuildServer) {
+  const httpServer = createServer(devServer.middlewares)
+  // Open connections (the page's WebSocket included) end with the server
+  const sockets = new Set<Socket>()
+  httpServer.on('connection', (socket) => {
+    sockets.add(socket)
+    socket.once('close', () => sockets.delete(socket))
   })
+  devServer.connectWebSocket({ server: httpServer })
+  await new Promise<void>((resolve, reject) => {
+    httpServer.once('error', reject)
+    httpServer.listen(0, '127.0.0.1', resolve)
+  })
+  const close = () =>
+    new Promise<void>((resolve) => {
+      for (const socket of sockets) {
+        socket.destroy()
+      }
+      httpServer.close(() => resolve())
+    })
+  try {
+    await devServer.afterListen()
+  } catch (error) {
+    await close()
+    throw error
+  }
+  const { port } = httpServer.address() as AddressInfo
+  return { url: `http://127.0.0.1:${port}/`, close }
 }
 
 /** An app file as a compile may read it. */

@@ -17,8 +17,9 @@ describe('module state shared with split chunks', () => {
   // `let` the split component reassigns stays in the route module, which the
   // chunk imports it from ("Cannot assign to import").
   // Impact: the route cannot be built as soon as code splitting is on.
-  // Needs a real build: imports are live bindings, and the in-process harness
-  // snapshots them, so even a correct fix would read a stale value there.
+  // A real build, as the user sees it: the bundler rejects the assignment.
+  // (Evaluated without a bundler, as in code-splitter-scope.test.ts, the
+  // first row throws "Assignment to constant variable" on load.)
   test.fails.each([
     {
       name: 'the loader reassigns',

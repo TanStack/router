@@ -584,9 +584,8 @@ export async function expectValidModules(
   )
 }
 
-function moduleRecord(code: string, id = 'module.tsx') {
-  return parseSync(`module.${moduleLang(id)}`, code, { sourceType: 'module' })
-    .module
+function moduleRecord(code: string) {
+  return parseSync('module.tsx', code, { sourceType: 'module' }).module
 }
 
 /** Sources a module imports, side-effect imports included, sorted. */
@@ -619,20 +618,6 @@ export function importedNames(code: string, source: string) {
               ? '*'
               : entry.importName.name!,
         ),
-    )
-    .sort()
-}
-
-/**
- * Value names a module exports (`default` for a default export), sorted.
- * `id` gives the module's language (TypeScript without JSX for `.ts`).
- */
-export function exportedNames(code: string, id?: string) {
-  return moduleRecord(code, id)
-    .staticExports.flatMap((statement) =>
-      statement.entries
-        .filter((entry) => !entry.isType && entry.exportName.kind !== 'None')
-        .map((entry) => entry.exportName.name ?? 'default'),
     )
     .sort()
 }

@@ -202,6 +202,39 @@ describe('files', () => {
     ).toBe(false)
   })
 
+  // Route file names with brackets (route groups, dynamic segments, optional
+  // params). Control: a bracket-free name quoted in brackets still counts.
+  test.each([
+    ['src/routes/(group).tsx', 'in /app/src/routes/(group).tsx'],
+    ['src/routes/(group).tsx', 'in (group).tsx'],
+    ['src/routes/(group).tsx', '((group).tsx)'],
+    ['src/routes/(group).tsx', 'src\\routes\\(group).tsx(3,5)'],
+    ['src/routes/posts.[id].tsx', 'routes/posts.[id].tsx:3:5'],
+    ['src/routes/{-$lang}.tsx', '"/@fs/app/src/routes/{-$lang}.tsx"'],
+    ['src/routes/[...slug].tsx', 'file:///app/src/routes/%5B...slug%5D.tsx'],
+    ['src/routes/posts.tsx', '(src/routes/posts.tsx)'],
+  ])('accepts %s named as %s', (file, text) => {
+    expect(mentionsFile(`warning: ${text}`, file, { root })).toBe(true)
+  })
+
+  test.each([
+    ['src/routes/(group).tsx', 'in group.tsx'],
+    ['src/routes/(group).tsx', 'in (other).tsx'],
+    ['src/routes/(group).tsx', 'in src/routes/(group)/index.tsx'],
+    ['src/routes/(group).tsx', 'in (group).index.tsx'],
+    ['src/routes/posts.[id].tsx', 'in posts.id.tsx'],
+  ])('rejects %s named as %s', (file, text) => {
+    expect(mentionsFile(`warning: ${text}`, file, { root })).toBe(false)
+  })
+
+  test('a bracketed name reports its position', () => {
+    expectDiagnostic('error: src/routes/(group).tsx:3:5 bad', {
+      file: 'src/routes/(group).tsx',
+      root,
+      position: { line: 3, column: 5 },
+    })
+  })
+
   test('without a root, a relative file matches trailing segments either way', () => {
     expect(mentionsFile('/tmp/x/src/a.ts:1:1', 'src/a.ts')).toBe(true)
     expect(mentionsFile('a.ts', 'src/a.ts')).toBe(true)
