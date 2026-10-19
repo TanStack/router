@@ -12,6 +12,9 @@ class DataStore {
 const store = new DataStore()
 
 export const Route = createFileRoute('/store')({
+  beforeLoad() {
+    console.log(store.get('items'))
+  },
   loader: async () => {
     store.set('items', await fetch('/api'))
   },
