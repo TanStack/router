@@ -111,8 +111,9 @@ export const value: Foo = 1 as Foo`,
     expect(graph.evaluated).not.toContain('/test/secret.server.ts')
   })
 
-  // Loosened: the namespace itself is pinned in known-bugs.test.ts ("a
-  // denied namespace re-export keeps its exported name").
+  // Loosened: the namespace itself is pinned on a real app
+  // (integration/importProtection/known-bugs.test.ts, "a module re-exporting
+  // a denied file as a namespace").
   test('a module with `export * as ns from` a denied module evaluates without it', async () => {
     const { module, loaded } = await evaluateAfterRewrite(
       `export * as ns from './secret.server'

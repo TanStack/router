@@ -1,5 +1,3 @@
-// Slow-tier half of this suite: the tests that need a real tool. Its
-// in-process tests are in ../../importProtection/known-bugs.test.ts (fast tier).
 /**
  * Known import-protection bugs. Each test asserts correct behaviour for a bug
  * on main and is marked .fails; remove .fails when the bug is fixed. A mock
@@ -538,6 +536,23 @@ export const epsilon = () => ({ deep: () => 'MARK_SECRET' })
 
   const mock = 'a safe mock'
 
+  /** A custom JSX runtime whose `jsx` renders `MARK_CUSTOM_JSX`. */
+  const customJsx = {
+    'node_modules/custom-jsx/package.json': JSON.stringify({
+      name: 'custom-jsx',
+      type: 'module',
+      exports: {
+        './jsx-runtime': './jsx-runtime.js',
+        './jsx-dev-runtime': './jsx-runtime.js',
+      },
+    }),
+    'node_modules/custom-jsx/jsx-runtime.js': `export const Fragment = Symbol('Fragment')
+export const jsx = () => 'MARK_CUSTOM_JSX'
+export const jsxs = jsx
+export const jsxDEV = jsx
+`,
+  }
+
   interface TwinCase {
     files: Record<string, string>
     importProtection?: ImportProtectionOptions
@@ -547,7 +562,7 @@ export const epsilon = () => ({ deep: () => 'MARK_SECRET' })
 
   const twins: Record<string, TwinCase> = {
     // Twin of the rewrite pin "a denied namespace re-export keeps its
-    // exported name" (known-bugs.test.ts, fast tier, until W2-i).
+    // exported name" (a former in-process pin).
     'a module re-exporting a denied file as a namespace': {
       files: {
         'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
@@ -592,24 +607,12 @@ export const read = () => [api.eval(), api.arguments()]
       },
       expected: [mock, mock],
     },
-    // Twin of "a JSX pragma that leads a denied import stays in effect": the
-    // page renders with the runtime its pragma names (a custom JSX runtime
-    // is valid user input).
+    // A JSX pragma leading a denied import: the page renders with the
+    // runtime its pragma names (a custom JSX runtime is valid user input),
+    // whatever the rewrite does with the comment (SPEC J2.16, §5 item 5).
     'a JSX pragma leading a denied import': {
       files: {
-        'node_modules/custom-jsx/package.json': JSON.stringify({
-          name: 'custom-jsx',
-          type: 'module',
-          exports: {
-            './jsx-runtime': './jsx-runtime.js',
-            './jsx-dev-runtime': './jsx-runtime.js',
-          },
-        }),
-        'node_modules/custom-jsx/jsx-runtime.js': `export const Fragment = Symbol('Fragment')
-export const jsx = () => 'MARK_CUSTOM_JSX'
-export const jsxs = jsx
-export const jsxDEV = jsx
-`,
+        ...customJsx,
         'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
         'src/page.tsx': `/** @jsxImportSource custom-jsx */
 import { secret } from './secret.server'
@@ -621,6 +624,43 @@ export const read = () => [Page()]
       },
       expected: ['MARK_CUSTOM_JSX'],
     },
+    // The same pragma leading the import of a denied specifier, which is
+    // rewritten in the importer itself (a denied file is mocked in its own
+    // module instead).
+    'a JSX pragma leading the import of a denied specifier': {
+      files: {
+        ...customJsx,
+        ...deniedDependency('db-lib'),
+        'src/page.tsx': `/** @jsxImportSource custom-jsx */
+import { query } from 'db-lib'
+export const Page = () => <div>{String(query())}</div>
+`,
+        'src/entry.ts': `import { Page } from './page'
+export const read = () => [Page()]
+`,
+      },
+      importProtection: { client: { specifiers: ['db-lib'] } },
+      expected: ['MARK_CUSTOM_JSX'],
+    },
+    // The pragma after a directive (a regression of the Yuku migration, PR
+    // #8504, kept the comment of this shape only).
+    'a JSX pragma after a directive, leading the import of a denied specifier':
+      {
+        files: {
+          ...customJsx,
+          ...deniedDependency('db-lib'),
+          'src/page.tsx': `'use client'
+/** @jsxImportSource custom-jsx */
+import { query } from 'db-lib'
+export const Page = () => <div>{String(query())}</div>
+`,
+          'src/entry.ts': `import { Page } from './page'
+export const read = () => [Page()]
+`,
+        },
+        importProtection: { client: { specifiers: ['db-lib'] } },
+        expected: ['MARK_CUSTOM_JSX'],
+      },
     // Twin of "a namespace member read before the import".
     'a namespace member read in a function declared before the import': {
       files: {
@@ -677,9 +717,11 @@ export const read = () => [Color.Red, Util.x]
 
   /**
    * The channels on which main fails each twin (`.fails`, red reason in
-   * brackets). The JSX pragma twin passes everywhere: with the default JSX
-   * pipeline, JSX is compiled before import protection rewrites the import
-   * (the internal pin needs a JSX plugin that runs after the rewrite).
+   * brackets). The JSX pragma twins pass everywhere: Vite (Oxc) and Rsbuild
+   * (SWC) compile JSX before import protection rewrites the import. (A
+   * former in-process pin, "a JSX pragma that leads a denied import stays in
+   * effect", needed a JSX plugin that runs after the rewrite; none of the
+   * available real plugins does, so it was removed, V1 ip S12.)
    */
   const failsOn: Record<string, Array<string>> = {
     // Bug: the dev rewrite of the importer drops `export * as ns` (the
