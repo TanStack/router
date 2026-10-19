@@ -1,10 +1,27 @@
 import { describe, expect, it } from 'vitest'
-import { stringifySearchValue } from '../src/BaseTanStackRouterDevtoolsPanel'
+import {
+  serializeSearchForComparison,
+  stringifySearchValue,
+} from '../src/BaseTanStackRouterDevtoolsPanel'
 
 describe('stringifySearchValue', () => {
   it('serializes plain search params like JSON.stringify', () => {
     const search = { id: 1, nested: { ok: true }, tags: ['a', 'b'] }
     expect(stringifySearchValue(search)).toBe(JSON.stringify(search))
+  })
+
+  it('keeps bigint and string values distinct in comparisons', () => {
+    // A search changing from 1n to '1' at the same pathname is a real
+    // navigation and must not be dropped from history as unchanged.
+    expect(serializeSearchForComparison({ id: 1n })).not.toBe(
+      serializeSearchForComparison({ id: '1' }),
+    )
+    expect(serializeSearchForComparison({ id: 1n })).not.toBe(
+      serializeSearchForComparison({ id: 1 }),
+    )
+    expect(serializeSearchForComparison({ id: '1' })).toBe(
+      serializeSearchForComparison({ id: '1' }),
+    )
   })
 
   it('does not throw on bigint values and serializes them deterministically', () => {
