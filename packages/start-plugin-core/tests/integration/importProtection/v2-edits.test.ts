@@ -306,11 +306,16 @@ describe('rsbuild dev', () => {
           'src/secret.server.ts': null,
           'src/widget.client.ts': null,
         })
+        // Recreated with the step's edit: recreated on their own after the
+        // compile that failed to resolve them, under load no compile ever
+        // included them (60 s; Rspack's watcher of missing files, outside
+        // import protection), while the edited importers are watched and
+        // resolve them again.
         await server.edit({
           'src/secret.server.ts': secretServer(index),
           'src/widget.client.ts': widgetClient(index),
+          ...stepEdits(step.live),
         })
-        await server.edit(stepEdits(step.live))
       }
       const values = (ran: { result: unknown } | { error: string }) => {
         expect(ran).toEqual({ result: expect.anything() })
