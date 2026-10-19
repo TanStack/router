@@ -10,6 +10,10 @@ import path from 'node:path'
 import ts from 'typescript'
 import { describe, expect, test } from 'vitest'
 import {
+  loadMarker,
+  loadedModulesExpression,
+} from '@tanstack/compiler-test-utils/importers'
+import {
   buildStart,
   callByIdExports,
   callByIdPrelude,
@@ -131,15 +135,23 @@ describe.each(startBundlers)('%s build', (bundler) => {
     timeout,
   )
 
-  /** A route whose component and loader each carry a marker. */
+  /**
+   * A route whose component and loader each carry a marker, and each read a
+   * module of their own that records when it loads (\`loadMarker\`): a
+   * module only one option reads loads with that option's code.
+   */
   const routeFiles = {
     'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute()
 `,
+    'src/loader-data.ts': `${loadMarker('loader')}export const loaderData = 'MARK_LOADER'\n`,
+    'src/component-label.ts': `${loadMarker('component')}export const componentLabel = 'MARK_COMPONENT'\n`,
     'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { loaderData } from '../loader-data'
+import { componentLabel } from '../component-label'
 export const Route = createFileRoute('/')({
-  loader: () => 'MARK_LOADER',
-  component: () => 'MARK_COMPONENT',
+  loader: () => loaderData,
+  component: () => componentLabel,
 })
 `,
     'src/router.ts': `import { routeTree } from './routeTree.gen'
@@ -160,7 +172,7 @@ export { renderPath } from '../harness/render'
     {
       name: 'by default',
       router: {},
-      expected: { loader: 'eager', component: 'lazy', oneChunk: false },
+      expected: { loader: 'eager', component: 'lazy', withComponent: false },
     },
     {
       name: 'with a defaultBehavior grouping the loader with the component',
@@ -171,7 +183,7 @@ export { renderPath } from '../harness/render'
           >,
         },
       },
-      expected: { loader: 'lazy', component: 'lazy', oneChunk: true },
+      expected: { loader: 'lazy', component: 'lazy', withComponent: true },
     },
   ])(
     'router.codeSplittingOptions: the client and SSR builds load the route loader and component $name',
@@ -182,16 +194,27 @@ export { renderPath } from '../harness/render'
         entry: 'src/entry.ts',
         start: { router },
       })
-      /** Where a build has the loader and the component. */
-      const placement = (build: StartBuild['client']) => ({
+      // Whether the loader's code loads with the component's (one group):
+      // not loaded with the route, and loaded once the router preloads the
+      // component (V1 start S47: observed at run time, not by chunk names).
+      const groupScript = `const loaded = () => [...${loadedModulesExpression}]
+const route = Object.values(entry.getRouter().routeTree.children).find(
+  (candidate) => candidate.options.id === '/',
+)
+const atStart = loaded()
+await route.options.component.preload()
+return !atStart.includes('loader') && loaded().includes('loader')`
+      /** Where a build has the loader and the component, and their group. */
+      const placement = async (build: StartBuild['client']) => ({
         loader: build.where('MARK_LOADER'),
         component: build.where('MARK_COMPONENT'),
-        oneChunk:
-          build.locate('MARK_LOADER').lazy[0] ===
-          build.locate('MARK_COMPONENT').lazy[0],
+        withComponent: (await build.run(groupScript)).result,
       })
       // Source: mutation round 3 start-router H for the SSR build.
-      expect({ client: placement(client), ssr: placement(ssr) }).toEqual({
+      expect({
+        client: await placement(client),
+        ssr: await placement(ssr),
+      }).toEqual({
         client: expected,
         ssr: expected,
       })

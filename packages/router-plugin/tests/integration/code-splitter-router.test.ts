@@ -133,3 +133,101 @@ return results`)
     })
   }, 120_000)
 })
+
+// An option value that is already lazy (`lazyRouteComponent(() =>
+// import(…))`, ruling OQ13): the code splitter may leave it in the route
+// module or split it and chain its preload; either way, once the router has
+// preloaded the route, rendering it requests no new module and shows no
+// pending fallback (SPEC J2.6). One real Vite client build in Chromium:
+// the requests are the page's resource entries.
+describe('an already lazy route component', () => {
+  const files = {
+    'routes/__root.tsx': `import { createRootRoute, Outlet } from '@tanstack/react-router'
+export const Route = createRootRoute({ component: () => <Outlet /> })
+`,
+    'routes/index.tsx': `import { createFileRoute, lazyRouteComponent } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({
+  component: lazyRouteComponent(() => import('../page')),
+  pendingComponent: () => <p>MARK_PENDING</p>,
+  pendingMs: 0,
+})
+`,
+    'page.tsx': `export default function Page() {
+  return <p>MARK_PAGE</p>
+}
+`,
+    'entry.ts': `import { createElement } from 'react'
+import { flushSync } from 'react-dom'
+import { createRoot } from 'react-dom/client'
+import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+/** Preloads \`/\`, then renders it; what the first render shows and what loaded for it. */
+export async function renderPreloaded() {
+  const router = createRouter({
+    routeTree,
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+  await router.preloadRoute({ to: '/' })
+  await router.load()
+  const before = performance.getEntriesByType('resource').length
+  const container = document.createElement('div')
+  document.body.appendChild(container)
+  const root = createRoot(container)
+  flushSync(() => root.render(createElement(RouterProvider, { router })))
+  const first = container.innerHTML
+  for (let tries = 0; tries < 200 && !container.innerHTML.includes('MARK_PAGE'); tries++) {
+    await new Promise((resolve) => setTimeout(resolve, 10))
+  }
+  const requested = performance
+    .getEntriesByType('resource')
+    .slice(before)
+    .map((entry) => entry.name)
+  const html = container.innerHTML
+  root.unmount()
+  container.remove()
+  return { first, html, requested }
+}
+`,
+  }
+
+  /** What a Vite client build of the app shows and requests (see the entry). */
+  async function renderPreloaded(autoCodeSplitting: boolean) {
+    const app = await build({
+      bundler: 'vite',
+      env: 'client',
+      files,
+      pluginOptions: { autoCodeSplitting },
+    })
+    return (await app.run(`return await entry.renderPreloaded()`)).result
+  }
+  const preloaded = {
+    first: '<p>MARK_PAGE</p>',
+    html: '<p>MARK_PAGE</p>',
+    requested: [],
+  }
+
+  // Control for the pin below: without code splitting the router's own
+  // preload of the lazy component is enough.
+  test('renders without a new request or a pending fallback once the router preloaded it (splitting off)', async () => {
+    expect(await renderPreloaded(false)).toEqual(preloaded)
+  }, 120_000)
+
+  // Bug: the code splitter moves the already lazy value into a chunk of its
+  // own, so the route's component is a lazy component whose module exports
+  // another lazy component: the router's preload loads the outer chunk only,
+  // and the first render suspends (pending fallback) and requests the page
+  // module. Leaving the value in the route module or chaining the inner
+  // preload both fix it (ruling OQ13).
+  // Source: SPEC §6 OQ13 (coordinator ruling 2026-10-18).
+  // Impact: apps that already wrap a route component in
+  // lazyRouteComponent show their pending component, and wait for a
+  // request, on every navigation the router had preloaded (intent
+  // preloading no longer avoids the waterfall).
+  test.fails(
+    'renders without a new request or a pending fallback once the router preloaded it',
+    async () => {
+      expect(await renderPreloaded(true)).toEqual(preloaded)
+    },
+    120_000,
+  )
+})

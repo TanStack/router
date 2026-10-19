@@ -54,14 +54,20 @@ export const Route = createFileRoute('/')({
         },
       },
     )
-    // The route module imports nothing only the split components read, and
-    // no split chunk imports what only the loader reads.
-    expect(importedNames(route.modules.reference!, './messages')).toEqual([
-      'otherMessage',
-    ])
-    expect(importedNames(route.modules.reference!, './other')).toEqual([
-      'default',
-    ])
+    // Nothing that loads with the route module (the route module and the
+    // modules it imports statically, V1 split F30) imports what only the
+    // split components read, and no split chunk imports what only the loader
+    // reads.
+    expect(
+      route.eagerModules.flatMap((code) => importedNames(code, './messages')),
+    ).not.toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/^(?:default|targetMessage|namespaced|\*)$/),
+      ]),
+    )
+    expect(
+      route.eagerModules.flatMap((code) => importedNames(code, './other')),
+    ).not.toEqual(expect.arrayContaining([expect.stringMatching(/^(?:x|\*)$/)]))
     for (const option of ['component', 'errorComponent', 'notFoundComponent']) {
       const loaded = await route.loadedBy(option)
       expect(
@@ -150,7 +156,7 @@ export const Route = createFileRoute('/')({
   // macro), so they move with the import.
   it('keeps the attributes of an import moved into the chunk', async () => {
     const { modules } =
-      compileRouteModules(`${head}import { test } from './test' with { type: 'macro' }
+      await compileRouteModules(`${head}import { test } from './test' with { type: 'macro' }
 export const Route = createFileRoute('/')({
   component: () => test,
 })
@@ -212,7 +218,9 @@ export const Route = createFileRoute('/')({
     { name: 'split component modules', compile: componentModules },
     {
       name: 'route module compiled for HMR',
-      compile: (code: string) => [transformWithRouteHmrPlugin(code)],
+      compile: async (code: string) => [
+        await transformWithRouteHmrPlugin(code),
+      ],
     },
   ])(
     'keeps the React import of the $name for classic JSX',
@@ -322,7 +330,8 @@ export const Route = createFileRoute('/')({
 export default ${declaration}
 `)
       await expectValidModules(route.modules)
-      const exported = route.exports.default
+      // As another module of the app imports it.
+      const { default: exported } = await route.importBindings(['default'])
       expect(typeof exported).toBe('function')
       expect(type === 'class' ? new exported().x : exported()).toBe(
         type === 'class' ? 1 : null,
@@ -394,7 +403,8 @@ export const Route = createFileRoute('/')({
 })
 `)
     await expectValidModules(route.modules)
-    expect([route.exports.reset(), await route.render('component')]).toEqual([
+    const { reset } = await route.importBindings(['reset'])
+    expect([reset(), await route.render('component')]).toEqual([
       0,
       '<h1>Home</h1>',
     ])
@@ -602,7 +612,8 @@ export const Route = createFileRoute('/')({
 })
 `)
       expect(await route.render('component')).toBe('<p>h</p>')
-      expect(route.exports.helper()).toBe('h')
+      const { helper } = await route.importBindings(['helper'])
+      expect(helper()).toBe('h')
     },
   )
 
@@ -919,7 +930,10 @@ export const Route = createFileRoute('/posts')({
         `export { Post } from '${routeSpecifier}'`,
       )
       expect(other.Post('1')).toEqual({ id: '1' })
-      const hmr = await evaluateModule(transformWithRouteHmrPlugin(code), stubs)
+      const hmr = await evaluateModule(
+        await transformWithRouteHmrPlugin(code),
+        stubs,
+      )
       expect(hmr.Post!('2')).toEqual({ id: '2' })
     },
   )
@@ -943,12 +957,12 @@ export const Route = createFileRoute('/')({
     expect(await route.render('component')).toBe('<p>server</p>')
   })
 
-  it('keeps decorators before `export` for legacy decorator transforms', () => {
+  it('keeps decorators before `export` for legacy decorator transforms', async () => {
     // TypeScript `experimentalDecorators` and Babel `decorators-legacy` only
     // accept decorators before the `export` keyword: every emitted module
     // must still parse with them.
     const { modules } =
-      compileRouteModules(`${head}import { injectable } from 'tsyringe'
+      await compileRouteModules(`${head}import { injectable } from 'tsyringe'
 import { observable } from 'mobx'
 @injectable() export class Store { @observable count = 0 }
 export const Route = createFileRoute('/')({
@@ -973,7 +987,7 @@ export const Route = createFileRoute('/')({
   // them). Compiled only: the module evaluator does not run `accessor`.
   it('compiles a class with an auto-accessor field that the split component uses', async () => {
     const { modules } =
-      compileRouteModules(`${head}class Store { accessor count = 1 }
+      await compileRouteModules(`${head}class Store { accessor count = 1 }
 const store = new Store()
 export const Route = createFileRoute('/')({
   loader: () => store,

@@ -235,9 +235,9 @@ export const Route = createFileRoute('/')({
 // notice of the code it no longer holds. Copies in other modules and other
 // orphaned comments are free. Source: #8504.
 describe('the route module keeps the license comments of the route file', () => {
-  it('leading the file', () => {
+  it('leading the file', async () => {
     const legal = '/*! Example Corp. | MIT License */'
-    const { modules } = compileRouteModules(
+    const { modules } = await compileRouteModules(
       `${legal}\n${head}export const Route = createFileRoute('/')({
   component: () => <p>page</p>,
 })`,
@@ -269,8 +269,10 @@ export const Route = createFileRoute('/')({
 `,
       deleteNodes: ['ssr' as const],
     },
-  ])('$name', ({ legal, route, deleteNodes }) => {
-    const { modules } = compileRouteModules(route(legal), { deleteNodes })
+  ])('$name', async ({ legal, route, deleteNodes }) => {
+    const { modules } = await compileRouteModules(route(legal), {
+      deleteNodes,
+    })
     expect(modules.reference).toContain(legal)
   })
 })

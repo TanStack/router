@@ -47,17 +47,6 @@ function reportsNotSplit(
   )
 }
 
-/**
- * The code of each compiled module that loads with the route module (the
- * route module and what it imports statically, facades included).
- */
-function eagerModules(route: Awaited<ReturnType<typeof loadRoute>>) {
-  return route.eager.flatMap((id) => {
-    const code = route.graph.modules.get(id)
-    return code === undefined ? [] : [code]
-  })
-}
-
 /** Stubs `./state`, counting the calls of `init` and `register`. */
 function stateStub() {
   const state = {
@@ -686,7 +675,7 @@ export const Route = createFileRoute('/')({
     async () => {
       const calls: Array<unknown> = []
       await evaluateModule(
-        transformWithRouteHmrPlugin(`${head}import { init } from './init'
+        await transformWithRouteHmrPlugin(`${head}import { init } from './init'
 const analytics = init('analytics')
 export type Analytics = typeof analytics
 export const Route = createFileRoute('/')({
@@ -845,7 +834,7 @@ export const Route = createFileRoute('/')({
 `)
       // What loads with the route module loads with the entry.
       expect({
-        eagerHandler: eagerModules(route).some((code) =>
+        eagerHandler: route.eagerModules.some((code) =>
           code.includes('MARK_handler'),
         ),
         loaded: await route.options.loader.handler(),
@@ -1363,9 +1352,9 @@ export const Route = createFileRoute('/')({ component: Page })
   // Impact: every split chunk loads the re-exported modules and the class.
   test.fails(
     'split chunks do not re-export or declare the re-exports and default class of the route file',
-    () => {
+    async () => {
       const { graph } =
-        compileRouteModules(`${head}export { getPaths, a as getProps } from './lib'
+        await compileRouteModules(`${head}export { getPaths, a as getProps } from './lib'
 export { foo, bar as baz } from './lib'
 export { helper } from './default-lib'
 export default class Test {
@@ -2044,26 +2033,44 @@ export const Route = createFileRoute('/about')({ component: () => <Page /> })
   // this bug even when the function holds no state. Source: gap S19.
   // Impact: code that relies on the identity of an exported hook or helper
   // (memoisation, registries, `===` checks) sees two of them.
+  // (The title lives in `staticData`, typed by the documented
+  // `StaticDataRouteOption` augmentation; V1 split F28.)
   test.fails(
     'an exported function that reads Route is the one the split component calls',
     async () => {
-      const route = await loadRoute(`${head}export function useTitle() {
-  return Route.options.title
+      const seen: Array<unknown> = []
+      const route = await loadRoute(
+        `${head}import { see } from './see'
+declare module '@tanstack/react-router' {
+  interface StaticDataRouteOption {
+    title?: string
+  }
+}
+export function useTitle() {
+  return Route.options.staticData!.title
 }
 function Page() {
-  ;(globalThis as any).__calledUseTitle = useTitle
+  see(useTitle)
   return <p>{useTitle()}</p>
 }
-export const Route = createFileRoute('/')({ title: 'title', component: Page })
-`)
-      try {
-        expect(await route.render('component')).toBe('<p>title</p>')
-        expect((globalThis as any).__calledUseTitle).toBe(
-          route.exports.useTitle,
-        )
-      } finally {
-        delete (globalThis as any).__calledUseTitle
-      }
+export const Route = createFileRoute('/')({
+  staticData: { title: 'title' },
+  component: Page,
+})
+`,
+        { stubs: { './see': { see: (value: unknown) => seen.push(value) } } },
+      )
+      // Another module of the app imports the hook.
+      const { useTitle } = await route.importBindings(['useTitle'])
+      expect({
+        rendered: await route.render('component'),
+        imported: useTitle(),
+        sameInstance: seen.length === 1 && seen[0] === useTitle,
+      }).toEqual({
+        rendered: '<p>title</p>',
+        imported: 'title',
+        sameInstance: true,
+      })
     },
   )
 
@@ -2121,7 +2128,9 @@ export const Route = createFileRoute('/')({ component: Bar, errorComponent: NoFo
       expect(await route.render('errorComponent', { noForget: 'x' })).toBe(
         '<div>x</div>',
       )
-      expect(seen).toEqual([route.exports.default])
+      // The component other modules import.
+      const { default: imported } = await route.importBindings(['default'])
+      expect(seen).toEqual([imported])
     },
   )
 
@@ -2187,10 +2196,11 @@ export const Route = createFileRoute('/')({
           },
         },
       )
+      const { default: bump } = await route.importBindings(['default'])
       expect([
         route.options.loader(),
         await route.render('component'),
-        route.exports.default(),
+        bump(),
         inits,
       ]).toEqual([1, '<p>2</p>', 3, 1])
     },
@@ -2214,10 +2224,8 @@ export const Route = createFileRoute('/')({
   component: () => <p>page</p>,
 })
 `)
-      expect([await route.options.loader(), route.exports.load()]).toEqual([
-        'data',
-        'data',
-      ])
+      const { load } = await route.importBindings(['load'])
+      expect([await route.options.loader(), load()]).toEqual(['data', 'data'])
     },
   )
 
@@ -2344,7 +2352,7 @@ describe('TypeScript-only syntax', () => {
   // splitting is on.
   test.fails('a decorator after `export` compiles', async () => {
     const { modules } =
-      compileRouteModules(`${head}import { injectable } from 'tsyringe'
+      await compileRouteModules(`${head}import { injectable } from 'tsyringe'
 export @injectable() class Store {}
 export const Route = createFileRoute('/')({ component: () => <div /> })
 `)
@@ -2359,9 +2367,9 @@ export const Route = createFileRoute('/')({ component: () => <div /> })
   // splitting is on.
   test.fails(
     'a class with a parameter decorator that the split component uses compiles into parseable modules',
-    () => {
+    async () => {
       const { modules } =
-        compileRouteModules(`${head}import { Inject } from './di'
+        await compileRouteModules(`${head}import { Inject } from './di'
 class Service {
   constructor(@Inject() readonly dep: unknown) {}
 }
@@ -2390,7 +2398,7 @@ export const Route = createFileRoute('/')({
   ])(
     'a type-only import re-exported as `export { Settings }` is erased (%s)',
     async (importDeclaration) => {
-      const { modules } = compileRouteModules(`${head}${importDeclaration}
+      const { modules } = await compileRouteModules(`${head}${importDeclaration}
 export { Settings }
 export const Route = createFileRoute('/')({
   component: () => <p>index</p>,
@@ -2425,16 +2433,19 @@ export const Route = createFileRoute('/')({
 })`,
       source: './server/db',
     },
-  ])('split chunks do not import what only $name reads', ({ code, source }) => {
-    const { graph } = compileRouteModules(`${head}${code}\n`)
-    const chunks = [...graph.importKinds]
-      .filter(([, kind]) => kind === 'dynamic')
-      .map(([id]) => graph.modules.get(id)!)
-    expect(chunks.length).toBeGreaterThan(0)
-    expect(
-      chunks.filter((chunk) => importSources(chunk).includes(source)),
-    ).toEqual([])
-  })
+  ])(
+    'split chunks do not import what only $name reads',
+    async ({ code, source }) => {
+      const { graph } = await compileRouteModules(`${head}${code}\n`)
+      const chunks = [...graph.importKinds]
+        .filter(([, kind]) => kind === 'dynamic')
+        .map(([id]) => graph.modules.get(id)!)
+      expect(chunks.length).toBeGreaterThan(0)
+      expect(
+        chunks.filter((chunk) => importSources(chunk).includes(source)),
+      ).toEqual([])
+    },
+  )
 
   // Bug: the split chunk declares a namespace the split component reads
   // without its body. Source: #8504 (code-splitter-imports-exports.test.ts),
@@ -2496,7 +2507,7 @@ function Page() {
 }
 export const Route = createFileRoute('/')({ component: Page })
 `
-      await expectValidModules(compileRouteModules(code).modules)
+      await expectValidModules((await compileRouteModules(code)).modules)
       expect(await (await loadRoute(code)).render('component')).toBe(
         '<p>-1</p>',
       )
@@ -2513,7 +2524,7 @@ export const Route = createFileRoute('/')({ component: Page })
 }
 export const Route = createFileRoute('/')({ component: Page })
 `
-    await expectValidModules(compileRouteModules(code).modules)
+    await expectValidModules((await compileRouteModules(code)).modules)
     return (await loadRoute(code)).render('component')
   }
 
@@ -2535,8 +2546,11 @@ export const Route = createFileRoute('/')({
     const route = await loadRoute(sharedHelperRoute(helper), {
       verbatimModuleSyntax,
     })
+    // As another module of the app imports them.
+    const imported = await route.importBindings(['helper', 'helperAlias'])
     return [
-      route.exports.helperAlias === route.exports.helper,
+      typeof imported.helper === 'function' &&
+        imported.helperAlias === imported.helper,
       route.options.beforeLoad(),
       await route.options.loader(),
     ]
@@ -2588,13 +2602,15 @@ describe('code that reads a split binding', () => {
   /**
    * Loads a route whose component is `Page`, declared next to `exports`, in
    * a production compile, and returns what the route renders, what the
-   * component `read` gets from the route module's exports renders, and
+   * component `read` gets from the route module's export `name` (as another
+   * module of the app imports it) renders, and
    * whether `Page` is split or the user is told it is not (a warning naming
    * the route file and `Page` or `component`).
    */
   async function renderPage(
     exports: string,
-    read: (moduleExports: Record<string, any>) => unknown,
+    name: string,
+    read: (imported: any) => unknown = (imported) => imported,
   ) {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     try {
@@ -2608,11 +2624,10 @@ export const Route = createFileRoute('/')({ component: Page })
 `,
         { stubs: { './wrap': { wrap: (component: unknown) => component } } },
       )
+      const rendered = await route.render('component')
+      const bindings = await route.importBindings([name])
       return {
-        rendered: [
-          await route.render('component'),
-          await renderComponent(read(route.exports)),
-        ],
+        rendered: [rendered, await renderComponent(read(bindings[name]))],
         splitOrReported:
           (await route.isLazy('component')) ||
           reportsNotSplit(warn, route.ids.reference!),
@@ -2626,10 +2641,7 @@ export const Route = createFileRoute('/')({ component: Page })
   // `Page`).
   test('a split component renders next to another export', async () => {
     expect(
-      await renderPage(
-        `export const Label = wrap(() => 'label')`,
-        (moduleExports) => moduleExports.Label,
-      ),
+      await renderPage(`export const Label = wrap(() => 'label')`, 'Label'),
     ).toEqual({ rendered: ['<p>page</p>', 'label'], splitOrReported: true })
   })
 
@@ -2648,38 +2660,39 @@ export const Route = createFileRoute('/')({ component: Page })
     {
       name: 'an exported object',
       exports: 'export const meta = { fn: Page }',
-      read: (moduleExports: Record<string, any>) => moduleExports.meta.fn,
+      imported: 'meta',
+      read: (meta: { fn: unknown }) => meta.fn,
     },
     {
       name: 'an exported function',
       exports: 'export function Preview() { return <Page /> }',
-      read: (moduleExports: Record<string, any>) => moduleExports.Preview,
+      imported: 'Preview',
     },
     {
       name: 'a default export',
       exports: 'export default wrap(Page)',
-      read: (moduleExports: Record<string, any>) => moduleExports.default,
+      imported: 'default',
     },
     {
       name: 'an export list',
       exports: 'export { Page }',
-      read: (moduleExports: Record<string, any>) => moduleExports.Page,
+      imported: 'Page',
     },
     {
       name: 'an export alias',
       exports: 'export { Page as View }',
-      read: (moduleExports: Record<string, any>) => moduleExports.View,
+      imported: 'View',
     },
     {
       // Source: #8504 (lost case L4).
       name: 'a default export by specifier',
       exports: 'export { Page as default }',
-      read: (moduleExports: Record<string, any>) => moduleExports.default,
+      imported: 'default',
     },
   ])(
     'a split component that $name reads renders from both',
-    async ({ exports, read }) => {
-      expect(await renderPage(exports, read)).toEqual({
+    async ({ exports, imported, read }) => {
+      expect(await renderPage(exports, imported, read)).toEqual({
         rendered: ['<p>page</p>', '<p>page</p>'],
         splitOrReported: true,
       })
@@ -3190,8 +3203,8 @@ ${serverOptions}
   // Node): what the client compile of a Solid route still imports is
   // checked here, the built Solid app runs in
   // integration/build-frameworks.test.ts.
-  test('server-only options of a Solid file route written as properties are removed with their imports', () => {
-    const { modules } = compileRouteModules(
+  test('server-only options of a Solid file route written as properties are removed with their imports', async () => {
+    const { modules } = await compileRouteModules(
       `import { createFileRoute } from '@tanstack/solid-router'
 import { db } from './secret-db'
 export const Route = createFileRoute('/')({
@@ -3278,16 +3291,6 @@ export const Route = createFileRoute('/')(
   }),
 )`,
     },
-    // Real route files cast their options (`as never`, `as any`) when the
-    // handlers' types do not fit. Source: the #8504 confidence campaign
-    // (suspects SU-4/8; 4 corpus files in 3 repositories).
-    ...['as never', 'as any', 'satisfies object'].map((cast) => ({
-      name: `options wrapped in \`${cast}\``,
-      code: `export const Route = createFileRoute('/')({
-  server: { handlers: { GET: () => db.all() } },
-  component: () => <p>x</p>,
-} ${cast})`,
-    })),
   ])(
     'a server-only option given through $name is removed, or the route is refused',
     async ({ code }) => {
@@ -3303,6 +3306,30 @@ export const Route = createFileRoute('/')(
         return
       }
       expect(result).toEqual(stripped)
+    },
+  )
+
+  // Bug: a route whose options object is wrapped in a TypeScript cast or a
+  // `satisfies` (statically visible options, valid TypeScript) keeps its
+  // server-only options and their imports on the client. Unlike opaque
+  // options above, these must be removed: the options are written in the
+  // file, so refusing the route is not an option.
+  // Source: the #8504 confidence campaign (suspects SU-4/8; 4 corpus files
+  // in 3 repositories cast their options, `as never` or `as any`, when the
+  // handlers' types do not fit); V1 split F35.
+  // Impact: Start's client bundle ships server handlers and their
+  // server-only imports (build-level canary in
+  // integration/known-bugs-code-splitter-client-output.test.ts).
+  test.fails.each(['as never', 'as any', 'satisfies object'])(
+    'a server-only option of options wrapped in `%s` is removed with its imports',
+    async (cast) => {
+      expect(
+        await compileForClient(`${head}import { db } from './secret-db'
+export const Route = createFileRoute('/')({
+  server: { handlers: { GET: () => db.all() } },
+  component: () => <p>x</p>,
+} ${cast})`),
+      ).toEqual(stripped)
     },
   )
 })

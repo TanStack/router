@@ -568,10 +568,10 @@ ${groupings}  loader: () => 'data',
     expect(await lazyGroups(route(`  codeSplitGroupings: [],\n`))).toEqual([])
   })
 
-  it('of the route that are not arrays of arrays are refused with an error naming codeSplitGroupings', () => {
-    expect(() =>
+  it('of the route that are not arrays of arrays are refused with an error naming codeSplitGroupings', async () => {
+    await expect(
       compileRouteModules(route(`  codeSplitGroupings: ['loader'],\n`)),
-    ).toThrow(/codeSplitGroupings/)
+    ).rejects.toThrow(/codeSplitGroupings/)
   })
 
   // Honouring groupings declared in a module-level constant is pinned in

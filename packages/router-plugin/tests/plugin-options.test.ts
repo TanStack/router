@@ -125,8 +125,8 @@ describe('repeated options in split groupings', () => {
     )
   })
 
-  test('in a route are refused with an error naming the route file and the option', () => {
-    expect(() =>
+  test('in a route are refused with an error naming the route file and the option', async () => {
+    await expect(
       compileRouteModules(
         `${head}export const Route = createFileRoute('/')({
   codeSplitGroupings: [['loader'], ['loader', 'component']],
@@ -136,6 +136,6 @@ describe('repeated options in split groupings', () => {
 `,
         { filename: 'groupings-route.tsx' },
       ),
-    ).toThrow(/groupings-route\.tsx[\s\S]*loader/)
+    ).rejects.toThrow(/groupings-route\.tsx[\s\S]*loader/)
   })
 })

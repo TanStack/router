@@ -18,39 +18,63 @@ import {
   loadRoute,
   loadRouteGraph,
   renderComponent,
-  routeModuleSources,
   routeSpecifier,
 } from './regression-helpers'
+import { labelRouteModules } from './plugin-host'
 import type { RouteGraph } from './plugin-host'
 
 describe('compileRouteModules', () => {
-  const route = `${head}export const Route = createFileRoute('/')({
-  component: () => <p>page</p>,
-})`
-
-  it('returns the modules the output imports, and only those', () => {
-    const { modules, ids } = compileRouteModules(route)
-    expect(Object.keys(modules)).toEqual(['reference', 'lazy 1'])
-    // Every module but the route module is imported by another one.
-    const imported = Object.values(modules).flatMap((code) =>
-      importRequests(code).map((request) => request.specifier),
-    )
-    expect(imported).toContain(ids['lazy 1'])
-  })
-
-  it('labels a module that the route module and a chunk import statically as shared', () => {
-    const { modules, ids } =
-      compileRouteModules(`${head}const shared = { value: 1 }
+  // What the host finds is what the router plugin's output reaches; how
+  // many modules a compiler emits is free (SPEC §5.3).
+  it('returns the modules the output imports, and only those', async () => {
+    const { modules, ids, graph } =
+      await compileRouteModules(`${head}const shared = { value: 1 }
 export const Route = createFileRoute('/')({
   loader: () => shared.value,
   component: () => <p>{shared.value}</p>,
 })`)
-    expect(Object.keys(modules).sort()).toEqual([
-      'lazy 1',
-      'reference',
-      'shared',
-    ])
-    expect(routeModuleSources(modules.reference!)).toContain(ids.shared)
+    expect(Object.keys(modules).length).toBeGreaterThan(1)
+    // Every module but the route module is imported by another one, and
+    // resolves to the module the host compiled.
+    for (const [label, id] of Object.entries(ids)) {
+      if (label === 'reference') {
+        continue
+      }
+      const importers = [...graph.modules].filter(([importer, code]) =>
+        importRequests(code, importer).some(
+          ({ specifier }) => graph.resolve(specifier, importer) === id,
+        ),
+      )
+      expect(importers.length, label).toBeGreaterThan(0)
+    }
+  })
+})
+
+// The labels on a fixed graph, as a compiler could emit it (V1 split F06:
+// harness bookkeeping independent of the compiler's output).
+describe('labelRouteModules', () => {
+  it('labels the route module, modules only imported lazily and modules imported statically', () => {
+    const graph: RouteGraph = {
+      id: '/route.tsx',
+      modules: new Map([
+        ['/route.tsx', ''],
+        ['/route.tsx?lazy', ''],
+        ['/route.tsx?shared', ''],
+        ['/route.tsx?other-lazy', ''],
+      ]),
+      importKinds: new Map([
+        ['/route.tsx?lazy', 'dynamic'],
+        ['/route.tsx?shared', 'static'],
+        ['/route.tsx?other-lazy', 'dynamic'],
+      ]),
+      resolve: () => undefined,
+    }
+    expect(labelRouteModules('', graph).ids).toEqual({
+      reference: '/route.tsx',
+      'lazy 1': '/route.tsx?lazy',
+      shared: '/route.tsx?shared',
+      'lazy 2': '/route.tsx?other-lazy',
+    })
   })
 })
 
@@ -297,7 +321,7 @@ export const Route = createFileRoute('/')({
 describe('output validation', () => {
   it('lets the modules of a route read the globals the route file reads', async () => {
     const { modules } =
-      compileRouteModules(`${head}export const Route = createFileRoute('/')({
+      await compileRouteModules(`${head}export const Route = createFileRoute('/')({
   component: () => <p>{APP_VERSION}</p>,
 })`)
     await expectValidModules(modules)
@@ -380,7 +404,7 @@ export const Route = createFileRoute('/')({
     expect(await grouped.groups()).toEqual([['component', 'loader']])
     expect(await (await grouped.load('loader'))()).toBe('data')
 
-    const unsplit = compileRouteModules(route, {
+    const unsplit = await compileRouteModules(route, {
       pluginOptions: {
         codeSplittingOptions: { splitBehavior: () => [] },
       },

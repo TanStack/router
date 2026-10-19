@@ -21,8 +21,12 @@ describe('server-only route options on the client', () => {
   /** Start's client configuration of the code splitter. */
   const deleteNodes = ['ssr', 'server', 'headers']
 
-  /** A client build with Start's `deleteNodes`, reading a server secret. */
-  async function secretPlacement(bundler: Bundler, option: string) {
+  /**
+   * A client build with Start's `deleteNodes` of a route whose `option`
+   * reads a server secret (its options object followed by `cast`, e.g.
+   * `as any`).
+   */
+  async function secretPlacement(bundler: Bundler, option: string, cast = '') {
     const app = await build({
       bundler,
       env: 'client',
@@ -32,7 +36,7 @@ describe('server-only route options on the client', () => {
 export const Route = createFileRoute('/')({
   ${option},
   component: () => <p>page</p>,
-})
+}${cast})
 `,
         {
           env: 'client',
@@ -48,24 +52,46 @@ export const Route = createFileRoute('/')({
     return app.where('MARK_SERVER_SECRET')
   }
 
+  // Whether a server-only option reaches the client bundle is the router
+  // transform's decision (an option it keeps stays referenced by the route
+  // options), so one bundler shows it (speedup 7: the Rspack and webpack
+  // cells of the two tests below were decided by the same transform as
+  // their Vite cells).
+
   // Control for the build-level canary below.
-  test.each(clientBundlers)(
-    'a client build has no server code of an `ssr` property (%s)',
-    async (bundler) => {
-      expect(await secretPlacement(bundler, 'ssr: () => !!readSecret()')).toBe(
-        'nowhere',
-      )
+  test('a client build has no server code of an `ssr` property (vite)', async () => {
+    expect(await secretPlacement('vite', 'ssr: () => !!readSecret()')).toBe(
+      'nowhere',
+    )
+  }, 60_000)
+
+  // Bug: build-level canary of the method pin in
+  // ../known-bugs-code-splitter.test.ts (same root cause).
+  // Impact: the server code of an `ssr()` method reaches the client bundle.
+  test.fails(
+    'a client build has no server code of an `ssr()` method (vite)',
+    async () => {
+      expect(
+        await secretPlacement('vite', 'ssr() { return !!readSecret() }'),
+      ).toBe('nowhere')
     },
     60_000,
   )
 
-  // Bug: build-level canary of the method pin above (same root cause).
-  // Impact: the server code of an `ssr()` method reaches the client bundle.
-  test.fails.each(clientBundlers)(
-    'a client build has no server code of an `ssr()` method (%s)',
-    async (bundler) => {
+  // Bug: build-level canary of the typed-wrapper pin in
+  // ../known-bugs-code-splitter.test.ts (same root cause: options wrapped in
+  // a cast or `satisfies` are not read; one bundler, as above).
+  // Impact: the server handler and its server-only import reach the client
+  // bundle.
+  test.fails.each(['as never', 'as any', 'satisfies object'])(
+    'a client build has no server code of options wrapped in `%s` (vite)',
+    async (cast) => {
       expect(
-        await secretPlacement(bundler, 'ssr() { return !!readSecret() }'),
+        await secretPlacement(
+          'vite',
+          'server: { handlers: { GET: () => readSecret() } }',
+          ` ${cast}`,
+        ),
       ).toBe('nowhere')
     },
     60_000,

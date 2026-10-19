@@ -1,38 +1,53 @@
 /**
- * Hosts the router plugin's code-splitter, generator and route HMR plugins
- * in process, the way a bundler calls them: compile a route file into its
- * route module and split chunks, follow their imports, and inspect an
- * emitted module. Re-exported by `regression-helpers.ts`.
+ * Hosts the router plugin in a real bundler plugin host: its public Vite
+ * adapters (`tanStackRouterCodeSplitter` with a router plugin context from
+ * `@tanstack/router-plugin/context`, or the composed `tanstackRouter`) run
+ * in a real Vite dev server (middleware mode, no HTTP server, no watcher),
+ * which resolves its config, orders the plugins, applies their hook filters
+ * and awaits their hooks. A route file is written to a temporary project;
+ * the host loads it, its emitted modules (`?tsr-split=…`, `?tsr-shared=…`)
+ * resolve through Vite's resolver and load the way Vite loads them. A
+ * production compile (`command: 'build'`) is a real Vite production build
+ * of the route file instead. Re-exported by `regression-helpers.ts`.
+ *
+ * What the tests observe is each module as it leaves the router plugin: a
+ * plugin right after the router plugin records it (the router transform
+ * boundary). The rest of the host's pipeline (Vite's TypeScript/JSX
+ * transform, import analysis) is the bundler's business; `loadRoute`
+ * evaluates the recorded modules with the real framework's transform.
+ *
+ * A module id the host cannot produce on this machine (another project
+ * root, a Windows path; `moduleId`) is transformed under that id by the
+ * same host, and the modules it emits are read from the route file.
  */
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { moduleLang } from '@tanstack/compiler-test-utils/module-linker'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
-import { parseSync } from 'vite'
-import { expect } from 'vitest'
-import { createRouterCodeSplitterPlugin } from '../src/core/router-code-splitter-plugin'
-import { createRouterGeneratorPlugin } from '../src/core/router-generator-plugin'
-import { createRouterHmrPlugin } from '../src/core/router-hmr-plugin'
-import { createRouterPluginContext } from '../src/core/router-plugin-context'
-import { normalizePath } from '../src/core/utils'
+import { build, createServer, parseSync } from 'vite'
+import { afterAll, expect, onTestFinished } from 'vitest'
+import { createRouterPluginContext } from '../src/context'
+import { tanStackRouterCodeSplitter, tanstackRouter } from '../src/vite'
 import type { ModuleErrorOptions } from '@tanstack/compiler-test-utils/validate-module'
+import type { Plugin, PluginOption, ViteDevServer } from 'vite'
 import type { Config, DeletableNodes } from '../src/core/config'
-import type { TransformResult, UnpluginOptions } from 'unplugin'
-
-const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 
 /** A framework the router plugin targets. */
 export type TargetFramework = 'react' | 'solid' | 'vue'
 
 export type CompileOptions = {
-  /** Name of the route file; it is compiled as `/<filename>`. */
+  /**
+   * Path of the route file in the temporary project (default `route.tsx`);
+   * its extension gives its language.
+   */
   filename?: string
   /**
-   * Module id of the route file as a bundler passes it, instead of
-   * `/<filename>`: e.g. under another project root, or a Windows path
-   * (`C:/app/…` from Vite, `C:\\app\\…` from webpack and Rspack). The
-   * route is registered under its forward-slash form.
+   * Module id of the route file as a bundler on another machine passes it,
+   * instead of a file of the temporary project: e.g. under another project
+   * root, or a Windows path (`C:/app/…` from Vite, `C:\\app\\…` from webpack
+   * and Rspack). The route is registered under its forward-slash form.
    */
   moduleId?: string
   targetFramework?: TargetFramework
@@ -52,146 +67,104 @@ export type CompileOptions = {
    */
   pluginOptions?: Partial<Config>
   /**
-   * The Vite command the plugin is configured for. Default `serve` with
-   * `hmr`, else `build` (which the plugin takes for a production build).
+   * The Vite command: `serve` (default) compiles in a dev server, `build`
+   * in a real production build (where the plugin's own defaults, e.g. no
+   * HMR, apply).
    */
   command?: 'serve' | 'build'
-  /**
-   * Configure the plugins for webpack instead of Vite: their `webpack` hook
-   * gets this compiler (see `webpackCompiler`) instead of their Vite
-   * `configResolved` hook getting a Vite config.
-   */
-  webpackCompiler?: WebpackCompilerStub
+  /** Other Vite plugins, before and after the router plugin. */
+  plugins?: { before?: Array<PluginOption>; after?: Array<PluginOption> }
 }
 
-/** What the plugins' `webpack(compiler)` hook can read of a compiler. */
-export type WebpackCompilerStub = {
-  options: { mode: 'development' | 'production'; plugins: Array<object> }
-}
-
-/**
- * The React Refresh webpack plugin (`@pmmmwh/react-refresh-webpack-plugin`)
- * as webpack's configuration lists it: an instance of `ReactRefreshPlugin`.
- */
-class ReactRefreshPlugin {
-  apply() {}
-}
-
-/**
- * A webpack development compiler whose configuration has the React Refresh
- * plugin (`refresh`) or no refresh plugin, the way a webpack or Rspack app
- * without React Refresh is configured.
- */
-export function webpackCompiler(refresh: boolean): WebpackCompilerStub {
-  return {
-    options: {
-      mode: 'development',
-      plugins: refresh ? [new ReactRefreshPlugin()] : [],
-    },
-  }
-}
-
-/**
- * Configures plugins the way a bundler does before any transform: Vite's
- * `configResolved` with `vite`, or webpack's plugin hook with a compiler.
- */
-function configurePlugins(
-  plugins: Array<UnpluginOptions>,
-  bundler: { vite: Record<string, unknown> } | { webpack: WebpackCompilerStub },
-) {
-  for (const plugin of plugins) {
-    if ('webpack' in bundler) {
-      plugin.webpack?.(bundler.webpack as never)
-    } else {
-      sync(
-        hookHandler(plugin.vite?.configResolved)?.call(
-          pluginContext,
-          bundler.vite as never,
-        ),
-        'configResolved',
-      )
-    }
-  }
-}
-
-/**
- * The id the harness compiles a route file under: an absolute path, as
- * bundlers pass module ids to plugins.
- */
-export function routeModuleId(filename = 'route.tsx') {
-  return normalizePath(path.resolve('/', filename))
-}
-
-/** Splits a module id or specifier into its path and its query. */
-function splitQuery(id: string): [string, string | undefined] {
+/** Removes a query from a module id or specifier. */
+function withoutQuery(id: string) {
   const index = id.indexOf('?')
-  return index === -1
-    ? [id, undefined]
-    : [id.slice(0, index), id.slice(index + 1)]
+  return index === -1 ? id : id.slice(0, index)
 }
 
-/** The handler of a plugin hook given as a function or as `{ handler }`. */
-function hookHandler(
-  hook: unknown,
-): ((...args: Array<any>) => any) | undefined {
-  if (typeof hook === 'function') {
-    return hook as (...args: Array<any>) => any
-  }
-  if (hook && typeof hook === 'object' && 'handler' in hook) {
-    return (hook as { handler: (...args: Array<any>) => any }).handler
-  }
-  return undefined
+/** Forward-slash form of a path (webpack and Rspack ids on Windows). */
+function normalizePath(file: string) {
+  return file.replaceAll('\\', '/')
 }
 
-/** Whether `value` matches an unplugin hook filter pattern. */
-function matchesPattern(pattern: unknown, value: string): boolean {
-  if (pattern instanceof RegExp) {
-    pattern.lastIndex = 0
-    return pattern.test(value)
+/**
+ * Directory of the temporary projects of this test file, removed after the
+ * file (the hook registers while the test file imports this module).
+ */
+let projectsDir: string | undefined
+function projectRoot() {
+  projectsDir ??= mkdtempSync(path.join(tmpdir(), 'tsr-plugin-host-'))
+  return projectsDir
+}
+afterAll(() => {
+  if (projectsDir) {
+    rmSync(projectsDir, { recursive: true, force: true })
+    projectsDir = undefined
   }
-  if (Array.isArray(pattern)) {
-    return pattern.some((item) => matchesPattern(item, value))
-  }
-  if (pattern && typeof pattern === 'object') {
-    const { include, exclude } = pattern as {
-      include?: unknown
-      exclude?: unknown
+})
+
+/**
+ * Runs `close` when the current test ends, or (outside a test) after the
+ * current suite; anything left closes with the test process.
+ */
+function registerCleanup(close: () => Promise<void>) {
+  try {
+    onTestFinished(close)
+  } catch {
+    try {
+      afterAll(close)
+    } catch {
+      // Neither in a test nor collecting a suite.
     }
-    if (exclude !== undefined && matchesPattern(exclude, value)) {
-      return false
+  }
+}
+
+/** Thrown by the boundary recorder to end the host's pipeline there. */
+class BoundaryReached extends Error {}
+
+/**
+ * Records the code of each module as it leaves the plugins before it (the
+ * router transform boundary). With `stop`, the host's pipeline ends there:
+ * what Vite does with the router plugin's output afterwards is not under
+ * test.
+ */
+export function boundaryRecorder(recorded: Map<string, string>, stop = false) {
+  return {
+    name: 'test:router-transform-boundary',
+    enforce: 'pre',
+    transform(code, id) {
+      recorded.set(id, code)
+      if (stop) {
+        throw new BoundaryReached(id)
+      }
+      return null
+    },
+  } satisfies Plugin
+}
+
+/**
+ * Runs a module through the host's transform pipeline up to the router
+ * transform boundary; errors before it (the router plugin's) propagate.
+ */
+async function transformToBoundary(
+  server: ViteDevServer,
+  recorded: Map<string, string>,
+  code: string,
+  id: string,
+) {
+  recorded.delete(id)
+  try {
+    await server.environments.client.pluginContainer.transform(code, id)
+  } catch (error) {
+    if (!(error instanceof BoundaryReached)) {
+      throw error
     }
-    return include === undefined || matchesPattern(include, value)
   }
-  throw new Error(`unsupported hook filter: ${String(pattern)}`)
-}
-
-function passesFilter(hook: unknown, id: string, code?: string) {
-  const filter =
-    hook && typeof hook === 'object' && 'filter' in hook
-      ? (hook.filter as { id?: unknown; code?: unknown } | undefined)
-      : undefined
-  return (
-    (filter?.id === undefined || matchesPattern(filter.id, id)) &&
-    (filter?.code === undefined ||
-      code === undefined ||
-      matchesPattern(filter.code, code))
-  )
-}
-
-/** Fails on a hook result a synchronous harness cannot wait for. */
-function sync<T>(result: T, hook: string): T {
-  if (result instanceof Promise) {
-    throw new Error(`the harness only drives synchronous ${hook} hooks`)
+  const output = recorded.get(id)
+  if (output === undefined) {
+    throw new Error(`the host did not transform ${id}`)
   }
-  return result
-}
-
-/** The `this` of plugin hooks: warnings go to the console, like Vite's. */
-const pluginContext = {
-  warn: (message: unknown) => console.warn(message),
-  error: (message: unknown) => {
-    throw message instanceof Error ? message : new Error(String(message))
-  },
+  return output
 }
 
 /**
@@ -231,188 +204,313 @@ export function importRequests(code: string, id = 'module.tsx') {
   return requests
 }
 
+/** A specifier the host's resolver may resolve to a module of the route. */
+const isPathSpecifier = (specifier: string) =>
+  /^(?:\.{1,2}\/|\/|[A-Za-z]:[\\/])/.test(specifier)
+
 /**
- * What a bundler gets from compiling a route file with the code-splitter
- * plugin: the route module and every module its output imports, statically
- * or dynamically, that resolves to the route file or that a plugin resolves.
+ * What the host emits for a route file: the route module and every module
+ * its output imports, statically or dynamically, that resolves to the route
+ * file (with a query).
  */
 export type RouteGraph = {
   /** Id of the route module. */
   id: string
-  /** Code of each module, by id, in the order the imports reach them. */
+  /** Code of each module as the router plugin emits it, by id, in the order the imports reach them. */
   modules: Map<string, string>
   /** Whether a module is imported statically by some module, or only lazily. */
   importKinds: Map<string, 'static' | 'dynamic'>
-  /** Resolves an import of an emitted module to an emitted module's id. */
+  /** What an import of an emitted module resolves to, if a module of the route. */
   resolve: (specifier: string, importer: string) => string | undefined
+}
+
+/** Follows the imports of `entry` to every module of the route. */
+async function collectGraph(
+  id: string,
+  emitted: (moduleId: string) => Promise<string>,
+  resolveImport: (
+    specifier: string,
+    importer: string,
+  ) => Promise<string | undefined>,
+): Promise<RouteGraph> {
+  const modules = new Map<string, string>()
+  const importKinds = new Map<string, 'static' | 'dynamic'>()
+  const resolutions = new Map<string, string>()
+  const queue = [id]
+  while (queue.length > 0) {
+    const moduleId = queue.shift()!
+    if (modules.has(moduleId)) {
+      continue
+    }
+    const output = await emitted(moduleId)
+    modules.set(moduleId, output)
+    for (const { specifier, dynamic } of importRequests(output, moduleId)) {
+      const target = await resolveImport(specifier, moduleId)
+      if (target === undefined) {
+        continue
+      }
+      resolutions.set(`${moduleId}\0${specifier}`, target)
+      if (!dynamic) {
+        importKinds.set(target, 'static')
+      } else if (!importKinds.has(target)) {
+        importKinds.set(target, 'dynamic')
+      }
+      queue.push(target)
+    }
+  }
+  return {
+    id,
+    modules,
+    importKinds,
+    resolve: (specifier, importer) =>
+      resolutions.get(`${importer}\0${specifier}`),
+  }
 }
 
 export function compileRouteGraph(
   code: string,
   options: CompileOptions = {},
-): RouteGraph {
+): Promise<RouteGraph> {
   return createRouteGraphCompiler(options)(code)
 }
 
-/**
- * Creates one code-splitter plugin instance, configured like a bundler does,
- * and returns a function that compiles a version of the route file with it
- * (`compileRouteGraph`), as a dev server compiles each edit of the file.
- */
-export function createRouteGraphCompiler(
-  options: CompileOptions = {},
-): (code: string) => RouteGraph {
+/** The code-splitter plugin options of a compile. */
+function codeSplitterOptions(options: CompileOptions): Partial<Config> {
   const {
-    filename = 'route.tsx',
     targetFramework = 'react',
     hmr = false,
     deleteNodes,
-    routeId = '/',
     pluginOptions = {},
-    command = hmr ? 'serve' : 'build',
-    webpackCompiler: compiler,
+    command = 'serve',
   } = options
-  const id = options.moduleId ?? routeModuleId(filename)
+  return {
+    target: targetFramework,
+    autoCodeSplitting: true,
+    ...pluginOptions,
+    codeSplittingOptions: {
+      // A production build leaves HMR to the plugin's own default.
+      ...(command === 'serve' && { addHmr: hmr }),
+      deleteNodes,
+      ...pluginOptions.codeSplittingOptions,
+    },
+  }
+}
+
+/** A route file a host compiles: where it is and the route id it has. */
+export type RouteFileOptions = Pick<
+  CompileOptions,
+  'filename' | 'moduleId' | 'routeId'
+>
+
+/**
+ * One code-splitter plugin instance in one host (a dev server), with route
+ * files registered as the route generator registers them. The host closes
+ * when the test (or, created outside a test, the suite) ends.
+ */
+export interface RouterHost {
+  /**
+   * Writes a version of a route file, registers it and compiles it: the
+   * route module and every module of the route its output reaches, as the
+   * router plugin emits them (as a dev server compiles each edit).
+   */
+  compile: (code: string, file?: RouteFileOptions) => Promise<RouteGraph>
+  /** A module of a compiled route file, by module id, as the router plugin emits it. */
+  emit: (moduleId: string) => Promise<string>
+}
+
+export function createRouterHost(options: CompileOptions = {}): RouterHost {
+  if (options.command === 'build') {
+    return {
+      compile: (code, file) => buildRouteGraph(code, { ...options, ...file }),
+      emit: () => {
+        throw new Error('a production build emits its modules once')
+      },
+    }
+  }
   const context = createRouterPluginContext()
-  context.routesByFile.set(normalizePath(id), { routeId })
-  const created = createRouterCodeSplitterPlugin(
-    {
-      target: targetFramework,
-      autoCodeSplitting: true,
-      ...pluginOptions,
-      codeSplittingOptions: {
-        addHmr: hmr,
-        deleteNodes,
-        ...pluginOptions.codeSplittingOptions,
+  const recorded = new Map<string, string>()
+  /** Route files known by their id (not files of the project), by id. */
+  const elsewhere = new Map<string, string>()
+  let server: Promise<ViteDevServer> | undefined
+  const start = async () =>
+    createServer({
+      configFile: false,
+      root: projectRoot(),
+      logLevel: 'silent',
+      appType: 'custom',
+      server: {
+        middlewareMode: true,
+        ws: false,
+        watch: null,
+        preTransformRequests: false,
+      },
+      optimizeDeps: { noDiscovery: true, include: [] },
+      plugins: [
+        ...(options.plugins?.before ?? []),
+        tanStackRouterCodeSplitter(codeSplitterOptions(options), context),
+        boundaryRecorder(recorded, true),
+        ...(options.plugins?.after ?? []),
+      ],
+    })
+  registerCleanup(async () => {
+    // A host whose config the plugins rejected never started.
+    await (await server?.catch(() => undefined))?.close()
+  })
+  const container = async () => {
+    server ??= start()
+    return (await server).environments.client.pluginContainer
+  }
+
+  const emit = async (moduleId: string) => {
+    const plugins = await container()
+    const other = elsewhere.get(withoutQuery(moduleId))
+    const loaded = other === undefined ? await plugins.load(moduleId) : null
+    // Vite reads a module no plugin loads from the file its id names.
+    const source =
+      loaded == null
+        ? (other ?? (await readFile(withoutQuery(moduleId), 'utf8')))
+        : typeof loaded === 'string'
+          ? loaded
+          : loaded.code
+    return transformToBoundary(await server!, recorded, source, moduleId)
+  }
+
+  const resolveImport =
+    (id: string) => async (specifier: string, importer: string) => {
+      if (!isPathSpecifier(specifier)) {
+        return undefined
+      }
+      if (elsewhere.has(id)) {
+        // A module id from another machine: its modules are named by its id.
+        return normalizePath(withoutQuery(specifier)) === normalizePath(id)
+          ? `${id}${specifier.slice(withoutQuery(specifier).length)}`
+          : undefined
+      }
+      const resolved = (
+        await (await container()).resolveId(specifier, importer)
+      )?.id
+      return resolved !== undefined && withoutQuery(resolved) === id
+        ? resolved
+        : undefined
+    }
+
+  return {
+    emit,
+    compile: async (code, file = {}) => {
+      const {
+        filename = options.filename ?? 'route.tsx',
+        moduleId = options.moduleId,
+        routeId = options.routeId ?? '/',
+      } = file
+      let id: string
+      if (moduleId === undefined) {
+        const target = path.join(projectRoot(), filename)
+        await mkdir(path.dirname(target), { recursive: true })
+        await writeFile(target, code)
+        id = normalizePath(target)
+      } else {
+        // Transformed under the id as the bundler spells it.
+        id = moduleId
+        elsewhere.set(id, code)
+      }
+      context.routesByFile.set(normalizePath(id), { routeId })
+      return collectGraph(id, emit, resolveImport(id))
+    },
+  }
+}
+
+/**
+ * A function compiling versions of one route file in one host
+ * (`createRouterHost`), as a dev server compiles each edit of the file.
+ */
+export function createRouteGraphCompiler(
+  options: CompileOptions = {},
+): (code: string) => Promise<RouteGraph> {
+  const host = createRouterHost(options)
+  return (code) => host.compile(code)
+}
+
+/**
+ * Compiles the route file in a real Vite production build: Vite's bundler
+ * (Rolldown) resolves, loads and follows its emitted modules; other imports
+ * stay external.
+ */
+async function buildRouteGraph(
+  code: string,
+  options: CompileOptions,
+): Promise<RouteGraph> {
+  const { filename = 'route.tsx', routeId = '/' } = options
+  if (options.moduleId !== undefined) {
+    throw new Error('a production compile takes a file of the project')
+  }
+  const root = projectRoot()
+  const file = path.join(root, filename)
+  await mkdir(path.dirname(file), { recursive: true })
+  await writeFile(file, code)
+  const id = normalizePath(file)
+  const context = createRouterPluginContext()
+  context.routesByFile.set(id, { routeId })
+  const recorded = new Map<string, string>()
+  const resolutions = new Map<string, string | undefined>()
+  await build({
+    configFile: false,
+    root,
+    logLevel: 'silent',
+    build: {
+      write: false,
+      minify: false,
+      rollupOptions: {
+        input: file,
+        external: (source, importer) =>
+          importer !== undefined && resolutions.get(source) === undefined,
       },
     },
-    context,
+    plugins: [
+      ...(options.plugins?.before ?? []),
+      tanStackRouterCodeSplitter(codeSplitterOptions(options), context),
+      boundaryRecorder(recorded, false),
+      {
+        // Resolves the imports of the route's modules ahead of the bundler's
+        // external check, with the build's own resolver.
+        name: 'test:route-module-resolutions',
+        enforce: 'pre',
+        async transform(output, moduleId) {
+          for (const { specifier } of importRequests(output, moduleId)) {
+            if (isPathSpecifier(specifier)) {
+              const resolved = (await this.resolve(specifier, moduleId))?.id
+              resolutions.set(
+                specifier,
+                resolved !== undefined && withoutQuery(resolved) === id
+                  ? resolved
+                  : undefined,
+              )
+            }
+          }
+          return null
+        },
+      } satisfies Plugin,
+      ...(options.plugins?.after ?? []),
+    ],
+  })
+  return collectGraph(
+    id,
+    (moduleId) => {
+      const output = recorded.get(moduleId)
+      return output === undefined
+        ? Promise.reject(new Error(`the build did not load ${moduleId}`))
+        : Promise.resolve(output)
+    },
+    (specifier) => Promise.resolve(resolutions.get(specifier)),
   )
-  const plugins: Array<UnpluginOptions> = Array.isArray(created)
-    ? created
-    : [created]
-  configurePlugins(
-    plugins,
-    compiler
-      ? { webpack: compiler }
-      : { vite: { root: process.cwd(), command, plugins: [] } },
-  )
-
-  const resolve = (specifier: string, importer: string) => {
-    for (const plugin of plugins) {
-      const hook = plugin.resolveId
-      if (!hookHandler(hook) || !passesFilter(hook, specifier)) {
-        continue
-      }
-      const resolved = sync(
-        hookHandler(hook)!.call(pluginContext, specifier, importer, {}),
-        'resolveId',
-      )
-      if (typeof resolved === 'string') {
-        return resolved
-      }
-      if (resolved && typeof resolved === 'object' && 'id' in resolved) {
-        return resolved.id as string
-      }
-    }
-    const [request, query] = splitQuery(specifier)
-    const importerPath = splitQuery(importer)[0]
-    // Windows ids from webpack and Rspack use backslashes
-    const paths = importerPath.includes('\\') ? path.win32 : path.posix
-    let file: string
-    if (/^(?:\/|[A-Za-z]:[\\/])/.test(request)) {
-      file = request
-    } else if (request.startsWith('./') || request.startsWith('../')) {
-      file = paths.join(paths.dirname(importerPath), request)
-    } else {
-      return undefined
-    }
-    // Only modules of the route file are compiled; other files are stubs.
-    if (normalizePath(file) !== normalizePath(id)) {
-      return undefined
-    }
-    return query === undefined ? id : `${id}?${query}`
-  }
-
-  const load = (code: string, moduleId: string) => {
-    for (const plugin of plugins) {
-      const hook = plugin.load
-      if (!hookHandler(hook) || !passesFilter(hook, moduleId)) {
-        continue
-      }
-      const loaded = sync(
-        hookHandler(hook)!.call(pluginContext, moduleId),
-        'load',
-      ) as string | { code: string } | null | undefined
-      if (loaded != null) {
-        return typeof loaded === 'string' ? loaded : loaded.code
-      }
-    }
-    // Bundlers read a module id with a query from the file it names.
-    if (splitQuery(moduleId)[0] === id) {
-      return code
-    }
-    throw new Error(`no plugin loads ${moduleId}`)
-  }
-
-  const transform = (moduleId: string, source: string) => {
-    let current = source
-    for (const plugin of plugins) {
-      const hook = plugin.transform
-      if (
-        !hookHandler(hook) ||
-        !passesFilter(hook, moduleId, current) ||
-        (plugin.transformInclude && !plugin.transformInclude(moduleId))
-      ) {
-        continue
-      }
-      const result = sync(
-        hookHandler(hook)!.call(pluginContext, current, moduleId),
-        'transform',
-      ) as TransformResult | null | undefined
-      if (result != null) {
-        current = typeof result === 'string' ? result : result.code
-      }
-    }
-    return current
-  }
-
-  return (code) => {
-    const modules = new Map<string, string>()
-    const importKinds = new Map<string, 'static' | 'dynamic'>()
-    const queue = [id]
-    while (queue.length > 0) {
-      const moduleId = queue.shift()!
-      if (modules.has(moduleId)) {
-        continue
-      }
-      const output = transform(moduleId, load(code, moduleId))
-      modules.set(moduleId, output)
-      for (const { specifier, dynamic } of importRequests(output, moduleId)) {
-        const target = resolve(specifier, moduleId)
-        if (target === undefined) {
-          continue
-        }
-        if (!dynamic) {
-          importKinds.set(target, 'static')
-        } else if (!importKinds.has(target)) {
-          importKinds.set(target, 'dynamic')
-        }
-        queue.push(target)
-      }
-    }
-    return { id, modules, importKinds, resolve }
-  }
 }
 
 /** Route file each `compileRouteModules` result was compiled from. */
 const routeSources = new WeakMap<object, { code: string; id: string }>()
 
 /**
- * Compiles a route file through the code-splitter plugin (default groupings,
- * unless the route sets its own) and returns every module a bundler would
- * load for it, found by following the imports of the output, without
- * evaluating them.
+ * Compiles a route file in the host (default groupings, unless the route
+ * sets its own) and returns every module the router plugin emits for it,
+ * found by following the imports of the output, without evaluating them.
  *
  * The modules are labelled `reference` (the route module), `shared` for a
  * module another one imports statically, and `lazy <n>` for a module only
@@ -420,11 +518,11 @@ const routeSources = new WeakMap<object, { code: string; id: string }>()
  * module is only known once the route is evaluated: `loadRoute` labels them
  * by option. `ids` gives the module id of each label.
  */
-export function compileRouteModules(
+export async function compileRouteModules(
   code: string,
   options: CompileOptions = {},
 ) {
-  return labelRouteModules(code, compileRouteGraph(code, options))
+  return labelRouteModules(code, await compileRouteGraph(code, options))
 }
 
 /**
@@ -458,63 +556,6 @@ export function labelRouteModules(
   }
   routeSources.set(modules, { code, id: graph.id })
   return { modules, ids, graph }
-}
-
-/**
- * Ids of the modules that load with the route module: the route module and
- * every emitted module it imports statically, directly or through another
- * one, in discovery order. (A module that a lazy chunk imports statically is
- * not one of them unless the route module reaches it too.)
- */
-export function eagerModuleIds({ graph }: { graph: RouteGraph }) {
-  const eager: Array<string> = []
-  const queue = [graph.id]
-  while (queue.length > 0) {
-    const id = queue.shift()!
-    if (eager.includes(id)) {
-      continue
-    }
-    eager.push(id)
-    for (const { specifier, dynamic } of importRequests(
-      graph.modules.get(id)!,
-      id,
-    )) {
-      const target = dynamic ? undefined : graph.resolve(specifier, id)
-      if (target !== undefined && graph.modules.has(target)) {
-        queue.push(target)
-      }
-    }
-  }
-  return eager
-}
-
-/**
- * Sources that the modules loading with the route module (`eagerModuleIds`)
- * import or re-export statically, sorted: what loads with the entry,
- * whichever emitted module requests it.
- */
-export function eagerImportSources(route: { graph: RouteGraph }) {
-  return [
-    ...new Set(
-      eagerModuleIds(route).flatMap((id) =>
-        importRequests(route.graph.modules.get(id)!, id)
-          .filter(({ dynamic }) => !dynamic)
-          .map(({ specifier }) => specifier),
-      ),
-    ),
-  ].sort()
-}
-
-/** How many times `pattern` occurs across all emitted modules. */
-export function countAcrossModules(
-  modules: Record<string, string>,
-  pattern: RegExp,
-) {
-  return Object.values(modules).reduce(
-    (count, code) =>
-      count + (code.match(new RegExp(pattern.source, 'g'))?.length ?? 0),
-    0,
-  )
 }
 
 /**
@@ -560,14 +601,6 @@ export function importSources(code: string) {
 }
 
 /**
- * Sources a module imports that name the compiled route file (`id`), with
- * or without a query: the modules the code splitter emits for it.
- */
-export function routeModuleSources(code: string, id = routeModuleId()) {
-  return importSources(code).filter((source) => splitQuery(source)[0] === id)
-}
-
-/**
  * The values a module imports from `source`, sorted: `default`, `*` for a
  * namespace import, or the imported name. Type-only specifiers are skipped.
  */
@@ -604,149 +637,31 @@ export function exportedNames(code: string, id?: string) {
     .sort()
 }
 
-/** Absolute, normalized path of a route file in the package's `src/routes`. */
+/** Path of a route file in the routes directory of `transformWithRouteHmrPlugin`. */
 export function routeFile(name: string) {
-  return normalizePath(path.join(process.cwd(), `src/routes/${name}.tsx`))
+  return `${name}.tsx`
 }
 
-function runTransform(plugin: UnpluginOptions, code: string, id: string) {
-  const transform = plugin.transform
-  if (!transform || typeof transform === 'function') {
-    throw new Error('Expected object transform')
-  }
-  const result = transform.handler.call(pluginContext as never, code, id) as
-    | TransformResult
-    | null
-    | undefined
-  if (!result) {
-    return null
-  }
-  return typeof result === 'string' ? result : result.code
-}
-
-const referencePluginName =
-  'tanstack-router:code-splitter:compile-reference-file'
-const virtualPluginName = 'tanstack-router:code-splitter:compile-virtual-file'
-const sharedPluginName = 'tanstack-router:code-splitter:compile-shared-file'
-
-/**
- * Drives the three code-splitter transforms the way a bundler does, for the
- * given route files (absolute path to route id). `configPlugins` are the
- * plugins of the resolved Vite config; by default the code splitter itself,
- * so its plugin-order check runs.
- */
-export async function createCodeSplitterTransforms(
-  options: Partial<Config>,
-  routes: Record<string, string>,
-  configPlugins: Array<{ name: string }> = [{ name: referencePluginName }],
-) {
-  const context = createRouterPluginContext()
-  for (const [file, routeId] of Object.entries(routes)) {
-    context.routesByFile.set(file, { routeId })
-  }
-  const plugins = createRouterCodeSplitterPlugin(
-    { target: 'react', autoCodeSplitting: true, ...options },
-    context,
-  )
-  const pluginArray = Array.isArray(plugins) ? plugins : [plugins]
-  const byName = (name: string) => {
-    const plugin = pluginArray.find((candidate) => candidate.name === name)
-    if (!plugin) {
-      throw new Error(`Code-splitter plugin "${name}" not found`)
-    }
-    return plugin
-  }
-  const hook = byName(referencePluginName).vite?.configResolved
-  const config = {
-    root: process.cwd(),
-    command: 'build',
-    plugins: configPlugins,
-  } as never
-  if (typeof hook === 'function') {
-    await hook.call({} as never, config)
-  } else if (hook) {
-    await hook.handler.call({} as never, config)
-  }
-  return {
-    reference: (code: string, id: string) =>
-      runTransform(byName(referencePluginName), code, id),
-    virtual: (code: string, id: string) =>
-      runTransform(byName(virtualPluginName), code, id),
-    shared: (code: string, id: string) =>
-      runTransform(byName(sharedPluginName), code, id),
-  }
-}
-
-/**
- * The route id the router plugin registers a route file under: runs the
- * plugin's route generator, as the Vite plugin does when the dev server
- * starts, on a temporary routes directory holding `files` (route files by
- * path relative to it; an empty root route unless given), and returns the
- * route id it registered `file` (relative to the routes directory) under.
- */
-export async function generatedRouteId(
-  file: string,
-  files: Record<string, string> = {},
-) {
-  const root = await mkdtemp(path.join(harnessDir, '.generated-route-id-'))
-  try {
-    const routes = {
-      '__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+/** An empty root route of the router package of `target`. */
+const rootRoute = (target: Config['target']) =>
+  `import { createRootRoute } from '@tanstack/${target}-router'
 export const Route = createRootRoute({})
-`,
-      ...files,
-    }
-    for (const [name, code] of Object.entries(routes)) {
-      const target = path.join(root, 'routes', name)
-      await mkdir(path.dirname(target), { recursive: true })
-      await writeFile(target, code)
-    }
-    const context = createRouterPluginContext()
-    const plugin = createRouterGeneratorPlugin(
-      {
-        target: 'react',
-        routesDirectory: './routes',
-        generatedRouteTree: './routeTree.gen.ts',
-        disableLogging: true,
-      },
-      context,
-    ) as UnpluginOptions
-    await hookHandler(plugin.vite!.configResolved)!.call(
-      {} as never,
-      { root } as never,
-    )
-    const routeId = context.routesByFile.get(
-      normalizePath(path.join(root, 'routes', file)),
-    )?.routeId
-    if (routeId === undefined) {
-      throw new Error(`the route generator registered no route for ${file}`)
-    }
-    return routeId
-  } finally {
-    await rm(root, { recursive: true, force: true })
-  }
-}
+`
 
 /**
- * Runs the route HMR plugin (used when automatic code splitting is off) on
- * the route file `file`, registered under `routeId`.
+ * Runs the route HMR plugin (what the composed `tanstackRouter` plugin uses
+ * in dev when automatic code splitting is off) on the route file `file`
+ * (relative to the routes directory, `routeFile(name)`), registered by the
+ * plugin's route generator.
  */
-export function transformWithRouteHmrPlugin(
+export async function transformWithRouteHmrPlugin(
   code: string,
   options: Partial<Config> = { target: 'react' },
-  route: { file: string; routeId: string } = {
-    file: routeFile('index'),
-    routeId: '/',
-  },
-  compiler?: WebpackCompilerStub,
+  file = routeFile('index'),
 ) {
-  const output = createRouteHmrTransform(
-    options,
-    {
-      [route.file]: route.routeId,
-    },
-    compiler,
-  )(code, route.file)
+  const output = await (
+    await createRouteHmrTransform(options, [file])
+  )(code, file)
   if (output === null) {
     throw new Error('expected the route HMR plugin to transform the route')
   }
@@ -754,24 +669,64 @@ export function transformWithRouteHmrPlugin(
 }
 
 /**
- * The transform of one route HMR plugin instance (used when automatic code
- * splitting is off) for the given route files (absolute path to route id).
- * Returns `null` for a module it leaves as is. With `compiler`, the plugin is
- * configured for webpack with it first.
+ * The transform of the composed `tanstackRouter` plugin with automatic code
+ * splitting off (its route HMR plugin), in a real Vite dev server on a
+ * project whose routes directory holds `files` (paths relative to it; the
+ * generator registers them as routes). Returns, for a version of one of
+ * them, the module as the router plugin emits it, or `null` when the plugin
+ * leaves it as is.
  */
-export function createRouteHmrTransform(
+export async function createRouteHmrTransform(
   options: Partial<Config>,
-  routes: Record<string, string>,
-  compiler?: WebpackCompilerStub,
+  files: Array<string>,
 ) {
-  const context = createRouterPluginContext()
-  for (const [file, routeId] of Object.entries(routes)) {
-    context.routesByFile.set(file, { routeId })
+  const target = options.target ?? 'react'
+  const root = mkdtempSync(path.join(projectRoot(), 'hmr-'))
+  const routes = path.join(root, 'routes')
+  await mkdir(routes, { recursive: true })
+  await writeFile(path.join(routes, '__root.tsx'), rootRoute(target))
+  for (const file of files) {
+    await mkdir(path.dirname(path.join(routes, file)), { recursive: true })
+    await writeFile(
+      path.join(routes, file),
+      `import { createFileRoute } from '@tanstack/${target}-router'
+export const Route = createFileRoute('/')({})
+`,
+    )
   }
-  const plugins = createRouterHmrPlugin(options, context)
-  const plugin = Array.isArray(plugins) ? plugins[0]! : plugins
-  if (compiler) {
-    configurePlugins([plugin], { webpack: compiler })
+  const recorded = new Map<string, string>()
+  const server = await createServer({
+    configFile: false,
+    root,
+    logLevel: 'silent',
+    appType: 'custom',
+    server: {
+      middlewareMode: true,
+      ws: false,
+      watch: null,
+      preTransformRequests: false,
+    },
+    optimizeDeps: { noDiscovery: true, include: [] },
+    plugins: [
+      tanstackRouter({
+        routesDirectory: './routes',
+        generatedRouteTree: './routeTree.gen.ts',
+        // On the project's device: the generator renames its temporary
+        // files into place.
+        tmpDir: path.join(root, '.tanstack/tmp'),
+        disableLogging: true,
+        ...options,
+        target,
+        autoCodeSplitting: false,
+      }),
+      boundaryRecorder(recorded, true),
+    ],
+  })
+  registerCleanup(() => server.close())
+  return async (code: string, file: string) => {
+    const id = normalizePath(path.join(routes, file))
+    await writeFile(id, code)
+    const output = await transformToBoundary(server, recorded, code, id)
+    return output === code ? null : output
   }
-  return (code: string, id: string) => runTransform(plugin, code, id)
 }
