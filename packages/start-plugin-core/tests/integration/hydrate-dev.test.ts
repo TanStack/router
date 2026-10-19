@@ -188,22 +188,6 @@ export function Widgets() {
 }
 `
 
-/** Waits until the dev server sent no HMR message for a while. */
-async function quiet(server: DevServer) {
-  let count = server.hmr.length
-  let since = Date.now()
-  for (;;) {
-    await new Promise((resolve) => setTimeout(resolve, 25))
-    if (server.hmr.length !== count) {
-      count = server.hmr.length
-      since = Date.now()
-    } else if (Date.now() - since >= 300) {
-      await server.idle()
-      return
-    }
-  }
-}
-
 /**
  * The edit scenario on an opened page: opens `a`, edits the children's JSX
  * (`v1` -> `v2`) then the captured `label`, opens `b`. `widgets(children,
@@ -266,14 +250,12 @@ async function editLoadedChild(
   await clickUntil('a', 'a capture-v1 1')
   const opened = await step()
 
-  await server.write({ 'src/widgets.tsx': widgets('<i>v2</i>', 'capture-v1') })
+  await server.edit({ 'src/widgets.tsx': widgets('<i>v2</i>', 'capture-v1') })
   await shows('a', 'v2')
-  await quiet(server)
   const childrenEdited = await step()
 
-  await server.write({ 'src/widgets.tsx': widgets('<i>v2</i>', 'capture-v2') })
+  await server.edit({ 'src/widgets.tsx': widgets('<i>v2</i>', 'capture-v2') })
   await shows('a', 'capture-v2')
-  await quiet(server)
   const captureEdited = await step()
 
   await clickUntil('b', 'b capture-v2 1')
@@ -351,7 +333,7 @@ export const Route = createFileRoute('/')({ component: Widgets })
       await browser.waitForText('hydrated', {
         selector: '[data-testid=hydrated]',
       })
-      await quiet(server)
+      await server.idle()
       expectEditsReached(await editLoadedChild(server, browser, reactWidgets))
       expect(browser.loads()).toBe(1)
       expect(
@@ -426,7 +408,7 @@ function Page() {
       }
       await count('route')
       await count('idle')
-      await quiet(server)
+      await server.idle()
       // The deferred child's code loads when it hydrates.
       const beforeDeferred = await requested()
       await count('deferred')
@@ -467,7 +449,7 @@ describe('Vite dev, Solid', () => {
       await browser.waitForText('hydrated', {
         selector: '[data-testid=hydrated]',
       })
-      await quiet(server)
+      await server.idle()
       expectEditsReached(await editLoadedChild(server, browser, solidWidgets))
       expect(browser.loads()).toBe(1)
       expect(browser.errors).toEqual([])
