@@ -51,6 +51,71 @@ describe('matching previously unexplored route prefixes', () => {
     },
   )
 
+  it.each([false, true])(
+    'preserves pathless and flat alias declaration order: %s',
+    (flatFirst) => {
+      const root = new BaseRootRoute({})
+      const first = new BaseRoute({ getParentRoute: () => root, id: '_first' })
+      const second = new BaseRoute({
+        getParentRoute: () => first,
+        id: '_second',
+      })
+      const nested = new BaseRoute({
+        getParentRoute: () => second,
+        path: '/shared/$nested/details',
+      })
+      first.addChildren([second.addChildren([nested])])
+      const flat = new BaseRoute({
+        getParentRoute: () => root,
+        path: '/shared/$flat/details',
+      })
+      const router = createTestRouter({
+        routeTree: root.addChildren(flatFirst ? [flat, first] : [first, flat]),
+        history: createMemoryHistory(),
+      })
+      for (const value of ['cold', 'warm']) {
+        const [branch, params, found] = router.getMatchedRoutes(
+          `/shared/${value}/details`,
+        )
+        expect(found).toBe(flatFirst ? flat : nested)
+        expect(branch).toEqual(
+          flatFirst ? [root, flat] : [root, first, second, nested],
+        )
+        expect(params).toEqual(flatFirst ? { flat: value } : { nested: value })
+      }
+      router.history.destroy()
+    },
+  )
+
+  it('keeps case defaults and overrides across deferred segments', () => {
+    const root = new BaseRootRoute({})
+    const sensitive = new BaseRoute({
+      getParentRoute: () => root,
+      path: '/Strict/Deep/pre{$id}Suf',
+    })
+    const insensitive = new BaseRoute({
+      getParentRoute: () => root,
+      path: '/Loose/Deep/pre{$id}Suf',
+      caseSensitive: false,
+    })
+    const router = createTestRouter({
+      routeTree: root.addChildren([sensitive, insensitive]),
+      caseSensitive: true,
+      history: createMemoryHistory(),
+    })
+    expect(router.getMatchedRoutes('/Strict/deep/preoneSuf')[2]).toBeUndefined()
+    expect(router.getMatchedRoutes('/Strict/Deep/PREoneSuf')[2]).toBeUndefined()
+    for (const value of ['one', 'two']) {
+      expect(router.getMatchedRoutes(`/Strict/Deep/pre${value}Suf`)[2]).toBe(
+        sensitive,
+      )
+      expect(router.getMatchedRoutes(`/loose/deep/PRE${value}SUF`)[2]).toBe(
+        insensitive,
+      )
+    }
+    router.history.destroy()
+  })
+
   it('builds links and exposes interpolation before visiting a route', () => {
     const root = new BaseRootRoute({})
     const projects = new BaseRoute({

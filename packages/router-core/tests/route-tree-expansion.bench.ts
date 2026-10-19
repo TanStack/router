@@ -1,9 +1,14 @@
 import { describe, expect, test } from 'vitest'
 import { BaseRootRoute, BaseRoute } from '../src'
-import { findRouteMatch, processRouteTree } from '../src/new-process-route-tree'
+import {
+  findFlatMatch,
+  findRouteMatch,
+  processRouteMasks,
+  processRouteTree,
+} from '../src/new-process-route-tree'
 import type { AnyRoute } from '../src'
 
-for (const shape of ['shallow', 'shared', 'competing'] as const) {
+for (const shape of ['shallow', 'shared', 'competing', 'pathless'] as const) {
   describe(`route-tree expansion (${shape}, 1000 routes)`, () => {
     const pathFor = (index: number, value = 'one') => {
       return shape === 'shallow'
@@ -14,18 +19,31 @@ for (const shape of ['shallow', 'shared', 'competing'] as const) {
     }
     const create = () => {
       const root = new BaseRootRoute({})
+      const layouts: Array<AnyRoute> = []
       const routes = Array.from({ length: 1000 }, (_, index) => {
-        return new BaseRoute({
-          getParentRoute: () => root,
+        const layout =
+          shape === 'pathless'
+            ? new BaseRoute({
+                getParentRoute: () => root,
+                id: `_layout-${index}`,
+                params: { parse: (params: Record<string, string>) => params },
+              })
+            : root
+        const route = new BaseRoute({
+          getParentRoute: () => layout,
           path: pathFor(index, '$id'),
           ...(shape === 'competing'
             ? { params: { parse: (params: Record<string, string>) => params } }
             : {}),
         })
+        if (shape === 'pathless') {
+          layouts.push(layout.addChildren([route]))
+        }
+        return route
       })
       return {
         routes,
-        tree: root.addChildren(routes),
+        tree: root.addChildren(shape === 'pathless' ? layouts : routes),
       }
     }
     const register = () => {
@@ -118,5 +136,46 @@ for (const shape of ['shallow', 'shared', 'competing'] as const) {
         },
       ).run({ time: 500, warmupTime: 200, throws: true })
     })
+  })
+}
+
+for (const shape of ['static', 'dynamic', 'nested'] as const) {
+  test(`eager mask compilation (${shape}, 1000 masks)`, async ({ bench }) => {
+    const processed = processRouteTree<AnyRoute>(
+      new BaseRootRoute({}),
+    ).processedTree
+    const masks = Array.from({ length: 1000 }, (_, index) => {
+      return shape === 'static'
+        ? { from: `/mask-${index}/details` }
+        : shape === 'dynamic'
+          ? { from: `/mask-${index}/pre{$id}suffix/{-$lang}` }
+          : {
+              from: `/mask-${index}/$parent`,
+              children: [{ from: `/mask-${index}/$parent/$child` }],
+            }
+    })
+    processRouteMasks(masks, processed)
+    for (let index = 0; index < masks.length; index++) {
+      const path =
+        shape === 'static'
+          ? `/mask-${index}/details`
+          : shape === 'dynamic'
+            ? `/mask-${index}/prevaluesuffix/en`
+            : `/mask-${index}/one/two`
+      const match = findFlatMatch(path, processed)
+      expect(match?.route).toBe(
+        shape === 'nested' ? masks[index]!.children![0] : masks[index],
+      )
+      expect(match?.rawParams).toEqual(
+        shape === 'static'
+          ? {}
+          : shape === 'dynamic'
+            ? { id: 'value', lang: 'en' }
+            : { parent: 'one', child: 'two' },
+      )
+    }
+    await bench(`eager mask compilation (${shape}, 1000 masks)`, () => {
+      processRouteMasks(masks, processed)
+    }).run({ time: 500, warmupTime: 200, throws: true })
   })
 }
