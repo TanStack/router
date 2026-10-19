@@ -36,6 +36,7 @@
  *   `webpack://<namespace>/` source, or any trailing run of whole path
  *   segments of the file (`src/routes/posts.tsx`, `routes/posts.tsx`,
  *   `posts.tsx`), with `/` or `\` separators, a query or a position suffix.
+ *   Segments may hold bracketed groups (`(group).tsx`, `[id].tsx`).
  *   A trailing run that also names a file of `distinctFrom` is ambiguous and
  *   does not count.
  * - Position: the file followed by `:line`, `:line:column`, `(line,column)`
@@ -406,10 +407,18 @@ export interface FileOptions {
 }
 
 /**
- * A path token in a message: path characters (no quotes, spaces, colons,
- * queries or parentheses), after an optional drive letter.
+ * Path tokens in a message: path characters (no quotes, spaces, colons,
+ * queries or brackets), after an optional drive letter; and the same with
+ * bracketed groups inside a segment, as route file names have them
+ * (`(group).tsx`, `[id].tsx`, `{-$lang}.tsx`). A group holds no separator,
+ * comma or colon, so neither a position suffix (`(3,5)`, `(3:5)`) nor a
+ * path quoted in brackets (`(src/a.ts)`) is part of a token; the first
+ * pattern still reads a bracket-free name quoted in brackets (`(a.ts)`).
  */
-const pathToken = /(?:\/{0,3}[A-Za-z]:(?=[\\/]))?[\w@.~+\-/\\%$#]+/g
+const pathTokens = [
+  /(?:\/{0,3}[A-Za-z]:(?=[\\/]))?[\w@.~+\-/\\%$#]+/g,
+  /(?:\/{0,3}[A-Za-z]:(?=[\\/]))?(?:[\w@.~+\-/\\%$#]|\([\w@.~+\-%$#]*\)|\[[\w@.~+\-%$#]*\]|\{[\w@.~+\-%$#]*\})+/g,
+]
 
 /**
  * A token as a path: `/` separators, without URL scheme remnants (the
@@ -455,7 +464,7 @@ function realOf(file: string | undefined) {
 
 /** Whether a normalised token denotes `file` (see the file header). */
 function denotes(token: string, file: string, root: string | undefined) {
-  if (!/[\w$]\.[\w]+$/.test(token) && !token.includes('/')) {
+  if (!/[\w$)\]}]\.[\w]+$/.test(token) && !token.includes('/')) {
     return false
   }
   // Leading `./` and `../` (a source relative to its map) are dropped: the
@@ -495,7 +504,8 @@ function denotes(token: string, file: string, root: string | undefined) {
  */
 function fileTokens(text: string, file: string, options: FileOptions = {}) {
   const found: Array<{ token: string; end: number }> = []
-  for (const match of text.matchAll(pathToken)) {
+  const matches = pathTokens.flatMap((pattern) => [...text.matchAll(pattern)])
+  for (const match of matches) {
     const start = match.index
     // `webpack://<namespace>/<path>` sources: the scheme and its slashes go.
     const token = normaliseToken(
