@@ -33,7 +33,9 @@ test('collects ordered static and dynamic CSS from a completed bundled graph', a
     experimental: { bundledDev: true },
     build: { rolldownOptions: { experimental: { devMode: { lazy: false } } } },
     optimizeDeps: { noDiscovery: true },
-    server: { port: 0 },
+    // Vite's default port: the server binds the next free port itself
+    // (`port: 0` makes Vite 8 probe a port and bind it after, which another
+    // process can take meanwhile).
     plugins: [
       {
         name: 'capture-completed-styles',

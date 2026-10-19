@@ -1001,7 +1001,12 @@ export async function createDevServer(
 
   try {
     if (listen) {
-      await vite.listen(0)
+      // Vite's default port (`strictPort` off): the server binds a port
+      // itself, trying the next one while a port is in use, and `url` reads
+      // the port it bound. (`listen(0)` would make Vite 8 probe a free port,
+      // close it and bind it after: another process can take it meanwhile,
+      // and the server fails with "Port … is already in use".)
+      await vite.listen()
     }
     if (watching) {
       await watcherReady()
