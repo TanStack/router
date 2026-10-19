@@ -10,7 +10,7 @@
  * `tests/integration/{dev-server,rsbuild-dev-server}-{generator,new-routes}.test.ts`.
  */
 import { existsSync } from 'node:fs'
-import { readFile, rm } from 'node:fs/promises'
+import { rm } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import {
@@ -18,10 +18,15 @@ import {
   rootRoute as virtualRootRoute,
   route as virtualRoute,
 } from '@tanstack/virtual-file-routes'
+import {
+  captureConsole,
+  diagnosticsOf,
+  expectDiagnostic,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { Generator } from '../src'
 import { configOf, createApp, fileRoute, read, rootRoute, save } from './app'
 import { routeIdOf } from './route-id'
-import { routesOf } from './route-tree'
+import { observeRouteTree, routesOf } from './route-tree'
 import type { Config } from '../src'
 
 /** A generator for the app at `root`, after its first run. */
@@ -36,8 +41,12 @@ async function startGenerator(
 }
 
 /**
- * The route tree a fresh generator writes for the app at `root`, written next
- * to the app's route tree (so its imports are the same).
+ * The routes the real router builds from the route tree a fresh generator
+ * writes for the app at `root` (written next to the app's route tree, so
+ * its imports are the same): ids, full paths, parents, route files and
+ * lazily loaded files (route-tree.ts `observeRouteTree`). A running
+ * generator's tree must give the same routes; its text is free (SPEC J1.5,
+ * §5.5).
  */
 async function freshTree(root: string, config: Config) {
   const fresh = path.join(
@@ -48,7 +57,7 @@ async function freshTree(root: string, config: Config) {
     config: { ...config, generatedRouteTree: fresh },
     root,
   }).run()
-  return readFile(fresh, 'utf8')
+  return observeRouteTree(fresh)
 }
 
 /** Deletes an app file (path relative to the app root); returns its path. */
@@ -76,7 +85,7 @@ describe('route edits', () => {
       '/posts': 'routes/posts.tsx',
       '/posts/$id': 'routes/posts.$id.tsx',
     })
-    expect(await readFile(config.generatedRouteTree, 'utf8')).toBe(
+    expect(await observeRouteTree(config.generatedRouteTree)).toEqual(
       await freshTree(root, config),
     )
   })
@@ -98,7 +107,7 @@ describe('route edits', () => {
       '/posts': 'routes/posts.tsx',
       '/posts/new': 'routes/posts.new.tsx',
     })
-    expect(await readFile(config.generatedRouteTree, 'utf8')).toBe(
+    expect(await observeRouteTree(config.generatedRouteTree)).toEqual(
       await freshTree(root, config),
     )
   })
@@ -126,21 +135,34 @@ describe('route edits', () => {
     })
   })
 
-  test('a route file broken by an edit fails the run, and fixing it is processed', async () => {
+  // A failed run and a warning (keeping the last good tree) are both fine,
+  // if the diagnostic names the file and the place of the problem (SPEC G5,
+  // §5.7).
+  test('a route file broken by an edit is reported with its location, and fixing it is processed', async () => {
     const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/posts.tsx': fileRoute('/posts'),
     })
     const { config, generator } = await startGenerator(root)
 
-    const posts = await save(
-      root,
-      'src/routes/posts.tsx',
-      'export const Route = (',
+    const broken = `import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = (`
+    const posts = await save(root, 'src/routes/posts.tsx', broken)
+    const { result: error, diagnostics } = await captureConsole(() =>
+      generator.run({ type: 'update', path: posts }).then(
+        () => undefined,
+        (e: unknown) => e,
+      ),
     )
-    await expect(
-      generator.run({ type: 'update', path: posts }),
-    ).rejects.toThrow('posts.tsx')
+    expectDiagnostic(
+      [...diagnosticsOf(error), ...diagnostics],
+      {
+        severity: ['error', 'warning'],
+        file: posts,
+        position: { line: 3 },
+      },
+    )
     await save(root, 'src/routes/posts.tsx', fileRoute('/wrong'))
     await generator.run({ type: 'update', path: posts })
 
@@ -249,7 +271,7 @@ describe.each([
         ...routes,
       })
       expect(await routeIdOf(await read(root, to))).toBe(id)
-      expect(await readFile(config.generatedRouteTree, 'utf8')).toBe(
+      expect(await observeRouteTree(config.generatedRouteTree)).toEqual(
         await freshTree(root, config),
       )
     },
@@ -268,12 +290,14 @@ describe('route tree file events', () => {
         'src/routes/index.tsx': fileRoute('/'),
       })
       const { config, generator } = await startGenerator(root)
-      const generated = await readFile(config.generatedRouteTree, 'utf8')
+      const generated = await observeRouteTree(config.generatedRouteTree)
 
       await save(root, 'src/routeTree.gen.ts', content)
       await generator.run({ type: 'update', path: config.generatedRouteTree })
 
-      expect(await readFile(config.generatedRouteTree, 'utf8')).toBe(generated)
+      expect(await observeRouteTree(config.generatedRouteTree)).toEqual(
+        generated,
+      )
     },
   )
 
@@ -296,13 +320,15 @@ describe('route tree file events', () => {
         'src/routes/index.tsx': fileRoute('/'),
       })
       const { config, generator } = await startGenerator(root)
-      const generated = await readFile(config.generatedRouteTree, 'utf8')
+      const generated = await observeRouteTree(config.generatedRouteTree)
 
       await rm(config.generatedRouteTree)
       await generator.run({ type: 'delete', path: config.generatedRouteTree })
 
       expect(existsSync(config.generatedRouteTree)).toBe(true)
-      expect(await readFile(config.generatedRouteTree, 'utf8')).toBe(generated)
+      expect(await observeRouteTree(config.generatedRouteTree)).toEqual(
+        generated,
+      )
     },
   )
 
