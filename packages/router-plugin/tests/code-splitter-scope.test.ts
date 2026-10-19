@@ -316,6 +316,35 @@ export const Route = createFileRoute('/')({
     ])
   })
 
+  // A computed key that is the only read of a binding the loader shares:
+  // the split component sees the one binding, and its initializer runs
+  // once. Source: V4 red variant astra/24 (a reference walker that skips
+  // every object key escaped the test above, where a member read also names
+  // the binding). (A `let` the route module reassigns while a chunk reads
+  // it: pinned in integration/known-bugs-code-splitter-ssr-builds.test.ts.)
+  it('do read a binding the loader shares when a computed key is the only read', async () => {
+    let tokens = 0
+    const route = await loadRoute(
+      `${head}import { makeToken } from './token'
+const token = makeToken()
+export const Route = createFileRoute('/')({
+  loader: () => token,
+  component: () => {
+    const labels = { [token]: true }
+    return <p>{Object.keys(labels).join()}</p>
+  },
+})
+`,
+      { stubs: { './token': { makeToken: () => `token-${++tokens}` } } },
+    )
+    await expectValidModules(route.modules)
+    expect([
+      await (await route.load('loader'))(),
+      await route.render('component'),
+      tokens,
+    ]).toEqual(['token-1', '<p>token-1</p>', 1])
+  })
+
   it('neither do declarations in helpers that move into the chunk, named like a shared binding', async () => {
     const route = await loadRoute(
       `${head}import { createStore } from './store'
