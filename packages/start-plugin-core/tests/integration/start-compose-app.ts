@@ -177,7 +177,7 @@ export async function serveStartBuild(
       const body =
         method === 'GET' || method === 'HEAD'
           ? undefined
-          : (Readable.toWeb(request) as ReadableStream)
+          : (Readable.toWeb(request) as unknown as ReadableStream)
       const reply = await handle(
         new Request(new URL(request.url ?? '/', origin), {
           method,
