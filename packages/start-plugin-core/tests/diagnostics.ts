@@ -6,7 +6,6 @@
  * server fn is supported, or rejected that way, and kept off the client.
  * Re-exported by `regression-helpers.ts`.
  */
-import { stripVTControlCharacters } from 'node:util'
 import { expect } from 'vitest'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import {
@@ -29,27 +28,6 @@ import {
 import type { Environment } from '@tanstack/compiler-test-utils/diagnostics'
 import type { ServerFn } from '../src/start-compiler/types'
 import type { Output } from './regression-helpers'
-
-/**
- * The message of a compile error without its code frame (quoted source
- * lines and marker lines). Still used by the `<Hydrate>` suites' rejection
- * checks (W3-hydrate); the Start compiler suites use `expectCompileError`.
- */
-export function compileErrorMessage(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error)
-  return stripVTControlCharacters(message)
-    .split('\n')
-    .flatMap((line) => {
-      // A quoted source line: `  12 | code` or `> 12 | code`.
-      if (/^\s*>?\s*\d+\s*\|/.test(line)) {
-        return []
-      }
-      // A marker line, which may end with the message: `   | ^^^ message`.
-      const marker = /^\s*\|\s*\^*\s*(.*)$/.exec(line)
-      return (marker ? marker[1]! : line).trim() || []
-    })
-    .join('\n')
-}
 
 /**
  * The text of a diagnostic without the lines that quote `source` (a code

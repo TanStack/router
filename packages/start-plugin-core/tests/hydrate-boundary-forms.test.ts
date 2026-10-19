@@ -16,15 +16,14 @@ import { afterEach, beforeAll, describe, expect, test } from 'vitest'
 import {
   captureThrow,
   diagnosticPosition,
-  expectDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import {
-  compileErrorMessage,
   compileHydrate,
   expectClientRendersLikeServer,
+  expectCompileError,
   expectRendersLikeSource,
   importSources,
   loadChunk,
@@ -33,6 +32,7 @@ import {
   renderSource,
   startPackage,
   withoutHydrationIds,
+  withoutQuotedSource,
 } from './regression-helpers'
 import { packagesDir } from './render'
 import type { ModuleStub, RenderOptions } from './regression-helpers'
@@ -359,7 +359,8 @@ const documentedFix =
 /**
  * The client compilation, which extracts the children, rejects `code` with
  * an error (SPEC J5.5) naming the unsafe pattern (`pattern`, matched in the
- * message without its code frame) and a documented fix (`documentedFix`),
+ * message without the lines quoting `code`, `withoutQuotedSource`) and a
+ * documented fix (`documentedFix`),
  * and reporting a line of the boundary (the frame marks it, or a
  * position). Wording and frame layout are free (SPEC §5.7). The file is
  * named by the bundler that runs the compiler (hydrate-build.test.ts). The
@@ -368,7 +369,7 @@ const documentedFix =
  */
 async function expectExtractionRejected(code: string, pattern: RegExp) {
   const diagnostics = await captureThrow(() => compileHydrate('client', code))
-  const message = compileErrorMessage(diagnostics[0]!.raw)
+  const message = withoutQuotedSource(diagnostics[0]!.text, code)
   expect(message).toMatch(pattern)
   expect(message).toMatch(documentedFix)
   const first = diagnosticPosition(code, '<Hydrate').line
@@ -562,13 +563,10 @@ ${childrenPage('<p id={React.useId()}>x</p>')}`,
     { name: 'super', code: classPage('super') },
   ])('client: children reading $name are rejected', async ({ name, code }) => {
     const diagnostics = await captureThrow(() => compileHydrate('client', code))
-    expect(compileErrorMessage(diagnostics[0]!.raw)).toMatch(
-      new RegExp(`\\b${name}\\b`),
-    )
-    expectDiagnostic(diagnostics, {
-      severity: 'error',
-      position: { line: diagnosticPosition(code, '<Hydrate').line },
+    expectCompileError(diagnostics[0]!.raw, {
       source: code,
+      at: diagnosticPosition(code, '<Hydrate').line,
+      names: [name],
     })
   })
 })
