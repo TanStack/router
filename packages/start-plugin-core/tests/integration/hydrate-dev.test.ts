@@ -13,16 +13,21 @@
  *   route component's boundaries hydrate the server's HTML (splitter
  *   composition, FIX-PLAN HYD-04).
  *
- * Rsbuild: a React Start app on Rsbuild gets React Refresh from
- * `@rsbuild/plugin-react`, which is no dependency of this package, so the
- * edit rows are Vite only (see the W3-hydrate report).
+ * The React edit row also runs on Start's Rsbuild dev server (React Refresh
+ * from `@rsbuild/plugin-react`). A Solid Start page served by Start's Rsbuild
+ * dev server does not hydrate here even without `<Hydrate>` ("template is
+ * not a function"; see the W3-hydrate report), so the Solid edit row is
+ * Vite only; Solid on Rsbuild is covered by production builds
+ * (hydrate-pages-solid-rsbuild.test.ts).
  */
 import react from '@vitejs/plugin-react'
 import solid from 'vite-plugin-solid'
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { describeHmr } from '@tanstack/compiler-test-utils/dev-server'
+import { pluginReact } from '@rsbuild/plugin-react'
 import { startDevServer, startServerEntryFiles } from '../dev-server'
+import { startRsbuildStartDevServer } from '../rsbuild-dev-server'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 
@@ -196,7 +201,7 @@ export function Widgets() {
  * React's recoverable errors.
  */
 async function editLoadedChild(
-  server: DevServer,
+  server: Pick<DevServer, 'edit'>,
   browser: BrowserPage,
   widgets: (children: string, label: string) => string,
 ) {
@@ -451,6 +456,41 @@ describe('Vite dev, Solid', () => {
       })
       await server.idle()
       expectEditsReached(await editLoadedChild(server, browser, solidWidgets))
+      expect(browser.loads()).toBe(1)
+      expect(browser.errors).toEqual([])
+    },
+    timeout,
+  )
+})
+
+describe('Rsbuild dev', () => {
+  // Source: FIX-PLAN V2-20 (Rsbuild, React)
+  test(
+    'React: a loaded child hot-updates in place, and a sibling opened later shows the edited version',
+    async () => {
+      const server = await startRsbuildStartDevServer({
+        hmr: true,
+        browser: true,
+        // Start serves the pages, not an HTML template.
+        config: { tools: { htmlPlugin: false }, plugins: [pluginReact()] },
+        files: {
+          ...reactApp,
+          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { Widgets } from '../widgets'
+export const Route = createFileRoute('/')({ component: Widgets })
+`,
+          'src/widgets.tsx': reactWidgets('<i>v1</i>', 'capture-v1'),
+        },
+      })
+      expect(server.errors).toEqual([])
+      const browser = await openPage(server.url!, {
+        registerCleanup: onTestFinished,
+      })
+      await browser.waitForText('hydrated', {
+        selector: '[data-testid=hydrated]',
+      })
+      expectEditsReached(await editLoadedChild(server, browser, reactWidgets))
+      expect(server.errors).toEqual([])
       expect(browser.loads()).toBe(1)
       expect(browser.errors).toEqual([])
     },

@@ -12,17 +12,18 @@
  * and its result is returned with the page's markup and the scripts the
  * page requested after it loaded.
  *
- * Solid apps are built with Vite and `vite-plugin-solid` (Solid's JSX
- * transform of a Vite app); an Rsbuild Solid app needs
- * `@rsbuild/plugin-solid`, which is no dependency of this package.
+ * Solid apps get Solid's JSX transform of each bundler (`solidAppConfig`).
  *
  * Thin glue only: the compiler, bundler, React or Solid, router and Start
  * runtime are the real ones; the harness writes the entries, moves the
  * server's HTML into the page and waits until the page is quiet.
  */
 import solid from 'vite-plugin-solid'
+import { pluginBabel } from '@rsbuild/plugin-babel'
+import { pluginSolid } from '@rsbuild/plugin-solid'
 import { buildStart, callByIdExports, callByIdPrelude } from '../build-harness'
 import type { StartBuild, StartBundler } from '../build-harness'
+import type { RsbuildConfig } from '@rsbuild/core'
 
 /** The Start framework packages a page app can be built with. */
 export type PageFramework = 'react' | 'solid'
@@ -234,6 +235,38 @@ return { beforeClick, loadedByClick: requested().length > beforeClick }`
 const exportName = (name: string) => `f_${name.replace(/\W/g, '_')}`
 
 /**
+ * The bundler configuration of a Solid Start app: Vite with
+ * `vite-plugin-solid` (SSR output in the server environment); Rsbuild with
+ * `@rsbuild/plugin-babel` and `@rsbuild/plugin-solid` (Solid's Babel preset,
+ * hydratable, generating the DOM output for the client and the SSR output
+ * for the server) and the `solid` export condition, which the Solid
+ * packages publish their JSX sources under.
+ */
+export const solidAppConfig = {
+  viteConfig: { plugins: [solid({ ssr: true })] },
+  rsbuildConfig: {
+    plugins: [pluginBabel({ include: /\.(?:jsx|tsx)$/ })],
+    environments: {
+      client: {
+        plugins: [
+          pluginSolid({
+            solidPresetOptions: { generate: 'dom', hydratable: true },
+          }),
+        ],
+      },
+      ssr: {
+        plugins: [
+          pluginSolid({
+            solidPresetOptions: { generate: 'ssr', hydratable: true },
+          }),
+        ],
+      },
+    },
+    resolve: { conditionNames: ['solid', '...'] },
+  } satisfies RsbuildConfig,
+}
+
+/**
  * The entries of an app of `framework`: the fixtures and what renders them
  * (`h`), and in the client what hydrates and mounts them.
  */
@@ -274,9 +307,6 @@ export async function buildHydrationApp(options: {
   bundler?: StartBundler
 }): Promise<HydrationApp> {
   const { framework = 'react', bundler = 'vite' } = options
-  if (framework === 'solid' && bundler !== 'vite') {
-    throw new Error('Solid page apps are built with Vite (vite-plugin-solid)')
-  }
   const names = Object.keys(options.fixtures)
   const fixtureExports = names
     .map(
@@ -286,11 +316,16 @@ export async function buildHydrationApp(options: {
   const build = await buildStart({
     bundler,
     framework,
-    mode: 'development',
+    // A development-mode Rsbuild build of a Solid app does not hydrate even a
+    // page without `<Hydrate>` (Solid reports a hydration mismatch at the
+    // root), so the Solid Rsbuild app is a production build, like
+    // `rsbuild build` makes it.
+    mode:
+      framework === 'solid' && bundler === 'rsbuild'
+        ? 'production'
+        : 'development',
     registerCleanup: options.registerCleanup,
-    ...(framework === 'solid' && {
-      viteConfig: { plugins: [solid({ ssr: true })] },
-    }),
+    ...(framework === 'solid' && solidAppConfig),
     files: {
       ...options.files,
       ...Object.fromEntries(
