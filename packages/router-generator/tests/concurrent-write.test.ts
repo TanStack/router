@@ -460,9 +460,7 @@ describe('publication of route files and the route tree', () => {
     async ({ fault }) => {
       const { root, config, files, before } = await appBeforeRewrite()
       const { seen, fs: faultyFs } = filesystemWithReader(files, fault)
-      await new Generator({ config, root, fs: faultyFs })
-        .run()
-        .catch(() => {})
+      await new Generator({ config, root, fs: faultyFs }).run().catch(() => {})
 
       for (const [index, file] of files.entries()) {
         expect(await fs.readFile(file, 'utf8'), file).toBe(before[index])

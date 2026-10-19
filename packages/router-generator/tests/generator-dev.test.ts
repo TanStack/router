@@ -156,14 +156,11 @@ export const Route = (`
         (e: unknown) => e,
       ),
     )
-    expectDiagnostic(
-      [...diagnosticsOf(error), ...diagnostics],
-      {
-        severity: ['error', 'warning'],
-        file: posts,
-        position: { line: 3 },
-      },
-    )
+    expectDiagnostic([...diagnosticsOf(error), ...diagnostics], {
+      severity: ['error', 'warning'],
+      file: posts,
+      position: { line: 3 },
+    })
     await save(root, 'src/routes/posts.tsx', fileRoute('/wrong'))
     await generator.run({ type: 'update', path: posts })
 

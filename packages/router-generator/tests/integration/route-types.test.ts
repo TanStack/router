@@ -7,13 +7,15 @@
  * per app (each tree augments the router's types globally).
  */
 import { describe, expect, test } from 'vitest'
-import { createApp, fileRoute, generate, lazyFileRoute, rootRoute } from '../app'
-import { checkApp } from '../real-router'
 import {
-  frameworkCases,
-  groupLayout,
-  shapeCases,
-} from '../real-router-cases'
+  createApp,
+  fileRoute,
+  generate,
+  lazyFileRoute,
+  rootRoute,
+} from '../app'
+import { checkApp } from '../real-router'
+import { frameworkCases, groupLayout, shapeCases } from '../real-router-cases'
 import { typeAssertions, typeErrorsOf } from '../type-check'
 
 /** An app with a root route and a route file for each of `files`. */

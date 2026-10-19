@@ -304,7 +304,12 @@ describe('layouts and groups', () => {
       checkApp({
         name: `a childless ${file} next to the index route`,
         files: {
-          'src/routes/__root.tsx': page('react', 'createRootRoute', 'root', true),
+          'src/routes/__root.tsx': page(
+            'react',
+            'createRootRoute',
+            'root',
+            true,
+          ),
           'src/routes/index.tsx': page('react', 'createFileRoute', 'home'),
           [`src/routes/${file}`]: page('react', constructor, 'auth', true),
         },
@@ -323,42 +328,51 @@ describe('layouts and groups', () => {
   // (`posts.lazy.tsx`, no `posts.tsx`) nests under the lazy-only route's
   // virtual anchor (guide/code-splitting.md:222-224; DECISIONS 2026-10-18
   // PIN-A; SPEC J1.14). Control for the pin below.
-  test('a pathless layout under a route with only a lazy route file nests under that route', () =>
-    checkApp(
-      {
-        name: 'a pathless layout under a lazy-only route',
-        files: {
-          'src/routes/__root.tsx': page('react', 'createRootRoute', 'root', true),
-          'src/routes/posts.lazy.tsx': page(
-            'react',
-            'createLazyFileRoute',
-            'posts',
-            true,
-          ),
-          'src/routes/posts/_layout.tsx': page(
-            'react',
-            'createFileRoute',
-            'layout',
-            true,
-          ),
-          'src/routes/posts/_layout/child.tsx': page(
-            'react',
-            'createFileRoute',
-            'child',
-          ),
+  test(
+    'a pathless layout under a route with only a lazy route file nests under that route',
+    () =>
+      checkApp(
+        {
+          name: 'a pathless layout under a lazy-only route',
+          files: {
+            'src/routes/__root.tsx': page(
+              'react',
+              'createRootRoute',
+              'root',
+              true,
+            ),
+            'src/routes/posts.lazy.tsx': page(
+              'react',
+              'createLazyFileRoute',
+              'posts',
+              true,
+            ),
+            'src/routes/posts/_layout.tsx': page(
+              'react',
+              'createFileRoute',
+              'layout',
+              true,
+            ),
+            'src/routes/posts/_layout/child.tsx': page(
+              'react',
+              'createFileRoute',
+              'child',
+            ),
+          },
+          expected: {
+            __root__: ['/', null],
+            '/posts': ['/posts', '__root__'],
+            '/posts/_layout': ['/posts', '/posts'],
+            '/posts/_layout/child': ['/posts/child', '/posts/_layout'],
+          },
+          visits: { '/posts/child': '/posts/_layout/child' },
+          pages: { '/posts/child': ['root', 'posts', 'layout', 'child'] },
         },
-        expected: {
-          __root__: ['/', null],
-          '/posts': ['/posts', '__root__'],
-          '/posts/_layout': ['/posts', '/posts'],
-          '/posts/_layout/child': ['/posts/child', '/posts/_layout'],
-        },
-        visits: { '/posts/child': '/posts/_layout/child' },
-        pages: { '/posts/child': ['root', 'posts', 'layout', 'child'] },
-      },
-      // (the types of the same shapes: the pin below)
-      { types: false },
-    ), 60_000)
+        // (the types of the same shapes: the pin below)
+        { types: false },
+      ),
+    60_000,
+  )
 
   // Bug (PIN-A): a pathless layout one directory below a lazy-only route
   // (`app/posts.lazy.tsx`, no `app/posts.tsx`, and
@@ -380,7 +394,12 @@ describe('layouts and groups', () => {
       checkApp({
         name: 'a pathless layout in a directory under a lazy-only route',
         files: {
-          'src/routes/__root.tsx': page('react', 'createRootRoute', 'root', true),
+          'src/routes/__root.tsx': page(
+            'react',
+            'createRootRoute',
+            'root',
+            true,
+          ),
           'src/routes/app.tsx': page('react', 'createFileRoute', 'app', true),
           'src/routes/app/posts.lazy.tsx': page(
             'react',
@@ -414,7 +433,13 @@ describe('layouts and groups', () => {
           '/app/posts/drafts/child': '/app/posts/drafts/_layout/child',
         },
         pages: {
-          '/app/posts/drafts/child': ['root', 'app', 'posts', 'layout', 'child'],
+          '/app/posts/drafts/child': [
+            'root',
+            'app',
+            'posts',
+            'layout',
+            'child',
+          ],
         },
       }),
     60_000,

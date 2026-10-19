@@ -24,7 +24,7 @@ describe('expectOnlyOwnedEdits', () => {
         .replace('createLazyFileRoute(', 'createFileRoute(')
         .replace(
           "import { useState } from 'react'\n",
-          "import { useState } from 'react'\nimport { createFileRoute } from \"@tanstack/react-router\";\n",
+          'import { useState } from \'react\'\nimport { createFileRoute } from "@tanstack/react-router";\n',
         ),
     },
     {

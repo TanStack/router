@@ -61,11 +61,13 @@ export async function typeErrorsOf(root: string, file: string, code: string) {
   )
   await writeFile(path.join(root, file), code)
   const program = createProgram([path.join(root, file)])
-  return ts.getPreEmitDiagnostics(program).map((diagnostic) =>
-    diagnostic.file
-      ? `${path.relative(root, diagnostic.file.fileName)}: ${messageOf(diagnostic)}`
-      : messageOf(diagnostic),
-  )
+  return ts
+    .getPreEmitDiagnostics(program)
+    .map((diagnostic) =>
+      diagnostic.file
+        ? `${path.relative(root, diagnostic.file.fileName)}: ${messageOf(diagnostic)}`
+        : messageOf(diagnostic),
+    )
 }
 
 /**
@@ -73,10 +75,7 @@ export async function typeErrorsOf(root: string, file: string, code: string) {
  * modules they import, like `typeErrorsOf`, but reports only the errors in
  * the given modules themselves (not in the modules they import), by module.
  */
-export function typeErrorsOfModules(
-  files: Array<string>,
-  lib?: Array<string>,
-) {
+export function typeErrorsOfModules(files: Array<string>, lib?: Array<string>) {
   const program = createProgram(files, lib)
   const errors = new Map<string, Array<string>>()
   for (const file of files) {

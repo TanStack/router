@@ -213,7 +213,10 @@ export async function prepareFixture(name: string, dir = fixtureDir(name)) {
     const routePath = (file: string) => join(dir, 'routes', '(test)', file)
     const template = await fs.readFile(join(dir, 'template.tsx'), 'utf8')
     const files: Record<string, string> = {
-      'foo.bar.tsx': await fs.readFile(join(dir, 'template-verbose.tsx'), 'utf8'),
+      'foo.bar.tsx': await fs.readFile(
+        join(dir, 'template-verbose.tsx'),
+        'utf8',
+      ),
       'foo.tsx': template,
       'initiallyLazy.tsx': await fs.readFile(
         join(dir, 'template.lazy.tsx'),
@@ -255,7 +258,12 @@ export async function prepareFixture(name: string, dir = fixtureDir(name)) {
       before[`(test)/${file}`] = content
     }
   } else if (name === 'custom-scaffolding') {
-    for (const file of ['__root.tsx', 'index.tsx', 'foo.lazy.tsx', 'api/bar.tsx']) {
+    for (const file of [
+      '__root.tsx',
+      'index.tsx',
+      'foo.lazy.tsx',
+      'api/bar.tsx',
+    ]) {
       await fs.mkdir(path.dirname(join(dir, 'routes', file)), {
         recursive: true,
       })

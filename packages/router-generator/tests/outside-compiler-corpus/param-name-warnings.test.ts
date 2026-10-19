@@ -46,9 +46,7 @@ describe('param name warnings', () => {
       (diagnostic) => diagnostic.severity === 'warning',
     )
     for (const name of ['123', 'user-name', 'user-id']) {
-      expect(findDiagnostics(warnings, { names: [name] }), name).toHaveLength(
-        1,
-      )
+      expect(findDiagnostics(warnings, { names: [name] }), name).toHaveLength(1)
     }
     for (const name of ['validParam', 'locale', 'postId']) {
       expect(findDiagnostics(warnings, { names: [name] }), name).toEqual([])

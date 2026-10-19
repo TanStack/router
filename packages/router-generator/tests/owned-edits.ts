@@ -62,7 +62,10 @@ function unownedText(code: string, fileName: string) {
   text += code.slice(last)
   return text
     .split(/(?<=\n)/)
-    .filter((line) => !(line.includes(owned) && line.replaceAll(owned, '').trim() === ''))
+    .filter(
+      (line) =>
+        !(line.includes(owned) && line.replaceAll(owned, '').trim() === ''),
+    )
     .join('')
 }
 
@@ -119,9 +122,10 @@ export function expectOnlyOwnedEdits(
   after: string,
   fileName = 'route.tsx',
 ) {
-  expect(unownedText(after, fileName), 'the code the generator does not own').toBe(
-    unownedText(before, fileName),
-  )
+  expect(
+    unownedText(after, fileName),
+    'the code the generator does not own',
+  ).toBe(unownedText(before, fileName))
   expect(
     routerBindings(after, fileName),
     'the other bindings of the router package imports',
