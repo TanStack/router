@@ -8,7 +8,8 @@
  * `edit()` writes the files and waits for the compile that includes them
  * (`trackCompiles`). When plugins write files too (a generated route tree),
  * `write()` and `settle()` wait until the compiles are done with every
- * write, by events only (see `settle`).
+ * write, by events only (see `settle`). `diagnostics` keeps the errors and
+ * warnings of every compile since the server started.
  *
  * Plugin-agnostic: the caller supplies the Rsbuild plugins and the directory
  * the apps live in (where their imports resolve).
@@ -19,8 +20,10 @@ import { createServer } from 'node:http'
 import path from 'node:path'
 import { createRsbuild, mergeRsbuildConfig } from '@rsbuild/core'
 import { createApp } from './build-harness'
+import { diagnosticsOf } from './diagnostics'
 import { saveAppFile } from './save-file'
 import type { AppOptions } from './build-harness'
+import type { Diagnostic } from './diagnostics'
 import type { AddressInfo, Socket } from 'node:net'
 import type {
   RsbuildConfig,
@@ -133,10 +136,23 @@ export interface RsbuildDevServer {
   hotUpdates: (environment?: string) => Promise<Record<string, string>>
   /** Modules (paths relative to the app root) the last compile built. */
   rebuilt: Array<string>
-  /** Errors of the last compile. */
+  /** Errors of the last compile (`diagnostics` keeps every compile's). */
   errors: Array<string>
-  /** Warnings of the last compile. */
+  /** Warnings of the last compile (`diagnostics` keeps every compile's). */
   warnings: Array<string>
+  /**
+   * The errors and warnings of every compile of every environment since the
+   * server started, in the order the compiles ended, as diagnostics
+   * (`./diagnostics`: `severity` `error` or `warning`). A compile's report
+   * is never lost to a later compile: a dev server compiles again on its own
+   * (a file a plugin wrote, a file the watcher finds outdated when it
+   * attaches after a compile), and a plugin that reports a problem once
+   * (Start's import protection, `log: 'once'`) does not repeat it. For the
+   * reports since a point, mark it (`const since = server.diagnostics.length`)
+   * and read `server.diagnostics.slice(since)` afterwards, as with the Vite
+   * harness's `logs`. Read through `diagnosticsOf`/`expectDiagnostic`.
+   */
+  diagnostics: Array<Diagnostic>
   /** Stops the dev server and removes the app directory. */
   close: () => Promise<void>
 }
@@ -166,6 +182,7 @@ export async function createRsbuildDevServer(
   const rebuilt: Array<string> = []
   const errors: Array<string> = []
   const warnings: Array<string> = []
+  const diagnostics: Array<Diagnostic> = []
   const compiles = trackCompiles()
 
   /**
@@ -239,6 +256,13 @@ export async function createRsbuildDevServer(
             ({ compilation }) => {
               compiling.delete(environmentCompiler)
               ended++
+              // Read here, while the compilation is still accessible: Rspack
+              // drops it once the next compile starts (`onDevCompileDone`
+              // then cannot read it).
+              diagnostics.push(
+                ...diagnosticsOf(compilation.errors, 'error'),
+                ...diagnosticsOf(compilation.warnings, 'warning'),
+              )
               const state = startState.get(environmentCompiler) ?? new Map()
               lastInputs.set(
                 environmentCompiler,
@@ -534,6 +558,7 @@ export async function createRsbuildDevServer(
     rebuilt,
     errors,
     warnings,
+    diagnostics,
     close,
   }
 }
