@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-router",
-  "version": "1.170.34",
+  "version": "1.170.45",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -86,14 +86,16 @@
   "sideEffects": false,
   "files": [
     "dist",
-    "src"
+    "src",
+    "skills",
+    "!skills/_artifacts"
   ],
   "engines": {
     "node": ">=20.19"
   },
   "dependencies": {
     "@tanstack/history": "workspace:*",
-    "@tanstack/react-store": "^0.9.3",
+    "@tanstack/react-store": "^0.11.2",
     "@tanstack/router-core": "workspace:*",
     "isbot": "catalog:"
   },

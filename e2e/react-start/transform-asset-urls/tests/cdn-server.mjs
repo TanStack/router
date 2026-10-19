@@ -3,7 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const port = process.env.CDN_PORT || 3002
+const port = Number(process.env.CDN_PORT ?? 0)
 
 const app = express()
 
@@ -36,7 +36,7 @@ app.use((req, res, next) => {
 
 app.use(express.static(path.resolve(__dirname, '..', 'dist', 'client')))
 
-app.listen(port, (error) => {
+const server = app.listen(port, (error) => {
   if (error) throw error
-  console.info(`CDN Server: http://localhost:${port}`)
+  console.info(`CDN Server: http://localhost:${server.address().port}`)
 })

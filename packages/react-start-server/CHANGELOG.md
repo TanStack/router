@@ -1,5 +1,114 @@
 # @tanstack/react-start-server
 
+## 1.167.51
+
+### Patch Changes
+
+- Updated dependencies [[`18154b1`](https://github.com/TanStack/router/commit/18154b1c45454a70aa77e9d6d27c8a6e0733d031)]:
+  - @tanstack/router-core@1.171.38
+  - @tanstack/start-server-core@1.169.44
+  - @tanstack/react-router@1.170.45
+
+## 1.167.50
+
+### Patch Changes
+
+- Updated dependencies [[`71d9694`](https://github.com/TanStack/router/commit/71d9694da6346fbece2cda4ecde92b0b12a7ee08)]:
+  - @tanstack/start-server-core@1.169.43
+
+## 1.167.49
+
+### Patch Changes
+
+- Updated dependencies [[`740b0ce`](https://github.com/TanStack/router/commit/740b0ce17737d1f7398740136acdbeabe80df7d8), [`d6ba115`](https://github.com/TanStack/router/commit/d6ba115d5751c75e20943f0062577cf17b446d82)]:
+  - @tanstack/start-server-core@1.169.42
+  - @tanstack/router-core@1.171.37
+  - @tanstack/react-router@1.170.44
+
+## 1.167.48
+
+### Patch Changes
+
+- [#7588](https://github.com/TanStack/router/pull/7588) [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5) - Remove the built-in `useSession` API. Applications choose a session library, such as iron-session, and save or destroy sessions explicitly before returning or redirecting. Connect a cookie adapter through `getCookie` and `setCookie`, or append serialized cookies with `appendResponseHeader('set-cookie', cookie)`. Existing session cookies require a deliberate migration or signing in again with a new cookie name.
+
+  `createServerEntry` keeps the complete callback, including custom error handling, inside the request context and converts errors that escape it. The built-in entry still converts errors automatically. Raw `createStartHandler` handlers now rethrow the original error. For custom reporting, catch inside `createServerEntry`, then rethrow for default conversion or return `handleStartError(error)` to preserve response-helper status, headers, and cookies. Return an explicit `Response` when choosing a custom error payload.
+
+  Response helpers now apply consistently across server routes, SSR, server functions, redirects, errors, and middleware response replacements. Helper setters override returned values; cookie helpers preserve independent cookies and replace matching cookie identities. Use `appendResponseHeader('set-cookie', cookie)` when adding a serialized cookie without replacing other cookies. Changed responses receive copied headers and reuse the body stream, so applications should inspect the response returned by Start rather than relying on mutation of the original response.
+
+- Updated dependencies [[`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5), [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5), [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5), [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5), [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5), [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5)]:
+  - @tanstack/router-core@1.171.36
+  - @tanstack/start-server-core@1.169.41
+  - @tanstack/react-router@1.170.43
+
+## 1.167.47
+
+### Patch Changes
+
+- Updated dependencies [[`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`2413cc0`](https://github.com/TanStack/router/commit/2413cc009826fba4f97b166a35a8a50a4a8fe4bb), [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb), [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb), [`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`d35aab4`](https://github.com/TanStack/router/commit/d35aab425b07b46e222a507c0f0239644669757b), [`663282b`](https://github.com/TanStack/router/commit/663282b0ebbc494aee3595ed95867ee29d01938e)]:
+  - @tanstack/router-core@1.171.35
+  - @tanstack/react-router@1.170.42
+  - @tanstack/start-server-core@1.169.40
+
+## 1.167.46
+
+### Patch Changes
+
+- Updated dependencies [[`60b8ad1`](https://github.com/TanStack/router/commit/60b8ad1ad00812bf966a8eeee6be238c37ddad74), [`614bc27`](https://github.com/TanStack/router/commit/614bc27034c8ec98747bf305ed41d4a619640949), [`d521abd`](https://github.com/TanStack/router/commit/d521abd71c69f1ff010bb3def4d417cb5fa058cb), [`ff66a03`](https://github.com/TanStack/router/commit/ff66a03df4816f44a48a4a37189fc4021b1c8480), [`863c8a7`](https://github.com/TanStack/router/commit/863c8a736b96746c56278a16c50554356f5523d1)]:
+  - @tanstack/react-router@1.170.41
+  - @tanstack/router-core@1.171.34
+  - @tanstack/start-server-core@1.169.39
+
+## 1.167.45
+
+### Patch Changes
+
+- Updated dependencies [[`f5ffd38`](https://github.com/TanStack/router/commit/f5ffd3884ba26778a2a8ce53b379a5bded231676), [`488d046`](https://github.com/TanStack/router/commit/488d046a907d330429e2c807ef95326dad87480f), [`e81845f`](https://github.com/TanStack/router/commit/e81845ff1e4fc66d4e4a87f086be65906f7adb94), [`0c1b5e3`](https://github.com/TanStack/router/commit/0c1b5e38de71b7e81bbf1fd81c73ee0cd68ffe47), [`3cdd1af`](https://github.com/TanStack/router/commit/3cdd1af04b3e2d6f777797ee7bddf285318dd9d2)]:
+  - @tanstack/react-router@1.170.40
+  - @tanstack/router-core@1.171.33
+  - @tanstack/start-server-core@1.169.38
+
+## 1.167.44
+
+### Patch Changes
+
+- Updated dependencies [[`73bfc15`](https://github.com/TanStack/router/commit/73bfc153eef460e9b670556215a5adb2b5cbf542)]:
+  - @tanstack/react-router@1.170.39
+
+## 1.167.43
+
+### Patch Changes
+
+- Updated dependencies [[`cecae54`](https://github.com/TanStack/router/commit/cecae5440b8edaea77c5448fe3d74bbd20fe10a4), [`0103578`](https://github.com/TanStack/router/commit/01035782e53af9b929c784b94ddd64b95efb89c7), [`ce10dcd`](https://github.com/TanStack/router/commit/ce10dcd4d9d3d23738744e453205aad5c6dbd716), [`84936cc`](https://github.com/TanStack/router/commit/84936cc04530bba11059c57b293a794922bbc5aa), [`bbd2336`](https://github.com/TanStack/router/commit/bbd2336b8446de3f7dd85070895e7cf43980183e)]:
+  - @tanstack/router-core@1.171.32
+  - @tanstack/react-router@1.170.38
+  - @tanstack/start-server-core@1.169.37
+
+## 1.167.42
+
+### Patch Changes
+
+- Updated dependencies [[`bc80866`](https://github.com/TanStack/router/commit/bc80866f6d6eb3e6f152ee3682eb783c96403e83), [`e561fa1`](https://github.com/TanStack/router/commit/e561fa1d7118e3d29267cc3b6ce1130d6581f387), [`cbbfbe3`](https://github.com/TanStack/router/commit/cbbfbe37ab1dbe328c343cb437c5660769cc9f26), [`a1c8d1a`](https://github.com/TanStack/router/commit/a1c8d1aa759c227eae9601a030321ac4c53c24bd), [`cbbfbe3`](https://github.com/TanStack/router/commit/cbbfbe37ab1dbe328c343cb437c5660769cc9f26), [`a0b2ad9`](https://github.com/TanStack/router/commit/a0b2ad99aee64af08d16b0e4ff26b3ba42a99f0a), [`8e164d2`](https://github.com/TanStack/router/commit/8e164d28f9e9eb1a7301109230d7ece9817492a8), [`1ca361b`](https://github.com/TanStack/router/commit/1ca361ba52a627d2f76ab33323bd83d1d0aa65a3)]:
+  - @tanstack/router-core@1.171.31
+  - @tanstack/react-router@1.170.37
+  - @tanstack/start-server-core@1.169.36
+
+## 1.167.41
+
+### Patch Changes
+
+- Updated dependencies [[`d76a332`](https://github.com/TanStack/router/commit/d76a33284bc0668f7af4c972a6d32bd0f42b22a6), [`b747fb8`](https://github.com/TanStack/router/commit/b747fb8891b3347b1ffdfe0fa81e7d15049cb776), [`6cfb1e8`](https://github.com/TanStack/router/commit/6cfb1e8b564be282584765352250bf61747895ed), [`700a714`](https://github.com/TanStack/router/commit/700a714c5fb64199b4edfaa3273d230c9894e274), [`700a714`](https://github.com/TanStack/router/commit/700a714c5fb64199b4edfaa3273d230c9894e274), [`6387d58`](https://github.com/TanStack/router/commit/6387d581eabc6e6a3acc87a0bc924e5a38d9c8b2), [`7e349c3`](https://github.com/TanStack/router/commit/7e349c3071ef7a346698d320fc0989998ad55734), [`9b2adaf`](https://github.com/TanStack/router/commit/9b2adaf8c3fca905f156c42f6a4fe17a787afcc8), [`873c830`](https://github.com/TanStack/router/commit/873c830ccb2610a864ee697250e10fcc99772ffa), [`7e349c3`](https://github.com/TanStack/router/commit/7e349c3071ef7a346698d320fc0989998ad55734), [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef), [`e9396c9`](https://github.com/TanStack/router/commit/e9396c928945d1dd6fd3f3bd8052143794f688b5), [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef), [`f151ab0`](https://github.com/TanStack/router/commit/f151ab018eede64ae849b77e68f3cdf31cb95cc5), [`bc57fa3`](https://github.com/TanStack/router/commit/bc57fa3f12450cf34c731450947c7c8f1ea05e58), [`6387d58`](https://github.com/TanStack/router/commit/6387d581eabc6e6a3acc87a0bc924e5a38d9c8b2), [`9872d2a`](https://github.com/TanStack/router/commit/9872d2ac39fc05f4ef6566c0b421f71ceb115244), [`d76a332`](https://github.com/TanStack/router/commit/d76a33284bc0668f7af4c972a6d32bd0f42b22a6), [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef), [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef), [`7e349c3`](https://github.com/TanStack/router/commit/7e349c3071ef7a346698d320fc0989998ad55734), [`9448caa`](https://github.com/TanStack/router/commit/9448caa03a89076b9770631c356c0cc502802c09), [`e9396c9`](https://github.com/TanStack/router/commit/e9396c928945d1dd6fd3f3bd8052143794f688b5), [`700a714`](https://github.com/TanStack/router/commit/700a714c5fb64199b4edfaa3273d230c9894e274), [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef), [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef)]:
+  - @tanstack/router-core@1.171.30
+  - @tanstack/react-router@1.170.36
+  - @tanstack/start-server-core@1.169.35
+
+## 1.167.40
+
+### Patch Changes
+
+- Updated dependencies [[`8c43c71`](https://github.com/TanStack/router/commit/8c43c712523fc63dc3a814f3a19617e270ce8ed1), [`d914b08`](https://github.com/TanStack/router/commit/d914b085bb4bf29ec18a531201e377c10681b661)]:
+  - @tanstack/react-router@1.170.35
+  - @tanstack/start-server-core@1.169.34
+
 ## 1.167.39
 
 ### Patch Changes

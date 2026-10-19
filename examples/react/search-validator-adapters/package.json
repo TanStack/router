@@ -13,9 +13,9 @@
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/arktype-adapter": "^1.167.0",
     "@tanstack/react-query": "^5.102.0",
-    "@tanstack/react-router": "^1.170.34",
-    "@tanstack/react-router-devtools": "^1.167.1",
-    "@tanstack/router-plugin": "^1.168.37",
+    "@tanstack/react-router": "^1.170.45",
+    "@tanstack/react-router-devtools": "^1.167.2",
+    "@tanstack/router-plugin": "^1.168.47",
     "@tanstack/valibot-adapter": "^1.167.0",
     "@tanstack/zod-adapter": "^1.167.0",
     "arktype": "^2.1.7",
@@ -26,7 +26,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.2.0",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
@@ -35,6 +35,6 @@
     "jsdom": "^27.0.0",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",
-    "vitest": "^4.1.4"
+    "vitest": "^5.0.4"
   }
 }

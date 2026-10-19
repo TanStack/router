@@ -2,6 +2,35 @@ import { describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '../src'
 
 describe('createMemoryHistory', () => {
+  test.each([
+    ['//example.com/path', '/example.com/path'],
+    ['/\\example.com/path', '/example.com/path'],
+    ['\\/example.com/path', '/example.com/path'],
+    ['\\\\example.com/path', '/example.com/path'],
+    [' \t/\r\\example.com/path', '/example.com/path'],
+    ['/\t/example.com/path', '/example.com/path'],
+    ['/a\tb?q=a\nb#section\r', '/ab?q=ab#section'],
+    ['/a\u0000b?q=a\u0001b#section\u007f', '/a%00b?q=a%01b#section%7F'],
+    ['/', '/'],
+    ['/posts/123?sort=new#comments', '/posts/123?sort=new#comments'],
+    ['/caf%C3%A9?q=%2F#//section', '/caf%C3%A9?q=%2F#//section'],
+    ['/a//b?q=//value#\\/section', '/a//b?q=//value#\\/section'],
+    ['/%2Fexample.com/path', '/%2Fexample.com/path'],
+  ])('creates href %j consistent with navigation', (href, expected) => {
+    const history = createMemoryHistory()
+    const location = history.location
+    const createdHref = history.createHref(href)
+
+    expect(createdHref).toBe(expected)
+    expect(history.location).toBe(location)
+    expect(new URL(createdHref, 'https://app.example').origin).toBe(
+      'https://app.example',
+    )
+
+    history.push(href)
+    expect(history.location.href).toBe(createdHref)
+  })
+
   test('exposes the current blocker registry after registration and removal', () => {
     const history = createMemoryHistory()
     const first = { blockerFn: vi.fn(() => true) }
@@ -68,6 +97,38 @@ describe('createMemoryHistory', () => {
     expect(history.location.pathname).toBe('/d')
     history.back()
     expect(history.location.pathname).toBe('/b')
+  })
+
+  test('discards forward entries and their state when pushing a new branch', () => {
+    const initialEntries = ['/']
+    const history = createMemoryHistory({ initialEntries })
+    history.push('/kept', { marker: 'kept' })
+    const keptState = history.location.state
+    history.push('/discarded-first', { marker: 'discarded-first' })
+    history.push('/discarded-last', { marker: 'discarded-last' })
+    history.go(-2)
+    history.push('/new', { marker: 'new' })
+
+    expect(initialEntries).toEqual(['/', '/kept', '/new'])
+    expect(history.length).toBe(3)
+    expect(history.location.pathname).toBe('/new')
+    expect(history.location.state).toMatchObject({
+      __TSR_index: 2,
+      marker: 'new',
+    })
+    const newState = history.location.state
+
+    history.forward()
+    expect(history.location.pathname).toBe('/new')
+    expect(history.location.state).toBe(newState)
+
+    history.back()
+    expect(history.location.pathname).toBe('/kept')
+    expect(history.location.state).toBe(keptState)
+
+    history.forward()
+    expect(history.location.pathname).toBe('/new')
+    expect(history.location.state).toBe(newState)
   })
 
   test('length', () => {

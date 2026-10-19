@@ -21,6 +21,42 @@ describe('parseHref', () => {
     expect(parsed.hash).toEqual('#qux')
   })
 
+  test.each([
+    ['?x=1', { pathname: '', search: '?x=1', hash: '' }],
+    ['#top', { pathname: '', search: '', hash: '#top' }],
+    ['?x=1#top', { pathname: '', search: '?x=1', hash: '#top' }],
+    ['#top?x=1', { pathname: '', search: '', hash: '#top?x=1' }],
+  ])(
+    'keeps a leading query or fragment out of the pathname: %j',
+    (href, expected) => {
+      expect(parseHref(href, undefined)).toMatchObject({ href, ...expected })
+    },
+  )
+
+  test.each([
+    { __TSR_index: 2 },
+    { __TSR_index: 2, key: 'legacy-key', __TSR_key: 'current-key' },
+  ])('preserves supplied state %j', (state) => {
+    Object.freeze(state)
+    expect(parseHref('/foo', state).state).toBe(state)
+  })
+
+  test('creates independent initial states with matching history keys', () => {
+    const first = parseHref('/foo', undefined)
+    const second = parseHref('/bar', undefined)
+
+    for (const location of [first, second]) {
+      expect(location.state).toEqual({
+        __TSR_index: 0,
+        key: expect.any(String),
+        __TSR_key: location.state.key,
+      })
+    }
+
+    first.state.__TSR_index = 1
+    expect(second.state.__TSR_index).toBe(0)
+  })
+
   describe('open redirect prevention', () => {
     test('strips CR characters to prevent open redirect', () => {
       // If \r (CR) is in the href, it should be stripped

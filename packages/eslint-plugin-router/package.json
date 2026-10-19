@@ -67,5 +67,15 @@
   },
   "peerDependencies": {
     "eslint": "^8.57.0 || ^9.0.0 || ^10.0.0"
+  },
+  "nx": {
+    "targets": {
+      "build": {
+        "inputs": [
+          "...",
+          "{workspaceRoot}/eslint.config.js"
+        ]
+      }
+    }
   }
 }

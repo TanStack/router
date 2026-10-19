@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { test } from 'vitest'
 import {
   assertGlobalMiddlewareScenario,
   globalMiddlewareBenchOptions,
@@ -18,10 +18,8 @@ const context = await setupGlobalMiddlewareBench(handler)
 
 await assertGlobalMiddlewareScenario(handler, context)
 
-describe('ssr', () => {
-  bench(
-    'ssr global-mw server-route (vue)',
-    () => runGlobalMiddlewareServerRouteLoop(handler),
-    globalMiddlewareBenchOptions,
-  )
+test('ssr', async ({ bench }) => {
+  await bench('ssr global-mw server-route 3 middlewares (vue)', async () =>
+    runGlobalMiddlewareServerRouteLoop(handler, 3),
+  ).run(globalMiddlewareBenchOptions)
 })

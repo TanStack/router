@@ -1,5 +1,6 @@
 import { render } from '@solidjs/testing-library'
-import { bench, describe } from 'vitest'
+import { describe, test } from 'vitest'
+import { getRouteSegments } from '@tanstack/router-core'
 import {
   Link,
   RouterProvider,
@@ -38,8 +39,16 @@ const InterpolatePathLink = ({
   to,
   params,
   children,
-}: Solid.PropsWithChildren<LinkProps>) => {
-  const href = interpolatePath({ path: to, params }).interpolatedPath
+}: Solid.PropsWithChildren<{
+  to: string
+  params: Record<string, number>
+}>) => {
+  const router = useRouter()
+  const href = interpolatePath(
+    to,
+    getRouteSegments(router.routesByPath[to])!,
+    params,
+  )
   return <a href={href}>{children}</a>
 }
 
@@ -74,22 +83,21 @@ describe.each([
 ])('$name', ({ numberOfRoutes, numberOfLinks, matchedParamId }) => {
   const renderRouter = createRouterRenderer(numberOfRoutes)
 
-  bench(
-    'hardcoded href',
-    () => {
+  test('hardcoded href', async ({ bench }) => {
+    await bench('hardcoded href', () => {
       const router = renderRouter(
         Array.from({ length: numberOfLinks }).map((_, i) => (
           <a href={`/params/${i}`}>{i}</a>
         )),
       )
       render(() => <RouterProvider router={router} />)
-    },
-    { warmupIterations: 1 },
-  )
+    }).run({
+      warmupIterations: 1,
+    })
+  })
 
-  bench(
-    'interpolate path',
-    () => {
+  test('interpolate path', async ({ bench }) => {
+    await bench('interpolate path', () => {
       const router = renderRouter(
         Array.from({ length: numberOfLinks }).map((_, i) => (
           <InterpolatePathLink
@@ -101,13 +109,13 @@ describe.each([
         )),
       )
       render(() => <RouterProvider router={router} />)
-    },
-    { warmupIterations: 1 },
-  )
+    }).run({
+      warmupIterations: 1,
+    })
+  })
 
-  bench(
-    'build location',
-    () => {
+  test('build location', async ({ bench }) => {
+    await bench('build location', () => {
       const router = renderRouter(
         Array.from({ length: numberOfLinks }).map((_, i) => (
           <BuildLocationLink
@@ -119,13 +127,13 @@ describe.each([
         )),
       )
       render(() => <RouterProvider router={router} />)
-    },
-    { warmupIterations: 1 },
-  )
+    }).run({
+      warmupIterations: 1,
+    })
+  })
 
-  bench(
-    'link to absolute path',
-    () => {
+  test('link to absolute path', async ({ bench }) => {
+    await bench('link to absolute path', () => {
       const router = renderRouter(
         Array.from({ length: numberOfLinks }).map((_, i) => (
           <Link
@@ -137,13 +145,13 @@ describe.each([
         )),
       )
       render(() => <RouterProvider router={router} />)
-    },
-    { warmupIterations: 1 },
-  )
+    }).run({
+      warmupIterations: 1,
+    })
+  })
 
-  bench(
-    'link to relative path',
-    () => {
+  test('link to relative path', async ({ bench }) => {
+    await bench('link to relative path', () => {
       const router = renderRouter(
         Array.from({ length: numberOfLinks }).map((_, i) => {
           const to = `./params/$param${Math.min(i, matchedParamId)}`
@@ -160,13 +168,13 @@ describe.each([
         }),
       )
       render(() => <RouterProvider router={router} />)
-    },
-    { warmupIterations: 1 },
-  )
+    }).run({
+      warmupIterations: 1,
+    })
+  })
 
-  bench(
-    'link to current path',
-    () => {
+  test('link to current path', async ({ bench }) => {
+    await bench('link to current path', () => {
       const router = renderRouter(
         Array.from({ length: numberOfLinks }).map((_, i) => (
           <Link from="/" search={{ param: i }}>
@@ -175,7 +183,8 @@ describe.each([
         )),
       )
       render(() => <RouterProvider router={router} />)
-    },
-    { warmupIterations: 1 },
-  )
+    }).run({
+      warmupIterations: 1,
+    })
+  })
 })

@@ -11,6 +11,7 @@ import type {
   ErrorRouteComponent,
   NotFoundRouteComponent,
   RouteComponent,
+  VueSFC,
 } from './route'
 import type { VNode } from 'vue'
 
@@ -22,7 +23,7 @@ declare module '@tanstack/router-core' {
      * @default Outlet
      * @link [API Docs](https://tanstack.com/router/latest/docs/framework/solid/api/router/RouterOptionsType#defaultcomponent-property)
      */
-    defaultComponent?: RouteComponent
+    defaultComponent?: RouteComponent | VueSFC
     /**
      * The default `errorComponent` a route should use if no error component is provided.
      *
@@ -30,14 +31,14 @@ declare module '@tanstack/router-core' {
      * @link [API Docs](https://tanstack.com/router/latest/docs/framework/solid/api/router/RouterOptionsType#defaulterrorcomponent-property)
      * @link [Guide](https://tanstack.com/router/latest/docs/framework/solid/guide/data-loading#handling-errors-with-routeoptionserrorcomponent)
      */
-    defaultErrorComponent?: ErrorRouteComponent
+    defaultErrorComponent?: ErrorRouteComponent | VueSFC
     /**
      * The default `pendingComponent` a route should use if no pending component is provided.
      *
      * @link [API Docs](https://tanstack.com/router/latest/docs/framework/solid/api/router/RouterOptionsType#defaultpendingcomponent-property)
      * @link [Guide](https://tanstack.com/router/latest/docs/framework/solid/guide/data-loading#showing-a-pending-component)
      */
-    defaultPendingComponent?: RouteComponent
+    defaultPendingComponent?: RouteComponent | VueSFC
     /**
      * The default `notFoundComponent` a route should use if no notFound component is provided.
      *
@@ -45,7 +46,7 @@ declare module '@tanstack/router-core' {
      * @link [API Docs](https://tanstack.com/router/latest/docs/framework/solid/api/router/RouterOptionsType#defaultnotfoundcomponent-property)
      * @link [Guide](https://tanstack.com/router/latest/docs/framework/solid/guide/not-found-errors#default-router-wide-not-found-handling)
      */
-    defaultNotFoundComponent?: NotFoundRouteComponent
+    defaultNotFoundComponent?: NotFoundRouteComponent | VueSFC
     /**
      * A component that will be used to wrap the entire router.
      *

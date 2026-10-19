@@ -55,6 +55,9 @@ export function tanstackStart(
           }
 
           rule.use(CHAIN_ID.USE.BABEL).tap((babelOptions) => {
+            if (typeof babelOptions === 'string') {
+              return babelOptions
+            }
             babelOptions.presets = (babelOptions.presets ?? []).map(
               (preset: unknown) => {
                 if (

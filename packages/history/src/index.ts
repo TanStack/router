@@ -156,27 +156,21 @@ export function createHistory(opts: {
     else location = opts.getLocation()
   }
 
-  const tryNavigation = async ({
-    task,
-    navigateOpts,
-    ...actionInfo
-  }: TryNavigateArgs) => {
-    const ignoreBlocker = navigateOpts?.ignoreBlocker ?? false
-    if (ignoreBlocker) {
-      task()
-      return
-    }
-
-    const blockers = opts.getBlockers?.() ?? []
-    const isPushOrReplace =
-      actionInfo.type === 'PUSH' || actionInfo.type === 'REPLACE'
-    if (typeof document !== 'undefined' && blockers.length && isPushOrReplace) {
+  const tryNavigation = async (args: TryNavigateArgs) => {
+    const blockers = args.navigateOpts?.ignoreBlocker
+      ? undefined
+      : opts.getBlockers?.()
+    if (
+      typeof document !== 'undefined' &&
+      blockers?.length &&
+      (args.type === 'PUSH' || args.type === 'REPLACE')
+    ) {
       for (const blocker of blockers) {
-        const nextLocation = parseHref(actionInfo.path, actionInfo.state)
+        const nextLocation = parseHref(args.path, args.state)
         const isBlocked = await blocker.blockerFn({
           currentLocation: location,
           nextLocation,
-          action: actionInfo.type,
+          action: args.type,
         })
         if (isBlocked) {
           opts.onBlocked?.()
@@ -185,7 +179,7 @@ export function createHistory(opts: {
       }
     }
 
-    task()
+    args.task()
   }
 
   return {
@@ -281,9 +275,6 @@ export function createHistory(opts: {
 }
 
 function assignKeyAndIndex(index: number, state: HistoryState | undefined) {
-  if (!state) {
-    state = {}
-  }
   const key = createRandomKey()
   return {
     ...state,
@@ -549,7 +540,7 @@ export function createBrowserHistory(opts?: {
       }
       win.history.go(n)
     },
-    createHref: (href) => createHref(href),
+    createHref,
     flush,
     destroy: () => {
       win.history.pushState = originalPushState
@@ -616,14 +607,17 @@ export function createHashHistory(opts?: { window?: any }): RouterHistory {
   return createBrowserHistory({
     window: win,
     parseLocation: () => {
-      const hashSplit = win.location.hash.split('#').slice(1)
-      const pathPart = hashSplit[0] ?? '/'
-      const searchPart = win.location.search
-      const hashEntries = hashSplit.slice(1)
-      const hashPart =
-        hashEntries.length === 0 ? '' : `#${hashEntries.join('#')}`
-      const hashHref = `${pathPart}${searchPart}${hashPart}`
-      return parseHref(hashHref, win.history.state)
+      // `#/path?query#fragment`: the router's own fragment starts at the
+      // second '#'. A non-empty `location.hash` always starts with '#'.
+      const hash = win.location.hash
+      let hashIndex = hash.indexOf('#', 1)
+      if (hashIndex < 0) {
+        hashIndex = hash.length
+      }
+      return parseHref(
+        `${hash ? hash.slice(1, hashIndex) : '/'}${win.location.search}${hash.slice(hashIndex)}`,
+        win.history.state,
+      )
     },
     createHref: (href) =>
       `${win.location.pathname}${win.location.search}#${href}`,
@@ -663,13 +657,13 @@ export function createMemoryHistory(
     getLength: () => entries.length,
     pushState: (path, state) => {
       // Removes all subsequent entries after the current index to start a new branch
+      index = index < entries.length - 1 ? index + 1 : entries.length
+      states[index] = state
+      entries[index] = path
       if (index < entries.length - 1) {
-        entries.splice(index + 1)
-        states.splice(index + 1)
+        entries.length = index + 1
+        states.length = index + 1
       }
-      states.push(state)
-      entries.push(path)
-      index = Math.max(entries.length - 1, 0)
     },
     replaceState: (path, state) => {
       states[index] = state
@@ -684,10 +678,62 @@ export function createMemoryHistory(
     go: (n) => {
       index = Math.min(Math.max(index + n, 0), entries.length - 1)
     },
-    createHref: (path) => path,
+    createHref: normalizeHref,
     getBlockers: _getBlockers,
     setBlockers: _setBlockers,
   })
+}
+
+const noop = () => {}
+
+class ServerHistory implements RouterHistory {
+  declare private _subscribers?: RouterHistory['subscribers']
+
+  constructor(public location: HistoryLocation) {}
+
+  get length() {
+    return 1
+  }
+
+  // Preserve the history interface without allocating a Set for each request.
+  get subscribers() {
+    return (this._subscribers ??= new Set())
+  }
+
+  subscribe() {
+    return noop
+  }
+
+  push() {}
+  replace() {}
+  go() {}
+  back() {}
+  forward() {}
+
+  canGoBack() {
+    return false
+  }
+
+  createHref(href: string) {
+    return normalizeHref(href)
+  }
+
+  block() {
+    return noop
+  }
+
+  flush() {}
+  destroy() {}
+  notify() {}
+
+  _getBlockers(): Array<NavigationBlocker> {
+    return []
+  }
+}
+
+/** A fixed request location; server navigation is a no-op. */
+export function createServerHistory(href: string): RouterHistory {
+  return new ServerHistory(parseHref(href, undefined))
 }
 
 export function parseHref(
@@ -697,22 +743,24 @@ export function parseHref(
   const sanitizedHref = normalizeHref(href)
   const hashIndex = sanitizedHref.indexOf('#')
   const searchIndex = sanitizedHref.indexOf('?')
-
-  const addedKey = createRandomKey()
+  if (!state) {
+    const key = createRandomKey()
+    state = { [stateIndexKey]: 0, key, __TSR_key: key }
+  }
 
   return {
     href: sanitizedHref,
-    pathname: sanitizedHref.substring(
+    pathname: sanitizedHref.slice(
       0,
-      hashIndex > 0
-        ? searchIndex > 0
+      hashIndex > -1
+        ? searchIndex > -1
           ? Math.min(hashIndex, searchIndex)
           : hashIndex
-        : searchIndex > 0
+        : searchIndex > -1
           ? searchIndex
           : sanitizedHref.length,
     ),
-    hash: hashIndex > -1 ? sanitizedHref.substring(hashIndex) : '',
+    hash: hashIndex > -1 ? sanitizedHref.slice(hashIndex) : '',
     search:
       searchIndex > -1
         ? sanitizedHref.slice(
@@ -720,11 +768,11 @@ export function parseHref(
             hashIndex === -1 ? undefined : hashIndex,
           )
         : '',
-    state: state || { [stateIndexKey]: 0, key: addedKey, __TSR_key: addedKey },
+    state,
   }
 }
 
 // Thanks co-pilot!
 function createRandomKey() {
-  return (Math.random() + 1).toString(36).substring(7)
+  return (Math.random() + 1).toString(36).slice(7)
 }

@@ -1,3 +1,4 @@
+import { defineComponent } from 'vue'
 import { afterEach, beforeEach, expect, test } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/vue'
 
@@ -370,19 +371,23 @@ test('beforeLoad notFound with routeId targets parent boundary and preserves par
     ),
   })
 
-  const parentRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/parent',
-    loader: () => ({ message: 'ready' }),
-    component: () => <Outlet />,
-    notFoundComponent: () => {
+  const ParentNotFoundComponent = defineComponent({
+    setup() {
       const loaderData = parentRoute.useLoaderData()
-      return (
+      return () => (
         <span data-testid="parent-not-found-with-loader-data">
           {loaderData.value.message}
         </span>
       )
     },
+  })
+
+  const parentRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/parent',
+    loader: () => ({ message: 'ready' }),
+    component: () => <Outlet />,
+    notFoundComponent: ParentNotFoundComponent,
   })
 
   const childRoute = createRoute({

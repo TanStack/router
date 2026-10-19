@@ -27,9 +27,7 @@ const router = createRouter({
   rewrite: {
     output: ({ url }) => {
       if (url.pathname === '/document-navigation-target') {
-        return new URL(
-          `http://localhost:${import.meta.env.VITE_EXTERNAL_PORT}/`,
-        )
+        return new URL(`http://127.0.0.1:${window.location.port}/external.html`)
       }
       return url
     },

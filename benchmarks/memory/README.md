@@ -2,7 +2,7 @@
 
 Dedicated memory benchmarks for TanStack Router / Start, measured with the
 CodSpeed **memory instrument** (`mode: memory` in
-`.github/workflows/client-nav-benchmarks.yml`). The workflow runs on every
+`.github/workflows/benchmarks.yml`). The workflow runs on every
 push to `main` except docs/examples/e2e-only pushes: CodSpeed compares a PR
 against the run on its merge-base commit, and a main commit without a run makes
 CodSpeed silently fall back to an older base — a single outlier base run then
@@ -34,8 +34,8 @@ benchmarks/memory/<server|client>/
 One app per scenario; apps and bench names are stable once landed (CodSpeed
 continuity). Never grow an existing scenario for a new case — add a scenario.
 `setup.ts` imports the built app and exports the concrete workload;
-`memory.bench.ts` registers `bench(...)` directly, and `memory.flame.ts` runs the
-same workload through the Flame profiler.
+`memory.bench.ts` registers it with Vitest's `bench` test fixture, and
+`memory.flame.ts` runs the same workload through the Flame profiler.
 
 ## How the memory instrument executes a bench
 
@@ -43,19 +43,21 @@ same workload through the Flame profiler.
   after a forced GC. Under plain `vitest bench` the suites only smoke-test:
   timing output is meaningless; real numbers come from CodSpeed.
 - Under CodSpeed the bench fn runs several warmup invocations plus the
-  measured one. Client suite hooks mount a fresh app before each invocation
-  and tear it down afterward, outside the measurement window. This prevents
-  warmup navigation history and caches from changing the starting state.
-  Module-level counters/LCGs keep generated URLs unique across invocations.
-- Plain `vitest bench` never runs suite hooks (`beforeEach`/`afterEach`) and
-  only honors tinybench's `setup`/`teardown` options; the CodSpeed runner
-  does the exact opposite. Client benches therefore register **both** — in
-  any given mode exactly one pair runs.
+  measured one. The bench's `beforeEach`/`afterEach` hooks
+  (`memoryBenchHooks`) run around every invocation, outside the measurement
+  window: client workloads mount a fresh app before each invocation and tear
+  it down afterward. This prevents warmup navigation history and caches from
+  changing the starting state. Plain `vitest bench` runs the same hooks around
+  its warmup and measured iteration. Module-level counters/LCGs keep generated
+  URLs unique across invocations.
+- Workload `run` functions must be `async` functions. CodSpeed's Vitest 5
+  provider awaits only `AsyncFunction`s; a plain function that returns a
+  promise would be measured only up to its first suspension.
 - Worker flags live in `runtime.ts` and apply only to the CodSpeed memory
   instrument. They supplement the integration's predictable execution flags;
   the retained overrides are described below.
-- Before each CodSpeed invocation, a setup hook yields to the event loop,
-  outside the measurement marker and before CodSpeed forces GC. Promise-only
+- Before each CodSpeed invocation, the `beforeEach` hook yields to the event
+  loop, outside the measurement marker and before CodSpeed forces GC. Promise-only
   warmup chains can keep WeakRef targets alive through a collection in the same
   job. Client app setup also runs before the forced GC.
 - Do not force GC inside a measured request loop or poll `heapUsed` to choose
@@ -72,13 +74,14 @@ same workload through the Flame profiler.
 All scenarios use [`memoryConfig`](./runtime.ts). It adds these flags only in
 memory mode:
 
+- `--no-maglev`
 - `--no-flush-bytecode`
 - `--no-minor-gc-task`
 - `--no-incremental-marking`
 - `--initial-old-space-size=512`
 
 `--jitless` was removed after repeated CI comparisons. Ten unchanged-commit
-repetitions with these four flags kept all 48 peak-memory results within 1%
+repetitions with the last four flags kept all 48 peak-memory results within 1%
 (worst spread: 0.834%). With JIT enabled, all 16 subsets of the four flags were
 tested. Removing bytecode, minor-GC-task, incremental-marking, or heap-budget
 overrides from this profile produced worst client peak spreads of 6.616%, 2.714%,
@@ -100,6 +103,19 @@ initial/minimum old-generation allocation budget can postpone automatic full
 collections. This does not preallocate 512 MiB, and the smallest sufficient budget
 was not determined. Results describe this controlled worker profile, not a
 production application's absolute memory footprint.
+
+CodSpeed's `--no-opt` only disables TurboFan on Node 24 (V8 13); Maglev still
+compiles. Under CodSpeed's `--predictable` there is no background compilation,
+so Maglev compiles run synchronously inside whichever request triggers them, and
+the forced GC before the measured call can discard optimized code so recompiles
+land inside the measured window. Maglev's malloc'd Zone scratch (32 KiB
+segments) then dominates allocation metrics, and its size depends on
+per-process feedback state. `--no-maglev` was added for this: the bimodal
++32,792 B / +1 allocation in `mem server error-paths unmatched (react)` was one
+Maglev Zone segment allocated while compiling React Fizz's per-request stream
+`write` closure, and compiler scratch made up ~97% of that bench's allocated
+bytes. Retained-object measurements are unaffected because Zone memory is freed
+after each compile. The repeatability figures above predate this flag.
 
 ## Bench shapes and signals
 
@@ -242,7 +258,7 @@ WITH_INSTRUMENTATION=1 codspeed run --mode memory -- pnpm nx run @benchmarks/mem
 Run the benchmark workflow on an experiment branch:
 
 ```bash
-gh workflow run client-nav-benchmarks.yml --ref <experiment-branch>
+gh workflow run benchmarks.yml --ref <experiment-branch>
 ```
 
 Repeat at the same commit, using distinct branch names if runs should overlap

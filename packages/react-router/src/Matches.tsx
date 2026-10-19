@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { useStore } from '@tanstack/react-store'
+import { useSelector } from '@tanstack/react-store'
 import { rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { CatchBoundary } from './CatchBoundary'
@@ -11,7 +11,6 @@ import { useLayoutEffect } from './utils'
 import { Transitioner, settleOwner } from './Transitioner'
 import { matchContext } from './matchContext'
 import { Match, renderPending } from './Match'
-import { SafeFragment } from './SafeFragment'
 import type {
   StructuralSharingOption,
   ValidateSelected,
@@ -51,10 +50,6 @@ export function Matches() {
 
   const pendingElement = renderPending(router, rootRoute)
 
-  // Do not render a root Suspense during SSR or hydrating from SSR
-  const ResolvedSuspense =
-    (isServer ?? router.isServer) || router.ssr ? SafeFragment : React.Suspense
-
   const inner = (
     <>
       {!(isServer ?? router.isServer) && (
@@ -67,9 +62,13 @@ export function Matches() {
           t={React.useState<AnyRouter>()[1]}
         />
       )}
-      <ResolvedSuspense fallback={pendingElement}>
+      {(isServer ?? router.isServer) || router.ssr ? (
         <MatchesInner />
-      </ResolvedSuspense>
+      ) : (
+        <React.Suspense fallback={pendingElement}>
+          <MatchesInner />
+        </React.Suspense>
+      )}
     </>
   )
 
@@ -87,7 +86,7 @@ function MatchesInner() {
     (isServer ?? router.isServer)
       ? router.stores.matches.get()
       : // eslint-disable-next-line react-hooks/rules-of-hooks
-        useStore(
+        useSelector(
           router.stores.matches,
           (value) => acknowledgement[0 /* offered */] ?? value,
         )
@@ -102,28 +101,24 @@ function MatchesInner() {
 
   const matchComponent = routeId ? <Match routeId={routeId} /> : null
 
-  return (
-    <matchContext.Provider value={routeId}>
-      {router.options.disableGlobalCatchBoundary ? (
-        matchComponent
-      ) : (
-        <CatchBoundary
-          getResetKey={() => match}
-          onCatch={
-            process.env.NODE_ENV !== 'production'
-              ? (error) => {
-                  console.warn(
-                    `Warning: The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
-                  )
-                  console.warn('Warning:', error)
-                }
-              : undefined
-          }
-        >
-          {matchComponent}
-        </CatchBoundary>
-      )}
-    </matchContext.Provider>
+  return router.options.disableGlobalCatchBoundary ? (
+    matchComponent
+  ) : (
+    <CatchBoundary
+      getResetKey={() => match}
+      onCatch={
+        process.env.NODE_ENV !== 'production'
+          ? (error) => {
+              console.warn(
+                `Warning: The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
+              )
+              console.warn('Warning:', error)
+            }
+          : undefined
+      }
+    >
+      {matchComponent}
+    </CatchBoundary>
   )
 }
 
@@ -192,11 +187,11 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>(): <
     [
       router,
       // eslint-disable-next-line react-hooks/rules-of-hooks, react-hooks/exhaustive-deps
-      useStore(router.stores.location, (location) => location.href),
+      useSelector(router.stores.location, (location) => location.href),
       // eslint-disable-next-line react-hooks/rules-of-hooks, react-hooks/exhaustive-deps
-      useStore(router.stores.resolvedLocation, (location) => location?.href),
+      useSelector(router.stores.resolvedLocation, (location) => location?.href),
       // eslint-disable-next-line react-hooks/rules-of-hooks, react-hooks/exhaustive-deps
-      useStore(router.stores.status, (status) => status),
+      useSelector(router.stores.status),
     ],
   )
 }
@@ -278,7 +273,7 @@ export function useMatches<
   }
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-  return useStore(
+  return useSelector(
     router.stores.matches,
     // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
     useStructuralSharing(opts, router),

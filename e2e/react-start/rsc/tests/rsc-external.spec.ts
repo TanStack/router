@@ -19,13 +19,9 @@ test.describe('RSC External API Tests - External data fetching', () => {
     await page.goto('/rsc-external')
     await page.waitForURL(/\/rsc-external/)
 
-    // Verify the external server URL contains expected pattern
-    const serverUrl = await page
-      .getByTestId('external-server-url')
-      .textContent()
-    expect(serverUrl).toBeTruthy()
-    // Should be localhost with a port
-    expect(serverUrl).toMatch(/localhost:\d+/)
+    await expect(page.getByTestId('external-server-url')).toHaveText(
+      'https://jsonplaceholder.typicode.com',
+    )
   })
 
   test('Loader timestamp is present', async ({ page }) => {

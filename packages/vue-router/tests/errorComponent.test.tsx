@@ -174,6 +174,19 @@ test('global catch boundary resets when a background child generation recovers',
   const refresh = createControlledPromise<number>()
   let loaderCalls = 0
   const rootRoute = createRootRoute({ component: Outlet })
+  const ChildComponent = defineComponent({
+    setup() {
+      const revision = childRoute.useLoaderData()
+      return () => {
+        if (revision.value === 1) {
+          throw new Error('stale child render failed')
+        }
+
+        return <div>Recovered child revision {revision.value}</div>
+      }
+    },
+  })
+
   const childRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
@@ -181,13 +194,7 @@ test('global catch boundary resets when a background child generation recovers',
       staleReloadMode: 'background',
       handler: () => (++loaderCalls === 1 ? 1 : refresh),
     },
-    component: () => {
-      const revision = childRoute.useLoaderData()
-      if (revision.value === 1) {
-        throw new Error('stale child render failed')
-      }
-      return <div>Recovered child revision {revision.value}</div>
-    },
+    component: ChildComponent,
   })
   const router = createRouter({
     routeTree: rootRoute.addChildren([childRoute]),
@@ -224,6 +231,19 @@ test('ancestor route errorComponent resets when a background child generation re
       <div>Ancestor error: {getErrorMessage(error)}</div>
     ),
   })
+  const ChildComponent = defineComponent({
+    setup() {
+      const revision = childRoute.useLoaderData()
+      return () => {
+        if (revision.value === 1) {
+          throw new Error('stale child render failed')
+        }
+
+        return <div>Recovered child revision {revision.value}</div>
+      }
+    },
+  })
+
   const childRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
@@ -231,13 +251,7 @@ test('ancestor route errorComponent resets when a background child generation re
       staleReloadMode: 'background',
       handler: () => (++loaderCalls === 1 ? 1 : refresh),
     },
-    component: () => {
-      const revision = childRoute.useLoaderData()
-      if (revision.value === 1) {
-        throw new Error('stale child render failed')
-      }
-      return <div>Recovered child revision {revision.value}</div>
-    },
+    component: ChildComponent,
   })
   const router = createRouter({
     routeTree: rootRoute.addChildren([childRoute]),

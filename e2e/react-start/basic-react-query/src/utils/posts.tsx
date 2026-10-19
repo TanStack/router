@@ -9,11 +9,7 @@ export type PostType = {
   body: string
 }
 
-let queryURL = 'https://jsonplaceholder.typicode.com'
-
-if (import.meta.env.VITE_NODE_ENV === 'test') {
-  queryURL = `http://localhost:${import.meta.env.VITE_EXTERNAL_PORT}`
-}
+const queryURL = 'https://jsonplaceholder.typicode.com'
 
 export const fetchPosts = createServerFn({ method: 'GET' }).handler(
   async () => {
