@@ -66,6 +66,10 @@ test.describe('dev styles for a React.lazy component rendered during SSR', () =>
       // stylesheet alone already satisfies the CSS assertion below.
       await expect(panel).toHaveAttribute('data-hydrated', 'true')
       await expect(panel).toHaveCSS('border-top-width', '4px')
+      // A full reload would also serve the edited CSS; this must stay one document.
+      await page.evaluate(() => {
+        ;(window as { sameDocument?: boolean }).sameDocument = true
+      })
 
       // Removing a declaration must take effect without a reload, i.e. the
       // SSR snapshot of the old rule must not outlive the HMR update.
@@ -75,7 +79,84 @@ test.describe('dev styles for a React.lazy component rendered during SSR', () =>
         '',
       )
       await expect(panel).toHaveCSS('border-top-width', '0px')
+      expect(
+        await page.evaluate(
+          () => (window as { sameDocument?: boolean }).sameDocument,
+        ),
+      ).toBe(true)
     } finally {
+      await editor.restoreFiles()
+    }
+  })
+
+  test('are dropped when an HMR update lands before hydration finishes', async ({
+    page,
+  }) => {
+    test.skip(viteBundledDev, 'Cannot block the route chunk in bundled dev')
+    const editor = createHmrFileEditor({
+      rootDir: import.meta.dirname,
+      files: { css: '../src/styles/app.css' },
+    })
+    await editor.capturePromise
+
+    let releaseRoute!: () => void
+    const routeReleased = new Promise<void>((resolve) => {
+      releaseRoute = resolve
+    })
+    let routeRequested!: () => void
+    const routeRequestedPromise = new Promise<void>((resolve) => {
+      routeRequested = resolve
+    })
+    // The client runtime (and its HMR listener) is up once it asks for the
+    // route chunk; holding the chunk keeps HeadContent from mounting.
+    await page.route(
+      /\/src\/routes\/lazy-ssr\.tsx\?(?:.*&)?tsr-split=component/,
+      async (route) => {
+        routeRequested()
+        await routeReleased
+        await route.continue()
+      },
+    )
+
+    try {
+      await page.goto('/lazy-ssr', { waitUntil: 'domcontentloaded' })
+      await routeRequestedPromise
+      await page.evaluate(() => {
+        ;(window as { sameDocument?: boolean }).sameDocument = true
+      })
+      const probe = page.getByTestId('lazy-ssr-hmr-probe')
+      await expect(probe).toHaveCSS('border-top-width', '5px')
+
+      await editor.replaceText(
+        'css',
+        '  border-top: 5px solid rgb(0, 0, 0);\n',
+        '',
+      )
+      // Wait until Vite applied the update to the injected app.css.
+      await expect
+        .poll(() =>
+          page.evaluate(() =>
+            [...document.querySelectorAll('style[data-vite-dev-id]')].some(
+              (style) => style.textContent?.includes('5px solid'),
+            ),
+          ),
+        )
+        .toBe(false)
+
+      releaseRoute()
+      await expect(page.getByTestId('lazy-ssr-hydrated')).toHaveAttribute(
+        'data-hydrated',
+        'true',
+      )
+      // Only the SSR snapshot still holds the removed declaration.
+      await expect(probe).toHaveCSS('border-top-width', '0px')
+      expect(
+        await page.evaluate(
+          () => (window as { sameDocument?: boolean }).sameDocument,
+        ),
+      ).toBe(true)
+    } finally {
+      releaseRoute()
       await editor.restoreFiles()
     }
   })

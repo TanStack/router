@@ -1,6 +1,6 @@
 import { MetaProvider } from '@solidjs/meta'
 import { For, createMemo, createSignal, onCleanup, onMount } from 'solid-js'
-import { DEV_STYLES_ATTR, DEV_STYLES_STALE_EVENT } from '@tanstack/router-core'
+import { DEV_STYLES_ATTR, onDevStylesStale } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
@@ -30,17 +30,16 @@ export function HeadContent(props: HeadContentProps) {
   }
 
   const [stale, setStale] = createSignal(false)
-  const markStale = () => {
-    setStale(true)
-    // Also drop links that are not owned by this component (hydration mismatch)
-    document
-      .querySelectorAll(`link[${DEV_STYLES_ATTR}]`)
-      .forEach((el) => el.remove())
-  }
   onMount(() => {
-    window.addEventListener(DEV_STYLES_STALE_EVENT, markStale)
+    const unsubscribe = onDevStylesStale(() => {
+      setStale(true)
+      // Also drop links that are not owned by this component (hydration mismatch)
+      document
+        .querySelectorAll(`link[${DEV_STYLES_ATTR}]`)
+        .forEach((el) => el.remove())
+    })
+    onCleanup(unsubscribe)
   })
-  onCleanup(() => window.removeEventListener(DEV_STYLES_STALE_EVENT, markStale))
 
   const filteredTags = createMemo(() => {
     if (stale()) {

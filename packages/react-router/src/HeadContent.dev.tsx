@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { DEV_STYLES_ATTR, DEV_STYLES_STALE_EVENT } from '@tanstack/router-core'
+import { DEV_STYLES_ATTR, onDevStylesStale } from '@tanstack/router-core'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import { useTags } from './headContentUtils'
@@ -23,18 +23,18 @@ export function HeadContent(props: HeadContentProps) {
   const nonce = router.options.ssr?.nonce
   const [stale, setStale] = React.useState(false)
 
-  React.useEffect(() => {
-    const markStale = () => {
-      setStale(true)
-      // Stylesheet links are hoisted resources that React does not remove
-      // when they are filtered out, so drop them from the DOM explicitly.
-      document
-        .querySelectorAll(`link[${DEV_STYLES_ATTR}]`)
-        .forEach((el) => el.remove())
-    }
-    window.addEventListener(DEV_STYLES_STALE_EVENT, markStale)
-    return () => window.removeEventListener(DEV_STYLES_STALE_EVENT, markStale)
-  }, [])
+  React.useEffect(
+    () =>
+      onDevStylesStale(() => {
+        setStale(true)
+        // Stylesheet links are hoisted resources that React does not remove
+        // when they are filtered out, so drop them from the DOM explicitly.
+        document
+          .querySelectorAll(`link[${DEV_STYLES_ATTR}]`)
+          .forEach((el) => el.remove())
+      }),
+    [],
+  )
 
   const filteredTags = stale
     ? tags.filter(
