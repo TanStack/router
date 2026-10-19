@@ -316,14 +316,7 @@ export async function buildHydrationApp(options: {
   const build = await buildStart({
     bundler,
     framework,
-    // A development-mode Rsbuild build of a Solid app does not hydrate even a
-    // page without `<Hydrate>` (Solid reports a hydration mismatch at the
-    // root), so the Solid Rsbuild app is a production build, like
-    // `rsbuild build` makes it.
-    mode:
-      framework === 'solid' && bundler === 'rsbuild'
-        ? 'production'
-        : 'development',
+    mode: 'development',
     registerCleanup: options.registerCleanup,
     ...(framework === 'solid' && solidAppConfig),
     files: {

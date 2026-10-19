@@ -153,7 +153,7 @@
     "@rsbuild/core": "catalog:",
     "@rsbuild/plugin-babel": "^1.1.2",
     "@rsbuild/plugin-react": "^2.0.0",
-    "@rsbuild/plugin-solid": "^1.1.1",
+    "@rsbuild/plugin-solid": "^1.2.2",
     "@types/babel__code-frame": "^7.0.6",
     "@types/babel__core": "^7.20.5",
     "@types/node": ">=20",
