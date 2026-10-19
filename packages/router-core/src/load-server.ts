@@ -5,7 +5,7 @@ import { isRedirect, redirect } from './redirect'
 import { rootRouteId } from './root'
 import { loadRouteChunk } from './load-client'
 import { waitForReason } from './await-signal'
-import { isPlainObject } from './utils'
+import { isPlainObject, isPromise } from './utils'
 import {
   getLocationChangeInfo,
   lifecycleEnd,
@@ -92,7 +92,7 @@ function normalize(value: unknown, rejected: boolean): LoaderOutcome {
   if (isNotFound(value)) {
     return [NOT_FOUND, value]
   }
-  if (rejected && typeof (value as any)?.then === 'function') {
+  if (rejected && isPromise(value)) {
     value = new Error('A Promise was thrown', { cause: value })
   }
   return rejected ? [ERROR, value] : [SUCCESS, value]
@@ -328,7 +328,7 @@ async function contextualize(
             ? contextOption
             : contextOption.handler
         )(routeContextOptions)
-        if (typeof routeContext?.then === 'function') {
+        if (isPromise(routeContext)) {
           routeContext = await routeContext
           signal?.throwIfAborted()
           if (

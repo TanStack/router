@@ -1,5 +1,6 @@
 // Keep this filename free of a secondary extension so declaration generation
 // can rewrite relative imports for both ESM and CJS.
+import { isPromise } from './utils'
 import { isNotFound } from './not-found'
 import { isRedirect } from './redirect'
 import {
@@ -337,7 +338,7 @@ function normalize(
   if (!rejected) {
     return [SUCCESS, value]
   }
-  if (typeof (value as any)?.then === 'function') {
+  if (isPromise(value)) {
     value = new Error('A Promise was thrown', { cause: value })
   }
   return [ERROR, value]
@@ -445,7 +446,7 @@ async function contextualize(
           prev: unknown
         })
         // An async context presents pending state like beforeLoad.
-        if (typeof value?.then === 'function') {
+        if (isPromise(value)) {
           // Async context shares the existing serial-phase reservation.
           setFetching(router, match, 'beforeLoad', options[0 /* controller */])
           if (index >= retainedEnd) {
@@ -529,9 +530,7 @@ async function contextualize(
       })
       // Always await to give a queued replacement navigation one microtask to
       // kick in before checking cancellation, even for synchronous context.
-      const result = await (typeof value?.then === 'function'
-        ? waitFor(value, signal)
-        : value)
+      const result = await (isPromise(value) ? waitFor(value, signal) : value)
       if (signal.aborted) {
         return [index, CANCELED_OUTCOME]
       }
@@ -2528,7 +2527,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
         : (option.handler || option)(ctx)
     // Loader outcomes use this same wait at the accepted-prefix loop, while
     // their shared flights keep their own lifetime. Serial work waits here.
-    return key !== 'l' && typeof value?.then === 'function'
+    return key !== 'l' && isPromise(value)
       ? waitFor(value, controller.signal)
       : value
   }
