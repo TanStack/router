@@ -4,8 +4,8 @@
  * Known code-splitter bugs. Each test asserts correct behaviour for a bug on
  * main and is marked .fails; remove .fails when the bug is fixed.
  */
-import { BuildError } from '@tanstack/compiler-test-utils/build-harness'
 import { describe, expect, test } from 'vitest'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { build, routeApp } from '../build-harness'
 import { buildAndRun, head } from '../regression-helpers'
 import type { CodeSplitGroupings } from '../../src/core/constants'
@@ -364,30 +364,25 @@ PostsPage.title = 'Posts'
 })
 
 describe('`this` in split callbacks', () => {
-  /** Whether a message names the route file and `this`. */
-  const reportsThis = (message: string) =>
-    message.includes('routes/index.tsx') && /\bthis\b/.test(message)
-
   /**
-   * Builds an app whose `/` route has `loader`, with the given groupings,
-   * loads `/` with a real router and returns the route's loader data; or
-   * `reported` when the build fails or warns about `this`.
+   * Builds an app whose `/` route has `loader` (a function reading `this`),
+   * with the given groupings, loads `/` with a real router and returns the
+   * route's loader data, whether the loader was split, and whether the
+   * build warned naming the route file and the option.
    */
   async function loadWithLoader(loader: string, groupings: CodeSplitGroupings) {
-    let app
-    try {
-      app = await build({
-        bundler: 'vite',
-        env: 'ssr',
-        minify: false,
-        files: routeApp(
-          `${head}export const Route = createFileRoute('/')({
+    const app = await build({
+      bundler: 'vite',
+      env: 'ssr',
+      minify: false,
+      files: routeApp(
+        `${head}export const Route = createFileRoute('/')({
   loader: ${loader},
   component: () => <p>index</p>,
 })`,
-          {
-            files: {
-              'entry.ts': `import { createMemoryHistory, createRouter } from '@tanstack/react-router'
+        {
+          files: {
+            'entry.ts': `import { createMemoryHistory, createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 export async function load() {
   const router = createRouter({
@@ -397,45 +392,54 @@ export async function load() {
   await router.load()
   return router.state.matches.at(-1)?.loaderData
 }`,
-            },
           },
-        ),
-        pluginOptions: { codeSplittingOptions: { defaultBehavior: groupings } },
-      })
-    } catch (error) {
-      if (error instanceof BuildError && reportsThis(error.message)) {
-        return 'reported'
-      }
-      throw error
+        },
+      ),
+      pluginOptions: { codeSplittingOptions: { defaultBehavior: groupings } },
+    })
+    return {
+      data: (await app.run('return await entry.load()')).result,
+      split: app.where('MARK_THIS') === 'lazy',
+      reported:
+        findDiagnostics([...app.warnings, ...app.consoleMessages], {
+          file: 'routes/index.tsx',
+          root: app.root,
+          names: ['loader'],
+        }).length > 0,
     }
-    if ([...app.warnings, ...app.consoleMessages].some(reportsThis)) {
-      return 'reported'
-    }
-    return (await app.run('return await entry.load()')).result
   }
 
   const readsThis = `function () {
-  return this === undefined ? 'no this' : 'this: ' + Object.keys(this).join()
+  return this === undefined ? 'MARK_THIS none' : 'MARK_THIS ' + Object.keys(this).join()
 }`
 
   // Control for the pin below: the router calls an unsplit loader without a
   // `this`.
   test('an unsplit loader is called without a `this`', async () => {
-    expect(await loadWithLoader(readsThis, [['component']])).toBe('no this')
+    expect(await loadWithLoader(readsThis, [['component']])).toEqual({
+      data: 'MARK_THIS none',
+      split: false,
+      reported: false,
+    })
   }, 60_000)
 
   // Bug: a split loader is called as a method of its chunk's module
   // namespace (`lazyFn` calls `imported[key](...args)`), so its `this` is
   // the chunk's exports, where the router calls an unsplit loader without a
-  // `this`. Source: #8688.
+  // `this`. Source: #8688. A compiler that leaves such a loader unsplit
+  // warns naming the file and the option (J2.8); either way the loader runs
+  // through the real router with the result the unsplit route gives.
   // Impact: a loader that reads `this` behaves differently once split,
   // without any diagnostic.
   test.fails(
-    'a split loader sees the same `this` as an unsplit one, or the build reports it',
+    'a split loader sees the same `this` as an unsplit one',
     async () => {
-      expect(['no this', 'reported']).toContain(
-        await loadWithLoader(readsThis, [['loader'], ['component']]),
-      )
+      const { data, split, reported } = await loadWithLoader(readsThis, [
+        ['loader'],
+        ['component'],
+      ])
+      expect(split || reported).toBe(true)
+      expect(data).toBe('MARK_THIS none')
     },
     60_000,
   )

@@ -6,6 +6,7 @@
  */
 
 import { afterAll, describe, expect, test } from 'vitest'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { build, buildWithRsbuild } from '../build-harness'
 import { head } from '../regression-helpers'
 import type {
@@ -547,11 +548,12 @@ export const Route = createFileRoute('/imports-exported')({ component: Page })
         `${destructured.name} load with their chunk or are reported`,
         async () => {
           const built = await app()
-          const reported = [...built.warnings, ...built.consoleMessages].some(
-            (message) =>
-              message.includes(`routes/${destructured.file}.tsx`) &&
-              /\b(?:component|MyComponent)\b/.test(message),
-          )
+          const reported =
+            findDiagnostics([...built.warnings, ...built.consoleMessages], {
+              file: `routes/${destructured.file}.tsx`,
+              root: built.root,
+              names: ['component'],
+            }).length > 0
           expect({
             lazy: built.where(destructured.marker) === 'lazy',
             reported,
