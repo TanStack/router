@@ -4,6 +4,7 @@
  * is told by what it does (`mock-helpers.ts`, `describeValue`: `a safe
  * mock`), and a report by its sections (`violation-report.ts`).
  */
+import { createRequire } from 'node:module'
 import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
@@ -25,6 +26,8 @@ import {
 import type { RsbuildConfig } from '@rsbuild/core'
 import type { StartBuild } from '../../build-harness'
 import type { ImportProtectionOptions } from '../../../src/schema'
+
+const require = createRequire(import.meta.url)
 
 /**
  * Start's import protection options of a build that denies `files` to the
@@ -267,7 +270,10 @@ describe('Rsbuild dev', () => {
   const timeout = 60_000
   const compileTimeout = timeout
 
-  /** A module type of the app's own: an Rspack rule compiles `.page` files as JavaScript (like `.mdx` through its loader). */
+  /**
+   * A custom module type of the app: an Rspack rule takes `.page` files as
+   * JavaScript (no other compiler; the real MDX loader is below).
+   */
   const pageModules: RsbuildConfig = {
     tools: {
       rspack: {
@@ -279,7 +285,7 @@ describe('Rsbuild dev', () => {
   // Control for the pins below (same config and import protection): a
   // module of that type is compiled, and its code runs in the client.
   test(
-    'a module of another type without a denied import runs in the client',
+    'a module of a custom type without a denied import runs in the client',
     async () => {
       const server = await startRsbuildDevServer({
         compileTimeout,
@@ -302,9 +308,10 @@ describe('Rsbuild dev', () => {
   // Bug: Rsbuild import protection checks importers by file extension
   // (`isImportProtectionSourceFile`, rsbuild/import-protection.ts, only
   // JS/TS extensions), and its loader rule only rewrites those files, so an
-  // importer of another module type that compiles to JS (e.g. `.mdx`) is
-  // never checked: a denied file is mocked (the file rule) but not reported,
-  // and a denied specifier is neither reported nor mocked.
+  // importer of another module type that compiles to JS (a custom type
+  // here, `.mdx` through its real loader below) is never checked: a denied
+  // file is mocked (the file rule) but not reported, and a denied specifier
+  // is neither reported nor mocked.
   // Impact: behavior "error" does not fail for denied imports of such
   // modules, and the real code of a denied specifier runs on the client.
   // Source: mutation run R3, ip-rsbuild R2 (REPORT §6 #2); the JS/TS
@@ -331,7 +338,7 @@ describe('Rsbuild dev', () => {
       },
     },
   ])(
-    'a module of another type importing $name is reported, and its real code does not run',
+    'a module of a custom type importing $name is reported, and its real code does not run',
     async ({ files }) => {
       const server = await startRsbuildDevServer({
         compileTimeout,
@@ -353,6 +360,107 @@ describe('Rsbuild dev', () => {
         ),
         ranRealCode: messages.some((message) => message.includes('MARK_')),
       }).toEqual({ reported: ['client src/home.page'], ranRealCode: false })
+    },
+    timeout,
+  )
+
+  /** MDX pages through the real MDX loader, as an Rsbuild app adds it. */
+  const mdxModules: RsbuildConfig = {
+    tools: {
+      rspack: {
+        module: {
+          rules: [
+            {
+              test: /\.mdx$/,
+              use: [{ loader: require.resolve('@mdx-js/loader') }],
+            },
+          ],
+        },
+      },
+    },
+  }
+
+  // The same bug through the real `@mdx-js/loader` (V1 ip S23): the page is
+  // compiled from MDX, with the loader's source map; a report names the page
+  // and, if located, the import (line 3) or the use (4:27) in the .mdx
+  // source (SPEC J6.5).
+  test.fails.each<{ name: string; files: Record<string, string> }>([
+    {
+      name: 'a denied file',
+      files: {
+        'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+        'src/home.mdx': `# Home
+
+import { secret } from './secret.server'
+export const page = () => secret()
+`,
+      },
+    },
+    {
+      name: 'a denied specifier',
+      files: {
+        'node_modules/db-lib/package.json': JSON.stringify({
+          name: 'db-lib',
+          type: 'module',
+          exports: { '.': './index.js' },
+        }),
+        'node_modules/db-lib/index.js': `export const secret = () => 'MARK_LIB'\n`,
+        'src/home.mdx': `# Home
+
+import { secret } from 'db-lib'
+export const page = () => secret()
+`,
+      },
+    },
+  ])(
+    'an .mdx page importing $name is reported in its source, and its real code does not run',
+    async ({ files }) => {
+      const server = await startRsbuildDevServer({
+        compileTimeout,
+        importProtection: {
+          behavior: 'error',
+          client: { specifiers: ['db-lib'] },
+        },
+        config: mdxModules,
+        files: {
+          ...files,
+          'src/entry.ts': `import { page } from './home.mdx'\nconsole.log(page())\n`,
+        },
+      })
+      const messages = await runRsbuildClient(server)
+      expect({
+        reported: reportedViolations(server.errors).map(
+          ({ environment, importer }) => `${environment} ${importer}`,
+        ),
+        ranRealCode: messages.some((message) => message.includes('MARK_')),
+      }).toEqual({
+        reported: [
+          expect.stringMatching(/^client src\/home\.mdx(?::3:\d+|:4:27)?$/),
+        ],
+        ranRealCode: false,
+      })
+    },
+    timeout,
+  )
+
+  // Control for the pins above (same loader): the page compiles and runs.
+  test(
+    'an .mdx page without a denied import runs in the client',
+    async () => {
+      const server = await startRsbuildDevServer({
+        compileTimeout,
+        importProtection: { behavior: 'error' },
+        config: mdxModules,
+        files: {
+          'src/home.mdx': `# Home
+
+export const page = () => 'MARK_PAGE'
+`,
+          'src/entry.ts': `import { page } from './home.mdx'\nconsole.log(page())\n`,
+        },
+      })
+      expect(server.errors).toEqual([])
+      expect(await runRsbuildClient(server)).toEqual(['MARK_PAGE'])
     },
     timeout,
   )

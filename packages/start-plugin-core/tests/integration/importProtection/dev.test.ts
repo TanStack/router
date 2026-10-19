@@ -8,6 +8,7 @@
  */
 import path from 'node:path'
 import mdx from '@mdx-js/rollup'
+import { SourceMapGenerator } from 'source-map'
 import { createRequire } from 'node:module'
 import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
 import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
@@ -434,9 +435,12 @@ export const other = 1
 
   /**
    * The violations logged when the client loads the app, and those logged
-   * when it loads it again after the dev server reloaded every module
-   * without any module changing: Vite does so when `tsconfig.json` changes
-   * (as when it re-optimizes dependencies), and the client reloads the page.
+   * when it loads it again after an edit of `tsconfig.json`, which changes
+   * no module: Vite invalidates every module for it (as when it
+   * re-optimizes dependencies), so the client's next load transforms them
+   * again. Whether Vite also tells the page to reload is Vite's business
+   * (SPEC G10: no test requires a full reload); the `'always'` row is the
+   * control that the modules were transformed again.
    */
   async function logsAroundAReload(log: 'once' | 'always') {
     const server = await startProtectedDevServer(
@@ -445,15 +449,7 @@ export const other = 1
     )
     await server.load('/src/entry.ts')
     const first = reportedViolations(server.logs)
-    const reload = await server.edit({
-      'tsconfig.json': `{ "compilerOptions": {} }\n`,
-    })
-    expect(
-      reload.filter(
-        (message) =>
-          message.environment === 'client' && message.type === 'full-reload',
-      ),
-    ).not.toEqual([])
+    await server.edit({ 'tsconfig.json': `{ "compilerOptions": {} }\n` })
     await server.load('/src/entry.ts')
     return {
       first,
@@ -683,8 +679,25 @@ export const read = () => [getRequest(), getResponse()]
 // real MDX plugin (`@mdx-js/rollup`), before the Start plugins like a user
 // lists it; its output imports React's JSX runtime.
 describe('a module of another compiler (`.mdx`)', () => {
-  const mdxPlugin: Plugin = { enforce: 'pre', ...mdx() }
+  // With source maps, as Vite's MDX setups enable them (MDX's
+  // `SourceMapGenerator` option): report positions are in `src/page.mdx`.
+  const mdxPlugin: Plugin = { enforce: 'pre', ...mdx({ SourceMapGenerator }) }
   const plugins = [mdxPlugin]
+  /** An MDX page whose import and use of the denied file follow prose. */
+  const page = `# Title
+
+Some *prose* before the code.
+
+import { secret } from './secret.server'
+import { leak } from './leak'
+export const read = () => secret() + leak()
+`
+  /**
+   * The page, located at the import of the denied module (line 5) or at
+   * its use (7:24), or without a location (an optional field, SPEC §5 item
+   * 14); never at a position of MDX's compiled JavaScript.
+   */
+  const inPage = expect.stringMatching(/^src\/page\.mdx(?::5:\d+|:7:24)?$/)
   /** The real JSX runtime, in place of the dependency the page imports. */
   const stubs = {
     fallbackStub: (specifier: string) =>
@@ -705,11 +718,7 @@ export const leak = () => secret()
         {
           'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
           'src/leak.ts': leak,
-          'src/page.mdx': `# Title
-import { secret } from './secret.server'
-import { leak } from './leak'
-export const read = () => secret() + leak()
-`,
+          'src/page.mdx': page,
           'src/entry.ts': `export * from './page.mdx'\n`,
         },
         {},
@@ -725,6 +734,32 @@ export const read = () => secret() + leak()
       expect(importers).toContain(
         locationIn('src/leak.ts', leak, 2, 'secret()'),
       )
+    },
+    timeout,
+  )
+
+  // A location in `src/page.mdx` is an original one (SPEC J6.5: through
+  // source maps, also for non-JS sources): the import (line 5) or the use
+  // `secret()` (7:24). Main names the page without a location, which the
+  // report may omit (SPEC §5 item 14).
+  // Source: V1 ip S22.
+  test(
+    'importing a denied file, the warning names the .mdx page, located in its source if at all',
+    async () => {
+      const server = await startProtectedDevServer(
+        {
+          'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+          'src/leak.ts': `export const leak = () => ''\n`,
+          'src/page.mdx': page,
+          'src/entry.ts': `export * from './page.mdx'\n`,
+        },
+        {},
+        { plugins },
+      )
+      await server.load('/src/entry.ts')
+      expect(
+        reportedViolations(server.logs).map(({ importer }) => importer),
+      ).toEqual([inPage])
     },
     timeout,
   )
@@ -759,9 +794,13 @@ export const request = () => getRequest()
         const module = await evaluateServed(server, '/src/entry.ts', stubs)
         expectSafeMock(module.request(), 'MARK_')
       })
+      // (the page, located if at all at the import, line 2, or at the use
+      // `getRequest()`, 3:30, of the .mdx source)
       expect(
         reportedViolations(server.logs).map(({ importer }) => importer),
-      ).toContainEqual(expect.stringMatching(/^src\/page\.mdx/))
+      ).toContainEqual(
+        expect.stringMatching(/^src\/page\.mdx(?::2:\d+|:3:30)?$/),
+      )
     },
     timeout,
   )
@@ -1736,7 +1775,8 @@ export const leak = () => secret()
   const startApp = (files: Record<string, string>) =>
     startDevServer({ start: {}, files, config: { server: { hmr: false } } })
 
-  // Control for the pin below (same harness).
+  // The router entry counts; its client entry twin is pinned in
+  // dev-page.test.ts.
   test(
     'a denied import of a module the router entry imports is mocked and logged',
     async () => {
@@ -1781,50 +1821,7 @@ export const leak = () => secret()
     timeout,
   )
 
-  // Control for the pin below (same app, same module the page loads): the
-  // page reaches the app's client entry and the leaking module, which gets
-  // the mock.
-  test(
-    "Start's dev client entry loads the app's client entry, and its denied import is mocked",
-    async () => {
-      const server = await startApp(leakApp('src/client.tsx'))
-      const client = await server.load(
-        'virtual:tanstack-start-dev-client-entry',
-      )
-      expect(Object.keys(client)).toEqual(
-        expect.arrayContaining(['/src/client.tsx', '/src/leak.ts']),
-      )
-      expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
-    },
-    timeout,
-  )
-
-  // Bug: dev import protection only logs violations it can reach from the
-  // entries it registers, Start's router entry and start entry
-  // (vite/import-protection-plugin/plugin.ts `registerEntries`). The app's
-  // client entry is not one, and the browser loads it from Start's dev
-  // client entry, a virtual module whose imports import protection does not
-  // record, so the modules only the client entry imports are unreachable
-  // and their violations are discarded.
-  // Impact: in dev (mock mode), a denied import reached from the app's
-  // client entry (`src/client.tsx`) is mocked without any warning (the build
-  // reports it).
-  // Source: found by mutation run R3c (looking for edges without transform
-  // data).
-  test.fails(
-    'a denied import of a module the client entry imports is mocked and logged',
-    async () => {
-      const server = await startApp(leakApp('src/client.tsx'))
-      // (Start's dev client entry, which the page loads)
-      const client = await server.load(
-        'virtual:tanstack-start-dev-client-entry',
-      )
-      expect(Object.keys(client)).toContain('/src/leak.ts')
-      expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
-      expect(loggedViolations(server.logs)).toEqual([`client ${leakUse}`])
-    },
-    timeout,
-  )
+  // The app's client entry, loaded by a real page: dev-page.test.ts.
 })
 
 describe("an app's server entry, with Start's whole plugin", () => {
@@ -1854,7 +1851,8 @@ export default { fetch: () => new Response(String(handler())) }
   const startApp = (files: Record<string, string>) =>
     startDevServer({ start: {}, files, config: { server: { hmr: false } } })
 
-  // Control for the pin below (same harness).
+  // The router entry counts; its server entry twin is pinned in
+  // dev-page.test.ts.
   test(
     'a client-only import of a module the router entry imports is mocked on the server and logged',
     async () => {
@@ -1866,50 +1864,7 @@ export default { fetch: () => new Response(String(handler())) }
     timeout,
   )
 
-  // Control for the pin below (same module a request runs): a request runs
-  // the app's server entry, and returns what its handler returns.
-  test(
-    "a request runs the app's server entry",
-    async () => {
-      const server = await startApp({
-        ...handlerApp('src/server.ts'),
-        'src/handler.ts': `export const handler = () => 'MARK_HANDLER'\n`,
-      })
-      const entry = await server.import('virtual:tanstack-start-server-entry')
-      const response: Response = await entry.default.fetch(
-        new Request('http://localhost/'),
-      )
-      expect(await response.text()).toBe('MARK_HANDLER')
-    },
-    timeout,
-  )
-
-  // Bug: dev import protection only logs violations it can reach from the
-  // entries it registers, Start's router entry and start entry
-  // (vite/import-protection-plugin/plugin.ts `registerEntries`). The app's
-  // server entry is not one, and the entry branch of `resolveId` (no
-  // importer) never runs in dev, where Vite passes `<root>/index.html` as
-  // the importer, so the modules only the server entry imports are
-  // unreachable and their violations are discarded. The server twin of the
-  // client entry pin above.
-  // Impact: in dev (mock mode), a client-only import reached from the app's
-  // custom server entry (`src/server.ts`) is mocked on the server without
-  // any warning (the request returns the mock's value).
-  // Source: mutation run R4 final re-audit (M3).
-  test.fails(
-    'a client-only import of a module the server entry imports is mocked on the server and logged',
-    async () => {
-      const server = await startApp(handlerApp('src/server.ts'))
-      // (what Start's dev server runs for a request)
-      const entry = await server.import('virtual:tanstack-start-server-entry')
-      const response: Response = await entry.default.fetch(
-        new Request('http://localhost/'),
-      )
-      expect(await response.text()).not.toContain('MARK_CLIENT')
-      expect(loggedViolations(server.logs)).toEqual([handlerUse])
-    },
-    timeout,
-  )
+  // The app's server entry, run by a request: dev-page.test.ts.
 })
 
 // Vite's full-bundle dev (`experimental.bundledDev`), which Start supports:
@@ -2184,56 +2139,7 @@ export const app = [read, router]
   )
 })
 
-// The router plugin splits a route's component into a module of its own,
-// which the route module imports dynamically (the browser loads it when the
-// route renders).
-describe("a split route component, with Start's whole plugin", () => {
-  // Source: mutation run R4 (spc:4529 and the cache of compiled split
-  // modules: the denied import, and the import of the module using the
-  // denied file, are only in the split module).
-  test(
-    'using a denied file, directly or through a module, gets the mock, and the dev server logs a warning at each use',
-    async () => {
-      const route = `import { createFileRoute } from '@tanstack/react-router'
-import { secret } from '../secret.server'
-import { widget } from '../widget'
-export const Route = createFileRoute('/')({
-  component: () => String(secret()) + widget(),
-})
-`
-      const widget = `import { secret } from './secret.server'
-export const widget = () => String(secret())
-`
-      const server = await startDevServer({
-        start: {},
-        files: {
-          'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
-          'src/widget.ts': widget,
-          'src/routes/index.tsx': route,
-          'src/router.ts': `import { routeTree } from './routeTree.gen'
-export const getRouter = () => ({ routeTree })
-`,
-        },
-        config: { server: { hmr: false } },
-      })
-      const app = await server.load('/src/router.ts')
-      // (the route module's dynamic imports: its split modules)
-      const split = [
-        ...app['/src/routes/index.tsx']!.matchAll(/\bimport\("([^"]+)"\)/g),
-      ].map((match) => match[1]!)
-      expect(split).not.toEqual([])
-      for (const url of split) {
-        const served = await server.load(url)
-        expect(modulesContaining(served, 'MARK_SECRET')).toEqual([])
-      }
-      expect(loggedViolations(server.logs).sort()).toEqual([
-        `client ${locationIn('src/routes/index.tsx', route, 5, 'secret()')}`,
-        `client ${locationIn('src/widget.ts', widget, 2, 'secret()')}`,
-      ])
-    },
-    timeout,
-  )
-})
+// A split route component, rendered by a real page: dev-page.test.ts.
 
 // The route module the router plugin compiles (with route HMR in dev): the
 // code frame of a violation shows the route file as the user wrote it.
