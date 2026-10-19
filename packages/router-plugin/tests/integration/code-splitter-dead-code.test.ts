@@ -47,3 +47,69 @@ export const Route = createFileRoute('/')({ component: () => <p>{helper()}</p> }
     60_000,
   )
 })
+
+// Bundlers drop an unused call of a function annotated #__NO_SIDE_EFFECTS__,
+// so the annotation must move with the function into whichever module the
+// code splitter puts it in, also in a file whose pragma comment every
+// emitted module repeats (SPEC G2, G12; V1 split F38). Observed on the
+// production client output: the unused call (and the effect it would run)
+// is gone, the used one still renders. The emitted name of the function is
+// free.
+describe('a function annotated #__NO_SIDE_EFFECTS__', () => {
+  const route = (annotation: string) => `/** @jsxImportSource @emotion/react */
+${head}import { format } from '../format'
+${annotation}function makeLabel(text: string) {
+  return format(text)
+}
+export const Route = createFileRoute('/')({
+  component: () => {
+    makeLabel('MARK_UNUSED_CALL')
+    return <p>{makeLabel('used')}</p>
+  },
+})
+`
+  // `format` has an effect: only the annotation lets a bundler drop a call.
+  const files = {
+    'format.ts': `export function format(text: string) {
+  ;(globalThis as any).formatted = ((globalThis as any).formatted ?? 0) + 1
+  return text.toUpperCase()
+}
+`,
+  }
+
+  /** Where the unused call is in a production client build, and the page. */
+  async function unusedCall(bundler: 'vite' | 'rspack', annotation: string) {
+    const app = await build({
+      bundler,
+      env: 'client',
+      files: routeApp(route(annotation), { env: 'client', files }),
+    })
+    const run = await app.run(
+      `await entry.mount(entry.Route.options.component)`,
+    )
+    return { unusedCall: app.where('MARK_UNUSED_CALL'), html: run.html }
+  }
+
+  // Which calls a minifier drops is the bundler's decision: every bundler
+  // that honours the annotation. (webpack's production minifier keeps the
+  // call even when nothing is split, `autoCodeSplitting: false`, in every
+  // spelling of the annotation: not an outcome of the router plugin.)
+  it.each(['vite', 'rspack'] as const)(
+    'loses its unused call and keeps rendering the used one in a production client build (%s)',
+    async (bundler) => {
+      expect(
+        await unusedCall(bundler, '/* #__NO_SIDE_EFFECTS__ */ '),
+      ).toEqual({
+        unusedCall: 'nowhere',
+        html: '<div id="root"><p>USED</p></div>',
+      })
+    },
+    60_000,
+  )
+
+  // Control: without the annotation the effectful call stays (any bundler
+  // keeps a call with an effect; Vite stands for the others).
+  it('keeps the unused call without the annotation (vite)', async () => {
+    expect((await unusedCall('vite', '')).unusedCall).not.toBe('nowhere')
+  }, 60_000)
+})
