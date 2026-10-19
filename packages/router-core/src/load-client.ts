@@ -2810,13 +2810,13 @@ export async function hydrate(router: AnyRouter): Promise<void> {
           return
         }
         let handoffAssetEnd = dataOnlyAssetEnd
-        if (handoffAssetEnd !== undefined) {
-          for (let index = prefix; index < handoffAssetEnd; index++) {
-            if (candidates[index]?.id !== matches[index]?.id) {
-              handoffAssetEnd = index > pendingBoundary! + 1 ? index : undefined
-              break
-            }
-          }
+        // Verification can include at most the first uncommitted match.
+        if (
+          handoffAssetEnd !== undefined &&
+          prefix < handoffAssetEnd &&
+          candidates[prefix]?.id !== matches[prefix]?.id
+        ) {
+          handoffAssetEnd = prefix > pendingBoundary! + 1 ? prefix : undefined
         }
         const clones = committedMatches.map((match) => ({ ...match }))
         // Clones share the flights of loaders run during hydration.
