@@ -270,8 +270,8 @@ export interface RscRsbuildDevServerOptions extends Omit<
  * `files` over `rscAppFiles`, with the built `@tanstack/react-start/plugin/
  * rsbuild` (Start's client and SSR environments, its default entries, the
  * RSC layer and `react-server-dom-rspack`). React's JSX runtime is
- * configured as `@rsbuild/plugin-react` does (this package has no such
- * dependency). With `browser`, Start's own dev middleware serves the pages
+ * configured as `@rsbuild/plugin-react` does; a test of React Refresh adds
+ * the plugin itself (`config.plugins`). With `browser`, Start's own dev middleware serves the pages
  * (SSR) and Rsbuild's HMR client runs in the page.
  */
 export async function startRscRsbuildDevServer(

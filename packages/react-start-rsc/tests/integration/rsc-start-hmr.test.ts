@@ -1,14 +1,21 @@
 /**
  * Edits with a separate server function provider (SPEC J3.6, V2-13): a
- * React Start app with RSC enabled on a Vite dev server (`rsc-app.ts`), a
- * route module that also declares the server function its loader and page
+ * React Start app with RSC enabled on a Vite dev server, or on an Rsbuild
+ * dev server with React Refresh from `@rsbuild/plugin-react` (`rsc-app.ts`),
+ * a route module that also declares the server function its loader and page
  * call, and a real page. Outcomes only: what the page shows, what the next
- * call answers, whether the page reloaded. The Rsbuild counterpart is in
- * rsc-start-rsbuild.test.ts.
+ * call answers, whether the page reloaded. The handler edit on Rsbuild is
+ * in rsc-start-rsbuild.test.ts.
  */
+import { pluginReact } from '@rsbuild/plugin-react'
 import { describe, expect, test } from 'vitest'
 import { describeHmr } from '@tanstack/compiler-test-utils/dev-server'
-import { openRscPage, startRscDevServer, waitForHydration } from './rsc-app'
+import {
+  openRscPage,
+  startRscDevServer,
+  startRscRsbuildDevServer,
+  waitForHydration,
+} from './rsc-app'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 
@@ -27,11 +34,14 @@ const fullReloads = (server: DevServer) =>
     ),
   )
 
-describe('Vite dev: edits with a separate RSC provider (SPEC J3.6)', () => {
-  const route = (
-    handler: string,
-    text: string,
-  ) => `import { createFileRoute } from '@tanstack/react-router'
+/**
+ * `/`: a server fn whose handler returns `handler`, the loader and the page
+ * calling it, the page's text `text` and a counter (component state).
+ */
+const route = (
+  handler: string,
+  text: string,
+) => `import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
 const getLabel = createServerFn().handler(() => '${handler}')
@@ -54,6 +64,7 @@ function Page() {
 }
 `
 
+describe('Vite dev: edits with a separate RSC provider (SPEC J3.6)', () => {
   // A route module that also declares a server function: editing the
   // handler makes the next call run the new code; editing the component
   // hot-updates the page, keeping its state; no full reload either way
@@ -92,6 +103,42 @@ function Page() {
 
     expect(browser.loads()).toBe(1)
     expect(fullReloads(server)).toEqual([])
+    expect(browser.errors).toEqual([])
+  })
+})
+
+describe('Rsbuild dev: edits with a separate RSC provider (SPEC J3.6)', () => {
+  // The component half of the Vite test above on Start's Rsbuild RSC layer
+  // (its handler half: rsc-start-rsbuild.test.ts): editing the component of
+  // a route module that also declares a server function hot-updates the
+  // page, keeping its state, without a full reload; the server fn still
+  // answers.
+  // Source: SPEC J3.6, V2-13 (#7618 as quoted), Rsbuild component half
+  // (DECISIONS 2026-10-19, `@rsbuild/plugin-react`).
+  test('a component edit hot-updates, keeping the state, without a full reload', async () => {
+    const server = await startRscRsbuildDevServer({
+      browser: true,
+      hmr: true,
+      config: { plugins: [pluginReact()] },
+      files: { 'src/routes/index.tsx': route('MARK_HANDLER_V1', 'Page v1') },
+    })
+    expect(server.errors).toEqual([])
+    const browser = await openRscPage(server, '/')
+    await browser.waitForText('Page v1 MARK_HANDLER_V1')
+    await waitForHydration(browser)
+    await browser.page.locator('[data-testid=count]').click()
+    await browser.page.locator('[data-testid=count]').click()
+    await browser.waitForText('count 2')
+
+    await server.edit({
+      'src/routes/index.tsx': route('MARK_HANDLER_V1', 'Page v2'),
+    })
+    expect(server.errors).toEqual([])
+    await browser.waitForText('Page v2', { selector: '[data-testid=text]' })
+    expect(await browser.text('[data-testid=count]')).toBe('count 2')
+    await callFromPage(browser, 'called MARK_HANDLER_V1')
+
+    expect(browser.loads()).toBe(1)
     expect(browser.errors).toEqual([])
   })
 })
