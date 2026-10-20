@@ -2508,16 +2508,19 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     // A transported result passes through its `hydrate` transform, if any. A
     // lifecycle the server ran without transporting it re-runs in place. Callers
     // reach the re-run only with a defined option.
-    const step = (option: any, d: any, key: 'm' | 'b' | 'l', ctx: object) => {
+    const step = (
+      option: any,
+      d: any,
+      key: 'm' | 'b' | 'l',
+      createContext: () => object,
+    ) => {
       if (d && key in d && !option?.hydrate) {
         return d[key]
       }
       if (signal.aborted) {
         throw signal
       }
-      if (key !== 'l') {
-        ctx = (ctx as () => object)()
-      }
+      const ctx = createContext()
       const value =
         d && key in d
           ? option.hydrate({ ...ctx, data: d[key] })
@@ -2652,7 +2655,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
           lane,
           match,
           route,
-          (ctx) => step(loader, dehydrated, 'l', ctx),
+          (ctx) => step(loader, dehydrated, 'l', () => ctx),
           parent && Promise.resolve(parent),
           laneOptions,
         )
