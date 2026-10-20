@@ -7,23 +7,12 @@
  * call answers, whether the page reloaded. A handler edit that also changes
  * what the loader shows on Rsbuild is in rsc-start-rsbuild.test.ts.
  */
-import { pluginReact } from '@rsbuild/plugin-react'
 import { describe, expect, test } from 'vitest'
 import { describeHmr } from '@tanstack/compiler-test-utils/dev-server'
-import {
-  openRscPage,
-  startRscDevServer,
-  startRscRsbuildDevServer,
-  waitForHydration,
-} from './rsc-app'
-import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
+import { openRscPage, startRscDevServer, waitForHydration } from './rsc-app'
+import { callFromPage } from './rsc-start-page'
+import { route } from './rsc-start-hmr-page'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
-
-/** Clicks the page's call button and waits for the answer. */
-async function callFromPage(browser: BrowserPage, expected: string) {
-  await browser.page.locator('[data-testid=call]').click()
-  await browser.waitForText(expected, { selector: '[data-testid=called]' })
-}
 
 /** The HMR messages telling the client to reload the page. */
 const fullReloads = (server: DevServer) =>
@@ -33,38 +22,6 @@ const fullReloads = (server: DevServer) =>
         message.environment === 'client' && message.type === 'full-reload',
     ),
   )
-
-/**
- * `/`: a server fn whose handler returns `handler`, the loader and the page
- * calling it, the page's text `text` and a counter (component state). The
- * call button shows `text` and the answer, so a call from an edited
- * component is told apart from the answer the kept state shows.
- */
-const route = (
-  handler: string,
-  text: string,
-) => `import { createFileRoute } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
-import { useState } from 'react'
-const getLabel = createServerFn().handler(() => '${handler}')
-export const Route = createFileRoute('/')({
-  loader: () => getLabel(),
-  component: Page,
-})
-function Page() {
-  const label = Route.useLoaderData()
-  const [called, setCalled] = useState('')
-  const [count, setCount] = useState(0)
-  return (
-    <main>
-      <p data-testid="text">${text} {label}</p>
-      <p data-testid="called">called {called}</p>
-      <button data-testid="call" onClick={() => getLabel().then((answer) => setCalled('${text} ' + answer))}>call</button>
-      <button data-testid="count" onClick={() => setCount(count + 1)}>count {count}</button>
-    </main>
-  )
-}
-`
 
 describe('Vite dev: edits with a separate RSC provider (SPEC J3.6)', () => {
   // A route module that also declares a server function: editing the
@@ -106,58 +63,6 @@ describe('Vite dev: edits with a separate RSC provider (SPEC J3.6)', () => {
 
     expect(browser.loads()).toBe(1)
     expect(fullReloads(server)).toEqual([])
-    expect(browser.errors).toEqual([])
-  })
-})
-
-describe('Rsbuild dev: edits with a separate RSC provider (SPEC J3.6)', () => {
-  // The Vite test above on Start's Rsbuild RSC layer, with React Refresh
-  // from `@rsbuild/plugin-react`, in the same order in one session: editing
-  // the handler makes the next call run the new code and the client output
-  // never has it; editing the component then hot-updates the page, keeping
-  // its state; no full reload either way, and the server fn still answers.
-  // Source: SPEC J3.6, V2-13 (#7618 as quoted), Rsbuild row (DECISIONS
-  // 2026-10-19, `@rsbuild/plugin-react`).
-  test('a handler edit reaches the next call and a component edit hot-updates, keeping the state, without a full reload', async () => {
-    const server = await startRscRsbuildDevServer({
-      browser: true,
-      hmr: true,
-      config: { plugins: [pluginReact()] },
-      files: { 'src/routes/index.tsx': route('MARK_HANDLER_V1', 'Page v1') },
-    })
-    expect(server.errors).toEqual([])
-    const browser = await openRscPage(server, '/')
-    await browser.waitForText('Page v1 MARK_HANDLER_V1')
-    await waitForHydration(browser)
-    await browser.page.locator('[data-testid=count]').click()
-    await browser.page.locator('[data-testid=count]').click()
-    await browser.waitForText('count 2')
-    await callFromPage(browser, 'called Page v1 MARK_HANDLER_V1')
-
-    // The handler
-    await server.edit({
-      'src/routes/index.tsx': route('MARK_HANDLER_V2', 'Page v1'),
-    })
-    expect(server.errors).toEqual([])
-    await callFromPage(browser, 'called Page v1 MARK_HANDLER_V2')
-    expect(browser.loads()).toBe(1)
-    // The client's output of the route never has the handler (J4.12)
-    const client = [
-      ...Object.values(await server.outputs('client')),
-      ...Object.values(await server.hotUpdates('client')),
-    ].join('\n')
-    expect(client).not.toContain('MARK_HANDLER_V2')
-
-    // The component
-    await server.edit({
-      'src/routes/index.tsx': route('MARK_HANDLER_V2', 'Page v2'),
-    })
-    expect(server.errors).toEqual([])
-    await browser.waitForText('Page v2', { selector: '[data-testid=text]' })
-    expect(await browser.text('[data-testid=count]')).toBe('count 2')
-    await callFromPage(browser, 'called Page v2 MARK_HANDLER_V2')
-
-    expect(browser.loads()).toBe(1)
     expect(browser.errors).toEqual([])
   })
 })
