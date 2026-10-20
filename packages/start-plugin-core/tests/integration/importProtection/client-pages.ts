@@ -15,8 +15,10 @@ import {
   clientPage,
   startRsbuildDevServer,
   startRsbuildStartDevServer,
+  throwUncaught,
   withRecordedPage,
 } from '../../rsbuild-dev-server'
+import type { ClientRun } from '../../rsbuild-dev-server'
 import type { Plugin } from 'vite'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 
@@ -32,10 +34,12 @@ export const clientFixturePlugin: Plugin = {
           req.originalUrl!,
           `<!doctype html><link rel="icon" href="data:,"><div id="root"></div>
 <script type="module">
-import(/* @vite-ignore */ new URLSearchParams(location.search).get('entry')).then(
-  (entry) => { window.__ipEntry = entry },
-  (error) => { window.__ipLoadError = error.stack ?? String(error) },
-)
+import(/* @vite-ignore */ new URLSearchParams(location.search).get('entry'))
+  .then(
+    (entry) => { window.__ipEntry = entry },
+    (error) => { window.__ipLoadError = error.stack ?? String(error) },
+  )
+  .then(() => dispatchEvent(new Event('ip-entry')))
 </script>`,
         )
         res.setHeader('Content-Type', 'text/html')
@@ -81,23 +85,43 @@ export async function runViteClient(
   }
   const url = new URL('/__ip-fixture.html', server.url)
   url.searchParams.set('entry', entry)
-  return withRecordedPage(url.href, {}, async ({ page, record, settled }) => {
-    // These value fixtures allow Vite's dependency-optimizer reload. Retry
-    // only a navigation that interrupts the browser observation; execution
-    // errors and policy failures still fail immediately. HMR/no-reload rows
+  return withRecordedPage(url.href, {}, async ({ page }) => {
+    // The page may reload at any time while it loads: Vite sends a
+    // `full-reload` (an edit, the dependency optimizer), and keeps one sent
+    // while no page is connected for the next page that connects. So one
+    // evaluation, in whichever document is current, waits for that
+    // document's entry, a turn of its event loop (what its load scheduled
+    // ran), and runs `script`: every value comes from one document. A reload
+    // during it destroys the evaluation's context; that alone is retried.
+    // Load errors, the errors the page's code did not catch while it loaded
+    // and the script's own errors still fail immediately. HMR/no-reload rows
     // use their persistent page hosts instead.
     for (let attempt = 0; ; attempt++) {
       try {
-        await page.waitForFunction(
-          'window.__ipEntry !== undefined || window.__ipLoadError !== undefined',
-        )
-        await settled()
-        const result = await page.evaluate(`(async () => {
+        const run = await page.evaluate<{
+          uncaught: ClientRun['uncaught']
+          calls?: ClientRun['calls']
+          result?: unknown
+        }>(
+          `(async () => {
+if (window.__ipEntry === undefined && window.__ipLoadError === undefined) {
+  await new Promise((resolve) => addEventListener('ip-entry', resolve, { once: true }))
+}
+await new Promise((resolve) => setTimeout(resolve))
+const { uncaught, calls } = globalThis.__clientRun
+if (uncaught.length > 0) {
+  return { uncaught: [...uncaught] }
+}
 if (window.__ipLoadError) { throw new Error(window.__ipLoadError) }
 const entry = window.__ipEntry
+const result = await (async () => {
 ${script}
-})()`)
-        const { calls } = await record()
+})()
+return { uncaught: [], calls, result }
+})()`,
+        )
+        throwUncaught(run)
+        const { result, calls = [] } = run
         const messages = calls.map(({ level, text }) => `${level}: ${text}`)
         const diagnostics = calls.flatMap(({ level, text }) =>
           diagnosticsOf(

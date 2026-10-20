@@ -285,6 +285,15 @@ export interface RecordedPage {
   settled: () => Promise<void>
 }
 
+/** Throws the errors the page's code did not catch so far, if any. */
+export function throwUncaught({ uncaught }: Pick<ClientRun, 'uncaught'>) {
+  if (uncaught.length > 0) {
+    throw new Error(
+      `the client code threw while the page loaded:\n${uncaught.join('\n')}`,
+    )
+  }
+}
+
 /**
  * The one client runner of the Start dev-server tests (Vite and Rsbuild):
  * opens `url` in a real browser (Chromium) page that records what its code
@@ -308,14 +317,11 @@ export async function withRecordedPage<T>(
       page: browser.page,
       record,
       settled: async () => {
-        const { uncaught } = await browser.page.evaluate<ClientRun>(
-          `new Promise((resolve) => setTimeout(() => resolve(globalThis.__clientRun)))`,
+        throwUncaught(
+          await browser.page.evaluate<ClientRun>(
+            `new Promise((resolve) => setTimeout(() => resolve(globalThis.__clientRun)))`,
+          ),
         )
-        if (uncaught.length > 0) {
-          throw new Error(
-            `the client code threw while the page loaded:\n${uncaught.join('\n')}`,
-          )
-        }
       },
     })
   } finally {
