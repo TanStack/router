@@ -24,14 +24,16 @@
  * - `traceStack(stack, mapOf)`: the frames of an executed throw's stack,
  *   each resolved through the map `mapOf` gives for its file.
  * - `expectMapsTo(map, generated, expected)`: asserts a generated position
- *   resolves to `expected.file` (any spelling `mentionsFile` accepts),
- *   `expected.line` and, when given, `expected.column`.
+ *   resolves to `expected.file` (any spelling `mentionsFile` accepts, a
+ *   relative source resolved against `expected.mapUrl`, the module the map
+ *   belongs to), `expected.line` and, when given, `expected.column`.
  */
 import {
   TraceMap,
   eachMapping,
   originalPositionFor,
 } from '@jridgewell/trace-mapping'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parseSync } from 'vite'
 import { expect } from 'vitest'
 import { mentionsFile } from './diagnostics'
@@ -295,9 +297,20 @@ export function traceStack(
 
 /** What `expectMapsTo` requires of an original position. */
 export interface ExpectedOriginal {
-  /** The user's file: absolute, relative to `root`, or trailing segments. */
+  /**
+   * The user's file, absolute or relative to `root`, named as
+   * `mentionsFile` accepts (SPEC §5.7).
+   */
   file: string
   root?: string
+  /**
+   * Where the map belongs: the URL (`file:`, `http:`) or absolute path of
+   * the generated module it maps (with its query, if any). A relative
+   * source is resolved against it first, as the source map specification
+   * resolves sources (a dev server's `fail.ts` for its module
+   * `/src/fail.ts`).
+   */
+  mapUrl?: string
   /** Other files the source must be distinguishable from. */
   distinctFrom?: Array<string>
   /** 1-based line. */
@@ -306,9 +319,34 @@ export interface ExpectedOriginal {
   column?: number
 }
 
+/** A URL scheme (`file:`, `webpack:`), not a Windows drive letter. */
+const urlScheme = /^[A-Za-z][\w+.-]+:/
+
 /**
- * Asserts that `generated` resolves through `map` to `expected`, and
- * returns the original position.
+ * `source` resolved against `mapUrl` (the URL or absolute path of the
+ * module the map belongs to) when it is relative; as the map names it
+ * otherwise.
+ */
+function resolvedSource(source: string, mapUrl: string | undefined) {
+  const absolute =
+    urlScheme.test(source) ||
+    source.startsWith('/') ||
+    /^[A-Za-z]:[\\/]/.test(source)
+  if (mapUrl === undefined || absolute) {
+    return source
+  }
+  const resolved = new URL(
+    source,
+    urlScheme.test(mapUrl) ? mapUrl : pathToFileURL(mapUrl),
+  )
+  return resolved.protocol === 'file:'
+    ? fileURLToPath(resolved)
+    : resolved.href
+}
+
+/**
+ * Asserts that `generated` resolves through `map` (of the module at
+ * `expected.mapUrl`) to `expected`, and returns the original position.
  */
 export function expectMapsTo(
   map: AnySourceMap,
@@ -318,9 +356,10 @@ export function expectMapsTo(
   const original = originalPositionOf(map, generated)
   const description = `generated ${generated.line}:${generated.column}`
   expect(original, `${description} has a mapping`).toBeDefined()
+  const source = resolvedSource(original!.source, expected.mapUrl)
   expect(
-    mentionsFile(original!.source, expected.file, expected),
-    `${description} maps to ${original!.source}, expected ${expected.file}`,
+    mentionsFile(source, expected.file, expected),
+    `${description} maps to ${source}, expected ${expected.file}`,
   ).toBe(true)
   expect(
     expected.column === undefined

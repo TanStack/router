@@ -64,13 +64,16 @@ function positionOf(marker: string) {
 
 /**
  * Asserts that every marker a served module holds maps, through the
- * module's map, to the route file at the marker's line and column.
+ * module's map, to the route file at the marker's line and column. A
+ * relative source of the map is resolved against `mapUrl`, the module the
+ * map belongs to (`expectMapsTo`).
  */
 function expectMarkersMapToRouteFile(
   id: string,
   code: string,
   map: AnySourceMap | undefined,
   root: string,
+  mapUrl?: string,
 ) {
   const held = markers.filter((marker) => code.includes(marker))
   if (held.length === 0) {
@@ -86,6 +89,7 @@ function expectMarkersMapToRouteFile(
     expectMapsTo(map!, positionAt(code, offset!), {
       file: 'routes/index.tsx',
       root,
+      mapUrl,
       ...positionOf(marker),
     })
   }
@@ -121,11 +125,13 @@ describe('vite dev server', () => {
       for (const [url, body] of served) {
         if (markers.some((marker) => body.includes(marker))) {
           checked.push(url)
+          // (the module's URL path is relative to the app root)
           expectMarkersMapToRouteFile(
             url,
             body,
             inlineSourceMap(body),
             server.root,
+            path.join(server.root, url),
           )
         }
       }

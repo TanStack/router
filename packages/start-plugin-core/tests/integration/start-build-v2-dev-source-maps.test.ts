@@ -61,6 +61,7 @@ function expectMarkersMapToFile(
   code: string,
   map: AnySourceMap | undefined,
   root: string,
+  mapUrl?: string,
 ) {
   const held = markers.filter((marker) => code.includes(marker))
   if (held.length === 0) {
@@ -76,6 +77,7 @@ function expectMarkersMapToFile(
     expectMapsTo(map!, positionAt(code, offset!), {
       file: 'src/fail.ts',
       root,
+      mapUrl,
       line: lineOf(marker),
     })
   }
@@ -100,6 +102,8 @@ describe('vite dev server', () => {
           body,
           inlineSourceMap(body),
           server.root,
+          // (the module's URL path is relative to the app root)
+          path.join(server.root, 'src/fail.ts'),
         ),
       ).toEqual(['MARK_CLIENT_THROW'])
       // A call by id loads the server modules of the file: the SSR caller
@@ -123,6 +127,8 @@ describe('vite dev server', () => {
           result.code,
           result.map ? (result.map as AnySourceMap) : undefined,
           server.root,
+          // (the module's id is its file, with its query)
+          module.id ?? path.join(server.root, module.url),
         )
         if (held.length > 0) {
           checked.push(module.url)

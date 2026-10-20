@@ -88,7 +88,19 @@ describe('route files named like a route group', () => {
     },
   ]
 
-  it.each(testCases)(
+  // Bug: the generator rejects a `(group).tsx` route file with an error that
+  // names the file relative to the routes directory (`(group).tsx`,
+  // `nested/(group).tsx` for `src/routes/nested/(group).tsx`), neither
+  // absolute nor project-relative (SPEC §5.7; DECISIONS 2026-10-20 "file
+  // names in diagnostics"); it neither warns with the file's name nor routes
+  // the app.
+  // Source: src/filesystem/physical/getRouteNodes.ts (the "route
+  // configuration for a route group" error interpolates `filePath`, the
+  // path under `routesDirectory`).
+  // Impact: the failed run names a path that does not open from the project
+  // root (`(group).tsx` is `src/routes/(group).tsx`), so the user has to
+  // guess where the file to rename is. Low: diagnostics only.
+  it.fails.each(testCases)(
     'a (group).tsx route file is reported by name or routes correctly: $name',
     async ({ group, index }) => {
       const { root, config, error, diagnostics } = await generateApp({
