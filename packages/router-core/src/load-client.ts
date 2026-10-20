@@ -2520,10 +2520,11 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       if (signal.aborted) {
         throw signal
       }
+      // Each step owns fresh arguments, so attach data without another copy.
       const ctx = createContext()
       const value =
         d && key in d
-          ? option.hydrate({ ...ctx, data: d[key] })
+          ? option.hydrate(Object.assign(ctx, { data: d[key] }))
           : (option.handler || option)(ctx)
       return value
     }

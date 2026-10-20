@@ -1489,6 +1489,10 @@ alternatives. Unresolved choices are separated below.
   are outside that API. Runtime calls may pass existing lifecycle arguments;
   filtering extra fields would copy metadata without changing the supported API.
   Handler and context revalidation arguments keep their lifecycle capabilities.
+  Hydration builds fresh arguments for each step and attaches codec data to them
+  without another metadata copy. This assumes standard `Object.prototype`
+  behavior. Server codecs still copy the arguments because a handler may retain
+  its original argument object.
   A transported loader transform belongs to its hydration attempt and stays out
   of reusable flight discovery. When a navigation supersedes it, the new load
   runs its normal handler. Successfully reconstructed
