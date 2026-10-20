@@ -34,6 +34,10 @@ import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
 import { workspacePackage } from '@tanstack/compiler-test-utils/workspace-packages'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import { createHydrateCompilerPlugin } from '../src/hydrate-when-transform'
+import {
+  createCompilerVirtualModuleIdPattern,
+  loadCompilerVirtualModule,
+} from '../src/start-compiler/host'
 import { moduleRequests } from './imports'
 import {
   createStartCompiler,
@@ -86,15 +90,14 @@ function loadChunkResult(
   id: string,
   code?: string,
 ): StartCompilerTransformResult | null {
-  return (
-    plugin.loadVirtualModule?.({
-      id,
-      code,
-      root: '/test',
-      env,
-      envName: env === 'client' ? 'client' : 'ssr',
-    }) ?? null
-  )
+  // (dispatched like the Vite and Rsbuild hosts dispatch a virtual module)
+  return loadCompilerVirtualModule([plugin], {
+    id,
+    code,
+    root: '/test',
+    env,
+    envName: env === 'client' ? 'client' : 'ssr',
+  })
 }
 
 /**
@@ -343,15 +346,21 @@ export async function loadClient(code: string, options: ClientOptions = {}) {
     env: 'client',
     compilerPlugins: [chunkPlugin],
   })
+  const virtualModuleIds = createCompilerVirtualModuleIdPattern([chunkPlugin])
   const loadedChunks: Array<string> = []
   const graph = await realGraph(id, parent, {
     ...options,
     env: 'client',
     // The bundler compiles each virtual module it loads like any other module.
+    // Like the Vite and Rsbuild hosts, only ids the plugins' virtual module
+    // pattern matches go to the plugin; the linker's other ids (e.g. the
+    // extension probes of a relative import) are no modules of this graph.
     load: async (chunkId) => {
-      // The linker also probes ids with extensions appended, which are no
-      // modules of this graph.
-      if (chunkId.split('?')[0] !== id.split('?')[0]) {
+      if (!virtualModuleIds) {
+        return null
+      }
+      virtualModuleIds.lastIndex = 0
+      if (!virtualModuleIds.test(chunkId)) {
         return null
       }
       const chunk = options.loadChunk
