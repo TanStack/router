@@ -19,6 +19,7 @@ import {
   createServerGraph,
   createStartCompiler,
   evaluateModule,
+  captureCauses,
   expectCompileError,
   expectNoClientHandler,
   expectOutputsFreeOfHandler,
@@ -745,6 +746,7 @@ export const read = () => getRead()()`,
             source: code,
             at: 'db.inner(id)',
             names: ['createServerFn', 'id'],
+            causes: captureCauses,
           })
         }
         return
