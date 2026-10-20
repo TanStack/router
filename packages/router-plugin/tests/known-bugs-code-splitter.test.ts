@@ -3396,3 +3396,58 @@ export const Route = createFileRoute('/')({
     },
   )
 })
+
+describe('look-alike route factories', () => {
+  // Bug: in a registered route file, the code splitter treats every call of
+  // a function named `createFileRoute` as the route's factory, including a
+  // local function shadowing the router's: it splits the options of that
+  // call too, so the local factory gets a lazy route component instead of
+  // the function it was given (and in a dev server, where route HMR is on,
+  // the route module loses that function's declaration and throws
+  // "LocalWidget is not defined" when it loads). Only the call
+  // bound to `Route` is the route's (SPEC J2.1, G15). Found while replacing
+  // the spelling-only look-alike controls of
+  // code-splitter-plugin-pipeline.test.ts (V1R split S13); a look-alike from
+  // another package (a namespace member call) is left alone there.
+  // Impact: a route file whose own code uses a helper named
+  // `createFileRoute` (a widget registry, a test fixture builder) fails to
+  // load once code splitting is on.
+  test.fails(
+    'a local factory shadowing createFileRoute in a route file keeps its own semantics',
+    async () => {
+      const route = await loadRoute(`${head}function LocalWidget() {
+  return <p>local widget</p>
+}
+function localWidget() {
+  const createFileRoute =
+    (path: string) =>
+    (options: { loader: () => string; component: () => unknown }) => ({
+      path,
+      options,
+    })
+  return createFileRoute('/local-widget')({
+    loader: () => 'local data',
+    component: LocalWidget,
+  })
+}
+export const widget = localWidget()
+export const Route = createFileRoute('/')({
+  component: () => <p>page</p>,
+})
+`)
+      const widget = route.exports.widget as unknown as {
+        path: string
+        options: { loader: () => string; component: unknown }
+      }
+      expect([
+        widget.path,
+        widget.options.loader(),
+        'preload' in (widget.options.component as object),
+      ]).toEqual(['/local-widget', 'local data', false])
+      expect([
+        await renderComponent(widget.options.component),
+        await route.render('component'),
+      ]).toEqual(['<p>local widget</p>', '<p>page</p>'])
+    },
+  )
+})

@@ -65,9 +65,13 @@ export const Route = createFileRoute('/changing')({
         ['component', 'loader'],
       ]),
     ).toBe('<p>second version true</p>')
-    expect(
-      (await separate(source('secondState', 'second version'))).modules,
-    ).toEqual(second.modules)
+    // The same version compiled again by the same instance: the same module
+    // ids, groups and behaviour (SPEC G4; the emitted text is free).
+    const again = await separate(source('secondState', 'second version'))
+    expect(again.ids).toEqual(second.ids)
+    expect(await read(again, separateGroups)).toBe(
+      '<p>second version true</p>',
+    )
   })
 
   // Two router plugins in one dev server (each with its own routes
