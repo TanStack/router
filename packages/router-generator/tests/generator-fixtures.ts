@@ -142,11 +142,6 @@ export const fixtureRoutes: Record<string, Record<string, FixtureRoute>> = {
       '__root__',
       'routes/(test)/initiallyLazy.tsx',
     ],
-    '/(test)/template-literal': [
-      '/template-literal',
-      '__root__',
-      'routes/(test)/template-literal.tsx',
-    ],
     __root__: ['/', null, 'routes/__root.tsx'],
   },
   'flat-route-group': {
@@ -626,14 +621,21 @@ export const fixtureRoutes: Record<string, Record<string, FixtureRoute>> = {
       '__root__',
       'routes/(foo)/asdf/(bar)/$id.tsx',
     ],
+    // (the pathless layout of the `(bar)` group's `_layout.*` files; the
+    // other groups have `_layout` layouts of their own)
+    '/(foo)/asdf/(bar)/_layout': [
+      '/asdf',
+      '__root__',
+      'routes/(foo)/asdf/(bar)/_layout.tsx',
+    ],
     '/(foo)/asdf/(bar)/_layout/about': [
       '/asdf/about',
-      '__root__',
+      '/(foo)/asdf/(bar)/_layout',
       'routes/(foo)/asdf/(bar)/_layout.about.tsx',
     ],
     '/(foo)/asdf/(bar)/_layout/xyz': [
       '/asdf/xyz',
-      '__root__',
+      '/(foo)/asdf/(bar)/_layout',
       null,
       'routes/(foo)/asdf/(bar)/_layout.xyz.lazy.tsx',
     ],

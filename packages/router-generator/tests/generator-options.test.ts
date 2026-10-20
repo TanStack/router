@@ -12,11 +12,12 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import {
   captureConsole,
   expectDiagnostic,
+  findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { Generator, getConfig } from '../src'
 import { expectOnlyOwnedEdits } from './owned-edits'
 import { routeCallOf, routeIdOf } from './route-id'
-import { routesOf, withRouteTree } from './route-tree'
+import { routesOf, urlsOf, withRouteTree } from './route-tree'
 import type { Config } from '../src'
 
 let roots: Array<string> = []
@@ -433,21 +434,53 @@ export const Route = createLazyFileRoute('/posts')({})
   })
 
   /**
-   * The route file imports of a route tree: static and dynamic imports of
-   * relative or absolute paths.
+   * The imports of the app's route files in a route tree, static and
+   * dynamic: route file (relative to the app, without its extension) to
+   * the specifiers that import it. Imports of other modules (packages,
+   * generated support modules) are left out: the options are about the
+   * route files.
    */
-  async function routeFileImports(treeFile: string) {
+  async function routeFileImports(
+    root: string,
+    treeFile: string,
+    files: Array<string>,
+    kinds: Array<'static' | 'dynamic'> = ['static', 'dynamic'],
+  ) {
     const code = await readFile(treeFile, 'utf8')
     const { module } = parseSync(path.basename(treeFile), code)
-    return [
-      ...module.staticImports.map((statement) => statement.moduleRequest.value),
-      ...module.dynamicImports.map((statement) =>
-        code
-          .slice(statement.moduleRequest.start, statement.moduleRequest.end)
-          .slice(1, -1),
-      ),
-    ].filter((specifier) => !specifier.startsWith('@'))
+    const specifiers = [
+      ...(kinds.includes('static')
+        ? module.staticImports.map((statement) => statement.moduleRequest.value)
+        : []),
+      ...(kinds.includes('dynamic')
+        ? module.dynamicImports.map((statement) =>
+            code
+              .slice(statement.moduleRequest.start, statement.moduleRequest.end)
+              .slice(1, -1),
+          )
+        : []),
+    ]
+    const withoutExtension = (file: string) => file.replace(/\.[^./]+$/, '')
+    const imports: Record<string, Array<string>> = Object.fromEntries(
+      files.map((file) => [withoutExtension(file), []]),
+    )
+    for (const specifier of specifiers) {
+      if (!specifier.startsWith('.') && !path.isAbsolute(specifier)) {
+        continue
+      }
+      const file = withoutExtension(
+        path
+          .relative(root, path.resolve(path.dirname(treeFile), specifier))
+          .replaceAll(path.sep, '/'),
+      )
+      imports[file]?.push(specifier)
+    }
+    return imports
   }
+
+  /** The route files of `app()`. */
+  const appFiles = (ext = 'tsx') =>
+    Object.keys(app(ext)).filter((file) => file.startsWith('src/routes/'))
 
   test.each([
     { config: {}, quote: "'", semicolons: false },
@@ -514,13 +547,15 @@ export const Route = createLazyFileRoute('/posts')({})
       addExtensions: true,
     })
 
-    const imports = await routeFileImports(generatedRouteTree)
-    expect(imports.length).toBe(4)
-    for (const specifier of imports) {
-      expect(specifier).toMatch(/\.tsx$/)
-      expect(
-        existsSync(path.resolve(path.dirname(generatedRouteTree), specifier)),
-      ).toBe(true)
+    const imports = await routeFileImports(root, generatedRouteTree, appFiles())
+    for (const [file, specifiers] of Object.entries(imports)) {
+      expect(specifiers.length, file).toBeGreaterThan(0)
+      for (const specifier of specifiers) {
+        expect(specifier).toMatch(/\.tsx$/)
+        expect(
+          existsSync(path.resolve(path.dirname(generatedRouteTree), specifier)),
+        ).toBe(true)
+      }
     }
     expect(await routesOf(generatedRouteTree)).toEqual(appRoutes())
   })
@@ -534,10 +569,16 @@ export const Route = createLazyFileRoute('/posts')({})
       })
       const { generatedRouteTree } = await generate(root)
 
-      const imports = await routeFileImports(generatedRouteTree)
-      expect(imports.length).toBe(4)
-      for (const specifier of imports) {
-        expect(specifier).toMatch(/[^.]\.js$/)
+      const imports = await routeFileImports(
+        root,
+        generatedRouteTree,
+        appFiles(),
+      )
+      for (const [file, specifiers] of Object.entries(imports)) {
+        expect(specifiers.length, file).toBeGreaterThan(0)
+        for (const specifier of specifiers) {
+          expect(specifier).toMatch(/[^.]\.js$/)
+        }
       }
       expect(await routesOf(generatedRouteTree)).toEqual(appRoutes())
     },
@@ -568,16 +609,55 @@ export const Route = createLazyFileRoute('/posts')({})
       importRoutesUsingAbsolutePaths: true,
     })
 
-    const code = await readFile(generatedRouteTree, 'utf8')
-    const staticImports = parseSync('routeTree.gen.ts', code)
-      .module.staticImports.map((statement) => statement.moduleRequest.value)
-      .filter((specifier) => !specifier.startsWith('@'))
-    expect(staticImports.length).toBe(3)
-    for (const specifier of staticImports) {
-      expect(path.isAbsolute(specifier)).toBe(true)
+    // (the static imports of the route files; the lazy file: below)
+    const imports = await routeFileImports(
+      root,
+      generatedRouteTree,
+      appFiles().filter((file) => !file.includes('.lazy.')),
+      ['static'],
+    )
+    for (const [file, specifiers] of Object.entries(imports)) {
+      expect(specifiers.length, file).toBeGreaterThan(0)
+      for (const specifier of specifiers) {
+        expect(path.isAbsolute(specifier), specifier).toBe(true)
+      }
     }
     expect(await routesOf(generatedRouteTree)).toEqual(appRoutes())
   })
+
+  // Bug: with importRoutesUsingAbsolutePaths, the route tree still imports
+  // lazy route files (and lazy components) by paths relative to itself;
+  // only the eager route file imports are absolute.
+  // Source: src/generator.ts (the `.lazy(() => import('./…'))` and
+  // `lazyRouteComponent(() => import('./…'))` templates ignore the option;
+  // src/utils.ts `getImportForRouteNode` honours it for static imports).
+  // Impact: the option holds for eager routes only; whatever needs the
+  // tree's route imports to be absolute (a tree evaluated from another
+  // location than the one it was generated for) still gets relative imports
+  // for every lazy route.
+  test.fails(
+    'importRoutesUsingAbsolutePaths imports the lazy route files by absolute paths too',
+    async () => {
+      const root = await createApp(app())
+      const { generatedRouteTree } = await generate(root, {
+        importRoutesUsingAbsolutePaths: true,
+      })
+
+      // (static imports of the route files and dynamic ones of the lazy file)
+      const imports = await routeFileImports(
+        root,
+        generatedRouteTree,
+        appFiles(),
+      )
+      for (const [file, specifiers] of Object.entries(imports)) {
+        expect(specifiers.length, file).toBeGreaterThan(0)
+        for (const specifier of specifiers) {
+          expect(path.isAbsolute(specifier), specifier).toBe(true)
+        }
+      }
+      expect(await routesOf(generatedRouteTree)).toEqual(appRoutes())
+    },
+  )
 
   test.each([
     {
@@ -596,10 +676,10 @@ export const Route = createLazyFileRoute('/posts')({})
         routeTreeFileFooter,
       })
 
-      const code = await readFile(generatedRouteTree, 'utf8')
-      expect(code.slice(code.indexOf('export const routeTree'))).toMatch(
-        /\n\/\/ footer\n+export const footer = 1\n$/,
-      )
+      const lines = (await readFile(generatedRouteTree, 'utf8'))
+        .split('\n')
+        .filter((line) => line.trim() !== '')
+      expect(lines.slice(-2)).toEqual(['// footer', 'export const footer = 1'])
       expect(await routesOf(generatedRouteTree)).toEqual(appRoutes())
     },
   )
@@ -630,6 +710,31 @@ export const Route = createFileRoute('/')({})
     expect(await read(root, 'src/routes/-disabled.tsx')).toBe(notARoute)
     expect(await read(root, 'src/routes/-components/card.tsx')).toBe(notARoute)
     expect(await read(root, 'src/routes/-empty.tsx')).toBe('')
+  })
+
+  // An empty routeFileIgnorePrefix ignores nothing by prefix: a "-" file is
+  // a route like any other. Source: V4 round 2 escape astra-r2/03 (the
+  // default "-" restored for an empty prefix).
+  test('with an empty routeFileIgnorePrefix, a "-" route file is a route', async () => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/-health.tsx': `import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/old')({})
+`,
+    })
+    const { generatedRouteTree } = await generate(root, {
+      routeFileIgnorePrefix: '',
+    })
+
+    expect(await routesOf(generatedRouteTree)).toEqual({
+      __root__: 'routes/__root.tsx',
+      '/-health': 'routes/-health.tsx',
+    })
+    expect(await urlsOf(generatedRouteTree)).toEqual({
+      __root__: '/',
+      '/-health': '/-health',
+    })
   })
 })
 
@@ -749,6 +854,34 @@ export const Route = createFileRoute('/posts/')({})
       '/posts/': 'routes/posts/index.tsx',
     })
   })
+
+  // A token RegExp keeps its flags' meaning: `\p{L}` needs the `u` flag.
+  // Source: V4 round 2 escape astra-r2/01 (the `u` flag dropped).
+  test('a Unicode-mode routeToken regex makes a file with a non-ASCII name the layout route of its directory', async () => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/posts/écran-layout.tsx': `import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/posts')({})
+`,
+      'src/routes/posts/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/posts/')({})
+`,
+    })
+    const { generatedRouteTree } = await generate(root, {
+      routeToken: /\p{L}+-layout/u,
+    })
+
+    expect(await urlsOf(generatedRouteTree)).toEqual({
+      __root__: '/',
+      '/posts': '/posts',
+      '/posts/': '/posts/',
+    })
+    expect((await routesOf(generatedRouteTree))['/posts']).toBe(
+      'routes/posts/écran-layout.tsx',
+    )
+  })
 })
 
 describe('route tree path', () => {
@@ -802,16 +935,23 @@ export const Route = createFileRoute('/')({})
     })
   })
 
-  // `disableLogging` silences the route generation logging (SPEC J1.12);
-  // actionable warnings stay allowed (G5).
+  // `disableLogging` silences the route generation logging (SPEC J1.12) on
+  // every console channel, whatever its severity; actionable diagnostics
+  // about the input stay allowed (G5): here, only ones naming the route
+  // file without a Route export.
   test('with disableLogging, a run that scaffolds and skips route files logs no route generation messages', async () => {
     const root = await createApp(app())
     const { result: config, diagnostics } = await captureConsole(() =>
       generate(root, { disableLogging: true }),
     )
 
+    const actionable = findDiagnostics(diagnostics, {
+      file: path.join(root, 'src/routes/helpers.tsx'),
+      root,
+    })
     expect(
-      diagnostics.filter((diagnostic) => diagnostic.severity === 'info'),
+      diagnostics.filter((diagnostic) => !actionable.includes(diagnostic)),
+      'the messages not about the route file without a Route export',
     ).toEqual([])
     expect(await routesOf(config.generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',

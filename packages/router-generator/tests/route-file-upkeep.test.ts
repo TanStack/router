@@ -13,7 +13,6 @@
  * semicolons, line) is free.
  */
 import path from 'node:path'
-import { parseSync } from 'vite'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import {
   diagnosticsOf,
@@ -22,7 +21,7 @@ import {
 import { createApp, generate, read, rootRoute } from './app'
 import { expectOnlyOwnedEdits } from './owned-edits'
 import { routeCallOf } from './route-id'
-import { evaluateModule, routesOf } from './route-tree'
+import { evaluateModule, routesOf, withRouteTree } from './route-tree'
 import type { Config } from '../src'
 
 afterEach(() => {
@@ -33,8 +32,9 @@ const routerPackage = '@tanstack/react-router'
 const router = `'${routerPackage}'`
 
 /**
- * Runs the generator on an app with a root route and `src/routes/<file>`
- * holding `source`. Returns the file as the generator left it, the route
+ * Runs the generator on an app with a root route, `src/routes/<file>`
+ * holding `source` and `otherFiles` (paths relative to the app root).
+ * Returns the file as the generator left it, the route
  * tree's routes (route id to file) and the warnings; or the error of a run
  * that fails.
  */
@@ -42,6 +42,7 @@ async function upkeep(
   file: string,
   source: string,
   config: Partial<Config> = {},
+  otherFiles: Record<string, string> = {},
 ) {
   const warnings: Array<string> = []
   vi.spyOn(console, 'warn').mockImplementation((...args) => {
@@ -52,6 +53,7 @@ async function upkeep(
   const root = await createApp({
     'src/routes/__root.tsx': rootRoute(),
     [`src/routes/${file}`]: source,
+    ...otherFiles,
   })
   let error: Error | undefined
   let routes: Record<string, string | null> | undefined
@@ -74,23 +76,13 @@ async function upkeep(
   }
 }
 
-/** The local names of the values a module imports from the router package. */
-function routerValueImports(code: string) {
-  const { module } = parseSync('route.tsx', code)
-  return module.staticImports
-    .filter((statement) => statement.moduleRequest.value === routerPackage)
-    .flatMap((statement) =>
-      statement.entries
-        .filter((entry) => !entry.isType)
-        .map((entry) => entry.localName.value),
-    )
-}
-
 /**
  * Asserts the upkeep of a route file written from `source`: it evaluates
- * with the real router, its Route is created with `createdWith` and `id`,
- * which it binds once from the router package, and it changed only where
- * the generator may edit it (owned-edits.ts).
+ * with the real router (a binding declared twice does not), its Route is
+ * a route of the router package's kind for `createdWith`, created with
+ * `createdWith` (bound to the router package export under any local name or
+ * through a namespace import) and `id`, and it changed only where the
+ * generator may edit it (owned-edits.ts).
  */
 async function expectRouteFile(
   written: string,
@@ -106,14 +98,19 @@ async function expectRouteFile(
     fileName?: string
   },
 ) {
-  await evaluateModule(written, fileName)
+  const { exports, router: routerExports } = await evaluateModule(
+    written,
+    fileName,
+  )
+  expect(exports.Route).toBeInstanceOf(
+    createdWith === 'createLazyFileRoute'
+      ? routerExports!.LazyRoute
+      : routerExports!.Route,
+  )
   expect(routeCallOf(written, fileName)).toEqual({
     constructor: createdWith,
     id,
   })
-  expect(
-    routerValueImports(written).filter((name) => name === createdWith),
-  ).toHaveLength(1)
   expectOnlyOwnedEdits(source, written, fileName)
 }
 
@@ -131,10 +128,7 @@ describe('route ids the generator fixes', () => {
       name: 'a double-quoted id',
       call: `createFileRoute("/old")({ component: Page })`,
     },
-    {
-      name: 'a template literal id',
-      call: 'createFileRoute(`/old`)({ component: Page })',
-    },
+    // (a template literal id: replaced or reported, below)
   ])('a route file with $name gets its id fixed', async ({ call }) => {
     const source = `import { createFileRoute } from ${router}
 
@@ -385,6 +379,13 @@ export const Route = createFileRoute('/old')({})
       uses: 'cfr',
     },
     {
+      // (both aliases of the same export stay bound; V4 round 2 escape
+      // astra-r2/02 dropped one)
+      name: 'two aliases of another router export',
+      imports: `import { Link as Primary, Link as Secondary } from ${router}`,
+      uses: 'Primary, Secondary',
+    },
+    {
       // The constructor cannot join a namespace import
       // (`import * as Router, { ... }` does not parse).
       name: 'a namespace import',
@@ -496,31 +497,172 @@ export const Route = createFileRoute('/old')({})`,
   })
 })
 
+// Recognition is by binding, not spelling (SPEC G15): a `createFileRoute`
+// the file declares itself or imports from another module is the user's,
+// with its own semantics; one shadowing the router's in an inner scope is
+// left alone while the file's Route is kept up. (The missing-import repair
+// of a Route whose constructor is not bound at all: "missing route
+// constructor imports" above.)
+describe('look-alike route constructors', () => {
+  /**
+   * An app's own `createFileRoute`: the router's, giving every route a
+   * pending component.
+   */
+  const factory = `import { createFileRoute as routerFileRoute } from ${router}
+
+export const createFileRoute = (id: any) => (options: any) =>
+  routerFileRoute(id)({ pendingComponent: () => 'loading', ...options })
+`
+
+  // Bug: the generator recognises route constructors by name: a route file
+  // whose `createFileRoute` is the app's own (declared in the file or
+  // imported from another module of the app) gets the router package's
+  // instead (an import from './-factory' is rebound to the router package;
+  // a declared one gets a router import next to it), and the id argument of
+  // the app's call is rewritten.
+  // Source: src/transform/transform.ts `isRouteConstructor` (the route call
+  // is recognised by the callee's name, without its binding's provenance;
+  // the factory import is then repaired as if it were missing).
+  // Impact: an app wrapping the route constructor under the same name (to
+  // give its routes defaults) silently loses the wrapper in that route file
+  // (here: no pending component), or the file stops compiling (a binding
+  // declared twice).
+  test.fails.each([
+    {
+      name: 'declared in the file',
+      source: `${factory.replace('export const', 'const')}
+export const Route = createFileRoute('/old')({})
+`,
+    },
+    {
+      name: 'imported from another module of the app',
+      source: `import { createFileRoute } from './-factory'
+
+export const Route = createFileRoute('/old')({})
+`,
+    },
+  ])(
+    'a createFileRoute $name keeps its meaning: the file is left as it is, or reported',
+    async ({ source }) => {
+      const { root, file, written, routes, warnings, error } = await upkeep(
+        'new.tsx',
+        source,
+        {},
+        { 'src/routes/-factory.ts': factory },
+      )
+
+      expect(written).toBe(source)
+      if (routes?.['/new'] === 'routes/new.tsx') {
+        // (the route is the app's constructor's: with its pending component)
+        await withRouteTree(
+          path.join(root, 'src/routeTree.gen.ts'),
+          ({ router: liveRouter }) => {
+            expect(
+              liveRouter.routesById['/new']!.options.pendingComponent,
+            ).toBeTypeOf('function')
+          },
+        )
+        return
+      }
+      expectDiagnostic(
+        [...diagnosticsOf(error), ...diagnosticsOf(warnings, 'warning')],
+        { file, root },
+      )
+    },
+  )
+
+  test('a createFileRoute shadowing the router one in an inner scope is left alone while the Route is kept up', async () => {
+    const source = `import { createFileRoute } from ${router}
+
+function localRoute() {
+  const createFileRoute = (id: string) => (options: object) => ({ id, options })
+  return createFileRoute('/other')({})
+}
+export const local = localRoute()
+export const Route = createFileRoute('/old')({})
+`
+    const { written } = await upkeep('new.tsx', source)
+
+    // (the inner call keeps its bytes: expectOnlyOwnedEdits)
+    await expectRouteFile(written, { id: '/new', source })
+    const { exports } = await evaluateModule(written)
+    expect(exports.local.id).toBe('/other')
+  })
+})
+
 describe('route files the generator does not rewrite', () => {
+  // The route comes from an app module (excluded from routing by its `-`
+  // prefix) the generator does not keep up: the route file is left as it
+  // is and its route is registered, or the file is reported by name.
   test.each([
     {
       name: 'a Route from another module',
       source: `import { postsRoute } from './-posts-route'
 export const Route = postsRoute
 `,
+      helper: [
+        'src/routes/-posts-route.tsx',
+        `import { createFileRoute } from ${router}
+
+export const postsRoute = createFileRoute('/new')({
+  component: () => 'new page',
+})
+`,
+      ] as const,
     },
     {
       name: 'a Route made by a route factory of the app',
       source: `import { makeRoute } from './-make-route'
-export const Route = makeRoute()({})
+export const Route = makeRoute()({ component: () => 'new page' })
 `,
-    },
-  ])('$name is left as it is', async ({ source }) => {
-    const { written } = await upkeep('new.tsx', source)
+      helper: [
+        'src/routes/-make-route.tsx',
+        `import { createFileRoute } from ${router}
 
-    expect(written).toBe(source)
-  })
+export const makeRoute = () => createFileRoute('/new')
+`,
+      ] as const,
+    },
+  ])(
+    '$name is left as it is and registered, or reported by name',
+    async ({ source, helper: [helperFile, helperSource] }) => {
+      const { root, file, written, routes, warnings, error } = await upkeep(
+        'new.tsx',
+        source,
+        {},
+        { [helperFile]: helperSource },
+      )
+
+      expect(written).toBe(source)
+      expect(await read(root, helperFile)).toBe(helperSource)
+      if (routes?.['/new'] === 'routes/new.tsx') {
+        await withRouteTree(
+          path.join(root, 'src/routeTree.gen.ts'),
+          async ({ renderAt }) => {
+            expect(await renderAt('/new')).toContain('new page')
+          },
+        )
+        return
+      }
+      expectDiagnostic(
+        [...diagnosticsOf(error), ...diagnosticsOf(warnings, 'warning')],
+        { file, root },
+      )
+    },
+  )
 
   // A route id that is not a string literal: replacing it with the right
   // literal (everything else as owned-edits.ts allows) and an actionable
   // diagnostic naming the file (a failed run or a warning; the file then
   // stays as it is) are both correct (SPEC J1.1).
   test.each([
+    {
+      name: 'a template literal id',
+      source: `import { createFileRoute } from ${router}
+const Page = () => null
+export const Route = createFileRoute(\`/old\`)({ component: Page })
+`,
+    },
     {
       name: 'an id read from a variable',
       source: `import { createFileRoute } from ${router}
@@ -559,37 +701,61 @@ export const Route = createFileRoute(\`/\${x}\`)({})
     },
   )
 
-  // A malformed route call: the user is told which file, by a failed run or
-  // by a warning (the file then stays as it is).
+  // A malformed route call (a never-fail-silently control, not a supported
+  // input: the router's types reject options passed to the constructor
+  // directly, TS2345). Either the user is told which file, by a failed run
+  // or by a warning (the file then stays as it is), or the call is repaired
+  // into the curried call with the route's id, keeping its options.
   test.each([
     {
       name: 'options passed to createFileRoute directly',
+      constructor: 'createFileRoute',
       source: `import { createFileRoute } from ${router}
 export const Route = createFileRoute({ component: () => null })
 `,
     },
     {
       name: 'options passed to createLazyFileRoute directly',
+      constructor: 'createLazyFileRoute',
       fileName: 'new.lazy.tsx',
       source: `import { createLazyFileRoute } from ${router}
 export const Route = createLazyFileRoute({ component: () => null })
 `,
     },
-  ])(
-    'a route file with $name is reported by name',
-    async ({ source, fileName = 'new.tsx' }) => {
-      const { root, file, written, warnings, error } = await upkeep(
+  ] as const)(
+    'a route file with $name is reported by name or repaired',
+    async ({ source, constructor, fileName = 'new.tsx' }) => {
+      const { root, file, written, routes, warnings, error } = await upkeep(
         fileName,
         source,
       )
 
+      if (!error && written !== source) {
+        // (repaired: the same file with the curried call, as far as the
+        // generator's edits go)
+        await expectRouteFile(written, {
+          id: '/new',
+          createdWith: constructor,
+          source: source.replace(
+            `${constructor}({`,
+            `${constructor}('/new')({`,
+          ),
+          fileName,
+        })
+        const { exports } = await evaluateModule(written, fileName)
+        expect(exports.Route.options.component()).toBeNull()
+        expect(routes).toEqual({
+          __root__: 'routes/__root.tsx',
+          // (a lazy-only route is created by the tree)
+          '/new':
+            constructor === 'createLazyFileRoute' ? null : 'routes/new.tsx',
+        })
+        return
+      }
       expectDiagnostic(
         [...diagnosticsOf(error), ...diagnosticsOf(warnings, 'warning')],
         { file, root },
       )
-      if (!error) {
-        expect(written).toBe(source)
-      }
     },
   )
 })
