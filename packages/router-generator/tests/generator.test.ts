@@ -110,6 +110,17 @@ async function postprocess(
       })
       break
     }
+    case 'route-groups': {
+      // (the `(bar)` group's pathless layout wraps its children's pages)
+      await withRouteTree(config.generatedRouteTree, async ({ renderAt }) => {
+        for (const page of ['about', 'xyz']) {
+          const html = await renderAt(`/asdf/${page}`)
+          expect(html).toContain('Hello /(foo)/asdf/(bar)/_layout!')
+          expect(html).toContain(`Hello /(foo)/asdf/(bar)/_layout/${page}!`)
+        }
+      })
+      break
+    }
     case 'append-and-prepend': {
       // (routeTreeFileHeader / routeTreeFileFooter, api/file-based-routing.md)
       const lines = (await fs.readFile(config.generatedRouteTree, 'utf8'))
