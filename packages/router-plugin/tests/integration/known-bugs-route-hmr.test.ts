@@ -184,7 +184,7 @@ function Page() {
   // does not show (V1R hmr H08; `expectEditShownOrReportedFallback`).
   // Silent wrong output fails.
   test.fails.for(['vite', 'rsbuild'] as const)(
-    '%s: an edit of a route a helper function creates shows its new component, or the file is reported (autoCodeSplitting: false)',
+    '%s: an edit of a route a helper function creates shows its new component, reloading only when the file is reported (autoCodeSplitting: false)',
     async (
       bundler: 'vite' | 'rsbuild',
       { onTestFinished }: TestContext,
