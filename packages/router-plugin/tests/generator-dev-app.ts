@@ -123,6 +123,8 @@ export interface GeneratorDevApp {
   scripts: () => Promise<Array<{ url: string; code: string }>>
   /** Errors of the dev server (Vite's logged errors, Rsbuild's compile errors). */
   errors: () => Array<string>
+  /** Closes the dev server (and the page), like stopping `vite`/`rsbuild dev`. */
+  close: () => Promise<void>
   /**
    * What the app's plugins logged with `console.error` and `console.warn`
    * (e.g. the generator reporting a route file it cannot handle), joined.
@@ -248,6 +250,10 @@ export async function generatorDevApp(
     },
     scripts: () => Promise.all(scripts),
     errors: app.errors,
+    close: async () => {
+      await page.close()
+      await app.close()
+    },
     logs,
   }
 }
@@ -260,6 +266,7 @@ interface AppServer {
   rename: (from: string, to: string) => Promise<void>
   settle: (options?: { timeout?: number }) => Promise<void>
   errors: () => Array<string>
+  close: () => Promise<void>
 }
 
 async function viteApp(
@@ -310,6 +317,7 @@ async function viteApp(
       server.logs
         .filter((log) => log.startsWith('error:'))
         .map((log) => log.slice('error: '.length)),
+    close: server.close,
   }
 }
 
@@ -373,6 +381,7 @@ async function rsbuildApp(
           logged.slice(logsBefore).some((log) => log.includes(relative)),
       }),
     errors: () => [...server.errors],
+    close: server.close,
   }
 }
 

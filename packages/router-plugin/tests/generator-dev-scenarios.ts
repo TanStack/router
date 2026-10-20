@@ -12,6 +12,10 @@
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import {
+  diagnosticsOf,
+  expectDiagnostic,
+} from '@tanstack/compiler-test-utils/diagnostics'
+import {
   createFileRouteCall,
   expectLoadedOnNavigation,
   expectRouteFile,
@@ -31,6 +35,41 @@ const live = (id: string, fullPath = id): LiveRoute => ({
   fullPath,
   parent: '__root__',
 })
+
+/** Where the app's reports are now, to read later ones (`reportsSince`). */
+function reportMark(app: GeneratorDevApp) {
+  return { logs: app.logs().length, errors: app.errors().length }
+}
+
+/**
+ * What the app reported since `mark` (`reportMark`): what its plugins
+ * logged and the dev server's errors, as diagnostics.
+ */
+function reportsSince(
+  app: GeneratorDevApp,
+  mark: ReturnType<typeof reportMark>,
+) {
+  return [
+    ...diagnosticsOf(app.logs().slice(mark.logs), 'warning'),
+    ...diagnosticsOf(app.errors().slice(mark.errors), 'error'),
+  ]
+}
+
+/**
+ * Asserts that `file` (relative to the app root) was reported since `mark`,
+ * on any channel: logged by the generator or a dev server error (SPEC
+ * §5.7: the wording and channel are free, the file is named).
+ */
+function expectReported(
+  app: GeneratorDevApp,
+  file: string,
+  mark: ReturnType<typeof reportMark>,
+) {
+  expectDiagnostic(reportsSince(app, mark), {
+    file: path.join(app.root, file),
+    root: app.root,
+  })
+}
 
 const index = { 'routes/index.tsx': route('/', 'MARK_INDEX') }
 const atIndex = { pathname: '/', shows: 'MARK_INDEX' }
@@ -352,9 +391,13 @@ export function describeCreatedRoutes(
             'routes/posts.tsx': route('/posts', 'MARK_POSTS'),
           },
         })
+        const broken = reportMark(app)
         await app.edit({ 'routes/posts.tsx': 'export const Route = (' })
-        expect(app.logs()).toContain('posts.tsx')
+        expectReported(app, 'routes/posts.tsx', broken)
 
+        // (the report of the broken file may stay among the dev server's
+        // errors; nothing after the fix is reported)
+        const fixed = reportMark(app)
         await app.edit({ 'routes/posts.tsx': route('/posts', 'MARK_FIXED') })
         await expectLoadedOnNavigation(app, atIndex, '/posts', 'MARK_FIXED')
         expect(await app.routes()).toEqual([
@@ -362,6 +405,7 @@ export function describeCreatedRoutes(
           live('/'),
           live('/posts'),
         ])
+        expect(app.errors().slice(fixed.errors)).toEqual([])
       },
       timeout,
     )
@@ -399,11 +443,15 @@ export async function expectCreatedBrokenRouteFileFixed(
   settleTimeout?: number,
 ) {
   const app = await generatorDevApp({ bundler, files: index })
+  const broken = reportMark(app)
   await app.edit({ 'routes/posts.tsx': initial })
-  expect(app.logs()).toContain('posts.tsx')
+  expectReported(app, 'routes/posts.tsx', broken)
   await app.visit('/', 'MARK_INDEX')
   expect(await app.routes()).toEqual([rootLive, live('/')])
 
+  // (the report of the broken file may stay among the dev server's errors;
+  // nothing after the fix is reported)
+  const fixed = reportMark(app)
   await app.write({ 'routes/posts.tsx': route('/wrong', 'MARK_POSTS') })
   await app.settle({ timeout: settleTimeout })
   await expectRouteFile(
@@ -414,7 +462,7 @@ export async function expectCreatedBrokenRouteFileFixed(
   )
   await expectLoadedOnNavigation(app, atIndex, '/posts', 'MARK_POSTS')
   expect(await app.routes()).toEqual([rootLive, live('/'), live('/posts')])
-  expect(app.errors()).toEqual([])
+  expect(app.errors().slice(fixed.errors)).toEqual([])
 }
 
 /**
@@ -475,4 +523,195 @@ export const routes = rootRoute('__root.tsx', [
   await app.visit('/', 'MARK_INDEX')
   expect(await app.routes()).toEqual([rootLive, live('/'), live('/feature/a')])
   expect(app.errors()).toEqual([])
+}
+
+/**
+ * Edits of the virtual route config the generator reads (SPEC J1.10: the
+ * file `virtualRouteConfig` names, and `__virtual.ts` files, are delivered
+ * edits like route files), and the end of the generator's watching with the
+ * dev server that owns it.
+ */
+export function describeGeneratorWatching(
+  bundler: Bundler,
+  options: {
+    /**
+     * Pins the cases of edits of the virtual route config files (the
+     * caller's file says why), instead of asserting them.
+     */
+    pinVirtualConfigEdits?: boolean
+  } = {},
+) {
+  describe(`route generator watching in ${bundler} dev`, () => {
+    if (!options.pinVirtualConfigEdits) {
+      test(
+        'an edit of the virtual route config file changes the live routes',
+        async () => {
+          await expectVirtualRouteConfigEdit(bundler)
+        },
+        timeout,
+      )
+
+      test(
+        'an edit of a __virtual.ts file changes the live routes',
+        async () => {
+          await expectVirtualSubtreeEdit(bundler)
+        },
+        timeout,
+      )
+    }
+
+    test(
+      'closing the dev server stops the generator: its file watchers close with it',
+      async () => {
+        await expectGeneratorStopsWithServer(bundler)
+      },
+      timeout,
+    )
+  })
+}
+
+/**
+ * Waits until the live router in the page has a route with `fullPath`;
+ * `timeout` only guards against an edit the generator never reacts to.
+ */
+async function waitForLiveRoute(
+  app: GeneratorDevApp,
+  fullPath: string,
+  timeout = 20_000,
+) {
+  await app.page.page.waitForFunction(
+    (wanted) =>
+      Object.values((window as any).__TSR_ROUTER__?.routesById ?? {}).some(
+        (liveRoute: any) => liveRoute.fullPath === wanted,
+      ),
+    fullPath,
+    { timeout },
+  )
+}
+
+/** A virtual route config module with a root route of `children`. */
+const virtualRouteConfig = (children: string) =>
+  `import { index, rootRoute, route } from '@tanstack/virtual-file-routes'
+export const routes = rootRoute('__root.tsx', [${children}])
+`
+
+/**
+ * An app whose routes come from a virtual route config file (`routes.ts`,
+ * path form): adding a route to the config while the dev server runs adds
+ * it to the live routes, and the app serves its page. `waitTimeout` guards
+ * the wait for the new route (see the Rsbuild pin).
+ */
+export async function expectVirtualRouteConfigEdit(
+  bundler: Bundler,
+  waitTimeout?: number,
+) {
+  const app = await generatorDevApp({
+    bundler,
+    links: ['@tanstack/virtual-file-routes'],
+    // A path relative to the root the plugin resolves it from (the Rspack
+    // plugin's: the working directory)
+    pluginOptions: (root) => ({
+      virtualRouteConfig:
+        bundler === 'vite'
+          ? './routes.ts'
+          : path.relative(process.cwd(), path.join(root, 'routes.ts')),
+    }),
+    files: {
+      'routes.ts': virtualRouteConfig(`index('index.tsx')`),
+      ...index,
+      'routes/contact.tsx': route('/contact', 'MARK_CONTACT'),
+    },
+  })
+  expect(await app.routes()).toEqual([rootLive, live('/')])
+
+  await app.write({
+    'routes.ts': virtualRouteConfig(
+      `index('index.tsx'), route('/contact', 'contact.tsx')`,
+    ),
+  })
+  await waitForLiveRoute(app, '/contact', waitTimeout)
+  await app.visit('/contact', 'MARK_CONTACT')
+  expect(await app.routes()).toEqual([rootLive, live('/'), live('/contact')])
+}
+
+/** A `__virtual.ts` subtree config of `children`. */
+const virtualSubtree = (children: string) =>
+  `import { defineVirtualSubtreeConfig, index, route } from '@tanstack/virtual-file-routes'
+export default defineVirtualSubtreeConfig([${children}])
+`
+
+/**
+ * An app whose `routes/posts/` directory is configured by a `__virtual.ts`
+ * file (routing/virtual-file-routes.md): adding a route to it while the dev
+ * server runs adds the route to the live routes, and the app serves its
+ * page. `waitTimeout` guards the wait for the new route (see the Rsbuild
+ * pin).
+ */
+export async function expectVirtualSubtreeEdit(
+  bundler: Bundler,
+  waitTimeout?: number,
+) {
+  const app = await generatorDevApp({
+    bundler,
+    links: ['@tanstack/virtual-file-routes'],
+    files: {
+      ...index,
+      'routes/posts/__virtual.ts': virtualSubtree(`index('home.tsx')`),
+      'routes/posts/home.tsx': route('/posts/', 'MARK_HOME'),
+      'routes/posts/details.tsx': route('/posts/$id', 'MARK_DETAILS'),
+    },
+  })
+  await app.visit('/posts/', 'MARK_HOME')
+  expect(
+    (await app.routes()).map((liveRoute) => liveRoute.fullPath),
+  ).not.toContain('/posts/$id')
+
+  await app.write({
+    'routes/posts/__virtual.ts': virtualSubtree(
+      `index('home.tsx'), route('$id', 'details.tsx')`,
+    ),
+  })
+  await waitForLiveRoute(app, '/posts/$id', waitTimeout)
+  await app.visit('/posts/1', 'MARK_DETAILS')
+}
+
+/** Node's handles of file watchers (`fs.watch`, `fs.watchFile`). */
+const fileWatchers = () =>
+  process
+    .getActiveResourcesInfo()
+    .filter(
+      (resource) => resource === 'FSEventWrap' || resource === 'StatWatcher',
+    ).length
+
+/**
+ * Closing the dev server stops the generator's watching (SPEC J1.10): every
+ * file watcher the running dev server holds, the generator's own included,
+ * is closed with it. (The harness removes the app when it closes the dev
+ * server, so an edit after the close cannot be observed here; with no file
+ * watcher left, none could reach the generator. Waits are on Node's file
+ * watcher handles, never on time.)
+ */
+export async function expectGeneratorStopsWithServer(bundler: Bundler) {
+  const watchersBefore = fileWatchers()
+  const app = await generatorDevApp({ bundler, files: index })
+  // (a route file the running generator sees: its watching is live)
+  await app.edit({ 'routes/posts.tsx': '' })
+  expect(createFileRouteCall(await app.read('routes/posts.tsx')).path).toBe(
+    '/posts',
+  )
+  expect(
+    fileWatchers(),
+    'file watchers of the running dev server',
+  ).toBeGreaterThan(watchersBefore)
+  await app.close()
+
+  const deadline = Date.now() + 10_000
+  while (fileWatchers() > watchersBefore) {
+    if (Date.now() > deadline) {
+      throw new Error(
+        `the closed dev server still holds ${fileWatchers() - watchersBefore} file watcher(s)`,
+      )
+    }
+    await new Promise((resolve) => setImmediate(resolve))
+  }
 }
