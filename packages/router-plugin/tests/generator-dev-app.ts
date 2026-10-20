@@ -22,11 +22,13 @@ import { parseSync } from 'vite'
 import { expect, onTestFinished } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
+import { diagnosticsOf } from '@tanstack/compiler-test-utils/diagnostics'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
 import { tanstackRouter as tanstackRouterRspack } from '../src/rspack'
 import { tanstackRouter } from '../src/vite'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
+import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import type { RsbuildPlugin } from '@rsbuild/core'
 import type { Config } from '../src/core/config'
 
@@ -128,6 +130,23 @@ export interface GeneratorDevApp {
    * (e.g. the generator reporting a route file it cannot handle), joined.
    */
   logs: () => string
+  /** A point in the app's diagnostics, to read those after it. */
+  mark: () => DiagnosticsMark
+  /**
+   * What the app reported through every real channel (since `since`, by
+   * default since it started), as diagnostics (`@tanstack/compiler-test-
+   * utils/diagnostics`): what its plugins logged with `console.error` and
+   * `console.warn` (e.g. the generator), and the dev server's own errors
+   * and warnings (Vite's logger, Rsbuild's compile errors and warnings). A
+   * report may come through any of them (SPEC G5, §5.7; V1R gen G13).
+   */
+  diagnostics: (since?: DiagnosticsMark) => Array<Diagnostic>
+}
+
+/** How many diagnostics each channel had at a point (`mark()`). */
+export interface DiagnosticsMark {
+  console: number
+  server: number
 }
 
 export interface GeneratorDevAppOptions {
@@ -156,12 +175,15 @@ export async function generatorDevApp(
 ): Promise<GeneratorDevApp> {
   const { bundler } = options
   const logged: Array<string> = []
+  const consoleDiagnostics: Array<Diagnostic> = []
   const { error, warn } = console
   console.error = (...args: Array<unknown>) => {
     logged.push(args.map(String).join(' '))
+    consoleDiagnostics.push(...diagnosticsOf(args, 'error'))
   }
   console.warn = (...args: Array<unknown>) => {
     logged.push(args.map(String).join(' '))
+    consoleDiagnostics.push(...diagnosticsOf(args, 'warning'))
   }
   onTestFinished(() => {
     console.error = error
@@ -249,6 +271,14 @@ export async function generatorDevApp(
     scripts: () => Promise.all(scripts),
     errors: app.errors,
     logs,
+    mark: () => ({
+      console: consoleDiagnostics.length,
+      server: app.diagnostics().length,
+    }),
+    diagnostics: (since = { console: 0, server: 0 }) => [
+      ...consoleDiagnostics.slice(since.console),
+      ...app.diagnostics().slice(since.server),
+    ],
   }
 }
 
@@ -260,6 +290,8 @@ interface AppServer {
   rename: (from: string, to: string) => Promise<void>
   settle: (options?: { timeout?: number }) => Promise<void>
   errors: () => Array<string>
+  /** The server's own errors and warnings so far, in order. */
+  diagnostics: () => Array<Diagnostic>
 }
 
 async function viteApp(
@@ -310,6 +342,14 @@ async function viteApp(
       server.logs
         .filter((log) => log.startsWith('error:'))
         .map((log) => log.slice('error: '.length)),
+    diagnostics: () =>
+      server.logs.flatMap((log) =>
+        log.startsWith('error: ')
+          ? diagnosticsOf(log.slice('error: '.length), 'error')
+          : log.startsWith('warn: ')
+            ? diagnosticsOf(log.slice('warn: '.length), 'warning')
+            : [],
+      ),
   }
 }
 
@@ -373,6 +413,7 @@ async function rsbuildApp(
           logged.slice(logsBefore).some((log) => log.includes(relative)),
       }),
     errors: () => [...server.errors],
+    diagnostics: () => server.diagnostics,
   }
 }
 
