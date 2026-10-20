@@ -186,22 +186,41 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
     )
   }, 30_000)
 
+  // Regression (was a pin; fixed on main by #8758): a `z.object()` schema next
+  // to a server fn, with an empty dependency cache, used to never finish
+  // transforming in dev. The client compiler loaded `zod` through the client
+  // environment from inside the transform, and that load waited for the
+  // dependency optimizer, which waited for this transform.
+  test('transforms a client module with a server fn and a top-level member call of a pre-bundled dependency', async () => {
+    expectClientRpc(
+      await transformClientModule(
+        `${head}import { z } from 'zod'
+export const schema = z.object({})
+export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
+      ),
+    )
+  }, 30_000)
+
   // Bug: next to a server fn, a top-level `const x = f()` may be a renamed or
   // re-exported Start factory, so in dev the client compiler loads the module
   // of `f` through the client environment, from inside the transform. For a
   // pre-bundled dependency (here `zod`) with an empty dependency cache, that
   // load waits for the dependency optimizer, which waits for this transform.
-  // Impact: with an empty dependency cache, such a module (a `z.object()`
-  // schema next to a server fn) never finishes transforming when it is
-  // requested as the dev server starts (`server.warmup`, the first request
-  // of a middleware-mode server, or `transformRequest()`), and the page hangs.
+  // (#8758 skips this load for `receiver.method()` calls on a named import,
+  // as in the regression test above, but not for a call of the import itself.)
+  // Source: the pin of the `z.object()` row above, before #8758.
+  // Impact: with an empty dependency cache, such a module (an `object()`
+  // schema from `import { object } from 'zod'` next to a server fn) never
+  // finishes transforming when it is requested as the dev server starts
+  // (`server.warmup`, the first request of a middleware-mode server, or
+  // `transformRequest()`), and the page hangs.
   test.fails(
     'transforms a client module with a server fn and a top-level call of a pre-bundled dependency',
     async () => {
       expectClientRpc(
         await transformClientModule(
-          `${head}import { z } from 'zod'
-export const schema = z.object({})
+          `${head}import { object } from 'zod'
+export const schema = object({})
 export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
         ),
       )
