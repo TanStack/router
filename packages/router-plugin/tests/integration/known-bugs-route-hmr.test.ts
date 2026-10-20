@@ -72,9 +72,12 @@ function Page() {
   // component keys are empty for other targets); in Vite, the route module
   // is not an HMR boundary either (its accept call is on an alias), so the
   // page reloads.
-  // Impact: split Solid/Vue edits replace the router-owned wrapper on both
-  // hosts, and reload the document on Vite. Rsbuild's new text alone does
-  // not prove that the live wrapper kept its identity (H11).
+  // Impact: every edit of a split Solid/Vue route remounts the route
+  // component: the router renders a new component, so the page loses the
+  // component's local state (signals, refs, form input) on both hosts, and
+  // on Vite the whole document reloads, losing all client state. Rsbuild's
+  // new text alone does not prove that the live component kept its identity
+  // (H11).
   // Goal (any fix): with either host and the framework's plugin, the
   // edit shows without a full reload, and the live route keeps the component
   // the page rendered.

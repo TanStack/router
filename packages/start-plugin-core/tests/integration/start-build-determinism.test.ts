@@ -228,9 +228,12 @@ describe.each(startBundlers)('%s build', (bundler) => {
     })
 
     // Bug: collision suffixes follow discovery order across fresh
-    // builds, changing the unchanged function-to-id mapping at the same root.
+    // builds: at the same root, with the server function modules unchanged,
+    // the function-to-id mapping changes.
     // Source: start-SYNTH S03; the public fresh-build reversal workload above.
-    // Impact: rebuilding unchanged app input changes callable identifiers.
+    // Impact: reordering the imports of an entry file, with no server
+    // function changed, swaps which function each id calls: a client of the
+    // previous build (an open tab during a deploy) runs the other function.
     test.fails(
       'fresh builds keep the function-to-id mapping when discovery order reverses',
       () => {
