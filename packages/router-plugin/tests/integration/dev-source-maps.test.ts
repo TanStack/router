@@ -22,7 +22,7 @@ import {
   tokenOffsets,
 } from '@tanstack/compiler-test-utils/source-maps'
 import { routeHead } from '../build-harness'
-import { routerDevServer } from '../dev-server'
+import { isServedAppModule, routerDevServer } from '../dev-server'
 import { importRequests } from '../regression-helpers'
 import type { AnySourceMap } from '@tanstack/compiler-test-utils/source-maps'
 
@@ -89,9 +89,6 @@ function expectMarkersMapToRouteFile(
 }
 
 describe('vite dev server', () => {
-  /** URLs of the app's own modules (not Vite's, not dependencies). */
-  const isAppModule = (url: string) => /^\/routes\//.test(url)
-
   test(
     'the route module and every module derived from it map a throw to its line in the route file',
     async () => {
@@ -105,7 +102,7 @@ describe('vite dev server', () => {
       const queue = ['/routes/index.tsx']
       while (queue.length > 0) {
         const url = queue.shift()!
-        if (served.has(url) || !isAppModule(url)) {
+        if (served.has(url) || !isServedAppModule(url)) {
           continue
         }
         const { status, body } = await server.fetch(url)

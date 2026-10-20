@@ -4,8 +4,14 @@
  * `@tanstack/compiler-test-utils`). The route HMR page (`route-hmr-page.ts`):
  * integration/regression-helpers.test.ts.
  */
+import { mkdir, writeFile } from 'node:fs/promises'
+import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { routerDevServer } from './dev-server'
+import {
+  captureConsole,
+  expectDiagnostic,
+} from '@tanstack/compiler-test-utils/diagnostics'
+import { isServedAppModule, routerDevServer } from './dev-server'
 import {
   compileRouteModules,
   componentModules,
@@ -19,7 +25,8 @@ import {
   renderComponent,
   routeSpecifier,
 } from './regression-helpers'
-import { labelRouteModules } from './plugin-host'
+import { labelRouteModules, projectRoot } from './plugin-host'
+import type { Plugin } from 'vite'
 import type { RouteGraph } from './plugin-host'
 
 describe('compileRouteModules', () => {
@@ -47,6 +54,110 @@ export const Route = createFileRoute('/')({
       expect(importers.length, label).toBeGreaterThan(0)
     }
   })
+})
+
+// The modules of a route are found by what the host's hooks did, whatever
+// their ids (SPEC §5.3, V1R split S03): a module a plugin of the host
+// serves under a virtual id is followed and evaluated like the router
+// plugin's own; a real file of the app the plugins leave as it is is not a
+// module of the route.
+describe('the host follows the modules the plugins emit, whatever their ids', () => {
+  const chunkId = '\0router:chunk:3f9a1c'
+  const supportId = '\0router:support'
+  /** Serves a chunk and a support module under ids of its own scheme. */
+  const virtualModules = (): Plugin => ({
+    name: 'test:virtual-route-modules',
+    enforce: 'pre',
+    resolveId(source) {
+      if (source === 'virtual:test-chunk') {
+        return chunkId
+      }
+      if (source === 'virtual:test-support') {
+        return supportId
+      }
+      return null
+    },
+    load(id) {
+      if (id === chunkId) {
+        return `import { createElement } from 'react'
+import { label } from 'virtual:test-support'
+export const Page = () => createElement('p', null, label)
+`
+      }
+      if (id === supportId) {
+        return `export const label = 'MARK_SUPPORT'\n`
+      }
+      return null
+    },
+  })
+  const route = `import { createFileRoute } from '@tanstack/react-router'
+import { Page } from 'virtual:test-chunk'
+import { helper } from './user-helper'
+export const Route = createFileRoute('/')({
+  loader: () => helper,
+  component: () => <Page />,
+})
+`
+
+  it.each(['serve', 'build'] as const)(
+    'follows and evaluates modules served under another id scheme, and not an untouched file of the app (%s)',
+    async (command) => {
+      await mkdir(path.join(projectRoot(), 'host-graph'), { recursive: true })
+      await writeFile(
+        path.join(projectRoot(), 'host-graph/user-helper.ts'),
+        `export const helper = 'MARK_REAL_HELPER'\n`,
+      )
+      const options = {
+        command,
+        filename: 'host-graph/route.tsx',
+        plugins: { before: [virtualModules()] },
+      }
+      const { graph } = await compileRouteModules(route, options)
+      const ids = [...graph.modules.keys()]
+      expect(ids).toEqual(expect.arrayContaining([chunkId, supportId]))
+      expect(ids.filter((id) => id.includes('user-helper'))).toEqual([])
+
+      const loaded = await loadRoute(route, {
+        ...options,
+        stubs: { './user-helper': { helper: 'MARK_STUBBED_HELPER' } },
+      })
+      expect(await loaded.render('component')).toBe('<p>MARK_SUPPORT</p>')
+      expect(await (await loaded.load('loader'))()).toBe('MARK_STUBBED_HELPER')
+    },
+  )
+})
+
+// A plugin may report through the host's logger (`this.warn`) instead of
+// the console (SPEC §5.7, V1R split S21): the host's warnings reach the
+// console capture the diagnostic assertions read.
+describe('the host reports what plugins log through it', () => {
+  /** Warns about the files named `warned.tsx`, through the host. */
+  const warner = (): Plugin => ({
+    name: 'test:warner',
+    enforce: 'pre',
+    transform(_code, id) {
+      if (id.includes('warned.tsx')) {
+        this.warn('MARK_PLUGIN_WARNING about this route')
+      }
+      return null
+    },
+  })
+
+  it.each(['serve', 'build'] as const)(
+    'a warning a plugin logs through the host is captured with the console (%s)',
+    async (command) => {
+      const { diagnostics } = await captureConsole(() =>
+        compileRouteModules(
+          `${head}export const Route = createFileRoute('/')({ component: () => <p>warned</p> })`,
+          { command, filename: 'warned.tsx', plugins: { before: [warner()] } },
+        ),
+      )
+      expectDiagnostic(diagnostics, {
+        severity: 'warning',
+        names: ['MARK_PLUGIN_WARNING'],
+      })
+    },
+  )
 })
 
 // The labels on a fixed graph, as a compiler could emit it (V1 split F06:
@@ -422,5 +533,50 @@ export const Route = createFileRoute('/')({ component: () => 'page' })`,
     expect(await server.read('routes/__root.tsx')).toContain(
       '@tanstack/solid-router',
     )
+  }, 30_000)
+
+  // The served-module walks (integration/known-bugs-dev-server.test.ts,
+  // integration/dev-source-maps.test.ts) follow every module of the app and
+  // every module a plugin serves, whatever its URL (V1R split S03), and no
+  // dependency.
+  it('isServedAppModule tells the modules of the app and of plugins from dependencies, whatever their URLs', async () => {
+    const supportId = '\0router:support'
+    const server = await routerDevServer({
+      plugins: [
+        {
+          name: 'test:virtual-support',
+          enforce: 'pre',
+          resolveId: (id) =>
+            id === 'virtual:test-support' ? supportId : undefined,
+          load: (id) =>
+            id === supportId ? `export const label = 'support'\n` : undefined,
+        },
+      ],
+      files: {
+        'lib/helper.ts': `export const helper = 'helper'\n`,
+        'routes/index.tsx': `${head}import { label } from 'virtual:test-support'
+import { helper } from '../lib/helper'
+export const Route = createFileRoute('/')({
+  beforeLoad: () => ({ label, helper }),
+  component: () => <p>page</p>,
+})`,
+      },
+    })
+    const imported = importRequests(
+      await server.transform('/routes/index.tsx'),
+      '/routes/index.tsx',
+    ).map(({ specifier }) => specifier)
+    const followed = imported.filter(isServedAppModule)
+    // The support module, the other app module, the route's split chunk
+    expect(followed.length).toBeGreaterThanOrEqual(3)
+    expect(followed.some((url) => url.includes('router:support'))).toBe(true)
+    expect(followed.some((url) => url.includes('/lib/helper'))).toBe(true)
+    // The router package and React are dependencies
+    expect(imported.filter((url) => !isServedAppModule(url)).length).toBe(
+      imported.length - followed.length,
+    )
+    expect(
+      followed.filter((url) => /react|@tanstack|vite\/client/.test(url)),
+    ).toEqual([])
   }, 30_000)
 })
