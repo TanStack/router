@@ -48,6 +48,7 @@ export {
   expectSourceError,
   withoutQuotedSource,
   placementCauses,
+  callShapeCauses,
   missingHandler,
   captureCauses,
   serverOnlyModule,

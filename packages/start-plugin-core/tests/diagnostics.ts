@@ -67,6 +67,31 @@ export const placementCauses: Array<string | RegExp> = [
 ]
 
 /**
+ * Words a diagnostic may explain the rejection of a call shape the compiler
+ * does not support with (SPEC J4.5, G5): a builder method called through a
+ * computed member (`builder['handler'](...)`), a factory result that is
+ * member-called (`createServerOnlyFn(...).bind(null)`), a builder imported
+ * under a string export name. That the form is computed, unsupported or not
+ * recognised, or what it must be instead; any one of them, in the
+ * diagnostic's own words.
+ */
+export const callShapeCauses: Array<string | RegExp> = [
+  'computed',
+  'static',
+  'unsupported',
+  'not supported',
+  'unrecogni',
+  'not recogni',
+  'cannot',
+  "can't",
+  'must',
+  'expect',
+  'only',
+  'not allowed',
+  'invalid',
+]
+
+/**
  * Words a diagnostic may explain that a nested server fn's handler reads a
  * local of its enclosing function with (SPEC J4.6, D13): a capture, a
  * closure, a local, an outer or enclosing scope, a free variable. Any one

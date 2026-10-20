@@ -158,27 +158,16 @@ test.fails.each(literalPlacements)(
   },
 )
 
-/**
- * The positions where a clear rejection is as valid as support: not a
- * function scope a handler could capture locals of (SPEC J4.6 "other
- * positions likewise work or error clearly").
- */
-const otherPositions = placements.filter((placement) => !placement.nested)
-
 // Loosened regression, paired with the pins "with another Start factory
 // imported, a server fn in $name works or is rejected at the call" of
 // known-bugs-start-compiler.test.ts (main's rejection has no position).
 // Next to another Start factory, these placements never ship the handler
 // to the client: each output rejects the code naming createServerFn or
 // keeps the handler in the provider only, and a client server fn reaches
-// it. With createServerFn alone, and for declarators nested below the top
-// level, they are pinned in known-bugs-start-compiler.test.ts.
-test.each([
-  ...otherPositions,
-  ...placements.filter(
-    (placement) => placement.nested && !placement.declarator,
-  ),
-])(
+// it. With createServerFn alone, and for declarators below the top level
+// (in a function, a switch case or a top-level block), they are pinned in
+// known-bugs-start-compiler.test.ts.
+test.each(placements.filter((placement) => !placement.declarator))(
   'next to another Start factory, a server fn in $name does not ship its handler to the client',
   async ({ code, read }) => {
     await expectNoClientHandler(
