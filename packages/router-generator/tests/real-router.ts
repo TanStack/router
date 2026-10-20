@@ -202,7 +202,9 @@ ${routeTypeChecks('./routeTree.gen', expected)}`,
  * A module that type-checks only if the route tree `tree` (an import
  * specifier) types the routes of `expected` (route id to full path and
  * parent id) alike: the same route ids, and for each route the same full
- * path and parent.
+ * path and parent. The routes are read through the router's public type
+ * API on `typeof routeTree` (`RouteIds`, `RouteById`), not through the
+ * names of the types the tree declares (free, SPEC §5.1).
  */
 export function routeTypeChecks(
   tree: string,
@@ -211,16 +213,18 @@ export function routeTypeChecks(
   const ids = Object.keys(expected)
   const checks = ids.map((id, i) => {
     const [fullPath, parent] = expected[id]!
-    const route = `FileRoutesById[${JSON.stringify(id)}]`
+    const route = `RouteById<Tree, ${JSON.stringify(id)}>`
     const actual = `[${JSON.stringify(id)}, ${route}['fullPath'], ${parent === null ? 'null' : `${route}['parentRoute']['id']`}]`
     const wanted = JSON.stringify([id, fullPath, parent])
     // (the assignment names the types of a route that differ)
     return `export type Check${i} = Expect<Equal<${actual}, ${wanted}>>
 export const check${i}: ${wanted} = null as unknown as ${actual}`
   })
-  return `import type { FileRoutesById } from ${JSON.stringify(tree)}
+  return `import type { RouteById, RouteIds } from '@tanstack/router-core'
+import type { routeTree } from ${JSON.stringify(tree)}
 ${typeAssertions}
-export type Ids = Expect<Equal<keyof FileRoutesById, ${ids.map((id) => JSON.stringify(id)).join(' | ')}>>
+type Tree = typeof routeTree
+export type Ids = Expect<Equal<RouteIds<Tree>, ${ids.map((id) => JSON.stringify(id)).join(' | ')}>>
 ${checks.join('\n')}
 `
 }

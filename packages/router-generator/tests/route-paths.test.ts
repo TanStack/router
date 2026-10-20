@@ -796,4 +796,4 @@ describe('token options', () => {
 // generator.test.ts.)
 
 // (The route tree types of these shapes, FileRoutesByTo and
-// FileRoutesByFullPath: integration/route-types.test.ts.)
+// routes by full path: integration/route-types.test.ts.)

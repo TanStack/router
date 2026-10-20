@@ -99,7 +99,9 @@ export type Check = Expect<Equal<FileRoutesByTo['/foo']['id'], '/foo'>>
   }, 30_000)
 })
 
-describe('FileRoutesByFullPath', () => {
+// (Through the router's public lookup by full path on `typeof routeTree`;
+// the tree's own type names are free.)
+describe('routes by full path', () => {
   test('the full path `/` is the index route, not a pathless layout with only a lazy file', async () => {
     const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
@@ -113,9 +115,10 @@ describe('FileRoutesByFullPath', () => {
       await typeErrorsOf(
         root,
         'src/checks.ts',
-        `import type { FileRoutesByFullPath } from './routeTree.gen'
+        `import type { RouteByPath } from '@tanstack/router-core'
+import type { routeTree } from './routeTree.gen'
 ${typeAssertions}
-export type Check = Expect<Equal<FileRoutesByFullPath['/']['id'], '/'>>
+export type Check = Expect<Equal<RouteByPath<typeof routeTree, '/'>['id'], '/'>>
 `,
       ),
     ).toEqual([])
