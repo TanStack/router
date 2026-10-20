@@ -10,7 +10,10 @@ import path from 'node:path'
 import { createRequire } from 'node:module'
 import mdx from '@mdx-js/rollup'
 import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
-import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  captureConsole,
+  isRelevantLocation,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { startDevServer } from '../../dev-server'
 import {
@@ -22,17 +25,22 @@ import {
 } from '../../importProtection/mock-helpers'
 import {
   distinct,
+  expectReportFrame,
+  expectViolationsAt,
   factoryTopLevelCall,
   locationIn,
   receivedViolations,
+  relevantViolations,
   rejection,
   reportedViolations,
   serverFnFactoryApp,
   startProtectedDevServer,
+  violationLabel,
   violationReports,
 } from '../../importProtection/start-apps'
 import { suggestedDirections } from '../../importProtection/violation-report'
 import type { ViolationReport } from '../../importProtection/violation-report'
+import type { ExpectedViolation } from '../../importProtection/start-apps'
 import type { ImportProtectionOptions } from '../../../src/schema'
 import type { ViolationInfo } from '../../../src/import-protection/trace'
 import type { DevEnvironment, Plugin } from 'vite'
@@ -78,18 +86,36 @@ export const read = () => secret()
   'src/entry.ts': `export * from './a'\n`,
 }
 
-/** The location reported for `src/a.ts`'s use of `secret`. */
+/** The location of `src/a.ts`'s use of `secret`. */
 const deniedFileUse = 'src/a.ts:2:27'
+
+/**
+ * The violation of `deniedFileApp`, reported at the use of `secret` or at
+ * the import of the denied file (SPEC J6.5; V1R ip I01).
+ */
+const deniedFileViolation: ExpectedViolation = {
+  environment: 'client',
+  use: deniedFileUse,
+  source: deniedFileApp['src/a.ts'],
+}
+
+/** Where `deniedFileApp`'s violation may be reported (`isRelevantLocation`). */
+const deniedFileImporter = {
+  file: 'src/a.ts',
+  source: deniedFileApp['src/a.ts'],
+  uses: [{ line: 2, column: 27 }],
+  imports: ['./secret.server'],
+}
 
 describe('a client import of a denied file', () => {
   // Source: oracle-gaps M2 (the warning channel of dev violations).
   test(
-    'is mocked, and the dev server logs a warning naming the importer at the use',
+    'is mocked, and the dev server logs a warning naming the importer at the use or the import',
     async () => {
       const server = await startProtectedDevServer(deniedFileApp)
       const client = await server.load('/src/entry.ts')
       expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
-      expect(loggedViolations(server.logs)).toEqual([`client ${deniedFileUse}`])
+      expectViolationsAt(server.logs, [deniedFileViolation])
       // A server-side fix is suggested (SPEC J6.5, J6.12), whatever the words.
       expect(
         distinct(
@@ -145,7 +171,7 @@ describe('a client import of a denied file', () => {
     async () => {
       const { server } = await addDeniedImportByAnEdit()
       const reports = violationReports(server.logs)
-      expect(distinct(reports.map((v) => v.importer))).toEqual([deniedFileUse])
+      expectViolationsAt(server.logs, [deniedFileViolation])
       for (const report of reports) {
         expect(traceModules(report)).toEqual(['src/entry.ts', 'src/a.ts'])
       }
@@ -159,15 +185,13 @@ describe('a client import of a denied file', () => {
     { behavior: 'error' },
     { behavior: { dev: 'error', build: 'mock' } },
   ])(
-    'fails to load with behavior $behavior, naming the importer at the use',
+    'fails to load with behavior $behavior, naming the importer at the use or the import',
     async ({ behavior }) => {
       const server = await startProtectedDevServer(deniedFileApp, {
         behavior,
       })
       const error = await rejection(server.load('/src/entry.ts'))
-      expect(reportedViolations(error.message)).toEqual([
-        { environment: 'client', importer: deniedFileUse },
-      ])
+      expectViolationsAt(error.message, [deniedFileViolation])
     },
     timeout,
   )
@@ -226,7 +250,7 @@ describe('the trace of a client import of a denied file', () => {
       const error = await rejection(server.load('/src/entry.ts'))
       const [report, ...others] = violationReports(error.message)
       expect(others).toEqual([])
-      expect(report!.importer).toBe(deniedFileUse)
+      expectViolationsAt(error.message, [deniedFileViolation])
       expect(traceModules(report!)).toEqual(['src/entry.ts', 'src/a.ts'])
     },
     timeout,
@@ -425,9 +449,11 @@ export const other = 1
     async () => {
       const { first, afterEdit } = await logsAroundAnEdit('always')
       expect(first).not.toEqual([])
-      expect(distinct(afterEdit.map((v) => v.importer))).toEqual([
-        deniedFileUse,
-      ])
+      expect(
+        distinct(afterEdit.map((v) => v.importer)).map((importer) =>
+          isRelevantLocation(importer, deniedFileImporter),
+        ),
+      ).toEqual([true])
     },
     timeout,
   )
@@ -474,9 +500,11 @@ export const other = 1
     async () => {
       const { first, afterReload } = await logsAroundAReload('always')
       expect(first).not.toEqual([])
-      expect(distinct(afterReload.map((v) => v.importer))).toEqual([
-        deniedFileUse,
-      ])
+      expect(
+        distinct(afterReload.map((v) => v.importer)).map((importer) =>
+          isRelevantLocation(importer, deniedFileImporter),
+        ),
+      ).toEqual([true])
     },
     timeout,
   )
@@ -918,7 +946,7 @@ export const read = () => getRequest()
       })
       const client = await server.load('/src/entry.ts')
       expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
-      expect(loggedViolations(server.logs)).toEqual([`client ${deniedFileUse}`])
+      expectViolationsAt(server.logs, [deniedFileViolation])
       expect(
         distinct(
           importers.map((importer) => path.relative(server.root, importer)),
@@ -929,7 +957,7 @@ export const read = () => getRequest()
   )
 
   // Source: mutation run R4 (spc:4763).
-  test.each([
+  test.each<{ name: string; files: Record<string, string>; use: string }>([
     { name: 'a denied file', files: deniedFileApp, use: deniedFileUse },
     {
       name: 'a denied specifier',
@@ -949,8 +977,8 @@ export const read = () => getRequest()
         onViolation: () => true,
       })
       const error = await rejection(server.load('/src/entry.ts'))
-      expect(reportedViolations(error.message)).toEqual([
-        { environment: 'client', importer: use },
+      expectViolationsAt(error.message, [
+        { environment: 'client', use, source: files['src/a.ts']! },
       ])
     },
     timeout,
@@ -1129,10 +1157,34 @@ export const read = () => widget()
     await server.load('/src/b.ts', { environment: 'ssr' })
     const served = await server.load('/src/entry.ts', { environment: 'ssr' })
     expect(modulesContaining(served, 'MARK_B_CODE')).toEqual([])
-    expect(loggedViolations(server.logs)).toContain('server src/a.ts:2:27')
+    expect(
+      relevantViolations(server.logs, [clientOnlyImporter.a]),
+    ).toContain(violationLabel(clientOnlyImporter.a))
   },
   timeout,
 )
+
+/**
+ * The SSR violations of an app whose `src/a.ts` imports the client-only
+ * marked `src/b.ts`: at `a`'s use of `widget` or its import of `./b`, or
+ * at `b`'s marker import (audit F ASK-1; SPEC J6.5).
+ */
+const clientOnlyImporter = {
+  a: {
+    environment: 'server',
+    use: 'src/a.ts:2:27',
+    source: `import { widget } from './b'
+export const read = () => widget()
+`,
+  },
+  marker: {
+    environment: 'server',
+    use: 'src/b.ts:1:8',
+    source: `import '@tanstack/react-start/client-only'
+export const widget = () => 'MARK_B_CODE'
+`,
+  },
+} satisfies Record<string, ExpectedViolation>
 
 // A marker violation may also be reported at the marker (audit F ASK-1);
 // the use in the importer must be logged.
@@ -1140,7 +1192,7 @@ export const read = () => widget()
 // logging test "is logged at the importer's use when the client loads the
 // importer first").
 test(
-  "an SSR load of a client-only-marked module through its importer is logged at the importer's use",
+  "an SSR load of a client-only-marked module through its importer is logged at the importer's use or import",
   async () => {
     const server = await startProtectedDevServer({
       'src/b.ts': `import '@tanstack/react-start/client-only'
@@ -1152,13 +1204,13 @@ export const read = () => widget()
       'src/entry.ts': `export * from './a'\n`,
     })
     await server.load('/src/entry.ts', { environment: 'ssr' })
-    const logged = loggedViolations(server.logs)
-    expect(logged).toContain('server src/a.ts:2:27')
+    const expected = [clientOnlyImporter.a, clientOnlyImporter.marker]
+    const logged = relevantViolations(server.logs, expected)
+    expect(logged).toContain(violationLabel(clientOnlyImporter.a))
     // (any other report is at the marker)
     expect(
       logged.filter(
-        (violation) =>
-          !['server src/a.ts:2:27', 'server src/b.ts:1:8'].includes(violation),
+        (violation) => !expected.map(violationLabel).includes(violation),
       ),
     ).toEqual([])
   },
@@ -2287,17 +2339,14 @@ export const getRouter = () => ({ routeTree })
     const reports = violationReports(server.logs)
     expect(reports).not.toEqual([])
     const use = locationIn('src/routes/index.tsx', route, 6, 'secret()')
+    // At the use or the import (SPEC J6.5), the frame shows the route
+    // file's own line there, caret at the reported column; its context is
+    // free (§5.7; V1R ip I01).
+    expectViolationsAt(server.logs, [
+      { environment: 'client', use, source: route },
+    ])
     for (const report of reports) {
-      expect(report.importer).toBe(use)
-      expect(report.code).toEqual({
-        line: 6,
-        pointsAt: expect.stringMatching(/^secret\(\)/),
-        shows: expect.arrayContaining([
-          '// a comment that compiling drops',
-          '  loader: () => secret(),',
-        ]),
-        location: use,
-      })
+      expectReportFrame(report, route)
     }
   },
   timeout,

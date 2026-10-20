@@ -17,6 +17,10 @@
  */
 import path from 'node:path'
 import { expect } from 'vitest'
+import {
+  expectRelevantLocation,
+  parseLocation,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { importProtectionPlugin } from '../../src/vite/import-protection-plugin/plugin'
 import { startDevServer } from '../dev-server'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
@@ -27,11 +31,18 @@ import type { StartDevServerOptions } from '../dev-server'
 import type { PluginOption } from 'vite'
 
 export {
+  expectReportFrame,
+  expectViolationsAt,
+  relevantViolations,
   reportedViolations,
+  violationLabel,
   violationReports,
   violationTexts,
 } from './violation-report'
-export type { ReportedViolation } from './violation-report'
+export type {
+  ExpectedViolation,
+  ReportedViolation,
+} from './violation-report'
 
 export interface ProtectedDevServerOptions {
   /**
@@ -174,22 +185,26 @@ export const factoryTopLevelCall = `export const request = getRequest()\n`
  * imported by the client, or client-only imported by the server): it names
  * both the marked module and its importer, and reports the violation either
  * at the marker import (`marker`, `file:line` of the marked module's import
- * of the marker; any column of it, or the file without a location) or at
- * the importer's use of the import (`use`, `file:line:column`). Either
- * location is fine (coordinator ruling on audit F ASK-1).
+ * of the marker; any column of it, or the file without a location), at
+ * the importer's use of the import (`use`, `file:line:column`) or at any
+ * line of the importer's import of the marked module (in its original
+ * `source`). Each location is fine (coordinator ruling on audit F ASK-1;
+ * SPEC J6.5, V1R ip I01).
  */
 export function expectMarkerViolation(
-  report: { importer: string; text: string },
-  locations: { marker: string; use: string },
+  report: { importer: string; specifier: string; text: string },
+  locations: { marker: string; use: string; source: string },
 ) {
-  const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const markedFile = locations.marker.replace(/:\d+$/, '')
-  expect(report.importer).toMatch(
-    new RegExp(
-      `^(?:${escape(locations.marker)}:\\d+|${escape(markedFile)}|${escape(locations.use)})$`,
-    ),
-  )
-  for (const file of [markedFile, locations.use.replace(/:\d+:\d+$/, '')]) {
+  const marker = parseLocation(locations.marker)
+  const use = parseLocation(locations.use)
+  expectRelevantLocation(report.importer, {
+    file: use.file,
+    source: locations.source,
+    uses: [{ line: use.line!, column: use.column }],
+    imports: [report.specifier],
+    others: [{ file: marker.file, lines: [marker.line!], unlocated: true }],
+  })
+  for (const file of [marker.file, use.file]) {
     expect(report.text).toContain(file)
   }
 }

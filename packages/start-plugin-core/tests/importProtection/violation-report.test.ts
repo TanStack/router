@@ -9,11 +9,14 @@
 import { describe, expect, test } from 'vitest'
 import { formatViolation } from '../../src/import-protection/trace'
 import {
+  expectReportFrame,
+  expectViolationsAt,
   reportedViolations,
   suggestedDirections,
   violationReports,
   violationTexts,
 } from './violation-report'
+import type { ExpectedViolation } from './violation-report'
 import type { ViolationInfo } from '../../src/import-protection/trace'
 
 const violation: ViolationInfo = {
@@ -261,5 +264,83 @@ describe('suggestedDirections', () => {
     { text: 'myCreateServerFnHelper', directions: [] },
   ])('$text: $directions', ({ text, directions }) => {
     expect(suggestedDirections(text)).toEqual(directions)
+  })
+})
+
+// The shared location oracle on the reports a real app's import protection
+// prints (`formatViolation`; SPEC J6.5, §5.7, §5.14; V1R ip I01): the
+// importer may be reported at the genuine use or at its import of the
+// denied module, never elsewhere nor without coordinates, and the frame
+// shows the original line there, whatever its context.
+describe('expected violations and frames', () => {
+  const source = `import { secret } from './secret.server'
+// helper
+export const one = 1
+export const leak = () => secret()
+`
+  const expected: Array<ExpectedViolation> = [
+    { environment: 'client', use: 'src/b.ts:4:27', source },
+  ]
+  /** The report of `violation` located at `line:column`, framed there. */
+  const reportAt = (
+    location: { line: number; column: number } | undefined,
+    overrides: Partial<ViolationInfo> = {},
+  ) =>
+    formatViolation(
+      {
+        ...violation,
+        importerLoc: location,
+        snippet: location && {
+          lines: [
+            `  > ${location.line} | ${source.split('\n')[location.line - 1]}`,
+            `    ${' '.repeat(String(location.line).length)} | ${' '.repeat(location.column - 1)}^`,
+          ],
+          highlightLine: location.line,
+          location: `/project/src/b.ts:${location.line}:${location.column}`,
+        },
+        ...overrides,
+      },
+      '/project',
+    )
+
+  test('a report at the use or at any column of the import passes, with its frame', () => {
+    for (const at of [
+      { line: 4, column: 27 },
+      { line: 1, column: 1 },
+      { line: 1, column: 24 },
+    ]) {
+      const text = reportAt(at)
+      expectViolationsAt(text, expected)
+      expectReportFrame(violationReports(text)[0]!, source)
+    }
+  })
+
+  test.each([
+    ['another line', reportAt({ line: 3, column: 1 })],
+    ['another column of the use line', reportAt({ line: 4, column: 1 })],
+    ['no coordinates', reportAt(undefined)],
+    [
+      'the other environment',
+      reportAt({ line: 4, column: 27 }, { envType: 'server' }),
+    ],
+    ['no report', ''],
+    [
+      'two reports of the violation, at the import and at the use',
+      `${reportAt({ line: 1, column: 1 })}\n\n${reportAt({ line: 4, column: 27 })}`,
+    ],
+  ])('%s fails', (_name, text) => {
+    expect(() => expectViolationsAt(text, expected)).toThrow()
+  })
+
+  test('a frame that highlights another line, or whose caret is elsewhere, fails', () => {
+    const [report] = violationReports(reportAt({ line: 4, column: 27 }))
+    for (const code of [
+      { ...report!.code!, line: 3 },
+      { ...report!.code!, pointsAt: 'leak = () => secret()' },
+      { ...report!.code!, shows: ['export const one = 1'] },
+      { ...report!.code!, location: 'src/b.ts:1:1' },
+    ]) {
+      expect(() => expectReportFrame({ ...report!, code }, source)).toThrow()
+    }
   })
 })
