@@ -15,6 +15,7 @@ import {
   describeHmr,
   evaluateServed,
 } from '../src/dev-server'
+import { saveAppFile } from '../src/save-file'
 import type { DevServerOptions } from '../src/dev-server'
 import type { Plugin, ViteDevServer } from 'vite'
 
@@ -136,7 +137,12 @@ describe('dev server harness', () => {
             !existsSync(generated) ||
             (await readFile(generated, 'utf8')) !== code
           ) {
-            await writeFile(generated, code)
+            // Atomically, as a generator writes (the router generator's
+            // `safeFileWrite`: a temporary file renamed over the target). A
+            // plain `writeFile` is a truncation and a write: under load the
+            // watcher reports them as two events (an `add` and an `update`
+            // of a new file) and can read the empty file in between.
+            await saveAppFile(server.root, generated, code)
           }
         },
       }
