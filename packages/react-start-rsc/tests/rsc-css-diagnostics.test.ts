@@ -48,8 +48,12 @@ async function compile(mode: 'dev' | 'build') {
 }
 
 describe('RSC stream diagnostics from the real compiler', () => {
-  // Bug: identifier/spread stream arguments silently miss CSS delivery.
-  // Source: decision D8(c), V1R H01.
+  // Bug: identifier/spread stream arguments silently miss CSS delivery
+  // (a dev warning is required: decision D8(c), V1R H01).
+  // Source: react-start-rsc src/plugin/rscCssTransform.ts:91-93: the
+  // `renderToReadableStream` transform skips a spread argument (92) and an
+  // argument that is not JSX (93, `isTopLevelJsx`) with `continue`, and
+  // nothing in the transform warns.
   // Impact: no diagnostic tells the developer to pass visible JSX instead.
   test.fails(
     'dev explains the CSS limitation once per source file at an original call position',

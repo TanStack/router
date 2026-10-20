@@ -771,7 +771,12 @@ export const leak = () => secret()
 
   // Bug: the warning drops original coordinates for an MDX file even
   // though @mdx-js/rollup supplies a source map for its import and use.
-  // Source: V1R ip I05/S22; verified red with the real MDX plugin.
+  // Source: start-plugin-core src/vite/import-protection-plugin/plugin.ts:
+  // 2116-2119: the transform cache records only `.[cm][tj]sx?` modules, so
+  // an `.mdx` importer has no transform result (code and composed source
+  // map), and each finder `resolveImporterLocation` (534-557) tries gives
+  // up on it (import-protection/sourceLocation.ts:412-415, 451-452,
+  // 482-483). (V1R ip I05/S22.)
   // Impact: the user cannot navigate to the offending original source.
   test.fails(
     'importing a denied file, the warning names the .mdx page, located in its original mapped source',

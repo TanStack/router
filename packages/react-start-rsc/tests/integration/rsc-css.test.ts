@@ -439,8 +439,12 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
     },
   )
 
-  // Bug: the alternate JSX branch has no CSS, just like the consequent.
-  // Source: decision D8 (b), H02.
+  // Bug: the alternate JSX branch has no CSS, just like the consequent
+  // (decision D8 (b), H02).
+  // Source: react-start-rsc src/plugin/rscCssTransform.ts:93: a conditional
+  // argument is not top-level JSX (`isTopLevelJsx`, 116-119, unwraps only
+  // parentheses and TS wrappers), so the transform skips the call and never
+  // wraps either branch with the CSS fragment (`createCssFragment`).
   // Impact: choosing false renders the badge without its stylesheet.
   test.fails(
     'a false ternary stream carries its selected badge CSS',
