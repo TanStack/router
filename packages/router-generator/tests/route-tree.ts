@@ -454,7 +454,11 @@ export interface ObservedRoute {
  * The routes of the router built from the generated route tree at
  * `treeFile`, by route id: full path, parent, route file, and the app files
  * that load lazily with the route (routes are loaded in route id order; a
- * route's lazy files are those no route loaded before).
+ * route's lazy files are those no route loaded before). The lazy files
+ * include whatever support modules the generator emits and attribute a
+ * shared dependency to the first route loaded: compare them only between
+ * trees of the same generator (e.g. a dev run and a fresh run), never with
+ * a list of expected files (generator.test.ts checks those on demand).
  */
 export function observeRouteTree(
   treeFile: string,

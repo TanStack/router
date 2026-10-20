@@ -31,7 +31,6 @@ import { expectOnlyOwnedEdits } from './owned-edits'
 import { routeCallOf } from './route-id'
 import { observeRouteTree, withRouteTree } from './route-tree'
 import type { FixtureRoute } from './generator-fixtures'
-import type { ObservedRoute } from './route-tree'
 import type { Config } from '../src'
 
 /**
@@ -119,14 +118,67 @@ async function postprocess(
   }
 }
 
-/** Observed routes in the form of generator-fixtures.ts. */
-function asFixtureRoutes(observed: Record<string, ObservedRoute>) {
-  return Object.fromEntries(
-    Object.entries(observed).map(([id, route]) => [
-      id,
-      [route.fullPath, route.parent, route.file, ...route.lazy],
-    ]),
-  ) as Record<string, FixtureRoute>
+/**
+ * Asserts the routes of the router built from the generated route tree at
+ * `treeFile` against `expected` (generator-fixtures.ts): each route's full
+ * path, parent and route file; and, for each route with lazy files, that
+ * each of them loads only on demand: it is not loaded before the router
+ * loads the route (`loadRouteChunk`, routes loaded one after the other), it
+ * is loaded after, and the options of its lazy `Route` are the route's.
+ * Other modules the demand loads (generated support, shared dependencies)
+ * are free (SPEC J1.4, §5.3, §5.8).
+ */
+async function expectFixtureRoutes(
+  treeFile: string,
+  expected: Record<string, FixtureRoute>,
+) {
+  await withRouteTree(treeFile, async (tree) => {
+    const { router, fileOf, loadedFiles } = tree
+    expect(
+      Object.fromEntries(
+        Object.values(router.routesById).map((route) => [
+          route.id,
+          [route.fullPath, route.parentRoute?.id ?? null, fileOf(route.id)],
+        ]),
+      ),
+      'the routes of the fixture',
+    ).toEqual(
+      Object.fromEntries(
+        Object.entries(expected).map(([id, [fullPath, parent, file]]) => [
+          id,
+          [fullPath, parent, file],
+        ]),
+      ),
+    )
+    const treeDir = path.dirname(await fs.realpath(treeFile))
+    for (const [id, [, , , ...lazy]] of Object.entries(expected)) {
+      if (lazy.length === 0) {
+        continue
+      }
+      const route = router.routesById[id]!
+      expect(
+        loadedFiles().filter((file) => lazy.includes(file)),
+        `the lazy files of ${id} loaded before the route is loaded`,
+      ).toEqual([])
+      await router.loadRouteChunk(route)
+      expect(
+        lazy.filter((file) => !loadedFiles().includes(file)),
+        `the lazy files of ${id} not loaded with the route`,
+      ).toEqual([])
+      for (const file of lazy) {
+        const { Route } = await tree.import(path.join(treeDir, file))
+        if (Route) {
+          const { id: _id, ...options } = Route.options
+          for (const [key, value] of Object.entries(options)) {
+            expect(
+              route.options[key],
+              `${id}'s ${key} after loading ${file}`,
+            ).toBe(value)
+          }
+        }
+      }
+    }
+  })
 }
 
 describe('generator fixtures', async () => {
@@ -151,9 +203,10 @@ describe('generator fixtures', async () => {
       await generator.run()
 
       expect(fixtureRoutes[name], 'the routes of the fixture').toBeDefined()
-      expect(
-        asFixtureRoutes(await observeRouteTree(config.generatedRouteTree)),
-      ).toEqual(fixtureRoutes[name])
+      await expectFixtureRoutes(
+        config.generatedRouteTree,
+        fixtureRoutes[name]!,
+      )
       await postprocess(name, config, before)
     },
   )
