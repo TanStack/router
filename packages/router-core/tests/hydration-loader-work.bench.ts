@@ -90,7 +90,7 @@ function createRouter(
 ): AnyRouter {
   const loaderAt = (index: number) => {
     const handler = (options: {
-      parentMatchPromise?: Promise<{ loaderData: unknown }>
+      parentMatchPromise?: Promise<{ loaderData?: unknown }>
     }) => {
       calls.loaders++
       if (workload === 'adopt' && calls.gate) {
