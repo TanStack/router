@@ -1353,20 +1353,35 @@ export const Route = createFileRoute('/')({ component: Page })
   test.fails(
     'split chunks do not re-export or declare the re-exports and default class of the route file',
     async () => {
-      const { graph } =
-        await compileRouteModules(`${head}export { getPaths, a as getProps } from './lib'
+      // The class carries a marker its code keeps under any name a
+      // compiler gives the class (SPEC J2.5 D5: identified independently
+      // of generated names).
+      const marker = 'default-class-marker-7f3a'
+      const route = await loadRoute(
+        `${head}export { getPaths, a as getProps } from './lib'
 export { foo, bar as baz } from './lib'
 export { helper } from './default-lib'
 export default class Test {
   render() {
-    return 'test'
+    return '${marker}'
   }
 }
 export const Route = createFileRoute('/')({
   component: () => <div>home</div>,
   errorComponent: () => <div>error</div>,
 })
-`)
+`,
+        {
+          stubs: {
+            './lib': { getPaths: 1, a: 2, foo: 3, bar: 4 },
+            './default-lib': { helper: 5 },
+          },
+        },
+      )
+      expect([
+        await route.render('component'),
+        await route.render('errorComponent'),
+      ]).toEqual(['<div>home</div>', '<div>error</div>'])
       /** Sources a module imports or re-exports from. */
       const requested = (code: string) => [
         ...importSources(code),
@@ -1378,18 +1393,20 @@ export const Route = createFileRoute('/')({
           ),
         ),
       ]
-      const chunks = [...graph.importKinds]
-        .filter(([, kind]) => kind === 'dynamic')
-        .map(([id]) => graph.modules.get(id)!)
-      expect(chunks.length).toBeGreaterThan(0)
+      // Every module loading a split option evaluates: what the lazy
+      // options reach beyond what loads with the route module.
+      const loaded = [
+        ...(await route.loadedBy('component')),
+        ...(await route.loadedBy('errorComponent')),
+      ]
       expect(
-        chunks.map((chunk) => ({
-          requests: requested(chunk).filter((source) =>
+        loaded.map((code) => ({
+          requests: requested(code).filter((source) =>
             ['./lib', './default-lib'].includes(source),
           ),
-          declaresTest: declaredNames(chunk).has('Test'),
+          holdsClass: code.includes(marker),
         })),
-      ).toEqual(chunks.map(() => ({ requests: [], declaresTest: false })))
+      ).toEqual(loaded.map(() => ({ requests: [], holdsClass: false })))
     },
   )
 
@@ -1398,6 +1415,9 @@ export const Route = createFileRoute('/')({
   // to it moved to a split chunk (D5 family). Source: #8504
   // (code-splitter-pragmas.test.ts; mutation testing P-03), where it passes.
   // Impact: the entry chunk loads the JSX library for nothing.
+  // The factories are the real ones (`@emotion/react`'s `jsx`, React's
+  // `createElement` and `Fragment`), rendered by the real React: the split
+  // component renders as the untouched file renders it.
   test.fails.each([
     {
       name: '@jsx',
@@ -1405,6 +1425,7 @@ export const Route = createFileRoute('/')({
 /** @jsx jsx */
 import { jsx } from '@emotion/react'`,
       library: '@emotion/react',
+      element: `<p css={{ color: 'red' }}>page</p>`,
     },
     {
       name: '@jsx written with two spaces',
@@ -1412,52 +1433,50 @@ import { jsx } from '@emotion/react'`,
 /** @jsx  jsx */
 import { jsx } from '@emotion/react'`,
       library: '@emotion/react',
+      element: `<p css={{ color: 'red' }}>page</p>`,
     },
     {
       name: '@jsxFrag, in a chunk without fragments',
       header: `/** @jsxRuntime classic */
-/** @jsx h */
+/** @jsx createElement */
 /** @jsxFrag Fragment */
-import { h, Fragment } from 'preact'`,
-      library: 'preact',
-      // The split loader renders a fragment, so the file uses `Fragment`.
+import { createElement, Fragment } from 'react'`,
+      library: 'react',
+      element: '<p>page</p>',
+      // The loader renders a fragment, so the file uses `Fragment`.
       loader: '<>{1}</>',
     },
   ])(
     'a module without JSX does not import the classic factory ($name)',
-    async ({ header, library, loader }) => {
-      const factory = () => 'rendered'
-      const route = await loadRoute(
-        `${header}
+    async ({ header, library, element, loader }) => {
+      const code = `${header}
 ${head}export const Route = createFileRoute('/')({
   loader: () => ${loader ?? "'data'"},
-  component: () => <p>page</p>,
+  component: () => ${element},
 })
-`,
-        {
-          stubs: {
-            '@emotion/react': { jsx: factory },
-            preact: { h: factory, Fragment: 'Fragment' },
-          },
-        },
-      )
+`
+      const untouched = (await evaluateModule(code)).Route as unknown as {
+        options: { component: unknown }
+      }
+      const expected = await renderComponent(untouched.options.component)
+      const route = await loadRoute(code)
       // Without JSX left, the route module needs nothing of the library (nor
-      // does what loads with it); the component chunk needs the element
-      // factory, not the fragment one.
+      // does what loads with it); no module loading the component imports
+      // the fragment factory (whatever local name it gets there).
       expect({
         rendered: await route.render('component'),
         ...(loader === undefined
           ? { libraryLoadsEagerly: route.eager.includes(library) }
           : {
-              chunkImports: (await route.loadedBy('component')).flatMap(
-                (code) => importedNames(code, library),
+              importsFragment: (await route.loadedBy('component')).some(
+                (module) => importedNames(module, library).includes('Fragment'),
               ),
             }),
       }).toEqual({
-        rendered: 'rendered',
+        rendered: expected,
         ...(loader === undefined
           ? { libraryLoadsEagerly: false }
-          : { chunkImports: ['h'] }),
+          : { importsFragment: false }),
       })
     },
   )
@@ -1755,28 +1774,42 @@ ${head}export const Route = createFileRoute('/')({ component: Page })
 })
 
 describe('classic JSX pragmas', () => {
-  /**
-   * Emotion's `jsx`, rendering intrinsic elements as the text
-   * `emotion:tag(children)`.
-   */
-  const emotion = {
-    jsx: (type: string, _props: unknown, ...children: Array<string>) =>
-      `emotion:${type}(${children.join('')})`,
-  }
   const pragma = `/** @jsxRuntime classic */
 /** @jsx jsx */
 import { jsx } from '@emotion/react'
 `
 
-  // Control for the JSX pragma pins below (same rendering).
+  /**
+   * Whether Emotion styled the markup: rendered on the server, Emotion
+   * inlines a style element in front of the element it styles; JSX
+   * compiled with another runtime leaves a `css` prop as a plain attribute.
+   */
+  const emotionStyled = (html: string) => /<style\b/.test(html)
+
+  /**
+   * The route file's component as the untouched file renders it: the
+   * project's real JSX transform (Vite's) and the real `@emotion/react`
+   * and React.
+   */
+  async function renderUntouched(code: string) {
+    const { Route } = (await evaluateModule(code)) as unknown as {
+      Route: { options: { component: unknown } }
+    }
+    return renderComponent(Route.options.component)
+  }
+
+  // Control for the JSX pragma pins below (same rendering): the untouched
+  // file's JSX compiles to the real Emotion factory its pragma names.
   test.each([pragma, pragma.replace('@jsx jsx', '@jsx  jsx')])(
-    'evaluateModule renders JSX through the factory of a classic JSX pragma (%s)',
+    'the untouched file renders JSX through the factory of a classic JSX pragma (%s)',
     async (header) => {
-      const { Page } = await evaluateModule(
-        `${header}export const Page = () => <div>page</div>`,
-        { '@emotion/react': emotion },
-      )
-      expect(await renderComponent(Page)).toBe('emotion:div(page)')
+      expect(
+        emotionStyled(
+          await renderUntouched(`${header}${head}export const Route = createFileRoute('/')({
+  component: () => <div css={{ color: 'red' }}>page</div>,
+})`),
+        ),
+      ).toBe(true)
     },
   )
 
@@ -1790,14 +1823,12 @@ import { jsx } from '@emotion/react'
   test.fails(
     'a split component renders through the factory of a classic JSX pragma',
     async () => {
-      const route = await loadRoute(
-        `${pragma}${head}export const Route = createFileRoute('/')({
-  component: () => <div>page</div>,
+      const code = `${pragma}${head}export const Route = createFileRoute('/')({
+  component: () => <div css={{ color: 'red' }}>page</div>,
   errorComponent: () => jsx('b', null, 'error'),
-})`,
-        { stubs: { '@emotion/react': emotion } },
-      )
-      expect(await route.render('component')).toBe('emotion:div(page)')
+})`
+      const route = await loadRoute(code)
+      expect(await route.render('component')).toBe(await renderUntouched(code))
     },
   )
 
@@ -1806,24 +1837,18 @@ import { jsx } from '@emotion/react'
   // (code-splitter-pragmas.test.ts; mutation testing of the dead code
   // removal), where they pass.
   // Impact: the split component throws "jsx is not defined".
-  const Frag = Symbol('Frag')
   test.fails.each([
     {
       name: 'the fragments of a chunk, with @jsxFrag',
       code: `/** @jsxRuntime classic */
 /** @jsx jsx */
-/** @jsxFrag Frag */
-${head}import { jsx, Frag } from '@emotion/react'
+/** @jsxFrag Fragment */
+${head}import { jsx } from '@emotion/react'
+import { Fragment } from 'react'
 export const Route = createFileRoute('/')({
-  component: () => <>page</>,
-  errorComponent: () => jsx(Frag, null, 'error'),
+  component: () => <><b css={{ color: 'red' }}>page</b></>,
+  errorComponent: () => jsx(Fragment, null, 'error'),
 })`,
-      stub: {
-        jsx: (type: unknown, _props: unknown, ...children: Array<string>) =>
-          type === Frag ? children.join('') : emotion.jsx(String(type), null),
-        Frag,
-      },
-      rendered: 'page',
     },
     {
       // Source: #8504 (mutation testing P-03).
@@ -1832,21 +1857,21 @@ export const Route = createFileRoute('/')({
 /** @jsx  jsx */
 ${head}import { jsx } from '@emotion/react'
 export const Route = createFileRoute('/')({
-  component: () => <div>page</div>,
+  component: () => <div css={{ color: 'red' }}>page</div>,
   errorComponent: () => jsx('b', null, 'error'),
 })`,
-      stub: emotion,
-      rendered: 'emotion:div(page)',
     },
-  ])(
-    'a split component renders through $name',
-    async ({ code, stub, rendered }) => {
-      const route = await loadRoute(code, {
-        stubs: { '@emotion/react': stub },
-      })
-      expect(await route.render('component')).toBe(rendered)
-    },
-  )
+  ])('a split component renders through $name', async ({ code }) => {
+    const route = await loadRoute(code)
+    expect(await route.render('component')).toBe(await renderUntouched(code))
+  })
+
+  /**
+   * The application's own classic JSX factory (module `./jsx`), rendering
+   * intrinsic elements as the text `tag(children)`.
+   */
+  const textJsx = (type: string, _props: unknown, ...children: Array<string>) =>
+    `${type}(${children.join('')})`
 
   // Bug: the shared-binding analysis does not count the JSX of a split option
   // as a read of the classic JSX factory it compiles to, so a factory that
@@ -1888,7 +1913,7 @@ export const Route = createFileRoute('/')({
             './jsx': {
               createJsx: () => {
                 creations++
-                return emotion.jsx
+                return textJsx
               },
             },
           },
@@ -1899,7 +1924,7 @@ export const Route = createFileRoute('/')({
         route.options.loader(),
         await route.render('component'),
         creations,
-      ]).toEqual(['emotion:span()', 'emotion:div(page)', 1])
+      ]).toEqual(['span()', 'div(page)', 1])
     },
   )
 })
@@ -3200,9 +3225,12 @@ ${serverOptions}
   )
 
   // The Solid router cannot run in process (it ships client-only APIs to
-  // Node): what the client compile of a Solid route still imports is
-  // checked here, the built Solid app runs in
-  // integration/build-frameworks.test.ts.
+  // Node): what the client compile of a Solid route still holds is checked
+  // here, the built Solid app runs in integration/build-frameworks.test.ts.
+  // Every emitted module is valid (no name the route file binds, such as
+  // `db`, is left without its binding), none imports `./secret-db`, and no
+  // object literal of any emitted module (the route's options among them)
+  // still has an `ssr`, `server` or `headers` property.
   test('server-only options of a Solid file route written as properties are removed with their imports', async () => {
     const { modules } = await compileRouteModules(
       `import { createFileRoute } from '@tanstack/solid-router'
@@ -3212,11 +3240,46 @@ ${serverOptions}
 })`,
       { deleteNodes, targetFramework: 'solid' },
     )
+    await expectValidModules(modules)
+    /** Keys of the object literals of a module that name a deleted option. */
+    const deletedKeys = (code: string) => {
+      const keys: Array<string> = []
+      const visit = (node: unknown): void => {
+        if (Array.isArray(node)) {
+          node.forEach(visit)
+          return
+        }
+        if (!node || typeof node !== 'object') {
+          return
+        }
+        const value = node as Record<string, any>
+        if (value.type === 'Property' && !value.computed) {
+          const key =
+            value.key?.type === 'Identifier' ? value.key.name : value.key?.value
+          if (deleteNodes.includes(key)) {
+            keys.push(key)
+          }
+        }
+        for (const child of Object.values(value)) {
+          if (child && typeof child === 'object') {
+            visit(child)
+          }
+        }
+      }
+      visit(parseModule(code))
+      return keys
+    }
     expect(
-      Object.values(modules).filter((module) =>
-        importSources(module).includes('./secret-db'),
-      ),
-    ).toEqual([])
+      Object.values(modules).map((module) => ({
+        importsSecret: importSources(module).includes('./secret-db'),
+        deletedKeys: deletedKeys(module),
+      })),
+    ).toEqual(
+      Object.values(modules).map(() => ({
+        importsSecret: false,
+        deletedKeys: [],
+      })),
+    )
   })
 
   // Without `deleteNodes` (a Router app without Start), the options are the
