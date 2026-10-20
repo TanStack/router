@@ -139,3 +139,85 @@ test.each(['direct', 'ordinary', 'loaderless'] as const)(
     }
   },
 )
+
+test('a superseding load restarts private dependencies when a legacy fallback repeats its parent match ID', async () => {
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const codecStarted = createControlledPromise<void>()
+  const codecGate = createControlledPromise<void>()
+  const clientRoot = vi.fn(() => 'client root')
+  const clientLegacy = vi.fn(
+    async ({
+      parentMatchPromise,
+    }: {
+      parentMatchPromise: Promise<AnyRouteMatch>
+    }) => {
+      const parent = await parentMatchPromise
+      return `${parent.loaderData}: legacy`
+    },
+  )
+  const build = (isServer: boolean) => {
+    const root = new BaseRootRoute({
+      loader: {
+        handler: isServer ? () => 'server root' : clientRoot,
+        dehydrate: true,
+        hydrate: async ({ data }) => {
+          codecStarted.resolve()
+          await codecGate
+          return `${data}: hydrated`
+        },
+      },
+    })
+    const legacy = new BaseRoute({
+      getParentRoute: () => root,
+      path: '/legacy',
+      loader: {
+        handler: isServer ? () => 'server legacy' : clientLegacy,
+        dehydrate: false,
+      },
+    })
+    return createTestRouter({
+      routeTree: root.addChildren([legacy]),
+      notFoundRoute: legacy,
+      history: createMemoryHistory({ initialEntries: ['/legacy/extra'] }),
+      isServer,
+    })
+  }
+  const server = build(true)
+  const client = build(false)
+  let hydration: Promise<void> | undefined
+  let load: Promise<void> | undefined
+  try {
+    vi.stubGlobal('window', {
+      $_TSR: await dehydrateToBootstrap(server, { routes: {} }),
+    })
+    hydration = hydrate(client)
+    await codecStarted
+    await vi.waitFor(() => expect(clientLegacy).toHaveBeenCalledTimes(2))
+    let completed = false
+    load = client.load({ sync: true }).then(() => {
+      completed = true
+    })
+    await hydration
+    await expect.poll(() => completed, { timeout: 500 }).toBe(true)
+    expect(clientRoot).toHaveBeenCalledTimes(1)
+    // The replacement's repeated same-ID matches share their new generation.
+    expect(clientLegacy).toHaveBeenCalledTimes(3)
+    expect(client.state.matches.at(-1)).toMatchObject({
+      status: 'success',
+      loaderData: 'client root: legacy',
+    })
+    codecGate.resolve()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(client.state.matches.at(-1)).toMatchObject({
+      status: 'success',
+      loaderData: 'client root: legacy',
+    })
+  } finally {
+    codecGate.resolve()
+    await hydration
+    await load
+    client.clearCache()
+    server.history.destroy()
+    client.history.destroy()
+  }
+})
