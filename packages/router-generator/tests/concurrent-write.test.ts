@@ -210,55 +210,62 @@ describe('generator with concurrent in-place saves', () => {
   )
 })
 
+/**
+ * The real filesystem as the generator's `fs` option, where the user saves
+ * `routeFile` with `savedSource` right after the generator first read it
+ * (an editor save: a later modification time). `saved()` tells whether the
+ * save happened.
+ */
+function filesystemSavingAfterRead(routeFile: string, savedSource: string) {
+  let saved = false
+  return {
+    saved: () => saved,
+    fs: {
+      rename: (oldPath: string, newPath: string) => fs.rename(oldPath, newPath),
+      writeFile: (filePath: string, content: string) =>
+        fs.writeFile(filePath, content),
+      readFile: async (filePath: string) => {
+        const result = await readFileWithStat(filePath)
+        if (!saved && path.resolve(filePath) === routeFile) {
+          saved = true
+          await fs.writeFile(routeFile, savedSource)
+          const savedAt = new Date(Date.now() + 10_000)
+          await fs.utimes(routeFile, savedAt, savedAt)
+        }
+        return result
+      },
+      stat: async (filePath: string) => {
+        const stat = await fs.stat(filePath, { bigint: true })
+        return {
+          mtimeMs: stat.mtimeMs,
+          mode: Number(stat.mode),
+          uid: Number(stat.uid),
+          gid: Number(stat.gid),
+        }
+      },
+      chmod: (filePath: string, mode: number) => fs.chmod(filePath, mode),
+      chown: (filePath: string, uid: number, gid: number) =>
+        fs.chown(filePath, uid, gid),
+    },
+  }
+}
+
 describe('a route file saved while the generator fixes it', () => {
   it('is processed before run() resolves', async () => {
     const { root, postsRoutePath, config } = await createApp(
       postsRouteSource.replace("'/posts'", "'/old'"),
     )
-    let saved = false
-    const generator = new Generator({
-      config,
-      root,
-      fs: {
-        rename: (oldPath, newPath) => fs.rename(oldPath, newPath),
-        writeFile: (filePath, content) => fs.writeFile(filePath, content),
-        readFile: async (filePath) => {
-          const result = await readFileWithStat(filePath)
-          if (!saved && path.resolve(filePath) === postsRoutePath) {
-            // The user saves the file right after the generator read it.
-            saved = true
-            await fs.writeFile(
-              postsRoutePath,
-              savedPostsRouteSource.replace("'/posts'", "'/wrong'"),
-            )
-            const savedAt = new Date(Date.now() + 10_000)
-            await fs.utimes(postsRoutePath, savedAt, savedAt)
-          }
-          return result
-        },
-        stat: async (filePath) => {
-          const stat = await fs.stat(filePath, { bigint: true })
-          return {
-            mtimeMs: stat.mtimeMs,
-            mode: Number(stat.mode),
-            uid: Number(stat.uid),
-            gid: Number(stat.gid),
-          }
-        },
-        chmod: (filePath, mode) => fs.chmod(filePath, mode),
-        chown: (filePath, uid, gid) => fs.chown(filePath, uid, gid),
-      },
-    })
+    const savedSource = savedPostsRouteSource.replace("'/posts'", "'/wrong'")
+    const { saved, fs: savingFs } = filesystemSavingAfterRead(
+      postsRoutePath,
+      savedSource,
+    )
+    await new Generator({ config, root, fs: savingFs }).run()
 
-    await generator.run()
-
-    expect(saved).toBe(true)
+    expect(saved()).toBe(true)
     // The saved file, with its id fixed (the quotes of the id are free).
     const written = await fs.readFile(postsRoutePath, 'utf8')
-    expectOnlyOwnedEdits(
-      savedPostsRouteSource.replace("'/posts'", "'/wrong'"),
-      written,
-    )
+    expectOnlyOwnedEdits(savedSource, written)
     expect(await routeIdOf(written)).toBe('/posts')
     expect(await routesOf(config.generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
@@ -266,83 +273,28 @@ describe('a route file saved while the generator fixes it', () => {
     })
   })
 
-  // Bug: when the user's save makes the generator's fix unnecessary (the
-  // saved file already has the right id), the generator abandons its write
-  // and never removes the temporary file it prepared for it.
-  // Source: src/generator.ts `safeFileWrite` (writes the temporary file,
-  // then throws `rerun` on the modification check without removing it; the
-  // rerun finds nothing to write).
-  // Impact: every such save leaves a copy of a route file in the app's
-  // `tmpDir` (by default `.tanstack/tmp` in the project), accumulating over
-  // a dev session.
-  it.fails(
-    'leaves no file behind when the save makes the fix unnecessary',
-    async () => {
-      const { root, postsRoutePath, config } = await createApp(
-        postsRouteSource.replace("'/posts'", "'/old'"),
-      )
-      let saved = false
-      const generator = new Generator({
-        config,
-        root,
-        fs: {
-          rename: (oldPath, newPath) => fs.rename(oldPath, newPath),
-          writeFile: (filePath, content) => fs.writeFile(filePath, content),
-          readFile: async (filePath) => {
-            const result = await readFileWithStat(filePath)
-            if (!saved && path.resolve(filePath) === postsRoutePath) {
-              // The user fixes the id and saves right after the generator
-              // read the file.
-              saved = true
-              await fs.writeFile(postsRoutePath, savedPostsRouteSource)
-              const savedAt = new Date(Date.now() + 10_000)
-              await fs.utimes(postsRoutePath, savedAt, savedAt)
-            }
-            return result
-          },
-          stat: async (filePath) => {
-            const stat = await fs.stat(filePath, { bigint: true })
-            return {
-              mtimeMs: stat.mtimeMs,
-              mode: Number(stat.mode),
-              uid: Number(stat.uid),
-              gid: Number(stat.gid),
-            }
-          },
-          chmod: (filePath, mode) => fs.chmod(filePath, mode),
-          chown: (filePath, uid, gid) => fs.chown(filePath, uid, gid),
-        },
-      })
+  // (Whether the generator removes the temporary file it prepared for the
+  // abandoned fix is filesystem policy, outside the compiler test corpus:
+  // tests/outside-compiler-corpus/abandoned-staging.test.ts.)
+  it('keeps the save when the save makes the fix unnecessary', async () => {
+    const { root, postsRoutePath, config } = await createApp(
+      postsRouteSource.replace("'/posts'", "'/old'"),
+    )
+    const { saved, fs: savingFs } = filesystemSavingAfterRead(
+      postsRoutePath,
+      savedPostsRouteSource,
+    )
+    await new Generator({ config, root, fs: savingFs }).run()
 
-      await generator.run()
-
-      expect(saved).toBe(true)
-      await expect(fs.readFile(postsRoutePath, 'utf8')).resolves.toBe(
-        savedPostsRouteSource,
-      )
-      // Only the app's files, wherever a temporary file was written (read
-      // before `routesOf` links `node_modules` into the app)
-      const files = await fs.readdir(root, {
-        recursive: true,
-        withFileTypes: true,
-      })
-      expect(
-        files
-          .filter((entry) => entry.isFile())
-          .map((entry) =>
-            path
-              .relative(root, path.join(entry.parentPath, entry.name))
-              .replaceAll(path.sep, '/'),
-          )
-          .sort(),
-      ).toEqual(['routeTree.gen.ts', 'routes/__root.tsx', 'routes/posts.tsx'])
-      expect(await routesOf(config.generatedRouteTree)).toEqual({
-        __root__: 'routes/__root.tsx',
-        '/posts': 'routes/posts.tsx',
-      })
-    },
-  )
-
+    expect(saved()).toBe(true)
+    await expect(fs.readFile(postsRoutePath, 'utf8')).resolves.toBe(
+      savedPostsRouteSource,
+    )
+    expect(await routesOf(config.generatedRouteTree)).toEqual({
+      __root__: 'routes/__root.tsx',
+      '/posts': 'routes/posts.tsx',
+    })
+  })
   it('on a filesystem with 1 s timestamps, is not overwritten when the save completes during the read', async () => {
     const { root, postsRoutePath, config } = await createApp(postsRouteSource)
     let saveRacesNextRead = false
@@ -404,18 +356,28 @@ describe('a route file saved while the generator fixes it', () => {
  * write is made in two halves, and between them, and before and after each
  * rename, the reader reads every watched file (`seen` records what it read,
  * by file; `null` for a missing file). `fault` may make an operation fail
- * instead (after the first half, for a write).
+ * instead (after the first half, for a write; it gets the content of a
+ * write); `faulted` counts the operations it made fail.
  */
 function filesystemWithReader(
   watched: Array<string>,
   fault?: (
     operation: 'writeFile' | 'rename',
     paths: Array<string>,
+    content?: string,
   ) => NodeJS.ErrnoException | undefined,
 ) {
   const seen = new Map<string, Set<string | null>>(
     watched.map((file) => [file, new Set()]),
   )
+  const faulted = { count: 0 }
+  const faultOf: typeof fault = (...args) => {
+    const error = fault?.(...args)
+    if (error) {
+      faulted.count++
+    }
+    return error
+  }
   const readAll = async () => {
     for (const file of watched) {
       const content = await fs.readFile(file, 'utf8').catch(() => null)
@@ -424,10 +386,11 @@ function filesystemWithReader(
   }
   return {
     seen,
+    faulted,
     fs: {
       rename: async (oldPath: string, newPath: string) => {
         await readAll()
-        const error = fault?.('rename', [oldPath, newPath])
+        const error = faultOf('rename', [oldPath, newPath])
         if (error) {
           throw error
         }
@@ -438,7 +401,7 @@ function filesystemWithReader(
         const half = Math.ceil(content.length / 2)
         await fs.writeFile(filePath, content.slice(0, half))
         await readAll()
-        const error = fault?.('writeFile', [filePath])
+        const error = faultOf('writeFile', [filePath], content)
         if (error) {
           throw error
         }
@@ -464,13 +427,11 @@ function filesystemWithReader(
 /**
  * An app whose next run rewrites both a route file (`routes/posts.tsx`, a
  * wrong id) and the route tree (a new route, `routes/about.tsx`): the tree
- * of a first run and the files before the next run.
+ * of a first run (with `tmpDir` on the app's filesystem) and the files
+ * before the next run.
  */
-async function appBeforeRewrite(tmpDir?: string) {
+async function appBeforeRewrite() {
   const { root, postsRoutePath, config } = await createApp(postsRouteSource)
-  if (tmpDir) {
-    config.tmpDir = tmpDir
-  }
   await new Generator({ config, root }).run()
   await fs.writeFile(
     postsRoutePath,
@@ -512,37 +473,90 @@ describe('publication of route files and the route tree', () => {
       }
     }
   })
-
-  it.each([
+  /**
+   * The two publications of the next run (`files` order): which written
+   * contents are for the destination (a temporary file's or the
+   * destination's own), and what a complete new content of it is.
+   */
+  const publications = [
+    {
+      destination: 'the route file',
+      index: 0,
+      isFor: (content: string) =>
+        content.includes("component: () => 'posts'") &&
+        !content.includes('/about'),
+      expectComplete: async (content: string) => {
+        expect(await routeIdOf(content)).toBe('/posts')
+      },
+    },
+    {
+      destination: 'the route tree',
+      index: 1,
+      isFor: (content: string) =>
+        content.includes('about') && !content.includes('component: () =>'),
+      expectComplete: async (_content: string, treeFile: string) => {
+        expect(await routesOf(treeFile)).toEqual({
+          __root__: 'routes/__root.tsx',
+          '/about': 'routes/about.tsx',
+          '/posts': 'routes/posts.tsx',
+        })
+      },
+    },
+  ]
+  const faults = [
     {
       name: 'a write that fails half-way (disk full)',
-      fault: (operation: string) =>
-        operation === 'writeFile'
-          ? Object.assign(new Error('ENOSPC: no space left on device'), {
-              code: 'ENOSPC',
-            })
-          : undefined,
+      operation: 'writeFile',
+      error: () =>
+        Object.assign(new Error('ENOSPC: no space left on device'), {
+          code: 'ENOSPC',
+        }),
     },
     {
       name: 'a rename that fails',
-      fault: (operation: string) =>
-        operation === 'rename'
-          ? Object.assign(new Error('EIO: i/o error, rename'), {
-              code: 'EIO',
-            })
-          : undefined,
+      operation: 'rename',
+      error: () =>
+        Object.assign(new Error('EIO: i/o error, rename'), { code: 'EIO' }),
     },
-  ])(
-    'after $name, the route file and the route tree hold their complete old contents',
-    async ({ fault }) => {
+  ]
+
+  it.each(
+    publications.flatMap((publication) =>
+      faults.map((fault) => ({ ...publication, ...fault })),
+    ),
+  )(
+    'after $name publishing $destination, it holds its complete old content, the other file a complete one',
+    async ({ index, isFor, operation, error }) => {
       const { root, config, files, before } = await appBeforeRewrite()
-      const { seen, fs: faultyFs } = filesystemWithReader(files, fault)
+      const destination = files[index]!
+      const {
+        seen,
+        faulted,
+        fs: faultyFs,
+      } = filesystemWithReader(files, (op, paths, content) =>
+        op === operation &&
+        (op === 'rename'
+          ? path.resolve(paths[1]!) === destination
+          : isFor(content!))
+          ? error()
+          : undefined,
+      )
       await new Generator({ config, root, fs: faultyFs }).run().catch(() => {})
 
-      for (const [index, file] of files.entries()) {
-        expect(await fs.readFile(file, 'utf8'), file).toBe(before[index])
+      // (the faulted publication was attempted)
+      expect(faulted.count).toBeGreaterThan(0)
+      for (const [other, file] of files.entries()) {
+        const after = await fs.readFile(file, 'utf8')
+        if (other === index) {
+          expect(after, file).toBe(before[other])
+        } else if (after !== before[other]) {
+          await publications[other]!.expectComplete(
+            after,
+            config.generatedRouteTree,
+          )
+        }
         for (const content of seen.get(file)!) {
-          expect(content, file).toBe(before[index])
+          expect([before[other], after], file).toContain(content)
         }
       }
     },
@@ -592,7 +606,10 @@ describe('publication of route files and the route tree', () => {
         otherDevice ??
         (await fs.mkdtemp(path.join(os.tmpdir(), 'tsr-generator-tmp-')))
       onTestFinished(() => fs.rm(tmpDir, { recursive: true, force: true }))
-      const { root, config, files, before } = await appBeforeRewrite(tmpDir)
+      // (the first run, on the app's filesystem, gives the old contents; the
+      // observed run then has tmpDir on the other one)
+      const { root, config, files, before } = await appBeforeRewrite()
+      config.tmpDir = tmpDir
       const inodes = await Promise.all(
         files.map(async (file) => (await fs.stat(file)).ino),
       )
