@@ -7,7 +7,12 @@
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { build, routeApp, routeHead } from '../build-harness'
+import {
+  build,
+  clientMountEntry,
+  routeApp,
+  routeHead,
+} from '../build-harness'
 import type {
   BuildResult,
   Bundler,
@@ -28,13 +33,44 @@ export const Route = createFileRoute('${routePath}')({
 })
 `
 
-/** Builds the route for the client and renders its component. */
+/**
+ * Client entry re-exporting the index route module next to `mount` (see
+ * `clientMountEntry`) and `renderTree()`, which renders the app at `/`
+ * through the real router over the generated route tree and returns the
+ * HTML once it shows the page (or after 2 seconds).
+ */
+const treeEntry = `${clientMountEntry}import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+export async function renderTree() {
+  const router = createRouter({
+    routeTree,
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+  const container = document.createElement('div')
+  document.body.appendChild(container)
+  const root = createRoot(container)
+  flushSync(() => root.render(createElement(RouterProvider, { router })))
+  for (let tries = 0; tries < 200 && !container.innerHTML.includes('MARK_COMPONENT'); tries++) {
+    await new Promise((resolve) => setTimeout(resolve, 10))
+  }
+  const html = container.innerHTML
+  root.unmount()
+  container.remove()
+  return html
+}
+`
+
+/**
+ * Builds the route for the client and renders its component; `script`
+ * (run after mounting it) gives `result`.
+ */
 async function buildRoute(
   bundler: Bundler,
   pluginOptions: RouterPluginOptions,
   options: {
     files?: Record<string, string>
     routes?: (config: RouterPluginOptions) => Array<unknown>
+    script?: string
   } = {},
 ) {
   const app = await build({
@@ -50,8 +86,10 @@ async function buildRoute(
       files: options.files,
     }),
   })
-  const run = await app.run(`await entry.mount(entry.Route.options.component)`)
-  return { app, html: run.html }
+  const run = await app.run(
+    `await entry.mount(entry.Route.options.component)\n${options.script ?? ''}`,
+  )
+  return { app, html: run.html, result: run.result }
 }
 
 const read = (app: BuildResult, file: string) =>
@@ -68,13 +106,21 @@ describe.each([false, undefined])(
     test.each(bundlers)(
       'splits nothing and still generates the route tree (%s)',
       async (bundler) => {
-        const { app, html } = await buildRoute(bundler, { autoCodeSplitting })
+        const { app, html, result } = await buildRoute(
+          bundler,
+          { autoCodeSplitting },
+          {
+            files: { 'entry.ts': treeEntry },
+            script: 'return await entry.renderTree()',
+          },
+        )
         expect(app.where('MARK_COMPONENT')).toBe('eager')
         expect(app.lazy).toEqual([])
         expect(html).toContain('MARK_COMPONENT')
-        expect(await read(app, 'routeTree.gen.ts')).toContain(
-          "from './routes/index'",
-        )
+        // The generated tree exists, and the real router over it renders
+        // the index route at `/` (however the tree spells its imports).
+        expect(await read(app, 'routeTree.gen.ts')).not.toBeNull()
+        expect(result).toContain('MARK_COMPONENT')
       },
       timeout,
     )

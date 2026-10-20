@@ -54,14 +54,17 @@ export const Route = createFileRoute('/')({
 `
 const markers = ['MARK_SHARED_THROW', 'MARK_PAGE_THROW ', 'MARK_LOADER_THROW']
 
-/** The 1-based line of `marker` in the route file: the line of its throw. */
-function lineOf(marker: string) {
-  return positionAt(route, tokenOffsets(route, { string: marker })[0]!).line
+/**
+ * Where the string `marker` starts in the route file (1-based line, 0-based
+ * column): what its string in a served module maps to.
+ */
+function positionOf(marker: string) {
+  return positionAt(route, tokenOffsets(route, { string: marker })[0]!)
 }
 
 /**
  * Asserts that every marker a served module holds maps, through the
- * module's map, to the route file at the marker's line.
+ * module's map, to the route file at the marker's line and column.
  */
 function expectMarkersMapToRouteFile(
   id: string,
@@ -83,14 +86,23 @@ function expectMarkersMapToRouteFile(
     expectMapsTo(map!, positionAt(code, offset!), {
       file: 'routes/index.tsx',
       root,
-      line: lineOf(marker),
+      ...positionOf(marker),
     })
   }
 }
 
 describe('vite dev server', () => {
-  /** URLs of the app's own modules (not Vite's, not dependencies). */
-  const isAppModule = (url: string) => /^\/routes\//.test(url)
+  /**
+   * URLs of the app's own modules, wherever a compiler puts what it derives
+   * from the route file (next to it, elsewhere in the app, or a virtual
+   * module, which Vite serves under `/@id/__x00__`): not Vite's client, not
+   * dependencies.
+   */
+  const isAppModule = (url: string) =>
+    url.startsWith('/@id/__x00__') ||
+    (url.startsWith('/') &&
+      !url.startsWith('/@') &&
+      !url.includes('/node_modules/'))
 
   test(
     'the route module and every module derived from it map a throw to its line in the route file',

@@ -1,4 +1,11 @@
 /**
+ * Implementation characterization, outside the compiler corpus (SPEC §8:
+ * no clause coverage, must not block a correct rewrite): whether a
+ * third-party transform after the router plugin (the React Compiler) is
+ * applied to split chunks is out of scope (DECISIONS OQ16). Splitting with
+ * the real framework plugins and rendering: build-frameworks.test.ts and
+ * code-splitter-plugin-pipeline.test.ts.
+ *
  * Plugins after the router plugin see the split modules: with
  * `@vitejs/plugin-react` and the React Compiler (Babel) after it, as the
  * React Compiler docs configure Vite, the split component is compiled by the
@@ -6,8 +13,8 @@
  * environments only.)
  */
 import { expect, test } from 'vitest'
-import { build, routeApp } from '../build-harness'
-import { head } from '../regression-helpers'
+import { build, routeApp } from '../../build-harness'
+import { head } from '../../regression-helpers'
 
 const route = `${head}import { useState } from 'react'
 function Page() {
