@@ -307,55 +307,6 @@ export { other }`,
   })
 })
 
-describe('probeDynamicImports', () => {
-  const modules: Record<string, string> = {
-    '/route.tsx': `export const loaders = {
-  first: async () => (await import('/first.tsx')).value,
-  second: () => import('/second.tsx'),
-  stub: () => import('lib'),
-  none: () => 'no import',
-}`,
-    '/first.tsx': `export const value = 'first'`,
-    '/second.tsx': `export const value = 'second'`,
-  }
-  const resolve = (specifier: string) =>
-    specifier in modules ? specifier : undefined
-
-  it('names the module each dynamic import targets without loading it', async () => {
-    const graph = createModuleGraph({
-      modules,
-      resolve,
-      stubs: { lib: { value: 'lib' } },
-    })
-    const { loaders } = await graph.import('/route.tsx')
-    const probe = (name: string) =>
-      graph.probeDynamicImports(() => loaders[name]())
-    expect([
-      probe('first'),
-      probe('second'),
-      probe('stub'),
-      probe('none'),
-    ]).toEqual([['/first.tsx'], ['/second.tsx'], ['lib'], []])
-    // Probing again names the module again.
-    await new Promise((resolve) => setTimeout(resolve, 0))
-    expect([probe('first'), probe('stub')]).toEqual([['/first.tsx'], ['lib']])
-    expect([...graph.evaluated]).toEqual(['/route.tsx'])
-    // The imports work as usual afterwards.
-    expect([await loaders.first(), (await loaders.second()).value]).toEqual([
-      'first',
-      'second',
-    ])
-    expect([...graph.evaluated]).toEqual([
-      '/route.tsx',
-      '/first.tsx',
-      '/second.tsx',
-    ])
-    // A dynamic import of a module that already loaded is still named.
-    expect(probe('first')).toEqual(['/first.tsx'])
-    expect(await loaders.first()).toBe('first')
-  })
-})
-
 // The package's own directory: its dependencies are the real packages a
 // graph can link (`globals` is a CommonJS package, `vite` an ES one).
 const packageDirectory = path.join(import.meta.dirname, '..')
@@ -464,11 +415,6 @@ export const chunk = [helper, other]`,
     const graph = createModuleGraph({ modules, resolve, stubs })
     const route = await graph.import('/route.tsx')
     const eager = ['/shared.tsx', 'lib', 'side-effect']
-    expect([...graph.requested].sort()).toEqual(eager)
-    // A probed import is not requested.
-    expect(graph.probeDynamicImports(() => route.lazy())).toEqual([
-      '/chunk.tsx',
-    ])
     expect([...graph.requested].sort()).toEqual(eager)
     expect((await route.lazy()).chunk).toEqual(['helper', 'other'])
     expect([...graph.requested].sort()).toEqual(['/chunk.tsx', ...eager])

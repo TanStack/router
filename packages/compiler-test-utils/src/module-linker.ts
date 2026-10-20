@@ -18,9 +18,8 @@
  *   `fallbackStub`, `transform`, `scope`, `importMeta`.
  * - `graph.import(id)`, `graph.add(id, code)`, `graph.has(id)`.
  * - Load observers: `graph.evaluated` (graph modules, in evaluation order),
- *   `graph.requested` (every module the graph's modules requested: graph
- *   modules, stubs, packages) and `graph.probeDynamicImports(run)` (the
- *   dynamic imports `run` starts, without loading them).
+ *   and `graph.requested` (every module the graph's modules requested:
+ *   graph modules, stubs, packages).
  * - `graph.importPackage(specifier)`: the instance of a real package the
  *   graph's modules get (to render what they export with the same React).
  * - `graph.fork()`: the same modules and options, fresh module instances (to
@@ -97,13 +96,6 @@ export interface ModuleGraphOptions {
   jsxImportSource?: string
   /** Compiles a module to JavaScript; by default TS and JSX are erased. */
   transform?: (code: string, id: string) => string | Promise<string>
-  /**
-   * Deprecated JSX stand-in for suites not yet rendering with a real
-   * framework: code run at the top of each module that defines `__jsx` and
-   * `__Fragment` (`jsxPragma`), the classic factories the default transform
-   * then compiles JSX to. Prefer real packages (`packages`).
-   */
-  runtime?: string
   /** Bindings declared at the top of each module (e.g. `$RefreshReg$`). */
   scope?: (id: string) => Record<string, unknown>
   /** Properties assigned to `import.meta` of each module before it runs. */
@@ -130,17 +122,9 @@ export interface ModuleGraph {
    * order Node resolved them: ids of modules of the graph, specifiers of
    * stubs and of packages. A static import is requested when its importer
    * links (before any of them evaluates), a dynamic one when it runs. What
-   * `importPackage` and `probeDynamicImports` start is not requested.
+   * `importPackage` starts is not requested.
    */
   requested: Array<string>
-  /**
-   * Runs `run` and returns the ids of the graph's modules (or the
-   * specifiers of stubs and packages) whose dynamic `import()` it starts
-   * synchronously, without loading or evaluating them: those imports
-   * reject, and a promise `run` returns is settled silently. Later imports
-   * load as usual.
-   */
-  probeDynamicImports: (run: () => unknown) => Array<string>
   /**
    * The namespace of a real package (`packages`) as the graph's modules get
    * it: the same instance (e.g. the React the modules' JSX creates elements
@@ -154,9 +138,6 @@ export interface ModuleGraph {
    */
   fork: () => ModuleGraph
 }
-
-/** The classic JSX factory names of the deprecated `runtime` stand-in. */
-export const jsxPragma = { pragma: '__jsx', pragmaFrag: '__Fragment' }
 
 /** Language of a module id for Oxc, from its file extension. */
 export function moduleLang(id: string) {
@@ -197,8 +178,6 @@ interface Graph {
   stubs: Map<string, Record<string, unknown>>
   evaluated: Array<string>
   requested: Array<string>
-  /** Targets of the dynamic imports started while probing, else undefined. */
-  probed?: Array<string>
   /** URL a file of `options.packages` has, to resolve packages from. */
   packagesParent?: string
   /** URL of the fallback stub of a specifier, if `fallbackStub` gives one. */
@@ -243,12 +222,6 @@ function getRegistry(): Registry {
           )
         }
         const target = url === undefined ? specifier : targetName(url)
-        // Node resolves a dynamic import synchronously when it starts:
-        // while a graph probes, record its target instead of loading it.
-        if (graph.probed) {
-          graph.probed.push(target)
-          throw new ProbedImport()
-        }
         if (!parent.module.internal) {
           recordRequest(graph, target)
         }
@@ -308,7 +281,7 @@ function lookup(url: string) {
 }
 
 /**
- * What `requested` and probes name the target of a URL by: a module's id, a
+ * What `requested` names the target of a URL by: a module's id, a
  * stub's specifier.
  */
 function targetName(url: string) {
@@ -317,13 +290,6 @@ function targetName(url: string) {
     return url
   }
   return found.module.specifier ?? found.id
-}
-
-/** Rejects a dynamic import started while its graph probes imports. */
-class ProbedImport extends Error {
-  constructor() {
-    super('a dynamic import started while probing (not loaded)')
-  }
 }
 
 /** The modules a compiled module requests, and the names it imports. */
@@ -385,8 +351,7 @@ function moduleRequests(javascript: string) {
 /**
  * Erases TypeScript the way Vite does (see `verbatimModuleSyntax`) and
  * compiles JSX with React's automatic runtime from `jsxImportSource`, as
- * `@vitejs/plugin-react` does, or to calls of `jsxPragma` for the deprecated
- * `runtime` stand-in.
+ * `@vitejs/plugin-react` does.
  */
 async function defaultTransform(
   code: string,
@@ -395,13 +360,10 @@ async function defaultTransform(
 ) {
   const result = await transformWithOxc(code, 'module', {
     lang: moduleLang(id),
-    jsx:
-      options.runtime === undefined
-        ? {
-            runtime: 'automatic',
-            importSource: options.jsxImportSource ?? 'react',
-          }
-        : { runtime: 'classic', ...jsxPragma },
+    jsx: {
+      runtime: 'automatic',
+      importSource: options.jsxImportSource ?? 'react',
+    },
     typescript: {
       onlyRemoveTypeImports: options.verbatimModuleSyntax ?? true,
     },
@@ -653,8 +615,8 @@ function createGraph(
         const module: ServedModule = {
           format: 'module',
           // The prologue is one line, so that line numbers in stack traces
-          // stay those of the module (without `runtime`).
-          source: `${hashbang}${prologue(id)}${options.runtime ?? ''}${body}`,
+          // stay those of the module.
+          source: `${hashbang}${prologue(id)}${body}`,
           imports: new Map(),
           packages: new Map(),
         }
@@ -780,20 +742,6 @@ function createGraph(
     },
     evaluated: graph.evaluated,
     requested: graph.requested,
-    probeDynamicImports(run) {
-      const probed: Array<string> = []
-      graph.probed = probed
-      let result: unknown
-      try {
-        result = run()
-      } finally {
-        graph.probed = undefined
-      }
-      if (result && typeof (result as Promise<unknown>).then === 'function') {
-        ;(result as Promise<unknown>).then(undefined, () => {})
-      }
-      return probed
-    },
     async importPackage(specifier) {
       if (!graph.packagesParent) {
         throw new Error('importPackage needs the `packages` option')

@@ -231,13 +231,15 @@ export const Route = createFileRoute('/')({
         },
       },
     )
-    expect(await route.isLazy('loader')).toBe(true)
     const before = [...log]
     expect([before, await route.options.loader(), log]).toEqual([
       [],
       'data',
       ['./loader'],
     ])
+    // After the stub's record: the probe loads the loader in a fork of the
+    // route, with the same stubs.
+    expect(await route.isLazy('loader')).toBe(true)
   })
 
   it('split a loader declared as a local function without a warning', async () => {
