@@ -9,3 +9,4 @@
 - Run behavioural tests for React, Solid and Vue through the `targetFramework` option of the test helpers.
 - Test what the page shows after a route file edit with `openRouteHmrPage` (`tests/route-hmr-page.ts`): a real dev server with the framework's plugin, a real browser page and the real HMR client. Never copy bundler, HMR-client or React Refresh logic into tests. There is no in-process HMR model: test route HMR with `openRouteHmrPage`. A unit test of `handleRouteUpdate` may call it with explicit inputs and a real router, but must not recreate hot contexts, disposal, module selection or framework refresh.
 - To run one test file or `-t` filter quickly, the slow-tier load gate and the test budgets: [compiler-test-utils/AGENTS.md](../compiler-test-utils/AGENTS.md).
+- The spec these tests cite (clause ids such as `J4.12`, `G3`, `§5.7`), the rulings and the known bugs: [compiler-test-utils/oracle/README.md](../compiler-test-utils/oracle/README.md).

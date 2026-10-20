@@ -1,5 +1,7 @@
 # Compiler test infrastructure
 
+Replacing or rewriting a compiler? Start with [oracle/README.md](oracle/README.md): the spec the tests cite, the rulings, the known bugs, and how the suite was validated.
+
 Shared by the compiler test suites (router-plugin, start-plugin-core, router-generator, react-start-rsc and this package). Each has a fast tier (`test:unit`) and a slow tier (`test:integration`, `tests/integration/`); implementation tests outside the corpus run with `test:implementation` (see below).
 
 ## Running a slice
