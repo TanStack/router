@@ -32,10 +32,21 @@ describe('a dev server compiling an edited route out of order', () => {
     )
 
   /**
-   * The route module and the modules of the route file it reaches through
-   * static and dynamic imports (its split chunks and the modules they share,
-   * whatever their URLs), breadth first, as a page loading the route and
-   * its chunks requests them: the dev server compiles each one now.
+   * URLs of the app's own modules, wherever a compiler puts what it derives
+   * from the route file (its split chunks and the modules they share, next
+   * to it, elsewhere in the app, or a virtual module, which Vite serves
+   * under `/@id/__x00__`): not Vite's client, not dependencies.
+   */
+  const isAppModule = (url: string) =>
+    url.startsWith('/@id/__x00__') ||
+    (url.startsWith('/') &&
+      !url.startsWith('/@') &&
+      !url.includes('/node_modules/'))
+
+  /**
+   * The route module and the app modules it reaches through static and
+   * dynamic imports, breadth first, as a page loading the route and its
+   * chunks requests them: the dev server compiles each one now.
    */
   async function loadRouteModules(server: DevServer) {
     const urls = [route]
@@ -44,10 +55,7 @@ describe('a dev server compiling an edited route out of order', () => {
     for (const url of urls) {
       const code = withoutTimestamps(await server.transform(url))
       for (const { specifier } of importRequests(code)) {
-        if (
-          specifier.replace(/\?.*$/, '') === route &&
-          !urls.includes(specifier)
-        ) {
+        if (isAppModule(specifier) && !urls.includes(specifier)) {
           urls.push(specifier)
         }
       }
