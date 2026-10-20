@@ -28,12 +28,12 @@
  *   relative source resolved against `expected.mapUrl`, the module the map
  *   belongs to), `expected.line` and, when given, `expected.column`.
  */
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import {
   TraceMap,
   eachMapping,
   originalPositionFor,
 } from '@jridgewell/trace-mapping'
-import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parseSync } from 'vite'
 import { expect } from 'vitest'
 import { mentionsFile } from './diagnostics'
@@ -339,9 +339,7 @@ function resolvedSource(source: string, mapUrl: string | undefined) {
     source,
     urlScheme.test(mapUrl) ? mapUrl : pathToFileURL(mapUrl),
   )
-  return resolved.protocol === 'file:'
-    ? fileURLToPath(resolved)
-    : resolved.href
+  return resolved.protocol === 'file:' ? fileURLToPath(resolved) : resolved.href
 }
 
 /**

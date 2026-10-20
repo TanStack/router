@@ -107,7 +107,11 @@ return describeValue(window.liveSecret(), 'MARK_SECRET')
         loads: browser.loads(),
         servedSecret: client.some((code) => code.includes('MARK_SECRET')),
         // Every compile in this state, excluding target-missing intermediates.
-        reported: reportedImporters(diagnostics, 'client', appSources(server.root)),
+        reported: reportedImporters(
+          diagnostics,
+          'client',
+          appSources(server.root),
+        ),
       })
     }
     return result

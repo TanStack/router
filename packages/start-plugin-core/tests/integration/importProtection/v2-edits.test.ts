@@ -249,7 +249,11 @@ describe('vite dev', () => {
           await server.edit({ 'src/client-side.ts': clientSide(step.live) })
           await server.load('/src/router.ts')
           await server.idle()
-          clientReports = reportedImporters(server.logs.slice(clientSince), 'client', sources)
+          clientReports = reportedImporters(
+            server.logs.slice(clientSince),
+            'client',
+            sources,
+          )
           serverSince = server.logs.length
           await server.edit({ 'src/server-side.ts': serverSide(step.live) })
         }
@@ -275,7 +279,8 @@ describe('vite dev', () => {
         outcomes.push({
           client: {
             values: result.clientValues,
-            reported: clientReports ?? reportedImporters(logs, 'client', sources),
+            reported:
+              clientReports ?? reportedImporters(logs, 'client', sources),
           },
           server: {
             values: result.serverValues,
@@ -338,7 +343,11 @@ describe('rsbuild dev', () => {
         const clientSince = server.diagnostics.length
         await server.edit({ 'src/client-side.ts': clientSide(step.live) })
         await settledAcrossTurn(server)
-        clientReports = reportedImporters(server.diagnostics.slice(clientSince), 'client', sources)
+        clientReports = reportedImporters(
+          server.diagnostics.slice(clientSince),
+          'client',
+          sources,
+        )
         serverSince = server.diagnostics.length
         await server.edit({ 'src/server-side.ts': serverSide(step.live) })
         await settledAcrossTurn(server)
@@ -352,7 +361,8 @@ describe('rsbuild dev', () => {
       outcomes.push({
         client: {
           values: values(await runInClient(server, observeScript)),
-          reported: clientReports ?? reportedImporters(warnings, 'client', sources),
+          reported:
+            clientReports ?? reportedImporters(warnings, 'client', sources),
         },
         server: {
           values: values(await runRsbuildSsr(server, observeScript)),

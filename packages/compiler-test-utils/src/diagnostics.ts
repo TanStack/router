@@ -922,11 +922,9 @@ export function importedBindingUses(
   source: string,
   specifier: string,
 ): Array<{ line: number; column: number }> {
-  const { module, program } = parseSync(
-    `module.${languageOf(file)}`,
-    source,
-    { sourceType: 'module' },
-  )
+  const { module, program } = parseSync(`module.${languageOf(file)}`, source, {
+    sourceType: 'module',
+  })
   const imports = module.staticImports.filter(
     (statement) => statement.moduleRequest.value === specifier,
   )

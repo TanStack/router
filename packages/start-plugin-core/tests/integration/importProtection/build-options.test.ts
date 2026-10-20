@@ -462,7 +462,12 @@ export const read = () => getRequest()
         )
         expect(reportedViolations(error.message)).toHaveLength(1)
         expectViolationsAt(error.message, [
-          { environment: 'client', use, source: files['src/entry.ts']!, others },
+          {
+            environment: 'client',
+            use,
+            source: files['src/entry.ts']!,
+            others,
+          },
         ])
         for (const name of names) {
           expect(error.message).toContain(name)

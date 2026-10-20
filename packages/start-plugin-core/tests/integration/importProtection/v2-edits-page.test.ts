@@ -115,7 +115,11 @@ return describeValue(window.liveSecret(), 'MARK_SECRET')
         servedSecret: Object.values(served).some((code) =>
           code.includes('MARK_SECRET'),
         ),
-        reported: reportedImporters(server.logs.slice(since.logs), 'client', appSources(server.root)),
+        reported: reportedImporters(
+          server.logs.slice(since.logs),
+          'client',
+          appSources(server.root),
+        ),
       })
     }
     return result

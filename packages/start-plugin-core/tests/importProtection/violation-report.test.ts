@@ -363,7 +363,11 @@ export const leak = () => secret()
   test.each([
     ['the use', reportAt({ line: 4, column: 27 }), 'client src/b.ts'],
     ['the import', reportAt({ line: 1, column: 10 }), 'client src/b.ts'],
-    ['another line', reportAt({ line: 3, column: 1 }), notRelevant('src/b.ts:3:1')],
+    [
+      'another line',
+      reportAt({ line: 3, column: 1 }),
+      notRelevant('src/b.ts:3:1'),
+    ],
     [
       'another column of the use line',
       reportAt({ line: 4, column: 1 }),
@@ -372,7 +376,11 @@ export const leak = () => secret()
     [
       'a line past the end (compiled coordinates)',
       formatViolation(
-        { ...violation, importerLoc: { line: 9, column: 4 }, snippet: undefined },
+        {
+          ...violation,
+          importerLoc: { line: 9, column: 4 },
+          snippet: undefined,
+        },
         '/project',
       ),
       notRelevant('src/b.ts:9:4'),

@@ -406,9 +406,13 @@ function importedAs(file: string, source: string, reported: string) {
   const written = new Set([reported])
   let requests: Array<string> = []
   try {
-    requests = parseSync(`module.${/\.[cm]?jsx?$/.test(file) ? 'jsx' : 'tsx'}`, source, {
-      sourceType: 'module',
-    }).module.staticImports.map((statement) => statement.moduleRequest.value)
+    requests = parseSync(
+      `module.${/\.[cm]?jsx?$/.test(file) ? 'jsx' : 'tsx'}`,
+      source,
+      {
+        sourceType: 'module',
+      },
+    ).module.staticImports.map((statement) => statement.moduleRequest.value)
   } catch {
     // Not JavaScript (e.g. MDX): only the specifier as written
   }
@@ -417,7 +421,10 @@ function importedAs(file: string, source: string, reported: string) {
       continue
     }
     const resolved = path.posix.join(path.posix.dirname(file), request)
-    if (reported === resolved || reported.replace(/\.[^./]+$/, '') === resolved) {
+    if (
+      reported === resolved ||
+      reported.replace(/\.[^./]+$/, '') === resolved
+    ) {
       written.add(request)
     }
   }
