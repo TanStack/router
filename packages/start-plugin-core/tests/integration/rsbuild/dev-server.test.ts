@@ -2,16 +2,15 @@
  * The Start compiler on a running Rsbuild dev server: editing a factory
  * module rebuilds every client module compiled against it.
  */
-import vm from 'node:vm'
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { pluginReact } from '@rsbuild/plugin-react'
+import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 import {
-  runInClient,
-  startRsbuildDevServer,
-  startRsbuildStartDevServer,
-  webGlobals,
-} from '../../rsbuild-dev-server'
-import { requestsOfPrelude } from '../../build-harness'
+  rootDocument,
+  routerFile,
+  startPageEntries,
+} from '../start-compose-app'
 
 const timeout = 30_000
 
@@ -35,7 +34,17 @@ import { db } from './db'
 export const ${name} = base.handler(async () => db.x())
 `
     const server = await startRsbuildStartDevServer({
+      browser: true,
+      hmr: false,
+      config: { plugins: [pluginReact()] },
       files: {
+        ...startPageEntries,
+        'src/ssr-entry.ts': `export { getRouter } from './router'`,
+        'src/router.ts': routerFile,
+        'src/routes/__root.tsx': rootDocument(),
+        'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({ component: () => null })`,
+        'src/client-entry.ts': `import './entry'`,
         'src/b.ts': toFactory ? plain : factory,
         'src/c.ts': `export * from './b'\n`,
         // Not a `.server` file: import protection would mock it in the
@@ -55,23 +64,34 @@ import { fn2 } from './a2'
 
     await server.edit({ 'src/b.ts': toFactory ? factory : plain })
     expect(server.errors).toEqual([])
+    const page = await openPage(server.url!, {
+      registerCleanup: onTestFinished,
+    })
+    await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
+    const sent: Array<{ url: string; method: string }> = []
+    page.page.on('request', (request) => {
+      const url = new URL(request.url())
+      if (url.pathname.startsWith('/_serverFn/')) {
+        sent.push({ url: url.pathname + url.search, method: request.method() })
+      }
+    })
+    const result = await page.page.evaluate(async () => {
+      const fns = (globalThis as any).fns
+      return {
+        values: await Promise.all(fns.map((fn: any) => fn())),
+        urls: fns.map((fn: any) => fn.url),
+      }
+    })
+    expect(page.errors).toEqual([])
     return {
       output: await output(),
-      /** What calling both fns in the client returns. */
-      called: await runInClient(
-        server,
-        `return await Promise.all(globalThis.fns.map((fn) => fn()))`,
-      ),
-      /** The URL of each fn, and the requests calling it sends. */
-      requests: await runInClient(
-        server,
-        `${requestsOfPrelude}
-const requests = []
-for (const fn of globalThis.fns) {
-  requests.push({ url: fn.url, sent: await requestsOf(fn) })
-}
-return requests`,
-      ),
+      called: { result: result.values },
+      requests: {
+        result: result.urls.map((url: string) => ({
+          url,
+          sent: sent.filter((request) => request.url === url),
+        })),
+      },
     }
   }
 
@@ -285,28 +305,44 @@ describe('Rsbuild dev: server fn ids', () => {
   test(
     'same-named server fns of two modules get different ids',
     async () => {
-      const fn = `import { createServerFn } from '@tanstack/react-start'
-export const getData = createServerFn().handler(async () => 'x')
+      const fn = (
+        value: string,
+      ) => `import { createServerFn } from '@tanstack/react-start'
+export const getData = createServerFn().handler(async () => ${JSON.stringify(value)})
 `
-      const server = await startRsbuildDevServer({
+      const server = await startRsbuildStartDevServer({
+        browser: true,
+        hmr: false,
+        config: { plugins: [pluginReact()] },
         files: {
-          'src/a.ts': fn,
-          'src/b.ts': fn,
-          'src/entry.ts': `import { getData as a } from './a'
-import { getData as b } from './b'
-;(globalThis as Record<string, unknown>).ids = [a.serverFnMeta.id, b.serverFnMeta.id]
+          ...startPageEntries,
+          'src/ssr-entry.ts': `export { getRouter } from './router'`,
+          'src/router.ts': routerFile,
+          'src/routes/__root.tsx': rootDocument(),
+          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({ component: () => null })`,
+          'src/a.ts': fn('from a'),
+          'src/b.ts': fn('from b'),
+          'src/client-entry.ts': `export { getData as a } from './a'
+export { getData as b } from './b'
 `,
         },
       })
-      // The client bundle (one chunk) runs in a bare context
-      const context = vm.createContext(webGlobals())
-      context.self = context
-      for (const code of Object.values(await server.outputs())) {
-        vm.runInContext(code, context)
-      }
-      const ids = context.ids as Array<unknown>
+      const page = await openPage(server.url!, {
+        registerCleanup: onTestFinished,
+      })
+      await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
+      const { ids, values } = await page.page.evaluate(async () => {
+        const { a, b } = (globalThis as any).__app
+        return {
+          ids: [a.serverFnMeta.id, b.serverFnMeta.id],
+          values: [await a(), await b()],
+        }
+      })
       expect(ids).toEqual([expect.any(String), expect.any(String)])
       expect(ids[0]).not.toBe(ids[1])
+      expect(values).toEqual(['from a', 'from b'])
+      expect(page.errors).toEqual([])
     },
     timeout,
   )

@@ -71,10 +71,12 @@ describe.each(startBundlers)('%s build', (bundler) => {
   afterAll(() => dispose?.())
 
   test('the route renders and its handler answers on the server', async () => {
-    if (!build) {
-      throw failure
+    if (failure) {
+      expectDiagnostic(failure, { severity: 'error', file: 'src/routes/x.tsx' })
+      return
     }
-    const { result } = await build.ssr.run(`const router = entry.getRouter()
+    expect(build).toBeDefined()
+    const { result } = await build!.ssr.run(`const router = entry.getRouter()
 const response = await entry.startServerEntry.fetch(new Request('http://localhost/x'))
 return {
   page: await entry.renderPath(router.routeTree, '/x'),

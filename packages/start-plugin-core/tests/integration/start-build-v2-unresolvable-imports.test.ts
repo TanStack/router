@@ -12,7 +12,10 @@
  * Source: FIX-PLAN V2-02 (start-fable SF-22/MW-7; #6185, #7460, #3990;
  * 1,007 corpus files, 241 with `cloudflare:workers`).
  */
+import { createRequire } from 'node:module'
+import { pathToFileURL } from 'node:url'
 import { describe, expect, test } from 'vitest'
+import { runNodeProgram } from '@tanstack/compiler-test-utils/run-node'
 import {
   buildStart,
   callByIdExports,
@@ -39,18 +42,15 @@ export const readConfig = createServerFn()
 export const label = () => 'MARK_CLIENT_LABEL'
 `
 
-/** What the worker runtime would provide for `cloudflare:workers`. */
+/** String-binding contract for the resolve hook, checked against workerd below; what the worker runtime provides for `cloudflare:workers`. */
 const workerEnvModule = `export const env = { SECRET: 'MARK_ENV_SECRET' }`
 
-const files = {
-  'src/platform.ts': platform,
-  'src/client-entry.ts': `export { readConfig, label } from './platform'\n`,
-  // The SSR entry registers the platform module's resolution before the
-  // app's modules link (`import()`: a static import would link first).
-  'src/ssr-entry.ts': `import { registerHooks } from 'node:module'
+const workerResolveHook = `import { registerHooks } from 'node:module'
+export const workerRequests = new Set()
 registerHooks({
   resolve(specifier, context, next) {
     if (specifier === 'cloudflare:workers') {
+      workerRequests.add(specifier)
       return {
         url: 'data:text/javascript,' + encodeURIComponent(${JSON.stringify(workerEnvModule)}),
         shortCircuit: true,
@@ -58,7 +58,13 @@ registerHooks({
     }
     return next(specifier, context)
   },
-})
+})`
+
+const files = {
+  'src/platform.ts': platform,
+  'src/client-entry.ts': `export { readConfig, label } from './platform'\n`,
+  // Dynamic import lets the hook register before the app module links.
+  'src/ssr-entry.ts': `${workerResolveHook}
 export const platform = () => import('./platform')
 ${callByIdExports}`,
 }
@@ -105,7 +111,6 @@ describe.each(startBundlers)('%s build', (bundler) => {
         secret: 'nowhere',
         label: 'eager',
       })
-      expect(ssr.where('cloudflare:workers')).not.toBe('nowhere')
       const clientRun = (
         await client.run(`${requestsOfPrelude}return {
   label: entry.label(),
@@ -124,10 +129,52 @@ describe.each(startBundlers)('%s build', (bundler) => {
 return {
   ssr: await readConfig(),
   byId: await callById(${JSON.stringify(id)}),
+  externalRequests: [...entry.workerRequests],
 }`)
       const expected = ['MARK_ENV_SECRET', 'MARK_FS_OK']
-      expect(result).toEqual({ ssr: expected, byId: expected })
+      expect(result).toEqual({
+        ssr: expected,
+        byId: expected,
+        // A real external resolution, consumed by the middleware above:
+        // the hook's own specifier string is insufficient evidence.
+        externalRequests: expect.arrayContaining(['cloudflare:workers']),
+      })
     },
     timeout,
   )
 })
+
+// Internal harness contract (SPEC §8): the narrow resolve hook supplies a
+// string binding with the same module-import behaviour as real workerd.
+// Worker execution here is Miniflare's workerd, from the installed Cloudflare
+// e2e app; it is not a second implementation of the platform module.
+test('the cloudflare:workers resolve-hook binding agrees with workerd', async () => {
+  const require = createRequire(
+    new URL(
+      '../../../../e2e/react-start/basic-cloudflare/package.json',
+      import.meta.url,
+    ),
+  )
+  const workerRequire = createRequire(require.resolve('wrangler'))
+  const miniflareUrl = pathToFileURL(workerRequire.resolve('miniflare')).href
+  const { Miniflare } = await import(/* @vite-ignore */ miniflareUrl)
+  const worker = new Miniflare({
+    modules: true,
+    compatibilityDate: '2026-03-17',
+    bindings: { SECRET: 'MARK_ENV_SECRET' },
+    script: `import { env } from 'cloudflare:workers'
+export default { fetch() { return Response.json({ secret: env.SECRET, missing: env.MISSING ?? null }) } }`,
+  })
+  try {
+    const response = await worker.dispatchFetch('http://localhost/')
+    const actual = await response.json()
+    const { stdout } = await runNodeProgram(`${workerResolveHook}
+const { env } = await import('cloudflare:workers')
+const { existsSync } = await import('node:fs')
+console.log(JSON.stringify({ binding: { secret: env.SECRET, missing: env.MISSING ?? null }, delegated: existsSync(process.cwd()) }))`)
+    expect(JSON.parse(stdout)).toEqual({ binding: actual, delegated: true })
+    expect(actual).toEqual({ secret: 'MARK_ENV_SECRET', missing: null })
+  } finally {
+    await worker.dispose()
+  }
+}, 30_000)

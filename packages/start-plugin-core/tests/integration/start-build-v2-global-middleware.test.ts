@@ -11,18 +11,25 @@
  * Source: FIX-PLAN V2-09 (start-fable MW-5; `functionMiddleware` in 179,
  * `requestMiddleware` in 697 corpus files).
  */
-import { describe, expect, test } from 'vitest'
+import { describe, expect, onTestFinished, test } from 'vitest'
 import {
   buildStart,
   callByIdExports,
   callByIdPrelude,
-  requestsOfPrelude,
   startBundlers,
 } from '../build-harness'
+import {
+  openAppPage,
+  rootDocument,
+  serveStartBuild,
+  startPageEntries,
+} from './start-compose-app'
 
 const timeout = 60_000
 
 const files = {
+  ...startPageEntries,
+  'src/routes/__root.tsx': rootDocument(),
   'src/audit.server.ts': `export const audit = () => 'MARK_AUDIT_SERVER'\n`,
   'src/auth.server.ts': `export const authenticate = (_request: Request) => 'MARK_AUTH_USER'\n`,
   'src/middleware.ts': `import { createMiddleware } from '@tanstack/react-start'
@@ -54,14 +61,16 @@ export const whoAmI = createServerFn().handler(async ({ context }) => {
   return [globalContext.audited, globalContext.user]
 })
 `,
-  'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+  'src/routes/index.tsx': `import { useState } from 'react'
+import { createFileRoute } from '@tanstack/react-router'
 import { whoAmI } from '../fns'
 export const Route = createFileRoute('/')({
   loader: () => whoAmI(),
   component: Page,
 })
 function Page() {
-  return <p>{Route.useLoaderData().join(' ')}</p>
+  const [called, setCalled] = useState('')
+  return <><p>{Route.useLoaderData().join(' ')}</p><button data-testid="call" onClick={() => whoAmI().then((value) => setCalled(value.join(' ')))}>call</button><p data-testid="called">{called}</p></>
 }
 `,
   'src/router.ts': `import { createRouter } from '@tanstack/react-router'
@@ -77,55 +86,62 @@ describe.each(startBundlers)('%s build', (bundler) => {
   test(
     'global function and request middleware: no server code in the client, .client() runs on a client call, .server() and the request middleware run on the server',
     async () => {
-      const { client, ssr } = await buildStart({
+      const build = await buildStart({
         bundler,
         files,
-        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+        registerCleanup: onTestFinished,
       })
+      const { client, ssr } = build
       expect({
         audit: client.where('MARK_AUDIT_SERVER'),
         auth: client.where('MARK_AUTH_USER'),
         modules: client.where(/audit\.server|auth\.server/),
       }).toEqual({ audit: 'nowhere', auth: 'nowhere', modules: 'nowhere' })
-      // The harness page is not hydrated from an SSR page: the one thing
-      // Start's hydration does that the client runtime needs here (its
-      // global middleware comes from the start instance's options) is
-      // done by the script.
-      const clientRun = (
-        await client.run(`${requestsOfPrelude}
-window.__TSS_START_OPTIONS__ = await globalThis.__tssBuildHarnessApp.start.startInstance.getOptions()
-const requests = await requestsOf(entry.whoAmI)
-return {
-  id: entry.whoAmI.serverFnMeta.id,
-  url: entry.whoAmI.url,
-  requests,
-  clientLog: globalThis.__clientLog,
-}`)
-      ).result as {
-        id: string
-        url: string
-        requests: Array<unknown>
-        clientLog: Array<string>
-      }
-      expect(clientRun.requests).toEqual([
-        { url: clientRun.url, method: 'GET' },
-      ])
-      expect(clientRun.clientLog).toEqual(['log'])
+      const served = await serveStartBuild(build, {
+        registerCleanup: onTestFinished,
+      })
+      const page = await openAppPage(served, '/', {
+        registerCleanup: onTestFinished,
+      })
+      const requests: Array<{ url: string; method: string }> = []
+      page.page.on('request', (request) => {
+        const url = new URL(request.url())
+        if (url.pathname.startsWith('/_serverFn/')) {
+          requests.push({
+            url: url.pathname + url.search,
+            method: request.method(),
+          })
+        }
+      })
+      await page.page.locator('[data-testid=call]').click()
+      await page.waitForText('MARK_AUDIT_SERVER MARK_AUTH_USER', {
+        selector: '[data-testid=called]',
+      })
+      expect(
+        await page.page.evaluate(() => (globalThis as any).__clientLog),
+      ).toEqual(['log'])
+      expect(page.serverFnRequests).toHaveLength(1)
+      expect(page.errors).toEqual([])
+      const { id, url } = await page.page.evaluate(() => {
+        const fn = (globalThis as any).__app.whoAmI
+        return { id: fn.serverFnMeta.id, url: fn.url }
+      })
+      expect(requests).toEqual([{ url, method: 'GET' }])
       const { result } =
         await ssr.run(`${callByIdPrelude}const response = await entry.startServerEntry.fetch(
   new Request('http://localhost/'),
 )
 return {
-  byId: await callById(${JSON.stringify(clientRun.id)}),
+  byId: await callById(${JSON.stringify(id)}),
   page: { status: response.status, html: await response.text() },
 }`)
-      const { byId, page } = result as {
+      const { byId, page: renderedPage } = result as {
         byId: unknown
         page: { status: number; html: string }
       }
       expect(byId).toEqual(['MARK_AUDIT_SERVER', 'MARK_AUTH_USER'])
-      expect(page.status).toBe(200)
-      expect(page.html).toContain('MARK_AUDIT_SERVER MARK_AUTH_USER')
+      expect(renderedPage.status).toBe(200)
+      expect(renderedPage.html).toContain('MARK_AUDIT_SERVER MARK_AUTH_USER')
     },
     timeout,
   )

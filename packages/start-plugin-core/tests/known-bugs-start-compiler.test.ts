@@ -718,12 +718,9 @@ export const read = () => getRead()()`,
   // Bug: same cause as above; a server fn nested in a function whose
   // handler reads a local of that function (here `id`) cannot run on its own
   // in the provider, and is neither supported nor rejected.
-  // Fix-agnostic (SPEC J4.6, §5.13): either both callers reject it with a
-  // clear error at the call naming `createServerFn` and the captured `id`
-  // (once the callers reject the module, no provider is requested for it),
-  // or every output compiles and each `make(id)` instance, called from the
-  // client, reaches a server handler that sees its own `id`, with the
-  // handler and its server-only import absent from the client.
+  // Fix-agnostic (SPEC J4.6, §5.13): each caller independently rejects
+  // with a clear capture diagnostic or preserves each make(id) closure.
+  // SSR may keep the handler inline; successful clients must use safe RPCs.
   // Impact: its handler and server-only imports ship to the client
   // (createServerFn alone), or the server build fails (another factory).
   // Source: user ruling D13.
@@ -731,44 +728,80 @@ export const read = () => getRead()()`,
     'with %s imported, a nested server fn whose handler reads a local of its function is supported or rejected naming the capture',
     async (importHead) => {
       const code = placementModule(importHead, capturingPlacement.code)
-      const results = {} as Record<Output, OutputResult>
-      for (const output of outputs) {
-        results[output] = await compileFor(output, code).catch(
-          (error: unknown) => ({ error }),
-        )
+      const stubs = {
+        [serverOnly]: { db: { inner: (id: string) => `inner:${id}` } },
       }
-      if ('error' in results.client || 'error' in results.ssr) {
-        for (const output of ['client', 'ssr'] as const) {
-          const result = results[output]
-          expect(result, output).toHaveProperty('error')
-          expectCompileError((result as { error: unknown }).error, {
+      // Each caller has its own valid outcome: SSR may keep the closure
+      // inline even when client extraction is rejected.
+      const compileCaller = (output: 'client' | 'ssr') =>
+        compileFor(output, code).catch((error: unknown) => ({ error }))
+      const results = {
+        client: await compileCaller('client'),
+        ssr: await compileCaller('ssr'),
+      }
+      for (const output of ['client', 'ssr'] as const) {
+        const result = results[output]
+        if ('error' in result) {
+          expectCompileError(result.error, {
             source: code,
             at: 'db.inner(id)',
             names: ['createServerFn', 'id'],
           })
+          continue
         }
-        return
+        const caller = result.code ?? code
+        if (output === 'client') {
+          expectNotLoaded(await moduleLoads(caller), [serverOnly])
+          expect(caller).not.toContain('db.inner(')
+          const provider = await compileFor('provider', code)
+          // Include an accepted SSR module for providers that import it,
+          // without requiring SSR to accept the client's extraction path.
+          const compiled = {
+            client: caller,
+            provider: provider.code ?? code,
+            ssr: 'error' in results.ssr ? '' : (results.ssr.code ?? code),
+            serverFns: result.serverFns,
+            id: undefined,
+            framework: undefined,
+            files: undefined,
+          }
+          expect(
+            await Promise.all(
+              ['a', 'b'].map((id) =>
+                callFromClient(
+                  compiled,
+                  (module) => module.make(id),
+                  undefined,
+                  stubs,
+                ),
+              ),
+            ),
+          ).toEqual(['inner:a', 'inner:b'])
+        } else {
+          // First execute the public calls without provider output. An
+          // inline SSR path may carry metadata and must still work without
+          // requiring its independently rejected client extraction.
+          let values: Array<unknown>
+          try {
+            const ssr = await evaluateModule(caller, stubs, { env: 'server' })
+            values = await Promise.all(['a', 'b'].map((id) => ssr.make(id)()))
+          } catch {
+            // A forwarding caller needs its provider graph linked. The
+            // same public calls must then return their captured values.
+            const provider = await compileFor('provider', code)
+            const ssr = await createServerGraph(
+              {
+                ssr: caller,
+                provider: provider.code ?? code,
+                serverFns: result.serverFns,
+              },
+              stubs,
+            ).ssr()
+            values = await Promise.all(['a', 'b'].map((id) => ssr.make(id)()))
+          }
+          expect(values).toEqual(['inner:a', 'inner:b'])
+        }
       }
-      const compiled = await compileAll(code)
-      expectNotLoaded(await moduleLoads(compiled.client), [serverOnly])
-      expect(compiled.client).not.toContain('db.inner(')
-      const stubs = {
-        [serverOnly]: { db: { inner: (id: string) => `inner:${id}` } },
-      }
-      expect([
-        await callFromClient(
-          compiled,
-          (module) => module.make('a'),
-          undefined,
-          stubs,
-        ),
-        await callFromClient(
-          compiled,
-          (module) => module.make('b'),
-          undefined,
-          stubs,
-        ),
-      ]).toEqual(['inner:a', 'inner:b'])
     },
   )
 
