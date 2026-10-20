@@ -919,7 +919,7 @@ export interface DescribeBuildInput {
   sourcemap?: boolean
   /**
    * webpack and Rspack: the modules of the output (`recordParsedModules`),
-   * the evidence that tells a dependency's own free read (see
+   * the evidence of which modules the check covers (see
    * `checkDanglingNames`).
    */
   parsedModules?: ParsedModules
@@ -1062,22 +1062,25 @@ export async function describeBuild(
  * Every chunk is checked as the build emitted it, minified or not: that is
  * the artifact the configuration ships (SPEC G8).
  *
- * Which dangling reads count (ruling "dangling-name attribution",
- * 2026-10-20): every one, except a name a dependency already reads free in
- * its own source (valid third-party JavaScript, e.g. seroval's
- * `const RETURN = () => T`, used through `RETURN.toString()`). The
- * exception needs the build's evidence (`dependencyReadsFree`): the read
- * lies in the bundler's region of a module (`moduleRegions`) that is a
- * dependency (a file outside the app, or under a `node_modules` directory),
- * and that module's original source on disk reads the name without binding
- * it anywhere. So a binding a compiler or the bundler lost still counts
- * (the original source binds or imports the name: e.g. Rspack 2.2.7, which
- * drops the import bindings the unused code of a concatenated module reads,
- * where webpack declares them), as does every read in the app's own modules
- * (user and route code), in a module without a file (virtual chunks and
- * support modules) and every read without that evidence (Vite's output, or
- * a build that does not record its modules: `recordParsedModules`). Nothing
- * is excepted per package or by name.
+ * Which modules are checked (ruling "dangling-name attribution", amended
+ * 2026-10-20): the ones the compilers under test produced or changed in
+ * that build, attributed from the build's own evidence:
+ * - the app's modules (user and route code after the transforms, split
+ *   chunks: files of the build's root) and modules without a file (virtual
+ *   and support modules): every free read counts;
+ * - a dependency's module that a transform hook (a loader other than the
+ *   bundler's built-in ones) saw in this build (`recordParsedModules`): a
+ *   free read counts when the module, as the transforms left it, reads the
+ *   name free while its original source on disk does not (the transforms
+ *   lost a binding or added a read); a name the original already reads
+ *   free and binds nowhere is valid third-party JavaScript (e.g. seroval's
+ *   `const RETURN = () => T`, used through `RETURN.toString()`);
+ * - any other dependency's module is out of scope, whatever the bundler
+ *   does inside it (e.g. Rspack 2.2.7 dropping the import bindings the kept
+ *   unused code of a concatenated module reads), and so is a binding the
+ *   bundler drops after the transforms left it in place.
+ * Nothing is excepted per package or by name. A read without that evidence
+ * counts (Vite's output, or a build that does not record its modules).
  */
 async function checkDanglingNames(
   bundler: Exclude<Bundler, 'esbuild'>,
@@ -1088,20 +1091,28 @@ async function checkDanglingNames(
     import('./validate-module'),
     import('./known-globals'),
   ])
-  /** What the original source of each dependency reads, by resource. */
-  const originals = new Map<string, Promise<NameReads | undefined>>()
-  const originalReads = (resource: string) => {
-    let reads = originals.get(resource)
-    if (!reads) {
-      reads = readFile(resource, 'utf8').then(
-        (source) => nameReads(source),
-        () => undefined,
-      )
-      // A source the parser rejects gives no evidence either
-      reads = reads.catch(() => undefined)
-      originals.set(resource, reads)
+  /** The original source on disk of each module, by resource (`undefined`: no file). */
+  const originals = new Map<string, Promise<string | undefined>>()
+  const originalOf = (resource: string) => {
+    let original = originals.get(resource)
+    if (!original) {
+      original = readFile(resource, 'utf8').catch(() => undefined)
+      originals.set(resource, original)
     }
-    return reads
+    return original
+  }
+  const scope: ScopeEvidence = {
+    root: evidence.root,
+    parsedModules: evidence.parsedModules,
+    originalOf,
+    readsOf: (source) => {
+      try {
+        return nameReads(source)
+      } catch {
+        // A source the parser rejects gives no evidence
+        return undefined
+      }
+    },
   }
   const dangling: Record<string, Array<string>> = {}
   for (const chunk of chunks) {
@@ -1115,15 +1126,10 @@ async function checkDanglingNames(
         continue
       }
       for (const start of starts) {
-        if (
-          !(await dependencyReadsFree(
-            name,
-            start,
-            regions,
-            evidence,
-            originalReads,
-          ))
-        ) {
+        const resource = regions.find(
+          (candidate) => candidate.start <= start && start < candidate.end,
+        )?.resource
+        if (await countsAsDangling(name, resource, scope)) {
           names.push(name)
           break
         }
@@ -1143,6 +1149,11 @@ interface ModuleEvidence {
   root: string
   /** The modules of the output (`recordParsedModules`). */
   parsedModules?: ParsedModules
+}
+
+interface ScopeEvidence extends ModuleEvidence {
+  originalOf: (resource: string) => Promise<string | undefined>
+  readsOf: (source: string) => NameReads | undefined
 }
 
 /** What a module reads (`nameReads` of `validate-module.ts`). */
@@ -1201,37 +1212,43 @@ function moduleRegions(
   return regions
 }
 
-/** Whether a module's file is a dependency's: outside the app, or in `node_modules`. */
-function isDependency(resource: string, root: string) {
-  const relative = path.relative(root, resource)
-  return (
-    relative.startsWith('..') ||
-    path.isAbsolute(relative) ||
-    relative.split(/[\\/]/).includes('node_modules')
-  )
-}
-
 /**
- * Whether the read of `name` at `start` is a dependency's own free read (see
- * `checkDanglingNames`): it lies in the region of a dependency's module
- * whose original source reads `name` and binds it nowhere.
+ * Whether a free read of `name` in the code of the module `resource` is a
+ * defect (see `checkDanglingNames`).
  */
-async function dependencyReadsFree(
+async function countsAsDangling(
   name: string,
-  start: number,
-  regions: Array<ModuleRegion>,
-  evidence: ModuleEvidence,
-  originalReads: (resource: string) => Promise<NameReads | undefined>,
+  resource: string | undefined,
+  scope: ScopeEvidence,
 ) {
-  const resource = regions.find(
-    (candidate) => candidate.start <= start && start < candidate.end,
-  )?.resource
-  if (resource === undefined || !isDependency(resource, evidence.root)) {
+  if (resource === undefined || !scope.parsedModules) {
+    // No evidence of the module
+    return true
+  }
+  const original = await scope.originalOf(resource)
+  if (original === undefined) {
+    // No file: a virtual or support module
+    return true
+  }
+  const relative = path.relative(scope.root, resource)
+  if (!relative.startsWith('..') && !path.isAbsolute(relative)) {
+    // A module of the app
+    return true
+  }
+  const transformed = scope.parsedModules.transformed.get(resource)
+  if (transformed === undefined) {
+    // A dependency no transform hook of this build saw: out of scope
     return false
   }
-  const reads = await originalReads(resource)
+  const after = scope.readsOf(transformed)
+  const before = scope.readsOf(original)
+  if (!after || !before) {
+    return true
+  }
+  // Free after the transforms, and not already free in the original
   return (
-    reads !== undefined && reads.unbound.has(name) && !reads.bound.has(name)
+    after.unbound.has(name) &&
+    !(before.unbound.has(name) && !before.bound.has(name))
   )
 }
 
@@ -1243,10 +1260,37 @@ async function dependencyReadsFree(
 export interface ParsedModules {
   /** Resource path of each module of the output, by module id. */
   resourceById: Map<string, string>
+  /**
+   * The code of each module that a loader other than the bundler's
+   * built-in ones (`builtin:…`) ran on, as the bundler parsed it (after its
+   * loaders), by resource path: a transform hook of this build saw it.
+   */
+  transformed: Map<string, string>
+}
+
+interface RecordedModule {
+  resource?: string
+  loaders?: Array<{ loader?: string }>
+  originalSource?: () => { source: () => string | Buffer } | null | undefined
 }
 
 interface RecordingCompiler {
   hooks: {
+    compilation: {
+      tap: (
+        name: string,
+        callback: (compilation: {
+          hooks: {
+            finishModules: {
+              tap: (
+                name: string,
+                callback: (modules: Iterable<RecordedModule>) => void,
+              ) => void
+            }
+          }
+        }) => void,
+      ) => void
+    }
     done: {
       tap: (
         name: string,
@@ -1273,6 +1317,22 @@ export function recordParsedModules(parsed: ParsedModules) {
   return {
     name,
     apply(compiler: RecordingCompiler) {
+      compiler.hooks.compilation.tap(name, (compilation) => {
+        compilation.hooks.finishModules.tap(name, (modules) => {
+          for (const module of modules) {
+            const transformed = (module.loaders ?? []).some(
+              ({ loader }) =>
+                loader !== undefined && !loader.startsWith('builtin:'),
+            )
+            const source = transformed
+              ? module.originalSource?.()?.source()
+              : undefined
+            if (module.resource && source !== undefined) {
+              parsed.transformed.set(module.resource, String(source))
+            }
+          }
+        })
+      })
       compiler.hooks.done.tap(name, (stats) => {
         const { modules = [] } = stats.toJson({
           all: false,
@@ -1291,7 +1351,7 @@ export function recordParsedModules(parsed: ParsedModules) {
 
 /** An empty `ParsedModules`, for `recordParsedModules` to fill. */
 export function parsedModules(): ParsedModules {
-  return { resourceById: new Map() }
+  return { resourceById: new Map(), transformed: new Map() }
 }
 
 /**

@@ -5,6 +5,7 @@
  * side-effect hints reach the bundler.
  */
 import { existsSync } from 'node:fs'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, onTestFinished, test } from 'vitest'
@@ -548,58 +549,81 @@ export function read() {
     )
 
     /**
-     * A dependency (`node_modules/dep`) whose `a` imports `helper` only for
-     * an export nobody uses: unminified, the bundler ships that unused code.
-     * Rspack drops the binding it reads; webpack declares it.
+     * A dependency installed outside the app (`node_modules/dep` links to
+     * it, as a package manager links one) with `files`, removed after the
+     * test.
      */
-    const dependencyApp = (a: string) => ({
-      'entry.js': `import { used } from 'dep'
-export const read = () => used()
-`,
-      'node_modules/dep/package.json': `{ "name": "dep", "type": "module", "main": "./a.js" }\n`,
-      'node_modules/dep/a.js': a,
-      'node_modules/dep/b.js': `export function helper() {
-  return 'MARK_B'
-}
-`,
-      // A transform that loses `a`'s binding of `helper`, as a broken
-      // compiler would.
-      'lose-binding-loader.cjs': `module.exports = (source) => source.replace("import { helper } from './b.js'\\n", '')\n`,
-    })
-    const unusedImport = `import { helper } from './b.js'
+    async function dependency(files: Record<string, string>) {
+      const directory = await mkdtemp(path.join(testsDir, '.dependency-'))
+      onTestFinished(() => rm(directory, { recursive: true, force: true }))
+      await writeFile(
+        path.join(directory, 'package.json'),
+        `{ "name": "dep", "type": "module", "main": "./a.js" }\n`,
+      )
+      for (const [file, code] of Object.entries(files)) {
+        await writeFile(path.join(directory, file), code)
+      }
+      return { 'node_modules/dep': directory }
+    }
+
+    /**
+     * `a` imports `helper` only for an export nobody uses: unminified, the
+     * bundler ships that unused code. Rspack drops the binding it reads;
+     * webpack declares it.
+     */
+    const unusedImport = {
+      'a.js': `import { helper } from './b.js'
 export function used() {
   return 'MARK_USED'
 }
 export function unused() {
   return helper()
 }
-`
+`,
+      'b.js': `export function helper() {
+  return 'MARK_B'
+}
+`,
+    }
+    /** As seroval's `const RETURN = () => T`: a free name its own source reads, used as text. */
+    const freeRead = {
+      'a.js': `const RETURN = () => T
+export const used = () => /=>/.test(RETURN.toString())
+`,
+    }
+    const entry = {
+      'entry.js': `import { used } from 'dep'
+export const read = () => used()
+`,
+      // Transforms standing for a compiler under test that changes the
+      // dependency: one loses `a`'s binding of `helper`, as a broken
+      // compiler would; the other only marks the module.
+      'lose-binding-loader.cjs': `module.exports = (source) => source.replace("import { helper } from './b.js'\\n", '')\n`,
+      'mark-loader.cjs': `module.exports = (source) => source + '\\n// transformed\\n'\n`,
+    }
+    const transformDependency = (loader: string) => [
+      { test: /a\.js$/, include: /\.dependency-/, loader },
+    ]
 
-    // Ruling "dangling-name attribution" (2026-10-20): a binding the
-    // dependency's own source has, lost by the bundler, is a defect.
+    // Ruling "dangling-name attribution" (amended 2026-10-20): the check
+    // covers the modules the compilers under test produced or changed.
     test(
-      'an import binding the bundler drops from a dependency’s unused code it ships is rejected',
+      'an untouched dependency is out of scope, even when the bundler drops its import bindings',
       async () => {
-        const build = bundleApp({
+        const app = await bundleApp({
           bundler,
           env: 'client',
           minify: false,
           entry: 'entry.js',
-          files: dependencyApp(unusedImport),
+          files: entry,
+          symlinks: await dependency(unusedImport),
         })
-        if (bundler === 'rspack') {
-          await expect(build).rejects.toMatchObject({
-            name: 'DanglingNameError',
-            names: { 'entry.mjs': ['helper'] },
-          })
-        } else {
-          // webpack declares the binding: nothing dangles.
-          const app = await build
-          expect(app.entry.code).toMatch(/return .*helper.*\(\)/)
-          expect((await app.run('return entry.read()')).result).toBe(
-            'MARK_USED',
-          )
-        }
+        expect(app.entry.code).toMatch(/return .*helper.*\(\)/)
+        // Rspack ships the read without its binding; webpack declares it.
+        expect(unboundNames(app.entry.code).has('helper')).toBe(
+          bundler === 'rspack',
+        )
+        expect((await app.run('return entry.read()')).result).toBe('MARK_USED')
       },
       timeout,
     )
@@ -613,14 +637,9 @@ export function unused() {
             env: 'client',
             minify: false,
             entry: 'entry.js',
-            sourceRules: [
-              {
-                test: /a\.js$/,
-                include: /node_modules/,
-                loader: './lose-binding-loader.cjs',
-              },
-            ],
-            files: dependencyApp(unusedImport),
+            files: entry,
+            symlinks: await dependency(unusedImport),
+            sourceRules: transformDependency('./lose-binding-loader.cjs'),
           }),
         ).rejects.toMatchObject({
           name: 'DanglingNameError',
@@ -630,27 +649,21 @@ export function unused() {
       timeout,
     )
 
-    /** As seroval's `const RETURN = () => T`: a free name read in its own source, used as text. */
-    const freeReadModule = `const RETURN = () => T
-export const arrows = /=>/.test(RETURN.toString())
-`
-
     test(
-      'a dependency module that reads a name free in its own source passes; the same code in the app is rejected',
+      'a transformed dependency module that reads a name free in its own source passes; the same code in the app is rejected',
       async () => {
         const app = await bundleApp({
           bundler,
           env: 'client',
           minify: false,
           entry: 'entry.js',
-          files: {
-            'entry.js': `export { arrows } from 'free'\n`,
-            'node_modules/free/package.json': `{ "name": "free", "type": "module", "main": "./index.js" }\n`,
-            'node_modules/free/index.js': freeReadModule,
-          },
+          files: entry,
+          symlinks: await dependency(freeRead),
+          sourceRules: transformDependency('./mark-loader.cjs'),
         })
+        expect(app.entry.code).toContain('// transformed')
         expect(unboundNames(app.entry.code).has('T')).toBe(true)
-        expect((await app.run('return entry.arrows')).result).toBe(true)
+        expect((await app.run('return entry.read()')).result).toBe(true)
 
         await expect(
           bundleApp({
@@ -659,8 +672,8 @@ export const arrows = /=>/.test(RETURN.toString())
             minify: false,
             entry: 'entry.js',
             files: {
-              'entry.js': `export { arrows } from './free.js'\n`,
-              'free.js': freeReadModule,
+              'entry.js': `export { used as read } from './free.js'\n`,
+              'free.js': freeRead['a.js'],
             },
           }),
         ).rejects.toMatchObject({
