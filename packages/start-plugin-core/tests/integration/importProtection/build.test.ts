@@ -963,18 +963,39 @@ describe.each(startBundlers)('%s build, server-only marker', (bundler) => {
     timeout,
   )
 
-  // Bug: marker exemptions and mock resolution depend on the build's
-  // import order. Rsbuild can mock the exempt importer too; Vite can give
-  // the nonexempt importer the real module after the exempt edge loads it.
+  // Bug: in a mock-mode build, a server-only-marked module imported by an
+  // exempt importer and another importer is a mock for both (Rsbuild), or
+  // the real module for the other importer (Vite).
+  // - Rsbuild replaces the marked module itself with a mock in its loader,
+  //   for every importer, in every import order (the pin above).
+  // - Vite mocks an importer's import of a marked module only when the
+  //   marked module's own marker import was resolved first (`resolveId` in
+  //   vite/import-protection-plugin/plugin.ts reads `fileMarkerKind`);
+  //   otherwise that importer gets the real module (the "is mocked, with a
+  //   warning" pin of the mock-mode block). Only the exempt importer can load
+  //   the marked module before the other importer's import is resolved, so
+  //   the outcome is a race of the build: the other importer gets the real
+  //   module in every build when it is nearer the entry than the exempt
+  //   importer, in most builds when they are side by side, and in a few
+  //   when the exempt importer is nearer.
+  // The orders where the other importer is nearer come first: they keep the
+  // pin red on both bundlers in every run; the racy orders follow, so the
+  // pin passes only when no order leaks.
   // Source: V1R ip I09/S20; public entry-order and indirection variants.
-  // Impact: exemptions either stop working or leak the denied real value.
+  // Impact: exemptions either stop working (Rsbuild) or leak the denied real
+  // value to the importer that is not exempt (Vite).
   // Blame is read from onViolation/trace: marker-origin display is allowed.
   test.fails(
     'in mock mode, an ignored importer gets the real module, another importer a safe mock, and only the other importer is reported',
     async () => {
       for (const entry of [
+        // The other importer nearer the entry, in both orders
+        `export { b } from './other'\nexport { a } from './mid-ignored'\n`,
+        `export { a } from './mid-ignored'\nexport { b } from './other'\n`,
+        // Side by side, in both orders
         `export { a } from './ignored'\nexport { b } from './other'\n`,
         `export { b } from './other'\nexport { a } from './ignored'\n`,
+        // The ignored importer nearer the entry
         `export { a } from './ignored'\nexport { b } from './mid'\n`,
       ]) {
         const seen: Array<ViolationInfo> = []
@@ -984,6 +1005,7 @@ describe.each(startBundlers)('%s build, server-only marker', (bundler) => {
             ...ignoredAndOther,
             'src/entry.ts': entry,
             'src/mid.ts': `export { b } from './other'\n`,
+            'src/mid-ignored.ts': `export { a } from './ignored'\n`,
           },
           entry: 'src/entry.ts',
           start: {
