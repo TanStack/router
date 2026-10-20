@@ -3,7 +3,8 @@
  * harnesses in `browser` mode (dev-server.ts, rsbuild-dev-server.ts): the
  * page runs the dev server's own HMR client, the dev server's own file
  * watcher reports an edit, an update a module accepts applies in place, and
- * an update nothing accepts reloads the page.
+ * an update nothing accepts reloads the page. A page can be given its
+ * document, and an init script runs before the page's own code.
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -91,3 +92,22 @@ test(
   },
   timeout,
 )
+
+test('a page given its document shows it at its URL, and an init script runs before the page’s own code, on every load', async () => {
+  // No server listens there: the document is the one given.
+  const url = 'http://127.0.0.1:9/page'
+  const page = await openPage(url, {
+    registerCleanup: onTestFinished,
+    initScript: `window.initRan = (window.initRan ?? 0) + 1`,
+    html: `<div id="app"></div><script>
+window.appSaw = window.initRan
+document.getElementById('app').textContent = 'MARK_DOCUMENT ' + location.href
+</script>`,
+  })
+  expect(await page.text('#app')).toBe(`MARK_DOCUMENT ${url}`)
+  expect(await page.page.evaluate('window.appSaw')).toBe(1)
+  await page.page.reload()
+  expect(await page.page.evaluate('[window.appSaw, window.initRan]')).toEqual([
+    1, 1,
+  ])
+})
