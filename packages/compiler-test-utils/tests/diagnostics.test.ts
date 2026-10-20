@@ -614,6 +614,60 @@ export const Page = () => <Secret value={s()} other={other} />
     expect(importedBindingUses('src/a.tsx', jsx, './missing')).toEqual([])
   })
 
+  // SPEC J6.5: a report is never at an erased type position, so such a
+  // position is not a use.
+  test('importedBindingUses leaves out type positions, which compiling erases', () => {
+    const typed = `import { Secret, secret } from './secret.server'
+export const read = (value: Secret): Secret => value as Secret
+export type Kind = typeof secret
+export interface Box extends Secret { inner: Secret }
+export class Holder implements Secret { declare field: Secret }
+declare const later: typeof secret
+export const run = () => secret<Secret>()
+export enum Code { A = secret() }
+`
+    expect(importedBindingUses('src/a.ts', typed, './secret.server')).toEqual([
+      { line: 7, column: 26 },
+      { line: 8, column: 24 },
+    ])
+  })
+
+  test('importedBindingUses leaves out names a local binding shadows', () => {
+    const shadowed = `import { secret } from './secret.server'
+export function local() {
+  const secret = () => 'local'
+  return secret()
+}
+export const param = (secret: () => string) => secret()
+export const pick = ({ secret }: { secret: () => string }) => secret()
+try {} catch (secret) { void secret }
+for (const secret of [() => '']) { void secret }
+export const named = function secret() { return secret }
+export const leak = () => secret()
+`
+    expect(
+      importedBindingUses('src/a.ts', shadowed, './secret.server'),
+    ).toEqual([{ line: 11, column: 27 }])
+  })
+
+  test('importedBindingUses leaves out names that are not references: keys, members, labels, re-exports, JSX attributes', () => {
+    const names = `import { secret } from './secret.server'
+export const named = { secret: 1 }.secret
+export const shorthand = { secret }
+secret: {
+  break secret
+}
+export { secret }
+export { secret as other } from './elsewhere'
+export const el = <div secret={secret} />
+`
+    expect(importedBindingUses('src/a.tsx', names, './secret.server')).toEqual([
+      { line: 3, column: 28 },
+      { line: 7, column: 10 },
+      { line: 9, column: 32 },
+    ])
+  })
+
   test('parseLocation reads a file with or without a line and column', () => {
     expect(parseLocation('C:/app/a.ts:3:4')).toEqual({
       file: 'C:/app/a.ts',

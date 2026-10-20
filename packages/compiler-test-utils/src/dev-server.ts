@@ -652,9 +652,58 @@ export async function createDevServer(
     throw error
   }
 
+  /**
+   * Workaround (FOLLOWUPS "UPSTREAM (W5-ip)"): in full-bundle dev, Vite
+   * ends its initial build with a `getBundleState()` call that nothing
+   * awaits (`waitForInitialBuildFinish()`). Closing the server while it is in
+   * flight makes Rolldown reject it, and Vite leaves the rejection unhandled
+   * ("Failed to get bundle state"). So `close()` first waits, one turn at a
+   * time, for the flag Vite sets once that call chain has ended. The flag is
+   * internal: Vite has no public API for it (vitejs/vite#22991). Remove this
+   * wait once Vite handles the `waitForInitialBuildFinish()` rejection.
+   */
+  const initialBuildFinished = async () => {
+    const internals = (
+      vite.environments.client as
+        | {
+            bundledDev?: {
+              _devEngine?: unknown
+              initialBuildCompleted?: unknown
+            }
+          }
+        | undefined
+    )?.bundledDev
+    // No dev engine: the initial build never started
+    if (!internals?._devEngine) {
+      return
+    }
+    if (typeof internals.initialBuildCompleted !== 'boolean') {
+      throw new Error(
+        "the harness waits on Vite's full-bundle `initialBuildCompleted` before closing, which this version of Vite does not have",
+      )
+    }
+    const deadline = Date.now() + eventTimeout
+    while (!internals.initialBuildCompleted) {
+      if (Date.now() > deadline) {
+        throw new Error(
+          `Vite's full-bundle dev did not finish its initial build within ${eventTimeout} ms`,
+        )
+      }
+      await new Promise((resolve) => setImmediate(resolve))
+    }
+  }
+
   let stopped: Promise<void> | undefined
   const stop = () => {
-    stopped ??= vite.close()
+    stopped ??= (async () => {
+      try {
+        if (bundledDev) {
+          await initialBuildFinished()
+        }
+      } finally {
+        await vite.close()
+      }
+    })()
     return stopped
   }
   let closed: Promise<void> | undefined

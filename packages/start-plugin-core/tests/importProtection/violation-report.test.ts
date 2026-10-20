@@ -412,6 +412,36 @@ export const leak = () => secret()
     ).toEqual([notRelevant('src/b.ts:1:1')])
   })
 
+  // SPEC J6.5: never an erased type position; a same-name local is another
+  // binding, not a use of the import.
+  test.each([
+    ['the use', { line: 3, column: 35 }, 'client src/b.ts'],
+    [
+      'a type position (`typeof secret`)',
+      { line: 2, column: 33 },
+      notRelevant('src/b.ts:2:33'),
+    ],
+    [
+      'a call of a same-name parameter',
+      { line: 4, column: 48 },
+      notRelevant('src/b.ts:4:48'),
+    ],
+  ])(
+    'locatedImporters: in a typed module, a report at %s',
+    (_name, location, located) => {
+      const typed = `import { secret } from './secret.server'
+type Secret = ReturnType<typeof secret>
+export const leak = (): Secret => secret()
+export const local = (secret: () => string) => secret()
+`
+      const text = formatViolation(
+        { ...violation, importerLoc: location, snippet: undefined },
+        '/project',
+      )
+      expect(locatedImporters(text, { 'src/b.ts': typed })).toEqual([located])
+    },
+  )
+
   test('locatedImporters: a file whose source is unknown is not located', () => {
     expect(locatedImporters(reportAt({ line: 4, column: 27 }), {})).toEqual([
       'client src/b.ts:4:27 (not at a relevant original place)',

@@ -398,7 +398,18 @@ console.log(secret(), other)
         'src/lib/index.ts': `export const lib = 2\n`,
         'src/entry.ts': `import { lib } from './lib'\nconsole.log(lib, 2)\n`,
       })
-      expect(resolved).toEqual(['src/lib.ts', 'src/lib/index.ts'])
+      // The edit passes through states the dev server may compile and
+      // report: `./lib` resolving nowhere (`undefined`) once `src/lib.ts` is
+      // gone and before `src/lib/index.ts` exists (DECISIONS 2026-10-20
+      // "Rsbuild first-edit harness fixes", C). The new target is reported
+      // last, and from the compile that saw it on, never the old one.
+      const sinceEdit = resolved.slice(1)
+      expect(sinceEdit.at(-1)).toBe('src/lib/index.ts')
+      const seen = sinceEdit.indexOf('src/lib/index.ts')
+      expect(sinceEdit.slice(0, seen)).toEqual(
+        sinceEdit.slice(0, seen).map(() => undefined),
+      )
+      expect(sinceEdit.slice(seen)).not.toContain('src/lib.ts')
     },
     timeout,
   )

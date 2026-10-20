@@ -4,7 +4,7 @@
  * compiles of every write (plugins' included), and `outputs()` returns what
  * the environment emits afterwards.
  */
-import { readFile, writeFile } from 'node:fs/promises'
+import { readFile, stat, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, onTestFinished, test } from 'vitest'
@@ -391,4 +391,119 @@ test('the start resolves with a compiler whose watcher ignores every file, while
   for (const file of node.read) {
     expect(web.known.has(path.join(server.root, file))).toBe(true)
   }
+}, 30_000)
+
+// A user starts the dev server on files that are already on disk. Files
+// written a moment before the first compile fall within the accuracy
+// watchpack allows for modification times (up to 2 s), so its first scan
+// would report them changed and Rspack would start a second compile by
+// itself, during a test's first edit (DECISIONS 2026-10-20 "Rsbuild
+// first-edit harness fixes").
+test("the app's initial files predate the first compile beyond the watcher's accuracy", async () => {
+  let firstCompile: number | undefined
+  const server = await createRsbuildDevServer({
+    dir: testsDir,
+    registerCleanup: onTestFinished,
+    files: {
+      'src/entry.ts': `import { leaf } from './leaf'\nconsole.log(leaf)\n`,
+      'src/leaf.ts': `export const leaf = 'MARK_V1'\n`,
+    },
+    plugins: [
+      {
+        name: 'first-compile',
+        setup(api) {
+          api.modifyRspackConfig((config) => {
+            config.plugins.push({
+              apply(compiler: Rspack.Compiler) {
+                compiler.hooks.watchRun.tap('first-compile', () => {
+                  firstCompile ??= Date.now()
+                })
+              },
+            })
+          })
+        },
+      },
+    ],
+  })
+  expect(firstCompile).toBeDefined()
+  for (const file of ['package.json', 'src/entry.ts', 'src/leaf.ts']) {
+    const { mtimeMs } = await stat(path.join(server.root, file))
+    expect(mtimeMs + 2000, file).toBeLessThan(firstCompile!)
+  }
+}, 30_000)
+
+// A compile that started before an edit's write does not compile it, even
+// if it names the edited file (here for an earlier change of it): `edit()`
+// waits for a compile that started once the file held the edit. A plugin
+// holds that earlier compile in `watchRun` until the edit began.
+test('a compile that started before the write of an edit does not end its wait', async () => {
+  let hold: { held: () => void; release: Promise<void> } | undefined
+  /** The contents of `src/leaf.ts` when each compile started; then `done`. */
+  const compiles: Array<{ leaf: string; done: boolean }> = []
+  const server = await createRsbuildDevServer({
+    dir: testsDir,
+    registerCleanup: onTestFinished,
+    files: {
+      'src/entry.ts': `import { leaf } from './leaf'\nconsole.log(leaf)\n`,
+      'src/leaf.ts': `export const leaf = 'MARK_V1'\n`,
+    },
+    plugins: [
+      {
+        name: 'holds-a-compile',
+        setup(api) {
+          api.modifyRspackConfig((config) => {
+            config.plugins.push({
+              apply(compiler: Rspack.Compiler) {
+                const leaf = path.join(compiler.context, 'src/leaf.ts')
+                compiler.hooks.watchRun.tapPromise(
+                  { name: 'holds-a-compile', stage: -2000 },
+                  async () => {
+                    const current = hold
+                    hold = undefined
+                    compiles.push({
+                      leaf: await readFile(leaf, 'utf8'),
+                      done: false,
+                    })
+                    if (current) {
+                      current.held()
+                      await current.release
+                    }
+                  },
+                )
+                compiler.hooks.done.tap('holds-a-compile', () => {
+                  compiles.at(-1)!.done = true
+                })
+              },
+            })
+          })
+        },
+      },
+    ],
+  })
+  let release = () => {}
+  const held = new Promise<void>((resolve) => {
+    hold = {
+      held: resolve,
+      release: new Promise<void>((resolveRelease) => {
+        release = resolveRelease
+      }),
+    }
+  })
+  // A change of the file the watcher reports: a compile naming it starts
+  // and waits in `watchRun`
+  await writeFile(
+    path.join(server.root, 'src/leaf.ts'),
+    `export const leaf = 'MARK_V2'\n`,
+  )
+  await held
+  const editing = server.edit({
+    'src/leaf.ts': `export const leaf = 'MARK_V3'\n`,
+  })
+  release()
+  await editing
+
+  expect(
+    compiles.some(({ leaf, done }) => leaf.includes('MARK_V3') && done),
+  ).toBe(true)
+  expect(Object.values(await server.outputs()).join('\n')).toContain('MARK_V3')
 }, 30_000)

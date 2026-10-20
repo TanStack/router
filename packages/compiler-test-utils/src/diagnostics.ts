@@ -912,10 +912,14 @@ export function importLines(
 
 /**
  * The 1-based positions in `source` (the module `file`) of every reference
- * to a binding its static imports of `specifier` introduce (identifiers and
- * JSX names, outside the import statements): the places a use of the
- * import may be reported at, when a test does not name the one genuine use
- * (any reference, type positions included).
+ * to a binding its static imports of `specifier` introduce, in code that
+ * runs: identifiers and JSX names outside the import statements, except
+ * type positions (erased: annotations, `typeof` types, type declarations,
+ * `declare`d code, `implements`) and names a local binding of the same name
+ * shadows. The places a use of the import may be reported at, when a test
+ * does not name the one genuine use. Uses in code a compiler removes (a
+ * server function's handler body…) are not told apart: tests of those name
+ * the genuine use.
  */
 export function importedBindingUses(
   file: string,
@@ -925,41 +929,44 @@ export function importedBindingUses(
   const { module, program } = parseSync(`module.${languageOf(file)}`, source, {
     sourceType: 'module',
   })
-  const imports = module.staticImports.filter(
-    (statement) => statement.moduleRequest.value === specifier,
-  )
   const names = new Set(
-    imports.flatMap((statement) =>
-      statement.entries.map((entry) => entry.localName.value),
-    ),
+    module.staticImports
+      .filter((statement) => statement.moduleRequest.value === specifier)
+      .flatMap((statement) =>
+        statement.entries.map((entry) => entry.localName.value),
+      ),
   )
-  const inImport = (offset: number) =>
-    imports.some(({ start, end }) => offset >= start && offset < end)
   const offsets: Array<number> = []
-  const visit = (node: unknown) => {
+  /** Each enclosing scope's own bindings of the imported names. */
+  const scopes: Array<Set<string>> = []
+  const visit = (node: unknown, parent?: AstNode, key?: string) => {
     if (Array.isArray(node)) {
-      node.forEach(visit)
+      node.forEach((child) => visit(child, parent, key))
       return
     }
-    if (node === null || typeof node !== 'object') {
+    if (!isAstNode(node) || referencesNoBinding(node)) {
       return
-    }
-    const { type, name, start } = node as {
-      type?: unknown
-      name?: unknown
-      start?: unknown
     }
     if (
-      (type === 'Identifier' || type === 'JSXIdentifier') &&
-      typeof name === 'string' &&
-      names.has(name) &&
-      typeof start === 'number' &&
-      !inImport(start)
+      (node.type === 'Identifier' || node.type === 'JSXIdentifier') &&
+      typeof node.name === 'string' &&
+      names.has(node.name) &&
+      !(parent && key !== undefined && isNameOnly(node, parent, key)) &&
+      !scopes.some((scope) => scope.has(node.name as string))
     ) {
-      offsets.push(start)
+      offsets.push(node.start)
     }
-    for (const value of Object.values(node)) {
-      visit(value)
+    const scope = scopeBindings(node, names)
+    if (scope) {
+      scopes.push(scope)
+    }
+    for (const [childKey, child] of Object.entries(node)) {
+      if (!typeOnlyKeys.has(childKey)) {
+        visit(child, node, childKey)
+      }
+    }
+    if (scope) {
+      scopes.pop()
     }
   }
   if (names.size > 0) {
@@ -968,6 +975,253 @@ export function importedBindingUses(
   return offsets
     .sort((a, b) => a - b)
     .map((offset) => diagnosticPosition(source, offset))
+}
+
+/** An ESTree / TS-ESTree node, as Oxc gives it. */
+type AstNode = { type: string; start: number; [key: string]: unknown }
+
+function isAstNode(value: unknown): value is AstNode {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    typeof (value as { type?: unknown }).type === 'string' &&
+    typeof (value as { start?: unknown }).start === 'number'
+  )
+}
+
+/** Keys of TS-ESTree nodes that hold only types. */
+const typeOnlyKeys = new Set([
+  'typeAnnotation',
+  'typeParameters',
+  'typeArguments',
+  'returnType',
+  'superTypeArguments',
+  'implements',
+])
+
+/** The TS-ESTree nodes that hold runtime code; every other `TS…` is a type. */
+const runtimeTsNodes = new Set([
+  'TSAsExpression',
+  'TSSatisfiesExpression',
+  'TSNonNullExpression',
+  'TSTypeAssertion',
+  'TSInstantiationExpression',
+  'TSParameterProperty',
+  'TSEnumDeclaration',
+  'TSEnumBody',
+  'TSEnumMember',
+  'TSModuleDeclaration',
+  'TSModuleBlock',
+  'TSExportAssignment',
+  'TSImportEqualsDeclaration',
+  'TSExternalModuleReference',
+  'TSQualifiedName',
+])
+
+/**
+ * Code that references no binding of the module: code that compiling to
+ * JavaScript erases, import statements and re-exports from another module.
+ */
+function referencesNoBinding(node: AstNode) {
+  return (
+    (node.type.startsWith('TS') && !runtimeTsNodes.has(node.type)) ||
+    node.declare === true ||
+    node.exportKind === 'type' ||
+    node.importKind === 'type' ||
+    node.type === 'ImportDeclaration' ||
+    ((node.type === 'ExportNamedDeclaration' ||
+      node.type === 'ExportAllDeclaration') &&
+      isAstNode(node.source))
+  )
+}
+
+/**
+ * Whether `node` (an identifier, the `key` child of `parent`) is a name
+ * rather than a reference to a binding: a property or member name, a
+ * label, an exported name, a JSX attribute or intrinsic element name.
+ */
+function isNameOnly(node: AstNode, parent: AstNode, key: string) {
+  switch (parent.type) {
+    case 'MemberExpression':
+      return key === 'property' && parent.computed !== true
+    case 'Property':
+    case 'MethodDefinition':
+    case 'PropertyDefinition':
+    case 'AccessorProperty':
+      return key === 'key' && parent.computed !== true
+    case 'LabeledStatement':
+    case 'BreakStatement':
+    case 'ContinueStatement':
+      return key === 'label'
+    case 'ExportSpecifier':
+    case 'ExportAllDeclaration':
+      return key === 'exported'
+    case 'MetaProperty':
+    case 'JSXAttribute':
+    case 'JSXNamespacedName':
+    case 'ImportAttribute':
+      return true
+    case 'TSEnumMember':
+      return key === 'id'
+    case 'TSQualifiedName':
+    case 'JSXMemberExpression':
+      return key === 'right' || key === 'property'
+    case 'JSXOpeningElement':
+    case 'JSXClosingElement':
+      // `<div>` names an intrinsic element, not a binding
+      return /^[a-z]/.test(String(node.name))
+    default:
+      return false
+  }
+}
+
+/**
+ * The imported `names` that `node`, when it opens a scope, binds itself
+ * (shadowing the import inside it), or `undefined` when it opens none.
+ */
+function scopeBindings(
+  node: AstNode,
+  names: Set<string>,
+): Set<string> | undefined {
+  const bound: Array<string> = []
+  switch (node.type) {
+    case 'FunctionDeclaration':
+    case 'FunctionExpression':
+    case 'ArrowFunctionExpression':
+      if (node.type === 'FunctionExpression') {
+        patternNames(node.id, bound)
+      }
+      patternNames(node.params, bound)
+      varNames(node.body, bound)
+      break
+    case 'ClassExpression':
+      patternNames(node.id, bound)
+      break
+    case 'CatchClause':
+      patternNames(node.param, bound)
+      break
+    case 'BlockStatement':
+    case 'StaticBlock':
+    case 'TSModuleBlock':
+      lexicalNames(node.body, bound)
+      if (node.type === 'StaticBlock') {
+        varNames(node.body, bound)
+      }
+      break
+    case 'SwitchStatement':
+      lexicalNames(
+        (node.cases as Array<{ consequent: Array<unknown> }>).flatMap(
+          (switchCase) => switchCase.consequent,
+        ),
+        bound,
+      )
+      break
+    case 'ForStatement':
+    case 'ForInStatement':
+    case 'ForOfStatement':
+      lexicalNames(
+        [node.type === 'ForStatement' ? node.init : node.left],
+        bound,
+      )
+      break
+    default:
+      return undefined
+  }
+  return new Set(bound.filter((name) => names.has(name)))
+}
+
+/** The names a binding pattern (or a list of them, e.g. parameters) binds. */
+function patternNames(pattern: unknown, out: Array<string>) {
+  if (Array.isArray(pattern)) {
+    pattern.forEach((element) => patternNames(element, out))
+    return
+  }
+  if (!isAstNode(pattern)) {
+    return
+  }
+  switch (pattern.type) {
+    case 'Identifier':
+      out.push(pattern.name as string)
+      break
+    case 'ObjectPattern':
+      for (const property of pattern.properties as Array<AstNode>) {
+        patternNames(
+          property.type === 'RestElement' ? property.argument : property.value,
+          out,
+        )
+      }
+      break
+    case 'ArrayPattern':
+      patternNames(pattern.elements, out)
+      break
+    case 'AssignmentPattern':
+      patternNames(pattern.left, out)
+      break
+    case 'RestElement':
+      patternNames(pattern.argument, out)
+      break
+    case 'TSParameterProperty':
+      patternNames(pattern.parameter, out)
+      break
+  }
+}
+
+/**
+ * The names the statements of a block bind in it: `let`, `const`, `using`,
+ * classes, functions, enums, namespaces and `import x =` aliases.
+ */
+function lexicalNames(statements: unknown, out: Array<string>) {
+  for (const statement of Array.isArray(statements) ? statements : []) {
+    const declaration =
+      isAstNode(statement) &&
+      (statement.type === 'ExportNamedDeclaration' ||
+        statement.type === 'ExportDefaultDeclaration')
+        ? statement.declaration
+        : statement
+    if (!isAstNode(declaration)) {
+      continue
+    }
+    if (declaration.type === 'VariableDeclaration') {
+      if (declaration.kind !== 'var') {
+        for (const declarator of declaration.declarations as Array<AstNode>) {
+          patternNames(declarator.id, out)
+        }
+      }
+    } else if (
+      declaration.type === 'ClassDeclaration' ||
+      declaration.type === 'FunctionDeclaration' ||
+      declaration.type === 'TSEnumDeclaration' ||
+      declaration.type === 'TSModuleDeclaration' ||
+      declaration.type === 'TSImportEqualsDeclaration'
+    ) {
+      patternNames(declaration.id, out)
+    }
+  }
+}
+
+/** The `var` names a function body binds (outside nested functions). */
+function varNames(node: unknown, out: Array<string>) {
+  if (Array.isArray(node)) {
+    node.forEach((child) => varNames(child, out))
+    return
+  }
+  if (
+    !isAstNode(node) ||
+    node.type === 'FunctionDeclaration' ||
+    node.type === 'FunctionExpression' ||
+    node.type === 'ArrowFunctionExpression' ||
+    node.type === 'StaticBlock'
+  ) {
+    return
+  }
+  if (node.type === 'VariableDeclaration' && node.kind === 'var') {
+    for (const declarator of node.declarations as Array<AstNode>) {
+      patternNames(declarator.id, out)
+    }
+  }
+  for (const child of Object.values(node)) {
+    varNames(child, out)
+  }
 }
 
 /** The places a reported location may relevantly be (`locationMismatch`). */
