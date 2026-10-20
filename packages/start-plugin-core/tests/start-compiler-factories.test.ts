@@ -6,7 +6,6 @@ import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   callProvider,
   callServerFnThroughCallers,
-  callShapeCauses,
   callerRpcId,
   clientOnlyError,
   compileAll,
@@ -1010,58 +1009,34 @@ export const serverOnly = createServerOnlyFn(() => 'server-only-marker')`
 
   // Source: @vitejs/plugin-rsc expand-export-all/string-export-name; corpus
   // inputs U047/U048, restored with the unrecognised call shapes of the user
-  // ruling 2026-10-20 (SPEC J4.5 "unrecognised shapes must not silently
-  // leak", J4.12). Valid TypeScript: arbitrary module namespace names (tsc
-  // 7.0.2 accepts both modules against the real declarations).
-  // Either outcome: the builders imported under string export names are
-  // recognised (the client calls an RPC that reaches the handler and holds
-  // no server-only code, the server-only fn throws there), or each output
-  // that does not is rejected with a clear compile error at the import or
-  // at the call.
-  test('builders re-exported under string export names are recognised, or rejected clearly', async () => {
+  // ruling 2026-10-20. A string export name is a re-export form, which SPEC
+  // J4.5 lists among the recognised ones (coordinator 2026-10-20: supported,
+  // no rejection branch). Valid TypeScript: arbitrary module namespace
+  // names (tsc 7.0.2 accepts both modules against the real declarations).
+  test('builders re-exported under string export names are recognised', async () => {
     const files = {
       '/test/src/start.ts': `export { createServerFn as 'create server fn', createServerOnlyFn as 'server only' } from '@tanstack/react-start'`,
     }
-    const source = `import { 'create server fn' as createServerFn, 'server only' as createServerOnlyFn } from './start'
+    const compiled = await compileAll(
+      `import { 'create server fn' as createServerFn, 'server only' as createServerOnlyFn } from './start'
 import { db } from './db.server'
 export const fn = createServerFn().handler(async () => db.x())
-export const serverOnly = createServerOnlyFn(() => 'server-only-marker')`
+export const serverOnly = createServerOnlyFn(() => 'server-only-marker')`,
+      { files },
+    )
+    await expectClientFree(compiled.client, ['./db.server'], { files })
+    expect(compiled.client).not.toContain('db.x()')
     const linked = { './db.server': { db: { x: () => 'x' } } }
-    const compiled: Partial<Record<Output, string>> = {}
-    for (const output of ['client', 'ssr', 'provider'] as const) {
-      const result = await compileFor(output, source, { files }).catch(
-        (error: unknown) => ({ error }),
-      )
-      if (!('error' in result)) {
-        compiled[output] = result.code ?? source
-        continue
-      }
-      const rejection = (at: string) => () =>
-        expectCompileError(result.error, {
-          source,
-          at,
-          names: ['createServerFn'],
-          causes: callShapeCauses,
-        })
-      try {
-        rejection("'create server fn' as")()
-      } catch {
-        rejection('createServerFn()')()
-      }
-    }
-    if (compiled.client !== undefined) {
-      expect(await getModuleErrors(compiled.client)).toEqual([])
-      await expectClientFree(compiled.client, ['./db.server'], { files })
-      expect(compiled.client).not.toContain('db.x()')
-      const client = await evaluateModule(compiled.client, linked, { files })
-      expect(settle(client.serverOnly)).toEqual(serverOnlyError)
-    }
-    if (Object.keys(compiled).length === 3) {
-      const all = await compileAll(source, { files })
-      expect(
-        await callServerFnThroughCallers(all, (module) => module.fn, linked),
-      ).toBe('x')
-    }
+    expect(
+      await callServerFnThroughCallers(compiled, (module) => module.fn, linked),
+    ).toBe('x')
+    const client = await evaluateModule(compiled.client, linked, { files })
+    expect(settle(client.serverOnly)).toEqual(serverOnlyError)
+    const ssr = await evaluateModule(compiled.ssr, linked, {
+      files,
+      env: 'server',
+    })
+    expect(ssr.serverOnly()).toBe('server-only-marker')
   })
 
   const factoryFiles = () => ({

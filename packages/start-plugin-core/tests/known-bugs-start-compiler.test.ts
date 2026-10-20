@@ -27,6 +27,7 @@ import {
   expectOutputsFreeOfHandler,
   moduleLoads,
   outputs,
+  placementCauses,
   serverOnlyError,
   serverOnlyModule,
   settle,
@@ -691,22 +692,11 @@ export const read = () => getRead()()`,
     }
   }
 
-  // Bug: chain methods are only recognised when called through a static
-  // member (`.handler(...)`, `.server(...)`), and a call whose result is
-  // member-called (`createServerOnlyFn(...).bind(null)`) is taken for the
-  // inner call of a method chain and never visited as a candidate itself:
-  // each module below is left untransformed on every output.
-  // Source: corpus inputs U078-U081 (#8630 pins), restored by user ruling
-  // 2026-10-20; SPEC J4.5 ("unrecognised shapes must not silently leak"),
-  // J4.12. tsc against the real declarations accepts every row.
-  // Impact: the server implementation and its server-only import ship to the
-  // client, where the server fn, isomorphic fn or server-only fn runs it in
-  // the browser.
-  // Fix-agnostic: each output either rejects the module with a clear compile
-  // error at the call (naming the API and a cause), or follows its contract:
-  // the client neither loads the server-only module nor holds the server
-  // code, and each output runs what the runtime contract promises.
-  test.fails.each<{
+  /**
+   * A module whose server code a compiler may not recognise (SPEC J4.5,
+   * J4.6, J4.12), and what each of its outputs must do if it compiles.
+   */
+  interface CallShape {
     name: string
     code: string
     /** The text of the call a rejection points at. */
@@ -725,7 +715,97 @@ export const read = () => getRead()()`,
     ) => void | Promise<void>
     /** Checks the server fn through its callers when every output compiled. */
     serverFn?: (module: Record<string, any>) => unknown
-  }>([
+    /** What a rejection may explain (default `callShapeCauses`). */
+    causes?: Array<string | RegExp>
+  }
+
+  /**
+   * Each output of `shape.code` either rejects it with a clear compile error
+   * at the call (`expectCompileError`: the line of `at`, naming `names`,
+   * explaining one of `causes`), or follows its contract: the client
+   * neither loads the server-only module nor holds the server code, and each
+   * output runs what the runtime contract promises.
+   */
+  async function expectWorksOrRejectedAtCall(shape: CallShape) {
+    const compiled: Partial<Record<Output, string>> = {}
+    let serverFns: Record<string, ServerFn> = {}
+    for (const output of shape.outputs) {
+      const result = await compileFor(output, shape.code).catch(
+        (error: unknown) => ({ error }),
+      )
+      if ('error' in result) {
+        expectCompileError(result.error, {
+          source: shape.code,
+          at: shape.at,
+          names: shape.names,
+          causes: shape.causes ?? callShapeCauses,
+        })
+        continue
+      }
+      compiled[output] = result.code ?? shape.code
+      if (output !== 'provider') {
+        serverFns = { ...serverFns, ...result.serverFns }
+      }
+    }
+    const errors: Partial<Record<Output, Array<string>>> = {}
+    for (const [output, module] of Object.entries(compiled)) {
+      errors[output as Output] = await getModuleErrors(module)
+    }
+    expect(errors).toEqual(
+      Object.fromEntries(Object.keys(compiled).map((output) => [output, []])),
+    )
+    if (compiled.client !== undefined) {
+      expectNotLoaded(await moduleLoads(compiled.client), [serverOnly])
+      expect(compiled.client, 'client').not.toContain(shape.body)
+      await shape.client(
+        await evaluateModule(compiled.client, callShapeStubs().stubs),
+      )
+    }
+    if (compiled.ssr !== undefined && shape.ssr) {
+      const { calls, stubs } = callShapeStubs()
+      await shape.ssr(
+        await evaluateModule(compiled.ssr, stubs, { env: 'server' }),
+        calls,
+      )
+    }
+    if (
+      shape.serverFn &&
+      shape.outputs.every((output) => compiled[output] !== undefined)
+    ) {
+      expect(
+        await callServerFnThroughCallers(
+          {
+            client: compiled.client!,
+            ssr: compiled.ssr!,
+            provider: compiled.provider!,
+            serverFns,
+            id: undefined,
+            framework: undefined,
+            files: undefined,
+          },
+          shape.serverFn,
+          callShapeStubs().stubs,
+        ),
+      ).toBe('x')
+    }
+  }
+
+  // Bug: chain methods are only recognised when called through a static
+  // member (`.handler(...)`, `.server(...)`), and a call whose result is
+  // member-called (`createServerOnlyFn(...).bind(null)`) is taken for the
+  // inner call of a method chain and never visited as a candidate itself:
+  // each module below is left untransformed on every output.
+  // Source: corpus inputs U078-U081 (#8630 pins), restored by user ruling
+  // 2026-10-20; SPEC J4.5 ("unrecognised shapes must not silently leak"),
+  // J4.12. tsc against the real declarations accepts every row.
+  // Impact: the server implementation and its server-only import ship to the
+  // client, where the server fn, isomorphic fn or server-only fn runs it in
+  // the browser.
+  // Fix-agnostic: each output either rejects the module with a clear compile
+  // error at the call (naming the API and a cause), or follows its contract:
+  // the client neither loads the server-only module nor holds the server
+  // code, and each output runs what the runtime contract promises.
+  test.fails.each<CallShape>([
     {
       name: 'a server fn handler called through a computed member',
       code: `${head}import { db } from './db.server'
@@ -788,67 +868,44 @@ export const read = createServerOnlyFn(() => db.secret()).bind(null)`,
   ])(
     '$name: the client holds no server code, or the module is rejected at the call',
     async (shape) => {
-      const compiled: Partial<Record<Output, string>> = {}
-      let serverFns: Record<string, ServerFn> = {}
-      for (const output of shape.outputs) {
-        const result = await compileFor(output, shape.code).catch(
-          (error: unknown) => ({ error }),
-        )
-        if ('error' in result) {
-          expectCompileError(result.error, {
-            source: shape.code,
-            at: shape.at,
-            names: shape.names,
-            causes: callShapeCauses,
-          })
-          continue
-        }
-        compiled[output] = result.code ?? shape.code
-        if (output !== 'provider') {
-          serverFns = { ...serverFns, ...result.serverFns }
-        }
-      }
-      const errors: Partial<Record<Output, Array<string>>> = {}
-      for (const [output, module] of Object.entries(compiled)) {
-        errors[output as Output] = await getModuleErrors(module)
-      }
-      expect(errors).toEqual(
-        Object.fromEntries(Object.keys(compiled).map((output) => [output, []])),
-      )
-      if (compiled.client !== undefined) {
-        expectNotLoaded(await moduleLoads(compiled.client), [serverOnly])
-        expect(compiled.client, 'client').not.toContain(shape.body)
-        await shape.client(
-          await evaluateModule(compiled.client, callShapeStubs().stubs),
-        )
-      }
-      if (compiled.ssr !== undefined && shape.ssr) {
-        const { calls, stubs } = callShapeStubs()
-        await shape.ssr(
-          await evaluateModule(compiled.ssr, stubs, { env: 'server' }),
-          calls,
-        )
-      }
-      if (
-        shape.serverFn &&
-        shape.outputs.every((output) => compiled[output] !== undefined)
-      ) {
-        expect(
-          await callServerFnThroughCallers(
-            {
-              client: compiled.client!,
-              ssr: compiled.ssr!,
-              provider: compiled.provider!,
-              serverFns,
-              id: undefined,
-              framework: undefined,
-              files: undefined,
-            },
-            shape.serverFn,
-            callShapeStubs().stubs,
-          ),
-        ).toBe('x')
-      }
+      await expectWorksOrRejectedAtCall(shape)
+    },
+  )
+
+  // Bug: env-only factories nested in other code are found by the factory's
+  // exported name (`isNestedDirectCallCandidate`), so a local alias of
+  // createServerOnlyFn called in a top-level block is neither compiled nor
+  // rejected.
+  // Source: the KB row "a local alias in a top-level block" deleted in
+  // a945fe4563, restored (coordinator 2026-10-20: the J4.6 "block" position
+  // of the user ruling "restore the two borderline corpus removals").
+  // Impact: the implementation and its server-only import ship to the
+  // client, where calling the server-only fn runs it instead of throwing.
+  // Fix-agnostic: compiled per its contract (the client throws the
+  // server-only error and loads nothing server-only, SSR runs it) or
+  // rejected with a clear compile error at the call.
+  test.fails(
+    'a createServerOnlyFn local alias called in a top-level block works in each environment, or is rejected at the call',
+    async () => {
+      await expectWorksOrRejectedAtCall({
+        name: 'a local alias in a top-level block',
+        code: `import { createServerOnlyFn } from '@tanstack/react-start'
+import { db } from './db.server'
+const so = createServerOnlyFn
+export let read: () => unknown
+{
+  const fn = so(() => db.secret())
+  read = () => fn()
+}`,
+        at: 'so(() =>',
+        names: [['createServerOnlyFn', 'so']],
+        causes: [...placementCauses, ...callShapeCauses],
+        body: 'db.secret()',
+        outputs: ['client', 'ssr'],
+        client: (module) =>
+          expect(settle(() => module.read())).toEqual(serverOnlyError),
+        ssr: (module) => expect(module.read()).toBe('secret'),
+      })
     },
   )
 

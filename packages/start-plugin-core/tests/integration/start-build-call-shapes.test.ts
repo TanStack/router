@@ -14,7 +14,9 @@
  * build runs the server code, by id through Start's server entry for a
  * server fn), or the build fails with an error that names the shape's file
  * and the line of the call (`expectSourceError`). A silent leak, a broken
- * function or an unclear build error fails.
+ * function or an unclear build error fails. String export names are a
+ * re-export form SPEC J4.5 lists as recognised: that shape must work
+ * (coordinator 2026-10-20).
  *
  * The compile-level twins: ../known-bugs-start-compiler.test.ts ("the
  * client holds no server code, or the module is rejected at the call", and
@@ -59,8 +61,6 @@ interface Shape {
   names: Array<string | Array<string>>
   /** Other modules of the shape, by path relative to the app root. */
   files?: Record<string, string>
-  /** Other places a build error may point at. */
-  sites?: Array<{ file: string; source: string; at: string }>
   /** Client script body: `shape` is the module's exports. */
   client: string
   /** SSR script body: `shape` is the module's exports, `client` what the client run gave. */
@@ -225,18 +225,6 @@ export const registry: Array<unknown> = []
     at: 'createServerFn()',
     names: ['createServerFn'],
     files: { 'src/stringNames-start.ts': stringNamesStart },
-    sites: [
-      {
-        file: 'src/stringNames.ts',
-        source: stringNamesSource('stringNames-db'),
-        at: "'create server fn' as",
-      },
-      {
-        file: 'src/stringNames-start.ts',
-        source: stringNamesStart,
-        at: "'create server fn'",
-      },
-    ],
     client: `${clientServerFn('shape.fn').replace(
       /^return \{/m,
       `let serverOnly
@@ -364,24 +352,30 @@ describe.each(startBundlers)('%s build', (bundler) => {
     await Promise.all(cleanups.map((cleanup) => cleanup()))
   })
 
+  /** The shape works: nothing of its server-only module in the client. */
+  function expectWorks(shape: Shape, observed: Observed) {
+    expect(observed.where, 'the server-only module in the client bundle').toBe(
+      'nowhere',
+    )
+    shape.expectWorks(observed, result(shape))
+  }
+
   async function expectWorksOrRejected(shape: Shape) {
     const outcome = await outcomeOf(shape)
     if ('error' in outcome) {
-      const source = shape.source(`${shape.slug}-db`)
       expectSourceError(outcome.error, {
         names: shape.names,
         sites: [
-          { file: `src/${shape.slug}.ts`, source, at: shape.at },
-          ...(shape.sites ?? []),
+          {
+            file: `src/${shape.slug}.ts`,
+            source: shape.source(`${shape.slug}-db`),
+            at: shape.at,
+          },
         ],
       })
       return
     }
-    expect(
-      outcome.observed.where,
-      'the server-only module in the client bundle',
-    ).toBe('nowhere')
-    shape.expectWorks(outcome.observed, result(shape))
+    expectWorks(shape, outcome.observed)
   }
 
   // Bug: chain methods called through a computed member
@@ -403,9 +397,13 @@ describe.each(startBundlers)('%s build', (bundler) => {
   )
 
   test.each(shapes.filter((shape) => shape.slug === 'stringNames'))(
-    '$name: the client bundle holds no server code and the shape works, or the build fails at the call',
+    '$name are recognised: the client bundle holds no server code and the shape works',
     async (shape) => {
-      await expectWorksOrRejected(shape)
+      const outcome = await outcomeOf(shape)
+      if ('error' in outcome) {
+        throw outcome.error
+      }
+      expectWorks(shape, outcome.observed)
     },
     timeout,
   )
