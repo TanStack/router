@@ -28,7 +28,10 @@ import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-p
 import { tanstackRouter as tanstackRouterRspack } from '../src/rspack'
 import { tanstackRouter } from '../src/vite'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
-import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
+import type {
+  Diagnostic,
+  Severity,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import type { RsbuildPlugin } from '@rsbuild/core'
 import type { Config } from '../src/core/config'
 
@@ -126,8 +129,9 @@ export interface GeneratorDevApp {
   /** Errors of the dev server (Vite's logged errors, Rsbuild's compile errors). */
   errors: () => Array<string>
   /**
-   * What the app's plugins logged with `console.error` and `console.warn`
-   * (e.g. the generator reporting a route file it cannot handle), joined.
+   * What the test process printed while the app ran: every `console` method
+   * and direct stdout/stderr writes (e.g. the generator reporting a route
+   * file it cannot handle), joined.
    */
   logs: () => string
   /** A point in the app's diagnostics, to read those after it. */
@@ -135,8 +139,9 @@ export interface GeneratorDevApp {
   /**
    * What the app reported through every real channel (since `since`, by
    * default since it started), as diagnostics (`@tanstack/compiler-test-
-   * utils/diagnostics`): what its plugins logged with `console.error` and
-   * `console.warn` (e.g. the generator), and the dev server's own errors
+   * utils/diagnostics`): what its plugins printed (every `console` method,
+   * `log`/`info`/`debug` and stdout writes as `info`, stderr writes as
+   * `warning`; e.g. the generator), and the dev server's own errors
    * and warnings (Vite's logger, Rsbuild's compile errors and warnings). A
    * report may come through any of them (SPEC G5, §5.7; V1R gen G13).
    */
@@ -176,18 +181,61 @@ export async function generatorDevApp(
   const { bundler } = options
   const logged: Array<string> = []
   const consoleDiagnostics: Array<Diagnostic> = []
-  const { error, warn } = console
-  console.error = (...args: Array<unknown>) => {
-    logged.push(args.map(String).join(' '))
-    consoleDiagnostics.push(...diagnosticsOf(args, 'error'))
+  /**
+   * Every channel a plugin of the test process can print through: the
+   * console's methods (silenced) and direct writes to stdout and stderr
+   * (passed on). A write to stderr carries no severity: it counts as a
+   * warning (a report), not as an error.
+   */
+  const record = (text: string, severity: Severity) => {
+    logged.push(text)
+    consoleDiagnostics.push(...diagnosticsOf(text, severity))
   }
-  console.warn = (...args: Array<unknown>) => {
-    logged.push(args.map(String).join(' '))
-    consoleDiagnostics.push(...diagnosticsOf(args, 'warning'))
+  const consoleMethods = {
+    error: 'error',
+    warn: 'warning',
+    log: 'info',
+    info: 'info',
+    debug: 'info',
+  } as const
+  const restore: Array<() => void> = []
+  for (const method of Object.keys(consoleMethods) as Array<
+    keyof typeof consoleMethods
+  >) {
+    const original = console[method]
+    console[method] = (...args: Array<unknown>) => {
+      record(args.map(String).join(' '), consoleMethods[method])
+    }
+    restore.push(() => {
+      console[method] = original
+    })
+  }
+  for (const [stream, severity] of [
+    [process.stdout, 'info'],
+    [process.stderr, 'warning'],
+  ] as const) {
+    const original = stream.write
+    stream.write = ((chunk: unknown, ...rest: Array<unknown>) => {
+      record(
+        typeof chunk === 'string'
+          ? chunk
+          : Buffer.from(chunk as Uint8Array).toString(),
+        severity,
+      )
+      return (original as (...args: Array<unknown>) => boolean).call(
+        stream,
+        chunk,
+        ...rest,
+      )
+    }) as typeof stream.write
+    restore.push(() => {
+      stream.write = original
+    })
   }
   onTestFinished(() => {
-    console.error = error
-    console.warn = warn
+    for (const undo of restore.reverse()) {
+      undo()
+    }
   })
   const logs = () => logged.join('\n')
 

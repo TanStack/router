@@ -12,6 +12,7 @@ import {
   diagnosticsOf,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
+import { generatorDevApp, route } from '../generator-dev-app'
 import { buildAndRun, head } from '../regression-helpers'
 import {
   expectEditShownOrReportedFallback,
@@ -263,5 +264,41 @@ describe('expectEditShownOrReportedFallback', () => {
     await expect(
       edit(page({ reloaded: true, errors: ['broken'] }, warned)),
     ).rejects.toThrow()
+  })
+})
+
+// What a dev app's plugins print reaches `diagnostics(since)` through every
+// channel of the test process: console methods and direct stdout/stderr
+// writes (V1R gen G13; W4-gen). Only what follows the mark counts.
+describe('generatorDevApp diagnostics', () => {
+  it('reads every console method and direct stdout/stderr writes after a mark', async () => {
+    const app = await generatorDevApp({
+      bundler: 'vite',
+      files: { 'routes/index.tsx': route('/', 'MARK_INDEX') },
+    })
+    console.error('MARK_BEFORE routes/early.tsx')
+    const since = app.mark()
+    console.warn('MARK_WARN routes/a.tsx')
+    console.log('MARK_LOG routes/b.tsx')
+    process.stderr.write('MARK_STDERR routes/c.tsx\n')
+    process.stdout.write('MARK_STDOUT routes/d.tsx\n')
+    const texts = app
+      .diagnostics(since)
+      .map((diagnostic) => `${diagnostic.severity} ${diagnostic.text}`)
+    for (const expected of [
+      'warning MARK_WARN',
+      'info MARK_LOG',
+      'warning MARK_STDERR',
+      'info MARK_STDOUT',
+    ]) {
+      expect(texts.some((text) => text.startsWith(expected))).toBe(true)
+    }
+    expect(texts.join('\n')).not.toContain('MARK_BEFORE')
+    expect(
+      findDiagnostics(app.diagnostics(since), {
+        severity: 'warning',
+        file: 'routes/c.tsx',
+      }),
+    ).toHaveLength(1)
   })
 })

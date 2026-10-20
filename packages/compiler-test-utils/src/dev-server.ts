@@ -206,6 +206,12 @@ export interface DevServer {
   hmr: Array<HmrMessage>
   /** Warnings and errors logged by Vite and the plugins. */
   logs: Array<string>
+  /**
+   * Closes the server (and its watcher) but keeps the app directory, e.g. to
+   * edit the app afterwards and observe that nothing reacts; `close()`
+   * removes the directory later.
+   */
+  stop: () => Promise<void>
   /** Closes the server and removes the app directory. */
   close: () => Promise<void>
 }
@@ -646,11 +652,16 @@ export async function createDevServer(
     throw error
   }
 
+  let stopped: Promise<void> | undefined
+  const stop = () => {
+    stopped ??= vite.close()
+    return stopped
+  }
   let closed: Promise<void> | undefined
   const close = () => {
     closed ??= (async () => {
       try {
-        await vite.close()
+        await stop()
       } finally {
         await app.dispose()
       }
@@ -670,7 +681,7 @@ export async function createDevServer(
   ) {
     const deadline = Date.now() + eventTimeout
     while (!(await check())) {
-      if (closed) {
+      if (stopped) {
         throw new Error('the dev server was closed')
       }
       if (Date.now() > deadline) {
@@ -1096,6 +1107,7 @@ export async function createDevServer(
     },
     hmr,
     logs,
+    stop,
     close,
   }
 }

@@ -55,6 +55,25 @@ test('a compile that starts before the writes of the edit finish ends the wait',
   expect(Object.values(await server.outputs()).join('\n')).toContain('MARK_V2')
 }, 30_000)
 
+// `stop()` ends the server and its watcher but keeps the app, so a test can
+// edit it afterwards; `close()` removes it.
+test('stop() stops the server and keeps the app until close()', async () => {
+  const server = await createRsbuildDevServer({
+    dir: testsDir,
+    registerCleanup: onTestFinished,
+    files: {
+      'src/entry.ts': `import { leaf } from './leaf'\nconsole.log(leaf)\n`,
+      'src/leaf.ts': `export const leaf = 'MARK_V1'\n`,
+    },
+  })
+  await server.stop()
+  const leaf = path.join(server.root, 'src/leaf.ts')
+  await writeFile(leaf, `export const leaf = 'MARK_V2'\n`)
+  expect(await readFile(leaf, 'utf8')).toContain('MARK_V2')
+  await server.close()
+  await expect(readFile(leaf, 'utf8')).rejects.toThrow()
+}, 30_000)
+
 // Rsbuild's default: each compile after an edit emits hot-update chunks with
 // the edited modules, which a connected browser applies.
 test.each([true, false])(
