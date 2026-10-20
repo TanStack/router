@@ -155,13 +155,19 @@ export const Route = createFileRoute('/')({
   // Import attributes change what a module is (`type: 'json'`, a bundler
   // macro), so they move with the import.
   it('keeps the attributes of an import moved into the chunk', async () => {
-    const { modules } =
-      await compileRouteModules(`${head}import { test } from './test' with { type: 'macro' }
+    const route = await loadRoute(
+      `${head}import { test } from './test' with { type: 'macro' }
 export const Route = createFileRoute('/')({
   component: () => test,
 })
-`)
-    expect(importSources(modules.reference!)).not.toContain('./test')
+`,
+      { stubs: { './test': { test: 'macro value' } } },
+    )
+    const { modules } = route
+    // Nothing that loads with the route module (whichever modules a
+    // compiler emits) requests `./test`; the component gets it.
+    expect(route.eager).not.toContain('./test')
+    expect(await route.render('component')).toBe('macro value')
     // Every module that imports `./test` imports it with the attribute.
     const attributes = Object.values(modules).flatMap((code) =>
       parseSync('module.tsx', code, { sourceType: 'module' })
@@ -481,7 +487,9 @@ export default function Home() {
     },
     {
       name: 'an exported loader, with the loader split',
-      code: `${head}export function loaderFn() {
+      code: `${head}import { see } from './see'
+export function loaderFn() {
+  see(loaderFn)
   return { foo: 'bar' }
 }
 function Layout() {
@@ -532,11 +540,13 @@ export const Route = createFileRoute('/')({
         expect(await (await route.load(option))()).toEqual(value)
       } else {
         expect(await route.render(option)).toBe(value)
-        const importer = await route.importFromRoute(
-          `export { ${binding} as exported } from '${routeSpecifier}'`,
-        )
-        expect(seen).toEqual([importer.exported])
       }
+      // The function the route ran is the one another module of the app
+      // imports (SPEC J2.4, G9): one instance, not a copy.
+      const importer = await route.importFromRoute(
+        `export { ${binding} as exported } from '${routeSpecifier}'`,
+      )
+      expect(seen).toEqual([importer.exported])
       expect(await route.isLazy(split)).toBe(true)
     },
   )

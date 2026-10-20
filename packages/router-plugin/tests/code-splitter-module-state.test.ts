@@ -987,56 +987,55 @@ export const Route = createFileRoute('/')({
 })
 
 // In a JavaScript route file, imports are not elided by a type-aware
-// transform, so the route module itself must not import what only split
-// options read.
+// transform: state that split options share is still created once, every
+// option reads the same instance, and what only one split option imports
+// does not load with the route module.
 describe('state only split options read, in a .jsx route file', () => {
-  const stateRoute = (options: string) => `${head}import { init } from './init'
+  const stateRoute = (options: string) => `${head}import { init, see } from './init'
 const store = init({ label: 'shared' })
 export const Route = createFileRoute('/')({
 ${options}
 })
 `
 
-  it('is created once', async () => {
+  it('is created once, and every option reads that instance', async () => {
     let inits = 0
+    const seen: Array<unknown> = []
     const route = await loadRoute(
-      stateRoute(`  component: () => <p>{store.label}</p>,
-  errorComponent: () => <p>{store.label}</p>,`),
+      stateRoute(`  component: () => <p>{see(store)}</p>,
+  errorComponent: () => <p>{see(store)}</p>,`),
       {
         filename: 'route.jsx',
         stubs: {
           './init': {
-            init: (value: unknown) => {
+            init: (value: object) => {
               inits++
-              return value
+              return { ...value }
+            },
+            see: (store: { label: string }) => {
+              seen.push(store)
+              return store.label
             },
           },
         },
       },
     )
-    // When the store is created is free (initialiser timing is not pinned);
-    // what loads with the route module loads `./init` only to create it.
-    const atLoad = inits
-    const rendered = [
+    // When the store is created is free (initialiser timing is not pinned,
+    // nor whether its module loads with the route module): it is created
+    // once and both options read that one instance.
+    expect([
       await route.render('component'),
       await route.render('errorComponent'),
-    ]
-    expect({
-      rendered,
       inits,
-      loadsInitUnused: route.eager.includes('./init') && atLoad === 0,
-    }).toEqual({
-      rendered: ['<p>shared</p>', '<p>shared</p>'],
-      inits: 1,
-      loadsInitUnused: false,
-    })
+      new Set(seen).size,
+    ]).toEqual(['<p>shared</p>', '<p>shared</p>', 1, 1])
   })
 
   it('is not created by loading a split option that does not read it', async () => {
     let inits = 0
     const route = await loadRoute(
-      stateRoute(`  component: () => <p>{store.label}</p>,
-  errorComponent: () => <p>{store.label}</p>,
+      stateRoute(`  component: () => <p>{see(store)}</p>,
+  errorComponent: () => <p>{see(store)}</p>,
   notFoundComponent: () => <p>nf</p>,`),
       {
         filename: 'route.jsx',
@@ -1046,6 +1045,7 @@ ${options}
               inits++
               return value
             },
+            see: (store: { label: string }) => store.label,
           },
         },
       },

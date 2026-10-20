@@ -1,6 +1,10 @@
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import {
-  compileRouteModules,
+  captureConsole,
+  expectDiagnostic,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
+import {
   declaredNames,
   evaluateModule,
   expectValidModules,
@@ -568,10 +572,35 @@ ${groupings}  loader: () => 'data',
     expect(await lazyGroups(route(`  codeSplitGroupings: [],\n`))).toEqual([])
   })
 
-  it('of the route that are not arrays of arrays are refused with an error naming codeSplitGroupings', async () => {
-    await expect(
-      compileRouteModules(route(`  codeSplitGroupings: ['loader'],\n`)),
-    ).rejects.toThrow(/codeSplitGroupings/)
+  // Type-invalid input (TS2322 against the real `codeSplitGroupings` type:
+  // an array of option names where groups are expected), so a
+  // never-fail-silently diagnostic control (SPEC §8, G5), not supported
+  // grouping coverage: an error naming codeSplitGroupings, or a working
+  // route that is either reported (naming the file or codeSplitGroupings)
+  // or split safely (unsplit, or the one group `[['loader']]` the input
+  // spells). Valid groupings: the tests around this one.
+  it('of the route that are not arrays of arrays (type-invalid) are refused, reported or applied safely', async () => {
+    const code = route(`  codeSplitGroupings: ['loader'],\n`)
+    let captured
+    try {
+      captured = await captureConsole(() => loadRoute(code))
+    } catch (error) {
+      expectDiagnostic(error, { severity: 'error', names: ['codeSplitGroupings'] })
+      return
+    }
+    const { result: loaded, diagnostics } = captured
+    expect([
+      await loaded.options.loader(),
+      await loaded.render('component'),
+      await loaded.render('errorComponent'),
+    ]).toEqual(['data', '<p>page</p>', '<p>error</p>'])
+    const reported =
+      findDiagnostics(diagnostics, { names: ['codeSplitGroupings'] }).length >
+        0 ||
+      findDiagnostics(diagnostics, { file: loaded.ids.reference! }).length > 0
+    if (!reported) {
+      expect([[], [['loader']]]).toContainEqual(await loaded.groups())
+    }
   })
 
   // Honouring groupings declared in a module-level constant is pinned in

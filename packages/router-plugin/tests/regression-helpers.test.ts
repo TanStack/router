@@ -296,13 +296,19 @@ export const Route = createFileRoute('/')({
         stubs: { './track': { track: (label: string) => effects.push(label) } },
       },
     )
-    expect(route.evaluated).toEqual([route.ids.reference])
+    // On the compiler's output, which modules exist is free (an eager
+    // helper or a lazy facade is fine): the route's effect has run, the
+    // component's has not, and rendering the component evaluates more of the
+    // route's modules on demand. Exact bookkeeping: the fixed graphs above.
+    expect(effects).toEqual(['route'])
+    expect(route.evaluated).toContain(route.ids.reference)
+    const evaluatedAtLoad = route.evaluated.length
     expect(route.options.loader()).toBe('data')
     expect([await route.render('component'), effects]).toEqual([
       '<p>2</p>',
       ['route', 'component'],
     ])
-    expect(route.evaluated).toEqual([route.ids.reference, route.ids['lazy 1']])
+    expect(route.evaluated.length).toBeGreaterThan(evaluatedAtLoad)
   })
 
   // (A root component is not the control: splitting it is free, SPEC J2.7.)
