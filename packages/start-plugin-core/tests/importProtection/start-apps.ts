@@ -39,10 +39,7 @@ export {
   violationReports,
   violationTexts,
 } from './violation-report'
-export type {
-  ExpectedViolation,
-  ReportedViolation,
-} from './violation-report'
+export type { ExpectedViolation, ReportedViolation } from './violation-report'
 
 export interface ProtectedDevServerOptions {
   /**

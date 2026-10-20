@@ -301,7 +301,7 @@ export const read = () => widget()
       expectMarkerViolation(report, {
         marker: 'src/marked.ts:1',
         use: 'src/entry.ts:2:27',
-        source: appUsing('a server-only-marked module')['src/entry.ts']!,
+        source: appUsing('a server-only-marked module')['src/entry.ts'],
       })
       expect(suggestedDirections(report.text)).toEqual(['server'])
       expectDiagnostic(report.text, {

@@ -534,9 +534,9 @@ export const later = () => import('./secret.server')
       2, 3, 4, 6,
     ])
     expect(importLines('src/a.ts', source, './secret')).toEqual([])
-    expect(
-      importLines('src/a.ts', `export { x } from './x'\n`, './x'),
-    ).toEqual([1])
+    expect(importLines('src/a.ts', `export { x } from './x'\n`, './x')).toEqual(
+      [1],
+    )
   })
 
   test('parseLocation reads a file with or without a line and column', () => {
@@ -556,10 +556,14 @@ export const later = () => import('./secret.server')
       column: 27,
     })
     // cropped, with no context
-    expectFrameAt({ line: 5, pointsAt: 'secret…', shows: ['… secret()'] }, source, {
-      line: 5,
-      column: 27,
-    })
+    expectFrameAt(
+      { line: 5, pointsAt: 'secret…', shows: ['… secret()'] },
+      source,
+      {
+        line: 5,
+        column: 27,
+      },
+    )
     for (const frame of [
       { line: 4, pointsAt: 'secret()', shows: [line] },
       { line: 5, pointsAt: 'read = () => secret()', shows: [line] },

@@ -24,11 +24,11 @@ import {
   expectClientRendersLikeServer,
   expectCompileError,
   getChunkIds,
-  missingHandler,
-  placementCauses,
   importSources,
   loadChunk,
+  missingHandler,
   moduleLoads,
+  placementCauses,
   renderClient,
   renderServer,
 } from './regression-helpers'
@@ -288,32 +288,43 @@ export function make(id: string) {
   test.each([
     ['createServerFn internal error', placementCauses],
     ['createServerFn id internal error', captureCauses],
-    ["createServerFn: Cannot read properties of undefined (reading 'id')", captureCauses],
-  ])(
-    'a rejection must explain its cause: %s does not',
-    (message, causes) => {
-      expect(() =>
-        expectCompileError(misplacedAt(message), {
-          source: misplaced,
-          at: 'db.inner(id)',
-          names: ['createServerFn', 'id'],
-          causes,
-        }),
-      ).toThrow('cause')
-    },
-  )
+    [
+      "createServerFn: Cannot read properties of undefined (reading 'id')",
+      captureCauses,
+    ],
+  ])('a rejection must explain its cause: %s does not', (message, causes) => {
+    expect(() =>
+      expectCompileError(misplacedAt(message), {
+        source: misplaced,
+        at: 'db.inner(id)',
+        names: ['createServerFn', 'id'],
+        causes,
+      }),
+    ).toThrow('cause')
+  })
 
   test.each([
-    ['createServerFn must be assigned to a top-level variable', placementCauses],
-    ['Unsupported createServerFn placement: move it to module scope', placementCauses],
+    [
+      'createServerFn must be assigned to a top-level variable',
+      placementCauses,
+    ],
+    [
+      'Unsupported createServerFn placement: move it to module scope',
+      placementCauses,
+    ],
     ['createServerFn handler captures `id` from make', captureCauses],
-    ['createServerFn: the handler reads id, a local of the enclosing function', captureCauses],
+    [
+      'createServerFn: the handler reads id, a local of the enclosing function',
+      captureCauses,
+    ],
   ])('a clear rejection in any words passes: %s', (message, causes) => {
     expectCompileError(misplacedAt(message), {
       source: misplaced,
       at: 'db.inner(id)',
       names:
-        causes === captureCauses ? ['createServerFn', 'id'] : ['createServerFn'],
+        causes === captureCauses
+          ? ['createServerFn', 'id']
+          : ['createServerFn'],
       causes,
     })
   })

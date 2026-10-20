@@ -227,10 +227,7 @@ export const Route = (() =>
     )(
       '$shape shows (autoCodeSplitting: $autoCodeSplitting)',
       { timeout },
-      async (
-        { shape, autoCodeSplitting },
-        { onTestFinished }: TestContext,
-      ) => {
+      async ({ shape, autoCodeSplitting }, { onTestFinished }: TestContext) => {
         const route = factoryRoutes[shape as keyof typeof factoryRoutes]
         const app = await openRouteHmrPage({
           bundler,

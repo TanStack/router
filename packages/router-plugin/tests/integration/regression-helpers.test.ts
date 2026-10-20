@@ -17,6 +17,7 @@ import {
   expectEditShownOrReportedFallback,
   openRouteHmrPage,
 } from '../route-hmr-page'
+import type { Rspack } from '@rsbuild/core'
 import type { RouteHmrPage } from '../route-hmr-page'
 
 describe('buildAndRun', () => {
@@ -125,6 +126,7 @@ export const Route = createFileRoute('/')({ component: Page })
       { warned: 'routes/other.tsx', on: /main\.tsx$/, found: 0 },
     ])(
       "reports a bundler warning naming the app's route file ($warned)",
+      { timeout: 60_000 },
       async ({ warned, on, found }) => {
         const message = (root: string) =>
           `MARK_SYNTHETIC_WARNING about ${path.join(root, warned)}`
@@ -153,7 +155,7 @@ export const Route = createFileRoute('/')({ component: () => <p>page</p> })
                 setup(api) {
                   api.modifyRspackConfig((config, { rspack }) => {
                     config.plugins.push({
-                      apply(compiler) {
+                      apply(compiler: Rspack.Compiler) {
                         compiler.hooks.thisCompilation.tap(
                           'test:synthetic-warning',
                           (compilation) => {
@@ -191,7 +193,6 @@ export const Route = createFileRoute('/')({ component: () => <p>page</p> })
           }).length > 0,
         ).toBe(found > 0)
       },
-      60_000,
     )
 
     it('fails an edit the page applied without showing it, without waiting for its timeout', async () => {
@@ -249,7 +250,9 @@ describe('expectEditShownOrReportedFallback', () => {
     expect(await edit(page(reload, warned))).toBe('reported fallback')
     await expect(edit(page(reload, []))).rejects.toThrow(/in place/)
     await expect(
-      edit(page(reload, ['the route in /app/routes/other.tsx is left unsplit'])),
+      edit(
+        page(reload, ['the route in /app/routes/other.tsx is left unsplit']),
+      ),
     ).rejects.toThrow(/in place/)
   })
 

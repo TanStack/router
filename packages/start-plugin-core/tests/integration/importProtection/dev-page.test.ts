@@ -19,7 +19,6 @@ import {
 
 const timeout = 30_000
 
-
 const secretServer = {
   'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
 }

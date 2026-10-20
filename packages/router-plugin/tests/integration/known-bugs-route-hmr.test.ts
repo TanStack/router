@@ -185,10 +185,7 @@ function Page() {
   // Silent wrong output fails.
   test.fails.for(['vite', 'rsbuild'] as const)(
     '%s: an edit of a route a helper function creates shows its new component, reloading only when the file is reported (autoCodeSplitting: false)',
-    async (
-      bundler: 'vite' | 'rsbuild',
-      { onTestFinished }: TestContext,
-    ) => {
+    async (bundler: 'vite' | 'rsbuild', { onTestFinished }: TestContext) => {
       const route = (version: string) =>
         `import { createFileRoute } from '@tanstack/react-router'
 function makeRoute() {

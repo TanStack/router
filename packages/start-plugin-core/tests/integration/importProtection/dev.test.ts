@@ -30,8 +30,8 @@ import {
   factoryTopLevelCall,
   locationIn,
   receivedViolations,
-  relevantViolations,
   rejection,
+  relevantViolations,
   reportedViolations,
   serverFnFactoryApp,
   startProtectedDevServer,
@@ -1157,9 +1157,9 @@ export const read = () => widget()
     await server.load('/src/b.ts', { environment: 'ssr' })
     const served = await server.load('/src/entry.ts', { environment: 'ssr' })
     expect(modulesContaining(served, 'MARK_B_CODE')).toEqual([])
-    expect(
-      relevantViolations(server.logs, [clientOnlyImporter.a]),
-    ).toContain(violationLabel(clientOnlyImporter.a))
+    expect(relevantViolations(server.logs, [clientOnlyImporter.a])).toContain(
+      violationLabel(clientOnlyImporter.a),
+    )
   },
   timeout,
 )
