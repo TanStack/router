@@ -6,10 +6,18 @@
  * `@tanstack/compiler-test-utils`), and the route HMR page
  * (`route-hmr-page.ts`).
  */
+import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  diagnosticsOf,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { buildAndRun, head } from '../regression-helpers'
-import { openRouteHmrPage } from '../route-hmr-page'
+import {
+  expectEditShownOrReportedFallback,
+  openRouteHmrPage,
+} from '../route-hmr-page'
+import type { RouteHmrPage } from '../route-hmr-page'
 
 describe('buildAndRun', () => {
   // A real app's package.json has no side-effect hint unless the app adds
@@ -106,30 +114,85 @@ export const Route = createFileRoute('/')({ component: Page })
       expect(app.loads()).toBe(loads + 1)
     }, 60_000)
 
-    // The compiler warns about a route whose split component the module
-    // also exports (kept in the route module), naming the file: the page
-    // reports it from the real channels (the dev server's process console,
-    // the served module's warning in the page).
-    it("reports the warnings of the dev server naming the app's route file", async () => {
-      const app = await openRouteHmrPage({
-        bundler,
-        files: {
-          'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
-export function Page() {
-  return <p>exported page</p>
-}
-export const Route = createFileRoute('/')({ component: Page })
+    // A test plugin warns through the bundler's own plugin channel (a Vite
+    // plugin's `this.warn`, an Rspack compilation warning), naming a route
+    // file: the page reads it from the dev server, and tells which file it
+    // names. The capture is tested on its own, with a synthetic warning:
+    // whether the compiler warns about a route is not this helper's
+    // business (V1R hmr H09, split S09).
+    it.for([
+      { warned: 'routes/index.tsx', on: /routes[\\/]index\.tsx$/, found: 1 },
+      { warned: 'routes/other.tsx', on: /main\.tsx$/, found: 0 },
+    ])(
+      "reports a bundler warning naming the app's route file ($warned)",
+      async ({ warned, on, found }) => {
+        const message = (root: string) =>
+          `MARK_SYNTHETIC_WARNING about ${path.join(root, warned)}`
+        const app = await openRouteHmrPage({
+          bundler,
+          files: {
+            'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({ component: () => <p>page</p> })
 `,
-        },
-        ready: 'exported page',
-      })
-      expect(
-        findDiagnostics(app.warnings(), {
-          file: 'routes/index.tsx',
-          root: app.root,
-        }).length > 0,
-      ).toBe(true)
-    }, 60_000)
+          },
+          plugins: {
+            vite: [
+              {
+                name: 'test:synthetic-warning',
+                // On the module `on` (Vite names it with the warning).
+                transform(_code, id) {
+                  if (on.test(id)) {
+                    this.warn(message(this.environment.config.root))
+                  }
+                },
+              },
+            ],
+            rsbuild: [
+              {
+                name: 'test:synthetic-warning',
+                setup(api) {
+                  api.modifyRspackConfig((config, { rspack }) => {
+                    config.plugins.push({
+                      apply(compiler) {
+                        compiler.hooks.thisCompilation.tap(
+                          'test:synthetic-warning',
+                          (compilation) => {
+                            compilation.hooks.processAssets.tap(
+                              'test:synthetic-warning',
+                              () => {
+                                compilation.warnings.push(
+                                  new rspack.WebpackError(
+                                    message(api.context.rootPath),
+                                  ),
+                                )
+                              },
+                            )
+                          },
+                        )
+                      },
+                    })
+                  })
+                },
+              },
+            ],
+          },
+          ready: 'page',
+        })
+        const warnings = app.warnings()
+        expect(
+          findDiagnostics(warnings, { names: ['MARK_SYNTHETIC_WARNING'] })
+            .length,
+          'the synthetic warning is captured',
+        ).toBeGreaterThan(0)
+        expect(
+          findDiagnostics(warnings, {
+            file: 'routes/index.tsx',
+            root: app.root,
+          }).length > 0,
+        ).toBe(found > 0)
+      },
+      60_000,
+    )
 
     it('fails an edit the page applied without showing it, without waiting for its timeout', async () => {
       const app = await openRouteHmrPage({
@@ -147,3 +210,55 @@ export const Route = createFileRoute('/')({ component: Page })
     }, 60_000)
   },
 )
+
+// The decision of `expectEditShownOrReportedFallback`, on the outcomes a
+// page's `edit()` reports (V1R hmr H08, split S11): the edit must show,
+// without errors; a reload is allowed only with a warning naming the file.
+// (That `edit()` fails when the page does not show the edit is the control
+// above.)
+describe('expectEditShownOrReportedFallback', () => {
+  const page = (
+    outcome: { reloaded: boolean; errors: Array<string> } | Error,
+    warnings: Array<string>,
+  ) =>
+    ({
+      root: '/app',
+      edit: () =>
+        outcome instanceof Error
+          ? Promise.reject(outcome)
+          : Promise.resolve(outcome),
+      warnings: () => diagnosticsOf(warnings, 'warning'),
+    }) as unknown as RouteHmrPage
+  const edit = (app: RouteHmrPage) =>
+    expectEditShownOrReportedFallback(
+      app,
+      { 'routes/index.tsx': 'v2' },
+      'v2',
+      'routes/index.tsx',
+    )
+  const warned = ['the route in /app/routes/index.tsx is left unsplit']
+
+  it('an edit in place passes, with or without a warning', async () => {
+    const inPlace = { reloaded: false, errors: [] }
+    expect(await edit(page(inPlace, []))).toBe('in place')
+    expect(await edit(page(inPlace, warned))).toBe('reported fallback')
+  })
+
+  it('a reload passes only with a warning naming the file', async () => {
+    const reload = { reloaded: true, errors: [] }
+    expect(await edit(page(reload, warned))).toBe('reported fallback')
+    await expect(edit(page(reload, []))).rejects.toThrow(/in place/)
+    await expect(
+      edit(page(reload, ['the route in /app/routes/other.tsx is left unsplit'])),
+    ).rejects.toThrow(/in place/)
+  })
+
+  it('a warning never excuses an edit that does not show, or errors', async () => {
+    await expect(
+      edit(page(new Error('the page did not show the edit'), warned)),
+    ).rejects.toThrow('did not show')
+    await expect(
+      edit(page({ reloaded: true, errors: ['broken'] }, warned)),
+    ).rejects.toThrow()
+  })
+})

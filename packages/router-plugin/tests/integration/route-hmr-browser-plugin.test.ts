@@ -15,8 +15,10 @@
  * (which scanned a build for the hot API).
  */
 import { describe, it } from 'vitest'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
-import { openRouteHmrPage } from '../route-hmr-page'
+import {
+  expectEditShownOrReportedFallback,
+  openRouteHmrPage,
+} from '../route-hmr-page'
 import type { TestContext } from 'vitest'
 import type { RouteHmrPageOptions } from '../route-hmr-page'
 
@@ -171,9 +173,11 @@ export const Route = ${call}
 // decision D11): it is either split like a module-scope route and
 // hot-updated in place, or left unsplit with a warning naming the file
 // (code-splitter-plugin-pipeline.test.ts). Either way, an edit shows its
-// new loader data and component, in place or after a reload, or the
+// new loader data and component without errors: in place, or, when the
 // compiler warns naming the route file through a real channel (the dev
-// server's logger or console, or the served module). (A helper function
+// server's logger or console, or the page), possibly after a reload. A
+// warning never excuses an edit that does not show (V1R hmr H08, split
+// S11; `expectEditShownOrReportedFallback`). (A helper function
 // without automatic code splitting keeps its old component silently:
 // pinned in known-bugs-route-hmr.test.ts.)
 describe.concurrent.each(['vite', 'rsbuild'] as const)(
@@ -225,7 +229,7 @@ export const Route = (() =>
       { timeout },
       async (
         { shape, autoCodeSplitting },
-        { expect, onTestFinished }: TestContext,
+        { onTestFinished }: TestContext,
       ) => {
         const route = factoryRoutes[shape as keyof typeof factoryRoutes]
         const app = await openRouteHmrPage({
@@ -235,24 +239,12 @@ export const Route = (() =>
           files: { 'routes/index.tsx': route('v1') },
           ready: `${shape} v1 data v1`,
         })
-        const reported = () =>
-          findDiagnostics(app.warnings(), {
-            file: 'routes/index.tsx',
-            root: app.root,
-          }).length > 0
-        let result
-        try {
-          result = await app.edit(
-            { 'routes/index.tsx': route('v2') },
-            `${shape} v2 data v2`,
-          )
-        } catch (error) {
-          if (reported()) {
-            return
-          }
-          throw error
-        }
-        expect(result.errors).toEqual([])
+        await expectEditShownOrReportedFallback(
+          app,
+          { 'routes/index.tsx': route('v2') },
+          `${shape} v2 data v2`,
+          'routes/index.tsx',
+        )
       },
     )
   },
