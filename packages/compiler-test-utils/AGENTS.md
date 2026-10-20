@@ -47,3 +47,5 @@ COMPILER_TEST_BUDGETS=strict CI=1 NX_DAEMON=false pnpm nx run <project>:test:int
 ```
 
 Keep `--skip-nx-cache` there: a replay from Nx's cache is not a measurement.
+
+A run in which a test file failed (a failed test, or a file that did not load) is not a measurement either: strict mode fails it as invalid, and report-only mode says its times are not a measurement.

@@ -19,12 +19,23 @@
  * machine. With `COMPILER_TEST_BUDGETS=strict`, a run over a hard limit (or
  * not at the budgets' worker count) fails; strict mode is meant for a quiet
  * machine.
+ *
+ * A run in which a test file failed (a failed test, or a file that did not
+ * load), an error escaped the tests, or the run was interrupted is not a
+ * measurement: its times leave out or cut short the failed work. The report
+ * says so, and strict mode fails it as an invalid measurement.
  */
 import { readFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { Reporter, TestModule, Vitest } from 'vitest/node'
+import type {
+  Reporter,
+  SerializedError,
+  TestModule,
+  TestRunEndReason,
+  Vitest,
+} from 'vitest/node'
 
 type Limits = [target: number, hard: number]
 type Tier = 'unit' | 'integration'
@@ -86,7 +97,11 @@ export default class BudgetReporter implements Reporter {
     this.start = performance.now()
   }
 
-  async onTestRunEnd(allModules: ReadonlyArray<TestModule>) {
+  async onTestRunEnd(
+    allModules: ReadonlyArray<TestModule>,
+    unhandledErrors: ReadonlyArray<SerializedError>,
+    reason: TestRunEndReason,
+  ) {
     const testModules = allModules.filter(
       (m) => tierOf(m.project.name) !== undefined,
     )
@@ -180,9 +195,23 @@ export default class BudgetReporter implements Reporter {
       )
     }
 
+    // Why the times above are not a measurement, if they are not
+    const failedFiles = testModules
+      .filter((m) => m.state() === 'failed')
+      .map((m) => path.relative(this.vitest.config.root, m.moduleId))
+    const invalidBecause = [
+      ...(failedFiles.length > 0
+        ? [`test files failed: ${failedFiles.join(', ')}`]
+        : []),
+      ...(unhandledErrors.length > 0
+        ? [`${unhandledErrors.length} error(s) outside the tests`]
+        : []),
+      ...(reason === 'interrupted' ? ['the run was interrupted'] : []),
+    ].join('; ')
+
     if (!strict) {
       this.vitest.logger.log(
-        `\nTest budget (report only; COMPILER_TEST_BUDGETS=strict fails over a hard limit)\n${lines.join('\n')}`,
+        `\nTest budget (report only; COMPILER_TEST_BUDGETS=strict fails over a hard limit)\n${lines.join('\n')}${invalidBecause ? `\n  not a measurement (${invalidBecause}): the times leave out or cut short the failed work` : ''}`,
       )
       return
     }
@@ -195,7 +224,12 @@ export default class BudgetReporter implements Reporter {
     this.vitest.logger.log(
       `\nTest budget (strict; meant for a quiet machine: 1-minute load below ${quietLoad} and no other test runs; the load now is ${load!.toFixed(1)}${load! >= quietLoad ? ', so a failure may be the load' : ''})\n${lines.join('\n')}`,
     )
-    if (failures.length > 0) {
+    if (invalidBecause) {
+      this.vitest.logger.error(
+        `\nTest budget (strict): not a valid measurement (${invalidBecause}); fix the run and measure again`,
+      )
+      process.exitCode = 1
+    } else if (failures.length > 0) {
       this.vitest.logger.error(
         `\nTest budget exceeded (strict):\n${failures.map((line) => `  ${line.trim()}`).join('\n')}`,
       )
