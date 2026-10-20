@@ -18,7 +18,7 @@
  * the apps live in (where their imports resolve).
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { mkdir, readFile, readdir, rename, rm } from 'node:fs/promises'
+import { mkdir, readFile, readdir, rename, rm, utimes } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import path from 'node:path'
 import { createRsbuild, mergeRsbuildConfig } from '@rsbuild/core'
@@ -187,6 +187,12 @@ export async function createRsbuildDevServer(
     prefix: options.prefix ?? '.rsbuild-dev-server-',
   })
   const root = app.root
+  try {
+    await predateAppFiles(root)
+  } catch (error) {
+    await app.dispose()
+    throw error
+  }
 
   const rebuilt: Array<string> = []
   const errors: Array<string> = []
@@ -642,7 +648,8 @@ export interface CompileTracker {
  * The wait for an edit begins before the files are written. It ends at the
  * end of a compile once a compile reported an edited file (or a directory
  * of one) changed, every compiler that read an edited file reported it
- * changed, and every other written file (e.g. a new module) was read or is
+ * changed (each in a compile that started after its write),
+ * and every other written file (e.g. a new module) was read or is
  * looked for by no compile (which then failed to find it, before the
  * write). A compile Rspack gives up on (a plugin hook threw) fails the waits
  * for the edits it includes, with its error. `timeout` only guards against
@@ -655,6 +662,8 @@ export function trackCompiles(): CompileTracker {
     pending: Map<Rspack.Compiler, Set<string>>
     /** Written files no compiler read. */
     unread: Array<string>
+    /** Each edited file as it was before the edit (`undefined`: absent). */
+    before: Map<string, AppFile | undefined>
     written: boolean
     /** A compile reported an edited file (or a directory of one). */
     reached: boolean
@@ -808,13 +817,28 @@ export function trackCompiles(): CompileTracker {
             ...(environmentCompiler.removedFiles ?? []),
           ]
           for (const wait of waits) {
+            // A compile counts toward an edited file only if it started
+            // after the write: the file is no longer as it was before the
+            // edit (contents or modification time; the compile reads its
+            // files after `watchRun`, a plugin may rewrite the file then).
+            // One that started before (for a change the watcher saw
+            // earlier, e.g. on its first scan) does not compile the edit,
+            // even if it names the file (DECISIONS 2026-10-20 "Rsbuild
+            // first-edit harness fixes").
+            const edited = (file: string) =>
+              wait.before.has(file) &&
+              !sameAppFile(wait.before.get(file), readAppFile(file))
             const pending = wait.pending.get(environmentCompiler)
             for (const file of changed) {
-              pending?.delete(file)
+              if (edited(file)) {
+                pending?.delete(file)
+              }
             }
             if (
-              wait.files.some((file) =>
-                changed.some((changedPath) => touches(changedPath, file)),
+              wait.files.some(
+                (file) =>
+                  edited(file) &&
+                  changed.some((changedPath) => touches(changedPath, file)),
               )
             ) {
               wait.reached = true
@@ -897,6 +921,7 @@ export function trackCompiles(): CompileTracker {
           .filter(([, code]) => code !== null)
           .map(([file]) => path.join(root, file))
           .filter((file) => !isRead(file)),
+        before: new Map(files.map((file) => [file, readAppFile(file)])),
         written: false,
         reached: false,
         lastReport: 0,
@@ -991,6 +1016,28 @@ interface AppFile {
 /** Directories of an app no compile reads from (output, dependencies). */
 const nonAppDirectories = new Set(['node_modules', 'dist', '.git'])
 
+/**
+ * How long before the dev server starts its initial files were last
+ * modified: more than watchpack's coarsest modification-time accuracy (2 s).
+ */
+export const initialFilesAge = 10_000
+
+/**
+ * Dates the app's initial files `initialFilesAge` back: a user starts the
+ * dev server on files that are already on disk. Files written a moment
+ * before the first compile fall within the accuracy watchpack allows for
+ * their modification times, so its first scan reports them changed, and
+ * Rspack starts a second compile by itself right after the first one
+ * (DECISIONS 2026-10-20 "Rsbuild first-edit harness fixes"): a test's
+ * first edit would then land during that compile.
+ */
+async function predateAppFiles(root: string) {
+  const past = new Date(Date.now() - initialFilesAge)
+  for (const file of readAppFiles(root).keys()) {
+    await utimes(file, past, past)
+  }
+}
+
 /** Whether `file` is an app file under `root` (not output or a dependency). */
 function isAppFile(root: string, file: string) {
   const relative = path.relative(root, file)
@@ -999,6 +1046,12 @@ function isAppFile(root: string, file: string) {
     !path.isAbsolute(relative) &&
     !relative.split(path.sep).some((part) => nonAppDirectories.has(part))
   )
+}
+
+function sameAppFile(a: AppFile | undefined, b: AppFile | undefined) {
+  return a === undefined || b === undefined
+    ? a === b
+    : a.code === b.code && a.mtimeMs === b.mtimeMs
 }
 
 function readAppFile(file: string): AppFile | undefined {
