@@ -477,6 +477,7 @@ async function buildWithVite(
 ): Promise<Array<EmittedChunk>> {
   const { build: viteBuild } = await import('vite')
   const errors: Array<string> = []
+  const hooks: Array<Promise<unknown>> = []
   let result
   try {
     result = await viteBuild({
@@ -500,7 +501,9 @@ async function buildWithVite(
         hasErrorLogged: () => false,
         hasWarned: false,
       },
-      plugins: config.plugin ? [config.plugin() as never] : [],
+      plugins: config.plugin
+        ? [trackingHooks(config.plugin(), hooks) as never]
+        : [],
       ...(config.jsxImportSource !== 'react' && {
         oxc: { jsx: { importSource: config.jsxImportSource } },
       }),
@@ -537,8 +540,10 @@ async function buildWithVite(
       },
     })
   } catch (error) {
+    await settled(hooks)
     throw new BuildError('vite', [...errors, errorMessage(error)], warnings)
   }
+  await settled(hooks)
   const chunks: Array<EmittedChunk> = []
   for (const output of Array.isArray(result) ? result : [result]) {
     if (!('output' in output)) {
@@ -547,6 +552,74 @@ async function buildWithVite(
     chunks.push(...chunksOfBundle(output.output))
   }
   return chunks
+}
+
+/**
+ * The plugin option of a Vite build, each hook recording the promise it
+ * returns in `hooks`. Vite runs the `configResolved` hooks of its plugins
+ * with `Promise.all`, so a build that fails in one of them rejects while
+ * the others still run: the route generator's then renames the route tree
+ * into the app after the build returned, which raced `dispose()` (ENOTEMPTY)
+ * and printed into the next build's console messages. A build is over once
+ * every hook it started has settled (see `settled`).
+ */
+function trackingHooks(
+  option: unknown,
+  hooks: Array<Promise<unknown>>,
+): unknown {
+  if (Array.isArray(option)) {
+    return option.map((item) => trackingHooks(item, hooks))
+  }
+  if (isPromiseLike(option)) {
+    return Promise.resolve(option).then((item) => trackingHooks(item, hooks))
+  }
+  // Plain plugin objects only (Rolldown's builtin plugins are instances)
+  if (
+    typeof option !== 'object' ||
+    option === null ||
+    Object.getPrototypeOf(option) !== Object.prototype
+  ) {
+    return option
+  }
+  const track = (hook: (...args: Array<unknown>) => unknown) =>
+    function (this: unknown, ...args: Array<unknown>) {
+      const result = hook.apply(this, args)
+      if (isPromiseLike(result)) {
+        hooks.push(Promise.resolve(result))
+      }
+      return result
+    }
+  const plugin: Record<string, unknown> = { ...option }
+  for (const [key, value] of Object.entries(plugin)) {
+    if (typeof value === 'function') {
+      plugin[key] = track(value as never)
+    } else if (
+      typeof value === 'object' &&
+      value !== null &&
+      typeof (value as { handler?: unknown }).handler === 'function'
+    ) {
+      const { handler } = value as { handler: never }
+      plugin[key] = { ...value, handler: track(handler) }
+    }
+  }
+  return plugin
+}
+
+function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as { then?: unknown }).then === 'function'
+  )
+}
+
+/** Waits for every promise in `hooks`, including ones added meanwhile. */
+async function settled(hooks: Array<Promise<unknown>>) {
+  for (let done = 0; done < hooks.length; ) {
+    const next = hooks.length
+    await Promise.allSettled(hooks.slice(done, next))
+    done = next
+  }
 }
 
 /** The chunks of a Vite (Rolldown) bundle: its output items. */

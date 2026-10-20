@@ -4,14 +4,11 @@
  * when the run ends.
  *
  * Not the generator's default (`.tanstack/tmp` in the working directory,
- * shared by every run, where its leftovers stayed), and not in the app:
- * Vite runs the plugins' `configResolved` hooks concurrently, so a build
- * that fails while the generator's hook still runs (the plugin-order rows
- * of integration/code-splitter-pragmas.test.ts) returns before the
- * generator's last write, and a write into the app while `dispose()`
- * removes it fails the removal (ENOTEMPTY). On the app's filesystem, under
- * this package's (ignored) `.tanstack`: the generator renames its
- * temporary files into the app.
+ * shared by every run, where its leftovers stayed). On the app's
+ * filesystem, under this package's (ignored) `.tanstack`: the generator
+ * renames its temporary files into the app. (A Vite build that fails while
+ * the generator's `configResolved` still runs ends once that hook settles:
+ * see `trackingHooks` in @tanstack/compiler-test-utils/build-harness.)
  */
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import path from 'node:path'
