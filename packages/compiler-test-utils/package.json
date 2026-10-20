@@ -5,6 +5,7 @@
   "description": "Test infrastructure shared by the compiler test suites: an ES module linker for compiled modules, real framework rendering of its graphs, a real-build harness, dev-server harnesses (Vite, Rsbuild), a real browser page and a validator of generated modules",
   "type": "module",
   "exports": {
+    "./added-code": "./src/added-code.ts",
     "./browser": "./src/browser.ts",
     "./budget-reporter": "./src/budget-reporter.ts",
     "./build-harness": "./src/build-harness.ts",

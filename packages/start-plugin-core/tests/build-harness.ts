@@ -658,10 +658,7 @@ async function buildWithRsbuild(
     setup(api) {
       api.modifyRspackConfig((config, { environment }) => {
         if (environment.name === 'client' && target.mode === 'production') {
-          config.plugins = [
-            ...(config.plugins ?? []),
-            recordParsedModules(clientParsedModules),
-          ]
+          config.plugins.push(recordParsedModules(clientParsedModules))
         }
       })
       api.onAfterCreateCompiler(({ compiler }) => {

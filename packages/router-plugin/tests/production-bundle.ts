@@ -9,17 +9,16 @@
  * Two oracles, neither tied to how our own support code is named:
  * - the public hot APIs and the React Refresh runtime's globals are absent;
  * - a build with route HMR off (`addHmr: false`, `NODE_ENV=production` when
- *   the plugin is created) is the control: the production bundle reads and
- *   declares the same identifiers, so it holds no extra support code,
- *   whatever it is called. (React only: the frameworks the plugin adds
- *   Refresh support for; the other frameworks get no such support.)
+ *   the plugin is created) is the control: the production bundle ships no
+ *   statement the control lacks (`addedCode` of
+ *   `@tanstack/compiler-test-utils/added-code`: private names, printing
+ *   and chunk placement are free), so it holds no extra support code or
+ *   dependency, whatever it is called and whatever names it reuses.
  */
+import { addedCode } from '@tanstack/compiler-test-utils/added-code'
 import { expect } from 'vitest'
 import { build, buildWithRsbuild, routeApp, routeHead } from './build-harness'
-import type {
-  BuildResult,
-  Bundler,
-} from '@tanstack/compiler-test-utils/build-harness'
+import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
 import type { Framework } from './build-harness'
 
 export const timeout = 120_000
@@ -50,21 +49,6 @@ const publicDevApis: Record<string, RegExp> = {
   'module.hot': /\bmodule\.hot\b/,
   $RefreshReg$: /\$RefreshReg\$/,
   $RefreshSig$: /\$RefreshSig\$/,
-}
-
-/**
- * The identifier-like tokens of a bundle, each once, sorted: two builds of
- * the same code read and declare the same names; support code added to one
- * of them shows as names the other lacks, whatever they are called.
- */
-function identifierTokens(app: BuildResult) {
-  const tokens = new Set<string>()
-  for (const chunk of app.chunks) {
-    for (const match of chunk.code.matchAll(/[A-Za-z_$][\w$]*/g)) {
-      tokens.add(match[0])
-    }
-  }
-  return [...tokens].sort()
 }
 
 /**
@@ -117,13 +101,11 @@ export async function expectProductionClientBundle(
       (name) => app.where(publicDevApis[name]!) !== 'nowhere',
     ),
   ).toEqual([])
-  if (framework === 'react') {
-    const control = await productionBuild(
-      bundler,
-      framework,
-      autoCodeSplitting,
-      true,
-    )
-    expect(identifierTokens(app)).toEqual(identifierTokens(control))
-  }
+  const control = await productionBuild(
+    bundler,
+    framework,
+    autoCodeSplitting,
+    true,
+  )
+  expect(addedCode(app, control), 'code the control build lacks').toEqual([])
 }
