@@ -15,6 +15,7 @@ import {
   callProvider,
   callerRpcId,
   clientOnlyError,
+  compileCode,
   compileFor,
   createServerGraph,
   evaluateModule,
@@ -220,6 +221,112 @@ ${construct.code(form.callee(construct.name), form.wrap)}`
         serverFns: compiled.serverFns,
       })
     })
+  })
+
+  // A factory a project module re-exports under a new name, called as a
+  // member of a namespace import of that module: renamed imports, namespace
+  // members and re-exports are all recognised forms (SPEC J4.5, §2.1). Each
+  // env-only factory, next to a server fn and alone in its module.
+  describe('a renamed env-only factory read through a namespace import of a project module', () => {
+    const files = {
+      '/test/src/factory.ts': `export { createServerOnlyFn as serverOnly, createClientOnlyFn as clientOnly } from '${pkg}'`,
+    }
+    const envStubs: Record<string, ModuleStub> = {
+      './db.server': { db: { x: () => 'server-only-value' } },
+      './chart.client': { chart: () => 'client-only-value' },
+    }
+    const options = { framework, files }
+    const serverOptions = { ...options, env: 'server' as const }
+
+    /** A call of the namespace member `factory.<member>`, and its checks. */
+    interface EnvOnlyCall {
+      name: string
+      code: string
+      check: (outputs: { client: string; ssr: string }) => Promise<void>
+    }
+
+    const calls: Array<EnvOnlyCall> = [
+      {
+        name: 'createServerOnlyFn',
+        code: `import * as factory from './factory'
+import { db } from './db.server'
+export const impl = factory.serverOnly(() => db.x())`,
+        check: async ({ client, ssr }) => {
+          expectNotLoaded(
+            await moduleLoads(client, { ...options, stubs: envStubs }),
+            ['./db.server'],
+          )
+          expect(
+            settle((await evaluateModule(client, envStubs, options)).impl),
+          ).toEqual(serverOnlyError)
+          expect(
+            (await evaluateModule(ssr, envStubs, serverOptions)).impl(),
+          ).toBe('server-only-value')
+        },
+      },
+      {
+        name: 'createClientOnlyFn',
+        code: `import * as factory from './factory'
+import { chart } from './chart.client'
+export const impl = factory.clientOnly(() => chart())`,
+        check: async ({ client, ssr }) => {
+          expectNotLoaded(
+            await moduleLoads(ssr, { ...serverOptions, stubs: envStubs }),
+            ['./chart.client'],
+          )
+          expect(
+            settle((await evaluateModule(ssr, envStubs, serverOptions)).impl),
+          ).toEqual(clientOnlyError)
+          expect((await evaluateModule(client, envStubs, options)).impl()).toBe(
+            'client-only-value',
+          )
+        },
+      },
+    ]
+
+    /** Compiles `code` for the client and SSR, each a valid module, and checks `call`. */
+    async function expectEnvOnly(call: EnvOnlyCall, code: string) {
+      const compiled = {} as Record<'client' | 'ssr', string>
+      for (const output of ['client', 'ssr'] as const) {
+        compiled[output] = (await compileCode(output, code, options)) ?? code
+        expect(await getModuleErrors(compiled[output]), output).toEqual([])
+      }
+      await call.check(compiled)
+    }
+
+    test.each(calls)(
+      '$name next to a server fn: the other environment neither loads nor runs the implementation',
+      async (call) => {
+        await expectEnvOnly(
+          call,
+          `import { createServerFn } from '${pkg}'
+${call.code}
+export const fn = createServerFn().handler(async () => 'fn')`,
+        )
+      },
+    )
+
+    // Bug: the bundler plugins choose the modules the Start compiler
+    // transforms by their text (a factory name such as
+    // `createServerOnlyFn`, or `.handler(`). A module whose only Start call
+    // is `factory.serverOnly(...)` names none, so it is left untransformed;
+    // the same module next to a server fn is compiled (rows above). Same
+    // cause as the renamed re-export pin "client builds compile a renamed
+    // createServerOnlyFn re-export ..." in known-bugs-start-compiler.test.ts.
+    // Impact: the client bundle gets the server-only implementation and the
+    // modules it imports, and runs it; the client-only mirror runs during
+    // SSR.
+    // Source: start-compiler/compiler.ts `KindDetectionPatterns` and
+    // `detectKindsInCode` (used by vite/start-compiler-plugin/plugin.ts and
+    // rsbuild/start-compiler-host.ts). Outcome twin of the printed-code
+    // implementation test outside-compiler-corpus/
+    // compiler-member-call-receivers.test.ts (from #8758).
+    test.fails.each(calls)(
+      '$name alone in its module: the other environment neither loads nor runs the implementation',
+      async (call) => {
+        await expectEnvOnly(call, call.code)
+      },
+    )
   })
 
   // `<ClientOnly>` comes from the router package (SPEC J4.11): the server

@@ -3,10 +3,11 @@
  * real builds through Start's Vite and Rsbuild plugins (build-harness.ts):
  * a builder method called through a computed member, a server-only fn whose
  * result is bound, a server fn declared in a top-level block, builders
- * imported under string export names. SPEC J4.5 ("unrecognised shapes must
- * not silently leak"), J4.6 ("block … work or error clearly"), J4.12; user
- * ruling 2026-10-20 restoring corpus inputs U078-U082 and U086 (with
- * U047/U048, the string export names).
+ * imported under string export names, renamed env-only factories read
+ * through a namespace import of a project module. SPEC J4.5 ("unrecognised
+ * shapes must not silently leak"), J4.6 ("block … work or error clearly"),
+ * J4.12; user ruling 2026-10-20 restoring corpus inputs U078-U082 and U086
+ * (with U047/U048, the string export names).
  *
  * Either outcome passes, shape by shape: the shape works (the client bundle
  * holds none of its server-only module, the client's function does what the
@@ -14,14 +15,15 @@
  * build runs the server code, by id through Start's server entry for a
  * server fn), or the build fails with an error that names the shape's file
  * and the line of the call (`expectSourceError`). A silent leak, a broken
- * function or an unclear build error fails. String export names are a
- * re-export form SPEC J4.5 lists as recognised: that shape must work
- * (coordinator 2026-10-20).
+ * function or an unclear build error fails. String export names, renamed
+ * re-exports and namespace members are forms SPEC J4.5 lists as recognised:
+ * those shapes must work (coordinator 2026-10-20).
  *
  * The compile-level twins: ../known-bugs-start-compiler.test.ts ("the
  * client holds no server code, or the module is rejected at the call", and
  * the placement "a block at the module top level"),
- * ../start-compiler-factories.test.ts (string export names).
+ * ../start-compiler-factories.test.ts (string export names),
+ * ../start-compiler-import-forms.test.ts (the namespace factory).
  *
  * The shapes share one build per bundler. When that build (or a run of it)
  * fails, each shape is built on its own, so the rejection of one shape never
@@ -124,6 +126,52 @@ const stringNamesSource = (
 import { db } from './${db}'
 export const fn = createServerFn().handler(async () => db.x())
 export const serverOnly = createServerOnlyFn(() => 'server-only')
+`
+
+/** The re-exports of the namespace factory shapes: both env-only factories, renamed. */
+const namespaceFactoryStart = `export { createServerOnlyFn as serverOnly, createClientOnlyFn as clientOnly } from '@tanstack/react-start'
+`
+
+/** Client and SSR script of the namespace factory shapes: both calls, each settled. */
+const envOnlyCalls = `const run = (fn) => {
+  try {
+    return { value: fn() }
+  } catch (error) {
+    return { thrown: { name: error.name, message: error.message } }
+  }
+}
+return { serverOnly: run(shape.impl), clientOnly: run(shape.clientImpl) }`
+
+/**
+ * A working namespace factory shape: each environment runs its own
+ * implementation and throws an error naming the restriction for the other.
+ */
+function expectEnvOnlyWorks(client: unknown, ssr: unknown, result: string) {
+  type Calls = Record<
+    'serverOnly' | 'clientOnly',
+    { value?: unknown; thrown?: unknown }
+  >
+  const onClient = client as Calls
+  const onServer = ssr as Calls
+  expect(
+    identifiesEnvRestriction(onClient.serverOnly.thrown, 'server'),
+    JSON.stringify(onClient.serverOnly),
+  ).toBe(true)
+  expect(onClient.clientOnly).toEqual({ value: 'client-only-value' })
+  expect(onServer.serverOnly).toEqual({ value: result })
+  expect(
+    identifiesEnvRestriction(onServer.clientOnly.thrown, 'client'),
+    JSON.stringify(onServer.clientOnly),
+  ).toBe(true)
+}
+
+/** A module calling both renamed factories through a namespace import, after `head`. */
+const namespaceFactorySource =
+  (slug: string, head = '') =>
+  (db: string) => `${head}import * as factory from './${slug}-start'
+import { db } from './${db}'
+export const impl = factory.serverOnly(() => db.x())
+export const clientImpl = factory.clientOnly(() => 'client-only-value')
 `
 
 const shapes: Array<Shape> = [
@@ -255,10 +303,53 @@ return { serverOnly,`,
       expectServerFnWorks(fn, ssrFn, result)
     },
   },
+  {
+    name: 'renamed env-only factories read through a namespace import, next to a server fn',
+    slug: 'namespaceFactoryNextToServerFn',
+    source: namespaceFactorySource(
+      'namespaceFactoryNextToServerFn',
+      `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => 'fn')
+`,
+    ),
+    at: 'factory.serverOnly(',
+    names: ['serverOnly'],
+    files: {
+      'src/namespaceFactoryNextToServerFn-start.ts': namespaceFactoryStart,
+    },
+    client: envOnlyCalls,
+    ssr: envOnlyCalls,
+    expectWorks: ({ client, ssr }, result) =>
+      expectEnvOnlyWorks(client, ssr, result),
+  },
+  {
+    name: 'renamed env-only factories read through a namespace import',
+    slug: 'namespaceFactory',
+    source: namespaceFactorySource('namespaceFactory'),
+    at: 'factory.serverOnly(',
+    names: ['serverOnly'],
+    files: { 'src/namespaceFactory-start.ts': namespaceFactoryStart },
+    client: envOnlyCalls,
+    ssr: envOnlyCalls,
+    expectWorks: ({ client, ssr }, result) =>
+      expectEnvOnlyWorks(client, ssr, result),
+  },
 ]
 
 const marker = (shape: Shape) => `MARK_${shape.slug.toUpperCase()}_DB`
 const result = (shape: Shape) => `MARK_${shape.slug.toUpperCase()}_RESULT`
+
+/**
+ * Re-export forms SPEC J4.5 lists as recognised: these shapes must work
+ * (coordinator 2026-10-20), with no rejection branch.
+ */
+const recognisedForms = [
+  'stringNames',
+  'namespaceFactoryNextToServerFn',
+  'namespaceFactory',
+]
+/** Recognised forms main leaves untransformed (pinned below). */
+const pinnedForms = ['namespaceFactory']
 
 /** The app files of `list`, each shape exported from the entry. */
 function appFiles(list: Array<Shape>) {
@@ -388,7 +479,9 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // 2026-10-20; SPEC J4.5, J4.6, J4.12.
   // Impact: the server implementation and its server-only module ship in
   // the client bundle and run in the browser.
-  test.fails.each(shapes.filter((shape) => shape.slug !== 'stringNames'))(
+  test.fails.each(
+    shapes.filter((shape) => !recognisedForms.includes(shape.slug)),
+  )(
     '$name: the client bundle holds no server code and the shape works, or the build fails at the call',
     async (shape) => {
       await expectWorksOrRejected(shape)
@@ -396,14 +489,46 @@ describe.each(startBundlers)('%s build', (bundler) => {
     timeout,
   )
 
-  test.each(shapes.filter((shape) => shape.slug === 'stringNames'))(
+  /** A recognised form: the shape must work (no rejection). */
+  async function expectRecognised(shape: Shape) {
+    const outcome = await outcomeOf(shape)
+    if ('error' in outcome) {
+      throw outcome.error
+    }
+    expectWorks(shape, outcome.observed)
+  }
+
+  test.each(
+    shapes.filter(
+      (shape) =>
+        recognisedForms.includes(shape.slug) &&
+        !pinnedForms.includes(shape.slug),
+    ),
+  )(
     '$name are recognised: the client bundle holds no server code and the shape works',
     async (shape) => {
-      const outcome = await outcomeOf(shape)
-      if ('error' in outcome) {
-        throw outcome.error
-      }
-      expectWorks(shape, outcome.observed)
+      await expectRecognised(shape)
+    },
+    timeout,
+  )
+
+  // Bug: the bundler plugins choose the modules the Start compiler
+  // transforms by their text (a factory name, or `.handler(`). A module
+  // whose only Start calls are `factory.serverOnly(...)` and
+  // `factory.clientOnly(...)` names none, so it is left untransformed and
+  // the build succeeds; next to a server fn the same calls are compiled
+  // (shape above). In-process twin:
+  // ../start-compiler-import-forms.test.ts "... alone in its module".
+  // Source: start-compiler/compiler.ts `KindDetectionPatterns` and
+  // `detectKindsInCode` (used by vite/start-compiler-plugin/plugin.ts and
+  // rsbuild/start-compiler-host.ts); SPEC J4.5, J4.10, J4.12.
+  // Impact: the server-only implementation and its server-only module ship
+  // in the client bundle and run in the browser; the client-only one runs
+  // during SSR.
+  test.fails.each(shapes.filter((shape) => pinnedForms.includes(shape.slug)))(
+    '$name are recognised: the client bundle holds no server code and the shape works',
+    async (shape) => {
+      await expectRecognised(shape)
     },
     timeout,
   )
