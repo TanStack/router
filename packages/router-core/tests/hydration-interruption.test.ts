@@ -203,7 +203,6 @@ describe('public hydration interruption', () => {
     async (terminal) => {
       vi.spyOn(console, 'warn').mockImplementation(() => undefined)
       let controller: AbortController | undefined
-      let loaderSignal: AbortSignal | undefined
       const clientLoader = vi.fn(() => 'client parent')
       const build = (isServer: boolean) => {
         const rootRoute = new BaseRootRoute({
@@ -221,8 +220,7 @@ describe('public hydration interruption', () => {
           loader: {
             handler: isServer ? () => 'server parent' : clientLoader,
             dehydrate: true,
-            hydrate: ({ abortController }) => {
-              loaderSignal = abortController.signal
+            hydrate: () => {
               controller!.abort('application cancellation')
               return new Promise<string>(() => {})
             },
@@ -251,7 +249,6 @@ describe('public hydration interruption', () => {
       try {
         await hydrate(router)
         expect(controller?.signal.aborted).toBe(true)
-        expect(loaderSignal?.aborted).toBe(true)
         expect(clientLoader).not.toHaveBeenCalled()
         expect(router.state.matches[1]?.status).toBe(
           terminal ? 'notFound' : 'pending',

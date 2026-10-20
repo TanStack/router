@@ -62,87 +62,80 @@ test('hydration does not keep the dehydrated matches alive once the bootstrap da
   expect(navigate!.deref()).toBeUndefined()
 })
 
-test.each([false, true])(
-  'releases the wire data of a detached pending loader that self-aborts: %s',
-  async (selfAbort) => {
-    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    let wire: WeakRef<object> | undefined
-    const build = (isServer: boolean) => {
-      const rootRoute = new BaseRootRoute({})
-      const parentRoute = new BaseRoute({
-        getParentRoute: () => rootRoute,
-        path: '/parent',
-        loader: {
-          handler: () => 'parent data',
-          dehydrate: true,
-          hydrate: () => {
-            throw new Error('parent transform failed')
-          },
+test('releases the wire data of a detached pending loader transform', async () => {
+  const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  let wire: WeakRef<object> | undefined
+  const build = (isServer: boolean) => {
+    const rootRoute = new BaseRootRoute({})
+    const parentRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      loader: {
+        handler: () => 'parent data',
+        dehydrate: true,
+        hydrate: () => {
+          throw new Error('parent transform failed')
         },
-      })
-      const childRoute = new BaseRoute({
-        getParentRoute: () => parentRoute,
-        path: '/child',
-        loader: {
-          handler: () => ({ source: isServer ? 'server' : 'client' }),
-          dehydrate: ({ data }) => ({ wire: data.source }),
-          hydrate: ({ data, abortController }) => {
-            wire = new WeakRef(data)
-            if (selfAbort) {
-              abortController.abort()
-            }
-            // Application code retains neither the wire data nor this promise.
-            return new Promise<{ source: string }>(() => {})
-          },
+      },
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      loader: {
+        handler: () => ({ source: isServer ? 'server' : 'client' }),
+        dehydrate: ({ data }) => ({ wire: data.source }),
+        hydrate: ({ data }) => {
+          wire = new WeakRef(data)
+          // Application code retains neither the wire data nor this promise.
+          return new Promise<{ source: string }>(() => {})
         },
-      })
-      const elsewhereRoute = new BaseRoute({
-        getParentRoute: () => rootRoute,
-        path: '/elsewhere',
-      })
-      return createTestRouter({
-        routeTree: rootRoute.addChildren([
-          parentRoute.addChildren([childRoute]),
-          elsewhereRoute,
-        ]),
-        history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
-        isServer,
-      })
-    }
-    const router = build(false)
-    try {
-      window.$_TSR = await dehydrateToBootstrap(build(true), { routes: {} })
-      await hydrate(router)
-      window.$_TSR!.h()
-      window.$_TSR!.e()
-      delete window.$_TSR
+      },
+    })
+    const elsewhereRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/elsewhere',
+    })
+    return createTestRouter({
+      routeTree: rootRoute.addChildren([
+        parentRoute.addChildren([childRoute]),
+        elsewhereRoute,
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
+      isServer,
+    })
+  }
+  const router = build(false)
+  try {
+    window.$_TSR = await dehydrateToBootstrap(build(true), { routes: {} })
+    await hydrate(router)
+    window.$_TSR!.h()
+    window.$_TSR!.e()
+    delete window.$_TSR
 
-      await router.load()
-      expect(router.state.matches.at(-1)?.loaderData).toEqual({
-        source: 'client',
-      })
-      expect(wire).toBeDefined()
-      // The diagnostic observer must not own the failure's native stack,
-      // which can itself retain the callback arguments and aborted signals.
-      warning.mockClear()
-      for (let i = 0; i < 4; i++) {
-        await new Promise((resolve) => setTimeout(resolve))
-        gc()
-      }
-      expect(wire!.deref()).toBeUndefined()
-    } finally {
-      await router.navigate({ to: '/elsewhere' })
-      router.clearCache()
-      router.history.destroy()
-      delete window.$_TSR
-      warning.mockRestore()
+    await router.load()
+    expect(router.state.matches.at(-1)?.loaderData).toEqual({
+      source: 'client',
+    })
+    expect(wire).toBeDefined()
+    // The diagnostic observer must not own the failure's native stack,
+    // which can itself retain the callback arguments and aborted signals.
+    warning.mockClear()
+    for (let i = 0; i < 4; i++) {
+      await new Promise((resolve) => setTimeout(resolve))
+      gc()
     }
-  },
-)
+    expect(wire!.deref()).toBeUndefined()
+  } finally {
+    await router.navigate({ to: '/elsewhere' })
+    router.clearCache()
+    router.history.destroy()
+    delete window.$_TSR
+    warning.mockRestore()
+  }
+})
 
 test('releases the completed async beforeLoad contribution while its hydration handoff remains live', async () => {
   let contribution: WeakRef<object> | undefined
-  let navigate: WeakRef<object> | undefined
   const build = (isServer: boolean) => {
     const root = new BaseRootRoute({})
     const page = new BaseRoute({
@@ -155,7 +148,6 @@ test('releases the completed async beforeLoad contribution while its hydration h
           await Promise.resolve()
           const result = { ready: options.data.ready }
           contribution = new WeakRef(result)
-          navigate = new WeakRef(options.navigate)
           return result
         },
       },
@@ -171,7 +163,6 @@ test('releases the completed async beforeLoad contribution while its hydration h
   try {
     await hydrate(router)
     expect(contribution).toBeDefined()
-    expect(navigate).toBeDefined()
     window.$_TSR!.h()
     window.$_TSR!.e()
     delete window.$_TSR
@@ -181,7 +172,6 @@ test('releases the completed async beforeLoad contribution while its hydration h
     }
     expect(router.state.matches.at(-1)?.context).toEqual({ ready: true })
     expect(contribution!.deref()).toBeUndefined()
-    expect(navigate!.deref()).toBeUndefined()
   } finally {
     router.clearCache()
     router.history.destroy()

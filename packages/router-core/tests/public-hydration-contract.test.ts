@@ -60,10 +60,6 @@ describe('public hydration contracts', () => {
     ['context', true],
     ['beforeLoad', false],
     ['beforeLoad', true],
-    ['context.hydrate', false],
-    ['context.hydrate', true],
-    ['beforeLoad.hydrate', false],
-    ['beforeLoad.hydrate', true],
   ] as const)(
     'stops later serial hydration callbacks when %s self-aborts (async: %s)',
     async (abortAt, asynchronous) => {
@@ -72,7 +68,7 @@ describe('public hydration contracts', () => {
       let aborted = false
       const build = (isServer: boolean) => {
         const run = (lifecycle: string, abortController: AbortController) => {
-          const data = { [lifecycle.replace('.hydrate', '')]: true }
+          const data = { [lifecycle]: true }
           if (!isServer) {
             calls.push(lifecycle)
             if (lifecycle === abortAt && !aborted) {
@@ -87,37 +83,12 @@ describe('public hydration contracts', () => {
           return data
         }
         const rootRoute = new BaseRootRoute({
-          context:
-            abortAt === 'context.hydrate'
-              ? {
-                  handler: ({
-                    abortController,
-                  }: {
-                    abortController: AbortController
-                  }) => run('context', abortController),
-                  dehydrate: true,
-                  hydrate: ({
-                    abortController,
-                  }: {
-                    abortController: AbortController
-                  }) => run('context.hydrate', abortController),
-                }
-              : ({ abortController }: { abortController: AbortController }) =>
-                  run('context', abortController),
-          beforeLoad:
-            abortAt === 'beforeLoad.hydrate'
-              ? {
-                  handler: ({ abortController }) =>
-                    run('beforeLoad', abortController),
-                  dehydrate: true,
-                  hydrate: ({ abortController }) =>
-                    run('beforeLoad.hydrate', abortController),
-                }
-              : {
-                  handler: ({ abortController }) =>
-                    run('beforeLoad', abortController),
-                  dehydrate: false,
-                },
+          context: ({ abortController }) => run('context', abortController),
+          beforeLoad: {
+            handler: ({ abortController }) =>
+              run('beforeLoad', abortController),
+            dehydrate: false,
+          },
         })
         const pageRoute = new BaseRoute({
           getParentRoute: () => rootRoute,
@@ -226,17 +197,10 @@ describe('public hydration contracts', () => {
     'hydrates a child against its %s immediate parent while ancestor loader work is pending',
     async (parentKind) => {
       const ancestorGate = createControlledPromise<void>()
-      const ancestorHydrate = vi.fn(
-        async ({
-          data,
-        }: {
-          data: string
-          parentMatchPromise?: Promise<AnyRouteMatch>
-        }) => {
-          await ancestorGate
-          return `${data}:hydrated`
-        },
-      )
+      const ancestorHydrate = vi.fn(async ({ data }: { data: string }) => {
+        await ancestorGate
+        return `${data}:hydrated`
+      })
       const parentLoader = vi.fn(() => 'parent:client')
       const readParent = vi.fn((match: AnyRouteMatch | undefined) => match)
       const childLoader = vi.fn(
@@ -297,9 +261,6 @@ describe('public hydration contracts', () => {
           expect(childLoader).toHaveBeenCalledTimes(1)
           expect(readParent).toHaveBeenCalledTimes(1)
         })
-        expect(
-          ancestorHydrate.mock.calls[0]![0].parentMatchPromise,
-        ).toBeUndefined()
         expect(childLoader.mock.calls[0]![0].parentMatchPromise).toBeInstanceOf(
           Promise,
         )

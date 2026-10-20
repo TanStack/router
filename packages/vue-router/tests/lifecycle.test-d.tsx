@@ -361,6 +361,76 @@ test('dehydrate: true with hydrate: a hydrate returning a wider shape makes load
 // codec: dehydrate function + hydrate
 // ---------------------------------------------------------------------------
 
+test('codecs infer route context and passive lifecycle metadata', () => {
+  const rootRoute = createRootRouteWithContext<{ locale: string }>()({})
+  const route = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'passive/$id',
+    validateSearch: (search: Record<string, unknown>) => ({
+      page: Number(search.page ?? 1),
+    }),
+    loaderDeps: ({ search }) => ({ page: search.page }),
+    beforeLoad: {
+      handler: ({ context, search }) => ({
+        prefix: `${context.locale}:${search.page}`,
+      }),
+      dehydrate: ({ data, context, search, routeId }) => {
+        expectTypeOf(data).toEqualTypeOf<{ prefix: string }>()
+        expectTypeOf(context).toEqualTypeOf<{ locale: string }>()
+        expectTypeOf(search).toEqualTypeOf<{ page: number }>()
+        expectTypeOf(routeId).toEqualTypeOf<'/passive/$id'>()
+        return data.prefix
+      },
+      hydrate: ({ data, context, search, routeId }) => {
+        expectTypeOf(data).toEqualTypeOf<string>()
+        expectTypeOf(context).toEqualTypeOf<{ locale: string }>()
+        expectTypeOf(search).toEqualTypeOf<{ page: number }>()
+        expectTypeOf(routeId).toEqualTypeOf<'/passive/$id'>()
+        return { prefix: data }
+      },
+    },
+    loader: {
+      handler: ({ params, context, deps }) => ({
+        id: params.id,
+        label: context.prefix,
+        page: deps.page,
+      }),
+      dehydrate: ({ data, context, params, deps, route: matchedRoute }) => {
+        expectTypeOf(data).toEqualTypeOf<{
+          id: string
+          label: string
+          page: number
+        }>()
+        expectTypeOf(context).toEqualTypeOf<{
+          locale: string
+          prefix: string
+        }>()
+        expectTypeOf(params).toEqualTypeOf<{ id: string }>()
+        expectTypeOf(deps).toEqualTypeOf<{ page: number }>()
+        expectTypeOf(matchedRoute).toEqualTypeOf<AnyRoute>()
+        return data.id
+      },
+      hydrate: ({ data, context, params, deps, route: matchedRoute }) => {
+        expectTypeOf(data).toEqualTypeOf<string>()
+        expectTypeOf(context).toEqualTypeOf<{
+          locale: string
+          prefix: string
+        }>()
+        expectTypeOf(params).toEqualTypeOf<{ id: string }>()
+        expectTypeOf(deps).toEqualTypeOf<{ page: number }>()
+        expectTypeOf(matchedRoute).toEqualTypeOf<AnyRoute>()
+        return { id: data, label: context.prefix, page: deps.page }
+      },
+    },
+  })
+
+  expectTypeOf(route.types.loaderData).toEqualTypeOf<{
+    id: string
+    label: string
+    page: number
+  }>()
+})
+
 test('codec: hydrate receives the dehydrate return value and the lifecycle ctx', () => {
   const rootRoute = createRootRouteWithContext<{ user: string; q: number }>()({
     beforeLoad: ({ context }) => ({ rootBl: context.user }),

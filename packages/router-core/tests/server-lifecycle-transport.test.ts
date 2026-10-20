@@ -926,7 +926,7 @@ describe('transport decisions', () => {
 })
 
 describe('custom dehydrate', () => {
-  test('a sync dehydrate transforms m, b and l and receives the handler ctx plus data', async () => {
+  test('a sync dehydrate transforms m, b and l and receives route context, passive metadata and data', async () => {
     const serverContext = { requestId: 'req-1' }
     const contextDehydrate = vi.fn(
       ({ data }: { data: { id: string; secret: string } }) => ({
@@ -970,7 +970,7 @@ describe('custom dehydrate', () => {
     const router = createServerRouter(
       rootRoute.addChildren([pageRoute]),
       '/page/p1?q=term',
-      { additionalContext: { serverContext } },
+      { additionalContext: { serverContext, data: 'additional metadata' } },
     )
 
     await router.load()
@@ -997,7 +997,7 @@ describe('custom dehydrate', () => {
       l: 'summary',
     })
 
-    // Each dehydrate receives the same ctx as its handler, plus `data`.
+    // Each dehydrate receives route context, passive metadata and `data`.
     expect(contextDehydrate).toHaveBeenCalledOnce()
     expect(contextDehydrate.mock.calls[0]![0]).toMatchObject({
       data: { id: 'p1', secret: 'server' },
@@ -1010,7 +1010,6 @@ describe('custom dehydrate', () => {
       serverContext,
     })
     expect(contextDehydrate.mock.calls[0]![0]).toHaveProperty('location')
-    expect(contextDehydrate.mock.calls[0]![0]).toHaveProperty('abortController')
     expect(beforeLoadDehydrate).toHaveBeenCalledOnce()
     expect(beforeLoadDehydrate.mock.calls[0]![0]).toMatchObject({
       data: { user: { name: 'ada', token: 't0k3n' } },
@@ -1034,9 +1033,6 @@ describe('custom dehydrate', () => {
       route: pageRoute,
       serverContext,
     })
-    expect(loaderDehydrate.mock.calls[0]![0]).toHaveProperty(
-      'parentMatchPromise',
-    )
   })
 
   test('an async dehydrate is awaited before the match settles', async () => {

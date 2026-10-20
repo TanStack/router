@@ -80,53 +80,35 @@ test.each(
   },
 )
 
-test.each([false, true])(
-  'an adopted hydration loader resolves its redirect in the client load (search throws: %s)',
-  async (searchThrows) => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+test.each(['success', 'error', 'redirect'] as const)(
+  'a superseding client load runs its handler independently of a pending hydration transform (%s)',
+  async (outcome) => {
     const started = createControlledPromise<void>()
-    const loaderGate = createControlledPromise<void>()
-    const guardGate = createControlledPromise<void>()
-    const targetError = new Error('adopted redirect search failed')
-    const onError = vi.fn()
-    const search = vi.fn(() => {
-      if (searchThrows) {
-        throw targetError
-      }
-      return { destination: 'target' }
-    })
-    const clientHandler = vi.fn(() => 'unexpected second loader')
+    const codecGate = createControlledPromise<void>()
+    const clientHandler = vi.fn(() => 'client handler data')
     const build = (isServer: boolean) => {
       const root = new BaseRootRoute({})
       const page = new BaseRoute({
         getParentRoute: () => root,
         path: '/page',
-        beforeLoad: {
-          handler: async () => {
-            if (!isServer) {
-              await guardGate
-            }
-            return {}
-          },
-          dehydrate: true,
-        },
         loader: {
           handler: isServer ? () => 'server data' : clientHandler,
           dehydrate: true,
-          hydrate: async () => {
+          hydrate: async ({ data }) => {
             started.resolve()
-            await loaderGate
-            return redirect({ to: '/target', search })
+            await codecGate
+            if (outcome === 'error') {
+              throw new Error('obsolete codec failed')
+            }
+            if (outcome === 'redirect') {
+              return redirect({ to: '/' })
+            }
+            return `${data}: hydrated`
           },
         },
-        onError,
-      })
-      const target = new BaseRoute({
-        getParentRoute: () => root,
-        path: '/target',
       })
       return createTestRouter({
-        routeTree: root.addChildren([page, target]),
+        routeTree: root.addChildren([page]),
         history: createMemoryHistory({ initialEntries: ['/page'] }),
         isServer,
       })
@@ -136,31 +118,28 @@ test.each([false, true])(
     let hydration: Promise<void> | undefined
     let load: Promise<void> | undefined
     try {
-      const bootstrap = await dehydrateToBootstrap(server, { routes: {} })
-      vi.stubGlobal('window', { $_TSR: bootstrap })
+      vi.stubGlobal('window', {
+        $_TSR: await dehydrateToBootstrap(server, { routes: {} }),
+      })
       hydration = hydrate(client)
       await started
       load = client.load({ sync: true })
       await hydration
-      expect(search).not.toHaveBeenCalled()
-      expect(onError).not.toHaveBeenCalled()
-      guardGate.resolve()
-      await new Promise((resolve) => setTimeout(resolve, 0))
-      loaderGate.resolve()
       await load
-      expect(clientHandler).not.toHaveBeenCalled()
-      expect(search).toHaveBeenCalledTimes(1)
-      if (searchThrows) {
-        expect(onError).toHaveBeenCalledExactlyOnceWith(targetError)
-        expect(client.state.location.pathname).toBe('/page')
-        expect(client.state.matches.at(-1)?.status).toBe('error')
-      } else {
-        expect(onError).not.toHaveBeenCalled()
-        expect(client.state.location.pathname).toBe('/target')
-      }
+      expect(clientHandler).toHaveBeenCalledTimes(1)
+      expect(client.state.matches.at(-1)).toMatchObject({
+        status: 'success',
+        loaderData: 'client handler data',
+      })
+      codecGate.resolve()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(client.state.location.pathname).toBe('/page')
+      expect(client.state.matches.at(-1)).toMatchObject({
+        status: 'success',
+        loaderData: 'client handler data',
+      })
     } finally {
-      guardGate.resolve()
-      loaderGate.resolve()
+      codecGate.resolve()
       await hydration
       await load
       server.history.destroy()

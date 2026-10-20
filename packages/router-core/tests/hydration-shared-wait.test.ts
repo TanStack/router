@@ -136,83 +136,73 @@ test('settling an earlier scripts promise cannot finish a later head wait', asyn
   }
 })
 
-for (const lifecycle of ['context', 'beforeLoad'] as const) {
-  for (const action of ['abort', 'navigate'] as const) {
-    test.each(['pending', 'rejected'] as const)(
-      `${lifecycle}.hydrate can synchronously ${action} and return a %s promise`,
-      async (outcome) => {
-        vi.spyOn(console, 'warn').mockImplementation(() => {})
-        const laterContext = vi.fn(() => ({}))
-        const laterLoader = vi.fn(() => 'client')
-        let router: AnyRouter
-        const build = (isServer: boolean) => {
-          const root = new BaseRootRoute({})
-          const page = new BaseRoute({
-            getParentRoute: () => root,
-            path: '/page',
-            [lifecycle]: {
-              handler: () => ({ ready: true }),
-              dehydrate: true,
-              hydrate: ({
-                abortController,
-              }: {
-                abortController: AbortController
-              }) => {
-                if (action === 'abort') {
-                  abortController.abort()
-                } else {
-                  void router.navigate({ to: '/other' })
-                }
-                return outcome === 'pending'
-                  ? new Promise<{ ready: boolean }>(() => {})
-                  : Promise.reject(new Error('ignored lifecycle rejection'))
-              },
+for (const lifecycle of ['context', 'beforeLoad', 'loader'] as const) {
+  test.each(['pending', 'rejected'] as const)(
+    `${lifecycle}.hydrate observes captured navigation and a %s promise`,
+    async (outcome) => {
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const laterContext = vi.fn(() => ({}))
+      const laterLoader = vi.fn(() => 'client')
+      let router: AnyRouter
+      const build = (isServer: boolean) => {
+        const root = new BaseRootRoute({})
+        const page = new BaseRoute({
+          getParentRoute: () => root,
+          path: '/page',
+          [lifecycle]: {
+            handler: () => ({ ready: true }),
+            dehydrate: true,
+            hydrate: () => {
+              void router.navigate({ to: '/other' })
+              return outcome === 'pending'
+                ? new Promise<{ ready: boolean }>(() => {})
+                : Promise.reject(new Error('ignored lifecycle rejection'))
             },
-          })
-          const child = new BaseRoute({
-            getParentRoute: () => page,
-            path: '/child',
-            context: isServer ? () => ({}) : laterContext,
-            loader: {
-              handler: isServer ? () => 'server' : laterLoader,
-              dehydrate: false,
-            },
-          })
-          const other = new BaseRoute({
-            getParentRoute: () => root,
-            path: '/other',
-          })
-          return createTestRouter({
-            routeTree: root.addChildren([page.addChildren([child]), other]),
-            history: createMemoryHistory({ initialEntries: ['/page/child'] }),
-            isServer,
-          })
-        }
-        vi.stubGlobal('window', {
-          $_TSR: await dehydrateToBootstrap(build(true), manifest),
+          },
         })
-        router = build(false)
-        let finished = false
-        const hydration = hydrate(router).then(() => {
-          finished = true
+        const child = new BaseRoute({
+          getParentRoute: () => page,
+          path: '/child',
+          context: isServer ? () => ({}) : laterContext,
+          loader: {
+            handler: isServer ? () => 'server' : laterLoader,
+            dehydrate: false,
+          },
         })
-        try {
-          await expect.poll(() => finished, { timeout: 500 }).toBe(true)
-          await hydration
-          expect(laterContext).not.toHaveBeenCalled()
-          expect(laterLoader).not.toHaveBeenCalled()
-          if (action === 'navigate') {
-            await router.load()
-            expect(router.state.location.pathname).toBe('/other')
-            expect(router.state.matches.at(-1)?.status).toBe('success')
-          }
-        } finally {
-          router.clearCache()
-          router.history.destroy()
-        }
-      },
-    )
-  }
+        const other = new BaseRoute({
+          getParentRoute: () => root,
+          path: '/other',
+        })
+        return createTestRouter({
+          routeTree: root.addChildren([page.addChildren([child]), other]),
+          history: createMemoryHistory({ initialEntries: ['/page/child'] }),
+          isServer,
+        })
+      }
+      vi.stubGlobal('window', {
+        $_TSR: await dehydrateToBootstrap(build(true), manifest),
+      })
+      router = build(false)
+      let finished = false
+      const hydration = hydrate(router).then(() => {
+        finished = true
+      })
+      try {
+        await expect.poll(() => finished, { timeout: 500 }).toBe(true)
+        await hydration
+        expect(laterContext).toHaveBeenCalledTimes(
+          lifecycle === 'loader' ? 1 : 0,
+        )
+        expect(laterLoader).not.toHaveBeenCalled()
+        await router.load()
+        expect(router.state.location.pathname).toBe('/other')
+        expect(router.state.matches.at(-1)?.status).toBe('success')
+      } finally {
+        router.clearCache()
+        router.history.destroy()
+      }
+    },
+  )
 }
 
 test.each(['head', 'scripts'] as const)(
@@ -338,7 +328,7 @@ test('verifies an omitted structural descendant below a data-only terminal bound
   }
 })
 
-test.each(['context', 'beforeLoad'] as const)(
+test.each(['context', 'beforeLoad', 'loader'] as const)(
   'ignores a late rejection from superseded %s hydration',
   async (lifecycle) => {
     const entered = createControlledPromise<void>()

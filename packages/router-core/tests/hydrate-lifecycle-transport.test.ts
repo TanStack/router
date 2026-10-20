@@ -269,10 +269,7 @@ describe('hydration: lifecycle transport by presence', () => {
           cause: 'enter',
           preload: false,
           location: expect.objectContaining({ pathname: '/posts/7' }),
-          abortController: expect.any(AbortController),
           matches: expect.any(Array),
-          navigate: expect.any(Function),
-          buildLocation: expect.any(Function),
         }),
       )
       expect(findMatch(router.state.matches, postRoute.id)?.context).toEqual({
@@ -455,7 +452,6 @@ describe('hydration: lifecycle transport by presence', () => {
           params: {},
           routeId: pageRoute.id,
           preload: false,
-          abortController: expect.any(AbortController),
         }),
       )
       expect(findMatch(router.state.matches, pageRoute.id)?.context).toEqual({
@@ -820,8 +816,6 @@ describe('hydration: lifecycle transport by presence', () => {
           route: parentRoute,
           preload: false,
           cause: 'enter',
-          parentMatchPromise: expect.any(Promise),
-          abortController: expect.any(AbortController),
         }),
       )
       expect(findMatch(router.state.matches, parentRoute.id)).toMatchObject({

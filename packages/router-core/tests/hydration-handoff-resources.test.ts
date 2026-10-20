@@ -15,7 +15,6 @@ afterEach(() => {
 test('retiring a mismatched hydration continuation keeps recovered descendant loader work alive', async () => {
   vi.spyOn(console, 'warn').mockImplementation(() => {})
   let clientRouter: AnyRouter
-  let childLoaderSignal: AbortSignal | undefined
   const cacheCleared = vi.fn()
   const parentLoader = vi.fn(() => 'client parent data')
   const childLoader = vi.fn(() => 'client child data')
@@ -56,8 +55,7 @@ test('retiring a mismatched hydration continuation keeps recovered descendant lo
       loader: {
         handler: isServer ? () => 'server child data' : childLoader,
         dehydrate: true,
-        hydrate: ({ data, abortController }) => {
-          childLoaderSignal = abortController.signal
+        hydrate: ({ data }) => {
           return `${data}: hydrated`
         },
       },
@@ -79,8 +77,6 @@ test('retiring a mismatched hydration continuation keeps recovered descendant lo
   const router = (clientRouter = build(false))
   try {
     await hydrate(router)
-    const recoveredSignal = childLoaderSignal!
-    expect(recoveredSignal.aborted).toBe(false)
     expect(router.state.matches[1]?.status).toBe('pending')
     expect(router.state.matches.at(-1)?.loaderData).toBe(
       'server child data: hydrated',
@@ -96,7 +92,6 @@ test('retiring a mismatched hydration continuation keeps recovered descendant lo
     expect(cacheCleared).toHaveBeenCalledTimes(1)
     expect(parentLoader).toHaveBeenCalledTimes(1)
     expect(childLoader).not.toHaveBeenCalled()
-    expect(recoveredSignal.aborted).toBe(false)
     expect(router.state.matches.at(-1)).toMatchObject({
       status: 'success',
       loaderData: 'server child data: hydrated',
@@ -108,8 +103,7 @@ test('retiring a mismatched hydration continuation keeps recovered descendant lo
   }
 })
 
-test('an accepted hydration continuation retains and later retires its transformed loader signal', async () => {
-  let hydratedLoaderSignal: AbortSignal | undefined
+test('an accepted hydration continuation reuses transformed parent data for an ssr:false child', async () => {
   const clientLayoutLoader = vi.fn(() => 'client layout data')
   const pageLoader = vi.fn(() => 'client page data')
   const build = (isServer: boolean) => {
@@ -120,8 +114,7 @@ test('an accepted hydration continuation retains and later retires its transform
       loader: {
         handler: isServer ? () => 'server layout data' : clientLayoutLoader,
         dehydrate: true,
-        hydrate: ({ data, abortController }) => {
-          hydratedLoaderSignal = abortController.signal
+        hydrate: ({ data }) => {
           return `${data}: hydrated`
         },
       },
@@ -150,11 +143,8 @@ test('an accepted hydration continuation retains and later retires its transform
   const router = build(false)
   try {
     await hydrate(router)
-    const signal = hydratedLoaderSignal!
-    expect(signal.aborted).toBe(false)
     await router.load()
 
-    expect(signal.aborted).toBe(false)
     expect(clientLayoutLoader).not.toHaveBeenCalled()
     expect(pageLoader).toHaveBeenCalledTimes(1)
     expect(router.state.matches[1]?.loaderData).toBe(
@@ -163,7 +153,6 @@ test('an accepted hydration continuation retains and later retires its transform
     expect(router.state.matches.at(-1)?.loaderData).toBe('client page data')
 
     await router.navigate({ to: '/' })
-    expect(signal.aborted).toBe(true)
     expect(router.state.resolvedLocation?.pathname).toBe('/')
   } finally {
     router.clearCache()

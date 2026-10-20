@@ -32,12 +32,18 @@ const {
 // response-body consumption and SSR cleanup. Router creation, route-tree setup,
 // bootstrap evaluation and assertions are outside timing. This isolates Router
 // SSR; it does not measure a framework renderer or Start request middleware.
+// The load-* cases time only lifecycle settlement. Serialization, draining and
+// cleanup run outside timing; wide cases retain 32 extra passive context fields.
 const workloads = [
   'ordinary-sync-context',
   'ordinary-async-context',
   'raw-transport',
   'sync-codecs',
   'async-codecs',
+  'load-sync-codecs',
+  'load-async-codecs',
+  'load-wide-sync-codecs',
+  'load-wide-async-codecs',
   'deferred-unsent',
   'deferred-codec',
 ] as const
@@ -49,6 +55,7 @@ type Calls = {
   loader: number
   dehydrate: number
   hydrate: number
+  metadata: number
   aborted: number
   cleanup: Array<boolean>
 }
@@ -66,11 +73,12 @@ function createSample(depth: number, workload: Workload) {
     loader: 0,
     dehydrate: 0,
     hydrate: 0,
+    metadata: 0,
     aborted: 0,
     cleanup: [],
   }
   const signals: Array<AbortSignal> = []
-  const codecs = workload === 'sync-codecs' || workload === 'async-codecs'
+  const codecs = workload.endsWith('codecs')
   const deferred = workload.startsWith('deferred-')
   const serialAt = (kind: 'context' | 'beforeLoad', index: number) => {
     const key = `${kind === 'context' ? 'c' : 'b'}${index}`
@@ -86,19 +94,25 @@ function createSample(depth: number, workload: Workload) {
           }
         : run
     if (codecs) {
-      const dehydrate = ({ data }: { data: Record<string, number> }) => {
+      const dehydrate = ({
+        data,
+        passive31,
+      }: {
+        data: Record<string, number>
+        passive31?: number
+      }) => {
         calls.dehydrate++
+        calls.metadata += passive31 ?? 0
         return [key, data[key]]
       }
       return {
         handler,
-        dehydrate:
-          workload === 'async-codecs'
-            ? async (options: { data: Record<string, number> }) => {
-                await Promise.resolve()
-                return dehydrate(options)
-              }
-            : dehydrate,
+        dehydrate: workload.endsWith('async-codecs')
+          ? async (options: { data: Record<string, number> }) => {
+              await Promise.resolve()
+              return dehydrate(options)
+            }
+          : dehydrate,
         hydrate: ({ data }: { data: [string, number] }) => {
           calls.hydrate++
           return { [data[0]]: data[1] }
@@ -134,8 +148,15 @@ function createSample(depth: number, workload: Workload) {
         }),
       }
     }
-    const dehydrate = ({ data }: { data: Data }) => {
+    const dehydrate = ({
+      data,
+      passive31,
+    }: {
+      data: Data
+      passive31?: number
+    }) => {
       calls.dehydrate++
+      calls.metadata += passive31 ?? 0
       return data.id
     }
     const hydrate = ({ data }: { data: number }) => {
@@ -151,13 +172,12 @@ function createSample(depth: number, workload: Workload) {
           : codecs || workload === 'deferred-codec'
             ? {
                 handler,
-                dehydrate:
-                  workload === 'async-codecs'
-                    ? async (options: { data: Data }) => {
-                        await Promise.resolve()
-                        return dehydrate(options)
-                      }
-                    : dehydrate,
+                dehydrate: workload.endsWith('async-codecs')
+                  ? async (options: { data: Data }) => {
+                      await Promise.resolve()
+                      return dehydrate(options)
+                    }
+                  : dehydrate,
                 hydrate,
               }
             : workload === 'raw-transport'
@@ -183,6 +203,14 @@ function createSample(depth: number, workload: Workload) {
       routeTree: root,
       history: createMemoryHistory({ initialEntries: [pathname] }),
       isServer: true,
+      additionalContext: workload.startsWith('load-wide-')
+        ? Object.fromEntries(
+            Array.from({ length: 32 }, (_, index) => [
+              `passive${index}`,
+              index,
+            ]),
+          )
+        : undefined,
       scrollRestoration: false,
     },
     getStoreConfig,
@@ -194,8 +222,14 @@ function createSample(depth: number, workload: Workload) {
 
 type Sample = ReturnType<typeof createSample>
 
-async function run(sample: Sample) {
+async function run(sample: Sample, workload: Workload) {
   await sample.router.load()
+  if (!workload.startsWith('load-')) {
+    await render(sample)
+  }
+}
+
+async function render(sample: Sample) {
   const serverSsr = sample.router.serverSsr!
   await serverSsr.dehydrate()
   const tags = serverSsr.takeInitialHydrationScriptTags()!
@@ -218,7 +252,7 @@ async function run(sample: Sample) {
 
 function assertSample(sample: Sample, depth: number, workload: Workload) {
   const { router, calls, signals, body } = sample
-  const codecs = workload === 'sync-codecs' || workload === 'async-codecs'
+  const codecs = workload.endsWith('codecs')
   const contextTransported = codecs || workload === 'raw-transport'
   const context: Record<string, number> = {}
   assert.equal(router.state.matches.length, depth)
@@ -239,6 +273,10 @@ function assertSample(sample: Sample, depth: number, workload: Workload) {
     codecs ? depth * 3 : workload === 'deferred-codec' ? depth : 0,
   )
   assert.equal(calls.hydrate, 0)
+  assert.equal(
+    calls.metadata,
+    workload.startsWith('load-wide-') ? depth * 3 * 31 : 0,
+  )
   assert.equal(calls.aborted, workload.startsWith('deferred-') ? depth : 0)
   assert.equal(signals.length, depth)
   assert.ok(
@@ -325,13 +363,16 @@ for (const depth of [4, 16]) {
           assert.equal(sample, undefined)
           sample = createSample(depth, workload)
         }
-        const after = () => {
+        const after = async () => {
           const current = sample
           sample = undefined
           if (!current) {
             return
           }
           try {
+            if (workload.startsWith('load-')) {
+              await render(current)
+            }
             assertSample(current, depth, workload)
           } finally {
             dispose(current)
@@ -339,13 +380,13 @@ for (const depth of [4, 16]) {
         }
         try {
           before()
-          await run(sample!)
-          after()
+          await run(sample!, workload)
+          await after()
           const result = await bench(
             name,
             { async: true, beforeEach: before, afterEach: after },
             async () => {
-              await run(sample!)
+              await run(sample!, workload)
             },
           ).run({
             time: Number(process.env.SSR_LIFECYCLE_BENCH_TIME_MS ?? 500),
