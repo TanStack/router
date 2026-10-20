@@ -70,6 +70,22 @@ createRoot(document.getElementById('app')!).render(<RouterProvider router={route
 `
 
 /**
+ * How the page counts what its HMR client did, through Vite's client API:
+ * the updates it handled (`vite:afterUpdate` comes once the client fetched
+ * the updated modules, whether or not a fetch failed) and the
+ * invalidations it sent. Read by `settle()`.
+ */
+const viteHmrProbe = `if (import.meta.hot) {
+  import.meta.hot.on('vite:afterUpdate', () => {
+    window.__hmrApplied = (window.__hmrApplied ?? 0) + 1
+  })
+  import.meta.hot.on('vite:invalidate', () => {
+    window.__hmrInvalidated = (window.__hmrInvalidated ?? 0) + 1
+  })
+}
+`
+
+/**
  * Dependencies the app imports, pre-bundled up front as Vite does for an app
  * that installed them (the router package is a linked workspace package
  * here, which Vite would otherwise serve as source and discover the
@@ -104,8 +120,12 @@ export interface GeneratorDevApp {
   /** Moves an app file without waiting for the dev server. */
   rename: (from: string, to: string) => Promise<void>
   /**
-   * Waits until the dev server is done with every write so far; `timeout`
-   * only guards against events that never come.
+   * Waits until the dev server is done with every write so far, and (Vite)
+   * the page with what the server sent it meanwhile: its HMR client
+   * handled every update (fetching the updated modules, whose transforms
+   * may report errors) and a full reload loaded it again. A report of an
+   * edit therefore comes before the next write. `timeout` only guards
+   * against events that never come.
    */
   settle: (options?: { timeout?: number }) => Promise<void>
   /** `write(files)`, then `settle()`. */
@@ -242,7 +262,7 @@ export async function generatorDevApp(
   const logs = () => logged.join('\n')
 
   const files = {
-    'main.tsx': main,
+    'main.tsx': bundler === 'vite' ? `${main}${viteHmrProbe}` : main,
     'routes/__root.tsx': rootRoute,
     ...options.files,
   }
@@ -268,7 +288,14 @@ export async function generatorDevApp(
     await last?.close()
     scripts = []
     page.page.on('response', (response) => {
-      if (response.request().resourceType() === 'script') {
+      // A script the server answered with an error ran no code; and
+      // Playwright fetches the body of such a response again (the browser
+      // kept none): a request of the harness's own, which the dev server
+      // would transform and report on, late
+      if (
+        response.request().resourceType() === 'script' &&
+        response.status() < 400
+      ) {
         scripts.push(
           response.text().then(
             (code) => ({ url: response.url(), code }),
@@ -281,16 +308,102 @@ export async function generatorDevApp(
   }
   await open('/')
 
+  /**
+   * A count the page's HMR probe keeps (`viteHmrProbe`), or `undefined`
+   * while the page is reloading.
+   */
+  const probe = async (name: string) => {
+    try {
+      return await page.page.evaluate<number>(`window.${name} ?? 0`)
+    } catch {
+      return undefined
+    }
+  }
+  /** The counts `settle()` compares, taken before the first write since. */
+  let start:
+    | {
+        loads: number
+        applied: number
+        invalidated: number
+        updates: number
+        fullReloads: number
+        invalidations: number
+      }
+    | undefined
+  const writing = async () => {
+    if (app.hmr && !start) {
+      start = {
+        loads: page.loads(),
+        applied: (await probe('__hmrApplied')) ?? 0,
+        invalidated: (await probe('__hmrInvalidated')) ?? 0,
+        updates: app.hmr.updates(),
+        fullReloads: app.hmr.fullReloads(),
+        invalidations: app.hmr.invalidations(),
+      }
+    }
+  }
+  /**
+   * Vite: until the page handled what the server sent it since `start` (a
+   * full reload loaded the page again; otherwise the server received every
+   * invalidation the page's client sent, and the client handled every
+   * update the server sent).
+   */
+  const pageSettled = async (timeout = 15_000) => {
+    const { hmr } = app
+    const from = start
+    start = undefined
+    if (!hmr || !from) {
+      return
+    }
+    const deadline = Date.now() + timeout
+    for (;;) {
+      await hmr.idle()
+      let settled: boolean
+      if (hmr.fullReloads() > from.fullReloads || page.loads() > from.loads) {
+        settled = page.loads() > from.loads
+      } else {
+        const applied = await probe('__hmrApplied')
+        const invalidated = await probe('__hmrInvalidated')
+        settled =
+          applied !== undefined &&
+          invalidated !== undefined &&
+          invalidated - from.invalidated <=
+            hmr.invalidations() - from.invalidations &&
+          applied - from.applied >= hmr.updates() - from.updates
+      }
+      if (settled) {
+        return
+      }
+      if (Date.now() > deadline) {
+        throw new Error(
+          `the page did not handle what the dev server sent it within ${timeout} ms`,
+        )
+      }
+      await new Promise((resolve) => setTimeout(resolve, 25))
+    }
+  }
+  const settle = async (settleOptions?: { timeout?: number }) => {
+    await app.settle(settleOptions)
+    await pageSettled(settleOptions?.timeout)
+  }
+  const write = async (written: Record<string, string | null>) => {
+    await writing()
+    await app.write(written)
+  }
+
   return {
     bundler,
     root: app.root,
     read: (relative) => readFile(path.join(app.root, relative), 'utf8'),
-    write: app.write,
-    rename: app.rename,
-    settle: app.settle,
+    write,
+    rename: async (from, to) => {
+      await writing()
+      await app.rename(from, to)
+    },
+    settle,
     edit: async (edited) => {
-      await app.write(edited)
-      await app.settle()
+      await write(edited)
+      await settle()
     },
     get page() {
       return page
@@ -347,6 +460,17 @@ interface AppServer {
   close: () => Promise<void>
   /** The server's own errors and warnings so far, in order. */
   diagnostics: () => Array<Diagnostic>
+  /**
+   * Vite: the HMR payloads the server sent the page so far, the
+   * invalidations it received from it, and a wait until no transform is in
+   * flight.
+   */
+  hmr?: {
+    updates: () => number
+    fullReloads: () => number
+    invalidations: () => number
+    idle: () => Promise<void>
+  }
 }
 
 async function viteApp(
@@ -385,6 +509,16 @@ async function viteApp(
       react(),
     ],
   })
+  // Vite's own handler of an invalidation runs first and sends its answer
+  // (an update or a full reload) before this listener runs.
+  let invalidations = 0
+  server.vite.environments.client.hot.on('vite:invalidate', () => {
+    invalidations++
+  })
+  const clientMessages = (type: 'update' | 'full-reload') => () =>
+    server.hmr.filter(
+      (message) => message.environment === 'client' && message.type === type,
+    ).length
   return {
     root: server.root,
     url: server.url!,
@@ -406,6 +540,12 @@ async function viteApp(
             ? diagnosticsOf(log.slice('warn: '.length), 'warning')
             : [],
       ),
+    hmr: {
+      updates: clientMessages('update'),
+      fullReloads: clientMessages('full-reload'),
+      invalidations: () => invalidations,
+      idle: () => server.idle(),
+    },
   }
 }
 
