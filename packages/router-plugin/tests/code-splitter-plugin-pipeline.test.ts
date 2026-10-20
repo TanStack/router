@@ -745,3 +745,266 @@ export const Route = createFileRoute('/hmr')({
   // A Solid or Vue route hot-updated through the bundler's hot API:
   // integration/route-hmr-browser-frameworks.test.ts (a real page).
 })
+
+// A route the route file creates inside a function of the same file (a
+// helper, an IIFE) is unsupported but user-fixable (user ruling 2026-10-17,
+// decision D11): it is either split like a module-scope route (and
+// hot-updates in place), or left unsplit with a warning naming the file, in
+// production as in development. Either way it renders correctly; silent
+// wrong output, or unsplit without a warning, fails.
+// Sources: #8504 (code-splitter-plugin-pipeline.test.ts); the #8504
+// confidence campaign (route-factory cases 1-3 and 5, dev-hmr D1/D2).
+describe('a route created inside a function', () => {
+  /**
+   * Runs `run` with `console.warn` captured; returns its result and whether
+   * a warning named `fileOf(result)`.
+   */
+  async function reporting<T>(
+    run: () => Promise<T>,
+    fileOf: (result: T) => string,
+  ) {
+    const { result, diagnostics } = await captureConsole(run)
+    const reported = diagnostics.some(
+      ({ severity, text }) =>
+        severity === 'warning' && text.includes(fileOf(result)),
+    )
+    return { result, reported }
+  }
+
+  /** Route files whose `/made` route a function of the file creates. */
+  const factoryRoutes = {
+    'a helper function, with an inline component': (data: string) =>
+      `import { createFileRoute } from '@tanstack/react-router'
+function makeRoute() {
+  return createFileRoute('/made')({
+    loader: () => '${data}',
+    component: () => <p>made</p>,
+  })
+}
+export const Route = makeRoute()
+`,
+    'an IIFE, with an inline component': (data: string) =>
+      `import { createFileRoute } from '@tanstack/react-router'
+export const Route = (() =>
+  createFileRoute('/made')({
+    loader: () => '${data}',
+    component: () => <p>made</p>,
+  }))()
+`,
+    'a helper function, with a module-level component and loader': (
+      data: string,
+    ) => `import { createFileRoute } from '@tanstack/react-router'
+function Made() {
+  return <p>made</p>
+}
+const loader = () => '${data}'
+function makeRoute() {
+  return createFileRoute('/made')({ loader, component: Made })
+}
+export const Route = makeRoute()
+`,
+    'an arrow helper, with a module-level component': (data: string) =>
+      `import { createFileRoute } from '@tanstack/react-router'
+function Made() {
+  return <p>made</p>
+}
+const makeRoute = () =>
+  createFileRoute('/made')({ loader: () => '${data}', component: Made })
+export const Route = makeRoute()
+`,
+    'an IIFE, with a module-level component': (data: string) =>
+      `import { createFileRoute } from '@tanstack/react-router'
+function Made() {
+  return <p>made</p>
+}
+export const Route = (() =>
+  createFileRoute('/made')({ loader: () => '${data}', component: Made }))()
+`,
+  }
+
+  // A production compile.
+  it.each(Object.entries(factoryRoutes))(
+    'built in %s is split, or reported, and keeps working',
+    async (_, route) => {
+      const { result: loaded, reported } = await reporting(
+        () => loadRoute(route('data'), { routeId: '/made' }),
+        (loaded) => loaded.ids.reference!,
+      )
+      await expectValidModules(loaded.modules)
+      expect({
+        rendered: [loaded.options.loader(), await loaded.render('component')],
+        splitOrReported: (await loaded.isLazy('component')) || reported,
+      }).toEqual({ rendered: ['data', '<p>made</p>'], splitOrReported: true })
+    },
+  )
+
+  // An edit of such a route in development shows its new code:
+  // integration/route-hmr-browser-plugin.test.ts (a real page).
+
+  // Bug: route options that only exist inside the factory (its parameters,
+  // its locals) are split out of it as if they were module-level code: a
+  // split option that closes over a parameter throws a ReferenceError, a
+  // component declared in the factory leaves a chunk that exports an
+  // undeclared binding, and a parameter that shadows a module-level
+  // component makes the chunk render the module-level one. Leaving such
+  // options unsplit with a warning naming the file is a valid fix (the
+  // pattern is unsupported but user-fixable); unsplit and silent is not.
+  // Source: the #8504 confidence campaign (route-factory cases 4, 5 with a
+  // split loader, 6, 6b and 6c; F-21).
+  // Impact: the route throws when it renders or loads, or silently renders
+  // the wrong component.
+  it.fails.each([
+    {
+      name: 'a component the factory receives, shadowing a module-level component',
+      route: `function Comp() {
+  return <p>module</p>
+}
+function makeRoute(Comp: () => unknown) {
+  return createFileRoute('/made')({ loader: () => 'data', component: Comp })
+}
+export const Route = makeRoute(() => <p>given</p>)`,
+      expected: ['data', '<p>given</p>'],
+    },
+    {
+      name: 'a component the factory receives',
+      route: `function makeRoute(Given: () => unknown) {
+  return createFileRoute('/made')({ loader: () => 'data', component: Given })
+}
+export const Route = makeRoute(() => <p>given</p>)`,
+      expected: ['data', '<p>given</p>'],
+    },
+    {
+      name: 'a component declared inside the factory',
+      route: `function makeRoute() {
+  const Local = () => <p>given</p>
+  return createFileRoute('/made')({ loader: () => 'data', component: Local })
+}
+export const Route = makeRoute()`,
+      expected: ['data', '<p>given</p>'],
+    },
+    {
+      name: 'an inline component that reads a factory parameter',
+      route: `function makeRoute(label: string) {
+  return createFileRoute('/made')({
+    loader: () => 'data',
+    component: () => <p>{label}</p>,
+  })
+}
+export const Route = makeRoute('given')`,
+      expected: ['data', '<p>given</p>'],
+    },
+    {
+      name: 'a split loader that reads a factory parameter',
+      route: `function makeRoute(label: string) {
+  return createFileRoute('/made')({
+    codeSplitGroupings: [['loader'], ['component']],
+    loader: () => label,
+    component: () => <p>made</p>,
+  })
+}
+export const Route = makeRoute('given')`,
+      expected: ['given', '<p>made</p>'],
+      split: ['loader', 'component'],
+    },
+  ])(
+    'a route built from $name renders what the factory was given, split or reported',
+    async ({ route, expected, split = ['component'] }) => {
+      const { result: loaded, reported } = await reporting(
+        () =>
+          loadRoute(
+            `import { createFileRoute } from '@tanstack/react-router'
+${route}
+`,
+            { routeId: '/made' },
+          ),
+        (loaded) => loaded.ids.reference!,
+      )
+      const rendered = [
+        await (await loaded.load('loader'))(),
+        await loaded.render('component'),
+      ]
+      let splitOrReported = reported
+      if (!reported) {
+        const lazy = []
+        for (const option of split) {
+          lazy.push(await loaded.isLazy(option))
+        }
+        splitOrReported = lazy.every(Boolean)
+      }
+      expect({ rendered, splitOrReported }).toEqual({
+        rendered: expected,
+        splitOrReported: true,
+      })
+    },
+  )
+
+  const moduleRoute = `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/made')({ component: () => <p>made</p> })
+`
+  /** Warnings logged during `run`, as text. */
+  async function warnings(run: () => Promise<unknown>) {
+    const { diagnostics } = await captureConsole(run)
+    return diagnostics
+      .filter(({ severity }) => severity === 'warning')
+      .map(({ text }) => text)
+  }
+
+  /**
+   * Each plugin path in the host: a transform of route files registered as
+   * `/made`, returning whether it split something.
+   */
+  const pluginPaths = {
+    'code splitter': () => {
+      const host = createRouterHost()
+      return async (code: string, file: string) =>
+        splitsSomething(
+          await host.compile(code, { filename: file, routeId: '/made' }),
+        )
+    },
+    'route HMR plugin': async (files: Array<string>) => {
+      const transform = await createRouteHmrTransform(
+        { target: 'react' },
+        files,
+      )
+      return async (code: string, file: string) => {
+        await transform(code, file)
+        return false
+      }
+    },
+  }
+
+  describe.each(Object.entries(pluginPaths))('through the %s', (_, create) => {
+    it('is not reported for a module-scope route', async () => {
+      const file = routeFile('made')
+      const transform = await create([file])
+      expect(await warnings(() => transform(moduleRoute, file))).toEqual([])
+    })
+  })
+
+  // A route the splitter does not split is reported, once per file
+  // (decision D11: the user can change the pattern).
+  it.each(Object.entries(factoryRoutes).slice(0, 2))(
+    'built in %s is split, or reported once per file across repeated transforms',
+    async (_, route) => {
+      const files = [routeFile('made'), routeFile('other')]
+      const transform = pluginPaths['code splitter']()
+      const split = new Set<string>()
+      const reported = await warnings(async () => {
+        for (let edit = 0; edit < 3; edit++) {
+          for (const file of files) {
+            if (await transform(`${route('data')}// edit ${edit}\n`, file)) {
+              split.add(file)
+            }
+          }
+        }
+      })
+      for (const file of files) {
+        const naming = reported.filter((message) => message.includes(file))
+        expect(
+          split.has(file) ? naming.length === 0 : naming.length === 1,
+          file,
+        ).toBe(true)
+      }
+    },
+  )
+})
