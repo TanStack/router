@@ -105,20 +105,43 @@ function Page() {
     headers: { 'Content-Type': 'text/x-component' },
   })`,
   ),
+  ...cssRow(
+    'identifier',
+    `import { renderToReadableStream } from '@tanstack/react-start/rsc'`,
+    `const node = <Card />
+  return new Response(renderToReadableStream(node), { headers: { 'Content-Type': 'text/x-component' } })`,
+  ),
+  ...cssRow(
+    'spread',
+    `import { renderToReadableStream } from '@tanstack/react-start/rsc'`,
+    `const args = [<Card />] as const
+  return new Response(renderToReadableStream(...args), { headers: { 'Content-Type': 'text/x-component' } })`,
+  ),
+  'src/routes/control.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { render as renderable } from '../rows/renderable'
+import { render as composite } from '../rows/composite'
+import { render as flight } from '../rows/flight'
+export const Route = createFileRoute('/control')({ component: Control })
+function Control() {
+  return <main data-testid="control">{[renderable, composite, flight].map((render, index) => <a key={index} href={render.url}>caller</a>)}</main>
+}
+`,
   'src/routes/css.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { CompositeComponent, createFromFetch } from '@tanstack/react-start/rsc'
 import { useEffect, useState } from 'react'
 import { render as renderable } from '../rows/renderable'
 import { render as composite } from '../rows/composite'
 import { render as flight } from '../rows/flight'
+import { render as identifier } from '../rows/identifier'
+import { render as spread } from '../rows/spread'
 export const Route = createFileRoute('/css')({
   loader: async () => ({ renderable: await renderable(), composite: await composite() }),
   component: Page,
 })
-function Flight() {
+function Flight({ render = flight }: { render?: typeof flight }) {
   const [tree, setTree] = useState<unknown>(null)
   useEffect(() => {
-    createFromFetch(flight()).then(setTree)
+    createFromFetch(render()).then(setTree)
   }, [])
   return <>{tree as React.ReactNode}</>
 }
@@ -133,6 +156,8 @@ function Page() {
         </CompositeComponent>
       </section>
       <section data-row="flight"><Flight /></section>
+      <section data-row="identifier"><Flight render={identifier} /></section>
+      <section data-row="spread"><Flight render={spread} /></section>
     </main>
   )
 }
@@ -215,6 +240,42 @@ describe('Vite production build with RSC', () => {
     }).toEqual({ browser: true, server: false })
     expect(page.errors).toEqual([])
   })
+
+  test('loading the client callers without an RSC result supplies no server CSS', async () => {
+    const page = await open('/control')
+    await page.waitForText('caller', { selector: '[data-testid=control]' })
+    await waitForHydration(page)
+    const css = await page.page.evaluate(() =>
+      [...document.styleSheets]
+        .flatMap((sheet) => {
+          try {
+            return [...sheet.cssRules].map((rule) => rule.cssText)
+          } catch {
+            return []
+          }
+        })
+        .join('\n'),
+    )
+    expect(css).not.toMatch(/254, 243, 199|#fef3c7/i)
+    expect(page.errors).toEqual([])
+  })
+
+  test.each(['identifier', 'spread'])(
+    'production %s stream still renders without development warnings',
+    async (row) => {
+      const page = await open('/css')
+      await page.waitForText('MARK_CARD', {
+        selector: `section[data-row=${row}]`,
+      })
+      await waitForHydration(page)
+      expect(
+        [...server.messages, ...page.console].filter((message) =>
+          /renderToReadableStream/.test(message),
+        ),
+      ).toEqual([])
+      expect(page.errors).toEqual([])
+    },
+  )
 
   test.each(['renderable', 'composite', 'flight'])(
     'the %s row styles its server component',

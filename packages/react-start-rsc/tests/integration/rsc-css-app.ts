@@ -44,9 +44,9 @@ export const NO_BACKGROUND = 'rgba(0, 0, 0, 0)'
  * through `CompositeComponent` with a `children` slot; `flight` decodes the
  * Flight stream the server function answers with
  * (`renderToReadableStream`) in the browser, and renders the decoded tree
- * (or its `card`, for a plain-data model); `value` prints it as JSON.
+ * (or its validated `card` and scalar sibling, for a plain-data model); `value` prints it as JSON.
  */
-export type Consumer = 'renderable' | 'composite' | 'flight' | 'value'
+export type Consumer = 'renderable' | 'composite' | 'flight' | 'model' | 'value'
 
 export interface Row {
   /** Module name (`src/rows/<key>.tsx`) and section of the row. */
@@ -56,6 +56,10 @@ export interface Row {
   /** Body of the server function's handler (returns the value). */
   body: string
   consumer: Consumer
+  /** Exercise a JavaScript provider module instead of TypeScript. */
+  jsx?: boolean
+  /** Runtime input sent through the real server-function protocol. */
+  input?: boolean
 }
 
 /**
@@ -74,7 +78,7 @@ function localComponents(row: Row): string {
   return `import styles from './${row.key}.module.css'
 ${
   card
-    ? `function Card({ children }: { children?: React.ReactNode }) {
+    ? `function Card({ children }${row.jsx ? '' : ': { children?: React.ReactNode }'}) {
   return <div className={styles.card} data-testid="card">MARK_CARD{children}</div>
 }
 `
@@ -93,9 +97,9 @@ ${
 function rowModule(row: Row): string {
   return `import { createServerFn } from '@tanstack/react-start'
 ${row.imports}${localComponents(row)}
-const flight = (stream: ReadableStream) =>
-  new Response(stream, { headers: { 'Content-Type': 'text/x-component' } })
-export const render = createServerFn().handler(async () => {
+const flight = (stream${row.jsx ? '' : ': ReadableStream'}, evaluations = 0) =>
+  new Response(stream, { headers: { 'Content-Type': 'text/x-component', 'X-Evaluations': String(evaluations) } })
+export const render = createServerFn().validator((data${row.jsx ? '' : ': unknown'}) => data).handler(async ({ data }) => {
 ${row.body}
 })
 `
@@ -111,7 +115,8 @@ function section(row: Row, index: number): string {
             <em data-testid="slot">MARK_SLOT</em>
           </CompositeComponent>
         )}</Settled>`,
-    flight: `<Flight render={render${index}} />`,
+    flight: `<Flight render={call${index}} />`,
+    model: `<Flight render={call${index}} model />`,
     value: `<Settled result={${result}}>{(value) => <pre data-testid="value">{JSON.stringify(value)}</pre>}</Settled>`,
   }[row.consumer]
   return `      <section data-row="${row.key}">
@@ -127,11 +132,12 @@ function section(row: Row, index: number): string {
 function pageRoute(rows: Array<Row>): string {
   const loaded = rows
     .map((row, index) => ({ row, index }))
-    .filter(({ row }) => row.consumer !== 'flight')
+    .filter(({ row }) => row.consumer !== 'flight' && row.consumer !== 'model')
   return `import { createFileRoute } from '@tanstack/react-router'
 import { CompositeComponent, createFromFetch } from '@tanstack/react-start/rsc'
 import { Component, Suspense, useEffect, useState } from 'react'
 ${rows.map((row, index) => `import { render as render${index} } from '../rows/${row.key}'`).join('\n')}
+${rows.map((row, index) => `const call${index} = () => render${index}(${row.input === undefined ? '' : `{ data: ${row.input} }`})`).join('\n')}
 
 type Result = { value: any } | { error: string }
 const settle = (promise: Promise<unknown>): Promise<Result> =>
@@ -143,7 +149,7 @@ const settle = (promise: Promise<unknown>): Promise<Result> =>
 export const Route = createFileRoute('/')({
   loader: async () => {
     const [${loaded.map(({ index }) => `r${index}`).join(', ')}] = await Promise.all([
-${loaded.map(({ index }) => `      settle(render${index}()),`).join('\n')}
+${loaded.map(({ index }) => `      settle(call${index}()),`).join('\n')}
     ])
     return { ${loaded.map(({ index }) => `r${index}`).join(', ')} }
   },
@@ -170,23 +176,32 @@ function Settled({ result, children }: { result: Result; children: (value: any) 
 
 // One call per row, however often React mounts its section.
 const decoded = new Map<unknown, Promise<unknown>>()
-function Flight({ render }: { render: () => Promise<Response> }) {
-  const [tree, setTree] = useState<unknown>(null)
+function Flight({ render, model = false }: { render: () => Promise<Response>; model?: boolean }) {
+  const [decodedTree, setDecodedTree] = useState<{ value: unknown } | null>(null)
   const [error, setError] = useState('')
+  const [evaluations, setEvaluations] = useState('')
   useEffect(() => {
     let tree = decoded.get(render)
     if (!tree) {
-      tree = createFromFetch(render())
+      tree = createFromFetch(render().then((response) => {
+        setEvaluations(response.headers.get('X-Evaluations') ?? '')
+        return response
+      }))
       decoded.set(render, tree)
     }
-    tree.then(setTree, (reason) => setError(String(reason)))
+    tree.then((value) => setDecodedTree({ value }), (reason) => setError(String(reason)))
   }, [])
   if (error) {
     return <Failed error={error} />
   }
-  const node =
-    tree && typeof tree === 'object' && 'card' in tree ? tree.card : tree
-  return <>{node as React.ReactNode}</>
+  const tree = decodedTree?.value
+  if (model) {
+    if (!tree || typeof tree !== 'object' || !('card' in tree) || !('label' in tree) || tree.label !== 'MARK_MODEL') {
+      return decodedTree === null ? null : <Failed error="original model shape missing" />
+    }
+    return <><output data-model>{tree.label as string}</output>{tree.card as React.ReactNode}</>
+  }
+  return <><span data-flight-ready={decodedTree !== null} data-evaluations={evaluations} />{tree as React.ReactNode}</>
 }
 
 function Page() {
@@ -257,7 +272,7 @@ export function rscCssApp(options: {
         ...options.files,
         ...Object.fromEntries(
           options.rows.flatMap((row) => [
-            [`src/rows/${row.key}.tsx`, rowModule(row)],
+            [`src/rows/${row.key}.${row.jsx ? 'jsx' : 'tsx'}`, rowModule(row)],
             [
               `src/rows/${row.key}.module.css`,
               // The row in the content: Vite's scoped class names hash the
@@ -274,7 +289,9 @@ export function rscCssApp(options: {
     await page.page.waitForFunction(
       () =>
         [...document.querySelectorAll('section[data-row]')].every(
-          (element) => element.textContent !== '',
+          (element) =>
+            element.textContent !== '' ||
+            element.querySelector('[data-flight-ready="true"]') !== null,
         ),
       undefined,
       { timeout: 30_000 },
@@ -315,10 +332,13 @@ export function rscCssApp(options: {
     },
     clientModules: async (row) =>
       Object.keys(
-        await started(server).load(`/src/rows/${row.key}.tsx`, {
-          environment: 'client',
-          skip: /\/node_modules\/|^\/@(vite|react-refresh|fs|id)\b/,
-        }),
+        await started(server).load(
+          `/src/rows/${row.key}.${row.jsx ? 'jsx' : 'tsx'}`,
+          {
+            environment: 'client',
+            skip: /\/node_modules\/|^\/@(vite|react-refresh|fs|id)\b/,
+          },
+        ),
       ),
   }
 }

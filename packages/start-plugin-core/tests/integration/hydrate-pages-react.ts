@@ -81,6 +81,31 @@ export function Page() {
 }
 
 const fixtures: Record<string, string> = {
+  // Source: V4 red-astra-r2/10. These are eleven literal boundaries in one
+  // source module, rather than eleven instances of one mapped boundary.
+  eleven: `${head}export function Page() {
+    return <>${Array.from({ length: 11 }, (_, index) => `<Hydrate when={idle()}><Counter label="boundary-${index}" /></Hydrate>`).join('')}</>
+  }`,
+  // Source: V4 red-astra-r2/11. Edge spaces are visible inline content.
+  edgeSpaces: `${head}export function Page() {
+    return <><span data-spacing>A<Hydrate when={load()}> B </Hydrate>C</span><Hydrate when={load()}><Counter label="ready" /></Hydrate></>
+  }`,
+  // Source: V4 red-astra-r2/12. The options object is shared by a boundary
+  // and an ordinary server/client render consumer.
+  sharedFallback: `${head}const opts = { when: idle(), fallback: <b>wait</b> }
+export function Page() {
+    return <><Hydrate {...opts}><Counter label="child" /></Hydrate><aside>{opts.fallback}</aside></>
+  }`,
+  // Source: V4 red-fable-r2/14. A render-local hoisted function still
+  // captures this render's values when the child runs in another module.
+  hoistedRows: `${head}export function Page() {
+    const rows = ['a', 'b']
+    const suffix = '-row'
+    return <Hydrate when={idle()}><ul>{rows.map(renderRow)}</ul></Hydrate>
+    function renderRow(row: string) {
+      return <li key={row}><Counter label={row + suffix} /></li>
+    }
+  }`,
   // Source: hydrate-boundary-forms.test.ts "a nested boundary and a later
   // sibling hydrate with the ids the server renders" (gap H6)
   nested: `${head}export function Page() {
@@ -401,174 +426,212 @@ return counters().map((button) => button.textContent)`
 
 /** The React page tests, on an app built with `bundler`. */
 export function reactPageSuite(bundler: StartBundler) {
-  let app: HydrationApp
-  const cleanups: Array<() => Promise<void>> = []
+  describe.concurrent('React Hydrate pages', () => {
+    let app: HydrationApp
+    const cleanups: Array<() => Promise<void>> = []
 
-  beforeAll(async () => {
-    app = await buildHydrationApp({
-      bundler,
-      fixtures,
-      files: { 'src/counter.tsx': counterFile, 'src/theme.tsx': themeFile },
-      registerCleanup: (cleanup) => cleanups.push(cleanup),
-    })
-  }, 60_000)
-
-  afterAll(async () => {
-    await Promise.all(cleanups.map((cleanup) => cleanup()))
-  })
-
-  /** Hydrates fixture `name`; every child counts one click; no error. */
-  async function expectChildrenHydrate(
-    name: string,
-    labels: Array<string>,
-    options: HydrateOptions = {},
-  ) {
-    const page = await app.hydrate(name, {
-      script: clickEveryCounter,
-      ...options,
-    })
-    for (const label of labels) {
-      expect(page.serverHtml).toContain(`>${label}:0<`)
-    }
-    expect({
-      clicked: page.result,
-      recoverableErrors: page.recoverableErrors,
-      consoleErrors: page.consoleErrors,
-    }).toEqual({
-      clicked: labels.map((label) => `${label}:1`),
-      recoverableErrors: [],
-      consoleErrors: [],
-    })
-    return page
-  }
-
-  describe.concurrent('boundaries hydrate the HTML the server rendered', () => {
-    test('a nested boundary and a later sibling', async () => {
-      await expectChildrenHydrate('nested', ['outer', 'nested', 'sibling'])
-    })
-
-    test('repeated instances of one boundary each hydrate their own children', async () => {
-      const page = await expectChildrenHydrate('repeated', ['a', 'b', 'c'], {
-        props: { items: ['a', 'b', 'c'] },
+    beforeAll(async () => {
+      app = await buildHydrationApp({
+        bundler,
+        fixtures,
+        files: { 'src/counter.tsx': counterFile, 'src/theme.tsx': themeFile },
+        registerCleanup: (cleanup) => cleanups.push(cleanup),
       })
-      expect(page.requested).not.toEqual([])
+    }, 60_000)
+
+    afterAll(async () => {
+      await Promise.all(cleanups.map((cleanup) => cleanup()))
     })
 
-    test.each([
-      {
-        render: 'h(m.Page, { flag: true, items: ["x"] })',
-        labels: ['yes', 'and', 'fnx', 'arrowx'],
-      },
-      {
-        render: 'h(m.Page, { flag: false, items: ["x"] })',
-        labels: ['no', 'fnx', 'arrowx'],
-      },
-      { render: 'h(m.Other, { early: true })', labels: ['early'] },
-      { render: 'h(m.Other, { early: false })', labels: ['late'] },
-    ])(
-      'boundaries in conditionals and callbacks: $render',
-      async ({ render, labels }) => {
-        await expectChildrenHydrate('conditionals', labels, { render })
-      },
-    )
+    /** Hydrates fixture `name`; every child counts one click; no error. */
+    async function expectChildrenHydrate(
+      name: string,
+      labels: Array<string>,
+      options: HydrateOptions = {},
+    ) {
+      const page = await app.hydrate(name, {
+        script: clickEveryCounter,
+        ...options,
+      })
+      for (const label of labels) {
+        expect(page.serverHtml).toContain(`>${label}:0<`)
+      }
+      expect({
+        clicked: page.result,
+        recoverableErrors: page.recoverableErrors,
+        consoleErrors: page.consoleErrors,
+      }).toEqual({
+        clicked: labels.map((label) => `${label}:1`),
+        recoverableErrors: [],
+        consoleErrors: [],
+      })
+      return page
+    }
 
-    // Boundaries in mutually exclusive branches may share an identity; after
-    // the switch the other branch's boundary renders and works, and the
-    // boundary after them keeps its state.
-    // Source: S37 (V1 start)
-    test('switching between boundaries in exclusive branches after hydration', async () => {
-      const page = await app.hydrate('switching', {
-        script: `const button = (label) => root.querySelector('button[data-label="' + label + '"]')
+    describe.concurrent(
+      'boundaries hydrate the HTML the server rendered',
+      () => {
+        test('eleven literal boundaries all hydrate and respond independently', async () => {
+          await expectChildrenHydrate(
+            'eleven',
+            Array.from({ length: 11 }, (_, index) => `boundary-${index}`),
+          )
+        })
+
+        test('inline text keeps its leading and trailing spaces after hydration', async () => {
+          const page = await app.hydrate('edgeSpaces', {
+            script: `await waitFor(async () => { const button = root.querySelector('button'); button.click(); await settled(50); return button.textContent === 'ready:1' })
+  return root.querySelector('[data-spacing]').textContent`,
+          })
+          expect(page.result).toBe('A B C')
+          expect(page.recoverableErrors).toEqual([])
+          expect(page.consoleErrors).toEqual([])
+        })
+
+        test('a shared fallback remains visible in an aside on server and client', async () => {
+          const page = await expectChildrenHydrate('sharedFallback', ['child'])
+          expect(page.serverHtml).toContain('<aside><b>wait</b></aside>')
+          expect(page.html).toContain('<aside><b>wait</b></aside>')
+        })
+
+        test('rows.map renders a function declared below its boundary', async () => {
+          await expectChildrenHydrate('hoistedRows', ['a-row', 'b-row'])
+        })
+        test('a nested boundary and a later sibling', async () => {
+          await expectChildrenHydrate('nested', ['outer', 'nested', 'sibling'])
+        })
+
+        test('repeated instances of one boundary each hydrate their own children', async () => {
+          const page = await expectChildrenHydrate(
+            'repeated',
+            ['a', 'b', 'c'],
+            {
+              props: { items: ['a', 'b', 'c'] },
+            },
+          )
+          expect(page.requested).not.toEqual([])
+        })
+
+        test.each([
+          {
+            render: 'h(m.Page, { flag: true, items: ["x"] })',
+            labels: ['yes', 'and', 'fnx', 'arrowx'],
+          },
+          {
+            render: 'h(m.Page, { flag: false, items: ["x"] })',
+            labels: ['no', 'fnx', 'arrowx'],
+          },
+          { render: 'h(m.Other, { early: true })', labels: ['early'] },
+          { render: 'h(m.Other, { early: false })', labels: ['late'] },
+        ])(
+          'boundaries in conditionals and callbacks: $render',
+          async ({ render, labels }) => {
+            await expectChildrenHydrate('conditionals', labels, { render })
+          },
+        )
+
+        // Boundaries in mutually exclusive branches may share an identity; after
+        // the switch the other branch's boundary renders and works, and the
+        // boundary after them keeps its state.
+        // Source: S37 (V1 start)
+        test('switching between boundaries in exclusive branches after hydration', async () => {
+          const page = await app.hydrate('switching', {
+            script: `const button = (label) => root.querySelector('button[data-label="' + label + '"]')
   await waitFor(async () => { button('last').click(); await settled(50); return button('last').textContent === 'last:1' })
   button('switch').click()
   await waitFor(() => button('no'))
   await waitFor(async () => { button('no').click(); await settled(50); return button('no').textContent === 'no:1' })
   return { yes: Boolean(button('yes')), no: button('no').textContent, last: button('last').textContent }`,
-      })
-      expect(page.result).toEqual({ yes: false, no: 'no:1', last: 'last:1' })
-      expect(page.recoverableErrors).toEqual([])
-      expect(page.consoleErrors).toEqual([])
-    })
+          })
+          expect(page.result).toEqual({
+            yes: false,
+            no: 'no:1',
+            last: 'last:1',
+          })
+          expect(page.recoverableErrors).toEqual([])
+          expect(page.consoleErrors).toEqual([])
+        })
 
-    test('a renamed import of Hydrate', async () => {
-      await expectChildrenHydrate('renamed', ['search'])
-    })
+        test('a renamed import of Hydrate', async () => {
+          await expectChildrenHydrate('renamed', ['search'])
+        })
 
-    test('namespace-imported Start.Hydrate boundaries', async () => {
-      await expectChildrenHydrate('namespace', ['namespace', 'second'])
-    })
+        test('namespace-imported Start.Hydrate boundaries', async () => {
+          await expectChildrenHydrate('namespace', ['namespace', 'second'])
+        })
 
-    test('a split={false} boundary nested in another, and a later boundary', async () => {
-      await expectChildrenHydrate('splitFalse', ['inline', 'second'])
-    })
+        test('a split={false} boundary nested in another, and a later boundary', async () => {
+          await expectChildrenHydrate('splitFalse', ['inline', 'second'])
+        })
 
-    test.each([true, false])(
-      'a dynamic split={flag} (%s) and a later boundary',
-      async (flag) => {
-        await expectChildrenHydrate('dynamicSplit', ['dynamic', 'after'], {
-          props: { flag },
+        test.each([true, false])(
+          'a dynamic split={flag} (%s) and a later boundary',
+          async (flag) => {
+            await expectChildrenHydrate('dynamicSplit', ['dynamic', 'after'], {
+              props: { flag },
+            })
+          },
+        )
+
+        test('children reading a let reassigned before the boundary show its latest value', async () => {
+          await expectChildrenHydrate('latestLet', ['second'], {
+            props: { active: true },
+          })
         })
       },
     )
 
-    test('children reading a let reassigned before the boundary show its latest value', async () => {
-      await expectChildrenHydrate('latestLet', ['second'], {
-        props: { active: true },
-      })
-    })
-  })
-
-  // The children of the prefetched boundary load before any interaction, and
-  // only them: clicking the other boundary loads its own code, clicking the
-  // prefetched one loads nothing more; both then work.
-  describe.concurrent('prefetch', () => {
-    test.each([
-      {
-        name: 'prefetchDirect',
-        how: 'a direct prefetch prop',
-        render: undefined,
-      },
-      {
-        name: 'prefetchSpreadLiteral',
-        how: 'a spread object literal',
-        render: undefined,
-      },
-      {
-        name: 'prefetchSpreadConst',
-        how: 'a spread single-use object',
-        render: undefined,
-      },
-      {
-        name: 'prefetchComputedKey',
-        how: 'a spread with a computed key',
-        render: 'h(m.App)',
-      },
-      {
-        name: 'prefetchNestedSpread',
-        how: 'a nested spread',
-        render: 'h(m.App)',
-      },
-      {
-        name: 'prefetchPropsSpread',
-        how: 'a spread of the props param',
-        render: 'h(m.App)',
-      },
-      {
-        name: 'prefetchMemberSpread',
-        how: 'a spread of a member of the props',
-        render: 'h(m.App)',
-      },
-      {
-        name: 'prefetchReassigned',
-        how: 'a spread of a reassigned object',
-        render: 'h(m.Page, { eager: true })',
-      },
-    ])(
-      'a boundary with $how loads its own children before any interaction',
-      async ({ name, render }) => {
-        const page = await app.hydrate(name, {
-          render,
-          script: `const button = (label) => root.querySelector('button[data-label="' + label + '"]')
+    // The children of the prefetched boundary load before any interaction, and
+    // only them: clicking the other boundary loads its own code, clicking the
+    // prefetched one loads nothing more; both then work.
+    describe.concurrent('prefetch', () => {
+      test.each([
+        {
+          name: 'prefetchDirect',
+          how: 'a direct prefetch prop',
+          render: undefined,
+        },
+        {
+          name: 'prefetchSpreadLiteral',
+          how: 'a spread object literal',
+          render: undefined,
+        },
+        {
+          name: 'prefetchSpreadConst',
+          how: 'a spread single-use object',
+          render: undefined,
+        },
+        {
+          name: 'prefetchComputedKey',
+          how: 'a spread with a computed key',
+          render: 'h(m.App)',
+        },
+        {
+          name: 'prefetchNestedSpread',
+          how: 'a nested spread',
+          render: 'h(m.App)',
+        },
+        {
+          name: 'prefetchPropsSpread',
+          how: 'a spread of the props param',
+          render: 'h(m.App)',
+        },
+        {
+          name: 'prefetchMemberSpread',
+          how: 'a spread of a member of the props',
+          render: 'h(m.App)',
+        },
+        {
+          name: 'prefetchReassigned',
+          how: 'a spread of a reassigned object',
+          render: 'h(m.Page, { eager: true })',
+        },
+      ])(
+        'a boundary with $how loads its own children before any interaction',
+        async ({ name, render }) => {
+          const page = await app.hydrate(name, {
+            render,
+            script: `const button = (label) => root.querySelector('button[data-label="' + label + '"]')
   const prefetched = requested()
   const click = async (label) => {
     const before = requested().length
@@ -578,292 +641,299 @@ export function reactPageSuite(bundler: StartBundler) {
   const other = await click('other')
   const child = await click('child')
   return { prefetched: prefetched.length > 0, other: other.length > 0, child }`,
-        })
-        expect({
-          result: page.result,
-          recoverableErrors: page.recoverableErrors,
-          consoleErrors: page.consoleErrors,
-        }).toEqual({
-          result: { prefetched: true, other: true, child: [] },
-          recoverableErrors: [],
-          consoleErrors: [],
-        })
-      },
-    )
+          })
+          expect({
+            result: page.result,
+            recoverableErrors: page.recoverableErrors,
+            consoleErrors: page.consoleErrors,
+          }).toEqual({
+            result: { prefetched: true, other: true, child: [] },
+            recoverableErrors: [],
+            consoleErrors: [],
+          })
+        },
+      )
 
-    test('control: without prefetch, the children load on interaction only', async () => {
-      const page = await app.hydrate('prefetchNone', {
-        script: `const prefetched = requested().length
+      test('control: without prefetch, the children load on interaction only', async () => {
+        const page = await app.hydrate('prefetchNone', {
+          script: `const prefetched = requested().length
   const before = requested().length
   await waitFor(async () => { root.querySelector('button[data-label="child"]').click(); await settled(50); return root.querySelector('button[data-label="child"]').textContent === 'child:1' })
   return { prefetched, child: requested().length - before }`,
+        })
+        expect(page.result).toEqual({
+          prefetched: 0,
+          child: expect.any(Number),
+        })
+        expect((page.result as { child: number }).child).toBeGreaterThan(0)
+        expect(page.recoverableErrors).toEqual([])
       })
-      expect(page.result).toEqual({ prefetched: 0, child: expect.any(Number) })
-      expect((page.result as { child: number }).child).toBeGreaterThan(0)
-      expect(page.recoverableErrors).toEqual([])
-    })
 
-    // A prefetch function's `preload()` loads the boundary's children; the
-    // state it sets shows before any interaction.
-    // Source: FIX-PLAN HYD-06 (hydrateWhen PrefetchState fixture)
-    test('a prefetch function preloads the children and updates the parent state', async () => {
-      const page = await app.hydrate('prefetchState', {
-        script: `await waitFor(() => root.querySelector('[data-status]').textContent === 'prefetched')
+      // A prefetch function's `preload()` loads the boundary's children; the
+      // state it sets shows before any interaction.
+      // Source: FIX-PLAN HYD-06 (hydrateWhen PrefetchState fixture)
+      test('a prefetch function preloads the children and updates the parent state', async () => {
+        const page = await app.hydrate('prefetchState', {
+          script: `await waitFor(() => root.querySelector('[data-status]').textContent === 'prefetched')
   const prefetched = requested()
   const button = root.querySelector('button[data-label="child"]')
   await waitFor(async () => { root.querySelector('button[data-label="child"]').click(); await settled(50); return root.querySelector('button[data-label="child"]').textContent === 'child:1' })
   return { prefetched: prefetched.length > 0, afterClick: requested().length - prefetched.length }`,
-      })
-      expect(page.result).toEqual({ prefetched: true, afterClick: 0 })
-      expect(page.recoverableErrors).toEqual([])
-      expect(page.consoleErrors).toEqual([])
-    })
-
-    // With `split={false}` there is no chunk: `preload()` settles without
-    // loading code.
-    test('with split={false}, preload() settles without loading code', async () => {
-      const page = await app.hydrate('prefetchState', {
-        render: 'h(m.Inline)',
-        script: `await waitFor(() => root.querySelector('[data-status]').textContent === 'prefetched')
-  return requested()`,
-      })
-      expect(page.result).toEqual([])
-      expect(page.recoverableErrors).toEqual([])
-      expect(page.consoleErrors).toEqual([])
-    })
-  })
-
-  // The function form of `when` is evaluated on the client only (J5.8): the
-  // server renders the boundary without calling it.
-  // Source: FIX-PLAN HYD-12 (hydrate-boundary-forms.test.ts `when` table)
-  test('a function when is called on the client only, and its strategy hydrates the children', async () => {
-    const page = await app.hydrate('whenFunction', {
-      serverScript: 'globalThis.__whenCalls ?? []',
-      script: `await waitFor(async () => { root.querySelector('button').click(); await settled(50); return root.querySelector('button').textContent === 'dynamic:1' })
-  return globalThis.__whenCalls`,
-    })
-    expect(page.serverResult).toEqual([])
-    expect(page.result).toEqual(expect.arrayContaining(['object']))
-    expect(page.result).not.toContain('undefined')
-    expect(page.recoverableErrors).toEqual([])
-    expect(page.consoleErrors).toEqual([])
-  })
-
-  // A click in the split children calls the server fn by the id the server
-  // runs it under, however the chunk reaches it (its own caller or the
-  // parent's); the SSR build's server entry runs the handler for that id.
-  // Source: FIX-PLAN HYD-14
-  describe.concurrent('server fns called from split children', () => {
-    test.each([
-      {
-        name: 'serverFnExported',
-        labels: ['a', 'b'],
-        what: 'an exported server fn also called by the parent',
-      },
-      {
-        name: 'serverFnPrivate',
-        labels: ['b'],
-        what: 'a private server fn only called by the children',
-      },
-    ])('$what', async ({ name, labels }) => {
-      const page = await app.hydrate(name, {
-        beforeHydration: `globalThis.__requests = []
-  globalThis.__recordFetch = (url) => {
-    globalThis.__requests.push(new URL(String(url), location.href).pathname)
-    return Promise.reject(new Error('no server in the page'))
-  }`,
-        script: `for (const label of ${JSON.stringify(labels)}) {
-    const before = globalThis.__requests.length
-    await waitFor(async () => { root.querySelector('button[data-label="' + label + '"]').click(); await settled(50); return globalThis.__requests.length > before })
-  }
-  return globalThis.__requests`,
-      })
-      expect(page.recoverableErrors).toEqual([])
-      expect(page.consoleErrors).toEqual([])
-      const paths = page.result as Array<string>
-      expect(paths.length).toBeGreaterThanOrEqual(labels.length)
-      for (const path of new Set(paths)) {
-        const id = decodeURIComponent(path.split('/').at(-1)!)
-        expect(await app.callServerFn(id)).toBe('greet-handler-marker')
-      }
-    })
-  })
-
-  // A boundary that first mounts after the app started (no server HTML, e.g.
-  // after a client-side navigation) shows its fallback until its children
-  // load, then the children (J5.3: the client keeps the fallback, however it
-  // is passed; the server strips it, hydrate-boundary-forms.test.ts).
-  describe.concurrent(
-    'the fallback of a boundary mounted on the client',
-    () => {
-      test.each([
-        { name: 'fallback_direct', how: 'a direct fallback' },
-        {
-          name: 'fallback_directSplitFalse',
-          how: 'a direct fallback with split={false}',
-        },
-        {
-          name: 'fallback_directWithOthers',
-          how: 'a direct fallback next to prefetch and onHydrated',
-        },
-        { name: 'fallback_inlineSpread', how: 'an inline spread' },
-        { name: 'fallback_parenSpread', how: 'a parenthesized inline spread' },
-        {
-          name: 'fallback_spreadBefore',
-          how: 'a spread used once, declared before the component',
-        },
-        {
-          name: 'fallback_spreadAfter',
-          how: 'a spread used once, declared after the component',
-        },
-        {
-          name: 'fallback_parenSpreadConst',
-          how: 'a parenthesized spread used once',
-        },
-        { name: 'fallback_moduleElement', how: 'a module-level element' },
-        {
-          name: 'fallback_moduleElementSplitFalse',
-          how: 'a module-level element with split={false}',
-        },
-        { name: 'fallback_computedKey', how: 'a computed fallback key' },
-        {
-          name: 'fallback_quotedKeys',
-          how: 'an inline spread with quoted keys',
-        },
-        {
-          name: 'fallback_spreadSplitFalse',
-          how: 'a spread used once with split={false}',
-        },
-      ])('$how shows, then the children', async ({ name }) => {
-        const page = await app.hydrate(name, {
-          mode: 'mount',
-          script: `await waitFor(() => root.querySelector('button'))
-  await waitFor(async () => { root.querySelector('button').click(); await settled(50); return root.querySelector('button').textContent === 'child:1' })`,
         })
-        const fallbackAt = page.snapshots.findIndex((html) =>
-          html.includes('fallback-marker'),
-        )
-        expect(fallbackAt).toBeGreaterThanOrEqual(0)
-        expect(page.snapshots.slice(0, fallbackAt).join()).not.toContain(
-          'child:',
-        )
-        expect(page.html).not.toContain('fallback-marker')
-        expect(page.html).toContain('child:1')
-        expect(page.consoleErrors).toEqual([])
-      })
-    },
-  )
-
-  describe.concurrent(
-    'what the children and the boundary do once hydrated',
-    () => {
-      test('prefetch and onHydrated reach the client boundary', async () => {
-        const page = await app.hydrate('callbacks', {
-          script: `await waitFor(() => globalThis.__hydrated)
-  return { prefetched: globalThis.__prefetched ?? false, hydrated: globalThis.__hydrated }`,
-        })
-        expect(page.serverHtml).not.toContain('fallback-marker')
-        expect(page.result).toEqual({ prefetched: true, hydrated: true })
+        expect(page.result).toEqual({ prefetched: true, afterClick: 0 })
         expect(page.recoverableErrors).toEqual([])
         expect(page.consoleErrors).toEqual([])
       })
 
-      test('an interaction strategy with options hydrates on its events only', async () => {
-        const page = await app.hydrate('focusGate', {
-          script: `const button = () => root.querySelector('button')
+      // With `split={false}` there is no chunk: `preload()` settles without
+      // loading code.
+      test('with split={false}, preload() settles without loading code', async () => {
+        const page = await app.hydrate('prefetchState', {
+          render: 'h(m.Inline)',
+          script: `await waitFor(() => root.querySelector('[data-status]').textContent === 'prefetched')
+  return requested()`,
+        })
+        expect(page.result).toEqual([])
+        expect(page.recoverableErrors).toEqual([])
+        expect(page.consoleErrors).toEqual([])
+      })
+    })
+
+    // The function form of `when` is evaluated on the client only (J5.8): the
+    // server renders the boundary without calling it.
+    // Source: FIX-PLAN HYD-12 (hydrate-boundary-forms.test.ts `when` table)
+    test('a function when is called on the client only, and its strategy hydrates the children', async () => {
+      const page = await app.hydrate('whenFunction', {
+        serverScript: 'globalThis.__whenCalls ?? []',
+        script: `await waitFor(async () => { root.querySelector('button').click(); await settled(50); return root.querySelector('button').textContent === 'dynamic:1' })
+  return globalThis.__whenCalls`,
+      })
+      expect(page.serverResult).toEqual([])
+      expect(page.result).toEqual(expect.arrayContaining(['object']))
+      expect(page.result).not.toContain('undefined')
+      expect(page.recoverableErrors).toEqual([])
+      expect(page.consoleErrors).toEqual([])
+    })
+
+    // A click in the split children calls the server fn by the id the server
+    // runs it under, however the chunk reaches it (its own caller or the
+    // parent's); the SSR build's server entry runs the handler for that id.
+    // Source: FIX-PLAN HYD-14
+    describe.concurrent('server fns called from split children', () => {
+      test.each([
+        {
+          name: 'serverFnExported',
+          labels: ['a', 'b'],
+          what: 'an exported server fn also called by the parent',
+        },
+        {
+          name: 'serverFnPrivate',
+          labels: ['b'],
+          what: 'a private server fn only called by the children',
+        },
+      ])('$what', async ({ name, labels }) => {
+        const page = await app.hydrate(name, {
+          beforeHydration: `globalThis.__requests = []
+  globalThis.__recordFetch = (url) => {
+    globalThis.__requests.push(new URL(String(url), location.href).pathname)
+    return Promise.reject(new Error('no server in the page'))
+  }`,
+          script: `for (const label of ${JSON.stringify(labels)}) {
+    const before = globalThis.__requests.length
+    await waitFor(async () => { root.querySelector('button[data-label="' + label + '"]').click(); await settled(50); return globalThis.__requests.length > before })
+  }
+  return globalThis.__requests`,
+        })
+        expect(page.recoverableErrors).toEqual([])
+        expect(page.consoleErrors).toEqual([])
+        const paths = page.result as Array<string>
+        expect(paths.length).toBeGreaterThanOrEqual(labels.length)
+        for (const path of new Set(paths)) {
+          const id = decodeURIComponent(path.split('/').at(-1)!)
+          expect(await app.callServerFn(id)).toBe('greet-handler-marker')
+        }
+      })
+    })
+
+    // A boundary that first mounts after the app started (no server HTML, e.g.
+    // after a client-side navigation) shows its fallback until its children
+    // load, then the children (J5.3: the client keeps the fallback, however it
+    // is passed; the server strips it, hydrate-boundary-forms.test.ts).
+    describe.concurrent(
+      'the fallback of a boundary mounted on the client',
+      () => {
+        test.each([
+          { name: 'fallback_direct', how: 'a direct fallback' },
+          {
+            name: 'fallback_directSplitFalse',
+            how: 'a direct fallback with split={false}',
+          },
+          {
+            name: 'fallback_directWithOthers',
+            how: 'a direct fallback next to prefetch and onHydrated',
+          },
+          { name: 'fallback_inlineSpread', how: 'an inline spread' },
+          {
+            name: 'fallback_parenSpread',
+            how: 'a parenthesized inline spread',
+          },
+          {
+            name: 'fallback_spreadBefore',
+            how: 'a spread used once, declared before the component',
+          },
+          {
+            name: 'fallback_spreadAfter',
+            how: 'a spread used once, declared after the component',
+          },
+          {
+            name: 'fallback_parenSpreadConst',
+            how: 'a parenthesized spread used once',
+          },
+          { name: 'fallback_moduleElement', how: 'a module-level element' },
+          {
+            name: 'fallback_moduleElementSplitFalse',
+            how: 'a module-level element with split={false}',
+          },
+          { name: 'fallback_computedKey', how: 'a computed fallback key' },
+          {
+            name: 'fallback_quotedKeys',
+            how: 'an inline spread with quoted keys',
+          },
+          {
+            name: 'fallback_spreadSplitFalse',
+            how: 'a spread used once with split={false}',
+          },
+        ])('$how shows, then the children', async ({ name }) => {
+          const page = await app.hydrate(name, {
+            mode: 'mount',
+            script: `await waitFor(() => root.querySelector('button'))
+  await waitFor(async () => { root.querySelector('button').click(); await settled(50); return root.querySelector('button').textContent === 'child:1' })`,
+          })
+          const fallbackAt = page.snapshots.findIndex((html) =>
+            html.includes('fallback-marker'),
+          )
+          expect(fallbackAt).toBeGreaterThanOrEqual(0)
+          expect(page.snapshots.slice(0, fallbackAt).join()).not.toContain(
+            'child:',
+          )
+          expect(page.html).not.toContain('fallback-marker')
+          expect(page.html).toContain('child:1')
+          expect(page.consoleErrors).toEqual([])
+        })
+      },
+    )
+
+    describe.concurrent(
+      'what the children and the boundary do once hydrated',
+      () => {
+        test('prefetch and onHydrated reach the client boundary', async () => {
+          const page = await app.hydrate('callbacks', {
+            script: `await waitFor(() => globalThis.__hydrated)
+  return { prefetched: globalThis.__prefetched ?? false, hydrated: globalThis.__hydrated }`,
+          })
+          expect(page.serverHtml).not.toContain('fallback-marker')
+          expect(page.result).toEqual({ prefetched: true, hydrated: true })
+          expect(page.recoverableErrors).toEqual([])
+          expect(page.consoleErrors).toEqual([])
+        })
+
+        test('an interaction strategy with options hydrates on its events only', async () => {
+          const page = await app.hydrate('focusGate', {
+            script: `const button = () => root.querySelector('button')
   button().click()
   await settled()
   const beforeFocus = button().textContent
   button().focus()
   await waitFor(async () => { button().click(); await settled(50); return button().textContent === 'child:1' })
   return beforeFocus`,
+          })
+          expect(page.result).toBe('child:0')
+          expect(page.html).toContain('child:1')
+          expect(page.recoverableErrors).toEqual([])
+          expect(page.consoleErrors).toEqual([])
         })
-        expect(page.result).toBe('child:0')
-        expect(page.html).toContain('child:1')
-        expect(page.recoverableErrors).toEqual([])
-        expect(page.consoleErrors).toEqual([])
-      })
 
-      test('a click handler with a return statement in the children runs', async () => {
-        const page = await app.hydrate('returns', {
-          script: `await waitFor(async () => { root.querySelector('ul').click(); await settled(50); return globalThis.__clicked })
+        test('a click handler with a return statement in the children runs', async () => {
+          const page = await app.hydrate('returns', {
+            script: `await waitFor(async () => { root.querySelector('ul').click(); await settled(50); return globalThis.__clicked })
   return globalThis.__clicked`,
+          })
+          expect(page.serverHtml).toContain('<li>A</li><li>B</li>iife')
+          expect(page.result).toBe('click')
+          expect(page.recoverableErrors).toEqual([])
+          expect(page.consoleErrors).toEqual([])
         })
-        expect(page.serverHtml).toContain('<li>A</li><li>B</li>iife')
-        expect(page.result).toBe('click')
-        expect(page.recoverableErrors).toEqual([])
-        expect(page.consoleErrors).toEqual([])
-      })
-    },
-  )
-
-  describe.concurrent('which elements are boundaries', () => {
-    // Goal (DECISIONS 2026-10-18 "namespace imports"; SPEC J5.1): a
-    // namespace member `<Start.Hydrate>` is a boundary like a named import,
-    // so its children's code loads when it hydrates, not with the page. On
-    // main the compiler leaves it unsplit (it still hydrates the server's
-    // HTML: "namespace-imported Start.Hydrate boundaries" above), so the
-    // click loads nothing.
-    // Source: FIX-PLAN §D "Namespace <Hydrate>" (replaces the in-process
-    // goal of known-bugs-hydrate.test.ts)
-    test.fails(
-      'a namespace-imported Start.Hydrate loads its children when it hydrates',
-      async () => {
-        const page = await app.hydrate('namespaceGated', {
-          script: loadedOnInteraction,
-        })
-        expect(page.result).toEqual({ beforeClick: 0, loadedByClick: true })
-        expect(page.recoverableErrors).toEqual([])
-        expect(page.consoleErrors).toEqual([])
       },
     )
 
-    // `const { Hydrate } = Start` is not analysed (SPEC 2.2): split or not,
-    // the boundary keeps the server's HTML until its strategy fires (here:
-    // a focus, not a click), then hydrates.
-    test('a Hydrate destructured from the namespace still defers hydration', async () => {
-      const page = await app.hydrate('destructured', {
-        script: `const button = () => root.querySelector('button')
+    describe.concurrent('which elements are boundaries', () => {
+      // Goal (DECISIONS 2026-10-18 "namespace imports"; SPEC J5.1): a
+      // namespace member `<Start.Hydrate>` is a boundary like a named import,
+      // so its children's code loads when it hydrates, not with the page. On
+      // main the compiler leaves it unsplit (it still hydrates the server's
+      // HTML: "namespace-imported Start.Hydrate boundaries" above), so the
+      // click loads nothing.
+      // Source: FIX-PLAN §D "Namespace <Hydrate>" (replaces the in-process
+      // goal of known-bugs-hydrate.test.ts)
+      test.fails(
+        'a namespace-imported Start.Hydrate loads its children when it hydrates',
+        async () => {
+          const page = await app.hydrate('namespaceGated', {
+            script: loadedOnInteraction,
+          })
+          expect(page.result).toEqual({ beforeClick: 0, loadedByClick: true })
+          expect(page.recoverableErrors).toEqual([])
+          expect(page.consoleErrors).toEqual([])
+        },
+      )
+
+      // `const { Hydrate } = Start` is not analysed (SPEC 2.2): split or not,
+      // the boundary keeps the server's HTML until its strategy fires (here:
+      // a focus, not a click), then hydrates.
+      test('a Hydrate destructured from the namespace still defers hydration', async () => {
+        const page = await app.hydrate('destructured', {
+          script: `const button = () => root.querySelector('button')
 button().click()
 await settled()
 const beforeFocus = button().textContent
 button().focus()
 await waitFor(async () => { button().click(); await settled(50); return button().textContent === 'child:1' })
 return beforeFocus`,
+        })
+        expect(page.serverHtml).toContain('child:0')
+        expect(page.result).toBe('child:0')
+        expect(page.recoverableErrors).toEqual([])
+        expect(page.consoleErrors).toEqual([])
       })
-      expect(page.serverHtml).toContain('child:0')
-      expect(page.result).toBe('child:0')
-      expect(page.recoverableErrors).toEqual([])
-      expect(page.consoleErrors).toEqual([])
     })
-  })
 
-  // The split children get the newest captures, context and callbacks of
-  // their parent, before their boundary hydrates, after their code loaded
-  // and after a keyed reorder, in the boundary clicked; a new `when` or
-  // `prefetch` object does not restart a hydrated boundary (it would show
-  // the server's HTML again). The same page with `split={false}` (left in
-  // place by the compiler) is the reference: the framework's behaviour.
-  // Source: FIX-PLAN V2-19 (SPEC J5.8, J5.4)
-  test('split children follow their parent through updates and a reorder, like unsplit ones', async () => {
-    const [split, reference] = await Promise.all([
-      app.hydrate('updates', { script: updatesScript }),
-      app.hydrate('updatesReference', { script: updatesScript }),
-    ])
-    expect(reference.result).toEqual(updatesExpected)
-    for (const page of [split, reference]) {
-      expect({
-        result: page.result,
-        recoverableErrors: page.recoverableErrors,
-        consoleErrors: page.consoleErrors,
-      }).toEqual({
-        result: updatesExpected,
-        recoverableErrors: [],
-        consoleErrors: [],
-      })
-    }
-    // The split page loaded the children's code (`prefetch`), the reference
-    // has none to load.
-    expect(split.requested).not.toEqual([])
+    // The split children get the newest captures, context and callbacks of
+    // their parent, before their boundary hydrates, after their code loaded
+    // and after a keyed reorder, in the boundary clicked; a new `when` or
+    // `prefetch` object does not restart a hydrated boundary (it would show
+    // the server's HTML again). The same page with `split={false}` (left in
+    // place by the compiler) is the reference: the framework's behaviour.
+    // Source: FIX-PLAN V2-19 (SPEC J5.8, J5.4)
+    test('split children follow their parent through updates and a reorder, like unsplit ones', async () => {
+      const [split, reference] = await Promise.all([
+        app.hydrate('updates', { script: updatesScript }),
+        app.hydrate('updatesReference', { script: updatesScript }),
+      ])
+      expect(reference.result).toEqual(updatesExpected)
+      for (const page of [split, reference]) {
+        expect({
+          result: page.result,
+          recoverableErrors: page.recoverableErrors,
+          consoleErrors: page.consoleErrors,
+        }).toEqual({
+          result: updatesExpected,
+          recoverableErrors: [],
+          consoleErrors: [],
+        })
+      }
+      // The split page loaded the children's code (`prefetch`), the reference
+      // has none to load.
+      expect(split.requested).not.toEqual([])
+    })
   })
 }

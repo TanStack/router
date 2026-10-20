@@ -21,9 +21,36 @@ import {
   streamImport,
   stylesheetsOf,
 } from './rsc-css-app'
+import {
+  computedStyle,
+  openRscPage,
+  settledValue,
+  waitForHydration,
+} from './rsc-app'
 import type { Row } from './rsc-css-app'
 
 const rows = {
+  // Source: V4 red-astra-r2/19: both calls in one helper module deliver CSS.
+  helperA: {
+    key: 'helper-a',
+    imports: `import { renderA } from '../pair'\n`,
+    body: 'return renderA()',
+    consumer: 'renderable',
+  },
+  helperB: {
+    key: 'helper-b',
+    imports: `import { renderB } from '../pair'\n`,
+    body: 'return renderB()',
+    consumer: 'renderable',
+  },
+  // Source: V4 red-astra-r2/20: a .jsx provider is an equally supported input.
+  javascript: {
+    key: 'javascript',
+    imports: renderableImport,
+    body: 'return renderServerComponent(<Card />)',
+    consumer: 'renderable',
+    jsx: true,
+  },
   // A fragment root with children from two components (V4 red-astra/21).
   fragmentRenderable: {
     key: 'fragment-renderable',
@@ -80,15 +107,37 @@ const rows = {
   ternary: {
     key: 'ternary',
     imports: streamImport,
-    body: `const flag = Date.now() > 0
-  return flight(renderToReadableStream(flag ? <Card /> : <Badge />))`,
+    body: `let evaluations = 0
+  const stream = renderToReadableStream((++evaluations, data) ? <Card /> : <Badge />)
+  return flight(stream, evaluations)`,
+    input: true,
     consumer: 'flight',
   },
   logicalAnd: {
     key: 'logical-and',
     imports: streamImport,
-    body: `const flag = Date.now() > 0
-  return flight(renderToReadableStream(flag && <Card />))`,
+    body: `let evaluations = 0
+  const stream = renderToReadableStream((++evaluations, data) && <Card />)
+  return flight(stream, evaluations)`,
+    input: true,
+    consumer: 'flight',
+  },
+  ternaryFalse: {
+    key: 'ternary-false',
+    imports: streamImport,
+    body: `let evaluations = 0
+  const stream = renderToReadableStream((++evaluations, data) ? <Card /> : <Badge />)
+  return flight(stream, evaluations)`,
+    input: false,
+    consumer: 'flight',
+  },
+  logicalFalse: {
+    key: 'logical-false',
+    imports: streamImport,
+    body: `let evaluations = 0
+  const stream = renderToReadableStream((++evaluations, data) && <Card />)
+  return flight(stream, evaluations)`,
+    input: false,
     consumer: 'flight',
   },
   options: {
@@ -111,8 +160,8 @@ const rows = {
   plainModel: {
     key: 'plain-model',
     imports: streamImport,
-    body: `return flight(renderToReadableStream({ card: <Card /> }))`,
-    consumer: 'flight',
+    body: `return flight(renderToReadableStream({ card: <Card />, label: 'MARK_MODEL' }))`,
+    consumer: 'model',
   },
   blockComment: {
     key: 'block-comment',
@@ -141,23 +190,51 @@ const rows = {
   foreignNamespace: {
     key: 'foreign-namespace',
     imports: `import * as RSC from 'other-rsc'\n`,
-    body: `return RSC.renderServerComponent(<Card />)`,
+    body: `const effects: Array<string> = []
+  return RSC.renderServerComponent(<Card data-effects={effects} data-label={effects.push('element') && 'original'}>original-child</Card>)`,
+    consumer: 'value',
+  },
+  foreignArguments: {
+    key: 'foreign-arguments',
+    imports: `import * as RSC from 'other-rsc'\n`,
+    body: `const effects: Array<string> = []
+  return RSC.renderServerComponent(<Card data-effects={effects} data-label={effects.push('element') && 'original'}>original-child</Card>, (effects.push('first'), 'first'), (effects.push('second'), 2), effects)`,
     consumer: 'value',
   },
   shadowed: {
     key: 'shadowed',
     imports: renderableImport,
-    body: `const renderServerComponent = (...args: Array<unknown>) => ({ args: args.length })
-  return renderServerComponent(<Card />)`,
+    body: `const effects: Array<string> = []
+  const renderServerComponent = (...args) => ({ arity: args.length, label: args[0].props['data-label'], children: args[0].props.children, scalars: args.slice(1, 3), effects: [...effects] })
+  return renderServerComponent(<Card data-effects={effects} data-label={effects.push('element') && 'original'}>original-child</Card>)`,
+    consumer: 'value',
+  },
+  shadowedArguments: {
+    key: 'shadowed-arguments',
+    imports: renderableImport,
+    body: `const effects: Array<string> = []
+  const renderServerComponent = (...args) => ({ arity: args.length, label: args[0].props['data-label'], children: args[0].props.children, scalars: args.slice(1, 3), effects: [...effects] })
+  return renderServerComponent(<Card data-effects={effects} data-label={effects.push('element') && 'original'}>original-child</Card>, (effects.push('first'), 'first'), (effects.push('second'), 2), effects)`,
     consumer: 'value',
   },
   shadowedNamespace: {
     key: 'shadowed-namespace',
     imports: `import * as RSC from '@tanstack/react-start/rsc'\n`,
-    body: `const RSC = {
-    renderServerComponent: (...args: Array<unknown>) => ({ args: args.length }),
+    body: `const effects: Array<string> = []
+  const RSC = {
+    renderServerComponent: (...args) => ({ arity: args.length, label: args[0].props['data-label'], children: args[0].props.children, scalars: args.slice(1, 3), effects: [...effects] }),
   }
-  return RSC.renderServerComponent(<Card />)`,
+  return RSC.renderServerComponent(<Card data-effects={effects} data-label={effects.push('element') && 'original'}>original-child</Card>)`,
+    consumer: 'value',
+  },
+  shadowedNamespaceArguments: {
+    key: 'shadowed-namespace-arguments',
+    imports: `import * as RSC from '@tanstack/react-start/rsc'\n`,
+    body: `const effects: Array<string> = []
+  const RSC = {
+    renderServerComponent: (...args) => ({ arity: args.length, label: args[0].props['data-label'], children: args[0].props.children, scalars: args.slice(1, 3), effects: [...effects] }),
+  }
+  return RSC.renderServerComponent(<Card data-effects={effects} data-label={effects.push('element') && 'original'}>original-child</Card>, (effects.push('first'), 'first'), (effects.push('second'), 2), effects)`,
     consumer: 'value',
   },
   // Not recognised forms (J7.2: variables, wrappers and project re-exports
@@ -183,10 +260,30 @@ const rows = {
   },
 } satisfies Record<string, Row>
 
-describe('RSC CSS through the real transport (Vite dev)', () => {
+describe.concurrent('RSC CSS through the real transport (Vite dev)', () => {
   const app = rscCssApp({
     rows: Object.values(rows),
     files: {
+      ...Object.fromEntries(
+        ['a', 'b'].map((name) => [
+          `src/routes/pair-${name}.tsx`,
+          `import { createFileRoute } from '@tanstack/react-router'
+import { render } from '../rows/helper-${name}'
+export const Route = createFileRoute('/pair-${name}')({
+  loader: () => render(),
+  component: () => <main>{Route.useLoaderData()}</main>,
+})
+`,
+        ]),
+      ),
+      'src/pair.module.css': `.a { background: #fef3c7; } .b { background: #e0f2fe; }\n`,
+      'src/pair.tsx': `import { renderServerComponent } from '@tanstack/react-start/rsc'
+import styles from './pair.module.css'
+function A() { return <div data-testid="card" className={styles.a}>MARK_A</div> }
+function B() { return <div data-testid="badge" className={styles.b}>MARK_B</div> }
+export function renderA() { return renderServerComponent(<A />) }
+export function renderB() { return renderServerComponent(<B />) }
+`,
       'src/plain.tsx': `import { renderServerComponent } from '@tanstack/react-start/rsc'
 import './global.css'
 export function renderPlain() {
@@ -202,10 +299,47 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
         type: 'module',
         exports: './index.js',
       }),
-      'node_modules/other-rsc/index.js': `export const renderServerComponent = (...args) => ({ args: args.length })\n`,
+      'node_modules/other-rsc/index.js': `export const renderServerComponent = (...args) => ({ arity: args.length, label: args[0].props['data-label'], children: args[0].props.children, scalars: args.slice(1, 3), effects: [...args[0].props['data-effects']] })\n`,
     },
     // The app's own package (a look-alike row), pre-bundled like the rest.
     config: { optimizeDeps: { include: ['other-rsc'] } },
+  })
+
+  test('two render helpers in one module each carry their component CSS', async ({
+    onTestFinished,
+  }) => {
+    // Separate browser contexts/results: renderA's stylesheet must not mask
+    // renderB missing its own delivery, even though both helpers share CSS.
+    for (const [name, marker, selector, expected] of [
+      ['a', 'MARK_A', '[data-testid=card]', CARD_BACKGROUND],
+      ['b', 'MARK_B', '[data-testid=badge]', BADGE_BACKGROUND],
+    ] as const) {
+      const page = await openRscPage(app.server(), `/pair-${name}`, {
+        registerCleanup: onTestFinished,
+      })
+      await page.waitForText(marker, { selector: 'main' })
+      await waitForHydration(page)
+      expect(
+        await settledValue(
+          page,
+          () => computedStyle(page, selector, 'background-color'),
+          (value) => value === expected,
+        ),
+      ).toBe(expected)
+      expect(page.errors).toEqual([])
+    }
+  })
+
+  test('a JavaScript provider carries its stylesheet with the RSC payload', async () => {
+    expect(await app.text(rows.javascript)).toBe('MARK_CARD')
+    expect(
+      await app.style(
+        rows.javascript,
+        '[data-testid=card]',
+        'background-color',
+        CARD_BACKGROUND,
+      ),
+    ).toBe(CARD_BACKGROUND)
   })
 
   const cardBackground = (row: Row) =>
@@ -270,6 +404,58 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
     expect(await cardBackground(row)).toBe(CARD_BACKGROUND)
   })
 
+  // Selection/effects are separate from the known missing-CSS goal above:
+  // a false result must never become a card or hide a transport error.
+  test.each([
+    { row: rows.ternary, text: 'MARK_CARD' },
+    { row: rows.ternaryFalse, text: 'MARK_BADGE' },
+    { row: rows.logicalAnd, text: 'MARK_CARD' },
+    { row: rows.logicalFalse, text: '' },
+  ])(
+    'conditional stream $row.key selects its runtime input and evaluates it once',
+    async ({ row, text }) => {
+      expect(await app.text(row)).toBe(text)
+      const selected = await app
+        .page()
+        .page.locator(
+          `section[data-row="${row.key}"] [data-testid=card], section[data-row="${row.key}"] [data-testid=badge]`,
+        )
+        .evaluateAll((elements) =>
+          elements.map((element) => element.getAttribute('data-testid')),
+        )
+      expect(selected).toEqual(
+        text === 'MARK_CARD'
+          ? ['card']
+          : text === 'MARK_BADGE'
+            ? ['badge']
+            : [],
+      )
+      expect(
+        await app
+          .page()
+          .page.locator(`section[data-row="${row.key}"] [data-evaluations]`)
+          .getAttribute('data-evaluations'),
+      ).toBe('1')
+    },
+  )
+
+  // Bug: the alternate JSX branch has no CSS, just like the consequent.
+  // Source: decision D8 (b), H02.
+  // Impact: choosing false renders the badge without its stylesheet.
+  test.fails(
+    'a false ternary stream carries its selected badge CSS',
+    async () => {
+      expect(
+        await app.style(
+          rows.ternaryFalse,
+          '[data-testid=badge]',
+          'background-color',
+          BADGE_BACKGROUND,
+        ),
+      ).toBe(BADGE_BACKGROUND)
+    },
+  )
+
   // The second `options` argument is undocumented (React Start's public
   // type is `renderToReadableStream(node)`; `options` is typed only under
   // the react-server condition). It must not break: the options reach
@@ -287,7 +473,7 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
   // elements nor a warning is required, nor their absence (user rulings
   // 2026-10-18).
   test('renderToReadableStream with a plain-data model streams the model', async () => {
-    expect(await app.text(rows.plainModel)).toBe('MARK_CARD')
+    expect(await app.text(rows.plainModel)).toBe('MARK_MODELMARK_CARD')
   })
 
   // Bug: the transform silently skips a `renderToReadableStream` argument it
@@ -302,17 +488,11 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
     'dev: renderToReadableStream with $name warns, naming the file',
     ({ row }) => {
       const server = app.server()
-      expectDiagnostic(
-        diagnosticsOf(
-          server.logs.filter((log) => log.startsWith('warn:')),
-          'warning',
-        ),
-        {
-          names: ['renderToReadableStream'],
-          file: path.join('src/rows', `${row.key}.tsx`),
-          root: server.root,
-        },
-      )
+      expectDiagnostic(diagnosticsOf(server.logs, 'warning'), {
+        names: ['renderToReadableStream'],
+        file: path.join('src/rows', `${row.key}.tsx`),
+        root: server.root,
+      })
     },
   )
 
@@ -320,10 +500,29 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
     { name: 'a foreign namespace', row: rows.foreignNamespace },
     { name: 'a shadowing local', row: rows.shadowed },
     { name: 'a local shadowing the namespace', row: rows.shadowedNamespace },
+    {
+      name: 'a foreign namespace with scalar arguments',
+      row: rows.foreignArguments,
+    },
+    {
+      name: 'a shadowing local with scalar arguments',
+      row: rows.shadowedArguments,
+    },
+    {
+      name: 'a shadowed namespace with scalar arguments',
+      row: rows.shadowedNamespaceArguments,
+    },
   ])(
     'a look-alike helper of $name gets exactly the arguments the code passes',
     async ({ row }) => {
-      expect(JSON.parse(await app.text(row))).toEqual({ args: 1 })
+      const multiple = row.body.includes("effects.push('first')")
+      expect(JSON.parse(await app.text(row))).toEqual({
+        arity: multiple ? 4 : 1,
+        label: 'original',
+        children: 'original-child',
+        scalars: multiple ? ['first', 2] : [],
+        effects: multiple ? ['element', 'first', 'second'] : ['element'],
+      })
     },
   )
 
