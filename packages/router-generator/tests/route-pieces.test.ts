@@ -41,10 +41,16 @@ const componentOptions = [
 
 /**
  * The text each component option of each route renders, by route id, once
- * the router loaded the route (its lazy route file and components).
+ * the router loaded the route (its lazy route file and components). Piece
+ * files load lazily: the app that loaded the route tree has loaded none of
+ * them before a route is loaded.
  */
 function piecesOf(treeFile: string) {
-  return withRouteTree(treeFile, async ({ router, render }) => {
+  return withRouteTree(treeFile, async ({ router, render, loadedFiles }) => {
+    expect(
+      loadedFiles().filter((file) => file.endsWith('.vue')),
+      'the piece files loaded with the route tree, before any route is loaded',
+    ).toEqual([])
     const pieces: Record<string, Record<string, string>> = {}
     for (const route of Object.values(router.routesById)) {
       await router.loadRouteChunk(route)
