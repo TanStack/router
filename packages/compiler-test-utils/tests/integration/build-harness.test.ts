@@ -16,6 +16,7 @@ import {
   namedSegments,
   originalFrameOf,
 } from '../../src/build-harness'
+import { unboundNames } from '../../src/validate-module'
 import type {
   BundleOptions,
   DanglingNameError,
@@ -509,15 +510,14 @@ declare const maybeDefined: unknown
   },
 )
 
-// webpack and Rspack drop unused code inside a module only when minifying,
-// and their unminified output has dangling names of its own in that code.
-// The check reads the emitted chunks, so only the minified build, which is
-// what they ship in production, is checked.
+// webpack and Rspack drop unused code inside a module only when minifying:
+// an unminified production build ships it, and the check reads every
+// emitted artifact.
 describe.each(['rspack', 'webpack'] as const)(
   'dangling names in webpack and Rspack production client builds (%s)',
   (bundler) => {
     test(
-      'the minified build deletes dead code with a dangling name and passes; the unminified build keeps it and is not checked',
+      'the minified build deletes dead code with a dangling name and passes; the unminified build ships it and is rejected',
       async () => {
         const files = {
           'entry.ts': `function unused() {
@@ -537,16 +537,131 @@ export function read() {
           'MARK_USED',
         )
 
-        const unminified = await bundleApp({
+        await expect(
+          bundleApp({ bundler, env: 'client', minify: false, files }),
+        ).rejects.toMatchObject({
+          name: 'DanglingNameError',
+          names: { 'entry.mjs': ['notDeclaredAnywhere'] },
+        })
+      },
+      timeout,
+    )
+
+    /**
+     * `a` imports `helper` only for an export nobody uses. Rspack keeps that
+     * unused code unminified but drops the binding it reads; webpack declares
+     * it.
+     */
+    const unusedImportApp = (a: string) => ({
+      'entry.js': `import { used } from './a'
+export const read = () => used()
+`,
+      'a.js': a,
+      'b.js': `export function helper() {
+  return 'MARK_B'
+}
+`,
+      // An app transform that leaves the modules as they are (`identity`)
+      // or loses `a`'s binding of `helper` (`lose-binding`), as a broken
+      // compiler would.
+      'identity-loader.cjs': `module.exports = (source) => source\n`,
+      'lose-binding-loader.cjs': `module.exports = (source) => source.replace("import { helper } from './b'\\n", '')\n`,
+    })
+    const unusedImport = `import { helper } from './b'
+export function used() {
+  return 'MARK_USED'
+}
+export function unused() {
+  return helper()
+}
+`
+
+    test(
+      'an import binding the bundler drops from unused code it ships is the bundler’s, as the module imports it',
+      async () => {
+        const app = await bundleApp({
           bundler,
           env: 'client',
           minify: false,
-          files,
+          entry: 'entry.js',
+          sourceRules: [{ test: /\.js$/, loader: './identity-loader.cjs' }],
+          files: unusedImportApp(unusedImport),
         })
-        expect(unminified.where('MARK_UNUSED')).toBe('eager')
-        expect((await unminified.run('return entry.read()')).result).toBe(
-          'MARK_USED',
+        expect((await app.run('return entry.read()')).result).toBe('MARK_USED')
+        // The unused code ships; Rspack's reads `helper` without a binding,
+        // which this check attributes to the bundler.
+        const entryCode = app.entry.code
+        expect(entryCode).toMatch(/return helper\(\)/)
+        expect(unboundNames(entryCode).has('helper')).toBe(bundler === 'rspack')
+      },
+      timeout,
+    )
+
+    /** As Vue's `initCustomFormatter`: development-only code after a return, with a function declaration reading a `const` there. */
+    const setupModule = `export function setup() {
+  if (process.env.NODE_ENV === 'production') {
+    return 'MARK_PRODUCTION'
+  }
+  const style = { color: 'MARK_STYLE' }
+  function format() {
+    return style.color
+  }
+  return format()
+}
+`
+    test.each([
+      // The bundler concatenates `setup` into the entry's module.
+      ['concatenated into another module', `export { setup } from './setup'\n`],
+      // A lazy chunk reads `setup` too: it keeps a module of its own.
+      [
+        'a module of its own',
+        `export { setup } from './setup'
+export const later = () => import('./later')
+`,
+      ],
+    ])(
+      'a declaration the bundler removes after a return it computed, which a kept function reads, is the bundler’s (%s)',
+      async (_layout, entry) => {
+        const app = await bundleApp({
+          bundler,
+          env: 'client',
+          minify: false,
+          entry: 'entry.js',
+          files: {
+            'entry.js': entry,
+            'setup.js': setupModule,
+            'later.js': `export { setup } from './setup'\n`,
+          },
+        })
+        expect((await app.run('return entry.setup()')).result).toBe(
+          'MARK_PRODUCTION',
         )
+        // The kept function ships and reads `style` without a binding, which
+        // this check attributes to the bundler.
+        expect(app.entry.code).toMatch(/return style\.color/)
+        expect(unboundNames(app.entry.code).has('style')).toBe(true)
+      },
+      timeout,
+    )
+
+    test(
+      'a module that reads a name it does not import is rejected, also in unused code the bundler ships',
+      async () => {
+        await expect(
+          bundleApp({
+            bundler,
+            env: 'client',
+            minify: false,
+            entry: 'entry.js',
+            sourceRules: [
+              { test: /\.js$/, loader: './lose-binding-loader.cjs' },
+            ],
+            files: unusedImportApp(unusedImport),
+          }),
+        ).rejects.toMatchObject({
+          name: 'DanglingNameError',
+          names: { 'entry.mjs': ['helper'] },
+        })
       },
       timeout,
     )
