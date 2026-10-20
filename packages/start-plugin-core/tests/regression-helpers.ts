@@ -14,7 +14,10 @@ import { fileURLToPath } from 'node:url'
 import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
 import { parseSync } from 'vite'
 import { expect } from 'vitest'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
+import {
+  getModuleErrors,
+  keptDynamicImports,
+} from '@tanstack/compiler-test-utils/validate-module'
 import {
   StartCompiler,
   detectKindsInCode,
@@ -27,7 +30,6 @@ import {
   createSsrRpc,
   startClientCore,
 } from './start-runtime'
-import { moduleRequests } from './imports'
 import type {
   ModuleGraphOptions,
   ModuleStub,
@@ -415,8 +417,10 @@ export async function renderToHtml(node: unknown) {
 /**
  * The modules evaluating the compiled module `code` (as `env`, default
  * `client`) loads: every module it, and the project modules and stubs it
- * links, request statically when they link, plus the targets of the dynamic
- * `import()`s it names (a bundle emits a chunk for each). Imports that are
+ * links, request when they link and evaluate, plus the targets of the
+ * dynamic `import()`s of `code` in code a real production bundler keeps
+ * (`keptDynamicImports`: an `import()` in a function nothing calls, which
+ * the bundler deletes, is a syntactic candidate, no load). Imports that are
  * neither `stubs`, `files` nor real packages link to empty stubs, so a
  * forbidden module the compiler left behind is observed, not a link error.
  * Type-only syntax (`import type`, erased with the TypeScript) is no load;
@@ -458,7 +462,15 @@ export async function moduleLoads(
       throw error
     }
   })
-  return [...new Set([...graph.requested, ...moduleRequests(code).dynamic])]
+  // A dynamic import loads when its code runs, which no test runs here:
+  // each one a real production bundler keeps is a load; one in code the
+  // bundler deletes (an uncalled function) never loads.
+  return [
+    ...new Set([
+      ...graph.requested,
+      ...(await keptDynamicImports(code, { filename: id })),
+    ]),
+  ]
 }
 
 function isServerOutputs(value: object): value is ServerOutputs {

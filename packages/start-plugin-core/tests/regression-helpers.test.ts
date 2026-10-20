@@ -520,6 +520,33 @@ export const value: T | undefined = undefined`),
     ).toContain('./types')
   })
 
+  // Start N14: a dynamic import the bundler deletes never loads; one in code
+  // it keeps may. Rolldown decides, not a rule of the test.
+  test('lists the target of a dynamic import in code a production bundler keeps, not in code it deletes', async () => {
+    const loads = await moduleLoads(`function unused() {
+  return import('./dead.server')
+}
+function onlyUnusedCalls() {
+  return import('./dead-too.server')
+}
+function alsoUnused() {
+  return onlyUnusedCalls()
+}
+function called() {
+  return import('./called.server')
+}
+export const later = () => called()
+const atStart = () => import('./at-start.server')
+atStart()
+export const value = 1`)
+    expect({
+      dead: loads.filter((load) => load.startsWith('./dead')),
+      live: ['./called.server', './at-start.server'].filter((load) =>
+        loads.includes(load),
+      ),
+    }).toEqual({ dead: [], live: ['./called.server', './at-start.server'] })
+  })
+
   test('lists a forbidden module whose top-level code throws', async () => {
     expect(
       await moduleLoads(`import { db } from './db.server'

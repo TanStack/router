@@ -261,6 +261,74 @@ async function treeShake(javascript: string): Promise<string> {
 }
 
 /**
+ * The modules a compiled module's dynamic `import()`s name (static
+ * specifiers) that survive a real production bundler: Rolldown, Vite's
+ * bundler, bundling the module alone with tree-shaking on and its exports
+ * kept (`treeShake`). An `import()` in code that bundler deletes (e.g. in a
+ * function nothing calls) is no load; one in code it keeps is. TypeScript
+ * and JSX are compiled first, from `filename`'s language and `jsx` (default:
+ * React's automatic runtime).
+ */
+export async function keptDynamicImports(
+  code: string,
+  options: { filename?: string; jsx?: ProjectJsx } = {},
+): Promise<Array<string>> {
+  const compiled = await compileModule(
+    code,
+    options.filename ?? 'module.tsx',
+    options.jsx,
+  )
+  // Rolldown rewrites relative external specifiers: each static one becomes
+  // a bare placeholder it keeps as is, named back afterwards.
+  const targets: Array<string> = []
+  const marked = replaceStaticDynamicImports(compiled, (specifier) => {
+    targets.push(specifier)
+    return JSON.stringify(`${keptPlaceholder}${targets.length - 1}`)
+  })
+  const kept = new Set<string>()
+  replaceStaticDynamicImports(await treeShake(marked), (specifier) => {
+    if (specifier.startsWith(keptPlaceholder)) {
+      const target = targets[Number(specifier.slice(keptPlaceholder.length))]
+      if (target !== undefined) {
+        kept.add(target)
+      }
+    }
+    return undefined
+  })
+  return [...kept]
+}
+
+const keptPlaceholder = 'validate-module-dynamic-import:'
+
+/**
+ * Replaces each dynamic `import()` specifier of `javascript` that is a
+ * string literal (or a template literal without substitutions) with the
+ * code `replace` returns for its value, when it returns some.
+ */
+function replaceStaticDynamicImports(
+  javascript: string,
+  replace: (specifier: string) => string | undefined,
+) {
+  const { module } = parseSync('module.js', javascript, {
+    sourceType: 'module',
+  })
+  let result = javascript
+  for (const { moduleRequest } of [...module.dynamicImports].reverse()) {
+    const literal = /^(["'`])([^"'`\\$]*)\1$/.exec(
+      javascript.slice(moduleRequest.start, moduleRequest.end),
+    )
+    const replacement = literal ? replace(literal[2]!) : undefined
+    if (replacement !== undefined) {
+      result =
+        result.slice(0, moduleRequest.start) +
+        replacement +
+        result.slice(moduleRequest.end)
+    }
+  }
+  return result
+}
+
+/**
  * Names a JavaScript module binds anywhere: imports, variables, functions,
  * classes, parameters and catch parameters.
  */
