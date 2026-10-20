@@ -608,7 +608,7 @@ export const postsRoute = createFileRoute('/new')({
   component: () => 'new page',
 })
 `,
-      ],
+      ] as const,
     },
     {
       name: 'a Route made by a route factory of the app',
@@ -621,7 +621,7 @@ export const Route = makeRoute()({ component: () => 'new page' })
 
 export const makeRoute = () => createFileRoute('/new')
 `,
-      ],
+      ] as const,
     },
   ])(
     '$name is left as it is and registered, or reported by name',
