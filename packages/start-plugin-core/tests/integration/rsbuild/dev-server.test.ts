@@ -2,14 +2,13 @@
  * The Start compiler on a running Rsbuild dev server: editing a factory
  * module rebuilds every client module compiled against it.
  */
-import vm from 'node:vm'
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import {
+  clientPage,
   runInClient,
   startRsbuildDevServer,
   startRsbuildStartDevServer,
-  webGlobals,
 } from '../../rsbuild-dev-server'
 import { requestsOfPrelude } from '../../build-harness'
 
@@ -35,6 +34,7 @@ import { db } from './db'
 export const ${name} = base.handler(async () => db.x())
 `
     const server = await startRsbuildStartDevServer({
+      ...clientPage,
       files: {
         'src/b.ts': toFactory ? plain : factory,
         'src/c.ts': `export * from './b'\n`,
@@ -289,6 +289,7 @@ describe('Rsbuild dev: server fn ids', () => {
 export const getData = createServerFn().handler(async () => 'x')
 `
       const server = await startRsbuildDevServer({
+        ...clientPage,
         files: {
           'src/a.ts': fn,
           'src/b.ts': fn,
@@ -298,13 +299,8 @@ import { getData as b } from './b'
 `,
         },
       })
-      // The client bundle (one chunk) runs in a bare context
-      const context = vm.createContext(webGlobals())
-      context.self = context
-      for (const code of Object.values(await server.outputs())) {
-        vm.runInContext(code, context)
-      }
-      const ids = context.ids as Array<unknown>
+      const ran = await runInClient(server, `return globalThis.ids`)
+      const ids = (ran as { result: Array<unknown> }).result
       expect(ids).toEqual([expect.any(String), expect.any(String)])
       expect(ids[0]).not.toBe(ids[1])
     },

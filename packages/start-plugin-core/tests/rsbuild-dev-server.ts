@@ -5,13 +5,14 @@
  * (`@tanstack/compiler-test-utils/rsbuild-dev-server`).
  * `@tanstack/react-start` is the real package (`startRuntimeLinks` of the
  * build harness). With `importProtection`, Start's Rsbuild import protection
- * also runs on the `client` environment. `runRsbuildClient()` runs the
- * emitted client code in a VM context with a browser's web APIs. The
- * temporary apps live in this directory.
+ * also runs on the `client` environment. `runInClient()` and
+ * `runRsbuildClient()` run the emitted client code in a real browser page of
+ * the dev server (started with `clientPage`). The temporary apps live in
+ * this directory.
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import vm from 'node:vm'
+import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
 import { onTestFinished } from 'vitest'
@@ -24,82 +25,14 @@ import type { ImportProtectionOptions } from '../src/schema'
 import type { TanStackStartRsbuildInputConfig } from '../src/rsbuild/schema'
 import type { GenerateFunctionIdFnOptional } from '../src/start-compiler/types'
 import type { StartCompilerImportTransform } from '../src/types'
+import type { RsbuildPlugin } from '@rsbuild/core'
+import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type {
   RsbuildDevServer,
   RsbuildDevServerOptions,
 } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
-/**
- * Web APIs of a browser that Node.js has too (the WinterTC minimum common
- * API): a VM context has only the language's globals, and Start's client
- * runtime uses these (e.g. `TextDecoder` when its module loads).
- */
-const webApis = [
-  'AbortController',
-  'AbortSignal',
-  'Blob',
-  'BroadcastChannel',
-  'ByteLengthQueuingStrategy',
-  'CompressionStream',
-  'CountQueuingStrategy',
-  'Crypto',
-  'CryptoKey',
-  'CustomEvent',
-  'DOMException',
-  'DecompressionStream',
-  'Event',
-  'EventTarget',
-  'File',
-  'FormData',
-  'Headers',
-  'MessageChannel',
-  'MessageEvent',
-  'MessagePort',
-  'ReadableByteStreamController',
-  'ReadableStream',
-  'ReadableStreamBYOBReader',
-  'ReadableStreamBYOBRequest',
-  'ReadableStreamDefaultController',
-  'ReadableStreamDefaultReader',
-  'Request',
-  'Response',
-  'SubtleCrypto',
-  'TextDecoder',
-  'TextDecoderStream',
-  'TextEncoder',
-  'TextEncoderStream',
-  'TransformStream',
-  'TransformStreamDefaultController',
-  'URL',
-  'URLSearchParams',
-  'WritableStream',
-  'WritableStreamDefaultController',
-  'WritableStreamDefaultWriter',
-  'atob',
-  'btoa',
-  'clearInterval',
-  'clearTimeout',
-  'crypto',
-  'fetch',
-  'navigator',
-  'performance',
-  'queueMicrotask',
-  'setInterval',
-  'setTimeout',
-  'structuredClone',
-]
-
-/** The `webApis` of this process, for a VM context. */
-export function webGlobals(): Record<string, unknown> {
-  return Object.fromEntries(
-    webApis.map((name) => [
-      name,
-      (globalThis as Record<string, unknown>)[name],
-    ]),
-  )
-}
-
 /**
  * Starts an Rsbuild dev server with the Start compiler on an app of `files`
  * (entry `src/entry.ts`), and with import protection configured by
@@ -114,6 +47,7 @@ export function startRsbuildDevServer(
 ): Promise<RsbuildDevServer> {
   const { files, importProtection, generateFunctionId, ...devServerOptions } =
     options
+  const entry: ClientEntry = { files: [], module: false }
   return createRsbuildDevServer({
     dir: harnessDir,
     prefix: '.start-rsbuild-dev-server-',
@@ -162,8 +96,56 @@ export function startRsbuildDevServer(
         },
       },
       useTestLoaders(root),
+      recordClientEntry(entry),
     ],
-  })
+  }).then((server) => withClientEntry(server, entry))
+}
+
+/**
+ * What a page loads to start the app: the initial JavaScript files of the
+ * `client` environment's entry, by URL path on the dev server, as its last
+ * compile emitted them, and whether they are ES modules.
+ */
+interface ClientEntry {
+  files: Array<string>
+  module: boolean
+}
+
+const clientEntries = new WeakMap<object, ClientEntry>()
+
+function withClientEntry(server: RsbuildDevServer, entry: ClientEntry) {
+  clientEntries.set(server, entry)
+  return server
+}
+
+/**
+ * Records the `ClientEntry` of each compile of the `client` environment,
+ * from Rspack's stats (its entrypoints and public path).
+ */
+function recordClientEntry(entry: ClientEntry): RsbuildPlugin {
+  return {
+    name: 'test:client-entry',
+    setup(api) {
+      api.onAfterEnvironmentCompile(({ stats, environment }) => {
+        if (environment.name !== 'client' || !stats) {
+          return
+        }
+        const json = stats.toJson({
+          all: false,
+          entrypoints: true,
+          publicPath: true,
+        })
+        const publicPath =
+          json.publicPath && json.publicPath !== 'auto' ? json.publicPath : '/'
+        entry.files = Object.values(json.entrypoints ?? {})
+          .flatMap((entrypoint) => entrypoint.assets ?? [])
+          .map((asset) => asset.name)
+          .filter((name) => /\.[cm]?js$/.test(name))
+          .map((name) => `${publicPath.replace(/\/?$/, '/')}${name}`)
+        entry.module = environment.config.output.module === true
+      })
+    },
+  }
 }
 
 /**
@@ -198,6 +180,7 @@ export function startRsbuildStartDevServer(
     framework = 'react',
     ...devServerOptions
   } = options
+  const entry: ClientEntry = { files: [], module: false }
   return createRsbuildDevServer({
     dir: harnessDir,
     prefix: '.start-rsbuild-start-dev-server-',
@@ -242,37 +225,123 @@ export const Route = createRootRoute()
         start,
       ),
       useTestLoaders(root),
+      recordClientEntry(entry),
     ],
-  })
+  }).then((server) => withClientEntry(server, entry))
 }
 
 /**
- * Runs the JavaScript the dev server's `client` environment emitted, like a
- * browser loading the page (in a fresh VM context), then `script` (the body
- * of an async function) in the same context. Returns what the script
- * returns (`result`), or the message of what it throws (`error`). (A
- * script must not await an import-protection mock: the mock is a thenable
- * that resolves to itself, which blocks the process.)
+ * Options of a dev server whose client code a test runs (`runInClient`,
+ * `runRsbuildClient`): the dev server serves the app to real browser pages
+ * over HTTP (`browser`), without HMR, as the other tests of its output
+ * expect (a test of hot updates sets `hmr: true` after these).
  */
-export async function runInClient(
-  server: Pick<RsbuildDevServer, 'outputs'>,
+export const clientPage = { browser: true, hmr: false } as const
+
+/**
+ * Runs in the page before its own code: records what the page's code logs
+ * through `console` (by method; an argument with a `message`, e.g. an
+ * error, by its message) and the errors it does not catch.
+ */
+const recorderScript = `(() => {
+  const text = (arg) =>
+    typeof arg === 'object' && arg !== null && 'message' in arg
+      ? String(arg.message)
+      : String(arg)
+  const calls = []
+  const uncaught = []
+  for (const level of ['log', 'info', 'warn', 'error', 'debug']) {
+    const original = console[level].bind(console)
+    console[level] = (...args) => {
+      calls.push({ level, text: args.map(text).join(' ') })
+      original(...args)
+    }
+  }
+  addEventListener('error', (event) => {
+    uncaught.push(text(event.error ?? event.message))
+  })
+  addEventListener('unhandledrejection', (event) => {
+    uncaught.push(text(event.reason))
+  })
+  Object.defineProperty(globalThis, '__clientRun', {
+    value: { calls, uncaught },
+  })
+})()`
+
+interface ClientRun {
+  calls: Array<{ level: string; text: string }>
+  uncaught: Array<string>
+}
+
+/**
+ * Opens a page of a dev server started with `clientPage` (by this harness)
+ * in a real browser (Chromium), runs `run` on it and closes it. The page's
+ * document loads the initial files of the `client` environment's entry
+ * from the dev server, in order, as the HTML of an app does (Start's dev
+ * server renders the app's HTML with its server entry, which the harness's
+ * apps do not have). Rejects with the errors the page's code did not catch
+ * while the page loaded, and when a file did not load.
+ */
+async function withClientPage<T>(
+  server: Pick<RsbuildDevServer, 'url'>,
+  run: (page: BrowserPage['page']) => Promise<T>,
+): Promise<T> {
+  const entry = clientEntries.get(server)
+  if (server.url === undefined || !entry) {
+    throw new Error(
+      'the client code runs in a browser page: start the dev server with `clientPage`, through this harness',
+    )
+  }
+  if (entry.files.length === 0) {
+    throw new Error('the client environment emitted no entry file')
+  }
+  const scripts = entry.files
+    .map(
+      (file) =>
+        `<script src="${file}"${entry.module ? ' type="module"' : ''} onerror="__clientRun.uncaught.push('could not load ' + this.src)"></script>`,
+    )
+    .join('\n')
+  const page = await openPage(new URL('/__client-run', server.url).href, {
+    initScript: recorderScript,
+    html: `<!doctype html>
+<html><head><meta charset="utf-8"></head>
+<body><div id="root"></div>
+${scripts}
+</body></html>`,
+  })
+  try {
+    // After what the page's load scheduled ran
+    const { uncaught } = await page.page.evaluate<ClientRun>(
+      `new Promise((resolve) => setTimeout(() => resolve(globalThis.__clientRun)))`,
+    )
+    if (uncaught.length > 0) {
+      throw new Error(
+        `the client code threw while the page loaded:\n${uncaught.join('\n')}`,
+      )
+    }
+    return await run(page.page)
+  } finally {
+    await page.close()
+  }
+}
+
+/**
+ * Runs `script` (the body of an async function) in the page of the dev
+ * server (`withClientPage`; the server started with `clientPage`), once the
+ * page loaded the client code. Returns what the script returns (`result`:
+ * plain data the page hands over), or the message of what it throws
+ * (`error`). (A script must not await an import-protection mock: the mock
+ * is a thenable that resolves to itself, which never settles.)
+ */
+export function runInClient(
+  server: Pick<RsbuildDevServer, 'url'>,
   script: string,
 ): Promise<{ result: unknown } | { error: string }> {
-  const context = vm.createContext({ ...webGlobals(), console: { ...console } })
-  context.self = context
-  context.window = context
-  context.globalThis = context
-  for (const code of Object.values(await server.outputs('client'))) {
-    vm.runInContext(code, context)
-  }
+  return withClientPage(server, (page) =>
+    page.evaluate<{ result: unknown } | { error: string }>(`(async () => {
   try {
-    const run = vm.runInContext(
-      `(async () => {\n${script}\n})`,
-      context,
-    ) as () => Promise<unknown>
-    return { result: await run() }
+    return { result: await (async () => {\n${script}\n})() }
   } catch (error) {
-    // errors of the VM context are not `instanceof Error` here
     return {
       error:
         typeof error === 'object' && error !== null && 'message' in error
@@ -280,48 +349,25 @@ export async function runInClient(
           : String(error),
     }
   }
+})()`),
+  )
 }
 
 /**
- * Runs the JavaScript the dev server's client environment emitted, like a
- * browser loading the page (in a fresh VM context). Returns what it logged
- * to the console, one message per call (`Error`s by their message), each
- * prefixed with its console method (`warn: ...`) when `options.levels`.
+ * Loads the client code in the page of the dev server (`withClientPage`; the
+ * server started with `clientPage`) and returns what the page's code logged
+ * to the console meanwhile, one message per call (an argument with a
+ * `message`, e.g. an error, by its message), each prefixed with its console
+ * method (`warn: ...`) when `options.levels`.
  */
-export async function runRsbuildClient(
-  server: Pick<RsbuildDevServer, 'outputs'>,
+export function runRsbuildClient(
+  server: Pick<RsbuildDevServer, 'url'>,
   options: { levels?: boolean } = {},
 ): Promise<Array<string>> {
-  const messages: Array<string> = []
-  const recorder =
-    (level: string) =>
-    (...args: Array<unknown>) => {
-      messages.push(
-        (options.levels ? `${level}: ` : '') +
-          args
-            .map((arg) =>
-              // errors of the VM context are not `instanceof Error` here
-              typeof arg === 'object' && arg !== null && 'message' in arg
-                ? String(arg.message)
-                : String(arg),
-            )
-            .join(' '),
-      )
-    }
-  const context = vm.createContext({
-    ...webGlobals(),
-    console: {
-      log: recorder('log'),
-      info: recorder('info'),
-      warn: recorder('warn'),
-      error: recorder('error'),
-    },
+  return withClientPage(server, async (page) => {
+    const { calls } = await page.evaluate<ClientRun>('globalThis.__clientRun')
+    return calls.map(
+      ({ level, text }) => (options.levels ? `${level}: ` : '') + text,
+    )
   })
-  context.self = context
-  context.window = context
-  context.globalThis = context
-  for (const code of Object.values(await server.outputs())) {
-    vm.runInContext(code, context)
-  }
-  return messages
 }

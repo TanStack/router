@@ -19,6 +19,7 @@ import {
   violationReports,
 } from '../../importProtection/start-apps'
 import {
+  clientPage,
   runRsbuildClient,
   startRsbuildDevServer,
   startRsbuildStartDevServer,
@@ -576,6 +577,7 @@ test(
   'Rsbuild dev: the client mock of each denied import reports its own use in the browser console',
   async () => {
     const server = await startRsbuildDevServer({
+      ...clientPage,
       compileTimeout,
       importProtection: { client: { specifiers: ['db-lib'] } },
       files: {
@@ -640,6 +642,7 @@ describe('Rsbuild dev: mockAccess', () => {
     '$mockAccess: the use of a mocked import is reported as $reports',
     async ({ mockAccess, reports }) => {
       const server = await startRsbuildDevServer({
+        ...clientPage,
         compileTimeout,
         importProtection: {
           mockAccess,

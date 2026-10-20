@@ -10,6 +10,7 @@ import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import {
+  clientPage,
   runRsbuildClient,
   startRsbuildDevServer,
 } from '../../rsbuild-dev-server'
@@ -289,6 +290,7 @@ describe('Rsbuild dev', () => {
     'a module of a custom type without a denied import runs in the client',
     async () => {
       const server = await startRsbuildDevServer({
+        ...clientPage,
         compileTimeout,
         importProtection: {
           behavior: 'error',
@@ -342,6 +344,7 @@ describe('Rsbuild dev', () => {
     'a module of a custom type importing $name is reported, and its real code does not run',
     async ({ files }) => {
       const server = await startRsbuildDevServer({
+        ...clientPage,
         compileTimeout,
         importProtection: {
           behavior: 'error',
@@ -419,6 +422,7 @@ export const page = () => secret()
     'an .mdx page importing $name is reported in its source, and its real code does not run',
     async ({ files }) => {
       const server = await startRsbuildDevServer({
+        ...clientPage,
         compileTimeout,
         importProtection: {
           behavior: 'error',
@@ -451,6 +455,7 @@ export const page = () => secret()
     'an .mdx page without a denied import runs in the client',
     async () => {
       const server = await startRsbuildDevServer({
+        ...clientPage,
         compileTimeout,
         importProtection: { behavior: 'error' },
         config: mdxModules,
