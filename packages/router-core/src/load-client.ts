@@ -2656,16 +2656,14 @@ export async function hydrate(router: AnyRouter): Promise<void> {
           parent && Promise.resolve(parent),
           laneOptions,
         )
-        const previous = committed[index - 1]
-        const flight = match._flight
+        const previous = committed[index - 1]!
         if (
-          flight &&
+          match._flight &&
           (transported ||
-            (isPromise(parent) &&
-              (!previous?._flight ||
-                router._flights?.get(previous.id) !== previous._flight))) &&
-          router._flights?.get(match.id) === flight
+            (loads[index - 1] &&
+              router._flights!.get(previous.id) !== previous._flight))
         ) {
+          // Fresh flights register synchronously, before any callbacks run.
           // Transforms and work depending on them belong to this hydration.
           // Their leases remain private; a new load runs its own handlers.
           router._flights!.delete(match.id)
