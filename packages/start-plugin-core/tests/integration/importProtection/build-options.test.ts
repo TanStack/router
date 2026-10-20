@@ -379,6 +379,7 @@ export const secret = () => 'MARK_SECRET'
         expectMarkerViolation(report!, {
           marker: 'node_modules/db-lib/index.js:1',
           use: 'src/entry.ts:2:27',
+          source: markedDependency['src/entry.ts'],
         })
       },
       timeout,

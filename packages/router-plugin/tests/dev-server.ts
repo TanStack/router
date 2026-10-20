@@ -32,6 +32,21 @@ export const Route = createRootRoute({})
 
 export const rootRoute = rootRouteOf('react')
 
+/**
+ * Whether a URL a Vite dev server serves (an import specifier of a served
+ * module) is a module of the app or one a plugin serves (`/@id/…`), whatever
+ * its path or query (SPEC §5.3): not a dependency (pre-bundled in
+ * `node_modules`, or a file outside the app root, `/@fs/…`), not Vite's
+ * client or a refresh runtime.
+ */
+export function isServedAppModule(url: string) {
+  return (
+    url.startsWith('/') &&
+    !/^\/@(?:vite|react-refresh|fs)\//.test(url) &&
+    !/\/node_modules\//.test(url)
+  )
+}
+
 export interface RouterDevServerOptions extends Omit<
   DevServerOptions,
   'dir' | 'plugins'

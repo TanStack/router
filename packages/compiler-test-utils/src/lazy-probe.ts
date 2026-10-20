@@ -1,30 +1,33 @@
 /**
  * Observes lazy loading in a module graph (`module-linker.ts`) by the modules
- * actually requested, never by recognising the helper that builds a lazy
- * value (SPEC J2.6, §5.3, §5.8): `lazyRouteComponent`, `lazyFn`,
- * `React.lazy`, an equivalent wrapper or an intermediate module all pass.
+ * actually evaluated when a value's real trigger completes, never by
+ * recognising the helper that builds a lazy value (SPEC J2.6, §5.3, §5.8):
+ * `lazyRouteComponent`, `lazyFn`, `React.lazy`, an equivalent wrapper, a
+ * wrapper that first awaits something else, or an intermediate module that
+ * loads the value's module itself (a dynamic facade) all pass.
  *
  * API: `createLazyProbe(graph, entry, triggers, { owned })` →
- * - `isLazy(name)`: starting to load `name` requests a module that did not
- *   load with `entry` (probed: nothing loads).
- * - `loadedBy(name)`: ids of the modules loading `name` evaluates, in
+ * - `isLazy(name)`: completing the trigger of `name` evaluates an owned
+ *   module that did not load with `entry`.
+ * - `loadedBy(name)`: ids of the owned modules completing it evaluates, in
  *   evaluation order (one or more: facades and support modules are allowed).
- * - `groups(names)`: the lazy `names` grouped by what loads together:
- *   loading one makes every other of its group available (starting it
- *   requests nothing that has not loaded), while a name of another group
- *   stays unrequested. Each group sorted, groups sorted. A group that pulls
- *   another group's name in without the reverse shows as two overlapping
- *   groups.
+ * - `groups(names)`: the lazy `names` grouped by what loads together: once
+ *   one has loaded, completing the trigger of every other of its group
+ *   evaluates nothing new. Each pair is observed on its own, so a name of
+ *   another group may share support modules without joining the group. Each
+ *   group sorted, groups sorted. A group that pulls another group's name in
+ *   without the reverse shows as two overlapping groups.
  *
  * `triggers[name](exports)` starts loading `name` the way its runtime does,
  * given the namespace of `entry` (a router's `component.preload()`, a loader
- * call, a Hydrate boundary's `prefetch`…). It runs in forks of the graph
- * (fresh module instances, the same stubs), so the graph a test inspects
- * loads nothing it did not ask for; a trigger of a value that is not lazy
- * may run user code there. Loading a name imports the modules its trigger
- * requests (without awaiting the trigger itself). `owned(id)` tells the
- * modules that count (default: modules of the graph, not stubs or
- * packages).
+ * call, a Hydrate boundary's `prefetch`…), and returns what it returns: the
+ * probe awaits it (a rejection is ignored: a value that is not lazy may run
+ * user code that throws), then lets the modules it started importing
+ * without awaiting them finish loading. Every observation runs in its own
+ * fork of the graph (fresh module instances, the same stubs), so the graph
+ * a test inspects loads nothing it did not ask for, and one observation
+ * never sees what another loaded. `owned(id)` tells the modules that count
+ * (default: modules of the graph, not stubs or packages).
  */
 import type { ModuleGraph } from './module-linker'
 
@@ -45,47 +48,52 @@ export function createLazyProbe(
     return { graph: forked, exports: await forked.import(entry) }
   }
   type Fork = Awaited<ReturnType<typeof fork>>
-  /** The owned modules whose import starting to load `name` starts. */
-  const probe = ({ graph: forked, exports }: Fork, name: string) =>
-    forked
-      .probeDynamicImports(() => {
-        try {
-          return triggers[name]?.(exports)
-        } catch {
-          // A value that is not lazy ran (e.g. a loader without arguments)
-          return undefined
-        }
-      })
-      .filter(options.owned ?? forked.has)
-  /** Loads `name` in a fork: the modules its trigger requests. */
-  const load = async (forked: Fork, name: string) => {
-    for (const id of probe(forked, name)) {
-      await forked.graph.import(id)
+
+  /**
+   * Completes the trigger of `name` in `forked` and returns the owned
+   * modules that evaluated meanwhile, in evaluation order.
+   */
+  const complete = async (forked: Fork, name: string) => {
+    const owned = options.owned ?? forked.graph.has
+    const evaluatedBefore = forked.graph.evaluated.length
+    const requestedBefore = forked.graph.requested.length
+    try {
+      await triggers[name]?.(forked.exports)
+    } catch {
+      // A value that is not lazy ran (e.g. a loader without arguments)
     }
+    // Imports the trigger started without awaiting them: the same native
+    // loads, awaited until they settle.
+    for (const id of forked.graph.requested.slice(requestedBefore)) {
+      if (owned(id) && !forked.graph.evaluated.includes(id)) {
+        await forked.graph.import(id).catch(() => undefined)
+      }
+    }
+    return forked.graph.evaluated.slice(evaluatedBefore).filter(owned)
   }
 
-  // One fork answers every `isLazy`, each name probed once: a lazy value
-  // may still be settling its probed (rejected) import when probed again.
-  let probeFork: Promise<Fork> | undefined
-  const laziness = new Map<string, Promise<boolean>>()
-  const isLazy = (name: string) => {
-    let lazy = laziness.get(name)
-    if (!lazy) {
-      probeFork ??= fork()
-      lazy = probeFork.then((forked) => probe(forked, name).length > 0)
-      laziness.set(name, lazy)
+  const loaded = new Map<string, Promise<Array<string>>>()
+  /** The owned modules completing `name`'s trigger evaluates (in a fork). */
+  const loadedBy = (name: string) => {
+    let modules = loaded.get(name)
+    if (!modules) {
+      modules = fork().then((forked) => complete(forked, name))
+      loaded.set(name, modules)
     }
-    return lazy
+    return modules
+  }
+  const isLazy = async (name: string) => (await loadedBy(name)).length > 0
+
+  /** Whether `other` evaluates nothing new once `name` has loaded. */
+  const availableAfter = async (name: string, other: string) => {
+    const forked = await fork()
+    await complete(forked, name)
+    return (await complete(forked, other)).length === 0
   }
 
   return {
     isLazy,
-    async loadedBy(name) {
-      const forked = await fork()
-      const before = forked.graph.evaluated.length
-      await load(forked, name)
-      return forked.graph.evaluated.slice(before)
-    },
+    loadedBy: async (name) => [...(await loadedBy(name))],
     async groups(names) {
       const lazy: Array<string> = []
       for (const name of names) {
@@ -95,16 +103,13 @@ export function createLazyProbe(
       }
       const groups = new Map<string, Array<string>>()
       for (const name of lazy) {
-        const forked = await fork()
-        await load(forked, name)
-        const evaluated = new Set(forked.graph.evaluated)
-        const group = lazy
-          .filter(
-            (other) =>
-              other === name ||
-              probe(forked, other).every((id) => evaluated.has(id)),
-          )
-          .sort()
+        const group = [name]
+        for (const other of lazy) {
+          if (other !== name && (await availableAfter(name, other))) {
+            group.push(other)
+          }
+        }
+        group.sort()
         groups.set(group.join('+'), group)
       }
       return [...groups.values()].sort((a, b) =>

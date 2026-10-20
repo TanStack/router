@@ -3,7 +3,8 @@
  * bundler: what `where()` reports and `run()` runs in each environment,
  * that the builds go through Start's plugin (server fn RPCs and the
  * generated resolver, the route generator and code splitter), and that
- * warnings and errors reach the test.
+ * warnings and errors reach the test. Also the client runs of the Rsbuild
+ * dev-server harness (rsbuild-dev-server.ts).
  */
 import { describe, expect, test } from 'vitest'
 import { BuildError } from '@tanstack/compiler-test-utils/build-harness'
@@ -14,6 +15,12 @@ import {
   requestsOfPrelude,
   startBundlers,
 } from '../build-harness'
+import {
+  clientPage,
+  runInClient,
+  runRsbuildClient,
+  startRsbuildDevServer,
+} from '../rsbuild-dev-server'
 
 const timeout = 60_000
 
@@ -257,3 +264,54 @@ export const load = (name: string) => import(name)
     timeout,
   )
 })
+
+// The Rsbuild dev-server harness (rsbuild-dev-server.ts) runs the client
+// code in the dev server's page in a real browser, not in Node: browser-only
+// APIs exist, the page is the dev server's, and what the code logs and
+// throws while the page loads reaches the test.
+test(
+  'Rsbuild dev: client runs happen in the dev server’s page in a real browser',
+  async () => {
+    const server = await startRsbuildDevServer({
+      ...clientPage,
+      files: {
+        'src/entry.ts': `;(globalThis as Record<string, unknown>).fromEntry = [
+  typeof document.createElement('div').append,
+  typeof customElements.define,
+  location.origin,
+]
+console.log('MARK_LOG')
+console.warn('MARK_WARN', new Error('MARK_ERROR'))
+`,
+      },
+    })
+    expect(
+      await runInClient(
+        server,
+        `return [...globalThis.fromEntry, document.readyState]`,
+      ),
+    ).toEqual({
+      result: ['function', 'function', new URL(server.url!).origin, 'complete'],
+    })
+    expect(await runInClient(server, `throw new Error('MARK_THROWN')`)).toEqual(
+      { error: 'MARK_THROWN' },
+    )
+    expect(await runRsbuildClient(server, { levels: true })).toEqual([
+      'log: MARK_LOG',
+      'warn: MARK_WARN MARK_ERROR',
+    ])
+    expect(await runRsbuildClient(server)).toEqual([
+      'MARK_LOG',
+      'MARK_WARN MARK_ERROR',
+    ])
+
+    await server.edit({
+      'src/entry.ts': `throw new Error('MARK_LOAD_ERROR')\n`,
+    })
+    await expect(runRsbuildClient(server)).rejects.toThrow('MARK_LOAD_ERROR')
+    await expect(runInClient(server, 'return 1')).rejects.toThrow(
+      'MARK_LOAD_ERROR',
+    )
+  },
+  timeout,
+)

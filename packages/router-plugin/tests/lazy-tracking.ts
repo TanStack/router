@@ -17,8 +17,9 @@
  *   `eager`: the route module and every module its load requested (compiled
  *   modules, stubs, packages), `eagerModules` the code of the compiled ones;
  *   `requested`: everything requested so far.
- * - `isLazy(option)`: loading the option requests a compiled module that has
- *   not loaded with the route module.
+ * - `isLazy(option)`: loading the option (its public trigger, awaited to
+ *   completion) evaluates a compiled module that has not loaded with the
+ *   route module.
  * - `load(option)`: the option as the router uses it, once its module loaded
  *   (components: after `preload()`; a loader loads its module when called).
  * - `render(option, props)`: the option's component rendered by the real
@@ -30,9 +31,9 @@
  *   hooks such as `Route.useLoaderData()` run as in an app.
  * - `loadedBy(option)`: the code of each compiled module loading the option
  *   evaluates (one or more: facades and support modules are allowed).
- * - `groups()`: which lazy options load together. Activating a lazy option
- *   makes every option of its group available (its loading requests nothing
- *   new); options of another group stay unrequested.
+ * - `groups()`: which lazy options load together. Once a lazy option
+ *   loaded, loading every other option of its group evaluates nothing new;
+ *   each pair is observed in a fork of its own.
  * - `importBindings(names)`: the live bindings another module of the app
  *   imports from the route file (`@tanstack/compiler-test-utils/importers`),
  *   to compare with what the route uses and to call (SPEC G9).
@@ -43,10 +44,11 @@
  * The observers that load something (`isLazy`, `loadedBy`, `groups`) run in
  * forks of the graph (`@tanstack/compiler-test-utils/lazy-probe`: fresh
  * module instances, same stubs), so the route a test inspects loads nothing
- * it did not ask for. The route module's top-level code runs again in each
- * fork with the same stubs: assert what stubs record before using these.
- * `isLazy('loader')` calls the loader once in a fork, without arguments: a
- * loader that is not lazy runs there.
+ * it did not ask for. The route module's top-level code, and the modules an
+ * option loads, run again in each fork with the same stubs: assert what
+ * stubs record before using these. A component loads through its
+ * `preload()`, a loader by a call without arguments (awaited; what it throws
+ * is ignored): a loader that is not lazy runs there.
 
  */
 import path from 'node:path'
@@ -297,8 +299,8 @@ async function linkRoute(
   }
   const eager = [graph.id, ...moduleGraph.requested]
 
-  // Laziness by the modules starting to load an option requests, in forks
-  // of the graph (only compiled modules count, not stubs or packages).
+  // Laziness by the modules loading an option evaluates, in forks of the
+  // graph (only compiled modules count, not stubs or packages).
   const probe = createLazyProbe(
     moduleGraph,
     graph.id,

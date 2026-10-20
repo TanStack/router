@@ -156,6 +156,12 @@ export interface RsbuildDevServer {
    * harness's `logs`. Read through `diagnosticsOf`/`expectDiagnostic`.
    */
   diagnostics: Array<Diagnostic>
+  /**
+   * Stops the dev server (and its watcher) but keeps the app directory, e.g.
+   * to edit the app afterwards and observe that nothing reacts; `close()`
+   * removes the directory later.
+   */
+  stop: () => Promise<void>
   /** Stops the dev server and removes the app directory. */
   close: () => Promise<void>
 }
@@ -417,12 +423,22 @@ export async function createRsbuildDevServer(
     throw error
   }
 
+  let stopped: Promise<void> | undefined
+  const stop = () => {
+    stopped ??= (async () => {
+      try {
+        await server.close()
+      } finally {
+        await http?.close()
+      }
+    })()
+    return stopped
+  }
   let closed: Promise<void> | undefined
   const close = () => {
     closed ??= (async () => {
       try {
-        await server.close()
-        await http?.close()
+        await stop()
       } finally {
         await app.dispose()
       }
@@ -566,6 +582,7 @@ export async function createRsbuildDevServer(
     errors,
     warnings,
     diagnostics,
+    stop,
     close,
   }
 }

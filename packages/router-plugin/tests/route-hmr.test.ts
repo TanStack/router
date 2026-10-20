@@ -303,9 +303,13 @@ export const Route = createFileRoute('/')({ loader: () => 'x' })`
   // An edit of a `.ts` route file, the environment name, `plugin.hmr.style`
   // alone, plugin options given as a function and a `tsr.config.json`
   // target, on a real page: integration/route-hmr-browser-plugin.test.ts
-  // and known-bugs-route-hmr.test.ts. Here: the environment
+  // (the environment the option names gets working route HMR) and
+  // known-bugs-route-hmr.test.ts. Here: the environment
   // `plugin.vite.environmentName` excludes gets no route HMR code in any
-  // module of the served route.
+  // module the environment serves from its route module: the router's
+  // packages and any support module the compiler imports included. Left
+  // out: Vite's own client, and packages the environment externalizes
+  // (bare ids: Node loads the installed package itself).
   test(
     'serves no route HMR code to an environment plugin.vite.environmentName does not name',
     async () => {
@@ -321,7 +325,7 @@ export const Route = createFileRoute('/')({ loader: () => 'x' })`
       // may delegate HMR to an imported helper instead of inlining an API.
       const served = await server.load('/routes/index.tsx', {
         environment: 'ssr',
-        skip: /^\/@fs\/|\/node_modules\/|^\/@vite\b/,
+        skip: /^\/@(?:vite|react-refresh)\b|^[^./]/,
       })
       for (const [url, code] of Object.entries(served)) {
         expect(hasRouteHmr(code), url).toBe(false)

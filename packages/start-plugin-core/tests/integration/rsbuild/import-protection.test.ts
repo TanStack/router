@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import {
   diagnosticsOf,
   findDiagnostics,
+  isRelevantLocation,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart } from '../../build-harness'
 import {
@@ -19,6 +20,7 @@ import {
   violationReports,
 } from '../../importProtection/start-apps'
 import {
+  clientPage,
   runRsbuildClient,
   startRsbuildDevServer,
   startRsbuildStartDevServer,
@@ -418,6 +420,10 @@ console.log(secret(), other)
 // Source: round 4 mutation testing (rsbuild host); V1 ip S06 (a rule on the
 // rewritten specifier `ui-lib/button` is no rule the user writes).
 describe('Rsbuild build: an import source.transformImport rewrites', () => {
+  /** The app's entry: it uses `button` of `ui-lib`. */
+  const uiLibEntry = `import { button } from 'ui-lib'
+export const read = () => button()
+`
   /**
    * Builds an entry using `button` of `ui-lib` with Start's
    * `importProtection` options. `ui-lib/button.js` starts with `head` (e.g.
@@ -440,9 +446,7 @@ describe('Rsbuild build: an import source.transformImport rewrites', () => {
         }),
         [`${dir}/index.js`]: `export { button } from './button.js'\n`,
         [`${dir}/button.js`]: `${head}export const button = () => 'MARK_SECRET'\n`,
-        'src/entry.ts': `import { button } from 'ui-lib'
-export const read = () => button()
-`,
+        'src/entry.ts': uiLibEntry,
       },
       entry: 'src/entry.ts',
       start: { importProtection },
@@ -461,8 +465,23 @@ export const read = () => button()
     })
   }
 
-  /** The import of `ui-lib` (any column of line 1) or the use `button()`. */
-  const atImportOrUse = expect.stringMatching(/^src\/entry\.ts:(?:1:\d+|2:27)$/)
+  /**
+   * The import of `ui-lib` (any column of any of its lines) or the use
+   * `button()` (`isRelevantLocation`), or the entry without coordinates:
+   * a tool rewrote the import, so its location may be unavailable (SPEC
+   * §5.14; V1R ip I01).
+   */
+  const atImportOrUse = expect.toSatisfy(
+    (importer: string) =>
+      isRelevantLocation(importer, {
+        file: 'src/entry.ts',
+        source: uiLibEntry,
+        uses: [{ line: 2, column: 27 }],
+        imports: ['ui-lib'],
+        unlocated: true,
+      }),
+    'the import of ui-lib or the use button() in src/entry.ts',
+  )
 
   let fileRuleError: Promise<Error> | undefined
   /** The build error when the file rule denies `ui-lib/button.js`, built once. */
@@ -515,6 +534,7 @@ export const read = () => button()
     expectMarkerViolation(report!, {
       marker: 'src/ui-lib/button.js:1',
       use: 'src/entry.ts:2:27',
+      source: uiLibEntry,
     })
   }, 60_000)
 
@@ -576,6 +596,7 @@ test(
   'Rsbuild dev: the client mock of each denied import reports its own use in the browser console',
   async () => {
     const server = await startRsbuildDevServer({
+      ...clientPage,
       compileTimeout,
       importProtection: { client: { specifiers: ['db-lib'] } },
       files: {
@@ -640,6 +661,7 @@ describe('Rsbuild dev: mockAccess', () => {
     '$mockAccess: the use of a mocked import is reported as $reports',
     async ({ mockAccess, reports }) => {
       const server = await startRsbuildDevServer({
+        ...clientPage,
         compileTimeout,
         importProtection: {
           mockAccess,

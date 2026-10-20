@@ -34,6 +34,7 @@ import {
 } from '../../importProtection/mock-helpers'
 import { rejection, violationReports } from '../../importProtection/start-apps'
 import {
+  clientPage,
   runInClient,
   startRsbuildStartDevServer,
 } from '../../rsbuild-dev-server'
@@ -254,6 +255,7 @@ describe('rsbuild: tsconfig paths', () => {
     'dev: the importer gets a safe mock, and the denied file never runs',
     async () => {
       const server = await startRsbuildStartDevServer({
+        ...clientPage,
         compileTimeout,
         files: aliasApp,
       })

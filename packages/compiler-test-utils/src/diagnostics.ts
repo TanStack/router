@@ -26,6 +26,18 @@
  *   diagnostics or any value `diagnosticsOf` reads. `mismatches(diagnostic,
  *   expectation)` gives the reasons for one diagnostic.
  * - `mentionsFile(text, file, options?)`: whether a text names a file.
+ * - `diagnosticProse(text, source?)`: what a diagnostic says in its own
+ *   words: its text without the code-frame lines and caret markers that
+ *   quote the source (full, cropped or highlighted), nor the lines quoting
+ *   `source` whole or cropped.
+ * - Reported locations (SPEC J6.5, §5.7, §5.14): `parseLocation(text)`,
+ *   `importLines(file, source, specifier)`, `locationMismatch`,
+ *   `isRelevantLocation`, `expectRelevantLocation` (a `file:line:column` a
+ *   tool reports is one of the relevant places: a genuine use, any line of
+ *   the original import of the specifier, another accepted place such as a
+ *   marker origin, or no coordinates only where the caller allows it) and
+ *   `expectFrameAt` (a code frame highlights the reported line and points
+ *   at the reported column of the original source; its context is free).
  * - `diagnosticPosition(source, needle)`: the 1-based line and column of
  *   the first occurrence of `needle` in `source`.
  * - `identifiesEnvRestriction(error, env)`, `envRestrictionError(env)` (an
@@ -45,11 +57,18 @@
  *   known); a bracketed `(line:column)` or `[line:column]`; `line <line>` (and
  *   `column <column>`); or a structured `loc`. Tools disagree on 0- or
  *   1-based columns, so both are accepted.
- * - Names: each API or option name as a whole identifier, anywhere.
+ * - Names: each API or option name as a whole identifier, anywhere (only in
+ *   `diagnosticProse` with `prose`). A name given as a list is satisfied by
+ *   any one of its alternatives.
+ * - Causes (`causes`): one of the given words or patterns, in the
+ *   diagnostic's prose (never in quoted source): what the caller accepts as
+ *   the semantic reason, so an internal crash that only names the API, or
+ *   quotes it in a frame, does not pass.
  */
 import path from 'node:path'
 import { realpathSync } from 'node:fs'
 import { formatWithOptions, inspect, stripVTControlCharacters } from 'node:util'
+import { parseSync } from 'vite'
 import { expect, vi } from 'vitest'
 
 export type Severity = 'error' | 'warning' | 'info'
@@ -89,8 +108,24 @@ export interface DiagnosticExpectation {
    * column of `position`.
    */
   source?: string
-  /** API or option names the diagnostic must name (whole identifiers). */
-  names?: Array<string>
+  /**
+   * API or option names the diagnostic must name (whole identifiers). A
+   * list of alternatives is satisfied by any one of them (e.g. the API
+   * called, or the method of it that is wrong).
+   */
+  names?: Array<string | Array<string>>
+  /**
+   * The semantic cause the diagnostic must explain: at least one of these
+   * words (case-insensitive, at word starts: `captur` matches `captured`)
+   * or patterns must appear in its prose (`diagnosticProse`), not in quoted
+   * source. The caller lists every wording it accepts for that cause.
+   */
+  causes?: Array<string | RegExp>
+  /**
+   * Match `names` in the diagnostic's prose only (`diagnosticProse`, with
+   * `source`): a name the code frame quotes does not count.
+   */
+  prose?: boolean
   /** How many diagnostics must match (default: at least one). */
   times?: number
 }
@@ -308,12 +343,41 @@ export function mismatches(
       `does not report line ${line}${column === undefined ? '' : `, column ${column}`}`,
     )
   }
+  const prose =
+    expected.prose || expected.causes !== undefined
+      ? diagnosticProse(diagnostic.text, expected.source)
+      : diagnostic.text
   for (const name of expected.names ?? []) {
-    if (!namesIdentifier(diagnostic.text, name)) {
-      reasons.push(`does not name \`${name}\``)
+    const alternatives = ([] as Array<string>).concat(name)
+    if (
+      !alternatives.some((alternative) =>
+        namesIdentifier(expected.prose ? prose : diagnostic.text, alternative),
+      )
+    ) {
+      reasons.push(
+        `does not name ${alternatives.map((alternative) => `\`${alternative}\``).join(' or ')}${expected.prose ? ' in its own words' : ''}`,
+      )
     }
   }
+  if (
+    expected.causes !== undefined &&
+    !expected.causes.some((cause) => explains(prose, cause))
+  ) {
+    reasons.push(
+      `does not explain the cause (${expected.causes.map(String).join(', ')}) in its own words`,
+    )
+  }
   return reasons
+}
+
+/** Whether `prose` gives `cause` (a word start, case-insensitive, or a pattern). */
+function explains(prose: string, cause: string | RegExp) {
+  return typeof cause === 'string'
+    ? new RegExp(
+        `(?<![\\w$])${cause.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`,
+        'i',
+      ).test(prose)
+    : cause.test(prose)
 }
 
 /**
@@ -661,6 +725,326 @@ function frameReportsPosition(
     }
   }
   return false
+}
+
+// ---------------------------------------------------------------------------
+// Prose
+
+/**
+ * A numbered code-frame line, whole, cropped or highlighted, in any tool's
+ * layout: an optional marker, the line number and a separator (`|`, `│`,
+ * `┃` or `:`).
+ */
+const numberedFrameLine = /^\s*[>❯›]?\s*\d+\s*[|│┃:]/
+/**
+ * A marker line under a frame line: an optional gutter, then `^` or `~`
+ * markers (a tool may print the message after them, which is prose).
+ */
+const markerLine = /^\s*>?\s*\d*\s*[|│┃]?\s*[\^~][\^~\s-]*/
+/** Where a tool cropped a quoted line. */
+const cropMarker = /…|\.{3}/
+
+/**
+ * What a diagnostic says in its own words: `text` without the code-frame
+ * lines that quote the source (numbered lines, whole, cropped or
+ * highlighted, in any layout, also inside another tool's box), without the
+ * caret markers under them (what a tool prints after its markers is kept),
+ * and without the lines quoting `source` (when known) whole, or cropped
+ * (each fragment around a `…`/`...` crop marker quoting one line). A name
+ * or a cause found in the prose is the diagnostic's, not the user's code.
+ */
+export function diagnosticProse(text: string, source?: string) {
+  const sourceLines = (source ?? '')
+    .split(lineTerminator)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+  const quotesSource = (line: string) => {
+    const trimmed = line.trim()
+    if (trimmed.length === 0) {
+      return false
+    }
+    if (sourceLines.includes(trimmed)) {
+      return true
+    }
+    if (!cropMarker.test(trimmed)) {
+      return false
+    }
+    const fragments = trimmed
+      .split(cropMarker)
+      .map((fragment) => fragment.trim())
+      .filter((fragment) => fragment.length > 0)
+    return (
+      fragments.length > 0 &&
+      sourceLines.some((sourceLine) =>
+        fragments.every((fragment) => sourceLine.includes(fragment)),
+      )
+    )
+  }
+  const prose: Array<string> = []
+  for (const raw of stripVTControlCharacters(text).split(/\r?\n/)) {
+    // A frame quoted in another tool's box (`│`) is still a frame.
+    const line = raw.replace(/^\s*[│┃]/, '')
+    if (numberedFrameLine.test(line)) {
+      continue
+    }
+    const marker = markerLine.exec(line)
+    if (marker) {
+      const after = line.slice(marker[0].length)
+      if (after.trim()) {
+        prose.push(after)
+      }
+      continue
+    }
+    if (quotesSource(line)) {
+      continue
+    }
+    prose.push(raw)
+  }
+  return prose.join('\n')
+}
+
+// ---------------------------------------------------------------------------
+// Reported locations (SPEC J6.5, §5.7, §5.14)
+
+/** A place a tool reports: a file, with a 1-based line and column if any. */
+export interface ReportedLocation {
+  file: string
+  line?: number
+  column?: number
+}
+
+/** `file:line:column`, `file:line` or a bare `file`, as a tool prints it. */
+export function parseLocation(text: string): ReportedLocation {
+  const match = /^(.*?)(?::(\d+)(?::(\d+))?)?$/.exec(text.trim())!
+  return {
+    file: match[1]!,
+    ...(match[2] !== undefined && { line: Number(match[2]) }),
+    ...(match[3] !== undefined && { column: Number(match[3]) }),
+  }
+}
+
+/** Oxc's language of a file, by its extension. */
+function languageOf(file: string) {
+  const extension = /\.([cm]?[jt]sx?)(?:[?#].*)?$/.exec(file)?.[1] ?? 'tsx'
+  if (/^[cm]?ts$/.test(extension)) {
+    return 'ts' as const
+  }
+  return extension === 'tsx' ? ('tsx' as const) : ('jsx' as const)
+}
+
+/**
+ * The 1-based lines of `source` (the module `file`) that a statement or
+ * expression importing `specifier` spans: static imports, re-exports
+ * (`export … from`) and dynamic `import()`s of exactly that specifier.
+ */
+export function importLines(
+  file: string,
+  source: string,
+  specifier: string,
+): Array<number> {
+  const { module } = parseSync(`module.${languageOf(file)}`, source, {
+    sourceType: 'module',
+  })
+  const spans: Array<{ start: number; end: number }> = []
+  for (const statement of module.staticImports) {
+    if (statement.moduleRequest.value === specifier) {
+      spans.push(statement)
+    }
+  }
+  for (const statement of module.staticExports) {
+    if (
+      statement.entries.some(
+        (entry) => entry.moduleRequest?.value === specifier,
+      )
+    ) {
+      spans.push(statement)
+    }
+  }
+  for (const dynamicImport of module.dynamicImports) {
+    const request = source.slice(
+      dynamicImport.moduleRequest.start,
+      dynamicImport.moduleRequest.end,
+    )
+    if (/^["'`](.*)["'`]$/.exec(request)?.[1] === specifier) {
+      spans.push(dynamicImport)
+    }
+  }
+  const lines = new Set<number>()
+  for (const { start, end } of spans) {
+    const first = diagnosticPosition(source, start).line
+    const last = diagnosticPosition(source, Math.max(start, end - 1)).line
+    for (let line = first; line <= last; line++) {
+      lines.add(line)
+    }
+  }
+  return [...lines].sort((a, b) => a - b)
+}
+
+/** The places a reported location may relevantly be (`locationMismatch`). */
+export interface RelevantLocation {
+  /** The module the report is about (e.g. an importer). */
+  file: string
+  /** Its original source. */
+  source: string
+  /** The project root `file` is relative to (see `mentionsFile`). */
+  root?: string
+  /**
+   * The genuine uses the report may point at: 1-based line, and column
+   * when one is required (any column of the line otherwise).
+   */
+  uses?: Array<{ line: number; column?: number }>
+  /**
+   * Specifiers whose original import may be reported instead of a use:
+   * any line, any column, of a statement importing exactly one of them
+   * (`importLines`).
+   */
+  imports?: Array<string>
+  /**
+   * Other places the caller accepts (e.g. the origin of a marker in the
+   * marked module): a file, on one of `lines` (any column), or anywhere in
+   * it without `lines`; with `unlocated`, also the file without
+   * coordinates.
+   */
+  others?: Array<{ file: string; lines?: Array<number>; unlocated?: boolean }>
+  /**
+   * Accept the file without coordinates: only where the location is
+   * unavailable (SPEC §5.14, e.g. an import a tool rewrote), never as a
+   * blanket escape for source-derived reports.
+   */
+  unlocated?: boolean
+}
+
+/**
+ * Why `reported` (`file:line:column`, `file:line` or `file`) is not a
+ * relevant place for `expected`, or `undefined` when it is: one of the
+ * genuine `uses`, any line of an original import of one of `imports`, one
+ * of `others`, or (opt-in) the file without coordinates. The file may be
+ * spelled any way that names it (§5.7); the line and column are of the
+ * original source, never of compiled code.
+ */
+export function locationMismatch(
+  reported: string,
+  expected: RelevantLocation,
+): string | undefined {
+  const location = parseLocation(reported)
+  const names = (file: string) =>
+    location.file.length > 0 &&
+    mentionsFile(location.file, file, { root: expected.root })
+  for (const other of expected.others ?? []) {
+    if (
+      names(other.file) &&
+      (location.line === undefined
+        ? other.unlocated === true
+        : other.lines === undefined || other.lines.includes(location.line))
+    ) {
+      return undefined
+    }
+  }
+  if (!names(expected.file)) {
+    return `${reported} does not name ${expected.file}`
+  }
+  if (location.line === undefined) {
+    return expected.unlocated
+      ? undefined
+      : `${reported} has no line (no coordinates are allowed only where the location is unavailable)`
+  }
+  const atUse = (expected.uses ?? []).some(
+    (use) =>
+      use.line === location.line &&
+      (use.column === undefined || use.column === location.column),
+  )
+  if (atUse) {
+    return undefined
+  }
+  const importAt = (expected.imports ?? []).some((specifier) =>
+    importLines(expected.file, expected.source, specifier).includes(
+      location.line!,
+    ),
+  )
+  if (importAt) {
+    return undefined
+  }
+  const accepted = [
+    ...(expected.uses ?? []).map(
+      (use) =>
+        `the use at ${use.line}${use.column === undefined ? '' : `:${use.column}`}`,
+    ),
+    ...(expected.imports ?? []).map(
+      (specifier) =>
+        `the import of ${specifier} (line ${importLines(expected.file, expected.source, specifier).join(', ') || 'none'})`,
+    ),
+    ...(expected.others ?? []).map(
+      (other) =>
+        `${other.file}${other.lines ? `:${other.lines.join('/')}` : ''}`,
+    ),
+  ]
+  return `${reported} is not ${accepted.join(', or ') || 'an accepted place'}`
+}
+
+/** Whether `reported` is a relevant place for `expected` (`locationMismatch`). */
+export function isRelevantLocation(
+  reported: string,
+  expected: RelevantLocation,
+): boolean {
+  return locationMismatch(reported, expected) === undefined
+}
+
+/** Asserts that `reported` is a relevant place for `expected` (`locationMismatch`). */
+export function expectRelevantLocation(
+  reported: string,
+  expected: RelevantLocation,
+) {
+  const mismatch = locationMismatch(reported, expected)
+  if (mismatch !== undefined) {
+    expect.fail(mismatch)
+  }
+}
+
+/** A code frame as read from a report: what it highlights and shows. */
+export interface ShownFrame {
+  /** The 1-based line the frame highlights. */
+  line: number
+  /** The highlighted line's code from the column its caret points at. */
+  pointsAt: string
+  /** The code of each line the frame shows, when known. */
+  shows?: Array<string>
+}
+
+/**
+ * Asserts that `frame` shows `source` at `at` (the reported location): it
+ * highlights `at.line`, shows that line of the original source, and its
+ * caret points at `at.column` (what it shows from the caret on is the
+ * source from that column, possibly cropped). How many lines of context
+ * it shows, and their layout, are free (SPEC §5.7).
+ */
+export function expectFrameAt(
+  frame: ShownFrame | undefined,
+  source: string,
+  at: { line: number; column?: number },
+) {
+  expect(frame, 'a code frame').toBeDefined()
+  const sourceLine = source.split(lineTerminator)[at.line - 1] ?? ''
+  expect(frame!.line, 'the highlighted line').toBe(at.line)
+  if (frame!.shows !== undefined) {
+    expect(
+      frame!.shows.some(
+        (shown) =>
+          shown.trimEnd() === sourceLine.trimEnd() ||
+          (cropMarker.test(shown) &&
+            shown
+              .split(cropMarker)
+              .every((fragment) => sourceLine.includes(fragment.trim()))),
+      ),
+      `the frame shows line ${at.line} (${JSON.stringify(sourceLine)}): ${JSON.stringify(frame!.shows)}`,
+    ).toBe(true)
+  }
+  if (at.column !== undefined) {
+    const shown = frame!.pointsAt.split(cropMarker)[0]!.trimEnd()
+    expect(
+      shown.length > 0 && sourceLine.slice(at.column - 1).startsWith(shown),
+      `the caret points at column ${at.column} (${JSON.stringify(sourceLine.slice(at.column - 1))}), the frame shows ${JSON.stringify(frame!.pointsAt)}`,
+    ).toBe(true)
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -393,6 +393,19 @@ describe('dev server harness', () => {
     },
     timeout,
   )
+
+  test(
+    'stop() closes the server and keeps the app until close()',
+    async () => {
+      const server = await createDevServer({ files })
+      await server.stop()
+      expect(existsSync(path.join(server.root, 'leaf.ts'))).toBe(true)
+      await expect(server.transform('/leaf.ts')).rejects.toThrow()
+      await server.close()
+      expect(existsSync(server.root)).toBe(false)
+    },
+    timeout,
+  )
 })
 
 describe('evaluateServed', () => {

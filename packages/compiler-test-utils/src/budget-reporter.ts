@@ -9,8 +9,9 @@
  *   time since the Vitest process started, a lower bound of edit to result
  *   (Nx adds its own startup), against the edit-to-result hard limit.
  *
- * The tier is the Vitest project: `integration` is the slow tier, any other
- * project the fast tier. Runs at another worker count (CI, one worker) are
+ * The tier is the Vitest project: `integration` is the slow tier, the
+ * implementation projects (`implementation*`, outside the corpus) have no
+ * budget, any other project is the fast tier. Runs at another worker count (CI, one worker) are
  * reported only.
  *
  * By default the reporter never fails a run: wall-clock times move with the
@@ -66,8 +67,12 @@ function moduleSeconds(testModule: TestModule) {
   )
 }
 
-const tierOf = (projectName: string): Tier =>
-  projectName === 'integration' ? 'integration' : 'unit'
+const tierOf = (projectName: string): Tier | undefined =>
+  projectName === 'integration'
+    ? 'integration'
+    : projectName.startsWith('implementation')
+      ? undefined
+      : 'unit'
 
 export default class BudgetReporter implements Reporter {
   private vitest!: Vitest
@@ -81,7 +86,10 @@ export default class BudgetReporter implements Reporter {
     this.start = performance.now()
   }
 
-  async onTestRunEnd(testModules: ReadonlyArray<TestModule>) {
+  async onTestRunEnd(allModules: ReadonlyArray<TestModule>) {
+    const testModules = allModules.filter(
+      (m) => tierOf(m.project.name) !== undefined,
+    )
     const seconds = (performance.now() - this.start) / 1000
     const name = packageName(this.vitest.config.root)
     const packageBudgets = budgets.packages[name]
@@ -100,7 +108,7 @@ export default class BudgetReporter implements Reporter {
       }
     }
 
-    const tiers = new Set(testModules.map((m) => tierOf(m.project.name)))
+    const tiers = new Set(testModules.map((m) => tierOf(m.project.name)!))
     const at = `at ${workers} worker${workers === 1 ? '' : 's'}`
     if (tiers.size > 1) {
       lines.push(

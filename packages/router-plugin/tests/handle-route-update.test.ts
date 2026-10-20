@@ -8,6 +8,14 @@
  * (`window.__TSR_ROUTER__`). No hot context, disposal or module selection
  * is recreated here: what the bundler and the framework do with an edit is
  * tested on a real page (integration/route-hmr-browser*.test.ts).
+ *
+ * Owned-runtime controls (hmr H12), part of the corpus: they decide what
+ * applying an edited route does to a live router (J3.1: stale loader data,
+ * removed options, the lazy options the tree gave the route; red-astra/08
+ * is caught only here). They do not show that a real host delivers the
+ * edit: real pages decide that. They reach the emitted update function
+ * through `getHandleRouteUpdateCode`; a rewrite that emits its update code
+ * another way adapts that one entry point, not the outcomes.
  */
 
 import {

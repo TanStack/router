@@ -9,9 +9,11 @@
  *
  * What production output must not carry is looked for by the names of the
  * bundlers' HMR APIs only (a partial check: how route HMR is written is the
- * compiler's business). Start offers no way to turn route HMR off, so no
- * build without it can be compared with these; the dev controls show the
- * route file does get route HMR where it belongs.
+ * compiler's business). Start offers no way to turn route HMR off (its
+ * client code splitting forces `addHmr: true`), so no build without it can
+ * be compared with these, as router-plugin's production-bundle.ts does with
+ * `addedCode`; the dev controls show the route file does get route HMR
+ * where it belongs.
  */
 import react from '@vitejs/plugin-react'
 import { describe, expect, onTestFinished, test } from 'vitest'
@@ -121,9 +123,13 @@ createRoot(document.getElementById('app')!).render(<RouterProvider router={getRo
       await page.waitForText('MARK_PAGE MARK_LOADER_V2', { selector: '#app' })
       expect(page.loads()).toBe(1)
       expect(page.errors).toEqual([])
+      // Every module the server environment serves from the route module,
+      // the router's packages and any support module the compiler imports
+      // included; left out: Vite's own client, and packages the environment
+      // externalizes (bare ids: Node loads the installed package itself).
       const ssr = await server.load('/src/routes/index.tsx', {
         environment: 'ssr',
-        skip: /^\/@fs\/|\/node_modules\/|^\/@vite\b/,
+        skip: /^\/@(?:vite|react-refresh)\b|^[^./]/,
       })
       expect(hmrApisIn(Object.values(ssr))).toEqual([])
     },

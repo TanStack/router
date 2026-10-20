@@ -12,8 +12,8 @@
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import {
-  diagnosticsOf,
   expectDiagnostic,
+  findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   createFileRouteCall,
@@ -23,7 +23,12 @@ import {
   rootRoute,
   route,
 } from './generator-dev-app'
-import type { Bundler, GeneratorDevApp, LiveRoute } from './generator-dev-app'
+import type {
+  Bundler,
+  DiagnosticsMark,
+  GeneratorDevApp,
+  LiveRoute,
+} from './generator-dev-app'
 
 const timeout = 30_000
 
@@ -35,41 +40,6 @@ const live = (id: string, fullPath = id): LiveRoute => ({
   fullPath,
   parent: '__root__',
 })
-
-/** Where the app's reports are now, to read later ones (`reportsSince`). */
-function reportMark(app: GeneratorDevApp) {
-  return { logs: app.logs().length, errors: app.errors().length }
-}
-
-/**
- * What the app reported since `mark` (`reportMark`): what its plugins
- * logged and the dev server's errors, as diagnostics.
- */
-function reportsSince(
-  app: GeneratorDevApp,
-  mark: ReturnType<typeof reportMark>,
-) {
-  return [
-    ...diagnosticsOf(app.logs().slice(mark.logs), 'warning'),
-    ...diagnosticsOf(app.errors().slice(mark.errors), 'error'),
-  ]
-}
-
-/**
- * Asserts that `file` (relative to the app root) was reported since `mark`,
- * on any channel: logged by the generator or a dev server error (SPEC
- * §5.7: the wording and channel are free, the file is named).
- */
-function expectReported(
-  app: GeneratorDevApp,
-  file: string,
-  mark: ReturnType<typeof reportMark>,
-) {
-  expectDiagnostic(reportsSince(app, mark), {
-    file: path.join(app.root, file),
-    root: app.root,
-  })
-}
 
 const index = { 'routes/index.tsx': route('/', 'MARK_INDEX') }
 const atIndex = { pathname: '/', shows: 'MARK_INDEX' }
@@ -87,6 +57,37 @@ async function expectHotUpdate(
   await app.edit(files)
   await app.page.waitForText(expected, { selector: '#app' })
   expect(app.page.loads(), 'page loads').toBe(loads)
+}
+
+/**
+ * Asserts that the app reported `file` (an error or a warning naming it)
+ * since `since`, through any real channel (`app.diagnostics`: the
+ * generator's console output, the dev server's logger or compile
+ * diagnostics; SPEC G5, §5.7; V1R gen G13).
+ */
+function expectReported(
+  app: GeneratorDevApp,
+  since: DiagnosticsMark,
+  file: string,
+) {
+  expectDiagnostic(app.diagnostics(since), {
+    severity: ['error', 'warning'],
+    file,
+    root: app.root,
+  })
+}
+
+/**
+ * Asserts that the app reported no error since `since` (e.g. since the
+ * edit fixing a broken file: a report of the broken file before it is
+ * allowed, through any channel; V1R gen G13).
+ */
+function expectNoErrorsSince(app: GeneratorDevApp, since: DiagnosticsMark) {
+  expect(
+    findDiagnostics(app.diagnostics(since), { severity: 'error' }).map(
+      ({ text }) => text,
+    ),
+  ).toEqual([])
 }
 
 export function describeRouteFileUpkeep(
@@ -391,13 +392,11 @@ export function describeCreatedRoutes(
             'routes/posts.tsx': route('/posts', 'MARK_POSTS'),
           },
         })
-        const broken = reportMark(app)
+        const breaking = app.mark()
         await app.edit({ 'routes/posts.tsx': 'export const Route = (' })
-        expectReported(app, 'routes/posts.tsx', broken)
+        expectReported(app, breaking, 'routes/posts.tsx')
 
-        // (the report of the broken file may stay among the dev server's
-        // errors; nothing after the fix is reported)
-        const fixed = reportMark(app)
+        const fixing = app.mark()
         await app.edit({ 'routes/posts.tsx': route('/posts', 'MARK_FIXED') })
         await expectLoadedOnNavigation(app, atIndex, '/posts', 'MARK_FIXED')
         expect(await app.routes()).toEqual([
@@ -405,7 +404,7 @@ export function describeCreatedRoutes(
           live('/'),
           live('/posts'),
         ])
-        expect(app.errors().slice(fixed.errors)).toEqual([])
+        expectNoErrorsSince(app, fixing)
       },
       timeout,
     )
@@ -443,15 +442,15 @@ export async function expectCreatedBrokenRouteFileFixed(
   settleTimeout?: number,
 ) {
   const app = await generatorDevApp({ bundler, files: index })
-  const broken = reportMark(app)
+  const creating = app.mark()
   await app.edit({ 'routes/posts.tsx': initial })
-  expectReported(app, 'routes/posts.tsx', broken)
+  expectReported(app, creating, 'routes/posts.tsx')
   await app.visit('/', 'MARK_INDEX')
   expect(await app.routes()).toEqual([rootLive, live('/')])
 
-  // (the report of the broken file may stay among the dev server's errors;
-  // nothing after the fix is reported)
-  const fixed = reportMark(app)
+  // What the fix brings: only the reports from here on count (a report of
+  // the broken file, through any channel, is the one above).
+  const fixing = app.mark()
   await app.write({ 'routes/posts.tsx': route('/wrong', 'MARK_POSTS') })
   await app.settle({ timeout: settleTimeout })
   await expectRouteFile(
@@ -462,7 +461,7 @@ export async function expectCreatedBrokenRouteFileFixed(
   )
   await expectLoadedOnNavigation(app, atIndex, '/posts', 'MARK_POSTS')
   expect(await app.routes()).toEqual([rootLive, live('/'), live('/posts')])
-  expect(app.errors().slice(fixed.errors)).toEqual([])
+  expectNoErrorsSince(app, fixing)
 }
 
 /**

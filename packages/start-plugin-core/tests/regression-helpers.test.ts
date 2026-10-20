@@ -14,6 +14,7 @@ import {
   callReportedServerFns,
   callServerFnThroughCallers,
   callerRpcId,
+  captureCauses,
   compileAll,
   compileFor,
   compileHydrate,
@@ -25,7 +26,9 @@ import {
   getChunkIds,
   importSources,
   loadChunk,
+  missingHandler,
   moduleLoads,
+  placementCauses,
   renderClient,
   renderServer,
 } from './regression-helpers'
@@ -250,6 +253,108 @@ export const fn = createServerFn().handler(...args)`
       (caught: unknown) => caught,
     )
     expectCompileError(error, { source, at: '...args', names: ['handler'] })
+  })
+
+  // A cropped frame line keeps source tokens that are not the error's own
+  // words (V1R start N13): in any frame layout, they do not name the API.
+  test.each([
+    '> 3 | … createServerFn().handler(...args)',
+    '3: export const fn = createServerFn()…',
+    '│ ❯ 3 │ … = createServerFn().handler(…',
+    '… const fn = createServerFn().handler(…',
+  ])(
+    'expectCompileError rejects an internal error whose only API name is in a cropped frame (%s)',
+    (frame) => {
+      expect(() =>
+        expectCompileError(
+          new Error(`Internal compiler error\n${frame}\n    |  ^`),
+          { source, at: undefined, names: ['createServerFn'] },
+        ),
+      ).toThrow('createServerFn')
+    },
+  )
+
+  const misplaced = `import { createServerFn } from '@tanstack/react-start'
+export function make(id: string) {
+  return createServerFn().handler(() => db.inner(id))
+}`
+  const misplacedAt = (message: string) =>
+    new Error(`${message}
+> 3 |   return createServerFn().handler(() => db.inner(id))
+    |                                         ^`)
+
+  // A positioned internal crash names the API (and the captured name) but
+  // explains neither the placement nor the capture (V1R start S07).
+  test.each([
+    ['createServerFn internal error', placementCauses],
+    ['createServerFn id internal error', captureCauses],
+    [
+      "createServerFn: Cannot read properties of undefined (reading 'id')",
+      captureCauses,
+    ],
+  ])('a rejection must explain its cause: %s does not', (message, causes) => {
+    expect(() =>
+      expectCompileError(misplacedAt(message), {
+        source: misplaced,
+        at: 'db.inner(id)',
+        names: ['createServerFn', 'id'],
+        causes,
+      }),
+    ).toThrow('cause')
+  })
+
+  test.each([
+    [
+      'createServerFn must be assigned to a top-level variable',
+      placementCauses,
+    ],
+    [
+      'Unsupported createServerFn placement: move it to module scope',
+      placementCauses,
+    ],
+    ['createServerFn handler captures `id` from make', captureCauses],
+    [
+      'createServerFn: the handler reads id, a local of the enclosing function',
+      captureCauses,
+    ],
+  ])('a clear rejection in any words passes: %s', (message, causes) => {
+    expectCompileError(misplacedAt(message), {
+      source: misplaced,
+      at: 'db.inner(id)',
+      names:
+        causes === captureCauses
+          ? ['createServerFn', 'id']
+          : ['createServerFn'],
+      causes,
+    })
+  })
+
+  // A server fn without its handler function (V1R start N04): naming the
+  // `handler` call or the API, with the missing function, both pass; a
+  // crash reading `handler` of nothing does not.
+  test('a missing handler may be reported by the API or its handler call, never by a crash', () => {
+    const missing = `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler()`
+    const at = (message: string) =>
+      new Error(`${message}
+> 2 | export const fn = createServerFn().handler()
+    |                   ^`)
+    for (const message of [
+      'handler() expects a function',
+      'createServerFn must be called with a "handler" property!',
+    ]) {
+      expectCompileError(at(message), {
+        source: missing,
+        at: 'createServerFn()',
+        ...missingHandler,
+      })
+    }
+    expect(() =>
+      expectCompileError(
+        at("Cannot read properties of undefined (reading 'handler')"),
+        { source: missing, at: 'createServerFn()', ...missingHandler },
+      ),
+    ).toThrow()
   })
 })
 
@@ -518,6 +623,33 @@ export const value: T | string = text`)
       await moduleLoads(`import { type T } from './types'
 export const value: T | undefined = undefined`),
     ).toContain('./types')
+  })
+
+  // Start N14: a dynamic import the bundler deletes never loads; one in code
+  // it keeps may. Rolldown decides, not a rule of the test.
+  test('lists the target of a dynamic import in code a production bundler keeps, not in code it deletes', async () => {
+    const loads = await moduleLoads(`function unused() {
+  return import('./dead.server')
+}
+function onlyUnusedCalls() {
+  return import('./dead-too.server')
+}
+function alsoUnused() {
+  return onlyUnusedCalls()
+}
+function called() {
+  return import('./called.server')
+}
+export const later = () => called()
+const atStart = () => import('./at-start.server')
+atStart()
+export const value = 1`)
+    expect({
+      dead: loads.filter((load) => load.startsWith('./dead')),
+      live: ['./called.server', './at-start.server'].filter((load) =>
+        loads.includes(load),
+      ),
+    }).toEqual({ dead: [], live: ['./called.server', './at-start.server'] })
   })
 
   test('lists a forbidden module whose top-level code throws', async () => {

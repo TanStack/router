@@ -1,0 +1,40 @@
+/**
+ * Not part of the compiler test corpus (implementation control: SPEC J1.5,
+ * G4 and §5.5 free how the tree is printed; the corpus compares what the
+ * tree means, `../determinism.test.ts`).
+ *
+ * The current generator writes a byte-identical route tree whatever order
+ * the filesystem lists the route files in and whatever the working
+ * directory. A rewrite may legitimately fail this.
+ */
+import { describe, expect, test } from 'vitest'
+import {
+  appRoot,
+  generateFresh,
+  inDirectory,
+  listingOrders,
+  withListingOrder,
+  workingDirectories,
+} from '../determinism-app'
+
+describe('the current generator writes the same route tree bytes', () => {
+  test('whatever order the filesystem lists the route files in', async () => {
+    const root = await appRoot()
+    const trees: Array<string> = []
+    for (const order of listingOrders) {
+      trees.push(
+        (await withListingOrder(order, () => generateFresh(root))).tree,
+      )
+    }
+    expect(trees).toEqual(trees.map(() => trees[0]))
+  })
+
+  test('whatever the working directory', async () => {
+    const root = await appRoot()
+    const trees: Array<string> = []
+    for (const directory of workingDirectories(root)) {
+      trees.push((await inDirectory(directory, () => generateFresh(root))).tree)
+    }
+    expect(trees).toEqual(trees.map(() => trees[0]))
+  })
+})

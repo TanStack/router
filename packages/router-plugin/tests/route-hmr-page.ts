@@ -30,12 +30,13 @@ import { pluginVueJsx } from '@rsbuild/plugin-vue-jsx'
 import react from '@vitejs/plugin-react'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import solid from 'vite-plugin-solid'
-import { onTestFinished } from 'vitest'
+import { expect, onTestFinished } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import {
   captureConsole,
   diagnosticsOf,
+  findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import { getConfig } from '../src/core/config'
@@ -192,6 +193,12 @@ export interface RouteHmrPageOptions {
    * () => null`), in the default `main.tsx`.
    */
   routerOptions?: string
+  /**
+   * More plugins of the dev server, after the router and framework plugins
+   * (e.g. a test plugin emitting a diagnostic through the bundler's own
+   * channel): Vite plugins with Vite, Rsbuild plugins with Rsbuild.
+   */
+  plugins?: { vite?: Array<PluginOption>; rsbuild?: Array<RsbuildPlugin> }
   /** Text the app shows once it rendered. */
   ready: string | RegExp
   /** How long the app may take to show `ready` (default 15 s). */
@@ -542,6 +549,7 @@ async function viteServer(
       ...(options.frameworkPlugin === false
         ? []
         : [frameworkVitePlugins[target]()]),
+      ...(options.plugins?.vite ?? []),
     ],
   })
   // Vite's own handler of an invalidation runs first and sends its answer
@@ -603,6 +611,7 @@ async function rsbuildServer(
           })
         },
       } satisfies RsbuildPlugin,
+      ...(options.plugins?.rsbuild ?? []),
     ],
   })
   let updates = 0
@@ -648,4 +657,35 @@ export const countMounts = (name: string) =>
 /** The mounts `countMounts` counted in the page, by name. */
 export function mountsOf(app: RouteHmrPage): Promise<Record<string, number>> {
   return app.evaluate('window.__mounts ?? {}')
+}
+
+/**
+ * Edits a route the compiler may handle, or leave to a reported fallback
+ * (an unsupported but user-fixable shape: R-09, D11), and asserts what
+ * both outcomes share: the page shows the edit (`expected`: new loader data
+ * and component, also after a reload) without errors. A diagnostic never
+ * stands in for that. Without a warning naming `file` through a real
+ * channel (`app.warnings()`: the dev server's logger, its console, the
+ * page), the edit must also apply in place (no reload); with one (the
+ * fallback, e.g. the route left unsplit), a reload is allowed (V1R hmr H08,
+ * split S11). Returns which outcome it was.
+ */
+export async function expectEditShownOrReportedFallback(
+  app: RouteHmrPage,
+  edited: Record<string, string | null>,
+  expected: string | RegExp,
+  file: string,
+): Promise<'in place' | 'reported fallback'> {
+  const result = await app.edit(edited, expected)
+  expect(result.errors, 'errors of the page during the edit').toEqual([])
+  const reported =
+    findDiagnostics(app.warnings(), { file, root: app.root }).length > 0
+  if (!reported) {
+    expect(
+      result.reloaded,
+      `without a warning naming ${file}, the edit applies in place`,
+    ).toBe(false)
+    return 'in place'
+  }
+  return 'reported fallback'
 }
