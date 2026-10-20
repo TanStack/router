@@ -5,10 +5,11 @@
  * in a real Vite dev server (middleware mode, no HTTP server, no watcher),
  * which resolves its config, orders the plugins, applies their hook filters
  * and awaits their hooks. A route file is written to a temporary project;
- * the host loads it, its emitted modules (`?tsr-split=…`, `?tsr-shared=…`)
- * resolve through Vite's resolver and load the way Vite loads them. A
- * production compile (`command: 'build'`) is a real Vite production build
- * of the route file instead. Re-exported by `regression-helpers.ts`.
+ * the host loads it, and every module its output imports resolves through
+ * the host's resolver and loads the way the host loads it, whatever its id
+ * (a query on the route file, a virtual id, another module). A production
+ * compile (`command: 'build'`) is a real Vite production build of the route
+ * file instead. Re-exported by `regression-helpers.ts`.
  *
  * What the tests observe is each module as it leaves the router plugin: a
  * plugin right after the router plugin records it (the router transform
@@ -16,11 +17,27 @@
  * transform, import analysis) is the bundler's business; `loadRoute`
  * evaluates the recorded modules with the real framework's transform.
  *
+ * The modules of a route (`RouteGraph`) are the route module and every
+ * module its output reaches that the plugins emit, told by what the host's
+ * hooks did, never by the shape of an id (SPEC §5.3): a module a plugin of
+ * the host loads (a virtual module), or one the router plugin's transform
+ * changes (e.g. the route file under a query). A real file the plugins
+ * leave as it is (another module of the app) and a package are the app's,
+ * not the route's.
+ *
  * A module id the host cannot produce on this machine (another project
  * root, a Windows path; `moduleId`) is transformed under that id by the
- * same host, and the modules it emits are read from the route file.
+ * same host. The host cannot resolve files under it, so an import of that
+ * id with a query names a module of the route (the one place the host
+ * relies on an id's shape); a virtual module still resolves through the
+ * host.
+ *
+ * Warnings and errors the host logs (a plugin's `this.warn`, Vite's own)
+ * reach `console.warn` and `console.error`, where the shared diagnostic
+ * capture (`captureConsole`) reads them with what the plugins log
+ * themselves; the host's informational output stays quiet.
  */
-import { mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -31,7 +48,7 @@ import { afterAll, expect, onTestFinished } from 'vitest'
 import { createRouterPluginContext } from '../src/context'
 import { tanStackRouterCodeSplitter, tanstackRouter } from '../src/vite'
 import type { ModuleErrorOptions } from '@tanstack/compiler-test-utils/validate-module'
-import type { Plugin, PluginOption, ViteDevServer } from 'vite'
+import type { Logger, Plugin, PluginOption, ViteDevServer } from 'vite'
 import type { Config, DeletableNodes } from '../src/core/config'
 
 /** A framework the router plugin targets. */
@@ -92,7 +109,7 @@ function normalizePath(file: string) {
  * file (the hook registers while the test file imports this module).
  */
 let projectsDir: string | undefined
-function projectRoot() {
+export function projectRoot() {
   projectsDir ??= mkdtempSync(path.join(tmpdir(), 'tsr-plugin-host-'))
   return projectsDir
 }
@@ -141,6 +158,119 @@ export function boundaryRecorder(recorded: Map<string, string>, stop = false) {
     },
   } satisfies Plugin
 }
+
+/**
+ * Records the code of each module as it enters the router plugin (placed
+ * right before it): with the boundary's record, whether the router plugin's
+ * transform changed a module.
+ */
+function inputRecorder(recorded: Map<string, string>) {
+  return {
+    name: 'test:router-transform-input',
+    enforce: 'pre',
+    transform(code, id) {
+      recorded.set(id, code)
+      return null
+    },
+  } satisfies Plugin
+}
+
+/**
+ * What the host's hooks did with each module of a compile, for telling the
+ * route's modules from the app's (see the module comment): the code each
+ * module entered and left the router plugin with, and the ids a plugin of
+ * the host loaded (Vite's own plugins, which serve assets, are not
+ * observed).
+ */
+interface HookEvidence {
+  inputs: Map<string, string>
+  outputs: Map<string, string>
+  loaded: Set<string>
+}
+
+function createEvidence(): HookEvidence {
+  return { inputs: new Map(), outputs: new Map(), loaded: new Set() }
+}
+
+/** Whether the plugins emitted the module `id` (see `HookEvidence`). */
+function emittedByPlugins(evidence: HookEvidence, id: string) {
+  return (
+    evidence.loaded.has(id) ||
+    (evidence.outputs.has(id) &&
+      evidence.outputs.get(id) !== evidence.inputs.get(id))
+  )
+}
+
+/**
+ * The plugins of `option` (nested arrays and promises resolved, as Vite
+ * resolves them), each `load` hook recording the ids it loads in `loaded`.
+ */
+async function observeLoads(
+  option: PluginOption,
+  loaded: Set<string>,
+): Promise<Array<Plugin>> {
+  const resolved = await option
+  if (!resolved) {
+    return []
+  }
+  if (Array.isArray(resolved)) {
+    const plugins: Array<Plugin> = []
+    for (const item of resolved) {
+      plugins.push(...(await observeLoads(item, loaded)))
+    }
+    return plugins
+  }
+  const plugin = resolved as Plugin
+  const hook = plugin.load
+  if (!hook) {
+    return [plugin]
+  }
+  const handler = typeof hook === 'function' ? hook : hook.handler
+  const observed: typeof handler = async function (this: unknown, id, ...rest) {
+    const result = await handler.call(this as never, id, ...rest)
+    if (result != null) {
+      loaded.add(id)
+    }
+    return result
+  }
+  return [
+    {
+      ...plugin,
+      load: typeof hook === 'function' ? observed : { ...hook, handler: observed },
+    },
+  ]
+}
+
+/**
+ * The host's logger: warnings and errors go to `console.warn` and
+ * `console.error` (where `captureConsole` reads them), the rest is quiet.
+ */
+function hostLogger(): Logger {
+  const warned = new Set<string>()
+  return {
+    hasWarned: false,
+    info() {},
+    warn(message) {
+      this.hasWarned = true
+      console.warn(message)
+    },
+    warnOnce(message) {
+      if (!warned.has(message)) {
+        warned.add(message)
+        this.warn(message)
+      }
+    },
+    error(message) {
+      console.error(message)
+    },
+    clearScreen() {},
+    hasErrorLogged: () => false,
+  }
+}
+
+/** The logging options every host of this module runs with. */
+const hostLogging = () =>
+  ({ logLevel: 'warn', customLogger: hostLogger() }) as const
 
 /**
  * Runs a module through the host's transform pipeline up to the router
@@ -204,14 +334,17 @@ export function importRequests(code: string, id = 'module.tsx') {
   return requests
 }
 
-/** A specifier the host's resolver may resolve to a module of the route. */
+/**
+ * A specifier naming a file by its path (relative, absolute, a Windows
+ * path); any other one names a package, or a module a plugin provides.
+ */
 const isPathSpecifier = (specifier: string) =>
   /^(?:\.{1,2}\/|\/|[A-Za-z]:[\\/])/.test(specifier)
 
 /**
  * What the host emits for a route file: the route module and every module
- * its output imports, statically or dynamically, that resolves to the route
- * file (with a query).
+ * its output imports, statically or dynamically, that the plugins emit (see
+ * the module comment), transitively.
  */
 export type RouteGraph = {
   /** Id of the route module. */
@@ -224,10 +357,18 @@ export type RouteGraph = {
   resolve: (specifier: string, importer: string) => string | undefined
 }
 
-/** Follows the imports of `entry` to every module of the route. */
+/** A module the host compiled: its code as it left the router plugin. */
+type Compiled = { output: string; emitted: boolean }
+
+/**
+ * Follows the imports of the route module `id` to every module of the
+ * route: `resolveImport` gives the module an import resolves to in the host
+ * (undefined: a package, or nothing), `compiled` its output and whether the
+ * plugins emitted it (else it is a module of the app, not followed).
+ */
 async function collectGraph(
   id: string,
-  emitted: (moduleId: string) => Promise<string>,
+  compiled: (moduleId: string) => Promise<Compiled>,
   resolveImport: (
     specifier: string,
     importer: string,
@@ -236,18 +377,23 @@ async function collectGraph(
   const modules = new Map<string, string>()
   const importKinds = new Map<string, 'static' | 'dynamic'>()
   const resolutions = new Map<string, string>()
+  modules.set(id, (await compiled(id)).output)
   const queue = [id]
   while (queue.length > 0) {
     const moduleId = queue.shift()!
-    if (modules.has(moduleId)) {
-      continue
-    }
-    const output = await emitted(moduleId)
-    modules.set(moduleId, output)
+    const output = modules.get(moduleId)!
     for (const { specifier, dynamic } of importRequests(output, moduleId)) {
       const target = await resolveImport(specifier, moduleId)
       if (target === undefined) {
         continue
+      }
+      if (!modules.has(target)) {
+        const module = await compiled(target)
+        if (!module.emitted) {
+          continue
+        }
+        modules.set(target, module.output)
+        queue.push(target)
       }
       resolutions.set(`${moduleId}\0${specifier}`, target)
       if (!dynamic) {
@@ -255,7 +401,6 @@ async function collectGraph(
       } else if (!importKinds.has(target)) {
         importKinds.set(target, 'dynamic')
       }
-      queue.push(target)
     }
   }
   return {
@@ -296,6 +441,28 @@ function codeSplitterOptions(options: CompileOptions): Partial<Config> {
   }
 }
 
+/**
+ * The plugins of a host: the test's, and the router plugin between the
+ * recorders of what enters and leaves it; every `load` hook is observed.
+ */
+async function hostPlugins(
+  options: CompileOptions,
+  context: ReturnType<typeof createRouterPluginContext>,
+  evidence: HookEvidence,
+  stop: boolean,
+): Promise<Array<Plugin>> {
+  return observeLoads(
+    [
+      ...(options.plugins?.before ?? []),
+      inputRecorder(evidence.inputs),
+      tanStackRouterCodeSplitter(codeSplitterOptions(options), context),
+      boundaryRecorder(evidence.outputs, stop),
+      ...(options.plugins?.after ?? []),
+    ],
+    evidence.loaded,
+  )
+}
+
 /** A route file a host compiles: where it is and the route id it has. */
 export type RouteFileOptions = Pick<
   CompileOptions,
@@ -328,7 +495,7 @@ export function createRouterHost(options: CompileOptions = {}): RouterHost {
     }
   }
   const context = createRouterPluginContext()
-  const recorded = new Map<string, string>()
+  const evidence = createEvidence()
   /** Route files known by their id (not files of the project), by id. */
   const elsewhere = new Map<string, string>()
   let server: Promise<ViteDevServer> | undefined
@@ -336,7 +503,7 @@ export function createRouterHost(options: CompileOptions = {}): RouterHost {
     createServer({
       configFile: false,
       root: projectRoot(),
-      logLevel: 'silent',
+      ...hostLogging(),
       appType: 'custom',
       server: {
         middlewareMode: true,
@@ -345,12 +512,7 @@ export function createRouterHost(options: CompileOptions = {}): RouterHost {
         preTransformRequests: false,
       },
       optimizeDeps: { noDiscovery: true, include: [] },
-      plugins: [
-        ...(options.plugins?.before ?? []),
-        tanStackRouterCodeSplitter(codeSplitterOptions(options), context),
-        boundaryRecorder(recorded, true),
-        ...(options.plugins?.after ?? []),
-      ],
+      plugins: await hostPlugins(options, context, evidence, true),
     })
   registerCleanup(async () => {
     // A host whose config the plugins rejected never started.
@@ -361,9 +523,12 @@ export function createRouterHost(options: CompileOptions = {}): RouterHost {
     return (await server).environments.client.pluginContainer
   }
 
-  const emit = async (moduleId: string) => {
+  /** Compiles a module up to the router transform boundary. */
+  const compileModule = async (moduleId: string): Promise<Compiled> => {
     const plugins = await container()
     const other = elsewhere.get(withoutQuery(moduleId))
+    evidence.loaded.delete(moduleId)
+    evidence.inputs.delete(moduleId)
     const loaded = other === undefined ? await plugins.load(moduleId) : null
     // Vite reads a module no plugin loads from the file its id names.
     const source =
@@ -372,30 +537,42 @@ export function createRouterHost(options: CompileOptions = {}): RouterHost {
         : typeof loaded === 'string'
           ? loaded
           : loaded.code
-    return transformToBoundary(await server!, recorded, source, moduleId)
+    const output = await transformToBoundary(
+      await server!,
+      evidence.outputs,
+      source,
+      moduleId,
+    )
+    return { output, emitted: emittedByPlugins(evidence, moduleId) }
   }
 
   const resolveImport =
     (id: string) => async (specifier: string, importer: string) => {
-      if (!isPathSpecifier(specifier)) {
-        return undefined
-      }
-      if (elsewhere.has(id)) {
-        // A module id from another machine: its modules are named by its id.
+      if (elsewhere.has(id) && isPathSpecifier(specifier)) {
+        // A module id from another machine: no file resolves under it, its
+        // modules are named by its id (see the module comment).
         return normalizePath(withoutQuery(specifier)) === normalizePath(id)
           ? `${id}${specifier.slice(withoutQuery(specifier).length)}`
           : undefined
       }
-      const resolved = (
-        await (await container()).resolveId(specifier, importer)
-      )?.id
-      return resolved !== undefined && withoutQuery(resolved) === id
-        ? resolved
-        : undefined
+      const plugins = await container()
+      const resolved = await plugins.resolveId(specifier, importer)
+      if (!resolved || resolved.external) {
+        return undefined
+      }
+      // A package's file is the app's; a module a plugin serves is followed
+      // whatever its specifier.
+      if (
+        !isPathSpecifier(specifier) &&
+        (await plugins.load(resolved.id)) == null
+      ) {
+        return undefined
+      }
+      return resolved.id
     }
 
   return {
-    emit,
+    emit: async (moduleId) => (await compileModule(moduleId)).output,
     compile: async (code, file = {}) => {
       const {
         filename = options.filename ?? 'route.tsx',
@@ -414,7 +591,20 @@ export function createRouterHost(options: CompileOptions = {}): RouterHost {
         elsewhere.set(id, code)
       }
       context.routesByFile.set(normalizePath(id), { routeId })
-      return collectGraph(id, emit, resolveImport(id))
+      // Each module once per compile: what this version of the file emits.
+      const compiled = new Map<string, Promise<Compiled>>()
+      return collectGraph(
+        id,
+        (moduleId) => {
+          let module = compiled.get(moduleId)
+          if (!module) {
+            module = compileModule(moduleId)
+            compiled.set(moduleId, module)
+          }
+          return module
+        },
+        resolveImport(id),
+      )
     },
   }
 }
@@ -432,8 +622,10 @@ export function createRouteGraphCompiler(
 
 /**
  * Compiles the route file in a real Vite production build: Vite's bundler
- * (Rolldown) resolves, loads and follows its emitted modules; other imports
- * stay external.
+ * (Rolldown) resolves, loads and follows the modules of the app the route
+ * file reaches (a module a plugin serves, a file of the project); packages
+ * and imports nothing resolves stay external. The route's modules are then
+ * told from the app's by what the hooks did (see the module comment).
  */
 async function buildRouteGraph(
   code: string,
@@ -450,57 +642,56 @@ async function buildRouteGraph(
   const id = normalizePath(file)
   const context = createRouterPluginContext()
   context.routesByFile.set(id, { routeId })
-  const recorded = new Map<string, string>()
-  const resolutions = new Map<string, string | undefined>()
+  const evidence = createEvidence()
+  /** What each import of a module (`importer\0specifier`) resolved to. */
+  const resolutions = new Map<string, string>()
   await build({
     configFile: false,
     root,
-    logLevel: 'silent',
-    build: {
-      write: false,
-      minify: false,
-      rollupOptions: {
-        input: file,
-        external: (source, importer) =>
-          importer !== undefined && resolutions.get(source) === undefined,
-      },
-    },
+    ...hostLogging(),
+    build: { write: false, minify: false, rollupOptions: { input: file } },
     plugins: [
-      ...(options.plugins?.before ?? []),
-      tanStackRouterCodeSplitter(codeSplitterOptions(options), context),
-      boundaryRecorder(recorded, false),
       {
-        // Resolves the imports of the route's modules ahead of the bundler's
-        // external check, with the build's own resolver.
+        // Resolves each import with the build's own resolver, records it,
+        // and leaves packages and what nothing resolves external.
         name: 'test:route-module-resolutions',
         enforce: 'pre',
-        async transform(output, moduleId) {
-          for (const { specifier } of importRequests(output, moduleId)) {
-            if (isPathSpecifier(specifier)) {
-              const resolved = (await this.resolve(specifier, moduleId))?.id
-              resolutions.set(
-                specifier,
-                resolved !== undefined && withoutQuery(resolved) === id
-                  ? resolved
-                  : undefined,
-              )
-            }
+        async resolveId(specifier, importer) {
+          if (importer === undefined) {
+            return null
           }
-          return null
+          const resolved = await this.resolve(specifier, importer, {
+            skipSelf: true,
+          })
+          if (
+            !resolved ||
+            resolved.external ||
+            // A package's file (a module a plugin serves names no file)
+            (!isPathSpecifier(specifier) &&
+              existsSync(withoutQuery(resolved.id)))
+          ) {
+            return { id: specifier, external: true }
+          }
+          resolutions.set(`${importer}\0${specifier}`, resolved.id)
+          return resolved
         },
       } satisfies Plugin,
-      ...(options.plugins?.after ?? []),
+      ...(await hostPlugins(options, context, evidence, false)),
     ],
   })
   return collectGraph(
     id,
     (moduleId) => {
-      const output = recorded.get(moduleId)
+      const output = evidence.outputs.get(moduleId)
       return output === undefined
         ? Promise.reject(new Error(`the build did not load ${moduleId}`))
-        : Promise.resolve(output)
+        : Promise.resolve({
+            output,
+            emitted: emittedByPlugins(evidence, moduleId),
+          })
     },
-    (specifier) => Promise.resolve(resolutions.get(specifier)),
+    (specifier, importer) =>
+      Promise.resolve(resolutions.get(`${importer}\0${specifier}`)),
   )
 }
 
@@ -683,7 +874,7 @@ export const Route = createFileRoute('/')({})
   const server = await createServer({
     configFile: false,
     root,
-    logLevel: 'silent',
+    ...hostLogging(),
     appType: 'custom',
     server: {
       middlewareMode: true,
