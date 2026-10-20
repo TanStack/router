@@ -142,14 +142,22 @@ function Page() {
 
   // Bug: on Rsbuild, an edit of an unsplit Solid route file (the route HMR
   // plugin alone) shows its new loader data but keeps rendering the old
-  // component: the route module runs again with Solid Refresh, the route
-  // HMR code gives the live route the new options, but the rendered
-  // component is not replaced nor refreshed. Split Solid routes on Rsbuild,
-  // and unsplit Solid routes in Vite, apply in place
-  // (route-hmr-browser-frameworks.test.ts).
+  // component. The webpack-style route HMR code runs before Solid Refresh's
+  // `$$refresh(…, module.hot, registry)` in the route module and assigns
+  // `hot.data ??= {}` on the first run; Solid Refresh takes a truthy
+  // `hot.data` for the data of a previous run, so its dispose handler saves
+  // that object's (missing) registry instead of its own, and the next update
+  // has no registry to patch the live component with. Split Solid routes on
+  // Rsbuild (no route HMR code in the component's module), a plain Solid
+  // component module on Rsbuild, and unsplit Solid routes in Vite apply in
+  // place (route-hmr-browser-frameworks.test.ts).
   // Impact: edits of a Solid route's component do not show until a reload
   // in an Rsbuild app without automatic code splitting.
-  // Source: NEW (W2-g, found by the Rsbuild Solid page).
+  // Source: router-plugin src/core/hmr/webpack-adapter.ts:71 (`const hotData
+  // = hot.data ??= {}`); solid-refresh 0.6.3 `$$refreshStandard` (reads
+  // `hot.data` as the previous run). Found by W2-g; cause located by
+  // W6-scope (a probe reading `hot.data` without assigning it passes this
+  // pin, reverted).
   test.fails(
     'rsbuild: an edit of an unsplit Solid route shows its new component in place',
     async ({ expect, onTestFinished }: TestContext) => {

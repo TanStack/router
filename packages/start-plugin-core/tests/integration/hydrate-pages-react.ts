@@ -406,24 +406,6 @@ export function Page() {
 }`,
   updates: updatesPage(''),
   updatesReference: updatesPage(' split={false}'),
-  // A boundary hydrating when visible, next to a component whose effect
-  // takes a while (as any effect does on a slow device).
-  visibleNextToSlowEffect: `import { useEffect } from 'react'
-${head}function Chart() {
-  useEffect(() => {
-    const until = performance.now() + 40
-    while (performance.now() < until) {}
-  }, [])
-  return <p>chart</p>
-}
-export function Page() {
-  return (
-    <>
-      <Hydrate when={visible()} split={false} fallback={<p>fallback-marker</p>}><Counter label="child" /></Hydrate>
-      <Chart />
-    </>
-  )
-}`,
 })
 
 /**
@@ -785,8 +767,10 @@ export function reactPageSuite(bundler: StartBundler) {
     // is passed; the server strips it, hydrate-boundary-forms.test.ts). The
     // boundary (`visible()`) mounts below the fold, and the page scrolls to
     // it once the page is idle (`requestIdleCallback`: React has no work
-    // left): a boundary that becomes visible while React renders it is the
-    // pin below.
+    // left). A `visible()` boundary that becomes visible while React renders
+    // it hits a bug of the runtime boundary (react-start-client's
+    // `HydrationBoundary`, `src/hydration/visible.tsx`), outside the
+    // compilers, so these rows do not race it.
     describe.concurrent(
       'the fallback of a boundary mounted on the client',
       () => {
@@ -851,50 +835,6 @@ export function reactPageSuite(bundler: StartBundler) {
           expect(page.html).toContain('child:1')
           expect(page.consoleErrors).toEqual([])
         })
-
-        // Bug: a `visible()` boundary mounted on the client calls `use()` on
-        // its gate's promise only while the gate is closed, then a hook
-        // (`HydrationBoundary` in react-start-client's
-        // `src/hydration/visible.tsx`). When the gate opens between a
-        // concurrent render that suspended there and React's replay of that
-        // render, the replay skips `use()` and React throws ("Update hook
-        // called on initial render"; React's own diagnosis of a `use()` that
-        // suspended and is not called again: react.dev/errors/607). Here the
-        // passive effects of the commit that shows the fallback take 40 ms,
-        // so the IntersectionObserver reports the boundary visible while
-        // React prerenders its children. React recovers by rendering the
-        // whole root again synchronously and reports "There was an error
-        // during concurrent rendering…" to the page as an uncaught error.
-        // Source: W5-flakes (the V4 round-3 baseline flake of "a direct
-        // fallback with split={false} shows, then the children", at load
-        // 48–51; reproduced with Chromium's CPU throttling).
-        // Impact: on a slow device, or next to any slow effect, a `visible()`
-        // boundary that mounts after the app started (e.g. after a client-side
-        // navigation) reports an error to the page (window `error` event,
-        // error monitoring) and re-renders the whole root synchronously.
-        test.fails(
-          'a visible boundary next to a slow effect shows its fallback, then the children, without an error',
-          async () => {
-            const page = await app.hydrate('visibleNextToSlowEffect', {
-              mode: 'mount',
-              // The page mounts the boundary again in new roots (as a
-              // navigation would): whether the IntersectionObserver reports
-              // in time depends on when the browser renders a frame.
-              script: `for (let mount = 0; mount < 8; mount++) {
-    const container = document.createElement('div')
-    document.body.append(container)
-    entry.createRoot(container).render(element())
-    await waitFor(() => container.querySelector('button'))
-  }
-  await waitFor(async () => { root.querySelector('button')?.click(); await settled(50); return root.querySelector('button')?.textContent === 'child:1' })`,
-            })
-            expect(
-              page.snapshots.some((html) => html.includes('fallback-marker')),
-            ).toBe(true)
-            expect(page.html).toContain('child:1')
-            expect(page.consoleErrors).toEqual([])
-          },
-        )
       },
     )
 
