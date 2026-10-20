@@ -15,7 +15,7 @@ export interface Placement {
   nested?: boolean
   /**
    * The server fn initializes a variable declarator below the module top
-   * level (in a function body or a switch case).
+   * level (in a function body, a switch case or a block).
    */
   declarator?: boolean
 }
@@ -82,6 +82,18 @@ export function make() {
 }`,
     read: (module) => module.make(),
     nested: true,
+  },
+  {
+    // SPEC J4.6 ("other positions (…, block) likewise work or error
+    // clearly"); user ruling 2026-10-20 restoring corpus inputs U082/U086.
+    name: 'a block at the module top level',
+    code: `export const registry: Array<unknown> = []
+{
+  const inner = createServerFn().handler(async () => db.inner())
+  registry.push(inner)
+}`,
+    read: (module) => module.registry[0],
+    declarator: true,
   },
   {
     name: 'an object property',

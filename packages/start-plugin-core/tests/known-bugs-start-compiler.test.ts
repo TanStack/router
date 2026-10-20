@@ -10,6 +10,8 @@ import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   callFromClient,
   callReportedServerFns,
+  callServerFnThroughCallers,
+  callShapeCauses,
   callerRpcId,
   captureCauses,
   clientOnlyError,
@@ -37,6 +39,7 @@ import {
   placements,
 } from './createServerFn/placements'
 import type { ModuleStub, Output, OutputResult } from './regression-helpers'
+import type { ServerFn } from '../src/start-compiler/types'
 import type { PlacementHead } from './createServerFn/placements'
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
@@ -666,6 +669,189 @@ export const read = () => getRead()()`,
     },
   )
 
+  /** Server-only module stub of the call shapes: `x` and `secret` mark a call. */
+  const callShapeStubs = () => {
+    const calls: Array<string> = []
+    return {
+      calls,
+      stubs: {
+        [serverOnly]: {
+          db: {
+            x: () => {
+              calls.push('x')
+              return 'x'
+            },
+            secret: () => {
+              calls.push('secret')
+              return 'secret'
+            },
+          },
+        },
+      },
+    }
+  }
+
+  // Bug: chain methods are only recognised when called through a static
+  // member (`.handler(...)`, `.server(...)`), and a call whose result is
+  // member-called (`createServerOnlyFn(...).bind(null)`) is taken for the
+  // inner call of a method chain and never visited as a candidate itself:
+  // each module below is left untransformed on every output.
+  // Source: corpus inputs U078-U081 (#8630 pins), restored by user ruling
+  // 2026-10-20; SPEC J4.5 ("unrecognised shapes must not silently leak"),
+  // J4.12. tsc against the real declarations accepts every row.
+  // Impact: the server implementation and its server-only import ship to the
+  // client, where the server fn, isomorphic fn or server-only fn runs it in
+  // the browser.
+  // Fix-agnostic: each output either rejects the module with a clear compile
+  // error at the call (naming the API and a cause), or follows its contract:
+  // the client neither loads the server-only module nor holds the server
+  // code, and each output runs what the runtime contract promises.
+  test.fails.each<{
+    name: string
+    code: string
+    /** The text of the call a rejection points at. */
+    at: string
+    /** What a rejection names (a list: any one of its alternatives). */
+    names: Array<string | Array<string>>
+    /** Server code the client must not hold. */
+    body: string
+    outputs: Array<Output>
+    /** Checks the evaluated client output. */
+    client: (module: Record<string, any>) => void | Promise<void>
+    /** Checks the evaluated SSR output (`calls`: the server-only calls). */
+    ssr?: (
+      module: Record<string, any>,
+      calls: Array<string>,
+    ) => void | Promise<void>
+    /** Checks the server fn through its callers when every output compiled. */
+    serverFn?: (module: Record<string, any>) => unknown
+  }>([
+    {
+      name: 'a server fn handler called through a computed member',
+      code: `${head}import { db } from './db.server'
+export const fn = createServerFn()['handler'](async () => db.x())`,
+      at: `createServerFn()['handler']`,
+      names: [['createServerFn', 'handler']],
+      body: 'db.x()',
+      outputs: ['client', 'ssr', 'provider'],
+      client: (module) =>
+        expect(callerRpcId(module.fn), 'client RPC id').toEqual(
+          expect.any(String),
+        ),
+      serverFn: (module) => module.fn,
+    },
+    {
+      name: 'a request middleware server implementation called through a computed member',
+      code: `import { createMiddleware } from '@tanstack/react-start'
+import { db } from './db.server'
+export const mw = createMiddleware()['server'](async ({ next }) => {
+  db.x()
+  return next()
+})`,
+      at: `createMiddleware()['server']`,
+      names: [['createMiddleware', 'server']],
+      body: 'db.x()',
+      outputs: ['client', 'ssr'],
+      client: (module) => expect(module.mw).toBeTypeOf('object'),
+      ssr: async (module, calls) => {
+        expect(await module.mw.options.server({ next: () => 'next' })).toBe(
+          'next',
+        )
+        expect(calls).toEqual(['x'])
+      },
+    },
+    {
+      name: 'an isomorphic server implementation called through a computed member',
+      code: `import { createIsomorphicFn } from '@tanstack/react-start'
+import { db } from './db.server'
+export const fn = createIsomorphicFn()['server'](() => db.x()).client(() => 'client')`,
+      at: `createIsomorphicFn()['server']`,
+      names: [['createIsomorphicFn', 'server']],
+      body: 'db.x()',
+      outputs: ['client', 'ssr'],
+      client: (module) => expect(module.fn()).toBe('client'),
+      ssr: (module) => expect(module.fn()).toBe('x'),
+    },
+    {
+      name: 'a createServerOnlyFn whose result is bound',
+      code: `import { createServerOnlyFn } from '@tanstack/react-start'
+import { db } from './db.server'
+export const read = createServerOnlyFn(() => db.secret()).bind(null)`,
+      at: 'createServerOnlyFn(',
+      names: [['createServerOnlyFn', 'bind']],
+      body: 'db.secret()',
+      outputs: ['client', 'ssr'],
+      client: (module) =>
+        expect(settle(() => module.read())).toEqual(serverOnlyError),
+      ssr: (module) => expect(module.read()).toBe('secret'),
+    },
+  ])(
+    '$name: the client holds no server code, or the module is rejected at the call',
+    async (shape) => {
+      const compiled: Partial<Record<Output, string>> = {}
+      let serverFns: Record<string, ServerFn> = {}
+      for (const output of shape.outputs) {
+        const result = await compileFor(output, shape.code).catch(
+          (error: unknown) => ({ error }),
+        )
+        if ('error' in result) {
+          expectCompileError(result.error, {
+            source: shape.code,
+            at: shape.at,
+            names: shape.names,
+            causes: callShapeCauses,
+          })
+          continue
+        }
+        compiled[output] = result.code ?? shape.code
+        if (output !== 'provider') {
+          serverFns = { ...serverFns, ...result.serverFns }
+        }
+      }
+      const errors: Partial<Record<Output, Array<string>>> = {}
+      for (const [output, module] of Object.entries(compiled)) {
+        errors[output as Output] = await getModuleErrors(module)
+      }
+      expect(errors).toEqual(
+        Object.fromEntries(Object.keys(compiled).map((output) => [output, []])),
+      )
+      if (compiled.client !== undefined) {
+        expectNotLoaded(await moduleLoads(compiled.client), [serverOnly])
+        expect(compiled.client, 'client').not.toContain(shape.body)
+        await shape.client(
+          await evaluateModule(compiled.client, callShapeStubs().stubs),
+        )
+      }
+      if (compiled.ssr !== undefined && shape.ssr) {
+        const { calls, stubs } = callShapeStubs()
+        await shape.ssr(
+          await evaluateModule(compiled.ssr, stubs, { env: 'server' }),
+          calls,
+        )
+      }
+      if (
+        shape.serverFn &&
+        shape.outputs.every((output) => compiled[output] !== undefined)
+      ) {
+        expect(
+          await callServerFnThroughCallers(
+            {
+              client: compiled.client!,
+              ssr: compiled.ssr!,
+              provider: compiled.provider!,
+              serverFns,
+              id: undefined,
+              framework: undefined,
+              files: undefined,
+            },
+            shape.serverFn,
+            callShapeStubs().stubs,
+          ),
+        ).toBe('x')
+      }
+    },
+  )
+
   // Bug: when createServerFn is the only factory imported, the compiler only
   // visits top-level variable declarations, so a server fn anywhere else is
   // neither extracted nor rejected. With another Start factory imported, a
@@ -677,6 +863,8 @@ export const read = () => getRead()()`,
   // in ..."), and a supported one must reach its handler through an RPC.
   // Impact: the handler and its server-only imports ship to the client
   // (createServerFn alone), or the server build fails (another factory).
+  // Source: the block row restores corpus inputs U082/U086 (SPEC J4.6
+  // "block"; user ruling 2026-10-20).
   describe.each([
     { importHead: 'createServerFn alone' as const, rows: placements },
     {
@@ -706,7 +894,13 @@ export const read = () => getRead()()`,
   // Impact: in a module with several server fns the user has to find the
   // misplaced one by hand. Loosened twin (rejection naming createServerFn
   // only): declaration-sites.test.ts "next to another Start factory, ...".
-  test.fails.each(placements.filter((placement) => !placement.nested))(
+  // (A declarator below the top level, e.g. in a top-level block, is
+  // extracted instead: pinned above.)
+  test.fails.each(
+    placements.filter(
+      (placement) => !placement.nested && !placement.declarator,
+    ),
+  )(
     'with another Start factory imported, a server fn in $name works or is rejected at the call',
     async ({ code, read }) => {
       await expectNoClientHandler(
