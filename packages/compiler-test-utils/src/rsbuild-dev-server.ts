@@ -8,8 +8,11 @@
  * `edit()` writes the files and waits for the compile that includes them
  * (`trackCompiles`). When plugins write files too (a generated route tree),
  * `write()` and `settle()` wait until the compiles are done with every
- * write, by events only (see `settle`). `diagnostics` keeps the errors and
- * warnings of every compile since the server started.
+ * write, by events only (see `settle`). Both also wait until Rspack's
+ * watcher is attached and has scanned the app's directories, as the start
+ * does (`CompileTracker.watching`): a file removed before that is never
+ * reported. `diagnostics` keeps the errors and warnings of every compile
+ * since the server started.
  *
  * Plugin-agnostic: the caller supplies the Rsbuild plugins and the directory
  * the apps live in (where their imports resolve).
@@ -397,6 +400,9 @@ export async function createRsbuildDevServer(
     server = await rsbuild.createDevServer()
     created = server
     await compiles.first(compileTimeout)
+    // Rspack attaches its watcher after the first compile; an edit before
+    // the watcher scanned the app could lose a removal (`watching`).
+    await compiles.watching(root, compileTimeout)
     if (browser) {
       http = await serve(server)
       url = http.url
@@ -497,6 +503,7 @@ export async function createRsbuildDevServer(
         throw error
       }
       if (reason === undefined) {
+        await compiles.watching(root, timeout)
         written.clear()
         return
       }
@@ -580,8 +587,26 @@ export interface CompileTracker {
    */
   first: (timeout: number) => Promise<void>
   /**
+   * Waits until every compiler's watcher is attached and has scanned the
+   * directories of the app files (under `root`) its last compile read or
+   * looked for, so that a removal is reported. Rspack attaches its watcher
+   * on the tick after a compile ends, and watchpack then scans the watched
+   * directories: a file removed while that scan runs is never reported
+   * (watchpack 2.5.2 `DirectoryWatcher.doScan`: a file the listing had but
+   * the stat no longer finds is neither known nor missing afterwards;
+   * FOLLOWUPS "UPSTREAM (W3-harness2)"). Ready when every compiler's
+   * watcher is attached and, together, their watchpack
+   * `getTimeInfoEntries()` have an entry (a time, or `null` once the scan
+   * ended) for each of those paths: a compiler may watch for another
+   * (Rspack's RSC coordinator makes the server compiler watch the client
+   * compiler's files, whose own watcher ignores everything). `timeout` only
+   * guards against a watcher that never attaches.
+   */
+  watching: (root: string, timeout: number) => Promise<void>
+  /**
    * Writes files (relative to `root`; `null` deletes a file) and waits for
-   * the compile that includes the edit (see `CompileTracker`).
+   * the compile that includes the edit (see `CompileTracker`), then for the
+   * watcher (`watching`).
    */
   edit: (
     root: string,
@@ -702,7 +727,57 @@ export function trackCompiles(): CompileTracker {
       })
     })
 
+  /** See `CompileTracker.watching`. */
+  const watching = async (root: string, timeout: number) => {
+    const deadline = Date.now() + timeout
+    /** What every compiler's watcher knows, together. */
+    const known = () => {
+      const entries = new Set<string>()
+      for (const compiler of compilers) {
+        const attached = (compiler as { watching?: { watcher?: unknown } })
+          .watching?.watcher
+        const watcher = (
+          compiler.watchFileSystem as
+            | { watcher?: { getTimeInfoEntries: () => Map<string, unknown> } }
+            | undefined
+        )?.watcher
+        if (!attached || !watcher) {
+          return undefined
+        }
+        for (const file of watcher.getTimeInfoEntries().keys()) {
+          entries.add(file)
+        }
+      }
+      return entries
+    }
+    for (;;) {
+      // Against the union of the watchers: one compiler may watch for
+      // another (Rspack's RSC coordinator has the server compiler watch the
+      // client compiler's files and ignores everything in the client's own
+      // watcher).
+      const entries = known()
+      const ready =
+        entries !== undefined &&
+        compilers.every((compiler) => {
+          const last = dependencies.get(compiler)
+          return [...(last?.files ?? []), ...(last?.missing ?? [])]
+            .filter((file) => isAppFile(root, file))
+            .every((file) => entries.has(file))
+        })
+      if (ready) {
+        return
+      }
+      if (Date.now() > deadline) {
+        throw new Error(
+          `Rsbuild's file watcher did not finish scanning the app within ${timeout} ms`,
+        )
+      }
+      await new Promise<void>((resolve) => setImmediate(resolve))
+    }
+  }
+
   return {
+    watching,
     track(compiler) {
       for (const environmentCompiler of 'compilers' in compiler
         ? compiler.compilers
@@ -849,7 +924,8 @@ export function trackCompiles(): CompileTracker {
       if (settled(wait)) {
         wait.resolve()
       }
-      return compiled
+      await compiled
+      await watching(root, timeout)
     },
   }
 }
