@@ -11,10 +11,16 @@ import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import {
   distinct,
   expectMarkerViolation,
+  expectViolationsAt,
+  locatedImporters,
+  locationIn,
   rejection,
+  relevantViolations,
   reportedViolations,
+  violationLabel,
   violationReports,
 } from '../../importProtection/start-apps'
+import type { ExpectedViolation } from '../../importProtection/start-apps'
 import type { ImportProtectionOptions } from '../../../src/schema'
 
 const timeout = 60_000
@@ -43,7 +49,10 @@ describe.each(startBundlers)('%s build', (bundler) => {
   /**
    * Builds `files` (client entry `src/entry.ts`, or `entry`) with
    * `importProtection`; the violations reported, as `<environment>
-   * <importer>`, or `built` when the build succeeds without any.
+   * <importer>`, or `built` when the build succeeds without any. A report
+   * counts as its importer only at a relevant original place of it
+   * (`locatedImporters`: its import of the denied module, or a use of it),
+   * never at compiled coordinates.
    */
   async function outcome(
     files: Record<string, string>,
@@ -57,10 +66,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
       start: { importProtection },
     })
     const toList = (output: string | Array<string>) =>
-      reportedViolations(output).map(
-        ({ environment, importer }) =>
-          `${environment} ${importer.replace(/:\d+:\d+$/, '')}`,
-      )
+      locatedImporters(output, files)
     try {
       const { client, ssr } = await built
       const warned = toList([...client.warnings, ...ssr.warnings])
@@ -84,10 +90,12 @@ describe.each(startBundlers)('%s build', (bundler) => {
             importProtection: { behavior: { dev: 'error', build: 'mock' } },
           },
         })
-        expect(reportedViolations(client.warnings)).toEqual([
+        expect(reportedViolations(client.warnings)).toHaveLength(1)
+        expectViolationsAt(client.warnings, [
           {
             environment: 'client',
-            importer: expect.stringMatching(/^src\/entry\.ts/),
+            use: locationIn('src/entry.ts', app['src/entry.ts'], 2, 'secret()'),
+            source: app['src/entry.ts'],
           },
         ])
         expect(client.where('MARK_SECRET')).toBe('nowhere')
@@ -389,10 +397,14 @@ export const secret = () => 'MARK_SECRET'
   describe('onViolation', () => {
     // Only `false` allows an import: a callback that returns nothing (one
     // that logs, say) leaves the import denied.
+    // Each report is at the importer's use of the import (`use`), any line
+    // of its import (SPEC J6.5), or one of `others`.
     test.each<{
       name: string
       files: Record<string, string>
-      reported: RegExp
+      /** The importer's genuine use, `file:line:column`. */
+      use: string
+      others?: ExpectedViolation['others']
       /** The modules the report names. */
       names?: Array<string>
       type: Violation['type']
@@ -400,7 +412,7 @@ export const secret = () => 'MARK_SECRET'
       {
         name: 'a denied file',
         files: { ...secretServer, 'src/entry.ts': userOf('./secret.server') },
-        reported: /^src\/entry\.ts:2:27$/,
+        use: 'src/entry.ts:2:27',
         type: 'file',
       },
       {
@@ -412,8 +424,9 @@ export const secret = () => 'MARK_SECRET'
 `,
           'src/entry.ts': userOf('./marked'),
         },
-        // At the marker import or at the importer's use (audit F ASK-1).
-        reported: /^(src\/marked\.ts:2:\d+|src\/entry\.ts:2:27)$/,
+        use: 'src/entry.ts:2:27',
+        // Or at the marker import (audit F ASK-1).
+        others: [{ file: 'src/marked.ts', lines: [2] }],
         names: ['src/marked.ts', 'src/entry.ts'],
         type: 'marker',
       },
@@ -426,12 +439,12 @@ export const secret = () => 'MARK_SECRET'
 export const read = () => getRequest()
 `,
         },
-        reported: /^src\/entry\.ts:2:\d+$/,
+        use: 'src/entry.ts:2:27',
         type: 'specifier',
       },
     ])(
       'a callback that returns nothing does not allow $name: the build fails, and the callback gets a $type violation',
-      async ({ files, reported, names = [], type }) => {
+      async ({ files, use, others, names = [], type }) => {
         const seen: Array<Violation> = []
         const error = await rejection(
           buildStart({
@@ -447,8 +460,9 @@ export const read = () => getRequest()
             },
           }),
         )
-        expect(reportedViolations(error.message)).toEqual([
-          { environment: 'client', importer: expect.stringMatching(reported) },
+        expect(reportedViolations(error.message)).toHaveLength(1)
+        expectViolationsAt(error.message, [
+          { environment: 'client', use, source: files['src/entry.ts']!, others },
         ])
         for (const name of names) {
           expect(error.message).toContain(name)
@@ -554,6 +568,11 @@ return entry.read().map((value) => describeValue(value, 'MARK_SECRET'))`),
     test(
       "'always' reports each violation of a build once",
       async () => {
+        const entry = `import { secret, other } from './secret.server'
+export const read = () => secret() + other() + secret()
+export { a } from './a'
+export { b } from './b'
+`
         const error = await rejection(
           buildStart({
             bundler,
@@ -566,11 +585,7 @@ export const m = () => 'MARK_SECRET'
 `,
               'src/a.ts': `import { m } from './marked'\nexport const a = () => m()\n`,
               'src/b.ts': `import { m } from './marked'\nexport const b = () => m() + m()\n`,
-              'src/entry.ts': `import { secret, other } from './secret.server'
-export const read = () => secret() + other() + secret()
-export { a } from './a'
-export { b } from './b'
-`,
+              'src/entry.ts': entry,
             },
             entry: 'src/entry.ts',
             start: { importProtection: { log: 'always' } },
@@ -579,7 +594,14 @@ export { b } from './b'
         const reported = reportedViolations(error.message).map(
           ({ importer }) => importer,
         )
-        expect(reported).toContain('src/entry.ts:2:27')
+        const use: ExpectedViolation = {
+          environment: 'client',
+          use: 'src/entry.ts:2:27',
+          source: entry,
+        }
+        expect(relevantViolations(error.message, [use])).toContain(
+          violationLabel(use),
+        )
         expect(reported).toEqual(distinct(reported))
       },
       timeout,

@@ -4,12 +4,16 @@
  * violation report adapter (`violation-report.ts`), and the Rsbuild dev
  * server's SSR output run in Node.
  */
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { runNodeProgram } from '@tanstack/compiler-test-utils/run-node'
 import { startServerEntryFiles } from '../../dev-server'
-import { reportedViolations } from '../../importProtection/start-apps'
-import type { ReportOutput } from '../../importProtection/violation-report'
+import { locatedImporters } from '../../importProtection/start-apps'
+import type {
+  AppSources,
+  ReportOutput,
+} from '../../importProtection/violation-report'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
 // ---------------------------------------------------------------------------
@@ -87,19 +91,37 @@ export const pageSteps = [
 /**
  * The importers of the violations reported for `environment` (`client` or
  * `server`) in `output` (text, log entries, or an Rsbuild dev server's
- * `diagnostics`), without their locations, each once, sorted.
+ * `diagnostics`), each once, sorted: the importer's file when the report is
+ * at a relevant original place of it in `sources` (`locatedImporters`),
+ * else the report's location as it is (compiled coordinates never pass).
  */
 export function reportedImporters(
   output: ReportOutput,
   environment: 'client' | 'server',
+  sources: AppSources,
 ): Array<string> {
+  const prefix = `${environment} `
   return [
     ...new Set(
-      reportedViolations(output)
-        .filter((violation) => violation.environment === environment)
-        .map(({ importer }) => importer.replace(/:\d+:\d+$/, '')),
+      locatedImporters(output, sources)
+        .filter((located) => located.startsWith(prefix))
+        .map((located) => located.slice(prefix.length)),
     ),
   ].sort()
+}
+
+/**
+ * The current sources of the app at `root`: each file read when asked (so
+ * after the edits so far), `undefined` when it does not exist.
+ */
+export function appSources(root: string): AppSources {
+  return (file) => {
+    try {
+      return readFileSync(path.join(root, file), 'utf8')
+    } catch {
+      return undefined
+    }
+  }
 }
 
 /**

@@ -11,7 +11,7 @@
 import { afterAll, afterEach, describe, expect, test, vi } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
-import { reportedViolations } from '../../importProtection/start-apps'
+import { locatedImporters } from '../../importProtection/start-apps'
 import { runViteClient, startBrowserProtectedDevServer } from './client-pages'
 import type { StartBuild, StartBundler } from '../../build-harness'
 import type { ImportProtectionOptions } from '../../../src/schema'
@@ -106,16 +106,15 @@ const exemptions: Array<{
   },
 ]
 
-/** The files of the reported violations, `<environment> <file>`. */
-const reportedFiles = (output: string | Array<string>) =>
-  [
-    ...new Set(
-      reportedViolations(output).map(
-        ({ environment, importer }) =>
-          `${environment} ${importer.replace(/:\d+:\d+$/, '')}`,
-      ),
-    ),
-  ].sort()
+/**
+ * The files of the reported violations, `<environment> <file>`, each
+ * reported at a relevant original place of the file in `sources`
+ * (`locatedImporters`), never at compiled coordinates.
+ */
+const reportedFiles = (
+  output: string | Array<string>,
+  sources: Record<string, string>,
+) => [...new Set(locatedImporters(output, sources))].sort()
 
 /** What each re-exported use returns, and whether the denied file ran. */
 const readScript = `${readPrelude}
@@ -188,7 +187,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
       const { result } = await client.run(readScript)
       return {
         ...(result as Omit<Outcome, 'reported'>),
-        reported: reportedFiles(client.warnings),
+        reported: reportedFiles(client.warnings, files),
       }
     }
 
@@ -225,7 +224,7 @@ describe.each(exemptions)(
       )
       return {
         ...(result as Omit<Outcome, 'reported'>),
-        reported: reportedFiles(server.logs),
+        reported: reportedFiles(server.logs, files),
       }
     }
 
@@ -344,7 +343,7 @@ function excludedBuild(
     const { result: read } = await result.run(excludedReadScript)
     return {
       ...(read as Omit<ExcludedOutcome, 'reported'>),
-      reported: reportedFiles(result.warnings),
+      reported: reportedFiles(result.warnings, excludedFiles),
     }
   }
 }
@@ -437,7 +436,7 @@ return { vendor: use(entry.vendorRead, 'vendorLoaded'), package: use(entry.packa
     )
     return {
       ...(result as Omit<ExcludedOutcome, 'widget' | 'reported'>),
-      reported: reportedFiles(server.logs),
+      reported: reportedFiles(server.logs, excludedFiles),
     }
   }
 

@@ -18,14 +18,19 @@ import {
 import {
   distinct,
   expectMarkerViolation,
+  expectViolationsAt,
+  locationIn,
   rejection,
+  relevantViolations,
   reportedViolations,
+  violationLabel,
   violationReports,
 } from '../../importProtection/start-apps'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 import { originalLocation } from '../../importProtection/original-location'
 import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
+import type { ExpectedViolation } from '../../importProtection/start-apps'
 import type { ViolationInfo } from '../../../src/import-protection/trace'
 import type { ImportProtectionOptions } from '../../../src/schema'
 
@@ -246,28 +251,30 @@ describe('Rsbuild dev: behavior', () => {
   ])(
     '$behavior: a violation is reported in the compile $reportedAs',
     async ({ behavior, reportedAs }) => {
+      const entry = `import { secret } from './secret.server'
+console.log(secret())
+`
       const server = await startRsbuildDevServer({
         compileTimeout,
         importProtection: { behavior },
         files: {
           'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
-          'src/entry.ts': `import { secret } from './secret.server'
-console.log(secret())
-`,
+          'src/entry.ts': entry,
         },
       })
       const severityOf = { warnings: 'warning', errors: 'error' } as const
       const other = reportedAs === 'errors' ? 'warnings' : 'errors'
       const reported = (as: typeof reportedAs) =>
-        reportedViolations(
-          findDiagnostics(server.diagnostics, { severity: severityOf[as] }),
-        )
-      expect(
-        reported(reportedAs).map(
-          ({ environment, importer }) => `${environment} ${importer}`,
-        ),
-      ).toEqual(['client src/entry.ts:2:13'])
-      expect(reported(other)).toEqual([])
+        findDiagnostics(server.diagnostics, { severity: severityOf[as] })
+      expect(reportedViolations(reported(reportedAs))).toHaveLength(1)
+      expectViolationsAt(reported(reportedAs), [
+        {
+          environment: 'client',
+          use: locationIn('src/entry.ts', entry, 2, 'secret()'),
+          source: entry,
+        },
+      ])
+      expect(reportedViolations(reported(other))).toEqual([])
     },
     timeout,
   )
@@ -287,9 +294,16 @@ console.log(secret(), other)
   // Source: mutation run R3 ip-rsbuild R3; a control of the harness running
   // an Rsbuild dev rebuild with import protection on (the warnings of each
   // compile).
+  /** The violation: the use of `secret` in the entry (or its import). */
+  const violation: ExpectedViolation = {
+    environment: 'client',
+    use: locationIn('src/entry.ts', app['src/entry.ts'], 3, 'secret()'),
+    source: app['src/entry.ts'],
+  }
+
   test.each([
     { log: 'once' as const, afterRebuild: [] },
-    { log: 'always' as const, afterRebuild: ['client src/entry.ts:3:13'] },
+    { log: 'always' as const, afterRebuild: [violationLabel(violation)] },
   ])(
     "log '$log': a rebuild for an unrelated edit reports $afterRebuild",
     async ({ log, afterRebuild }) => {
@@ -302,14 +316,13 @@ console.log(secret(), other)
       // may compile more than once for one edit; the same report in each
       // counts once).
       const reported = (since: number) =>
-        distinct(
-          reportedViolations(
-            findDiagnostics(server.diagnostics.slice(since), {
-              severity: 'warning',
-            }),
-          ).map(({ environment, importer }) => `${environment} ${importer}`),
+        relevantViolations(
+          findDiagnostics(server.diagnostics.slice(since), {
+            severity: 'warning',
+          }),
+          [violation],
         )
-      expect(reported(0)).toEqual(['client src/entry.ts:3:13'])
+      expect(reported(0)).toEqual([violationLabel(violation)])
       const since = server.diagnostics.length
       await server.edit({ 'src/other.ts': `export const other = 2\n` })
       expect(server.rebuilt).toContain('src/other.ts')
@@ -472,6 +485,7 @@ export const read = () => button()
       build({ client: { files: ['**/ui-lib/button.js'], excludeFiles: [] } }),
     ))
 
+  // (where it is reported is pinned below: the location is wrong)
   test('the file rule denies the module it resolves to: the build fails, naming the importer', async () => {
     expect(reportedViolations((await fileRuleDenied()).message)).toEqual([
       {
@@ -547,29 +561,31 @@ export const read = () => button()
 // Source: round 4 mutation testing (rsbuild host, the state of a previous
 // build).
 test('Rsbuild build --watch: a rebuild for an unrelated edit fails on the violation again', async () => {
+  const entry = `import { secret } from './secret.server'
+import { other } from './other'
+export const read = () => secret() + other
+`
   const error = await rejection(
     buildStart({
       bundler: 'rsbuild',
       files: {
         'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
         'src/other.ts': `export const other = 1\n`,
-        'src/entry.ts': `import { secret } from './secret.server'
-import { other } from './other'
-export const read = () => secret() + other
-`,
+        'src/entry.ts': entry,
       },
       entry: 'src/entry.ts',
       watchEdits: { 'src/other.ts': `export const other = 2\n` },
     }),
   )
-  // Rspack may compile the client more than once for the edit.
-  expect(
-    distinct(
-      reportedViolations(error.message).map(
-        ({ environment, importer }) => `${environment} ${importer}`,
-      ),
-    ),
-  ).toEqual(['client src/entry.ts:3:27'])
+  // Rspack may compile the client more than once for the edit (each
+  // distinct report counts once).
+  expectViolationsAt(error.message, [
+    {
+      environment: 'client',
+      use: locationIn('src/entry.ts', entry, 3, 'secret()'),
+      source: entry,
+    },
+  ])
 }, 60_000)
 
 // Source: mutation run R3 ip-rsbuild R7 and ip-misc P10.

@@ -22,6 +22,7 @@ import {
   findDiagnostics,
   identifiesEnvRestriction,
   importLines,
+  importedBindingUses,
   isRelevantLocation,
   mentionsFile,
   parseLocation,
@@ -595,6 +596,24 @@ export const later = () => import('./secret.server')
     expect(importLines('src/a.ts', `export { x } from './x'\n`, './x')).toEqual(
       [1],
     )
+  })
+
+  test('importedBindingUses finds the references to the bindings an import of the specifier introduces', () => {
+    expect(
+      importedBindingUses('src/a.ts', source, './secret.server'),
+    ).toEqual([{ line: 5, column: 27 }])
+    const jsx = `import Secret, { secret as s } from './secret.server'
+import { other } from './other'
+// secret
+export const Page = () => <Secret value={s()} other={other} />
+`
+    expect(
+      importedBindingUses('src/a.tsx', jsx, './secret.server'),
+    ).toEqual([
+      { line: 4, column: 28 },
+      { line: 4, column: 42 },
+    ])
+    expect(importedBindingUses('src/a.tsx', jsx, './missing')).toEqual([])
   })
 
   test('parseLocation reads a file with or without a line and column', () => {

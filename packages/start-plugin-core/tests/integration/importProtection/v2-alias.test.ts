@@ -25,7 +25,12 @@ import { afterEach, describe, expect, onTestFinished, test } from 'vitest'
 import { buildStart, startRuntimeLinks } from '../../build-harness'
 import { startPlugin, startPluginFiles } from '../../dev-server'
 import { probeMockPrelude, safeMock } from '../../importProtection/mock-helpers'
-import { rejection, violationReports } from '../../importProtection/start-apps'
+import {
+  locationIn,
+  rejection,
+  violationReports,
+} from '../../importProtection/start-apps'
+import { originalLocation } from '../../importProtection/original-location'
 import {
   clientFixturePlugin,
   runInClient,
@@ -82,14 +87,16 @@ export { widget }
 
 /**
  * The report of the violation: the specifier as the importer wrote it, and
- * the importer, located (if at all, SPEC §5 item 14) at an original line of
- * the import (line 1) or of the use (line 2), any column (SPEC J6.5).
+ * the importer, located (if at all, SPEC §5 item 14) at the import (line 1,
+ * any column) or at the use of `secret` (SPEC J6.5).
  */
 const expectedReport = {
   environment: 'client',
   specifier: '~/secret.server',
-  importer: expect.stringMatching(
-    /^src\/components\/widget\.ts(?::[12]:\d+)?$/,
+  importer: originalLocation(
+    locationIn('src/components/widget.ts', widget, 2, 'secret()'),
+    1,
+    { unavailable: true },
   ),
 }
 

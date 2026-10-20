@@ -31,7 +31,8 @@
  *   quote the source (full, cropped or highlighted), nor the lines quoting
  *   `source` whole or cropped.
  * - Reported locations (SPEC J6.5, §5.7, §5.14): `parseLocation(text)`,
- *   `importLines(file, source, specifier)`, `locationMismatch`,
+ *   `importLines(file, source, specifier)`,
+ *   `importedBindingUses(file, source, specifier)`, `locationMismatch`,
  *   `isRelevantLocation`, `expectRelevantLocation` (a `file:line:column` a
  *   tool reports is one of the relevant places: a genuine use, any line of
  *   the original import of the specifier, another accepted place such as a
@@ -907,6 +908,68 @@ export function importLines(
     }
   }
   return [...lines].sort((a, b) => a - b)
+}
+
+/**
+ * The 1-based positions in `source` (the module `file`) of every reference
+ * to a binding its static imports of `specifier` introduce (identifiers and
+ * JSX names, outside the import statements): the places a use of the
+ * import may be reported at, when a test does not name the one genuine use
+ * (any reference, type positions included).
+ */
+export function importedBindingUses(
+  file: string,
+  source: string,
+  specifier: string,
+): Array<{ line: number; column: number }> {
+  const { module, program } = parseSync(
+    `module.${languageOf(file)}`,
+    source,
+    { sourceType: 'module' },
+  )
+  const imports = module.staticImports.filter(
+    (statement) => statement.moduleRequest.value === specifier,
+  )
+  const names = new Set(
+    imports.flatMap((statement) =>
+      statement.entries.map((entry) => entry.localName.value),
+    ),
+  )
+  const inImport = (offset: number) =>
+    imports.some(({ start, end }) => offset >= start && offset < end)
+  const offsets: Array<number> = []
+  const visit = (node: unknown) => {
+    if (Array.isArray(node)) {
+      node.forEach(visit)
+      return
+    }
+    if (node === null || typeof node !== 'object') {
+      return
+    }
+    const { type, name, start } = node as {
+      type?: unknown
+      name?: unknown
+      start?: unknown
+    }
+    if (
+      (type === 'Identifier' || type === 'JSXIdentifier') &&
+      typeof name === 'string' &&
+      names.has(name) &&
+      typeof start === 'number' &&
+      !inImport(start)
+    ) {
+      offsets.push(start)
+    }
+    for (const value of Object.values(node)) {
+      visit(value)
+    }
+  }
+  if (names.size > 0) {
+    visit(program)
+  }
+  return offsets
+    .sort((a, b) => a - b)
+    .map((offset) => diagnosticPosition(source, offset))
 }
 
 /** The places a reported location may relevantly be (`locationMismatch`). */

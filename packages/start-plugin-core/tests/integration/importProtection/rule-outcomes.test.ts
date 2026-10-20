@@ -2,6 +2,7 @@
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import {
+  locatedImporters,
   rejection,
   startProtectedDevServer,
   violationReports,
@@ -42,14 +43,15 @@ describe.each(startBundlers)('%s public import rules', (bundler) => {
   test.each(rules)(
     '$name denies the exact client package import',
     async ({ specifiers }) => {
+      const files = {
+        ...packageFiles('private-sdk'),
+        'src/entry.ts': `import read from 'private-sdk'\nexport const live = read()\n`,
+      }
       const error = await rejection(
         buildStart({
           bundler,
           entry: 'src/entry.ts',
-          files: {
-            ...packageFiles('private-sdk'),
-            'src/entry.ts': `import read from 'private-sdk'\nexport const live = read()\n`,
-          },
+          files,
           start: { importProtection: { client: { specifiers } } },
         }),
       )
@@ -58,6 +60,9 @@ describe.each(startBundlers)('%s public import rules', (bundler) => {
           environment: 'client',
           specifier: 'private-sdk',
         }),
+      ])
+      expect(locatedImporters(error.message, files)).toEqual([
+        'client src/entry.ts',
       ])
     },
     timeout,
@@ -142,22 +147,24 @@ return [probeMock(mock.constructor), probeMock(mock.__proto__)]`)
 test(
   'an extglob denies a bare client import of private-sdk',
   async () => {
-    const server = await startProtectedDevServer(
-      {
-        ...packageFiles('private-sdk'),
-        'src/entry.ts': `import 'private-sdk'\nexport const live = 1\n`,
-      },
-      {
-        behavior: 'error',
-        client: { specifiers: ['@(private-sdk|internal-sdk)'] },
-      },
-    )
+    const files = {
+      ...packageFiles('private-sdk'),
+      'src/entry.ts': `import 'private-sdk'\nexport const live = 1\n`,
+    }
+    const server = await startProtectedDevServer(files, {
+      behavior: 'error',
+      client: { specifiers: ['@(private-sdk|internal-sdk)'] },
+    })
     const error = await rejection(server.load('/src/entry.ts'))
     expect(violationReports(error.message)).toEqual([
       expect.objectContaining({
         environment: 'client',
         specifier: 'private-sdk',
       }),
+    ])
+    // (at the bare import, line 1)
+    expect(locatedImporters(error.message, files)).toEqual([
+      'client src/entry.ts',
     ])
   },
   timeout,
@@ -168,19 +175,20 @@ test(
 test.each([/^private-sdk$/g, /^private-sdk$/y])(
   'a stateful %s rule denies every client importer',
   async (pattern) => {
-    const server = await startBrowserProtectedDevServer(
-      {
-        ...packageFiles('private-sdk'),
-        ...Object.fromEntries(
-          ['a', 'b', 'c'].map((name) => [
-            `src/${name}.ts`,
-            `import read from 'private-sdk'\nexport const ${name} = () => read()\n`,
-          ]),
-        ),
-        'src/entry.ts': `import { a } from './a'\nimport { b } from './b'\nimport { c } from './c'\nexport const readAll = () => [a(), b(), c()]\n`,
-      },
-      { client: { specifiers: [pattern] }, mockAccess: 'off' },
-    )
+    const files = {
+      ...packageFiles('private-sdk'),
+      ...Object.fromEntries(
+        ['a', 'b', 'c'].map((name) => [
+          `src/${name}.ts`,
+          `import read from 'private-sdk'\nexport const ${name} = () => read()\n`,
+        ]),
+      ),
+      'src/entry.ts': `import { a } from './a'\nimport { b } from './b'\nimport { c } from './c'\nexport const readAll = () => [a(), b(), c()]\n`,
+    }
+    const server = await startBrowserProtectedDevServer(files, {
+      client: { specifiers: [pattern] },
+      mockAccess: 'off',
+    })
     const { result } = await runViteClient(
       server,
       '/src/entry.ts',
@@ -188,11 +196,11 @@ test.each([/^private-sdk$/g, /^private-sdk$/y])(
 return entry.readAll().map((value) => probeMock(value, 'REAL_private-sdk'))`,
     )
     expect(result).toEqual([safeMock, safeMock, safeMock])
-    expect(
-      violationReports(server.logs)
-        .map(({ importer }) => importer.replace(/:\d+:\d+$/, ''))
-        .sort(),
-    ).toEqual(['src/a.ts', 'src/b.ts', 'src/c.ts'])
+    expect(locatedImporters(server.logs, files).sort()).toEqual([
+      'client src/a.ts',
+      'client src/b.ts',
+      'client src/c.ts',
+    ])
   },
   timeout,
 )

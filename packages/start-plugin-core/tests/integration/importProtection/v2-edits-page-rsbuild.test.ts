@@ -16,6 +16,7 @@ import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 import {
+  appSources,
   pageApp,
   pageSteps,
   pageWidget,
@@ -106,7 +107,7 @@ return describeValue(window.liveSecret(), 'MARK_SECRET')
         loads: browser.loads(),
         servedSecret: client.some((code) => code.includes('MARK_SECRET')),
         // Every compile in this state, excluding target-missing intermediates.
-        reported: reportedImporters(diagnostics, 'client'),
+        reported: reportedImporters(diagnostics, 'client', appSources(server.root)),
       })
     }
     return result

@@ -728,9 +728,11 @@ export const read = () => secret() + leak()
 `
   /**
    * The page, located at the import of the denied module (line 5) or at
-   * its use (7:24), with a column; never at a position of MDX's compiled JavaScript.
+   * its use (7:24), with a column; never at a position of MDX's compiled
+   * JavaScript. `located: false`: or without coordinates (pinned below).
    */
-  const inPage = expect.stringMatching(/^src\/page\.mdx(?::5:\d+|:7:24)$/)
+  const inPage = ({ located = true } = {}) =>
+    originalLocation('src/page.mdx:7:24', 5, { unavailable: !located })
   // Source: mutation run R4 (spc:4639: the module has no compiled imports
   // import protection could check its violations against; spc:4579: nor
   // can it tell whether its imports survived compiling, so a module it
@@ -757,7 +759,9 @@ export const leak = () => secret()
       const importers = reportedViolations(server.logs).map(
         ({ importer }) => importer,
       )
-      expect(importers).toContainEqual(expect.stringMatching(/^src\/page\.mdx/))
+      // (located if at all at the import or the use: no coordinates is the
+      // bug pinned below)
+      expect(importers).toContainEqual(inPage({ located: false }))
       expect(importers).toContainEqual(
         originalLocation(locationIn('src/leak.ts', leak, 2, 'secret()'), 1),
       )
@@ -785,7 +789,7 @@ export const leak = () => secret()
       await server.load('/src/entry.ts')
       expect(
         reportedViolations(server.logs).map(({ importer }) => importer),
-      ).toEqual([inPage])
+      ).toEqual([inPage()])
     },
     timeout,
   )
@@ -827,9 +831,7 @@ return probeMock(entry.request(), 'MARK_')`,
       // `getRequest()`, 3:30, of the .mdx source)
       expect(
         reportedViolations(server.logs).map(({ importer }) => importer),
-      ).toContainEqual(
-        expect.stringMatching(/^src\/page\.mdx(?::2:\d+|:3:30)$/),
-      )
+      ).toContainEqual(originalLocation('src/page.mdx:3:30', 2))
     },
     timeout,
   )
@@ -1008,11 +1010,9 @@ export const read = () => secret()
    * or at the marked module (audit F ASK-1).
    */
   const markerReport = (importer: string, marked: string) =>
-    expect.stringMatching(
-      new RegExp(
-        `^client src/(?:${importer}\\.ts:(?:1:\\d+|2:27)|${marked}\\.ts\\b)`,
-      ),
-    )
+    originalLocation(`client src/${importer}.ts:2:27`, 1, {
+      others: [{ file: `src/${marked}.ts`, lines: [1], unlocated: true }],
+    })
 
   // Control for the pins below (same harness): once the server knows the
   // module is server-only, its importers get a mock.
@@ -1320,14 +1320,18 @@ export const read = () => query()
 return probeMock(entry.read(), 'MARK_LIB')`,
       )
       expect(result).toEqual(safeMock)
-      expect(
-        loggedViolations(server.logs).map((violation) =>
-          violation.replace(/:.*/, ''),
-        ),
-      ).toEqual([
-        expect.stringMatching(
-          /^client (?:src\/a|node_modules\/db-lib\/index)\b/,
-        ),
+      // (at the importer's import or use, or at the dependency's marker
+      // import, audit F ASK-1)
+      expect(loggedViolations(server.logs)).toEqual([
+        originalLocation('client src/a.ts:2:27', 1, {
+          others: [
+            {
+              file: 'node_modules/db-lib/index.js',
+              lines: [1],
+              unlocated: true,
+            },
+          ],
+        }),
       ])
     },
     timeout,
@@ -1358,11 +1362,18 @@ export const read = () => [secret(), widget()]
       const server = await startProtectedDevServer(app)
       await server.load('/src/entry.ts', { environment: first })
       await server.load('/src/entry.ts', { environment: second })
-      expect(
-        loggedViolations(server.logs)
-          .map((violation) => violation.replace(/:.*/, ''))
-          .sort(),
-      ).toEqual(['client src/a.ts', 'server src/a.ts'])
+      expectViolationsAt(server.logs, [
+        {
+          environment: 'client',
+          use: locationIn('src/a.ts', app['src/a.ts'], 3, 'secret()'),
+          source: app['src/a.ts'],
+        },
+        {
+          environment: 'server',
+          use: locationIn('src/a.ts', app['src/a.ts'], 3, 'widget()'),
+          source: app['src/a.ts'],
+        },
+      ])
     },
     timeout,
   )
@@ -1840,9 +1851,17 @@ export const q = () => [read(), request(), slow]
       const { server, served } = await serveWhileItsImporterTransforms()
       expect(modulesContaining(served, 'MARK_SECRET')).toEqual([])
       const p = overlapApp['src/p.ts']
-      expect(loggedViolations(server.logs).sort()).toEqual([
-        `client ${locationIn('src/p.ts', p, 3, 'secret()')}`,
-        `client ${locationIn('src/p.ts', p, 4, 'getRequest()')}`,
+      expectViolationsAt(server.logs, [
+        {
+          environment: 'client',
+          use: locationIn('src/p.ts', p, 3, 'secret()'),
+          source: p,
+        },
+        {
+          environment: 'client',
+          use: locationIn('src/p.ts', p, 4, 'getRequest()'),
+          source: p,
+        },
       ])
       // Source: r5-gaps N8 (spc:4216, 4218, 4219: the trace from Vite's
       // module graph, which does not have the importer yet, replaced it).

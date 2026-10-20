@@ -122,7 +122,7 @@ describe.each(startBundlers)('%s build (mock mode)', (bundler) => {
       const { result } = await client.run(outcomeScript('entry.readMixed'))
       expect({
         ...(result as Omit<Outcome, 'reported'>),
-        reported: reportedImporters(client.warnings, 'client'),
+        reported: reportedImporters(client.warnings, 'client', app),
       }).toEqual(expected)
     },
     timeout,
@@ -146,7 +146,7 @@ describe('vite dev', () => {
       await server.idle()
       expect({
         ...(result as Omit<Outcome, 'reported'>),
-        reported: reportedImporters(server.logs, 'client'),
+        reported: reportedImporters(server.logs, 'client', app),
       }).toEqual(expected)
     },
     timeout,
@@ -172,6 +172,7 @@ describe('rsbuild dev', () => {
         reported: reportedImporters(
           findDiagnostics(server.diagnostics, { severity: 'warning' }),
           'client',
+          app,
         ),
       }).toEqual(expected)
     },
@@ -230,7 +231,7 @@ describe.each(startBundlers)(
         )
         expect({
           typesLoaded: result,
-          reported: reportedImporters(client.warnings, 'client'),
+          reported: reportedImporters(client.warnings, 'client', verbatimApp),
         }).toEqual(handlerOnly)
       },
       timeout,
@@ -255,7 +256,7 @@ describe('vite dev, verbatimModuleSyntax', () => {
       await server.idle()
       expect({
         typesLoaded,
-        reported: reportedImporters(server.logs, 'client'),
+        reported: reportedImporters(server.logs, 'client', verbatimApp),
       }).toEqual(handlerOnly)
     },
     timeout,

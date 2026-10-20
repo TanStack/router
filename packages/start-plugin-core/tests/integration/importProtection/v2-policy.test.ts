@@ -119,6 +119,7 @@ describe('rsbuild dev', () => {
       reported: reportedImporters(
         findDiagnostics(server.diagnostics, { severity: 'warning' }),
         'client',
+        app,
       ).includes(importer),
     }
   }
@@ -186,6 +187,7 @@ describe('rsbuild dev', () => {
         reported: reportedImporters(
           findDiagnostics(server.diagnostics, { severity: 'warning' }),
           'server',
+          app,
         ),
       }).toEqual({
         ran: { result: { handler: 'a safe mock' } },
@@ -236,7 +238,10 @@ export const getRouter = () => undefined
       `${describeValuePrelude}\nreturn describeValue(globalThis.uses.allowedAsync(), 'MARK_')`,
     )
     await server.idle()
-    return { value, reported: reportedImporters(server.logs, 'client') }
+    return {
+      value,
+      reported: reportedImporters(server.logs, 'client', viteApp),
+    }
   }
 
   // Control for the pin below (same server).

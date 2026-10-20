@@ -11,6 +11,7 @@ import { formatViolation } from '../../src/import-protection/trace'
 import {
   expectReportFrame,
   expectViolationsAt,
+  locatedImporters,
   reportedViolations,
   suggestedDirections,
   violationReports,
@@ -352,6 +353,89 @@ export const leak = () => secret()
     ],
   ])('%s fails', (_name, text) => {
     expect(() => expectViolationsAt(text, expected)).toThrow()
+  })
+
+  // `locatedImporters` (which importers are reported): the importer's file
+  // only at a relevant original place, never at compiled coordinates nor
+  // without coordinates.
+  const notRelevant = (at: string) =>
+    `client ${at} (not at a relevant original place)`
+  test.each([
+    ['the use', reportAt({ line: 4, column: 27 }), 'client src/b.ts'],
+    ['the import', reportAt({ line: 1, column: 10 }), 'client src/b.ts'],
+    ['another line', reportAt({ line: 3, column: 1 }), notRelevant('src/b.ts:3:1')],
+    [
+      'another column of the use line',
+      reportAt({ line: 4, column: 1 }),
+      notRelevant('src/b.ts:4:1'),
+    ],
+    [
+      'a line past the end (compiled coordinates)',
+      formatViolation(
+        { ...violation, importerLoc: { line: 9, column: 4 }, snippet: undefined },
+        '/project',
+      ),
+      notRelevant('src/b.ts:9:4'),
+    ],
+    ['no coordinates', reportAt(undefined), notRelevant('src/b.ts')],
+  ])('locatedImporters: a report at %s', (_name, text, located) => {
+    expect(locatedImporters(text, { 'src/b.ts': source })).toEqual([located])
+  })
+
+  test('locatedImporters: a report naming the resolved file as its import is located by the import it resolves from', () => {
+    const resolvedAs = (location: { line: number; column: number }) =>
+      reportAt(location, { specifier: 'src/secret.server.ts' })
+    expect(
+      locatedImporters(resolvedAs({ line: 4, column: 27 }), {
+        'src/b.ts': source,
+      }),
+    ).toEqual(['client src/b.ts'])
+    expect(
+      locatedImporters(resolvedAs({ line: 3, column: 1 }), {
+        'src/b.ts': source,
+      }),
+    ).toEqual([notRelevant('src/b.ts:3:1')])
+    // (another file of that name is not the import)
+    expect(
+      locatedImporters(
+        reportAt({ line: 1, column: 1 }, { specifier: 'src/other.server.ts' }),
+        { 'src/b.ts': source },
+      ),
+    ).toEqual([notRelevant('src/b.ts:1:1')])
+  })
+
+  test('locatedImporters: a file whose source is unknown is not located', () => {
+    expect(locatedImporters(reportAt({ line: 4, column: 27 }), {})).toEqual([
+      'client src/b.ts:4:27 (not at a relevant original place)',
+    ])
+  })
+
+  test('locatedImporters: a marker violation may be at the marked module, on its marker import or without coordinates', () => {
+    const marked = `export const before = 1
+import '@tanstack/react-start/server-only'
+export const secret = () => 'MARK_SECRET'
+`
+    const at = (location: { line: number; column: number } | undefined) =>
+      formatViolation(
+        {
+          ...violation,
+          type: 'marker',
+          importer: '/project/src/marked.ts',
+          importerLoc: location,
+          snippet: undefined,
+        },
+        '/project',
+      )
+    const sources = { 'src/b.ts': source, 'src/marked.ts': marked }
+    expect(locatedImporters(at({ line: 2, column: 1 }), sources)).toEqual([
+      'client src/marked.ts',
+    ])
+    expect(locatedImporters(at(undefined), sources)).toEqual([
+      'client src/marked.ts',
+    ])
+    expect(locatedImporters(at({ line: 3, column: 1 }), sources)).toEqual([
+      notRelevant('src/marked.ts:3:1'),
+    ])
   })
 
   test('a frame that highlights another line, or whose caret is elsewhere, fails', () => {

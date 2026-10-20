@@ -20,6 +20,7 @@ import {
   distinct,
   expectMarkerViolation,
   expectViolationsAt,
+  locationIn,
   rejection,
   reportedViolations,
   violationReports,
@@ -707,17 +708,18 @@ return entry.read().map((value) => describeValue(value, 'MARK_SECRET'))`)
   test(
     'a denied import of a route used by its loader and its split component is warned once',
     async () => {
-      const { client } = await buildStart({
-        bundler,
-        files: {
-          ...deniedModules['a denied file'].files,
-          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+      const route = `import { createFileRoute } from '@tanstack/react-router'
 import { secret } from '../secret.server'
 export const Route = createFileRoute('/')({
   loader: () => String(secret()),
   component: () => String(secret()),
 })
-`,
+`
+      const { client } = await buildStart({
+        bundler,
+        files: {
+          ...deniedModules['a denied file'].files,
+          'src/routes/index.tsx': route,
           'src/router.ts': `import { routeTree } from './routeTree.gen'
 export const getRouter = () => ({ routeTree })
 `,
@@ -727,10 +729,14 @@ export const getRouter = () => ({ routeTree })
         start: { importProtection: { behavior: 'mock' } },
       })
       expect(client.where('MARK_SECRET')).toBe('nowhere')
-      expect(reportedViolations(client.warnings)).toEqual([
+      expect(reportedViolations(client.warnings)).toHaveLength(1)
+      // At either use or at the import (SPEC J6.5)
+      expectViolationsAt(client.warnings, [
         {
           environment: 'client',
-          importer: expect.stringMatching(/^src\/routes\/index\.tsx/),
+          use: locationIn('src/routes/index.tsx', route, 4, 'secret()'),
+          otherUses: [locationIn('src/routes/index.tsx', route, 5, 'secret()')],
+          source: route,
         },
       ])
     },
@@ -1012,17 +1018,18 @@ return {
   test(
     'imported by a split route component fails the build',
     async () => {
+      const splitRoute = `import { createFileRoute } from '@tanstack/react-router'
+import { secret } from '../marked'
+export const Route = createFileRoute('/')({
+  component: () => String(secret()),
+})
+`
       const error = await rejection(
         buildStart({
           bundler,
           files: {
             ...marked,
-            'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
-import { secret } from '../marked'
-export const Route = createFileRoute('/')({
-  component: () => String(secret()),
-})
-`,
+            'src/routes/index.tsx': splitRoute,
             'src/router.ts': `import { routeTree } from './routeTree.gen'
 export const getRouter = () => ({ routeTree })
 `,
@@ -1031,8 +1038,13 @@ export const getRouter = () => ({ routeTree })
           entry: 'src/entry.ts',
         }),
       )
-      expect(reportedViolations(error.message)).toHaveLength(1)
-      expect(error.message).toContain('src/routes/index.tsx')
+      const [report, ...others] = violationReports(error.message)
+      expect(others).toEqual([])
+      expectMarkerViolation(report!, {
+        marker: 'src/marked.ts:1',
+        use: locationIn('src/routes/index.tsx', splitRoute, 4, 'secret()'),
+        source: splitRoute,
+      })
     },
     timeout,
   )
@@ -1040,23 +1052,23 @@ export const getRouter = () => ({ routeTree })
   test(
     'marking the client entry fails the build',
     async () => {
+      const client = `import '@tanstack/react-start/server-only'
+console.log('client')
+`
       const error = await rejection(
         buildStart({
           bundler,
           files: {
-            'src/client.ts': `import '@tanstack/react-start/server-only'
-console.log('client')
-`,
+            'src/client.ts': client,
             'src/entry.ts': `export const read = () => 'entry'\n`,
           },
           entry: 'src/entry.ts',
         }),
       )
-      expect(reportedViolations(error.message)).toEqual([
-        {
-          environment: 'client',
-          importer: expect.stringMatching(/^src\/client\.ts/),
-        },
+      // At the client entry's marker import, line 1 (any column)
+      expect(reportedViolations(error.message)).toHaveLength(1)
+      expectViolationsAt(error.message, [
+        { environment: 'client', use: 'src/client.ts:1', source: client },
       ])
     },
     timeout,

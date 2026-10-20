@@ -29,11 +29,11 @@ test.each([
 )
 
 test('only an explicitly unavailable rewritten location may omit coordinates', () => {
-  expect(originalLocation(use, 1, true).asymmetricMatch('src/page.ts')).toBe(
+  expect(originalLocation(use, 1, { unavailable: true }).asymmetricMatch('src/page.ts')).toBe(
     true,
   )
   expect(
-    originalLocation(use, 1, true).asymmetricMatch('src/page.ts:3:1'),
+    originalLocation(use, 1, { unavailable: true }).asymmetricMatch('src/page.ts:3:1'),
   ).toBe(false)
 })
 
