@@ -1,10 +1,12 @@
 /**
  * Code splitting does not depend on where the project lives or on how the
- * platform spells paths: the same route compiles to the same modules under
- * any project root and with Windows module ids, and building the same app
- * twice, in two directories, emits the same files.
+ * platform spells paths: the same route splits the same way and runs the
+ * same under any project root and with Windows module ids (SPEC G4,
+ * relocation: emitted code may differ, `@tanstack/compiler-test-utils/
+ * determinism`). The slow tier builds the same app in two directories.
  */
 import { describe, expect, test, vi } from 'vitest'
+import { expectRelocatable } from '@tanstack/compiler-test-utils/determinism'
 import { head, loadRoute } from './regression-helpers'
 import type * as NodeUrl from 'node:url'
 
@@ -56,53 +58,43 @@ const moduleIds = {
 }
 
 /**
- * What the compiled route does, and its modules with the route file's id
- * (in any spelling) replaced by `<route>`.
+ * What the route compiled under `moduleId` does (SPEC G4: semantics, not
+ * bytes): the options that load lazily and how they group, the loader's
+ * data and the rendered components. Its emitted code and generated names
+ * are free to differ between roots.
  */
 async function compileUnder(moduleId: string) {
   const loaded = await loadRoute(route, {
     moduleId,
     stubs: { './format': { format: (text: string) => `[${text}]` } },
   })
-  const spellings = [
-    ...new Set([moduleId, moduleId.replaceAll('\\', '/')]),
-  ].sort((a, b) => b.length - a.length)
-  const anonymous = (code: string) =>
-    spellings.reduce((text, id) => text.replaceAll(id, '<route>'), code)
-  const lazy: Array<string> = []
-  for (const option of ['loader', 'component', 'errorComponent']) {
-    if (await loaded.isLazy(option)) {
-      lazy.push(option)
-    }
-  }
   return {
-    lazy,
+    groups: await loaded.groups(),
     rendered: [
       await (await loaded.load('loader'))(),
       await loaded.render('component'),
       await loaded.render('errorComponent'),
     ],
-    modules: Object.fromEntries(
-      Object.entries(loaded.modules).map(([label, code]) => [
-        label,
-        anonymous(code),
-      ]),
-    ),
   }
+}
+
+const reference = {
+  groups: [['component'], ['errorComponent']],
+  rendered: ['MARK data', '<p>[MARK page]</p>', '<p>MARK failure</p>'],
 }
 
 describe('a route compiled under', () => {
   test.each(Object.entries(moduleIds))(
-    '%s splits the same way into the same modules',
+    '%s splits and runs as under the reference root',
     async (_, moduleId) => {
-      const reference = await compileUnder('/app/src/routes/index.tsx')
-      expect(reference.lazy).toEqual(['component', 'errorComponent'])
-      expect(reference.rendered).toEqual([
-        'MARK data',
-        '<p>[MARK page]</p>',
-        '<p>MARK failure</p>',
-      ])
-      expect(await compileUnder(moduleId)).toEqual(reference)
+      await expectRelocatable(
+        ['/app/src/routes/index.tsx', moduleId],
+        compileUnder,
+        {
+          check: (observation) => expect(observation).toEqual(reference),
+          portable: (observation) => observation,
+        },
+      )
     },
   )
 })

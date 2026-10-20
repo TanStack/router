@@ -2,6 +2,17 @@
  * Determinism versus relocation (FIX-PLAN A11; SPEC G4, J1.5, J4.4, J5.4,
  * §9).
  *
+ * What is compared is a semantic projection of what the test observes,
+ * never emitted bytes (SPEC §5.1, §5.5, G4): the values the compiled code
+ * computes when it runs (loader data, rendered output, shared identity),
+ * the lazy groups and which user modules load on demand, the relevant
+ * diagnostics, and the ids that are a public contract (route ids and
+ * paths, a configured id function's ids). Not emitted code or file names,
+ * private and generated names (bindings, generated type names, chunk
+ * names), nor complete inventories of the modules a load evaluates (a
+ * generated facade or support module is free). Byte equality is at most an
+ * optional implementation control, outside the corpus.
+ *
  * - Determinism: with the same effective root and configuration, repeated
  *   runs and runs that differ only in incidental order (file discovery,
  *   request order, write order) give the same observable output: ids,
@@ -19,9 +30,10 @@
  * API:
  * - `reorderings(items)` and `reorderedRecords(record)`: the given order,
  *   the reverse, and an interleaving, as named variants.
- * - `expectDeterministic(variants, observe)`: runs `observe` once per
- *   variant, one after another, and asserts every observation equals the
- *   first. Returns the observations.
+ * - `expectDeterministic(variants, observe, { project? })`: runs `observe`
+ *   once per variant, one after another, and asserts every projection
+ *   (`project(observation)`, default the observation) equals the first.
+ *   Returns the observations.
  * - `expectRelocatable(roots, observe, { check, portable? })`: runs
  *   `observe` at each root, applies `check(observation, root)` to each and,
  *   when given, asserts `portable(observation, root)` agrees across roots.
@@ -78,8 +90,9 @@ export function reorderedRecords<T>(
 }
 
 /**
- * Runs `observe` for each variant, one after another, and asserts every
- * observation deep-equals the first. Variants must share the effective
+ * Runs `observe` for each variant, one after another, and asserts the
+ * projection of every observation (`project`, default the observation
+ * itself) deep-equals the first one's. Variants must share the effective
  * root and configuration: only repetition or incidental order may differ.
  */
 export async function expectDeterministic<TVariant, TObservation>(
@@ -88,15 +101,16 @@ export async function expectDeterministic<TVariant, TObservation>(
     variant: TVariant,
     index: number,
   ) => TObservation | Promise<TObservation>,
+  options: { project?: (observation: TObservation) => unknown } = {},
 ): Promise<Array<TObservation>> {
   const observations: Array<TObservation> = []
   for (const [index, variant] of variants.entries()) {
     observations.push(await observe(variant, index))
   }
-  for (const [index, observation] of observations.entries()) {
-    expect(observation, `variant ${index} vs variant 0`).toEqual(
-      observations[0],
-    )
+  const project = options.project ?? ((observation) => observation)
+  const projections = observations.map(project)
+  for (const [index, projection] of projections.entries()) {
+    expect(projection, `variant ${index} vs variant 0`).toEqual(projections[0])
   }
   return observations
 }

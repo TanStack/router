@@ -1,12 +1,14 @@
 // Slow-tier half of this suite: the tests that need a real tool. Its
 // in-process tests are in ../code-splitter-determinism.test.ts (fast tier).
 /**
- * Code splitting does not depend on where the project lives or on how the
- * platform spells paths: the same route compiles to the same modules under
- * any project root and with Windows module ids, and building the same app
- * twice, in two directories, emits the same files.
+ * Code splitting does not depend on where the project lives (SPEC G4,
+ * relocation): the same app built in two directories (its files written in
+ * another order) splits the same way and runs the same in a browser. Each
+ * build must work on its own; emitted files, chunk names and bytes are free
+ * to differ (`@tanstack/compiler-test-utils/determinism`).
  */
 import { expect, test, vi } from 'vitest'
+import { expectRelocatable } from '@tanstack/compiler-test-utils/determinism'
 import { build, routeApp } from '../build-harness'
 import { head } from '../regression-helpers'
 import type * as NodeUrl from 'node:url'
@@ -57,34 +59,48 @@ export const Route = createFileRoute('/')({
   },
 )
 
-/** Builds the app in a directory named after `prefix`; returns its files. */
-async function buildIn(bundler: Bundler, prefix: string, reverse: boolean) {
+/**
+ * Builds the app in a directory named after `prefix` and runs it in a
+ * browser: the loader's data, the mounted page, and whether each option's
+ * code ships with the entry or on demand.
+ */
+async function buildIn(bundler: Bundler, prefix: string) {
   const files = Object.entries(appFiles)
   const app = await build({
     bundler,
     env: 'client',
     prefix,
-    // Write the files in another order
-    files: Object.fromEntries(reverse ? files.reverse() : files),
+    // Write the files in another order at the second root
+    files: Object.fromEntries(prefix === prefixes[1] ? files.reverse() : files),
   })
-  return Object.fromEntries(
-    app.chunks
-      .map((chunk) => [chunk.fileName, chunk.code] as const)
-      .sort(([a], [b]) => a.localeCompare(b)),
-  )
+  const run = await app.run(`const data = await entry.Route.options.loader()
+await entry.mount(entry.Route.options.component)
+return data`)
+  return {
+    data: run.result,
+    html: run.html,
+    placement: {
+      page: app.where('MARK_PAGE'),
+      failure: app.where('MARK_FAILURE'),
+      data: app.where('MARK_DATA'),
+    },
+  }
 }
 
+const prefixes = ['.determinism-a-', '.determinism-another-longer-directory-']
+
 test.each(['vite', 'rspack', 'webpack'] as const)(
-  'building the same app twice in two directories emits the same files (%s)',
+  'the same app built in two directories splits and runs the same (%s)',
   async (bundler) => {
-    const first = await buildIn(bundler, '.determinism-a-', false)
-    const second = await buildIn(
-      bundler,
-      '.determinism-another-longer-directory-',
-      true,
-    )
-    expect(Object.keys(first).length).toBeGreaterThan(1)
-    expect(second).toEqual(first)
+    await expectRelocatable(prefixes, (prefix) => buildIn(bundler, prefix), {
+      check: (observation) => {
+        expect(observation.data).toBe('MARK_DATA')
+        expect(observation.html).toContain('[MARK_PAGE]')
+        expect(observation.placement.page).toBe('lazy')
+        expect(observation.placement.failure).toBe('lazy')
+      },
+      portable: (observation) => observation,
+    })
   },
   120_000,
 )
