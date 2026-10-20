@@ -808,6 +808,22 @@ const value = {
   read() { return config },
 }`,
     },
+    // The private method is the only code reading `config` (V4 round 2,
+    // red-astra-r2/04: a compiler ignoring private method bodies).
+    {
+      name: 'a private method, the only reader of the binding',
+      declarations: `const config = init({ name: 'config' })
+class Vault {
+  #read() {
+    return config
+  }
+  read() {
+    return this.#read()
+  }
+}`,
+      loader: 'new Vault().read()',
+      component: 'new Vault().read()',
+    },
   ])('reaches the split component through $name', expectSharedOnce)
 
   // Each row declares a module-level `title` (or component) that reads
@@ -1083,5 +1099,34 @@ export const Route = createFileRoute('/')({
       false,
     ])
     expect(await route.render('component')).toBe('v')
+  })
+})
+
+// A split component wrapped in a call (`memo(Page)`, an HOC) of a `const`
+// component: the call runs when the chunk loads, after `Page` is
+// initialized (SPEC G3: ordering dependencies kept; J2.6: the chunk loads
+// and renders). A `function Page() {}` declaration is hoisted and would hide
+// a wrapper evaluated above it (V4 round 2, red-fable-r2/06).
+describe('a split component wrapped in a call of a const component', () => {
+  it.each([
+    {
+      name: "React's memo",
+      code: `${head}import { memo } from 'react'
+const Page = () => <h1>Posts</h1>
+export const Route = createFileRoute('/')({ component: memo(Page) })
+`,
+    },
+    {
+      name: 'an application HOC',
+      code: `${head}import { withAuth } from './auth'
+const Page = () => <h1>Posts</h1>
+export const Route = createFileRoute('/')({ component: withAuth(Page) })
+`,
+    },
+  ])('renders when the chunk loads ($name)', async ({ code }) => {
+    const route = await loadRoute(code, {
+      stubs: { './auth': { withAuth: (component: unknown) => component } },
+    })
+    expect(await route.render('component')).toBe('<h1>Posts</h1>')
   })
 })
