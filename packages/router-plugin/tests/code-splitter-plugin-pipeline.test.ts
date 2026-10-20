@@ -451,8 +451,9 @@ export const doubled = [1, 2].map(function double(value) {
       const destructuring = await server.import('/src/destructuring.ts')
       const lazy = await server.import('/routes/posts.lazy.tsx')
       const preview = await server.import('/src/route-preview.tsx')
-      const { widgets, Route: widgetsRoute } =
-        await server.import('/routes/widgets.tsx')
+      const { widgets, Route: widgetsRoute } = await server.import(
+        '/routes/widgets.tsx',
+      )
       // The router plugin left each module as it was (the router transform
       // boundary, before Vite's own transforms).
       for (const file of unowned.filter(
@@ -512,11 +513,7 @@ export const doubled = [1, 2].map(function double(value) {
         items: [['item'], false, false],
         lazy: false,
         preview: ['preview data', false],
-        widgets: [
-          '/foreign-widget',
-          'foreign data',
-          true,
-        ],
+        widgets: ['/foreign-widget', 'foreign data', true],
       })
       expect([
         await renderRouteComponent(code.itemsRoute.options.component),
@@ -539,9 +536,9 @@ export const doubled = [1, 2].map(function double(value) {
       ])
       // The route the registered file creates is the one it splits (the
       // genuine call bound to `Route`; SPEC J2.1).
-      expect(
-        'preload' in widgetsRoute.options.component,
-      ).toBe(autoCodeSplitting)
+      expect('preload' in widgetsRoute.options.component).toBe(
+        autoCodeSplitting,
+      )
     },
   )
 })
@@ -705,9 +702,7 @@ export const Route = createFileRoute('/hmr')({
       { framework: target, importMeta },
     )
     expect(
-      html(
-        await renderComponent((Route as any).options.component, {}, target),
-      ),
+      html(await renderComponent((Route as any).options.component, {}, target)),
     ).toBe('<p>hmr</p>')
   }
 

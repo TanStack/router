@@ -1007,7 +1007,9 @@ export const Route = createFileRoute('/')({
 // option reads the same instance, and what only one split option imports
 // does not load with the route module.
 describe('state only split options read, in a .jsx route file', () => {
-  const stateRoute = (options: string) => `${head}import { init, see } from './init'
+  const stateRoute = (
+    options: string,
+  ) => `${head}import { init, see } from './init'
 const store = init({ label: 'shared' })
 export const Route = createFileRoute('/')({
 ${options}

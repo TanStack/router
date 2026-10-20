@@ -585,7 +585,10 @@ ${groupings}  loader: () => 'data',
     try {
       captured = await captureConsole(() => loadRoute(code))
     } catch (error) {
-      expectDiagnostic(error, { severity: 'error', names: ['codeSplitGroupings'] })
+      expectDiagnostic(error, {
+        severity: 'error',
+        names: ['codeSplitGroupings'],
+      })
       return
     }
     const { result: loaded, diagnostics } = captured

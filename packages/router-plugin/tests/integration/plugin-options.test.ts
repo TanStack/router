@@ -7,12 +7,7 @@
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
-import {
-  build,
-  clientMountEntry,
-  routeApp,
-  routeHead,
-} from '../build-harness'
+import { build, clientMountEntry, routeApp, routeHead } from '../build-harness'
 import type {
   BuildResult,
   Bundler,

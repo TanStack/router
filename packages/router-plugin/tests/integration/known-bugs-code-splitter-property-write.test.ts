@@ -59,37 +59,35 @@ export async function mount(path: string) {
 // well is no fix: the page code then loads with the entry chunk.
 // Source: the #8504 probe (memos/splitter.md B6).
 // Impact: the app's entry throws when it loads ("Page is not defined").
-describe.concurrent.each([
-  'vite',
-  'rspack',
-  'webpack',
-  'rsbuild',
-] as const)('%s', (bundler) => {
-  it.for([
-    { hint: 'without a sideEffects field', sideEffects: undefined },
-    { hint: 'with "sideEffects": false', sideEffects: false },
-  ])(
-    'a component the route file writes a property of loads with its chunk and renders the property ($hint)',
-    { timeout, fails: true },
-    async ({ sideEffects }, { expect, onTestFinished }: TestContext) => {
-      const options = {
-        sideEffects,
-        files,
-        registerCleanup: onTestFinished,
-      }
-      const built =
-        bundler === 'rsbuild'
-          ? await buildWithRsbuild(options)
-          : await build({
-              bundler: bundler satisfies Bundler,
-              env: 'client',
-              ...options,
-            })
-      const { html } = await built.run(`await entry.mount('/display-name')`)
-      expect({ placement: built.where(marker), html }).toEqual({
-        placement: 'lazy',
-        html: `<div id="root"><div>${marker}PageDisplay</div></div>`,
-      })
-    },
-  )
-})
+describe.concurrent.each(['vite', 'rspack', 'webpack', 'rsbuild'] as const)(
+  '%s',
+  (bundler) => {
+    it.for([
+      { hint: 'without a sideEffects field', sideEffects: undefined },
+      { hint: 'with "sideEffects": false', sideEffects: false },
+    ])(
+      'a component the route file writes a property of loads with its chunk and renders the property ($hint)',
+      { timeout, fails: true },
+      async ({ sideEffects }, { expect, onTestFinished }: TestContext) => {
+        const options = {
+          sideEffects,
+          files,
+          registerCleanup: onTestFinished,
+        }
+        const built =
+          bundler === 'rsbuild'
+            ? await buildWithRsbuild(options)
+            : await build({
+                bundler: bundler satisfies Bundler,
+                env: 'client',
+                ...options,
+              })
+        const { html } = await built.run(`await entry.mount('/display-name')`)
+        expect({ placement: built.where(marker), html }).toEqual({
+          placement: 'lazy',
+          html: `<div id="root"><div>${marker}PageDisplay</div></div>`,
+        })
+      },
+    )
+  },
+)
