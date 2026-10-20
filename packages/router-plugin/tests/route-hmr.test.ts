@@ -8,7 +8,7 @@
  * plugin serves to each Vite environment.
  */
 import { SourceMap } from 'node:module'
-import { describe, expect, it, test } from 'vitest'
+import { describe, expect, it, onTestFinished, test, vi } from 'vitest'
 import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
 import { renderToHtml } from '@tanstack/compiler-test-utils/render'
 import { packagesDirectory } from './lazy-tracking'
@@ -103,9 +103,22 @@ export const Route = createRootRoute({
         html: '<div>root</div>',
       },
     ])('$name', ({ route, html }) => {
-      it.each([false, true])(
-        'renders and loads with a hot API present: %s, without persisted data',
-        async (present) => {
+      // (`window` defined: a browser-like evaluation, with or without the
+      // host's hot runtime, and no router on the page yet)
+      it.each([
+        { present: false, window: undefined },
+        { present: true, window: undefined },
+        { present: false, window: {} },
+        { present: true, window: {} },
+      ])(
+        'renders and loads with a hot API present: $present, without persisted data, window: $window',
+        async ({ present, window }) => {
+          if (window) {
+            vi.stubGlobal('window', window)
+            onTestFinished(() => {
+              vi.unstubAllGlobals()
+            })
+          }
           const { graph } = await compileRouteModules(route, {
             hmr: true,
             pluginOptions: { plugin: { hmr: { style } } },
