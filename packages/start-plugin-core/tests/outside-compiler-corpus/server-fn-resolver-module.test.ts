@@ -2,11 +2,18 @@
  * The production server-fn resolver (`getServerFnById`, generated from what
  * the callers reported) observed by evaluating it: which handler each id
  * runs, and who may call it (SPEC J4.2, D6). Error prose is free (§5.7).
+ *
+ * Implementation controls (outside the compiler test corpus: see
+ * packages/compiler-test-utils/AGENTS.md; start N08): they call the internal
+ * resolver generator with forced access options, which a rewrite may
+ * replace. The corpus decides D6 through real hosts
+ * (integration/known-bugs-start-compiler.test.ts, react-start-rsc's
+ * integration/rsc-start-dev.test.ts).
  */
 import { describe, expect, test } from 'vitest'
 import { expectDeterministic } from '@tanstack/compiler-test-utils/determinism'
-import { generateServerFnResolverModule } from '../src/start-compiler/server-fn-resolver-module'
-import type { ServerFn } from '../src/start-compiler/types'
+import { generateServerFnResolverModule } from '../../src/start-compiler/server-fn-resolver-module'
+import type { ServerFn } from '../../src/start-compiler/types'
 
 /** A provider module (a `data:` URL) whose export `name` returns `value`. */
 const providerModule = (name: string, value: string) =>

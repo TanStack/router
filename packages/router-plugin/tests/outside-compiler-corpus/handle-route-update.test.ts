@@ -8,6 +8,13 @@
  * (`window.__TSR_ROUTER__`). No hot context, disposal or module selection
  * is recreated here: what the bundler and the framework do with an edit is
  * tested on a real page (integration/route-hmr-browser*.test.ts).
+ *
+ * Implementation controls (outside the compiler test corpus: see
+ * packages/compiler-test-utils/AGENTS.md; hmr H12): they call the plugin's
+ * own HMR runtime (`getHandleRouteUpdateCode`) directly, which a rewrite may
+ * replace. They give the semantics of today's update function, not proof
+ * that a real host delivers an edit: the corpus decides delivery on real
+ * pages.
  */
 
 import {
@@ -21,13 +28,13 @@ import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { Fragment, act, createElement } from 'react'
 import { createPortal } from 'react-dom'
 import { createRoot } from 'react-dom/client'
-import { createMemoryHistory } from '../../history/src'
-import { HeadContent } from '../../react-router/src/HeadContent'
-import { RouterContextProvider } from '../../react-router/src/RouterProvider'
-import { Scripts } from '../../react-router/src/Scripts'
-import { Router as ReactRouter } from '../../react-router/src/router'
-import { getFrameworkHmrCompilerPlugins } from '../src/core/code-splitter/plugins/framework-plugins'
-import { getHandleRouteUpdateCode } from '../src/core/hmr'
+import { createMemoryHistory } from '../../../history/src'
+import { HeadContent } from '../../../react-router/src/HeadContent'
+import { RouterContextProvider } from '../../../react-router/src/RouterProvider'
+import { Scripts } from '../../../react-router/src/Scripts'
+import { Router as ReactRouter } from '../../../react-router/src/router'
+import { getFrameworkHmrCompilerPlugins } from '../../src/core/code-splitter/plugins/framework-plugins'
+import { getHandleRouteUpdateCode } from '../../src/core/hmr'
 import type { AnyRoute, GetStoreConfig } from '@tanstack/router-core'
 
 vi.mock('@tanstack/router-core/isServer', async (importOriginal) => ({

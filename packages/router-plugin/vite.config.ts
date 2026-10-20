@@ -14,6 +14,12 @@ if (process.env.VITEST) {
   )
 }
 
+/**
+ * Implementation tests: outside the compiler test corpus (see
+ * packages/compiler-test-utils/AGENTS.md, "Corpus and implementation tests").
+ */
+const implementationTests = '**/outside-compiler-corpus/**'
+
 const config = defineConfig({
   test: {
     name: packageJson.name,
@@ -28,7 +34,11 @@ const config = defineConfig({
         extends: true,
         test: {
           name: 'unit',
-          exclude: [...configDefaults.exclude, 'integration/**'],
+          exclude: [
+            ...configDefaults.exclude,
+            'integration/**',
+            implementationTests,
+          ],
           typecheck: { enabled: true },
         },
       },
@@ -39,6 +49,30 @@ const config = defineConfig({
         test: {
           name: 'integration',
           include: ['integration/**/*.test.ts'],
+          exclude: [...configDefaults.exclude, implementationTests],
+          testTimeout: 30_000,
+          hookTimeout: 30_000,
+        },
+      },
+      {
+        // Implementation tests (`test:implementation`, both tiers): files
+        // under an `outside-compiler-corpus/` directory. They pin choices of
+        // today's implementation that a correct compiler may make
+        // differently, so the corpus targets above leave them out (see
+        // packages/compiler-test-utils/AGENTS.md).
+        extends: true,
+        test: {
+          name: 'implementation',
+          include: ['**/outside-compiler-corpus/**/*.test.ts'],
+          exclude: [...configDefaults.exclude, 'integration/**'],
+          typecheck: { enabled: true },
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'implementation-integration',
+          include: ['integration/**/outside-compiler-corpus/**/*.test.ts'],
           testTimeout: 30_000,
           hookTimeout: 30_000,
         },
