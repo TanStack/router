@@ -4,9 +4,9 @@
  * violation report adapter (`violation-report.ts`), and the Rsbuild dev
  * server's SSR output run in Node.
  */
-import { createRequire } from 'node:module'
 import path from 'node:path'
-import vm from 'node:vm'
+import { pathToFileURL } from 'node:url'
+import { runNodeProgram } from '@tanstack/compiler-test-utils/run-node'
 import { startServerEntryFiles } from '../../dev-server'
 import { reportedViolations } from '../../importProtection/start-apps'
 import type { ReportOutput } from '../../importProtection/violation-report'
@@ -119,41 +119,50 @@ export async function settledAcrossTurn(
   await server.settle()
 }
 
+/** Explicit output contract of the Node fixture entry, including split chunks. */
+export const ssrNodeOutput = {
+  environments: {
+    ssr: {
+      output: { filename: { js: 'ip-node-entry.cjs' }, distPath: { js: '' } },
+    },
+  },
+}
+
 /**
- * Runs the SSR output of an Rsbuild dev server with Start's plugin (a
- * CommonJS bundle for Node) in a fresh VM context, as Node loads the
- * server, then `script` (the body of an async function) in the same
- * context. Returns what the script returns (`result`), or the message of
- * what it throws (`error`). The context's console is this process's.
+ * Load the declared SSR entry from Rsbuild's writeToDisk output with Node.
+ * Node owns globals, dependencies, module identity and split chunk loading.
  */
 export async function runRsbuildSsr(
-  server: Pick<RsbuildDevServer, 'outputs' | 'root'>,
+  server: Pick<RsbuildDevServer, 'rsbuild' | 'root'>,
   script: string,
 ): Promise<{ result: unknown } | { error: string }> {
-  const commonJs = { exports: {} }
-  const context = vm.createContext({
-    console,
-    module: commonJs,
-    exports: commonJs.exports,
-    require: createRequire(path.join(server.root, 'index.js')),
-  })
-  context.globalThis = context
-  for (const code of Object.values(await server.outputs('ssr'))) {
-    vm.runInContext(code, context)
+  const config = server.rsbuild.getNormalizedConfig({ environment: 'ssr' })
+  const entry = path.resolve(
+    server.root,
+    config.output.distPath.root,
+    'ip-node-entry.cjs',
+  )
+  const { stdout } = await runNodeProgram(
+    `
+let outcome
+try {
+  await import(${JSON.stringify(pathToFileURL(entry).href)})
+  outcome = { result: await (async () => {\n${script}\n})() }
+} catch (error) {
+  outcome = { error: error instanceof Error ? error.message : String(error) }
+}
+console.log('IP_NODE_RESULT:' + JSON.stringify(outcome))
+`,
+    { cwd: server.root },
+  )
+  const result = stdout
+    .split('\n')
+    .reverse()
+    .find((line) => line.startsWith('IP_NODE_RESULT:'))
+  if (!result) {
+    throw new Error(`Node returned no SSR result: ${stdout}`)
   }
-  try {
-    const run = vm.runInContext(
-      `(async () => {\n${script}\n})`,
-      context,
-    ) as () => Promise<unknown>
-    return { result: await run() }
-  } catch (error) {
-    // errors of the VM context are not `instanceof Error` here
-    return {
-      error:
-        typeof error === 'object' && error !== null && 'message' in error
-          ? String(error.message)
-          : String(error),
-    }
-  }
+  return JSON.parse(result.slice('IP_NODE_RESULT:'.length)) as
+    | { result: unknown }
+    | { error: string }
 }

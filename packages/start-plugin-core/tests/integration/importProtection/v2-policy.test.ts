@@ -9,22 +9,16 @@
  * entry `src/server.ts`. Rsbuild dev, and the `Promise<false>` row on Vite
  * dev (its sync twin is pinned in dev.test.ts).
  */
-import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
-import {
-  captureConsole,
-  findDiagnostics,
-} from '@tanstack/compiler-test-utils/diagnostics'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { afterAll, afterEach, describe, expect, test } from 'vitest'
-import { startDevServer } from '../../dev-server'
-import {
-  describeValue,
-  describeValuePrelude,
-} from '../../importProtection/mock-helpers'
+import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import {
   runInClient,
-  startRsbuildStartDevServer,
-} from '../../rsbuild-dev-server'
-import { reportedImporters, runRsbuildSsr } from './v2-hosts'
+  runViteClient,
+  startBrowserStartDevServer as startDevServer,
+  startBrowserRsbuildStartDevServer as startRsbuildStartDevServer,
+} from './client-pages'
+import { reportedImporters, runRsbuildSsr, ssrNodeOutput } from './v2-hosts'
 import type { ImportProtectionOptions } from '../../../src/schema'
 import type { ViolationInfo } from '../../../src/import-protection/trace'
 
@@ -105,6 +99,9 @@ describe('rsbuild dev', () => {
   const start = () =>
     (started ??= startRsbuildStartDevServer({
       compileTimeout,
+      browser: true,
+      hmr: false,
+      config: ssrNodeOutput,
       files: app,
       start: { importProtection },
       registerCleanup: (cleanup) => {
@@ -226,19 +223,18 @@ export const getRouter = () => undefined
   /** What the client gets, and the importers reported for the client. */
   async function outcome() {
     const server = await (started ??= startDevServer({
+      browser: true,
       start: { importProtection },
       files: viteApp,
       registerCleanup: (cleanup) => {
         dispose = cleanup
       },
     }))
-    const { result: value } = await captureConsole(async () => {
-      await evaluateServed(server, '/src/router.ts')
-      const { uses } = globalThis as unknown as {
-        uses: Record<string, () => unknown>
-      }
-      return describeValue(uses.allowedAsync!(), 'MARK_')
-    })
+    const { result: value } = await runViteClient(
+      server,
+      '/src/router.ts',
+      `${describeValuePrelude}\nreturn describeValue(globalThis.uses.allowedAsync(), 'MARK_')`,
+    )
     await server.idle()
     return { value, reported: reportedImporters(server.logs, 'client') }
   }

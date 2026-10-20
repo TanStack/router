@@ -18,6 +18,8 @@ import {
   reportedViolations,
 } from '../../importProtection/start-apps'
 
+import { originalLocation } from '../../importProtection/original-location'
+
 const timeout = 30_000
 
 /** `environment importer` of each distinct violation logged in `logs`. */
@@ -160,7 +162,10 @@ return describeValue(window.leaked(), 'MARK_SECRET')
     async () => {
       const { server } = await openApp(clientEntryApp)
       expect(loggedViolations(server.logs)).toEqual([
-        `client ${locationIn('src/leak.ts', leak, 2, 'secret()')}`,
+        originalLocation(
+          `client ${locationIn('src/leak.ts', leak, 2, 'secret()')}`,
+          1,
+        ),
       ])
     },
     timeout,
@@ -221,7 +226,10 @@ export default { fetch: () => new Response(String(handler())) }
       const { server, response } = await request(serverEntryApp(handler))
       expect(response.body).not.toContain('MARK_CLIENT')
       expect(loggedViolations(server.logs)).toEqual([
-        `server ${locationIn('src/handler.ts', handler, 2, 'widget()')}`,
+        originalLocation(
+          `server ${locationIn('src/handler.ts', handler, 2, 'widget()')}`,
+          1,
+        ),
       ])
     },
     timeout,
@@ -250,7 +258,7 @@ export const Route = createFileRoute('/')({
   // denied file, are only in the split module); rendered in a real page
   // since V1 ip S19.
   test(
-    'using a denied file, directly or through a module, renders with the mock, and the dev server logs a warning at each use',
+    'using a denied file, directly or through a module, renders with the mock, and the dev server logs each at its original import or use',
     async () => {
       const { server, browser } = await openApp({
         ...pageApp(route),
@@ -260,8 +268,14 @@ export const Route = createFileRoute('/')({
       await browser.waitForText('MARK_RENDERED', { selector: '#app' })
       expect(await browser.text('#app')).not.toContain('MARK_SECRET')
       expect(loggedViolations(server.logs).sort()).toEqual([
-        `client ${locationIn('src/routes/index.tsx', route, 6, 'secret()')}`,
-        `client ${locationIn('src/widget.ts', widget, 2, 'secret()')}`,
+        originalLocation(
+          `client ${locationIn('src/routes/index.tsx', route, 6, 'secret()')}`,
+          2,
+        ),
+        originalLocation(
+          `client ${locationIn('src/widget.ts', widget, 2, 'secret()')}`,
+          1,
+        ),
       ])
     },
     timeout,

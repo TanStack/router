@@ -1,10 +1,5 @@
-/**
- * Compiler-level outcomes of import protection's location lookup (SPEC §8
- * allows them, V1 ip R01): which original use of a denied import is
- * reported, skipping uses inside code the Start compiler removes from the
- * environment, and positions through a real source map. Its internals
- * (caches, indexes, snippets) are internal controls:
- * outside-compiler-corpus/importProtection/sourceLocation.test.ts.
+/** Internal source-location selector controls, outside compiler acceptance.
+ * Public diagnostic outcomes live in integration/importProtection/reported-location.test.ts.
  */
 import { transformWithOxc } from 'vite'
 import { describe, expect, test } from 'vitest'
@@ -15,11 +10,11 @@ import {
   findImportStatementLocationFromTransformed,
   findOriginalUsageLocation,
   findPostCompileUsageLocation,
-} from '../../src/import-protection/sourceLocation'
+} from '../../../src/import-protection/sourceLocation'
 import type {
   TransformResult,
   TransformResultProvider,
-} from '../../src/import-protection/sourceLocation'
+} from '../../../src/import-protection/sourceLocation'
 
 describe('findOriginalUsageLocation', () => {
   function makeProvider(

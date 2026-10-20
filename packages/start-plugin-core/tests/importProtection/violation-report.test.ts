@@ -244,6 +244,20 @@ Fix: ...`
 })
 
 describe('suggestedDirections', () => {
+  test('API names quoted in source do not substitute for actionable suggestions', () => {
+    const sourceOnly = report
+      .replace(/Suggestions:[\s\S]*/, 'Suggestions:\n  - Review your code')
+      .replace('secret()', 'createServerFn()')
+    expect(suggestedDirections(sourceOnly)).toEqual([])
+    expect(
+      suggestedDirections(
+        sourceOnly.replace(
+          'Review your code',
+          'Move this import into a server-only module',
+        ),
+      ),
+    ).toEqual(['server'])
+  })
   test.each([
     {
       text: 'Wrap it in createServerFn().handler(...) or createIsomorphicFn()',
@@ -257,9 +271,17 @@ describe('suggestedDirections', () => {
       text: 'createServerFn or createClientOnlyFn',
       directions: ['server', 'client'],
     },
+    {
+      text: 'Move this import into a server-only module',
+      directions: ['server'],
+    },
+    {
+      text: 'Keep this import in a client-only module',
+      directions: ['client'],
+    },
     // Whole names only.
     { text: 'myCreateServerFnHelper', directions: [] },
   ])('$text: $directions', ({ text, directions }) => {
-    expect(suggestedDirections(text)).toEqual(directions)
+    expect(suggestedDirections(`Suggestions:\n  - ${text}`)).toEqual(directions)
   })
 })

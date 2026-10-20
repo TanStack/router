@@ -24,6 +24,7 @@ import {
   violationReports,
 } from '../../importProtection/start-apps'
 import { suggestedDirections } from '../../importProtection/violation-report'
+import { originalLocation } from '../../importProtection/original-location'
 import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import type { TanStackStartInputConfig } from '../../../src/schema'
 import type { ViolationInfo } from '../../../src/import-protection/trace'
@@ -230,7 +231,7 @@ export const read = () => getRequest()
       rule: '@tanstack/react-start/server',
     },
   ])(
-    '$name fails the build, naming the importer at the use, the rule and a server-side fix',
+    '$name fails the build, naming the importer at its import or surviving use, the rule and a server-side fix',
     async ({ files, reported, rule }) => {
       const report = await failureReport(
         buildStart({ bundler, files, entry: 'src/entry.ts' }),
@@ -241,7 +242,7 @@ export const read = () => getRequest()
         suggests: suggestedDirections(report.text),
       }).toEqual({
         environment: 'client',
-        importer: reported,
+        importer: originalLocation(reported, 1),
         suggests: ['server'],
       })
       expectDiagnostic(report.text, { names: [rule] })
@@ -250,7 +251,7 @@ export const read = () => getRequest()
   )
 
   test(
-    'a server import of a *.client.* file fails the build, naming the importer at the use, the rule and a client-side fix',
+    'a server import of a *.client.* file fails the build, naming the importer at its import or surviving use, the rule and a client-side fix',
     async () => {
       const report = await failureReport(
         buildStart({
@@ -271,7 +272,7 @@ export const read = () => widget()
         suggests: suggestedDirections(report.text),
       }).toEqual({
         environment: 'server',
-        importer: 'src/server.ts:2:27',
+        importer: originalLocation('src/server.ts:2:27', 1),
         suggests: ['client'],
       })
       expectDiagnostic(report.text, { names: ['**/*.client.*'] })
@@ -454,7 +455,7 @@ describe.each(startBundlers)('%s build, mock mode', (bundler) => {
    */
   async function mockedRead(
     denied: MockedImport,
-    mockAccess: 'error' | 'warn' | 'off' | undefined = 'off',
+    mockAccess: 'error' | 'warn' | 'off' | undefined,
   ) {
     const env = denied.env ?? 'client'
     const built = await buildStart({
@@ -560,7 +561,7 @@ export const secret = () => 'MARK_SECRET'
   test.each(Object.keys(deniedFiles))(
     '%s is mocked, with a warning',
     async (name) => {
-      expect(await mockedRead(deniedFiles[name]!)).toEqual(mocked)
+      expect(await mockedRead(deniedFiles[name]!, 'off')).toEqual(mocked)
     },
     timeout,
   )
@@ -626,7 +627,7 @@ export const secret = () => 'MARK_SECRET'
   markerMockTest.each(Object.keys(markedModules))(
     '%s is mocked, with a warning',
     async (name) => {
-      expect(await mockedRead(markedModules[name]!)).toEqual(mocked)
+      expect(await mockedRead(markedModules[name]!, 'off')).toEqual(mocked)
     },
     timeout,
   )
@@ -946,45 +947,54 @@ describe.each(startBundlers)('%s build, server-only marker', (bundler) => {
     timeout,
   )
 
-  // Bug: the same bugs, on one app, in a mock-mode build. Rsbuild: the
-  // marked module is mocked for every importer, the exempt one included,
-  // and the one report is at the marked module (`src/marked.ts`), not at
-  // the other importer. Vite: the exempt importer gets the real module and
-  // the other a mock, but the marker import of the marked module itself is
-  // reported too (`ignoreImporters` does not apply to it, the pin above),
-  // so the reports name `src/marked.ts` besides `src/other.ts`.
-  // Impact: as above; on Rsbuild, code a project exempts gets a mock; on
-  // both, the report does not single out the importer at fault.
+  // Bug: marker exemptions and mock resolution depend on the build's
+  // import order. Rsbuild can mock the exempt importer too; Vite can give
+  // the nonexempt importer the real module after the exempt edge loads it.
+  // Source: V1R ip I09/S20; public entry-order and indirection variants.
+  // Impact: exemptions either stop working or leak the denied real value.
+  // Blame is read from onViolation/trace: marker-origin display is allowed.
   test.fails(
     'in mock mode, an ignored importer gets the real module, another importer a safe mock, and only the other importer is reported',
     async () => {
-      const { client } = await buildStart({
-        bundler,
-        files: ignoredAndOther,
-        entry: 'src/entry.ts',
-        start: {
-          importProtection: {
-            behavior: 'mock',
-            mockAccess: 'off',
-            ignoreImporters: ['**/ignored.ts'],
+      for (const entry of [
+        `export { a } from './ignored'\nexport { b } from './other'\n`,
+        `export { b } from './other'\nexport { a } from './ignored'\n`,
+        `export { a } from './ignored'\nexport { b } from './mid'\n`,
+      ]) {
+        const seen: Array<ViolationInfo> = []
+        const { client } = await buildStart({
+          bundler,
+          files: {
+            ...ignoredAndOther,
+            'src/entry.ts': entry,
+            'src/mid.ts': `export { b } from './other'\n`,
           },
-        },
-      })
-      const { result } = await client.run(`${describeValuePrelude}
+          entry: 'src/entry.ts',
+          start: {
+            importProtection: {
+              behavior: 'mock',
+              mockAccess: 'off',
+              ignoreImporters: ['**/ignored.ts'],
+              onViolation: (info) => {
+                seen.push(info as ViolationInfo)
+              },
+            },
+          },
+        })
+        const { result } = await client.run(`${describeValuePrelude}
 return {
   ignored: describeValue(entry.a(), 'MARK_SECRET'),
   other: describeValue(entry.b(), 'MARK_SECRET'),
 }`)
-      expect({
-        ...(result as object),
-        reported: reportedViolations(client.warnings).map(({ importer }) =>
-          importer.replace(/:\d+:\d+$/, ''),
-        ),
-      }).toEqual({
-        ignored: 'MARK_SECRET',
-        other: 'a safe mock',
-        reported: ['src/other.ts'],
-      })
+        expect({
+          ...(result as object),
+          reported: distinct(seen.map(blamedImporter)),
+        }).toEqual({
+          ignored: 'MARK_SECRET',
+          other: 'a safe mock',
+          reported: ['src/other.ts'],
+        })
+      }
     },
     timeout,
   )

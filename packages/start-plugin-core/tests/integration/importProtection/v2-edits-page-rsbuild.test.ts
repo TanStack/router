@@ -70,6 +70,7 @@ const run = () =>
     const browser = await openPage(server.url!, { registerCleanup })
     const result: Array<StepOutcome> = []
     for (const { step, live } of pageSteps) {
+      let since = 0
       if (step > 1) {
         // The deletion and the recreation each in their own edit, settled:
         // a removal landing while Rspack compiles is lost (FOLLOWUPS
@@ -82,11 +83,14 @@ const run = () =>
         await settledAcrossTurn(server)
         await server.edit({ 'src/secret.server.ts': secretServerModule })
         await settledAcrossTurn(server)
+        since = server.diagnostics.length
         await server.edit({ 'src/widget.tsx': pageWidget(step, live) })
       }
       await browser.waitForText(`step-${step}`, {
         selector: '[data-testid=widget]',
       })
+      await settledAcrossTurn(server)
+      const diagnostics = server.diagnostics.slice(since)
       const client = [
         ...Object.values(await server.outputs('client')),
         ...Object.values(await server.hotUpdates('client')),
@@ -101,9 +105,8 @@ return describeValue(window.liveSecret(), 'MARK_SECRET')
         }),
         loads: browser.loads(),
         servedSecret: client.some((code) => code.includes('MARK_SECRET')),
-        // The last compile's warnings: with `log: 'always'` it reports every
-        // violation of the step's state.
-        reported: reportedImporters(server.warnings, 'client'),
+        // Every compile in this state, excluding target-missing intermediates.
+        reported: reportedImporters(diagnostics, 'client'),
       })
     }
     return result

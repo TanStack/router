@@ -5,18 +5,11 @@
  * mock`), and a report by its sections (`violation-report.ts`).
  */
 import { createRequire } from 'node:module'
-import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { afterEach, describe, expect, test, vi } from 'vitest'
+import { addedCode } from '../../importProtection/added-code'
 import { buildStart, startBundlers } from '../../build-harness'
-import {
-  runRsbuildClient,
-  startRsbuildDevServer,
-} from '../../rsbuild-dev-server'
-import {
-  describeValue,
-  describeValuePrelude,
-} from '../../importProtection/mock-helpers'
+import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import {
   factoryTopLevelCall,
   rejection,
@@ -24,8 +17,13 @@ import {
   serverFnFactoryApp,
   startProtectedDevServer,
 } from '../../importProtection/start-apps'
+import {
+  runRsbuildClient,
+  runViteClient,
+  startBrowserProtectedDevServer,
+  startBrowserRsbuildDevServer,
+} from './client-pages'
 import type { RsbuildConfig } from '@rsbuild/core'
-import type { StartBuild } from '../../build-harness'
 import type { ImportProtectionOptions } from '../../../src/schema'
 
 const require = createRequire(import.meta.url)
@@ -44,7 +42,12 @@ function mockToClient(files: Array<string>) {
 }
 
 /** A denied module whose code marks the bundle it is in. */
-const corpusModule = `export const corpus = () => 'MARK_CORPUS' + Math.random()\n`
+const corpusModule = `function initialize() {
+  ;(globalThis as Record<string, unknown>).corpusInitialized = true
+  return () => 'MARK_CORPUS' + Math.random()
+}
+export const corpus = /*#__PURE__*/ initialize()
+`
 
 /**
  * A client entry re-exporting a server fn of `layout.ts`, which also
@@ -60,12 +63,6 @@ export const nav = createServerFn().handler(async () => 1)
 `,
   'src/entry.ts': `export { nav } from './layout'\n`,
 }
-
-/** The code of every chunk of a build's client bundle, by file name. */
-const clientChunks = ({ client }: StartBuild) =>
-  Object.fromEntries(
-    client.chunks.map(({ fileName, code }) => [fileName, code]),
-  )
 
 describe.each(startBundlers)('%s build', (bundler) => {
   // Control for the pin below (same harness): a denied module whose code the
@@ -146,9 +143,10 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // imports, and report violations the client never reaches.
   // Source: weak check virtualModules.test.ts "returns mock code" (asserted
   // the purity annotations as text), oracle-gaps REPORT.md "Weak checks".
-  // The client bundle is compared with the one import protection disabled
-  // gives (the control above): with nothing left of the unused edge, the
-  // two are the same.
+  // Paired real builds attribute added executable statements to protection.
+  // This is independent of module/chunk placement, printer choices and bound
+  // names, including support inlined into an otherwise legitimate module.
+  // The live-denial control proves the oracle sees a retained mock.
   test.fails(
     'in mock mode, an unused denied module leaves nothing in the client bundle and no warning',
     async () => {
@@ -157,15 +155,51 @@ describe.each(startBundlers)('%s build', (bundler) => {
           bundler,
           files: droppedCorpusFiles,
           entry: 'src/entry.ts',
+          sourcemap: true,
           start,
         })
       // (one build at a time: a Vite build runs in its app's directory)
       const mocked = await build(mockToClient(['**/corpus.ts']))
       const disabled = await build({ importProtection: { enabled: false } })
-      expect({
-        chunks: clientChunks(mocked),
-        warnings: reportedViolations(mocked.client.warnings),
-      }).toEqual({ chunks: clientChunks(disabled), warnings: [] })
+      const usedFiles = {
+        ...droppedCorpusFiles,
+        'src/entry.ts': `export { size } from './layout'\n`,
+      }
+      const used = await buildStart({
+        bundler,
+        files: usedFiles,
+        entry: 'src/entry.ts',
+        sourcemap: true,
+        start: mockToClient(['**/corpus.ts']),
+      })
+      const usedDisabled = await buildStart({
+        bundler,
+        files: usedFiles,
+        entry: 'src/entry.ts',
+        sourcemap: true,
+        start: { importProtection: { enabled: false } },
+      })
+      expect(reportedViolations(used.client.warnings)).toHaveLength(1)
+      expect(
+        (
+          await used.client.run(
+            `${describeValuePrelude}\nreturn describeValue(entry.size(), 'MARK_CORPUS')`,
+          )
+        ).result,
+      ).toBe('a safe mock')
+      expect(
+        (await usedDisabled.client.run('return entry.size()')).result,
+      ).toContain('MARK_CORPUS')
+      expect(
+        addedCode(used.client, usedDisabled.client).length,
+      ).toBeGreaterThan(0)
+      expect(addedCode(mocked.client, disabled.client)).toEqual([])
+      expect(reportedViolations(mocked.client.warnings)).toEqual([])
+      expect(mocked.client.where('MARK_CORPUS')).toBe('nowhere')
+      expect(
+        (await mocked.client.run('return globalThis.corpusInitialized ?? null'))
+          .result,
+      ).toBe(null)
     },
     60_000,
   )
@@ -288,7 +322,7 @@ describe('Rsbuild dev', () => {
   test(
     'a module of a custom type without a denied import runs in the client',
     async () => {
-      const server = await startRsbuildDevServer({
+      const server = await startBrowserRsbuildDevServer({
         compileTimeout,
         importProtection: {
           behavior: 'error',
@@ -301,7 +335,11 @@ describe('Rsbuild dev', () => {
         },
       })
       expect(server.errors).toEqual([])
-      expect(await runRsbuildClient(server)).toEqual(['MARK_PAGE'])
+      expect(
+        (await runRsbuildClient(server)).filter((text) =>
+          text.includes('MARK_'),
+        ),
+      ).toEqual(['MARK_PAGE'])
     },
     timeout,
   )
@@ -341,7 +379,7 @@ describe('Rsbuild dev', () => {
   ])(
     'a module of a custom type importing $name is reported, and its real code does not run',
     async ({ files }) => {
-      const server = await startRsbuildDevServer({
+      const server = await startBrowserRsbuildDevServer({
         compileTimeout,
         importProtection: {
           behavior: 'error',
@@ -369,6 +407,7 @@ describe('Rsbuild dev', () => {
 
   /** MDX pages through the real MDX loader, as an Rsbuild app adds it. */
   const mdxModules: RsbuildConfig = {
+    output: { sourceMap: { js: 'source-map' } },
     tools: {
       rspack: {
         module: {
@@ -385,7 +424,7 @@ describe('Rsbuild dev', () => {
 
   // The same bug through the real `@mdx-js/loader` (V1 ip S23): the page is
   // compiled from MDX, with the loader's source map; a report names the page
-  // and, if located, the import (line 3) or the use (4:27) in the .mdx
+  // at the import (line 3) or the use (4:27) in the .mdx
   // source (SPEC J6.5).
   test.fails.each<{ name: string; files: Record<string, string> }>([
     {
@@ -418,7 +457,7 @@ export const page = () => secret()
   ])(
     'an .mdx page importing $name is reported in its source, and its real code does not run',
     async ({ files }) => {
-      const server = await startRsbuildDevServer({
+      const server = await startBrowserRsbuildDevServer({
         compileTimeout,
         importProtection: {
           behavior: 'error',
@@ -438,7 +477,7 @@ export const page = () => secret()
         ranRealCode: messages.some((message) => message.includes('MARK_')),
       }).toEqual({
         reported: [
-          expect.stringMatching(/^client src\/home\.mdx(?::3:\d+|:4:27)?$/),
+          expect.stringMatching(/^client src\/home\.mdx(?::3:\d+|:4:27)$/),
         ],
         ranRealCode: false,
       })
@@ -450,7 +489,7 @@ export const page = () => secret()
   test(
     'an .mdx page without a denied import runs in the client',
     async () => {
-      const server = await startRsbuildDevServer({
+      const server = await startBrowserRsbuildDevServer({
         compileTimeout,
         importProtection: { behavior: 'error' },
         config: mdxModules,
@@ -463,7 +502,11 @@ export const page = () => 'MARK_PAGE'
         },
       })
       expect(server.errors).toEqual([])
-      expect(await runRsbuildClient(server)).toEqual(['MARK_PAGE'])
+      expect(
+        (await runRsbuildClient(server)).filter((text) =>
+          text.includes('MARK_'),
+        ),
+      ).toEqual(['MARK_PAGE'])
     },
     timeout,
   )
@@ -479,7 +522,7 @@ export const page = () => 'MARK_PAGE'
   test(
     'an onViolation that throws ends the compile with its error',
     async () => {
-      const outcome = await startRsbuildDevServer({
+      const outcome = await startBrowserRsbuildDevServer({
         importProtection: {
           onViolation: () => {
             throw new Error('MARK_THROWN')
@@ -914,17 +957,19 @@ export const read = () => [Color.Red, Util.x]
     twinTest('vite dev', name)(
       `vite dev: ${name}`,
       async () => {
-        const server = await startProtectedDevServer(files, importProtection)
+        const server = await startBrowserProtectedDevServer(
+          files,
+          importProtection,
+        )
         // The mock reports each use in the browser console.
         vi.spyOn(console, 'error').mockImplementation(() => {})
-        const module = await evaluateServed(server, '/src/entry.ts', {
-          skip: /^\/@(vite|react-refresh)\b/,
-        })
-        expect(
-          (module.read() as Array<unknown>).map((value) =>
-            describeValue(value, 'MARK_SECRET'),
-          ),
-        ).toEqual(expected)
+        const { result } = await runViteClient(
+          server,
+          '/src/entry.ts',
+          `${describeValuePrelude}
+return entry.read().map((value) => describeValue(value, 'MARK_SECRET'))`,
+        )
+        expect(result).toEqual(expected)
       },
       30_000,
     )

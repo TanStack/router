@@ -19,6 +19,7 @@ import path from 'node:path'
 import { expect } from 'vitest'
 import { importProtectionPlugin } from '../../src/vite/import-protection-plugin/plugin'
 import { startDevServer } from '../dev-server'
+import { originalLocation } from './original-location'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 import type { ImportProtectionOptions } from '../../src/schema'
 import type { ImportProtectionPluginOptions } from '../../src/vite/import-protection-plugin/types'
@@ -34,6 +35,8 @@ export {
 export type { ReportedViolation } from './violation-report'
 
 export interface ProtectedDevServerOptions {
+  /** Serve actual dependencies and an HTTP origin for client consumers. */
+  browser?: boolean
   /**
    * The app's router entry (relative to the app root), registered with
    * import protection like `tanStackStart()` registers the app's
@@ -102,6 +105,7 @@ export async function startProtectedDevServer(
   }
   const server = await startDevServer({
     files,
+    browser: options.browser,
     bundledDev,
     config,
     // The Start compiler compiles the provider environment too, and creates
@@ -180,15 +184,20 @@ export const factoryTopLevelCall = `export const request = getRequest()\n`
  */
 export function expectMarkerViolation(
   report: { importer: string; text: string },
-  locations: { marker: string; use: string },
+  locations: { marker: string; use: string; importLine?: number },
 ) {
   const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const markedFile = locations.marker.replace(/:\d+$/, '')
-  expect(report.importer).toMatch(
-    new RegExp(
-      `^(?:${escape(locations.marker)}:\\d+|${escape(markedFile)}|${escape(locations.use)})$`,
-    ),
+  const marker = new RegExp(
+    `^(?:${escape(locations.marker)}:\\d+|${escape(markedFile)})$`,
   )
+  expect(
+    marker.test(report.importer) ||
+      originalLocation(
+        locations.use,
+        locations.importLine ?? 1,
+      ).asymmetricMatch(report.importer),
+  ).toBe(true)
   for (const file of [markedFile, locations.use.replace(/:\d+:\d+$/, '')]) {
     expect(report.text).toContain(file)
   }
