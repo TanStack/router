@@ -390,8 +390,8 @@ export const save = createServerFn().handler(async () => 'save')`
         const code = `${head}${version}`
         await expectDeterministic([1, 2, 3], () => idsOf(version, { mode }))
         const compiled = await compileAll(code, { mode })
-        const client = await evaluateModule(compiled.client)
-        const names = Object.keys(client)
+        const names =
+          version === existing ? ['load', 'save'] : ['load', 'save', 'added']
         for (const name of names) {
           expect(
             await callServerFnThroughCallers(

@@ -24,8 +24,57 @@ import {
   outputs,
   serverFnResult,
   startClientCore,
+  withoutQuotedSource,
 } from '../regression-helpers'
 import type { ServerFn } from '../../src/start-compiler/types'
+
+// API alternatives are semantic: a diagnosis may name either the builder
+// or the handler call. The quoted source cannot provide the missing cause.
+function expectMissingHandler(error: unknown, source: string, column = false) {
+  try {
+    expectCompileError(error, {
+      source,
+      at: 'createServerFn()',
+      column,
+      names: ['createServerFn'],
+    })
+  } catch {
+    expectCompileError(error, {
+      source,
+      at: 'createServerFn()',
+      column,
+      names: ['handler'],
+    })
+  }
+  const prose = withoutQuotedSource((error as Error).message, source)
+  expect(prose).toMatch(/(?:handler|function|argument|implementation)/i)
+  expect(prose).toMatch(
+    /(?:required|missing|expects?|provide|must|needs?|requires?|undefined|no handler)/i,
+  )
+}
+
+// Internal matcher controls: varied actionable prose remains valid, while an
+// internal crash cannot borrow the handler API from its quoted source.
+test.each([
+  'handler() expects a function',
+  'createServerFn needs a handler implementation',
+])('missing-handler diagnostics accept %s', (message) => {
+  const source = `import { createServerFn } from '@tanstack/react-start'\nexport const fn = createServerFn().handler()`
+  const error = Object.assign(new Error(`${message} (2:19)`), {
+    loc: { file: 'module.tsx', line: 2, column: 18 },
+  })
+  expect(() => expectMissingHandler(error, source)).not.toThrow()
+})
+test('missing-handler diagnostics reject a positioned internal crash', () => {
+  const source = `import { createServerFn } from '@tanstack/react-start'\nexport const fn = createServerFn().handler()`
+  const error = Object.assign(
+    new Error(
+      `createServerFn internal compiler error (2:19)\n> 2 | ${source.split('\n')[1]}`,
+    ),
+    { loc: { file: 'module.tsx', line: 2, column: 18 } },
+  )
+  expect(() => expectMissingHandler(error, source)).toThrow()
+})
 
 // Default test options for StartCompiler
 function getDefaultTestOptions(env: 'client' | 'server') {
@@ -61,12 +110,7 @@ describe('createServerFn compiles correctly', () => {
       const error = await compileFor('client', source).catch(
         (caught: unknown) => caught,
       )
-      expectCompileError(error, {
-        source,
-        at: 'createServerFn()',
-        column: true,
-        names: ['createServerFn'],
-      })
+      expectMissingHandler(error, source, true)
     },
   )
 
@@ -79,12 +123,7 @@ describe('createServerFn compiles correctly', () => {
     const error = await compileFor('client', source).catch(
       (caught: unknown) => caught,
     )
-    expectCompileError(error, {
-      source,
-      at: 'createServerFn()',
-      column: true,
-      names: ['createServerFn'],
-    })
+    expectMissingHandler(error, source, true)
   })
 
   // Malformed-input diagnostic control (SPEC §8, G5): destructuring a server
@@ -326,6 +365,7 @@ export const greetUser = createServerFn().handler(async () => 'second')`,
 // not the provider). A server fn the client compiles is callable from the
 // client, through the resolver generated from what the callers reported
 // (N14).
+// Internal control: forced resolver policy, rather than host-delivered access.
 describe('server functions discovered in caller modules', () => {
   /**
    * Compiles `code` in each caller environment of `envs`, in order (the
@@ -418,11 +458,7 @@ export const greet = createServerFn().handler()`
       const error = await compileFor(output, source).catch(
         (caught: unknown) => caught,
       )
-      expectCompileError(error, {
-        source,
-        at: 'createServerFn()',
-        names: ['createServerFn'],
-      })
+      expectMissingHandler(error, source)
     }
   })
 })
@@ -444,10 +480,10 @@ const adminMiddleware = createMiddleware({ type: 'function' }).server(
 export const createAuthServerFn = createServerFn().middleware([authMiddleware])
 const createAdminServerFn = createAuthServerFn().middleware([adminMiddleware])
 export const myAuthedFn = createAuthServerFn().handler(({ context }) => {
-  return ['myAuthedFn', context]
+  return ['myAuthedFn', context, 'MARK_AUTHED_HANDLER_BODY'].slice(0, 2)
 })
 export const deleteUserFn = createAdminServerFn().handler(({ context }) => {
-  return ['deleteUserFn', context]
+  return ['deleteUserFn', context, 'MARK_DELETE_HANDLER_BODY'].slice(0, 2)
 })
 function createFakeFn() {
   return {
@@ -459,7 +495,8 @@ function createFakeFn() {
 export const x = createFakeFn().handler(() => {
   return 'fakeFn'
 })`)
-    expect(compiled.client).not.toMatch(/['"](myAuthedFn|deleteUserFn)['"]/)
+    expect(compiled.client).not.toContain('MARK_AUTHED_HANDLER_BODY')
+    expect(compiled.client).not.toContain('MARK_DELETE_HANDLER_BODY')
     expect(Object.keys(compiled.serverFns)).toHaveLength(2)
     const client = await evaluateModule(compiled.client)
     expect(client.x).toBe('fakeFn')

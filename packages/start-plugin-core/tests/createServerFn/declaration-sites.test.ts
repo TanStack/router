@@ -9,11 +9,13 @@ import { describe, expect, test } from 'vitest'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
+  callFromClient,
   callProvider,
   callServerFnThroughCallers,
   callerRpcId,
   compileAll,
   compileFor,
+  createServerGraph,
   evaluateModule,
   expectCompileError,
   expectNoClientHandler,
@@ -57,14 +59,7 @@ const dbStubs = {
   './db.server': { db: { inner: () => 'inner', top: () => 'top' } },
 }
 
-// Loosened regression (the statement-list crash), paired with the goal pins
-// "supports a server fn in $name" below and the leak pins of
-// known-bugs-start-compiler.test.ts: a `createServerFn` declared below the
-// module top level compiles to valid modules or is rejected naming
-// `createServerFn` (main gives that rejection no position: pinned there),
-// and top-level server fns next to it are still extracted. When the client
-// gives the nested server fn an RPC, it reaches the handler.
-test.each([
+const literalPlacements = [
   {
     name: 'a function',
     code: inFunction,
@@ -89,9 +84,13 @@ test.each([
     hasTop: true,
     read: (module: Record<string, any>) => module.pick('a'),
   },
-])(
+]
+
+// Regression control: successful outputs parse and an adjacent top-level
+// server function still executes. The paired goal below checks nested RPCs.
+test.each(literalPlacements)(
   'a server fn declared in $name compiles to valid modules or is rejected',
-  async ({ code, hasTop, read }) => {
+  async ({ code, hasTop }) => {
     const source = `${head}${code}`
     const compiled: Partial<Record<(typeof outputs)[number], string>> = {}
     for (const output of outputs) {
@@ -117,13 +116,44 @@ test.each([
         ),
       ).toBe('top')
     }
-    if (
-      outputs.every((output) => compiled[output] !== undefined) &&
-      callerRpcId(read(await evaluateModule(compiled.client!))) !== undefined
-    ) {
-      expect(
-        await callServerFnThroughCallers(await compileEach(source), read),
-      ).toBe('nested')
+  },
+)
+
+// Bug: dependency-free nested handlers remain in successful client output.
+// Source: start-SYNTH S13; the four public make/pick usages below.
+// Impact: client calls execute the server handler locally instead of using RPC.
+test.fails.each(literalPlacements)(
+  'a server fn declared in $name never ships its nested handler to the client',
+  async ({ code, hasTop, read }) => {
+    // Keep the original literal-returning input, as well as a distinct
+    // executable canary. Required nested support has no rejection branch.
+    for (const body of [
+      code,
+      code.replaceAll(
+        "async () => 'nested'",
+        "async () => ['MARK_LITERAL_NESTED_HANDLER', 'nested'][1]",
+      ),
+    ]) {
+      const source = `${head}${body}`
+      const result = await compileFor('client', source)
+      const client = result.code ?? source
+      expect(await getModuleErrors(client), 'client').toEqual([])
+      expect(client).not.toContain('MARK_LITERAL_NESTED_HANDLER')
+      expect(callerRpcId(read(await evaluateModule(client)))).toEqual(
+        expect.any(String),
+      )
+      // RPC absence cannot skip provider execution or excuse a local handler.
+      const compiled = await compileEach(source)
+      for (const output of outputs) {
+        expect(await getModuleErrors(compiled[output]), output).toEqual([])
+      }
+      expect(await callFromClient(compiled, read)).toBe('nested')
+      expect(await read(await createServerGraph(compiled).ssr())()).toBe(
+        'nested',
+      )
+      if (hasTop) {
+        expect(await callProvider(compiled, 'top')).toBe('top')
+      }
     }
   },
 )

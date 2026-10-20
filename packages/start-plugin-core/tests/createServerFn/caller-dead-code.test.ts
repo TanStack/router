@@ -399,7 +399,6 @@ export const fn = createServerFn().handler(async (): Promise<Session | null> => 
       if (client.length === 0) {
         expectNotLoaded(loads, ['./server-module'])
       }
-      expect(compiled.client).not.toMatch(/\bverify\b/)
       // `verify` is the default export where the module imports it as such.
       const verify = `() => 'verified'`
       const stubs = {

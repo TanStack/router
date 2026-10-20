@@ -1,3 +1,4 @@
+// Internal control: resolver generation and access-policy mechanics; outside compiler acceptance (SPEC §8).
 /**
  * The production server-fn resolver (`getServerFnById`, generated from what
  * the callers reported) observed by evaluating it: which handler each id

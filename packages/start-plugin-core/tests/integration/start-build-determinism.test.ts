@@ -8,7 +8,7 @@
  * correctness, not equality). Builds go through Start's Vite and Rsbuild
  * plugins (build-harness.ts).
  */
-import { describe, expect, test } from 'vitest'
+import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import {
   expectDeterministic,
   expectRelocatable,
@@ -67,6 +67,25 @@ const entries = (order: Array<'a' | 'b'>, ssrOrder = order) => ({
   'src/client-entry.ts': entryModule(order, 'client'),
   'src/ssr-entry.ts': entryModule(ssrOrder, 'ssr'),
 })
+
+// Re-export barrels are real user inputs. The secondary module is reached
+// through a chain in both environments, so the first compiler encounter is
+// driven by graph discovery rather than two concurrent reads of siblings.
+const collisionBarrels = Object.fromEntries(
+  (['a', 'b'] as const).flatMap((name) =>
+    Array.from({ length: 8 }, (_, index) => [
+      `src/discover-${name}-${index}.ts`,
+      `export * from './${index === 7 ? name : `discover-${name}-${index + 1}`}'`,
+    ]),
+  ),
+)
+const collisionEntries = (order: Array<'a' | 'b'>) =>
+  Object.fromEntries(
+    Object.entries(entries(order)).map(([file, code]) => [
+      file,
+      code.replace(`from './${order[1]}'`, `from './discover-${order[1]}-0'`),
+    ]),
+  )
 
 const entry = { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' }
 
@@ -170,33 +189,53 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // pairing still holds.
   // Source: oracle-gaps H3 (dedup suffix depends on compile order); FIX-PLAN
   // S03.
-  test(
-    'colliding custom ids are de-duplicated, and each client id runs its own handler in the SSR build, whatever the compile order',
-    async () => {
+  describe('colliding custom ids', () => {
+    let oppositeEnvironments: Awaited<ReturnType<typeof observe>>
+    let first: Awaited<ReturnType<typeof observe>>
+    let reordered: Awaited<ReturnType<typeof observe>>
+    let cleanup: (() => Promise<void>) | undefined
+    beforeAll(async () => {
       const build = await buildStart({
         bundler,
         files: {
           'src/a.ts': appFiles['src/a.ts']!,
           'src/b.ts': appFiles['src/b.ts']!,
           'src/lazy.ts': appFiles['src/lazy.ts']!,
+          ...collisionBarrels,
           ...entries(['a', 'b'], ['b', 'a']),
         },
         entry,
         start: { serverFns: { generateFunctionId: () => 'same-id' } },
+        registerCleanup: (dispose) => {
+          cleanup = dispose
+        },
       })
-      const first = await observe(build)
-      expectAgreement(first)
-      expect(new Set(Object.values(first.ids))).toEqual(
-        new Set(['same-id', 'same-id_1']),
+      oppositeEnvironments = await observe(build)
+      first = await observe(await build.rebuild(collisionEntries(['a', 'b'])))
+      reordered = await observe(
+        await build.rebuild(collisionEntries(['b', 'a'])),
       )
-      const reordered = await observe(
-        await build.rebuild(entries(['b', 'a'], ['a', 'b'])),
-      )
-      expectAgreement(reordered)
-      expect(new Set(Object.values(reordered.ids))).toEqual(
-        new Set(['same-id', 'same-id_1']),
-      )
-    },
-    timeout,
-  )
+    }, timeout)
+    afterAll(() => cleanup?.())
+
+    test('each client id runs its own handler in the SSR build in either discovery order', () => {
+      for (const observation of [oppositeEnvironments, first, reordered]) {
+        expectAgreement(observation)
+        expect(new Set(Object.values(observation.ids))).toEqual(
+          new Set(['same-id', 'same-id_1']),
+        )
+      }
+    })
+
+    // Bug: collision suffixes follow discovery order across fresh
+    // builds, changing the unchanged function-to-id mapping at the same root.
+    // Source: start-SYNTH S03; the public fresh-build reversal workload above.
+    // Impact: rebuilding unchanged app input changes callable identifiers.
+    test.fails(
+      'fresh builds keep the function-to-id mapping when discovery order reverses',
+      () => {
+        expect(reordered.ids).toEqual(first.ids)
+      },
+    )
+  })
 })

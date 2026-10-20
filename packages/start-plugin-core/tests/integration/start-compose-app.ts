@@ -10,22 +10,19 @@
  * client build and calls server fns over HTTP, as a deployed app does.
  *
  * Thin glue only: the compilers, bundlers, router, React and Start runtime
- * are the real ones; the host converts Node's request to a web `Request`
- * and writes the `Response` back.
+ * are the real ones; srvx owns HTTP request/response adaptation and the
+ * host only selects static output or Start's fetch handler.
  */
-import { createReadStream } from 'node:fs'
-import { stat } from 'node:fs/promises'
-import { createServer } from 'node:http'
 import { createRequire } from 'node:module'
 import path from 'node:path'
-import { Readable } from 'node:stream'
 import { pathToFileURL } from 'node:url'
+import { serve } from 'srvx/node'
+import { staticMiddleware } from 'srvx/static'
 import ts from 'typescript'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { callByIdExports } from '../build-harness'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { StartBuild } from '../build-harness'
-import type { AddressInfo } from 'node:net'
 
 /**
  * Start's default entries of a page app, with the test entries' exports on
@@ -154,87 +151,22 @@ export async function serveStartBuild(
 ): Promise<ServedStartBuild> {
   const handle = await serverFetch(build)
   const clientDir = path.resolve(build.client.outDir)
-  const server = createServer(async (request, response) => {
-    try {
-      const url = new URL(request.url ?? '/', 'http://localhost')
-      const file = path.join(clientDir, decodeURIComponent(url.pathname))
-      if (
-        file.startsWith(clientDir + path.sep) &&
-        (await stat(file).then(
-          (info) => info.isFile(),
-          () => false,
-        ))
-      ) {
-        response.writeHead(200, {
-          'content-type':
-            contentTypes[path.extname(file)] ?? 'application/octet-stream',
-        })
-        createReadStream(file).pipe(response)
-        return
-      }
-      const method = request.method ?? 'GET'
-      const origin = `http://${request.headers.host ?? 'localhost'}`
-      const body =
-        method === 'GET' || method === 'HEAD'
-          ? undefined
-          : (Readable.toWeb(request) as unknown as ReadableStream)
-      const reply = await handle(
-        new Request(new URL(request.url ?? '/', origin), {
-          method,
-          headers: request.headers as Record<string, string>,
-          body,
-          // @ts-expect-error Node's fetch needs `duplex` for a stream body
-          duplex: body ? 'half' : undefined,
-        }),
-      )
-      const headers: Array<[string, string]> = []
-      reply.headers.forEach((value, name) => {
-        if (name !== 'set-cookie') {
-          headers.push([name, value])
-        }
-      })
-      for (const cookie of reply.headers.getSetCookie()) {
-        headers.push(['set-cookie', cookie])
-      }
-      response.writeHead(reply.status, headers)
-      if (reply.body) {
-        Readable.fromWeb(reply.body as never).pipe(response)
-      } else {
-        response.end()
-      }
-    } catch (error) {
-      response.writeHead(500, { 'content-type': 'text/plain' })
-      response.end(error instanceof Error ? error.stack : String(error))
-    }
+  const server = serve({
+    hostname: '127.0.0.1',
+    port: 0,
+    silent: true,
+    middleware: [staticMiddleware({ dir: clientDir })],
+    fetch: handle,
   })
-  await new Promise<void>((resolve, reject) => {
-    server.once('error', reject)
-    server.listen(0, '127.0.0.1', resolve)
-  })
-  const { port } = server.address() as AddressInfo
-  const url = `http://127.0.0.1:${port}/`
-  const close = () =>
-    new Promise<void>((resolve) => {
-      server.closeAllConnections()
-      server.close(() => resolve())
-    })
+  await server.ready()
+  const url = server.url!
+  const close = () => server.close(true)
   options.registerCleanup?.(close)
   return {
     url,
     fetch: (target, init) => fetch(new URL(target, url), init),
     close,
   }
-}
-
-const contentTypes: Record<string, string> = {
-  '.html': 'text/html',
-  '.js': 'text/javascript',
-  '.mjs': 'text/javascript',
-  '.cjs': 'text/javascript',
-  '.css': 'text/css',
-  '.json': 'application/json',
-  '.map': 'application/json',
-  '.svg': 'image/svg+xml',
 }
 
 export interface AppPage extends BrowserPage {
