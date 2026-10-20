@@ -72,8 +72,34 @@ const publicDevApis: Record<string, RegExp> = {
  * `{ warn: … }`) and each string or template text. Chunk file names in
  * strings (they carry content hashes) count as one placeholder.
  */
-export function bundleAtoms(chunks: Array<{ fileName: string; code: string }>) {
-  const fileNames = chunks.map((chunk) => path.posix.basename(chunk.fileName))
+export function bundleAtoms(
+  chunks: Array<{ fileName: string; code: string }>,
+  fileNames = chunks.map((chunk) => path.posix.basename(chunk.fileName)),
+) {
+  const counts = new Map<string, number>()
+  for (const chunk of chunks) {
+    for (const [atom, count] of chunkAtoms(chunk, fileNames)) {
+      counts.set(atom, (counts.get(atom) ?? 0) + count)
+    }
+  }
+  return Object.fromEntries([...counts].sort(([a], [b]) => (a < b ? -1 : 1)))
+}
+
+/** The atoms of each chunk already counted, by chunk (and file names). */
+const chunkAtomsCache = new WeakMap<
+  object,
+  { fileNames: string; counts: Map<string, number> }
+>()
+
+/** `bundleAtoms` of one chunk of a build whose chunks are `fileNames`. */
+function chunkAtoms(
+  chunk: { fileName: string; code: string },
+  fileNames: Array<string>,
+) {
+  const cached = chunkAtomsCache.get(chunk)
+  if (cached?.fileNames === fileNames.join('\0')) {
+    return cached.counts
+  }
   const counts = new Map<string, number>()
   const add = (atom: string) => counts.set(atom, (counts.get(atom) ?? 0) + 1)
   const text = (value: string) =>
@@ -81,7 +107,7 @@ export function bundleAtoms(chunks: Array<{ fileName: string; code: string }>) {
       (current, fileName) => current.split(fileName).join('<chunk>'),
       value,
     )
-  for (const chunk of chunks) {
+  {
     const free = unboundNames(chunk.code)
     const { program } = parseSync('chunk.js', chunk.code, {
       sourceType: 'module',
@@ -121,7 +147,8 @@ export function bundleAtoms(chunks: Array<{ fileName: string; code: string }>) {
           add(`free ${value.name}`)
         }
       }
-      for (const [key, child] of Object.entries(value)) {
+      for (const key in value) {
+        const child = value[key]
         if (key !== 'parent' && child && typeof child === 'object') {
           visit(child, value)
         }
@@ -129,7 +156,8 @@ export function bundleAtoms(chunks: Array<{ fileName: string; code: string }>) {
     }
     visit(program)
   }
-  return Object.fromEntries([...counts].sort(([a], [b]) => (a < b ? -1 : 1)))
+  chunkAtomsCache.set(chunk, { fileNames: fileNames.join('\0'), counts })
+  return counts
 }
 
 /**
@@ -141,13 +169,18 @@ export function bundleAtoms(chunks: Array<{ fileName: string; code: string }>) {
 function expectDetectsAddedCode(app: BuildResult) {
   const tokens = (chunks: Array<{ code: string }>) =>
     new Set(chunks.flatMap((chunk) => chunk.code.match(/[A-Za-z_$][\w$]*/g)))
-  const added = app.chunks.map((chunk) =>
-    chunk === app.entry
-      ? { ...chunk, code: `${chunk.code}\nconsole.error("MARK_PAGE");\n` }
-      : chunk,
+  // The added code in a module of its own, next to the build's chunks.
+  const added = [
+    ...app.chunks,
+    { fileName: 'added.js', code: 'console.error("MARK_PAGE");\n' },
+  ]
+  const fileNames = app.chunks.map((chunk) =>
+    path.posix.basename(chunk.fileName),
   )
   expect([...tokens(added)].sort()).toEqual([...tokens(app.chunks)].sort())
-  expect(bundleAtoms(added)).not.toEqual(bundleAtoms(app.chunks))
+  expect(bundleAtoms(added, fileNames)).not.toEqual(
+    bundleAtoms(app.chunks, fileNames),
+  )
 }
 
 /**
