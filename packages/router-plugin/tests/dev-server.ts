@@ -63,10 +63,12 @@ export async function importFromRouteModule(
   route: string,
   names: Array<string>,
   pluginOptions: Partial<Config> = {},
+  files: Record<string, string> = {},
 ) {
   const server = await routerDevServer({
     pluginOptions,
     files: {
+      ...files,
       'routes/page.tsx': route,
       'importer.ts': importerSource('./routes/page', names),
     },
@@ -136,10 +138,9 @@ export async function renderRouteComponent(component: any): Promise<string> {
  * and the component and the loader in their own chunks) with a module that
  * imports the exports named in `exported` and the route
  * (`importFromRouteModule`), and asserts that each imported export is a
- * component the given route options render as: the option's value is the
- * imported component, or (a split option) renders the same HTML once
- * loaded; the page at `/page` renders the route's component through the
- * real router.
+ * component the given route options render as: its body reports its own
+ * identity through a separate module, including behind a lazy wrapper; the
+ * page at `/page` renders the route's component through the real router.
  */
 export async function expectExportedRouteOptions(
   route: string,
@@ -147,13 +148,18 @@ export async function expectExportedRouteOptions(
   autoCodeSplitting: boolean,
 ) {
   const { server, imported } = await importFromRouteModule(
-    route,
+    `import { see } from '../see'\n${route}`,
     [...Object.keys(exported), 'Route'],
     {
       autoCodeSplitting,
       codeSplittingOptions: { defaultBehavior: [['component'], ['loader']] },
     },
+    {
+      'see.ts': `export const seen: Array<unknown> = []
+export function see(component: unknown) { seen.push(component) }`,
+    },
   )
+  const { seen } = await server.import('/see.ts')
   const { Route } = imported
   for (const [name, keys] of Object.entries(exported)) {
     expect(imported[name], `${name} is a component`).toBeTypeOf('function')
@@ -161,12 +167,16 @@ export async function expectExportedRouteOptions(
     expect(rendered, `${name} renders`).not.toBe('')
     for (const key of keys) {
       const option = Route.options[key]
-      if (option !== imported[name]) {
-        expect(
-          await renderRouteComponent(option),
-          `${key} renders as ${name}`,
-        ).toBe(rendered)
-      }
+      seen.length = 0
+      expect(
+        await renderRouteComponent(option),
+        `${key} renders as ${name}`,
+      ).toBe(rendered)
+      // The rendered body reports its own binding across an opaque module
+      // boundary. Equal HTML alone cannot detect a copied function/class.
+      expect(seen, `${key} renders the imported ${name} instance`).toContain(
+        imported[name],
+      )
     }
   }
   expect(await renderRoutePath(server, '/page')).toContain(
@@ -197,14 +207,14 @@ export const exportedComponentsLostWhenSplit: Array<ExportedRouteOptionsCase> =
     {
       name: 'class',
       declaration: `import { Component } from 'react'
-export class component extends Component { render() { return <p>class</p> } }`,
+export class component extends Component { render() { see(component); return <p>class</p> } }`,
       options: 'component',
       exported: { component: ['component'] },
     },
     {
       name: 'aliased',
       declaration:
-        'function component() { return <p>aliased</p> }; export { component as View }',
+        'function component() { see(component); return <p>aliased</p> }; export { component as View }',
       options: 'component',
       exported: { View: ['component'] },
     },

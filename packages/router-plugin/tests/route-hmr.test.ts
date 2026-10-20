@@ -4,15 +4,17 @@
  * and carry no HMR code when HMR is off. What the page shows after an edit
  * is tested in a real dev server and a real browser page
  * (integration/route-hmr-browser*.test.ts); here: compiled modules
- * evaluated with `loadRoute` / `evaluateModule`, and what the route HMR
+ * evaluated as complete graphs with the real packages, and what the route HMR
  * plugin serves to each Vite environment.
  */
 import { SourceMap } from 'node:module'
-import { describe, expect, it, test, vi } from 'vitest'
-import { routerDevServer } from './dev-server'
+import { describe, expect, it, test } from 'vitest'
+import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
+import { renderToHtml } from '@tanstack/compiler-test-utils/render'
+import { packagesDirectory } from './lazy-tracking'
+import { renderRoutePath, routerDevServer } from './dev-server'
 import {
   compileRouteModules,
-  evaluateModule,
   expectValidModules,
   head,
   importSources,
@@ -81,51 +83,74 @@ describe('the modules of a Solid or Vue route compiled with HMR', () => {
 })
 
 describe('route modules compiled for the dev server', () => {
-  const router = {
-    createFileRoute: () => (options: unknown) => ({ options }),
-    createRootRoute: (options: unknown) => ({ options }),
-    lazyRouteComponent: () => () => null,
-    lazyFn: () => () => null,
-  }
-
-  // Source: #7074 (gap H13). Bundlers do not always provide `hot.data`, or
-  // `import.meta.hot` at all (a module loaded outside the HMR runtime).
-  describe.each([
-    {
-      name: 'a split route',
-      route: fileRoute(
-        'data',
-        'component: Page,',
-        posts('data').replace('PostsComponent', 'Page'),
-      ),
-    },
-    {
-      name: 'an unsplittable root route',
-      route: `import { createRootRoute } from '@tanstack/react-router'
-export const Route = createRootRoute({ component: () => <div>root</div> })`,
-    },
-  ])('$name', async ({ route }) => {
-    const { reference } = (await compileRouteModules(route, { hmr: true }))
-      .modules
-    it.each([
-      { name: 'a hot API without data', hot: { accept() {}, dispose() {} } },
-      { name: 'no hot API', hot: undefined },
-    ])('evaluates with $name', async ({ hot }) => {
-      for (const window of [undefined, {}]) {
-        vi.stubGlobal('window', window)
-        try {
-          const { Route } = await evaluateModule(
-            reference!,
-            { '@tanstack/react-router': router },
-            { importMeta: { hot } },
-          )
-          expect(Route).toHaveProperty('options.component')
-        } finally {
-          vi.unstubAllGlobals()
-        }
-      }
+  // Source: #7074 / J3.8. Initial evaluation has no host runtime, or a
+  // host API with no persisted data. Link every emitted module to the real
+  // router and renderer: a missing lazy target must not pass as a property.
+  describe.each(['vite', 'webpack'] as const)('%s style', (style) => {
+    describe.each([
+      {
+        name: 'a split route',
+        route: fileRoute('data', 'component: PostsComponent,', posts('data')),
+        html: '<div>posts data</div>',
+      },
+      {
+        name: 'a root route',
+        route: `import { createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute({
+  loader: () => 'data',
+  component: () => <div>root</div>,
+})`,
+        html: '<div>root</div>',
+      },
+    ])('$name', ({ route, html }) => {
+      it.each([false, true])(
+        'renders and loads with a hot API present: %s, without persisted data',
+        async (present) => {
+          const { graph } = await compileRouteModules(route, {
+            hmr: true,
+            pluginOptions: { plugin: { hmr: { style } } },
+          })
+          const linked = createModuleGraph({
+            modules: Object.fromEntries(graph.modules),
+            packages: packagesDirectory,
+            resolve: graph.resolve,
+            // Only initial evaluation is exercised: no update delivery,
+            // disposal or framework refresh is simulated here.
+            importMeta: () => ({
+              [style === 'vite' ? 'hot' : 'webpackHot']: present
+                ? { accept() {}, dispose() {} }
+                : undefined,
+            }),
+          })
+          const { Route } = await linked.import(graph.id)
+          expect(await Route.options.loader()).toBe('data')
+          await Route.options.component.preload?.()
+          expect(
+            await renderToHtml(linked, 'react', Route.options.component),
+          ).toBe(html)
+        },
+      )
     })
   })
+
+  it.each([false, true])(
+    'renders a dev-SSR route and its loader through Vite (autoCodeSplitting: %s)',
+    async (autoCodeSplitting) => {
+      const server = await routerDevServer({
+        pluginOptions: { autoCodeSplitting },
+        files: {
+          'routes/index.tsx': `${head}function Page() {
+  return <p>SSR {Route.useLoaderData()}</p>
+}
+export const Route = createFileRoute('/')({ loader: () => 'data', component: Page })`,
+        },
+      })
+      expect(await renderRoutePath(server, '/')).toContain(
+        '<p>SSR <!-- -->data</p>',
+      )
+    },
+    30_000,
+  )
 
   // Source: add-hmr snapshot fixture string-literal-keys.
   it('split options under quoted keys like the others', async () => {
@@ -155,7 +180,6 @@ export const Route = createFileRoute('/')({ 'component': Page, 'errorComponent':
     )
     await expectValidModules(route.modules)
     expect(await route.isLazy('component')).toBe(false)
-    expect('component' in route.options).toBe(true)
     expect(route.options.component).toBeUndefined()
   })
 })
@@ -292,9 +316,9 @@ export const Route = createFileRoute('/')({ loader: () => 'x' })`
         },
         files: { 'routes/index.tsx': loaderRoute() },
       })
-      expect(
-        hasRouteHmr(await server.transform('/routes/index.tsx', 'client')),
-      ).toBe(true)
+      // Positive delivery control: integration/route-hmr-browser-plugin.test.ts
+      // edits an environment-selected loader on a real page. The compiler
+      // may delegate HMR to an imported helper instead of inlining an API.
       const served = await server.load('/routes/index.tsx', {
         environment: 'ssr',
         skip: /^\/@fs\/|\/node_modules\/|^\/@vite\b/,

@@ -70,22 +70,24 @@ function Page() {
   // component keys are empty for other targets); in Vite, the route module
   // is not an HMR boundary either (its accept call is on an alias), so the
   // page reloads.
-  // Impact: every edit of a Solid or Vue route file with automatic code
-  // splitting reloads the page in Vite dev, losing its state, instead of
-  // patching it in place.
-  // Goal (any fix): in a Vite dev server with the framework's plugin, the
+  // Impact: split Solid/Vue edits replace the router-owned wrapper on both
+  // hosts, and reload the document on Vite. Rsbuild's new text alone does
+  // not prove that the live wrapper kept its identity (H11).
+  // Goal (any fix): with either host and the framework's plugin, the
   // edit shows without a full reload, and the live route keeps the component
   // the page rendered.
   // Source: decision D10 (Solid/Vue split components keep their identity
   // across hot updates, as React's do); gaps H8/H9.
-  test.fails.for(['solid', 'vue'] as const)(
-    'vite: an edit of a split %s route shows in place, keeping the split component',
-    async (
-      target: 'solid' | 'vue',
-      { expect, onTestFinished }: TestContext,
-    ) => {
+  test.fails.for(
+    (['vite', 'rsbuild'] as const).flatMap((bundler) =>
+      (['solid', 'vue'] as const).map((target) => ({ bundler, target })),
+    ),
+  )(
+    '$bundler: an edit of a split $target route shows in place, keeping the split component',
+    async ({ bundler, target }, { expect, onTestFinished }: TestContext) => {
       const route = frameworkRoute(target)
       const app = await openRouteHmrPage({
+        bundler,
         target,
         onTestFinished,
         files: { 'routes/index.tsx': route('v1') },
@@ -176,11 +178,10 @@ function Page() {
   // compared a component whose text did not change between versions).
   // Ruling (R-09 / D11, 2026-10-17): same-file route factories are
   // unsupported but user-fixable. Any fix passes: the edit takes effect (in
-  // place or after a reload, without errors), or the compiler warns, naming
-  // the route file, through a real channel (the dev server's logger or
-  // console, or the served module). Silent wrong output fails.
+  // place without errors), or an unsplit fallback works and a warning names
+  // the file through a real channel. A warning never excuses stale output.
   test.fails.for(['vite', 'rsbuild'] as const)(
-    '%s: an edit of a route a helper function creates shows its new component, or the file is reported (autoCodeSplitting: false)',
+    '%s: an edit of a route a helper function creates works in place or as a warned fallback (autoCodeSplitting: false)',
     async (
       bundler: 'vite' | 'rsbuild',
       { expect, onTestFinished }: TestContext,
@@ -207,19 +208,14 @@ export const Route = makeRoute()
           file: 'routes/index.tsx',
           root: app.root,
         }).length > 0
-      let result
-      try {
-        result = await app.edit(
-          { 'routes/index.tsx': route('v2') },
-          'helper v2 data v2',
-        )
-      } catch (error) {
-        if (reported()) {
-          return
-        }
-        throw error
-      }
+      const result = await app.edit(
+        { 'routes/index.tsx': route('v2') },
+        'helper v2 data v2',
+      )
       expect(result.errors).toEqual([])
+      if (!reported()) {
+        expect(result.reloaded).toBe(false)
+      }
     },
   )
 

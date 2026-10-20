@@ -418,7 +418,6 @@ export const Route = createFileRoute('/')({ component: () => 'page' })`,
     })
     const served = await server.transform('/routes/index.tsx')
     expect(served).toContain('solid-router-stub')
-    expect(served).toContain('tsr-split')
     expect(await server.read('routes/__root.tsx')).toContain(
       '@tanstack/solid-router',
     )

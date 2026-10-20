@@ -240,19 +240,14 @@ export const Route = (() =>
             file: 'routes/index.tsx',
             root: app.root,
           }).length > 0
-        let result
-        try {
-          result = await app.edit(
-            { 'routes/index.tsx': route('v2') },
-            `${shape} v2 data v2`,
-          )
-        } catch (error) {
-          if (reported()) {
-            return
-          }
-          throw error
-        }
+        const result = await app.edit(
+          { 'routes/index.tsx': route('v2') },
+          `${shape} v2 data v2`,
+        )
         expect(result.errors).toEqual([])
+        if (!reported()) {
+          expect(result.reloaded).toBe(false)
+        }
       },
     )
   },
