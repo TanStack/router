@@ -82,6 +82,10 @@ async function postprocess(
           expectOnlyOwnedEdits(source, written)
         }
       }
+      // (the lazy file switched to createLazyFileRoute gives the page)
+      await withRouteTree(config.generatedRouteTree, async ({ renderAt }) => {
+        expect(await renderAt('/bar')).toContain('Bar from its lazy file')
+      })
       break
     }
     case 'custom-scaffolding': {
@@ -203,10 +207,7 @@ describe('generator fixtures', async () => {
       await generator.run()
 
       expect(fixtureRoutes[name], 'the routes of the fixture').toBeDefined()
-      await expectFixtureRoutes(
-        config.generatedRouteTree,
-        fixtureRoutes[name]!,
-      )
+      await expectFixtureRoutes(config.generatedRouteTree, fixtureRoutes[name]!)
       await postprocess(name, config, before)
     },
   )

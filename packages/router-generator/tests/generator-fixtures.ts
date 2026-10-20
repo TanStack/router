@@ -142,11 +142,6 @@ export const fixtureRoutes: Record<string, Record<string, FixtureRoute>> = {
       '__root__',
       'routes/(test)/initiallyLazy.tsx',
     ],
-    '/(test)/template-literal': [
-      '/template-literal',
-      '__root__',
-      'routes/(test)/template-literal.tsx',
-    ],
     __root__: ['/', null, 'routes/__root.tsx'],
   },
   'flat-route-group': {

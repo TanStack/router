@@ -131,7 +131,10 @@ export const Route = createFileRoute('/old')({ component: () => Link })
   test.each([
     {
       name: 'joining the router package import',
-      after: withoutConstructor.replace('{ Link }', '{ Link, createFileRoute }'),
+      after: withoutConstructor.replace(
+        '{ Link }',
+        '{ Link, createFileRoute }',
+      ),
     },
     {
       name: 'in an import of its own',

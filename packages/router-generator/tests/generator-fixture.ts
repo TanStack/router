@@ -222,15 +222,26 @@ export async function prepareFixture(name: string, dir = fixtureDir(name)) {
         join(dir, 'template.lazy.tsx'),
         'utf8',
       ),
-      'bar.lazy.tsx': template,
+      // (a lazy file written with createFileRoute: its options are only
+      // what a lazy route takes, here a component)
+      'bar.lazy.tsx': [
+        "import { createFileRoute } from '@tanstack/react-router'",
+        '',
+        "export const Route = createFileRoute('/foo/bar')({",
+        '  component: BarComponent,',
+        '})',
+        '',
+        'function BarComponent() {',
+        '  return <p>Bar from its lazy file</p>',
+        '}',
+        '',
+      ].join('\n'),
       'double-quotes.tsx': template.replace(
         "createFileRoute('/foo/bar')",
         'createFileRoute("/foo/bar")',
       ),
-      'template-literal.tsx': template.replace(
-        "createFileRoute('/foo/bar')",
-        'createFileRoute(`/foo/bar`)',
-      ),
+      // (a template literal id may be replaced or reported, SPEC J1.1:
+      // route-file-upkeep.test.ts)
       'duplicate-import.tsx': [
         "import { createFileRoute } from '@tanstack/react-router'",
         "import * as React from 'react'",
