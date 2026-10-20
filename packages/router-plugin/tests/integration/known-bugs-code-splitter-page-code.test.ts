@@ -51,16 +51,6 @@ describe('page code in client builds', () => {
 
   const component = `export const Route = createFileRoute('$PATH')({ component: Page })`
 
-  const displayName = routeCase(
-    'a component the route file writes a property of',
-    'display-name',
-    `function Page() {
-  return <div>{'$MARK'}{Page.displayName}</div>
-}
-Page.displayName = 'PageDisplay'
-${component}`,
-  )
-
   // Page code that loads with its chunk: code the route file does not
   // export, and exported functions and classes (today the chunk declares its
   // own copy, whose identity and state are pinned in "module state shared
@@ -487,51 +477,8 @@ export const Route = createFileRoute('/imports-exported')({ component: Page })
         timeout,
       )
 
-      // Bug: the code splitter moves a component into its chunk but leaves
-      // a top-level write to it (`Page.displayName = ...`) in the route
-      // module, where `Page` is no longer declared (same bug as "top-level
-      // writes to the split component (property assignment) stay with the
-      // binding they write"). Keeping a copy of the component and its write
-      // in the route module as well is no fix: the page code then loads
-      // with the entry chunk. Its own app: the build harness rejects the
-      // production client output, whose entry chunk reads the undeclared
-      // `Page`.
-      // Source: the #8504 probe (memos/splitter.md B6).
-      // Impact: the app's entry throws when it loads ("Page is not
-      // defined").
-      // One cell (Vite, no hint; speedup 7): the route module reading the
-      // undeclared `Page` is the transform's output, the same for every
-      // bundler and hint (in process: "top-level writes to the split
-      // component (property assignment) stay with the binding they write",
-      // ../known-bugs-code-splitter.test.ts), and where a fixed route's
-      // component lands is the bundler's, which the controls above decide
-      // in every bundler and hint.
-      if (bundler === 'vite' && sideEffects === undefined) {
-        test.fails(
-          `${displayName.name} loads with its chunk and renders the property`,
-          async () => {
-            const built = await clientBuild(bundler, {
-              sideEffects,
-              files: {
-                'routes/__root.tsx': rootRoute,
-                [`routes/${displayName.file}.tsx`]: displayName.route,
-                'entry.ts': mountEntry,
-              },
-            })
-            const { html } = await built.run(
-              `await entry.mount('/display-name')`,
-            )
-            expect({
-              placement: built.where(displayName.marker),
-              html,
-            }).toEqual({
-              placement: 'lazy',
-              html: `<div id="root"><div>${displayName.marker}PageDisplay</div></div>`,
-            })
-          },
-          timeout,
-        )
-      }
+      // A component the route file writes a property of, per bundler and
+      // hint: known-bugs-code-splitter-property-write.test.ts (its own apps).
 
       test.fails.each([...exported, ...unsplit])(
         '$name loads with its chunk',
