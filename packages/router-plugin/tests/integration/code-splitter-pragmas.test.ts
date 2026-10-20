@@ -4,7 +4,11 @@
 // ../code-splitter-pragmas.test.ts (fast tier).
 import { describe, expect, test } from 'vitest'
 import { BuildError } from '@tanstack/compiler-test-utils/build-harness'
-import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  diagnosticsOf,
+  expectDiagnostic,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { build, frameworks, routeApp, routeHead } from '../build-harness'
 import { openRouteHmrPage } from '../route-hmr-page'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
@@ -87,9 +91,11 @@ return getComputedStyle(document.getElementById('styled')).color`)
 })
 
 // A framework JSX plugin registered before the router plugin is an order the
-// docs do not support (SPEC G11): the build either works (the component is
-// split and renders) or fails with an error naming both plugins, so the
-// user can act. Never a silent wrong result.
+// docs do not support (SPEC G11): the build either works (the page renders,
+// with the component split or left in the route with a warning the user can
+// act on: naming the route file, or both plugins) or fails with an error
+// naming both plugins (their package, factory or plugin name; the wording
+// is free), so the user can act. Never a silent wrong result.
 // Source: V1 split F18; V2-26 (#6760: `vueJsx()` before the router plugin).
 describe('a framework JSX plugin registered before the router plugin', () => {
   const route = (
@@ -99,29 +105,40 @@ describe('a framework JSX plugin registered before the router plugin', () => {
 }
 export const Route = createFileRoute('/')({ component: Page })
 `
+  /**
+   * Each framework's JSX plugin, and the names a user knows it by: its
+   * package, its factory, its Vite plugin names.
+   */
   const jsxPlugins: Record<
     Framework,
-    { name: string; create: () => Promise<unknown> }
+    { names: RegExp; create: () => Promise<unknown> }
   > = {
     react: {
-      name: '@vitejs/plugin-react',
+      names: /@vitejs\/plugin-react|\bvite:react-[\w:-]+/,
       create: async () => (await import('@vitejs/plugin-react')).default(),
     },
     solid: {
-      name: 'vite-plugin-solid',
+      names: /vite-plugin-solid|\bsolid\(\)|['"`]solid['"`]/,
       create: async () =>
         (await import('vite-plugin-solid')).default({ ssr: true }),
     },
     vue: {
-      name: '@vitejs/plugin-vue-jsx',
+      names: /@vitejs\/plugin-vue-jsx|\bvueJsx\b|\bvite:vue-jsx\b/,
       create: async () => (await import('@vitejs/plugin-vue-jsx')).default(),
     },
   }
+  /** The names a user knows the router plugin by. */
+  const routerPluginNames =
+    /@tanstack\/router-plugin|\btanstackRouter\b|\bTanStackRouterVite\b|\btanstack-router\b/
+
+  /** Whether a diagnostic's text names both plugins. */
+  const namesBoth = (text: string, jsx: RegExp) =>
+    jsx.test(text) && routerPluginNames.test(text)
 
   test.each(frameworks)(
     'splits the route of a %s app and renders it, or fails the build naming both plugins',
     async (framework) => {
-      const { name, create } = jsxPlugins[framework]
+      const { names, create } = jsxPlugins[framework]
       const jsxPlugin = await create()
       const { tanstackRouter } = await import('../../src/vite')
       let app
@@ -140,14 +157,32 @@ export const Route = createFileRoute('/')({ component: Page })
         if (!(error instanceof BuildError)) {
           throw error
         }
-        expectDiagnostic(error, { names: [name, '@tanstack/router-plugin'] })
+        expect(
+          diagnosticsOf(error, 'error').some(({ text }) =>
+            namesBoth(text, names),
+          ),
+          String(error),
+        ).toBe(true)
         return
       }
-      expect(app.where('MARK_COMPONENT')).toBe('lazy')
       const run = await app.run(
         'return await entry.render(entry.Route.options.component)',
       )
       expect(run.result).toContain('MARK_COMPONENT')
+      if (app.where('MARK_COMPONENT') !== 'lazy') {
+        const reported = diagnosticsOf(
+          [...app.warnings, ...app.consoleMessages],
+          'warning',
+        )
+        expect(
+          reported.some(({ text }) => namesBoth(text, names)) ||
+            findDiagnostics(reported, {
+              file: 'routes/index.tsx',
+              root: app.root,
+            }).length > 0,
+          `the component stays in the route, reported: ${JSON.stringify(reported.map(({ text }) => text))}`,
+        ).toBe(true)
+      }
     },
     timeout,
   )
@@ -156,9 +191,16 @@ export const Route = createFileRoute('/')({ component: Page })
 // solid-refresh reads its `// @refresh reload` comments per module, so every
 // module holding route code keeps them; the outcome is solid-refresh's own
 // (it reloads what the comment governs, and whether that is a hot update or
-// a page reload is its call: SPEC G10 never requires a reload). Source: V1
-// split F14. (React's `/* @refresh reset */` has no observable effect under
-// Vite 8's `@vitejs/plugin-react`, split or not: no outcome to assert.)
+// a page reload is its call: SPEC G10 never requires a reload). The oracle
+// is the same app with the route left unsplit (`autoCodeSplitting: false`):
+// after the same click and the same edit, the split app shows what the
+// unsplit app shows (the new content, and the counter state the pragma
+// leaves: the count the click set is reset). With Vite 8 and
+// vite-plugin-solid the pragma's only other effect on the unsplit app is a
+// page reload instead of a hot update, which G10 does not let a test
+// require. Source: V1 split F14, V1R split S07. (React's `/* @refresh reset */` has no
+// observable effect under Vite 8's `@vitejs/plugin-react`, split or not: no
+// outcome to assert.)
 describe('refresh pragma comments of a route file, in a real page', () => {
   const solidCounter = (
     header: string,
@@ -177,6 +219,32 @@ ${aboveComponent}function Page() {
 export const Route = createFileRoute('/')({ component: Page })
 `
 
+  /**
+   * Opens the app, clicks the counter once, edits the route and returns
+   * what the counter shows once the page shows the new content.
+   */
+  async function counterAfterEdit(
+    autoCodeSplitting: boolean,
+    header: string,
+    aboveComponent: string,
+  ) {
+    const app = await openRouteHmrPage({
+      target: 'solid',
+      pluginOptions: { autoCodeSplitting },
+      files: {
+        'routes/index.tsx': solidCounter(header, aboveComponent, 'v1'),
+      },
+      ready: 'Counter v1 count 0',
+    })
+    await app.click('button')
+    await app.page.waitForText('Counter v1 count 1')
+    await app.edit(
+      { 'routes/index.tsx': solidCounter(header, aboveComponent, 'v2') },
+      /Counter v2 count \d/,
+    )
+    return /Counter v2 count \d/.exec(await app.page.text())?.[0]
+  }
+
   test.each([
     {
       name: 'a // @refresh reload file header',
@@ -189,21 +257,14 @@ export const Route = createFileRoute('/')({ component: Page })
       aboveComponent: '// @refresh reload\n',
     },
   ])(
-    'with $name, an edit of a Solid route shows the new content',
+    'with $name, an edit of a Solid route shows what it shows unsplit',
     async ({ header, aboveComponent }) => {
-      const app = await openRouteHmrPage({
-        target: 'solid',
-        files: {
-          'routes/index.tsx': solidCounter(header, aboveComponent, 'v1'),
-        },
-        ready: 'Counter v1 count 0',
-      })
-      await app.click('button')
-      await app.page.waitForText('Counter v1 count 1')
-      await app.edit(
-        { 'routes/index.tsx': solidCounter(header, aboveComponent, 'v2') },
-        /Counter v2 count \d/,
-      )
+      const [unsplit, split] = await Promise.all([
+        counterAfterEdit(false, header, aboveComponent),
+        counterAfterEdit(true, header, aboveComponent),
+      ])
+      expect(unsplit).toMatch(/Counter v2 count \d/)
+      expect(split).toBe(unsplit)
     },
     timeout,
   )
