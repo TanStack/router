@@ -247,3 +247,129 @@ test('diagnostics keeps the reports of every compile; errors and warnings hold t
   ])
   expect(server.diagnostics.slice(since)).toEqual([])
 }, 30_000)
+
+/** An environment compiler, with the app files its last compile read. */
+interface Captured {
+  compiler: Rspack.Compiler
+  read: Array<string>
+}
+
+/**
+ * A plugin that gives the test the environment compilers and, from each
+ * compile's `done`, the app files (relative to `root`) it read.
+ */
+function captureCompilers(into: Array<Captured>, root: string): RsbuildPlugin {
+  return {
+    name: 'capture-compilers',
+    setup(api) {
+      api.onAfterCreateCompiler(({ compiler }) => {
+        for (const environmentCompiler of 'compilers' in compiler
+          ? compiler.compilers
+          : [compiler]) {
+          const captured: Captured = { compiler: environmentCompiler, read: [] }
+          into.push(captured)
+          environmentCompiler.hooks.done.tap(
+            'capture-compilers',
+            ({ compilation }) => {
+              captured.read = [...compilation.fileDependencies]
+                .filter((file) => file.startsWith(root + path.sep))
+                .map((file) => path.relative(root, file))
+            },
+          )
+        }
+      })
+    },
+  }
+}
+
+/**
+ * What a captured compiler's watcher knows (watchpack's time entries,
+ * through Rspack's public `watching.watcher` and `watchFileSystem.watcher`).
+ */
+function watchedBy({ compiler, read }: Captured) {
+  const attached = !!(compiler as { watching?: { watcher?: unknown } }).watching
+    ?.watcher
+  const watcher = (
+    compiler.watchFileSystem as
+      | { watcher?: { getTimeInfoEntries: () => Map<string, unknown> } }
+      | undefined
+  )?.watcher
+  return {
+    name: compiler.name,
+    attached,
+    known: new Set(watcher ? watcher.getTimeInfoEntries().keys() : []),
+    read,
+  }
+}
+
+// Rspack attaches its watcher on the tick after the first compile, and
+// watchpack then scans the app's directories; a file deleted before that is
+// never reported (FOLLOWUPS "UPSTREAM (W3-harness2)"). The start resolves
+// only once the watcher knows every app file the compile read.
+test('the start resolves once the watcher knows every app file the compile read', async () => {
+  const compilers: Array<Captured> = []
+  const server = await createRsbuildDevServer({
+    dir: testsDir,
+    registerCleanup: onTestFinished,
+    files: {
+      'src/entry.ts': `import { leaf } from './leaf'\nconsole.log(leaf)\n`,
+      'src/leaf.ts': `export const leaf = 'MARK_V1'\n`,
+    },
+    plugins: ({ root }) => [captureCompilers(compilers, root)],
+  })
+  const client = watchedBy(compilers[0]!)
+  expect(client.attached).toBe(true)
+  expect(client.read).toEqual(
+    expect.arrayContaining(['src/entry.ts', 'src/leaf.ts']),
+  )
+  for (const file of client.read) {
+    expect(client.known.has(path.join(server.root, file))).toBe(true)
+  }
+}, 30_000)
+
+// One compiler may watch for another: Rspack's RSC coordinator makes the
+// server compiler watch the client compiler's files and ignores everything
+// in the client's own watcher. The start must still resolve, with every
+// file known to a watcher, when a compiler's watcher ignores everything.
+test('the start resolves with a compiler whose watcher ignores every file, while another watches them', async () => {
+  const compilers: Array<Captured> = []
+  const server = await createRsbuildDevServer({
+    dir: testsDir,
+    registerCleanup: onTestFinished,
+    compileTimeout: 10_000,
+    files: {
+      'src/entry.ts': `import { leaf } from './leaf'\nconsole.log(leaf)\n`,
+      'src/leaf.ts': `export const leaf = 'MARK_V1'\n`,
+    },
+    config: {
+      environments: { web: {}, node: { output: { target: 'node' } } },
+    },
+    plugins: ({ root }) => [
+      captureCompilers(compilers, root),
+      {
+        name: 'ignore-all-in-node',
+        setup(api) {
+          api.modifyRspackConfig((config, { environment }) => {
+            if (environment.name === 'node') {
+              config.watchOptions = {
+                ...config.watchOptions,
+                ignored: () => true,
+              }
+            }
+          })
+        },
+      },
+    ],
+  })
+  const watched = compilers.map(watchedBy)
+  const node = watched.find((w) => w.name === 'node')!
+  const web = watched.find((w) => w.name === 'web')!
+  expect(watched.map((w) => w.attached)).toEqual([true, true])
+  expect(node.known.size).toBe(0)
+  expect(node.read).toEqual(
+    expect.arrayContaining(['src/entry.ts', 'src/leaf.ts']),
+  )
+  for (const file of node.read) {
+    expect(web.known.has(path.join(server.root, file))).toBe(true)
+  }
+}, 30_000)

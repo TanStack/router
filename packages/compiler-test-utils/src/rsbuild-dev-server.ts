@@ -594,10 +594,13 @@ export interface CompileTracker {
    * directories: a file removed while that scan runs is never reported
    * (watchpack 2.5.2 `DirectoryWatcher.doScan`: a file the listing had but
    * the stat no longer finds is neither known nor missing afterwards;
-   * FOLLOWUPS "UPSTREAM (W3-harness2)"). Ready when watchpack's
-   * `getTimeInfoEntries()` has an entry (a time, or `null` once the scan
-   * ended) for each of those paths. `timeout` only guards against a watcher
-   * that never attaches.
+   * FOLLOWUPS "UPSTREAM (W3-harness2)"). Ready when every compiler's
+   * watcher is attached and, together, their watchpack
+   * `getTimeInfoEntries()` have an entry (a time, or `null` once the scan
+   * ended) for each of those paths: a compiler may watch for another
+   * (Rspack's RSC coordinator makes the server compiler watch the client
+   * compiler's files, whose own watcher ignores everything). `timeout` only
+   * guards against a watcher that never attaches.
    */
   watching: (root: string, timeout: number) => Promise<void>
   /**
@@ -727,8 +730,10 @@ export function trackCompiles(): CompileTracker {
   /** See `CompileTracker.watching`. */
   const watching = async (root: string, timeout: number) => {
     const deadline = Date.now() + timeout
-    for (;;) {
-      const ready = compilers.every((compiler) => {
+    /** What every compiler's watcher knows, together. */
+    const known = () => {
+      const entries = new Set<string>()
+      for (const compiler of compilers) {
         const attached = (compiler as { watching?: { watcher?: unknown } })
           .watching?.watcher
         const watcher = (
@@ -737,14 +742,28 @@ export function trackCompiles(): CompileTracker {
             | undefined
         )?.watcher
         if (!attached || !watcher) {
-          return false
+          return undefined
         }
-        const entries = watcher.getTimeInfoEntries()
-        const last = dependencies.get(compiler)
-        return [...(last?.files ?? []), ...(last?.missing ?? [])]
-          .filter((file) => isAppFile(root, file))
-          .every((file) => entries.has(file))
-      })
+        for (const file of watcher.getTimeInfoEntries().keys()) {
+          entries.add(file)
+        }
+      }
+      return entries
+    }
+    for (;;) {
+      // Against the union of the watchers: one compiler may watch for
+      // another (Rspack's RSC coordinator has the server compiler watch the
+      // client compiler's files and ignores everything in the client's own
+      // watcher).
+      const entries = known()
+      const ready =
+        entries !== undefined &&
+        compilers.every((compiler) => {
+          const last = dependencies.get(compiler)
+          return [...(last?.files ?? []), ...(last?.missing ?? [])]
+            .filter((file) => isAppFile(root, file))
+            .every((file) => entries.has(file))
+        })
       if (ready) {
         return
       }
