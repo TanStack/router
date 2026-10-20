@@ -63,9 +63,7 @@ export function render(id: string) {
         ),
         minify,
       )
-      expect(
-        addedCode(renamed, await build(controlFiles, minify)),
-      ).toEqual([])
+      expect(addedCode(renamed, await build(controlFiles, minify))).toEqual([])
     },
     timeout,
   )

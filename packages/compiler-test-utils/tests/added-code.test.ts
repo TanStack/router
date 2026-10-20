@@ -70,7 +70,10 @@ export function render(input) {
       'lazy-Ef56Gh78.js': `export const show = (value) => ({ text: "MARK " + value })\n`,
     })
     expect(addedCode(withDiagnostic, control)).toEqual([
-      { chunk: 'entry-Ab12Cd34.js', code: `console.warn('[route] ' + doubled)` },
+      {
+        chunk: 'entry-Ab12Cd34.js',
+        code: `console.warn('[route] ' + doubled)`,
+      },
     ])
   })
 
@@ -87,9 +90,7 @@ export function render(input) {
       'entry.js': `export const read = () => document.location.href`,
     })
     for (const code of variants) {
-      expect(addedCode(build({ 'entry.js': code }), base), code).toHaveLength(
-        1,
-      )
+      expect(addedCode(build({ 'entry.js': code }), base), code).toHaveLength(1)
     }
   })
 })

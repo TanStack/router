@@ -1086,9 +1086,10 @@ async function checkDanglingNames(
   chunks: Array<Chunk>,
   evidence: ModuleEvidence,
 ) {
-  const [{ unboundReads, nameReads }, { clientGlobals }] = await Promise.all(
-    [import('./validate-module'), import('./known-globals')],
-  )
+  const [{ unboundReads, nameReads }, { clientGlobals }] = await Promise.all([
+    import('./validate-module'),
+    import('./known-globals'),
+  ])
   /** What each module the bundler parsed reads, by its source. */
   const parsed = new Map<string, NameReads>()
   const readsOf = (source: string) => {

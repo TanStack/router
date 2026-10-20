@@ -147,7 +147,10 @@ function statementShapes(build: BuildChunks) {
         if (value.type === 'ParenthesizedExpression') {
           return shape(value.expression, parent, key)
         }
-        if (value !== statement && (isStatement(value) || value.type === 'BlockStatement')) {
+        if (
+          value !== statement &&
+          (isStatement(value) || value.type === 'BlockStatement')
+        ) {
           return value.type === 'BlockStatement' ? '{…}' : '…'
         }
         if (value.type === 'Identifier' || value.type === 'PrivateIdentifier') {

@@ -587,16 +587,12 @@ export function unused() {
           sourceRules: [{ test: /\.js$/, loader: './identity-loader.cjs' }],
           files: unusedImportApp(unusedImport),
         })
-        expect((await app.run('return entry.read()')).result).toBe(
-          'MARK_USED',
-        )
+        expect((await app.run('return entry.read()')).result).toBe('MARK_USED')
         // The unused code ships; Rspack's reads `helper` without a binding,
         // which this check attributes to the bundler.
         const entryCode = app.entry.code
         expect(entryCode).toMatch(/return helper\(\)/)
-        expect(unboundNames(entryCode).has('helper')).toBe(
-          bundler === 'rspack',
-        )
+        expect(unboundNames(entryCode).has('helper')).toBe(bundler === 'rspack')
       },
       timeout,
     )
