@@ -17,9 +17,14 @@ import {
   envRestrictionError,
   expectDiagnostic,
   expectEnvRestrictionThrow,
+  expectFrameAt,
+  expectRelevantLocation,
   findDiagnostics,
   identifiesEnvRestriction,
+  importLines,
+  isRelevantLocation,
   mentionsFile,
+  parseLocation,
 } from '../src/diagnostics'
 
 const broken = `const a = 1
@@ -356,6 +361,215 @@ describe('names, severity and counts', () => {
         file: 'src/a.tsx',
       }),
     ).toThrow(/#0 \[warning\] severity warning, expected error; does not name/)
+  })
+
+  test('a name given as alternatives is named by any one of them', () => {
+    const missingHandler = 'src/a.ts:2:19 handler() expects a function'
+    expectDiagnostic(missingHandler, {
+      names: [['createServerFn', 'handler']],
+    })
+    expect(
+      findDiagnostics(missingHandler, { names: [['createServerFn', 'fn']] }),
+    ).toEqual([])
+  })
+})
+
+describe('prose and causes', () => {
+  const source = `import { Hydrate } from '@tanstack/react-start'
+export const Page = () => (
+  <Hydrate when={idle()}>{(...args) => <Child value={arguments[0]} />}</Hydrate>
+)
+`
+
+  // What a diagnostic says in its own words never comes from the code it
+  // quotes: a full, a cropped and a highlighted frame line, in the layouts
+  // of several tools, and a caret line (V1R start N13).
+  test.each([
+    ['a full numbered frame line', `> 3 |   ${source.split('\n')[2]}`],
+    [
+      'a cropped numbered frame line',
+      '> 3 | … <Hydrate when={idle()}>{(...args) => <Child value={arguments[0]} … ',
+    ],
+    ['a Rollup-style frame line', '3:   <Hydrate … arguments[0] …'],
+    ['a frame line in a box', '│ ❯ 3 │ <Hydrate … arguments[0]'],
+    [
+      'an unnumbered cropped quote',
+      '… <Hydrate when={idle()}>{(...args) => <Child value={arguments[0]} …',
+    ],
+    ['the whole source line', source.split('\n')[2]!],
+  ])(
+    'source tokens of %s are not prose: an internal error naming nothing does not pass',
+    (_name, quoted) => {
+      const text = `Internal compiler error\n${quoted}\n  |        ^`
+      expect(
+        findDiagnostics(text, {
+          names: ['Hydrate', 'arguments'],
+          prose: true,
+          source,
+        }),
+      ).toEqual([])
+      // Without the prose option, the quoted tokens count (the old reading).
+      expect(
+        findDiagnostics(text, { names: ['Hydrate', 'arguments'], source }),
+      ).toHaveLength(1)
+    },
+  )
+
+  test.each([
+    [
+      'before a frame',
+      `src/a.tsx:3:3: <Hydrate> children cannot read \`arguments\`\n> 3 | ${source.split('\n')[2]}\n    |   ^`,
+    ],
+    [
+      'after the caret of a frame',
+      `> 3 | ${source.split('\n')[2]}\n    |   ^^^^ Hydrate children cannot read arguments`,
+    ],
+    [
+      'on one line, without a frame',
+      'Hydrate: the children function reads arguments, which the split loses',
+    ],
+  ])('a clear message %s names its names in prose', (_name, text) => {
+    expectDiagnostic(text, {
+      names: ['Hydrate', 'arguments'],
+      prose: true,
+      source,
+    })
+  })
+
+  test('a cause is required in prose: naming the API (and a captured name) is not explaining the cause', () => {
+    const causes = ['captur', 'closure', /\bout(?:side|er)\b.*\bscope\b/]
+    const code = `export function make(id: string) {
+  return createServerFn().handler(() => db.inner(id))
+}`
+    for (const crash of [
+      'createServerFn internal error at src/a.ts:2:10',
+      'createServerFn id internal error at src/a.ts:2:10',
+      `Cannot read properties of undefined (reading 'id')\n> 2 |   return createServerFn().handler(() => db.inner(id)) // captures id`,
+    ]) {
+      expect(
+        findDiagnostics(crash, {
+          names: ['createServerFn', 'id'],
+          causes,
+          source: code,
+        }),
+        crash,
+      ).toEqual([])
+    }
+    for (const clear of [
+      'createServerFn: the handler captures `id`, a local of `make`',
+      'src/a.ts:2:10 createServerFn handler reads id from an outer scope',
+      'createServerFn cannot be compiled: its handler forms a closure over id',
+    ]) {
+      expectDiagnostic(clear, {
+        names: ['createServerFn', 'id'],
+        causes,
+        source: code,
+      })
+    }
+  })
+})
+
+describe('reported locations', () => {
+  const source = `import { other } from './other'
+import {
+  secret,
+} from './secret.server'
+export const read = () => secret()
+export const later = () => import('./secret.server')
+`
+  const expected = {
+    file: 'src/a.ts',
+    source,
+    uses: [{ line: 5, column: 27 }],
+    imports: ['./secret.server'],
+  }
+
+  test('the use and any line of the import of the specifier are relevant, whatever the file spelling', () => {
+    for (const reported of [
+      'src/a.ts:5:27',
+      '/app/src/a.ts:5:27',
+      'src/a.ts:2:1',
+      'src/a.ts:3:3',
+      'src/a.ts:4:8',
+      // the dynamic import of the same specifier
+      'src/a.ts:6:34',
+    ]) {
+      expectRelevantLocation(reported, expected)
+    }
+  })
+
+  test.each([
+    ['another column of the use line', 'src/a.ts:5:1'],
+    ['an unrelated line', 'src/a.ts:1:1'],
+    ['the import of another specifier', 'src/a.ts:1:10'],
+    ['a line past the end (compiled coordinates)', 'src/a.ts:9:4'],
+    ['another file', 'src/b.ts:5:27'],
+    ['no coordinates', 'src/a.ts'],
+  ])('%s is not relevant', (_name, reported) => {
+    expect(isRelevantLocation(reported, expected)).toBe(false)
+    expect(() => expectRelevantLocation(reported, expected)).toThrow()
+  })
+
+  test('a use without a column accepts any column of its line', () => {
+    expect(
+      isRelevantLocation('src/a.ts:5:1', { ...expected, uses: [{ line: 5 }] }),
+    ).toBe(true)
+  })
+
+  test('no coordinates and other places are accepted only when the caller allows them', () => {
+    expect(
+      isRelevantLocation('src/a.ts', { ...expected, unlocated: true }),
+    ).toBe(true)
+    const marker = {
+      ...expected,
+      others: [{ file: 'src/b.ts', lines: [1], unlocated: true }],
+    }
+    expect(isRelevantLocation('src/b.ts:1:8', marker)).toBe(true)
+    expect(isRelevantLocation('src/b.ts', marker)).toBe(true)
+    expect(isRelevantLocation('src/b.ts:2:1', marker)).toBe(false)
+  })
+
+  test('importLines spans every line of a statement importing exactly the specifier', () => {
+    expect(importLines('src/a.ts', source, './secret.server')).toEqual([
+      2, 3, 4, 6,
+    ])
+    expect(importLines('src/a.ts', source, './secret')).toEqual([])
+    expect(
+      importLines('src/a.ts', `export { x } from './x'\n`, './x'),
+    ).toEqual([1])
+  })
+
+  test('parseLocation reads a file with or without a line and column', () => {
+    expect(parseLocation('C:/app/a.ts:3:4')).toEqual({
+      file: 'C:/app/a.ts',
+      line: 3,
+      column: 4,
+    })
+    expect(parseLocation('src/a.ts:3')).toEqual({ file: 'src/a.ts', line: 3 })
+    expect(parseLocation('src/a.ts')).toEqual({ file: 'src/a.ts' })
+  })
+
+  test('a frame must highlight the reported line, show it and point at the column; its context is free', () => {
+    const line = 'export const read = () => secret()'
+    expectFrameAt({ line: 5, pointsAt: 'secret()', shows: [line] }, source, {
+      line: 5,
+      column: 27,
+    })
+    // cropped, with no context
+    expectFrameAt({ line: 5, pointsAt: 'secret…', shows: ['… secret()'] }, source, {
+      line: 5,
+      column: 27,
+    })
+    for (const frame of [
+      { line: 4, pointsAt: 'secret()', shows: [line] },
+      { line: 5, pointsAt: 'read = () => secret()', shows: [line] },
+      { line: 5, pointsAt: 'secret()', shows: ['import { other }'] },
+      { line: 5, pointsAt: '', shows: [line] },
+    ]) {
+      expect(() =>
+        expectFrameAt(frame, source, { line: 5, column: 27 }),
+      ).toThrow()
+    }
   })
 })
 
