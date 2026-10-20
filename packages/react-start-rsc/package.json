@@ -41,6 +41,17 @@
   },
   "nx": {
     "targets": {
+      "test:unit": {
+        "dependsOn": [
+          "^build",
+          {
+            "projects": [
+              "@tanstack/react-start-client"
+            ],
+            "target": "build"
+          }
+        ]
+      },
       "test:integration": {
         "dependsOn": [
           "^build",
