@@ -139,25 +139,27 @@ export const Route = createFileRoute('/')({ component: Page })
       expect(result.errors).toContain('MARK_DELAYED_EDIT_ERROR')
     }, 60_000)
 
-    // A synthetic diagnostic controls capture without requiring the compiler
-    // to warn for an export no importer consumes (SPEC §5.6).
-    it("reports a diagnostic naming the app's route file", async () => {
+    // A warning the app itself logs (in the page) naming its route file is
+    // one of the page's warnings, by the A9 oracle. (No warning of the
+    // compiler is the control: a compiler that splits everything has
+    // nothing to report. The dev server's own channels go through the same
+    // `diagnosticsOf` reading; ctu's diagnostics tests cover the capture.)
+    it("reports the warnings naming the app's route file", async () => {
       const app = await openRouteHmrPage({
         bundler,
         files: {
-          'warning.ts': `console.warn('routes/index.tsx MARK_SYNTHETIC_WARNING')`,
-          'routes/index.tsx': `import '../warning'
-import { createFileRoute } from '@tanstack/react-router'
-function Page() { return <p>diagnostic control</p> }
-export const Route = createFileRoute('/')({ component: Page })`,
+          'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+console.warn('MARK_WARNING: check routes/index.tsx')
+export const Route = createFileRoute('/')({ component: () => <p>warned page</p> })
+`,
         },
-        ready: 'diagnostic control',
+        ready: 'warned page',
       })
       expect(
         findDiagnostics(app.warnings(), {
           file: 'routes/index.tsx',
           root: app.root,
-        }).length > 0,
+        }).some(({ text }) => text.includes('MARK_WARNING')),
       ).toBe(true)
     }, 60_000)
 

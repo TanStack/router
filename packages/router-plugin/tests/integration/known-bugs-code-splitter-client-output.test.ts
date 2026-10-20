@@ -172,77 +172,11 @@ export const Route = createFileRoute('/')({
   )
 })
 
-describe('source maps', () => {
-  /**
-   * Source files named by the source maps of a client build's chunks that
-   * hold the split component (`MARK_PAGE`) or a binding the route module
-   * shares with it (`MARK_SHARED`).
-   */
-  async function splitChunkSources(bundler: Bundler) {
-    const app = await build({
-      bundler,
-      env: 'client',
-      minify: false,
-      sourcemap: true,
-      files: routeApp(
-        `${head}const shared = { label: 'MARK_SHARED' }
-function Page() {
-  return <p>MARK_PAGE {shared.label}</p>
-}
-export const Route = createFileRoute('/')({
-  loader: () => shared,
-  component: Page,
-})
-`,
-        { env: 'client' },
-      ),
-    })
-    const chunks = app.chunks.filter(
-      (chunk) =>
-        chunk.code.includes('MARK_PAGE') || chunk.code.includes('MARK_SHARED'),
-    )
-    return [...new Set(chunks.flatMap((chunk) => chunk.map?.sources ?? []))]
-  }
-
-  /** Whether the sources name the route file, and none a virtual module. */
-  function namesRouteFile(sources: Array<string>) {
-    return {
-      routeFile: sources.some((source) => source.includes('routes/index.tsx')),
-      virtualModules: sources.filter((source) => /[?&]tsr-/.test(source)),
-    }
-  }
-
-  // Control for the pin below: Rspack and webpack name modules by their
-  // resource path.
-  test.each(['rspack', 'webpack'] as const)(
-    'split code maps to the route file (%s)',
-    async (bundler) => {
-      expect(namesRouteFile(await splitChunkSources(bundler))).toEqual({
-        routeFile: true,
-        virtualModules: [],
-      })
-    },
-    60_000,
-  )
-
-  // Bug: the split chunk and shared modules are compiled with their module
-  // id as the source file name, query included (`routes/index.tsx?tsr-split=
-  // component`), and Vite keeps the source names of the maps plugins return.
-  // Source: gap CC-S2 (plausible cause of #6667, #3828, #2991).
-  // Impact: devtools and error trackers show split code under a separate
-  // `index.tsx?tsr-split=…` file, so breakpoints set in the route file do
-  // not hit in split code.
-  test.fails(
-    'split code maps to the route file (vite)',
-    async () => {
-      expect(namesRouteFile(await splitChunkSources('vite'))).toEqual({
-        routeFile: true,
-        virtualModules: [],
-      })
-    },
-    60_000,
-  )
-})
+// What split code's source maps name is checked where it matters, by
+// executed throws mapped to the route file's line and column through each
+// bundler's emitted maps (build-source-maps.test.ts: split, shared and
+// route-module code; Vite, Rspack, webpack). Which source names the maps
+// list (a virtual module's id among them) is free (SPEC §5.14).
 
 describe('production builds', () => {
   /**

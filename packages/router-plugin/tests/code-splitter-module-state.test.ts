@@ -808,6 +808,22 @@ const value = {
   read() { return config },
 }`,
     },
+    // The private method is the only code reading `config` (V4 round 2,
+    // red-astra-r2/04: a compiler ignoring private method bodies).
+    {
+      name: 'a private method, the only reader of the binding',
+      declarations: `const config = init({ name: 'config' })
+class Vault {
+  #read() {
+    return config
+  }
+  read() {
+    return this.#read()
+  }
+}`,
+      loader: 'new Vault().read()',
+      component: 'new Vault().read()',
+    },
   ])('reaches the split component through $name', expectSharedOnce)
 
   // Each row declares a module-level `title` (or component) that reads
@@ -987,56 +1003,57 @@ export const Route = createFileRoute('/')({
 })
 
 // In a JavaScript route file, imports are not elided by a type-aware
-// transform, so the route module itself must not import what only split
-// options read.
+// transform: state that split options share is still created once, every
+// option reads the same instance, and what only one split option imports
+// does not load with the route module.
 describe('state only split options read, in a .jsx route file', () => {
-  const stateRoute = (options: string) => `${head}import { init } from './init'
+  const stateRoute = (
+    options: string,
+  ) => `${head}import { init, see } from './init'
 const store = init({ label: 'shared' })
 export const Route = createFileRoute('/')({
 ${options}
 })
 `
 
-  it('is created once', async () => {
+  it('is created once, and every option reads that instance', async () => {
     let inits = 0
+    const seen: Array<unknown> = []
     const route = await loadRoute(
-      stateRoute(`  component: () => <p>{store.label}</p>,
-  errorComponent: () => <p>{store.label}</p>,`),
+      stateRoute(`  component: () => <p>{see(store)}</p>,
+  errorComponent: () => <p>{see(store)}</p>,`),
       {
         filename: 'route.jsx',
         stubs: {
           './init': {
-            init: (value: unknown) => {
+            init: (value: object) => {
               inits++
-              return value
+              return { ...value }
+            },
+            see: (store: { label: string }) => {
+              seen.push(store)
+              return store.label
             },
           },
         },
       },
     )
-    // When the store is created is free (initialiser timing is not pinned);
-    // what loads with the route module loads `./init` only to create it.
-    const atLoad = inits
-    const rendered = [
+    // When the store is created is free (initialiser timing is not pinned,
+    // nor whether its module loads with the route module): it is created
+    // once and both options read that one instance.
+    expect([
       await route.render('component'),
       await route.render('errorComponent'),
-    ]
-    expect({
-      rendered,
       inits,
-      loadsInitUnused: route.eager.includes('./init') && atLoad === 0,
-    }).toEqual({
-      rendered: ['<p>shared</p>', '<p>shared</p>'],
-      inits: 1,
-      loadsInitUnused: false,
-    })
+      new Set(seen).size,
+    ]).toEqual(['<p>shared</p>', '<p>shared</p>', 1, 1])
   })
 
   it('is not created by loading a split option that does not read it', async () => {
     let inits = 0
     const route = await loadRoute(
-      stateRoute(`  component: () => <p>{store.label}</p>,
-  errorComponent: () => <p>{store.label}</p>,
+      stateRoute(`  component: () => <p>{see(store)}</p>,
+  errorComponent: () => <p>{see(store)}</p>,
   notFoundComponent: () => <p>nf</p>,`),
       {
         filename: 'route.jsx',
@@ -1046,6 +1063,7 @@ ${options}
               inits++
               return value
             },
+            see: (store: { label: string }) => store.label,
           },
         },
       },
@@ -1083,5 +1101,34 @@ export const Route = createFileRoute('/')({
       false,
     ])
     expect(await route.render('component')).toBe('v')
+  })
+})
+
+// A split component wrapped in a call (`memo(Page)`, an HOC) of a `const`
+// component: the call runs when the chunk loads, after `Page` is
+// initialized (SPEC G3: ordering dependencies kept; J2.6: the chunk loads
+// and renders). A `function Page() {}` declaration is hoisted and would hide
+// a wrapper evaluated above it (V4 round 2, red-fable-r2/06).
+describe('a split component wrapped in a call of a const component', () => {
+  it.each([
+    {
+      name: "React's memo",
+      code: `${head}import { memo } from 'react'
+const Page = () => <h1>Posts</h1>
+export const Route = createFileRoute('/')({ component: memo(Page) })
+`,
+    },
+    {
+      name: 'an application HOC',
+      code: `${head}import { withAuth } from './auth'
+const Page = () => <h1>Posts</h1>
+export const Route = createFileRoute('/')({ component: withAuth(Page) })
+`,
+    },
+  ])('renders when the chunk loads ($name)', async ({ code }) => {
+    const route = await loadRoute(code, {
+      stubs: { './auth': { withAuth: (component: unknown) => component } },
+    })
+    expect(await route.render('component')).toBe('<h1>Posts</h1>')
   })
 })

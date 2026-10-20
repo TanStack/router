@@ -19,6 +19,7 @@ import {
   importRequests,
   importSources,
   loadRoute,
+  loadRouteGraph,
   parseModule,
   renderComponent,
   routeFile,
@@ -52,7 +53,12 @@ const pluginsOf = (plugin: PluginOption) =>
 // (plugin-host.ts): Vite resolves the config, orders the plugins, applies
 // their hook filters and resolves and loads the emitted modules.
 describe('code-splitter plugin pipeline', () => {
-  it('compiles a split module the same way when its id has extra query parameters', async () => {
+  // A bundler may request an emitted module with an extra cache-busting
+  // parameter (`t=…`). Whatever the compiler's own ids look like (with a
+  // query or not), the module the host serves under that id behaves like
+  // the one it serves without it: the route loads, its options return and
+  // render the same (SPEC G4, §5.3; the emitted text is free).
+  it('serves a split module with the same behaviour when its id has an extra cache-busting parameter', async () => {
     const host = createRouterHost()
     const graph = await host.compile(routeSource('query'), {
       filename: 'query.tsx',
@@ -60,20 +66,63 @@ describe('code-splitter plugin pipeline', () => {
     })
     const emitted = [...graph.modules.keys()].filter((id) => id !== graph.id)
     expect(emitted.length).toBeGreaterThan(0)
+    /** What the route does once loaded from `modules`. */
+    const observe = async (modules: Map<string, string>) => {
+      const route = await loadRouteGraph(
+        { ...graph, modules },
+        { routeId: '/query' },
+      )
+      return [
+        await route.options.loader(),
+        route.options.head(),
+        await route.render('component'),
+        await route.render('errorComponent'),
+        await route.renderRoute(),
+      ]
+    }
+    const expected = await observe(graph.modules)
+    expect(expected).toEqual([
+      { name: 'query' },
+      { meta: [{ title: 'query' }] },
+      '<p>query</p>',
+      '<p>error in query</p>',
+      '<p>query</p>',
+    ])
+    const busted = (id: string) =>
+      id.includes('?')
+        ? [`${id}&t=123`, id.replace('?', '?t=123&')]
+        : [`${id}?t=123`]
     for (const id of emitted) {
-      const [file, query] = id.split('?') as [string, string]
-      expect(await host.emit(`${file}?${query}&t=123`), id).toBe(
-        graph.modules.get(id),
-      )
-      expect(await host.emit(`${file}?t=123&${query}`), id).toBe(
-        graph.modules.get(id),
-      )
+      for (const requested of busted(id)) {
+        const modules = new Map(graph.modules)
+        modules.set(id, await host.emit(requested))
+        expect(await observe(modules), requested).toEqual(expected)
+      }
     }
   })
 
+  // One plugin instance compiles every route of an app: what it emits for a
+  // route does not depend on the routes it compiled before (SPEC G4). The
+  // same module ids and graph, the same groups and the same behaviour;
+  // the emitted text is free.
   it('compiles the modules of a route the same way after compiling another route', async () => {
     const first = { filename: 'first.tsx', routeId: '/first' }
-    const fresh = await createRouterHost().compile(routeSource('first'), first)
+    /** What a compiled version of the first route is and does. */
+    const observe = async (graph: RouteGraph) => {
+      const route = await loadRouteGraph(graph, { routeId: '/first' })
+      return {
+        ids: [...graph.modules.keys()],
+        importKinds: Object.fromEntries(graph.importKinds),
+        groups: await route.groups(),
+        loader: await route.options.loader(),
+        head: route.options.head(),
+        component: await route.render('component'),
+        errorComponent: await route.render('errorComponent'),
+      }
+    }
+    const fresh = await captureConsole(async () =>
+      observe(await createRouterHost().compile(routeSource('first'), first)),
+    )
     const reused = createRouterHost()
     await reused.compile(
       `import { createFileRoute } from '@tanstack/react-router'
@@ -81,10 +130,14 @@ export const Route = createFileRoute('/other')({ component: () => <p /> })
 `,
       { filename: 'other.tsx', routeId: '/other' },
     )
-    expect(fresh.modules.size).toBeGreaterThan(1)
-    expect((await reused.compile(routeSource('first'), first)).modules).toEqual(
-      fresh.modules,
+    const again = await captureConsole(async () =>
+      observe(await reused.compile(routeSource('first'), first)),
     )
+    expect(fresh.result.ids.length).toBeGreaterThan(1)
+    expect(again.result).toEqual(fresh.result)
+    const reported = (diagnostics: typeof fresh.diagnostics) =>
+      diagnostics.map(({ severity, text }) => ({ severity, text }))
+    expect(reported(again.diagnostics)).toEqual(reported(fresh.diagnostics))
   })
 
   it('splits by the plugin-level splitBehavior for the route id', async () => {
@@ -311,6 +364,34 @@ export const itemsRoute = createRoute({
 export const routeTree = root.addChildren([itemsRoute])
 `,
     'src/items.ts': `export const fetchItems = () => ['item']\n`,
+    // A genuine route factory call in a module the generator does not
+    // register (a route built for a preview or a test, never in the route
+    // tree): not a route file, so not the router plugin's.
+    'src/route-preview.tsx': `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({
+  loader: () => 'preview data',
+  component: () => <p>preview</p>,
+})
+`,
+    // A registered route file whose other code uses a look-alike of the
+    // route factory: the same name from an unrelated package. Only the call
+    // bound to `Route` is the route's (SPEC J2.1, G15; a local factory
+    // shadowing the name in a route file: pinned in
+    // known-bugs-code-splitter.test.ts, "look-alike route factories").
+    // An unregistered module calling the genuine factory: `route-preview`.
+    'routes/widgets.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import * as other from 'other-router'
+function ForeignWidget() {
+  return <p>foreign widget</p>
+}
+export const widgets = {
+  ForeignWidget,
+  foreign: other.createFileRoute('/foreign-widget')({ loader: () => 'foreign data', component: ForeignWidget }),
+}
+export const Route = createFileRoute('/widgets')({
+  component: () => <p>widgets</p>,
+})
+`,
     // A factory of the same name from an unrelated package.
     'src/unrelated-factory.tsx': `import { createFileRoute } from 'other-router'
 export const Route = createFileRoute('/unrelated')({
@@ -346,7 +427,9 @@ export const doubled = [1, 2].map(function double(value) {
 `,
   }
   const unowned = Object.keys(files).filter(
-    (file) => file !== 'routes/index.tsx' && !file.startsWith('node_modules/'),
+    (file) =>
+      !['routes/index.tsx', 'routes/widgets.tsx'].includes(file) &&
+      !file.startsWith('node_modules/'),
   )
 
   it.each([
@@ -367,6 +450,10 @@ export const doubled = [1, 2].map(function double(value) {
       const shadowed = await server.import('/src/shadowed-factory.tsx')
       const destructuring = await server.import('/src/destructuring.ts')
       const lazy = await server.import('/routes/posts.lazy.tsx')
+      const preview = await server.import('/src/route-preview.tsx')
+      const { widgets, Route: widgetsRoute } = await server.import(
+        '/routes/widgets.tsx',
+      )
       // The router plugin left each module as it was (the router transform
       // boundary, before Vite's own transforms).
       for (const file of unowned.filter(
@@ -404,6 +491,17 @@ export const doubled = [1, 2].map(function double(value) {
           'preload' in code.itemsRoute.options.errorComponent,
         ],
         lazy: 'preload' in lazy.Route.options.component,
+        preview: [
+          preview.Route.options.loader(),
+          'preload' in preview.Route.options.component,
+        ],
+        // The look-alike keeps its own semantics and the very function it
+        // was given.
+        widgets: [
+          widgets.foreign.path,
+          widgets.foreign.options.loader(),
+          widgets.foreign.options.component === widgets.ForeignWidget,
+        ],
       }).toEqual({
         docs: "call createFileRoute('/path')({ component }) in a route file",
         guard: 'user',
@@ -414,6 +512,8 @@ export const doubled = [1, 2].map(function double(value) {
         shadowed: ['/shadowed', 'shadowed data'],
         items: [['item'], false, false],
         lazy: false,
+        preview: ['preview data', false],
+        widgets: ['/foreign-widget', 'foreign data', true],
       })
       expect([
         await renderRouteComponent(code.itemsRoute.options.component),
@@ -421,13 +521,24 @@ export const doubled = [1, 2].map(function double(value) {
         await renderRouteComponent(shadowed.Route.options.component),
         await renderRouteComponent(lazy.Route.options.component),
         await renderRouteComponent(lazy.Route.options.pendingComponent),
+        await renderRouteComponent(preview.Route.options.component),
+        await renderRouteComponent(widgets.foreign.options.component),
+        await renderRouteComponent(widgetsRoute.options.component),
       ]).toEqual([
         '<p>items</p>',
         '<p>unrelated</p>',
         '<p>shadowed</p>',
         '<p>posts</p>',
         '<p>pending posts</p>',
+        '<p>preview</p>',
+        '<p>foreign widget</p>',
+        '<p>widgets</p>',
       ])
+      // The route the registered file creates is the one it splits (the
+      // genuine call bound to `Route`; SPEC J2.1).
+      expect('preload' in widgetsRoute.options.component).toBe(
+        autoCodeSplitting,
+      )
     },
   )
 })
@@ -483,7 +594,12 @@ export const Route = createFileRoute('/directive')({
       }
       return directives
     }
-    expect(prologue(modules.reference!)).toEqual(['use client', 'use strict'])
+    // The order among the directives of one prologue is free (SPEC §5.5):
+    // both lead the module, each once.
+    expect(prologue(modules.reference!).sort()).toEqual([
+      'use client',
+      'use strict',
+    ])
   },
 )
 
@@ -559,61 +675,67 @@ export const Route = createFileRoute('/hmr')({
     return transformWithRouteHmrPlugin(code, options, routeFile('hmr'))
   }
 
-  /** Server-rendered HTML without Vue's and Solid's hydration markers. */
-  const html = (rendered: string) =>
-    rendered.replace(/<!--.*?-->| data-hk="[^"]*"/g, '')
+  /** Server-rendered HTML without Vue's hydration markers. */
+  const html = (rendered: string) => rendered.replace(/<!--.*?-->/g, '')
 
-  /** Stubs of the router package of `target`. */
-  const routerStubs = (target: 'solid' | 'vue') => ({
-    [`@tanstack/${target}-router`]: {
-      createFileRoute: () => (options: unknown) => ({ options }),
-    },
-  })
+  /**
+   * Asserts that the emitted module is valid and, for Vue, that the route it
+   * creates with the real `@tanstack/vue-router` renders its component with
+   * the real Vue. The Solid router cannot be linked in process (its server
+   * entry is JSX source for bundlers): a Solid route compiled by this plugin
+   * runs in a real Vite dev server page in
+   * integration/route-hmr-browser-frameworks.test.ts ("vite: a solid app",
+   * autoCodeSplitting: false).
+   */
+  async function expectRenders(
+    output: string,
+    target: 'solid' | 'vue',
+    importMeta: Record<string, unknown>,
+  ) {
+    expect(await getModuleErrors(output)).toEqual([])
+    if (target === 'solid') {
+      return
+    }
+    const { Route } = await evaluateModule(
+      output,
+      {},
+      { framework: target, importMeta },
+    )
+    expect(
+      html(await renderComponent((Route as any).options.component, {}, target)),
+    ).toBe('<p>hmr</p>')
+  }
 
   it.each(['solid', 'vue'] as const)(
     'keeps a %s route valid and rendering when compiled with HMR',
     async (target) => {
-      const output = await transformWith({ target })
-      expect(await getModuleErrors(output)).toEqual([])
-      const { Route } = await evaluateModule(output, routerStubs(target), {
-        framework: target,
-        importMeta: { hot: undefined },
+      await expectRenders(await transformWith({ target }), target, {
+        hot: undefined,
       })
-      expect(
-        html(
-          await renderComponent((Route as any).options.component, {}, target),
-        ),
-      ).toBe('<p>hmr</p>')
     },
   )
 
   // Source: corpus-diff, tinloof/tanstack-wsr src/types.ts (an empty type
   // import fixes TypeScript's "inferred type cannot be named" error); #8504
   // (a guard against a printer bug, yuku-toolchain/yuku#258).
-  it('keeps a route with an empty type-only import valid', async () => {
-    const output = await transformWithRouteHmrPlugin(
-      `import type {} from 'zod'
-import { createFileRoute } from '@tanstack/solid-router'
+  it.each(['solid', 'vue'] as const)(
+    'keeps a %s route with an empty type-only import valid',
+    async (target) => {
+      const output = await transformWithRouteHmrPlugin(
+        `import type {} from 'zod'
+import { createFileRoute } from '@tanstack/${target}-router'
 export const Route = createFileRoute('/hmr')({
   component: () => <p>hmr</p>,
 })
 `,
-      { target: 'solid' },
-      routeFile('hmr'),
-    )
-    expect(await getModuleErrors(output)).toEqual([])
-    const { Route } = await evaluateModule(output, routerStubs('solid'), {
-      framework: 'solid',
-      importMeta: {
+        { target },
+        routeFile('hmr'),
+      )
+      await expectRenders(output, target, {
         hot: { data: {}, accept: () => {}, dispose: () => {} },
-      },
-    })
-    expect(
-      html(
-        await renderComponent((Route as any).options.component, {}, 'solid'),
-      ),
-    ).toBe('<p>hmr</p>')
-  })
+      })
+    },
+  )
 
   // A Solid or Vue route hot-updated through the bundler's hot API:
   // integration/route-hmr-browser-frameworks.test.ts (a real page).

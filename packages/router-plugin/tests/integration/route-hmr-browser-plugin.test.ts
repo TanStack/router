@@ -171,11 +171,12 @@ export const Route = ${call}
 // decision D11): it is either split like a module-scope route and
 // hot-updated in place, or left unsplit with a warning naming the file
 // (code-splitter-plugin-pipeline.test.ts). Either way, an edit shows its
-// new loader data and component, in place or after a reload, or the
-// compiler warns naming the route file through a real channel (the dev
-// server's logger or console, or the served module). (A helper function
-// without automatic code splitting keeps its old component silently:
-// pinned in known-bugs-route-hmr.test.ts.)
+// new loader data and component without errors (SPEC J2.10: rendering the
+// old component is a bug, warned or not; a warning is not proof that the
+// edit applied), and in place unless a warning names the file (the warned
+// unsplit fallback may reload). (A helper function without automatic code
+// splitting keeps its old component silently: pinned in
+// known-bugs-route-hmr.test.ts.)
 describe.concurrent.each(['vite', 'rsbuild'] as const)(
   '%s: an edit of a route created inside',
   (bundler) => {

@@ -170,22 +170,10 @@ export const Route = createFileRoute('/pragma')({
 // factory its pragmas name, so the factory import must stay wherever JSX
 // does. Source: #8504. (A chunk whose only use of the factory is its JSX, or
 // that imports it from the route module: pinned in
-// known-bugs-code-splitter.test.ts, "classic JSX pragmas".)
+// known-bugs-code-splitter.test.ts, "classic JSX pragmas".) The factory is
+// the real `@emotion/react` `jsx`, rendered by the real React: JSX compiled
+// with the project's default runtime instead leaves a `css` prop unstyled.
 describe('split modules keep the classic JSX factories their JSX compiles to', () => {
-  /**
-   * Classic JSX factory rendering intrinsic elements to text (`p(text)`),
-   * which React renders as is: JSX compiled with React's runtime instead
-   * renders `<p>text</p>`.
-   */
-  const render = (type: unknown, _props: unknown, ...children: Array<any>) => {
-    const text = children.flat(Infinity).join('')
-    if (typeof type === 'function') {
-      return type()
-    }
-    return type === Fragment ? text : `${String(type)}(${text})`
-  }
-  const Fragment = Symbol('Fragment')
-  const stubs = { '@emotion/react': { jsx: render, Frag: Fragment } }
   const classicHead = `/** @jsxRuntime classic */
 /** @jsx jsx */
 ${head}import { jsx } from '@emotion/react'
@@ -210,21 +198,24 @@ ${head}import { jsx } from '@emotion/react'
   it.fails(
     'in the route module, when the code calling the factory is split',
     async () => {
-      const route = await loadRoute(
-        `${classicHead}function Page() {
-  return jsx('div', null, 'page')
+      const code = `${classicHead}function Page() {
+  return jsx('div', { css: { color: 'blue' } }, 'page')
 }
 export const Route = createFileRoute('/')({
   component: Page,
-  pendingComponent: () => <p>pending</p>,
-})`,
-        { stubs },
-      )
+  pendingComponent: () => <p css={{ color: 'red' }}>pending</p>,
+})`
+      const untouched = await untouchedOptions(code)
+      const expected = [
+        await renderComponent(untouched.pendingComponent),
+        await renderComponent(untouched.component),
+      ]
+      expect(expected.map(emotionStyled)).toEqual([true, true])
+      const route = await loadRoute(code)
       expect([
         await route.render('pendingComponent'),
         await route.render('component'),
-        await route.isLazy('pendingComponent'),
-      ]).toEqual(['p(pending)', 'div(page)', false])
+      ]).toEqual(expected)
     },
   )
 })
