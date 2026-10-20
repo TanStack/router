@@ -11,6 +11,7 @@ import {
   callFromClient,
   callReportedServerFns,
   callerRpcId,
+  captureCauses,
   clientOnlyError,
   compileAll,
   compileCode,
@@ -745,6 +746,7 @@ export const read = () => getRead()()`,
             source: code,
             at: 'db.inner(id)',
             names: ['createServerFn', 'id'],
+            causes: captureCauses,
           })
         }
         return

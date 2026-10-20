@@ -12,10 +12,15 @@
  * tests that need the user-visible text (what is logged, how often, the
  * displayed trace and frame) read it through this adapter.
  */
+import { expect } from 'vitest'
 import {
   diagnosticsOf,
+  expectFrameAt,
   findDiagnostics,
+  isRelevantLocation,
+  parseLocation,
 } from '@tanstack/compiler-test-utils/diagnostics'
+import type { RelevantLocation } from '@tanstack/compiler-test-utils/diagnostics'
 
 export interface ReportedViolation {
   /** `client` or `server`. */
@@ -294,4 +299,93 @@ export function suggestedDirections(
       (api) => findDiagnostics(text, { names: [api] }).length > 0,
     ),
   )
+}
+/**
+ * A violation a test expects: its environment type, the importer's genuine
+ * use of the denied import (`use`, `file:line:column` from `locationIn`, or
+ * `file:line` for any column) in the importer's original `source`, and
+ * other places the report may be at instead (e.g. a marker's origin).
+ */
+export interface ExpectedViolation {
+  environment: 'client' | 'server'
+  use: string
+  source: string
+  others?: RelevantLocation['others']
+}
+
+/** `environment use`: how `expectViolationsAt` names an expected violation. */
+export const violationLabel = (expected: ExpectedViolation) =>
+  `${expected.environment} ${expected.use}`
+
+/**
+ * Each distinct violation reported in `output` (environment type and
+ * importer location), named `violationLabel` of the expected violation it
+ * is a report of, else `environment importer` as reported. A report is of
+ * an expected violation when its environment type is the same and its
+ * location is relevant (SPEC J6.5; V1R ip I01): the genuine use, any line
+ * of the importer's original import of the reported specifier, or one of
+ * `others` (`isRelevantLocation`). Never compiled coordinates, nor the file
+ * without a location.
+ */
+export function relevantViolations(
+  output: unknown,
+  expected: Array<ExpectedViolation>,
+): Array<string> {
+  const seen = new Set<string>()
+  const labels: Array<string> = []
+  for (const report of violationReports(output)) {
+    const key = `${report.environment} ${report.importer}`
+    if (seen.has(key)) {
+      continue
+    }
+    seen.add(key)
+    const match = expected.find((violation) => {
+      const use = parseLocation(violation.use)
+      return (
+        violation.environment === report.environment &&
+        isRelevantLocation(report.importer, {
+          file: use.file,
+          source: violation.source,
+          uses: [{ line: use.line!, column: use.column }],
+          imports: [report.specifier],
+          others: violation.others,
+        })
+      )
+    })
+    labels.push(match ? violationLabel(match) : key)
+  }
+  return labels
+}
+
+/**
+ * Asserts that the distinct violations reported in `output` are exactly
+ * the `expected` ones, each reported once at a relevant location
+ * (`relevantViolations`), in any order.
+ */
+export function expectViolationsAt(
+  output: unknown,
+  expected: Array<ExpectedViolation>,
+) {
+  expect(relevantViolations(output, expected).sort()).toEqual(
+    expected.map(violationLabel).sort(),
+  )
+}
+
+/**
+ * Asserts that `report`'s code frame shows the importer's original
+ * `source` at the reported location: it highlights that line, shows it and
+ * points at its column (`expectFrameAt`), and prints that location under
+ * it. Lines of context are free (SPEC §5.7).
+ */
+export function expectReportFrame(
+  report: { importer: string; code?: ReportedCodeFrame },
+  source: string,
+) {
+  const location = parseLocation(report.importer)
+  expect(location.line, `${report.importer} has a line`).toBeDefined()
+  expectFrameAt(report.code, source, {
+    line: location.line!,
+    column: location.column,
+  })
+  expect(report.code!.location).toBe(report.importer)
 }

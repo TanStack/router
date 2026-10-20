@@ -10,13 +10,15 @@
  */
 import { describe, expect, test } from 'vitest'
 import {
+  expectRelevantLocation as expectSharedRelevantLocation,
   findDiagnostics,
-  mentionsFile,
+  parseLocation,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../../build-harness'
 import { startRsbuildDevServer } from '../../rsbuild-dev-server'
 import {
   distinct,
+  expectReportFrame,
   locationIn,
   rejection,
   reportedViolations,
@@ -98,53 +100,20 @@ interface LocationCase {
    * The genuine surviving uses the report may point at
    * (`src/a.tsx:line:column`, or `src/a.tsx:line` for any column of the
    * line); the static import of the denied module is accepted too
-   * (`isRelevantLocation`).
+   * (`expectRelevantLocation`).
    */
   expected: Array<string>
 }
 
 /**
- * Whether a reported `file:line:column` is a relevant place for the
- * violation of the module `file`, whose source is `code` (SPEC J6.5; V1 ip
- * S08): one of the genuine surviving `uses`, or the original import of the
- * denied module (any column of the import statement's line). Never a type
- * position, a use inside a removed boundary, an unrelated member named
- * like the import, nor compiled coordinates.
+ * Fails unless one violation is reported, at a relevant place for the
+ * violation of the module `file`, whose source is `code` (the shared
+ * oracle `expectRelevantLocation`; SPEC J6.5; V1R ip I01): one of the
+ * genuine surviving `uses` (`file:line:column`, or `file:line` for any
+ * column), or any line of the original import of the denied module. Never
+ * a type position, a use inside a removed boundary, an unrelated member
+ * named like the import, compiled coordinates, nor no coordinates.
  */
-function isRelevantLocation(
-  reported: string,
-  file: string,
-  code: string,
-  uses: Array<string>,
-) {
-  const lines = code.split(/\r\n|[\n\r]/)
-  const importLines = lines.flatMap((line, index) =>
-    /^import\b.*\bfrom\s+['"]\.\/(secret\.server|widget\.client)['"]/.test(line)
-      ? [index + 1]
-      : [],
-  )
-  // The file may be spelled any way that names it (SPEC §5.7: absolute,
-  // project-relative, a bundler's source URL).
-  const [, reportedFile = '', line, column] =
-    /^(.*):(\d+):(\d+)$/.exec(reported) ?? []
-  if (!mentionsFile(reportedFile, file)) {
-    return false
-  }
-  /** `file:line:column`, or `file:line` for any column of the line. */
-  const isAt = (location: string) => {
-    const [, expectedLine, expectedColumn] =
-      /:(\d+)(?::(\d+))?$/.exec(location) ?? []
-    return (
-      expectedLine === line &&
-      (expectedColumn === undefined || expectedColumn === column)
-    )
-  }
-  return (
-    uses.some(isAt) || importLines.some((importLine) => isAt(`:${importLine}`))
-  )
-}
-
-/** Fails unless one violation is reported, at a relevant location. */
 function expectRelevantLocation(
   reported: Array<string>,
   code: string,
@@ -152,10 +121,15 @@ function expectRelevantLocation(
   file = 'src/a.tsx',
 ) {
   expect(reported).toHaveLength(1)
-  expect(
-    isRelevantLocation(reported[0]!, file, code, uses),
-    `${reported[0]} is the import or one of ${uses.join(', ')}`,
-  ).toBe(true)
+  expectSharedRelevantLocation(reported[0]!, {
+    file,
+    source: code,
+    uses: uses.map((use) => {
+      const { line, column } = parseLocation(use)
+      return { line: line!, column }
+    }),
+    imports: ['./secret.server', './widget.client'],
+  })
 }
 
 const at = (code: string, line: number, needle: string) =>
@@ -646,6 +620,17 @@ export * from './a'
 `,
 }
 
+/**
+ * Where the `chain` build may report `src/b.ts`: its use of `secret` or
+ * its import of the denied module (SPEC J6.5).
+ */
+const chainImporter = {
+  file: 'src/b.ts',
+  source: chain['src/b.ts'],
+  uses: [{ line: 4, column: 27 }],
+  imports: ['./secret.server'],
+}
+
 /** `src/b.ts` imports the denied module, and `src/a.ts` imports `b`. */
 const leakingB = {
   ...secretServer,
@@ -670,7 +655,7 @@ describe.each(startBundlers)(
       'the trace lists each import from the entry, located on its line',
       async () => {
         const { importer, trace } = await reportOfChain()
-        expect(importer).toBe('src/b.ts:4:27')
+        expectSharedRelevantLocation(importer, chainImporter)
         expect(trace.map(({ entry }) => entry)).toEqual(
           trace.map((_, index) => index === 0),
         )
@@ -682,24 +667,21 @@ describe.each(startBundlers)(
             imports: './a',
           },
           { at: expect.stringMatching(/^src\/a\.ts:3:\d+$/), imports: './b' },
-          { at: 'src/b.ts:4:27', imports: './secret.server' },
+          { at: importer, imports: './secret.server' },
         ])
       },
       timeout,
     )
 
+    // The frame is at the reported location (the use or the import, SPEC
+    // J6.5): it highlights that line of the original source and points at
+    // its column; how much context it shows is free (§5.7; V1R ip I01).
     test(
-      'the code frame shows the import and the use, pointing at the use',
+      'the code frame shows the original source at the reported location',
       async () => {
-        expect((await reportOfChain()).code).toEqual({
-          line: 4,
-          pointsAt: 'secret()',
-          shows: expect.arrayContaining([
-            `import { secret } from './secret.server'`,
-            'export const leak = () => secret()',
-          ]),
-          location: 'src/b.ts:4:27',
-        })
+        const report = await reportOfChain()
+        expectSharedRelevantLocation(report.importer, chainImporter)
+        expectReportFrame(report, chain['src/b.ts'])
       },
       timeout,
     )

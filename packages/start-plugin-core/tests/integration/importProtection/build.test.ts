@@ -19,6 +19,7 @@ import {
 import {
   distinct,
   expectMarkerViolation,
+  expectViolationsAt,
   rejection,
   reportedViolations,
   violationReports,
@@ -230,36 +231,42 @@ export const read = () => getRequest()
       rule: '@tanstack/react-start/server',
     },
   ])(
-    '$name fails the build, naming the importer at the use, the rule and a server-side fix',
+    '$name fails the build, naming the importer at the use or the import, the rule and a server-side fix',
     async ({ files, reported, rule }) => {
       const report = await failureReport(
         buildStart({ bundler, files, entry: 'src/entry.ts' }),
       )
       expect({
         environment: report.environment,
-        importer: report.importer,
         suggests: suggestedDirections(report.text),
       }).toEqual({
         environment: 'client',
-        importer: reported,
         suggests: ['server'],
       })
+      expectViolationsAt(report.text, [
+        {
+          environment: 'client',
+          use: reported,
+          source: files['src/entry.ts']!,
+        },
+      ])
       expectDiagnostic(report.text, { names: [rule] })
     },
     timeout,
   )
 
   test(
-    'a server import of a *.client.* file fails the build, naming the importer at the use, the rule and a client-side fix',
+    'a server import of a *.client.* file fails the build, naming the importer at the use or the import, the rule and a client-side fix',
     async () => {
+      const server = `import { widget } from './widget.client'
+export const read = () => widget()
+`
       const report = await failureReport(
         buildStart({
           bundler,
           files: {
             'src/widget.client.ts': `export const widget = () => 'MARK_CLIENT'\n`,
-            'src/server.ts': `import { widget } from './widget.client'
-export const read = () => widget()
-`,
+            'src/server.ts': server,
             'src/client.ts': `export const read = () => 'client'\n`,
           },
           entry: { client: 'src/client.ts', ssr: 'src/server.ts' },
@@ -267,13 +274,14 @@ export const read = () => widget()
       )
       expect({
         environment: report.environment,
-        importer: report.importer,
         suggests: suggestedDirections(report.text),
       }).toEqual({
         environment: 'server',
-        importer: 'src/server.ts:2:27',
         suggests: ['client'],
       })
+      expectViolationsAt(report.text, [
+        { environment: 'server', use: 'src/server.ts:2:27', source: server },
+      ])
       expectDiagnostic(report.text, { names: ['**/*.client.*'] })
     },
     timeout,
@@ -293,6 +301,7 @@ export const read = () => widget()
       expectMarkerViolation(report, {
         marker: 'src/marked.ts:1',
         use: 'src/entry.ts:2:27',
+        source: appUsing('a server-only-marked module')['src/entry.ts'],
       })
       expect(suggestedDirections(report.text)).toEqual(['server'])
       expectDiagnostic(report.text, {
@@ -305,14 +314,15 @@ export const read = () => widget()
   test(
     'a server import of a client-only-marked module fails the build, naming the module and its importer',
     async () => {
+      const serverImportsMarked = `import { secret } from './marked'
+export const read = () => secret()
+`
       const report = await failureReport(
         buildStart({
           bundler,
           files: {
             ...clientOnlyMarked,
-            'src/server.ts': `import { secret } from './marked'
-export const read = () => secret()
-`,
+            'src/server.ts': serverImportsMarked,
             'src/client.ts': `export const read = () => 'client'\n`,
           },
           entry: { client: 'src/client.ts', ssr: 'src/server.ts' },
@@ -322,6 +332,7 @@ export const read = () => secret()
       expectMarkerViolation(report, {
         marker: 'src/marked.ts:1',
         use: 'src/server.ts:2:27',
+        source: serverImportsMarked,
       })
       expect(suggestedDirections(report.text)).toEqual(['client'])
       expectDiagnostic(report.text, {

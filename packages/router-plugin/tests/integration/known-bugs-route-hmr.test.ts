@@ -20,8 +20,10 @@
  * its time budget).
  */
 import { describe, test } from 'vitest'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
-import { openRouteHmrPage } from '../route-hmr-page'
+import {
+  expectEditShownOrReportedFallback,
+  openRouteHmrPage,
+} from '../route-hmr-page'
 import { editRoute, inPlace } from '../route-hmr-edit'
 import type { TestContext } from 'vitest'
 import type { RouteHmrPageOptions } from '../route-hmr-page'
@@ -175,16 +177,15 @@ function Page() {
   // Source: NEW (W2-g, found by the real page; the former in-process model
   // compared a component whose text did not change between versions).
   // Ruling (R-09 / D11, 2026-10-17): same-file route factories are
-  // unsupported but user-fixable. Any fix passes: the edit takes effect (in
-  // place or after a reload, without errors), or the compiler warns, naming
-  // the route file, through a real channel (the dev server's logger or
-  // console, or the served module). Silent wrong output fails.
+  // unsupported but user-fixable. Any fix passes: the edit takes effect
+  // without errors, in place, or, when the compiler warns naming the route
+  // file through a real channel (the dev server's logger or console, or the
+  // page), possibly after a reload. A warning never excuses an edit that
+  // does not show (V1R hmr H08; `expectEditShownOrReportedFallback`).
+  // Silent wrong output fails.
   test.fails.for(['vite', 'rsbuild'] as const)(
-    '%s: an edit of a route a helper function creates shows its new component, or the file is reported (autoCodeSplitting: false)',
-    async (
-      bundler: 'vite' | 'rsbuild',
-      { expect, onTestFinished }: TestContext,
-    ) => {
+    '%s: an edit of a route a helper function creates shows its new component, reloading only when the file is reported (autoCodeSplitting: false)',
+    async (bundler: 'vite' | 'rsbuild', { onTestFinished }: TestContext) => {
       const route = (version: string) =>
         `import { createFileRoute } from '@tanstack/react-router'
 function makeRoute() {
@@ -202,24 +203,12 @@ export const Route = makeRoute()
         files: { 'routes/index.tsx': route('v1') },
         ready: 'helper v1 data v1',
       })
-      const reported = () =>
-        findDiagnostics(app.warnings(), {
-          file: 'routes/index.tsx',
-          root: app.root,
-        }).length > 0
-      let result
-      try {
-        result = await app.edit(
-          { 'routes/index.tsx': route('v2') },
-          'helper v2 data v2',
-        )
-      } catch (error) {
-        if (reported()) {
-          return
-        }
-        throw error
-      }
-      expect(result.errors).toEqual([])
+      await expectEditShownOrReportedFallback(
+        app,
+        { 'routes/index.tsx': route('v2') },
+        'helper v2 data v2',
+        'routes/index.tsx',
+      )
     },
   )
 

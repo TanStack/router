@@ -13,20 +13,11 @@ import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { startDevServer, startServerEntryFiles } from '../../dev-server'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import {
-  distinct,
+  expectViolationsAt,
   locationIn,
-  reportedViolations,
 } from '../../importProtection/start-apps'
 
 const timeout = 30_000
-
-/** `environment importer` of each distinct violation logged in `logs`. */
-const loggedViolations = (logs: Array<string>) =>
-  distinct(
-    reportedViolations(logs).map(
-      ({ environment, importer }) => `${environment} ${importer}`,
-    ),
-  )
 
 const secretServer = {
   'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
@@ -159,8 +150,12 @@ return describeValue(window.leaked(), 'MARK_SECRET')
     'a denied import of a module the client entry imports is logged',
     async () => {
       const { server } = await openApp(clientEntryApp)
-      expect(loggedViolations(server.logs)).toEqual([
-        `client ${locationIn('src/leak.ts', leak, 2, 'secret()')}`,
+      expectViolationsAt(server.logs, [
+        {
+          environment: 'client',
+          use: locationIn('src/leak.ts', leak, 2, 'secret()'),
+          source: leak,
+        },
       ])
     },
     timeout,
@@ -220,8 +215,12 @@ export default { fetch: () => new Response(String(handler())) }
     async () => {
       const { server, response } = await request(serverEntryApp(handler))
       expect(response.body).not.toContain('MARK_CLIENT')
-      expect(loggedViolations(server.logs)).toEqual([
-        `server ${locationIn('src/handler.ts', handler, 2, 'widget()')}`,
+      expectViolationsAt(server.logs, [
+        {
+          environment: 'server',
+          use: locationIn('src/handler.ts', handler, 2, 'widget()'),
+          source: handler,
+        },
       ])
     },
     timeout,
@@ -250,7 +249,7 @@ export const Route = createFileRoute('/')({
   // denied file, are only in the split module); rendered in a real page
   // since V1 ip S19.
   test(
-    'using a denied file, directly or through a module, renders with the mock, and the dev server logs a warning at each use',
+    'using a denied file, directly or through a module, renders with the mock, and the dev server logs a warning at each use or import',
     async () => {
       const { server, browser } = await openApp({
         ...pageApp(route),
@@ -259,9 +258,17 @@ export const Route = createFileRoute('/')({
       })
       await browser.waitForText('MARK_RENDERED', { selector: '#app' })
       expect(await browser.text('#app')).not.toContain('MARK_SECRET')
-      expect(loggedViolations(server.logs).sort()).toEqual([
-        `client ${locationIn('src/routes/index.tsx', route, 6, 'secret()')}`,
-        `client ${locationIn('src/widget.ts', widget, 2, 'secret()')}`,
+      expectViolationsAt(server.logs, [
+        {
+          environment: 'client',
+          use: locationIn('src/routes/index.tsx', route, 6, 'secret()'),
+          source: route,
+        },
+        {
+          environment: 'client',
+          use: locationIn('src/widget.ts', widget, 2, 'secret()'),
+          source: widget,
+        },
       ])
     },
     timeout,

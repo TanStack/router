@@ -20,6 +20,7 @@ import {
   evaluateModule,
   evaluateProvider,
   expectCompileError,
+  missingHandler,
   moduleLoads,
   outputs,
   serverFnResult,
@@ -65,7 +66,7 @@ describe('createServerFn compiles correctly', () => {
         source,
         at: 'createServerFn()',
         column: true,
-        names: ['createServerFn'],
+        ...missingHandler,
       })
     },
   )
@@ -83,7 +84,7 @@ describe('createServerFn compiles correctly', () => {
       source,
       at: 'createServerFn()',
       column: true,
-      names: ['createServerFn'],
+      ...missingHandler,
     })
   })
 
@@ -421,7 +422,7 @@ export const greet = createServerFn().handler()`
       expectCompileError(error, {
         source,
         at: 'createServerFn()',
-        names: ['createServerFn'],
+        ...missingHandler,
       })
     }
   })
