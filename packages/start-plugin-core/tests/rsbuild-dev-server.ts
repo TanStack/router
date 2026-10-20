@@ -268,23 +268,73 @@ const recorderScript = `(() => {
   })
 })()`
 
-interface ClientRun {
+export interface ClientRun {
   calls: Array<{ level: string; text: string }>
   uncaught: Array<string>
 }
 
+/** A page `withRecordedPage` opened, recording from its first statement on. */
+export interface RecordedPage {
+  page: BrowserPage['page']
+  /** What the page's code logged and did not catch so far. */
+  record: () => Promise<ClientRun>
+  /**
+   * Waits a turn of the page's event loop (what its load scheduled ran),
+   * then rejects with the errors the page's code did not catch so far.
+   */
+  settled: () => Promise<void>
+}
+
+/**
+ * The one client runner of the Start dev-server tests (Vite and Rsbuild):
+ * opens `url` in a real browser (Chromium) page that records what its code
+ * logs through `console` and the errors it does not catch, from its first
+ * statement on (`recorderScript`), runs `run` on it and closes it. `html`:
+ * the document of `url` instead of what the server answers.
+ */
+export async function withRecordedPage<T>(
+  url: string,
+  options: { html?: string },
+  run: (page: RecordedPage) => Promise<T>,
+): Promise<T> {
+  const browser = await openPage(url, {
+    initScript: recorderScript,
+    html: options.html,
+  })
+  const record = () =>
+    browser.page.evaluate<ClientRun>('globalThis.__clientRun')
+  try {
+    return await run({
+      page: browser.page,
+      record,
+      settled: async () => {
+        const { uncaught } = await browser.page.evaluate<ClientRun>(
+          `new Promise((resolve) => setTimeout(() => resolve(globalThis.__clientRun)))`,
+        )
+        if (uncaught.length > 0) {
+          throw new Error(
+            `the client code threw while the page loaded:\n${uncaught.join('\n')}`,
+          )
+        }
+      },
+    })
+  } finally {
+    await browser.close()
+  }
+}
+
 /**
  * Opens a page of a dev server started with `clientPage` (by this harness)
- * in a real browser (Chromium), runs `run` on it and closes it. The page's
- * document loads the initial files of the `client` environment's entry
- * from the dev server, in order, as the HTML of an app does (Start's dev
- * server renders the app's HTML with its server entry, which the harness's
- * apps do not have). Rejects with the errors the page's code did not catch
- * while the page loaded, and when a file did not load.
+ * (`withRecordedPage`), runs `run` on it once it loaded, and closes it. The
+ * page's document loads the initial files of the `client` environment's
+ * entry from the dev server, in order, as the HTML of an app does (Start's
+ * dev server renders the app's HTML with its server entry, which the
+ * harness's apps do not have). Rejects with the errors the page's code did
+ * not catch while the page loaded, and when a file did not load.
  */
 async function withClientPage<T>(
   server: Pick<RsbuildDevServer, 'url'>,
-  run: (page: BrowserPage['page']) => Promise<T>,
+  run: (page: RecordedPage) => Promise<T>,
 ): Promise<T> {
   const entry = clientEntries.get(server)
   if (server.url === undefined || !entry) {
@@ -301,28 +351,20 @@ async function withClientPage<T>(
         `<script src="${file}"${entry.module ? ' type="module"' : ''} onerror="__clientRun.uncaught.push('could not load ' + this.src)"></script>`,
     )
     .join('\n')
-  const page = await openPage(new URL('/__client-run', server.url).href, {
-    initScript: recorderScript,
-    html: `<!doctype html>
+  return withRecordedPage(
+    new URL('/__client-run', server.url).href,
+    {
+      html: `<!doctype html>
 <html><head><meta charset="utf-8"></head>
 <body><div id="root"></div>
 ${scripts}
 </body></html>`,
-  })
-  try {
-    // After what the page's load scheduled ran
-    const { uncaught } = await page.page.evaluate<ClientRun>(
-      `new Promise((resolve) => setTimeout(() => resolve(globalThis.__clientRun)))`,
-    )
-    if (uncaught.length > 0) {
-      throw new Error(
-        `the client code threw while the page loaded:\n${uncaught.join('\n')}`,
-      )
-    }
-    return await run(page.page)
-  } finally {
-    await page.close()
-  }
+    },
+    async (page) => {
+      await page.settled()
+      return run(page)
+    },
+  )
 }
 
 /**
@@ -337,7 +379,7 @@ export function runInClient(
   server: Pick<RsbuildDevServer, 'url'>,
   script: string,
 ): Promise<{ result: unknown } | { error: string }> {
-  return withClientPage(server, (page) =>
+  return withClientPage(server, ({ page }) =>
     page.evaluate<{ result: unknown } | { error: string }>(`(async () => {
   try {
     return { result: await (async () => {\n${script}\n})() }
@@ -364,8 +406,8 @@ export function runRsbuildClient(
   server: Pick<RsbuildDevServer, 'url'>,
   options: { levels?: boolean } = {},
 ): Promise<Array<string>> {
-  return withClientPage(server, async (page) => {
-    const { calls } = await page.evaluate<ClientRun>('globalThis.__clientRun')
+  return withClientPage(server, async ({ record }) => {
+    const { calls } = await record()
     return calls.map(
       ({ level, text }) => (options.levels ? `${level}: ` : '') + text,
     )
