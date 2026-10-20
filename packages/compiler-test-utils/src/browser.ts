@@ -48,13 +48,37 @@ function launch() {
 
 /**
  * Opens `url` in a new page of a headless Chromium and resolves once it
- * loaded. `close()`, which `registerCleanup` also receives, closes the page.
+ * loaded (after `initScript`, when given, ran first in the page). `close()`,
+ * which `registerCleanup` also receives, closes the page.
  */
 export async function openPage(
   url: string,
-  options: { registerCleanup?: (cleanup: () => Promise<void>) => void } = {},
+  options: {
+    registerCleanup?: (cleanup: () => Promise<void>) => void
+    /**
+     * Script the page runs before any of its own, on every load (Playwright's
+     * `addInitScript`), e.g. to record what the page's code does from its
+     * first statement on.
+     */
+    initScript?: string
+    /**
+     * The document of `url`, instead of what its server answers (e.g. a page
+     * of a dev server that serves no HTML, which loads the client code the
+     * dev server serves); the page's other requests reach the server.
+     */
+    html?: string
+  } = {},
 ): Promise<BrowserPage> {
   const context = await (await launch()).newContext()
+  if (options.initScript !== undefined) {
+    await context.addInitScript(options.initScript)
+  }
+  const { html } = options
+  if (html !== undefined) {
+    await context.route(url, (route) =>
+      route.fulfill({ contentType: 'text/html', body: html }),
+    )
+  }
   let closed: Promise<void> | undefined
   const close = () => {
     closed ??= context.close()

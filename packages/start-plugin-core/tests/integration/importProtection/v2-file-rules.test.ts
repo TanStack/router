@@ -24,6 +24,7 @@ import {
   describeValuePrelude,
 } from '../../importProtection/mock-helpers'
 import {
+  clientPage,
   runInClient,
   startRsbuildStartDevServer,
 } from '../../rsbuild-dev-server'
@@ -306,6 +307,7 @@ describe('rsbuild dev', () => {
   afterAll(() => dispose?.())
   const start = () =>
     (started ??= startRsbuildStartDevServer({
+      ...clientPage,
       compileTimeout,
       files: app,
       start: { importProtection },

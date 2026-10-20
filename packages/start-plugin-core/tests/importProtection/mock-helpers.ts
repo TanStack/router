@@ -11,8 +11,8 @@
  * `expectSafeMock` compare with it. A real value fails the probe: a function
  * or an object has no member two levels deep, a primitive none at all.
  * `probeMockPrelude` defines the same probe in the scripts the build and
- * Rsbuild harnesses run in another process or VM context (a mock cannot
- * cross a process boundary). Never `await` a mock: the mock runtime is a
+ * Rsbuild harnesses run in another process, a VM context or a browser page
+ * (a mock cannot cross that boundary). Never `await` a mock: the mock runtime is a
  * thenable that resolves to itself.
  *
  * The rest evaluates the mock modules import protection generates, through

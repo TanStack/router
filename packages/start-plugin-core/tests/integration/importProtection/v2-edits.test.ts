@@ -24,6 +24,7 @@ import {
   describeValuePrelude,
 } from '../../importProtection/mock-helpers'
 import {
+  clientPage,
   runInClient,
   startRsbuildStartDevServer,
 } from '../../rsbuild-dev-server'
@@ -301,6 +302,7 @@ describe('rsbuild dev', () => {
 
   hostSuite(async () => {
     const server = await startRsbuildStartDevServer({
+      ...clientPage,
       compileTimeout,
       files: app,
       // `log: 'always'`: each compile reports what it finds, so a stale

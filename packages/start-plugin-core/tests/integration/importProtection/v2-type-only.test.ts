@@ -22,6 +22,7 @@ import {
   describeValuePrelude,
 } from '../../importProtection/mock-helpers'
 import {
+  clientPage,
   runInClient,
   startRsbuildStartDevServer,
 } from '../../rsbuild-dev-server'
@@ -166,6 +167,7 @@ describe('rsbuild dev', () => {
     'type-only forms are neither reported nor loaded; the mixed import is reported and mocked',
     async () => {
       const server = await startRsbuildStartDevServer({
+        ...clientPage,
         compileTimeout,
         files: app,
       })
