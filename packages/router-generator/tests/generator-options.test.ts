@@ -17,7 +17,7 @@ import {
 import { Generator, getConfig } from '../src'
 import { expectOnlyOwnedEdits } from './owned-edits'
 import { routeCallOf, routeIdOf } from './route-id'
-import { routesOf, withRouteTree } from './route-tree'
+import { routesOf, urlsOf, withRouteTree } from './route-tree'
 import type { Config } from '../src'
 
 let roots: Array<string> = []
@@ -711,6 +711,31 @@ export const Route = createFileRoute('/')({})
     expect(await read(root, 'src/routes/-components/card.tsx')).toBe(notARoute)
     expect(await read(root, 'src/routes/-empty.tsx')).toBe('')
   })
+
+  // An empty routeFileIgnorePrefix ignores nothing by prefix: a "-" file is
+  // a route like any other. Source: V4 round 2 escape astra-r2/03 (the
+  // default "-" restored for an empty prefix).
+  test('with an empty routeFileIgnorePrefix, a "-" route file is a route', async () => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/-health.tsx': `import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/old')({})
+`,
+    })
+    const { generatedRouteTree } = await generate(root, {
+      routeFileIgnorePrefix: '',
+    })
+
+    expect(await routesOf(generatedRouteTree)).toEqual({
+      __root__: 'routes/__root.tsx',
+      '/-health': 'routes/-health.tsx',
+    })
+    expect(await urlsOf(generatedRouteTree)).toEqual({
+      __root__: '/',
+      '/-health': '/-health',
+    })
+  })
 })
 
 describe.each(['react', 'solid', 'vue'] as const)('the %s target', (target) => {
@@ -828,6 +853,34 @@ export const Route = createFileRoute('/posts/')({})
       '/posts': 'routes/posts/main-layout.tsx',
       '/posts/': 'routes/posts/index.tsx',
     })
+  })
+
+  // A token RegExp keeps its flags' meaning: `\p{L}` needs the `u` flag.
+  // Source: V4 round 2 escape astra-r2/01 (the `u` flag dropped).
+  test('a Unicode-mode routeToken regex makes a file with a non-ASCII name the layout route of its directory', async () => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/posts/écran-layout.tsx': `import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/posts')({})
+`,
+      'src/routes/posts/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/posts/')({})
+`,
+    })
+    const { generatedRouteTree } = await generate(root, {
+      routeToken: /\p{L}+-layout/u,
+    })
+
+    expect(await urlsOf(generatedRouteTree)).toEqual({
+      __root__: '/',
+      '/posts': '/posts',
+      '/posts/': '/posts/',
+    })
+    expect((await routesOf(generatedRouteTree))['/posts']).toBe(
+      'routes/posts/écran-layout.tsx',
+    )
   })
 })
 

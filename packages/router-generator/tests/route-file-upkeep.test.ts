@@ -379,6 +379,13 @@ export const Route = createFileRoute('/old')({})
       uses: 'cfr',
     },
     {
+      // (both aliases of the same export stay bound; V4 round 2 escape
+      // astra-r2/02 dropped one)
+      name: 'two aliases of another router export',
+      imports: `import { Link as Primary, Link as Secondary } from ${router}`,
+      uses: 'Primary, Secondary',
+    },
+    {
       // The constructor cannot join a namespace import
       // (`import * as Router, { ... }` does not parse).
       name: 'a namespace import',
