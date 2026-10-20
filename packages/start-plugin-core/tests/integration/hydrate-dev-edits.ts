@@ -10,8 +10,17 @@ import { expect } from 'vitest'
 import { startServerEntryFiles } from '../dev-server'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 
+/** Distinct child-only modules expose actual evaluation, separately from mounts. */
+const childModules = Object.fromEntries(
+  ['a', 'b'].map((name) => [
+    `src/child-${name}.ts`,
+    `if (typeof window !== 'undefined') { ((globalThis as any).__childModules ??= []).push('${name}') }\nexport const probe = 'child-${name}-exclusive-marker'\n`,
+  ]),
+)
+
 /** The files of a React Start app whose root renders the document. */
 export const reactApp = {
+  ...childModules,
   ...startServerEntryFiles,
   'harness/client-entry.ts': `import { createElement } from 'react'
 import { hydrateRoot } from 'react-dom/client'
@@ -62,8 +71,10 @@ export const reactWidgets = (
   label: string,
 ) => `import { Hydrate } from '@tanstack/react-start'
 import { interaction } from '@tanstack/react-start/hydration'
+import { probe as probeA } from './child-a'
+import { probe as probeB } from './child-b'
 import { useEffect, useState } from 'react'
-function Child(props: { name: string; label: string }) {
+function Child(props: { name: string; label: string; probe: string }) {
   const [clicks, setClicks] = useState(0)
   useEffect(() => {
     const page = globalThis as any
@@ -78,8 +89,8 @@ export function Widgets() {
   const label = '${label}'
   return (
     <div>
-      <section><Hydrate when={interaction()}><Child name="a" label={label} />${children}</Hydrate></section>
-      <section><Hydrate when={interaction()}><Child name="b" label={label} />${children}</Hydrate></section>
+      <section><Hydrate when={interaction()}><Child name="a" label={label} probe={probeA} />${children}</Hydrate></section>
+      <section><Hydrate when={interaction()}><Child name="b" label={label} probe={probeB} />${children}</Hydrate></section>
     </div>
   )
 }
@@ -90,6 +101,7 @@ export function Widgets() {
  * Solid's hydration script), hydrated by Start's Solid client entry.
  */
 export const solidApp = {
+  ...childModules,
   'harness/client-entry.ts': `import { createComponent, hydrate } from 'solid-js/web'
 import { StartClient, hydrateStart } from '@tanstack/solid-start/client'
 hydrateStart().then((router) => {
@@ -133,8 +145,10 @@ export const solidWidgets = (
   label: string,
 ) => `import { Hydrate } from '@tanstack/solid-start'
 import { interaction } from '@tanstack/solid-start/hydration'
+import { probe as probeA } from './child-a'
+import { probe as probeB } from './child-b'
 import { createSignal, onCleanup, onMount } from 'solid-js'
-function Child(props: { name: string; label: string }) {
+function Child(props: { name: string; label: string; probe: string }) {
   const [clicks, setClicks] = createSignal(0)
   onMount(() => {
     const page = globalThis as any
@@ -149,8 +163,8 @@ export function Widgets() {
   const label = '${label}'
   return (
     <div>
-      <section><Hydrate when={interaction()}><Child name="a" label={label} />${children}</Hydrate></section>
-      <section><Hydrate when={interaction()}><Child name="b" label={label} />${children}</Hydrate></section>
+      <section><Hydrate when={interaction()}><Child name="a" label={label} probe={probeA} />${children}</Hydrate></section>
+      <section><Hydrate when={interaction()}><Child name="b" label={label} probe={probeB} />${children}</Hydrate></section>
     </div>
   )
 }
@@ -169,6 +183,45 @@ export async function editLoadedChild(
   widgets: (children: string, label: string) => string,
 ) {
   const { page } = browser
+  const childLoads = async () =>
+    page.evaluate(() => ({
+      evaluated: [...new Set<string>((globalThis as any).__childModules ?? [])],
+      requested: performance
+        .getEntriesByType('resource')
+        .map((entry) => entry.name)
+        .filter((url) => /child-[ab]\.ts(?:\?|$)/.test(url)),
+    }))
+  // Inspect the scripts the browser actually requested, including opaque
+  // Rsbuild chunk URLs. The test-side HTTP client reads their real response
+  // bodies; it neither evaluates them nor requests them from the page.
+  const inspected = new Map<string, string>()
+  const downloadedSibling = async () => {
+    const urls = await page.evaluate(() =>
+      performance
+        .getEntriesByType('resource')
+        .filter((entry) =>
+          ['script', 'link'].includes(
+            (entry as PerformanceResourceTiming).initiatorType,
+          ),
+        )
+        .map((entry) => entry.name),
+    )
+    await Promise.all(
+      urls
+        .filter((url) => !inspected.has(url))
+        .map(async (url) => {
+          const response = await page.request.get(url)
+          inspected.set(url, await response.text())
+        }),
+    )
+    return [...inspected.values()].some((body) =>
+      body.includes('child-b-exclusive-marker'),
+    )
+  }
+  expect(await downloadedSibling()).toBe(false)
+  const initialLoads = await childLoads()
+  expect(initialLoads.evaluated).toEqual([])
+  expect(initialLoads.requested).toEqual([])
   /** The text of the section of child `name` (`''` while it has none). */
   const section = (name: string) =>
     page.evaluate(
@@ -236,17 +289,38 @@ export async function editLoadedChild(
   }
   await clickUntil('a', 'a capture-v1 1')
   const opened = await step()
+  const openedLoads = await childLoads()
+  expect(openedLoads.evaluated).toEqual(['a'])
+  expect(await downloadedSibling()).toBe(false)
 
   await server.edit({ 'src/widgets.tsx': widgets('<i>v2</i>', 'capture-v1') })
   await shows('a', 'v2')
   const childrenEdited = await step()
+  const childrenLoads = await childLoads()
+  if (childrenEdited.b === 'b capture-v1 0v1') {
+    expect(await downloadedSibling()).toBe(false)
+    expect(childrenLoads.evaluated).toEqual(['a'])
+    expect(
+      childrenLoads.requested.filter((url) => /child-b\.ts(?:\?|$)/.test(url)),
+    ).toEqual([])
+  }
 
   await server.edit({ 'src/widgets.tsx': widgets('<i>v2</i>', 'capture-v2') })
   await shows('a', 'capture-v2')
   const captureEdited = await step()
+  const captureLoads = await childLoads()
+  if (captureEdited.b === 'b capture-v1 0v1') {
+    expect(await downloadedSibling()).toBe(false)
+    expect(captureLoads.evaluated).toEqual(['a'])
+    expect(
+      captureLoads.requested.filter((url) => /child-b\.ts(?:\?|$)/.test(url)),
+    ).toEqual([])
+  }
 
   await clickUntil('b', 'b capture-v2 1')
   const siblingOpened = await step()
+  expect((await childLoads()).evaluated).toEqual(['a', 'b'])
+  expect(await downloadedSibling()).toBe(true)
   return { opened, childrenEdited, captureEdited, siblingOpened }
 }
 
@@ -256,8 +330,8 @@ export async function editLoadedChild(
  * loaded, either still shows the server's HTML or (when the framework's hot
  * update remounts the edited module's components: Solid) the edited
  * version, never a mix of versions; once opened it shows the edited
- * version. Every mounted child ran its effect once (`effects`: `a`, and `b`
- * once it is mounted), and React reported no recoverable error.
+ * version. The gauge counts currently mounted children (`effects`: `a`, and `b`
+ * once it is mounted); it does not count cumulative mounts, and React reported no recoverable error.
  */
 export function expectEditsReached(
   steps: Awaited<ReturnType<typeof editLoadedChild>>,

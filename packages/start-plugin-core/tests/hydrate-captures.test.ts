@@ -516,3 +516,31 @@ test('client: the children render a local component and read a local value', asy
     ),
   ).toContain('<b>n</b><span>n</span>')
 })
+
+// Source: V4 red-fable-r2/14. Function declarations below the JSX are
+// hoisted within this render, and can close over its current props.
+test('client: rows.map captures a local function declared below the JSX', async () => {
+  expect(
+    await renderPage(
+      `export function Page({ rows, suffix }) {
+  return <Hydrate when={load()}><ul>{rows.map(renderRow)}</ul></Hydrate>
+  function renderRow(row) {
+    return <li key={row}>{row + suffix}</li>
+  }
+}`,
+      { rows: ['a', 'b'], suffix: '!' },
+    ),
+  ).toContain('<ul><li>a!</li><li>b!</li></ul>')
+})
+
+// Source: V4 red-astra/24. The module object's computed key is the only
+// reference to field; extracting its consumer must keep that dependency.
+test('client: a computed object key keeps a module dependency', async () => {
+  expect(
+    await renderPage(`const field = 'value'
+const record = { [field]: 'computed' }
+export function Page() {
+  return <Hydrate when={load()}><p>{record.value}</p></Hydrate>
+}`),
+  ).toContain('<p>computed</p>')
+})

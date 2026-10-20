@@ -80,7 +80,7 @@ describe('the server strips the client-only fallback, and only it', () => {
     {
       name: 'a direct fallback next to prefetch and onHydrated',
       code: `export function Page() {
-  return <Hydrate when={visible()} prefetch={() => 'prefetched'} fallback={<p>fallback-marker</p>} onHydrated={() => 'hydrated'}><p>child</p></Hydrate>
+  return <Hydrate when={visible()} prefetch={() => {}} fallback={<p>fallback-marker</p>} onHydrated={() => 'hydrated'}><p>child</p></Hydrate>
 }`,
     },
     {
@@ -316,7 +316,7 @@ const childrenPage = (
   split = '',
   setup = '',
 ) => `${head}import { idle } from '@tanstack/react-start/hydration'
-import { useThing } from './hooks'
+import { useThing, use3D } from './hooks'
 ${setup}export function Page({ flag }: { flag?: boolean }) {
   return <Hydrate when={idle()}${split}>${children}</Hydrate>
 }`
@@ -345,7 +345,8 @@ export class Page extends Base {
 /** A real hook whose value depends on the component that calls it. */
 const hooks = {
   './hooks': `import { useId } from 'react'
-export const useThing = () => useId()`,
+export const useThing = () => useId()
+export const use3D = () => useId()`,
 }
 
 /**
@@ -412,6 +413,12 @@ const unsafeChildren = [
   {
     name: 'a hook call',
     code: (split = '') => childrenPage('<p>{useThing()}</p>', split),
+    pattern: /\bhooks?\b/i,
+  },
+  {
+    // Source: V4 red-astra-r2/13; digit-bearing hook names follow React's convention.
+    name: 'a hook call named use3D',
+    code: (split = '') => childrenPage('<p>{use3D()}</p>', split),
     pattern: /\bhooks?\b/i,
   },
   {
@@ -812,4 +819,16 @@ test('client: a chunk loaded with the edited source before the parent is compile
     ).html
   expect(await render()).toContain('<p>Old</p>')
   expect(await render(source('New'))).toContain('<p>New</p>')
+})
+
+// Source: V4 red-astra-r2/12. A shared options object also renders outside
+// the boundary: removing its fallback must not mutate that other consumer.
+test('a fallback spread shared with an aside keeps the aside on server and client', async () => {
+  const { server, client } = await expectRendersLikeSource(`${head}
+const opts = { when: load(), fallback: <b>wait</b> }
+export function Page() {
+  return <><Hydrate {...opts}><p>ready</p></Hydrate><aside>{opts.fallback}</aside></>
+}`)
+  expect(server.html).toContain('<aside><b>wait</b></aside>')
+  expect(client.html).toContain('<aside><b>wait</b></aside>')
 })
