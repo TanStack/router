@@ -490,6 +490,99 @@ export const Route = createFileRoute('/old')({})`,
   })
 })
 
+// Recognition is by binding, not spelling (SPEC G15): a `createFileRoute`
+// the file declares itself or imports from another module is the user's,
+// with its own semantics; one shadowing the router's in an inner scope is
+// left alone while the file's Route is kept up. (The missing-import repair
+// of a Route whose constructor is not bound at all: "missing route
+// constructor imports" above.)
+describe('look-alike route constructors', () => {
+  /**
+   * An app's own `createFileRoute`: the router's, giving every route a
+   * pending component.
+   */
+  const factory = `import { createFileRoute as routerFileRoute } from ${router}
+
+export const createFileRoute = (id: any) => (options: any) =>
+  routerFileRoute(id)({ pendingComponent: () => 'loading', ...options })
+`
+
+  // Bug: the generator recognises route constructors by name: a route file
+  // whose `createFileRoute` is the app's own (declared in the file or
+  // imported from another module of the app) gets the router package's
+  // instead (an import from './-factory' is rebound to the router package;
+  // a declared one gets a router import next to it), and the id argument of
+  // the app's call is rewritten.
+  // Source: src/transform/transform.ts `isRouteConstructor` (the route call
+  // is recognised by the callee's name, without its binding's provenance;
+  // the factory import is then repaired as if it were missing).
+  // Impact: an app wrapping the route constructor under the same name (to
+  // give its routes defaults) silently loses the wrapper in that route file
+  // (here: no pending component), or the file stops compiling (a binding
+  // declared twice).
+  test.fails.each([
+    {
+      name: 'declared in the file',
+      source: `${factory.replace('export const', 'const')}
+export const Route = createFileRoute('/old')({})
+`,
+    },
+    {
+      name: 'imported from another module of the app',
+      source: `import { createFileRoute } from './-factory'
+
+export const Route = createFileRoute('/old')({})
+`,
+    },
+  ])(
+    'a createFileRoute $name keeps its meaning: the file is left as it is, or reported',
+    async ({ source }) => {
+      const { root, file, written, routes, warnings, error } = await upkeep(
+        'new.tsx',
+        source,
+        {},
+        { 'src/routes/-factory.ts': factory },
+      )
+
+      expect(written).toBe(source)
+      if (routes?.['/new'] === 'routes/new.tsx') {
+        // (the route is the app's constructor's: with its pending component)
+        await withRouteTree(
+          path.join(root, 'src/routeTree.gen.ts'),
+          ({ router: liveRouter }) => {
+            expect(
+              liveRouter.routesById['/new']!.options.pendingComponent,
+            ).toBeTypeOf('function')
+          },
+        )
+        return
+      }
+      expectDiagnostic(
+        [...diagnosticsOf(error), ...diagnosticsOf(warnings, 'warning')],
+        { file, root },
+      )
+    },
+  )
+
+  test('a createFileRoute shadowing the router one in an inner scope is left alone while the Route is kept up', async () => {
+    const source = `import { createFileRoute } from ${router}
+
+function localRoute() {
+  const createFileRoute = (id: string) => (options: object) => ({ id, options })
+  return createFileRoute('/other')({})
+}
+export const local = localRoute()
+export const Route = createFileRoute('/old')({})
+`
+    const { written } = await upkeep('new.tsx', source)
+
+    // (the inner call keeps its bytes: expectOnlyOwnedEdits)
+    await expectRouteFile(written, { id: '/new', source })
+    const { exports } = await evaluateModule(written)
+    expect(exports.local.id).toBe('/other')
+  })
+})
+
 describe('route files the generator does not rewrite', () => {
   // The route comes from an app module (excluded from routing by its `-`
   // prefix) the generator does not keep up: the route file is left as it
