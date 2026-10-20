@@ -2,7 +2,12 @@
  * Controls for the regression harness itself: module discovery, lazy
  * evaluation and output validation (module linking and module validation:
  * `@tanstack/compiler-test-utils`). The route HMR page (`route-hmr-page.ts`):
- * integration/regression-helpers.test.ts.
+ * integration/outside-compiler-corpus/regression-helpers.test.ts.
+ *
+ * Harness controls, outside the compiler test corpus (see
+ * packages/compiler-test-utils/AGENTS.md): they check the test helpers, not
+ * the compiler, and drive the current compiler where a rewrite may differ in
+ * the incidental details they lean on. `test:implementation` runs them.
  */
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -11,7 +16,7 @@ import {
   captureConsole,
   expectDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { isServedAppModule, routerDevServer } from './dev-server'
+import { isServedAppModule, routerDevServer } from '../dev-server'
 import {
   compileRouteModules,
   componentModules,
@@ -24,10 +29,10 @@ import {
   loadRouteGraph,
   renderComponent,
   routeSpecifier,
-} from './regression-helpers'
-import { labelRouteModules, projectRoot } from './plugin-host'
+} from '../regression-helpers'
+import { labelRouteModules, projectRoot } from '../plugin-host'
 import type { Plugin } from 'vite'
-import type { RouteGraph } from './plugin-host'
+import type { RouteGraph } from '../plugin-host'
 
 describe('compileRouteModules', () => {
   // What the host finds is what the router plugin's output reaches; how

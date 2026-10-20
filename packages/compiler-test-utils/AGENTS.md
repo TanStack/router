@@ -30,9 +30,10 @@ The compiler test corpus is an oracle: a compiler that passes every corpus test 
   - `test:unit` (project `unit`, plus `types` in router-generator) and `test:integration` (project `integration`) select the corpus only: they exclude `**/outside-compiler-corpus/**`.
   - `test:implementation` (projects `implementation` and `implementation-integration`) selects the implementation tests of both tiers; `test:implementation:unit` the fast ones only.
   - The root `test:pr`/`test:ci` scripts and the compiler platform workflow run the implementation targets too, so no implementation test is lost; acceptance of a rewrite reads only `test:unit` and `test:integration`.
+- **Harness controls** of a compiler package (tests of its own test helpers that drive the real compiler, e.g. router-plugin's `regression-helpers.test.ts` in both tiers) are outside the corpus too: they check the oracle, not the compiler, and a correct rewrite may differ in the incidental details they lean on. Controls on fixed inputs may stay where they are.
 - A package that gets its first implementation test adds the two projects and the two scripts the same way. react-start-rsc has none yet. This package's own tests are harness controls, not compiler tests; none of them is an implementation test of a compiler.
 - Budgets (`test-budgets.json`) cover the corpus tiers; the implementation projects have none.
-- What does not belong outside the corpus: a goal pin (`.fails`) of a real bug, a test of supported behaviour that is merely slow, a test that decides a user-visible outcome through an internal entry point (e.g. the emitted `handleRouteUpdate` driven by a live router: label it in its header, keep it in the corpus), and a control of this package's helpers. Before moving a test out, make sure no wrong compiler is caught only by it (e.g. a known mutant of the compiler).
+- What does not belong outside the corpus: a goal pin (`.fails`) of a real bug, a test of supported behaviour that is merely slow, or a test that decides a user-visible outcome through an internal entry point (e.g. the emitted `handleRouteUpdate` driven by a live router: label it in its header, keep it in the corpus). Before moving a test out, make sure no wrong compiler is caught only by it (e.g. a known mutant of the compiler).
 
 ## Budgets
 

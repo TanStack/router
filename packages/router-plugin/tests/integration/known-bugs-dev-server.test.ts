@@ -165,11 +165,15 @@ for (const option of ['component', 'errorComponent'] as const) {
     // A page loads the route first, then leaves (the edit's own update
     // must not reach a page: the test orders the requests).
     await renderInPage(server)
+    // Whatever the layout: one module or many, any URLs (V1R hmr HMR-27).
     const urls = await loadRouteModules(server)
-    expect(urls.length).toBeGreaterThan(1)
     await server.edit({ 'routes/page.tsx': after })
     for (const url of reorder(urls)) {
-      await server.transform(url)
+      // A module the edit removed from the graph may no longer compile, as
+      // a page's stale request fails; the page below loads the current
+      // graph from the route module, so a module it needs that fails still
+      // fails the test there.
+      await server.transform(url).catch(() => undefined)
     }
     return renderInPage(server)
   }

@@ -1,10 +1,16 @@
 // Slow-tier half of this suite: the tests that need a real tool. Its
-// in-process tests are in ../regression-helpers.test.ts (fast tier).
+// in-process tests are in tests/outside-compiler-corpus/regression-helpers.test.ts
+// (fast tier).
 /**
  * Controls for the regression harness itself: module discovery, lazy
  * evaluation and output validation (module linking and module validation:
  * `@tanstack/compiler-test-utils`), and the route HMR page
  * (`route-hmr-page.ts`).
+ *
+ * Harness controls, outside the compiler test corpus (see
+ * packages/compiler-test-utils/AGENTS.md): they check the test helpers, not
+ * the compiler, and drive the current compiler where a rewrite may differ in
+ * the incidental details they lean on. `test:implementation` runs them.
  */
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -12,14 +18,14 @@ import {
   diagnosticsOf,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { generatorDevApp, route } from '../generator-dev-app'
-import { buildAndRun, head } from '../regression-helpers'
+import { generatorDevApp, route } from '../../generator-dev-app'
+import { buildAndRun, head } from '../../regression-helpers'
 import {
   expectEditShownOrReportedFallback,
   openRouteHmrPage,
-} from '../route-hmr-page'
+} from '../../route-hmr-page'
 import type { Rspack } from '@rsbuild/core'
-import type { RouteHmrPage } from '../route-hmr-page'
+import type { RouteHmrPage } from '../../route-hmr-page'
 
 describe('buildAndRun', () => {
   // A real app's package.json has no side-effect hint unless the app adds
