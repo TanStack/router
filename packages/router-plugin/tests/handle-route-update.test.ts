@@ -9,12 +9,13 @@
  * is recreated here: what the bundler and the framework do with an edit is
  * tested on a real page (integration/route-hmr-browser*.test.ts).
  *
- * Implementation controls (outside the compiler test corpus: see
- * packages/compiler-test-utils/AGENTS.md; hmr H12): they call the plugin's
- * own HMR runtime (`getHandleRouteUpdateCode`) directly, which a rewrite may
- * replace. They give the semantics of today's update function, not proof
- * that a real host delivers an edit: the corpus decides delivery on real
- * pages.
+ * Owned-runtime controls (hmr H12), part of the corpus: they decide what
+ * applying an edited route does to a live router (J3.1: stale loader data,
+ * removed options, the lazy options the tree gave the route; red-astra/08
+ * is caught only here). They do not show that a real host delivers the
+ * edit: real pages decide that. They reach the emitted update function
+ * through `getHandleRouteUpdateCode`; a rewrite that emits its update code
+ * another way adapts that one entry point, not the outcomes.
  */
 
 import {
@@ -28,13 +29,13 @@ import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { Fragment, act, createElement } from 'react'
 import { createPortal } from 'react-dom'
 import { createRoot } from 'react-dom/client'
-import { createMemoryHistory } from '../../../history/src'
-import { HeadContent } from '../../../react-router/src/HeadContent'
-import { RouterContextProvider } from '../../../react-router/src/RouterProvider'
-import { Scripts } from '../../../react-router/src/Scripts'
-import { Router as ReactRouter } from '../../../react-router/src/router'
-import { getFrameworkHmrCompilerPlugins } from '../../src/core/code-splitter/plugins/framework-plugins'
-import { getHandleRouteUpdateCode } from '../../src/core/hmr'
+import { createMemoryHistory } from '../../history/src'
+import { HeadContent } from '../../react-router/src/HeadContent'
+import { RouterContextProvider } from '../../react-router/src/RouterProvider'
+import { Scripts } from '../../react-router/src/Scripts'
+import { Router as ReactRouter } from '../../react-router/src/router'
+import { getFrameworkHmrCompilerPlugins } from '../src/core/code-splitter/plugins/framework-plugins'
+import { getHandleRouteUpdateCode } from '../src/core/hmr'
 import type { AnyRoute, GetStoreConfig } from '@tanstack/router-core'
 
 vi.mock('@tanstack/router-core/isServer', async (importOriginal) => ({

@@ -23,7 +23,7 @@ Shared by the compiler test suites (router-plugin, start-plugin-core, router-gen
 
 ## Corpus and implementation tests
 
-The compiler test corpus is an oracle: a compiler that passes every corpus test is a good compiler. Some useful tests check choices of today's implementation that a correct rewrite may make differently (printed bytes, log policy, internal functions such as the stringified `handleRouteUpdate` or the server fn resolver generator, perf counters). Those are **implementation tests**, kept and run, but not part of the corpus.
+The compiler test corpus is an oracle: a compiler that passes every corpus test is a good compiler. Some useful tests check choices of today's implementation that a correct rewrite may make differently (printed bytes, log policy, internal generators called with forced options such as the server fn resolver generator, perf counters). Those are **implementation tests**, kept and run, but not part of the corpus.
 
 - **Label:** an implementation test is a file under a directory named `outside-compiler-corpus/` in a package's `tests/` (fast tier) or `tests/integration/` (slow tier). One label, by location; no tags or name prefixes. A corpus file that contains an implementation block moves that block to such a file. Its header says why it is outside the corpus and which corpus test decides the outcome instead, if any.
 - **Selection** (router-plugin, start-plugin-core, router-generator: Vitest projects in `vite.config.ts`):
@@ -32,7 +32,7 @@ The compiler test corpus is an oracle: a compiler that passes every corpus test 
   - The root `test:pr`/`test:ci` scripts and the compiler platform workflow run the implementation targets too, so no implementation test is lost; acceptance of a rewrite reads only `test:unit` and `test:integration`.
 - A package that gets its first implementation test adds the two projects and the two scripts the same way. react-start-rsc has none yet. This package's own tests are harness controls, not compiler tests; none of them is an implementation test of a compiler.
 - Budgets (`test-budgets.json`) cover the corpus tiers; the implementation projects have none.
-- What does not belong outside the corpus: a goal pin (`.fails`) of a real bug, a test of supported behaviour that is merely slow, and a control of this package's helpers.
+- What does not belong outside the corpus: a goal pin (`.fails`) of a real bug, a test of supported behaviour that is merely slow, a test that decides a user-visible outcome through an internal entry point (e.g. the emitted `handleRouteUpdate` driven by a live router: label it in its header, keep it in the corpus), and a control of this package's helpers. Before moving a test out, make sure no wrong compiler is caught only by it (e.g. a known mutant of the compiler).
 
 ## Budgets
 
