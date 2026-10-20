@@ -12,8 +12,6 @@
  * Source: FIX-PLAN V2-02 (start-fable SF-22/MW-7; #6185, #7460, #3990;
  * 1,007 corpus files, 241 with `cloudflare:workers`).
  */
-import { createRequire } from 'node:module'
-import { pathToFileURL } from 'node:url'
 import { describe, expect, test } from 'vitest'
 import { runNodeProgram } from '@tanstack/compiler-test-utils/run-node'
 import {
@@ -146,18 +144,11 @@ return {
 
 // Internal harness contract (SPEC §8): the narrow resolve hook supplies a
 // string binding with the same module-import behaviour as real workerd.
-// Worker execution here is Miniflare's workerd, from the installed Cloudflare
-// e2e app; it is not a second implementation of the platform module.
+// Worker execution here is Miniflare's workerd (a test-only devDependency, the
+// version wrangler uses); it is not a second implementation of the platform
+// module.
 test('the cloudflare:workers resolve-hook binding agrees with workerd', async () => {
-  const require = createRequire(
-    new URL(
-      '../../../../e2e/react-start/basic-cloudflare/package.json',
-      import.meta.url,
-    ),
-  )
-  const workerRequire = createRequire(require.resolve('wrangler'))
-  const miniflareUrl = pathToFileURL(workerRequire.resolve('miniflare')).href
-  const { Miniflare } = await import(/* @vite-ignore */ miniflareUrl)
+  const { Miniflare } = await import('miniflare')
   const worker = new Miniflare({
     modules: true,
     compatibilityDate: '2026-03-17',

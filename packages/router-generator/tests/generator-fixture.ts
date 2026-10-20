@@ -205,12 +205,19 @@ export function fixtureConfig(name: string, dir = fixtureDir(name)): Config {
 /**
  * Prepares the route files the generator edits or scaffolds in a run of
  * the fixture `name` in `dir`; returns their contents before the run (path
- * relative to the routes directory to content).
+ * relative to the routes directory to content). Route files written by
+ * earlier runs (gitignored, possibly by an older version of this helper)
+ * are removed first: a leftover file would be a route of the fixture.
  */
 export async function prepareFixture(name: string, dir = fixtureDir(name)) {
   const before: Record<string, string> = {}
   if (name === 'file-modification') {
     const routePath = (file: string) => join(dir, 'routes', '(test)', file)
+    for (const file of await fs.readdir(routePath('.'))) {
+      if (file.endsWith('.tsx')) {
+        await fs.rm(routePath(file))
+      }
+    }
     const template = await fs.readFile(join(dir, 'template.tsx'), 'utf8')
     const files: Record<string, string> = {
       'foo.bar.tsx': await fs.readFile(

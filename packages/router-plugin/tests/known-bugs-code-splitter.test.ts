@@ -3405,10 +3405,11 @@ describe('look-alike route factories', () => {
   // the function it was given (and in a dev server, where route HMR is on,
   // the route module loses that function's declaration and throws
   // "LocalWidget is not defined" when it loads). Only the call
-  // bound to `Route` is the route's (SPEC J2.1, G15). Found while replacing
-  // the spelling-only look-alike controls of
-  // code-splitter-plugin-pipeline.test.ts (V1R split S13); a look-alike from
-  // another package (a namespace member call) is left alone there.
+  // bound to `Route` is the route's (SPEC J2.1, G15). A look-alike from
+  // another package (a namespace member call) is left alone
+  // (code-splitter-plugin-pipeline.test.ts).
+  // Source: found while replacing the spelling-only look-alike controls of
+  // code-splitter-plugin-pipeline.test.ts (V1R split S13, W4-split).
   // Impact: a route file whose own code uses a helper named
   // `createFileRoute` (a widget registry, a test fixture builder) fails to
   // load once code splitting is on.
