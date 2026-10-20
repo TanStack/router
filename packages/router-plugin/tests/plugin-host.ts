@@ -236,7 +236,8 @@ async function observeLoads(
   return [
     {
       ...plugin,
-      load: typeof hook === 'function' ? observed : { ...hook, handler: observed },
+      load:
+        typeof hook === 'function' ? observed : { ...hook, handler: observed },
     },
   ]
 }
