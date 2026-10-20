@@ -42,6 +42,8 @@ export {
 export type { ExpectedViolation, ReportedViolation } from './violation-report'
 
 export interface ProtectedDevServerOptions {
+  /** Serve actual dependencies and an HTTP origin for client consumers. */
+  browser?: boolean
   /**
    * The app's router entry (relative to the app root), registered with
    * import protection like `tanStackStart()` registers the app's
@@ -110,6 +112,7 @@ export async function startProtectedDevServer(
   }
   const server = await startDevServer({
     files,
+    browser: options.browser,
     bundledDev,
     config,
     // The Start compiler compiles the provider environment too, and creates

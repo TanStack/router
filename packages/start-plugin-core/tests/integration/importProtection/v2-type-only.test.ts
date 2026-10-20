@@ -9,23 +9,19 @@
  * (dev default; `behavior: 'mock'` in builds), Vite and Rsbuild, builds and
  * dev servers with Start's whole plugin.
  */
-import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
 import {
   captureConsole,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { afterAll, afterEach, describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
-import { servedStartRuntime, startDevServer } from '../../dev-server'
+import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import {
-  describeValue,
-  describeValuePrelude,
-} from '../../importProtection/mock-helpers'
-import {
-  clientPage,
   runInClient,
-  startRsbuildStartDevServer,
-} from '../../rsbuild-dev-server'
+  runViteClient,
+  startBrowserStartDevServer as startDevServer,
+  startBrowserRsbuildStartDevServer as startRsbuildStartDevServer,
+} from './client-pages'
 import { reportedImporters } from './v2-hosts'
 import type { StartBuild } from '../../build-harness'
 
@@ -137,24 +133,19 @@ describe('vite dev', () => {
   test(
     'type-only forms are neither reported nor loaded; the mixed import is reported and mocked',
     async () => {
-      const server = await startDevServer({ start: {}, files: app })
-      const { result } = await captureConsole(async () => {
-        // The client loads the app from Start's router entry.
-        await evaluateServed(server, '/src/router.ts')
-        const { readMixed } = globalThis as unknown as {
-          readMixed: () => unknown
-        }
-        return {
-          mixed: describeValue(readMixed(), 'MARK_'),
-          typesLoaded:
-            (globalThis as Record<string, unknown>).typesLoaded ?? null,
-          mixedLoaded:
-            (globalThis as Record<string, unknown>).mixedLoaded ?? null,
-        }
+      const server = await startDevServer({
+        browser: true,
+        start: {},
+        files: app,
       })
+      const { result } = await runViteClient(
+        server,
+        '/src/router.ts',
+        outcomeScript('globalThis.readMixed'),
+      )
       await server.idle()
       expect({
-        ...result,
+        ...(result as Omit<Outcome, 'reported'>),
         reported: reportedImporters(server.logs, 'client'),
       }).toEqual(expected)
     },
@@ -167,8 +158,9 @@ describe('rsbuild dev', () => {
     'type-only forms are neither reported nor loaded; the mixed import is reported and mocked',
     async () => {
       const server = await startRsbuildStartDevServer({
-        ...clientPage,
         compileTimeout,
+        browser: true,
+        hmr: false,
         files: app,
       })
       expect(server.errors).toEqual([])
@@ -250,14 +242,19 @@ describe('vite dev, verbatimModuleSyntax', () => {
   test(
     'a mixed import whose value only a server fn handler uses is neither reported nor loaded',
     async () => {
-      const server = await startDevServer({ start: {}, files: verbatimApp })
-      await evaluateServed(server, '/src/router.ts', {
-        stubs: servedStartRuntime,
+      const server = await startDevServer({
+        browser: true,
+        start: {},
+        files: verbatimApp,
       })
+      const { result: typesLoaded } = await runViteClient(
+        server,
+        '/src/router.ts',
+        'return globalThis.typesLoaded ?? null',
+      )
       await server.idle()
       expect({
-        typesLoaded:
-          (globalThis as Record<string, unknown>).typesLoaded ?? null,
+        typesLoaded,
         reported: reportedImporters(server.logs, 'client'),
       }).toEqual(handlerOnly)
     },

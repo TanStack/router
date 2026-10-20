@@ -11,24 +11,23 @@
  * mode (dev default; `behavior: 'mock'` in builds), Vite and Rsbuild, builds
  * and dev servers with Start's whole plugin.
  */
-import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
 import {
   captureConsole,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { afterAll, afterEach, describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
-import { startDevServer } from '../../dev-server'
 import {
   describeValue,
   describeValuePrelude,
 } from '../../importProtection/mock-helpers'
 import {
-  clientPage,
   runInClient,
-  startRsbuildStartDevServer,
-} from '../../rsbuild-dev-server'
-import { reportedImporters, runRsbuildSsr } from './v2-hosts'
+  runViteClient,
+  startBrowserStartDevServer as startDevServer,
+  startBrowserRsbuildStartDevServer as startRsbuildStartDevServer,
+} from './client-pages'
+import { reportedImporters, runRsbuildSsr, ssrNodeOutput } from './v2-hosts'
 import type { ReportOutput } from '../../importProtection/violation-report'
 import type { StartBuild } from '../../build-harness'
 import type { ImportProtectionOptions } from '../../../src/schema'
@@ -253,34 +252,38 @@ describe('vite dev', () => {
   /** Runs the app from Start's router entry in `environment`. */
   async function run(environment: 'client' | 'server') {
     const server = await (started ??= startDevServer({
+      browser: true,
       start: { importProtection },
       files: app,
       registerCleanup: (cleanup) => {
         dispose = cleanup
       },
     }))
-    const { result } = await captureConsole(async () => {
-      if (environment === 'client') {
-        await evaluateServed(server, '/src/router.ts')
-      } else {
-        await server.import('/src/router.ts', 'ssr')
-      }
-      const { uses, loaded = [] } = globalThis as unknown as {
-        uses: Record<string, () => unknown>
-        loaded?: Array<string>
-      }
-      return {
-        values: Object.fromEntries(
-          usesOf[environment].map((name) => [
-            name,
-            describeValue(uses[name]!(), 'MARK_'),
-          ]),
-        ),
-        loaded: [...loaded],
-      }
-    })
+    const { result } =
+      environment === 'client'
+        ? await runViteClient(
+            server,
+            '/src/router.ts',
+            readScript(usesOf.client),
+          )
+        : await captureConsole(async () => {
+            await server.import('/src/router.ts', 'ssr')
+            const { uses, loaded = [] } = globalThis as unknown as {
+              uses: Record<string, () => unknown>
+              loaded?: Array<string>
+            }
+            return {
+              values: Object.fromEntries(
+                usesOf.server.map((name) => [
+                  name,
+                  describeValue(uses[name]!(), 'MARK_'),
+                ]),
+              ),
+              loaded: [...loaded],
+            }
+          })
     await server.idle()
-    return outcome(environment, result, server.logs)
+    return outcome(environment, result as Read, server.logs)
   }
 
   test(
@@ -307,8 +310,10 @@ describe('rsbuild dev', () => {
   afterAll(() => dispose?.())
   const start = () =>
     (started ??= startRsbuildStartDevServer({
-      ...clientPage,
       compileTimeout,
+      browser: true,
+      hmr: false,
+      config: ssrNodeOutput,
       files: app,
       start: { importProtection },
       registerCleanup: (cleanup) => {

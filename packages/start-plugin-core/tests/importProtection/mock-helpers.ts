@@ -107,6 +107,8 @@ export function probeMock(value: unknown, secret?: string): MockProbe {
       any()()
       any().member
       any.member.deeper()
+      any.constructor.member()
+      any.__proto__.member()
     }),
     construct: attempt(() => {
       new any()

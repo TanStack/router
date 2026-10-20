@@ -441,6 +441,13 @@ export const middleware = authMiddleware.server(({ next }) =>
   next({ context: { secret: secret() } }),
 )
 `,
+    'a nested middleware server callback': `import { createMiddleware } from '@tanstack/react-start'
+import { secret } from './secret.server'
+export const middleware = createMiddleware().server(({ next }) => {
+  const read = () => ({ nested: secret() })
+  return next({ context: read() })
+})
+`,
     'the handler of a server fn builder variable': `import { createServerFn } from '@tanstack/react-start'
 import { secret } from './secret.server'
 const myServerFn = createServerFn({ method: 'GET' })
@@ -541,6 +548,26 @@ export const fn = createClientOnlyFn(() => widget())
   )
 
   test.each(serverChannels)(
+    '%s: createIsomorphicFn client use is removed; its server use is located in the original source',
+    async (channel) => {
+      const code = `import { createIsomorphicFn } from '@tanstack/react-start'
+import { widget } from './widget.client'
+export const readClient = createIsomorphicFn().client(() => widget())
+export const readServer = createIsomorphicFn().server(() => widget())
+`
+      const reports = await serverReports(channel, code)
+      expect(reports.map((report) => report.split(' ')[0])).toEqual(['server'])
+      expectRelevantLocation(
+        reports.map((report) => report.split(' ')[1]!),
+        code,
+        [locationIn('src/a.ts', code, 4, 'widget()')],
+        'src/a.ts',
+      )
+    },
+    timeout,
+  )
+
+  test.each(serverChannels)(
     '%s: a use only inside createClientOnlyFn is not reported',
     async (channel) => {
       expect(await serverReports(channel, insideOnly)).toEqual([])
@@ -607,8 +634,8 @@ const chain = {
   ...secretServer,
   'src/b.ts': `// helper
 export const one = 1
-import { secret } from './secret.server'
-export const leak = () => secret()
+import { secret } from './secret.server' /* ORIGINAL_IMPORT */
+export const leak = () => secret() /* ORIGINAL_USE */
 `,
   'src/a.ts': `export const two = 2
 export const three = 3

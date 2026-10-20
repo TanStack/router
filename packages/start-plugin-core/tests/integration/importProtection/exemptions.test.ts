@@ -8,17 +8,11 @@
  * Same ruling for a denied file `client.excludeFiles` / `server.excludeFiles`
  * match (end of the file): its importers get the real module.
  */
-import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
 import { afterAll, afterEach, describe, expect, test, vi } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
-import {
-  describeValue,
-  describeValuePrelude,
-} from '../../importProtection/mock-helpers'
-import {
-  reportedViolations,
-  startProtectedDevServer,
-} from '../../importProtection/start-apps'
+import { describeValuePrelude } from '../../importProtection/mock-helpers'
+import { reportedViolations } from '../../importProtection/start-apps'
+import { runViteClient, startBrowserProtectedDevServer } from './client-pages'
 import type { StartBuild, StartBundler } from '../../build-harness'
 import type { ImportProtectionOptions } from '../../../src/schema'
 
@@ -29,13 +23,6 @@ const timeout = 60_000
  * (`mock-helpers.ts`), or what calling it threw.
  */
 const mockText = 'a safe mock'
-const read = (use: () => unknown) => {
-  try {
-    return describeValue(use(), 'MARK_')
-  } catch (error) {
-    return `throws: ${String(error)}`
-  }
-}
 /** `read` for the scripts of a build (`describeValuePrelude`). */
 const readPrelude = `${describeValuePrelude}
 const read = (use) => {
@@ -227,14 +214,17 @@ describe.each(exemptions)(
   ({ importProtection, fails }) => {
     /** Loads the entry as a browser would; what it reads, and the logs. */
     async function outcome(): Promise<Outcome> {
-      const server = await startProtectedDevServer(files, importProtection)
-      // The mock reports each use in the browser console.
-      vi.spyOn(console, 'error').mockImplementation(() => {})
-      const module = await evaluateServed(server, '/src/entry.ts')
+      const server = await startBrowserProtectedDevServer(
+        files,
+        importProtection,
+      )
+      const { result } = await runViteClient(
+        server,
+        '/src/entry.ts',
+        readScript,
+      )
       return {
-        exempt: read(module.exemptRead),
-        other: read(module.otherRead),
-        loaded: (globalThis as { secretLoaded?: unknown }).secretLoaded ?? null,
+        ...(result as Omit<Outcome, 'reported'>),
         reported: reportedFiles(server.logs),
       }
     }
@@ -434,23 +424,19 @@ describe('vite dev: excludeFiles', () => {
   async function outcome(
     importProtection: ImportProtectionOptions,
   ): Promise<Omit<ExcludedOutcome, 'widget'>> {
-    const server = await startProtectedDevServer(
+    const server = await startBrowserProtectedDevServer(
       excludedFiles,
       importProtection,
     )
-    // The mock reports each use in the browser console.
-    vi.spyOn(console, 'error').mockImplementation(() => {})
-    // Loads the dependency's files too (served from `/node_modules/`).
-    const module = await evaluateServed(server, '/src/entry.ts', {
-      skip: /^\/@(vite|react-refresh)\b/,
-    })
-    const use = (fn: () => unknown, loaded: string): Use => ({
-      read: read(fn),
-      loaded: (globalThis as Record<string, unknown>)[loaded] ?? null,
-    })
+    const { result } = await runViteClient(
+      server,
+      '/src/entry.ts',
+      `${readPrelude}
+const use = (fn, loaded) => ({ read: read(fn), loaded: globalThis[loaded] ?? null })
+return { vendor: use(entry.vendorRead, 'vendorLoaded'), package: use(entry.packageRead, 'packageLoaded') }`,
+    )
     return {
-      vendor: use(module.vendorRead, 'vendorLoaded'),
-      package: use(module.packageRead, 'packageLoaded'),
+      ...(result as Omit<ExcludedOutcome, 'widget' | 'reported'>),
       reported: reportedFiles(server.logs),
     }
   }

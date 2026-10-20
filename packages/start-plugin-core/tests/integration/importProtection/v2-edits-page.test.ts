@@ -70,7 +70,7 @@ let outcomes: Promise<Array<StepOutcome>> | undefined
 const run = () =>
   (outcomes ??= (async () => {
     const server = await startDevServer({
-      start: {},
+      start: { importProtection: { log: 'always' } },
       browser: true,
       config,
       plugins: [react()],

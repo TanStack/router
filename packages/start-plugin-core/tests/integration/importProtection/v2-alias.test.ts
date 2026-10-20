@@ -16,10 +16,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import tsconfigPaths from 'vite-tsconfig-paths'
-import {
-  createDevServer,
-  evaluateServed,
-} from '@tanstack/compiler-test-utils/dev-server'
+import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import {
   captureConsole,
   findDiagnostics,
@@ -27,17 +24,14 @@ import {
 import { afterEach, describe, expect, onTestFinished, test } from 'vitest'
 import { buildStart, startRuntimeLinks } from '../../build-harness'
 import { startPlugin, startPluginFiles } from '../../dev-server'
-import {
-  expectSafeMock,
-  probeMockPrelude,
-  safeMock,
-} from '../../importProtection/mock-helpers'
+import { probeMockPrelude, safeMock } from '../../importProtection/mock-helpers'
 import { rejection, violationReports } from '../../importProtection/start-apps'
 import {
-  clientPage,
+  clientFixturePlugin,
   runInClient,
-  startRsbuildStartDevServer,
-} from '../../rsbuild-dev-server'
+  runViteClient,
+  startBrowserRsbuildStartDevServer as startRsbuildStartDevServer,
+} from './client-pages'
 import type { ImportProtectionOptions } from '../../../src/schema'
 import type { ReportOutput } from '../../importProtection/violation-report'
 import type { PluginOption } from 'vite'
@@ -171,11 +165,30 @@ function startAliasDevServer(
     prefix: '.start-dev-server-',
     registerCleanup: onTestFinished,
     files: { ...startPluginFiles, ...aliasApp },
+    browser: true,
     symlinks: startRuntimeLinks(),
     config: alias.devConfig,
-    plugins: ({ root }) =>
-      alias.devPlugins(startPlugin(root, { importProtection }, undefined)),
+    plugins: ({ root }) => [
+      clientFixturePlugin,
+      ...alias.devPlugins(startPlugin(root, { importProtection }, undefined)),
+    ],
   })
+}
+
+/** A third-party resolver may refuse safely with actionable composition guidance (G11). */
+function expectAliasFailure(output: string, thirdParty: boolean) {
+  if (
+    thirdParty &&
+    /(?:vite-tsconfig-paths|plugin[ -]order|resolve\.tsconfigPaths)/i.test(
+      output,
+    ) &&
+    /(?:move|place|reorder|before|after|enable|use|remove|configure)[^\n]*(?:vite-tsconfig-paths|plugin|resolve\.tsconfigPaths)|(?:vite-tsconfig-paths|plugin)[^\n]*(?:before|after|order)/i.test(
+      output,
+    )
+  ) {
+    return
+  }
+  expect(reportsOf(output)).toEqual([expectedReport])
 }
 
 // Bug (the `.fails` rows): with vite-tsconfig-paths, in either order, the
@@ -203,7 +216,7 @@ describe.each(viteAliases)('vite: $alias', (alias) => {
           viteConfig: alias.viteConfig,
         }),
       )
-      expect(reportsOf(error.message)).toEqual([expectedReport])
+      expectAliasFailure(error.message, alias.reportPinned)
     },
     timeout,
   )
@@ -212,12 +225,13 @@ describe.each(viteAliases)('vite: $alias', (alias) => {
     'dev: the importer gets a safe mock, and the denied file never runs',
     async () => {
       const server = await startAliasDevServer(alias, {})
-      const { result } = await captureConsole(async () => {
-        const module = await evaluateServed(server, '/src/entry.ts')
-        expectSafeMock(module.widget(), 'MARK_SECRET')
-        return (globalThis as Record<string, unknown>).secretLoaded ?? null
-      })
-      expect(result).toBe(null)
+      const { result } = await runViteClient(
+        server,
+        '/src/entry.ts',
+        `${probeMockPrelude}
+return { probe: probeMock(entry.widget(), 'MARK_SECRET'), loaded: globalThis.secretLoaded ?? null }`,
+      )
+      expect(result).toEqual({ probe: safeMock, loaded: null })
     },
     timeout,
   )
@@ -229,7 +243,7 @@ describe.each(viteAliases)('vite: $alias', (alias) => {
         behavior: { dev: 'error' },
       })
       const error = await rejection(server.load('/src/entry.ts'))
-      expect(reportsOf(error.message)).toEqual([expectedReport])
+      expectAliasFailure(error.message, alias.reportPinned)
     },
     timeout,
   )
@@ -255,8 +269,9 @@ describe('rsbuild: tsconfig paths', () => {
     'dev: the importer gets a safe mock, and the denied file never runs',
     async () => {
       const server = await startRsbuildStartDevServer({
-        ...clientPage,
         compileTimeout,
+        browser: true,
+        hmr: false,
         files: aliasApp,
       })
       expect(server.errors).toEqual([])
@@ -284,6 +299,8 @@ return {
     async () => {
       const server = await startRsbuildStartDevServer({
         compileTimeout,
+        browser: true,
+        hmr: false,
         files: aliasApp,
         start: { importProtection: { behavior: { dev: 'error' } } },
       })

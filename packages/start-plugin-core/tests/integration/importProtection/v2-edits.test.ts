@@ -15,20 +15,24 @@
  * Vite and Rsbuild dev servers with Start's whole plugin; the same edits
  * seen by a browser page are in v2-edits-page.test.ts.
  */
-import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
 import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
 import { afterAll, describe, expect, test } from 'vitest'
-import { servedStartRuntime, startDevServer } from '../../dev-server'
 import {
   describeValue,
   describeValuePrelude,
 } from '../../importProtection/mock-helpers'
 import {
-  clientPage,
   runInClient,
-  startRsbuildStartDevServer,
-} from '../../rsbuild-dev-server'
-import { reportedImporters, runRsbuildSsr, settledAcrossTurn } from './v2-hosts'
+  runViteClient,
+  startBrowserStartDevServer as startDevServer,
+  startBrowserRsbuildStartDevServer as startRsbuildStartDevServer,
+} from './client-pages'
+import {
+  reportedImporters,
+  runRsbuildSsr,
+  settledAcrossTurn,
+  ssrNodeOutput,
+} from './v2-hosts'
 
 const timeout = 60_000
 const compileTimeout = timeout
@@ -56,7 +60,7 @@ const serverSide = (
 import { widget } from './widget.client'
 export const readWidget = createIsomorphicFn()
   .client(() => widget())
-  .server(() => 'MARK_SERVER_BRANCH')
+  .server(() => Buffer.from('MARK_SERVER_BRANCH').toString())
 ${live ? `export const liveWidget = () => widget()\n` : ''}`
 
 const app = {
@@ -82,11 +86,6 @@ const steps = [
   { name: 'denied', live: true },
   { name: 'allowed again', live: false },
 ] as const
-
-const stepEdits = (live: boolean) => ({
-  'src/client-side.ts': clientSide(live),
-  'src/server-side.ts': serverSide(live),
-})
 
 /**
  * What each export of the app returns in one environment, described (`a
@@ -213,6 +212,7 @@ describe('vite dev', () => {
   hostSuite(
     async () => {
       const server = await startDevServer({
+        browser: true,
         // `log: 'always'`: a violation is logged on each load, so a stale
         // violation shows in the logs of the step that removed it.
         start: { importProtection: { log: 'always' } },
@@ -223,7 +223,8 @@ describe('vite dev', () => {
       })
       const outcomes: Array<StepOutcome> = []
       for (const [index, step] of steps.entries()) {
-        let since = 0
+        let clientReports: Array<string> | undefined
+        let serverSince = 0
         if (index > 0) {
           await server.edit({
             'src/secret.server.ts': null,
@@ -238,33 +239,44 @@ describe('vite dev', () => {
           // reload, the transforms it starts) ends here, by the loads'
           // completion, not by a timer, so the logs from `since` on are the
           // step's edit alone.
-          await evaluateServed(server, '/src/router.ts', {
-            stubs: servedStartRuntime,
-          })
+          await runViteClient(server, '/src/router.ts', 'return null')
           await server.import('/src/router.ts', 'ssr')
           await server.idle()
           // The logs of the step: from its edit on
-          since = server.logs.length
-          await server.edit(stepEdits(step.live))
+          const clientSince = server.logs.length
+          await server.edit({ 'src/client-side.ts': clientSide(step.live) })
+          await server.load('/src/router.ts')
+          await server.idle()
+          clientReports = reportedImporters(
+            server.logs.slice(clientSince),
+            'client',
+          )
+          serverSince = server.logs.length
+          await server.edit({ 'src/server-side.ts': serverSide(step.live) })
         }
-        const { result } = await captureConsole(async () => {
-          const client = (await evaluateServed(server, '/src/router.ts', {
-            stubs: servedStartRuntime,
-          })) as Parameters<typeof observe>[0]
-          const clientValues = observe(client, describeValue)
+        const client = await runViteClient(
+          server,
+          '/src/router.ts',
+          observeScript,
+        )
+        const { result: serverValues } = await captureConsole(async () => {
           const ssr = (await server.import(
             '/src/router.ts',
             'ssr',
           )) as Parameters<typeof observe>[0]
-          return { clientValues, serverValues: observe(ssr, describeValue) }
+          return observe(ssr, describeValue)
         })
+        const result = {
+          clientValues: client.result as Record<string, string>,
+          serverValues,
+        }
         const served = await server.load('/src/router.ts')
         await server.idle()
-        const logs = server.logs.slice(since)
+        const logs = server.logs.slice(serverSince)
         outcomes.push({
           client: {
             values: result.clientValues,
-            reported: reportedImporters(logs, 'client'),
+            reported: clientReports ?? reportedImporters(logs, 'client'),
           },
           server: {
             values: result.serverValues,
@@ -277,22 +289,9 @@ describe('vite dev', () => {
       }
       return outcomes
     },
-    // Bug: with `log: 'always'`, the edit that removes the live use of the
-    // `.client` file from `src/server-side.ts` (step 2) logs the server
-    // violation of that use again while the dev server handles the edit,
-    // before any request, built from the previous version of the file (its
-    // code frame shows the removed line `export const liveWidget = () =>
-    // widget()`). With the default `log: 'once'` the dedupe hides it. The
-    // client twin (step 2 of `src/client-side.ts`) logs nothing. Traced
-    // (W3-harness2): logged ~35 ms into the edit's handling, inside
-    // `edit()`'s settle, from `processPendingViolations` reached through
-    // `resolveId` while the Start compiler resolves `./widget.client` in
-    // the SSR transform of the edited file (the SSR runner's reload), with
-    // the location of the previous version.
-    // Impact: after a fix, the dev server reports the violation the fix
-    // removed, as if it were still there (SPEC J6.13: no stale report).
-    // Source: FIX-PLAN V2-14.
-    [2],
+    // I11: the server importer's removal has its own settled window. The
+    // original combined-write pin passes with this isolation and a real page;
+    // retain the strict empty report set to detect future stale violations.
   )
 })
 
@@ -302,8 +301,10 @@ describe('rsbuild dev', () => {
 
   hostSuite(async () => {
     const server = await startRsbuildStartDevServer({
-      ...clientPage,
       compileTimeout,
+      browser: true,
+      hmr: false,
+      config: ssrNodeOutput,
       files: app,
       // `log: 'always'`: each compile reports what it finds, so a stale
       // violation shows in the compile of the step that removed it.
@@ -314,6 +315,8 @@ describe('rsbuild dev', () => {
     })
     const outcomes: Array<StepOutcome> = []
     for (const [index, step] of steps.entries()) {
+      let clientReports: Array<string> | undefined
+      let serverSince = 0
       if (index > 0) {
         // Each deletion and each recreation in its own edit, settled before
         // the next write: a removal (or a write) landing while Rspack
@@ -332,23 +335,27 @@ describe('rsbuild dev', () => {
         await settledAcrossTurn(server)
         await server.edit({ 'src/widget.client.ts': widgetClient(index) })
         await settledAcrossTurn(server)
-        await server.edit(stepEdits(step.live))
+        const clientSince = server.diagnostics.length
+        await server.edit({ 'src/client-side.ts': clientSide(step.live) })
+        await settledAcrossTurn(server)
+        clientReports = reportedImporters(
+          server.diagnostics.slice(clientSince),
+          'client',
+        )
+        serverSince = server.diagnostics.length
+        await server.edit({ 'src/server-side.ts': serverSide(step.live) })
+        await settledAcrossTurn(server)
       }
       const values = (ran: { result: unknown } | { error: string }) => {
         expect(ran).toEqual({ result: expect.anything() })
         return (ran as { result: Record<string, string> }).result
       }
-      // The warnings of the last compile: with `log: 'always'` it reports
-      // every violation of the step's state. Not `diagnostics.slice(since)`:
-      // the files of one edit are written one by one and the watcher may
-      // compile in between (Rsbuild's `aggregateTimeout: 0`), and that
-      // compile correctly reports the transient state (targets back, the
-      // importers' live uses not removed yet), which is not a stale report.
-      const warnings = server.warnings
+      // Copy this settled state's diagnostic window before executing code.
+      const warnings = server.diagnostics.slice(serverSince)
       outcomes.push({
         client: {
           values: values(await runInClient(server, observeScript)),
-          reported: reportedImporters(warnings, 'client'),
+          reported: clientReports ?? reportedImporters(warnings, 'client'),
         },
         server: {
           values: values(await runRsbuildSsr(server, observeScript)),

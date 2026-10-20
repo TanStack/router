@@ -273,31 +273,43 @@ function parseCodeFrame(lines: Array<string>): ReportedCodeFrame | undefined {
 }
 
 /**
- * The APIs a report's suggestions may name for each direction of a fix
- * (SPEC J6.5, J6.12: the per-direction actionable suggestion is kept, its
- * wording is free): a server-only import in the client is fixed by keeping
- * the code on the server, a client-only import on the server by keeping it
- * on the client. `createIsomorphicFn` serves both and tells nothing.
+ * Reads only the Suggestions section: source excerpts and trace names do
+ * not constitute a remedy. An actionable direction may name a public API
+ * or describe moving/keeping the import in the appropriate environment;
+ * J6.12 leaves the wording free.
  */
-const directionApis = {
-  server: ['createServerFn', 'createServerOnlyFn'],
-  client: ['createClientOnlyFn', 'ClientOnly'],
-} as const
-
-/**
- * The directions the suggestions of a report point to: `server` when it
- * names an API that keeps code on the server, `client` when it names one
- * that keeps code on the client (whole identifiers, through the shared
- * diagnostic oracle). A report for the right direction gives exactly that
- * one.
- */
-export function suggestedDirections(
-  text: string,
-): Array<keyof typeof directionApis> {
-  return (['server', 'client'] as const).filter((direction) =>
-    directionApis[direction].some(
-      (api) => findDiagnostics(text, { names: [api] }).length > 0,
-    ),
+export function suggestedDirections(text: string): Array<'server' | 'client'> {
+  const lines = diagnosticsOf(text)
+    .map(({ text: message }) => message)
+    .join('\n')
+    .split('\n')
+  const start = lines.findIndex(
+    (line) => fieldOf(line)?.label === 'Suggestions',
+  )
+  if (start === -1) {
+    return []
+  }
+  const suggestions: Array<string> = []
+  for (const line of lines.slice(start + 1)) {
+    if (fieldOf(line)) {
+      break
+    }
+    suggestions.push(line)
+  }
+  const remedy = suggestions.join('\n')
+  const directions = {
+    server: ['createServerFn', 'createServerOnlyFn'],
+    client: ['createClientOnlyFn', 'ClientOnly'],
+  } as const
+  return (['server', 'client'] as const).filter(
+    (direction) =>
+      directions[direction].some(
+        (name) => findDiagnostics(remedy, { names: [name] }).length > 0,
+      ) ||
+      new RegExp(
+        `\\b(?:move|keep|run|render|isolate|put)\\b(?:(?!\\b(?:client|server)\\b)[^\\n])*\\b${direction}(?:-only| side|-side)?\\b`,
+        'i',
+      ).test(remedy),
   )
 }
 /**
