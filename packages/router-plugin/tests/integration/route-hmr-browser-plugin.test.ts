@@ -15,7 +15,6 @@
  * (which scanned a build for the hot API).
  */
 import { describe, it } from 'vitest'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { openRouteHmrPage } from '../route-hmr-page'
 import type { TestContext } from 'vitest'
 import type { RouteHmrPageOptions } from '../route-hmr-page'
@@ -171,11 +170,11 @@ export const Route = ${call}
 // decision D11): it is either split like a module-scope route and
 // hot-updated in place, or left unsplit with a warning naming the file
 // (code-splitter-plugin-pipeline.test.ts). Either way, an edit shows its
-// new loader data and component, in place or after a reload, or the
-// compiler warns naming the route file through a real channel (the dev
-// server's logger or console, or the served module). (A helper function
-// without automatic code splitting keeps its old component silently:
-// pinned in known-bugs-route-hmr.test.ts.)
+// new loader data and component, in place or after a reload (SPEC J2.10:
+// rendering the old component is a bug, warned or not; a warning is not
+// proof that the edit applied). (A helper function without automatic code
+// splitting keeps its old component silently: pinned in
+// known-bugs-route-hmr.test.ts.)
 describe.concurrent.each(['vite', 'rsbuild'] as const)(
   '%s: an edit of a route created inside',
   (bundler) => {
@@ -235,23 +234,10 @@ export const Route = (() =>
           files: { 'routes/index.tsx': route('v1') },
           ready: `${shape} v1 data v1`,
         })
-        const reported = () =>
-          findDiagnostics(app.warnings(), {
-            file: 'routes/index.tsx',
-            root: app.root,
-          }).length > 0
-        let result
-        try {
-          result = await app.edit(
-            { 'routes/index.tsx': route('v2') },
-            `${shape} v2 data v2`,
-          )
-        } catch (error) {
-          if (reported()) {
-            return
-          }
-          throw error
-        }
+        const result = await app.edit(
+          { 'routes/index.tsx': route('v2') },
+          `${shape} v2 data v2`,
+        )
         expect(result.errors).toEqual([])
       },
     )

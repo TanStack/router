@@ -3,10 +3,10 @@
  * error thrown inside a split route component maps, through the emitted
  * source map of the chunk it runs in, to the line (and, unminified, the
  * column) of the throw in the route file, also when another plugin
- * transformed the file before the router plugin (composed maps). Map
- * layout, `names` and granularity are free (SPEC G6, §5.14). (That the maps
- * name split code by the route file, without the virtual module's query, is
- * pinned in known-bugs-code-splitter.test.ts, "source maps".)
+ * transformed the file before the router plugin (composed maps); so does a
+ * throw in code the splitter leaves in the route module or moves into a
+ * shared module. Map layout, `names`, granularity and the source names a
+ * map lists are free (SPEC G6, §5.14).
  */
 import { describe, expect, test } from 'vitest'
 import { originalFrameOf } from '@tanstack/compiler-test-utils/build-harness'
@@ -132,6 +132,73 @@ async function expectThrowMapsToRouteFile(
   expectFrameAtThrow(app, stack, route, options)
 }
 
+/**
+ * Throws from code the splitter leaves in the route module, and from code
+ * it moves into the module the route module and a chunk share.
+ */
+const moduleThrows = [
+  {
+    name: 'the route module (an unsplit loader)',
+    route: `${routeHead()}function Page() {
+  return <p>page</p>
+}
+export const Route = createFileRoute('/')({
+  loader: () => {
+    throw new Error('MARK_LOADER_THROW')
+  },
+  component: Page,
+})
+`,
+    marker: 'MARK_LOADER_THROW',
+  },
+  {
+    name: 'a function the loader and the split component share',
+    route: `${routeHead()}import { label } from '../lib/label'
+function fail(): never {
+  throw new Error('MARK_SHARED_THROW ' + label)
+}
+function Page() {
+  return <p>{typeof fail}</p>
+}
+export const Route = createFileRoute('/')({
+  loader: () => fail(),
+  component: Page,
+})
+`,
+    marker: 'MARK_SHARED_THROW',
+  },
+]
+
+/**
+ * Builds `source` for the client (unminified, with source maps), calls its
+ * loader, which throws `marker`, and maps the error's stack frame through
+ * the emitted source map to the throw's line and column in the route file.
+ */
+async function expectModuleThrowMapsToRouteFile(
+  bundler: Bundler,
+  source: string,
+  marker: string,
+) {
+  const app = await build({
+    bundler,
+    env: 'client',
+    minify: false,
+    sourcemap: true,
+    files: routeApp(source, {
+      env: 'client',
+      files: {
+        'lib/label.ts': `export const label = 'MARK_LABEL'\n`,
+        'entry.ts': `export * from './routes/index'\n`,
+      },
+    }),
+  })
+  const { result: stack } = await app.run(
+    `try { entry.Route.options.loader() } catch (error) { return error.stack }`,
+  )
+  expect(stack).toMatch(marker)
+  expectFrameAtThrow(app, stack, source, { minify: false })
+}
+
 // Control for the pins below.
 describe('vite', () => {
   test.each(builds)(
@@ -167,59 +234,10 @@ describe('vite', () => {
 
   // Code the splitter leaves in the route module, and code it moves into the
   // module the route module and a chunk share, map back the same way.
-  test.each([
-    {
-      name: 'the route module (an unsplit loader)',
-      route: `${routeHead()}function Page() {
-  return <p>page</p>
-}
-export const Route = createFileRoute('/')({
-  loader: () => {
-    throw new Error('MARK_LOADER_THROW')
-  },
-  component: Page,
-})
-`,
-      marker: 'MARK_LOADER_THROW',
-    },
-    {
-      name: 'a function the loader and the split component share',
-      route: `${routeHead()}import { label } from '../lib/label'
-function fail(): never {
-  throw new Error('MARK_SHARED_THROW ' + label)
-}
-function Page() {
-  return <p>{typeof fail}</p>
-}
-export const Route = createFileRoute('/')({
-  loader: () => fail(),
-  component: Page,
-})
-`,
-      marker: 'MARK_SHARED_THROW',
-    },
-  ])(
+  test.each(moduleThrows)(
     'a throw in $name maps to its line and column in the route file',
-    async ({ route: source, marker }) => {
-      const app = await build({
-        bundler: 'vite',
-        env: 'client',
-        minify: false,
-        sourcemap: true,
-        files: routeApp(source, {
-          env: 'client',
-          files: {
-            'lib/label.ts': `export const label = 'MARK_LABEL'\n`,
-            'entry.ts': `export * from './routes/index'\n`,
-          },
-        }),
-      })
-      const { result: stack } = await app.run(
-        `try { entry.Route.options.loader() } catch (error) { return error.stack }`,
-      )
-      expect(stack).toMatch(marker)
-      expectFrameAtThrow(app, stack, source, { minify: false })
-    },
+    ({ route: source, marker }) =>
+      expectModuleThrowMapsToRouteFile('vite', source, marker),
     timeout,
   )
 })
@@ -232,8 +250,10 @@ export const Route = createFileRoute('/')({
 // maps the chunk to the code splitter's output instead of the route file.
 // (On webpack the harness's own TypeScript loader composes the map it gets.)
 // These rows flip once unplugin keeps the map: with a loader passing an
-// identity map in front of unplugin's (so it returns the plugin's map), all
-// four pass (checked 2026-10-18).
+// identity map in front of unplugin's (so it returns the plugin's map), the
+// four split-component rows pass (checked 2026-10-18). The route-module and
+// shared-module rows (added for V1R split S12) fail the same way: the frame
+// maps to the generated module's line, one above the throw's.
 // Source: oracle-gaps M1; upstream (unplugin), not the router plugin.
 // Impact: stack traces, devtools and error trackers point at lines of the
 // generated split module (here line 3 instead of line 5 of the route file).
@@ -241,6 +261,13 @@ describe.each(['rspack', 'webpack'] as const)('%s', (bundler) => {
   test.fails.each(builds)(
     'a throw in a split component maps to its line in the route file ($name)',
     (options) => expectThrowMapsToRouteFile(bundler, options),
+    timeout,
+  )
+
+  test.fails.each(moduleThrows)(
+    'a throw in $name maps to its line and column in the route file',
+    ({ route: source, marker }) =>
+      expectModuleThrowMapsToRouteFile(bundler, source, marker),
     timeout,
   )
 })

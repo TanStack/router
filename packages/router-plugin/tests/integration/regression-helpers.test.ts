@@ -106,28 +106,27 @@ export const Route = createFileRoute('/')({ component: Page })
       expect(app.loads()).toBe(loads + 1)
     }, 60_000)
 
-    // The compiler warns about a route whose split component the module
-    // also exports (kept in the route module), naming the file: the page
-    // reports it from the real channels (the dev server's process console,
-    // the served module's warning in the page).
-    it("reports the warnings of the dev server naming the app's route file", async () => {
+    // A warning the app itself logs (in the page) naming its route file is
+    // one of the page's warnings, by the A9 oracle. (No warning of the
+    // compiler is the control: a compiler that splits everything has
+    // nothing to report. The dev server's own channels go through the same
+    // `diagnosticsOf` reading; ctu's diagnostics tests cover the capture.)
+    it("reports the warnings naming the app's route file", async () => {
       const app = await openRouteHmrPage({
         bundler,
         files: {
           'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
-export function Page() {
-  return <p>exported page</p>
-}
-export const Route = createFileRoute('/')({ component: Page })
+console.warn('MARK_WARNING: check routes/index.tsx')
+export const Route = createFileRoute('/')({ component: () => <p>warned page</p> })
 `,
         },
-        ready: 'exported page',
+        ready: 'warned page',
       })
       expect(
         findDiagnostics(app.warnings(), {
           file: 'routes/index.tsx',
           root: app.root,
-        }).length > 0,
+        }).some(({ text }) => text.includes('MARK_WARNING')),
       ).toBe(true)
     }, 60_000)
 
