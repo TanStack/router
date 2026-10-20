@@ -205,7 +205,7 @@ export interface RouteHmrPageOptions {
 }
 
 export interface EditResult {
-  /** The page did a full reload instead of a hot update. */
+  /** Whether the page reloaded, observed through the caller's final assertions. */
   reloaded: boolean
   /**
    * Uncaught errors of the page and what it logged with `console.error`
@@ -468,8 +468,12 @@ export const Route = createRootRoute({})
           await sleep(25)
         }
         return {
-          reloaded: reloaded(),
-          errors: page.errors.slice(start.errors),
+          get reloaded() {
+            return reloaded()
+          },
+          get errors() {
+            return page.errors.slice(start.errors)
+          },
         }
       }),
     evaluate: (script) => page.page.evaluate(script),

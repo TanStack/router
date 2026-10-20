@@ -144,34 +144,36 @@ describe.each([true, false])(
     const cases: Array<ExportedRouteOptionsCase> = [
       {
         name: 'function',
-        declaration: 'export function component() { return <p>function</p> }',
+        declaration:
+          'export function component() { see(component); return <p>function</p> }',
         options: 'component',
         exported: { component: ['component'] },
       },
       {
         name: 'overloaded function',
         declaration:
-          "import type { ReactNode } from 'react'\nexport function component(): ReactNode\nexport function component() { return <p>overloaded</p> }",
+          "import type { ReactNode } from 'react'\nexport function component(): ReactNode\nexport function component() { see(component); return <p>overloaded</p> }",
         options: 'component',
         exported: { component: ['component'] },
       },
       {
         name: 'function used by two options',
         declaration:
-          'export function component() { return <p>two options</p> }',
+          'export function component() { see(component); return <p>two options</p> }',
         options: 'component, errorComponent: component',
         exported: { component: ['component', 'errorComponent'] },
       },
       {
         name: 'variable',
-        declaration: 'export const component = () => <p>variable</p>',
+        declaration:
+          'export const component = () => { see(component); return <p>variable</p> }',
         options: 'component',
         exported: { component: ['component'] },
       },
       {
         name: 'variables declared together',
         declaration:
-          'export const component = () => <p>component</p>, pendingComponent = () => <p>pending</p>',
+          'export const component = () => { see(component); return <p>component</p> }, pendingComponent = () => { see(pendingComponent); return <p>pending</p> }',
         options: 'component, pendingComponent',
         exported: {
           component: ['component'],
@@ -181,7 +183,7 @@ describe.each([true, false])(
       {
         name: 'default',
         declaration:
-          'export default function component() { return <p>default</p> }',
+          'export default function component() { see(component); return <p>default</p> }',
         options: 'component',
         exported: { default: ['component'] },
       },

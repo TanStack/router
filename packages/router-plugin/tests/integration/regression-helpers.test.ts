@@ -106,22 +106,52 @@ export const Route = createFileRoute('/')({ component: Page })
       expect(app.loads()).toBe(loads + 1)
     }, 60_000)
 
-    // The compiler warns about a route whose split component the module
-    // also exports (kept in the route module), naming the file: the page
-    // reports it from the real channels (the dev server's process console,
-    // the served module's warning in the page).
-    it("reports the warnings of the dev server naming the app's route file", async () => {
+    it('keeps observing edit-associated errors and reloads after the new text appears', async () => {
+      const app = await openRouteHmrPage({
+        bundler,
+        files: { 'routes/index.tsx': route('v1') },
+        ready: 'Counter v1 count 0',
+      })
+      // The edited component exposes a completion signal. Releasing it
+      // schedules a real document reload after edit() has seen the new text.
+      // This controls the observer, not bundler propagation or Refresh.
+      const edited = route(
+        'v2',
+        'Counter',
+        `useEffect(() => {
+        window.finishEditObservation = () => {
+          console.error('MARK_DELAYED_EDIT_ERROR')
+          setTimeout(() => location.reload(), 0)
+        }
+      }, [])`,
+      ).replace('import { useState }', 'import { useState, useEffect }')
+      const result = await app.edit(
+        { 'routes/index.tsx': edited },
+        'Counter v2 count 0',
+      )
+      expect(result).toEqual({ reloaded: false, errors: [] })
+      await Promise.all([
+        app.page.page.waitForEvent('load'),
+        app.evaluate('window.finishEditObservation()'),
+      ])
+      await app.page.waitForText('Counter v2 count 0')
+      expect(result.reloaded).toBe(true)
+      expect(result.errors).toContain('MARK_DELAYED_EDIT_ERROR')
+    }, 60_000)
+
+    // A synthetic diagnostic controls capture without requiring the compiler
+    // to warn for an export no importer consumes (SPEC §5.6).
+    it("reports a diagnostic naming the app's route file", async () => {
       const app = await openRouteHmrPage({
         bundler,
         files: {
-          'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
-export function Page() {
-  return <p>exported page</p>
-}
-export const Route = createFileRoute('/')({ component: Page })
-`,
+          'warning.ts': `console.warn('routes/index.tsx MARK_SYNTHETIC_WARNING')`,
+          'routes/index.tsx': `import '../warning'
+import { createFileRoute } from '@tanstack/react-router'
+function Page() { return <p>diagnostic control</p> }
+export const Route = createFileRoute('/')({ component: Page })`,
         },
-        ready: 'exported page',
+        ready: 'diagnostic control',
       })
       expect(
         findDiagnostics(app.warnings(), {
