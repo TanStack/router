@@ -548,26 +548,25 @@ export function read() {
     )
 
     /**
-     * `a` imports `helper` only for an export nobody uses. Rspack keeps that
-     * unused code unminified but drops the binding it reads; webpack declares
-     * it.
+     * A dependency (`node_modules/dep`) whose `a` imports `helper` only for
+     * an export nobody uses: unminified, the bundler ships that unused code.
+     * Rspack drops the binding it reads; webpack declares it.
      */
-    const unusedImportApp = (a: string) => ({
-      'entry.js': `import { used } from './a'
+    const dependencyApp = (a: string) => ({
+      'entry.js': `import { used } from 'dep'
 export const read = () => used()
 `,
-      'a.js': a,
-      'b.js': `export function helper() {
+      'node_modules/dep/package.json': `{ "name": "dep", "type": "module", "main": "./a.js" }\n`,
+      'node_modules/dep/a.js': a,
+      'node_modules/dep/b.js': `export function helper() {
   return 'MARK_B'
 }
 `,
-      // An app transform that leaves the modules as they are (`identity`)
-      // or loses `a`'s binding of `helper` (`lose-binding`), as a broken
+      // A transform that loses `a`'s binding of `helper`, as a broken
       // compiler would.
-      'identity-loader.cjs': `module.exports = (source) => source\n`,
-      'lose-binding-loader.cjs': `module.exports = (source) => source.replace("import { helper } from './b'\\n", '')\n`,
+      'lose-binding-loader.cjs': `module.exports = (source) => source.replace("import { helper } from './b.js'\\n", '')\n`,
     })
-    const unusedImport = `import { helper } from './b'
+    const unusedImport = `import { helper } from './b.js'
 export function used() {
   return 'MARK_USED'
 }
@@ -576,76 +575,37 @@ export function unused() {
 }
 `
 
+    // Ruling "dangling-name attribution" (2026-10-20): a binding the
+    // dependency's own source has, lost by the bundler, is a defect.
     test(
-      'an import binding the bundler drops from unused code it ships is the bundler’s, as the module imports it',
+      'an import binding the bundler drops from a dependency’s unused code it ships is rejected',
       async () => {
-        const app = await bundleApp({
+        const build = bundleApp({
           bundler,
           env: 'client',
           minify: false,
           entry: 'entry.js',
-          sourceRules: [{ test: /\.js$/, loader: './identity-loader.cjs' }],
-          files: unusedImportApp(unusedImport),
+          files: dependencyApp(unusedImport),
         })
-        expect((await app.run('return entry.read()')).result).toBe('MARK_USED')
-        // The unused code ships; Rspack's reads `helper` without a binding,
-        // which this check attributes to the bundler.
-        const entryCode = app.entry.code
-        expect(entryCode).toMatch(/return helper\(\)/)
-        expect(unboundNames(entryCode).has('helper')).toBe(bundler === 'rspack')
-      },
-      timeout,
-    )
-
-    /** As Vue's `initCustomFormatter`: development-only code after a return, with a function declaration reading a `const` there. */
-    const setupModule = `export function setup() {
-  if (process.env.NODE_ENV === 'production') {
-    return 'MARK_PRODUCTION'
-  }
-  const style = { color: 'MARK_STYLE' }
-  function format() {
-    return style.color
-  }
-  return format()
-}
-`
-    test.each([
-      // The bundler concatenates `setup` into the entry's module.
-      ['concatenated into another module', `export { setup } from './setup'\n`],
-      // A lazy chunk reads `setup` too: it keeps a module of its own.
-      [
-        'a module of its own',
-        `export { setup } from './setup'
-export const later = () => import('./later')
-`,
-      ],
-    ])(
-      'a declaration the bundler removes after a return it computed, which a kept function reads, is the bundler’s (%s)',
-      async (_layout, entry) => {
-        const app = await bundleApp({
-          bundler,
-          env: 'client',
-          minify: false,
-          entry: 'entry.js',
-          files: {
-            'entry.js': entry,
-            'setup.js': setupModule,
-            'later.js': `export { setup } from './setup'\n`,
-          },
-        })
-        expect((await app.run('return entry.setup()')).result).toBe(
-          'MARK_PRODUCTION',
-        )
-        // The kept function ships and reads `style` without a binding, which
-        // this check attributes to the bundler.
-        expect(app.entry.code).toMatch(/return style\.color/)
-        expect(unboundNames(app.entry.code).has('style')).toBe(true)
+        if (bundler === 'rspack') {
+          await expect(build).rejects.toMatchObject({
+            name: 'DanglingNameError',
+            names: { 'entry.mjs': ['helper'] },
+          })
+        } else {
+          // webpack declares the binding: nothing dangles.
+          const app = await build
+          expect(app.entry.code).toMatch(/return .*helper.*\(\)/)
+          expect((await app.run('return entry.read()')).result).toBe(
+            'MARK_USED',
+          )
+        }
       },
       timeout,
     )
 
     test(
-      'a module that reads a name it does not import is rejected, also in unused code the bundler ships',
+      'a dependency module whose import binding a transform dropped is rejected',
       async () => {
         await expect(
           bundleApp({
@@ -654,13 +614,58 @@ export const later = () => import('./later')
             minify: false,
             entry: 'entry.js',
             sourceRules: [
-              { test: /\.js$/, loader: './lose-binding-loader.cjs' },
+              {
+                test: /a\.js$/,
+                include: /node_modules/,
+                loader: './lose-binding-loader.cjs',
+              },
             ],
-            files: unusedImportApp(unusedImport),
+            files: dependencyApp(unusedImport),
           }),
         ).rejects.toMatchObject({
           name: 'DanglingNameError',
           names: { 'entry.mjs': ['helper'] },
+        })
+      },
+      timeout,
+    )
+
+    /** As seroval's `const RETURN = () => T`: a free name read in its own source, used as text. */
+    const freeReadModule = `const RETURN = () => T
+export const arrows = /=>/.test(RETURN.toString())
+`
+
+    test(
+      'a dependency module that reads a name free in its own source passes; the same code in the app is rejected',
+      async () => {
+        const app = await bundleApp({
+          bundler,
+          env: 'client',
+          minify: false,
+          entry: 'entry.js',
+          files: {
+            'entry.js': `export { arrows } from 'free'\n`,
+            'node_modules/free/package.json': `{ "name": "free", "type": "module", "main": "./index.js" }\n`,
+            'node_modules/free/index.js': freeReadModule,
+          },
+        })
+        expect(unboundNames(app.entry.code).has('T')).toBe(true)
+        expect((await app.run('return entry.arrows')).result).toBe(true)
+
+        await expect(
+          bundleApp({
+            bundler,
+            env: 'client',
+            minify: false,
+            entry: 'entry.js',
+            files: {
+              'entry.js': `export { arrows } from './free.js'\n`,
+              'free.js': freeReadModule,
+            },
+          }),
+        ).rejects.toMatchObject({
+          name: 'DanglingNameError',
+          names: { 'entry.mjs': ['T'] },
         })
       },
       timeout,

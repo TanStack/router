@@ -918,9 +918,9 @@ export interface DescribeBuildInput {
   /** Reads the source map of each chunk (`<file>.map`). */
   sourcemap?: boolean
   /**
-   * webpack and Rspack: the modules as the bundler parsed them
-   * (`recordParsedModules`), the evidence that attributes a dangling read
-   * to the bundler (see `checkDanglingNames`).
+   * webpack and Rspack: the modules of the output (`recordParsedModules`),
+   * the evidence that tells a dependency's own free read (see
+   * `checkDanglingNames`).
    */
   parsedModules?: ParsedModules
   warnings: Array<string>
@@ -1062,24 +1062,22 @@ export async function describeBuild(
  * Every chunk is checked as the build emitted it, minified or not: that is
  * the artifact the configuration ships (SPEC G8).
  *
- * A dangling read the bundler made itself is not the compiler's
- * (`bundlerLostBinding`): webpack and Rspack leave unused code inside a
- * module to their minifier, and in that code, unminified, both lose
- * bindings the module had. Rspack (2.2.7) drops the import bindings the
- * unused code of a concatenated module reads, where webpack declares them
- * (`var helper;` after an "unused harmony import specifier" comment): its
- * unminified output of `@tanstack/react-router` alone reads `useRouter`,
- * `jsx`... that way. Both (webpack 5.110) remove the declarations after an
- * unconditional `return` they computed ("removed by dead control flow")
- * but keep the function declarations there, which read them: webpack's
- * output of Vue's `initCustomFormatter` reads `keywordStyle`... that way.
- * Such a read is attributed to the bundler only on evidence: it lies in
- * the bundler's region of a module (`moduleRegions`), and that module, as
- * the bundler parsed it (after its loaders and plugins: `parsedModules`,
- * recorded by `recordParsedModules`), reads the name and binds every read
- * of it. A module that reads a name it does not bind (e.g. a compiler that
- * lost the binding, or a dependency's own unbound read such as seroval's
- * `() => T`) is reported, and so is every read without that evidence.
+ * Which dangling reads count (ruling "dangling-name attribution",
+ * 2026-10-20): every one, except a name a dependency already reads free in
+ * its own source (valid third-party JavaScript, e.g. seroval's
+ * `const RETURN = () => T`, used through `RETURN.toString()`). The
+ * exception needs the build's evidence (`dependencyReadsFree`): the read
+ * lies in the bundler's region of a module (`moduleRegions`) that is a
+ * dependency (a file outside the app, or under a `node_modules` directory),
+ * and that module's original source on disk reads the name without binding
+ * it anywhere. So a binding a compiler or the bundler lost still counts
+ * (the original source binds or imports the name: e.g. Rspack 2.2.7, which
+ * drops the import bindings the unused code of a concatenated module reads,
+ * where webpack declares them), as does every read in the app's own modules
+ * (user and route code), in a module without a file (virtual chunks and
+ * support modules) and every read without that evidence (Vite's output, or
+ * a build that does not record its modules: `recordParsedModules`). Nothing
+ * is excepted per package or by name.
  */
 async function checkDanglingNames(
   bundler: Exclude<Bundler, 'esbuild'>,
@@ -1090,13 +1088,18 @@ async function checkDanglingNames(
     import('./validate-module'),
     import('./known-globals'),
   ])
-  /** What each module the bundler parsed reads, by its source. */
-  const parsed = new Map<string, NameReads>()
-  const readsOf = (source: string) => {
-    let reads = parsed.get(source)
+  /** What the original source of each dependency reads, by resource. */
+  const originals = new Map<string, Promise<NameReads | undefined>>()
+  const originalReads = (resource: string) => {
+    let reads = originals.get(resource)
     if (!reads) {
-      reads = nameReads(source)
-      parsed.set(source, reads)
+      reads = readFile(resource, 'utf8').then(
+        (source) => nameReads(source),
+        () => undefined,
+      )
+      // A source the parser rejects gives no evidence either
+      reads = reads.catch(() => undefined)
+      originals.set(resource, reads)
     }
     return reads
   }
@@ -1106,15 +1109,26 @@ async function checkDanglingNames(
       bundler === 'vite' || !evidence.parsedModules
         ? []
         : moduleRegions(chunk.code, evidence.root, evidence.parsedModules)
-    const names = [...unboundReads(chunk.code)]
-      .filter(
-        ([name, starts]) =>
-          !clientGlobals.has(name) &&
-          !starts.every((start) =>
-            bundlerLostBinding(name, start, regions, evidence, readsOf),
-          ),
-      )
-      .map(([name]) => name)
+    const names: Array<string> = []
+    for (const [name, starts] of unboundReads(chunk.code)) {
+      if (clientGlobals.has(name)) {
+        continue
+      }
+      for (const start of starts) {
+        if (
+          !(await dependencyReadsFree(
+            name,
+            start,
+            regions,
+            evidence,
+            originalReads,
+          ))
+        ) {
+          names.push(name)
+          break
+        }
+      }
+    }
     if (names.length > 0) {
       dangling[chunk.fileName] = names
     }
@@ -1125,9 +1139,9 @@ async function checkDanglingNames(
 }
 
 interface ModuleEvidence {
-  /** The build's context: what readable module identifiers are relative to. */
+  /** The build's context (the app): what readable module identifiers are relative to. */
   root: string
-  /** The modules as the bundler parsed them (`recordParsedModules`). */
+  /** The modules of the output (`recordParsedModules`). */
   parsedModules?: ParsedModules
 }
 
@@ -1187,67 +1201,52 @@ function moduleRegions(
   return regions
 }
 
+/** Whether a module's file is a dependency's: outside the app, or in `node_modules`. */
+function isDependency(resource: string, root: string) {
+  const relative = path.relative(root, resource)
+  return (
+    relative.startsWith('..') ||
+    path.isAbsolute(relative) ||
+    relative.split(/[\\/]/).includes('node_modules')
+  )
+}
+
 /**
- * Whether the read of `name` at `start` lost its binding in the bundler
- * (see `checkDanglingNames`): it lies in the region of a module whose code,
- * as the bundler parsed it, reads `name` and binds every read of it.
+ * Whether the read of `name` at `start` is a dependency's own free read (see
+ * `checkDanglingNames`): it lies in the region of a dependency's module
+ * whose original source reads `name` and binds it nowhere.
  */
-function bundlerLostBinding(
+async function dependencyReadsFree(
   name: string,
   start: number,
   regions: Array<ModuleRegion>,
   evidence: ModuleEvidence,
-  readsOf: (source: string) => NameReads,
+  originalReads: (resource: string) => Promise<NameReads | undefined>,
 ) {
-  const region = regions.find(
+  const resource = regions.find(
     (candidate) => candidate.start <= start && start < candidate.end,
-  )
-  const source =
-    region?.resource === undefined
-      ? undefined
-      : evidence.parsedModules?.sources.get(region.resource)
-  if (source === undefined) {
+  )?.resource
+  if (resource === undefined || !isDependency(resource, evidence.root)) {
     return false
   }
-  const reads = readsOf(source)
-  return reads.bound.has(name) && !reads.unbound.has(name)
+  const reads = await originalReads(resource)
+  return (
+    reads !== undefined && reads.unbound.has(name) && !reads.bound.has(name)
+  )
 }
 
 /**
- * The modules of a webpack or Rspack build as the bundler parsed them (after
- * their loaders and plugins), recorded by `recordParsedModules`: the
- * evidence the dangling-name check of `describeBuild` reads
- * (`parsedModules`).
+ * The modules of a webpack or Rspack build's output, recorded by
+ * `recordParsedModules`: the evidence the dangling-name check of
+ * `describeBuild` reads (`parsedModules`).
  */
 export interface ParsedModules {
-  /** Code of each module, by resource path. */
-  sources: Map<string, string>
   /** Resource path of each module of the output, by module id. */
   resourceById: Map<string, string>
 }
 
-interface RecordedModule {
-  resource?: string
-  originalSource?: () => { source: () => string | Buffer } | null | undefined
-}
-
 interface RecordingCompiler {
   hooks: {
-    compilation: {
-      tap: (
-        name: string,
-        callback: (compilation: {
-          hooks: {
-            finishModules: {
-              tap: (
-                name: string,
-                callback: (modules: Iterable<RecordedModule>) => void,
-              ) => void
-            }
-          }
-        }) => void,
-      ) => void
-    }
     done: {
       tap: (
         name: string,
@@ -1265,25 +1264,15 @@ interface RecordingCompiler {
 }
 
 /**
- * A webpack or Rspack plugin recording each module as the bundler parsed it
- * into `parsed` (`ParsedModules`), for a production client build's
- * dangling-name check (`describeBuild`'s `parsedModules`).
+ * A webpack or Rspack plugin recording the modules of the output into
+ * `parsed` (`ParsedModules`), for a production client build's dangling-name
+ * check (`describeBuild`'s `parsedModules`).
  */
 export function recordParsedModules(parsed: ParsedModules) {
   const name = 'test:record-parsed-modules'
   return {
     name,
     apply(compiler: RecordingCompiler) {
-      compiler.hooks.compilation.tap(name, (compilation) => {
-        compilation.hooks.finishModules.tap(name, (modules) => {
-          for (const module of modules) {
-            const source = module.originalSource?.()?.source()
-            if (module.resource && source !== undefined) {
-              parsed.sources.set(module.resource, String(source))
-            }
-          }
-        })
-      })
       compiler.hooks.done.tap(name, (stats) => {
         const { modules = [] } = stats.toJson({
           all: false,
@@ -1302,7 +1291,7 @@ export function recordParsedModules(parsed: ParsedModules) {
 
 /** An empty `ParsedModules`, for `recordParsedModules` to fill. */
 export function parsedModules(): ParsedModules {
-  return { sources: new Map(), resourceById: new Map() }
+  return { resourceById: new Map() }
 }
 
 /**
