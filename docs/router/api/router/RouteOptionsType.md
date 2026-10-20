@@ -133,15 +133,32 @@ type loader =
       staleReloadMode?: 'background' | 'blocking'
     }
 
-type DehydrateFn = (opts: HandlerOpts & { data: TData }) => TWire // server; TWire must be serializable
-type HydrateFn = (opts: HandlerOpts & { data: TWire | TData }) => TData // client; data is TWire when dehydrate is a function
+type CodecOpts = Omit<
+  HandlerOpts,
+  'navigate' | 'buildLocation' | 'abortController' | 'parentMatchPromise'
+>
+type DehydrateFn = (opts: CodecOpts & { data: TData }) => TWire | Promise<TWire> // server; TWire must be serializable
+type HydrateFn = (
+  opts: CodecOpts & { data: TWire | TData },
+) => TData | Promise<TData> // client; data is TWire when dehydrate is a function
 type RevalidateFn = (
   opts: HandlerOpts & { prev: TData | undefined },
 ) => Promise<TData | Redirect> | TData | Redirect
 ```
 
 - `handler` is the lifecycle function. It is required in the object form and receives the same options as the function form.
-- `dehydrate` and `hydrate` control what the server sends to the client during SSR. `dehydrate: true` sends the handler's result; `dehydrate: false` keeps it on the server, and the client runs the handler again during hydration; a `dehydrate` function receives the handler's options plus `data` (the awaited result) and returns the wire value; `hydrate` receives the options plus `data` (the wire value when `dehydrate` is a function, otherwise the full result) and returns the value the app uses on the client. Defaults: `context` is not sent, `beforeLoad` and `loader` are. A sent value must be serializable. TanStack Start type-checks this, and so does router-only SSR when `Register` has `ssr: true` (see [SSR](../../guide/ssr.md#what-crosses-the-wire)). Routes with `ssr: false` are not checked.
+- `dehydrate` and `hydrate` control what the server sends to the client during SSR. `dehydrate: true` sends the handler's result; `dehydrate: false` keeps it on the server, and the client runs the handler again during hydration. Both transforms receive route `context`, passive lifecycle metadata and `data`. Navigation functions, abort controllers and parent-match work are outside the codec API. `dehydrate` receives the awaited handler result and returns the wire value; `hydrate` receives that wire value, or the full result with `dehydrate: true`, and returns the client value. Defaults: `context` is not sent, `beforeLoad` and `loader` are. A sent value must be serializable. TanStack Start type-checks this, and so does router-only SSR when `Register` has `ssr: true` (see [SSR](../../guide/ssr.md#what-crosses-the-wire)). Routes with `ssr: false` are not checked.
+  `context` contains the context available to the corresponding `handler`; `data` contains the lifecycle's result or wire value. The supported metadata depends on the lifecycle:
+
+| Lifecycle    | Codec metadata, in addition to `data` and `context` |
+| ------------ | --------------------------------------------------- |
+| All three    | `params`, `location`, `cause`, `preload`            |
+| `context`    | `deps`, `matches`, `routeId`                        |
+| `beforeLoad` | `search`, `matches`, `routeId`                      |
+| `loader`     | `deps`, `route`                                     |
+
+TanStack Start also provides `serverContext` on the server; it is `undefined` on the client.
+
 - `revalidate` exists on `context` only; `staleReloadMode` on `loader` only.
 - A `dehydrate` function requires `hydrate`. `hydrate` requires `dehydrate` (`true` or a function); without a `dehydrate` key, or with `dehydrate: false`, `hydrate` is rejected.
 - Write the keys in this order: `handler`, `dehydrate`, `hydrate`, then `revalidate` or `staleReloadMode`. The parameters of the later keys are inferred from the earlier ones. The [`create-route-property-order`](../../eslint/create-route-property-order.md) lint rule checks the order and can fix it. TypeScript does not check the order. A wrong order shows up as a type error only when it breaks that inference, and the error rarely says so:

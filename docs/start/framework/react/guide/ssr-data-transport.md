@@ -79,8 +79,12 @@ If a `context` handler is async and its result is not sent, the client awaits it
 
 When the value the app needs is not the value you want on the wire, write the two halves yourself:
 
-- `dehydrate` runs on the server after the handler settles. It receives the same options the handler received plus `data`, the handler's awaited result, and returns the wire value. The wire value is what has to be serializable. A `dehydrate` whose return type is `unknown` is rejected in a Start app; give it a concrete return type.
-- `hydrate` runs on the client during hydration. It receives the same options plus `data`, the wire value, and returns the value the app uses.
+- `dehydrate` runs on the server after the handler settles. It receives route `context`, passive lifecycle metadata and `data`, the handler's awaited result, and returns the wire value. The wire value is what has to be serializable. A `dehydrate` whose return type is `unknown` is rejected in a Start app; give it a concrete return type.
+- `hydrate` runs on the client during hydration. It receives route `context`, passive lifecycle metadata and `data`, the wire value, and returns the value the app uses.
+
+Both functions transform values and may be async. Their supported API includes `data`, `context`, `params`, `location`, `cause` and `preload`. Context codecs also receive `deps`, `matches` and `routeId`; `beforeLoad` codecs receive `search`, `matches` and `routeId`; loader codecs receive `deps` and `route`. TanStack Start provides `serverContext` on the server; it is `undefined` on the client. Navigation, cancellation and waiting for parent loaders belong in `handler`.
+
+`context` contains the context available to the corresponding `handler`; `data` contains the lifecycle's result or wire value.
 
 The first client render uses what `hydrate` returns. On a route with `ssr: true` that value must render the same HTML as the server's value, otherwise you get a [hydration mismatch](./hydration-errors.md). When it cannot, because `hydrate` adds a client-only field or returns another shape, add `ssr: 'data-only'` to the route, as the examples with client-only data below do.
 

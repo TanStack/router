@@ -878,6 +878,11 @@ export interface LifecycleNoWire {
   readonly '~lifecycleNoWire': true
 }
 
+type LifecycleCodecContext<TCtx> = Omit<
+  TCtx,
+  'navigate' | 'buildLocation' | 'abortController' | 'parentMatchPromise'
+>
+
 /**
  * Client-side reconstruction. `data` is the AWAITED wire value when a `dehydrate`
  * function is present (TWire is inferred from its return, sync or async), otherwise
@@ -893,17 +898,19 @@ export interface LifecycleNoWire {
 // `[TWire] extends [LifecycleNoWire]` also holds for `any` and `never`; the inner
 // `[TWire] extends [string]` tells those two (they pass it) from the sentinel (it
 // does not), so a real wire costs one check. LifecycleHydrateOrderGuard does the same.
-export type LifecycleHydrateContext<TCtx, TFn, TWire> = TCtx & {
-  data: [TWire] extends [LifecycleNoWire]
-    ? [TWire] extends [string]
-      ? TWire
-      : LifecycleHandlerData<TFn>
-    : Awaited<TWire>
-}
+export type LifecycleHydrateContext<TCtx, TFn, TWire> =
+  LifecycleCodecContext<TCtx> & {
+    data: [TWire] extends [LifecycleNoWire]
+      ? [TWire] extends [string]
+        ? TWire
+        : LifecycleHandlerData<TFn>
+      : Awaited<TWire>
+  }
 
-export type LifecycleDehydrateContext<TCtx, TFn> = TCtx & {
-  data: LifecycleHandlerData<TFn>
-}
+export type LifecycleDehydrateContext<TCtx, TFn> =
+  LifecycleCodecContext<TCtx> & {
+    data: LifecycleHandlerData<TFn>
+  }
 
 export type RouteContextRevalidateContext<
   TCtx,
@@ -1112,7 +1119,9 @@ export type RouteContextOption<
       handler: (ctx: TCtx) => LifecycleHandlerResult<TRouteContextFn>
       /**
        * Server-side transform of `data` (the handler's awaited result) into the value sent to the
-       * client; may be async. The returned value must be serializable (checked in Start apps,
+       * client; may be async. Supports route context and passive lifecycle metadata.
+       * Navigation functions, abort controllers and parent-match work are outside the codec API.
+       * The returned value must be serializable (checked in Start apps,
        * which also reject a return typed `unknown`). A `dehydrate` function requires `hydrate`.
        * Parameters are inferred: do not annotate them. This is a transform, not a lifecycle:
        * throwing `redirect` or `notFound` here is an error.
@@ -1128,8 +1137,8 @@ export type RouteContextOption<
         TContextWire
       >
       /**
-       * Client-side reconstruction during hydration; `data` is the awaited `dehydrate` result and the
-       * rest of the lifecycle ctx is available; may be async. Write `dehydrate` before `hydrate`.
+       * Client-side reconstruction during hydration; `data` is the awaited `dehydrate` result and route
+       * context and passive lifecycle metadata are available; may be async. Write `dehydrate` before `hydrate`.
        * `hydrate` may return a different type than `handler`: the lifecycle's data is then the union of
        * both, narrowed on a literal discriminant written on both sides (`as const`). The discriminant
        * says which function produced the value (for example `hydrated: false` in `handler`, `true`
@@ -1184,8 +1193,8 @@ export type RouteContextOption<
        */
       dehydrate: true
       /**
-       * Optional client-side step during hydration; `data` is the handler's full awaited value and the
-       * rest of the lifecycle ctx is available; may be async. Write `dehydrate` before `hydrate`.
+       * Optional client-side step during hydration; `data` is the handler's full awaited value and route
+       * context and passive lifecycle metadata are available; may be async. Write `dehydrate` before `hydrate`.
        * `hydrate` may return a different type than `handler`: the lifecycle's data is then the union of
        * both, narrowed on a literal discriminant written on both sides (`as const`). The discriminant
        * says which function produced the value (for example `hydrated: false` in `handler`, `true`
@@ -1284,7 +1293,9 @@ export type RouteBeforeLoadOption<
       handler: (ctx: TCtx) => LifecycleHandlerResult<TBeforeLoadFn>
       /**
        * Server-side transform of `data` (the handler's awaited result) into the value sent to the
-       * client; may be async. The returned value must be serializable (checked in Start apps,
+       * client; may be async. Supports route context and passive lifecycle metadata.
+       * Navigation functions, abort controllers and parent-match work are outside the codec API.
+       * The returned value must be serializable (checked in Start apps,
        * which also reject a return typed `unknown`). A `dehydrate` function requires `hydrate`.
        * Parameters are inferred: do not annotate them. This is a transform, not a lifecycle:
        * throwing `redirect` or `notFound` here is an error.
@@ -1300,8 +1311,8 @@ export type RouteBeforeLoadOption<
         TBeforeLoadWire
       >
       /**
-       * Client-side reconstruction during hydration; `data` is the awaited `dehydrate` result and the
-       * rest of the lifecycle ctx is available; may be async. Write `dehydrate` before `hydrate`.
+       * Client-side reconstruction during hydration; `data` is the awaited `dehydrate` result and route
+       * context and passive lifecycle metadata are available; may be async. Write `dehydrate` before `hydrate`.
        * `hydrate` may return a different type than `handler`: the lifecycle's data is then the union of
        * both, narrowed on a literal discriminant written on both sides (`as const`). The discriminant
        * says which function produced the value (for example `hydrated: false` in `handler`, `true`
@@ -1345,8 +1356,8 @@ export type RouteBeforeLoadOption<
        */
       dehydrate: true
       /**
-       * Optional client-side step during hydration; `data` is the handler's full awaited value and the
-       * rest of the lifecycle ctx is available; may be async. Write `dehydrate` before `hydrate`.
+       * Optional client-side step during hydration; `data` is the handler's full awaited value and route
+       * context and passive lifecycle metadata are available; may be async. Write `dehydrate` before `hydrate`.
        * `hydrate` may return a different type than `handler`: the lifecycle's data is then the union of
        * both, narrowed on a literal discriminant written on both sides (`as const`). The discriminant
        * says which function produced the value (for example `hydrated: false` in `handler`, `true`
@@ -1472,7 +1483,9 @@ export type RouteLoaderOption<
       handler: (ctx: TCtx) => LifecycleHandlerResult<TLoaderFn>
       /**
        * Server-side transform of `data` (the handler's awaited result) into the value sent to the
-       * client; may be async. The returned value must be serializable (checked in Start apps,
+       * client; may be async. Supports route context and passive lifecycle metadata.
+       * Navigation functions, abort controllers and parent-match work are outside the codec API.
+       * The returned value must be serializable (checked in Start apps,
        * which also reject a return typed `unknown`). A `dehydrate` function requires `hydrate`.
        * Parameters are inferred: do not annotate them. This is a transform, not a lifecycle:
        * throwing `redirect` or `notFound` here is an error.
@@ -1488,8 +1501,8 @@ export type RouteLoaderOption<
         TLoaderWire
       >
       /**
-       * Client-side reconstruction during hydration; `data` is the awaited `dehydrate` result and the
-       * rest of the lifecycle ctx is available; may be async. Write `dehydrate` before `hydrate`.
+       * Client-side reconstruction during hydration; `data` is the awaited `dehydrate` result and route
+       * context and passive lifecycle metadata are available; may be async. Write `dehydrate` before `hydrate`.
        * `hydrate` may return a different type than `handler`: the lifecycle's data is then the union of
        * both, narrowed on a literal discriminant written on both sides (`as const`). The discriminant
        * says which function produced the value (for example `hydrated: false` in `handler`, `true`
@@ -1539,8 +1552,8 @@ export type RouteLoaderOption<
        */
       dehydrate: true
       /**
-       * Optional client-side step during hydration; `data` is the handler's full awaited value and the
-       * rest of the lifecycle ctx is available; may be async. Write `dehydrate` before `hydrate`.
+       * Optional client-side step during hydration; `data` is the handler's full awaited value and route
+       * context and passive lifecycle metadata are available; may be async. Write `dehydrate` before `hydrate`.
        * `hydrate` may return a different type than `handler`: the lifecycle's data is then the union of
        * both, narrowed on a literal discriminant written on both sides (`as const`). The discriminant
        * says which function produced the value (for example `hydrated: false` in `handler`, `true`

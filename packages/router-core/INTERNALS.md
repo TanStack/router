@@ -1484,6 +1484,19 @@ alternatives. Unresolved choices are separated below.
   use normal-load recovery. Unsent values remain allowed on rendered SSR routes
   under the same-rendered-output requirement; prohibiting them would prohibit
   ordinary deterministic context.
+- Codec types expose data, route context and the corresponding lifecycle's
+  passive metadata. Navigation functions, abort controllers and parent-match work
+  are outside that API. Runtime calls may pass existing lifecycle arguments;
+  filtering extra fields would copy metadata without changing the supported API.
+  Handler and context revalidation arguments keep their lifecycle capabilities.
+  A transported loader transform belongs to its hydration attempt and stays out
+  of reusable flight discovery. When a navigation supersedes it, the new load
+  runs its normal handler. Successfully reconstructed
+  data can still transfer through the hydration handoff or recovery cache.
+  A pending omitted handler that depends on a private parent result stays out of
+  flight discovery too: a replacement must use its new parent's snapshot.
+  Existing flight identity propagates this restriction without separate state.
+  A settled or loaderless immediate parent ends that dependency.
 - Hydration does not duplicate client error installation, redirect navigation,
   not-found selection, or descendant reduction. A
   non-terminal failure creates a pending continuation boundary and hands work
@@ -1495,12 +1508,13 @@ alternatives. Unresolved choices are separated below.
   non-root cut can still transfer through the handoff. The existing preflight
   owner suppresses `onError` and destination resolution during hydration;
   resolving a discarded redirect would execute destination callbacks too early.
-  An ordinary load adopting that flight after supersession must regain normal
-  error handling and destination resolution.
+  An ordinary load adopting an omitted handler's flight after supersession must
+  regain normal error handling and destination resolution.
 - Loader reruns and loader transforms start in parallel after serial
   context/guard reconstruction. Serializing them would add a latency waterfall.
-  They reuse `loadResource` and `getParentSnapshot`, including flight ownership
-  and real parent promises. They do not use `createLoaderTask` freshness,
+  Both reuse `loadResource` and ordered parent snapshots, including private
+  ownership for transforms and real parent promises for omitted handlers.
+  Neither uses `createLoaderTask` freshness,
   `shouldReload`, background reload, or pending decisions. Settlement writes
   data/timestamps directly: a transform preserves server time and terminal
   state, while an in-place loader receives a new timestamp. Only matches with

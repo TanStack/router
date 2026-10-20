@@ -2362,7 +2362,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     if (!isCurrent()) {
       return
     }
-    const committed: Array<AnyRouteMatch> = []
+    const committed: Array<WorkMatch> = []
     let pendingBoundary: number | undefined
     let verifiedAssetEnd = 0
     let isTerminal = false
@@ -2647,7 +2647,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       // A transported result runs only its transform; an absent one re-runs
       // the loader unless the match is terminal.
       if (loader && (transported ? loader.hydrate : !terminal)) {
-        loads[index] = parent = loadResource(
+        const outcome = loadResource(
           router,
           lane,
           match,
@@ -2655,7 +2655,22 @@ export async function hydrate(router: AnyRouter): Promise<void> {
           (ctx) => step(loader, dehydrated, 'l', ctx),
           parent && Promise.resolve(parent),
           laneOptions,
-        ).then((result) => {
+        )
+        const previous = committed[index - 1]
+        const flight = match._flight
+        if (
+          flight &&
+          (transported ||
+            (isPromise(parent) &&
+              (!previous?._flight ||
+                router._flights?.get(previous.id) !== previous._flight))) &&
+          router._flights?.get(match.id) === flight
+        ) {
+          // Transforms and work depending on them belong to this hydration.
+          // Their leases remain private; a new load runs its own handlers.
+          router._flights!.delete(match.id)
+        }
+        loads[index] = parent = outcome.then((result) => {
           if (isCurrent() && index < committed.length) {
             // A transform keeps the server's `updatedAt`.
             if (result[0 /* kind */]) {
