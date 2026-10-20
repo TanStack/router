@@ -19,6 +19,7 @@ const {
 const {
   BaseRootRoute,
   BaseRoute,
+  createControlledPromise,
   RouterCore,
   createNonReactiveMutableStore,
   createNonReactiveReadonlyStore,
@@ -42,11 +43,19 @@ const workloads = [
   'all-active-sync',
   'all-active-async',
   'alternating',
+  'rerun-sync',
+  'rerun-async',
+  'adopt',
   'client-sync',
   'client-async',
 ] as const
 type Workload = (typeof workloads)[number]
-type Calls = { loaders: number; hydrates: number }
+type Calls = {
+  loaders: number
+  hydrates: number
+  gate?: ReturnType<typeof createControlledPromise<void>>
+  entered?: ReturnType<typeof createControlledPromise<void>>
+}
 
 const getStoreConfig: GetStoreConfig = (options) => {
   if (isServer ?? options.isServer) {
@@ -80,9 +89,24 @@ function createRouter(
   calls: Calls,
 ): AnyRouter {
   const loaderAt = (index: number) => {
-    const handler = () => {
+    const handler = (options: {
+      parentMatchPromise?: Promise<{ loaderData: unknown }>
+    }) => {
       calls.loaders++
-      return workload === 'client-async' ? Promise.resolve(index) : index
+      if (workload === 'adopt' && calls.gate) {
+        if (calls.loaders === depth) {
+          calls.entered!.resolve()
+        }
+        return index
+          ? options.parentMatchPromise!.then(
+              (parent) => Number(parent.loaderData) + 1,
+            )
+          : calls.gate.then(() => 0)
+      }
+      return workload.endsWith('-async') ? Promise.resolve(index) : index
+    }
+    if (workload.startsWith('rerun-') || workload === 'adopt') {
+      return { handler, dehydrate: false as const }
     }
     if (!isActive(workload, index)) {
       return handler
@@ -192,11 +216,16 @@ for (const depth of [4, 16]) {
         const previousBootstrap = window.$_TSR
         const previousRouter = self.__TSR_ROUTER__
         const client = workload.startsWith('client-')
+        const rerun = workload.startsWith('rerun-') || workload === 'adopt'
         const scripts = client ? undefined : await serialize(depth, workload)
         let sample: { router: AnyRouter; calls: Calls } | undefined
         const before = () => {
           assert.equal(sample, undefined)
-          const calls = { loaders: 0, hydrates: 0 }
+          const calls: Calls = { loaders: 0, hydrates: 0 }
+          if (workload === 'adopt') {
+            calls.gate = createControlledPromise<void>()
+            calls.entered = createControlledPromise<void>()
+          }
           const router = createRouter(depth, workload, false, calls)
           sample = { router, calls }
           window.$_TSR = scripts ? replay(scripts) : previousBootstrap
@@ -204,6 +233,14 @@ for (const depth of [4, 16]) {
         const run = async () => {
           if (client) {
             await sample!.router.load()
+          } else if (workload === 'adopt') {
+            const current = sample!
+            const hydration = hydrate(current.router)
+            await current.calls.entered
+            const load = current.router.load({ sync: true })
+            await hydration
+            current.calls.gate!.resolve()
+            await load
           } else {
             await hydrate(sample!.router)
           }
@@ -217,10 +254,10 @@ for (const depth of [4, 16]) {
           try {
             const matches = current.router.state.matches
             assert.equal(matches.length, depth)
-            assert.equal(current.calls.loaders, client ? depth : 0)
+            assert.equal(current.calls.loaders, client || rerun ? depth : 0)
             assert.equal(
               current.calls.hydrates,
-              client
+              client || rerun
                 ? 0
                 : matches.filter((_, index) => isActive(workload, index))
                     .length,
@@ -229,7 +266,7 @@ for (const depth of [4, 16]) {
               assert.equal(match.status, 'success')
               assert.equal(
                 match.loaderData,
-                index + Number(!client && isActive(workload, index)),
+                index + Number(!client && !rerun && isActive(workload, index)),
               )
             }
             assert.equal(
