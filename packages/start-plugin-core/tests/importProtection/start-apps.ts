@@ -33,13 +33,18 @@ import type { PluginOption } from 'vite'
 export {
   expectReportFrame,
   expectViolationsAt,
+  locatedImporters,
   relevantViolations,
   reportedViolations,
   violationLabel,
   violationReports,
   violationTexts,
 } from './violation-report'
-export type { ExpectedViolation, ReportedViolation } from './violation-report'
+export type {
+  AppSources,
+  ExpectedViolation,
+  ReportedViolation,
+} from './violation-report'
 
 export interface ProtectedDevServerOptions {
   /** Serve actual dependencies and an HTTP origin for client consumers. */

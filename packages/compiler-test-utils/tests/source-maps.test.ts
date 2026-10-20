@@ -135,6 +135,34 @@ describe.each([
   })
 })
 
+// A dev server names a module's source relative to the module (`fail.ts`
+// for `/src/fail.ts`): the source map specification resolves it against
+// the map's URL. The name alone does not name `src/fail.ts` (SPEC §5.7).
+test('a source relative to its module names the file once resolved against the module', async () => {
+  const { code, map } = await transformWithOxc(source, '/app/src/fail.ts', {
+    lang: 'ts',
+    sourcemap: true,
+  })
+  const relative = { ...map!, sources: ['fail.ts'] }
+  const generated = positionAt(code, tokenOffsets(code, { throw: true })[0]!)
+  const expected = { file: 'src/fail.ts', root: '/app', line: throwLine }
+  expectMapsTo(relative, generated, {
+    ...expected,
+    mapUrl: '/app/src/fail.ts?v=1',
+  })
+  expectMapsTo(relative, generated, {
+    ...expected,
+    mapUrl: 'file:///app/src/fail.ts',
+  })
+  expect(() => expectMapsTo(relative, generated, expected)).toThrow()
+  expect(() =>
+    expectMapsTo(relative, generated, {
+      ...expected,
+      mapUrl: '/app/lib/fail.js',
+    }),
+  ).toThrow()
+})
+
 test('a CRLF source maps to the lines an editor shows', async () => {
   const crlf = source.replaceAll('\n', '\r\n')
   const { code, map } = await transformWithOxc(crlf, '/app/src/fail.ts', {

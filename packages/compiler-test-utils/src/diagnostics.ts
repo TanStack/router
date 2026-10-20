@@ -31,7 +31,8 @@
  *   quote the source (full, cropped or highlighted), nor the lines quoting
  *   `source` whole or cropped.
  * - Reported locations (SPEC J6.5, §5.7, §5.14): `parseLocation(text)`,
- *   `importLines(file, source, specifier)`, `locationMismatch`,
+ *   `importLines(file, source, specifier)`,
+ *   `importedBindingUses(file, source, specifier)`, `locationMismatch`,
  *   `isRelevantLocation`, `expectRelevantLocation` (a `file:line:column` a
  *   tool reports is one of the relevant places: a genuine use, any line of
  *   the original import of the specifier, another accepted place such as a
@@ -44,13 +45,16 @@
  *   asymmetric matcher) and `expectEnvRestrictionThrow(run, env)`: J4.10.
  *
  * Accepted spellings (any one suffices):
- * - File: an absolute path, a `file://` URL, a Vite `/@fs/` URL, a
- *   `webpack://<namespace>/` source, or any trailing run of whole path
- *   segments of the file (`src/routes/posts.tsx`, `routes/posts.tsx`,
- *   `posts.tsx`), with `/` or `\` separators, a query or a position suffix.
- *   Segments may hold bracketed groups (`(group).tsx`, `[id].tsx`).
- *   A trailing run that also names a file of `distinctFrom` is ambiguous and
- *   does not count.
+ * - File (SPEC §5.7, "absolute or project-relative if unambiguous"): an
+ *   absolute path, a `file://` URL, a Vite `/@fs/` URL, the project-relative
+ *   path (`src/routes/posts.tsx`, also after `./` or a source map's `../`,
+ *   or as the path of a `webpack://<namespace>/` source), or a longer
+ *   relative path ending with it, with `/` or `\` separators, a query or a
+ *   position suffix. A part of the project-relative path alone
+ *   (`routes/posts.tsx`, `posts.tsx`) does not name the file: the user
+ *   cannot tell which file it is. Segments may hold bracketed groups
+ *   (`(group).tsx`, `[id].tsx`). A spelling that also names a file of
+ *   `distinctFrom` is ambiguous and does not count.
  * - Position: the file followed by `:line`, `:line:column`, `(line,column)`
  *   or ` line:column`; a code frame line for `line` marked with `>` or
  *   followed by a `^` marker (the marker gives the column when `source` is
@@ -91,7 +95,8 @@ export interface DiagnosticExpectation {
   severity?: Severity | Array<Severity>
   /**
    * The file the diagnostic must name: absolute, or relative to `root`
-   * (relative without `root`: matched as trailing path segments).
+   * (relative without `root`: its project-relative path). See "Accepted
+   * spellings".
    */
   file?: string
   /** The project root `file` is relative to. */
@@ -526,27 +531,50 @@ function realOf(file: string | undefined) {
   }
 }
 
-/** Whether a normalised token denotes `file` (see the file header). */
+/**
+ * The project-relative path of `file` (posix separators): `file` itself
+ * when it is relative (it is relative to `root`, or to the unknown project
+ * root), its path from `root` otherwise; unknown for an absolute `file`
+ * without `root`.
+ */
+function projectRelativeOf(file: string, root: string | undefined) {
+  const posix = path.posix.normalize(file.replaceAll('\\', '/'))
+  if (!path.posix.isAbsolute(posix) && !/^[A-Za-z]:\//.test(posix)) {
+    return posix.replace(/^(?:\.\/)+/, '')
+  }
+  if (root === undefined) {
+    return undefined
+  }
+  const relative = path.posix.relative(root.replaceAll('\\', '/'), posix)
+  return relative.startsWith('../') || path.posix.isAbsolute(relative)
+    ? undefined
+    : relative
+}
+
+/**
+ * Whether a normalised token denotes `file` (see the file header): the
+ * absolute path, or a relative path holding the whole project-relative
+ * path (SPEC §5.7). A trailing part of the project-relative path alone
+ * (`other.ts` or `routes/other.ts` for `src/routes/other.ts`) does not.
+ */
 function denotes(token: string, file: string, root: string | undefined) {
   if (!/[\w$)\]}]\.[\w]+$/.test(token) && !token.includes('/')) {
     return false
   }
   // Leading `./` and `../` (a source relative to its map) are dropped: the
-  // rest must be trailing segments of the file.
+  // rest must hold the project-relative path.
   const relative = path.posix.normalize(token).replace(/^(?:\.\.?\/)+/, '')
   const absolute = absoluteOf(file, root)
-  const fileRelative = path.posix
-    .normalize(file.replaceAll('\\', '/'))
-    .replace(/^(?:\.\/)+/, '')
+  const projectRelative = projectRelativeOf(file, root)
   const tokenIsAbsolute = token.startsWith('/') || /^[A-Za-z]:\//.test(token)
   const isSuffix = (whole: string, part: string) =>
     whole === part || whole.endsWith(`/${part}`)
   if (tokenIsAbsolute) {
+    const normal = path.posix.normalize(token)
     if (absolute !== undefined) {
-      const normal = path.posix.normalize(token)
       return normal === absolute || normal === realOf(absolute)
     }
-    return isSuffix(path.posix.normalize(token), fileRelative)
+    return projectRelative !== undefined && isSuffix(normal, projectRelative)
   }
   // `webpack://<namespace>/./src/a.ts` leaves `<namespace>/./src/a.ts` once
   // the scheme is gone; its path after the namespace is project-relative.
@@ -555,10 +583,11 @@ function denotes(token: string, file: string, root: string | undefined) {
   if (namespaced) {
     candidates.push(path.posix.normalize(namespaced[1]!))
   }
-  return candidates.some((candidate) =>
-    absolute !== undefined
-      ? isSuffix(absolute, candidate)
-      : isSuffix(fileRelative, candidate) || isSuffix(candidate, fileRelative),
+  return candidates.some(
+    (candidate) =>
+      projectRelative !== undefined &&
+      isSuffix(candidate, projectRelative) &&
+      (absolute === undefined || isSuffix(absolute, candidate)),
   )
 }
 
@@ -593,8 +622,9 @@ function fileTokens(text: string, file: string, options: FileOptions = {}) {
 }
 
 /**
- * Whether `text` names `file`: absolute, project-relative (to `root`) or as
- * trailing path segments, unambiguous among `distinctFrom`.
+ * Whether `text` names `file`: absolute or project-relative (to `root`; a
+ * relative `file` is project-relative), unambiguous among `distinctFrom`
+ * (SPEC §5.7). An absolute `file` without `root` is named absolute only.
  */
 export function mentionsFile(
   text: string,
@@ -880,6 +910,66 @@ export function importLines(
   return [...lines].sort((a, b) => a - b)
 }
 
+/**
+ * The 1-based positions in `source` (the module `file`) of every reference
+ * to a binding its static imports of `specifier` introduce (identifiers and
+ * JSX names, outside the import statements): the places a use of the
+ * import may be reported at, when a test does not name the one genuine use
+ * (any reference, type positions included).
+ */
+export function importedBindingUses(
+  file: string,
+  source: string,
+  specifier: string,
+): Array<{ line: number; column: number }> {
+  const { module, program } = parseSync(`module.${languageOf(file)}`, source, {
+    sourceType: 'module',
+  })
+  const imports = module.staticImports.filter(
+    (statement) => statement.moduleRequest.value === specifier,
+  )
+  const names = new Set(
+    imports.flatMap((statement) =>
+      statement.entries.map((entry) => entry.localName.value),
+    ),
+  )
+  const inImport = (offset: number) =>
+    imports.some(({ start, end }) => offset >= start && offset < end)
+  const offsets: Array<number> = []
+  const visit = (node: unknown) => {
+    if (Array.isArray(node)) {
+      node.forEach(visit)
+      return
+    }
+    if (node === null || typeof node !== 'object') {
+      return
+    }
+    const { type, name, start } = node as {
+      type?: unknown
+      name?: unknown
+      start?: unknown
+    }
+    if (
+      (type === 'Identifier' || type === 'JSXIdentifier') &&
+      typeof name === 'string' &&
+      names.has(name) &&
+      typeof start === 'number' &&
+      !inImport(start)
+    ) {
+      offsets.push(start)
+    }
+    for (const value of Object.values(node)) {
+      visit(value)
+    }
+  }
+  if (names.size > 0) {
+    visit(program)
+  }
+  return offsets
+    .sort((a, b) => a - b)
+    .map((offset) => diagnosticPosition(source, offset))
+}
+
 /** The places a reported location may relevantly be (`locationMismatch`). */
 export interface RelevantLocation {
   /** The module the report is about (e.g. an importer). */
@@ -918,9 +1008,9 @@ export interface RelevantLocation {
  * Why `reported` (`file:line:column`, `file:line` or `file`) is not a
  * relevant place for `expected`, or `undefined` when it is: one of the
  * genuine `uses`, any line of an original import of one of `imports`, one
- * of `others`, or (opt-in) the file without coordinates. The file may be
- * spelled any way that names it (§5.7); the line and column are of the
- * original source, never of compiled code.
+ * of `others`, or (opt-in) the file without coordinates. The file is named
+ * absolute or project-relative (`mentionsFile`, §5.7); the line and the
+ * column are 1-based, of the original source, never of compiled code.
  */
 export function locationMismatch(
   reported: string,
@@ -947,6 +1037,12 @@ export function locationMismatch(
     return expected.unlocated
       ? undefined
       : `${reported} has no line (no coordinates are allowed only where the location is unavailable)`
+  }
+  if (
+    location.line < 1 ||
+    (location.column !== undefined && location.column < 1)
+  ) {
+    return `${reported} is not a 1-based original line and column`
   }
   const atUse = (expected.uses ?? []).some(
     (use) =>

@@ -12,11 +12,13 @@ import { buildStart, startBundlers } from '../../build-harness'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import {
   factoryTopLevelCall,
+  locatedImporters,
   rejection,
   reportedViolations,
   serverFnFactoryApp,
   startProtectedDevServer,
 } from '../../importProtection/start-apps'
+import { originalLocation } from '../../importProtection/original-location'
 import {
   runRsbuildClient,
   runViteClient,
@@ -227,7 +229,8 @@ describe('Vite dev, behavior "error"', () => {
   }
 
   /**
-   * The violations loading the app's modules reports, or `'loaded'`. (Not
+   * The violations loading the app's modules reports, at relevant original
+   * places of their importers (`locatedImporters`), or `'loaded'`. (Not
    * the modules of `@tanstack/react-start/server`, which imports Start's
    * entries, which only Start's whole plugin provides.)
    */
@@ -235,11 +238,7 @@ describe('Vite dev, behavior "error"', () => {
     const server = await startProtectedDevServer(files, { behavior: 'error' })
     return server.load('/src/entry.ts', { skip: /^\/@(vite|fs)\// }).then(
       () => 'loaded',
-      (error: Error) =>
-        reportedViolations(error.message).map(
-          ({ environment, importer }) =>
-            `${environment} ${importer.replace(/:.*/, '')}`,
-        ),
+      (error: Error) => locatedImporters(error.message, files),
     )
   }
 
@@ -393,11 +392,9 @@ describe('Rsbuild dev', () => {
       })
       const messages = await runRsbuildClient(server)
       expect({
-        reported: reportedViolations(
+        reported: locatedImporters(
           findDiagnostics(server.diagnostics, { severity: 'error' }),
-        ).map(
-          ({ environment, importer }) =>
-            `${environment} ${importer.replace(/:.*/, '')}`,
+          files,
         ),
         ranRealCode: messages.some((message) => message.includes('MARK_')),
       }).toEqual({ reported: ['client src/home.page'], ranRealCode: false })
@@ -476,9 +473,7 @@ export const page = () => secret()
         ).map(({ environment, importer }) => `${environment} ${importer}`),
         ranRealCode: messages.some((message) => message.includes('MARK_')),
       }).toEqual({
-        reported: [
-          expect.stringMatching(/^client src\/home\.mdx(?::3:\d+|:4:27)$/),
-        ],
+        reported: [originalLocation('client src/home.mdx:4:27', 3)],
         ranRealCode: false,
       })
     },

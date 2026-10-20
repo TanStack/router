@@ -28,6 +28,7 @@ import {
   startBrowserRsbuildStartDevServer as startRsbuildStartDevServer,
 } from './client-pages'
 import {
+  appSources,
   reportedImporters,
   runRsbuildSsr,
   settledAcrossTurn,
@@ -221,6 +222,7 @@ describe('vite dev', () => {
           dispose = cleanup
         },
       })
+      const sources = appSources(server.root)
       const outcomes: Array<StepOutcome> = []
       for (const [index, step] of steps.entries()) {
         let clientReports: Array<string> | undefined
@@ -250,6 +252,7 @@ describe('vite dev', () => {
           clientReports = reportedImporters(
             server.logs.slice(clientSince),
             'client',
+            sources,
           )
           serverSince = server.logs.length
           await server.edit({ 'src/server-side.ts': serverSide(step.live) })
@@ -276,11 +279,12 @@ describe('vite dev', () => {
         outcomes.push({
           client: {
             values: result.clientValues,
-            reported: clientReports ?? reportedImporters(logs, 'client'),
+            reported:
+              clientReports ?? reportedImporters(logs, 'client', sources),
           },
           server: {
             values: result.serverValues,
-            reported: reportedImporters(logs, 'server'),
+            reported: reportedImporters(logs, 'server', sources),
           },
           clientHasSecret: Object.values(served).some((code) =>
             code.includes('MARK_SECRET'),
@@ -313,6 +317,7 @@ describe('rsbuild dev', () => {
         dispose = cleanup
       },
     })
+    const sources = appSources(server.root)
     const outcomes: Array<StepOutcome> = []
     for (const [index, step] of steps.entries()) {
       let clientReports: Array<string> | undefined
@@ -341,6 +346,7 @@ describe('rsbuild dev', () => {
         clientReports = reportedImporters(
           server.diagnostics.slice(clientSince),
           'client',
+          sources,
         )
         serverSince = server.diagnostics.length
         await server.edit({ 'src/server-side.ts': serverSide(step.live) })
@@ -355,11 +361,12 @@ describe('rsbuild dev', () => {
       outcomes.push({
         client: {
           values: values(await runInClient(server, observeScript)),
-          reported: clientReports ?? reportedImporters(warnings, 'client'),
+          reported:
+            clientReports ?? reportedImporters(warnings, 'client', sources),
         },
         server: {
           values: values(await runRsbuildSsr(server, observeScript)),
-          reported: reportedImporters(warnings, 'server'),
+          reported: reportedImporters(warnings, 'server', sources),
         },
         clientHasSecret: Object.values(await server.outputs('client')).some(
           (code) => code.includes('MARK_SECRET'),

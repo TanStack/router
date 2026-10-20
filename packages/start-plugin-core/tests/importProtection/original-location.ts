@@ -5,12 +5,9 @@
  * `@tanstack/compiler-test-utils/diagnostics`): the genuine surviving use,
  * or any line of the original import (`importLines`); no coordinates only
  * where the location is unavailable (`unavailable`, §5.14: an import a tool
- * rewrote), never as a blanket escape. A reported column is 1-based, as
- * `file:line:column` locations are: a column below 1 is no original
- * position. The file is named absolute or project-relative (SPEC §5.7): a
- * name without the directories under the app root (`other.ts` for
- * `src/other.ts`) does not open the authored file, although the shared
- * `mentionsFile` accepts trailing path segments.
+ * rewrote), never as a blanket escape. The shared oracle also decides the
+ * file's name (absolute or project-relative, SPEC §5.7) and that columns
+ * are 1-based.
  */
 import { expect } from 'vitest'
 import {
@@ -18,6 +15,7 @@ import {
   isRelevantLocation,
   parseLocation,
 } from '@tanstack/compiler-test-utils/diagnostics'
+import type { RelevantLocation } from '@tanstack/compiler-test-utils/diagnostics'
 import type { ViolationReport } from './violation-report'
 
 /** `[environment, location]` of `client file:line:column`. */
@@ -29,8 +27,17 @@ function splitEnvironment(value: string) {
 export function originalLocation(
   use: string,
   importLines: number | Array<number>,
-  unavailable = false,
+  options: {
+    /**
+     * Also no coordinates: where the location is unavailable (§5.14: an
+     * import a tool rewrote), or where a pin checks that it is there.
+     */
+    unavailable?: boolean
+    /** Other accepted places (e.g. a marker's origin, audit F ASK-1). */
+    others?: RelevantLocation['others']
+  } = {},
 ) {
+  const { unavailable = false, others } = options
   const [environment, location] = splitEnvironment(use)
   const at = parseLocation(location)
   if (at.line === undefined || at.column === undefined) {
@@ -43,12 +50,8 @@ export function originalLocation(
         return false
       }
       const [actualEnvironment, actual] = splitEnvironment(value)
-      const { file, column } = parseLocation(actual)
-      const named = file.replaceAll('\\', '/')
       return (
         actualEnvironment === environment &&
-        (named === at.file || named.endsWith(`/${at.file}`)) &&
-        (column === undefined || column >= 1) &&
         isRelevantLocation(actual, {
           file: at.file,
           // (the import lines are given: no specifier to look up)
@@ -57,6 +60,7 @@ export function originalLocation(
             { line: at.line!, column: at.column },
             ...imports.map((line) => ({ line })),
           ],
+          others,
           unlocated: unavailable,
         })
       )

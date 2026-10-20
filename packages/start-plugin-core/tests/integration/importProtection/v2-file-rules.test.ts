@@ -127,7 +127,7 @@ function outcome(
   read: Read,
   output: ReportOutput,
 ) {
-  const reported = reportedImporters(output, environment)
+  const reported = reportedImporters(output, environment, app)
   const isReported = (importer: string, marked?: string) =>
     reported.includes(importer) ||
     (marked !== undefined && reported.includes(marked))

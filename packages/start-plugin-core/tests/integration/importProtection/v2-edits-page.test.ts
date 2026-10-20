@@ -15,6 +15,7 @@ import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { startDevServer } from '../../dev-server'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import {
+  appSources,
   pageApp,
   pageSteps,
   pageWidget,
@@ -114,7 +115,11 @@ return describeValue(window.liveSecret(), 'MARK_SECRET')
         servedSecret: Object.values(served).some((code) =>
           code.includes('MARK_SECRET'),
         ),
-        reported: reportedImporters(server.logs.slice(since.logs), 'client'),
+        reported: reportedImporters(
+          server.logs.slice(since.logs),
+          'client',
+          appSources(server.root),
+        ),
       })
     }
     return result

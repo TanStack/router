@@ -12,11 +12,15 @@
  * tests that need the user-visible text (what is logged, how often, the
  * displayed trace and frame) read it through this adapter.
  */
+import path from 'node:path'
+import { parseSync } from 'vite'
 import { expect } from 'vitest'
 import {
   diagnosticsOf,
   expectFrameAt,
   findDiagnostics,
+  importLines,
+  importedBindingUses,
   isRelevantLocation,
   parseLocation,
 } from '@tanstack/compiler-test-utils/diagnostics'
@@ -322,6 +326,8 @@ export interface ExpectedViolation {
   environment: 'client' | 'server'
   use: string
   source: string
+  /** Other genuine uses of the same import in `source` (`file:line:column`). */
+  otherUses?: Array<string>
   others?: RelevantLocation['others']
 }
 
@@ -353,12 +359,13 @@ export function relevantViolations(
     seen.add(key)
     const match = expected.find((violation) => {
       const use = parseLocation(violation.use)
+      const uses = [use, ...(violation.otherUses ?? []).map(parseLocation)]
       return (
         violation.environment === report.environment &&
         isRelevantLocation(report.importer, {
           file: use.file,
           source: violation.source,
-          uses: [{ line: use.line!, column: use.column }],
+          uses: uses.map(({ line, column }) => ({ line: line!, column })),
           imports: [report.specifier],
           others: violation.others,
         })
@@ -380,6 +387,107 @@ export function expectViolationsAt(
 ) {
   expect(relevantViolations(output, expected).sort()).toEqual(
     expected.map(violationLabel).sort(),
+  )
+}
+
+/** The original sources of an app's files, by path relative to its root. */
+export type AppSources =
+  | Record<string, string>
+  | ((file: string) => string | undefined)
+
+/**
+ * The specifiers of `file`'s static imports a report's `Import:` names: the
+ * specifier as written or, for a relative one, the project-relative file
+ * it resolves to (with or without its extension). The second form is the
+ * dev duplicate report that names the resolved path (pinned in dev.test.ts,
+ * "'once' logs one warning for one import"); its location still counts.
+ */
+function importedAs(file: string, source: string, reported: string) {
+  const written = new Set([reported])
+  let requests: Array<string> = []
+  try {
+    requests = parseSync(
+      `module.${/\.[cm]?jsx?$/.test(file) ? 'jsx' : 'tsx'}`,
+      source,
+      {
+        sourceType: 'module',
+      },
+    ).module.staticImports.map((statement) => statement.moduleRequest.value)
+  } catch {
+    // Not JavaScript (e.g. MDX): only the specifier as written
+  }
+  for (const request of requests) {
+    if (!request.startsWith('.')) {
+      continue
+    }
+    const resolved = path.posix.join(path.posix.dirname(file), request)
+    if (
+      reported === resolved ||
+      reported.replace(/\.[^./]+$/, '') === resolved
+    ) {
+      written.add(request)
+    }
+  }
+  return [...written]
+}
+
+/** The environment markers (`import '@tanstack/react-start/server-only'`). */
+const markerSpecifiers = ['react', 'solid', 'vue'].flatMap((framework) =>
+  ['server-only', 'client-only'].map(
+    (marker) => `@tanstack/${framework}-start/${marker}`,
+  ),
+)
+
+/**
+ * The importer of each report in `output` (in order, one per report), as
+ * `environment file` when the report is at a relevant original place of
+ * the importer (SPEC J6.5; never compiled coordinates): any line of its
+ * import of the reported specifier, or a reference to a binding that
+ * import introduces (`importLines`, `importedBindingUses`), in its source
+ * from `sources`. A marked module a marker violation is reported at (audit
+ * F ASK-1) is at a relevant place on a line of its marker import, or named
+ * without coordinates. Otherwise the report as it is, `environment
+ * importer (not at a relevant original place)`, which no expected list
+ * names: compiled coordinates, another line, or no coordinates. For tests
+ * of which importers are reported; tests of where name the genuine use
+ * (`expectViolationsAt`).
+ */
+export function locatedImporters(
+  output: ReportOutput,
+  sources: AppSources,
+): Array<string> {
+  const sourceOf =
+    typeof sources === 'function' ? sources : (file: string) => sources[file]
+  return violationReports(output).map(
+    ({ environment, importer, specifier }) => {
+      const { file } = parseLocation(importer)
+      const source = sourceOf(file)
+      const markerLines =
+        source === undefined
+          ? []
+          : markerSpecifiers.flatMap((marker) =>
+              importLines(file, source, marker),
+            )
+      const imports =
+        source === undefined ? [] : importedAs(file, source, specifier)
+      const relevant =
+        source !== undefined &&
+        isRelevantLocation(importer, {
+          file,
+          source,
+          uses: imports.flatMap((imported) =>
+            importedBindingUses(file, source, imported),
+          ),
+          imports,
+          others:
+            markerLines.length > 0
+              ? [{ file, lines: markerLines, unlocated: true }]
+              : [],
+        })
+      return relevant
+        ? `${environment} ${file}`
+        : `${environment} ${importer} (not at a relevant original place)`
+    },
   )
 }
 

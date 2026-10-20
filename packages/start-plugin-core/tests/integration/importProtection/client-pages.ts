@@ -1,25 +1,26 @@
 /**
- * Thin page glue for policy fixtures that expose values instead of a UI.
- * Vite serves an actual HTML entry and Rsbuild serves its generated HTML,
- * so the real host loads its runtime, dependencies and initial/async chunks.
+ * Thin page glue for policy fixtures that expose values instead of a UI, on
+ * the one client runner of the dev-server tests (`withRecordedPage` of
+ * `../../rsbuild-dev-server`: a real Chromium page recording what the page's
+ * code logs and the errors it does not catch). Vite serves an actual HTML
+ * entry through its own HTML pipeline (`clientFixturePlugin`); Rsbuild's
+ * page loads the initial files of the client entry, as an app's HTML does
+ * (`runInClient`, `runRsbuildClient`), so the real host loads its runtime,
+ * dependencies and initial/async chunks.
  */
-import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { diagnosticsOf } from '@tanstack/compiler-test-utils/diagnostics'
-import { mergeRsbuildConfig } from '@rsbuild/core'
 import { startDevServer } from '../../dev-server'
 import { startProtectedDevServer } from '../../importProtection/start-apps'
 import {
+  clientPage,
   startRsbuildDevServer,
   startRsbuildStartDevServer,
+  withRecordedPage,
 } from '../../rsbuild-dev-server'
 import type { Plugin } from 'vite'
-import type {
-  MergedEnvironmentConfig,
-  ModifyEnvironmentConfigUtils,
-} from '@rsbuild/core'
-import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
-import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
+
+export { runInClient, runRsbuildClient } from '../../rsbuild-dev-server'
 
 /** Mounted before Start's SSR fallback, using Vite's actual HTML pipeline. */
 export const clientFixturePlugin: Plugin = {
@@ -61,38 +62,15 @@ export function startBrowserStartDevServer(
   })
 }
 
-async function observe(browser: BrowserPage, script: string) {
-  const result = await browser.page.evaluate(`(async () => {\n${script}\n})()`)
-  const messages = [...browser.console]
-  const diagnostics = messages.flatMap((message) => {
-    const [, level, text = ''] = /^(\w+): ([\s\S]*)$/.exec(message) ?? []
-    return diagnosticsOf(
-      text,
-      level === 'error'
-        ? 'error'
-        : level === 'warning' || level === 'warn'
-          ? 'warning'
-          : 'info',
-    )
-  })
-  return { result, diagnostics, messages }
-}
-
-async function pageAt(url: string) {
-  const browser = await openPage('about:blank')
-  try {
-    // The fixture has no favicon; its absence is not a runtime diagnostic.
-    await browser.page.route('**/favicon.ico', (route) =>
-      route.fulfill({ status: 204 }),
-    )
-    await browser.page.goto(url)
-    return browser
-  } catch (error) {
-    await browser.close()
-    throw error
-  }
-}
-
+/**
+ * Loads `entry` in the fixture page of a Vite dev server started with
+ * `clientFixturePlugin` and `browser: true`, then runs `script` (the body
+ * of an async function, with the module as `entry`). Returns what it
+ * returns (`result`), and what the page's code logged meanwhile
+ * (`messages`, `level: text`, and as `diagnostics`). Fails when the entry
+ * does not load, the page's code throws an error it does not catch, or the
+ * script throws.
+ */
 export async function runViteClient(
   server: Pick<DevServer, 'url'>,
   entry: string,
@@ -103,24 +81,31 @@ export async function runViteClient(
   }
   const url = new URL('/__ip-fixture.html', server.url)
   url.searchParams.set('entry', entry)
-  const browser = await pageAt(url.href)
-  try {
+  return withRecordedPage(url.href, {}, async ({ page, record, settled }) => {
     // These value fixtures allow Vite's dependency-optimizer reload. Retry
     // only a navigation that interrupts the browser observation; execution
     // errors and policy failures still fail immediately. HMR/no-reload rows
     // use their persistent page hosts instead.
     for (let attempt = 0; ; attempt++) {
       try {
-        await browser.page.waitForFunction(
+        await page.waitForFunction(
           'window.__ipEntry !== undefined || window.__ipLoadError !== undefined',
         )
-        return await observe(
-          browser,
-          `
+        await settled()
+        const result = await page.evaluate(`(async () => {
 if (window.__ipLoadError) { throw new Error(window.__ipLoadError) }
 const entry = window.__ipEntry
-${script}`,
+${script}
+})()`)
+        const { calls } = await record()
+        const messages = calls.map(({ level, text }) => `${level}: ${text}`)
+        const diagnostics = calls.flatMap(({ level, text }) =>
+          diagnosticsOf(
+            text,
+            level === 'error' ? 'error' : level === 'warn' ? 'warning' : 'info',
+          ),
         )
+        return { result, diagnostics, messages }
       } catch (error) {
         if (
           attempt >= 2 ||
@@ -132,49 +117,7 @@ ${script}`,
         }
       }
     }
-  } finally {
-    await browser.close()
-  }
-}
-
-async function consumeRsbuild(
-  server: Pick<RsbuildDevServer, 'url'>,
-  script: string,
-) {
-  if (!server.url) {
-    throw new Error('The client policy fixture needs browser: true')
-  }
-  // Rsbuild's generated HTML loads its declared entry and initial chunks.
-  const browser = await pageAt(new URL('/index.html', server.url).href)
-  try {
-    return await observe(browser, script)
-  } finally {
-    await browser.close()
-  }
-}
-
-export async function runInClient(
-  server: Pick<RsbuildDevServer, 'url'>,
-  script: string,
-): Promise<{ result: unknown } | { error: string }> {
-  try {
-    const { result } = await consumeRsbuild(server, script)
-    return { result }
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : String(error) }
-  }
-}
-
-export async function runRsbuildClient(
-  server: Pick<RsbuildDevServer, 'url'>,
-  options: { levels?: boolean } = {},
-) {
-  const { messages } = await consumeRsbuild(server, '')
-  return messages.map((message) =>
-    options.levels
-      ? message.replace(/^warning:/, 'warn:')
-      : message.replace(/^\w+: /, ''),
-  )
+  })
 }
 
 export async function startBrowserProtectedDevServer(
@@ -190,42 +133,11 @@ export async function startBrowserProtectedDevServer(
 export async function startBrowserRsbuildDevServer(
   ...args: Parameters<typeof startRsbuildDevServer>
 ) {
-  return startRsbuildDevServer({ ...args[0], browser: true, hmr: false })
+  return startRsbuildDevServer({ ...args[0], ...clientPage })
 }
 
-/** Policy fixtures declare an HTML client entry instead of a router-rendered page. */
 export function startBrowserRsbuildStartDevServer(
   options: Parameters<typeof startRsbuildStartDevServer>[0],
 ) {
-  return startRsbuildStartDevServer({
-    ...options,
-    browser: true,
-    config: mergeRsbuildConfig(options.config ?? {}, {
-      plugins: [
-        {
-          name: 'ip-fixture-html-entry',
-          setup(api) {
-            api.modifyEnvironmentConfig({
-              order: 'post',
-              handler(
-                config: MergedEnvironmentConfig,
-                { name }: ModifyEnvironmentConfigUtils,
-              ) {
-                if (name === 'client') {
-                  const entry = config.source.entry?.index
-                  if (
-                    entry &&
-                    typeof entry === 'object' &&
-                    !Array.isArray(entry)
-                  ) {
-                    entry.html = true
-                  }
-                }
-              },
-            })
-          },
-        },
-      ],
-    }),
-  })
+  return startRsbuildStartDevServer({ ...options, ...clientPage })
 }

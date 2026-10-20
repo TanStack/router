@@ -22,6 +22,7 @@ import {
   findDiagnostics,
   identifiesEnvRestriction,
   importLines,
+  importedBindingUses,
   isRelevantLocation,
   mentionsFile,
   parseLocation,
@@ -173,8 +174,6 @@ describe('files', () => {
     'src/routes/posts.tsx',
     './src/routes/posts.tsx',
     '../../app/src/routes/posts.tsx',
-    'routes/posts.tsx',
-    'posts.tsx',
     'src\\routes\\posts.tsx',
     'webpack://my-app/./src/routes/posts.tsx',
     '/app/src/routes/posts.tsx?tsr-split=component',
@@ -184,37 +183,64 @@ describe('files', () => {
     expect(mentionsFile(`warning: ${spelling}`, file, { root })).toBe(true)
   })
 
+  // SPEC §5.7 (DECISIONS 2026-10-20 "file names in diagnostics"): a file is
+  // named absolute or project-relative; a part of its project-relative
+  // path alone does not say which file it is.
   test.each([
     '/other/src/routes/posts.tsx',
     'src/routes/posts.tsx.bak',
     'src/routes/myposts.tsx',
     'src/routes/blog/posts.tsx',
     'a sentence about posts',
+    'routes/posts.tsx',
+    'posts.tsx',
+    'posts.tsx:3:5',
+    './posts.tsx',
+    'webpack://my-app/./posts.tsx',
+    'other/src/routes/posts.tsx',
   ])('rejects %s', (spelling) => {
     expect(mentionsFile(`warning: ${spelling}`, file, { root })).toBe(false)
   })
 
-  test('a spelling that also names another file is ambiguous', () => {
-    const distinctFrom = ['src/routes/blog/posts.tsx']
-    expect(mentionsFile('in posts.tsx', file, { root, distinctFrom })).toBe(
-      false,
-    )
+  test('a bare basename does not name a file under src (other.ts:2:24 for src/other.ts)', () => {
     expect(
-      mentionsFile('in routes/posts.tsx', file, { root, distinctFrom }),
+      mentionsFile('other.ts:2:24', 'src/other.ts', { root: '/app' }),
+    ).toBe(false)
+    expect(mentionsFile('other.ts:2:24', 'src/other.ts')).toBe(false)
+    expect(
+      mentionsFile('src/other.ts:2:24', 'src/other.ts', { root: '/app' }),
     ).toBe(true)
     expect(
-      mentionsFile('in blog/posts.tsx', file, { root, distinctFrom }),
+      mentionsFile('/app/src/other.ts:2:24', 'src/other.ts', { root: '/app' }),
+    ).toBe(true)
+    // (a file at the app root is named by its basename)
+    expect(mentionsFile('vite.config.ts:1:1', 'vite.config.ts')).toBe(true)
+  })
+
+  test('a spelling that also names another file is ambiguous', () => {
+    // A longer relative path ending with the project-relative path names
+    // the file, unless it is also the path of another file
+    expect(mentionsFile('in lib/src/a.ts', 'src/a.ts')).toBe(true)
+    expect(
+      mentionsFile('in lib/src/a.ts', 'src/a.ts', {
+        distinctFrom: ['lib/src/a.ts'],
+      }),
     ).toBe(false)
+    expect(
+      mentionsFile('in src/a.ts', 'src/a.ts', {
+        distinctFrom: ['lib/src/a.ts'],
+      }),
+    ).toBe(true)
   })
 
   // Route file names with brackets (route groups, dynamic segments, optional
-  // params). Control: a bracket-free name quoted in brackets still counts.
+  // params). Control: a bracket-free path quoted in brackets still counts.
   test.each([
     ['src/routes/(group).tsx', 'in /app/src/routes/(group).tsx'],
-    ['src/routes/(group).tsx', 'in (group).tsx'],
-    ['src/routes/(group).tsx', '((group).tsx)'],
+    ['src/routes/(group).tsx', 'in src/routes/(group).tsx'],
+    ['src/routes/(group).tsx', '(src/routes/(group).tsx)'],
     ['src/routes/(group).tsx', 'src\\routes\\(group).tsx(3,5)'],
-    ['src/routes/posts.[id].tsx', 'routes/posts.[id].tsx:3:5'],
+    ['src/routes/posts.[id].tsx', 'src/routes/posts.[id].tsx:3:5'],
     ['src/routes/{-$lang}.tsx', '"/@fs/app/src/routes/{-$lang}.tsx"'],
     ['src/routes/[...slug].tsx', 'file:///app/src/routes/%5B...slug%5D.tsx'],
     ['src/routes/posts.tsx', '(src/routes/posts.tsx)'],
@@ -227,7 +253,11 @@ describe('files', () => {
     ['src/routes/(group).tsx', 'in (other).tsx'],
     ['src/routes/(group).tsx', 'in src/routes/(group)/index.tsx'],
     ['src/routes/(group).tsx', 'in (group).index.tsx'],
+    ['src/routes/(group).tsx', 'in (group).tsx'],
+    ['src/routes/(group).tsx', '((group).tsx)'],
+    ['src/routes/nested/(group).tsx', 'at `nested/(group).tsx`'],
     ['src/routes/posts.[id].tsx', 'in posts.id.tsx'],
+    ['src/routes/posts.[id].tsx', 'routes/posts.[id].tsx:3:5'],
   ])('rejects %s named as %s', (file, text) => {
     expect(mentionsFile(`warning: ${text}`, file, { root })).toBe(false)
   })
@@ -240,10 +270,37 @@ describe('files', () => {
     })
   })
 
-  test('without a root, a relative file matches trailing segments either way', () => {
+  test('without a root, a relative file is project-relative: a longer path ending with it names it, a part of it does not', () => {
     expect(mentionsFile('/tmp/x/src/a.ts:1:1', 'src/a.ts')).toBe(true)
-    expect(mentionsFile('a.ts', 'src/a.ts')).toBe(true)
+    expect(mentionsFile('src/a.ts', 'src/a.ts')).toBe(true)
+    expect(mentionsFile('a.ts', 'src/a.ts')).toBe(false)
     expect(mentionsFile('/tmp/x/src/b.ts', 'src/a.ts')).toBe(false)
+  })
+
+  test('an absolute file without a root is named absolute only', () => {
+    expect(mentionsFile('/app/src/a.ts:1:1', '/app/src/a.ts')).toBe(true)
+    expect(mentionsFile('src/a.ts:1:1', '/app/src/a.ts')).toBe(false)
+    expect(mentionsFile('a.ts:1:1', '/app/src/a.ts')).toBe(false)
+    expect(
+      mentionsFile('src/a.ts:1:1', '/app/src/a.ts', { root: '/app' }),
+    ).toBe(true)
+  })
+
+  test('an expectation and a reported location name the file the same way', () => {
+    expect(() =>
+      expectDiagnostic('error: a.ts:3:5 bad', {
+        file: 'src/a.ts',
+        root,
+        position: { line: 3, column: 5 },
+      }),
+    ).toThrow()
+    expect(
+      isRelevantLocation('a.ts:1:1', {
+        file: 'src/a.ts',
+        source: `import { x } from './x'\n`,
+        imports: ['./x'],
+      }),
+    ).toBe(false)
   })
 })
 
@@ -505,6 +562,8 @@ export const later = () => import('./secret.server')
     ['a line past the end (compiled coordinates)', 'src/a.ts:9:4'],
     ['another file', 'src/b.ts:5:27'],
     ['no coordinates', 'src/a.ts'],
+    ['a column 0 of the import (columns are 1-based)', 'src/a.ts:2:0'],
+    ['the file named by its basename (§5.7)', 'a.ts:5:27'],
   ])('%s is not relevant', (_name, reported) => {
     expect(isRelevantLocation(reported, expected)).toBe(false)
     expect(() => expectRelevantLocation(reported, expected)).toThrow()
@@ -537,6 +596,22 @@ export const later = () => import('./secret.server')
     expect(importLines('src/a.ts', `export { x } from './x'\n`, './x')).toEqual(
       [1],
     )
+  })
+
+  test('importedBindingUses finds the references to the bindings an import of the specifier introduces', () => {
+    expect(importedBindingUses('src/a.ts', source, './secret.server')).toEqual([
+      { line: 5, column: 27 },
+    ])
+    const jsx = `import Secret, { secret as s } from './secret.server'
+import { other } from './other'
+// secret
+export const Page = () => <Secret value={s()} other={other} />
+`
+    expect(importedBindingUses('src/a.tsx', jsx, './secret.server')).toEqual([
+      { line: 4, column: 28 },
+      { line: 4, column: 42 },
+    ])
+    expect(importedBindingUses('src/a.tsx', jsx, './missing')).toEqual([])
   })
 
   test('parseLocation reads a file with or without a line and column', () => {
