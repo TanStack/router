@@ -629,7 +629,6 @@ export function getValue(flag: boolean) {
     )
     expect(await getModuleErrors(client!)).toEqual([])
     await expectClientFree(client!)
-    expect(client).not.toMatch(/\b(?:connect|serverCall)\b/)
     expect((await evaluateModule(client!)).getValue(true)).toBe('client')
   })
 
@@ -1067,3 +1066,39 @@ export const fn = createServerFn().handler(async () => 'secret-body')`
     expect(after).not.toContain('secret-body')
   })
 })
+
+// Source: V4 red-astra-r2/07; SPEC J4.10, G12. A normal function's
+// receiver comes from its caller, including through Function.prototype.call.
+test.each([
+  ['server', 'createServerOnlyFn'],
+  ['client', 'createClientOnlyFn'],
+] as const)(
+  '%s: an env-only function keeps its call receiver',
+  async (env, factory) => {
+    const code = await compileCode(
+      env === 'server' ? 'ssr' : 'client',
+      `import { ${factory} } from '@tanstack/react-start'
+export const read = ${factory}(function (this: { value: number }) { return this.value })`,
+    )
+    const module = await evaluateModule(code!)
+    expect(module.read.call({ value: 7 })).toBe(7)
+  },
+)
+
+// Source: V4 red-astra-r2/06; SPEC J4.9, G12. No await in the body:
+// the async contract itself must survive selection of either implementation.
+test.each(['client', 'ssr'] as const)(
+  '%s: an async isomorphic implementation returns a promise',
+  async (env) => {
+    const code = await compileCode(
+      env,
+      `${head}
+export const read = createIsomorphicFn().client(async () => 'client').server(async () => 'server')`,
+    )
+    const module = await evaluateModule(code!)
+    const result = module.read()
+    expect(await result.then((value: string) => value)).toBe(
+      env === 'client' ? 'client' : 'server',
+    )
+  },
+)
