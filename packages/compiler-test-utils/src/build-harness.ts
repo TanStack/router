@@ -129,9 +129,9 @@ export interface BundleTarget {
   /**
    * Defaults to `mode === 'production'`, like a real app build, except for
    * Vite SSR builds, which Vite does not minify by default. webpack and
-   * Rspack only drop unused code inside a kept module when minifying, so
-   * the dangling-name check of their production client builds reads only
-   * minified chunks (see `checkDanglingNames`).
+   * Rspack only drop unused code inside a kept module when minifying: an
+   * unminified production client build ships that code, and the
+   * dangling-name check reads it (see `checkDanglingNames`).
    */
   minify?: boolean
   /** Output directory relative to the app root (default `dist`). */
@@ -374,6 +374,8 @@ interface BundlerConfig {
   conditions: Array<string>
   rebuildAfter: Record<string, string> | undefined
   configure: ((options: Record<string, unknown>) => void) | undefined
+  /** webpack and Rspack: records `describeBuild`'s `parsedModules`. */
+  parsedModules: ParsedModules | undefined
 }
 
 /** An emitted chunk, as a bundler reports it. */
@@ -416,6 +418,12 @@ async function bundle(
     conditions: target.conditions ?? [],
     rebuildAfter: target.rebuildAfter,
     configure: target.configure,
+    parsedModules:
+      (bundler === 'webpack' || bundler === 'rspack') &&
+      env === 'client' &&
+      mode === 'production'
+        ? parsedModules()
+        : undefined,
   }
   if (config.rebuildAfter && bundler !== 'webpack' && bundler !== 'rspack') {
     throw new Error(`rebuildAfter: not supported for ${bundler}`)
@@ -441,6 +449,7 @@ async function bundle(
     outDir: config.outDir,
     chunks: output,
     sourcemap: config.sourcemap,
+    parsedModules: config.parsedModules,
     warnings,
     consoleMessages,
     duration,
@@ -649,7 +658,13 @@ async function buildWithWebpackApi(
     },
     performance: { hints: false },
     infrastructureLogging: { level: 'none' },
-    plugins: config.plugin ? [config.plugin()] : [],
+    plugins: [
+      ...(config.plugin ? [config.plugin()] : []),
+      // The evidence of the dangling-name check (`checkDanglingNames`)
+      ...(config.parsedModules
+        ? [recordParsedModules(config.parsedModules)]
+        : []),
+    ],
   }
   config.configure?.(options)
 
@@ -902,6 +917,12 @@ export interface DescribeBuildInput {
   chunks: Array<EmittedChunk>
   /** Reads the source map of each chunk (`<file>.map`). */
   sourcemap?: boolean
+  /**
+   * webpack and Rspack: the modules as the bundler parsed them
+   * (`recordParsedModules`), the evidence that attributes a dangling read
+   * to the bundler (see `checkDanglingNames`).
+   */
+  parsedModules?: ParsedModules
   warnings: Array<string>
   consoleMessages: Array<string>
   duration: number
@@ -941,11 +962,12 @@ export async function describeBuild(
   if (
     input.env === 'client' &&
     input.mode === 'production' &&
-    (bundler === 'vite' ||
-      ((bundler === 'webpack' || bundler === 'rspack') &&
-        (input.minify ?? true)))
+    bundler !== 'esbuild'
   ) {
-    await checkDanglingNames(bundler, chunks)
+    await checkDanglingNames(bundler, chunks, {
+      root: input.root,
+      parsedModules: input.parsedModules,
+    })
   }
   const entries = chunks.filter((chunk) => chunk.isEntry)
   if (entries.length !== 1) {
@@ -1037,27 +1059,61 @@ export async function describeBuild(
  * esbuild is not checked: it is no supported production bundler of the
  * ruling.
  *
- * The chunks are checked as the build emitted them, when they are what the
- * bundler ships in production: Rolldown tree-shakes whether it minifies or
- * not, but webpack and Rspack leave unused code inside a module to their
- * minifier, with dangling names of their own (Rspack's unminified output of
- * `@tanstack/react-router` alone reads `useRouter`, `jsx`... without a
- * binding). So an unminified webpack or Rspack build (`minify: false`) is
- * not checked.
+ * Every chunk is checked as the build emitted it, minified or not: that is
+ * the artifact the configuration ships (SPEC G8).
+ *
+ * A dangling read the bundler made itself is not the compiler's
+ * (`bundlerLostBinding`): webpack and Rspack leave unused code inside a
+ * module to their minifier, and in that code, unminified, both lose
+ * bindings the module had. Rspack (2.2.7) drops the import bindings the
+ * unused code of a concatenated module reads, where webpack declares them
+ * (`var helper;` after an "unused harmony import specifier" comment): its
+ * unminified output of `@tanstack/react-router` alone reads `useRouter`,
+ * `jsx`... that way. Both (webpack 5.110) remove the declarations after an
+ * unconditional `return` they computed ("removed by dead control flow")
+ * but keep the function declarations there, which read them: webpack's
+ * output of Vue's `initCustomFormatter` reads `keywordStyle`... that way.
+ * Such a read is attributed to the bundler only on evidence: it lies in
+ * the bundler's region of a module (`moduleRegions`), and that module, as
+ * the bundler parsed it (after its loaders and plugins: `parsedModules`,
+ * recorded by `recordParsedModules`), reads the name and binds every read
+ * of it. A module that reads a name it does not bind (e.g. a compiler that
+ * lost the binding, or a dependency's own unbound read such as seroval's
+ * `() => T`) is reported, and so is every read without that evidence.
  */
 async function checkDanglingNames(
   bundler: Exclude<Bundler, 'esbuild'>,
   chunks: Array<Chunk>,
+  evidence: ModuleEvidence,
 ) {
-  const [{ unboundNames }, { clientGlobals }] = await Promise.all([
-    import('./validate-module'),
-    import('./known-globals'),
-  ])
+  const [{ unboundReads, nameReads }, { clientGlobals }] = await Promise.all(
+    [import('./validate-module'), import('./known-globals')],
+  )
+  /** What each module the bundler parsed reads, by its source. */
+  const parsed = new Map<string, NameReads>()
+  const readsOf = (source: string) => {
+    let reads = parsed.get(source)
+    if (!reads) {
+      reads = nameReads(source)
+      parsed.set(source, reads)
+    }
+    return reads
+  }
   const dangling: Record<string, Array<string>> = {}
   for (const chunk of chunks) {
-    const names = [...unboundNames(chunk.code)].filter(
-      (name) => !clientGlobals.has(name),
-    )
+    const regions =
+      bundler === 'vite' || !evidence.parsedModules
+        ? []
+        : moduleRegions(chunk.code, evidence.root, evidence.parsedModules)
+    const names = [...unboundReads(chunk.code)]
+      .filter(
+        ([name, starts]) =>
+          !clientGlobals.has(name) &&
+          !starts.every((start) =>
+            bundlerLostBinding(name, start, regions, evidence, readsOf),
+          ),
+      )
+      .map(([name]) => name)
     if (names.length > 0) {
       dangling[chunk.fileName] = names
     }
@@ -1065,6 +1121,187 @@ async function checkDanglingNames(
   if (Object.keys(dangling).length > 0) {
     throw new DanglingNameError(bundler, dangling)
   }
+}
+
+interface ModuleEvidence {
+  /** The build's context: what readable module identifiers are relative to. */
+  root: string
+  /** The modules as the bundler parsed them (`recordParsedModules`). */
+  parsedModules?: ParsedModules
+}
+
+/** What a module reads (`nameReads` of `validate-module.ts`). */
+interface NameReads {
+  bound: Set<string>
+  unbound: Map<string, Array<number>>
+}
+
+interface ModuleRegion {
+  /** Resource path of the module whose code the region holds. */
+  resource: string | undefined
+  start: number
+  end: number
+}
+
+/**
+ * The regions of a webpack or Rspack chunk that hold the code of one module
+ * each, as the bundler delimits them:
+ * - a concatenated module, from the comment the bundler writes before its
+ *   code (`;// CONCATENATED MODULE: ./a.ts`, or webpack's `;// ./a.ts`: the
+ *   module's readable identifier, relative to the build's context `root`);
+ * - a module of its own, from the start of its factory, which names the
+ *   module's id (`parsed.resourceById` maps it to its resource): webpack
+ *   writes a line of three stars between slashes and the id before it,
+ *   Rspack starts a line with the id and the factory's parameters;
+ * each to the next such start or the end of a webpack factory (another
+ * line starting with that three-star comment).
+ */
+function moduleRegions(
+  code: string,
+  root: string,
+  parsed: ParsedModules,
+): Array<ModuleRegion> {
+  const regions: Array<ModuleRegion> = []
+  const boundary =
+    /^(?:;\/\/ (?:CONCATENATED MODULE: )?(\S[^\n]*)|\/\*{3}\/(?: (?:"([^"\n]+)"|([\w-]+))(?=:|\s*$))?|(?:"([^"\n]+)"|(\d+))\()/gm
+  let current: Omit<ModuleRegion, 'end'> | undefined
+  for (const match of code.matchAll(boundary)) {
+    if (current) {
+      regions.push({ ...current, end: match.index })
+    }
+    const [, readable, ...ids] = match as Array<string | undefined>
+    const id = ids.find((candidate) => candidate !== undefined)
+    const start = match.index + match[0].length
+    if (readable !== undefined) {
+      current = { resource: path.resolve(root, readable), start }
+    } else if (id !== undefined) {
+      current = { resource: parsed.resourceById.get(id), start }
+    } else {
+      current = undefined
+    }
+  }
+  if (current) {
+    regions.push({ ...current, end: code.length })
+  }
+  return regions
+}
+
+/**
+ * Whether the read of `name` at `start` lost its binding in the bundler
+ * (see `checkDanglingNames`): it lies in the region of a module whose code,
+ * as the bundler parsed it, reads `name` and binds every read of it.
+ */
+function bundlerLostBinding(
+  name: string,
+  start: number,
+  regions: Array<ModuleRegion>,
+  evidence: ModuleEvidence,
+  readsOf: (source: string) => NameReads,
+) {
+  const region = regions.find(
+    (candidate) => candidate.start <= start && start < candidate.end,
+  )
+  const source =
+    region?.resource === undefined
+      ? undefined
+      : evidence.parsedModules?.sources.get(region.resource)
+  if (source === undefined) {
+    return false
+  }
+  const reads = readsOf(source)
+  return reads.bound.has(name) && !reads.unbound.has(name)
+}
+
+/**
+ * The modules of a webpack or Rspack build as the bundler parsed them (after
+ * their loaders and plugins), recorded by `recordParsedModules`: the
+ * evidence the dangling-name check of `describeBuild` reads
+ * (`parsedModules`).
+ */
+export interface ParsedModules {
+  /** Code of each module, by resource path. */
+  sources: Map<string, string>
+  /** Resource path of each module of the output, by module id. */
+  resourceById: Map<string, string>
+}
+
+interface RecordedModule {
+  resource?: string
+  originalSource?: () => { source: () => string | Buffer } | null | undefined
+}
+
+interface RecordingCompiler {
+  hooks: {
+    compilation: {
+      tap: (
+        name: string,
+        callback: (compilation: {
+          hooks: {
+            finishModules: {
+              tap: (
+                name: string,
+                callback: (modules: Iterable<RecordedModule>) => void,
+              ) => void
+            }
+          }
+        }) => void,
+      ) => void
+    }
+    done: {
+      tap: (
+        name: string,
+        callback: (stats: {
+          toJson: (options: Record<string, unknown>) => {
+            modules?: Array<{
+              id?: string | number | null
+              nameForCondition?: string | null
+            }>
+          }
+        }) => void,
+      ) => void
+    }
+  }
+}
+
+/**
+ * A webpack or Rspack plugin recording each module as the bundler parsed it
+ * into `parsed` (`ParsedModules`), for a production client build's
+ * dangling-name check (`describeBuild`'s `parsedModules`).
+ */
+export function recordParsedModules(parsed: ParsedModules) {
+  const name = 'test:record-parsed-modules'
+  return {
+    name,
+    apply(compiler: RecordingCompiler) {
+      compiler.hooks.compilation.tap(name, (compilation) => {
+        compilation.hooks.finishModules.tap(name, (modules) => {
+          for (const module of modules) {
+            const source = module.originalSource?.()?.source()
+            if (module.resource && source !== undefined) {
+              parsed.sources.set(module.resource, String(source))
+            }
+          }
+        })
+      })
+      compiler.hooks.done.tap(name, (stats) => {
+        const { modules = [] } = stats.toJson({
+          all: false,
+          modules: true,
+          ids: true,
+        })
+        for (const module of modules) {
+          if (module.id != null && module.nameForCondition) {
+            parsed.resourceById.set(String(module.id), module.nameForCondition)
+          }
+        }
+      })
+    },
+  }
+}
+
+/** An empty `ParsedModules`, for `recordParsedModules` to fill. */
+export function parsedModules(): ParsedModules {
+  return { sources: new Map(), resourceById: new Map() }
 }
 
 /**

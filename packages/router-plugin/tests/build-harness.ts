@@ -23,6 +23,8 @@ import {
   chunksOfStats,
   createApp,
   describeBuild,
+  parsedModules,
+  recordParsedModules,
   statsMessages,
   statsOptions,
   withBuildEnvironment,
@@ -367,6 +369,8 @@ export async function buildWithRsbuild(
     const errors: Array<string> = []
     const consoleMessages: Array<string> = []
     let output: { outDir: string; chunks: Array<EmittedChunk> } | undefined
+    /** The evidence of the dangling-name check (`describeBuild`). */
+    const parsed = parsedModules()
     const outputPlugin: RsbuildPlugin = {
       name: 'router-build-harness:outputs',
       setup(api) {
@@ -405,6 +409,7 @@ export async function buildWithRsbuild(
                 },
                 rspack: {
                   plugins: [
+                    recordParsedModules(parsed),
                     tanstackRouter({
                       target: 'react',
                       autoCodeSplitting: true,
@@ -452,6 +457,7 @@ export async function buildWithRsbuild(
       root: app.root,
       outDir: output.outDir,
       chunks: output.chunks,
+      parsedModules: parsed,
       warnings,
       consoleMessages,
       duration: performance.now() - started,

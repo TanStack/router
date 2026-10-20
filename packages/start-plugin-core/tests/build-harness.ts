@@ -44,6 +44,8 @@ import {
   chunksOfStats,
   createApp,
   describeBuild,
+  parsedModules,
+  recordParsedModules,
   statsMessages,
   statsOptions,
   stripAnsi,
@@ -58,6 +60,7 @@ import type {
   BuildMode,
   BuildResult,
   EmittedChunk,
+  ParsedModules,
   StatsJson,
 } from '@tanstack/compiler-test-utils/build-harness'
 import type { TanStackStartInputConfig } from '../src/schema'
@@ -471,6 +474,7 @@ async function buildAt(
       mode,
       minify: target.minify,
       esModules: outputs[env].esModules,
+      parsedModules: outputs[env].parsedModules,
       root: app.root,
       outDir: outputs[env].outDir,
       chunks: outputs[env].chunks,
@@ -523,6 +527,8 @@ type Outputs = Record<
     chunks: Array<EmittedChunk>
     /** Whether the chunks are ES modules (Rsbuild's `output.module`). */
     esModules?: boolean
+    /** Rsbuild production client: `describeBuild`'s `parsedModules`. */
+    parsedModules?: ParsedModules
   }
 >
 
@@ -644,10 +650,20 @@ async function buildWithRsbuild(
   const errors: Array<string> = []
   /** The compiles of a watch mode build. */
   const compiles = trackCompiles()
+  /** The evidence of the client's dangling-name check (`describeBuild`). */
+  const clientParsedModules = parsedModules()
   /** Records what each environment emitted. */
   const outputPlugin: RsbuildPlugin = {
     name: 'start-build-harness:outputs',
     setup(api) {
+      api.modifyRspackConfig((config, { environment }) => {
+        if (environment.name === 'client' && target.mode === 'production') {
+          config.plugins = [
+            ...(config.plugins ?? []),
+            recordParsedModules(clientParsedModules),
+          ]
+        }
+      })
       api.onAfterCreateCompiler(({ compiler }) => {
         compiles.track(compiler)
       })
@@ -669,6 +685,7 @@ async function buildWithRsbuild(
           outDir: environment.distPath,
           chunks: chunksOfStats(json, { entry: 'index', extension: '.js' }),
           esModules: environment.config.output.module,
+          ...(env === 'client' && { parsedModules: clientParsedModules }),
         }
       })
     },

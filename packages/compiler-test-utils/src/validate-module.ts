@@ -160,6 +160,26 @@ export async function freeIdentifiers(
  * another function, still counts.
  */
 export function unboundNames(javascript: string): Set<string> {
+  return new Set(unboundReads(javascript).keys())
+}
+
+/**
+ * The reads `unboundNames` reports, by name: the offset in `javascript` of
+ * each unguarded read of the name.
+ */
+export function unboundReads(javascript: string): Map<string, Array<number>> {
+  return nameReads(javascript).unbound
+}
+
+/**
+ * The names a JavaScript module reads: `bound`, those of which a read
+ * resolves to a binding of the module; `unbound`, those `unboundReads`
+ * reports.
+ */
+export function nameReads(javascript: string): {
+  bound: Set<string>
+  unbound: Map<string, Array<number>>
+} {
   const { program } = parseSync('module.js', javascript, {
     sourceType: 'module',
   })
@@ -628,9 +648,15 @@ function analyzeScopes(program: ESTree.Program) {
   const moduleScope = createScope(undefined, true)
   const body = program.body as unknown as Array<Node>
   /** Reads of free names the checks around them do not guard. */
-  const unguarded: Array<{ name: string; fn: FunctionInfo | undefined }> = []
+  const unguarded: Array<{
+    name: string
+    fn: FunctionInfo | undefined
+    start: number
+  }> = []
   /** Names the program checks with `typeof`. */
   const checked = new Set<string>()
+  /** Names of which a read resolves to a binding. */
+  const bound = new Set<string>()
   const bindings = new Map<Scope, Map<string, Binding>>()
   let currentFunction: FunctionInfo | undefined
   /** Bindings function expressions are assigned to (`const f = () => {}`). */
@@ -663,7 +689,7 @@ function analyzeScopes(program: ESTree.Program) {
     return binding
   }
 
-  const reference = (name: string, scope: Scope) => {
+  const reference = (name: string, scope: Scope, start: number) => {
     for (
       let current: Scope | undefined = scope;
       current;
@@ -671,13 +697,14 @@ function analyzeScopes(program: ESTree.Program) {
     ) {
       if (current.names.has(name)) {
         bindingOf(current, name).reads.push({ scope, fn: currentFunction })
+        bound.add(name)
         return
       }
       if (current.guarded?.has(name)) {
         return
       }
     }
-    unguarded.push({ name, fn: currentFunction })
+    unguarded.push({ name, fn: currentFunction, start })
   }
 
   /** Whether a check of `name` guards code in `scope`. */
@@ -957,7 +984,7 @@ function analyzeScopes(program: ESTree.Program) {
     }
     switch (node.type) {
       case 'Identifier':
-        reference(node.name as string, scope)
+        reference(node.name as string, scope, node.start as number)
         return
       case 'FunctionDeclaration':
       case 'FunctionExpression':
@@ -1125,14 +1152,13 @@ function analyzeScopes(program: ESTree.Program) {
 
   declareVars(body, moduleScope)
   visitBody(body, moduleScope)
-  const references = new Set<string>()
+  const unbound = new Map<string, Array<number>>()
   for (const read of unguarded) {
-    if (
-      !references.has(read.name) &&
-      !(checked.has(read.name) && isGuardedFunction(read.fn, read.name))
-    ) {
-      references.add(read.name)
+    if (!(checked.has(read.name) && isGuardedFunction(read.fn, read.name))) {
+      const starts = unbound.get(read.name) ?? []
+      starts.push(read.start)
+      unbound.set(read.name, starts)
     }
   }
-  return references
+  return { bound, unbound }
 }
