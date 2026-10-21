@@ -1,46 +1,106 @@
-import { transformWithOxc } from 'vite'
-import { describe, expect, test } from 'vitest'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
+import { beforeAll, describe, expect, test } from 'vitest'
 import { envRestrictionError } from '@tanstack/compiler-test-utils/diagnostics'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
-  callProvider,
+  callFromClient,
   callServerFnThroughCallers,
-  callerRpcId,
   clientOnlyError,
-  compileAll,
-  compileCode,
-  compileFor,
-  compileServer,
-  createStartCompiler,
-  evaluateModule,
+  compileError,
   expectCompileError,
-  moduleLoads,
+  fromPage,
+  inPage,
+  serveCase,
+  serverFnUrls,
   serverOnlyError,
   settle,
-  startClientCore,
+  useStartHost,
 } from './regression-helpers'
-import type { ModuleStub, Output } from './regression-helpers'
+import type { PageSettled, StartCase } from './regression-helpers'
 
-// Each output keeps the implementation of its own environment (and only the
-// imports that implementation reads) and replaces the other one with a stub
-// that throws. The compiler only rewrites calls it can resolve to a Start
-// factory, through any chain of project modules. "Only its imports" is
-// observed as loading (`moduleLoads`): the client output never loads a
-// server-only module, the SSR output never a client-only one.
-
-/** The client output loads none of `forbidden` (default: `./db.server`). */
-async function expectClientFree(
-  client: string,
-  forbidden = ['./db.server'],
-  options: Parameters<typeof moduleLoads>[1] = {},
-) {
-  expectNotLoaded(await moduleLoads(client, options), forbidden)
+/**
+ * The host defaults of the B2 lead's branch (until it is merged): no import
+ * protection (its dev mock would hide a leaked server import from the
+ * client's loads) and an app tsconfig with `verbatimModuleSyntax` (without
+ * it, Vite's TypeScript transform drops unreferenced imports after the
+ * compiler and hides leaks).
+ */
+const hostTsconfig = {
+  compilerOptions: {
+    target: 'ES2022',
+    module: 'ESNext',
+    moduleResolution: 'Bundler',
+    jsx: 'react-jsx',
+    strict: true,
+    verbatimModuleSyntax: true,
+  },
+}
+const hostDefaults = {
+  start: { importProtection: { enabled: false } },
+  files: { 'tsconfig.json': JSON.stringify(hostTsconfig) },
 }
 
-/** The SSR output does not load the client-only module. */
-async function expectSsrFree(ssr: string) {
-  expectNotLoaded(await moduleLoads(ssr, { env: 'server' }), ['./chart.client'])
+// Each environment keeps the implementation of its own environment (and only
+// the imports that implementation reads) and replaces the other one with a
+// stub that throws. The compiler only rewrites calls it can resolve to a
+// Start factory, through any chain of project modules. "Only its imports"
+// is observed as loading: the client never loads a server-only module, the
+// SSR environment never a client-only one. Everything runs through the
+// public Start host (`./start-host`): the client in a real page, the server
+// in the SSR environment and in real requests, on Start's real runtime.
+
+const host = useStartHost(hostDefaults)
+beforeAll(async () => {
+  await (await host()).page()
+}, 60_000)
+
+/** The client loads none of `forbidden` (default: `./db.server`). */
+async function expectClientFree(
+  served: StartCase,
+  forbidden = ['./db.server'],
+  file?: string,
+) {
+  expectNotLoaded(await served.loads(file), forbidden)
+}
+
+/** The SSR environment does not load the client-only module. */
+async function expectSsrFree(served: StartCase, file?: string) {
+  expectNotLoaded(await served.serverLoads(file), ['./chart.client'])
+}
+
+/**
+ * What a page expression gives (its value, or a `Thrown` of what it
+ * threw). Only plain data and Start's promises are kept: code the compiler
+ * wrongly left on the client may return a mock import protection put in
+ * place of a server module, whose value must not be awaited (a mock is
+ * thenable forever); it is reported by its type.
+ */
+async function settleInPage(served: StartCase, call: string, file?: string) {
+  return fromPage(
+    await inPage<PageSettled>(
+      served,
+      `try {
+  let value = ${call}
+  if (value instanceof Promise) {
+    value = await value
+  }
+  const plain = value === null || ['string', 'number', 'boolean', 'undefined'].includes(typeof value) || Array.isArray(value) ||
+    (typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype)
+  return { value: plain ? value : '<' + typeof value + '>' }
+} catch (error) {
+  return { thrown: { name: error && error.name, message: String(error && error.message !== undefined ? error.message : error) } }
+}`,
+      { file },
+    ),
+  )
+}
+
+/** A case of `module.tsx` (`code`) and its real modules (`files`). */
+async function serve(
+  code: string,
+  files: Record<string, string> = {},
+  file = 'module.tsx',
+) {
+  return serveCase(await host(), { [file]: code, ...files }, { file })
 }
 
 const head = `import { createClientOnlyFn, createIsomorphicFn, createServerOnlyFn } from '@tanstack/react-start'\n`
@@ -50,12 +110,11 @@ describe('environment-specific functions', () => {
   // Source: Waku vite-plugin-allow-server.test.ts "keeps only allowServer
   // dependencies and removes allowServer imports", "supports allowServer
   // aliasing and export specifiers". Dev and build compile alike (audit E1
-  // missing coverage 4).
-  test.each(['build', 'dev'] as const)(
-    '%s: each output keeps the implementation of its environment and only its dependencies',
-    async (mode) => {
-      const compiled = await compileAll(
-        `import { createServerOnlyFn, createClientOnlyFn as clientOnly } from '@tanstack/react-start'
+  // missing coverage 4): the production build of the same module is in
+  // integration/start-compiler-build-env-fns.test.ts.
+  test('dev: each environment keeps the implementation of its environment and only its dependencies', async () => {
+    const served = await serve(
+      `import { createServerOnlyFn, createClientOnlyFn as clientOnly } from '@tanstack/react-start'
 import { draw } from './chart.client'
 import { query } from './db.server'
 const shared = 1
@@ -63,26 +122,23 @@ const readDb = () => query(shared)
 const serverValue = createServerOnlyFn(readDb)
 export const clientValue = clientOnly(() => draw(shared))
 export { serverValue as exposed }`,
-        { mode },
-      )
-      const stubs = {
-        './chart.client': `export const draw = (x) => 'draw:' + x`,
-        './db.server': `export const query = (x) => 'query:' + x`,
-      }
-      await expectClientFree(compiled.client)
-      const client = await evaluateModule(compiled.client, stubs)
-      expect([client.clientValue(), settle(client.exposed)]).toEqual([
-        'draw:1',
-        serverOnlyError,
-      ])
-      await expectSsrFree(compiled.ssr)
-      const ssr = await evaluateModule(compiled.ssr, stubs)
-      expect([settle(ssr.clientValue), ssr.exposed()]).toEqual([
-        clientOnlyError,
-        'query:1',
-      ])
-    },
-  )
+      {
+        'chart.client.ts': `export const draw = (x: number) => 'draw:' + x\n`,
+        'db.server.ts': `export const query = (x: number) => 'query:' + x\n`,
+      },
+    )
+    await expectClientFree(served)
+    expect([
+      await inPage(served, 'return module.clientValue()'),
+      await settleInPage(served, 'module.exposed()'),
+    ]).toEqual(['draw:1', serverOnlyError])
+    await expectSsrFree(served)
+    const ssr = await served.ssr()
+    expect([settle(() => ssr.clientValue()), ssr.exposed()]).toEqual([
+      clientOnlyError,
+      'query:1',
+    ])
+  })
 
   // Source: Waku vite-plugin-allow-server.test.ts "handles default allowServer
   // export", "stubs default exports while preserving allowServer dependencies"
@@ -107,44 +163,42 @@ export default createIsomorphicFn().server(() => db.x()).client(() => chart())`,
       server: 'db',
     },
   ])('a default-exported function: $code', async ({ code, client, server }) => {
-    const compiled = await compileAll(`${head}${code}`)
-    await expectClientFree(compiled.client)
-    await expectSsrFree(compiled.ssr)
-    const stubs = {
-      './db.server': `export const db = { x: () => 'db' }`,
-      './chart.client': `export const chart = () => 'chart'`,
-    }
-    expect(
-      settle((await evaluateModule(compiled.client, stubs)).default),
-    ).toEqual(client)
-    expect(settle((await evaluateModule(compiled.ssr, stubs)).default)).toEqual(
-      server,
-    )
+    const served = await serve(`${head}${code}`, {
+      'db.server.ts': `export const db = { x: () => 'db' }\n`,
+      'chart.client.ts': `export const chart = () => 'chart'\n`,
+    })
+    await expectClientFree(served)
+    await expectSsrFree(served)
+    expect(await settleInPage(served, 'module.default()')).toEqual(client)
+    const ssr = await served.ssr()
+    expect(settle(() => ssr.default())).toEqual(server)
   })
 
   // Source: Waku vite-plugin-allow-server.test.ts "handles default allowServer
   // export" (middleware variant)
   test('the client strips the server implementation of a default-exported middleware', async () => {
-    const client = await compileCode(
-      'client',
+    const served = await serve(
       `import { createMiddleware } from '@tanstack/react-start'
 import { db } from './db.server'
 export default createMiddleware().server(async ({ next }) => {
   db.log()
   return next()
 })`,
+      { 'db.server.ts': `export const db = { log: () => {} }\n` },
     )
-    expect(await getModuleErrors(client!)).toEqual([])
-    await expectClientFree(client!)
+    await expectClientFree(served)
     // The middleware records no server implementation.
-    expect((await evaluateModule(client!)).default.options).toEqual({
-      type: 'request',
-    })
+    expect(
+      await inPage(
+        served,
+        `return Object.fromEntries(Object.entries(module.default.options).filter(([, value]) => value !== undefined).map(([key, value]) => [key, typeof value === 'function' ? '<function>' : value]))`,
+      ),
+    ).toEqual({ type: 'request' })
   })
 
   describe('a middleware chain with a wrapped link', () => {
     // A `.ts` module, so that `<any>x` is a type assertion.
-    const id = '/test/src/module.ts'
+    const file = 'module.ts'
     const serverLink = `.server(async ({ next }) => next({ context: db.read('SERVER_SECRET') }))`
     const clientLink = `.client(async ({ next }) => next({ sendContext: 'client' }))`
     const validatorLink = `.validator((data) => check(data, 'VALIDATOR_SECRET'))`
@@ -157,36 +211,51 @@ export default createMiddleware().server(async ({ next }) => {
       ]
         .filter(Boolean)
         .join('\n')
+    const serverFiles = {
+      'db.server.ts': `export const db = { read: (key: string) => 'db:' + key }\n`,
+      'check.server.ts': `export const check = (data: unknown, key: string) => data + ':' + key\n`,
+    }
 
     /**
-     * The links of the middleware an output keeps (Start's createMiddleware
-     * records each in its options), each with the result of its
-     * implementation.
+     * The links of the middleware (Start's createMiddleware records each in
+     * its options), each with the result of its implementation: the same
+     * page script and server code.
      */
-    async function runLinks(output: Output, code: string) {
-      // The server output leaves a module without env-only code untouched.
-      const compiled = (await compileCode(output, code, { id })) ?? code
-      expect(await getModuleErrors(compiled, 'module.ts'), output).toEqual([])
-      const { code: javascript } = await transformWithOxc(compiled, 'module.ts')
-      const { mw } = await evaluateModule(javascript, {
-        './db.server': `export const db = { read: (key) => 'db:' + key }`,
-        './check.server': `export const check = (data, key) => data + ':' + key`,
-      })
-      const links: Record<string, unknown> = {}
-      for (const method of ['middleware', 'validator', 'client', 'server']) {
-        const impl = mw.options[method]
-        if (impl !== undefined) {
-          links[method] =
-            method === 'middleware'
-              ? impl
-              : await impl(
-                  method === 'validator'
-                    ? 'data'
-                    : { next: (opts: unknown) => opts },
-                )
-        }
-      }
-      return { compiled, links }
+    // Only Start's own results (promises, plain data) are awaited and kept:
+    // a link left on the client may call a module import protection
+    // replaced with a mock, whose value must not be awaited (a mock is
+    // thenable forever).
+    const runLinksSource = `const plain = (value) =>
+  value === null || ['string', 'number', 'boolean', 'undefined'].includes(typeof value) || Array.isArray(value) ||
+  (typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype)
+const links = {}
+for (const method of ['middleware', 'validator', 'client', 'server']) {
+  const impl = mw.options[method]
+  if (impl !== undefined) {
+    let result = method === 'middleware' ? impl : impl(method === 'validator' ? 'data' : { next: (opts) => opts })
+    if (result instanceof Promise) {
+      result = await result
+    }
+    links[method] = plain(result) ? result : '<' + typeof result + '>'
+  }
+}
+return links`
+
+    /** The links each environment keeps, with their results. */
+    async function runLinks(code: string) {
+      const served = await serve(code, serverFiles, file)
+      const client = await inPage(
+        served,
+        `const mw = module.mw\n${runLinksSource}`,
+        { file },
+      )
+      const AsyncFunction = (async () => {}).constructor as new (
+        ...args: Array<string>
+      ) => (mw: unknown) => Promise<unknown>
+      const ssr = await new AsyncFunction('mw', runLinksSource)(
+        (await served.ssr(file)).mw,
+      )
+      return { served, client, ssr }
     }
 
     // Parentheses and each TypeScript wrapper are different AST nodes.
@@ -259,12 +328,13 @@ export default createMiddleware().server(async ({ next }) => {
     )(
       'the client strips the server implementation when $name wraps the chain up to $end',
       async ({ chain, wrap, clientLinks, ssrLinks }) => {
-        const code = middlewareModule(chain(wrap))
-        const client = await runLinks('client', code)
-        await expectClientFree(client.compiled, serverModules, { id })
-        expect(client.compiled).not.toMatch(/SERVER_SECRET|VALIDATOR_SECRET/)
-        expect(client.links).toEqual(clientLinks)
-        expect((await runLinks('ssr', code)).links).toEqual(ssrLinks)
+        const { served, client, ssr } = await runLinks(
+          middlewareModule(chain(wrap)),
+        )
+        await expectClientFree(served, serverModules, file)
+        expect(served.code.client).not.toMatch(/SERVER_SECRET|VALIDATOR_SECRET/)
+        expect(client).toEqual(clientLinks)
+        expect(ssr).toEqual(ssrLinks)
       },
     )
 
@@ -282,15 +352,16 @@ export default createMiddleware().server(async ({ next }) => {
     )(
       'the client strips a validator link$middleware wrapped in $name',
       async ({ wrap, middleware }) => {
-        const code = middlewareModule(
-          `${wrap(`createMiddleware({ type: 'function' })${middleware}${validatorLink}`)}${clientLink}${serverLink}`,
+        const { served, client, ssr } = await runLinks(
+          middlewareModule(
+            `${wrap(`createMiddleware({ type: 'function' })${middleware}${validatorLink}`)}${clientLink}${serverLink}`,
+          ),
         )
         const kept = middleware ? { middleware: [] } : {}
-        const client = await runLinks('client', code)
-        await expectClientFree(client.compiled, serverModules, { id })
-        expect(client.compiled).not.toMatch(/SERVER_SECRET|VALIDATOR_SECRET/)
-        expect(client.links).toEqual({ ...kept, client: clientResult })
-        expect((await runLinks('ssr', code)).links).toEqual({
+        await expectClientFree(served, serverModules, file)
+        expect(served.code.client).not.toMatch(/SERVER_SECRET|VALIDATOR_SECRET/)
+        expect(client).toEqual({ ...kept, client: clientResult })
+        expect(ssr).toEqual({
           ...kept,
           validator: 'data:VALIDATOR_SECRET',
           client: clientResult,
@@ -314,15 +385,13 @@ export default createMiddleware().server(async ({ next }) => {
     // Control for the pin below (same harness): the `.server()` link of a
     // builder stored in a variable is stripped on the client.
     test('the client strips a .server() link of a builder stored in a variable', async () => {
-      const code = builderVariableModule(clientLink, serverLink)
-      const client = await runLinks('client', code)
-      await expectClientFree(client.compiled, serverModules, { id })
-      expect(client.compiled).not.toMatch(/SERVER_SECRET/)
-      expect(client.links).toEqual({ client: clientResult })
-      expect((await runLinks('ssr', code)).links).toEqual({
-        client: clientResult,
-        server: serverResult,
-      })
+      const { served, client, ssr } = await runLinks(
+        builderVariableModule(clientLink, serverLink),
+      )
+      await expectClientFree(served, serverModules, file)
+      expect(served.code.client).not.toMatch(/SERVER_SECRET/)
+      expect(client).toEqual({ client: clientResult })
+      expect(ssr).toEqual({ client: clientResult, server: serverResult })
     })
 
     // Bug: a `.validator()` link of a middleware builder stored in a variable
@@ -336,12 +405,13 @@ export default createMiddleware().server(async ({ next }) => {
     test.fails(
       'the client strips a validator link of a builder stored in a variable',
       async () => {
-        const code = builderVariableModule(validatorLink, serverLink)
-        const client = await runLinks('client', code)
-        await expectClientFree(client.compiled, serverModules, { id })
-        expect(client.compiled).not.toMatch(/SERVER_SECRET|VALIDATOR_SECRET/)
-        expect(client.links).toEqual({})
-        expect((await runLinks('ssr', code)).links).toEqual({
+        const { served, client, ssr } = await runLinks(
+          builderVariableModule(validatorLink, serverLink),
+        )
+        await expectClientFree(served, serverModules, file)
+        expect(served.code.client).not.toMatch(/SERVER_SECRET|VALIDATOR_SECRET/)
+        expect(client).toEqual({})
+        expect(ssr).toEqual({
           validator: 'data:VALIDATOR_SECRET',
           server: serverResult,
         })
@@ -350,16 +420,15 @@ export default createMiddleware().server(async ({ next }) => {
   })
 
   /**
-   * Compiles `code` (which exports `getEnv`) for the client and SSR and
-   * calls `getEnv` in each output, with the Start runtime of its
-   * environment.
+   * Serves `code` (which exports `getEnv`) and calls `getEnv` in each
+   * environment, on the Start runtime of that environment.
    */
-  async function callIsomorphicFn(code: string) {
-    const client = (await compileCode('client', code)) ?? code
-    const ssr = (await compileCode('ssr', code)) ?? code
+  async function callIsomorphicFn(code: string, name = 'getEnv') {
+    const served = await serve(code)
+    const ssr = await served.ssr()
     return {
-      client: settle((await evaluateModule(client)).getEnv),
-      ssr: settle((await evaluateModule(ssr, {}, { env: 'server' })).getEnv),
+      client: await settleInPage(served, `module.${name}()`),
+      ssr: settle(() => ssr[name]()),
     }
   }
 
@@ -418,15 +487,13 @@ export const getEnv = base.server(() => 'server')`,
   ])(
     'each output keeps its implementation of an isomorphic fn with a wrapped chain link: %s',
     async (chain) => {
-      const code = `import { createIsomorphicFn } from '@tanstack/react-start'
-export const fn = ${chain}`
-      // A module without a server fn has no provider.
-      const results: Record<string, unknown> = {}
-      for (const output of ['client', 'ssr'] as const) {
-        const compiled = (await compileCode(output, code)) ?? code
-        results[output] = settle((await evaluateModule(compiled)).fn)
-      }
-      expect(results).toEqual({ client: 'client', ssr: 'server' })
+      expect(
+        await callIsomorphicFn(
+          `import { createIsomorphicFn } from '@tanstack/react-start'
+export const fn = ${chain}`,
+          'fn',
+        ),
+      ).toEqual({ client: 'client', ssr: 'server' })
     },
   )
 
@@ -483,23 +550,16 @@ export const fn = ${chain}`
       ]
         .filter(Boolean)
         .join('')
-      const stubs = {
-        './db.server': `export const db = { x: (key) => 'db:' + key }`,
-        './chart.client': `export const chart = () => 'chart'`,
-      }
-      const compiled = {
-        client: (await compileCode('client', source)) ?? source,
-        ssr: (await compileCode('ssr', source)) ?? source,
-      }
-      await expectClientFree(compiled.client)
-      expect(compiled.client).not.toContain('SERVER_SECRET')
-      await expectSsrFree(compiled.ssr)
-      expect(settle((await evaluateModule(compiled.client, stubs)).fn)).toEqual(
-        client,
-      )
-      expect(settle((await evaluateModule(compiled.ssr, stubs)).fn)).toEqual(
-        server,
-      )
+      const served = await serve(source, {
+        'db.server.ts': `export const db = { x: (key: string) => 'db:' + key }\n`,
+        'chart.client.ts': `export const chart = () => 'chart'\n`,
+      })
+      await expectClientFree(served)
+      expect(served.code.client).not.toContain('SERVER_SECRET')
+      await expectSsrFree(served)
+      expect(await settleInPage(served, 'module.fn()')).toEqual(client)
+      const ssr = await served.ssr()
+      expect(settle(() => ssr.fn())).toEqual(server)
     },
   )
 
@@ -508,7 +568,7 @@ export const fn = ${chain}`
   // Source: SolidStart directives validate.ts (assertHoistable), compile.spec.ts
   // "unsupported server functions"
   test('an env-only function in a class body keeps this, private members, super and arguments', async () => {
-    const compiled = await compileAll(`${head}class Base {
+    const served = await serve(`${head}class Base {
   name() {
     return 'base'
   }
@@ -519,9 +579,10 @@ export class Api extends Base {
     return createServerOnlyFn(() => [this.#secret, super.name(), arguments.length])
   }
 }`)
-    const client = await evaluateModule(compiled.client)
-    expect(settle(new client.Api().read(1))).toEqual(serverOnlyError)
-    const ssr = await evaluateModule(compiled.ssr)
+    expect(await settleInPage(served, 'new module.Api().read(1)()')).toEqual(
+      serverOnlyError,
+    )
+    const ssr = await served.ssr()
     expect(new ssr.Api().read(1)()).toEqual(['s', 'base', 1])
   })
 
@@ -540,35 +601,36 @@ export class Api extends Base {
   ])(
     'a createClientOnlyFn returned by $name runs only on the client',
     async ({ code }) => {
-      const compiled = await compileAll(
+      const served = await serve(
         `${head}import { chart } from './chart.client'\n${code}`,
+        { 'chart.client.ts': `export const chart = () => 'chart'\n` },
       )
-      const stubs = { './chart.client': `export const chart = () => 'chart'` }
-      expect((await evaluateModule(compiled.client, stubs)).makeDraw()()).toBe(
-        'chart',
-      )
-      await expectSsrFree(compiled.ssr)
-      const ssr = await evaluateModule(compiled.ssr, stubs)
+      expect(await inPage(served, 'return module.makeDraw()()')).toBe('chart')
+      await expectSsrFree(served)
+      const ssr = await served.ssr()
       expect(settle(() => ssr.makeDraw()())).toEqual(clientOnlyError)
     },
   )
 
   test('a createServerOnlyFn wrapped in two calls runs only on the server', async () => {
-    const compiled = await compileAll(`${head}import { db } from './db.server'
+    const served = await serve(
+      `${head}import { db } from './db.server'
 const wrap = <T,>(fn: T) => fn
-export const read = wrap(wrap(createServerOnlyFn(() => db.secret())))`)
-    const stubs = { './db.server': { db: { secret: () => 'secret' } } }
-    await expectClientFree(compiled.client)
-    expect(settle((await evaluateModule(compiled.client, stubs)).read)).toEqual(
-      serverOnlyError,
+export const read = wrap(wrap(createServerOnlyFn(() => db.secret())))`,
+      { 'db.server.ts': `export const db = { secret: () => 'secret' }\n` },
     )
-    expect((await evaluateModule(compiled.ssr, stubs)).read()).toBe('secret')
+    await expectClientFree(served)
+    expect(await settleInPage(served, 'module.read()')).toEqual(serverOnlyError)
+    expect((await served.ssr()).read()).toBe('secret')
   })
 
   // On the server, a middleware `.server()` next to an isomorphic fn stays a
-  // middleware: it is not compiled as the isomorphic fn's `.server()`.
+  // middleware: it is not compiled as the isomorphic fn's `.server()`. On
+  // Start's real runtime (an uncompiled factory is the real one's business,
+  // not a throwing stand-in: RULES-AUDIT D#13).
   test('isomorphic, server-only and middleware implementations in one module reach only their environment', async () => {
-    const code = `${head}import { createMiddleware } from '@tanstack/react-start'
+    const served = await serve(
+      `${head}import { createMiddleware } from '@tanstack/react-start'
 import { chart } from './chart.client'
 import { db } from './db.server'
 export const iso = createIsomorphicFn()
@@ -577,32 +639,20 @@ export const iso = createIsomorphicFn()
 export const serverOnly = createServerOnlyFn(() => db.x())
 export const mw = createMiddleware().server(async ({ next }) =>
   next({ context: { value: db.x() } }),
-)`
-    const uncompiled = () => {
-      throw new Error('uncompiled Start factory')
-    }
-    const stubs = {
-      // Start's real runtime. The output may still import the factories
-      // `head` imports, but never calls them uncompiled (they throw here).
-      '@tanstack/react-start': {
-        ...startClientCore,
-        createClientOnlyFn: uncompiled,
-        createIsomorphicFn: uncompiled,
-        createServerOnlyFn: uncompiled,
+)`,
+      {
+        'chart.client.ts': `export const chart = { draw: () => 'drawn' }\n`,
+        'db.server.ts': `export const db = { x: () => 'x' }\n`,
       },
-      './chart.client': `export const chart = { draw: () => 'drawn' }`,
-      './db.server': `export const db = { x: () => 'x' }`,
-    }
-    const client = await compileCode('client', code)
-    await expectClientFree(client!)
-    expect((await evaluateModule(client!, stubs)).iso()).toBe('drawn')
-    const ssr = await compileCode('ssr', code)
-    await expectSsrFree(ssr!)
-    const ssrModule = await evaluateModule(ssr!, stubs)
+    )
+    await expectClientFree(served)
+    expect(await inPage(served, 'return module.iso()')).toBe('drawn')
+    await expectSsrFree(served)
+    const ssr = await served.ssr()
     expect([
-      ssrModule.iso(),
-      ssrModule.serverOnly(),
-      await ssrModule.mw.options.server({
+      ssr.iso(),
+      ssr.serverOnly(),
+      await ssr.mw.options.server({
         next: (options: unknown) => options,
       }),
     ]).toEqual(['x', 'x', { context: { value: 'x' } }])
@@ -613,8 +663,7 @@ export const mw = createMiddleware().server(async ({ next }) =>
   // Hook calls are different (dropping one changes the hook order; pinned
   // separately); a plain server call like these must go.
   test('the client drops vars nested in blocks that only the server implementation reads', async () => {
-    const client = await compileCode(
-      'client',
+    const served = await serve(
       `${head}import { connect, serverCall } from './db.server'
 if (typeof window === 'undefined') {
   var connection = connect()
@@ -626,10 +675,12 @@ export function getValue(flag: boolean) {
   const read = createIsomorphicFn().server(() => [connection, local]).client(() => 'client')
   return read()
 }`,
+      {
+        'db.server.ts': `export const connect = () => 'connection'\nexport const serverCall = () => 'local'\n`,
+      },
     )
-    expect(await getModuleErrors(client!)).toEqual([])
-    await expectClientFree(client!)
-    expect((await evaluateModule(client!)).getValue(true)).toBe('client')
+    await expectClientFree(served)
+    expect(await inPage(served, 'return module.getValue(true)')).toBe('client')
   })
 
   /** A server fn whose handler declares an env-specific fn of each kind. */
@@ -651,9 +702,9 @@ function settle(run: () => unknown) {
   }
 }`
 
-  // Bug: the provider leaves env-specific functions declared inside a
-  // server fn handler uncompiled, with the client-only module they read
-  // still imported.
+  // Bug: the server leaves env-specific functions declared inside a server
+  // fn handler uncompiled, with the client-only module they read still
+  // imported.
   // Impact: on the server, a client-only fn called by a handler runs its
   // client implementation (the uncompiled factory returns it) instead of
   // throwing, and the server bundle loads the client-only module (browser-only
@@ -664,19 +715,31 @@ function settle(run: () => unknown) {
   // start-compiler-factories.test.ts "the provider compiles env-specific
   // functions inside a server fn handler" (red on main).
   test.fails(
-    'the provider compiles env-specific functions inside a server fn handler',
+    'the server compiles env-specific functions inside a server fn handler',
     async () => {
-      const server = await compileServer(envFnsInHandler)
-      expect(await getModuleErrors(server.provider)).toEqual([])
-      expectNotLoaded(await moduleLoads(server.provider, { env: 'server' }), [
-        './chart.client',
-      ])
-      expect(
-        await callProvider(server, 'fn', {
-          './db.server': `export const db = { now: () => 'now', read: () => 'read' }`,
-          './chart.client': `export const chart = () => 'chart'`,
-        }),
-      ).toEqual([{ thrown: envRestrictionError('client') }, 'now', 'read'])
+      const loadedKey = '__startHostChartClientLoaded'
+      const global = globalThis as Record<string, unknown>
+      delete global[loadedKey]
+      try {
+        const served = await serve(envFnsInHandler, {
+          'db.server.ts': `export const db = { now: () => 'now', read: () => 'read' }\n`,
+          // Records being loaded in the realm that loads it (the server's
+          // is this process).
+          'chart.client.ts': `;(globalThis as any).${loadedKey} = true
+export const chart = () => 'chart'
+`,
+        })
+        expect(await callFromClient(served, 'module.fn')).toEqual([
+          { thrown: envRestrictionError('client') },
+          'now',
+          'read',
+        ])
+        expect(global[loadedKey], 'the server loaded chart.client').toBe(
+          undefined,
+        )
+      } finally {
+        delete global[loadedKey]
+      }
     },
   )
 
@@ -686,7 +749,8 @@ function settle(run: () => unknown) {
   test.each<{
     name: string
     code: string
-    read: (module: Record<string, any>) => unknown
+    /** A JavaScript expression with the module as `module`. */
+    read: string
     expected: unknown
   }>([
     {
@@ -694,18 +758,20 @@ function settle(run: () => unknown) {
       code: `// createServerFn and createServerOnlyFn are not used here
 export const label = 'createServerFn().handler(async () => 1)'
 export const other = \`createClientOnlyFn(\${label})\``,
-      read: (module) => [module.label, module.other],
+      read: '[module.label, module.other]',
       expected: [
         'createServerFn().handler(async () => 1)',
         'createClientOnlyFn(createServerFn().handler(async () => 1))',
       ],
     },
     {
+      // (`./secret`, not `./secret.server`: import protection would deny a
+      // `.server` module on the client, which is another subject.)
       name: 'calls .handler() on an object that is not a server fn',
       code: `import { api } from './api'
-import { secret } from './secret.server'
+import { secret } from './secret'
 export const route = api.handler(async () => secret())`,
-      read: (module) => module.route(),
+      read: 'module.route()',
       expected: 'secret',
     },
     {
@@ -714,23 +780,24 @@ export const route = api.handler(async () => secret())`,
   return fn
 }
 export const value = createServerOnlyFn(() => 'mine')`,
-      read: (module) => module.value(),
+      read: 'module.value()',
       expected: 'mine',
     },
   ])(
     'a module that $name keeps its meaning',
     async ({ code, read, expected }) => {
-      const stubs = {
-        './api': { api: { handler: (fn: () => unknown) => fn } },
-        './secret.server': { secret: () => 'secret' },
-      }
-      for (const output of ['client', 'ssr'] as const) {
-        const compiled = (await compileCode(output, code)) ?? code
-        expect(
-          await read(await evaluateModule(compiled, stubs)),
-          output,
-        ).toEqual(expected)
-      }
+      const served = await serve(code, {
+        'api.ts': `export const api = { handler: (fn: () => unknown) => fn }\n`,
+        'secret.ts': `export const secret = () => 'secret'\n`,
+      })
+      expect(await inPage(served, `return await (${read})`), 'client').toEqual(
+        expected,
+      )
+
+      const readOnServer = new Function('module', `return (${read})`) as (
+        module: Record<string, any>,
+      ) => unknown
+      expect(await readOnServer(await served.ssr()), 'ssr').toEqual(expected)
     },
   )
 
@@ -743,7 +810,7 @@ export const value = createServerOnlyFn(() => 'mine')`,
   // Source: Waku vite-plugin-allow-server.test.ts "throws when allowServer
   // receives zero arguments"; replaces envOnly.test.ts and
   // createIsomorphicFn.test.ts "should error if implementation not provided"
-  test.each<{ code: string; api: string; runsOn: Output }>([
+  test.each<{ code: string; api: string; runsOn: 'client' | 'ssr' }>([
     {
       code: `export const none = createServerOnlyFn()`,
       api: 'createServerOnlyFn',
@@ -768,18 +835,21 @@ export const value = createServerOnlyFn(() => 'mine')`,
     'a missing implementation is rejected where it runs: $code',
     async ({ code, api, runsOn }) => {
       const source = `${head}${code}`
-      const error = await compileCode(runsOn, source).catch(
-        (thrown: unknown) => thrown,
-      )
+      const startCase = await (await host()).case({ 'module.tsx': source })
+      const error = await compileError(startCase, runsOn)
       expectCompileError(error, { source, at: undefined, names: [api] })
     },
   )
 })
 
 describe('factories resolved through project modules', () => {
+  const dbFile = {
+    'db.server.ts': `export const db = { x: () => 'x', y: () => 'y', w: () => 'w', log: () => {} }\n`,
+  }
+
   test.each<{
     name: string
-    output: Output
+    output: 'client' | 'ssr'
     files: Record<string, string>
     code: string
     serverFns: number
@@ -788,7 +858,7 @@ describe('factories resolved through project modules', () => {
       name: 'a default-exported middleware builder imported as default',
       output: 'client',
       files: {
-        '/test/src/mw.ts': `import { createMiddleware } from '@tanstack/react-start'
+        'mw.ts': `import { createMiddleware } from '@tanstack/react-start'
 export default createMiddleware({ type: 'function' })`,
       },
       // Known limitation on main: middleware is detected by the
@@ -807,7 +877,7 @@ export const logged = mw.server(async ({ next }) => {
       name: 'a default-exported server fn builder declared by identifier',
       output: 'client',
       files: {
-        '/test/src/builders.ts': `import { createServerFn } from '@tanstack/react-start'
+        'builders.ts': `import { createServerFn } from '@tanstack/react-start'
 const authed = createServerFn({ method: 'POST' })
 export default authed`,
       },
@@ -820,7 +890,7 @@ export const fn = authed.handler(async () => db.x())`,
       name: 'a namespace import of a module re-exporting the factories',
       output,
       files: {
-        '/test/src/factories.ts': `export { createServerFn, createIsomorphicFn } from '@tanstack/react-start'`,
+        'factories.ts': `export { createServerFn, createIsomorphicFn } from '@tanstack/react-start'`,
       },
       code: `import * as F from './factories'
 import { db } from './db.server'
@@ -832,7 +902,7 @@ export const iso = F.createIsomorphicFn().server(() => db.w()).client(() => 'cli
       name: 'renamed re-exports next to a type-only re-export',
       output: 'client',
       files: {
-        '/test/src/f.ts': `export { createServerFn as csf, createServerOnlyFn as so } from '@tanstack/react-start'
+        'f.ts': `export { createServerFn as csf, createServerOnlyFn as so } from '@tanstack/react-start'
 export type { Register } from '@tanstack/react-start'
 export type * as types from '@tanstack/react-start'`,
       },
@@ -849,7 +919,7 @@ export const s = so(() => db.y())`,
       name: 'a server fn factory const-aliased in another module',
       output: 'client',
       files: {
-        '/test/src/factory.ts': `import { createServerFn } from '@tanstack/react-start'
+        'factory.ts': `import { createServerFn } from '@tanstack/react-start'
 export const createFooServerFn = createServerFn`,
       },
       code: `import { createFooServerFn } from './factory'
@@ -858,53 +928,47 @@ export const fn = createFooServerFn().handler(async () => db.x())`,
       serverFns: 1,
     },
   ])('$output: $name', async ({ output, files, code, serverFns }) => {
-    const compiled = await compileFor(output, code, { files })
-    expect(await getModuleErrors(compiled.code!)).toEqual([])
+    const served = await serve(code, { ...files, ...dbFile })
     if (output === 'client') {
-      await expectClientFree(compiled.code!, ['./db.server'], { files })
+      await expectClientFree(served)
     }
-    expect(Object.keys(compiled.serverFns)).toHaveLength(serverFns)
-    // The server fn is called through an RPC by the reported id, which runs
-    // the handler on the server (project modules linked as they are).
-    if (serverFns > 0) {
+    // The module gives its importers that many server fns (public urls).
+    expect(await serverFnUrls(served)).toHaveLength(serverFns)
+    if ('iso' in (await served.ssr())) {
+      // Each environment runs its own isomorphic implementation.
       expect(
-        await callServerFnThroughCallers(
-          await compileAll(code, { files }),
-          (module) => module.fn,
-          {
-            './db.server': { db: { x: () => 'x', y: () => 'y', w: () => 'w' } },
-          },
-        ),
-      ).toBe('x')
+        output === 'client'
+          ? await inPage(served, 'return module.iso()')
+          : (await served.ssr()).iso(),
+      ).toBe(output === 'client' ? 'client' : 'w')
+    }
+    // The server fn is called from the client (through the server) and
+    // from server code, and runs the handler on the server.
+    if (serverFns > 0) {
+      expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('x')
     }
   })
 
   // Only createServerOnlyFn appears in the source text; on the server, the
   // client-only fn imported through an aliased re-export throws and the
-  // server-only fn runs. (Which of its imports the SSR output keeps is left
-  // open: neutral names, user ruling 2026-10-17.)
+  // server-only fn runs. (Which of its imports the SSR environment keeps is
+  // left open: neutral names, user ruling 2026-10-17.)
   test('ssr: an aliased re-export of createClientOnlyFn next to createServerOnlyFn', async () => {
-    const files = {
-      '/test/src/env.ts': `export { createClientOnlyFn as clientOnly } from '@tanstack/react-start'`,
-    }
-    const code = `import { createServerOnlyFn } from '@tanstack/react-start'
+    const served = await serve(
+      `import { createServerOnlyFn } from '@tanstack/react-start'
 import { clientOnly } from './env'
 import { secret } from './secret.server'
 import { readWindow } from './browser'
 export const serverValue = createServerOnlyFn(() => secret())
-export const clientValue = clientOnly(() => readWindow())`
-    const ssr = (await compileCode('ssr', code, { files })) ?? code
-    expect(await getModuleErrors(ssr)).toEqual([])
-    const module = await evaluateModule(
-      ssr,
+export const clientValue = clientOnly(() => readWindow())`,
       {
-        './env': { clientOnly: startClientCore.createClientOnlyFn },
-        './secret.server': { secret: () => 'secret' },
-        './browser': { readWindow: () => 'window' },
+        'env.ts': `export { createClientOnlyFn as clientOnly } from '@tanstack/react-start'`,
+        'secret.server.ts': `export const secret = () => 'secret'\n`,
+        'browser.ts': `export const readWindow = () => 'window'\n`,
       },
-      { env: 'server' },
     )
-    expect([module.serverValue(), settle(module.clientValue)]).toEqual([
+    const module = await served.ssr()
+    expect([module.serverValue(), settle(() => module.clientValue())]).toEqual([
       'secret',
       clientOnlyError,
     ])
@@ -914,15 +978,13 @@ export const clientValue = clientOnly(() => readWindow())`
   test.each<{
     name: string
     files: Record<string, string>
-    code?: string
-    stubs?: Record<string, ModuleStub>
     resolvesServerOnlyFn: boolean
   }>([
     {
       // expand-export-all/explicit-wins
       name: 'a local export that overrides the star export',
       files: {
-        '/test/src/start.ts': `export * from '@tanstack/react-start'
+        'start.ts': `export * from '@tanstack/react-start'
 export function createServerOnlyFn(fn) {
   return fn
 }`,
@@ -933,31 +995,33 @@ export function createServerOnlyFn(fn) {
       // expand-export-all/nested-conflict-explicit-reexport-wins
       name: 'an explicit re-export that overrides a star export',
       files: {
-        '/test/src/start.ts': `export * from './custom'
+        'start.ts': `export * from './custom'
 export { createServerFn, createServerOnlyFn } from '@tanstack/react-start'`,
-        '/test/src/custom.ts': `export function createServerOnlyFn(fn) {
+        'custom.ts': `export function createServerOnlyFn(fn) {
   return fn
 }`,
       },
       resolvesServerOnlyFn: true,
     },
     {
-      // expand-export-all/bad-resolve
-      name: 'an unresolvable star export next to the package',
+      // expand-export-all/bad-resolve. A star export that no bundler
+      // resolves fails every real build, so the module it names exists here
+      // and gives nothing (as the former harness's empty stand-in did).
+      name: 'an empty star export next to the package',
       files: {
-        '/test/src/start.ts': `export * from './missing'
+        'start.ts': `export * from './missing'
 export * from '@tanstack/react-start'`,
+        'missing.ts': `export {}\n`,
       },
-      stubs: { './missing': {} },
       resolvesServerOnlyFn: true,
     },
     {
       // expand-export-all/duplicate-star-same-source
       name: 'the same module re-exported twice',
       files: {
-        '/test/src/start.ts': `export * from './inner'
+        'start.ts': `export * from './inner'
 export * from './inner'`,
-        '/test/src/inner.ts': `export * from '@tanstack/react-start'`,
+        'inner.ts': `export * from '@tanstack/react-start'`,
       },
       resolvesServerOnlyFn: true,
     },
@@ -965,43 +1029,29 @@ export * from './inner'`,
       // expand-export-all/namespace-same-binding
       name: 'two star exports that each forward part of the package',
       files: {
-        '/test/src/start.ts': `export * from './a'
+        'start.ts': `export * from './a'
 export * from './b'`,
-        '/test/src/a.ts': `export { createServerFn } from '@tanstack/react-start'`,
-        '/test/src/b.ts': `export { createServerOnlyFn } from '@tanstack/react-start'`,
+        'a.ts': `export { createServerFn } from '@tanstack/react-start'`,
+        'b.ts': `export { createServerOnlyFn } from '@tanstack/react-start'`,
       },
       resolvesServerOnlyFn: true,
     },
   ])(
     'an export * chain with $name',
-    async ({
-      files,
-      code = `import { createServerFn, createServerOnlyFn } from './start'`,
-      stubs = {},
-      resolvesServerOnlyFn,
-    }) => {
-      const source = `${code}
+    async ({ files, resolvesServerOnlyFn }) => {
+      const served = await serve(
+        `import { createServerFn, createServerOnlyFn } from './start'
 import { db } from './db.server'
 export const fn = createServerFn().handler(async () => db.x())
-export const serverOnly = createServerOnlyFn(() => 'server-only-marker')`
-      const compiled = await compileAll(source, { files })
-      expect(Object.keys(compiled.serverFns)).toHaveLength(1)
-      await expectClientFree(compiled.client, ['./db.server'], {
-        files,
-        stubs,
-      })
-      const linked = { ...stubs, './db.server': { db: { x: () => 'x' } } }
-      expect(
-        await callServerFnThroughCallers(
-          compiled,
-          (module) => module.fn,
-          linked,
-        ),
-      ).toBe('x')
+export const serverOnly = createServerOnlyFn(() => 'server-only-marker')`,
+        { ...files, ...dbFile },
+      )
+      expect(await serverFnUrls(served)).toHaveLength(1)
+      await expectClientFree(served)
+      expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('x')
       // Where the project's own `createServerOnlyFn` wins, it is a plain
       // function.
-      const client = await evaluateModule(compiled.client, linked, { files })
-      expect(settle(client.serverOnly)).toEqual(
+      expect(await settleInPage(served, 'module.serverOnly()')).toEqual(
         resolvesServerOnlyFn ? serverOnlyError : 'server-only-marker',
       )
     },
@@ -1014,88 +1064,134 @@ export const serverOnly = createServerOnlyFn(() => 'server-only-marker')`
   // no rejection branch). Valid TypeScript: arbitrary module namespace
   // names (tsc 7.0.2 accepts both modules against the real declarations).
   test('builders re-exported under string export names are recognised', async () => {
-    const files = {
-      '/test/src/start.ts': `export { createServerFn as 'create server fn', createServerOnlyFn as 'server only' } from '@tanstack/react-start'`,
-    }
-    const compiled = await compileAll(
+    const served = await serve(
       `import { 'create server fn' as createServerFn, 'server only' as createServerOnlyFn } from './start'
 import { db } from './db.server'
 export const fn = createServerFn().handler(async () => db.x())
 export const serverOnly = createServerOnlyFn(() => 'server-only-marker')`,
-      { files },
+      {
+        'start.ts': `export { createServerFn as 'create server fn', createServerOnlyFn as 'server only' } from '@tanstack/react-start'`,
+        ...dbFile,
+      },
     )
-    await expectClientFree(compiled.client, ['./db.server'], { files })
-    expect(compiled.client).not.toContain('db.x()')
-    const linked = { './db.server': { db: { x: () => 'x' } } }
-    expect(
-      await callServerFnThroughCallers(compiled, (module) => module.fn, linked),
-    ).toBe('x')
-    const client = await evaluateModule(compiled.client, linked, { files })
-    expect(settle(client.serverOnly)).toEqual(serverOnlyError)
-    const ssr = await evaluateModule(compiled.ssr, linked, {
-      files,
-      env: 'server',
-    })
-    expect(ssr.serverOnly()).toBe('server-only-marker')
+    await expectClientFree(served)
+    expect(served.code.client).not.toContain('db.x()')
+    expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('x')
+    expect(await settleInPage(served, 'module.serverOnly()')).toEqual(
+      serverOnlyError,
+    )
+    expect((await served.ssr()).serverOnly()).toBe('server-only-marker')
   })
 
-  const factoryFiles = () => ({
-    '/test/src/b.ts': `import { createServerFn } from '@tanstack/react-start'
-export const base = createServerFn()`,
-    '/test/src/c.ts': `export * from './b'`,
-  })
-  const importer = `import { base } from './c'
-import { db } from './db.server'
-export const fn = base.handler(async () => db.x())`
+  // Dev edits: the files are written through the dev server's watcher
+  // (`StartHost.edit`, a watched directory of the app) and requested again;
+  // the dev server invalidates what the edit changed, as in an app. Their
+  // own host: it writes no case directories (which its watcher ignores, and
+  // the edit settle would wait for).
+  describe('dev edits', () => {
+    const editHost = useStartHost(hostDefaults)
+    beforeAll(async () => {
+      await (await editHost()).page()
+    }, 60_000)
 
-  test('dev: invalidating a factory module recompiles its importers against the new code', async () => {
-    const files = factoryFiles()
-    const { compiler, compile } = createStartCompiler({
-      env: 'client',
-      mode: 'dev',
-      files,
-    })
-    // `base` as the client runtime gives it, then as the edited module does.
-    const stubs = (base: unknown) => ({
-      './c': { base },
-      './db.server': { db: { x: () => 'x' } },
-    })
-    const before = (await compile(importer, '/test/src/a.tsx')) ?? importer
-    const { fn: rpc } = await evaluateModule(
-      before,
-      stubs(startClientCore.createServerFn()),
-    )
-    expect(callerRpcId(rpc)).toEqual(expect.any(String))
-    files['/test/src/b.ts'] =
-      `export const base = { handler: (fn: unknown) => fn }`
-    // Bundlers may report the changed module with a query suffix.
-    compiler.invalidateModules(['/test/src/b.ts?v=2', '/test/src/missing.ts'])
-    // `base` is no server fn builder anymore: the handler is user code.
-    const after = (await compile(importer, '/test/src/a.tsx')) ?? importer
-    const { fn } = await evaluateModule(
-      after,
-      stubs({ handler: (handler: unknown) => handler }),
-    )
-    expect(await fn()).toBe('x')
-  })
-
-  test('dev: a server fn imported through an export * of the Start package compiles after an unrelated edit', async () => {
-    const files = {
-      '/test/src/start.ts': `export * from '@tanstack/react-start'`,
-      '/test/src/other.ts': `export const x = 1`,
+    /**
+     * Imports an app module in the host's page and runs `script` with it as
+     * `module` (again, on the new document, when an edit reloaded the page).
+     */
+    async function inEditPage(url: string, script: string) {
+      const opened = await (await editHost()).page()
+      for (let attempt = 0; ; attempt++) {
+        try {
+          return await opened.page.evaluate(
+            `(async () => { const module = await import(${JSON.stringify(url)}); ${script} })()`,
+          )
+        } catch (error) {
+          if (attempt === 2) {
+            throw error
+          }
+          await opened.page.waitForLoadState()
+        }
+      }
     }
-    const { compiler, compile } = createStartCompiler({
-      env: 'client',
-      mode: 'dev',
-      files,
-    })
-    const code = `import { createServerFn } from './start'
+
+    // Bug: after a dev edit of a module a server fn builder comes from, the
+    // client keeps serving its importers compiled against the old builder:
+    // the importer is not compiled again (the dev server only refreshes its
+    // import timestamps), so its handler stays an RPC to a server fn the
+    // edited code no longer creates. The SSR environment, which compiles the
+    // importer afresh, gets it right. The former harness recompiled after an
+    // internal `invalidateModules` call, which hid this.
+    // Impact: until the dev server restarts, the page calls a server fn that
+    // no longer exists (here: Start's RPC fails), or keeps the old client
+    // behaviour of an edited factory.
+    // Source: this reroute (B2 fork C), Vite dev server through the public
+    // Start plugin; served code read for the diagnosis only.
+    test.fails(
+      'dev: editing a factory module recompiles its importers against the new code',
+      async () => {
+        const started = await editHost()
+        const dir = 'src/edits/factory'
+        await started.edit({
+          [`${dir}/b.ts`]: `import { createServerFn } from '@tanstack/react-start'
+export const base = createServerFn()`,
+          [`${dir}/c.ts`]: `export * from './b'`,
+          // (`./db`, not `./db.server`: after the edit the handler is user
+          // code the client runs, and import protection would deny a `.server`
+          // module there.)
+          [`${dir}/db.ts`]: `export const db = { x: () => 'x' }\n`,
+          [`${dir}/a.tsx`]: `import { base } from './c'
+import { db } from './db'
+export const fn = base.handler(async () => db.x())`,
+        })
+        // Before: a server fn (Start's fetcher), calling the server.
+        expect(
+          await inEditPage(
+            `/${dir}/a.tsx`,
+            'return { url: typeof module.fn.url, result: await module.fn() }',
+          ),
+        ).toEqual({ url: 'string', result: 'x' })
+        // `base` is no server fn builder anymore: the handler is user code.
+        await started.edit({
+          [`${dir}/b.ts`]: `export const base = { handler: (fn: unknown) => fn }`,
+        })
+        await (await started.page()).page.reload()
+        expect(
+          await inEditPage(
+            `/${dir}/a.tsx`,
+            `try {
+  return { url: typeof module.fn.url, result: await module.fn() }
+} catch (error) {
+  return { url: typeof module.fn.url, threw: String(error && error.message) }
+}`,
+          ),
+        ).toEqual({ url: 'undefined', result: 'x' })
+      },
+      30_000,
+    )
+
+    test('dev: a server fn imported through an export * of the Start package compiles after an unrelated edit', async () => {
+      const started = await editHost()
+      const dir = 'src/edits/export-star'
+      const code = `import { createServerFn } from './start'
 export const fn = createServerFn().handler(async () => 'secret-body')`
-    expect(await compile(code, '/test/src/a.ts')).not.toContain('secret-body')
-    compiler.invalidateModules(['/test/src/other.ts'])
-    const after = await compile(code, '/test/src/b.ts')
-    expect(after).not.toBeNull()
-    expect(after).not.toContain('secret-body')
+      await started.edit({
+        [`${dir}/start.ts`]: `export * from '@tanstack/react-start'`,
+        [`${dir}/other.ts`]: `export const x = 1`,
+        [`${dir}/a.ts`]: code,
+      })
+      expect(await started.host.transform(`/${dir}/a.ts`)).not.toContain(
+        'secret-body',
+      )
+      await started.edit({ [`${dir}/other.ts`]: `export const x = 2` })
+      await started.edit({ [`${dir}/b.ts`]: code })
+      expect(await started.host.transform(`/${dir}/b.ts`)).not.toContain(
+        'secret-body',
+      )
+      // The client's server fn reaches its handler through the server.
+      expect(await inEditPage(`/${dir}/b.ts`, 'return await module.fn()')).toBe(
+        'secret-body',
+      )
+    }, 30_000)
   })
 })
 
@@ -1107,13 +1203,14 @@ test.each([
 ] as const)(
   '%s: an env-only function keeps its call receiver',
   async (env, factory) => {
-    const code = await compileCode(
-      env === 'server' ? 'ssr' : 'client',
-      `import { ${factory} } from '@tanstack/react-start'
-export const read = ${factory}(function (this: { value: number }) { return this.value })`,
-    )
-    const module = await evaluateModule(code!)
-    expect(module.read.call({ value: 7 })).toBe(7)
+    const served =
+      await serve(`import { ${factory} } from '@tanstack/react-start'
+export const read = ${factory}(function (this: { value: number }) { return this.value })`)
+    expect(
+      env === 'client'
+        ? await inPage(served, 'return module.read.call({ value: 7 })')
+        : (await served.ssr()).read.call({ value: 7 }),
+    ).toBe(7)
   },
 )
 
@@ -1122,15 +1219,22 @@ export const read = ${factory}(function (this: { value: number }) { return this.
 test.each(['client', 'ssr'] as const)(
   '%s: an async isomorphic implementation returns a promise',
   async (env) => {
-    const code = await compileCode(
-      env,
-      `${head}
-export const read = createIsomorphicFn().client(async () => 'client').server(async () => 'server')`,
-    )
-    const module = await evaluateModule(code!)
-    const result = module.read()
-    expect(await result.then((value: string) => value)).toBe(
-      env === 'client' ? 'client' : 'server',
-    )
+    const served = await serve(`${head}
+export const read = createIsomorphicFn().client(async () => 'client').server(async () => 'server')`)
+    expect(
+      env === 'client'
+        ? await inPage(
+            served,
+            `const result = module.read()
+return { promise: result instanceof Promise, value: await result.then((value) => value) }`,
+          )
+        : await (async () => {
+            const result = (await served.ssr()).read()
+            return {
+              promise: result instanceof Promise,
+              value: await result.then((value: string) => value),
+            }
+          })(),
+    ).toEqual({ promise: true, value: env === 'client' ? 'client' : 'server' })
   },
 )

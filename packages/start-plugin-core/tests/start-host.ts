@@ -95,6 +95,11 @@ export interface StartHostOptions {
    * third-party library of the app imports).
    */
   links?: Array<string>
+  /**
+   * Options of the React app's `@vitejs/plugin-react` (`react(options)`),
+   * e.g. `{ jsxRuntime: 'classic' }`.
+   */
+  react?: Parameters<typeof react>[0]
 }
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
@@ -141,9 +146,12 @@ export function startPluginFactory(
 }
 
 /** The framework's own Vite plugin, as a user configures it. */
-function frameworkPlugins(framework: StartFramework): Array<PluginOption> {
+function frameworkPlugins(
+  framework: StartFramework,
+  options: StartHostOptions = {},
+): Array<PluginOption> {
   if (framework === 'react') {
-    return [react()]
+    return [react(options.react)]
   }
   if (framework === 'solid') {
     return [solid({ ssr: true })]
@@ -157,13 +165,16 @@ function frameworkPlugins(framework: StartFramework): Array<PluginOption> {
  * configured output directory, which it resolves against the process's
  * working directory, not the app root (the test process runs elsewhere).
  */
-function absoluteOutDir(root: string): Plugin {
+function absoluteOutDir(
+  root: string,
+  name: () => string = () => 'dist',
+): Plugin {
   return {
     name: 'start-host:out-dir',
     // Before Start's plugin (listed first, both `pre`), which derives its
     // environments' output directories from it
     enforce: 'pre',
-    config: () => ({ build: { outDir: path.join(root, 'dist') } }),
+    config: () => ({ build: { outDir: path.join(root, name()) } }),
   }
 }
 
@@ -455,7 +466,13 @@ export interface StartHost {
    * `loads` and `serverLoads` are dev-server checks and throw. Write every
    * case first: the build includes the cases that exist when it runs.
    */
-  preview: () => Promise<StartPreview>
+  preview: (options?: {
+    /**
+     * Build and serve again (the same app root), e.g. after rewriting case
+     * files: the previous preview server and page are closed first.
+     */
+    rebuild?: boolean
+  }) => Promise<StartPreview>
   /** The host's page (one per host). */
   page: () => Promise<BrowserPage>
   close: () => Promise<void>
@@ -516,15 +533,21 @@ export async function createStartHost(
   }
   const userPlugins = options.plugins ?? []
   const serve = options.serve ?? true
+  /**
+   * The output directory of the next build: a rebuild writes elsewhere, as
+   * the process keeps the server build it imported from the previous one.
+   */
+  let outDirName = 'dist'
+  let builds = 0
   const host = await createPluginHost({
     dir: harnessDir,
     prefix: `.start-host-${framework}-`,
     client: serve,
     serve,
     plugins: (app) => [
-      ...(serve ? [] : [absoluteOutDir(app.root)]),
+      ...(serve ? [] : [absoluteOutDir(app.root, () => outDirName)]),
       startFactory(startOptions),
-      ...frameworkPlugins(framework),
+      ...frameworkPlugins(framework, options),
       ...(typeof userPlugins === 'function' ? userPlugins(app) : userPlugins),
     ],
     config: {
@@ -870,9 +893,18 @@ try {
       await host.edit(files)
     },
     build: (buildOptions) => host.build(buildOptions),
-    preview: async () => {
+    preview: async (previewOptions = {}) => {
       if (serve) {
         throw new Error('preview() needs a host created with `serve: false`')
+      }
+      if (previewState && previewOptions.rebuild) {
+        const previous = previewState
+        const previousPage = page
+        previewState = undefined
+        page = undefined
+        await (previousPage ? (await previousPage).close() : undefined)
+        await previous.server.close()
+        outDirName = `dist-${++builds}`
       }
       if (previewState) {
         return { build: previewState.build, url: previewState.url }
@@ -887,9 +919,9 @@ try {
             publicDir: false,
             logLevel: 'silent',
             plugins: [
-              absoluteOutDir(root),
+              absoluteOutDir(root, () => outDirName),
               startFactory(startOptions),
-              ...frameworkPlugins(framework),
+              ...frameworkPlugins(framework, options),
               ...(typeof userPlugins === 'function'
                 ? userPlugins({ root, command: 'build' })
                 : userPlugins),
