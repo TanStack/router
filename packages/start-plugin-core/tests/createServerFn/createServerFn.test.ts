@@ -12,7 +12,6 @@ import {
   serverFnUrls,
   useStartHost,
 } from '../regression-helpers'
-import { serverFnHostOptions } from './host-options'
 import type { Plugin } from 'vite'
 
 // Moved: the missing-handler matcher controls (formerly :43, :53) are in
@@ -70,7 +69,6 @@ function exactVirtualFactory(): Plugin {
 }
 
 const host = useStartHost({
-  ...serverFnHostOptions,
   plugins: [virtualFactories(), exactVirtualFactory()],
 })
 

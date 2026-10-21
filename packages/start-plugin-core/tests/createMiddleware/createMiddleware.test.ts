@@ -9,7 +9,7 @@ import {
   serveCase,
   useStartHost,
 } from '../regression-helpers'
-import { shapeOf, withHostDefaults } from '../page-values'
+import { shapeOf } from '../page-values'
 
 // The rows resolving createMiddleware through hand-written Start package
 // sources (formerly :75 and :145) wait for ruling Q6:
@@ -25,7 +25,7 @@ const someLib = {
   'node_modules/@some/lib/index.js': `export const foo = () => 'foo'\n`,
 }
 
-const host = useStartHost(withHostDefaults({ files: someLib }))
+const host = useStartHost({ files: someLib })
 
 describe('createMiddleware compiles correctly', () => {
   // Malformed-input diagnostic control (SPEC §8, G5): `.validator()`

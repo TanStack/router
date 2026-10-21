@@ -8,7 +8,6 @@
  */
 import { describe, expect, test } from 'vitest'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
-import { withHostDefaults } from '../page-values'
 import {
   expectNoClientHandler as expectNoClientHandlerOnHost,
   useStartHost,
@@ -206,7 +205,7 @@ export const Card = () => <div />`
 })
 
 describe('expectNoClientHandler on the public Start host', () => {
-  const host = useStartHost(withHostDefaults())
+  const host = useStartHost()
   test('it accepts a top-level server fn', async () => {
     await expectNoClientHandlerOnHost(
       await host(),

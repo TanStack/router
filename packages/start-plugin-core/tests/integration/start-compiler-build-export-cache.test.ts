@@ -16,7 +16,6 @@
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { callFromClient, createStartHost } from '../regression-helpers'
-import { withHostDefaults } from '../page-values'
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 
@@ -36,7 +35,7 @@ import { db } from './db.server'
 export const via = base.handler(async () => db.x())`,
     ] as const
   })
-  const host = await createStartHost(withHostDefaults({ serve: false }))
+  const host = await createStartHost({ serve: false })
   try {
     const startCase = await host.case({
       'd.ts': `${head}export const base = createServerFn()`,

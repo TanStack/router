@@ -22,11 +22,10 @@ import {
   serverFnUrls,
   useStartHost,
 } from '../regression-helpers'
-import { serverFnHostOptions } from './host-options'
 import { placementModule, placements } from './placements'
 import type { PlacementHead } from './placements'
 
-const host = useStartHost(serverFnHostOptions)
+const host = useStartHost()
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 const top = `export const top = createServerFn().handler(async () => 'top')\n`

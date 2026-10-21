@@ -5,37 +5,6 @@
  * environment evaluated).
  */
 import { pagePrelude } from './start-host'
-import type { StartHostOptions } from './start-host'
-
-/**
- * The host defaults of the B2 lead's branch, for the hosts of these files
- * until that branch is merged (then redundant): Start's import protection
- * off (in dev it hands the client a mock of a denied `*.server.*` import),
- * and an app tsconfig.json with `verbatimModuleSyntax` (Vite's TypeScript
- * transform then keeps value imports the compiler left, instead of erasing
- * unreferenced ones). A case directory's own tsconfig.json overrides it.
- */
-export function withHostDefaults(
-  options: StartHostOptions = {},
-): StartHostOptions {
-  return {
-    ...options,
-    start: { importProtection: { enabled: false }, ...options.start },
-    files: {
-      'tsconfig.json': JSON.stringify({
-        compilerOptions: {
-          target: 'ES2022',
-          module: 'ESNext',
-          moduleResolution: 'Bundler',
-          jsx: 'react-jsx',
-          strict: true,
-          verbatimModuleSyntax: true,
-        },
-      }),
-      ...options.files,
-    },
-  }
-}
 
 /**
  * Page source of `shapeOf(value)`: the value as JSON, functions spelled

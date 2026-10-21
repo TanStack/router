@@ -8,7 +8,6 @@ import {
   serveCase,
   useStartHost,
 } from '../regression-helpers'
-import { serverFnHostOptions } from './host-options'
 
 // The client replaces a server fn handler with an RPC, then drops the module
 // code only the handler read, so server-only imports never reach it. Code the
@@ -20,7 +19,7 @@ import { serverFnHostOptions } from './host-options'
 // declarations (FIX-PLAN S06). Every module the fixtures import is a real
 // file of the case.
 
-const host = useStartHost(serverFnHostOptions)
+const host = useStartHost()
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 const dbServer = `export const db = { x: () => 'x' }\n`

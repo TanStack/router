@@ -21,7 +21,7 @@ import {
   settle,
   useStartHost,
 } from './regression-helpers'
-import { shapeOf, withHostDefaults } from './page-values'
+import { shapeOf } from './page-values'
 import type { PageSettled } from './regression-helpers'
 
 /**
@@ -59,16 +59,14 @@ export const initClientFeature = createClientOnlyFn(() => {
 }
 const compiledPackages = ['@third-party/lib', '@another-intermediate/pkg']
 
-const host = useStartHost(
-  withHostDefaults({
-    links: ['@tanstack/start-client-core'],
-    files: packages,
-    config: {
-      optimizeDeps: { exclude: compiledPackages },
-      ssr: { noExternal: compiledPackages },
-    },
-  }),
-)
+const host = useStartHost({
+  links: ['@tanstack/start-client-core'],
+  files: packages,
+  config: {
+    optimizeDeps: { exclude: compiledPackages },
+    ssr: { noExternal: compiledPackages },
+  },
+})
 
 /** What `settle` gave in the page, as the test reads it. */
 async function settledInPage(

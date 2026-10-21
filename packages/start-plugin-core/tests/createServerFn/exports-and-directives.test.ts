@@ -11,7 +11,6 @@ import {
   serverFnUrls,
   useStartHost,
 } from '../regression-helpers'
-import { serverFnHostOptions } from './host-options'
 
 // Callers keep the module's exports: the client gets each server fn as an
 // RPC, and calling one from server code runs its handler; a client call
@@ -25,7 +24,7 @@ import { serverFnHostOptions } from './host-options'
 // and the two build rows of "a provider for a module ending in a line
 // comment without a newline".
 
-const host = useStartHost(serverFnHostOptions)
+const host = useStartHost()
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 

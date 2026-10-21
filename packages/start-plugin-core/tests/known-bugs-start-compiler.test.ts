@@ -40,7 +40,7 @@ import {
   settleAsync,
   useStartHost,
 } from './regression-helpers'
-import { runOnServerModule, shapeOf, withHostDefaults } from './page-values'
+import { runOnServerModule, shapeOf } from './page-values'
 import {
   capturingPlacement,
   placementHeads,
@@ -107,8 +107,8 @@ export const Route = createFileRoute('/edit-probe')({
 `,
 }
 
-const host = useStartHost(withHostDefaults())
-const editHost = useStartHost(withHostDefaults({ files: editFiles }))
+const host = useStartHost()
+const editHost = useStartHost({ files: editFiles })
 
 /** A case of `files` with the server-only module. */
 async function newCase(files: Record<string, string>) {

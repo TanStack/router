@@ -7,7 +7,6 @@ import {
   serveCase,
   useStartHost,
 } from '../regression-helpers'
-import { serverFnHostOptions } from './host-options'
 
 // The server must run the handler with every module binding it closes over,
 // however the handler is written and however its scopes shadow module
@@ -15,7 +14,7 @@ import { serverFnHostOptions } from './host-options'
 // call from server code runs it (`callServerFnThroughCallers`). Where the
 // handler lives on the server is free (SPEC J4.2, §5.4).
 
-const host = useStartHost(serverFnHostOptions)
+const host = useStartHost()
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 const dbServer = `export const db = { x: () => 'x', y: () => 'y' }\n`
