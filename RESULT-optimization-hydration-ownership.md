@@ -284,3 +284,30 @@ and p999. `independent-v21-final-full-audit.json` independently recompresses all
 76 JavaScript files with no file/total/initial mismatch. All 18 maps change
 only `load-client`; package source maps and exact isolated source bind the SHA
 above to both the Vite and Rsbuild output.
+
+## Rejected full serial consolidation and final restoration
+
+The v24 full shared serial-phase draft fails one existing public GC regression
+and two type checks. Its planner closure newly captures the whole loader-promise
+array. v25 fixes that lifetime by making the array local to the callback and
+returning it, and passes core's 3,945 positive cases plus types. Its focused
+performance screens pass their public correctness assertions; the short samples
+do not establish a speedup.
+
+It is rejected: `shared-phase-v25` measures Start 99,799 (+93) and SPA 86,488
+(+249), against 99,706/86,239. Its extra helper await also changes cancellation
+ordering. An independently verified public, stable-then getter navigation probe
+ends on `/page` pending on actual a4 and `/other` success on actual v25.
+The comparison and runner are saved under `/tmp/pr6631-hydration-v11/`; no
+shared-phase draft is applied to the primary checkout.
+
+Final source and built packages are restored to a4. The full-18 final bundle
+run is `hydration-v26-restored-all`, with commands in `v26-commands.json` and
+emitted snapshots in `emitted-v26-restored`. The retained target remains 99,706,
+with the 251-byte gap explicitly unresolved. No unverified branch deletion or
+feature removal is counted toward that target.
+
+The final independent restoration audit (`independent-v26-restored-audit.json`)
+finds all 18 metric objects and all 38 JavaScript files plus 38 maps identical
+to the verified v21 AFTER artifacts. Per-file and initial/total recompression
+also matches. The primary, isolated and built sources all bind the same a4 SHA.

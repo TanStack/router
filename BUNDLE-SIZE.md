@@ -834,3 +834,71 @@ precision. Full evidence is in `RESULT-optimization-hydration-ownership.md`.
 The target remains unmet by **251 gzip bytes**. No feature reduction is counted
 as an optimization, and no helper relocation outside the original module is
 retained.
+
+### Full shared serial-phase prototype
+
+`shared-phase-v24` attempts a larger consolidation than the earlier small shared
+runners: both normal and reconstruction serial loops use `contextualize`, and
+its existing planning callback starts hydration loaders synchronously before the
+helper returns. Transport data is passed to the callback, not captured. No new
+flag, counter, deadline or completion owner is introduced. This draft fails the
+existing public payload-retention test and has two TypeScript errors. Moving the
+loader array into an outer cell captured by the planning callback lets an
+abandoned ancestor retain a completed descendant's Error and wire input.
+There is **no app-size result** for v24.
+
+`shared-phase-v25` makes that array local to the planner and returns it, with
+erased overloads distinguishing normal failure results from reconstruction
+planning results. All 3,945 core tests and type checks pass, including GC
+retention. Focused native idle, active codec, client and transformed serial
+workloads pass correctness checks; no speedup is established. It measures:
+
+| Scenario             | Retained | Shared phase v25 | Delta | Initial / raw / Brotli delta |
+| -------------------- | -------: | ---------------: | ----: | ---------------------------- |
+| react-router.minimal |   86,239 |           86,488 |  +249 | +246 / +658 / +274           |
+| react-start.minimal  |   99,706 |           99,799 |   +93 | +91 / +87 / +21              |
+
+The shared function makes reconstruction policy branches reachable from normal
+SPA execution. Deleted duplicate source does not imply smaller reachable code.
+Do not retry this exact consolidation.
+
+A fresh public probe also confirms a scheduling regression. Loader planning is
+in the original serial continuation, but the helper's extra await delays
+registration of hydration's first loader wait. If a loader aborts the captured
+serial controller and throws an Error with a stable `then` getter, the retained
+implementation releases the public loader signal before reading that getter;
+v25 reads it first. A getter that navigates only while that signal is live
+leaves the retained version on `/page` pending, but v25 publishes `/other`
+successfully. The getter always returns undefined, satisfying the accepted
+stability contract. Both versions call `onError` zero times. This is verified
+against actual built versions, not inferred from source.
+
+Evidence: `shared-phase-v2{4,5}-*`, `v2{4,5}-commands.json`, and
+`shared-phase-cancellation-order-{a4,v25,comparison}.json` under
+`/tmp/pr6631-hydration-v11/`. No production change from these drafts is retained.
+The restored full-18 run is `hydration-v26-restored-all`.
+
+### Branches ruled out by public counterexamples
+
+- The committed-context Set is needed for synchronous normal lanes as well as
+  async/preload lanes: reparenting the same route can recompute its context
+  while a valid same-ID committed contribution still exists. The index must
+  also refresh within one serial invocation when navigation commits while a
+  descendant context waits. All four memo-present/absent and invalid/valid
+  combinations are reachable, so a discriminated union cannot remove them.
+  Native probes use only public APIs; see `context-cache-normal-sync-probe.*`
+  and `context-cache-reachability-v24.md`. No new size measurement is assigned.
+- Raw rejection classification and the later `onError` normalization cannot
+  simply collapse into one typed classifier under the current contract. A
+  stable `then` getter can queue public `notFound(cause)` during the first
+  classification. The second job then recognizes not-found and skips onError.
+  Treating the first ERROR as permanently classified changes that behavior.
+  Stable `then` does not mean side-effect-free getters or immutable errors.
+  Evidence: `normalization-reclassification-public-probe.*` and the separately
+  rerun `-v25-development.json`. This deletion was excluded without an app-size
+  claim.
+
+The final independent restoration audit (`independent-v26-restored-audit.json`)
+finds all 18 metric objects and all 38 JavaScript files plus 38 maps identical
+to the verified v21 AFTER artifacts. Per-file and initial/total recompression
+also matches. The primary, isolated and built sources all bind the same a4 SHA.
