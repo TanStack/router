@@ -33,12 +33,12 @@ import { expect } from 'vitest'
 import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
 import { workspacePackage } from '@tanstack/compiler-test-utils/workspace-packages'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
-import { createHydrateCompilerPlugin } from '../src/hydrate-when-transform'
+import { createHydrateCompilerPlugin } from '../../../src/hydrate-when-transform'
 import {
   createCompilerVirtualModuleIdPattern,
   loadCompilerVirtualModule,
-} from '../src/start-compiler/host'
-import { moduleRequests } from './imports'
+} from '../../../src/start-compiler/host'
+import { moduleRequests } from '../../imports'
 import {
   createStartCompiler,
   createTestModuleGraph,
@@ -48,13 +48,16 @@ import type {
   ModuleGraph,
   ModuleStub,
 } from '@tanstack/compiler-test-utils/module-linker'
-import type { StartCompilerTransformResult } from '../src/types'
+import type { StartCompilerTransformResult } from '../../../src/types'
 import type { Framework } from './regression-helpers'
 
 type HydratePlugin = ReturnType<typeof createHydrateCompilerPlugin>
 
 /** Where the real packages of an in-process graph resolve from. */
-export const packagesDir = path.dirname(fileURLToPath(import.meta.url))
+export const packagesDir = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../..',
+)
 
 /** Ids of the virtual modules the Hydrate plugin serves (its host contract). */
 const hydrateVirtualModuleIds =
@@ -168,7 +171,7 @@ function reactStartPackages() {
       importer.importPackage(
         path.join(reactStartClient, 'dist/esm/hydration.js'),
       ),
-      import('./start-runtime'),
+      import('../../start-runtime'),
     ])
     return {
       '@tanstack/react-start': { ...startClientCore, Hydrate },

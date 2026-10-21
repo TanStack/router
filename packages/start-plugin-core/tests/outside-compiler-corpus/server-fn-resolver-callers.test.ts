@@ -17,7 +17,7 @@ import {
 import { getLookupConfigurationsForEnv } from '../../src/start-compiler/config'
 import { mergeServerFnsById } from '../../src/start-compiler/host'
 import { generateServerFnResolverModule } from '../../src/start-compiler/server-fn-resolver-module'
-import { createServerGraph, serverFnResult } from '../regression-helpers'
+import { createServerGraph, serverFnResult } from './legacy/regression-helpers'
 import type { ServerFn } from '../../src/start-compiler/types'
 
 // The server function resolver rejects client-origin calls to functions that

@@ -26,7 +26,7 @@ import {
   evaluateModule,
   renderThingTransform,
   renderToHtml,
-} from '../regression-helpers'
+} from './legacy/regression-helpers'
 import { getLookupConfigurationsForEnv } from '../../src/start-compiler/config'
 import type { StartCompilerImportTransform } from '../../src/types'
 

@@ -1,19 +1,43 @@
-import { describe, expect, test, vi } from 'vitest'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
-import {
-  compileCode,
-  evaluateModule,
-  importSources,
-} from '../regression-helpers'
+import { describe, expect, test } from 'vitest'
+import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
+import { inPage, serveCase, useStartHost } from '../regression-helpers'
+import type { ServedCase } from '../regression-helpers'
+
+const host = useStartHost()
+
+/** What a call returned, `undefined` spelled out (results cross JSON). */
+const UNDEFINED = '<undefined>'
+
+/** Calls the named exports of the case module in the page (the client). */
+function callOnClient(served: ServedCase, names: Array<string>) {
+  return inPage(
+    served,
+    `return Object.fromEntries(${JSON.stringify(names)}.map((name) => {
+  const value = module[name]()
+  return [name, value === undefined ? ${JSON.stringify(UNDEFINED)} : value]
+}))`,
+  )
+}
+
+/** Calls the named exports of the module the SSR environment evaluated. */
+async function callOnServer(served: ServedCase, names: Array<string>) {
+  const module = await served.ssr()
+  return Object.fromEntries(
+    names.map((name) => {
+      const value = module[name]()
+      return [name, value === undefined ? UNDEFINED : value]
+    }),
+  )
+}
 
 // Each output runs only its environment's implementation; an isomorphic fn
 // without one for that environment is a no-op returning undefined, and the
 // client has no server implementation. `noImpl` stays a runtime call.
 // Replaces the former snapshot fixtures of this directory (N2).
 describe('each output runs the implementation of its environment', () => {
-  const stubs = {
-    './x.server': { server: (value: string) => value },
-    './x.client': { client: (value: string) => value },
+  const files = {
+    'x.server.ts': `export const server = (value: string) => value\n`,
+    'x.client.ts': `export const client = (value: string) => value\n`,
   }
 
   /** Imports of the modules below whose implementations read `./x.*`. */
@@ -22,44 +46,27 @@ import { client } from './x.client'
 `
 
   /**
-   * The client does not import the server module, and the SSR output does
-   * not import the `.client` module (import protection denies it on the
+   * The client does not load the server module, and the SSR environment
+   * does not load the `.client` module (import protection denies it on the
    * server, user ruling 2026-10-18).
    */
-  function expectEnvImports(
-    outputs: Record<'client' | 'ssr', { code: string }>,
-  ) {
-    expect(importSources(outputs.client.code)).not.toContain('./x.server')
-    expect(importSources(outputs.ssr.code)).not.toContain('./x.client')
+  async function expectEnvImports(served: ServedCase) {
+    expectNotLoaded(await served.loads(), ['./x.server'])
+    expectNotLoaded(await served.serverLoads(), ['./x.client'])
   }
 
-  /** Compiles `code` for the client and SSR, checks and evaluates both. */
+  /**
+   * A case of `code` with the `./x.*` modules, which both environments
+   * serve and evaluate.
+   */
   async function evaluateOutputs(code: string) {
-    const results = {} as Record<
-      'client' | 'ssr',
-      { code: string; module: Record<string, any> }
-    >
-    for (const output of ['client', 'ssr'] as const) {
-      const compiled = (await compileCode(output, code)) ?? code
-      expect(await getModuleErrors(compiled), output).toEqual([])
-      results[output] = {
-        code: compiled,
-        module: await evaluateModule(compiled, stubs, {
-          env: output === 'client' ? 'client' : 'server',
-        }),
-      }
-    }
-    return results
+    return serveCase(await host(), { 'module.tsx': code, ...files })
   }
-
-  /** Calls the named exports of a module. */
-  const call = (module: Record<string, any>, names: Array<string>) =>
-    Object.fromEntries(names.map((name) => [name, module[name]()]))
 
   // Source: snapshot fixtures createIsomorphicFnDestructured.tsx (and its
   // Rename / StarImport variants)
   test('one implementation, both orders and function references', async () => {
-    const { client, ssr } =
+    const served =
       await evaluateOutputs(`import { createIsomorphicFn } from '@tanstack/react-start'
 export const noImpl = createIsomorphicFn()
 export const serverOnlyFn = createIsomorphicFn().server(() => 'server')
@@ -95,34 +102,34 @@ export const clientThenServerFnAbstracted = createIsomorphicFn()
       'serverThenClientFnAbstracted',
       'clientThenServerFnAbstracted',
     ]
-    expect(call(client.module, names)).toEqual({
-      noImpl: undefined,
-      serverOnlyFn: undefined,
+    expect(await callOnClient(served, names)).toEqual({
+      noImpl: UNDEFINED,
+      serverOnlyFn: UNDEFINED,
       clientOnlyFn: 'client',
       serverThenClientFn: 'client',
       clientThenServerFn: 'client',
-      serverOnlyFnAbstracted: undefined,
+      serverOnlyFnAbstracted: UNDEFINED,
       clientOnlyFnAbstracted: 'client',
       serverThenClientFnAbstracted: 'client',
       clientThenServerFnAbstracted: 'client',
     })
-    expect(call(ssr.module, names)).toEqual({
-      noImpl: undefined,
+    expect(await callOnServer(served, names)).toEqual({
+      noImpl: UNDEFINED,
       serverOnlyFn: 'server',
-      clientOnlyFn: undefined,
+      clientOnlyFn: UNDEFINED,
       serverThenClientFn: 'server',
       clientThenServerFn: 'server',
       serverOnlyFnAbstracted: 'SERVER_IMPL',
-      clientOnlyFnAbstracted: undefined,
+      clientOnlyFnAbstracted: UNDEFINED,
       serverThenClientFnAbstracted: 'SERVER_IMPL',
       clientThenServerFnAbstracted: 'SERVER_IMPL',
     })
-    expect(client.code).not.toContain('SERVER_IMPL')
+    expect(served.code.client).not.toContain('SERVER_IMPL')
   })
 
   // Source: snapshot fixture createIsomorphicFnFactory.tsx
   test('isomorphic fns returned by factories', async () => {
-    const { client, ssr } =
+    const served =
       await evaluateOutputs(`import { createIsomorphicFn } from '@tanstack/react-start'
 ${envImports}export function createPlatformFn(platform: string) {
   return createIsomorphicFn()
@@ -141,33 +148,31 @@ export function createNoImplFn() {
 export const topLevelIsomorphicFn = createIsomorphicFn()
   .client(() => client('client'))
   .server(() => server('server'))`)
-    const callFactories = (module: Record<string, any>) => [
-      module.createPlatformFn('web')(),
-      module.createServerImplFn('a')(),
-      module.createClientImplFn('b')(),
-      module.createNoImplFn()(),
-      module.topLevelIsomorphicFn(),
-    ]
-    expect(callFactories(client.module)).toEqual([
+    const callFactories = `[
+  module.createPlatformFn('web')(),
+  module.createServerImplFn('a')(),
+  module.createClientImplFn('b')(),
+  module.createNoImplFn()(),
+  module.topLevelIsomorphicFn(),
+].map((value) => (value === undefined ? ${JSON.stringify(UNDEFINED)} : value))`
+    expect(await inPage(served, `return ${callFactories}`)).toEqual([
       'client-web',
-      undefined,
+      UNDEFINED,
       'client-b',
-      undefined,
+      UNDEFINED,
       'client',
     ])
-    expect(callFactories(ssr.module)).toEqual([
-      'server-web',
-      'server-a',
-      undefined,
-      undefined,
-      'server',
-    ])
-    expectEnvImports({ client, ssr })
+    const ssr = await served.ssr()
+    expect(
+      // eslint-disable-next-line @typescript-eslint/no-implied-eval
+      new Function('module', `return ${callFactories}`)(ssr),
+    ).toEqual(['server-web', 'server-a', UNDEFINED, UNDEFINED, 'server'])
+    await expectEnvImports(served)
   })
 
   // Source: snapshot fixture createIsomorphicFnInline.tsx
   test('isomorphic fns created and called inside functions', async () => {
-    const { client, ssr } =
+    const served =
       await evaluateOutputs(`import { createIsomorphicFn } from '@tanstack/react-start'
 ${envImports}export function getPlatformValue() {
   const fn = createIsomorphicFn()
@@ -212,28 +217,28 @@ export const moduleLevel = getEnvironment()`)
       'getServerOnlyValue',
       'getClientOnlyValue',
     ]
-    expect(call(client.module, names)).toEqual({
+    expect(await callOnClient(served, names)).toEqual({
       getPlatformValue: 'client-value',
       getEnvironment: 'running on client',
       getDirectValue: 'direct-client',
       getMultipleValues: ['first-client', 'second-client'],
-      getServerOnlyValue: undefined,
+      getServerOnlyValue: UNDEFINED,
       getClientOnlyValue: 'client-only-value',
     })
-    expect(call(ssr.module, names)).toEqual({
+    expect(await callOnServer(served, names)).toEqual({
       getPlatformValue: 'server-value',
       getEnvironment: 'running on server',
       getDirectValue: 'direct-server',
       getMultipleValues: ['first-server', 'second-server'],
       getServerOnlyValue: 'server-only-value',
-      getClientOnlyValue: undefined,
+      getClientOnlyValue: UNDEFINED,
     })
     // Called while the module evaluates, at its top level.
-    expect([client.module.moduleLevel, ssr.module.moduleLevel]).toEqual([
-      'running on client',
-      'running on server',
-    ])
-    expectEnvImports({ client, ssr })
+    expect([
+      await inPage(served, 'return module.moduleLevel'),
+      (await served.ssr()).moduleLevel,
+    ]).toEqual(['running on client', 'running on server'])
+    await expectEnvImports(served)
   })
 })
 
@@ -243,14 +248,9 @@ describe('isomorphic fns next to other code', () => {
 const getEnv = createIsomorphicFn().server(() => 'server').client(() => 'client')
 export const env = getEnv()
 export const fn = createServerFn().handler(async () => 'x')`
-    const client = await evaluateModule((await compileCode('client', code))!)
-    expect(client.env).toBe('client')
-    const ssr = await evaluateModule(
-      (await compileCode('ssr', code))!,
-      {},
-      { env: 'server' },
-    )
-    expect(ssr.env).toBe('server')
+    const served = await serveCase(await host(), { 'module.tsx': code })
+    expect(await inPage(served, 'return module.env')).toBe('client')
+    expect((await served.ssr()).env).toBe('server')
   })
 
   test('a builder kept in a variable', async () => {
@@ -258,23 +258,29 @@ export const fn = createServerFn().handler(async () => 'x')`
 import { db } from './db.server'
 const iso = createIsomorphicFn()
 export const fn = iso.server(() => db.x()).client(() => 'client')`
-    const client = (await compileCode('client', code)) ?? code
-    expect(importSources(client)).not.toContain('./db.server')
-    expect((await evaluateModule(client)).fn()).toBe('client')
+    const served = await serveCase(await host(), {
+      'module.tsx': code,
+      'db.server.ts': `export const db = { x: () => 'server' }\n`,
+    })
+    expectNotLoaded(await served.loads(), ['./db.server'])
+    expect(await inPage(served, 'return module.fn()')).toBe('client')
   })
 
   test('a .client() call on a global object is left alone', async () => {
     const code = `import { createIsomorphicFn } from '@tanstack/react-start'
 export const fn = createIsomorphicFn().server(() => 'server').client(() => 'client')
 export const viaGlobal = () => ws.client()`
-    const client = (await compileCode('client', code)) ?? code
-    vi.stubGlobal('ws', { client: () => 'global' })
-    try {
-      const module = await evaluateModule(client)
-      expect(module.fn()).toBe('client')
-      expect(module.viaGlobal()).toBe('global')
-    } finally {
-      vi.unstubAllGlobals()
-    }
+    const served = await serveCase(await host(), { 'module.tsx': code })
+    expect(
+      await inPage(
+        served,
+        `globalThis.ws = { client: () => 'global' }
+try {
+  return [module.fn(), module.viaGlobal()]
+} finally {
+  delete globalThis.ws
+}`,
+      ),
+    ).toEqual(['client', 'global'])
   })
 })
