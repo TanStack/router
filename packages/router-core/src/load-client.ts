@@ -2377,7 +2377,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     const committed: Array<WorkMatch> = []
     let pendingBoundary: number | undefined
     let verifiedAssetEnd = 0
-    let isTerminal = false
+    let isTerminal: boolean | undefined
     // The payload is passed in, not captured: a closure over it would keep it
     // alive as long as the handoff.
     const retryFrom = (index: number, sent: typeof dehydratedMatches) => {
@@ -2439,26 +2439,24 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       candidate.updatedAt = dehydrated.u
       candidate.error = dehydrated.e
       candidate._notFound ||= dehydrated.g
-      const terminal =
+      isTerminal =
         candidate.status === 'error' ||
         candidate.status === 'notFound' ||
         candidate._notFound
-      if (terminal) {
-        isTerminal = true
-        committed.push(candidate)
-        if (candidate.ssr === false || candidate.ssr === 'data-only') {
-          pendingBoundary ??= index
-        }
-        break
-      }
-      if (candidate.status === 'pending') {
+      // A pending nonterminal match belongs to the following client load.
+      if (!isTerminal && candidate.status === 'pending') {
         pendingBoundary ??= index
         break
       }
-
       committed.push(candidate)
-      if (candidate.ssr === 'data-only') {
+      if (
+        candidate.ssr === 'data-only' ||
+        (isTerminal && candidate.ssr === false)
+      ) {
         pendingBoundary ??= index
+      }
+      if (isTerminal) {
+        break
       }
     }
     if (
