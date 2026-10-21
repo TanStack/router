@@ -9,11 +9,11 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
-import { importerSource } from '@tanstack/compiler-test-utils/importers'
 import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
 import { expect, onTestFinished } from 'vitest'
 import { tanstackRouter } from '../src/vite'
+import { loadRoute } from './route-app'
 import type {
   DevServer,
   DevServerOptions,
@@ -64,32 +64,6 @@ export interface RouterDevServerOptions extends Omit<
   plugins?:
     | Array<PluginOption>
     | ((app: { root: string }) => Array<PluginOption>)
-}
-
-/**
- * Starts a dev server on `routes/page.tsx` holding `route`, with a second
- * module of the app, `importer.ts`, importing `names` from the route module
- * (`importerSource`: named, `default`), and imports that module in the SSR
- * environment, with the dev server (the route module resolves the real
- * router package of the target, a dependency of this package). Returns the
- * importer's live bindings: what a module importing the route file gets.
- */
-export async function importFromRouteModule(
-  route: string,
-  names: Array<string>,
-  pluginOptions: Partial<Config> = {},
-  files: Record<string, string> = {},
-) {
-  const server = await routerDevServer({
-    pluginOptions,
-    files: {
-      ...files,
-      'routes/page.tsx': route,
-      'importer.ts': importerSource('./routes/page', names),
-    },
-  })
-  const { bindings } = await server.import('/importer.ts')
-  return { server, imported: bindings as Record<string, any> }
 }
 
 /**
@@ -149,54 +123,97 @@ export async function renderRouteComponent(component: any): Promise<string> {
 }
 
 /**
- * Serves `route` as `routes/page.tsx` (with React HMR, `autoCodeSplitting`
- * and the component and the loader in their own chunks) with a module that
- * imports the exports named in `exported` and the route
- * (`importFromRouteModule`), and asserts that each imported export is a
- * component the given route options render as: its body reports its own
- * identity through a separate module, including behind a lazy wrapper; the
- * page at `/page` renders the route's component through the real router.
+ * A module of the app importing the route module's exports (`bindings`:
+ * its namespace), as another module of an app does.
+ */
+export const exportsImporter = `import * as route from './route'
+export const bindings = route
+`
+
+/**
+ * The TypeScript settings of the apps of `routerDevServer` (TypeScript's
+ * defaults, `isolatedModules`: without `verbatimModuleSyntax`, the
+ * transform drops imports that only types read), for route apps standing in
+ * for them.
+ */
+export const appTsconfig = {
+  verbatimModuleSyntax: false,
+  isolatedModules: true,
+}
+
+/**
+ * Loads `route` (route id `/page`) with React HMR and `autoCodeSplitting`
+ * (the component and the loader in their own chunks) next to a module that
+ * imports the route module's exports (`importer.ts`), in a real page
+ * (`route-app.ts`), and asserts that each imported export named in
+ * `exported` is a component the given route options render as: its body
+ * reports its own identity through a separate module (`see.ts`), including
+ * behind a lazy wrapper; the page at `/page` renders the route's component
+ * through the real router.
  */
 export async function expectExportedRouteOptions(
   route: string,
   exported: Record<string, Array<string>>,
   autoCodeSplitting: boolean,
 ) {
-  const { server, imported } = await importFromRouteModule(
-    `import { see } from '../see'\n${route}`,
-    [...Object.keys(exported), 'Route'],
-    {
+  const app = await loadRoute(`import { see } from './see'\n${route}`, {
+    routeId: '/page',
+    hmr: true,
+    tsconfig: appTsconfig,
+    pluginOptions: {
       autoCodeSplitting,
       codeSplittingOptions: { defaultBehavior: [['component'], ['loader']] },
     },
-    {
+    files: {
       'see.ts': `export const seen: Array<unknown> = []
 export function see(component: unknown) { seen.push(component) }`,
+      'importer.ts': exportsImporter,
     },
-  )
-  const { seen } = await server.import('/see.ts')
-  const { Route } = imported
+  })
+  const result = await app.run<{
+    exports: Record<
+      string,
+      {
+        type: string
+        rendered: string | null
+        options: Record<string, { html: string; sees: boolean }>
+      }
+    >
+    page: string
+    component: string
+  }>(`const { bindings } = await app('importer.ts')
+const { seen } = await app('see.ts')
+const out = {}
+for (const [name, keys] of Object.entries(${JSON.stringify(exported)})) {
+  const value = bindings[name]
+  const entry = { type: typeof value, rendered: null, options: {} }
+  if (typeof value === 'function') entry.rendered = await renderComponent(value)
+  for (const key of keys) {
+    const option = await load(key)
+    seen.length = 0
+    const html = await renderComponent(option)
+    // The rendered body reports its own binding across an opaque module
+    // boundary: equal HTML alone cannot detect a copied function or class
+    entry.options[key] = { html, sees: seen.includes(value) }
+  }
+  out[name] = entry
+}
+return { exports: out, page: await renderRoute({ at: '/page' }), component: await render('component') }`)
   for (const [name, keys] of Object.entries(exported)) {
-    expect(imported[name], `${name} is a component`).toBeTypeOf('function')
-    const rendered = await renderRouteComponent(imported[name])
-    expect(rendered, `${name} renders`).not.toBe('')
+    const entry = result.exports[name]!
+    expect(entry.type, `${name} is a component`).toBe('function')
+    expect(entry.rendered, `${name} renders`).not.toBe('')
     for (const key of keys) {
-      const option = Route.options[key]
-      seen.length = 0
-      expect(
-        await renderRouteComponent(option),
-        `${key} renders as ${name}`,
-      ).toBe(rendered)
-      // The rendered body reports its own binding across an opaque module
-      // boundary. Equal HTML alone cannot detect a copied function/class.
-      expect(seen, `${key} renders the imported ${name} instance`).toContain(
-        imported[name],
+      expect(entry.options[key]!.html, `${key} renders as ${name}`).toBe(
+        entry.rendered,
       )
+      expect(
+        entry.options[key]!.sees,
+        `${key} renders the imported ${name} instance`,
+      ).toBe(true)
     }
   }
-  expect(await renderRoutePath(server, '/page')).toContain(
-    await renderRouteComponent(Route.options.component),
-  )
+  expect(result.page).toContain(result.component)
 }
 
 /**
@@ -236,14 +253,14 @@ export class component extends Component { render() { see(component); return <p>
   ]
 
 /**
- * Serves a route whose `beforeLoad` and split `loader` call an exported,
- * overloaded and aliased function, with a module importing the function,
- * its alias and the route (`importFromRouteModule`), and asserts that the
+ * Loads a route whose `beforeLoad` and split `loader` call an exported,
+ * overloaded and aliased function, next to a module importing the route
+ * module's exports, in a real page (`route-app.ts`), and asserts that the
  * imported function and alias are the same working function, and that both
  * options keep working.
  */
 export async function expectSharedOverloads(autoCodeSplitting: boolean) {
-  const { imported } = await importFromRouteModule(
+  const app = await loadRoute(
     `import { createFileRoute } from '@tanstack/react-router'
 export function helper(value: string): string
 export function helper(value: number): number
@@ -254,16 +271,26 @@ export const Route = createFileRoute('/page')({
   beforeLoad: () => helper('before'),
   loader: () => helper(42),
 })`,
-    ['helper', 'helperAlias', 'Route'],
     {
-      autoCodeSplitting,
-      codeSplittingOptions: { defaultBehavior: [['component'], ['loader']] },
+      routeId: '/page',
+      hmr: true,
+      tsconfig: appTsconfig,
+      pluginOptions: {
+        autoCodeSplitting,
+        codeSplittingOptions: { defaultBehavior: [['component'], ['loader']] },
+      },
+      files: { 'importer.ts': exportsImporter },
     },
   )
-  expect(imported.helper('imported')).toBe('imported')
-  expect(imported.helperAlias).toBe(imported.helper)
-  expect(imported.Route.options.beforeLoad()).toBe('before')
-  expect(await imported.Route.options.loader()).toBe(42)
+  expect(
+    await app.run(`const { bindings } = await app('importer.ts')
+return [
+  bindings.helper('imported'),
+  bindings.helperAlias === bindings.helper,
+  bindings.Route.options.beforeLoad(),
+  await bindings.Route.options.loader(),
+]`),
+  ).toEqual(['imported', true, 'before', 42])
 }
 
 /**
