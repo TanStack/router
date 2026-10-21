@@ -313,6 +313,10 @@ function Page() {
       },
       file,
       render: 'h(m.Route.options.component)',
+      // The router loads a route's split component before it renders it:
+      // what loads once hydration starts is the boundaries' split code, not
+      // the route code splitter's module of the component
+      beforeRender: 'await m.Route.options.component.preload?.()',
       freshPage: true,
     })
     expectHydratedCleanly(client)
