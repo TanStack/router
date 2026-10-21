@@ -161,6 +161,37 @@ function absoluteOutDir(root: string): Plugin {
   }
 }
 
+/**
+ * The app's `tsconfig.json` (a test may give its own in `files`). It sets
+ * `verbatimModuleSyntax`, a common project setting that Vite's TypeScript
+ * transform honours: an import the compiler leaves in a module then stays
+ * and loads, so a leak is observable; without it the TypeScript transform,
+ * which runs after the compiler, would erase an import nothing reads and
+ * hide what the compiler kept (B2 fork A finding). Without a file of its
+ * own the app would inherit this package's tsconfig.
+ *
+ * The host also turns Start's import protection off unless the test
+ * configures `importProtection` (a documented option): in dev it replaces a
+ * denied `*.server.*` import the compiler left in the client with a mock,
+ * so the page never requests the real module and a Start compiler leak
+ * (J4.12) would pass unseen. Import protection is a compiler of its own
+ * (J6), tested with it on in `importProtection/` and its integration suites.
+ */
+const appTsconfig = `${JSON.stringify(
+  {
+    compilerOptions: {
+      target: 'ES2022',
+      module: 'ESNext',
+      moduleResolution: 'Bundler',
+      jsx: 'react-jsx',
+      strict: true,
+      verbatimModuleSyntax: true,
+    },
+  },
+  null,
+  2,
+)}\n`
+
 /** Where a case lives: `src/cases/c<n>`. */
 export const casesDir = 'src/cases'
 
@@ -455,7 +486,12 @@ export async function createStartHost(
   options: StartHostOptions = {},
 ): Promise<StartHost> {
   const framework = options.framework ?? 'react'
-  const tanstackStart = await startPluginFactory(framework)
+  const startFactory = await startPluginFactory(framework)
+  // Import protection off unless the test configures it (see `appTsconfig`)
+  const startOptions = {
+    importProtection: { enabled: false },
+    ...options.start,
+  }
   const userPlugins = options.plugins ?? []
   const serve = options.serve ?? true
   const host = await createPluginHost({
@@ -465,7 +501,7 @@ export async function createStartHost(
     serve,
     plugins: (app) => [
       ...(serve ? [] : [absoluteOutDir(app.root)]),
-      tanstackStart(options.start),
+      startFactory(startOptions),
       ...frameworkPlugins(framework),
       ...(typeof userPlugins === 'function' ? userPlugins(app) : userPlugins),
     ],
@@ -484,7 +520,11 @@ export async function createStartHost(
       startPackages[framework],
       ...(framework === 'react' ? [] : [routerPackages[framework]]),
     ]),
-    files: { ...appFiles(framework, serve), ...options.files },
+    files: {
+      'tsconfig.json': appTsconfig,
+      ...appFiles(framework, serve),
+      ...options.files,
+    },
   })
   const root = host.root
 
@@ -808,7 +848,7 @@ try {
             logLevel: 'silent',
             plugins: [
               absoluteOutDir(root),
-              tanstackStart(options.start),
+              startFactory(startOptions),
               ...frameworkPlugins(framework),
               ...(typeof userPlugins === 'function'
                 ? userPlugins({ root, command: 'build' })
