@@ -145,10 +145,20 @@ function textsOf(output: ReportOutput): {
     const record = output as { diagnostics?: unknown; root?: unknown }
     const root = typeof record.root === 'string' ? record.root : undefined
     if (Array.isArray(record.diagnostics)) {
+      // A report is a warning or an error (SPEC J6.3 "warn"; coordinator
+      // ruling 2026-10-21, diagnostic severity): an info line is no report,
+      // whatever it says
       return {
-        texts: record.diagnostics.map((diagnostic: { text?: unknown }) =>
-          String(diagnostic.text ?? diagnostic),
-        ),
+        texts: record.diagnostics
+          .filter(
+            (diagnostic: { severity?: unknown }) =>
+              diagnostic.severity === undefined ||
+              diagnostic.severity === 'warning' ||
+              diagnostic.severity === 'error',
+          )
+          .map((diagnostic: { text?: unknown }) =>
+            String(diagnostic.text ?? diagnostic),
+          ),
         root,
       }
     }

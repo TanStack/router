@@ -479,6 +479,18 @@ Operation -> call on secret()`
     expect(() => violationReports(text)).toThrow(/import-protection report/)
   })
 
+  // A report is a warning or an error (coordinator ruling 2026-10-21,
+  // diagnostic severity): the same text logged as info is no report.
+  test('reads only warnings and errors of a channel as reports', () => {
+    const at = (severity: string) => ({
+      root: '/project',
+      diagnostics: [{ severity, text: report }],
+    })
+    expect(violationReports(at('info'))).toEqual([])
+    expect(violationReports(at('warning'))).toHaveLength(1)
+    expect(violationReports(at('error'))).toHaveLength(1)
+  })
+
   // The report's frame keeps the `>`/`^` convention (J6.12): a frame
   // without it is not read as the report's frame.
   test('a code frame without a highlighted line is not the report frame', () => {

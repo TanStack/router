@@ -42,7 +42,6 @@ import { readFileSync } from 'node:fs'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { openDiagnosticChannel } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import {
   linkWorkspacePackages,
   workspacePackage,
@@ -61,7 +60,10 @@ import {
   stripAnsi,
   withBuildEnvironment,
 } from '@tanstack/compiler-test-utils/build-harness'
-import { trackCompiles } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
+import {
+  rsbuildLogger,
+  trackCompiles,
+} from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import { onTestFinished } from 'vitest'
 import { tanStackStartVite } from '@tanstack/start-plugin-core/vite'
 import { tanStackStartRsbuild } from '@tanstack/start-plugin-core/rsbuild'
@@ -72,7 +74,10 @@ import type {
   ParsedModules,
   StatsJson,
 } from '@tanstack/compiler-test-utils/build-harness'
-import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
+import type {
+  ChannelDiagnostic,
+  DiagnosticChannel,
+} from '@tanstack/compiler-test-utils/diagnostic-channel'
 import type {
   StartCompilerImportTransform,
   TanStackStartInputConfig,
@@ -500,23 +505,41 @@ async function buildAt(
     warnings.client.length = 0
     warnings.ssr.length = 0
     consoleMessages.length = 0
-    const channel = openDiagnosticChannel()
+    // The build's own channel (`withBuildEnvironment`): its async scope
+    // and its app root (output a bundler prints from native callbacks)
+    let channel: Channel | undefined
     /** What the build described reported (a watch build: the rebuild's). */
-    const described = () => channel.since(describedFrom.get(channel) ?? 0)
+    const described = () =>
+      channel ? channel.since(describedFrom.get(channel) ?? 0) : []
     try {
-      return await withBuildEnvironment(mode, consoleMessages, () =>
-        builders[bundler](target, warnings, channel),
-      )
+      return await withBuildEnvironment(mode, consoleMessages, (scoped) => {
+        channel = scoped
+        scoped.claim(app.root)
+        return builders[bundler](target, warnings, scoped)
+      })
     } catch (error) {
       if (error instanceof BuildError) {
-        // Its errors (its warnings are in the channel already)
-        channel.report(error.message, 'error', 'thrown')
-        throw new StartBuildError(error, app.root, described())
+        const reported = described()
+        // The failure itself, unless the compilation reported its errors
+        // (Rsbuild: recorded from the compilation, once)
+        const thrown: Array<ChannelDiagnostic> = reported.some(
+          ({ severity, source }) =>
+            severity === 'error' && source === 'bundler',
+        )
+          ? []
+          : [
+              {
+                severity: 'error',
+                text: stripAnsi(error.message),
+                raw: error,
+                source: 'thrown',
+              },
+            ]
+        throw new StartBuildError(error, app.root, [...reported, ...thrown])
       }
       throw error
     } finally {
       diagnostics = described()
-      channel.close()
     }
   }
   let started = performance.now()
@@ -585,7 +608,7 @@ export class StartBuildError extends BuildError {
 
 type Env = 'client' | 'ssr'
 
-type Channel = ReturnType<typeof openDiagnosticChannel>
+type Channel = DiagnosticChannel
 
 /**
  * Where in its channel the build a result describes starts: a watch mode
@@ -765,6 +788,25 @@ async function buildWithRsbuild(
       })
       api.onAfterCreateCompiler(({ compiler }) => {
         compiles.track(compiler)
+        for (const child of 'compilers' in compiler
+          ? compiler.compilers
+          : [compiler]) {
+          channel.scopeRspack(child)
+          // Each compile's report, once, before Rsbuild's logger prints its
+          // summary of it (`reportLogged`)
+          child.hooks.done.tap(
+            { name: 'start-build-harness:report', stage: -100 },
+            (stats) => {
+              // (each message with the module it is about, as Rspack's
+              // stats name it)
+              const json = stats.toJson(statsOptions) as StatsJson
+              channel.reportCompilation({
+                errors: statsMessages(json.errors),
+                warnings: statsMessages(json.warnings),
+              })
+            },
+          )
+        }
       })
       api.onAfterBuild(() => {
         compiles.done()
@@ -777,7 +819,6 @@ async function buildWithRsbuild(
         }
         const json = stats.toJson(statsOptions) as StatsJson
         warnings[env].push(...statsMessages(json.warnings))
-        channel.reportCompilation({ warnings: statsMessages(json.warnings) })
         errors.push(
           ...statsMessages(json.errors).map((message) => `[${env}] ${message}`),
         )
@@ -801,7 +842,9 @@ async function buildWithRsbuild(
         {
           root: target.root,
           mode: target.mode,
+          // Rsbuild prints nothing; its logger feeds the channel
           logLevel: 'silent',
+          customLogger: rsbuildLogger(channel),
           output: {
             minify: target.minify,
             sourceMap: target.sourcemap ? { js: 'source-map' } : false,
