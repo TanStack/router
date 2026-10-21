@@ -2519,11 +2519,11 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     // reach the re-run only with a defined option.
     const step = (
       option: any,
-      d: any,
+      d: { m?: unknown; b?: unknown; l?: unknown },
       key: 'm' | 'b' | 'l',
       createContext: () => object,
     ) => {
-      if (d && key in d && !option?.hydrate) {
+      if (key in d && !option?.hydrate) {
         return d[key]
       }
       if (signal.aborted) {
@@ -2532,7 +2532,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       // Each step owns fresh arguments, so attach data without another copy.
       const ctx = createContext()
       const value =
-        d && key in d
+        key in d
           ? option.hydrate(Object.assign(ctx, { data: d[key] }))
           : (option.handler || option)(ctx)
       return value
@@ -2560,7 +2560,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       try {
         if (route.options.context) {
           const value = await wait(
-            step(route.options.context, dehydrated, 'm', () => ({
+            step(route.options.context, dehydrated ?? {}, 'm', () => ({
               ...(common ??= getSerialContext(
                 router,
                 lane,
