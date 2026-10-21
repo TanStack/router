@@ -1,3 +1,13 @@
+/**
+ * Not part of the compiler test corpus (implementation test, moved from
+ * tests/vite/start-compiler-utils.test.ts by the final pass, FINAL-PASS
+ * #36): it calls the internal dev server-fn module specifier encoding and
+ * the hot-update module merge (src/vite/start-compiler-plugin/). Their
+ * outcomes: a server fn outside the app root runs by id in dev
+ * (createServerFn/createServerFn.test.ts "server fns outside the app
+ * root"), and dev edits reach the importers (known-bugs-start-compiler.test.ts
+ * dev-edit rows). Windows drive-letter paths are out of scope (N24).
+ */
 import { describe, expect, test } from 'vitest'
 import {
   createViteDevServerFnModuleSpecifierEncoder,

@@ -37,7 +37,12 @@ export async function failureOf(
   const seen = new Set<string>()
   const diagnostics = [
     ...diagnosticsOf(error, 'error'),
-    ...server.diagnostics.slice(mark),
+    // Warnings and errors only: an info line with a report's text must not
+    // take the place of the report itself (coordinator 2026-10-21,
+    // diagnostic severity)
+    ...server.diagnostics
+      .slice(mark)
+      .filter(({ severity }) => severity === 'warning' || severity === 'error'),
   ].flatMap(({ text, severity }) => {
     if (seen.has(text)) {
       return []

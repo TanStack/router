@@ -99,6 +99,60 @@ export const env = () => where()`
     )
   })
 
+  // An HTTP call by id without client context: a request that is not Start's
+  // client RPC, here the progressive-enhancement form post Start documents
+  // (`FormData` sent to the server fn's public `url`, as an HTML form without
+  // JavaScript does), so no client middleware runs and no client context is
+  // sent. Start's server entry finds the handler by the id in the URL and
+  // runs the server middleware and the handler with the request's data,
+  // method and an empty client context. The handler answers with a
+  // `Response` (documented "Raw Responses"), which reaches the caller as is.
+  // Source: the former leg "an HTTP call by id" of "runs on Start’s runtime
+  // from the client, the SSR caller and an HTTP call by id" (B2 dropped it:
+  // it called the provider's export directly).
+  test('an HTTP call by id without client context runs the server middleware and the handler', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `import { createIsomorphicFn, createMiddleware, createServerFn } from '@tanstack/react-start'
+import { db } from './db.server'
+const where = createIsomorphicFn().server(() => 'server').client(() => 'client')
+export const auth = createMiddleware({ type: 'function' })
+  .client(({ next }) => next({ sendContext: { from: where() } }))
+  .server(({ next, context }) => next({ context: { user: db.user(context.from) } }))
+export const submit = createServerFn({ method: 'POST' })
+  .middleware([auth])
+  .validator((data: FormData) => ({ n: Number(data.get('n')) + 1 }))
+  .handler(async ({ data, context, method, serverFnMeta }) =>
+    Response.json({
+      n: data.n,
+      user: context.user,
+      method,
+      name: serverFnMeta.name,
+      where: where(),
+    }),
+  )`,
+      ...files,
+    })
+    expect(served.code.client).not.toContain('db.user')
+    expect(
+      await inPage(
+        served,
+        `const body = new FormData()
+body.set('n', '1')
+const response = await fetch(module.submit.url, { method: 'POST', body })
+return { status: response.status, body: await response.json() }`,
+      ),
+    ).toEqual({
+      status: 200,
+      body: {
+        n: 2,
+        user: 'user-from-undefined',
+        method: 'POST',
+        name: 'submit',
+        where: 'server',
+      },
+    })
+  })
+
   // Source: the former test "a failing handler answers { error }, which
   // Start’s handler rethrows" (S4 B-mixed: the error reaching the callers is
   // the concept; the `{ error }` answer of a provider export is internal).

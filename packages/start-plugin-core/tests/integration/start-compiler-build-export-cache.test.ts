@@ -9,11 +9,20 @@
  * What is observed: the build succeeds, the client build bundles no
  * server-only module (the modules of the client chunks, by resolved id;
  * import protection is off, as on the fast tier's hosts), and each
- * importer's server fn, called from the production page, reaches
- * its handler on the server. Each row is its own app and build, so a row
- * whose build fails fails alone.
+ * importer's server fn, called from the production page, reaches its
+ * handler on the server. Each row is its own app and build, so a row whose
+ * build fails fails alone.
+ *
+ * The importers are compiled in a fixed order, as an app's import graph
+ * orders them: `via-a.tsx` (a case module the build reaches at once)
+ * imports the builder through the head of the chain, and statically
+ * imports the importers through the other modules of the chain
+ * (`later/via-<module>.tsx`, reached only through it), so the bundler
+ * compiles them after it. (With every importer reached at once, the build
+ * compiles them in parallel and the outcome below depended on their timing:
+ * the "export * diamonds" row failed in about 1 of 10 runs, FINAL-PASS
+ * #35.)
  */
-import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { callFromClient, createStartHost } from '../regression-helpers'
 
@@ -21,27 +30,38 @@ const head = `import { createServerFn } from '@tanstack/react-start'\n`
 
 /**
  * Builds an app with the `base` builder in `d.ts`, re-exported through
- * `reExports`, and an importer `via-<module>.tsx` of `base` through each
- * module of the chain (one production build compiles them all), then checks
- * each importer (see the module comment).
+ * `reExports` (whose first module is the head of the chain), an importer
+ * `via-a.tsx` of `base` through the head (`viaA`), and an importer of
+ * `base` through each other module of the chain, compiled after it (see the
+ * module comment; re-exported by `via-a.tsx` as `via_<module>`). Checks
+ * that no server-only module is in the client build and that each
+ * importer's server fn, called from the production page, reaches its
+ * handler.
  */
 async function expectImportersThroughRpc(reExports: Record<string, string>) {
-  const importers = Object.keys(reExports).map((file) => {
-    const name = path.posix.basename(file, '.ts')
-    return [
-      `via-${name}.tsx`,
-      `import { base } from './${name}'
-import { db } from './db.server'
-export const via = base.handler(async () => db.x())`,
-    ] as const
-  })
+  const [first, ...others] = Object.keys(reExports).map((file) =>
+    file.replace(/\.ts$/, ''),
+  )
   const host = await createStartHost({ serve: false })
   try {
     const startCase = await host.case({
       'd.ts': `${head}export const base = createServerFn()`,
       'db.server.ts': `export const db = { x: () => 'from the server' }\n`,
       ...reExports,
-      ...Object.fromEntries(importers),
+      'via-a.tsx': `import { base } from './${first}'
+import { db } from './db.server'
+export const viaA = base.handler(async () => db.x())
+${others.map((name) => `export { via as via_${name} } from './later/via-${name}'`).join('\n')}
+`,
+      ...Object.fromEntries(
+        others.map((name) => [
+          `later/via-${name}.tsx`,
+          `import { base } from '../${name}'
+import { db } from '../db.server'
+export const via = base.handler(async () => db.x())
+`,
+        ]),
+      ),
     })
     const { build } = await host.preview()
     const serverOnlyFile = startCase.file('db.server.ts')
@@ -52,10 +72,12 @@ export const via = base.handler(async () => db.x())`,
       clientModules.filter((id) => id.split('?')[0] === serverOnlyFile),
       'the server-only module in the client build',
     ).toEqual([])
-    for (const [file] of importers) {
+    for (const name of ['viaA', ...others.map((other) => `via_${other}`)]) {
       expect(
-        await callFromClient(startCase, 'module.via', undefined, { file }),
-        file,
+        await callFromClient(startCase, `module.${name}`, undefined, {
+          file: 'via-a.tsx',
+        }),
+        name,
       ).toBe('from the server')
     }
   } finally {
@@ -64,7 +86,8 @@ export const via = base.handler(async () => db.x())`,
 }
 
 describe('server code in the client bundle', () => {
-  // A chain without a diamond or a cycle.
+  // Control for the pins below (same harness, same order): a chain without
+  // a diamond or a cycle.
   test('importers through an export * chain call their server fn through its RPC', async () => {
     await expectImportersThroughRpc({
       'a.ts': `export * from './b'`,
@@ -72,18 +95,26 @@ describe('server code in the client bundle', () => {
     })
   })
 
-  // Formerly a pin (known-bugs-start-compiler.test.ts "export * $name do not
-  // poison the build-mode export cache"): build-mode export lookups are
-  // cached per module, but parallel `export *` branches share one visited
-  // set, so in a diamond or a cycle a module that re-exports the builder can
-  // be cached as "not found", and a later importer through it is left
-  // untransformed (its handler and server-only imports ship to the client;
-  // Start's import protection then fails the client build). The internal
-  // harness reached it by compiling the importers one after another with
-  // one compiler; a real production build of the same app compiles them
-  // correctly (workstream B2: the pin's reachability through a public host
-  // is not established), so the outcome is a regression test here.
-  test.each<{ name: string; reExports: Record<string, string> }>([
+  // Bug: build-mode export lookups are cached per module, but the parallel
+  // `export *` branches of one lookup share one visited set: in a diamond
+  // (a -> b -> d, a -> c -> d) the branch that reaches `d` second finds it
+  // visited and caches its own module (`b` or `c`) as not exporting
+  // `base`; in a cycle (a -> b -> a, a -> d) the lookup through `a` caches
+  // `b` the same way. An importer compiled after that, through the module
+  // cached as "not found", is left untransformed.
+  // Impact: that importer's handler and the server-only module it reads
+  // ship to the client, and its server fn never reaches the server (the
+  // client call resolves to `undefined`).
+  // Fix-agnostic: no server-only module in the client build, and every
+  // importer's server fn reaches its handler.
+  // Source: known-bugs-start-compiler.test.ts "export * $name do not poison
+  // the build-mode export cache" (formerly a pin on the internal compiler;
+  // B2 kept it as a passing regression test, not reproduced through a real
+  // build); FINAL-PASS #35: the intermittent failure of the diamond row was
+  // this bug, reached when the build happened to compile an importer after
+  // the lookup that poisoned the cache. Reproduced in every run with the
+  // compile order fixed (control above: green).
+  test.fails.each<{ name: string; reExports: Record<string, string> }>([
     {
       name: 'diamonds',
       reExports: {

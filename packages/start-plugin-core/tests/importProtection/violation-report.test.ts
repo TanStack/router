@@ -489,6 +489,10 @@ Operation -> call on secret()`
     expect(violationReports(at('info'))).toEqual([])
     expect(violationReports(at('warning'))).toHaveLength(1)
     expect(violationReports(at('error'))).toHaveLength(1)
+    // A channel's diagnostics as an array (`server.diagnostics.slice(mark)`)
+    expect(violationReports(at('info').diagnostics)).toEqual([])
+    expect(violationReports(at('warning').diagnostics)).toHaveLength(1)
+    expect(violationReports(at('error').diagnostics)).toHaveLength(1)
   })
 
   // The report's frame keeps the `>`/`^` convention (J6.12): a frame

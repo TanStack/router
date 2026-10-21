@@ -1,5 +1,8 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
+import { linkWorkspacePackages } from '@tanstack/compiler-test-utils/workspace-packages'
 import {
   callFromClient,
   callOnServer,
@@ -429,6 +432,59 @@ export const fn = base${call}async () => db.x())`,
         expect(await serverFnUrls(served)).toHaveLength(1)
         expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('x')
       })
+    }
+  })
+})
+
+describe('server fns outside the app root', () => {
+  // A server fn in a module outside the Vite root (a workspace package
+  // whose source the app imports, which the dev server serves from
+  // `/@fs/`): the client calls it by id through Start's server entry,
+  // server code calls it directly, and the client loads none of the
+  // server-only modules its handler reads.
+  // Source: outside-compiler-corpus/vite-start-compiler-utils.test.ts
+  // "preserves POSIX absolute /@fs paths outside the app root" (the dev
+  // server fn id encoding, an internal helper), rerouted to its outcome.
+  test('dev: a server fn in a module outside the app root runs by id', async () => {
+    const started = await host()
+    const shared = await mkdtemp(
+      path.join(path.dirname(started.root), '.start-shared-'),
+    )
+    try {
+      // The shared package resolves Start from its own node_modules, as a
+      // workspace package does
+      await linkWorkspacePackages(shared, ['@tanstack/react-start'])
+      await writeFile(
+        path.join(shared, 'fn.ts'),
+        `import { createServerFn } from '@tanstack/react-start'
+import { db } from './db.server'
+export const sharedFn = createServerFn().handler(async () => db.x())
+`,
+      )
+      await writeFile(
+        path.join(shared, 'db.server.ts'),
+        `export const db = { x: () => 'from outside the root' }\n`,
+      )
+      // Every case directory is `src/cases/c<n>`, one level deep
+      const specifier = path
+        .relative(
+          path.join(started.root, 'src/cases/c'),
+          path.join(shared, 'fn'),
+        )
+        .split(path.sep)
+        .join('/')
+      const served = await serveCase(started, {
+        'module.tsx': `export { sharedFn as fn } from '${specifier}'\n`,
+      })
+      expect(await serverFnUrls(served)).toHaveLength(1)
+      expect(await callServerFnThroughCallers(served, 'module.fn')).toBe(
+        'from outside the root',
+      )
+      expect(
+        (await served.loads()).filter((loaded) => loaded.includes('db.server')),
+      ).toEqual([])
+    } finally {
+      await rm(shared, { recursive: true, force: true })
     }
   })
 })

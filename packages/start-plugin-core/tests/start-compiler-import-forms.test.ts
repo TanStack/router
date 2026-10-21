@@ -31,31 +31,14 @@ import type {
   StartCase,
 } from './regression-helpers'
 
-/**
- * The host defaults of the B2 lead's branch (until it is merged): no import
- * protection (its dev mock would hide a leaked server import from the
- * client's loads) and an app tsconfig with `verbatimModuleSyntax` (without
- * it, Vite's TypeScript transform drops unreferenced imports after the
- * compiler and hides leaks).
- */
-const hostTsconfig = {
-  compilerOptions: {
-    target: 'ES2022',
-    module: 'ESNext',
-    moduleResolution: 'Bundler',
-    jsx: 'react-jsx',
-    strict: true,
-    verbatimModuleSyntax: true,
-  },
-}
-const hostDefaults = {
-  start: { importProtection: { enabled: false } },
-  files: { 'tsconfig.json': JSON.stringify(hostTsconfig) },
-}
-
 const frameworks: Array<Framework> = ['react', 'solid', 'vue']
 
-const hosts = useStartHosts(hostDefaults)
+// The hosts' defaults (`./start-host`): no import protection (its dev mock
+// would hide a leaked server import from the client's loads) and an app
+// tsconfig with `verbatimModuleSyntax` (without it, Vite's TypeScript
+// transform drops unreferenced imports after the compiler and hides leaks);
+// a Vue app's JSX is Vue's own runtime.
+const hosts = useStartHosts()
 
 /** The real modules the constructs read. */
 const moduleFiles = {
@@ -199,10 +182,10 @@ import { chart } from './chart.client'`
 /**
  * What renders a module's `Page` with the framework's real renderers: on
  * the server to HTML (`html()`, in the SSR environment), and mounted in the
- * page (`mount()`, giving the container). Vue has no renderer here (no Vue
- * JSX transform in the host; see the `<ClientOnly>` tests).
+ * page (`mount()`, giving the container). The Vue app's JSX is Vue's own
+ * automatic runtime (`jsxImportSource: 'vue'`, the host's tsconfig).
  */
-const renderFiles: Partial<Record<Framework, Record<string, string>>> = {
+const renderFiles: Record<Framework, Record<string, string>> = {
   react: {
     'render.server.tsx': `import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
@@ -216,6 +199,22 @@ export function mount() {
   const container = document.createElement('div')
   document.body.append(container)
   createRoot(container).render(createElement(Page))
+  return container
+}
+`,
+  },
+  vue: {
+    'render.server.tsx': `import { createSSRApp, h } from 'vue'
+import { renderToString } from 'vue/server-renderer'
+import { Page } from './module'
+export const html = () => renderToString(createSSRApp({ render: () => h(Page) }))
+`,
+    'render.client.tsx': `import { createApp, h } from 'vue'
+import { Page } from './module'
+export function mount() {
+  const container = document.createElement('div')
+  document.body.append(container)
+  createApp({ render: () => h(Page) }).mount(container)
   return container
 }
 `,
@@ -379,13 +378,10 @@ export const Page = () => (
       expectNotLoaded(await served.serverLoads(), ['./chart.client'])
       // The client keeps the children's module.
       expect(await served.loads()).toContain('./chart.client')
-      if (!renderFiles[framework]) {
-        return
-      }
       // The real renderers: the server renders the fallback, the client the
       // children.
       const { html } = await served.ssr('render.server.tsx')
-      const ssrHtml = html() as string
+      const ssrHtml = (await html()) as string
       expect(ssrHtml).toContain('loading')
       expect(ssrHtml).not.toContain('chart')
       expect(

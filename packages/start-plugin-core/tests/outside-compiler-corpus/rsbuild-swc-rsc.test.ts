@@ -1,3 +1,11 @@
+/**
+ * Not part of the compiler test corpus (implementation test, moved from
+ * tests/rsbuild/plugin.test.ts by the final pass, FINAL-PASS #36): it calls
+ * the internal `enableSwcReactServerComponents` (src/rsbuild/swc-rsc.ts),
+ * the Rsbuild RSC configuration plumbing, on a hand-made Rspack config. No
+ * compiler outcome: the Rsbuild RSC builds of react-start-rsc's integration
+ * tier decide that RSC apps build.
+ */
 import { describe, expect, test } from 'vitest'
 import { enableSwcReactServerComponents } from '../../src/rsbuild/swc-rsc'
 

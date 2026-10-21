@@ -35,15 +35,18 @@
  * Use `useStartHost(options)` in a test file: one host per file (created in
  * `beforeAll`, closed in `afterAll`), and `host().case(files)` per test.
  */
+import { realpathSync } from 'node:fs'
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import react from '@vitejs/plugin-react'
+import vue from '@vitejs/plugin-vue'
 import solid from 'vite-plugin-solid'
 import { resolveModulePath } from 'exsolve'
 import { mergeConfig, preview as vitePreview } from 'vite'
 import { afterAll, beforeAll, expect } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 import {
   workspacePackage,
@@ -156,7 +159,9 @@ function frameworkPlugins(
   if (framework === 'solid') {
     return [solid({ ssr: true })]
   }
-  return []
+  // Single-file components (`.vue`); the app's JSX is Vue's own runtime
+  // (`appTsconfig`)
+  return [vue()]
 }
 
 /**
@@ -194,20 +199,24 @@ function absoluteOutDir(
  * (J4.12) would pass unseen. Import protection is a compiler of its own
  * (J6), tested with it on in `importProtection/` and its integration suites.
  */
-const appTsconfig = `${JSON.stringify(
-  {
-    compilerOptions: {
-      target: 'ES2022',
-      module: 'ESNext',
-      moduleResolution: 'Bundler',
-      jsx: 'react-jsx',
-      strict: true,
-      verbatimModuleSyntax: true,
+const appTsconfig = (framework: StartFramework) =>
+  `${JSON.stringify(
+    {
+      compilerOptions: {
+        target: 'ES2022',
+        module: 'ESNext',
+        moduleResolution: 'Bundler',
+        jsx: 'react-jsx',
+        // A Vue app's JSX builds Vue's virtual nodes (Vue's own automatic
+        // JSX runtime, `vue/jsx-runtime`)
+        ...(framework === 'vue' ? { jsxImportSource: 'vue' } : {}),
+        strict: true,
+        verbatimModuleSyntax: true,
+      },
     },
-  },
-  null,
-  2,
-)}\n`
+    null,
+    2,
+  )}\n`
 
 /** How long one page run may take before the page is replaced. */
 const pageRunTimeout = 10_000
@@ -231,6 +240,45 @@ interface ProbeContext {
 const probeRoutePath = '/harness-probe'
 /** The page route of a production build host. */
 const pageRoutePath = '/harness-page'
+
+/**
+ * The globals of development-only support a production page must never
+ * touch (SPEC G7): React Refresh's registration hooks (what
+ * `@vitejs/plugin-react`'s dev transform emits and Start's dev preamble
+ * defines) and the router plugin's React Refresh bookkeeping. Not
+ * `__TSR_ROUTER__`: the router's own runtime sets and reads it in
+ * production.
+ */
+const devSupportGlobals = [
+  '$RefreshReg$',
+  '$RefreshSig$',
+  '__TSR_REACT_REFRESH__',
+  '__vite_plugin_react_preamble_installed__',
+]
+
+/**
+ * Init script of the production page: every read or write of a
+ * `devSupportGlobals` name, from the page's first statement on, is recorded
+ * (`window.__harnessDevSupportTouches`).
+ */
+const devSupportTrap = `(() => {
+  const touches = []
+  Object.defineProperty(window, '__harnessDevSupportTouches', { value: touches })
+  for (const name of ${JSON.stringify(devSupportGlobals)}) {
+    let value
+    Object.defineProperty(window, name, {
+      configurable: true,
+      get() {
+        touches.push('read ' + name + '\\n' + new Error().stack)
+        return value
+      },
+      set(next) {
+        touches.push('write ' + name + '\\n' + new Error().stack)
+        value = next
+      },
+    })
+  }
+})()`
 
 /** The case modules a production build includes (`import.meta.glob`). */
 const caseGlob = `../cases/*/*.{ts,tsx,js,jsx}`
@@ -285,10 +333,24 @@ export const Route = createRootRoute()
 `,
     'src/routes/harness-probe.ts': probeRoute,
   }
-  if (!serve) {
+  if (!serve && framework === 'vue') {
+    // A build-only Vue host (`build()`; `preview()` serves React apps only):
+    // the client build takes every case module through a page route
+    files['src/routes/harness-page.ts'] =
+      `import { createFileRoute } from '${router}'
+const cases = import.meta.glob(${clientCaseGlob})
+export const Route = createFileRoute('${pageRoutePath}')({
+  component: () => {
+    Object.assign(window, { __harnessCases: cases, __harnessReady: true })
+    return null
+  },
+})
+`
+  }
+  if (!serve && framework !== 'vue') {
     if (framework !== 'react') {
       throw new Error(
-        `production build hosts are React apps (not ${framework})`,
+        `production build hosts are React or Vue apps (not ${framework})`,
       )
     }
     files['src/routes/__root.tsx'] =
@@ -345,7 +407,23 @@ function warmModules(framework: StartFramework): Array<string> {
   if (framework === 'solid') {
     return [...common, 'solid-js', 'solid-js/web']
   }
-  return common
+  return [...common, 'vue', 'vue/jsx-dev-runtime']
+}
+
+/**
+ * The framework packages an app depends on itself, besides Start and the
+ * router: Vue (its JSX runtime and renderers, which the app's own modules
+ * import), linked as installed, the copy Start's Vue packages use.
+ */
+function frameworkLinks(framework: StartFramework): Record<string, string> {
+  if (framework !== 'vue') {
+    return {}
+  }
+  return {
+    'node_modules/vue': realpathSync(
+      path.join(workspacePackage(startPackages.vue), 'node_modules/vue'),
+    ),
+  }
 }
 
 /**
@@ -479,6 +557,13 @@ export interface StartHost {
   }) => Promise<StartPreview>
   /** The host's page (one per host). */
   page: () => Promise<BrowserPage>
+  /**
+   * Production mode (`preview()`): every read or write of a development-only
+   * global (React Refresh's `$RefreshReg$`/`$RefreshSig$`, the router
+   * plugin's `__TSR_REACT_REFRESH__`, the dev preamble's flag) the
+   * production page made since it opened, with the stack that made it.
+   */
+  devSupportTouches: () => Promise<Array<string>>
   close: () => Promise<void>
 }
 
@@ -565,13 +650,16 @@ export async function createStartHost(
         },
       },
     },
-    symlinks: workspacePackageLinks([
-      startPackages[framework],
-      ...(framework === 'react' ? [] : [routerPackages[framework]]),
-      ...(options.links ?? []),
-    ]),
+    symlinks: {
+      ...workspacePackageLinks([
+        startPackages[framework],
+        ...(framework === 'react' ? [] : [routerPackages[framework]]),
+        ...(options.links ?? []),
+      ]),
+      ...frameworkLinks(framework),
+    },
     files: {
-      'tsconfig.json': appTsconfig,
+      'tsconfig.json': appTsconfig(framework),
       ...appFiles(framework, serve),
       ...options.files,
     },
@@ -601,6 +689,7 @@ export async function createStartHost(
       if (previewState) {
         const opened = await openPage(
           new URL(pageRoutePath, previewState.url).href,
+          { initScript: devSupportTrap },
         )
         opened.page.on('request', (request) => {
           requests.push(request.url())
@@ -631,21 +720,45 @@ export async function createStartHost(
       })
       // Vite pre-bundles what the page's first imports discover and reloads
       // the page when that changes the bundles: import the runtime first,
-      // until a round loads nothing new.
+      // until a round ends with nothing left to pre-bundle and no reload.
+      // A round ends on its outcome: the dependency optimizer has no
+      // discovered dependency left to bundle (observation only: its
+      // metadata), and every full reload the dev server sent during the
+      // round has reloaded the page.
       const warm = `await Promise.allSettled(${JSON.stringify(
         warmModules(framework).map((specifier) => `/@id/${specifier}`),
       )}.map((url) => import(url)))`
+      const optimizer = host.dev.vite.environments.client.depsOptimizer
+      const toBundle = () =>
+        Object.keys(optimizer?.metadata.discovered ?? {}).length
+      const fullReloads = () =>
+        host.dev.hmr.filter(
+          (message) =>
+            message.environment === 'client' && message.type === 'full-reload',
+        ).length
       for (let round = 0; round < 10; round++) {
         const loads = opened.loads()
+        const reloads = fullReloads()
         try {
           await opened.page.evaluate(`(async () => { ${warm} })()`)
-          await host.dev.idle()
-          await new Promise((resolve) => setTimeout(resolve, 200))
-          if (opened.loads() === loads) {
-            break
-          }
         } catch {
           // The page reloaded meanwhile
+        }
+        await host.dev.idle()
+        await waitForOutcome({
+          applied: () =>
+            toBundle() === 0 &&
+            (fullReloads() === reloads || opened.loads() !== loads),
+          quiet: async () => {
+            await host.dev.idle()
+            return true
+          },
+          timeout: 20_000,
+          describe: () =>
+            `dependencies left to pre-bundle: ${toBundle()}; full reloads sent: ${fullReloads() - reloads}; page loads: ${opened.loads() - loads}`,
+        })
+        if (fullReloads() === reloads && opened.loads() === loads) {
+          break
         }
         await opened.page.waitForLoadState()
       }
@@ -929,6 +1042,11 @@ try {
       if (serve) {
         throw new Error('preview() needs a host created with `serve: false`')
       }
+      if (framework !== 'react') {
+        throw new Error(
+          `preview() serves React apps (not ${framework}): use build()`,
+        )
+      }
       if (previewState && previewOptions.rebuild) {
         const previous = previewState
         const previousPage = page
@@ -972,6 +1090,19 @@ try {
       return { build, url }
     },
     page: openHostPage,
+    devSupportTouches: async () => {
+      if (!previewState) {
+        throw new Error(
+          'devSupportTouches() reads the production page: call preview() first',
+        )
+      }
+      const opened = await openHostPage()
+      return opened.page.evaluate(
+        () =>
+          (window as unknown as { __harnessDevSupportTouches: Array<string> })
+            .__harnessDevSupportTouches,
+      )
+    },
     close: async () => {
       try {
         await (page ? (await page).close() : undefined)

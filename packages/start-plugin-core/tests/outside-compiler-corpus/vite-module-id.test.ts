@@ -1,3 +1,12 @@
+/**
+ * Not part of the compiler test corpus (implementation test, moved from
+ * tests/vite/module-id.test.ts by the final pass, FINAL-PASS #36): it calls
+ * the internal module-id query helpers (src/vite/module-id.ts) with the
+ * internal lookup flag. The outcome they serve, modules whose ids carry
+ * queries compiled as their own modules, is decided in the corpus by
+ * createServerFn/createServerFn.test.ts (virtual factories that differ only
+ * by a query parameter, through the public Start plugin).
+ */
 import { describe, expect, test } from 'vitest'
 import {
   appendIdQueryFlag,

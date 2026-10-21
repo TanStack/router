@@ -126,6 +126,18 @@ export function inEnvironment(
   return { [environmentFilter]: { output, environment } }
 }
 
+/** Whether `item` is a channel diagnostic below a warning (an info line). */
+function isInfoDiagnostic(item: unknown) {
+  return (
+    typeof item === 'object' &&
+    item !== null &&
+    'severity' in item &&
+    'text' in item &&
+    (item as { severity: unknown }).severity !== 'warning' &&
+    (item as { severity: unknown }).severity !== 'error'
+  )
+}
+
 /** The texts of `output` and the root its absolute paths are under. */
 function textsOf(output: ReportOutput): {
   texts: Array<string>
@@ -135,7 +147,11 @@ function textsOf(output: ReportOutput): {
     return { texts: [output] }
   }
   if (Array.isArray(output)) {
-    const parts = output.map(textsOf)
+    // A channel's diagnostics (`server.diagnostics.slice(mark)`) are read
+    // as the channel of an object is: warnings and errors only
+    const parts = output
+      .filter((item: unknown) => !isInfoDiagnostic(item))
+      .map(textsOf)
     return {
       texts: parts.flatMap(({ texts }) => texts),
       root: parts.find(({ root }) => root)?.root,

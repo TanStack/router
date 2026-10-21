@@ -81,6 +81,21 @@ export function Page() {
 }
 
 const fixtures: Record<string, string> = {
+  // A boundary nested in a split boundary, behind a gate that never opens:
+  // the outer boundary's split code is compiled again (Rsbuild loads it
+  // from the module's source alone, by its own loader run) and splits the
+  // nested boundary in turn, with this framework's packages: the outer
+  // children hydrate, the nested ones keep the server's markup and stay
+  // inert. (Solid: the "nested" row of hydrate-pages-solid.ts runs the same
+  // path on Rsbuild.)
+  // Source: hydrate-split-modules.test.ts "react chunks loaded from the
+  // source code alone ..." (B2 dropped the Rsbuild path; FINAL-PASS #5).
+  nestedGates: `import { Hydrate } from '@tanstack/react-start'
+import { load, never } from '@tanstack/react-start/hydration'
+import { Counter } from '../counter'
+export function Page() {
+  return <Hydrate when={load()}><section><Counter label="outer" /><Hydrate when={never()}><Counter label="inner" /></Hydrate></section></Hydrate>
+}`,
   // Source: V4 red-astra-r2/10. These are eleven literal boundaries in one
   // source module, rather than eleven instances of one mapped boundary.
   eleven: `${head}export function Page() {
@@ -503,6 +518,27 @@ export function reactPageSuite(bundler: StartBundler) {
         test('rows.map renders a function declared below its boundary', async () => {
           await expectChildrenHydrate('hoistedRows', ['a-row', 'b-row'])
         })
+        test('a nested boundary in split children waits for its own gate', async () => {
+          const page = await app.hydrate('nestedGates', {
+            script: `const button = (label) => root.querySelector('button[data-label="' + label + '"]')
+await waitFor(async () => {
+  button('outer').click()
+  await settled(50)
+  return button('outer').textContent === 'outer:1'
+})
+for (let i = 0; i < 3; i++) {
+  button('inner').click()
+  await settled(50)
+}
+return [button('outer').textContent, button('inner').textContent]`,
+          })
+          expect(page.serverHtml).toContain('>outer:0<')
+          expect(page.serverHtml).toContain('>inner:0<')
+          expect(page.result).toEqual(['outer:1', 'inner:0'])
+          expect(page.consoleErrors).toEqual([])
+          expect(page.recoverableErrors).toEqual([])
+        })
+
         test('a nested boundary and a later sibling', async () => {
           await expectChildrenHydrate('nested', ['outer', 'nested', 'sibling'])
         })

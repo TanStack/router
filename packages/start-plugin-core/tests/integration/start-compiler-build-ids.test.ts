@@ -12,10 +12,16 @@
  * createServerFn/exports-and-directives.test.ts ("build providers have no
  * dev HMR code", the build row of "ids are repeatable ...", "build ids do
  * not ship source names", the build rows of "a provider for a module ending
- * in a line comment ...") and createServerFn/declaration-sites.test.ts ("a
- * .ts module in a directory whose name contains # compiles as TypeScript":
- * Vite's dev server serves no module under a `#` directory, a plain Vite
- * app neither).
+ * in a line comment ...").
+ *
+ * No row for a server fn under a directory whose name contains `#`
+ * (formerly createServerFn/declaration-sites.test.ts, "a .ts module in a
+ * directory whose name contains # compiles as TypeScript"): Vite's resolver
+ * cuts a file path at its first `#` outside `node_modules`, so a plain Vite
+ * app without Start cannot serve a module under such a directory in dev,
+ * nor build any query import of one (`./c#proj/src/module.ts?raw`:
+ * UNRESOLVED_IMPORT), which is how the Start build fails there too
+ * (FOLLOWUPS UPSTREAM "`#` in a directory name").
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import {
@@ -117,6 +123,12 @@ describe('production builds', () => {
     expect(await callFromClient(defaults.noHmr, 'module.getPosts')).toBe(
       'posts',
     )
+    // Behaviour (G7): the production page, which hydrated and ran the
+    // case's client code, never read or wrote a development-only global
+    // (React Refresh registration, the router plugin's refresh bookkeeping):
+    // dev support shipped without its guard fails here even where no
+    // `import.meta.hot` text is left to find.
+    expect(await defaultHost!.devSupportTouches()).toEqual([])
     const caseDir = `/${defaults.noHmr.dir}/`
     for (const [name, environment] of Object.entries(
       defaultPreview.build.environments,
@@ -181,40 +193,6 @@ describe('production builds', () => {
       expect(await callServerFnThroughCallers(startCase, 'module.fn')).toBe(
         'handler',
       )
-    },
-  )
-
-  // Bug: the build fails for a server fn module under a directory whose
-  // name contains `#` (e.g. a project in `~/c#proj`): Rolldown cannot
-  // resolve the module the compiler derives for the server side of the
-  // server fn (`.../c#proj/src/module.ts?<query>`: UNRESOLVED_IMPORT),
-  // whereas the same app without a server fn builds (a plain Vite build of a
-  // module under such a directory works).
-  // Impact: a Start app under such a directory cannot be built.
-  // Fix-agnostic: the build succeeds and the server fn works.
-  // Source: #8504 declaration-sites.test.ts (this row rerouted through the
-  // public Start plugin, B2 repair; the internal compiler alone parsed it).
-  test.fails(
-    'a .ts module in a directory whose name contains # compiles as TypeScript',
-    async () => {
-      const hashHost = await createStartHost({ serve: false })
-      try {
-        const startCase = await hashHost.case({
-          'c#proj/src/module.ts': `${head}export const fn = createServerFn().handler(async ({ data }) => <string>(data ?? 'from the server'))`,
-          'module.ts': `export { fn } from './c#proj/src/module'\n`,
-        })
-        const { build } = await hashHost.preview()
-        expect(
-          await callServerFnThroughCallers(startCase, 'module.fn', undefined, {
-            file: 'module.ts',
-          }),
-        ).toBe('from the server')
-        for (const chunk of build.environments.client!.chunks) {
-          expect(chunk.code, chunk.fileName).not.toContain('from the server')
-        }
-      } finally {
-        await hashHost.close()
-      }
     },
   )
 

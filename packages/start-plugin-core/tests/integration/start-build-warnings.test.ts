@@ -6,6 +6,7 @@
  * .test.ts`.)
  */
 import { describe, expect, test } from 'vitest'
+import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { StartBuildError, buildStart, startBundlers } from '../build-harness'
 
 const timeout = 60_000
@@ -33,11 +34,15 @@ export const greet = base.handler(async () => 'MARK_HANDLER')
           entry: 'src/entry.ts',
         }).then(
           () => 'the build succeeds',
-          // Everything the failed build reported, on every channel (a
-          // compiler may print the details and fail with a short error)
+          // Every warning and error the failed build reported, on every
+          // channel (a compiler may print the details and fail with a short
+          // error); an info line tells the user nothing went wrong
+          // (coordinator 2026-10-21, diagnostic severity)
           (error: unknown) =>
             error instanceof StartBuildError
-              ? error.diagnostics.map(({ text }) => text).join('\n')
+              ? problems(error.diagnostics)
+                  .map(({ text }) => text)
+                  .join('\n')
               : String(error),
         ),
         hang,
