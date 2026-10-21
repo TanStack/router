@@ -6,7 +6,6 @@
  * option reads is not imported by the chunk (D5: that dependency, found by
  * its request in the chunk as the dev server serves it).
  */
-import react from '@vitejs/plugin-react'
 import { parseSync, transformWithOxc } from 'vite'
 import { describe, expect, it } from 'vitest'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
@@ -552,7 +551,7 @@ describe('plain JavaScript route files', () => {
   // extensions). Vite and its React plugin compile JSX in `.jsx`/`.tsx`
   // files only: an app with JSX in `.js`/`.mjs` files adds a JSX transform
   // for them, here Vite's own Oxc transform, after the router plugin and
-  // before the React plugin.
+  // before the React plugin (both run before Vite's own plugins).
   const jsxInJs: Plugin = {
     name: 'app:jsx-in-js',
     enforce: 'pre',
@@ -577,7 +576,7 @@ export const Route = createFileRoute('/js')({
   component: () => <p>{label}</p>,
 })
 `,
-        { filename, routeId: '/js', framework: [jsxInJs, react()] },
+        { filename, routeId: '/js', plugins: { after: [jsxInJs] } },
       )
       await expectValidModules(route)
       expect([

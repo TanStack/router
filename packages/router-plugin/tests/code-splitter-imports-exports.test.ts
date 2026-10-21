@@ -9,7 +9,6 @@
  * bundler that honours it: integration/code-splitter-import-attributes.test.ts.
  */
 import { parse as parseWithBabel } from '@babel/core'
-import react from '@vitejs/plugin-react'
 import { describe, expect, it } from 'vitest'
 import {
   expectDiagnostic,
@@ -264,7 +263,6 @@ export const Route = createFileRoute('/')({
   // so a React import that the TypeScript code only uses in types must stay:
   // the app's own classic transform runs on what the router plugin emits,
   // and the page renders the component.
-  const classic = react({ jsxRuntime: 'classic' })
   it.each([
     { name: 'split component modules', pluginOptions: undefined },
     {
@@ -281,7 +279,11 @@ ${head}function Page({ title = 'classic' }: { title?: React.ReactNode }) {
 }
 export const Route = createFileRoute('/')({ component: Page })
 `,
-        { framework: classic, pluginOptions, hmr: pluginOptions !== undefined },
+        {
+          frameworkPluginOptions: { jsxRuntime: 'classic' },
+          pluginOptions,
+          hmr: pluginOptions !== undefined,
+        },
       )
       // `React.createElement` reads an imported `React`.
       expect(await route.run(`return render('component')`)).toBe(
@@ -297,7 +299,7 @@ export const Route = createFileRoute('/')({ component: Page })
 ${head}type Title = React.ReactNode
 export const Route = createFileRoute('/')({ component: () => <p>classic</p> })
 `,
-      { framework: classic },
+      { frameworkPluginOptions: { jsxRuntime: 'classic' } },
     )
     expect(await route.isLazy('component')).toBe(true)
     expect(await route.run(`return render('component')`)).toBe('<p>classic</p>')

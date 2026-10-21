@@ -39,7 +39,7 @@ import path from 'node:path'
 import react from '@vitejs/plugin-react'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import solid from 'vite-plugin-solid'
-import { mergeConfig, parseSync } from 'vite'
+import { parseSync } from 'vite'
 import { afterAll, expect } from 'vitest'
 import { runInPage } from '@tanstack/compiler-test-utils/browser'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
@@ -48,7 +48,7 @@ import { tanstackRouter } from '../src/vite'
 import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import type { PageRun } from '@tanstack/compiler-test-utils/browser'
 import type { PluginHost } from '@tanstack/compiler-test-utils/plugin-host'
-import type { ESTree, InlineConfig, PluginOption } from 'vite'
+import type { ESTree, PluginOption } from 'vite'
 import type { Config, DeletableNodes } from '../src'
 
 /** A framework the router plugin targets. */
@@ -104,22 +104,23 @@ export interface RouteAppOptions {
   /** A host of its own (a fresh dev server), not shared with other routes. */
   fresh?: boolean
   /**
+   * Directory the app is created in (default this tests directory), e.g.
+   * another project root; bare imports resolve from there, so it must be
+   * inside this package.
+   */
+  dir?: string
+  /**
    * Other dependencies the app imports that the page needs pre-bundled, as
    * Vite pre-bundles an app's installed dependencies (e.g. a CommonJS
    * package, or `@emotion/react` and its JSX runtimes).
    */
   prebundle?: Array<string>
   /**
-   * The framework's Vite plugin as the app configures it (e.g.
-   * `react({ jsxRuntime: 'classic' })`, or an app's own JSX transform
-   * before it), instead of the plugin with its defaults (a host of its own).
+   * Options of the framework's own Vite plugin, as an app gives them (e.g.
+   * `{ jsxRuntime: 'classic' }` for `@vitejs/plugin-react`: a project whose
+   * JSX runtime is classic).
    */
-  framework?: PluginOption
-  /**
-   * Vite configuration over the host's, as the app's `vite.config` sets it
-   * (a host of its own).
-   */
-  config?: InlineConfig
+  frameworkPluginOptions?: Record<string, unknown>
   /**
    * A script the app's page runs before the route module loads, in every
    * page run of the route (as a `<script>` of the page defining globals the
@@ -157,10 +158,13 @@ const prebundled: Record<TargetFramework, Array<string>> = {
 }
 
 /** The framework's own Vite plugin, as an app adds it. */
-const frameworkPlugins: Record<TargetFramework, () => PluginOption> = {
-  react: () => react(),
-  solid: () => solid(),
-  vue: () => vueJsx(),
+const frameworkPlugins: Record<
+  TargetFramework,
+  (options?: Record<string, unknown>) => PluginOption
+> = {
+  react: (options) => react(options),
+  solid: (options) => solid(options),
+  vue: (options) => vueJsx(options),
 }
 
 /** The page-side helper module every app holds (see `probeSource`). */
@@ -175,23 +179,8 @@ export const probeFile = 'route-app-probe.ts'
  */
 export const entryFile = 'route-app-entry.ts'
 
-/**
- * The route's entry: the route module, and the test's files the same way
- * (`app(file)`): a stub edited for an earlier route is imported with its
- * timestamp by the route, so a page importing its plain URL would get
- * another instance than the route's.
- */
-function entrySource(filename: string, files: Array<string> = []) {
-  const thunks = files.map(
-    (file) =>
-      `  ${JSON.stringify(file)}: () => import(${JSON.stringify(`./${file}`)}),`,
-  )
-  return `export * as route from './${filename.replace(/^\.\//, '')}'
-export const files: Record<string, () => Promise<unknown>> = {
-${thunks.join('\n')}
-}
-`
-}
+const entrySource = (filename: string) =>
+  `export * as route from './${filename.replace(/^\.\//, '')}'\n`
 
 /**
  * Tool modules the page loads that no compiler emitted for the route: Vite's
@@ -270,18 +259,38 @@ const tool = ${toolModule}
 
 /** App-local modules the document requested so far, in order (path and query). */
 export function appRequests(): Array<string> {
-  const seen = new Set<string>()
+  return [...requestUrls().keys()]
+}
+
+/**
+ * The app-local requests so far, each without the timestamp Vite's import
+ * analysis adds to imports of a file it hot-updated (\`t=\`), with the URL
+ * the page actually requested.
+ */
+function requestUrls(): Map<string, string> {
+  const seen = new Map<string, string>()
   for (const entry of performance.getEntriesByType('resource')) {
     const url = new URL(entry.name)
     if (url.origin !== location.origin) continue
     // Without Vite's HMR timestamp (the t= query, which import analysis adds to
     // imports of a module an edit changed): one request per module
+    const actual = url.pathname + url.search
     url.searchParams.delete('t')
     const request = url.pathname + url.search
     if (tool.test(request) || url.pathname === '/${probeFile}' || url.pathname === '/${entryFile}') continue
-    seen.add(request)
+    if (!seen.has(request)) seen.set(request, actual)
   }
-  return [...seen]
+  return seen
+}
+
+/**
+ * The URL to import an app module by to get the instance the page's other
+ * modules share: the URL they requested, or the plain one. (The import
+ * itself happens in the page's script: Vite rewrites the dynamic imports
+ * of the modules it serves.)
+ */
+export function requestUrl(request: string) {
+  return requestUrls().get(request) ?? request
 }
 
 /** Starts loading a route option as the router does (errors ignored). */
@@ -355,7 +364,11 @@ export async function renderComponent(component: any, props: Record<string, unkn
  * (memory history), \`router.load()\`, then \`RouterProvider\`.
  */
 export async function renderRoute(at: string, routerOptions: Record<string, unknown> = {}) {
-  const { routeTree } = await import('/routeTree.gen.ts')
+  // Imported by its URL when the app renders, not linked when this helper
+  // loads: a run that renders no route does not depend on the route tree
+  // (which a generator that rejects the route file never writes)
+  const routeTreeUrl = '/routeTree.gen.ts'
+  const { routeTree } = await import(/* @vite-ignore */ routeTreeUrl)
   const router = createRouter({
     routeTree,
     history: createMemoryHistory({ initialEntries: [at] }),
@@ -465,6 +478,11 @@ function hostKey(options: RouteAppOptions, root: boolean) {
       pluginOptions: options.pluginOptions,
       tsconfig: options.tsconfig,
       prebundle: options.prebundle,
+      dir: options.dir,
+      // Vite's watcher does not watch `node_modules`: package stubs are
+      // written with the app, so each set of them has its own host
+      packages: packageFiles(options.files ?? {}),
+      frameworkPluginOptions: options.frameworkPluginOptions,
       // A function option (e.g. `splitBehavior`) by its source: two routes
       // with different functions get different hosts
     },
@@ -472,6 +490,15 @@ function hostKey(options: RouteAppOptions, root: boolean) {
       typeof value === 'function' ? `function ${String(value)}` : value,
   )
 }
+
+/** The files of `files` that are packages (under `node_modules/`). */
+function packageFiles(files: Record<string, string>) {
+  return Object.fromEntries(
+    Object.entries(files).filter(([file]) => isPackageFile(file)),
+  )
+}
+
+const isPackageFile = (file: string) => /^(?:\.\/)?node_modules\//.test(file)
 
 /** The router plugin's options for a route app. */
 function routerOptions(
@@ -519,7 +546,7 @@ async function startHost(
 ): Promise<HostState> {
   const target = options.targetFramework ?? 'react'
   const host = await createPluginHost({
-    dir: import.meta.dirname,
+    dir: options.dir ?? import.meta.dirname,
     prefix: '.route-app-',
     files: {
       'tsconfig.json': JSON.stringify({
@@ -531,19 +558,16 @@ async function startHost(
       ...files,
     },
     client: true,
-    config: mergeConfig(
-      {
-        optimizeDeps: {
-          noDiscovery: true,
-          include: [...prebundled[target], ...(options.prebundle ?? [])],
-        },
+    config: {
+      optimizeDeps: {
+        noDiscovery: true,
+        include: [...prebundled[target], ...(options.prebundle ?? [])],
       },
-      options.config ?? {},
-    ),
+    },
     plugins: ({ root: appRoot }) => [
       ...(options.plugins?.before ?? []),
       tanstackRouter(routerOptions(options, root, appRoot)),
-      options.framework ?? frameworkPlugins[target](),
+      frameworkPlugins[target](options.frameworkPluginOptions),
       ...(options.plugins?.after ?? []),
     ],
   })
@@ -570,13 +594,14 @@ async function writeRoute(
   }
   if (state.owner !== undefined || state.used) {
     const edit: Record<string, string | null> = {}
+    // Package stubs are the host's own (see `hostKey`)
     for (const file of Object.keys(state.current)) {
-      if (!(file in files)) {
+      if (!(file in files) && !isPackageFile(file)) {
         edit[file] = null
       }
     }
     for (const [file, code] of Object.entries(files)) {
-      if (state.current[file] !== code) {
+      if (state.current[file] !== code && !isPackageFile(file)) {
         edit[file] = code
       }
     }
@@ -590,26 +615,45 @@ async function writeRoute(
   state.used = true
 }
 
+/**
+ * The URL each request is imported by from the app's modules: Vite's import
+ * analysis adds the time of a file's last hot update (`t=`) to the imports
+ * of that file, so that a page importing the plain URL would get a second
+ * instance. The page's own script imports by these URLs.
+ */
+async function stampedUrls(host: PluginHost, requests: Array<string>) {
+  const graph = host.dev.vite.environments.client.moduleGraph
+  const stamped: Record<string, string> = {}
+  for (const request of requests) {
+    const module = await graph.getModuleByUrl(request)
+    if (module && module.lastHMRTimestamp > 0) {
+      stamped[request] =
+        `${request}${request.includes('?') ? '&' : '?'}t=${module.lastHMRTimestamp}`
+    }
+  }
+  return stamped
+}
+
 /** The page-side names a script runs with (see `RouteApp.run`). */
 function prelude(
   routeUrl: string,
   own: Array<string>,
   at: string,
   before: string,
+  stamped: Record<string, string>,
 ) {
   return `const probe = module
 const own = new Set(${JSON.stringify(own)})
 const routeUrl = ${JSON.stringify(routeUrl)}
+/** The URLs the app's own modules import these by (see \`stampedUrls\`). */
+const stamped = ${JSON.stringify(stamped)}
+const importUrl = (request) => stamped[request] ?? probe.requestUrl(request)
 /** Modules the compilers emitted that the page requested so far (path and query). */
 const compiled = () => probe.appRequests().filter((request) => request === routeUrl || !own.has(request))
 /** Every app-local module the page requested so far: compiled ones and the test's files. */
 const requested = () => probe.appRequests()
 /** An app file the test wrote, as the page imports it (the instance the route gets). */
-const app = async (file) => {
-  const name = file.replace(/^\\.?\\//, '')
-  const entry = await import(${JSON.stringify(`/${entryFile}`)})
-  return entry.files?.[name] ? entry.files[name]() : import('/' + name)
-}
+const app = (file) => import(importUrl('/' + file.replace(/^\\.?\\//, '')))
 ${before}
 const exports = (await import(${JSON.stringify(`/${entryFile}`)})).route
 const Route = exports.Route
@@ -712,21 +756,8 @@ export async function loadRoute(
 ): Promise<RouteApp> {
   const filename = options.filename ?? 'route.tsx'
   const root = createsRootRoute(code)
-  const testFiles = Object.keys(options.files ?? {})
-  const files = {
-    ...options.files,
-    [filename]: code,
-    // The route's entry, with its own files (see `entrySource`)
-    [entryFile]: entrySource(
-      filename,
-      testFiles.filter(
-        (file) =>
-          !/(?:^|\/)node_modules\//.test(file) &&
-          /\.(?:[cm]?[jt]sx?|json|css)$/.test(file),
-      ),
-    ),
-  }
-  const own = new Set(testFiles.map(appUrl))
+  const files = { ...options.files, [filename]: code }
+  const own = new Set(Object.keys(options.files ?? {}).map(appUrl))
   own.add(appUrl(probeFile))
   own.add(appUrl(entryFile))
   if (!root) {
@@ -735,16 +766,7 @@ export async function loadRoute(
   const url = appUrl(filename)
   const at = root ? '/' : (options.routeId ?? '/')
 
-  const custom =
-    options.fresh ||
-    options.plugins !== undefined ||
-    options.framework !== undefined ||
-    options.config !== undefined ||
-    // Vite's watcher does not report files of `node_modules`: an app with
-    // packages of its own is written once, by a host of its own
-    Object.keys(options.files ?? {}).some((file) =>
-      /(?:^|\/)node_modules\//.test(file),
-    )
+  const custom = options.fresh || options.plugins !== undefined
   const key = hostKey(options, root)
   let statePromise = custom ? undefined : hosts.get(key)
   const owner = {}
@@ -773,7 +795,7 @@ export async function loadRoute(
     try {
       return await state.host.runClient<T>(
         appUrl(probeFile),
-        `${prelude(url, [...own], at, `${options.pageScript ?? ''}\n${runOptions.before ?? ''}`)}
+        `${prelude(url, [...own], at, `${options.pageScript ?? ''}\n${runOptions.before ?? ''}`, await stampedUrls(state.host, [...own]))}
 // A run that never settles (e.g. a page left suspended while a navigation
 // is pending) fails at a bound, instead of holding the shared page
 return await Promise.race([
