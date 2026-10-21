@@ -265,10 +265,26 @@ export async function trigger(route: any, option: string) {
   } catch {}
 }
 
+/**
+ * Throws when a module of the app the document requested failed (an HTTP
+ * error: the dev server could not compile it). The router hides a failed
+ * route chunk until it renders the lazy component, and then reloads the
+ * page once (as after a deployment): rendering it would navigate the page
+ * away from the run instead of failing it.
+ */
+export function assertNoFailedRequests() {
+  const failed = performance
+    .getEntriesByType('resource')
+    .filter((entry: any) => entry.responseStatus >= 400)
+    .map((entry: any) => \`\${new URL(entry.name).pathname}\${new URL(entry.name).search} (HTTP \${entry.responseStatus})\`)
+  if (failed.length > 0) throw new Error(\`a module of the app failed to load: \${failed.join(', ')}\`)
+}
+
 /** The option as the router uses it, once its module loaded. */
 export async function load(route: any, option: string) {
   const value = route.options[option]
   if (option !== 'loader') await value?.preload?.()
+  assertNoFailedRequests()
   return value
 }
 
@@ -290,6 +306,7 @@ function settled(el: HTMLElement, isIdle: () => boolean, timeout: number) {
 
 /** Renders a component with the framework's client renderer: its HTML. */
 export async function renderComponent(component: any, props: Record<string, unknown> = {}) {
+  assertNoFailedRequests()
   const el = document.createElement('div')
   document.body.append(el)
   const { errors, unmount } = mount(component, props, el, false)
@@ -313,6 +330,7 @@ export async function renderRoute(at: string, routerOptions: Record<string, unkn
     ...routerOptions,
   })
   await router.load()
+  assertNoFailedRequests()
   const el = document.createElement('div')
   document.body.append(el)
   const { errors } = mount(RouterProvider, { router }, el, true)
@@ -378,9 +396,29 @@ async function idleHmrClient(serverUrl: string): Promise<() => void> {
   return () => socket.close()
 }
 
+/** The bound of one page run's script (below Vitest's default test timeout). */
+const pageRunBound = 4000
+
 /** Removes the shared page's document, so that it no longer follows a host. */
 async function parkPage() {
   await runInPage({ pageUrl: 'about:blank', script: 'return null' })
+}
+
+/**
+ * Parks the shared page after a failed run: what failed may have started a
+ * navigation of the page (the router reloads the page once when a lazy
+ * route chunk fails to load, as after a deployment), which would interrupt
+ * the next run's own navigation. Retries until a park completes.
+ */
+async function recoverPage() {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      await parkPage()
+      return
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    }
+  }
 }
 
 function hostKey(options: RouteAppOptions, root: boolean) {
@@ -507,7 +545,7 @@ async function writeRoute(
         edit[file] = code
       }
     }
-    await parkPage()
+    await recoverPage()
     if (Object.keys(edit).length > 0) {
       await state.host.edit(edit)
     }
@@ -674,9 +712,18 @@ export async function loadRoute(
     try {
       return await state.host.runClient<T>(
         appUrl(probeFile),
-        `${prelude(url, [...own], at, runOptions.before ?? '')}\n${body}`,
+        `${prelude(url, [...own], at, runOptions.before ?? '')}
+// A run that never settles (e.g. a page left suspended while a navigation
+// is pending) fails at a bound, instead of holding the shared page
+return await Promise.race([
+  (async () => {
+${body}
+  })(),
+  new Promise((_, reject) => setTimeout(() => reject(new Error('the page run did not settle within ${pageRunBound} ms')), ${pageRunBound})),
+])`,
       )
     } catch (error) {
+      await recoverPage()
       const sent = state.host.dev.hmr
         .slice(hmr)
         .map((message) => `${message.type} ${message.paths.join(', ')}`)
