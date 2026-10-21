@@ -102,8 +102,10 @@ export function expectNoOtherErrors(output: {
   root: string
   diagnostics: Array<{ severity: string; text: string }>
 }) {
-  const reported = violationReports(output).map(
-    ({ importer }) => parseLocation(importer).file,
+  // (the file as the report names it, without a source-map URL scheme such
+  // as `webpack:/`: where the report is located is judged elsewhere, F2)
+  const reported = violationReports(output).map(({ importer }) =>
+    parseLocation(importer).file.replace(/^[a-z]+:\/+/, ''),
   )
   const others = findDiagnostics(output.diagnostics, {
     severity: 'error',

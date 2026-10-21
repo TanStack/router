@@ -485,7 +485,7 @@ function parseReport(
     importer,
     specifier,
     ...(resolved !== undefined && { resolved }),
-    trace: orientedFromEntry(steps, importer),
+    trace: orientedFromEntry(steps, importer, specifier),
     ...(code && { code }),
     suggestions,
     text,
@@ -500,14 +500,20 @@ function parseReport(
 function orientedFromEntry(
   steps: Array<ReportedTraceStep>,
   importer: string,
+  specifier: string,
 ): Array<ReportedTraceStep> {
   if (steps.length < 2) {
     return steps
   }
+  // The importer's end: the step in the importer's file, or the step that
+  // imports the denied specifier (the importer's import, whatever path the
+  // report names the importer by)
   const file = withoutLocation(importer)
-  const first = withoutLocation(steps[0]!.at)
-  const last = withoutLocation(steps.at(-1)!.at)
-  return first === file && last !== file ? [...steps].reverse() : steps
+  const atImporter = (step: ReportedTraceStep) =>
+    withoutLocation(step.at) === file || step.imports === specifier
+  return atImporter(steps[0]!) && !atImporter(steps.at(-1)!)
+    ? [...steps].reverse()
+    : steps
 }
 
 /**
@@ -518,32 +524,38 @@ function parseCodeFrame(
   lines: Array<string>,
   root: string | undefined,
 ): ReportedCodeFrame | undefined {
-  const start = lines.findIndex(isFrameLine)
-  if (start === -1) {
-    return undefined
+  // Every run of frame lines; the report's frame is the one with the
+  // `>`/`^` convention (J6.12). Another frame a tool adds around the report
+  // (e.g. a generic frame of the failing module, without `>`) is not it.
+  for (let start = 0; start < lines.length; start++) {
+    if (!isFrameLine(lines[start]!)) {
+      continue
+    }
+    const frame: Array<string> = []
+    let index = start
+    for (; index < lines.length && isFrameLine(lines[index]!); index++) {
+      frame.push(lines[index]!)
+    }
+    start = index
+    const highlighted = frame.findIndex((line) => /^\s*>\s*\d+\s*\|/.test(line))
+    const caret = frame[highlighted + 1]?.indexOf('^') ?? -1
+    if (highlighted === -1 || caret === -1) {
+      continue
+    }
+    const after = lines.slice(index).find((line) => line.trim() !== '')
+    return {
+      line: Number(/(\d+)\s*\|/.exec(frame[highlighted]!)![1]),
+      pointsAt: frame[highlighted]!.slice(caret),
+      shows: frame.flatMap(
+        (line) => /^\s*>?\s*\d+\s*\| ?(.*)$/.exec(line)?.[1] ?? [],
+      ),
+      location:
+        after !== undefined && isBareLocation(after)
+          ? relativeTo(root, after.trim())
+          : '',
+    }
   }
-  const frame: Array<string> = []
-  let index = start
-  for (; index < lines.length && isFrameLine(lines[index]!); index++) {
-    frame.push(lines[index]!)
-  }
-  const highlighted = frame.findIndex((line) => /^\s*>\s*\d+\s*\|/.test(line))
-  const caret = frame[highlighted + 1]?.indexOf('^') ?? -1
-  if (highlighted === -1 || caret === -1) {
-    throw new Error(`no highlighted line with a caret in:\n${frame.join('\n')}`)
-  }
-  const after = lines.slice(index).find((line) => line.trim() !== '')
-  return {
-    line: Number(/(\d+)\s*\|/.exec(frame[highlighted]!)![1]),
-    pointsAt: frame[highlighted]!.slice(caret),
-    shows: frame.flatMap(
-      (line) => /^\s*>?\s*\d+\s*\| ?(.*)$/.exec(line)?.[1] ?? [],
-    ),
-    location:
-      after !== undefined && isBareLocation(after)
-        ? relativeTo(root, after.trim())
-        : '',
-  }
+  return undefined
 }
 
 // ---------------------------------------------------------------------------

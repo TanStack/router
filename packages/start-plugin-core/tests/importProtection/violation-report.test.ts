@@ -396,6 +396,26 @@ describe.each(layouts)('the reader, %s layout', (layout) => {
     ])
   })
 
+  // The importer's end is also the step importing the denied specifier,
+  // when the report names the importer by another path (a known bug prints
+  // `b.ts` for `src/b.ts`).
+  test('reads the chain from the entry when the importer is named by another path', () => {
+    const [report] = violationReports(
+      print(layout, {
+        ...sample,
+        importer: 'b.ts',
+        trace: [
+          { file: 'src/main.ts', at: '1:1', imports: './b' },
+          { file: 'src/b.ts', at: '4:27', imports: './secret.server' },
+        ],
+      }),
+    )
+    expect(report!.trace.map(({ at }) => at)).toEqual([
+      'src/main.ts:1:1',
+      'src/b.ts:4:27',
+    ])
+  })
+
   test('ignores another diagnostic, and the runtime access report of a dev mock', () => {
     const access = `Error: [import-protection] Mocked import used in dev client
 
@@ -459,10 +479,27 @@ Operation -> call on secret()`
     expect(() => violationReports(text)).toThrow(/import-protection report/)
   })
 
-  test('a code frame without a highlighted line or caret fails', () => {
-    expect(() =>
-      violationReports(report.replace('  > 4 |', '    4 |')),
-    ).toThrow(/caret/)
+  // The report's frame keeps the `>`/`^` convention (J6.12): a frame
+  // without it is not read as the report's frame.
+  test('a code frame without a highlighted line is not the report frame', () => {
+    const [read] = violationReports(report.replace('  > 4 |', '    4 |'))
+    expect(read!.code).toBeUndefined()
+  })
+
+  // A tool may print another frame around the report (R7: a generic frame of
+  // the failing module, without `>`, before the report's own).
+  test("reads the report's frame next to another tool's frame", () => {
+    const [plain] = violationReports(report)
+    const toolFrame = [
+      '    1 | import { secret } from "./secret.server";',
+      '      | ^',
+      '    2 | export const leak = () => secret();',
+    ]
+    const lines = report.split('\n')
+    const at = lines.findIndex((line) => /^\s*>\s*4 \|/.test(line)) - 2
+    lines.splice(at, 0, ...toolFrame, '')
+    const [read] = violationReports(lines.join('\n'))
+    expect(read!.code).toEqual(plain!.code)
   })
 })
 
