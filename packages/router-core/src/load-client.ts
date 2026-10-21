@@ -431,6 +431,60 @@ function getLoaderContext(
     ...router.options.additionalContext,
   }
 }
+function createLoaderFlight(
+  router: AnyRouter,
+  lane: ContextualizedLane,
+  match: WorkMatch,
+  route: AnyRoute,
+  loader: RouteLoaderFn<any>,
+  parentMatchPromise: Promise<WorkMatch> | undefined,
+  options: ExecuteLaneOptions,
+): LoaderFlight {
+  const owner = options[0 /* controller */]
+  const controller = new AbortController()
+  const flight: LoaderFlight = [
+    Promise.resolve()
+      .then(() =>
+        loader(
+          getLoaderContext(
+            router,
+            lane,
+            match,
+            route,
+            controller,
+            parentMatchPromise,
+            !!options[3 /* preload */],
+          ),
+        ),
+      )
+      .then(
+        (value) => normalize(value, false, route.id),
+        (cause) => normalize(cause, true, route.id),
+      )
+      .then((result): RawLoaderOutcome => {
+        // The registry controls discovery; leases keep current consumers
+        // sharing the same terminal outcome.
+        if (
+          result[0 /* kind */] !== SUCCESS &&
+          router._flights?.get(match.id) === flight
+        ) {
+          router._flights.delete(match.id)
+          if (!flight[2 /* leases */]) {
+            controller.abort()
+          }
+        }
+        return result[0 /* kind */] === ERROR &&
+          flight[2 /* leases */] &&
+          router._preflight !== owner
+          ? normalizeError(route, result[1 /* error */])
+          : result
+      }),
+    controller,
+    1,
+  ]
+  ;(router._flights ??= new Map()).set(match.id, flight)
+  return flight
+}
 
 async function contextualize(
   router: AnyRouter,
@@ -677,61 +731,6 @@ function setFetching(
   if (presented?.id === match.id) {
     store!.set({ ...presented, isFetching: value })
   }
-}
-
-function createLoaderFlight(
-  router: AnyRouter,
-  lane: ContextualizedLane,
-  match: WorkMatch,
-  route: AnyRoute,
-  loader: RouteLoaderFn<any>,
-  parentMatchPromise: Promise<WorkMatch> | undefined,
-  options: ExecuteLaneOptions,
-): LoaderFlight {
-  const owner = options[0 /* controller */]
-  const controller = new AbortController()
-  const flight: LoaderFlight = [
-    Promise.resolve()
-      .then(() =>
-        loader(
-          getLoaderContext(
-            router,
-            lane,
-            match,
-            route,
-            controller,
-            parentMatchPromise,
-            !!options[3 /* preload */],
-          ),
-        ),
-      )
-      .then(
-        (value) => normalize(value, false, route.id),
-        (cause) => normalize(cause, true, route.id),
-      )
-      .then((result): RawLoaderOutcome => {
-        // The registry controls discovery; leases keep current consumers
-        // sharing the same terminal outcome.
-        if (
-          result[0 /* kind */] !== SUCCESS &&
-          router._flights?.get(match.id) === flight
-        ) {
-          router._flights.delete(match.id)
-          if (!flight[2 /* leases */]) {
-            controller.abort()
-          }
-        }
-        return result[0 /* kind */] === ERROR &&
-          flight[2 /* leases */] &&
-          router._preflight !== owner
-          ? normalizeError(route, result[1 /* error */])
-          : result
-      }),
-    controller,
-    1,
-  ]
-  ;(router._flights ??= new Map()).set(match.id, flight)
-  return flight
 }
 
 async function loadResource(
