@@ -238,7 +238,10 @@ export interface LoadedRouteTree {
   loadedFiles: () => Array<string>
   import: (file: string) => Promise<Record<string, any>>
   render: (component: unknown) => Promise<string>
-  renderClientAt: (url: string) => Promise<string>
+  renderClientAt: (
+    url: string,
+    expectedParagraphs: Array<string>,
+  ) => Promise<string>
   renderAt: (url: string) => Promise<string>
   imports: Array<{ file: string; specifier: string; importer: string }>
 }
@@ -315,10 +318,10 @@ export function withRouteTree<T>(
             }
             return render(component)
           },
-          renderClientAt: async (url) => {
+          renderClientAt: async (url, expectedParagraphs) => {
             const { createClientConsumer } = await import('./consumer-client')
             client ??= await createClientConsumer(treeFile, framework)
-            return client.renderAt(url)
+            return client.renderAt(url, expectedParagraphs)
           },
           renderAt: async (url) => {
             const pageRouter = runtime.createRouter({

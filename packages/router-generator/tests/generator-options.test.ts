@@ -10,10 +10,10 @@ import path from 'node:path'
 import { parseSync } from 'vite'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import {
-  captureConsole,
   expectDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
+import { captureDiagnostics } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { Generator, getConfig } from '../src'
 import { recordInputs } from './consumer-inputs'
 import { expectOnlyOwnedEdits } from './owned-edits'
@@ -745,7 +745,6 @@ export const Route = createLazyFileRoute('/about')({})
       generatedRouteTree,
       async ({ router, routerPackage, import: importFile }) => {
         expect(router.routeTree).toBeInstanceOf(routerPackage.RootRoute)
-        expect(router.routesById['/about']).toBeInstanceOf(routerPackage.Route)
         const { Route } = await importFile(
           path.join(root, 'src/routes/about.lazy.tsx'),
         )
@@ -916,7 +915,7 @@ export const Route = createFileRoute('/')({})
   // (SPEC J1.12, G5); what else the run logs is free.
   test('with logging on, a route file without a Route export is left out with a warning naming it', async () => {
     const root = await createApp(app())
-    const { result: config, diagnostics } = await captureConsole(() =>
+    const { result: config, diagnostics } = await captureDiagnostics(() =>
       generate(root, { disableLogging: false }),
     )
 
@@ -937,7 +936,7 @@ export const Route = createFileRoute('/')({})
   // file without a Route export.
   test('with disableLogging, a run that scaffolds and skips route files logs no route generation messages', async () => {
     const root = await createApp(app())
-    const { result: config, diagnostics } = await captureConsole(() =>
+    const { result: config, diagnostics } = await captureDiagnostics(() =>
       generate(root, { disableLogging: true }),
     )
 

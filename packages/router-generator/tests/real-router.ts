@@ -181,7 +181,7 @@ async function checkRouter(
     for (const [url, texts] of Object.entries(pages ?? {})) {
       expect(paragraphs(await tree.renderAt(url))).toEqual(texts)
       if (client) {
-        expect(paragraphs(await tree.renderClientAt(url))).toEqual(texts)
+        expect(paragraphs(await tree.renderClientAt(url, texts))).toEqual(texts)
       }
     }
   })

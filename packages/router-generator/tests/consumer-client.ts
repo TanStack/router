@@ -33,14 +33,20 @@ const mount = async (router, target) => {
 const mount = (router, target) => render(() => createComponent(runtime.RouterProvider, { router }), target)`
   await writeFile(
     entry,
-    `import * as runtime from '@tanstack/${framework}-router'
+    `import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
+import * as runtime from '@tanstack/${framework}-router'
 import { routeTree } from ${JSON.stringify('./' + path.basename(treeFile))}
 ${mount}
-export async function renderAt(url) {
+export async function renderAt(url, expectedParagraphs) {
   const router = runtime.createRouter({ routeTree, history: runtime.createMemoryHistory({ initialEntries: [url] }) })
   await router.load()
   const target = document.getElementById('root')
   await mount(router, target)
+  await waitForOutcome({
+    applied: () => JSON.stringify([...target.querySelectorAll('p')].map((element) => element.textContent)) === JSON.stringify(expectedParagraphs),
+    timeout: 15_000,
+    describe: () => target.innerHTML,
+  })
   return target.innerHTML
 }
 `,
@@ -88,6 +94,7 @@ export async function renderAt(url) {
     optimizeDeps: {
       include: [
         `@tanstack/${framework}-router`,
+        '@tanstack/compiler-test-utils/outcome',
         ...(framework === 'react'
           ? ['react', 'react-dom/client', 'react-dom']
           : framework === 'solid'
@@ -99,14 +106,14 @@ export async function renderAt(url) {
   await server.listen()
   const base = server.resolvedUrls!.local[0]!
   return {
-    async renderAt(url: string) {
+    async renderAt(url: string, expectedParagraphs: Array<string>) {
       const result = await runInPage<string>({
         pageUrl: new URL('/__consumer.html', base).href,
         moduleUrl: new URL(
           '/' + path.relative(root, entry).replaceAll(path.sep, '/'),
           base,
         ).href,
-        script: `return module.renderAt(${JSON.stringify(url)})`,
+        script: `return module.renderAt(${JSON.stringify(url)}, ${JSON.stringify(expectedParagraphs)})`,
       })
       if (result.errors.length) {
         throw new Error(result.errors.join('\n'))
