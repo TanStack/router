@@ -37,8 +37,9 @@ export const Profile = () => 'MARK_PROFILE'
   'src/components/profile.css': `.profile::after { content: 'MARK_PROFILE_CSS'; }\n`,
   'src/routes/api.tsx': `${head}export const Route = createFileRoute('/api')({ ${handlers} })\n`,
   'src/routes/api/inner.tsx': `${head}export const Route = createFileRoute('/api/inner')({ ${handlers} })\n`,
-  'src/router.ts': `import { routeTree } from './routeTree.gen'
-export const getRouter = () => ({ routeTree })
+  'src/router.ts': `import { createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+export const getRouter = () => createRouter({ routeTree })
 `,
   // Start's server entry renders with the start manifest
   'src/ssr-entry.ts': `export { getRouter } from './router'

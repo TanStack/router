@@ -22,8 +22,9 @@ export const Route = createRootRoute()
 `,
   'src/routes/index.tsx': `${head}export const Route = createFileRoute('/')({ component: () => 'MARK_INDEX' })\n`,
   'src/routes/api.tsx': `${head}export const Route = createFileRoute('/api')({ server: { handlers: { GET: () => new Response('MARK_API') } } })\n`,
-  'src/router.ts': `import { routeTree } from './routeTree.gen'
-export const getRouter = () => ({ routeTree })
+  'src/router.ts': `import { createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+export const getRouter = () => createRouter({ routeTree })
 `,
 }
 

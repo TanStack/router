@@ -282,8 +282,9 @@ export const Route = createFileRoute('/api')({
   server: { handlers: { GET: () => serverRouteHandler() } },
 })
 `,
-      'src/router.ts': `import { routeTree } from './routeTree.gen'
-export const getRouter = () => ({ routeTree })
+      'src/router.ts': `import { createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+export const getRouter = () => createRouter({ routeTree })
 `,
       'src/entry.ts': `export { fn, fromBase, isomorphic, serverOnly } from './fns'
 export { setTheme, validatedFn } from './builders'

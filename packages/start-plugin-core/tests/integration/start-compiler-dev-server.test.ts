@@ -8,11 +8,12 @@
 import react from '@vitejs/plugin-react'
 import { describe, expect, test } from 'vitest'
 import { describeHmr } from '@tanstack/compiler-test-utils/dev-server'
-import { requestsOfPrelude, runInRequestContext } from '../build-harness'
+import { requestsOfPrelude } from '../build-harness'
 import {
   callServerFnById,
+  inDevRequest,
   startDevServer,
-  startServerEntryFiles,
+  startRequestFiles,
 } from '../dev-server'
 import {
   runViteClient,
@@ -79,7 +80,7 @@ describe('Vite dev: server fns by id', () => {
       const server = await startDevServer({
         start: {},
         files: {
-          ...startServerEntryFiles,
+          ...startRequestFiles,
           'src/first.ts': `import { createServerFn } from '@tanstack/react-start'
 export const first = createServerFn().handler(() => 'MARK_FIRST')
 `,
@@ -143,7 +144,7 @@ describe('Vite dev: editing a server fn handler', () => {
       const server = await startDevServer({
         start: {},
         files: {
-          ...startServerEntryFiles,
+          ...startRequestFiles,
           'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
 export const greet = createServerFn().handler(() => 'before')
 `,
@@ -182,7 +183,7 @@ export const greet = createServerFn().handler(() => 'after')
       const server = await startDevServer({
         start: {},
         files: {
-          ...startServerEntryFiles,
+          ...startRequestFiles,
           'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
 import { db } from './db.server'
 export const greet = createServerFn().handler(() => db.x())
@@ -335,7 +336,7 @@ export const label = () => 'MARK_CLIENT_LABEL'
         plugins: [react()],
         bundledDev: { entry: 'src/entry.ts' },
         files: {
-          ...startServerEntryFiles,
+          ...startRequestFiles,
           ...bundledClientEntry,
           'src/fns.ts': fns('V1'),
           'src/entry.ts': entry,
@@ -387,7 +388,7 @@ export const label = () => 'MARK_CLIENT_LABEL'
         plugins: [react()],
         bundledDev: { entry: 'src/entry.ts' },
         files: {
-          ...startServerEntryFiles,
+          ...startRequestFiles,
           ...bundledClientEntry,
           'src/fns.ts': fns('V1'),
           'src/entry.ts': entry,
@@ -399,7 +400,7 @@ export const label = () => 'MARK_CLIENT_LABEL'
 
       const { fn } = await server.import('/src/fns.ts')
       expect({
-        called: await runInRequestContext(() => fn()),
+        called: await inDevRequest(server, () => fn()),
         byId: await callById(server),
       }).toEqual({
         called: 'MARK_HANDLER_V2',

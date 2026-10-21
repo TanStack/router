@@ -37,8 +37,9 @@ function Page() {
   return <main>MARK_JSX_PAGE <Badge name="Ada" /></main>
 }
 `,
-  'src/router.ts': `import { routeTree } from './routeTree.gen'
-export const getRouter = () => ({ routeTree })
+  'src/router.ts': `import { createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+export const getRouter = () => createRouter({ routeTree })
 `,
   'src/audit.server.ts': `export const audit = () => 'MARK_AUDIT_USER'\n`,
   'src/builders.ts': `import { createMiddleware, createServerFn } from '@tanstack/react-start'

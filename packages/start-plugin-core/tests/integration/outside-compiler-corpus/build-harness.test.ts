@@ -4,7 +4,7 @@
  * these check the Start build harness (build-harness.ts) and the Rsbuild
  * dev-server harness (rsbuild-dev-server.ts) themselves, with each bundler:
  * what `where()` reports and `run()` runs in each environment, the request
- * context SSR scripts run in, that warnings and errors reach the test on
+ * SSR scripts run in, that warnings and errors reach the test on
  * every channel, the wording of the server entry's answer to an unknown id,
  * and the client runs of the Rsbuild dev server in a real browser. A correct
  * compiler rewrite does not change them; the corpus tests that use the
@@ -116,10 +116,11 @@ try {
     timeout,
   )
 
-  // The request context is the one piece of Start the harness stands in for
-  // (`inRequestContext`): Start's own runtime reads it.
+  // SSR scripts run inside a real request of the app (`inAppRequest`):
+  // Start's server entry serves a request for the app's probe route, and
+  // Start's own runtime reads the context it opened.
   test(
-    'SSR scripts run in a request context that Start’s runtime reads',
+    'SSR scripts run inside a request of the app that Start’s server entry serves',
     async () => {
       const { ssr } = await buildStart({
         bundler,
@@ -133,15 +134,25 @@ export const inspect = createServerFn()
   .middleware([middleware])
   .handler(async ({ context, method }) => ({ method, context }))
 `,
-          'src/entry.ts': `export { inspect } from './fns'\n`,
+          'src/client-entry.ts': `export { inspect } from './fns'\n`,
+          'src/ssr-entry.ts': `export { inspect } from './fns'
+export { getRequest } from '@tanstack/react-start/server'
+`,
         },
-        entry: 'src/entry.ts',
+        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
       })
       // Without a request context, Start's runtime throws ("No Start
-      // context found").
-      expect((await ssr.run(`return await entry.inspect()`)).result).toEqual({
-        method: 'GET',
-        context: { fromMiddleware: 'MARK_MIDDLEWARE', given: {} },
+      // context found"); the request is the one sent for the probe route.
+      const { result } = await ssr.run(`return {
+  called: await entry.inspect(),
+  request: new URL(entry.getRequest().url).pathname,
+}`)
+      expect(result).toEqual({
+        called: {
+          method: 'GET',
+          context: { fromMiddleware: 'MARK_MIDDLEWARE', given: {} },
+        },
+        request: '/harness-probe',
       })
     },
     timeout,

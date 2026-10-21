@@ -14,6 +14,7 @@ import {
   requestsOfPrelude,
   startBundlers,
 } from '../build-harness'
+import { probeRoutePath } from '../request-probe'
 
 const timeout = 60_000
 
@@ -93,8 +94,9 @@ export const Route = createFileRoute('/')({
   component: () => 'MARK_COMPONENT',
 })
 `,
-          'src/router.ts': `import { routeTree } from './routeTree.gen'
-export const getRouter = () => ({ routeTree })
+          'src/router.ts': `import { createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+export const getRouter = () => createRouter({ routeTree })
 `,
           'src/entry.ts': `export { getRouter } from './router'
 export { renderPath } from '../harness/render'
@@ -104,10 +106,13 @@ export { renderPath } from '../harness/render'
       })
       expect(client.where('MARK_COMPONENT')).toBe('lazy')
       // The real router over the generated tree renders the page at `/`
-      // (loading the route's component chunk).
+      // (loading the route's component chunk). (The harness's probe route,
+      // which serves the requests SSR scripts run in, is left out.)
       const { result } = await ssr.run(`const { routeTree } = entry.getRouter()
 return {
-  ids: Object.values(routeTree.children).map((route) => route.options.id),
+  ids: Object.values(routeTree.children)
+    .map((route) => route.options.id)
+    .filter((id) => id !== ${JSON.stringify(probeRoutePath)}),
   rendered: await entry.renderPath(routeTree, '/'),
 }`)
       expect(result).toEqual({

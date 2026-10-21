@@ -25,7 +25,7 @@ import {
 import {
   callServerFnById,
   startDevServer,
-  startServerEntryFiles,
+  startRequestFiles,
 } from '../dev-server'
 import {
   reportedErrors,
@@ -96,7 +96,7 @@ describe('vite dev server', () => {
       const server = await startDevServer({
         start: {},
         listen: true,
-        files: { ...startServerEntryFiles, ...files },
+        files: { ...startRequestFiles, ...files },
       })
       // The client module, as the browser gets it (an inline map).
       const { status, body } = await server.fetch('/src/fail.ts')

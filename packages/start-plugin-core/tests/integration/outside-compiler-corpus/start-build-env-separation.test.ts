@@ -6,14 +6,20 @@
  * compiler plugin keeps compiling across builds of one builder); the corpus
  * test "the second build compiles the server fns of its modules" in
  * `integration/start-build-env-separation.test.ts` decides the outcome
- * through Start's whole public plugin.
+ * through Start's whole public plugin. The built server fn runs inside a
+ * real request of a Start app (`inDevRequest`).
  */
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { createApp } from '@tanstack/compiler-test-utils/build-harness'
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { startCompilerPlugin } from '../../../src/vite/start-compiler-plugin/plugin'
-import { runInRequestContext, startRuntimeLinks } from '../../build-harness'
+import { startRuntimeLinks } from '../../build-harness'
+import {
+  inDevRequest,
+  startDevServer,
+  startRequestFiles,
+} from '../../dev-server'
 
 const timeout = 60_000
 
@@ -100,7 +106,12 @@ export const greet = base.handler(async () => 'MARK_HANDLER')
       // The chunk of the last build's entry, as the bundle names it.
       const { greet } = await import(pathToFileURL(lastEntry!).href)
       expect(typeof greet.serverFnMeta.id).toBe('string')
-      expect(await runInRequestContext(() => greet())).toBe('MARK_HANDLER')
+      // The build has no server entry of its own (the compiler plugin only):
+      // the server fn runs inside a real request of a Start app, which a dev
+      // server of the harness serves (Start's request context is shared by
+      // every copy of Start's runtime in a process).
+      const requests = await startDevServer({ files: startRequestFiles })
+      expect(await inDevRequest(requests, () => greet())).toBe('MARK_HANDLER')
     },
     timeout,
   )

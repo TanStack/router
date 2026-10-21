@@ -16,7 +16,7 @@ import {
   callServerFnById,
   startPlugin,
   startPluginFiles,
-  startServerEntryFiles,
+  startRequestFiles,
 } from '../dev-server'
 import {
   runViteClient,
@@ -239,9 +239,10 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
 
   /**
    * The files of Start's plugin (`startPluginFiles`), with Start's default
-   * server entry (`startServerEntryFiles`), which handles server fn calls.
+   * server entry and what a request needs (`startRequestFiles`): Start's
+   * server entry handles server fn calls.
    */
-  const startAppFiles = { ...startPluginFiles, ...startServerEntryFiles }
+  const startAppFiles = { ...startPluginFiles, ...startRequestFiles }
 
   /**
    * In a temporary project with `src/fns.ts` = a `greet` server fn, reads the

@@ -205,7 +205,15 @@ describe.each(startBundlers)('%s build (mock mode)', (bundler) => {
   const build = () =>
     (built ??= buildStart({
       bundler,
-      files: app,
+      files: {
+        ...app,
+        // A real router (the server's requests need one; `request-probe.ts`)
+        'src/router.ts': `import { createRouter } from '@tanstack/react-router'
+import './entry'
+import { routeTree } from './routeTree.gen'
+export const getRouter = () => createRouter({ routeTree })
+`,
+      },
       entry: 'src/entry.ts',
       start: { importProtection: { ...importProtection, behavior: 'mock' } },
       registerCleanup: (cleanup) => {
