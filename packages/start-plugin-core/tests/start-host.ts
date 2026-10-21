@@ -41,6 +41,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import react from '@vitejs/plugin-react'
 import solid from 'vite-plugin-solid'
 import { resolveModulePath } from 'exsolve'
+import { mergeConfig, preview as vitePreview } from 'vite'
 import { afterAll, beforeAll, expect } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
@@ -54,7 +55,7 @@ import type {
   HostBuild,
   PluginHost,
 } from '@tanstack/compiler-test-utils/plugin-host'
-import type { InlineConfig, PluginOption } from 'vite'
+import type { InlineConfig, Plugin, PluginOption, PreviewServer } from 'vite'
 
 /** The Start framework packages a host can serve. */
 export type StartFramework = 'react' | 'solid' | 'vue'
@@ -144,6 +145,22 @@ function frameworkPlugins(framework: StartFramework): Array<PluginOption> {
   return []
 }
 
+/**
+ * The app's output directory, absolute (`<root>/dist`, the default
+ * layout): Start's preview server imports the server build from the
+ * configured output directory, which it resolves against the process's
+ * working directory, not the app root (the test process runs elsewhere).
+ */
+function absoluteOutDir(root: string): Plugin {
+  return {
+    name: 'start-host:out-dir',
+    // Before Start's plugin (listed first, both `pre`), which derives its
+    // environments' output directories from it
+    enforce: 'pre',
+    config: () => ({ build: { outDir: path.join(root, 'dist') } }),
+  }
+}
+
 /** Where a case lives: `src/cases/c<n>`. */
 export const casesDir = 'src/cases'
 
@@ -151,19 +168,54 @@ export const casesDir = 'src/cases'
 const probesKey = 'tanstack.start-host.probes'
 const probes = ((globalThis as Record<symbol, unknown>)[
   Symbol.for(probesKey)
-] ??= new Map()) as Map<string, () => Promise<void>>
+] ??= new Map()) as Map<string, (context?: ProbeContext) => Promise<void>>
+
+/** What the probe route gives a callback of a production build host. */
+interface ProbeContext {
+  /** A case module of the server build, by `c<n>/<file>`. */
+  load: (file: string) => Promise<Record<string, any>>
+}
 
 /** The probe route of the app (a server route, so it runs in a request). */
 const probeRoutePath = '/harness-probe'
+/** The page route of a production build host. */
+const pageRoutePath = '/harness-page'
+
+/** The case modules a production build includes (`import.meta.glob`). */
+const caseGlob = `../cases/*/*.{ts,tsx,js,jsx}`
 
 /**
  * The app files of a host: the router, its root route and the probe server
  * route, which runs a callback of the test (by token) inside a real Start
- * request.
+ * request. A host for production builds (`serve: false`, React) also gets
+ * a document shell and a page route, which give the page every case module
+ * through a lazy `import.meta.glob` (each one a chunk of the build, loaded
+ * on demand like any lazy import), and its probe route gives the callback
+ * the case modules of the server build the same way.
  */
-function appFiles(framework: StartFramework): Record<string, string> {
+function appFiles(
+  framework: StartFramework,
+  serve: boolean,
+): Record<string, string> {
   const router = routerPackages[framework]
-  return {
+  const probeRoute = `import { createFileRoute } from '${router}'
+${serve ? '' : `const cases = import.meta.glob('${caseGlob}')\n`}export const Route = createFileRoute('${probeRoutePath}')({
+  server: {
+    handlers: {
+      GET: async ({ request }) => {
+        const run = new URL(request.url).searchParams.get('run')
+        const probe = globalThis[Symbol.for(${JSON.stringify(probesKey)})].get(run)
+        if (!probe) {
+          return new Response('no probe ' + run, { status: 404 })
+        }
+        await probe(${serve ? '' : `{ load: (file) => cases['../cases/' + file]() }`})
+        return new Response('ok')
+      },
+    },
+  },
+})
+`
+  const files: Record<string, string> = {
     'src/router.tsx': `import { createRouter } from '${router}'
 import { routeTree } from './routeTree.gen'
 export function getRouter() {
@@ -173,24 +225,45 @@ export function getRouter() {
     'src/routes/__root.tsx': `import { createRootRoute } from '${router}'
 export const Route = createRootRoute()
 `,
-    'src/routes/harness-probe.ts': `import { createFileRoute } from '${router}'
-export const Route = createFileRoute('${probeRoutePath}')({
-  server: {
-    handlers: {
-      GET: async ({ request }) => {
-        const run = new URL(request.url).searchParams.get('run')
-        const probe = globalThis[Symbol.for(${JSON.stringify(probesKey)})].get(run)
-        if (!probe) {
-          return new Response('no probe ' + run, { status: 404 })
-        }
-        await probe()
-        return new Response('ok')
-      },
-    },
+    'src/routes/harness-probe.ts': probeRoute,
+  }
+  if (!serve) {
+    if (framework !== 'react') {
+      throw new Error(
+        `production build hosts are React apps (not ${framework})`,
+      )
+    }
+    files['src/routes/__root.tsx'] =
+      `import { HeadContent, Outlet, Scripts, createRootRoute } from '${router}'
+export const Route = createRootRoute({
+  component: () => <Outlet />,
+  shellComponent: ({ children }) => (
+    <html>
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        {children}
+        <Scripts />
+      </body>
+    </html>
+  ),
+})
+`
+    files['src/routes/harness-page.tsx'] = `import { useEffect } from 'react'
+import { createFileRoute } from '${router}'
+const cases = import.meta.glob('${caseGlob}')
+export const Route = createFileRoute('${pageRoutePath}')({
+  component: function HarnessPage() {
+    useEffect(() => {
+      Object.assign(window, { __harnessCases: cases, __harnessReady: true })
+    }, [])
+    return <main>harness</main>
   },
 })
-`,
+`
   }
+  return files
 }
 
 /** The modules the page imports first, so Vite pre-bundles them at once. */
@@ -321,9 +394,29 @@ export interface StartHost {
   edit: (files: Record<string, string | null>) => Promise<void>
   /** `vite build` of the app (`PluginHost.build`). */
   build: PluginHost['build']
+  /**
+   * Production mode of a host created with `serve: false` (React): builds
+   * the app as `vite build` does, with every case written so far, and serves
+   * the build as `vite preview` does (Start's own preview server: the built
+   * server entry handles requests). From then on the cases run against the
+   * build: `client` in a page of the production app (the case module is a
+   * lazy chunk of the client build, loaded on demand), `ssr` and
+   * `inRequest` in the server build, inside its real requests. `served`,
+   * `loads` and `serverLoads` are dev-server checks and throw. Write every
+   * case first: the build includes the cases that exist when it runs.
+   */
+  preview: () => Promise<StartPreview>
   /** The host's page (one per host). */
   page: () => Promise<BrowserPage>
   close: () => Promise<void>
+}
+
+/** A production build of a host app, served (`StartHost.preview`). */
+export interface StartPreview {
+  /** The build: each environment's chunks and the merged diagnostics. */
+  build: HostBuild
+  /** URL of the preview server. */
+  url: string
 }
 
 /** App path of a requested URL of the dev server, without its query. */
@@ -365,6 +458,7 @@ export async function createStartHost(
     client: serve,
     serve,
     plugins: (app) => [
+      ...(serve ? [] : [absoluteOutDir(app.root)]),
       tanstackStart(options.start),
       ...frameworkPlugins(framework),
       ...(typeof userPlugins === 'function' ? userPlugins(app) : userPlugins),
@@ -384,17 +478,57 @@ export async function createStartHost(
       startPackages[framework],
       ...(framework === 'react' ? [] : [routerPackages[framework]]),
     ]),
-    files: { ...appFiles(framework), ...options.files },
+    files: { ...appFiles(framework, serve), ...options.files },
   })
   const root = host.root
 
   let page: Promise<BrowserPage> | undefined
   const requests: Array<string> = []
-  const origin = () => new URL(host.dev.url!).origin
+  let previewState:
+    | { server: PreviewServer; url: string; build: HostBuild }
+    | undefined
+  /** Base URL of whatever serves the app now: the dev or preview server. */
+  const baseUrl = () => {
+    if (previewState) {
+      return previewState.url
+    }
+    if (!serve) {
+      throw new Error(
+        'this host serves nothing yet: call preview() after writing its cases',
+      )
+    }
+    return host.dev.url!
+  }
+  const origin = () => new URL(baseUrl()).origin
   const openHostPage = () => {
     page ??= (async () => {
+      if (previewState) {
+        const opened = await openPage(
+          new URL(pageRoutePath, previewState.url).href,
+        )
+        opened.page.on('request', (request) => {
+          requests.push(request.url())
+        })
+        try {
+          await opened.page.waitForFunction(
+            () => (window as unknown as Record<string, unknown>).__harnessReady,
+            undefined,
+            { timeout: 15_000 },
+          )
+        } catch (error) {
+          throw new Error(
+            [
+              `the production page did not hydrate: ${(error as Error).message}`,
+              `html: ${(await opened.page.content()).slice(0, 2000)}`,
+              `errors:\n${opened.errors.join('\n') || '(none)'}`,
+              `console:\n${opened.console.join('\n') || '(none)'}`,
+            ].join('\n'),
+          )
+        }
+        return opened
+      }
       const opened = await openPage(
-        new URL('/__plugin-host__/page.html', host.dev.url!).href,
+        new URL('/__plugin-host__/page.html', baseUrl()).href,
       )
       opened.page.on('request', (request) => {
         requests.push(request.url())
@@ -445,7 +579,7 @@ export async function createStartHost(
         }
       } catch (error) {
         lastError = error
-        if (opened.loads() === loads) {
+        if (opened.loads() === loads || previewState) {
           const errors = opened.errors.slice(firstError)
           throw new Error(
             [
@@ -463,6 +597,47 @@ export async function createStartHost(
       }
     }
     throw lastError
+  }
+
+  /** Runs `run` inside a real request of the app (the probe route). */
+  const inAppRequest = async <T>(
+    run: (context?: ProbeContext) => T | Promise<T>,
+  ): Promise<T> => {
+    const token = Math.random().toString(36).slice(2)
+    let outcome: { value: T } | { error: unknown } | undefined
+    probes.set(token, async (context) => {
+      try {
+        outcome = { value: await run(context) }
+      } catch (error) {
+        outcome = { error }
+      }
+    })
+    try {
+      const response = await fetch(
+        new URL(
+          `${probeRoutePath}?run=${encodeURIComponent(token)}`,
+          baseUrl(),
+        ),
+      )
+      const body = await response.text()
+      if (!outcome) {
+        throw new Error(
+          `the probe request did not run (${response.status}): ${body}`,
+        )
+      }
+    } finally {
+      probes.delete(token)
+    }
+    if ('error' in outcome) {
+      throw outcome.error
+    }
+    return outcome.value
+  }
+
+  const devOnly = (what: string) => {
+    if (previewState || !serve) {
+      throw new Error(`${what} reads the dev server: not available on a build`)
+    }
   }
 
   let cases = 0
@@ -521,52 +696,37 @@ export async function createStartHost(
       }
       return names
     }
+    /** The case file as a key of the build's case modules. */
+    const buildKey = (file = 'module.tsx') =>
+      `${dir.slice(casesDir.length + 1)}/${file}`
     const startCase: StartCase = {
       dir,
       url,
       file: caseFile,
-      served: (file, environment = 'client') =>
-        host.transform(url(file), environment),
-      ssr: (file) => host.importServer(url(file), 'ssr'),
-      inRequest: async <T>(run: () => T | Promise<T>) => {
-        const token = `${dir}:${Math.random().toString(36).slice(2)}`
-        let outcome: { value: T } | { error: unknown } | undefined
-        probes.set(token, async () => {
-          try {
-            outcome = { value: await run() }
-          } catch (error) {
-            outcome = { error }
-          }
-        })
-        try {
-          const response = await fetch(
-            new URL(
-              `${probeRoutePath}?run=${encodeURIComponent(token)}`,
-              host.dev.url!,
-            ),
-          )
-          const body = await response.text()
-          if (!outcome) {
-            throw new Error(
-              `the probe request did not run (${response.status}): ${body}`,
-            )
-          }
-        } finally {
-          probes.delete(token)
-        }
-        if ('error' in outcome) {
-          throw outcome.error
-        }
-        return outcome.value
+      served: async (file, environment = 'client') => {
+        devOnly('served()')
+        return host.transform(url(file), environment)
       },
+      ssr: async (file) => {
+        if (previewState) {
+          return inAppRequest((context) => context!.load(buildKey(file)))
+        }
+        return host.importServer(url(file), 'ssr')
+      },
+      inRequest: (run) => inAppRequest(() => run()),
       client: (script, clientOptions = {}) =>
         runInHostPage(`(async () => {
 ${pagePrelude}
-const load = (file) => import(${JSON.stringify(`/${dir}/`)} + file)
+const load = ${
+          previewState
+            ? `(file) => window.__harnessCases[${JSON.stringify(`../cases/${dir.slice(casesDir.length + 1)}/`)} + file]()`
+            : `(file) => import(${JSON.stringify(`/${dir}/`)} + file)`
+        }
 const module = await load(${JSON.stringify(clientOptions.file ?? 'module.tsx')})
 ${script}
 })()`),
       loads: async (file = 'module.tsx') => {
+        devOnly('loads()')
         const run = await runInHostPage<{ error?: string; fatal?: boolean }>(
           `(async () => {
 try {
@@ -599,6 +759,7 @@ try {
         return [...names]
       },
       serverLoads: async (file = 'module.tsx') => {
+        devOnly('serverLoads()')
         await host.importServer(url(file), 'ssr').catch(() => {})
         const names = graphLoads('ssr', file)
         names.delete(`./${file.replace(/\.[cm]?[jt]sx?$/, '')}`)
@@ -621,12 +782,53 @@ try {
       await host.edit(files)
     },
     build: (buildOptions) => host.build(buildOptions),
+    preview: async () => {
+      if (serve) {
+        throw new Error('preview() needs a host created with `serve: false`')
+      }
+      if (previewState) {
+        return { build: previewState.build, url: previewState.url }
+      }
+      const build = await host.build()
+      const server = await vitePreview(
+        mergeConfig(
+          {
+            root,
+            configFile: false,
+            envDir: false,
+            publicDir: false,
+            logLevel: 'silent',
+            plugins: [
+              absoluteOutDir(root),
+              tanstackStart(options.start),
+              ...frameworkPlugins(framework),
+              ...(typeof userPlugins === 'function'
+                ? userPlugins({ root, command: 'build' })
+                : userPlugins),
+            ],
+            preview: { port: 0, host: '127.0.0.1' },
+          } satisfies InlineConfig,
+          options.config ?? {},
+        ),
+      )
+      const url = server.resolvedUrls?.local[0]
+      if (!url) {
+        await server.close()
+        throw new Error('the preview server has no local URL')
+      }
+      previewState = { server, url, build }
+      return { build, url }
+    },
     page: openHostPage,
     close: async () => {
       try {
         await (page ? (await page).close() : undefined)
       } finally {
-        await host.close()
+        try {
+          await previewState?.server.close()
+        } finally {
+          await host.close()
+        }
       }
     },
   }
