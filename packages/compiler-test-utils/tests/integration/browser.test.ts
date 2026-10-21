@@ -17,6 +17,7 @@ import {
   runPageLimit,
 } from '../../src/browser'
 import { createDevServer } from '../../src/dev-server'
+import { createPluginHost } from '../../src/plugin-host'
 import { createRsbuildDevServer } from '../../src/rsbuild-dev-server'
 import type { AddressInfo } from 'node:net'
 import type { Rspack } from '@rsbuild/core'
@@ -238,6 +239,57 @@ return { earlier, held: await (await fetch('/hold?run=${index}')).text() }`,
   )
   expect(most).toBeGreaterThan(1)
   expect(most).toBeLessThanOrEqual(runPageLimit)
+})
+
+// A run returns once its page left the run's document, so what the dev
+// server sends next (a full reload after the test's edit) reaches no page a
+// later run gets. When the page left only after the run returned, such a
+// reload, started while the page was on its way to `about:blank`, outlived
+// that navigation and interrupted the next run's navigation (under load).
+test('a run returns once its page left the run’s document: a message the dev server sends next reaches no page', async () => {
+  let answers = 0
+  const host = await createPluginHost({
+    dir: testsDir,
+    registerCleanup: onTestFinished,
+    client: true,
+    plugins: [
+      {
+        name: 'control:answers',
+        configureServer(server) {
+          server.middlewares.use('/__answer', (_request, response) => {
+            answers++
+            response.end()
+          })
+        },
+      },
+    ],
+    files: {
+      'main.js': `export const value = 'MARK_VALUE'
+import.meta.hot.on('control:probe', () => {
+  navigator.sendBeacon('/__answer')
+})
+`,
+    },
+  })
+  for (let round = 0; round < 5; round++) {
+    const run = await host.runClient<string>('/main.js', 'return module.value')
+    expect(run.result).toBe('MARK_VALUE')
+    host.dev.vite.environments.client.hot.send({
+      type: 'custom',
+      event: 'control:probe',
+    })
+    // A page still on the run's document gets the message within a moment
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    expect(answers).toBe(0)
+    // and a full reload sent then reaches no later run
+    host.dev.vite.environments.client.hot.send({ type: 'full-reload' })
+    const later = await host.runClient<{ value: string; loads: number }>(
+      '/main.js',
+      `await new Promise((resolve) => setTimeout(resolve, 200))
+return { value: module.value, loads: performance.getEntriesByType('navigation').length }`,
+    )
+    expect(later.result).toEqual({ value: 'MARK_VALUE', loads: 1 })
+  }
 })
 
 test('openPage keeps at most openPageLimit pages open: one more waits until one closes', async () => {

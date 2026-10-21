@@ -108,18 +108,23 @@ async function takeRunPage(): Promise<Page> {
 }
 
 /**
- * Gives a run page back once it shows no document of a dev server any
- * more: a page left on an app's document would follow that dev server (its
- * HMR client reloads the page after an edit), and a reload starting while
- * the next run navigates would interrupt that run. A page that cannot leave
- * its document (a script holds it, the renderer crashed) is closed instead.
+ * Takes a run page off the run's document before the run returns: a page
+ * still on an app's document follows its dev server, whose HMR client
+ * reloads the page when the server sends a full reload (e.g. after the
+ * edit a test makes right after the run). A reload starting while the page
+ * leaves the document outlives the navigation to `about:blank`, and then
+ * interrupts the next run's navigation (FINAL-PASS #40 follow-up: seen
+ * under load when this happened after the run returned). A page that
+ * cannot leave its document (a script holds it, the renderer crashed) is
+ * closed instead.
  */
-async function returnRunPage(page: Page) {
+async function leaveRunDocument(page: Page): Promise<boolean> {
   try {
     await page.goto('about:blank', { timeout: 5000 })
-    idlePages.push(page)
+    return true
   } catch {
     await page.close().catch(() => {})
+    return false
   }
 }
 
@@ -143,8 +148,8 @@ export interface PageRun<T = unknown> {
  * `window`, `document`), whose JSON value is the result. A throw of the
  * import or of the script rejects, with the page's errors and console.
  * Runs of concurrent tests run on different pages at once (at most
- * `runPageLimit`); the page leaves the run's document before another run
- * gets it.
+ * `runPageLimit`); the run returns once its page left the run's document,
+ * so it no longer follows the dev server, and another run gets it.
  *
  * Use it for fast-tier client checks on a dev server's served modules
  * (`./plugin-host`); a test of a whole page across reloads opens its own
@@ -179,23 +184,7 @@ export async function runInPage<T = unknown>(input: {
     page = await takeRunPage()
     page.on('pageerror', onError)
     page.on('console', onConsole)
-    // A navigation the page's previous document started just before it
-    // left (a reload: Vite's full reload, the router's reload after a
-    // failed chunk) can still commit after it: this run's navigation then
-    // goes again, and wins.
-    for (let attempt = 0; ; attempt++) {
-      try {
-        await page.goto(input.pageUrl, { timeout })
-        break
-      } catch (error) {
-        if (
-          attempt >= 3 ||
-          !/interrupted by another navigation/.test(String(error))
-        ) {
-          throw error
-        }
-      }
-    }
+    await page.goto(input.pageUrl, { timeout })
     // A string, run as the page's own code: a function would be
     // serialised from this module as the test runner transformed it
     // (its `import()` rewritten for Node)
@@ -239,10 +228,12 @@ export async function runInPage<T = unknown>(input: {
     if (page) {
       page.off('pageerror', onError)
       page.off('console', onConsole)
-      // The run's result does not wait: the page is free again (and the
-      // slot with it) once it left the document
-      const used = page
-      void returnRunPage(used).finally(release)
+      // The run returns once its page left the run's document (see
+      // `leaveRunDocument`); then another run may have it
+      if (await leaveRunDocument(page)) {
+        idlePages.push(page)
+      }
+      release()
     } else {
       release()
     }

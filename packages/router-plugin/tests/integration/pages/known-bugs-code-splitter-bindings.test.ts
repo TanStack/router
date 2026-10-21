@@ -817,7 +817,10 @@ function runtimeImports(code: string) {
         item.moduleRequest ? [item.moduleRequest.value] : [],
       ),
     ),
-  ]
+    // By path: the dev server adds the time of a module's last hot update
+    // (`?t=…`) to its imports once a file of that path was edited in the
+    // app (an earlier route the host served had one)
+  ].map((request) => request.split('?')[0]!)
 }
 
 describe('TypeScript-only syntax', () => {
