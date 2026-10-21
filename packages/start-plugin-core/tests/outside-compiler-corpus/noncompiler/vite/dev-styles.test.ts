@@ -1,8 +1,9 @@
+// Noncompiler coverage: runtime/build plumbing, outside the J1–J7 compiler oracle.
 import { describe, expect, test } from 'vitest'
 import {
   collectDevStyles,
   fetchCssFromModule,
-} from '../../src/vite/dev-server-plugin/dev-styles'
+} from '../../../../src/vite/dev-server-plugin/dev-styles'
 import type { EnvironmentModuleNode } from 'vite'
 
 function createCssNode(url: string, css: string): EnvironmentModuleNode {

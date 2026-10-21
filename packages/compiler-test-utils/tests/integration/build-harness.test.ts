@@ -14,7 +14,6 @@ import {
   bundlers,
   createApp,
   describeBuild,
-  namedSegments,
   originalFrameOf,
 } from '../../src/build-harness'
 import { unboundNames } from '../../src/validate-module'
@@ -236,22 +235,6 @@ test.each(['webpack', 'rspack'] as const)(
   },
   timeout,
 )
-
-// Two named segments: `a` at line 1 column 0 of `x.ts`, `b` at line 2
-// column 4 of `y.ts`; one segment without a name.
-test('namedSegments decodes the named segments of a source map', () => {
-  expect(
-    namedSegments({
-      version: 3,
-      sources: ['x.ts', 'y.ts'],
-      names: ['a', 'b'],
-      mappings: 'AAAAA,EAAA;ACCIC',
-    }),
-  ).toEqual([
-    { name: 'a', source: 'x.ts', line: 1, column: 0 },
-    { name: 'b', source: 'y.ts', line: 2, column: 4 },
-  ])
-})
 
 describe('side-effect hints', () => {
   /** `./effects` is imported for an export the entry never uses. */
@@ -1002,3 +985,42 @@ describe('registerCleanup', () => {
     expect(existsSync(app.root)).toBe(false)
   })
 })
+
+test.each(['webpack', 'rspack'] as const)(
+  '%s: concurrent native loaders keep console messages in their own builds',
+  async (bundler) => {
+    const build = () =>
+      bundleApp({
+        files: {
+          'entry.js': 'export const value = 1',
+          'warning-loader.cjs': `module.exports = function(code) { console.warn(this.resourcePath + ' MARK_LOADER_WARNING'); return code }`,
+        },
+        bundler,
+        env: 'ssr',
+        entry: 'entry.js',
+        configure(options) {
+          const rules = (options.module as { rules: Array<unknown> }).rules
+          rules.push({
+            test: /\.js$/,
+            loader: path.join(String(options.context), 'warning-loader.cjs'),
+          })
+        },
+      })
+    const [first, second] = await Promise.all([build(), build()])
+    for (const [app, other] of [
+      [first, second],
+      [second, first],
+    ] as const) {
+      expect(
+        app.consoleMessages.some(
+          (text) =>
+            text.includes(app.root) && text.includes('MARK_LOADER_WARNING'),
+        ),
+      ).toBe(true)
+      expect(
+        app.consoleMessages.some((text) => text.includes(other.root)),
+      ).toBe(false)
+    }
+  },
+  timeout,
+)

@@ -1,9 +1,10 @@
+// Noncompiler coverage: runtime/build plumbing, outside the J1–J7 compiler oracle.
 import { promises as fsp } from 'node:fs'
 import { describe, expect, it, vi } from 'vitest'
-import { prerender } from '../src/prerender'
+import { prerender } from '../../../src/prerender'
 
-vi.mock('../src/utils', async () => {
-  const actual = await vi.importActual<any>('../src/utils')
+vi.mock('../../../src/utils', async () => {
+  const actual = await vi.importActual<any>('../../../src/utils')
   return {
     ...actual,
     createLogger: () => ({ info: () => {}, warn: () => {}, error: () => {} }),

@@ -1,8 +1,12 @@
+// Noncompiler coverage: runtime/build plumbing, outside the J1–J7 compiler oracle.
 import { runInNewContext } from 'node:vm'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { DEV_CLIENT_ENTRY, START_ENVIRONMENT_NAMES } from '../src/constants'
-import { startManifestPlugin } from '../src/vite/start-manifest-plugin/plugin'
+import {
+  DEV_CLIENT_ENTRY,
+  START_ENVIRONMENT_NAMES,
+} from '../../../src/constants'
+import { startManifestPlugin } from '../../../src/vite/start-manifest-plugin/plugin'
 
 vi.mock('@tanstack/start-server-core/virtual-modules', () => ({
   VIRTUAL_MODULES: {

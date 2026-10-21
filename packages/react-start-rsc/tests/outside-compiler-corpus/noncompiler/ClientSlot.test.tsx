@@ -1,7 +1,8 @@
+// Noncompiler coverage: runtime/build plumbing, outside the J1–J7 compiler oracle.
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { ClientSlot } from '../src/ClientSlot'
-import { SlotProvider } from '../src/SlotContext'
+import { ClientSlot } from '../../../src/ClientSlot'
+import { SlotProvider } from '../../../src/SlotContext'
 
 describe('ClientSlot', () => {
   describe('error handling', () => {

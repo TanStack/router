@@ -1,3 +1,4 @@
+// Noncompiler coverage: runtime/build plumbing, outside the J1–J7 compiler oracle.
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
 const originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
@@ -9,7 +10,7 @@ async function importUtilsWithPlatform(platform: NodeJS.Platform) {
     value: platform,
   })
 
-  return await import('../src/utils')
+  return await import('../../../src/utils')
 }
 
 afterEach(() => {

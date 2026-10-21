@@ -4,15 +4,20 @@
  * code loads through Rsbuild's own `loadBundle`, client code runs in the
  * shared Chromium page, edits settle on their outcome, the production build
  * returns each environment's output with its dangling-name evidence, and a
- * plugin's console warning lands in the same channel as the compilation's.
+ * plugin's console warning lands in the same channel as the compilation's
+ * and Rsbuild's logger's, each compilation report once.
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, onTestFinished, test } from 'vitest'
 import { describeBuild } from '../../src/build-harness'
+import { problems } from '../../src/diagnostic-channel'
 import { expectDiagnostic } from '../../src/diagnostics'
-import { createRsbuildPluginHost } from '../../src/rsbuild-plugin-host'
-import type { RsbuildPlugin } from '@rsbuild/core'
+import {
+  RsbuildHostBuildError,
+  createRsbuildPluginHost,
+} from '../../src/rsbuild-plugin-host'
+import type { RsbuildPlugin, Rspack } from '@rsbuild/core'
 
 const timeout = 60_000
 
@@ -133,6 +138,143 @@ test(
       duration: 0,
       dispose: async () => {},
     })
+  },
+  timeout,
+)
+
+test.each(['dev', 'build'] as const)(
+  'the %s host records warnings through Rsbuild’s logger',
+  async (mode) => {
+    const host = await createRsbuildPluginHost({
+      dir: testsDir,
+      registerCleanup: onTestFinished,
+      files: { 'src/entry.ts': 'export const value = 1' },
+      serve: mode === 'dev',
+      plugins: [
+        {
+          name: 'logger-control',
+          setup(api) {
+            api.onBeforeEnvironmentCompile(() => {
+              api.logger.warn('src/entry.ts: logger control warning')
+            })
+          },
+        },
+      ],
+    })
+    const diagnostics =
+      mode === 'dev' ? host.diagnostics : (await host.build()).diagnostics
+    expectDiagnostic(diagnostics, {
+      severity: 'warning',
+      file: 'src/entry.ts',
+      explains: { mentions: ['logger control'] },
+    })
+  },
+  timeout,
+)
+
+test(
+  'concurrent Rsbuild apps retain their own native-loader diagnostics',
+  async () => {
+    const start = () =>
+      createRsbuildPluginHost({
+        dir: testsDir,
+        registerCleanup: onTestFinished,
+        files: { 'src/entry.ts': "export const value = '__MARK__'" },
+        plugins: [userPlugin()],
+      })
+    const [first, second] = await Promise.all([start(), start()])
+    await Promise.all([
+      first.edit({ 'src/entry.ts': "export const value = '__MARK__ edited'" }),
+      second.edit({ 'src/entry.ts': "export const value = '__MARK__ edited'" }),
+    ])
+    for (const [app, other] of [
+      [first, second],
+      [second, first],
+    ] as const) {
+      expectDiagnostic(app.diagnostics, {
+        severity: 'warning',
+        file: 'src/entry.ts',
+        root: app.root,
+      })
+      expect(
+        app.diagnostics.some(({ text }) => text.includes(other.root)),
+      ).toBe(false)
+    }
+  },
+  timeout,
+)
+
+/**
+ * Adds a compilation warning or error naming the entry (`processAssets`),
+ * as a compiler reporting through the compilation does.
+ */
+function compilationReporter(severity: 'warning' | 'error'): RsbuildPlugin {
+  return {
+    name: 'compilation-reporter',
+    setup(api) {
+      api.modifyRspackConfig((config) => {
+        config.plugins.push({
+          apply(compiler: Rspack.Compiler) {
+            compiler.hooks.thisCompilation.tap(
+              'compilation-reporter',
+              (compilation) => {
+                compilation.hooks.processAssets.tap(
+                  { name: 'compilation-reporter', stage: 0 },
+                  () => {
+                    const report = new compiler.webpack.WebpackError(
+                      `MARK_COMPILATION ${severity}: ${path.join(compiler.context, 'src/entry.ts')} is reported`,
+                    )
+                    if (severity === 'error') {
+                      compilation.errors.push(report)
+                    } else {
+                      compilation.warnings.push(report)
+                    }
+                  },
+                )
+              },
+            )
+          },
+        })
+      })
+    },
+  }
+}
+
+// Rsbuild's logger prints each compile's report again (and a status line
+// for a compile that failed); the channel records the report once, from
+// the compilation.
+test.each([
+  ['dev', 'warning'],
+  ['dev', 'error'],
+  ['build', 'warning'],
+  ['build', 'error'],
+] as const)(
+  'the %s host records a compilation %s once',
+  async (mode, severity) => {
+    const host = await createRsbuildPluginHost({
+      dir: testsDir,
+      registerCleanup: onTestFinished,
+      files: { 'src/entry.ts': 'export const value = 1' },
+      serve: mode === 'dev',
+      plugins: [compilationReporter(severity)],
+    })
+    const diagnostics =
+      mode === 'dev'
+        ? host.diagnostics
+        : await host.build().then(
+            (build) => build.diagnostics,
+            (error: unknown) => {
+              expect(error).toBeInstanceOf(RsbuildHostBuildError)
+              return (error as RsbuildHostBuildError).diagnostics
+            },
+          )
+    expectDiagnostic(diagnostics, {
+      severity,
+      file: 'src/entry.ts',
+      root: host.root,
+      times: 1,
+    })
+    expect(problems(diagnostics)).toHaveLength(1)
   },
   timeout,
 )

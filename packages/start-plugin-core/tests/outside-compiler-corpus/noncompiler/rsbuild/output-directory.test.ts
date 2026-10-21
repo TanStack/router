@@ -1,8 +1,9 @@
+// Noncompiler coverage: runtime/build plumbing, outside the J1–J7 compiler oracle.
 import { describe, expect, test } from 'vitest'
 import {
   createRsbuildEnvironmentPlan,
   resolveRsbuildOutputDirectory,
-} from '../../src/rsbuild/planning'
+} from '../../../../src/rsbuild/planning'
 
 describe('resolveRsbuildOutputDirectory', () => {
   test('uses explicit environment distPath string', () => {

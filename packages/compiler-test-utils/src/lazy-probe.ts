@@ -2,8 +2,7 @@
  * @deprecated Observes laziness in the Node module graph of
  * `./module-linker` (RULES-AUDIT §2.D #8): laziness is the bundler's and
  * the browser's (`./build-harness` chunk placement, the page's requests in
- * `./browser`). Kept for the callers that have not moved yet
- * (validation/REPAIR/A2.md).
+ * `./browser`). Kept for the callers that have not moved yet.
  *
  * Observes lazy loading in a module graph (`module-linker.ts`) by the modules
  * actually evaluated when a value's real trigger completes, never by

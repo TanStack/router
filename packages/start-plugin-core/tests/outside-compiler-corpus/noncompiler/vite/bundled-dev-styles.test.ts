@@ -1,3 +1,4 @@
+// Noncompiler coverage: runtime/build plumbing, outside the J1–J7 compiler oracle.
 import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -6,7 +7,7 @@ import { expect, test } from 'vitest'
 import {
   captureBundledDevStyles,
   collectBundledDevStyles,
-} from '../../src/vite/dev-server-plugin/dev-styles'
+} from '../../../../src/vite/dev-server-plugin/dev-styles'
 
 test('collects ordered static and dynamic CSS from a completed bundled graph', async () => {
   const root = await realpath(

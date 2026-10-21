@@ -132,3 +132,25 @@ test('nothing reported: a quiet plugin leaves no problem on any channel', async 
   await app.importServer('/src/server.ts')
   expectNoProblems(app.diagnostics)
 })
+
+test('two live apps keep console diagnostics scoped to their own work', async () => {
+  const [first, second] = await Promise.all([host('console'), host('console')])
+  await Promise.all([
+    first.importServer('/src/server.ts'),
+    second.importServer('/src/server.ts'),
+  ])
+  for (const [app, other] of [
+    [first, second],
+    [second, first],
+  ]) {
+    expectDiagnostic(app!.diagnostics, {
+      severity: 'warning',
+      file: 'src/server.ts',
+      root: app!.root,
+      times: 1,
+    })
+    expect(
+      app!.diagnostics.some(({ text }) => text.includes(other!.root)),
+    ).toBe(false)
+  }
+})

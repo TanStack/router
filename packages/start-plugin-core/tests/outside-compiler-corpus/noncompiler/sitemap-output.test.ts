@@ -1,12 +1,13 @@
+// Noncompiler coverage: runtime/build plumbing, outside the J1–J7 compiler oracle.
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
-import { postBuild } from '../src/post-build'
-import { prerender } from '../src/prerender'
-import { parseStartConfig } from '../src/schema'
-import type { TanStackStartOutputConfig } from '../src/schema'
+import { postBuild } from '../../../src/post-build'
+import { prerender } from '../../../src/prerender'
+import { parseStartConfig } from '../../../src/schema'
+import type { TanStackStartOutputConfig } from '../../../src/schema'
 
 describe('post-build sitemap', () => {
   it('writes sitemap files before resolving, using pages discovered during prerendering', async () => {

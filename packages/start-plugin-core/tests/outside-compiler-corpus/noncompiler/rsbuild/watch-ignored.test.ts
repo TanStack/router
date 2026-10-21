@@ -1,5 +1,6 @@
+// Noncompiler coverage: runtime/build plumbing, outside the J1–J7 compiler oracle.
 import { describe, expect, test } from 'vitest'
-import { addWorkspaceWatchIgnored } from '../../src/rsbuild/watch-ignored'
+import { addWorkspaceWatchIgnored } from '../../../../src/rsbuild/watch-ignored'
 
 describe('workspace watch exclusions', () => {
   test('preserves flags on an existing regular expression', () => {
