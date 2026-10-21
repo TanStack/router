@@ -63,16 +63,22 @@ describe.each(startBundlers)('%s build', (bundler) => {
   ;(bundler === 'rsbuild' ? test.fails : test)(
     'a compiler warning reaches the user once, naming the module, from the environment that compiled it',
     async () => {
-      const { client, ssr } = await buildStart({
+      const build = await buildStart({
         bundler,
         files,
         entry: 'src/entry.ts',
         compilerTransforms: [warningTransform],
       })
-      // The console is shared by both environments.
+      const { client, ssr } = build
+      // Every channel of the build, each report once (the console is
+      // shared by both environments).
       expect({
         client: named(client.warnings),
-        reported: named([...ssr.warnings, ...ssr.consoleMessages]),
+        reported: named(
+          build.diagnostics
+            .filter(({ severity }) => severity !== 'info')
+            .map(({ text }) => text),
+        ),
       }).toEqual({ client: [], reported: ['warned'] })
       expect((await ssr.run(`return entry.warned()`)).result).toBe('value')
     },
