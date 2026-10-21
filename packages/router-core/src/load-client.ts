@@ -2836,7 +2836,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
         let handoffAssetEnd = dataOnlyAssetEnd
         // Verification can include at most the first uncommitted match.
         if (
-          handoffAssetEnd !== undefined &&
+          handoffAssetEnd &&
           prefix < handoffAssetEnd &&
           // The verified asset bound proves this candidate exists.
           candidates[prefix]!.id !== matches[prefix]?.id
@@ -2846,7 +2846,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
         const clones = committedMatches.map((match) => ({ ...match }))
         // Clones share the flights of loaders run during hydration.
         acquireMatchResources(clones)
-        if (handoffAssetEnd !== undefined) {
+        if (handoffAssetEnd) {
           clones[pendingBoundary!]!._assetEnd = handoffAssetEnd
         }
         transferMatchResources(router, matches.splice(0, prefix, ...clones))
