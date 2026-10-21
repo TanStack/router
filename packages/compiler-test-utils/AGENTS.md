@@ -1,6 +1,6 @@
 # Compiler test infrastructure
 
-Replacing or rewriting a compiler? Start with [oracle/README.md](oracle/README.md): the spec the tests cite, the rulings, the known bugs, and how the suite was validated.
+Replacing or rewriting a compiler? Start with [oracle/README.md](oracle/README.md): its status first (the suite is not yet an oracle: many tests still reach the compilers through internals and re-implemented tools, and a repair is in progress), then the spec the tests cite, the rulings, the known bugs, and how the suite was validated.
 
 Shared by the compiler test suites (router-plugin, start-plugin-core, router-generator, react-start-rsc and this package). Each has a fast tier (`test:unit`) and a slow tier (`test:integration`, `tests/integration/`); implementation tests outside the corpus run with `test:implementation` (see below).
 
@@ -25,7 +25,7 @@ Shared by the compiler test suites (router-plugin, start-plugin-core, router-gen
 
 ## Corpus and implementation tests
 
-The compiler test corpus is an oracle: a compiler that passes every corpus test is a good compiler. Some useful tests check choices of today's implementation that a correct rewrite may make differently (printed bytes, log policy, internal generators called with forced options such as the server fn resolver generator, perf counters). Those are **implementation tests**, kept and run, but not part of the corpus.
+The compiler test corpus is meant to be an oracle: a compiler that passes every corpus test should be a good compiler. It is not one yet (oracle/README.md, "Status"): many corpus tests reach the compilers through internal modules, ids and re-implemented tools, and some judge client code in Node. Until the repair lands, do not change a test's assertions, inputs or expected outcomes to fit a compiler; adapt only the harness entry points, and report anything else. Some useful tests check choices of today's implementation that a correct rewrite may make differently (printed bytes, log policy, internal generators called with forced options such as the server fn resolver generator, perf counters). Those are **implementation tests**, kept and run, but not part of the corpus.
 
 - **Label:** an implementation test is a file under a directory named `outside-compiler-corpus/` in a package's `tests/` (fast tier) or `tests/integration/` (slow tier). One label, by location; no tags or name prefixes. A corpus file that contains an implementation block moves that block to such a file. Its header says why it is outside the corpus and which corpus test decides the outcome instead, if any.
 - **Selection** (router-plugin, start-plugin-core, router-generator: Vitest projects in `vite.config.ts`):
@@ -35,7 +35,23 @@ The compiler test corpus is an oracle: a compiler that passes every corpus test 
 - **Harness controls** of a compiler package (tests of its own test helpers that drive the real compiler, e.g. router-plugin's `regression-helpers.test.ts` in both tiers) are outside the corpus too: they check the oracle, not the compiler, and a correct rewrite may differ in the incidental details they lean on. Controls on fixed inputs may stay where they are.
 - A package that gets its first implementation test adds the two projects and the two scripts the same way. react-start-rsc has none yet. This package's own tests are harness controls, not compiler tests; none of them is an implementation test of a compiler.
 - Budgets (`test-budgets.json`) cover the corpus tiers; the implementation projects have none.
-- What does not belong outside the corpus: a goal pin (`.fails`) of a real bug, a test of supported behaviour that is merely slow, or a test that decides a user-visible outcome through an internal entry point (e.g. the emitted `handleRouteUpdate` driven by a live router: label it in its header, keep it in the corpus). Before moving a test out, make sure no wrong compiler is caught only by it (e.g. a known mutant of the compiler).
+- What does not belong outside the corpus: a goal pin (`.fails`) of a real bug, a test of supported behaviour that is merely slow, or a test that decides a user-visible outcome through an internal entry point (e.g. the emitted `handleRouteUpdate` driven by a live router: label it in its header, keep it in the corpus, and reroute it through a public entry point: the import gate below flags it until then). Before moving a test out, make sure no wrong compiler is caught only by it (e.g. a known mutant of the compiler).
+
+## Import gate
+
+Acceptance tests reach the compilers only through public entry points. `src/import-gate.ts` checks the imports mechanically: it lists every import of a compiler-package internal (router-generator, router-plugin, start-plugin-core, react-start-rsc, router-utils) in the corpus test files of the five packages above and in every helper they reach (relative imports into a package's `tests/`, and this package's `src/`).
+
+- **Internal** means not reachable through the package's `package.json` `exports`. Allowed: the package specifier with an exported subpath (`@tanstack/router-plugin/vite`), and a relative path to the source file an export is built from (`../src/vite` in router-plugin) or to an exported file. A type-only import of a public type (one a public entry exports) through an internal path is allowed and listed separately; prefer the public specifier.
+- Everything else counts, including a value import of a public symbol through an internal module (`getConfig` from `src/core/config`), internal types, `vi.mock`/`vi.importActual`, dynamic `import()`, `require` and `typeof import()` of internal paths, and subpaths missing from `exports`.
+- It is static: paths computed at run time (`import(path.join(...))`) and ids or queries in strings are out of its reach.
+
+```sh
+CI=1 NX_DAEMON=false pnpm nx run @tanstack/compiler-test-utils:test:import-gate --outputStyle=stream --skipRemoteCache
+```
+
+- `test:import-gate` (report mode) prints the violations grouped by file (for a helper, how many corpus files reach it) and exits 0. `--json` (run `node ./src/import-gate.ts --json` in this package) prints the same data as JSON.
+- `test:import-gate:strict` (or `COMPILER_IMPORT_GATE=strict`) exits 1 on any violation or on a file it could not parse. It fails today; it becomes a required check when the repair is done.
+- `tests/import-gate.test.ts` is its control: files planted in memory next to router-plugin's real tests must be flagged exactly where they import internals.
 
 ## Budgets
 

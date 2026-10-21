@@ -9,9 +9,35 @@ replace or rewrite a compiler (for example to move off Babel).
 - [KNOWN-BUGS.md](./KNOWN-BUGS.md): the bugs of today's compilers, pinned as `.fails` tests, and the upstream
   issues.
 
+## Status: not yet an oracle (repair in progress)
+
+Read this before you rely on the suite. The goal below is not met today.
+
+- **Internal entry points.** Many acceptance tests reach the compilers through internal modules, internal ids
+  (virtual-module queries, resolver ids) and helpers built on them, not only through the public plugins. A
+  correct compiler built differently can fail them before any assertion runs. Six restructures of today's
+  compiler that keep its behaviour (moved modules, renamed ids and generated names, reworded diagnostics, another
+  printer, another AST seam) made 1,893 of the 4,268 acceptance test cases fail under at least one of them: 44%.
+  Moved modules alone broke 1,849.
+- **Re-implemented tools.** Several helpers re-implement tool or runtime behaviour instead of running the real
+  thing: module resolution and linking, parts of Vite's plugin pipeline, the server function resolver and RPC
+  path, Start runtime stubs, hot contexts. Some client checks run in Node (server rendering, jsdom, a fake
+  `window` or `import.meta.hot`), not in a browser.
+- **A repair is in progress.** It reroutes these tests through the public plugins and real tools, and turns on
+  the import gate (`test:import-gate`, see [../AGENTS.md](../AGENTS.md#import-gate)) in strict mode.
+
+Until the repair lands, if you implement a compiler against this suite:
+
+- Do not change assertions, inputs or expected outcomes to fit your compiler.
+- You may adapt only the harness entry points: the helper functions that construct, configure or call a
+  compiler, and the import lines that `test:import-gate` lists. Keep what they accept from the test and what they
+  return to it.
+- Report anything that needs more than that (a test that cannot pass without another change) instead of
+  changing it.
+
 ## The goal
 
-A compiler that passes `test:unit` and `test:integration` in these five packages is a good compiler:
+A compiler that passes `test:unit` and `test:integration` in these five packages should be a good compiler:
 
 - `@tanstack/compiler-test-utils` (the shared harness and its controls)
 - `@tanstack/router-generator`
@@ -19,8 +45,9 @@ A compiler that passes `test:unit` and `test:integration` in these five packages
 - `@tanstack/start-plugin-core`
 - `@tanstack/react-start-rsc`
 
-Nothing else decides acceptance. The suite asserts outcomes (what users and the docs see), not today's printed
-code, generated names or module layout. SPEC §5 lists what a correct compiler may do differently.
+Nothing else decides acceptance. The suite is meant to assert outcomes (what users and the docs see), not today's
+printed code, generated names or module layout; the exceptions that remain are the ones the status above
+describes. SPEC §5 lists what a correct compiler may do differently.
 
 ## The seven jobs
 
@@ -57,12 +84,17 @@ When a pin starts passing, Vitest reports "Expect test to fail". That means the 
 and keep the test as a regression test. A new compiler will flip many pins at once; that is expected and good.
 [KNOWN-BUGS.md](./KNOWN-BUGS.md) indexes them by job.
 
-## Real tools only
+## Real tools and public entry points
 
-Tests drive the real tools: real Vite, Rsbuild, Rspack and webpack builds and dev servers, real framework plugins,
-real Chromium pages, real React, Solid and Vue runtimes, real HMR clients. They never copy a bundler's, a
-framework's or an HMR runtime's logic (RULINGS "real tools only"). A new compiler must therefore work through the
-real plugin entry points, not only through an in-process API.
+The rule (RULINGS "real tools only"): tests drive the real tools (Vite, Rsbuild, Rspack and webpack builds and dev
+servers, framework plugins, Chromium pages, React, Solid and Vue runtimes, HMR clients), run client code in a
+browser, reach the compilers only through their public entry points, and never copy a tool's, a runtime's or our
+own code's logic.
+
+Neither tier meets it fully today (see the status at the top). The slow tier runs real builds, dev servers and
+browser pages, but many of its helpers set the plugins up from internal modules. Much of the fast tier compiles
+through internal classes, evaluates client output in Node and relies on hand-written stand-ins. Either way, a new
+compiler must work through the real plugin entry points, not only through an in-process API.
 
 ## Running tests
 
@@ -87,10 +119,11 @@ Some test comments also cite `DECISIONS`, `FOLLOWUPS` or review codes (`N4`, `S1
 the working notes of the review that built the suite. Their binding content is in RULINGS.md and KNOWN-BUGS.md;
 the test itself states the outcome it asserts.
 
-## How the suite was validated
+## How the suite was validated, and what that missed
 
 - **Adversarial compilers.** Reviewers wrote compiler variants as patches to the product source and ran the whole
-  corpus against each. In the final round, all 90 wrong compilers (from four authors over two rounds) were caught,
+  corpus against each. Every variant patched today's compiler and kept its internal structure, so this method
+  could not detect tests that depend on that structure. Restructured variants did (see the status at the top). In the final round, all 90 wrong compilers (from four authors over two rounds) were caught,
   and all 34 correct-but-different compilers passed. When first run, the corpus caught 47 of the 50 first-round
   wrong compilers and 18 of the 40 second-round ones, and flagged 5 of 20 and then 4 of 15 valid ones. Every
   escape got a new test, and every false alarm was fixed in the tests or the spec.
