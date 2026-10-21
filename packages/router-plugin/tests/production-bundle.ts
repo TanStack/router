@@ -32,6 +32,7 @@
  * differently from the control).
  */
 import { addedCode } from '@tanstack/compiler-test-utils/added-code'
+import { globalTrapSource } from '@tanstack/compiler-test-utils/global-trap'
 import { expect } from 'vitest'
 import { build, buildWithRsbuild, routeApp, routeHead } from './build-harness'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
@@ -72,8 +73,12 @@ const publicDevApis: Record<string, RegExp> = {
  * Refresh runtime's registration globals, the hook through which
  * `@vitejs/plugin-react`'s refresh runtime asks for the exports it ignores,
  * and the router's HMR globals (route HMR finds the live router through
- * `__TSR_ROUTER__`; the page creates no router, so only HMR code would read
- * it here). A trap fires only when a module touches the name, so a
+ * `__TSR_ROUTER__`). `__TSR_ROUTER__` is a development global here only
+ * because these pages create no router (the router's own runtime writes it
+ * in production too): that premise is asserted on every row, on the
+ * control's page (route HMR off), which must touch none of them. A trap
+ * fires only when a module touches the name (a read, a write, a probe such
+ * as `in` or `hasOwnProperty`, a definition: `globalTrapSource`), so a
  * production bundle that touches none of them, whatever its own names,
  * passes; the global comparison with the control is the name-free check.
  */
@@ -87,36 +92,17 @@ const devGlobals = [
 
 /**
  * The module the entry imports first (so it evaluates before any other
- * module of the app): traps `devGlobals` on the page's global object and
- * records each read, write or redefinition. (An app module like any other:
- * the bundlers compile it, the router plugin does not.)
+ * module of the app): traps `devGlobals` on the page's global object
+ * (`globalTrapSource`: every read, write, probe or definition). (An app
+ * module like any other: the bundlers compile it, the router plugin does
+ * not.)
  */
-const devGlobalsTrap = `// Encoded, so that the bundle's text holds none of the names the
-// static check of the development APIs looks for
-const names: Array<string> = ${JSON.stringify(devGlobals.map((name) => Buffer.from(name).toString('base64')))}.map((name) => atob(name))
-const touched: Array<string> = []
-const traps = new Map<string, () => unknown>()
-for (const name of names) {
-  const get = () => {
-    touched.push('read ' + name)
-    return undefined
-  }
-  traps.set(name, get)
-  Object.defineProperty(globalThis, name, {
-    configurable: true,
-    get,
-    set() {
-      touched.push('write ' + name)
-    },
-  })
-}
-/** Every touch of a development global so far (a redefinition included). */
-export function devGlobalsTouched() {
-  const redefined = names.filter(
-    (name) => Object.getOwnPropertyDescriptor(globalThis, name)?.get !== traps.get(name),
-  )
-  return [...touched, ...redefined.map((name) => 'redefine ' + name)]
-}
+const devGlobalsTrap = `/** Every touch of a development global so far. */
+export const devGlobalsTouched: () => Array<string> = ${globalTrapSource({
+  // Encoded, so that the bundle's text holds none of the names the static
+  // check of the development APIs looks for
+  names: `${JSON.stringify(devGlobals.map((name) => Buffer.from(name).toString('base64')))}.map((name) => atob(name))`,
+})}
 `
 
 /**
@@ -210,9 +196,17 @@ export async function expectProductionClientBundle(
     globals: Array<string>
   }
   const controlRun = await control.run(renderScript)
-  const controlGlobals = new Set(
-    (controlRun.result as { globals: Array<string> }).globals,
-  )
+  const controlRendered = controlRun.result as {
+    touched: Array<string>
+    globals: Array<string>
+  }
+  // The premise of the `__TSR_ROUTER__` trap (see `devGlobals`): the page
+  // creates no router, so its own runtime touches none of them.
+  expect(
+    controlRendered.touched,
+    "premise: the control's page (route HMR off) touches no development global: the page creates no router",
+  ).toEqual([])
+  const controlGlobals = new Set(controlRendered.globals)
   expect(
     Object.keys(publicDevApis).filter(
       (name) => app.where(publicDevApis[name]!) !== 'nowhere',

@@ -451,9 +451,9 @@ export async function createPluginHost(
               ),
               sourcemap: chunks.some((chunk) => chunk.map !== undefined),
               ...(name === 'client' && { parsedModules: clientModules }),
-              warnings: diagnostics
-                .filter((diagnostic) => diagnostic.severity === 'warning')
-                .map((diagnostic) => diagnostic.text),
+              warnings: diagnostics.filter(
+                (diagnostic) => diagnostic.severity === 'warning',
+              ),
               consoleMessages: [],
               duration: 0,
               dispose: async () => {},

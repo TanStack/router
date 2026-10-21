@@ -46,6 +46,7 @@ import { resolveModulePath } from 'exsolve'
 import { mergeConfig, preview as vitePreview } from 'vite'
 import { afterAll, beforeAll, expect } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { globalTrapSource } from '@tanstack/compiler-test-utils/global-trap'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 import {
   workspacePackage,
@@ -256,28 +257,14 @@ const devSupportGlobals = [
 ]
 
 /**
- * Init script of the production page: every read or write of a
- * `devSupportGlobals` name, from the page's first statement on, is recorded
- * (`window.__harnessDevSupportTouches`).
+ * Init script of the production page: every read, write, probe (`in`,
+ * `hasOwnProperty`, ...) or definition of a `devSupportGlobals` name, from
+ * the page's first statement on, is recorded with its stack
+ * (`window.__harnessDevSupportTouches`; `globalTrapSource`).
  */
-const devSupportTrap = `(() => {
-  const touches = []
-  Object.defineProperty(window, '__harnessDevSupportTouches', { value: touches })
-  for (const name of ${JSON.stringify(devSupportGlobals)}) {
-    let value
-    Object.defineProperty(window, name, {
-      configurable: true,
-      get() {
-        touches.push('read ' + name + '\\n' + new Error().stack)
-        return value
-      },
-      set(next) {
-        touches.push('write ' + name + '\\n' + new Error().stack)
-        value = next
-      },
-    })
-  }
-})()`
+const devSupportTrap = `Object.defineProperty(window, '__harnessDevSupportTouches', {
+  get: ${globalTrapSource({ names: JSON.stringify(devSupportGlobals), stacks: true })},
+})`
 
 /** The case modules a production build includes (`import.meta.glob`). */
 const caseGlob = `../cases/*/*.{ts,tsx,js,jsx}`

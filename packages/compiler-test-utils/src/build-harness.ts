@@ -30,7 +30,8 @@ import { runNodeProgram } from './run-node'
 import { savingDirectory } from './save-file'
 import type { AddressInfo } from 'node:net'
 import type { BrowserPage } from './browser'
-import type { DiagnosticChannel } from './diagnostic-channel'
+import type { ChannelDiagnostic, DiagnosticChannel } from './diagnostic-channel'
+import type { DiagnosticSource, Severity } from './diagnostics'
 import type { Rspack } from '@rsbuild/core'
 
 export type Bundler = 'vite' | 'rspack' | 'webpack' | 'esbuild'
@@ -202,10 +203,19 @@ export interface BuildResult {
   eager: Array<string>
   /** Chunks loaded only on demand. */
   lazy: Array<string>
-  /** Warnings reported through the bundler (its own and its plugins'). */
-  warnings: Array<string>
-  /** `console.warn`/`console.error` output during the build. */
-  consoleMessages: Array<string>
+  /**
+   * What the bundler reported about the build it finished, its own reports
+   * and its plugins' (warnings, and errors logged without failing the
+   * build), each with its severity, as a dev server's channel records them
+   * (`./diagnostic-channel`): read with the matchers of `./diagnostics`.
+   */
+  warnings: Array<ChannelDiagnostic>
+  /**
+   * What the build printed as a warning or an error on the console or the
+   * process streams (`console.warn`/`console.error`, ...), each with its
+   * severity (`./diagnostic-channel`; informational output is not kept).
+   */
+  consoleMessages: Array<ChannelDiagnostic>
   /** Build time in milliseconds. */
   duration: number
   /** Chunks whose code contains `marker`, split into eager and lazy. */
@@ -247,12 +257,15 @@ export class DanglingNameError extends Error {
   }
 }
 
-/** A build failed; `errors` are the bundler's error messages. */
+/**
+ * A build failed; `errors` are the bundler's error messages, `warnings`
+ * what it reported before (see `BuildResult.warnings`).
+ */
 export class BuildError extends Error {
   constructor(
     readonly bundler: Bundler,
     readonly errors: Array<string>,
-    readonly warnings: Array<string>,
+    readonly warnings: Array<ChannelDiagnostic>,
   ) {
     super(`${bundler} build failed:\n${errors.join('\n')}`)
     this.name = 'BuildError'
@@ -433,8 +446,8 @@ async function bundle(
   if (config.configure && bundler !== 'webpack' && bundler !== 'rspack') {
     throw new Error(`configure: not supported for ${bundler}`)
   }
-  const warnings: Array<string> = []
-  const consoleMessages: Array<string> = []
+  const warnings: Array<ChannelDiagnostic> = []
+  const consoleMessages: Array<ChannelDiagnostic> = []
   const started = performance.now()
   const output = await withBuildEnvironment(
     target.nodeEnv === undefined ? mode : target.nodeEnv,
@@ -469,7 +482,7 @@ const builders: Record<
   Bundler,
   (
     config: BundlerConfig,
-    warnings: Array<string>,
+    warnings: Array<ChannelDiagnostic>,
   ) => Promise<Array<EmittedChunk>>
 > = {
   vite: buildWithVite,
@@ -481,7 +494,7 @@ const builders: Record<
 
 async function buildWithVite(
   config: BundlerConfig,
-  warnings: Array<string>,
+  warnings: Array<ChannelDiagnostic>,
 ): Promise<Array<EmittedChunk>> {
   const { build: viteBuild } = await import('vite')
   const errors: Array<string> = []
@@ -497,8 +510,10 @@ async function buildWithVite(
       logLevel: 'warn',
       customLogger: {
         info: () => {},
-        warn: (message) => warnings.push(stripAnsi(message)),
-        warnOnce: (message) => warnings.push(stripAnsi(message)),
+        warn: (message) =>
+          warnings.push(...bundlerReports([message], 'warning', 'vite')),
+        warnOnce: (message) =>
+          warnings.push(...bundlerReports([message], 'warning', 'vite')),
         error: (message) => {
           // The thrown error carries the message; skip the summary line
           if (!/Build failed in/.test(message)) {
@@ -558,6 +573,8 @@ async function buildWithVite(
     throw new BuildError('vite', [...errors, errorMessage(error)], warnings)
   }
   await settled(hooks)
+  // Errors logged by a build that did not fail are reports too
+  warnings.push(...bundlerReports(errors, 'error', 'vite'))
   const chunks: Array<EmittedChunk> = []
   for (const output of Array.isArray(result) ? result : [result]) {
     if (!('output' in output)) {
@@ -667,7 +684,7 @@ export function chunksOfBundle(
 async function buildWithWebpackApi(
   bundler: 'webpack' | 'rspack',
   config: BundlerConfig,
-  warnings: Array<string>,
+  warnings: Array<ChannelDiagnostic>,
 ): Promise<Array<EmittedChunk>> {
   const ssr = config.env === 'ssr'
   const development = config.mode === 'development'
@@ -765,7 +782,7 @@ async function buildWithWebpackApi(
       config.diagnosticChannel,
     )
     const json = stats.toJson(statsOptions)
-    warnings.push(...statsMessages(json.warnings))
+    warnings.push(...statsDiagnostics(json.warnings, 'warning'))
     if (json.errors?.length) {
       throw new BuildError(bundler, statsMessages(json.errors), warnings)
     }
@@ -799,7 +816,7 @@ async function buildWithWebpackApi(
   })
 
   const json = stats.toJson(statsOptions)
-  warnings.push(...statsMessages(json.warnings))
+  warnings.push(...statsDiagnostics(json.warnings, 'warning'))
   if (json.errors?.length) {
     throw new BuildError(bundler, statsMessages(json.errors), warnings)
   }
@@ -817,7 +834,7 @@ async function watchAndRebuild(
   options: Record<string, unknown>,
   root: string,
   files: Record<string, string>,
-  warnings: Array<string>,
+  warnings: Array<ChannelDiagnostic>,
   diagnosticChannel?: DiagnosticChannel,
 ): Promise<WebpackStats> {
   const compiler = (bundler === 'rspack'
@@ -917,7 +934,7 @@ export function chunksOfStats(
 
 async function buildWithEsbuild(
   config: BundlerConfig,
-  warnings: Array<string>,
+  warnings: Array<ChannelDiagnostic>,
 ): Promise<Array<EmittedChunk>> {
   const esbuild = await import('esbuild')
   const ssr = config.env === 'ssr'
@@ -959,14 +976,16 @@ const require = __createRequire(import.meta.url)`,
       errors?: Array<EsbuildMessage>
       warnings?: Array<EsbuildMessage>
     }
-    warnings.push(...(failure.warnings ?? []).map(esbuildText))
+    warnings.push(
+      ...bundlerReports((failure.warnings ?? []).map(esbuildText), 'warning'),
+    )
     throw new BuildError(
       'esbuild',
       failure.errors?.map(esbuildText) ?? [errorMessage(error)],
       warnings,
     )
   }
-  warnings.push(...result.warnings.map(esbuildText))
+  warnings.push(...bundlerReports(result.warnings.map(esbuildText), 'warning'))
   const entryPoint = path.relative(config.root, config.entry)
   const relative = (file: string) =>
     path.relative(config.outDir, path.join(config.root, file))
@@ -990,6 +1009,39 @@ export function statsMessages(
   items: Array<{ message: string; moduleName?: string }> | undefined,
 ): Array<string> {
   return (items ?? []).map(statsMessage)
+}
+
+/**
+ * A compilation's errors or warnings (`severity`) as the diagnostics of a
+ * `BuildResult` (source `bundler`).
+ */
+export function statsDiagnostics(
+  items: Array<{ message: string; moduleName?: string }> | undefined,
+  severity: Severity,
+): Array<ChannelDiagnostic> {
+  return (items ?? []).map((item) => ({
+    severity,
+    text: statsMessage(item),
+    raw: item,
+    source: 'bundler',
+  }))
+}
+
+/**
+ * What a bundler or its logger printed (`texts`, colours removed) as the
+ * diagnostics of a `BuildResult`, with `severity`.
+ */
+export function bundlerReports(
+  texts: Array<string>,
+  severity: Severity,
+  source: DiagnosticSource = 'bundler',
+): Array<ChannelDiagnostic> {
+  return texts.map((text) => ({
+    severity,
+    text: stripAnsi(text),
+    raw: text,
+    source,
+  }))
 }
 
 export interface DescribeBuildInput {
@@ -1022,8 +1074,8 @@ export interface DescribeBuildInput {
    * `checkDanglingNames`).
    */
   parsedModules?: ParsedModules
-  warnings: Array<string>
-  consoleMessages: Array<string>
+  warnings: Array<ChannelDiagnostic>
+  consoleMessages: Array<ChannelDiagnostic>
   duration: number
   dispose: () => Promise<void>
   /**
@@ -1771,15 +1823,16 @@ function swcOptions(
 /**
  * Runs a build the way a build command does (`NODE_ENV` set to the mode by
  * default, which decides e.g. the JSX runtime and the `development` export
- * condition; `null` unsets it) and records warnings/errors from the merged
- * console/stream channel for this build’s async work. An error no one handles while the build runs fails the build: a
+ * condition; `null` unsets it) and records in `messages` the warnings and
+ * errors of the merged console/stream channel for this build’s async work,
+ * with their severity. An error no one handles while the build runs fails the build: a
  * bundler that loses a plugin's error (e.g. a throw in a hook Rspack calls
  * without catching it) would otherwise never finish the build, and the test
  * would wait for its timeout.
  */
 export async function withBuildEnvironment<T>(
   buildNodeEnv: string | null,
-  messages: Array<string>,
+  messages: Array<ChannelDiagnostic>,
   run: (channel: DiagnosticChannel) => Promise<T>,
 ): Promise<T> {
   const nodeEnv = process.env.NODE_ENV
@@ -1789,9 +1842,9 @@ export async function withBuildEnvironment<T>(
     process.env.NODE_ENV = buildNodeEnv
   }
   const channel = openDiagnosticChannel()
-  channel.onDiagnostic(({ severity, text }) => {
-    if (severity === 'warning' || severity === 'error') {
-      messages.push(text)
+  channel.onDiagnostic((diagnostic) => {
+    if (diagnostic.severity === 'warning' || diagnostic.severity === 'error') {
+      messages.push(diagnostic)
     }
   })
   let onUnhandled!: (error: unknown) => void

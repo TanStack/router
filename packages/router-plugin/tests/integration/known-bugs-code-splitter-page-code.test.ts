@@ -510,7 +510,7 @@ export const Route = createFileRoute('/imports-exported')({ component: Page })
           const built = await app()
           const reported =
             findDiagnostics([...built.warnings, ...built.consoleMessages], {
-              severity: ['warning', 'error'],
+              severity: 'warning',
               file: `routes/${destructured.file}.tsx`,
               root: built.root,
               names: ['component'],

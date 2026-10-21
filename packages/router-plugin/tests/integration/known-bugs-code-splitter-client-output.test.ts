@@ -215,7 +215,7 @@ export const Route = createFileRoute('/')({
       warned:
         findDiagnostics([...app.warnings, ...app.consoleMessages], {
           ...namingRoute,
-          severity: ['warning', 'error'],
+          severity: 'warning',
         }).length > 0,
       loggedInPage: findDiagnostics(run.logs, namingRoute).length > 0,
     }

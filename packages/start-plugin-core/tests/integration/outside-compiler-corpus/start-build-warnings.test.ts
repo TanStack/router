@@ -73,7 +73,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
       // Every channel of the build, each report once (the console is
       // shared by both environments).
       expect({
-        client: named(client.warnings),
+        client: named(client.warnings.map(({ text }) => text)),
         reported: named(
           build.diagnostics
             .filter(({ severity }) => severity !== 'info')

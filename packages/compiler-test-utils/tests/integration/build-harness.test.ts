@@ -16,6 +16,7 @@ import {
   describeBuild,
   originalFrameOf,
 } from '../../src/build-harness'
+import { findDiagnostics } from '../../src/diagnostics'
 import { unboundNames } from '../../src/validate-module'
 import type {
   BundleOptions,
@@ -182,6 +183,133 @@ export function read(input: unknown) {
       ]),
     })
   })
+})
+
+/**
+ * A plugin of `bundler` that warns through the bundler's own reporting
+ * (`MARK_PLUGIN_WARNING`) and, except esbuild's, prints a warning and an
+ * error on the console while the build runs; the build succeeds. (esbuild
+ * calls plugins from callbacks of its long-lived service, and the harness
+ * does not attribute their console output to the build reliably: in this
+ * file's run it reached no build. A known limit of the capture, which
+ * router-plugin's console control leaves out for esbuild too.)
+ */
+const reportingPlugins: BundlerPlugins = {
+  vite: () => ({
+    name: 'reports',
+    buildStart(this: { warn: (message: string) => void }) {
+      this.warn('MARK_PLUGIN_WARNING')
+      console.warn('MARK_CONSOLE_WARNING')
+      console.error('MARK_CONSOLE_ERROR')
+    },
+  }),
+  esbuild: () => ({
+    name: 'reports',
+    setup(build: {
+      onStart: (callback: () => { warnings: Array<{ text: string }> }) => void
+    }) {
+      build.onStart(() => {
+        return { warnings: [{ text: 'MARK_PLUGIN_WARNING' }] }
+      })
+    },
+  }),
+  ...Object.fromEntries(
+    (['webpack', 'rspack'] as const).map((bundler) => [
+      bundler,
+      () => ({
+        apply(compiler: {
+          hooks: {
+            thisCompilation: {
+              tap: (
+                name: string,
+                callback: (compilation: { warnings: Array<unknown> }) => void,
+              ) => void
+            }
+          }
+        }) {
+          compiler.hooks.thisCompilation.tap('reports', (compilation) => {
+            compilation.warnings.push(new Error('MARK_PLUGIN_WARNING'))
+            console.warn('MARK_CONSOLE_WARNING')
+            console.error('MARK_CONSOLE_ERROR')
+          })
+        },
+      }),
+    ]),
+  ),
+}
+
+/** The markers of `diagnostics`, sorted. */
+const markersOf = (diagnostics: Array<{ text: string }>) =>
+  diagnostics.flatMap(({ text }) => text.match(/MARK_\w+/g) ?? []).sort()
+
+// Severity is part of a report (SPEC §5.7: a clause that says "warn" and
+// allows no refusal asks for a warning): the result keeps it on both
+// channels, as a dev server's channel does.
+test.each(bundlers)(
+  '%s: the reports of a build that succeeds keep their severity',
+  async (bundler) => {
+    const app = await bundleApp({
+      bundler,
+      files: { 'entry.ts': `export const value = 1\n` },
+      plugins: reportingPlugins,
+    })
+    expect(app.warnings).toContainEqual(
+      expect.objectContaining({
+        severity: 'warning',
+        text: expect.stringContaining('MARK_PLUGIN_WARNING'),
+      }),
+    )
+    const printsToConsole = bundler !== 'esbuild'
+    if (printsToConsole) {
+      expect(app.consoleMessages).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            severity: 'warning',
+            text: expect.stringContaining('MARK_CONSOLE_WARNING'),
+          }),
+          expect.objectContaining({
+            severity: 'error',
+            text: expect.stringContaining('MARK_CONSOLE_ERROR'),
+          }),
+        ]),
+      )
+    }
+    const reported = [...app.warnings, ...app.consoleMessages]
+    expect({
+      warning: markersOf(findDiagnostics(reported, { severity: 'warning' })),
+      error: markersOf(findDiagnostics(reported, { severity: 'error' })),
+    }).toEqual(
+      printsToConsole
+        ? {
+            warning: ['MARK_CONSOLE_WARNING', 'MARK_PLUGIN_WARNING'],
+            error: ['MARK_CONSOLE_ERROR'],
+          }
+        : { warning: ['MARK_PLUGIN_WARNING'], error: [] },
+    )
+  },
+  timeout,
+)
+
+// Vite's logger: an error logged by a build that does not fail is a report
+// of that build, an error, not a warning.
+test('vite: an error logged by a build that succeeds is reported as an error', async () => {
+  const app = await bundleApp({
+    bundler: 'vite',
+    files: { 'entry.ts': `export const value = 1\n` },
+    plugins: {
+      vite: () => ({
+        name: 'logs-an-error',
+        configResolved(config: { logger: { error: (text: string) => void } }) {
+          config.logger.error('MARK_LOGGED_ERROR')
+        },
+      }),
+    },
+  })
+  expect(
+    findDiagnostics(app.warnings, { severity: 'error' }).map(
+      ({ text }) => text,
+    ),
+  ).toEqual([expect.stringContaining('MARK_LOGGED_ERROR')])
 })
 
 // Like `vite build`, which minifies client builds but not SSR builds.
@@ -1013,12 +1141,12 @@ test.each(['webpack', 'rspack'] as const)(
     ] as const) {
       expect(
         app.consoleMessages.some(
-          (text) =>
+          ({ text }) =>
             text.includes(app.root) && text.includes('MARK_LOADER_WARNING'),
         ),
       ).toBe(true)
       expect(
-        app.consoleMessages.some((text) => text.includes(other.root)),
+        app.consoleMessages.some(({ text }) => text.includes(other.root)),
       ).toBe(false)
     }
   },

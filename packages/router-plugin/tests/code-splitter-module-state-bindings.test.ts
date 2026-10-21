@@ -21,8 +21,8 @@ type CodeSplitGroupings = NonNullable<CodeSplittingOptions['defaultBehavior']>
 // whose readers do not include the component gets one reading no binding,
 // so that what loading it loads can be checked, except next to a class (a
 // split chunk next to a class with a static initializer is the known bug of
-// `isKnownBug`). (Where a const or class only the component reads is
-// initialised, and so when, is free.)
+// `isKnownBug`, pinned by its own row). (Where a const or class only the
+// component reads is initialised, and so when, is free.)
 describe('module-level bindings read by route options', () => {
   type Kind = 'const' | 'function' | 'class'
   type Reader = 'loader' | 'component' | 'beforeLoad'
@@ -71,6 +71,11 @@ describe('module-level bindings read by route options', () => {
     inits: number
     /** Identities that must be the same object, as expressions over `values`. */
     same?: Array<[string, string]>
+    /**
+     * The route also has a component that reads no binding (a split chunk
+     * next to the bindings), where the readers do not include it.
+     */
+    nextToComponent?: true
   }
 
   const kinds: Array<Kind> = ['const', 'function', 'class']
@@ -96,6 +101,13 @@ describe('module-level bindings read by route options', () => {
 
   const cases: Array<Case> = [
     ...singleBinding,
+    {
+      name: 'a class only the loader reads, next to a component that reads no binding',
+      declarations: declare('class', 'x'),
+      readers: { loader: ['x'] },
+      inits: 1,
+      nextToComponent: true,
+    },
     {
       name: 'two consts the loader and the component read',
       declarations: `${declare('const', 'a')}\n${declare('const', 'b')}`,
@@ -130,19 +142,31 @@ const a = { b, c }`,
 
   /**
    * Known bug, remove from here when fixed: a class whose static initializer
-   * calls a function, read by the options of one split chunk only, is
-   * declared in that chunk and also kept in the route module (dead-code
+   * calls a function is kept in a module that does not read it (dead-code
    * elimination keeps a class with a side-effectful static initializer), so
-   * the class is created twice.
+   * the class is created twice:
+   * - read by the options of one split chunk only, it is declared in that
+   *   chunk and also kept in the route module;
+   * - read by the unsplit loader only, it is kept in the route module and
+   *   also declared in the chunk of a split component that does not read it
+   *   (three times when the loader is split too; the const and function rows
+   *   next to such a component are the controls).
    * Impact: what the static initializer does (registrations, counters) runs
-   * again when the chunk loads, and the route module holds a second class.
+   * again when the chunk loads, and a module holds a second class.
    */
   const isKnownBug = (row: Case, codeSplitGroupings: CodeSplitGroupings) => {
     const readers = Object.keys(row.readers) as Array<Reader>
     const oneChunk = codeSplitGroupings.some((group) =>
       readers.every((reader) => group.includes(reader as never)),
     )
-    return row.name.startsWith('a class') && oneChunk
+    const chunkWithoutReader =
+      row.nextToComponent === true &&
+      codeSplitGroupings.some(
+        (group) =>
+          group.includes('component') &&
+          !readers.some((reader) => group.includes(reader as never)),
+      )
+    return row.name.startsWith('a class') && (oneChunk || chunkWithoutReader)
   }
 
   const stateModule = `export let initCalls = 0
@@ -165,6 +189,7 @@ export const seen = (reader: string, values: Record<string, unknown>) => {
         readers,
         inits,
         same,
+        nextToComponent,
       }: Case) => {
         const options = (['loader', 'component', 'beforeLoad'] as const)
           .filter((reader) => readers[reader])
@@ -175,7 +200,8 @@ export const seen = (reader: string, values: Record<string, unknown>) => {
               : `  ${reader}: () => seen('${reader}', ${values}),`
           })
         const addedComponent =
-          !readers.component && !declarations.includes('class ')
+          !readers.component &&
+          (nextToComponent === true || !declarations.includes('class '))
         if (addedComponent) {
           options.push(`  component: () => <p>no binding</p>,`)
         }

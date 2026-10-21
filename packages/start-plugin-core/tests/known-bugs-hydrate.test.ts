@@ -10,6 +10,11 @@
  * hydration error.
  */
 import { describe, expect, test } from 'vitest'
+import {
+  expectMapsTo,
+  positionAt,
+  tokenOffsets,
+} from '@tanstack/compiler-test-utils/source-maps'
 import { compileError, expectCompileError } from './regression-helpers'
 import {
   expectHydratedCleanly,
@@ -18,11 +23,13 @@ import {
   renderClient,
   renderServer,
   renderSource,
+  servedWithMap,
   useHydrateHost,
 } from './render'
 import { moduleRequests } from './imports'
 import { generatedNames } from './hydrate-helpers'
 import type { ClientRender } from './render'
+import type { SourceMapInput } from '@tanstack/compiler-test-utils/source-maps'
 
 const hosts = useHydrateHost()
 
@@ -1152,5 +1159,76 @@ export function h(type, props, ...children) {
       expect(client.html).toContain('<div data-h="">')
     },
     20_000,
+  )
+})
+
+describe('source maps of the split code', () => {
+  /**
+   * Asserts that the case's split code holds `marker` (a string token) and
+   * that every occurrence maps, through the map the dev server serves with
+   * it, to the marker's line and column in `source` (SPEC G6: Hydrate
+   * chunks map to the user's original line and column).
+   */
+  async function expectSplitTextMapped(source: string, marker: string) {
+    const started = await hosts()
+    const client = await renderClient(started, source)
+    expectRenderedThroughChunks(client)
+    const original = positionAt(source, source.indexOf(marker))
+    let held = 0
+    for (const url of client.chunks) {
+      const served = await servedWithMap(started, url)
+      for (const offset of tokenOffsets(served.code, { string: marker })) {
+        held++
+        expectMapsTo(
+          served.map as SourceMapInput,
+          positionAt(served.code, offset),
+          {
+            file: client.case.file(),
+            line: original.line,
+            column: original.column,
+          },
+        )
+      }
+    }
+    expect(held, `the split code holds ${marker}`).toBeGreaterThan(0)
+  }
+
+  // Control for the pin below: the text of an element child maps to where
+  // the user wrote it.
+  test('client: the split text of an element child maps to its line and column', async () => {
+    await expectSplitTextMapped(
+      `${head}export function Page() {
+  return (
+    <main>
+      <Hydrate when={load()}><p>MARK_SPLIT_TEXT</p></Hydrate>
+    </main>
+  )
+}`,
+      'MARK_SPLIT_TEXT',
+    )
+  })
+
+  // Bug: a boundary whose only child is text is split into code whose text
+  // is a new string the compiler creates without the text's position, and
+  // nothing else in that code comes from the user's file: the dev server
+  // serves it with an empty source map (no mappings, no sources). Found by
+  // F-C (final pass, finding 2).
+  // Impact: the split code of such a boundary maps to nothing (SPEC G6):
+  // devtools show it as generated code, not as the user's file, and its
+  // component's frames in stacks resolve nowhere.
+  test.fails(
+    'client: the split text of a text-only boundary maps to its line and column',
+    async () => {
+      await expectSplitTextMapped(
+        `${head}export function Page() {
+  return (
+    <main>
+      <Hydrate when={load()}>MARK_SPLIT_TEXT</Hydrate>
+    </main>
+  )
+}`,
+        'MARK_SPLIT_TEXT',
+      )
+    },
   )
 })

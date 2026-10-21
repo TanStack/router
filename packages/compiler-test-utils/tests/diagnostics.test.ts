@@ -145,6 +145,27 @@ describe('real channels', () => {
     })
   })
 
+  test('a captured diagnostic keeps its own severity, also among the warnings an error carries', () => {
+    const consoleError = {
+      severity: 'error' as const,
+      text: 'src/b.ts: logged as an error',
+      raw: 'src/b.ts: logged as an error',
+      source: 'console' as const,
+    }
+    const failure = Object.assign(new Error('vite build failed'), {
+      errors: ['src/a.ts (2:3): Unexpected token'],
+      warnings: [consoleError],
+    })
+    expect(diagnosticsOf([consoleError], 'warning')).toEqual([consoleError])
+    expect(diagnosticsOf(failure).map(({ severity }) => severity)).toEqual([
+      'error',
+      'error',
+    ])
+    expect(
+      findDiagnostics(failure, { severity: 'warning', file: 'src/b.ts' }),
+    ).toEqual([])
+  })
+
   test('Rollup-style locations count with 0-based columns', () => {
     const [diagnostic] = diagnosticsOf(
       {

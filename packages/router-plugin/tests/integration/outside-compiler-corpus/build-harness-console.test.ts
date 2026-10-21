@@ -34,7 +34,10 @@ describe.each(bundlers.filter((bundler) => bundler !== 'esbuild'))(
 `),
       })
       expect(app.consoleMessages).toContainEqual(
-        expect.stringContaining('MARK_BUILD_WARNING /'),
+        expect.objectContaining({
+          severity: 'warning',
+          text: expect.stringContaining('MARK_BUILD_WARNING /'),
+        }),
       )
     }, 60_000)
   },
