@@ -50,16 +50,25 @@ const workloads = [
   'adopt',
   'client-sync',
   'client-async',
+  'client-failing-error-shallow',
+  'client-failing-error-deep',
+  'client-failing-notFound-shallow',
+  'client-failing-notFound-deep',
   'terminal-error-shallow',
   'terminal-error-deep',
   'terminal-notFound-shallow',
   'terminal-notFound-deep',
   'selective-pending',
+  'selective-pending-context-function',
+  'selective-pending-context-object',
 ] as const
 type Workload = (typeof workloads)[number]
 type Calls = {
   loaders: number
   hydrates: number
+  contexts: number
+  contextHydrates: number
+  contextDehydrates: number
   gate?: ReturnType<typeof createControlledPromise<void>>
   entered?: ReturnType<typeof createControlledPromise<void>>
 }
@@ -83,7 +92,8 @@ function isActive(workload: Workload, index: number) {
   return (
     workload !== 'no-work' &&
     !workload.startsWith('terminal-') &&
-    workload !== 'selective-pending' &&
+    !workload.startsWith('client-failing-') &&
+    !workload.startsWith('selective-pending') &&
     (workload !== 'alternating' || index % 2 === 0)
   )
 }
@@ -98,11 +108,14 @@ function createRouter(
   server: boolean,
   calls: Calls,
 ): AnyRouter {
-  const terminalIndex = workload.startsWith('terminal-')
-    ? workload.endsWith('-shallow')
-      ? 1
-      : depth - 1
-    : undefined
+  const failTerminal = server || workload.startsWith('client-failing-')
+  const terminalIndex =
+    workload.startsWith('terminal-') || workload.startsWith('client-failing-')
+      ? workload.endsWith('-shallow')
+        ? 1
+        : depth - 1
+      : undefined
+  const pendingContext = workload.startsWith('selective-pending-context-')
   const presentation =
     terminalIndex === undefined
       ? {}
@@ -111,19 +124,54 @@ function createRouter(
           notFoundComponent: () => null,
         }
   const ssrAt = (index: number) =>
-    workload === 'selective-pending'
+    workload.startsWith('selective-pending')
       ? index === depth - 1
         ? false
-        : index === 1
+        : index === 1 && !pendingContext
           ? ('data-only' as const)
           : true
       : undefined
+  const contextAt = (index: number) => {
+    if (!pendingContext) {
+      return undefined
+    }
+    if (!index) {
+      return () => {
+        calls.contexts++
+        return { ancestorContext: server ? 'server' : 'client' }
+      }
+    }
+    if (index !== depth - 1) {
+      return undefined
+    }
+    const handler = ({
+      context,
+    }: {
+      context: { ancestorContext?: string }
+    }) => {
+      calls.contexts++
+      return { leafContext: context.ancestorContext }
+    }
+    return workload.endsWith('-object')
+      ? {
+          handler,
+          dehydrate: ({ data }: { data: ReturnType<typeof handler> }) => {
+            calls.contextDehydrates++
+            return data
+          },
+          hydrate: ({ data }: { data: ReturnType<typeof handler> }) => {
+            calls.contextHydrates++
+            return data
+          },
+        }
+      : handler
+  }
   const loaderAt = (index: number) => {
     const handler = (options: {
       parentMatchPromise?: Promise<{ loaderData?: unknown }>
     }) => {
       calls.loaders++
-      if (server && index === terminalIndex) {
+      if (failTerminal && index === terminalIndex) {
         throw workload.includes('notFound')
           ? notFound()
           : new Error('Terminal loader failed')
@@ -165,6 +213,7 @@ function createRouter(
   const rootRoute = new BaseRootRoute({
     ...presentation,
     ssr: ssrAt(0),
+    ...(pendingContext ? { context: contextAt(0) } : {}),
     loader: loaderAt(0),
   })
   let parent: AnyRoute = rootRoute
@@ -175,6 +224,7 @@ function createRouter(
       path: `p${index}`,
       ...presentation,
       ssr: ssrAt(index),
+      ...(pendingContext ? { context: contextAt(index) } : {}),
       loader: loaderAt(index),
     })
     previous.addChildren([route])
@@ -202,7 +252,13 @@ function dispose(router: AnyRouter) {
 }
 
 async function serialize(depth: number, workload: Workload) {
-  const calls = { loaders: 0, hydrates: 0 }
+  const calls: Calls = {
+    loaders: 0,
+    hydrates: 0,
+    contexts: 0,
+    contextHydrates: 0,
+    contextDehydrates: 0,
+  }
   const router = createRouter(depth, workload, true, calls)
   attachRouterServerSsrUtils({ router, manifest: { routes: {} } })
   try {
@@ -210,9 +266,15 @@ async function serialize(depth: number, workload: Workload) {
     await router.serverSsr!.dehydrate()
     assert.equal(
       calls.loaders,
-      workload === 'selective-pending' ? depth - 1 : depth,
+      workload.startsWith('selective-pending') ? depth - 1 : depth,
     )
     assert.equal(calls.hydrates, 0)
+    assert.equal(
+      calls.contexts,
+      workload.startsWith('selective-pending-context-') ? 1 : 0,
+    )
+    assert.equal(calls.contextHydrates, 0)
+    assert.equal(calls.contextDehydrates, 0)
     const scripts = router.serverSsr!.takeInitialHydrationScriptTags()
     assert.ok(scripts?.before.length)
     return scripts.before.map((script) => {
@@ -265,7 +327,13 @@ for (const depth of [4, 16]) {
         let sample: { router: AnyRouter; calls: Calls } | undefined
         const before = () => {
           assert.equal(sample, undefined)
-          const calls: Calls = { loaders: 0, hydrates: 0 }
+          const calls: Calls = {
+            loaders: 0,
+            hydrates: 0,
+            contexts: 0,
+            contextHydrates: 0,
+            contextDehydrates: 0,
+          }
           if (workload === 'adopt') {
             calls.gate = createControlledPromise<void>()
             calls.entered = createControlledPromise<void>()
@@ -300,13 +368,22 @@ for (const depth of [4, 16]) {
             assert.equal(matches.length, depth)
             assert.equal(current.calls.loaders, client || rerun ? depth : 0)
             assert.equal(
+              current.calls.contexts,
+              workload.startsWith('selective-pending-context-') ? 2 : 0,
+            )
+            assert.equal(current.calls.contextHydrates, 0)
+            assert.equal(current.calls.contextDehydrates, 0)
+            assert.equal(
               current.calls.hydrates,
               client || rerun
                 ? 0
                 : matches.filter((_, index) => isActive(workload, index))
                     .length,
             )
-            if (workload.startsWith('terminal-')) {
+            if (
+              workload.startsWith('terminal-') ||
+              workload.startsWith('client-failing-')
+            ) {
               const terminalIndex = workload.endsWith('-shallow')
                 ? 1
                 : depth - 1
@@ -322,6 +399,24 @@ for (const depth of [4, 16]) {
                 current.router.state.resolvedLocation?.pathname,
                 locationAtDepth(depth),
               )
+              return
+            }
+            if (workload.startsWith('selective-pending-context-')) {
+              // Rendered ancestors have no transported context; the first
+              // uncommitted client-only leaf must run its handler too.
+              for (let index = 0; index < depth - 1; index++) {
+                assert.equal(matches[index]!.status, 'success')
+                assert.equal(matches[index]!.loaderData, index)
+                assert.equal(matches[index]!.context.ancestorContext, 'client')
+              }
+              assert.equal(matches.at(-1)!.status, 'pending')
+              assert.equal(matches.at(-1)!.ssr, false)
+              assert.equal(matches.at(-1)!.loaderData, undefined)
+              assert.deepEqual(matches.at(-1)!.context, {
+                ancestorContext: 'client',
+                leafContext: 'client',
+              })
+              assert.equal(current.router.state.resolvedLocation, undefined)
               return
             }
             if (workload === 'selective-pending') {
