@@ -205,13 +205,15 @@ type NonRedirectOutcome =
   | [kind: typeof SUCCESS, data: unknown]
   | [kind: typeof ERROR, error: unknown]
   | [kind: typeof NOT_FOUND, error: NotFoundError]
-  | [kind: typeof CANCELED]
 
 type RawLoaderOutcome =
   | NonRedirectOutcome
   | [kind: typeof REDIRECTED, redirect: AnyRedirect]
 
-type LoaderOutcome = NonRedirectOutcome | RedirectOutcome
+type LoaderOutcome =
+  | NonRedirectOutcome
+  | RedirectOutcome
+  | [kind: typeof CANCELED]
 
 type IndexedOutcome = [index: number, outcome: LoaderOutcome, boundary?: number]
 
@@ -677,6 +679,61 @@ function setFetching(
   }
 }
 
+function createLoaderFlight(
+  router: AnyRouter,
+  lane: ContextualizedLane,
+  match: WorkMatch,
+  route: AnyRoute,
+  loader: RouteLoaderFn<any>,
+  parentMatchPromise: Promise<WorkMatch> | undefined,
+  options: ExecuteLaneOptions,
+): LoaderFlight {
+  const owner = options[0 /* controller */]
+  const controller = new AbortController()
+  const flight: LoaderFlight = [
+    Promise.resolve()
+      .then(() =>
+        loader(
+          getLoaderContext(
+            router,
+            lane,
+            match,
+            route,
+            controller,
+            parentMatchPromise,
+            !!options[3 /* preload */],
+          ),
+        ),
+      )
+      .then(
+        (value) => normalize(value, false, route.id),
+        (cause) => normalize(cause, true, route.id),
+      )
+      .then((result): RawLoaderOutcome => {
+        // The registry controls discovery; leases keep current consumers
+        // sharing the same terminal outcome.
+        if (
+          result[0 /* kind */] !== SUCCESS &&
+          router._flights?.get(match.id) === flight
+        ) {
+          router._flights.delete(match.id)
+          if (!flight[2 /* leases */]) {
+            controller.abort()
+          }
+        }
+        return result[0 /* kind */] === ERROR &&
+          flight[2 /* leases */] &&
+          router._preflight !== owner
+          ? normalizeError(route, result[1 /* error */])
+          : result
+      }),
+    controller,
+    1,
+  ]
+  ;(router._flights ??= new Map()).set(match.id, flight)
+  return flight
+}
+
 async function loadResource(
   router: AnyRouter,
   lane: ContextualizedLane,
@@ -699,66 +756,25 @@ async function loadResource(
   setFetching(router, match, 'loader', owner)
   try {
     if (!flight) {
-      const controller = new AbortController()
-      flight = [
-        Promise.resolve()
-          .then(() =>
-            loader(
-              getLoaderContext(
-                router,
-                lane,
-                match,
-                route,
-                controller,
-                parentMatchPromise,
-                !!options[3 /* preload */],
-              ),
-            ),
-          )
-          .then(
-            (value) => normalize(value, false, route.id),
-            (cause) => normalize(cause, true, route.id),
-          )
-          .then((result): RawLoaderOutcome => {
-            // The registry controls discovery; leases keep current consumers
-            // sharing the same terminal outcome.
-            if (
-              result[0 /* kind */] !== SUCCESS &&
-              router._flights?.get(match.id) === flight
-            ) {
-              router._flights!.delete(match.id)
-              if (!flight![2 /* leases */]) {
-                controller.abort()
-              }
-            }
-            return result[0 /* kind */] === ERROR &&
-              flight![2 /* leases */] &&
-              router._preflight !== owner
-              ? normalizeError(route, result[1 /* error */])
-              : result
-          }),
-        controller,
-        1,
-      ]
-      ;(router._flights ??= new Map()).set(match.id, flight)
+      flight = createLoaderFlight(
+        router,
+        lane,
+        match,
+        route,
+        loader,
+        parentMatchPromise,
+        options,
+      )
     }
     match._flight = flight
     match.abortController = flight[1 /* controller */]
-    // Hydration owns its wait at the accepted-prefix loop. A detached suffix
-    // must not remain rooted by the shared controller while its work hangs.
-    const result = await (router._preflight === owner
-      ? flight[0 /* outcome */]
-      : waitFor(flight[0 /* outcome */], signal))
+    const result = await waitFor(flight[0 /* outcome */], signal)
     // A hydration recovery can release this match while its application work
     // is still pending. Detached work must not resolve a redirect or publish.
     if (match._flight !== flight || signal.aborted) {
       return CANCELED_OUTCOME
     }
-    // Hydration hands control outcomes to the following client load. Resolving
-    // a discarded redirect would run destination callbacks and onError early.
-    return router._preflight === owner
-      ? result
-      : materializeRedirect(router, lane, route, result, options)
+    return materializeRedirect(router, lane, route, result, options)
   } catch (cause) {
     if (cause !== signal || !signal.aborted) {
       throw cause
@@ -2650,8 +2666,12 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       const terminal = match.status !== 'success' || (match._notFound && !index)
       // A transported result runs only its transform; an absent one re-runs
       // the loader unless the match is terminal.
-      if (loader && (transported ? loader.hydrate : !terminal)) {
-        const outcome = loadResource(
+      if (
+        loader &&
+        (transported ? loader.hydrate : !terminal) &&
+        !signal.aborted
+      ) {
+        const flight = (match._flight = createLoaderFlight(
           router,
           lane,
           match,
@@ -2659,49 +2679,48 @@ export async function hydrate(router: AnyRouter): Promise<void> {
           (ctx) => step(loader, dehydrated, 'l', () => ctx),
           parent && Promise.resolve(parent),
           laneOptions,
-        )
+        ))
+        match.isFetching = 'loader'
+        match.abortController = flight[1 /* controller */]
         const previous = committed[index - 1]!
         if (
-          match._flight &&
-          (transported ||
-            (loads[index - 1] &&
-              router._flights!.get(previous.id) !== previous._flight))
+          transported ||
+          (loads[index - 1] &&
+            router._flights!.get(previous.id) !== previous._flight)
         ) {
           // Fresh flights register synchronously, before any callbacks run.
           // Transforms and work depending on them belong to this hydration.
           // Their leases remain private; a new load runs its own handlers.
           router._flights!.delete(match.id)
         }
-        loads[index] = parent = outcome.then((result) => {
-          if (isCurrent() && index < committed.length) {
-            // A transform keeps the server's `updatedAt`.
-            if (result[0 /* kind */]) {
-              // A pending boundary at a terminal match would replace the
-              // boundary the server rendered.
-              if (!terminal) {
-                if (process.env.NODE_ENV !== 'production' && index < failed) {
-                  failure = result[1]
-                }
-                failed = Math.min(failed, index)
-              } else if (
-                process.env.NODE_ENV !== 'production' &&
-                result[0 /* kind */] !== CANCELED
-              ) {
-                ;(ignored ??= []).push([
-                  index,
-                  route,
-                  'loader.hydrate',
-                  result[1],
-                ])
+        loads[index] = parent = flight[0 /* outcome */].then((result) => {
+          match.isFetching = false
+          const current = isCurrent() && index < committed.length
+          // Parent data belongs to the shared generation even after this
+          // hydration consumer is canceled. Detached work gets its own snapshot.
+          const snapshot = current ? match : { ...match }
+          if (result[0 /* kind */] === SUCCESS) {
+            snapshot.loaderData = result[1 /* data */]
+            if (!transported) {
+              snapshot.updatedAt = Date.now()
+            }
+          } else if (current) {
+            // A failure cannot replace a terminal boundary the server rendered.
+            if (!terminal) {
+              if (process.env.NODE_ENV !== 'production' && index < failed) {
+                failure = result[1]
               }
-            } else {
-              match.loaderData = result[1 /* data */]
-              if (!transported) {
-                match.updatedAt = Date.now()
-              }
+              failed = Math.min(failed, index)
+            } else if (process.env.NODE_ENV !== 'production') {
+              ;(ignored ??= []).push([
+                index,
+                route,
+                'loader.hydrate',
+                result[1],
+              ])
             }
           }
-          return getParentSnapshot(match, result)
+          return getParentSnapshot(snapshot, result)
         })
       } else {
         parent = match
