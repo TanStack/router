@@ -13,7 +13,8 @@
  *   emitted JavaScript and the dangling-name evidence of its production
  *   client output (`recordParsedModules`);
  * - diagnostics: one merged channel per dev server and per build (every
- *   compile's errors and warnings, the console, the process streams).
+ *   compile's errors and warnings, Rsbuild's logger, the console, the
+ *   process streams).
  * Nothing of a compiler is assumed: no loader name, module id or hook
  * placement.
  */
@@ -27,7 +28,7 @@ import {
   recordParsedModules,
 } from './build-harness'
 import { openDiagnosticChannel } from './diagnostic-channel'
-import { createRsbuildDevServer } from './rsbuild-dev-server'
+import { createRsbuildDevServer, rsbuildLogger } from './rsbuild-dev-server'
 import type { PageRun } from './browser'
 import type { App, AppOptions, BuildMode, ParsedModules } from './build-harness'
 import type { ChannelDiagnostic } from './diagnostic-channel'
@@ -206,6 +207,7 @@ export async function createRsbuildPluginHost(
     build: async (buildOptions = {}) => {
       const mode = buildOptions.mode ?? 'production'
       const channel = openDiagnosticChannel()
+      channel.claim(root)
       return channel.run(async () => {
         const environments: Record<string, RsbuildHostBuildEnvironment> = {}
         const evidence: Record<string, ParsedModules> = {}
@@ -222,6 +224,12 @@ export async function createRsbuildPluginHost(
                 ? compiler.compilers
                 : [compiler]) {
                 channel.scopeRspack(child)
+                // Before Rsbuild's logger prints its summary of the compile
+                // (`reportLogged`)
+                child.hooks.done.tap(
+                  { name: 'rsbuild-plugin-host:build', stage: -100 },
+                  ({ compilation }) => channel.reportCompilation(compilation),
+                )
               }
             })
             api.modifyRspackConfig((rspackConfig, { environment }) => {
@@ -245,7 +253,6 @@ export async function createRsbuildPluginHost(
                 if (!environmentStats) {
                   return
                 }
-                channel.reportCompilation(environmentStats.compilation)
                 const name = environmentStats.compilation.name ?? names[index]!
                 const { assets = [] } = environmentStats.toJson({
                   all: false,
@@ -270,7 +277,8 @@ export async function createRsbuildPluginHost(
                 {
                   root,
                   mode,
-                  logLevel: 'warn',
+                  logLevel: 'silent',
+                  customLogger: rsbuildLogger(channel),
                   source: { entry: { index: `./${entry}` } },
                   plugins: [...pluginsFor('build', root), recorder],
                 },

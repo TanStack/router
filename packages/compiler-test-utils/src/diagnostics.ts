@@ -98,6 +98,7 @@ export type DiagnosticSource =
   | 'stdout'
   | 'stderr'
   | 'vite'
+  | 'rsbuild'
   | 'bundler'
   | 'page'
   | 'thrown'
@@ -115,6 +116,14 @@ export interface Diagnostic {
   raw: unknown
   /** The channel it was reported on, when a channel recorded it. */
   source?: DiagnosticSource
+  /**
+   * Printed outside any async scope (a bundler's native callback) by work
+   * the harness could not tell apart: unrelated work was open, and the text
+   * names none of their app roots (or one that several of them claim).
+   * Every open capture received it, so it may be another concurrent test's
+   * (`./console-hook`).
+   */
+  shared?: true
   /**
    * The base of the columns of the `file:line:column` spellings in `text`,
    * when the producer is known: `1` once a structured location was printed

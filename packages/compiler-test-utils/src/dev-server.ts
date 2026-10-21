@@ -332,6 +332,7 @@ async function startServer(
     },
   })
   const root = app.root
+  channel.claim(root)
   const file = (relative: string) => path.join(root, relative)
   const logs: Array<string> = []
   /** Every channel the server's work may report on (see the module comment). */

@@ -332,6 +332,7 @@ export async function createPluginHost(
       const outputs: Record<string, HostBuildEnvironment> = {}
       const clientModules = parsedModules()
       const channel = openDiagnosticChannel()
+      channel.claim(buildRoot)
       return channel.run(async () => {
         try {
           const builder = await createBuilder(

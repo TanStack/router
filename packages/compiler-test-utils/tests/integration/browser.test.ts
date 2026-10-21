@@ -12,6 +12,7 @@ import { expect, onTestFinished, test } from 'vitest'
 import { openPage } from '../../src/browser'
 import { createDevServer } from '../../src/dev-server'
 import { createRsbuildDevServer } from '../../src/rsbuild-dev-server'
+import type { Rspack } from '@rsbuild/core'
 
 const timeout = 60_000
 
@@ -89,6 +90,65 @@ test(
     await server.edit({ 'other.js': `export const other = 'other v2'\n` })
     await page.waitForText('text v2 other v2')
     await expect.poll(() => page.loads()).toBe(2)
+  },
+  timeout,
+)
+
+// The page's console has only the app's output. The harness reads Rsbuild's
+// logger without raising `logLevel`, to which Rsbuild ties the HMR client's
+// log level by default: at `warn`, the client prints each compile's
+// warnings (and its failed connection attempts) in the page.
+test(
+  'rsbuild: Rsbuild’s HMR client prints nothing in the page',
+  async () => {
+    const server = await createRsbuildDevServer({
+      dir: testsDir,
+      registerCleanup: onTestFinished,
+      browser: true,
+      entry: 'main.js',
+      config: { html: { mountId: 'app' } },
+      files: app('import.meta.webpackHot'),
+      plugins: [
+        {
+          name: 'compile-warner',
+          setup(api) {
+            api.modifyRspackConfig((config) => {
+              config.plugins.push({
+                apply(compiler: Rspack.Compiler) {
+                  compiler.hooks.thisCompilation.tap(
+                    'compile-warner',
+                    (compilation) => {
+                      compilation.warnings.push(
+                        new compiler.webpack.WebpackError(
+                          'MARK_COMPILE_WARNING',
+                        ),
+                      )
+                    },
+                  )
+                },
+              })
+            })
+          },
+        },
+      ],
+    })
+    const page = await openPage(server.url!, {
+      registerCleanup: onTestFinished,
+    })
+    await page.waitForText('text v1 other v1')
+    // The client applied an update in place: it was connected, and got the
+    // first compile's warnings before
+    await server.edit({ 'text.js': `export const text = 'text v2'\n` })
+    await page.waitForText('text v2 other v1')
+    expect(page.loads()).toBe(1)
+    expect(page.console).toEqual([])
+    expect(page.errors).toEqual([])
+    // The harness's channel has the warning
+    expect(
+      server.diagnostics.some(({ text }) =>
+        text.includes('MARK_COMPILE_WARNING'),
+      ),
+    ).toBe(true)
   },
   timeout,
 )

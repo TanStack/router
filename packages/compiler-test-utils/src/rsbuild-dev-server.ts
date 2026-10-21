@@ -18,8 +18,11 @@
  * file removed before that is never reported.
  *
  * Diagnostics: one channel (`./diagnostic-channel`) records, from the start
- * until `stop()`, every compile's errors and warnings and what `console.*`
- * and direct writes to `process.stdout`/`stderr` report (`diagnostics`).
+ * until `stop()`, every compile's errors and warnings, what Rsbuild's logger
+ * reports (`rsbuildLogger`), and what `console.*` and direct writes to
+ * `process.stdout`/`stderr` report (`diagnostics`). Rsbuild prints nothing
+ * itself, to the terminal or to the page's console (`logLevel` and
+ * `dev.client.logLevel` are `silent`).
  *
  * Plugin-agnostic: the caller supplies the Rsbuild plugins and the directory
  * the apps live in (where their imports resolve).
@@ -28,7 +31,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { mkdir, readFile, readdir, rename, rm, utimes } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import path from 'node:path'
-import { createRsbuild, mergeRsbuildConfig } from '@rsbuild/core'
+import { createLogger, createRsbuild, mergeRsbuildConfig } from '@rsbuild/core'
 import { createApp } from './build-harness'
 import { scopeMethods } from './console-hook'
 import { openDiagnosticChannel } from './diagnostic-channel'
@@ -37,6 +40,7 @@ import type { AppOptions } from './build-harness'
 import type { ChannelDiagnostic, DiagnosticChannel } from './diagnostic-channel'
 import type { AddressInfo, Socket } from 'node:net'
 import type {
+  Logger,
   RsbuildConfig,
   RsbuildInstance,
   RsbuildPlugin,
@@ -84,6 +88,25 @@ export interface RsbuildDevServerOptions extends AppOptions {
  * fail with it on). Tests of hot updates set `hmr: true`.
  */
 const defaultHmr = false
+
+/**
+ * Rsbuild's logger for one Rsbuild instance (`customLogger`), feeding
+ * `channel`: the warnings and errors Rsbuild and the plugins (`api.logger`)
+ * report are recorded (source `rsbuild`), except Rsbuild's summaries of the
+ * compilations the channel recorded (`reportLogged`); nothing is printed.
+ * Read through Rsbuild's public logger API, not by raising `logLevel`,
+ * which would also make Rsbuild's HMR client log to the page.
+ */
+export function rsbuildLogger(channel: DiagnosticChannel): Logger {
+  const logger = createLogger({ level: 'silent' })
+  logger.override({
+    warn: (message, ...args) =>
+      channel.reportLogged(message, args, 'warning', 'rsbuild'),
+    error: (message, ...args) =>
+      channel.reportLogged(message, args, 'error', 'rsbuild'),
+  })
+  return logger
+}
 
 /** Hot-update chunks and manifests (`*.hot-update.js`, `.json`). */
 const hotUpdate = /\.hot-update\.[^/]*$/
@@ -221,6 +244,7 @@ async function startServer(
     prefix: options.prefix ?? '.rsbuild-dev-server-',
   })
   const root = app.root
+  channel.claim(root)
   try {
     await predateAppFiles(root)
   } catch (error) {
@@ -333,7 +357,8 @@ async function startServer(
               ended++
               // Read here, while the compilation is still accessible: Rspack
               // drops it once the next compile starts (`onDevCompileDone`
-              // then cannot read it).
+              // then cannot read it). And before Rsbuild's logger prints
+              // its summary of the compile (`reportLogged`).
               channel.reportCompilation(compilation)
               const state = startState.get(environmentCompiler) ?? new Map()
               lastInputs.set(
@@ -434,13 +459,16 @@ async function startServer(
         {
           root,
           mode: 'development',
-          logLevel: 'warn',
+          logLevel: 'silent',
+          customLogger: rsbuildLogger(channel),
           source: { entry: { index: `./${entry}` } },
           // Without a browser page, live reload would do nothing
           dev: {
             writeToDisk: true,
             hmr: options.hmr ?? (browser || defaultHmr),
             liveReload: browser,
+            // The page's console has only the app's output
+            client: { logLevel: 'silent' },
           },
           server: {
             printUrls: false,

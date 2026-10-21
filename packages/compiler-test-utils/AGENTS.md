@@ -27,7 +27,8 @@ Shared by the compiler test suites (router-plugin, start-plugin-core, router-gen
 
 - Drive a compiler only through the public plugins a user configures: `./plugin-host` (`createPluginHost`, Vite: server code through the environment's module runner, client code in the shared Chromium page, `vite build`) and `./rsbuild-plugin-host` (`createRsbuildPluginHost`, Rsbuild's JavaScript API). No hook recorders, module ids, queries or hand-registered routes.
 - Client semantics run in a real browser: `runClient` of a host, or `runInPage` of `./browser` (one page per test process, reused). `evaluateServed`, `./module-linker`, `./render` and `./lazy-probe` are deprecated (Node stand-ins); do not add callers.
-- Diagnostics: read every channel at once (`./diagnostic-channel`: console, process streams, Vite's logger, bundler compilations; the dev harnesses' `diagnostics`). "Nothing reported" is `expectNoProblems`. Judge causes with `explains` (content), not `causes` (a deprecated word list).
+- Diagnostics: read every channel at once (`./diagnostic-channel`: console, process streams, Vite's logger, Rsbuild's logger, bundler compilations; the dev harnesses' `diagnostics`). "Nothing reported" is `expectNoProblems`. Judge causes with `explains` (content), not `causes` (a deprecated word list).
+  - Each channel gets its own work's output, also what a bundler's native callbacks print (Rolldown hooks, Rspack hooks): by the app root it names, or as the only work open; otherwise every open channel gets it, marked `shared`. A compilation's report is recorded once, from the compilation, not again from Rsbuild's logger. The Rsbuild hosts stay quiet in the terminal and the page (`logLevel` and `dev.client.logLevel` `silent`); never raise them to see Rsbuild's output.
 - Edits settle on their outcome within one bound (`./outcome` `waitForOutcome`, the dev harnesses' `edit`/`settle`), never on counts of events, compiles or updates.
 
 ## Corpus and implementation tests

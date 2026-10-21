@@ -439,8 +439,13 @@ async function bundle(
   const output = await withBuildEnvironment(
     target.nodeEnv === undefined ? mode : target.nodeEnv,
     consoleMessages,
-    (channel) =>
-      builders[bundler]({ ...config, diagnosticChannel: channel }, warnings),
+    (channel) => {
+      channel.claim(root)
+      return builders[bundler](
+        { ...config, diagnosticChannel: channel },
+        warnings,
+      )
+    },
   )
   const duration = performance.now() - started
   return describeBuild({
