@@ -9,7 +9,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, onTestFinished, test } from 'vitest'
-import { openPage } from '../../src/browser'
+import { openPage, runInPage } from '../../src/browser'
 import { createDevServer } from '../../src/dev-server'
 import { createRsbuildDevServer } from '../../src/rsbuild-dev-server'
 import type { Rspack } from '@rsbuild/core'
@@ -170,4 +170,23 @@ document.getElementById('app').textContent = 'MARK_DOCUMENT ' + location.href
   expect(await page.page.evaluate('[window.appSaw, window.initRan]')).toEqual([
     1, 1,
   ])
+})
+
+// Final pass #21: the shared page serves every run of a test process in
+// turn, so a script that never settles must fail its run within the bound
+// and leave the page to the next run.
+test('a shared-page run whose script never settles fails within its bound, and the next run gets the page', async () => {
+  const started = Date.now()
+  await expect(
+    runInPage({
+      pageUrl: 'about:blank',
+      script: 'await new Promise(() => {})',
+      timeout: 1000,
+    }),
+  ).rejects.toThrow(/did not settle within 1000 ms/)
+  expect(Date.now() - started).toBeLessThan(10_000)
+  expect(
+    (await runInPage({ pageUrl: 'about:blank', script: 'return 1 + 1' }))
+      .result,
+  ).toBe(2)
 })

@@ -371,6 +371,16 @@ export const value = a(
 > 3 |   createServerFn().handler(() => 1),
     |                    ^`,
     ],
+    // No tolerance (final pass #12): a caret one column left points at the
+    // character before the code (a 0-based column handed to a 1-based
+    // code-frame API, Start's F1).
+    [
+      'a caret one column left of the code',
+      `src/a.ts
+  2 | export const value = a(
+> 3 |   createServerFn().handler(() => 1),
+    |  ^^^^^^^^^^^^^^`,
+    ],
   ])('rejects %s', (_, text) => {
     expect(
       findDiagnostics(diagnosticsOf(text), {
@@ -494,6 +504,26 @@ export const value = wrap(createServerFn().handler(() => 1))
 > 2 | export const value = wrap(createServerFn().handler(() => 1))
     |                           ^`),
     ],
+    // Final pass #3 (DECISIONS 2026-10-21): an internal error that names the
+    // API passes no longer. The old check took "node" and "type" for a cause.
+    [
+      'an internal error in the compiler’s own terms',
+      new Error('createServerFn: unexpected node type'),
+    ],
+    [
+      'an unexpected AST kind',
+      new Error('createServerFn: unexpected callee kind in visitor'),
+    ],
+    [
+      'an invariant of the compiler',
+      new Error('createServerFn: Invariant failed: handler declarator missing'),
+    ],
+    [
+      'a report asking for a bug report',
+      new Error(
+        'createServerFn handler went wrong. This is a bug, please report it',
+      ),
+    ],
   ])('rejects %s', (_, error) => {
     expect(
       findDiagnostics(error, {
@@ -501,6 +531,42 @@ export const value = wrap(createServerFn().handler(() => 1))
         explains: true,
         source,
       }),
+    ).toEqual([])
+  })
+
+  // An actionable cause: the category, and the API it names or guidance.
+  // Without an expected API, guidance carries it (any requirement,
+  // restriction or directive); a category alone does not.
+  test.each([
+    'Hydrate cannot code-split function-as-children. Use split={false} for this boundary.',
+    'Server functions are only callable from the server',
+    'A route file must export Route',
+  ])('without names, accepts a cause with guidance: %s', (text) => {
+    expectDiagnostic(diagnosticsOf(text, 'error'), { explains: true })
+  })
+
+  test.each([
+    'the nested closure broke the split',
+    'Hydrate boundary extraction went sideways',
+  ])(
+    'without names, rejects a category with neither an API nor guidance: %s',
+    (text) => {
+      expect(
+        findDiagnostics(diagnosticsOf(text, 'error'), { explains: true }),
+      ).toEqual([])
+    },
+  )
+
+  test('naming the API in its own words makes the category actionable', () => {
+    const expectation = { names: ['createServerFn'], explains: true as const }
+    expectDiagnostic('createServerFn handler closures are hoisted', expectation)
+    // The API only in a quoted frame line is not named in the prose
+    expect(
+      findDiagnostics(
+        `src/a.ts: handler closures are hoisted
+> 2 | export const value = wrap(createServerFn().handler(() => 1))`,
+        { ...expectation, source },
+      ),
     ).toEqual([])
   })
 

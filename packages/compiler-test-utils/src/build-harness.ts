@@ -1011,7 +1011,10 @@ export interface DescribeBuildInput {
   /** Absolute output directory the chunk file names are relative to. */
   outDir: string
   chunks: Array<EmittedChunk>
-  /** Reads the source map of each chunk (`<file>.map`). */
+  /**
+   * Reads the source map of each chunk (`<file>.map`), where the build
+   * emitted one (`Chunk.map` stays unset for a chunk without).
+   */
   sourcemap?: boolean
   /**
    * webpack and Rspack: the modules of the output (`recordParsedModules`),
@@ -1031,6 +1034,25 @@ export interface DescribeBuildInput {
 }
 
 /**
+ * A chunk's source map file, or `undefined` when the build emitted none for
+ * it: a bundler may emit a chunk without a map (e.g. a chunk holding only
+ * generated code), and whether a map is required is the test's question,
+ * not the description's.
+ */
+async function readSourceMap(file: string): Promise<SourceMap | undefined> {
+  let text: string
+  try {
+    text = await readFile(file, 'utf8')
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return undefined
+    }
+    throw error
+  }
+  return JSON.parse(text) as SourceMap
+}
+
+/**
  * Describes what a build emitted (one entry chunk, the chunks loaded with it
  * and the ones loaded on demand) and how to run it. Also for builds the
  * harness did not run, e.g. one environment of a framework's
@@ -1044,15 +1066,14 @@ export async function describeBuild(
   const chunks: Array<Chunk> = []
   for (const raw of input.chunks) {
     const file = path.join(input.outDir, raw.fileName)
+    const map = input.sourcemap ? await readSourceMap(`${file}.map`) : undefined
     chunks.push({
       ...raw,
       // Externals (e.g. `react` in SSR builds) are not chunks
       imports: raw.imports.filter((name) => emitted.has(name)),
       dynamicImports: raw.dynamicImports.filter((name) => emitted.has(name)),
       code: await readFile(file, 'utf8'),
-      ...(input.sourcemap && {
-        map: JSON.parse(await readFile(`${file}.map`, 'utf8')) as SourceMap,
-      }),
+      ...(map && { map }),
     })
   }
   if (

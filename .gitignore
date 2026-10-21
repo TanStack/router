@@ -94,3 +94,9 @@ vite.config.ts.timestamp_*
 
 # local memory flame profiles
 benchmarks/memory/**/.profiles/
+
+# Temporary apps of the Start compiler test harnesses (packages/*/tests/.start-*,
+# removed in teardown). A Vite dev server can still write its dependency cache
+# after it closed (upstream Vite bug; FOLLOWUPS "UPSTREAM (F-A)"), which can
+# leave one behind.
+packages/*/tests/**/.start-*/

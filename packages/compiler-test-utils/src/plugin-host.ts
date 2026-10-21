@@ -77,8 +77,10 @@ export interface PluginHostOptions extends AppOptions {
   serve?: boolean
   /**
    * Serves client modules to the shared browser page (`runClient`): the dev
-   * server listens and pre-bundles dependencies, as `vite dev`. Default
-   * `false` (middleware mode).
+   * server listens and pre-bundles dependencies, as `vite dev`, and an idle
+   * HMR client stays connected for the host's lifetime, so that a full
+   * reload sent between runs is not handed to the next run's page (see
+   * `connectIdleHmrClient`). Default `false` (middleware mode).
    */
   client?: boolean
   /** See `DevServerOptions.settleTimeout`. */
@@ -216,6 +218,41 @@ function hostPagePlugin(): Plugin {
 }
 
 /**
+ * Connects an idle HMR client to a listening Vite dev server (as a second
+ * tab of the app would be) and resolves once Vite greeted it; the returned
+ * function disconnects it. Vite keeps a full reload (or an error) sent while
+ * no client is connected and hands it to the next client that connects:
+ * with `runClient` that is the page of the next run, which would then reload
+ * under the run. With this client connected for the host's lifetime, what
+ * the server sends while no page runs reaches it, and it ignores it.
+ */
+async function connectIdleHmrClient(server: DevServer): Promise<() => void> {
+  const url = new URL(server.url!)
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
+  url.searchParams.set('token', server.vite.config.webSocketToken)
+  const socket = new WebSocket(url, 'vite-hmr')
+  try {
+    await new Promise<void>((resolve, reject) => {
+      socket.addEventListener('message', (event) => {
+        if (JSON.parse(String(event.data)).type === 'connected') {
+          resolve()
+        }
+      })
+      socket.addEventListener('error', () =>
+        reject(new Error(`no HMR connection to ${server.url}`)),
+      )
+      socket.addEventListener('close', () =>
+        reject(new Error(`the HMR connection to ${server.url} closed`)),
+      )
+    })
+  } catch (error) {
+    socket.close()
+    throw error
+  }
+  return () => socket.close()
+}
+
+/**
  * Records each environment's emitted chunks (code, imports, modules, source
  * map) as the bundle is written: an observer of the final output only.
  */
@@ -284,6 +321,15 @@ export async function createPluginHost(
   } else {
     app = await createApp({ ...options, prefix })
   }
+  let disconnectIdle: (() => void) | undefined
+  if (server && client) {
+    try {
+      disconnectIdle = await connectIdleHmrClient(server)
+    } catch (error) {
+      await server.close()
+      throw error
+    }
+  }
   const root = server?.root ?? app!.root
   const devServer = () => {
     if (!server) {
@@ -293,6 +339,7 @@ export async function createPluginHost(
   }
   const close = async () => {
     try {
+      disconnectIdle?.()
       await server?.close()
     } finally {
       await app?.dispose()
@@ -402,7 +449,7 @@ export async function createPluginHost(
                   dynamicImports,
                 }),
               ),
-              sourcemap: chunks.every((chunk) => chunk.map !== undefined),
+              sourcemap: chunks.some((chunk) => chunk.map !== undefined),
               ...(name === 'client' && { parsedModules: clientModules }),
               warnings: diagnostics
                 .filter((diagnostic) => diagnostic.severity === 'warning')
