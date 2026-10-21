@@ -1,7 +1,8 @@
+/** Package/config or fixed-input observer control; not compiler acceptance. */
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { getConfig } from '../src'
+import { getConfig } from '../../src'
 
 function makeFolderDir(folder: string) {
   return join(process.cwd(), 'tests', 'config', folder)

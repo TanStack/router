@@ -1,6 +1,7 @@
+/** Package/config or fixed-input observer control; not compiler acceptance. */
 /** Controls of the shared `routeCallOf` helper (route-id.ts). */
 import { describe, expect, test } from 'vitest'
-import { routeCallOf } from './route-id'
+import { routeCallOf } from '../route-id'
 
 describe('routeCallOf', () => {
   test.each(['react', 'solid', 'vue'])(
@@ -48,7 +49,7 @@ export { route as Route, other }`,
     },
     {
       name: 'a constructor not imported from a router package',
-      code: `import { createFileRoute } from './local'
+      code: `import { createFileRoute } from '../local'
 export const Route = createFileRoute('/a')({})`,
       expected: { constructor: undefined, id: '/a' },
     },

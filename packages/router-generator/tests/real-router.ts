@@ -141,13 +141,13 @@ const paragraphs = (html: string) =>
  */
 export async function checkApp(
   { files, config, expected, visits, pages }: Case,
-  { runtime = true, types = true } = {},
+  { runtime = true, types = true, client = false } = {},
 ) {
   const root = await createApp({ ...files, 'src/vue-shim.d.ts': vueShim })
   const { generatedRouteTree } = await generate(root, config)
 
   if (runtime) {
-    await checkRouter(generatedRouteTree, { expected, visits, pages })
+    await checkRouter(generatedRouteTree, { expected, visits, pages }, client)
   }
   if (types) {
     await checkTypes(root, expected)
@@ -158,6 +158,7 @@ export async function checkApp(
 async function checkRouter(
   treeFile: string,
   { expected, visits, pages }: Pick<Case, 'expected' | 'visits' | 'pages'>,
+  client: boolean,
 ) {
   await withRouteTree(treeFile, async (tree) => {
     const { router } = tree
@@ -179,6 +180,9 @@ async function checkRouter(
     ).toEqual(visits)
     for (const [url, texts] of Object.entries(pages ?? {})) {
       expect(paragraphs(await tree.renderAt(url))).toEqual(texts)
+      if (client) {
+        expect(paragraphs(await tree.renderClientAt(url, texts))).toEqual(texts)
+      }
     }
   })
 }

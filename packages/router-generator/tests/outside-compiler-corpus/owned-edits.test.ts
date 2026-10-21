@@ -1,6 +1,7 @@
+/** Package/config or fixed-input observer control; not compiler acceptance. */
 /** Controls of the shared `expectOnlyOwnedEdits` helper (owned-edits.ts). */
 import { describe, expect, test } from 'vitest'
-import { expectOnlyOwnedEdits } from './owned-edits'
+import { expectOnlyOwnedEdits } from '../owned-edits'
 
 const before = `import { useState } from 'react'
 import { Link, type LinkProps, createLazyFileRoute } from '@tanstack/react-router'
