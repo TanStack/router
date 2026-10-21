@@ -1,44 +1,54 @@
 // Fast-tier half of this suite. The real-project rows (a JSX transform that
 // reads pragmas anywhere, React Refresh and solid-refresh pragmas in a page)
 // are in integration/code-splitter-pragmas.test.ts.
-import {
-  captureConsole,
-  expectDiagnostic,
-} from '@tanstack/compiler-test-utils/diagnostics'
+//
+// Each route runs in a real browser page (`./route-app`): the real
+// `@vitejs/plugin-react` transform (Oxc, which reads leading pragmas only),
+// the real React and the real `@emotion/react`. The untouched route file is
+// the same source as another module of the app that no route registers:
+// the project's transform without the router's compilers.
+import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { describe, expect, it } from 'vitest'
-import {
-  compileRouteModules,
-  evaluateModule,
-  head,
-  loadRoute,
-  renderComponent,
-} from './regression-helpers'
-import type { Stubs } from './lazy-tracking'
+import { head, loadRoute } from './route-app'
+import type { RouteApp, RouteAppOptions } from './route-app'
 
-/**
- * The untouched route file evaluated through the project's real JSX
- * transform (Vite's, which reads leading pragmas only) with the real React
- * and the real `@emotion/react`: its route's options.
- */
-async function untouchedOptions(code: string, stubs: Stubs = {}) {
-  const { Route } = (await evaluateModule(code, stubs)) as Record<string, any>
-  return Route.options as Record<string, any>
+/** The untouched copy of the route file (see the header). */
+const untouchedFile = 'untouched.tsx'
+
+/** Dependencies the page needs pre-bundled: Emotion and its JSX runtimes. */
+const prebundle = [
+  '@emotion/react',
+  '@emotion/react/jsx-runtime',
+  '@emotion/react/jsx-dev-runtime',
+]
+
+/** Loads a route next to its untouched copy (see the header). */
+function loadWithUntouched(code: string, options: RouteAppOptions = {}) {
+  return loadRoute(code, {
+    ...options,
+    prebundle,
+    files: { ...options.files, [untouchedFile]: code },
+  })
 }
 
 /**
- * The route file's component rendered as the untouched file renders it
- * (`untouchedOptions`), server-rendered.
+ * In-page expression of the untouched file's route options; the run fails
+ * when the router's compilers changed that copy (it must be the control).
  */
-async function renderUntouched(code: string, stubs: Stubs = {}) {
-  return renderComponent((await untouchedOptions(code, stubs)).component)
-}
+const untouched = `(await (async () => {
+  const options = (await app(${JSON.stringify(untouchedFile)})).Route.options
+  if (options.component && 'preload' in options.component) {
+    throw new Error('the untouched copy was compiled as a route')
+  }
+  return options
+})())`
 
 /**
- * Whether Emotion styled the markup: rendered on the server, Emotion
- * inlines a style element in front of the element it styles; the project's
- * default JSX runtime leaves a `css` prop as a plain attribute instead.
+ * Whether Emotion styled the markup: rendered by the client, Emotion gives
+ * the element a class it generated from the styles; the project's default
+ * JSX runtime leaves a `css` prop as a plain attribute instead.
  */
-const emotionStyled = (html: string) => /<style\b/.test(html)
+const emotionStyled = (html: string) => /class="css-/.test(html)
 
 /**
  * Loads the route (splitting it) and asserts that its component renders
@@ -48,23 +58,21 @@ const emotionStyled = (html: string) => /<style\b/.test(html)
  * its JSX (SPEC J2.16). A component left unsplit is accepted with a warning
  * naming the file and the option (D-04, J2.8). Returns the rendering.
  */
-async function expectRendersLikeUntouched(
-  code: string,
-  options: Parameters<typeof loadRoute>[1] = {},
-) {
-  const untouched = await renderUntouched(code, options.stubs)
-  const { result: route, diagnostics } = await captureConsole(() =>
-    loadRoute(code, options),
+async function expectRendersLikeUntouched(code: string) {
+  const route = await loadWithUntouched(code)
+  const [rendered, expected] = await route.run<[string, string]>(
+    `return [await render('component'), await renderComponent(${untouched}.component)]`,
   )
   if (!(await route.isLazy('component'))) {
-    expectDiagnostic(diagnostics, {
+    expectDiagnostic(await route.diagnostics(), {
       severity: 'warning',
-      file: route.ids.reference!,
+      file: 'route.tsx',
+      root: route.host.root,
       names: ['component'],
     })
   }
-  expect(await route.render('component')).toBe(untouched)
-  return untouched
+  expect(rendered).toBe(expected)
+  return expected
 }
 
 // JSX pragmas apply per module: the code splitter runs before the bundler's
@@ -74,7 +82,7 @@ async function expectRendersLikeUntouched(
 describe('split modules keep file-level JSX pragmas', () => {
   const styledRoute = (
     header: string,
-  ) => `${header}export const Route = createFileRoute('/pragma')({
+  ) => `${header}export const Route = createFileRoute('/')({
   component: () => <div css={{ color: 'red' }}>styled</div>,
 })
 `
@@ -124,7 +132,7 @@ describe('split modules keep file-level JSX pragmas', () => {
       await expectRendersLikeUntouched(`/** @jsxRuntime classic */
 /** @jsx jsx */
 ${head}import { jsx } from '@emotion/react'
-export const Route = createFileRoute('/pragma')({
+export const Route = createFileRoute('/')({
   component: () => <div css={{ color: 'red' }}>{jsx('b', null, 'styled')}</div>,
 })
 `)
@@ -133,21 +141,24 @@ export const Route = createFileRoute('/pragma')({
 
   const sharedJsxRoute = `/** @jsxImportSource @emotion/react */
 ${head}const icon = <svg css={{ width: 1 }} />
-export const Route = createFileRoute('/pragma')({
+export const Route = createFileRoute('/')({
   loader: () => ({ icon }),
   component: () => <div css={{ color: 'red' }}>{icon}</div>,
 })
 `
 
   it('keeps the pragma in effect for JSX the loader and the component share', async () => {
-    const untouched = await untouchedOptions(sharedJsxRoute)
-    const untouchedIcon = await renderComponent(() => untouched.loader().icon)
-    expect(emotionStyled(untouchedIcon)).toBe(true)
-    const route = await loadRoute(sharedJsxRoute)
+    const route = await loadWithUntouched(sharedJsxRoute)
     // Whichever module holds the shared JSX compiles it with the pragma.
-    expect(await renderComponent(() => route.options.loader().icon)).toBe(
-      untouchedIcon,
+    const [expected, rendered] = await route.run<[string, string]>(
+      `const control = ${untouched}
+return [
+  await renderComponent(() => control.loader().icon),
+  await renderComponent(() => options.loader().icon),
+]`,
     )
+    expect(emotionStyled(expected)).toBe(true)
+    expect(rendered).toBe(expected)
   })
 
   // Bug: a split chunk that imports a binding it shares with the route
@@ -205,36 +216,43 @@ export const Route = createFileRoute('/')({
   component: Page,
   pendingComponent: () => <p css={{ color: 'red' }}>pending</p>,
 })`
-      const untouched = await untouchedOptions(code)
-      const expected = [
-        await renderComponent(untouched.pendingComponent),
-        await renderComponent(untouched.component),
-      ]
+      const route = await loadWithUntouched(code)
+      const [expected, rendered] = await route.run<
+        [Array<string>, Array<string>]
+      >(`const control = ${untouched}
+return [
+  [await renderComponent(control.pendingComponent), await renderComponent(control.component)],
+  [await render('pendingComponent'), await render('component')],
+]`)
       expect(expected.map(emotionStyled)).toEqual([true, true])
-      const route = await loadRoute(code)
-      expect([
-        await route.render('pendingComponent'),
-        await route.render('component'),
-      ]).toEqual(expected)
+      expect(rendered).toEqual(expected)
     },
   )
 })
+
+/** The route module as the dev server serves it, once the route loaded. */
+async function referenceModule(route: RouteApp) {
+  const { modules } = await route.modules()
+  return modules.reference!
+}
 
 // License comments stay in the route module when the splitter moves or
 // removes the code below them (R-14, SPEC G12): minifiers keep legal
 // comments in the modules that carry them, so the route module keeps the
 // notice of the code it no longer holds. Copies in other modules and other
-// orphaned comments are free. Source: #8504.
+// orphaned comments are free. Source: #8504. The comment is the explicit
+// text contract R-14 names (N11): read in the route module the page loads.
 describe('the route module keeps the license comments of the route file', () => {
   it('leading the file', async () => {
     const legal = '/*! Example Corp. | MIT License */'
-    const { modules } = await compileRouteModules(
+    const route = await loadRoute(
       `${legal}\n${head}export const Route = createFileRoute('/')({
   component: () => <p>page</p>,
 })`,
     )
-    expect(Object.keys(modules).length).toBeGreaterThan(1)
-    expect(modules.reference).toContain(legal)
+    // The splitter moved code away: the component loads lazily.
+    expect(await route.isLazy('component')).toBe(true)
+    expect(await referenceModule(route)).toContain(legal)
   })
 
   it.each([
@@ -261,9 +279,7 @@ export const Route = createFileRoute('/')({
       deleteNodes: ['ssr' as const],
     },
   ])('$name', async ({ legal, route, deleteNodes }) => {
-    const { modules } = await compileRouteModules(route(legal), {
-      deleteNodes,
-    })
-    expect(modules.reference).toContain(legal)
+    const loaded = await loadRoute(route(legal), { deleteNodes })
+    expect(await referenceModule(loaded)).toContain(legal)
   })
 })

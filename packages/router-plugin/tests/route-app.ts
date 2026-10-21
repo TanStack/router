@@ -103,6 +103,12 @@ export interface RouteAppOptions {
   tsconfig?: Record<string, unknown>
   /** A host of its own (a fresh dev server), not shared with other routes. */
   fresh?: boolean
+  /**
+   * Other dependencies the app imports that the page needs pre-bundled, as
+   * Vite pre-bundles an app's installed dependencies (e.g. a CommonJS
+   * package, or `@emotion/react` and its JSX runtimes).
+   */
+  prebundle?: Array<string>
 }
 
 /** Route options the code splitter may split. */
@@ -142,6 +148,18 @@ const frameworkPlugins: Record<TargetFramework, () => PluginOption> = {
 
 /** The page-side helper module every app holds (see `probeSource`). */
 export const probeFile = 'route-app-probe.ts'
+
+/**
+ * The app module the page imports the route module through, as the app's
+ * own modules import it (the route tree does): after an edit, Vite's import
+ * analysis gives every import of the edited module its HMR timestamp, so
+ * the split chunks import `/route.tsx?t=…`; a page importing
+ * `/route.tsx` itself would get a second instance of the route module.
+ */
+export const entryFile = 'route-app-entry.ts'
+
+const entrySource = (filename: string) =>
+  `export * as route from './${filename.replace(/^\.\//, '')}'\n`
 
 /**
  * Tool modules the page loads that no compiler emitted for the route: Vite's
@@ -224,8 +242,11 @@ export function appRequests(): Array<string> {
   for (const entry of performance.getEntriesByType('resource')) {
     const url = new URL(entry.name)
     if (url.origin !== location.origin) continue
+    // Without Vite's HMR timestamp (the t= query, which import analysis adds to
+    // imports of a module an edit changed): one request per module
+    url.searchParams.delete('t')
     const request = url.pathname + url.search
-    if (tool.test(request) || url.pathname === '/${probeFile}') continue
+    if (tool.test(request) || url.pathname === '/${probeFile}' || url.pathname === '/${entryFile}') continue
     seen.add(request)
   }
   return [...seen]
@@ -363,16 +384,23 @@ async function parkPage() {
 }
 
 function hostKey(options: RouteAppOptions, root: boolean) {
-  return JSON.stringify({
-    target: options.targetFramework ?? 'react',
-    filename: options.filename ?? 'route.tsx',
-    routeId: options.routeId ?? '/',
-    root,
-    hmr: options.hmr ?? false,
-    deleteNodes: options.deleteNodes,
-    pluginOptions: options.pluginOptions,
-    tsconfig: options.tsconfig,
-  })
+  return JSON.stringify(
+    {
+      target: options.targetFramework ?? 'react',
+      filename: options.filename ?? 'route.tsx',
+      routeId: options.routeId ?? '/',
+      root,
+      hmr: options.hmr ?? false,
+      deleteNodes: options.deleteNodes,
+      pluginOptions: options.pluginOptions,
+      tsconfig: options.tsconfig,
+      prebundle: options.prebundle,
+      // A function option (e.g. `splitBehavior`) by its source: two routes
+      // with different functions get different hosts
+    },
+    (_, value: unknown) =>
+      typeof value === 'function' ? `function ${String(value)}` : value,
+  )
 }
 
 /** The router plugin's options for a route app. */
@@ -429,11 +457,15 @@ async function startHost(
       }),
       ...(root ? {} : { '__root.tsx': rootRoute(target) }),
       [probeFile]: probeSource(target),
+      [entryFile]: entrySource(options.filename ?? 'route.tsx'),
       ...files,
     },
     client: true,
     config: {
-      optimizeDeps: { noDiscovery: true, include: prebundled[target] },
+      optimizeDeps: {
+        noDiscovery: true,
+        include: [...prebundled[target], ...(options.prebundle ?? [])],
+      },
     },
     plugins: ({ root: appRoot }) => [
       ...(options.plugins?.before ?? []),
@@ -502,7 +534,7 @@ const requested = () => probe.appRequests()
 /** An app file the test wrote, as the page imports it (the instance the route gets). */
 const app = (file) => import(${JSON.stringify('/')} + file.replace(/^\\.?\\//, ''))
 ${before}
-const exports = await import(routeUrl)
+const exports = (await import(${JSON.stringify(`/${entryFile}`)})).route
 const Route = exports.Route
 const options = Route?.options
 const trigger = (option) => probe.trigger(Route, option)
@@ -606,6 +638,7 @@ export async function loadRoute(
   const files = { ...options.files, [filename]: code }
   const own = new Set(Object.keys(options.files ?? {}).map(appUrl))
   own.add(appUrl(probeFile))
+  own.add(appUrl(entryFile))
   if (!root) {
     own.add(appUrl('__root.tsx'))
   }
