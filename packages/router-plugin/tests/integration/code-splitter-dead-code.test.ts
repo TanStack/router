@@ -13,7 +13,7 @@ type BundlerName = 'vite' | 'rspack' | 'webpack'
 
 const unusedFunctions = `${head}function helper() { return 'helper' }
 function unused() { return 'MARK_UNUSED_END' + helper() }
-function ping(): number { return pong() + 'MARK_PING_END'.length }
+function ping(): number { return pong() + ('MARK_PING_END' + Math.random()).length }
 function pong(): number { return ping() }
 export const Route = createFileRoute('/')({ component: () => <p>{helper()}</p> })
 `

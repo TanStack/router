@@ -785,11 +785,15 @@ export const Route = createFileRoute('/')({
       ).toEqual(['<p>page</p>', '<i>MARK_NF</i>'])
       const loaded = await route.loadedBy('component')
       expect(loaded.some((code) => holdsMarker(code, 'MARK_NF'))).toBe(false)
-      // ... but in what the notFoundComponent needs (split, or left in the
-      // route module, J2.8)
-      const notFound = (await route.isLazy('notFoundComponent'))
-        ? await route.loadedBy('notFoundComponent')
-        : await route.eagerModules()
+      // ... but in what the notFoundComponent needs: its split code, or the
+      // modules that load with the route (left in the route module, J2.8, or
+      // an exported binding a split chunk imports back from it)
+      const notFound = [
+        ...(await route.eagerModules()),
+        ...((await route.isLazy('notFoundComponent'))
+          ? await route.loadedBy('notFoundComponent')
+          : []),
+      ]
       expect(notFound.some((code) => holdsMarker(code, 'MARK_NF'))).toBe(true)
     },
   )

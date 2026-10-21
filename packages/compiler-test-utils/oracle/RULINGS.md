@@ -153,8 +153,9 @@ J2.5, §5.3.
 
 ### D9: deprecated `assert` import attributes
 
-Keep supporting `import … assert { type: 'json' }`; it comes out as `with`. Support may be dropped once nobody uses
-it. Clause: J2.17.
+Keep supporting `import … assert { type: 'json' }`: the import keeps working wherever it lands. The printed keyword
+(`assert` or `with`) is free, since no public host observes it (coordinator 2026-10-21). Support may be dropped once
+nobody uses it. Clause: J2.17.
 
 ### D10: Solid and Vue split components across hot updates
 
