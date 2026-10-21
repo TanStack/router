@@ -1455,7 +1455,11 @@ export function recordViteModules(
     transform: {
       order: 'post' as const,
       handler(code: string, id: string) {
-        recordModule(parsed, id.replace(/[?#].*$/, ''), code)
+        // By the module's id, query included: one file served as several
+        // modules (a split route, `file.tsx?tsr-split=...`) is several
+        // modules, each with its own code (a module with a query has no
+        // file of its own: it counts as virtual)
+        recordModule(parsed, id, code)
         return null
       },
     },

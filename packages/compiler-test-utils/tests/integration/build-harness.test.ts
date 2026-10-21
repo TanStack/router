@@ -864,6 +864,51 @@ export const read = () => /=>/.test(RETURN.toString())
     },
     timeout,
   )
+
+  // A splitting compiler serves one file as several modules (`a.js` and
+  // `a.js?split`): the evidence is per module, so the binding the split
+  // module keeps does not hide the dangling read the other ships.
+  test(
+    'a file served as two modules: a dangling read in one is not hidden by the binding in the other',
+    async () => {
+      await expect(
+        bundleApp({
+          bundler: 'vite',
+          env: 'client',
+          entry: 'entry.js',
+          files: {
+            'entry.js': `import { read } from './a.js'
+export const run = () => read()
+`,
+            'a.js': `export const read = () => 'MARK'\n`,
+          },
+          plugins: {
+            vite: () => [
+              {
+                name: 'splits-a-binding-away',
+                transform(_code: string, id: string) {
+                  if (id.endsWith('/a.js')) {
+                    return `import './a.js?split'
+export const read = () => splitLost
+`
+                  }
+                  return id.endsWith('/a.js?split')
+                    ? `const splitLost = 1
+export const Component = () => splitLost
+`
+                    : null
+                },
+              },
+            ],
+          },
+        }),
+      ).rejects.toMatchObject({
+        name: 'DanglingNameError',
+        names: { 'entry.mjs': ['splitLost'] },
+      })
+    },
+    timeout,
+  )
 })
 
 describe('client runs in the browser', () => {

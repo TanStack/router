@@ -1284,8 +1284,9 @@ const viteClientStub = {
  * @deprecated Judges client code in Node with an inert `/@vite/client` stub
  * and the custom linker of `./module-linker` (RULES-AUDIT §2.D #7, N24):
  * HMR wiring never runs, and a client artifact is not run where it runs.
- * Use `runInPage` of `./plugin-host` (the served module in the shared
- * Chromium page) or `createDevServer({ browser: true })` with `openPage`.
+ * Use `runClient` of `./plugin-host` (or `runInPage` of `./browser`: the
+ * served module in the shared Chromium page) or `createDevServer({ browser:
+ * true })` with `openPage`.
  * Kept until its remaining callers move (listed in
  * validation/REPAIR/A2.md): start-plugin-core
  * integration/start-compiler-dev-server.test.ts and
