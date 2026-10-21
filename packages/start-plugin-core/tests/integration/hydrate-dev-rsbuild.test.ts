@@ -9,7 +9,10 @@
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { pluginReact } from '@rsbuild/plugin-react'
-import { startRsbuildStartDevServer } from '../rsbuild-dev-server'
+import {
+  reportedErrors,
+  startRsbuildStartDevServer,
+} from '../rsbuild-dev-server'
 import {
   editLoadedChild,
   expectEditsReached,
@@ -41,7 +44,7 @@ export const Route = createFileRoute('/')({ component: Widgets })
           'src/widgets.tsx': reactWidgets('<i>v1</i>', 'capture-v1'),
         },
       })
-      expect(server.errors).toEqual([])
+      expect(reportedErrors(server)).toEqual([])
       const browser = await openPage(server.url!, {
         registerCleanup: onTestFinished,
       })
@@ -49,7 +52,7 @@ export const Route = createFileRoute('/')({ component: Widgets })
         selector: '[data-testid=hydrated]',
       })
       expectEditsReached(await editLoadedChild(server, browser, reactWidgets))
-      expect(server.errors).toEqual([])
+      expect(reportedErrors(server)).toEqual([])
       expect(browser.loads()).toBe(1)
       expect(browser.errors).toEqual([])
     },
@@ -74,7 +77,7 @@ export const Route = createFileRoute('/')({ component: Widgets })
           'src/widgets.tsx': solidWidgets('<i>v1</i>', 'capture-v1'),
         },
       })
-      expect(server.errors).toEqual([])
+      expect(reportedErrors(server)).toEqual([])
       const browser = await openPage(server.url!, {
         registerCleanup: onTestFinished,
       })
@@ -82,7 +85,7 @@ export const Route = createFileRoute('/')({ component: Widgets })
         selector: '[data-testid=hydrated]',
       })
       expectEditsReached(await editLoadedChild(server, browser, solidWidgets))
-      expect(server.errors).toEqual([])
+      expect(reportedErrors(server)).toEqual([])
       expect(browser.loads()).toBe(1)
       expect(browser.errors).toEqual([])
     },

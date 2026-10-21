@@ -1,6 +1,15 @@
+/**
+ * Harness control (SPEC §8): not part of the compiler test corpus. It
+ * checks the original-location oracle of
+ * `importProtection/original-location.ts` on fixed sources and reports; the
+ * integration tests that use it decide the compiler's outcomes.
+ */
 import { expect, test } from 'vitest'
-import { expectOriginalFrame, originalLocation } from './original-location'
-import type { ViolationReport } from './violation-report'
+import {
+  expectOriginalFrame,
+  originalLocation,
+} from '../../importProtection/original-location'
+import type { ViolationReport } from '../../importProtection/violation-report'
 
 const source = `import { secret } from './secret.server' /* ORIGINAL_IMPORT */
 export const read = () => secret() /* ORIGINAL_USE */`
@@ -50,6 +59,7 @@ test.each([1, 2])('accepts a minimal original frame at line %s', (line) => {
     importer: location,
     specifier: './secret.server',
     trace: [],
+    suggestions: [],
     text: '',
     code: {
       line,

@@ -2,31 +2,38 @@
  * Helpers of the import-protection tests that run Start's import protection
  * on a real app.
  *
- * `startProtectedDevServer` is the focused adapter harness: a Vite dev
- * server with Start's import-protection Vite plugin wired by hand after the
- * Start compiler, like the Start plugin orders them, with the environments,
- * entries and options a test chooses. It shows what the adapter does; that
- * Start's whole plugin wires it (its entries, its provider environment, the
- * `importProtection` option of `tanstackStart()`) is checked through
- * `startDevServer({ start })` (dev.test.ts, "with Start's whole plugin").
+ * `startProtectedDevServer` is a Vite dev server with Start's whole public
+ * Vite plugin (`startDevServer`: `tanStackStartVite` of the built package),
+ * configured through Start's public options only: `importProtection`, and
+ * the app's router entry (`router.entry`, default `src/entry.ts` for these
+ * fixtures), the module every client module of a Start app is reached from.
+ * The start entry `src/start.ts` is Start's default.
  *
  * The violations a run reports are read two ways: structured, as
  * `onViolation` receives them (`server.violations`), and as the text the
- * user sees, through the adapter of `violation-report.ts`
+ * user sees, on every channel, through the reader of `violation-report.ts`
  * (`reportedViolations`, `violationTexts`, `violationReports`).
  */
+import { readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import path from 'node:path'
-import { expect } from 'vitest'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import react from '@vitejs/plugin-react'
+import { expect, onTestFinished } from 'vitest'
+import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import {
   expectRelevantLocation,
+  findDiagnostics,
   parseLocation,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { importProtectionPlugin } from '../../src/vite/import-protection-plugin/plugin'
+import {
+  workspacePackage,
+  workspacePackageLinks,
+} from '@tanstack/compiler-test-utils/workspace-packages'
 import { startDevServer } from '../dev-server'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
-import type { ImportProtectionOptions } from '../../src/schema'
-import type { ImportProtectionPluginOptions } from '../../src/vite/import-protection-plugin/types'
-import type { ViolationInfo } from '../../src/import-protection/trace'
+import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
+import type { ImportProtectionOptions, ViolationInfo } from './public-types'
 import type { StartDevServerOptions } from '../dev-server'
 import type { PluginOption } from 'vite'
 
@@ -45,30 +52,28 @@ export type {
   ExpectedViolation,
   ReportedViolation,
 } from './violation-report'
+export type { ImportProtectionOptions, ViolationInfo } from './public-types'
 
 export interface ProtectedDevServerOptions {
   /** Serve actual dependencies and an HTTP origin for client consumers. */
   browser?: boolean
   /**
-   * The app's router entry (relative to the app root), registered with
-   * import protection like `tanStackStart()` registers the app's
-   * `src/router.tsx`: the module every client module of a Start app is
-   * reached from. Default `src/entry.ts`. The start entry `src/start.ts` is
-   * registered when the app has one.
+   * The app's router entry (relative to the app root, in `src`): Start's
+   * public `router.entry` option, the module every client module of a Start
+   * app is reached from. Default `src/entry.ts`.
    */
   router?: string
-  /**
-   * The server fn provider environment, when it is not `ssr` (e.g. `rsc`):
-   * a third, server environment of the dev server.
-   */
-  providerEnvironment?: string
-  /** Other plugins of the app, after import protection. */
+  /** Other plugins of the app, after Start's. */
   plugins?: Array<PluginOption>
   /** Vite configuration of the app (e.g. `server.warmup`). */
   config?: StartDevServerOptions['config']
   /**
-   * Bundles the client from this entry (Vite's full-bundle dev,
-   * `experimental.bundledDev`): `server.clientBundle()`.
+   * Vite's full-bundle dev (`experimental.bundledDev`): Rolldown bundles the
+   * client from Start's own client entry (the bundle input Start's plugin
+   * configures), which imports the app's client entry: `src/client.ts`
+   * when the app has one, else one that imports `entry` (as a real client
+   * entry reaches the router entry through `StartClient`).
+   * `server.clientBundle()` gives the bundle.
    */
   bundledDev?: StartDevServerOptions['bundledDev']
 }
@@ -82,10 +87,9 @@ export interface ProtectedDevServer extends DevServer {
 }
 
 /**
- * Starts a Vite dev server (`startDevServer`) on an app of `files` with
- * Start's import protection, configured by `importProtection` (Start's
- * `importProtection` option; source directory `src`), and with Start's
- * entries registered (`options.router`).
+ * Starts a Vite dev server with Start's plugin (`startDevServer`) on an app
+ * of `files`, with Start's `importProtection` option `importProtection`
+ * (source directory `src`) and the app's router entry `options.router`.
  */
 export async function startProtectedDevServer(
   files: Record<string, string>,
@@ -94,18 +98,10 @@ export async function startProtectedDevServer(
 ): Promise<ProtectedDevServer> {
   const {
     router = 'src/entry.ts',
-    providerEnvironment = 'ssr',
     plugins = [],
     config = {},
     bundledDev,
   } = options
-  const environments = [
-    { name: 'client', type: 'client' as const },
-    { name: 'ssr', type: 'server' as const },
-    ...(providerEnvironment === 'ssr'
-      ? []
-      : [{ name: providerEnvironment, type: 'server' as const }]),
-  ]
   const violations: Array<ViolationInfo> = []
   const userOnViolation = importProtection.onViolation
   const recording: ImportProtectionOptions = {
@@ -115,36 +111,112 @@ export async function startProtectedDevServer(
       return userOnViolation?.(info)
     },
   }
+  const hasClientEntry = Object.keys(files).some((file) =>
+    /^src\/client\.[cm]?[jt]sx?$/.test(file),
+  )
   const server = await startDevServer({
-    files,
+    files: {
+      ...(bundledDev &&
+        !hasClientEntry && {
+          'harness/client-entry.ts': `import ${JSON.stringify(
+            `../${bundledDev.entry.replace(/\.[cm]?[jt]sx?$/, '')}`,
+          )}\n`,
+        }),
+      ...files,
+    },
     browser: options.browser,
     bundledDev,
     config,
-    // The Start compiler compiles the provider environment too, and creates
-    // it as a server environment.
-    environments,
-    providerEnvName: providerEnvironment,
-    plugins: ({ root }) => [
-      importProtectionPlugin({
-        getConfig: (() => ({
-          startConfig: { importProtection: recording },
-          resolvedStartConfig: {
-            srcDirectory: path.join(root, 'src'),
-            routerFilePath: path.join(root, router),
-            startFilePath:
-              'src/start.ts' in files
-                ? path.join(root, 'src/start.ts')
-                : undefined,
-          },
-        })) as unknown as ImportProtectionPluginOptions['getConfig'],
-        framework: 'react',
-        environments,
-        providerEnvName: providerEnvironment,
-      }),
-      ...plugins,
-    ],
+    start: {
+      importProtection: recording,
+      router: { entry: path.posix.relative('src', router) },
+    },
+    // A React app's plugin: full-bundle dev needs its Refresh runtime.
+    plugins: bundledDev ? [react(), ...plugins] : plugins,
   })
   return Object.assign(server, { violations })
+}
+
+/**
+ * The file a package's `package.json` exports for `subpath` (its `import`
+ * condition), as Node resolves an app's import of it.
+ */
+function exportedFile(root: string, subpath: string): string {
+  const manifest = JSON.parse(
+    readFileSync(path.join(root, 'package.json'), 'utf8'),
+  ) as {
+    exports: Record<string, string | { import?: unknown; default?: unknown }>
+  }
+  const entry = manifest.exports[subpath]!
+  const target =
+    typeof entry === 'string'
+      ? entry
+      : typeof entry.import === 'string'
+        ? entry.import
+        : ((entry.import as { default?: string } | undefined)?.default ??
+          (entry.default as string))
+  return path.join(root, target)
+}
+
+/**
+ * Starts a Vite dev server on a React Start app with RSC enabled, the way
+ * its `vite.config.ts` configures it: `tanstackStart({ rsc: { enabled:
+ * true }, importProtection, router })` of the built
+ * `@tanstack/react-start/plugin/vite`, Vite's RSC plugin
+ * (`@vitejs/plugin-rsc`, as `@tanstack/react-start-rsc` installs it) and
+ * `@vitejs/plugin-react`. Its server fn provider environment is `rsc`, a
+ * third environment beside `client` and `ssr`. `@tanstack/react-start`,
+ * `@tanstack/react-start-rsc` and `@vitejs/plugin-rsc` are linked into the
+ * app (it imports them, as an installed app does).
+ */
+export async function startRscProtectedDevServer(
+  files: Record<string, string>,
+  importProtection: ImportProtectionOptions = {},
+  options: { router?: string } = {},
+): Promise<DevServer> {
+  const { router = 'src/entry.ts' } = options
+  const reactStart = workspacePackage('@tanstack/react-start')
+  const reactStartRsc = workspacePackage('@tanstack/react-start-rsc')
+  const rscPluginRoot = path.dirname(
+    createRequire(path.join(reactStartRsc, 'package.json')).resolve(
+      '@vitejs/plugin-rsc/package.json',
+    ),
+  )
+  const { tanstackStart } = (await import(
+    pathToFileURL(exportedFile(reactStart, './plugin/vite')).href
+  )) as { tanstackStart: (options?: Record<string, unknown>) => PluginOption }
+  const { default: rsc } = (await import(
+    pathToFileURL(exportedFile(rscPluginRoot, '.')).href
+  )) as { default: () => PluginOption }
+  return createDevServer({
+    dir: path.dirname(path.dirname(fileURLToPath(import.meta.url))),
+    prefix: '.start-rsc-dev-server-',
+    registerCleanup: onTestFinished,
+    files: {
+      'src/router.tsx': `export const getRouter = () => undefined\n`,
+      'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute()
+`,
+      ...files,
+    },
+    symlinks: {
+      ...workspacePackageLinks([
+        '@tanstack/react-start',
+        '@tanstack/react-start-rsc',
+      ]),
+      'node_modules/@vitejs/plugin-rsc': rscPluginRoot,
+    },
+    config: { appType: 'custom' },
+    plugins: [
+      tanstackStart({
+        rsc: { enabled: true },
+        importProtection,
+        router: { entry: path.posix.relative('src', router) },
+      }),
+      rsc(),
+      react(),
+    ],
+  })
 }
 
 /**
@@ -211,6 +283,55 @@ export function expectMarkerViolation(
   })
   for (const file of [marker.file, use.file]) {
     expect(report.text).toContain(file)
+  }
+}
+
+/**
+ * What a dev server reported, on any channel (`server.diagnostics`: the
+ * console, the process streams, Vite's logger), as a warning or an error
+ * naming one of `files` (relative to the app root, or absolute), from
+ * `since` (a `server.diagnostics.length` mark) on: for checks that nothing
+ * is reported about a module, whatever the report's wording or layout
+ * (SPEC §5.7, J6.12), next to the report reader's check.
+ */
+export function problemsNaming(
+  server: Pick<DevServer, 'diagnostics' | 'root'>,
+  files: Array<string>,
+  since = 0,
+): Array<string> {
+  const reported = server.diagnostics
+    .slice(since)
+    .filter(({ severity }) => severity !== 'info') as Array<Diagnostic>
+  return [
+    ...new Set(
+      files.flatMap((file) =>
+        findDiagnostics(reported, { file, root: server.root }).map(
+          ({ text }) => text,
+        ),
+      ),
+    ),
+  ]
+}
+
+/**
+ * What a failed dev load reported: the rejection and everything the server
+ * reported on any channel since `since` (a `server.diagnostics.length`
+ * mark). A compiler may print the report on the console and reject with a
+ * short error (SPEC §5.7); the report reader reads both.
+ */
+export function failureOutput(
+  error: Error,
+  server: Pick<DevServer, 'diagnostics' | 'root'>,
+  since: number,
+) {
+  return {
+    root: server.root,
+    diagnostics: [
+      { text: error.message },
+      ...server.diagnostics
+        .slice(since)
+        .filter(({ severity }) => severity !== 'info'),
+    ],
   }
 }
 

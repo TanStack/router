@@ -12,12 +12,12 @@
  */
 import { afterAll, describe, expect, test } from 'vitest'
 import { originalFrameOf } from '@tanstack/compiler-test-utils/build-harness'
+import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import {
-  captureThrow,
   diagnosticPosition,
   expectDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { buildStart } from '../build-harness'
+import { StartBuildError, buildStart } from '../build-harness'
 import type { StartBuild, StartBundler } from '../build-harness'
 
 const timeout = 60_000
@@ -494,24 +494,18 @@ export function hydrateBuildSuite(bundler: StartBundler) {
     )
 
     // Children the compiler cannot extract fail the build with an error that
-    // names the user's file and the line of the boundary, and the unsafe
-    // pattern (SPEC J5.5, G5; what the message must say besides:
-    // hydrate-boundary-forms.test.ts "children that cannot be split").
+    // names the user's file and the line of the boundary, and explains the
+    // cause in its own words (SPEC J5.5, G5, §5.7: no wording is required;
+    // what the message must say besides: hydrate-boundary-forms.test.ts
+    // "children that cannot be split"). Every channel of the failed build is
+    // read (a compiler may print the details and fail with a short error).
     // Source: FIX-PLAN HYD-07 (file + position, A9)
     test.each([
-      {
-        name: 'a function child',
-        children: '{() => <p>child</p>}',
-        pattern: /function/i,
-      },
-      {
-        name: 'a hook call',
-        children: '<p>{useThing()}</p>',
-        pattern: /\bhooks?\b/i,
-      },
+      { name: 'a function child', children: '{() => <p>child</p>}' },
+      { name: 'a hook call', children: '<p>{useThing()}</p>' },
     ])(
       'client: $name in a boundary fails the build, naming the file and line',
-      async ({ children, pattern }) => {
+      async ({ children }) => {
         const page = `import { Hydrate } from '@tanstack/react-start'
 import { idle } from '@tanstack/react-start/hydration'
 import { useThing } from '../hooks'
@@ -523,26 +517,28 @@ export function Page() {
   )
 }
 `
-        const diagnostics = await captureThrow(() =>
-          buildStart({
-            bundler,
-            entry,
-            files: {
-              ...pageEntries,
-              'src/hooks.ts': `import { useId } from 'react'\nexport const useThing = () => useId()\n`,
-              'src/pages/unsafe.tsx': page,
-              'src/pages.ts': `export { Page as unsafe } from './pages/unsafe'\n`,
-            },
-          }),
+        const failure = await buildStart({
+          bundler,
+          entry,
+          files: {
+            ...pageEntries,
+            'src/hooks.ts': `import { useId } from 'react'\nexport const useThing = () => useId()\n`,
+            'src/pages/unsafe.tsx': page,
+            'src/pages.ts': `export { Page as unsafe } from './pages/unsafe'\n`,
+          },
+        }).then(
+          () => undefined,
+          (error: unknown) => error,
         )
-        const diagnostic = expectDiagnostic(diagnostics, {
+        expect(failure, 'the build fails').toBeInstanceOf(StartBuildError)
+        expectDiagnostic(problems((failure as StartBuildError).diagnostics), {
           severity: 'error',
           file: 'src/pages/unsafe.tsx',
           distinctFrom: ['src/pages.ts'],
           position: { line: diagnosticPosition(page, '<Hydrate').line },
           source: page,
+          explains: true,
         })
-        expect(diagnostic.text).toMatch(pattern)
       },
       timeout,
     )

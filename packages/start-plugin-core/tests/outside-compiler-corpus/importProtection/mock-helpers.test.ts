@@ -1,23 +1,22 @@
 /**
- * Controls of the mock helpers (`mock-helpers.ts`): the safe-mock probe
- * accepts the mock import protection serves and rejects real values and
- * leaking stand-ins, in this process and serialised into a script; an
- * importer evaluated with a denied import gets mocks for exactly what it
- * uses from that import, and the self-contained mock of a denied file
- * exposes its exports as mocks.
+ * Harness control (SPEC §8): not part of the compiler test corpus. It
+ * checks the safe-mock probe of `importProtection/mock-helpers.ts` on fixed
+ * values, and the in-process evaluators of `mock-modules.ts` (today's mock
+ * generators). The corpus judges mocks through the probe on real apps
+ * (`integration/importProtection/mock-shapes.test.ts` and the other
+ * import-protection integration tests).
  */
 import vm from 'node:vm'
 import { describe, expect, test } from 'vitest'
 import {
   describeValue,
   describeValuePrelude,
-  evaluateWithMock,
   expectSafeMock,
   isSafeMock,
   probeMock,
   safeMock,
-  selfMock,
-} from './mock-helpers'
+} from '../../importProtection/mock-helpers'
+import { evaluateWithMock, selfMock } from './mock-modules'
 
 describe('the safe-mock probe', () => {
   /** A stand-in of a mock: a recursive Proxy whose text is `label`. */

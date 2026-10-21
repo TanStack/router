@@ -5,8 +5,10 @@
  * stub and for every server module derived from the file (the SSR caller,
  * the provider the server fn resolver loads), and a throw's position in
  * each resolves to the user's file and line. The derived modules are found
- * by the file they come from (Vite: the SSR module graph after a call by
- * id; Rsbuild: the emitted files), never by their ids (SPEC §5.3). Maps are
+ * by what they hold, whatever they are (Vite: every module the SSR
+ * environment served for a call by id; Rsbuild: the emitted files), never
+ * by their ids or by the file a module graph attaches them to (SPEC §5.3).
+ * Maps are
  * read with the standard consumer (`@tanstack/compiler-test-utils/
  * source-maps`).
  * Source: FIX-PLAN V2-15b (#6667, #3828 as quoted).
@@ -25,7 +27,10 @@ import {
   startDevServer,
   startServerEntryFiles,
 } from '../dev-server'
-import { startRsbuildStartDevServer } from '../rsbuild-dev-server'
+import {
+  reportedErrors,
+  startRsbuildStartDevServer,
+} from '../rsbuild-dev-server'
 import type { AnySourceMap } from '@tanstack/compiler-test-utils/source-maps'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
@@ -107,15 +112,14 @@ describe('vite dev server', () => {
         ),
       ).toEqual(['MARK_CLIENT_THROW'])
       // A call by id loads the server modules of the file: the SSR caller
-      // and the provider the resolver imports.
+      // and whatever module the resolver runs the handler from. Every module
+      // the SSR environment served is checked.
       const { getSecret } = await server.import('/src/fail.ts')
       await expect(
         callServerFnById(server, getSecret.serverFnMeta.id),
       ).rejects.toThrow(/MARK_HANDLER_THROW/)
       const ssr = server.vite.environments.ssr
-      const modules = [
-        ...(ssr.moduleGraph.getModulesByFile(server.file('src/fail.ts')) ?? []),
-      ]
+      const modules = [...ssr.moduleGraph.idToModuleMap.values()]
       const checked: Array<string> = []
       for (const module of modules) {
         const result = module.transformResult
@@ -134,7 +138,7 @@ describe('vite dev server', () => {
           checked.push(module.url)
         }
       }
-      // The handler's throw lives in at least one server module of the file.
+      // The handler's throw lives in at least one server module.
       expect(checked.length, checked.join(', ')).toBeGreaterThanOrEqual(1)
       expect(
         modules.some((module) =>
@@ -180,7 +184,7 @@ describe('rsbuild dev server', () => {
         config: { output: { sourceMap: { js: 'source-map' } } },
       })
       await server.settle()
-      expect(server.errors).toEqual([])
+      expect(reportedErrors(server)).toEqual([])
       const checked: Record<string, Array<string>> = {}
       for (const environment of ['client', 'ssr']) {
         for (const [file, code] of Object.entries(

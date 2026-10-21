@@ -1,14 +1,15 @@
 /**
  * Rsbuild dev-server harness of the Start compiler: an Rsbuild dev server
- * with the Start compiler's Rsbuild transforms (`client` environment) on a
- * temporary app, through the shared Rsbuild dev-server harness
- * (`@tanstack/compiler-test-utils/rsbuild-dev-server`).
+ * with Start's whole Rsbuild plugin, the BUILT public entry of this package
+ * (`tanStackStartRsbuild` of `@tanstack/start-plugin-core/rsbuild`, with the
+ * options `@tanstack/react-start` passes: client and SSR environments, SSR
+ * as the server fn provider), on a temporary app, through the shared Rsbuild
+ * dev-server harness (`@tanstack/compiler-test-utils/rsbuild-dev-server`).
+ * Rspack loads Start's loaders from the package, as in an installed app.
  * `@tanstack/react-start` is the real package (`startRuntimeLinks` of the
- * build harness). With `importProtection`, Start's Rsbuild import protection
- * also runs on the `client` environment. `runInClient()` and
- * `runRsbuildClient()` run the emitted client code in a real browser page of
- * the dev server (started with `clientPage`). The temporary apps live in
- * this directory.
+ * build harness). `runInClient()` and `runRsbuildClient()` run the emitted
+ * client code in a real browser page of the dev server (started with
+ * `clientPage`). The temporary apps live in this directory.
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -16,15 +17,13 @@ import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
 import { onTestFinished } from 'vitest'
-import { registerImportProtection } from '../src/rsbuild/import-protection'
-import { registerStartCompilerTransforms } from '../src/rsbuild/start-compiler-host'
-import { tanStackStartRsbuild } from '../src/rsbuild/plugin'
+import { tanStackStartRsbuild } from '@tanstack/start-plugin-core/rsbuild'
 import { startRuntimeLinks } from './build-harness'
-import { testLoaderFiles, useTestLoaders } from './rsbuild-test-loaders'
-import type { ImportProtectionOptions } from '../src/schema'
-import type { TanStackStartRsbuildInputConfig } from '../src/rsbuild/schema'
-import type { GenerateFunctionIdFnOptional } from '../src/start-compiler/types'
-import type { StartCompilerImportTransform } from '../src/types'
+import type {
+  StartCompilerImportTransform,
+  TanStackStartInputConfig,
+} from '../src'
+import type { TanStackStartRsbuildInputConfig } from '../src/rsbuild'
 import type { RsbuildPlugin } from '@rsbuild/core'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type {
@@ -33,72 +32,31 @@ import type {
 } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
+
 /**
- * Starts an Rsbuild dev server with the Start compiler on an app of `files`
- * (entry `src/entry.ts`), and with import protection configured by
- * `importProtection` when given (source directory `src`).
+ * Starts an Rsbuild dev server with Start's whole Rsbuild plugin
+ * (`startRsbuildStartDevServer`) on an app of `files` (its entry
+ * `src/entry.ts`), with Start's `importProtection` option and its
+ * `serverFns.generateFunctionId` option when given: the import-protection
+ * and server fn tests' shorthand of `start`.
  */
 export function startRsbuildDevServer(
   options: Omit<RsbuildDevServerOptions, 'dir' | 'plugins'> & {
-    importProtection?: ImportProtectionOptions
+    importProtection?: TanStackStartInputConfig['importProtection']
     /** Start's `serverFns.generateFunctionId` option. */
-    generateFunctionId?: GenerateFunctionIdFnOptional
+    generateFunctionId?: NonNullable<
+      TanStackStartInputConfig['serverFns']
+    >['generateFunctionId']
   },
 ): Promise<RsbuildDevServer> {
-  const { files, importProtection, generateFunctionId, ...devServerOptions } =
-    options
-  const entry: ClientEntry = { files: [], module: false }
-  return createRsbuildDevServer({
-    dir: harnessDir,
-    prefix: '.start-rsbuild-dev-server-',
-    registerCleanup: onTestFinished,
+  const { importProtection, generateFunctionId, ...devServerOptions } = options
+  return startRsbuildStartDevServer({
     ...devServerOptions,
-    config: {
-      environments: { client: {} },
-      // The server fn base Start's plugin defines, which Start's client
-      // runtime reads (the compiler alone defines nothing).
-      source: {
-        define: {
-          'process.env.TSS_SERVER_FN_BASE': JSON.stringify('/_serverFn/'),
-        },
-      },
-      ...devServerOptions.config,
+    start: {
+      ...(importProtection && { importProtection }),
+      ...(generateFunctionId && { serverFns: { generateFunctionId } }),
     },
-    symlinks: { ...startRuntimeLinks(), ...devServerOptions.symlinks },
-    files: {
-      ...testLoaderFiles,
-      ...files,
-    },
-    plugins: ({ root }) => [
-      {
-        name: 'start-compiler',
-        setup(api) {
-          registerStartCompilerTransforms(api, {
-            framework: 'react',
-            root,
-            environments: [{ name: 'client', type: 'client' }],
-            providerEnvName: 'ssr',
-            generateFunctionId,
-          })
-          if (importProtection) {
-            registerImportProtection(api, {
-              framework: 'react',
-              environments: [{ name: 'client', type: 'client' }],
-              getConfig: () => ({
-                startConfig: { importProtection },
-                resolvedStartConfig: {
-                  root,
-                  srcDirectory: path.join(root, 'src'),
-                },
-              }),
-            })
-          }
-        },
-      },
-      useTestLoaders(root),
-      recordClientEntry(entry),
-    ],
-  }).then((server) => withClientEntry(server, entry))
+  })
 }
 
 /**
@@ -116,6 +74,37 @@ const clientEntries = new WeakMap<object, ClientEntry>()
 function withClientEntry(server: RsbuildDevServer, entry: ClientEntry) {
   clientEntries.set(server, entry)
   return server
+}
+
+/**
+ * The initial JavaScript files of the `client` environment's entry as its
+ * last compile emitted them (Rspack's stats entrypoints, the configured
+ * input), relative to the client output directory: the files a page loads
+ * first. A dev server of this harness only.
+ */
+export function clientEntryFiles(
+  server: Pick<RsbuildDevServer, 'url'>,
+): Array<string> {
+  const entry = clientEntries.get(server)
+  if (!entry) {
+    throw new Error('not a dev server of this harness')
+  }
+  return entry.files.map((file) => file.replace(/^\/+/, ''))
+}
+
+/**
+ * The errors a dev server reported on every channel (the compilations, the
+ * console, the process streams; SPEC §5.7) since `since` (a length of its
+ * `diagnostics`), by text: what "nothing failed" reads.
+ */
+export function reportedErrors(
+  server: Pick<RsbuildDevServer, 'diagnostics'>,
+  since = 0,
+): Array<string> {
+  return server.diagnostics
+    .slice(since)
+    .filter(({ severity }) => severity === 'error')
+    .map(({ text }) => text)
 }
 
 /**
@@ -153,8 +142,9 @@ function recordClientEntry(entry: ClientEntry): RsbuildPlugin {
  * (`tanStackStartRsbuild`, with the options `@tanstack/react-start` passes):
  * client and SSR environments, SSR as the server fn provider, and the
  * generated server fn resolver. Both entries import `src/entry.ts`; the
- * server entry also imports the server fn resolver, as Start's server
- * handler does. `src/router.ts` and `src/routes/__root.tsx` are stubs unless
+ * server entry is Start's default one (`@tanstack/react-start/server-entry`,
+ * the app's HTTP handler, which reaches the server fns through Start's own
+ * resolver). `src/router.ts` and `src/routes/__root.tsx` are stubs unless
  * the app has them. With `framework: 'solid'`, Start's plugin gets the
  * Solid framework and the built `@tanstack/solid-start` and
  * `@tanstack/solid-router` are linked (Solid's JSX plugins come from
@@ -196,11 +186,9 @@ export function startRsbuildStartDevServer(
       ...devServerOptions.symlinks,
     },
     files: {
-      ...testLoaderFiles,
       'harness/client-entry.ts': `import '../src/entry'\n`,
       'harness/server-entry.ts': `import '../src/entry'
-import { getServerFnById } from '#tanstack-start-server-fn-resolver'
-export default { getServerFnById }
+export { default } from '@tanstack/${framework}-start/server-entry'
 `,
       'harness/start.ts': `export const startInstance = undefined\n`,
       'src/router.ts': `export const getRouter = () => undefined\n`,
@@ -224,7 +212,6 @@ export const Route = createRootRoute()
         },
         start,
       ),
-      useTestLoaders(root),
       recordClientEntry(entry),
     ],
   }).then((server) => withClientEntry(server, entry))

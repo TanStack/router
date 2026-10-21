@@ -30,7 +30,7 @@ import {
 import { reportedImporters, runRsbuildSsr, ssrNodeOutput } from './v2-hosts'
 import type { ReportOutput } from '../../importProtection/violation-report'
 import type { StartBuild } from '../../build-harness'
-import type { ImportProtectionOptions } from '../../../src/schema'
+import type { ImportProtectionOptions } from '../../importProtection/public-types'
 
 const timeout = 60_000
 const compileTimeout = timeout
@@ -216,11 +216,10 @@ describe.each(startBundlers)('%s build (mock mode)', (bundler) => {
   test(
     'client.files replaces the default file rule of the client',
     async () => {
-      const { client } = await build()
-      const { result } = await client.run(readScript(usesOf.client))
-      expect(outcome('client', result as Read, client.warnings)).toEqual(
-        expected.client,
-      )
+      const built = await build()
+      const { result } = await built.client.run(readScript(usesOf.client))
+      // (what the build reported, on every channel)
+      expect(outcome('client', result as Read, built)).toEqual(expected.client)
     },
     timeout,
   )
@@ -228,11 +227,10 @@ describe.each(startBundlers)('%s build (mock mode)', (bundler) => {
   test(
     'server.files replaces the default file rule of the server',
     async () => {
-      const { ssr } = await build()
-      const { result } = await ssr.run(readScript(usesOf.server))
-      expect(outcome('server', result as Read, ssr.warnings)).toEqual(
-        expected.server,
-      )
+      const built = await build()
+      const { result } = await built.ssr.run(readScript(usesOf.server))
+      // (what the build reported, on every channel)
+      expect(outcome('server', result as Read, built)).toEqual(expected.server)
     },
     timeout,
   )

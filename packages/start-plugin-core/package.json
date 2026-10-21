@@ -63,6 +63,7 @@
       "test:integration": {
         "dependsOn": [
           "^build",
+          "build",
           {
             "projects": [
               "@tanstack/react-start",
@@ -75,6 +76,7 @@
       "test:implementation": {
         "dependsOn": [
           "^build",
+          "build",
           {
             "projects": [
               "@tanstack/react-start",

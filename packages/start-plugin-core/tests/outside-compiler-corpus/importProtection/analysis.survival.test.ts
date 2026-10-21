@@ -1,8 +1,16 @@
+/**
+ * Internal control (SPEC §8): not part of the compiler test corpus. It
+ * compiles each case with today's Start compiler (`compileFor` of
+ * `outside-compiler-corpus/legacy/regression-helpers.ts`) and reads whether the output still imports the
+ * denied source; a correct compiler may keep a dead import that the
+ * bundler or import protection drops. The outcome (only surviving edges are
+ * reported, SPEC J6.4) is decided on dev servers with Start's whole plugin:
+ * `integration/importProtection/boundary-edges.test.ts` (each of these
+ * boundary shapes, Vite and Rsbuild) and
+ * `integration/importProtection/reported-location.test.ts`.
+ */
 import { describe, expect, test } from 'vitest'
-import {
-  compileFor,
-  importSources,
-} from '../outside-compiler-corpus/legacy/regression-helpers'
+import { compileFor, importSources } from '../legacy/regression-helpers'
 
 // Whether the Start compiler keeps a module's import of a denied source in
 // the output of an environment: an import used only inside code the compiler

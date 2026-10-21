@@ -1,12 +1,16 @@
 /**
- * The mock modules import protection serves, evaluated as ES modules and
- * linked to the virtual modules the adapter resolves for them: what a mock
- * is when used (a safe mock, `mock-helpers.ts`), and that the dev mock of a
- * client violation reports each use through the browser console as
- * `mockAccess` says. Which names each mock exposes is covered by
- * analysis.exports.test.ts ("mock modules expose every importable name");
- * what the mocks of a real app do, by the mock-mode rows of
- * integration/importProtection/{build,dev}.test.ts.
+ * Internal control (SPEC §8): not part of the compiler test corpus. It
+ * evaluates today's generated mock modules and mock runtime in process (the
+ * silent mock, the self-contained mock, the dev self-denial module and mock
+ * edge with a runtime id built from a hand-made `ViolationInfo`, and the
+ * exact global names the silent mock leaves); a correct rewrite may mock
+ * otherwise. The outcomes are decided on real apps:
+ * `integration/importProtection/mock-access.test.ts` (Vite dev: safe mocks
+ * whatever `mockAccess`, each use reported with its severity naming the
+ * import, nothing with `off`), `integration/rsbuild/import-protection.test.ts`
+ * ("Rsbuild dev: mockAccess"), `integration/importProtection/build.test.ts`
+ * (mock mode) and `integration/importProtection/mock-shapes.test.ts` (what
+ * the mocks give, in dev and builds).
  */
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
@@ -15,15 +19,14 @@ import {
   generateSelfContainedMockModule,
   loadSilentMockModule,
   mockRuntimeModuleIdFromViolation,
-} from '../../src/import-protection/virtualModules'
+} from '../../../src/import-protection/virtualModules'
 import {
-  evaluateMockModule,
-  evaluateWithMock,
   expectMockAccess,
   expectSafeMock,
   warningsAndErrors,
-} from './mock-helpers'
-import type { ViolationInfo } from '../../src/import-protection/trace'
+} from '../../importProtection/mock-helpers'
+import { evaluateMockModule, evaluateWithMock } from './mock-modules'
+import type { ViolationInfo } from '../../../src/import-protection/trace'
 
 afterEach(() => {
   vi.restoreAllMocks()

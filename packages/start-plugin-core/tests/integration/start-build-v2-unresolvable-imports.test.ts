@@ -8,12 +8,13 @@
  * a Cloudflare app does, and Node's builtin is external anyway; the SSR run
  * provides the platform module the way the worker runtime would (a module
  * resolve hook of Node, registered by the SSR entry before any module of
- * the app links: the one stand-in, as the test process is no worker).
+ * the app links: the one stand-in, as the test process is no worker; its
+ * agreement with workerd is checked outside the corpus,
+ * `outside-compiler-corpus/start-build-v2-unresolvable-imports.test.ts`).
  * Source: FIX-PLAN V2-02 (start-fable SF-22/MW-7; #6185, #7460, #3990;
  * 1,007 corpus files, 241 with `cloudflare:workers`).
  */
 import { describe, expect, test } from 'vitest'
-import { runNodeProgram } from '@tanstack/compiler-test-utils/run-node'
 import {
   buildStart,
   callByIdExports,
@@ -21,6 +22,7 @@ import {
   requestsOfPrelude,
   startBundlers,
 } from '../build-harness'
+import { workerResolveHook } from './worker-resolve-hook'
 import type { StartBundler } from '../build-harness'
 
 const timeout = 60_000
@@ -39,24 +41,6 @@ export const readConfig = createServerFn()
   ])
 export const label = () => 'MARK_CLIENT_LABEL'
 `
-
-/** String-binding contract for the resolve hook, checked against workerd below; what the worker runtime provides for `cloudflare:workers`. */
-const workerEnvModule = `export const env = { SECRET: 'MARK_ENV_SECRET' }`
-
-const workerResolveHook = `import { registerHooks } from 'node:module'
-export const workerRequests = new Set()
-registerHooks({
-  resolve(specifier, context, next) {
-    if (specifier === 'cloudflare:workers') {
-      workerRequests.add(specifier)
-      return {
-        url: 'data:text/javascript,' + encodeURIComponent(${JSON.stringify(workerEnvModule)}),
-        shortCircuit: true,
-      }
-    }
-    return next(specifier, context)
-  },
-})`
 
 const files = {
   'src/platform.ts': platform,
@@ -141,31 +125,3 @@ return {
     timeout,
   )
 })
-
-// Internal harness contract (SPEC §8): the narrow resolve hook supplies a
-// string binding with the same module-import behaviour as real workerd.
-// Worker execution here is Miniflare's workerd (a test-only devDependency, the
-// version wrangler uses); it is not a second implementation of the platform
-// module.
-test('the cloudflare:workers resolve-hook binding agrees with workerd', async () => {
-  const { Miniflare } = await import('miniflare')
-  const worker = new Miniflare({
-    modules: true,
-    compatibilityDate: '2026-03-17',
-    bindings: { SECRET: 'MARK_ENV_SECRET' },
-    script: `import { env } from 'cloudflare:workers'
-export default { fetch() { return Response.json({ secret: env.SECRET, missing: env.MISSING ?? null }) } }`,
-  })
-  try {
-    const response = await worker.dispatchFetch('http://localhost/')
-    const actual = await response.json()
-    const { stdout } = await runNodeProgram(`${workerResolveHook}
-const { env } = await import('cloudflare:workers')
-const { existsSync } = await import('node:fs')
-console.log(JSON.stringify({ binding: { secret: env.SECRET, missing: env.MISSING ?? null }, delegated: existsSync(process.cwd()) }))`)
-    expect(JSON.parse(stdout)).toEqual({ binding: actual, delegated: true })
-    expect(actual).toEqual({ secret: 'MARK_ENV_SECRET', missing: null })
-  } finally {
-    await worker.dispose()
-  }
-}, 30_000)

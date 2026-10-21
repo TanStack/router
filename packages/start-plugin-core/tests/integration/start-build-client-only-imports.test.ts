@@ -58,11 +58,8 @@ describe.each(startBundlers)('%s build', (bundler) => {
 
   test('reports no import-protection violation', () => {
     expect(
-      reportedViolations([
-        ...build.client.warnings,
-        ...build.ssr.warnings,
-        ...build.ssr.consoleMessages,
-      ]),
+      // (everything the build reported, on every channel)
+      reportedViolations(build),
     ).toEqual([])
   })
 

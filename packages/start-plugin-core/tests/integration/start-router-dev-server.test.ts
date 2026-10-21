@@ -98,29 +98,6 @@ async function apiAnswers(server: DevServer, expected: string) {
   }
 }
 
-/**
- * Waits until the client's route tree imports `/src/routes/api.tsx`
- * (`present`) or not: the router generator handles an edit in the
- * background, so its change of the client tree may come after `write()`.
- */
-async function clientTreeHasApi(server: DevServer, present: boolean) {
-  const deadline = Date.now() + 10_000
-  for (;;) {
-    const served = Object.keys(
-      await server.load('/src/routeTree.gen.ts', { environment: 'client' }),
-    )
-    if (served.includes('/src/routes/api.tsx') === present) {
-      return
-    }
-    if (Date.now() > deadline) {
-      throw new Error(
-        `the client route tree ${present ? 'never got' : 'kept'} /src/routes/api.tsx within 10 s`,
-      )
-    }
-    await new Promise((resolve) => setTimeout(resolve, 50))
-  }
-}
-
 /** Waits until the dev server sent no HMR message for a while. */
 async function quiet(server: DevServer) {
   let count = server.hmr.length
@@ -191,11 +168,11 @@ describe('Vite dev: a route switching between page and server-only', () => {
         reloads,
       })
 
-      // Server-only -> page
-      await server.write({
+      // Server-only -> page (`edit`: the watcher reported every file the edit
+      // and the router generator wrote, and the server handled them)
+      await server.edit({
         'src/routes/api.tsx': api(`${handlers('y')}, ${component}`),
       })
-      await clientTreeHasApi(server, true)
       await quiet(server)
       await visitApi('MARK_API_PAGE')
 
@@ -211,9 +188,8 @@ describe('Vite dev: a route switching between page and server-only', () => {
       // page left on the route would reload into the handler's response)
       await browser.page.locator('[data-testid=to-page]').click()
       await browser.waitForText('MARK_PAGE', { selector: '#app' })
-      await server.write({ 'src/routes/api.tsx': api(handlers('z')) })
+      await server.edit({ 'src/routes/api.tsx': api(handlers('z')) })
       await apiAnswers(server, 'z')
-      await clientTreeHasApi(server, false)
       await quiet(server)
       await visitApi('MARK_NOT_FOUND')
       expect(browser.errors).toEqual([])
@@ -233,10 +209,9 @@ describe('Vite dev: a route switching between page and server-only', () => {
         plugins: [react()],
         files: { ...pageAppFiles, 'src/routes/api.tsx': api(handlers('x')) },
       })
-      await server.write({
+      await server.edit({
         'src/routes/api.tsx': api(`${handlers('x')}, ${component}`),
       })
-      await clientTreeHasApi(server, true)
       await quiet(server)
       const browser = await openPage(new URL('/page', server.url).href, {
         registerCleanup: onTestFinished,
@@ -323,31 +298,6 @@ export const Route = createRootRoute()
           (message) =>
             message.environment === 'client' && message.type === 'full-reload',
         )
-      /**
-       * Waits until the client's route tree imports `/src/routes/api.tsx`
-       * (`present`) or not: the router generator handles an edit in the
-       * background, so its change of the client tree may come after `write()`.
-       */
-      async function clientTreeHasApi(server: DevServer, present: boolean) {
-        const deadline = Date.now() + 10_000
-        for (;;) {
-          const served = Object.keys(
-            await server.load('/src/routeTree.gen.ts', {
-              environment: 'client',
-            }),
-          )
-          if (served.includes('/src/routes/api.tsx') === present) {
-            return
-          }
-          if (Date.now() > deadline) {
-            throw new Error(
-              `the client route tree ${present ? 'never got' : 'kept'} /src/routes/api.tsx within 10 s`,
-            )
-          }
-          await new Promise((resolve) => setTimeout(resolve, 50))
-        }
-      }
-
       /** Waits until the dev server sent no HMR message for a while. */
       const quiet = async () => {
         let count = server.hmr.length

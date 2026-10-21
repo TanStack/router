@@ -110,15 +110,6 @@ return {
   return { ids, ...(result as { ssrIds: unknown; results: unknown }) }
 }
 
-/** Code of every chunk of a build by file name. */
-const chunksOf = (build: StartBuild) =>
-  Object.fromEntries(
-    [...build.client.chunks, ...build.ssr.chunks].map((chunk) => [
-      chunk.fileName,
-      chunk.code,
-    ]),
-  )
-
 /** Each build's own agreement: ids are set, SSR agrees, each runs its handler. */
 function expectAgreement(observation: Awaited<ReturnType<typeof observe>>) {
   expect(observation.ids.a).not.toBe(observation.ids.b)
@@ -129,7 +120,7 @@ function expectAgreement(observation: Awaited<ReturnType<typeof observe>>) {
 describe.each(startBundlers)('%s build', (bundler) => {
   // Source: oracle-gaps H3; FIX-PLAN S01 (same root, repeated and reordered).
   test(
-    'the same app built again at the same root gives the same output, and the same ids in another discovery order',
+    'the same app built again at the same root gives the same ids and results, and the same ids in another discovery order',
     async () => {
       const first = await buildStart({
         bundler,
@@ -138,11 +129,12 @@ describe.each(startBundlers)('%s build', (bundler) => {
       })
       const firstObservation = await observe(first)
       expectAgreement(firstObservation)
-      const firstChunks = chunksOf(first)
-      // Built again, unchanged: the same output, byte for byte.
+      // Built again, unchanged: the same ids and results. (Equal bytes and
+      // chunk names are not required, SPEC §8; the implementation control
+      // outside-compiler-corpus/start-build-determinism.test.ts checks
+      // today's.)
       const again = await first.rebuild()
       expect(await observe(again)).toEqual(firstObservation)
-      expect(chunksOf(again)).toEqual(firstChunks)
       // The entry imports the modules in the opposite order: same ids.
       await expectDeterministic(
         [

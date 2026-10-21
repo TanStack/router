@@ -19,9 +19,11 @@ import {
   reportedViolations,
   violationLabel,
   violationReports,
+  violationTexts,
 } from '../../importProtection/start-apps'
+import { inEnvironment } from '../../importProtection/violation-report'
 import type { ExpectedViolation } from '../../importProtection/start-apps'
-import type { ImportProtectionOptions } from '../../../src/schema'
+import type { ImportProtectionOptions } from '../../importProtection/public-types'
 
 const timeout = 60_000
 
@@ -65,14 +67,13 @@ describe.each(startBundlers)('%s build', (bundler) => {
       entry,
       start: { importProtection },
     })
-    const toList = (output: string | Array<string>) =>
-      locatedImporters(output, files)
+    // What the build or its failure reported, on every channel
+    const toList = (output: unknown) => locatedImporters(output, files)
     try {
-      const { client, ssr } = await built
-      const warned = toList([...client.warnings, ...ssr.warnings])
+      const warned = toList(await built)
       return warned.length ? warned : 'built'
     } catch {
-      return toList((await rejection(built)).message)
+      return toList(await rejection(built))
     }
   }
 
@@ -82,7 +83,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
     test(
       "{ build: 'mock' }: the build mocks the import and warns",
       async () => {
-        const { client } = await buildStart({
+        const build = await buildStart({
           bundler,
           files: app,
           entry: 'src/entry.ts',
@@ -90,8 +91,10 @@ describe.each(startBundlers)('%s build', (bundler) => {
             importProtection: { behavior: { dev: 'error', build: 'mock' } },
           },
         })
-        expect(reportedViolations(client.warnings)).toHaveLength(1)
-        expectViolationsAt(client.warnings, [
+        const { client } = build
+        const reports = inEnvironment(build, 'client')
+        expect(reportedViolations(reports)).toHaveLength(1)
+        expectViolationsAt(reports, [
           {
             environment: 'client',
             use: locationIn('src/entry.ts', app['src/entry.ts'], 2, 'secret()'),
@@ -256,11 +259,14 @@ export const read = () => getRequest()
             },
           }),
         )
-        const reports = violationReports(error.message)
+        const reports = violationReports(error)
         expect(reports).not.toEqual([])
         for (const report of reports) {
-          // (the rule that matched is in the report)
-          expect(report.text).toContain('/^db-lib$/')
+          // The rule that matched is in the report: the pattern's source,
+          // however it is spelled (N16: not necessarily `String(regex)`;
+          // the exact spelling is an implementation test,
+          // outside-compiler-corpus/build-options-rule-spelling.test.ts).
+          expect(report.text).toContain('^db-lib$')
         }
       },
       timeout,
@@ -381,7 +387,7 @@ export const secret = () => 'MARK_SECRET'
             start: { importProtection: { client: { excludeFiles: [] } } },
           }),
         )
-        const [report, ...others] = violationReports(error.message)
+        const [report, ...others] = violationReports(error)
         expect(others).toEqual([])
         expect(report!.environment).toBe('client')
         expectMarkerViolation(report!, {
@@ -460,8 +466,8 @@ export const read = () => getRequest()
             },
           }),
         )
-        expect(reportedViolations(error.message)).toHaveLength(1)
-        expectViolationsAt(error.message, [
+        expect(reportedViolations(error)).toHaveLength(1)
+        expectViolationsAt(error, [
           {
             environment: 'client',
             use,
@@ -470,7 +476,7 @@ export const read = () => getRequest()
           },
         ])
         for (const name of names) {
-          expect(error.message).toContain(name)
+          expect(violationTexts(error).join('\n')).toContain(name)
         }
         expect(distinct(seen.map((info) => info.type))).toEqual([type])
       },
@@ -596,7 +602,7 @@ export const m = () => 'MARK_SECRET'
             start: { importProtection: { log: 'always' } },
           }),
         )
-        const reported = reportedViolations(error.message).map(
+        const reported = reportedViolations(error).map(
           ({ importer }) => importer,
         )
         const use: ExpectedViolation = {
@@ -604,9 +610,7 @@ export const m = () => 'MARK_SECRET'
           use: 'src/entry.ts:2:27',
           source: entry,
         }
-        expect(relevantViolations(error.message, [use])).toContain(
-          violationLabel(use),
-        )
+        expect(relevantViolations(error, [use])).toContain(violationLabel(use))
         expect(reported).toEqual(distinct(reported))
       },
       timeout,
@@ -632,8 +636,9 @@ export const m = () => 'MARK_SECRET'
           start: { importProtection },
         }),
       )
-      const [report, ...others] = violationReports(error.message)
+      const [report, ...others] = violationReports(error)
       expect(others).toEqual([])
+      // (from the entry to the importer, however the report orders it)
       return report!.trace.map(({ at }) => at.replace(/:\d+:\d+$/, ''))
     }
 

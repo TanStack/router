@@ -118,11 +118,14 @@ describe.each(startBundlers)('%s build (mock mode)', (bundler) => {
           dispose = cleanup
         },
       })
-      const { client } = await built
-      const { result } = await client.run(outcomeScript('entry.readMixed'))
+      const build = await built
+      const { result } = await build.client.run(
+        outcomeScript('entry.readMixed'),
+      )
       expect({
         ...(result as Omit<Outcome, 'reported'>),
-        reported: reportedImporters(client.warnings, 'client', app),
+        // (what the build reported, on every channel)
+        reported: reportedImporters(build, 'client', app),
       }).toEqual(expected)
     },
     timeout,
@@ -163,7 +166,10 @@ describe('rsbuild dev', () => {
         hmr: false,
         files: app,
       })
-      expect(server.errors).toEqual([])
+      // Nothing fails, on any channel
+      expect(
+        findDiagnostics(server.diagnostics, { severity: 'error' }),
+      ).toEqual([])
       const { result } = await captureConsole(() =>
         runInClient(server, outcomeScript('globalThis.readMixed')),
       )
@@ -220,18 +226,18 @@ describe.each(startBundlers)(
     test(
       'a mixed import whose value only a server fn handler uses is neither reported nor loaded',
       async () => {
-        const { client } = await buildStart({
+        const build = await buildStart({
           bundler,
           files: verbatimApp,
           entry: 'src/entry.ts',
           start: { importProtection: { behavior: 'mock', mockAccess: 'off' } },
         })
-        const { result } = await client.run(
+        const { result } = await build.client.run(
           `return globalThis.typesLoaded ?? null`,
         )
         expect({
           typesLoaded: result,
-          reported: reportedImporters(client.warnings, 'client', verbatimApp),
+          reported: reportedImporters(build, 'client', verbatimApp),
         }).toEqual(handlerOnly)
       },
       timeout,

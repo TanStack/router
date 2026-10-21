@@ -191,11 +191,8 @@ describe('<ClientOnly> in a hydrated page', () => {
 // Source: DECISIONS 2026-10-18 "Server-side *.client.* imports"
 test('a *.client.* module only ClientOnly children use is not in the server build', () => {
   expect(
-    reportedViolations([
-      ...app.build.client.warnings,
-      ...app.build.ssr.warnings,
-      ...app.build.ssr.consoleMessages,
-    ]),
+    // (everything the build reported, on every channel)
+    reportedViolations(app.build),
   ).toEqual([])
   expect(app.build.ssr.where('MARK_CLIENT_CHART')).toBe('nowhere')
   expect(app.build.client.where('MARK_CLIENT_CHART')).not.toBe('nowhere')

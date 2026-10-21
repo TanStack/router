@@ -1,7 +1,24 @@
+/**
+ * Internal control (SPEC §8): not part of the compiler test corpus. It
+ * calls today's rewrite of denied imports (`rewriteDeniedImports`) and links
+ * the rewritten code to stand-in mocks (the rewrite-to-default-proxy shape,
+ * printed text and mock labels are today's); a correct rewrite may mock
+ * otherwise. The outcomes are decided on real apps:
+ * - type-only imports and re-exports of a denied module:
+ *   `integration/importProtection/v2-type-only.test.ts`;
+ * - `export * from` / `export * as ns from` a denied module:
+ *   `integration/importProtection/known-bugs.test.ts` (app-level twins) and
+ *   `integration/known-bugs-dev-server.test.ts` (pins);
+ * - allowed imports keep real values, each denied source is mocked, every
+ *   specifier form, `.ts` angle-bracket assertions (#7341):
+ *   `integration/importProtection/mock-shapes.test.ts`;
+ * - code after a rewritten import maps to its origin:
+ *   `integration/importProtection/rewritten-importer-maps.test.ts`.
+ */
 import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
 import { SourceMapConsumer } from 'source-map'
 import { describe, expect, test } from 'vitest'
-import { rewriteDeniedImports } from '../../src/import-protection/rewrite'
+import { rewriteDeniedImports } from '../../../src/import-protection/rewrite'
 import type { RawSourceMap } from 'source-map'
 
 /** A mock whose members are `<prefix><name>`. */

@@ -131,13 +131,25 @@ return { uncaught: [], calls, result }
         )
         return { result, diagnostics, messages }
       } catch (error) {
+        // A dependency the optimizer bundled again while the page loaded:
+        // the document still imports the previous bundle, and Vite reloads
+        // it (a user's browser reloads too); load the current document.
+        const staleDependency = /\/node_modules\/\.vite\/deps\//.test(
+          String(error),
+        )
         if (
           attempt >= 2 ||
-          !/Execution context was destroyed|Cannot find context with specified id/.test(
-            String(error),
+          !(
+            staleDependency ||
+            /Execution context was destroyed|Cannot find context with specified id/.test(
+              String(error),
+            )
           )
         ) {
           throw error
+        }
+        if (staleDependency) {
+          await page.reload()
         }
       }
     }

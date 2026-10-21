@@ -150,11 +150,8 @@ describe.each(startBundlers)('%s production build, served', (bundler) => {
       serverModule: build.client.chunks
         .filter((chunk) => chunk.code.includes('db.server'))
         .map((chunk) => chunk.fileName),
-      violations: reportedViolations([
-        ...build.client.warnings,
-        ...build.ssr.warnings,
-        ...build.ssr.consoleMessages,
-      ]),
+      // (every channel of the build)
+      violations: reportedViolations(build),
     }).toEqual({ secret: 'nowhere', serverModule: [], violations: [] })
   })
 
@@ -254,13 +251,21 @@ describe('Vite dev server with Start', () => {
       const result = await visitPosts(page)
       expect(result).toEqual({
         ...visited,
-        // The route's modules load on navigation.
-        scriptsLoadedForPosts: expect.arrayContaining([
-          expect.stringContaining('/src/routes/posts.tsx'),
-        ]),
+        scriptsLoadedForPosts: expect.any(Array),
       })
+      // The route's component loads on navigation: one of the scripts the
+      // page requested then serves it (whatever its URL).
+      const served = await Promise.all(
+        result.scriptsLoadedForPosts.map(
+          async (url) => (await server.fetch(url)).body,
+        ),
+      )
+      expect(served.some((code) => code.includes('MARK_POSTS_COMPONENT'))).toBe(
+        true,
+      )
       expect(result.requests[1]).toBe(result.requests[0])
-      expect(reportedViolations(server.logs)).toEqual([])
+      // (every channel of the dev server)
+      expect(reportedViolations(server)).toEqual([])
     },
     timeout,
   )
