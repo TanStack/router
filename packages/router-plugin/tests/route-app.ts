@@ -19,11 +19,14 @@
  *
  * Laziness is observed through the router's public lazy contract (a route
  * component's `preload()`, a loader call) and the modules the page actually
- * requests from the dev server: a module the page requests that is neither
- * a file the test wrote, a dependency nor a module of the tools (Vite's
- * client, a refresh runtime) is a module the compilers emitted for the route
- * (SPEC §5.3: whatever its id). Never by recognising the helper that builds
- * a lazy value (J2.6, §5.8).
+ * requests from the dev server. Which of them the compilers emitted for the
+ * route is told by provenance, never by id or path (SPEC §5.3: whatever its
+ * id, wherever it is served from, `/@fs/` and `/node_modules/` included):
+ * the dev server observes the router plugin's own `load` and `transform`
+ * hooks (`observeEmitted`) and answers the page which requested modules got
+ * their code from them; a file the test wrote, a dependency, Vite's client
+ * or a refresh runtime gets none. Never by recognising the helper that
+ * builds a lazy value (J2.6, §5.8).
  *
  * Hosts are shared within a test file, one per configuration (target,
  * plugin options, the route's file and id, the app's tsconfig): each
@@ -48,7 +51,7 @@ import { tanstackRouter } from '../src/vite'
 import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import type { PageRun } from '@tanstack/compiler-test-utils/browser'
 import type { PluginHost } from '@tanstack/compiler-test-utils/plugin-host'
-import type { ESTree, PluginOption } from 'vite'
+import type { ESTree, Plugin, PluginOption } from 'vite'
 import type { Config, DeletableNodes } from '../src'
 
 /** A framework the router plugin targets. */
@@ -86,9 +89,15 @@ export interface RouteAppOptions {
   pluginOptions?: Partial<Config>
   /**
    * Other Vite plugins, before and after the router plugin and the
-   * framework's plugin (a host of its own).
+   * framework's plugin (a host of its own). `compilers`: plugins whose
+   * emitted modules count as the compilers' (a harness control standing in
+   * for a compiler), right before the router plugin.
    */
-  plugins?: { before?: Array<PluginOption>; after?: Array<PluginOption> }
+  plugins?: {
+    before?: Array<PluginOption>
+    after?: Array<PluginOption>
+    compilers?: Array<PluginOption>
+  }
   /**
    * The other files of the app (what the route file imports), by path
    * relative to the app root (the route file's directory by default):
@@ -183,12 +192,162 @@ const entrySource = (filename: string) =>
   `export * as route from './${filename.replace(/^\.\//, '')}'\n`
 
 /**
- * Tool modules the page loads that no compiler emitted for the route: Vite's
- * client and its environment, the refresh runtimes, dependencies (pre-bundled
- * or served from `node_modules`), the plugin host's page.
+ * The dev server's answer to the page: which requested modules the compilers
+ * emitted (see `emittedEndpointPlugin`).
  */
-const toolModule =
-  /^\/(?:@vite\/|@react-refresh|@solid-refresh|@vue\/|@fs\/|node_modules\/|__plugin-host__\/|@id\/(?:__x00__)?(?:solid-refresh|vite\/))/
+const emittedEndpoint = '/__route-app__/emitted'
+
+/**
+ * The modules the compilers emitted code for, by environment and module id:
+ * for each, the hooks that gave it its code (see `observeEmitted`).
+ */
+type EmittedModules = Map<string, Set<string>>
+
+const emittedKey = (environment: string, id: string) => `${environment}\0${id}`
+
+/**
+ * Observes the hooks of `option` (the router plugin as its public entry
+ * point returns it, or a plugin a harness control has stand in for a
+ * compiler), in place: a module whose code one of their `load` hooks
+ * returned, or whose code one of their `transform` hooks changed, is a
+ * module they emitted. The hooks run as before and their results pass
+ * through unchanged; nothing of their ids, queries or paths is assumed.
+ */
+function observeEmitted(option: PluginOption, emitted: EmittedModules) {
+  const record = (
+    environment: string,
+    id: string,
+    hook: string,
+    gave: boolean,
+  ) => {
+    const key = emittedKey(environment, id)
+    const hooks = emitted.get(key) ?? new Set<string>()
+    if (gave) {
+      hooks.add(hook)
+    } else {
+      hooks.delete(hook)
+    }
+    emitted.set(key, hooks)
+  }
+  const environmentOf = (context: unknown, options: unknown) =>
+    (context as { environment?: { name?: string } } | undefined)?.environment
+      ?.name ??
+    ((options as { ssr?: boolean } | undefined)?.ssr ? 'ssr' : 'client')
+  const codeOf = (result: unknown) =>
+    typeof result === 'string'
+      ? result
+      : (result as { code?: unknown } | null | undefined)?.code
+  const wrap = (
+    hook: unknown,
+    after: (context: unknown, args: Array<unknown>, result: unknown) => void,
+  ) => {
+    if (!hook) {
+      return hook
+    }
+    const handler = (
+      typeof hook === 'function' ? hook : (hook as { handler: unknown }).handler
+    ) as (...args: Array<unknown>) => unknown
+    async function observed(this: unknown, ...args: Array<unknown>) {
+      const result = await handler.apply(this, args)
+      after(this, args, result)
+      return result
+    }
+    return typeof hook === 'function'
+      ? observed
+      : { ...(hook as object), handler: observed }
+  }
+  const visit = (value: unknown) => {
+    if (Array.isArray(value)) {
+      value.forEach(visit)
+      return
+    }
+    if (!value || typeof value !== 'object') {
+      return
+    }
+    const plugin = value as Plugin
+    const name = plugin.name
+    plugin.load = wrap(plugin.load, (context, [id, options], result) => {
+      record(
+        environmentOf(context, options),
+        id as string,
+        `${name} load`,
+        typeof codeOf(result) === 'string',
+      )
+    }) as Plugin['load']
+    plugin.transform = wrap(
+      plugin.transform,
+      (context, [code, id, options], result) => {
+        const output = codeOf(result)
+        record(
+          environmentOf(context, options),
+          id as string,
+          `${name} transform`,
+          typeof output === 'string' && output !== code,
+        )
+      },
+    ) as Plugin['transform']
+  }
+  visit(option)
+  return option
+}
+
+/**
+ * The URL Vite's module graph knows a served module by: decoded, and a
+ * virtual module's id out of the `/@id/` form Vite serves it under (`\0`
+ * spelled `__x00__`: Vite's documented convention for virtual modules).
+ */
+function servedId(url: string) {
+  const decoded = decodeURI(url).replaceAll('__x00__', '\0')
+  return decoded.startsWith('/@id/') ? decoded.slice('/@id/'.length) : decoded
+}
+
+/**
+ * Answers the page's question (`emittedEndpoint`: a JSON list of requests,
+ * path and query) from what `observeEmitted` saw: for each, whether the
+ * module the client environment serves for it got its code from the
+ * compilers.
+ */
+function emittedEndpointPlugin(emitted: EmittedModules): Plugin {
+  return {
+    name: 'route-app:emitted-modules',
+    configureServer(server) {
+      server.middlewares.use(emittedEndpoint, (request, response) => {
+        let body = ''
+        request.on('data', (chunk) => {
+          body += chunk
+        })
+        request.on('end', () => {
+          const graph = server.environments.client.moduleGraph
+          // (answered whatever happens: a request left open would hold one
+          // of the page's connections to the dev server)
+          Promise.resolve()
+            .then(() =>
+              Promise.all(
+                (JSON.parse(body) as Array<string>).map(async (url) => {
+                  const module = await graph.getModuleByUrl(servedId(url))
+                  return (
+                    module?.id != null &&
+                    (emitted.get(emittedKey('client', module.id))?.size ?? 0) >
+                      0
+                  )
+                }),
+              ),
+            )
+            .then(
+              (answers) => {
+                response.setHeader('content-type', 'application/json')
+                response.end(JSON.stringify(answers))
+              },
+              (error: unknown) => {
+                response.statusCode = 500
+                response.end(String(error))
+              },
+            )
+        })
+      })
+    },
+  }
+}
 
 /**
  * The framework part of the page helper: `mount(target, el)` renders a
@@ -255,11 +414,46 @@ export function mount(component: any, props: Record<string, unknown>, el: HTMLEl
 function probeSource(framework: TargetFramework) {
   return `${frameworkProbe[framework]}
 performance.setResourceTimingBufferSize(1_000_000)
-const tool = ${toolModule}
 
-/** App-local modules the document requested so far, in order (path and query). */
-export function appRequests(): Array<string> {
-  return [...requestUrls().keys()]
+/** Whether the compilers emitted a request, as the dev server observed it. */
+const emittedAnswers = new Map<string, boolean>()
+
+/**
+ * The requests so far whose modules the compilers emitted (asked of the dev
+ * server once per request and document: \`${emittedEndpoint}\`).
+ */
+async function emitted(requests: Array<string>) {
+  const unknown = requests.filter((request) => !emittedAnswers.has(request))
+  if (unknown.length > 0) {
+    const response = await fetch('${emittedEndpoint}', { method: 'POST', body: JSON.stringify(unknown) })
+    if (!response.ok) throw new Error('the dev server could not tell the emitted modules: ' + (await response.text()))
+    const answers: Array<boolean> = await response.json()
+    unknown.forEach((request, index) => emittedAnswers.set(request, answers[index]!))
+  }
+  return requests.filter((request) => emittedAnswers.get(request))
+}
+
+/**
+ * Modules the compilers emitted that the document requested so far, in
+ * order (path and query): the route module, and every module the compilers
+ * emitted that is not a file of the test as written (\`own\`: their paths).
+ */
+export async function compiledRequests(routeUrl: string, own: Array<string>): Promise<Array<string>> {
+  const owned = new Set(own)
+  const requests = [...requestUrls().keys()]
+  const emittedRequests = new Set(await emitted(requests))
+  return requests.filter((request) => request === routeUrl || (!owned.has(request) && emittedRequests.has(request)))
+}
+
+/**
+ * App-local modules the document requested so far, in order (path and
+ * query): the compiled ones and the files of the test (\`own\`), whatever
+ * the query a tool serves them with (e.g. \`/data.json?import\`).
+ */
+export async function appRequests(routeUrl: string, own: Array<string>): Promise<Array<string>> {
+  const owned = new Set(own)
+  const compiled = new Set(await compiledRequests(routeUrl, own))
+  return [...requestUrls().keys()].filter((request) => compiled.has(request) || owned.has(request.split('?')[0]!))
 }
 
 /**
@@ -277,7 +471,7 @@ function requestUrls(): Map<string, string> {
     const actual = url.pathname + url.search
     url.searchParams.delete('t')
     const request = url.pathname + url.search
-    if (tool.test(request) || url.pathname === '/${probeFile}' || url.pathname === '/${entryFile}') continue
+    if (url.pathname === '/${probeFile}' || url.pathname === '/${entryFile}' || url.pathname === '${emittedEndpoint}') continue
     if (!seen.has(request)) seen.set(request, actual)
   }
   return seen
@@ -407,8 +601,6 @@ interface HostState {
   /** The route whose files the app holds now. */
   owner: object | undefined
   used: boolean
-  /** Closes the idle HMR client (see `idleHmrClient`). */
-  closeIdle: () => void
 }
 
 const hosts = new Map<string, Promise<HostState>>()
@@ -417,29 +609,9 @@ afterAll(async () => {
   hosts.clear()
   for (const state of all) {
     const resolved = await state.catch(() => undefined)
-    resolved?.closeIdle()
     await resolved?.host.close()
   }
 })
-
-/**
- * Connects an idle HMR client (as a second tab of the app would be) for the
- * host's lifetime. Vite keeps a full reload (or an error) sent while no
- * client is connected and hands it to the next client that connects: the
- * page of the next run, which would then reload under the run. With a
- * client always connected, what an edit sends while no page runs reaches
- * this one, which ignores it.
- */
-async function idleHmrClient(serverUrl: string): Promise<() => void> {
-  const socket = new WebSocket(serverUrl.replace(/^http/, 'ws'), 'vite-hmr')
-  await new Promise<void>((resolve, reject) => {
-    socket.addEventListener('message', () => resolve(), { once: true })
-    socket.addEventListener('error', () =>
-      reject(new Error(`no HMR connection to ${serverUrl}`)),
-    )
-  })
-  return () => socket.close()
-}
 
 /** The bound of one page run's script (below Vitest's default test timeout). */
 const pageRunBound = 4000
@@ -545,6 +717,7 @@ async function startHost(
   files: Record<string, string>,
 ): Promise<HostState> {
   const target = options.targetFramework ?? 'react'
+  const emitted: EmittedModules = new Map()
   const host = await createPluginHost({
     dir: options.dir ?? import.meta.dirname,
     prefix: '.route-app-',
@@ -565,8 +738,13 @@ async function startHost(
       },
     },
     plugins: ({ root: appRoot }) => [
+      emittedEndpointPlugin(emitted),
       ...(options.plugins?.before ?? []),
-      tanstackRouter(routerOptions(options, root, appRoot)),
+      observeEmitted(options.plugins?.compilers ?? [], emitted),
+      observeEmitted(
+        tanstackRouter(routerOptions(options, root, appRoot)),
+        emitted,
+      ),
       frameworkPlugins[target](options.frameworkPluginOptions),
       ...(options.plugins?.after ?? []),
     ],
@@ -576,7 +754,6 @@ async function startHost(
     current: files,
     owner: undefined,
     used: false,
-    closeIdle: await idleHmrClient(host.dev.url!),
   }
 }
 
@@ -648,10 +825,10 @@ const routeUrl = ${JSON.stringify(routeUrl)}
 /** The URLs the app's own modules import these by (see \`stampedUrls\`). */
 const stamped = ${JSON.stringify(stamped)}
 const importUrl = (request) => stamped[request] ?? probe.requestUrl(request)
-/** Modules the compilers emitted that the page requested so far (path and query). */
-const compiled = () => probe.appRequests().filter((request) => request === routeUrl || !own.has(request))
-/** Every app-local module the page requested so far: compiled ones and the test's files. */
-const requested = () => probe.appRequests()
+/** Modules the compilers emitted that the page requested so far (path and query; async). */
+const compiled = () => probe.compiledRequests(routeUrl, [...own])
+/** Every app-local module the page requested so far: compiled ones and the test's files (async). */
+const requested = () => probe.appRequests(routeUrl, [...own])
 /** An app file the test wrote, as the page imports it (the instance the route gets). */
 const app = (file) => import(importUrl('/' + file.replace(/^\\.?\\//, '')))
 ${before}
@@ -697,8 +874,9 @@ export interface RouteApp {
    * framework's client renderer: the HTML), `renderRoute({ at?, router? })`
    * (the app at `at`, default the route's path, through the generated route
    * tree and the real router: the HTML), `app(file)` (an app file the test
-   * wrote, the instance the route gets), `requested()` and `compiled()`
-   * (requests so far: every app-local one, the compilers' modules only),
+   * wrote, the instance the route gets), `await requested()` and
+   * `await compiled()` (requests so far: the compiled ones and the test's
+   * files; the modules the compilers emitted only, by provenance),
    * `served(request)`. `before` runs before the route module is imported
    * (e.g. to set a global the route reads).
    */
@@ -820,12 +998,12 @@ ${body}
     (await runPage<T>(body, runOptions)).result
 
   const newlyCompiled = (option: string) =>
-    run<Array<string>>(`const before = new Set(compiled())
+    run<Array<string>>(`const before = new Set(await compiled())
 await trigger(${JSON.stringify(option)})
 // A module the option requested that failed to compile is no lazily
 // loaded module: the option is broken (fail, never count it as lazy)
 probe.assertNoFailedRequests()
-return compiled().filter((request) => !before.has(request))`)
+return (await compiled()).filter((request) => !before.has(request))`)
 
   const route: RouteApp = {
     host: state.host,
@@ -837,10 +1015,10 @@ return compiled().filter((request) => !before.has(request))`)
     loadedBy: async (option) => {
       const loaded = await run<
         Array<string>
-      >(`const before = new Set(compiled())
+      >(`const before = new Set(await compiled())
 await trigger(${JSON.stringify(option)})
 probe.assertNoFailedRequests()
-const loaded = compiled().filter((request) => !before.has(request))
+const loaded = (await compiled()).filter((request) => !before.has(request))
 return Promise.all(loaded.map(served))`)
       if (loaded.length === 0) {
         throw new Error(`\`${option}\` loads no module of the route lazily`)
@@ -866,9 +1044,9 @@ return Promise.all(loaded.map(served))`)
           }
           const added =
             await run<number>(`await trigger(${JSON.stringify(option)})
-const before = new Set(compiled())
+const before = new Set(await compiled())
 await trigger(${JSON.stringify(other)})
-return compiled().filter((request) => !before.has(request)).length`)
+return (await compiled()).filter((request) => !before.has(request)).length`)
           if (added === 0) {
             group.push(other)
           }
@@ -880,22 +1058,22 @@ return compiled().filter((request) => !before.has(request)).length`)
         a.join(',').localeCompare(b.join(',')),
       )
     },
-    requested: () => run<Array<string>>('return requested()'),
+    requested: () => run<Array<string>>('return await requested()'),
     eagerModules: () =>
-      run<Array<string>>('return Promise.all(compiled().map(served))'),
+      run<Array<string>>('return Promise.all((await compiled()).map(served))'),
     modules: async () => {
       const found = await run<
         Array<{ request: string; label: string; code: string }>
       >(
         `const found = []
-for (const request of compiled()) {
+for (const request of await compiled()) {
   found.push({ request, label: request === routeUrl ? 'reference' : 'shared' })
 }
 for (const option of ${JSON.stringify(splittableOptions)}) {
   if (!options || !(option in options)) continue
-  const before = new Set(compiled())
+  const before = new Set(await compiled())
   await trigger(option)
-  for (const request of compiled()) {
+  for (const request of await compiled()) {
     if (!before.has(request)) found.push({ request, label: 'lazy ' + option })
   }
 }
@@ -968,13 +1146,21 @@ const refreshGlobals = ['$RefreshReg$', '$RefreshSig$']
 /**
  * The decoded values of the string literals and template quasis of a module
  * (an independent parse: a user marker is found whatever its quoting or
- * escaping), for D5 checks that user code is absent from a module.
+ * escaping), for D5 checks that user code is absent from a module. Throws
+ * on code that does not parse: an absence check on it would prove nothing.
  */
 export function stringValues(
   code: string,
   filename = 'module.js',
 ): Set<string> {
-  const { program } = parseSync(filename, code, { sourceType: 'module' })
+  const { program, errors } = parseSync(filename, code, {
+    sourceType: 'module',
+  })
+  if (errors.length > 0) {
+    throw new Error(
+      `cannot read the string values of a module that does not parse (${errors.map((error) => error.message).join('; ')}):\n${code}`,
+    )
+  }
   const values = new Set<string>()
   const visit = (node: unknown) => {
     if (!node || typeof node !== 'object') {

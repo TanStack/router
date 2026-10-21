@@ -60,6 +60,13 @@ export const Route = createFileRoute('/changing')({
     for (const [name, output] of Object.entries(secondModules.modules)) {
       expect(holdsMarker(output, 'first version'), name).toBe(false)
     }
+    // ... and they hold the second version's (the same check finds the
+    // route's code where it is)
+    expect(
+      Object.values(secondModules.modules).some((output) =>
+        holdsMarker(output, 'second version'),
+      ),
+    ).toBe(true)
     expect(await read(second, separateGroups)).toBe(
       '<p>second version true</p>',
     )

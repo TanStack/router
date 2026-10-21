@@ -30,6 +30,11 @@ export const Route = createFileRoute('/posts')(options)
       ),
     ).toBe(false)
     expect(
+      (await route.loadedBy('component')).some((code) =>
+        holdsMarker(code, 'MARK_POSTS'),
+      ),
+    ).toBe(true)
+    expect(
       (await route.loadedBy('component')).flatMap(servedImports),
     ).not.toContain('/api.ts')
     await expectValidModules(route)

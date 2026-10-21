@@ -4,7 +4,8 @@
  * (`import.meta.webpackHot`), a page of a dev server without HMR (no hot
  * API, a `window`), and Rsbuild's server environment (no `window`). The
  * Vite hosts of the same rows: route-hmr.test.ts "route modules compiled
- * for the dev server".
+ * for the dev server"; webpack's hot API without a `window` (Rsbuild's
+ * server environment has no hot API): route-hmr-webpack-server-hosts.test.ts.
  *
  * The public Rsbuild plugin of React and the router plugin's Rspack entry,
  * added as an Rsbuild app adds it, through Rsbuild's JavaScript API

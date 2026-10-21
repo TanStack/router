@@ -13,11 +13,16 @@ type CodeSplitGroupings = NonNullable<CodeSplittingOptions['defaultBehavior']>
 // Module-level bindings read by route options, across binding kinds,
 // groupings and readers: every reader gets the value, the binding is created
 // once with one identity, a function only the component reads is not in
-// what loads with the route module, and a binding only the loader reads is
-// not in what loading the component loads (D5: absence of the user's own
-// code, told by a string marker in its body or initializer, whatever the
-// compiler names or prints). (Where a const or class only the component
-// reads is initialised, and so when, is free.)
+// what loads with the route module but in what loading the component loads,
+// and a binding only the loader reads is not in what loading the component
+// loads (when the two are not grouped) but in what loads with the route
+// module or the loader (D5: the user's own code, told by a string marker in
+// its body or initializer, whatever the compiler names or prints). A route
+// whose readers do not include the component gets one reading no binding,
+// so that what loading it loads can be checked, except next to a class (a
+// split chunk next to a class with a static initializer is the known bug of
+// `isKnownBug`). (Where a const or class only the component reads is
+// initialised, and so when, is free.)
 describe('module-level bindings read by route options', () => {
   type Kind = 'const' | 'function' | 'class'
   type Reader = 'loader' | 'component' | 'beforeLoad'
@@ -169,6 +174,11 @@ export const seen = (reader: string, values: Record<string, unknown>) => {
               ? `  component: () => <p>{seen('component', ${values})}</p>,`
               : `  ${reader}: () => seen('${reader}', ${values}),`
           })
+        const addedComponent =
+          !readers.component && !declarations.includes('class ')
+        if (addedComponent) {
+          options.push(`  component: () => <p>no binding</p>,`)
+        }
         const route = await loadRoute(
           `${head}import { init, seen } from './state'
 ${declarations}
@@ -189,12 +199,16 @@ ${options.join('\n')}
           same: Array<boolean>
           eagerCode: Array<string>
           componentCode: Array<string>
-        }>(`// What loads with the route module, and what loading the component
-// loads on top of it
-const eager = compiled()
+          loaderCode: Array<string>
+        }>(`// What loads with the route module, what loading the component loads
+// on top of it, and what loading the loader then loads
+const eager = await compiled()
 const before = new Set(eager)
 await trigger('component')
-const componentLoads = compiled().filter((request) => !before.has(request))
+const componentLoads = (await compiled()).filter((request) => !before.has(request))
+const beforeLoader = new Set(await compiled())
+await trigger('loader')
+const loaderLoads = (await compiled()).filter((request) => !beforeLoader.has(request))
 const readers = ${JSON.stringify(readers)}
 const results = []
 for (const reader of ['loader', 'beforeLoad']) {
@@ -221,6 +235,7 @@ return {
   same,
   eagerCode: await Promise.all(eager.map(served)),
   componentCode: await Promise.all(componentLoads.map(served)),
+  loaderCode: await Promise.all(loaderLoads.map(served)),
 }`)
         expect(observed.results).toEqual(
           (['loader', 'beforeLoad', 'component'] as const)
@@ -238,12 +253,19 @@ return {
         expect(observed.same.every(Boolean)).toBe(true)
 
         // A function only the component reads is not in what loads with the
-        // route module; a binding only the loader reads is not in what
-        // loading the component loads.
+        // route module, but in what loading the component loads; a binding
+        // only the loader reads is not in what loading the component loads
+        // (unless the loader is grouped with the component), but in what
+        // loads with the route module or the loader.
         const readBy = (name: string) =>
           (Object.keys(readers) as Array<Reader>).filter((reader) =>
             readers[reader]!.includes(name),
           )
+        const holding = (code: Array<string>, name: string) =>
+          code.some((module) => holdsMarker(module, marker(name)))
+        const loaderWithComponent = codeSplitGroupings.some(
+          (group) => group.includes('loader') && group.includes('component'),
+        )
         for (const name of names) {
           const readersOfName = readBy(name)
           if (
@@ -251,19 +273,28 @@ return {
             declarations.includes(`function ${name}(`)
           ) {
             expect(
-              observed.eagerCode.some((code) =>
-                holdsMarker(code, marker(name)),
-              ),
+              {
+                eager: holding(observed.eagerCode, name),
+                component: holding(observed.componentCode, name),
+              },
               name,
-            ).toBe(false)
+            ).toEqual({ eager: false, component: true })
           }
-          if (readersOfName.join() === 'loader') {
+          if (
+            readersOfName.join() === 'loader' &&
+            addedComponent &&
+            !loaderWithComponent
+          ) {
             expect(
-              observed.componentCode.some((code) =>
-                holdsMarker(code, marker(name)),
-              ),
+              {
+                component: holding(observed.componentCode, name),
+                eagerOrLoader: holding(
+                  [...observed.eagerCode, ...observed.loaderCode],
+                  name,
+                ),
+              },
               name,
-            ).toBe(false)
+            ).toEqual({ component: false, eagerOrLoader: true })
           }
         }
       }

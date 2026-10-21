@@ -81,7 +81,13 @@ describe('route files without a Route export', () => {
     async (code) => {
       const { routes, diagnostics, file, root } = await generateMovedRoute(code)
       expect(routes).toEqual({ __root__: 'routes/__root.tsx' })
-      expectDiagnostic(diagnostics, { file, root })
+      // (a warning: the run goes on, so no error; an info or log line is
+      // not one, SPEC §5.7)
+      expectDiagnostic(diagnostics, {
+        severity: 'warning',
+        file,
+        root,
+      })
     },
   )
 })

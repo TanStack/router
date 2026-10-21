@@ -1144,13 +1144,13 @@ export const Route = createFileRoute('/made')({ component: () => <p>made</p> })
         // Both route files load with their split components
         const lazy = await loaded.run<
           Record<string, boolean>
-        >(`let before = new Set(compiled())
+        >(`let before = new Set(await compiled())
 await trigger('component')
-const made = compiled().some((request) => !before.has(request))
+const made = (await compiled()).some((request) => !before.has(request))
 const other = await app('other.tsx')
-before = new Set(compiled())
+before = new Set(await compiled())
 await other.Route.options.component?.preload?.()
-return { made, other: compiled().some((request) => !before.has(request)) }`)
+return { made, other: (await compiled()).some((request) => !before.has(request)) }`)
         for (const [file, isSplit] of Object.entries(lazy)) {
           if (isSplit) {
             split.add(`${file}.tsx`)

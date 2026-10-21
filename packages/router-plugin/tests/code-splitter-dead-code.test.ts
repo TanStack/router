@@ -246,10 +246,12 @@ export const Route = createFileRoute('/')({ component: () => <p>{helper()}</p> }
     'moves mutually recursive helpers only the component uses, and their imports, out of the route module (hmr: $hmr)',
     async ({ hmr }) => {
       // The helpers carry user markers (their results are unchanged), so
-      // that their code is recognised wherever it goes (D5, N10).
+      // that their code is recognised wherever it goes (D5, N10). The
+      // markers join values of another module, so no compiler can fold
+      // them away.
       const route = await loadRoute(
         `${head}import { dep } from './dep'
-const ping = (n: number): number => (n > 0 ? pong(n - 1) : ['MARK_PING'].length - 1)
+const ping = (n: number): number => (n > 0 ? pong(n - 1) : ('MARK_PING' + dep).length)
 const pong = function (n: number): number { return n > 0 ? ping(n - 1) : dep ?? 'MARK_PONG' }
 export const Route = createFileRoute('/')({
   loader: () => 'data',
@@ -259,7 +261,7 @@ export const Route = createFileRoute('/')({
         { hmr, files: { 'dep.ts': `export const dep = 'dep'\n` } },
       )
       // Nothing that loads with the route holds the helpers, or requests
-      // what only they read.
+      // what only they read; what the component loads holds them.
       const eager = await route.eagerModules()
       expect(
         eager.filter((code) => holdsMarker(code, 'MARK_PING')),
@@ -268,6 +270,12 @@ export const Route = createFileRoute('/')({
         eager.filter((code) => holdsMarker(code, 'MARK_PONG')),
       ).toHaveLength(0)
       expect(await route.requested()).not.toContain('/dep.ts')
+      const component = await route.loadedBy('component')
+      expect(
+        ['MARK_PING', 'MARK_PONG'].filter((marker) =>
+          component.some((code) => holdsMarker(code, marker)),
+        ),
+      ).toEqual(['MARK_PING', 'MARK_PONG'])
       await expectValidModules(route)
       expect(await route.run(`return render('component')`)).toBe('<p>dep</p>')
     },
@@ -699,18 +707,19 @@ export const Route = createFileRoute('/')({
   // Source: React Router route-chunks-test.ts "isolated exported variable
   // declarations sharing an export statement"; Next.js
   // ssg/getStaticProps/should-remove-re-exported-variable-declarations-safe
-  // The declarators carry user markers (their values are unchanged), so
-  // that each one's code is recognised wherever it goes (D5, N10).
+  // The declarators carry user markers, so that each one's code is
+  // recognised wherever it goes (D5, N10). The markers are part of what the
+  // route shows and returns, so no compiler can fold them away.
   it.each([
     {
       name: 'plain declarators',
-      declarations: `const Page = () => <div>{chunkMessage}{'MARK_PAGE' && null}</div>,
-  main = ['MARK_MAIN', mainMessage][1]`,
+      declarations: `const Page = () => <div title="MARK_PAGE">{chunkMessage}</div>,
+  main = 'MARK_MAIN ' + mainMessage`,
     },
     {
       name: 'destructured declarators',
-      declarations: `const { Page } = { Page: () => <div>{chunkMessage}{'MARK_PAGE' && null}</div> },
-  { main } = { main: ['MARK_MAIN', mainMessage][1] }`,
+      declarations: `const { Page } = { Page: () => <div title="MARK_PAGE">{chunkMessage}</div> },
+  { main } = { main: 'MARK_MAIN ' + mainMessage }`,
     },
   ])(
     'gives each of the $name of one statement to the module that reads it',
@@ -730,12 +739,13 @@ export const Route = createFileRoute('/')({
         },
       )
       // What loads with the route holds nothing of the component, what the
-      // component loads nothing of the loader.
+      // component loads nothing of the loader; each holds its own.
       const eager = await route.eagerModules()
       expect(
         eager.flatMap((code) => importedNamesFrom(code, /^\/messages\.ts/)),
       ).not.toContain('chunkMessage')
       expect(eager.filter((code) => holdsMarker(code, 'MARK_PAGE'))).toEqual([])
+      expect(eager.some((code) => holdsMarker(code, 'MARK_MAIN'))).toBe(true)
       const component = await route.loadedBy('component')
       expect(
         component.flatMap((code) => importedNamesFrom(code, /^\/messages\.ts/)),
@@ -743,10 +753,13 @@ export const Route = createFileRoute('/')({
       expect(
         component.filter((code) => holdsMarker(code, 'MARK_MAIN')),
       ).toEqual([])
+      expect(component.some((code) => holdsMarker(code, 'MARK_PAGE'))).toBe(
+        true,
+      )
       await expectValidModules(route)
       expect(
         await route.run(`return [options.loader(), await render('component')]`),
-      ).toEqual(['main', '<div>chunk</div>'])
+      ).toEqual(['MARK_MAIN main', '<div title="MARK_PAGE">chunk</div>'])
     },
   )
 

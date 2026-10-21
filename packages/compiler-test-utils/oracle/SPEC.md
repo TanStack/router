@@ -461,7 +461,12 @@ routeId })` > `defaultBehavior` > the default `[['component'],['errorComponent']
   placement or the emitted runtime-import spelling; the oracle compiles the untouched and the compiled module with
   the project's real JSX transform and its real configured defaults (automatic or classic), and lets that transform
   interpret the pragmas — no universal "a pragma means classic" rule. `[ruling: D-04; R1]`
-- **J2.17 Deprecated `assert` attributes** in a route module are printed as `with`. `[ruling: D9]`
+- **J2.17 Deprecated `assert` attributes.** An import written with `assert` in a route module (e.g.
+  `import data from './data.json' assert { type: 'json' }`) keeps working, wherever the import lands (route module or
+  chunk), and its attribute keeps its meaning where the bundler honours attributes. How the compiler prints the
+  keyword (`assert` or `with`) is free: no public host observes it (Vite strips import attributes, webpack accepts both
+  keywords, Rspack ignores them), so tests assert the behaviour only, never the printed keyword.
+  `[ruling: D9; coordinator 2026-10-21]`
 - **J2.18 esbuild.** Either splitting works or the plugin refuses clearly (error naming esbuild and
   `autoCodeSplitting`). A warning on a successful unsplit build is not a refusal. `[ruling: D3]`
 - **J2.19 Warning wording is free** (J2.8 only fixes file + option); warnings are printed once per file per run. `[ruling: D14]`
@@ -620,7 +625,8 @@ createServerFn().middleware([auth])`, then `createServerFn().middleware([authed]
   monorepo root must work). Other external dependencies carry no automatic requirement; dependencies shipping
   Start-_compiled_ output are unsupported (2.2).
 - **J4.17 User code preserved** (G12): directives (`'use strict'`, `'use client'`, `'use no memo'`), decorators,
-  class semantics, `assert`→`with`, parentheses.
+  class semantics, imports written with `assert` (they keep working; the printed keyword is free, J2.17),
+  parentheses.
 
 ### J5 Deferred hydration `<Hydrate>`
 

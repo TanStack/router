@@ -119,8 +119,11 @@ export const namespaced = 'namespaced'
         marker,
       ).toBe(false)
     }
-    // Each helper loads with the component that reads it
+    // Each component and helper loads with the component that reads it
     for (const [option, marker] of [
+      ['component', 'MARK_COMPONENT'],
+      ['errorComponent', 'MARK_ERROR'],
+      ['notFoundComponent', 'MARK_NOT_FOUND'],
       ['component', 'MARK_GET_DEFAULT'],
       ['errorComponent', 'MARK_GET_NAMESPACED'],
       ['notFoundComponent', 'MARK_GET_TARGET'],
@@ -139,6 +142,8 @@ export const namespaced = 'namespaced'
         option,
       ).toBe(false)
     }
+    // ... which loads with the route module
+    expect(eager.some((code) => holdsMarker(code, 'MARK_LOADER'))).toBe(true)
     await expectValidModules(route)
     expect(
       await route.run(`return [
@@ -228,7 +233,7 @@ export const b = 'b'
       // component reads does not.
       expect(
         await route.run(
-          `return { requested: requested(), pkg: globalThis.pkgLoads ?? 0 }`,
+          `return { requested: await requested(), pkg: globalThis.pkgLoads ?? 0 }`,
         ),
       ).toEqual({ requested: expect.arrayContaining(['/styles.css']), pkg: 0 })
       await expectValidModules(route)
@@ -780,6 +785,12 @@ export const Route = createFileRoute('/')({
       ).toEqual(['<p>page</p>', '<i>MARK_NF</i>'])
       const loaded = await route.loadedBy('component')
       expect(loaded.some((code) => holdsMarker(code, 'MARK_NF'))).toBe(false)
+      // ... but in what the notFoundComponent needs (split, or left in the
+      // route module, J2.8)
+      const notFound = (await route.isLazy('notFoundComponent'))
+        ? await route.loadedBy('notFoundComponent')
+        : await route.eagerModules()
+      expect(notFound.some((code) => holdsMarker(code, 'MARK_NF'))).toBe(true)
     },
   )
 })
@@ -806,7 +817,7 @@ export const Route = createFileRoute('/')({
     await expectValidModules(route)
     expect(
       await route.run(`const result = [options.loader(), await render('component')]
-return [...result, requested().filter((request) => request.startsWith('/types'))]`),
+return [...result, (await requested()).filter((request) => request.startsWith('/types'))]`),
     ).toEqual(['defaults', '<div>defaults</div>', []])
   })
 
