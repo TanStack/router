@@ -9,7 +9,7 @@ import {
 } from '../../importProtection/start-apps'
 import { probeMockPrelude, safeMock } from '../../importProtection/mock-helpers'
 import { runViteClient, startBrowserProtectedDevServer } from './client-pages'
-import type { ImportProtectionOptions } from '../../../src/schema'
+import type { ImportProtectionOptions } from '../../importProtection/public-types'
 
 const timeout = 60_000
 const packageFiles = (name: string) => ({

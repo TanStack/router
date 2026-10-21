@@ -27,8 +27,8 @@ import {
 } from '../../importProtection/start-apps'
 import { suggestedDirections } from '../../importProtection/violation-report'
 import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
-import type { TanStackStartInputConfig } from '../../../src/schema'
-import type { ViolationInfo } from '../../../src/import-protection/trace'
+import type { TanStackStartInputConfig } from '../../../src'
+import type { ViolationInfo } from '../../importProtection/public-types'
 
 const timeout = 60_000
 

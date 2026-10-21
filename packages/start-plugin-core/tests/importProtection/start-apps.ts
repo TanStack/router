@@ -2,31 +2,28 @@
  * Helpers of the import-protection tests that run Start's import protection
  * on a real app.
  *
- * `startProtectedDevServer` is the focused adapter harness: a Vite dev
- * server with Start's import-protection Vite plugin wired by hand after the
- * Start compiler, like the Start plugin orders them, with the environments,
- * entries and options a test chooses. It shows what the adapter does; that
- * Start's whole plugin wires it (its entries, its provider environment, the
- * `importProtection` option of `tanstackStart()`) is checked through
- * `startDevServer({ start })` (dev.test.ts, "with Start's whole plugin").
+ * `startProtectedDevServer` is a Vite dev server with Start's whole public
+ * Vite plugin (`startDevServer`: `tanStackStartVite` of the built package),
+ * configured through Start's public options only: `importProtection`, and
+ * the app's router entry (`router.entry`, default `src/entry.ts` for these
+ * fixtures), the module every client module of a Start app is reached from.
+ * The start entry `src/start.ts` is Start's default.
  *
  * The violations a run reports are read two ways: structured, as
  * `onViolation` receives them (`server.violations`), and as the text the
- * user sees, through the adapter of `violation-report.ts`
+ * user sees, on every channel, through the reader of `violation-report.ts`
  * (`reportedViolations`, `violationTexts`, `violationReports`).
  */
 import path from 'node:path'
+import react from '@vitejs/plugin-react'
 import { expect } from 'vitest'
 import {
   expectRelevantLocation,
   parseLocation,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { importProtectionPlugin } from '../../src/vite/import-protection-plugin/plugin'
 import { startDevServer } from '../dev-server'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
-import type { ImportProtectionOptions } from '../../src/schema'
-import type { ImportProtectionPluginOptions } from '../../src/vite/import-protection-plugin/types'
-import type { ViolationInfo } from '../../src/import-protection/trace'
+import type { ImportProtectionOptions, ViolationInfo } from './public-types'
 import type { StartDevServerOptions } from '../dev-server'
 import type { PluginOption } from 'vite'
 
@@ -45,24 +42,18 @@ export type {
   ExpectedViolation,
   ReportedViolation,
 } from './violation-report'
+export type { ImportProtectionOptions, ViolationInfo } from './public-types'
 
 export interface ProtectedDevServerOptions {
   /** Serve actual dependencies and an HTTP origin for client consumers. */
   browser?: boolean
   /**
-   * The app's router entry (relative to the app root), registered with
-   * import protection like `tanStackStart()` registers the app's
-   * `src/router.tsx`: the module every client module of a Start app is
-   * reached from. Default `src/entry.ts`. The start entry `src/start.ts` is
-   * registered when the app has one.
+   * The app's router entry (relative to the app root, in `src`): Start's
+   * public `router.entry` option, the module every client module of a Start
+   * app is reached from. Default `src/entry.ts`.
    */
   router?: string
-  /**
-   * The server fn provider environment, when it is not `ssr` (e.g. `rsc`):
-   * a third, server environment of the dev server.
-   */
-  providerEnvironment?: string
-  /** Other plugins of the app, after import protection. */
+  /** Other plugins of the app, after Start's. */
   plugins?: Array<PluginOption>
   /** Vite configuration of the app (e.g. `server.warmup`). */
   config?: StartDevServerOptions['config']
@@ -82,10 +73,9 @@ export interface ProtectedDevServer extends DevServer {
 }
 
 /**
- * Starts a Vite dev server (`startDevServer`) on an app of `files` with
- * Start's import protection, configured by `importProtection` (Start's
- * `importProtection` option; source directory `src`), and with Start's
- * entries registered (`options.router`).
+ * Starts a Vite dev server with Start's plugin (`startDevServer`) on an app
+ * of `files`, with Start's `importProtection` option `importProtection`
+ * (source directory `src`) and the app's router entry `options.router`.
  */
 export async function startProtectedDevServer(
   files: Record<string, string>,
@@ -94,18 +84,10 @@ export async function startProtectedDevServer(
 ): Promise<ProtectedDevServer> {
   const {
     router = 'src/entry.ts',
-    providerEnvironment = 'ssr',
     plugins = [],
     config = {},
     bundledDev,
   } = options
-  const environments = [
-    { name: 'client', type: 'client' as const },
-    { name: 'ssr', type: 'server' as const },
-    ...(providerEnvironment === 'ssr'
-      ? []
-      : [{ name: providerEnvironment, type: 'server' as const }]),
-  ]
   const violations: Array<ViolationInfo> = []
   const userOnViolation = importProtection.onViolation
   const recording: ImportProtectionOptions = {
@@ -120,29 +102,12 @@ export async function startProtectedDevServer(
     browser: options.browser,
     bundledDev,
     config,
-    // The Start compiler compiles the provider environment too, and creates
-    // it as a server environment.
-    environments,
-    providerEnvName: providerEnvironment,
-    plugins: ({ root }) => [
-      importProtectionPlugin({
-        getConfig: (() => ({
-          startConfig: { importProtection: recording },
-          resolvedStartConfig: {
-            srcDirectory: path.join(root, 'src'),
-            routerFilePath: path.join(root, router),
-            startFilePath:
-              'src/start.ts' in files
-                ? path.join(root, 'src/start.ts')
-                : undefined,
-          },
-        })) as unknown as ImportProtectionPluginOptions['getConfig'],
-        framework: 'react',
-        environments,
-        providerEnvName: providerEnvironment,
-      }),
-      ...plugins,
-    ],
+    start: {
+      importProtection: recording,
+      router: { entry: path.posix.relative('src', router) },
+    },
+    // A React app's plugin: full-bundle dev needs its Refresh runtime.
+    plugins: bundledDev ? [react(), ...plugins] : plugins,
   })
   return Object.assign(server, { violations })
 }

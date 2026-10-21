@@ -2,37 +2,47 @@
  * Real-build harness for Start goal tests whose outcome the bundler decides
  * (e.g. "server code never reaches the client bundle"). Builds an app the
  * way `vite build` or `rsbuild build` builds a React Start app: through
- * Start's own Vite or Rsbuild plugin (`tanStackStartVite` /
- * `tanStackStartRsbuild` with the options `@tanstack/react-start` passes),
- * so its environments (client, then SSR, which is the server fn provider),
- * the Start compiler, import protection, the router generator and code
- * splitter, and the generated server fn resolver are Start's. The output of
- * each environment is described and run with the shared build harness
- * (`@tanstack/compiler-test-utils/build-harness`). The temporary apps live
- * in this directory.
+ * Start's own Vite or Rsbuild plugin, the BUILT public entries of this
+ * package (`@tanstack/start-plugin-core/vite`, `/rsbuild`, with the options
+ * `@tanstack/react-start` passes; the `test:integration` target builds the
+ * package first), so its environments (client, then SSR, which is the server
+ * fn provider), the Start compiler, import protection, the router generator
+ * and code splitter, and the generated server fn resolver are Start's, and
+ * Rspack loads Start's loaders from the package as in an installed app. The
+ * output of each environment is described and run with the shared build
+ * harness (`@tanstack/compiler-test-utils/build-harness`). The temporary
+ * apps live in this directory.
  *
  * `@tanstack/react-start` is the real package (`startRuntimeLinks`), and
  * `@tanstack/react-router` the real one too (a dependency of this package,
  * which the apps resolve like any dependency): both builds bundle and run
  * Start's runtime and the router. What the test process cannot do is stood
- * in for, each checked against the real runtime in build-harness.test.ts:
- * SSR scripts run in a request context (`inRequestContext`), and a client
+ * in for, each checked against the real runtime in the harness controls
+ * (`outside-compiler-corpus/build-harness.test.ts`): SSR scripts run in a
+ * request context opened with the public `runWithStartContext` of
+ * `@tanstack/start-storage-context` (`inRequestContext`), and a client
  * script observes the requests a server fn call sends (`requestsOfPrelude`).
  * An SSR script calls a server fn by id through Start's own server entry and
  * client RPC (`callByIdPrelude`). The app's entries are the harness's: the
- * client and server entries Start builds import `#tanstack-start-entry`
- * (`src/start.ts` when the app has one), `#tanstack-router-entry`
- * (`src/router.ts`, a stub unless the app has one) and the test's entry
- * module, whose exports `run()` gives the script as `entry`. Vite builds run
- * in the app's directory, as `vite build` does.
+ * client and server entries Start builds import the app's documented router
+ * entry (`src/router.ts`, a stub unless the app has one), its start entry
+ * (`src/start.ts` when the app has one) and the test's entry module, whose
+ * exports `run()` gives the script as `entry`. Vite builds run in the app's
+ * directory, as `vite build` does.
+ *
+ * Everything a build reports, on every channel (the bundler's warnings and
+ * errors, Vite's logger, `console.*` and the process streams; SPEC §5.7),
+ * is in `StartBuild.diagnostics`, and a failed build rejects with a
+ * `StartBuildError` carrying the same (`diagnostics`).
  *
  * Import protection is on, with Start's defaults unless the test configures
  * it; it checks the modules of the source directory (`src`) only.
  */
-import { AsyncLocalStorage } from 'node:async_hooks'
+import { readFileSync } from 'node:fs'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import { openDiagnosticChannel } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import {
   linkWorkspacePackages,
   workspacePackage,
@@ -53,9 +63,8 @@ import {
 } from '@tanstack/compiler-test-utils/build-harness'
 import { trackCompiles } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import { onTestFinished } from 'vitest'
-import { tanStackStartVite } from '../src/vite/plugin'
-import { tanStackStartRsbuild } from '../src/rsbuild/plugin'
-import { testLoaderFiles, useTestLoaders } from './rsbuild-test-loaders'
+import { tanStackStartVite } from '@tanstack/start-plugin-core/vite'
+import { tanStackStartRsbuild } from '@tanstack/start-plugin-core/rsbuild'
 import type {
   BuildMode,
   BuildResult,
@@ -63,11 +72,11 @@ import type {
   ParsedModules,
   StatsJson,
 } from '@tanstack/compiler-test-utils/build-harness'
-import type { TanStackStartInputConfig } from '../src/schema'
-import type { StartCompilerImportTransform } from '../src/types'
-// The type of the real context (`@tanstack/start-storage-context` is no
-// dependency of this package).
-import type { StartStorageContext } from '../../start-storage-context/src/async-local-storage'
+import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
+import type {
+  StartCompilerImportTransform,
+  TanStackStartInputConfig,
+} from '../src'
 import type { RsbuildConfig, RsbuildPlugin } from '@rsbuild/core'
 import type { InlineConfig, Plugin } from 'vite'
 
@@ -96,16 +105,16 @@ export function linkStartRuntime(root: string) {
 }
 
 /**
- * The request context (`StartStorageContext` of
+ * The request context (the first argument of `runWithStartContext` of
  * `@tanstack/start-storage-context`) the harness runs server code in: a
  * request to `/` that ran no request middleware, with default start
  * options, like Start's request handler opens for an app without
  * `createStart`. It is the one piece of Start the harness stands in for: a
  * test calls server code outside any request. Self-contained: SSR scripts
  * run its source (`inRequestContext`). Checked against the real runtime in
- * build-harness.test.ts.
+ * the harness controls (`outside-compiler-corpus/build-harness.test.ts`).
  */
-function testRequestContext(): StartStorageContext {
+function testRequestContext() {
   return {
     request: new Request('http://localhost/'),
     startOptions: {},
@@ -118,38 +127,44 @@ function testRequestContext(): StartStorageContext {
   }
 }
 
-/** Key of the storage of `@tanstack/start-storage-context`. */
-const startStorageKey = `Symbol.for('tanstack-start:start-storage-context')`
+/**
+ * The URL of `@tanstack/start-storage-context`'s public entry (the file its
+ * `package.json` exports): the package Start's runtime reads the request
+ * context from, whose `runWithStartContext` opens one. Its storage is
+ * shared by every copy of the package in a process (it says so), so the
+ * copy a script imports opens the context the app's bundled copy reads.
+ */
+function storageContextUrl(): string {
+  const root = workspacePackage('@tanstack/start-storage-context')
+  const manifest = JSON.parse(
+    readFileSync(path.join(root, 'package.json'), 'utf8'),
+  ) as { exports: Record<string, { import: { default: string } }> }
+  return pathToFileURL(path.join(root, manifest.exports['.']!.import.default))
+    .href
+}
 
 /**
  * Wraps a script of the SSR build's `run()` in the test request context
- * (`testRequestContext`), opened like Start's request handler does
- * (`runWithStartContext`: `run()` of the storage that the app's bundled
- * `@tanstack/start-storage-context` shares on `globalThis`).
+ * (`testRequestContext`), opened like Start's request handler opens one,
+ * with the public `runWithStartContext`.
  */
 export const inRequestContext = (script: string) =>
-  `const storage = globalThis[${startStorageKey}]
+  `const { runWithStartContext } = await import(${JSON.stringify(storageContextUrl())})
 const script = async () => {
 ${script}
 }
-if (!storage) {
-  return await script()
-}
-return await storage.run((${testRequestContext.toString()})(), script)`
+return await runWithStartContext((${testRequestContext.toString()})(), script)`
 
 /**
  * Runs `fn` in the test request context (`testRequestContext`), for server
- * code a test imports from a build output in its own process.
+ * code a test imports in its own process (e.g. through a dev server's SSR
+ * module runner), with the public `runWithStartContext`.
  */
-export function runInRequestContext<T>(fn: () => T): T {
-  const global = globalThis as unknown as Record<
-    symbol,
-    AsyncLocalStorage<unknown> | undefined
-  >
-  const storage = (global[
-    Symbol.for('tanstack-start:start-storage-context')
-  ] ??= new AsyncLocalStorage())
-  return storage.run(testRequestContext(), fn)
+export async function runInRequestContext<T>(fn: () => T): Promise<Awaited<T>> {
+  const { runWithStartContext } = (await import(storageContextUrl())) as {
+    runWithStartContext: <R>(context: unknown, run: () => R) => R
+  }
+  return await runWithStartContext(testRequestContext(), fn)
 }
 
 /**
@@ -299,6 +314,16 @@ export interface StartBuildOptions {
 export interface StartBuild {
   client: BuildResult
   ssr: BuildResult
+  /** App root on disk (paths in reports are relative to it or absolute). */
+  root: string
+  /**
+   * Everything the build reported, on every channel, in order (SPEC §5.7):
+   * the bundler's warnings of both environments, Vite's logger, `console.*`
+   * and the process streams. A report names its environment (J6.5), which
+   * tells the environments apart; `client.warnings`/`ssr.warnings` hold only
+   * what each environment's bundler reported.
+   */
+  diagnostics: Array<ChannelDiagnostic>
   /**
    * Builds the same app again, in the same directory with the same options
    * and a new plugin instance, after writing `edits` (app files by path;
@@ -314,13 +339,17 @@ const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 const entryGlobal = '__tssBuildHarnessEntry'
 
 /**
- * The client or server entry of the app: imports what Start's default
- * entries import, and the test's entry module.
+ * The client or server entry of the app: imports the app's documented
+ * entries that Start's default entries import (the router entry
+ * `src/router.ts` and, when the app has one, the start entry
+ * `src/start.ts`; Start's defaults, as no test moves them), and the test's
+ * entry module.
  */
 const harnessEntry = (
   testEntry: string,
-) => `import * as start from '#tanstack-start-entry'
-import * as router from '#tanstack-router-entry'
+  start: string,
+) => `import * as start from ${JSON.stringify(start)}
+import * as router from '../src/router'
 import * as entry from ${JSON.stringify(`../${testEntry}`)}
 globalThis.__tssBuildHarnessApp = { start, router }
 globalThis.${entryGlobal} = entry
@@ -361,9 +390,19 @@ export async function renderPath(
 `
 
 /** The files the harness adds to every app, unless the app has them. */
-const harnessFiles = (entries: { client: string; ssr: string }) => ({
-  'harness/client-entry.ts': harnessEntry(entries.client),
-  'harness/server-entry.ts': harnessEntry(entries.ssr),
+const harnessFiles = (
+  entries: { client: string; ssr: string },
+  files: Record<string, string>,
+) => {
+  const start = 'src/start.ts' in files ? '../src/start' : './start'
+  return {
+    'harness/client-entry.ts': harnessEntry(entries.client, start),
+    'harness/server-entry.ts': harnessEntry(entries.ssr, start),
+    ...sharedHarnessFiles,
+  }
+}
+
+const sharedHarnessFiles = {
   'harness/start.ts': `export const startInstance = undefined\n`,
   'harness/render.ts': renderFile,
   'src/router.ts': `export const getRouter = () => undefined\n`,
@@ -372,7 +411,7 @@ const harnessFiles = (entries: { client: string; ssr: string }) => ({
   'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute()
 `,
-})
+}
 
 /** The core options `@tanstack/react-start` passes to Start's plugin. */
 function reactStartCoreOptions(target: BuildTarget) {
@@ -408,8 +447,7 @@ export async function buildStart(
     packageJson: options.packageJson,
     sideEffects: options.sideEffects,
     files: {
-      ...harnessFiles(entries),
-      ...(bundler === 'rsbuild' && testLoaderFiles),
+      ...harnessFiles(entries, files),
       ...files,
     },
     symlinks: {
@@ -453,18 +491,34 @@ async function buildAt(
   const { mode } = target
   const warnings = { client: [], ssr: [] } as Record<Env, Array<string>>
   const consoleMessages: Array<string> = []
-  let started = performance.now()
-  let outputs = await withBuildEnvironment(mode, consoleMessages, () =>
-    builders[bundler](target, warnings),
-  )
-  for (let build = 1; build < builds; build++) {
+  let diagnostics: Array<ChannelDiagnostic> = []
+  /** One build, recording what it reports on every channel. */
+  const build = async () => {
     warnings.client.length = 0
     warnings.ssr.length = 0
     consoleMessages.length = 0
+    const channel = openDiagnosticChannel()
+    try {
+      return await withBuildEnvironment(mode, consoleMessages, () =>
+        builders[bundler](target, warnings, channel),
+      )
+    } catch (error) {
+      if (error instanceof BuildError) {
+        // Its errors (its warnings are in the channel already)
+        channel.report(error.message, 'error', 'thrown')
+        throw new StartBuildError(error, app.root, [...channel.diagnostics])
+      }
+      throw error
+    } finally {
+      diagnostics = [...channel.diagnostics]
+      channel.close()
+    }
+  }
+  let started = performance.now()
+  let outputs = await build()
+  for (let index = 1; index < builds; index++) {
     started = performance.now()
-    outputs = await withBuildEnvironment(mode, consoleMessages, () =>
-      builders[bundler](target, warnings),
-    )
+    outputs = await build()
   }
   const duration = performance.now() - started
   const describe = (env: Env) =>
@@ -489,6 +543,8 @@ async function buildAt(
   return {
     client: await describe('client'),
     ssr: { ...ssr, run: (script = '') => ssr.run(inRequestContext(script)) },
+    root: app.root,
+    diagnostics,
     rebuild: async (edits = {}) => {
       for (const [file, content] of Object.entries(edits)) {
         const absolute = path.join(app.root, file)
@@ -504,7 +560,27 @@ async function buildAt(
   }
 }
 
+/**
+ * A failed Start build: the bundler's errors (`BuildError`), and everything
+ * the build reported on every channel, the error included (`diagnostics`;
+ * SPEC §5.7: a compiler may print the details of a failure to the console
+ * and fail the build with a short error).
+ */
+export class StartBuildError extends BuildError {
+  constructor(
+    error: BuildError,
+    /** App root on disk. */
+    readonly root: string,
+    readonly diagnostics: Array<ChannelDiagnostic>,
+  ) {
+    super(error.bundler, error.errors, error.warnings)
+    this.name = 'StartBuildError'
+  }
+}
+
 type Env = 'client' | 'ssr'
+
+type Channel = ReturnType<typeof openDiagnosticChannel>
 
 interface BuildTarget {
   root: string
@@ -537,15 +613,22 @@ const builders: Record<
   (
     target: BuildTarget,
     warnings: Record<Env, Array<string>>,
+    channel: Channel,
   ) => Promise<Outputs>
 > = {
   vite: buildWithVite,
   rsbuild: buildWithRsbuild,
 }
 
+/**
+ * Builds with Vite. Bundler and logger warnings go to `warnings` (per
+ * environment) and to `channel`; errors reach the channel through the
+ * rejection (`buildAt`), which carries them.
+ */
 async function buildWithVite(
   target: BuildTarget,
   warnings: Record<Env, Array<string>>,
+  channel: Channel,
 ): Promise<Outputs> {
   const { createBuilder, mergeConfig } = await import('vite')
   const outputs: Partial<Outputs> = {}
@@ -571,6 +654,7 @@ async function buildWithVite(
       rolldownOptions: {
         onwarn: (warning: { message: string }) => {
           warnings[env].push(stripAnsi(warning.message))
+          channel.report(stripAnsi(warning.message), 'warning', 'bundler')
         },
       },
     },
@@ -579,6 +663,7 @@ async function buildWithVite(
   const warnBoth = (message: string) => {
     warnings.client.push(stripAnsi(message))
     warnings.ssr.push(stripAnsi(message))
+    channel.report(stripAnsi(message), 'warning', 'vite')
   }
   // `vite build` runs in the app's directory: Start's plugin reads the
   // dependencies of the working directory's package.json (Start libraries
@@ -641,9 +726,15 @@ async function buildWithVite(
   return checkOutputs(outputs)
 }
 
+/**
+ * Builds with Rsbuild. Compilation warnings go to `warnings` (per
+ * environment) and to `channel`; errors reach the channel through the
+ * rejection (`buildAt`), which carries them.
+ */
 async function buildWithRsbuild(
   target: BuildTarget,
   warnings: Record<Env, Array<string>>,
+  channel: Channel,
 ): Promise<Outputs> {
   const { createRsbuild, mergeRsbuildConfig } = await import('@rsbuild/core')
   const outputs: Partial<Outputs> = {}
@@ -675,12 +766,16 @@ async function buildWithRsbuild(
         }
         const json = stats.toJson(statsOptions) as StatsJson
         warnings[env].push(...statsMessages(json.warnings))
+        channel.reportCompilation({ warnings: statsMessages(json.warnings) })
         errors.push(
           ...statsMessages(json.errors).map((message) => `[${env}] ${message}`),
         )
         outputs[env] = {
           outDir: environment.distPath,
-          chunks: chunksOfStats(json, { entry: 'index', extension: '.js' }),
+          chunks: chunksOfStats(json, {
+            entry: configuredEntry(environment.entry, env),
+            extension: '.js',
+          }),
           esModules: environment.config.output.module,
           ...(env === 'client' && { parsedModules: clientParsedModules }),
         }
@@ -717,7 +812,6 @@ async function buildWithRsbuild(
           },
           plugins: [
             tanStackStartRsbuild(reactStartCoreOptions(target), target.start),
-            useTestLoaders(target.root),
             outputPlugin,
           ],
         },
@@ -751,6 +845,21 @@ async function buildWithRsbuild(
     throw new BuildError('rspack', errors, warnings.client)
   }
   return checkOutputs(outputs)
+}
+
+/**
+ * The name of the one entry Start configured for an environment (Rsbuild's
+ * `environment.entry`, the configured inputs), whose chunks the page or the
+ * server loads first.
+ */
+function configuredEntry(entry: Record<string, unknown>, env: Env): string {
+  const names = Object.keys(entry)
+  if (names.length !== 1) {
+    throw new Error(
+      `expected one configured entry of the ${env} environment, got ${names.join(', ') || 'none'}`,
+    )
+  }
+  return names[0]!
 }
 
 /**

@@ -11,13 +11,12 @@ import { describe, expect, test } from 'vitest'
 import {
   describeValue,
   describeValuePrelude,
-  evaluateWithMock,
   expectSafeMock,
   isSafeMock,
   probeMock,
   safeMock,
-  selfMock,
 } from './mock-helpers'
+import { evaluateWithMock, selfMock } from './mock-modules'
 
 describe('the safe-mock probe', () => {
   /** A stand-in of a mock: a recursive Proxy whose text is `label`. */

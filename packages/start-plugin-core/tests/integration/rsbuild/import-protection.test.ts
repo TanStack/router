@@ -31,8 +31,8 @@ import { originalLocation } from '../../importProtection/original-location'
 import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import type { ExpectedViolation } from '../../importProtection/start-apps'
-import type { ViolationInfo } from '../../../src/import-protection/trace'
-import type { ImportProtectionOptions } from '../../../src/schema'
+import type { ViolationInfo } from '../../importProtection/public-types'
+import type { ImportProtectionOptions } from '../../importProtection/public-types'
 
 /**
  * Each test's timeout, and the time an Rsbuild dev server may take to

@@ -47,8 +47,8 @@ import {
 } from './client-pages'
 import type { ViolationReport } from '../../importProtection/violation-report'
 import type { ExpectedViolation } from '../../importProtection/start-apps'
-import type { ImportProtectionOptions } from '../../../src/schema'
-import type { ViolationInfo } from '../../../src/import-protection/trace'
+import type { ImportProtectionOptions } from '../../importProtection/public-types'
+import type { ViolationInfo } from '../../importProtection/public-types'
 import type { DevEnvironment, Plugin } from 'vite'
 
 const timeout = 30_000

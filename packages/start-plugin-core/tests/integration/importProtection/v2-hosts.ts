@@ -141,11 +141,17 @@ export async function settledAcrossTurn(
   await server.settle()
 }
 
-/** Explicit output contract of the Node fixture entry, including split chunks. */
+/**
+ * Explicit output contract of the Node fixture entry: the entry file is
+ * `ip-node-entry.cjs`, split chunks get names of their own.
+ */
 export const ssrNodeOutput = {
   environments: {
     ssr: {
       output: { filename: { js: 'ip-node-entry.cjs' }, distPath: { js: '' } },
+      tools: {
+        rspack: { output: { chunkFilename: 'ip-node-chunk-[id].cjs' } },
+      },
     },
   },
 }

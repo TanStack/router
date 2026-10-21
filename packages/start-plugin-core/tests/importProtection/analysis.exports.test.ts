@@ -9,13 +9,8 @@
  */
 import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
 import { describe, expect, test } from 'vitest'
-import {
-  evaluateWithMock,
-  expectSafeMock,
-  isSafeMock,
-  mockModules,
-  selfMock,
-} from './mock-helpers'
+import { expectSafeMock, isSafeMock } from './mock-helpers'
+import { evaluateWithMock, mockModules, selfMock } from './mock-modules'
 
 // Every name a consumer can import is exposed by each mock module import
 // protection generates for it (and the module evaluates).

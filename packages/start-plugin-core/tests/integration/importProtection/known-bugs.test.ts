@@ -26,7 +26,7 @@ import {
   startBrowserRsbuildDevServer,
 } from './client-pages'
 import type { RsbuildConfig } from '@rsbuild/core'
-import type { ImportProtectionOptions } from '../../../src/schema'
+import type { ImportProtectionOptions } from '../../importProtection/public-types'
 
 const require = createRequire(import.meta.url)
 

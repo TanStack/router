@@ -1,5 +1,6 @@
 import path from 'node:path'
 import os from 'node:os'
+import { fileURLToPath } from 'node:url'
 import { configDefaults, defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/vite-config'
 import packageJson from './package.json'
@@ -19,6 +20,11 @@ if (process.env.VITEST) {
  * packages/compiler-test-utils/AGENTS.md, "Corpus and implementation tests").
  */
 const implementationTests = '**/outside-compiler-corpus/**'
+
+/** This package's build output (`dist`), as its `exports` name it. */
+const builtPackage = new RegExp(
+  `^${path.join(path.dirname(fileURLToPath(import.meta.url)), 'dist').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/`,
+)
 
 const config = defineConfig({
   test: {
@@ -51,6 +57,12 @@ const config = defineConfig({
           exclude: [...configDefaults.exclude, implementationTests],
           testTimeout: 30_000,
           hookTimeout: 30_000,
+          // The tests import this package's built public entries
+          // (`@tanstack/start-plugin-core/vite`, `/rsbuild`): Node loads
+          // them, as it loads an installed package, so the plugin and the
+          // loaders Rspack loads from the same `dist` share one module
+          // instance.
+          server: { deps: { external: [builtPackage] } },
         },
       },
       {
@@ -74,6 +86,7 @@ const config = defineConfig({
           include: ['integration/**/outside-compiler-corpus/**/*.test.ts'],
           testTimeout: 30_000,
           hookTimeout: 30_000,
+          server: { deps: { external: [builtPackage] } },
         },
       },
     ],

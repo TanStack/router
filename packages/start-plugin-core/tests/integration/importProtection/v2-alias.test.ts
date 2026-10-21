@@ -37,7 +37,7 @@ import {
   runViteClient,
   startBrowserRsbuildStartDevServer as startRsbuildStartDevServer,
 } from './client-pages'
-import type { ImportProtectionOptions } from '../../../src/schema'
+import type { ImportProtectionOptions } from '../../importProtection/public-types'
 import type { ReportOutput } from '../../importProtection/violation-report'
 import type { PluginOption } from 'vite'
 

@@ -30,7 +30,7 @@ import {
 import { reportedImporters, runRsbuildSsr, ssrNodeOutput } from './v2-hosts'
 import type { ReportOutput } from '../../importProtection/violation-report'
 import type { StartBuild } from '../../build-harness'
-import type { ImportProtectionOptions } from '../../../src/schema'
+import type { ImportProtectionOptions } from '../../importProtection/public-types'
 
 const timeout = 60_000
 const compileTimeout = timeout

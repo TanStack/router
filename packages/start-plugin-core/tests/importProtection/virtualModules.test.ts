@@ -17,12 +17,11 @@ import {
   mockRuntimeModuleIdFromViolation,
 } from '../../src/import-protection/virtualModules'
 import {
-  evaluateMockModule,
-  evaluateWithMock,
   expectMockAccess,
   expectSafeMock,
   warningsAndErrors,
 } from './mock-helpers'
+import { evaluateMockModule, evaluateWithMock } from './mock-modules'
 import type { ViolationInfo } from '../../src/import-protection/trace'
 
 afterEach(() => {

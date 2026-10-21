@@ -14,7 +14,7 @@ import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import { locatedImporters } from '../../importProtection/start-apps'
 import { runViteClient, startBrowserProtectedDevServer } from './client-pages'
 import type { StartBuild, StartBundler } from '../../build-harness'
-import type { ImportProtectionOptions } from '../../../src/schema'
+import type { ImportProtectionOptions } from '../../importProtection/public-types'
 
 const timeout = 60_000
 
