@@ -769,8 +769,8 @@ async function loadResource(
     match._flight = flight
     match.abortController = flight[1 /* controller */]
     const result = await waitFor(flight[0 /* outcome */], signal)
-    // A hydration recovery can release this match while its application work
-    // is still pending. Detached work must not resolve a redirect or publish.
+    // A discarded background suffix can release a pending flight without
+    // aborting its transaction. Detached work cannot resolve a redirect.
     if (match._flight !== flight || signal.aborted) {
       return CANCELED_OUTCOME
     }
@@ -782,13 +782,9 @@ async function loadResource(
     releaseFlight(router, match)
     return CANCELED_OUTCOME
   } finally {
-    if (match._flight === flight || signal.aborted) {
-      setFetching(router, match, false, owner)
-    } else {
-      // A detached hydration match can share its owner with the replacement
-      // lane. Clear only its own state, never the replacement's presentation.
-      match.isFetching = false
-    }
+    // Hydration consumes the raw flight separately. A normal replacement has
+    // a different transaction owner, which setFetching checks before publishing.
+    setFetching(router, match, false, owner)
   }
 }
 
