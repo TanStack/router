@@ -13,7 +13,8 @@
  *   emitted JavaScript and the dangling-name evidence of its production
  *   client output (`recordParsedModules`);
  * - diagnostics: one merged channel per dev server and per build (every
- *   compile's errors and warnings, the console, the process streams).
+ *   compile's errors and warnings, Rsbuild's logger, the console, the
+ *   process streams).
  * Nothing of a compiler is assumed: no loader name, module id or hook
  * placement.
  */
@@ -27,7 +28,7 @@ import {
   recordParsedModules,
 } from './build-harness'
 import { openDiagnosticChannel } from './diagnostic-channel'
-import { createRsbuildDevServer } from './rsbuild-dev-server'
+import { createRsbuildDevServer, rsbuildLogger } from './rsbuild-dev-server'
 import type { PageRun } from './browser'
 import type { App, AppOptions, BuildMode, ParsedModules } from './build-harness'
 import type { ChannelDiagnostic } from './diagnostic-channel'
@@ -206,91 +207,107 @@ export async function createRsbuildPluginHost(
     build: async (buildOptions = {}) => {
       const mode = buildOptions.mode ?? 'production'
       const channel = openDiagnosticChannel()
-      const environments: Record<string, RsbuildHostBuildEnvironment> = {}
-      const evidence: Record<string, ParsedModules> = {}
-      /** Each environment's output directory and emitted scripts. */
-      const emitted: Record<
-        string,
-        { distPath: string; files: Array<string> }
-      > = {}
-      const recorder: RsbuildPlugin = {
-        name: 'rsbuild-plugin-host:build',
-        setup(api) {
-          api.modifyRspackConfig((rspackConfig, { environment }) => {
-            if (
-              mode === 'production' &&
-              environment.config.output.target === 'web'
-            ) {
-              const parsed = emptyParsedModules()
-              evidence[environment.name] = parsed
-              rspackConfig.plugins.push(
-                recordParsedModules(
-                  parsed,
-                ) as unknown as Rspack.RspackPluginInstance,
-              )
-            }
-          })
-          api.onAfterBuild(({ stats, environments: built }) => {
-            const all = stats && 'stats' in stats ? stats.stats : [stats]
-            const names = Object.keys(built)
-            all.forEach((environmentStats, index) => {
-              if (!environmentStats) {
-                return
-              }
-              channel.reportCompilation(environmentStats.compilation)
-              const name = environmentStats.compilation.name ?? names[index]!
-              const { assets = [] } = environmentStats.toJson({
-                all: false,
-                assets: true,
-              })
-              emitted[name] = {
-                distPath: built[name]!.distPath,
-                files: assets
-                  .map((asset) => asset.name)
-                  .filter((file) => /\.[cm]?js$/.test(file)),
+      channel.claim(root)
+      return channel.run(async () => {
+        const environments: Record<string, RsbuildHostBuildEnvironment> = {}
+        const evidence: Record<string, ParsedModules> = {}
+        /** Each environment's output directory and emitted scripts. */
+        const emitted: Record<
+          string,
+          { distPath: string; files: Array<string> }
+        > = {}
+        const recorder: RsbuildPlugin = {
+          name: 'rsbuild-plugin-host:build',
+          setup(api) {
+            api.onAfterCreateCompiler(({ compiler }) => {
+              for (const child of 'compilers' in compiler
+                ? compiler.compilers
+                : [compiler]) {
+                channel.scopeRspack(child)
+                // Before Rsbuild's logger prints its summary of the compile
+                // (`reportLogged`)
+                child.hooks.done.tap(
+                  { name: 'rsbuild-plugin-host:build', stage: -100 },
+                  ({ compilation }) => channel.reportCompilation(compilation),
+                )
               }
             })
-          })
-        },
-      }
-      let built: { close: () => Promise<void> } | undefined
-      try {
-        const rsbuild = await createRsbuild({
-          cwd: root,
-          rsbuildConfig: mergeRsbuildConfig(
-            mergeRsbuildConfig(
-              {
-                root,
-                mode,
-                logLevel: 'silent',
-                source: { entry: { index: `./${entry}` } },
-                plugins: [...pluginsFor('build', root), recorder],
-              },
-              config,
-            ),
-            buildOptions.config ?? {},
-          ),
-        })
-        built = await rsbuild.build()
-        for (const [name, { distPath, files }] of Object.entries(emitted)) {
-          const code: Record<string, string> = {}
-          for (const file of files) {
-            code[file] = await readFile(path.join(distPath, file), 'utf8')
-          }
-          environments[name] = { distPath, files: code }
+            api.modifyRspackConfig((rspackConfig, { environment }) => {
+              if (
+                mode === 'production' &&
+                environment.config.output.target === 'web'
+              ) {
+                const parsed = emptyParsedModules()
+                evidence[environment.name] = parsed
+                rspackConfig.plugins.push(
+                  recordParsedModules(
+                    parsed,
+                  ) as unknown as Rspack.RspackPluginInstance,
+                )
+              }
+            })
+            api.onAfterBuild(({ stats, environments: built }) => {
+              const all = stats && 'stats' in stats ? stats.stats : [stats]
+              const names = Object.keys(built)
+              all.forEach((environmentStats, index) => {
+                if (!environmentStats) {
+                  return
+                }
+                const name = environmentStats.compilation.name ?? names[index]!
+                const { assets = [] } = environmentStats.toJson({
+                  all: false,
+                  assets: true,
+                })
+                emitted[name] = {
+                  distPath: built[name]!.distPath,
+                  files: assets
+                    .map((asset) => asset.name)
+                    .filter((file) => /\.[cm]?js$/.test(file)),
+                }
+              })
+            })
+          },
         }
-      } catch (error) {
+        let built: { close: () => Promise<void> } | undefined
+        try {
+          const rsbuild = await createRsbuild({
+            cwd: root,
+            rsbuildConfig: mergeRsbuildConfig(
+              mergeRsbuildConfig(
+                {
+                  root,
+                  mode,
+                  logLevel: 'silent',
+                  customLogger: rsbuildLogger(channel),
+                  source: { entry: { index: `./${entry}` } },
+                  plugins: [...pluginsFor('build', root), recorder],
+                },
+                config,
+              ),
+              buildOptions.config ?? {},
+            ),
+          })
+          built = await rsbuild.build()
+          for (const [name, { distPath, files }] of Object.entries(emitted)) {
+            const code: Record<string, string> = {}
+            for (const file of files) {
+              code[file] = await readFile(path.join(distPath, file), 'utf8')
+            }
+            environments[name] = { distPath, files: code }
+          }
+        } catch (error) {
+          channel.close()
+          throw new RsbuildHostBuildError(error, [...channel.diagnostics])
+        } finally {
+          await built?.close()
+        }
         channel.close()
-        throw new RsbuildHostBuildError(error, [...channel.diagnostics])
-      } finally {
-        await built?.close()
-      }
-      channel.close()
-      return {
-        environments,
-        diagnostics: [...channel.diagnostics],
-        parsedModules: evidence,
-      }
+        return {
+          environments,
+          diagnostics: [...channel.diagnostics],
+          parsedModules: evidence,
+        }
+      })
     },
     close,
   }

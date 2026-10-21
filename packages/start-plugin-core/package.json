@@ -27,7 +27,7 @@
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
     "clean:snapshots": "rimraf **/*snapshot* --glob",
-    "test": "pnpm test:eslint && pnpm test:types && pnpm test:build && pnpm test:unit && pnpm test:integration",
+    "test": "pnpm test:eslint && pnpm test:types && pnpm test:build && pnpm test:unit && pnpm test:integration && pnpm test:noncompiler",
     "test:unit": "vitest --project unit",
     "test:integration": "vitest --project integration",
     "test:implementation": "vitest --project implementation --project implementation-integration",
@@ -42,7 +42,8 @@
     "test:types:ts60": "tsc6",
     "test:types:ts70": "tsc",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
-    "build": "vite build"
+    "build": "vite build",
+    "test:noncompiler": "vitest --project noncompiler"
   },
   "nx": {
     "targets": {

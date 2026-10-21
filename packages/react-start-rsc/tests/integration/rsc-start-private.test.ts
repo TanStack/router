@@ -1,3 +1,7 @@
+import {
+  diagnosticsOf,
+  expectDiagnostic,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { describe, expect, test } from 'vitest'
 import { openRscPage, startRscDevServer, waitForHydration } from './rsc-app'
 import { callFromPage, page } from './rsc-start-page'
@@ -28,23 +32,24 @@ export const internal = createServerFn().handler(() => 'MARK_INTERNAL')
 import { internal } from './internal'
 export const greet = createServerFn().handler(async () => 'MARK_GREET:' + (await internal()))
 `,
-          'src/routes/index.tsx':
-            page(`import { createClientRpc } from '@tanstack/react-start/client-rpc'
-if (typeof window !== 'undefined') {
+          'src/routes/index.tsx': page(`if (typeof window !== 'undefined') {
   ;(window as any).callUrl = async (url: string) => {
-    const id = decodeURIComponent(new URL(url, location.href).pathname.split('/').at(-1)!)
-    let ok: boolean | undefined
+    let outcome: { ok: boolean; value: string } | undefined
+    let refusal: string | undefined
+    // The public caller supplies the real request envelope. Only its URL
+    // changes; fetch uses the public .url unchanged, with no id parsing.
     try {
-      const value = await createClientRpc(id)({ method: 'GET', fetch: async (request: RequestInfo | URL, init?: RequestInit) => {
-        const response = await fetch(request, init)
-        ok = response.ok
+      const value: unknown = await greet({ fetch: async (_input, init) => {
+        const response = await fetch(url, init)
+        outcome = { ok: response.ok, value: await response.clone().text() }
         return response
       } })
-      const error = value instanceof Error ? value : value?.error
-      return { ok, error: error ? String(error) : undefined, value: JSON.stringify(value, (_key, item) => item instanceof Error ? String(item) : item) }
+      if (value instanceof Error) { refusal = String(value) }
     } catch (error) {
-      return { ok, error: String(error) }
+      if (!outcome) { throw error }
+      refusal = String(error)
     }
+    return { ...outcome, error: refusal }
   }
 }
 `),
@@ -79,9 +84,10 @@ if (typeof window !== 'undefined') {
         true,
       )
       const explanation = outcome.error ?? outcome.value
-      expect(explanation).toMatch(
-        /forbid|denied|unauthor|unregistered|unknown.{0,40}function|not.{0,40}(?:found|allow|available|expos|call)|server.only/i,
-      )
+      // Any actionable refusal is allowed, including "not accessible from client".
+      expectDiagnostic(diagnosticsOf(explanation, 'error'), {
+        explains: true,
+      })
       expect(explanation).not.toMatch(/TypeError|ReferenceError|SyntaxError/)
       expect(explanation).not.toContain('MARK_INTERNAL')
     },

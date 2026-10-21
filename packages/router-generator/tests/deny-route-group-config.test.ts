@@ -18,10 +18,10 @@
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
-  captureConsole,
   expectDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
+import { captureDiagnostics } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { Generator } from '../src'
 import { configOf, createApp, fileRoute, rootRoute } from './app'
 import { withRouteTree } from './route-tree'
@@ -63,7 +63,7 @@ async function generateApp(files: Record<string, string>) {
     ),
   })
   const config = configOf(root, { disableLogging: false })
-  const { result: error, diagnostics } = await captureConsole(() =>
+  const { result: error, diagnostics } = await captureDiagnostics(() =>
     new Generator({ config, root }).run().then(
       () => undefined,
       (e: unknown) => e as Error,

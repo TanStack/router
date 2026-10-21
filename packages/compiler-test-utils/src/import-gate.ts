@@ -23,7 +23,8 @@
  *
  * The acceptance files are the files `test:unit` and `test:integration`
  * select (router-generator: also its `types` project's `*.test-d.ts`), outside
- * `outside-compiler-corpus/`. Their helpers are the modules they reach
+ * `outside-compiler-corpus/` (implementation and noncompiler lanes). Their
+ * helpers are the modules they reach
  * through relative paths into a package's `tests/`, or into this package's
  * `src/` (also through `@tanstack/compiler-test-utils/*`), transitively.
  * Paths computed at run time (a `path.join` passed to `import()`) are out of
@@ -55,7 +56,8 @@ export const acceptancePackages = [
   { dir: 'packages/router-generator', typeTests: true },
   { dir: 'packages/router-plugin', typeTests: false },
   { dir: 'packages/start-plugin-core', typeTests: false },
-  // `*.test-d.tsx` here run with `test:types`, not an acceptance target.
+  // RSC runtime tests live in outside-compiler-corpus/noncompiler.
+  // Its test-d files run with test:types, not a compiler acceptance target.
   { dir: 'packages/react-start-rsc', typeTests: false },
 ] as const
 

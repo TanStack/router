@@ -12,6 +12,7 @@ import {
   openDiagnosticChannel,
   problems,
 } from '../src/diagnostic-channel'
+import { withBuildEnvironment } from '../src/build-harness'
 import { captureConsole, expectDiagnostic } from '../src/diagnostics'
 
 describe('diagnostic channel', () => {
@@ -61,7 +62,7 @@ describe('diagnostic channel', () => {
   test('scope() and since() give what a step reported; close() stops recording', async () => {
     const channel = openDiagnosticChannel()
     try {
-      console.warn('before')
+      channel.run(() => console.warn('before'))
       const mark = channel.mark()
       const { result, diagnostics } = await channel.scope(async () => {
         await Promise.resolve()
@@ -93,9 +94,11 @@ describe('diagnostic channel', () => {
       stderr: process.stderr.write,
     }
     const outer = openDiagnosticChannel()
-    const inner = await captureConsole(() => {
-      console.warn('both')
-    })
+    const inner = await outer.run(() =>
+      captureConsole(() => {
+        console.warn('both')
+      }),
+    )
     outer.close()
     expect(console.warn).toBe(original.warn)
     expect(process.stderr.write).toBe(original.stderr)
@@ -148,4 +151,58 @@ describe('diagnostic channel', () => {
     expect(diagnostics).toHaveLength(4)
     expectNoProblems(diagnostics)
   })
+})
+
+// Overlapping async work must keep each capture's output, including streams.
+test('concurrent captures do not receive each other’s output', async () => {
+  let release!: () => void
+  const ready = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  const [first, second] = await Promise.all([
+    captureDiagnostics(async () => {
+      await ready
+      console.warn('first console')
+      process.stderr.write('first stream\n')
+    }),
+    captureDiagnostics(async () => {
+      console.warn('second console')
+      release()
+      await ready
+      process.stderr.write('second stream\n')
+    }),
+  ])
+  expect(first.diagnostics.map(({ text }) => text)).toEqual([
+    'first console',
+    'first stream',
+  ])
+  expect(second.diagnostics.map(({ text }) => text)).toEqual([
+    'second console',
+    'second stream',
+  ])
+})
+
+test('overlapping build-environment captures keep only their own console output', async () => {
+  const first: Array<string> = []
+  const second: Array<string> = []
+  let release!: () => void
+  const ready = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  const nodeEnv = process.env.NODE_ENV ?? null
+  await Promise.all([
+    withBuildEnvironment(nodeEnv, first, async () => {
+      await ready
+      console.warn('first build')
+      process.stderr.write('first build stream\n')
+    }),
+    withBuildEnvironment(nodeEnv, second, async () => {
+      console.warn('second build')
+      process.stderr.write('second build stream\n')
+      release()
+      await ready
+    }),
+  ])
+  expect(first).toEqual(['first build', 'first build stream'])
+  expect(second).toEqual(['second build', 'second build stream'])
 })

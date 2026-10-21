@@ -98,6 +98,7 @@ export type DiagnosticSource =
   | 'stdout'
   | 'stderr'
   | 'vite'
+  | 'rsbuild'
   | 'bundler'
   | 'page'
   | 'thrown'
@@ -115,6 +116,14 @@ export interface Diagnostic {
   raw: unknown
   /** The channel it was reported on, when a channel recorded it. */
   source?: DiagnosticSource
+  /**
+   * Printed outside any async scope (a bundler's native callback) by work
+   * the harness could not tell apart: unrelated work was open, and the text
+   * names none of their app roots (or one that several of them claim).
+   * Every open capture received it, so it may be another concurrent test's
+   * (`./console-hook`).
+   */
+  shared?: true
   /**
    * The base of the columns of the `file:line:column` spellings in `text`,
    * when the producer is known: `1` once a structured location was printed
@@ -328,8 +337,8 @@ export async function captureThrow(
  * diagnostics (`error`; `warn` is `warning`; `log`/`info`/`debug` are
  * `info`). The console is restored afterwards, also when `run` throws.
  * Captures may overlap and nest with every other capture of the harness
- * (the shared hook of `./console-hook`): each one gets what is logged while
- * it runs, and the console is restored when the last one ends.
+ * (the shared hook of `./console-hook`): each gets its own async work,
+ * including nested captures. The console is restored when the last one ends.
  *
  * This reads the console only. A check that a compiler reports something,
  * or that nothing is reported, reads every channel instead
@@ -349,7 +358,7 @@ export async function captureConsole<T>(
     },
   })
   try {
-    return { result: await run(), diagnostics }
+    return { result: await stop.run(run), diagnostics }
   } finally {
     stop()
   }
@@ -975,8 +984,7 @@ function frameReportsPosition(
     const start = lines[index]!.indexOf(sourceLine, gutter + 1)
     // The caret, or one column left of it: a compiler handing a 0-based
     // AST column to a 1-based code-frame API (Babel's `codeFrameColumns`)
-    // draws it there. Start's `codeFrameError` does today (finding of
-    // validation/REPAIR/A2.md, for a ruling); this keeps the old tolerance
+    // draws it there. Start's `codeFrameError` does today; keep the tolerance
     // for the caret only.
     if (start >= 0 && columnMatches(caret - start + 1, column, 'either')) {
       return true
