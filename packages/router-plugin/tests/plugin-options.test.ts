@@ -1,26 +1,25 @@
 /**
- * Router plugin options and entry points, through real builds: what each
- * option changes in the output or on disk.
+ * Router plugin options and entry points: what each option changes in a
+ * real app, through the public plugins in a real Vite dev server.
+ * Validation of the options a plugin factory receives (no route compiled):
+ * outside-compiler-corpus/plugin-options-validation.test.ts.
  */
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { describe, expect, test } from 'vitest'
 import {
-  createDevServer,
-  evaluateServed,
-} from '@tanstack/compiler-test-utils/dev-server'
-import { describe, expect, onTestFinished, test } from 'vitest'
-import { routeHead } from './build-harness'
+  captureThrow,
+  expectDiagnostic,
+} from '@tanstack/compiler-test-utils/diagnostics'
+import { createRouterPluginContext } from '../src/context'
 import {
-  renderRouteComponent,
-  rootRouteOf,
-  servedRouterPackageUrl,
-} from './dev-server'
-import { compileRouteModules, head } from './regression-helpers'
-import type { RouterPluginOptions } from './build-harness'
+  tanStackRouterCodeSplitter,
+  tanstackRouterGenerator,
+} from '../src/vite'
+import { createReactDevPage, renderProbe } from './dev-page'
+import { head, loadRoute } from './route-app'
+import type { Config } from '../src'
 
 const timeout = 120_000
-
-const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 
 // TanStack Start splits each environment with its own code splitter, scoped
 // with `environmentName` and sharing one router plugin context
@@ -30,16 +29,12 @@ const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 test(
   'two code splitters scoped to the client and SSR environments of one dev server each split a route whose loader and component share a binding',
   async () => {
-    const { createRouterPluginContext } = await import('../src/context')
-    const { tanStackRouterCodeSplitter, tanstackRouterGenerator } =
-      await import('../src/vite')
-    const server = await createDevServer({
-      dir: harnessDir,
-      prefix: '.router-dev-server-',
-      registerCleanup: onTestFinished,
+    const host = await createReactDevPage({
       files: {
-        'routes/__root.tsx': rootRouteOf('react'),
-        'routes/index.tsx': `${routeHead()}const label = { text: 'MARK_SHARED' }
+        'routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute({})
+`,
+        'routes/index.tsx': `${head}const label = { text: 'MARK_SHARED' }
 function Page() {
   return 'MARK_COMPONENT ' + label.text
 }
@@ -48,10 +43,20 @@ export const Route = createFileRoute('/')({
   component: Page,
 })
 `,
+        // Server rendering in the SSR environment, as an app's server entry
+        'src/ssr.ts': `import { createElement } from 'react'
+import { renderToString } from 'react-dom/server'
+import { Route } from '../routes/index'
+export async function read() {
+  const { component, loader } = Route.options
+  await component.preload?.()
+  return [renderToString(createElement(component)), loader(), loader() === loader()]
+}
+`,
       },
       plugins: (app) => {
         const context = createRouterPluginContext()
-        const config: RouterPluginOptions = {
+        const config: Partial<Config> = {
           target: 'react',
           autoCodeSplitting: true,
           routesDirectory: path.join(app.root, 'routes'),
@@ -69,68 +74,48 @@ export const Route = createFileRoute('/')({
         ]
       },
     })
-    /** Renders the route's split component, and the loader's value. */
-    const read = async (routeModule: Record<string, any>) => {
-      const { options } = routeModule.Route
-      return [await renderRouteComponent(options.component), options.loader()]
-    }
-    const expected = ['MARK_COMPONENT MARK_SHARED', { text: 'MARK_SHARED' }]
-    expect(await read(await server.import('/routes/index.tsx'))).toEqual(
-      expected,
+    const expected = [
+      'MARK_COMPONENT MARK_SHARED',
+      { text: 'MARK_SHARED' },
+      // The loader returns the object the component reads
+      true,
+    ]
+    // The SSR environment: its module runner, React's server renderer
+    const ssr = await host.importServer('/src/ssr.ts')
+    expect(await ssr.read()).toEqual(expected)
+    // The client environment: the page loads the route from the dev server
+    const client = await host.runClient(
+      '/routes/index.tsx',
+      `const { render } = await import(${JSON.stringify(renderProbe)})
+const { component, loader } = module.Route.options
+return [await render(component), loader(), loader() === loader()]`,
     )
-    // The browser gets the router package from the dev server; evaluated
-    // here from the same SSR-loaded module.
-    const routerPackage = await server.import('@tanstack/react-router')
-    expect(
-      await read(
-        await evaluateServed(server, '/routes/index.tsx', {
-          skip: /^\/@fs\//,
-          stubs: {
-            [await servedRouterPackageUrl(server)]: routerPackage,
-          },
-        }),
-      ),
-    ).toEqual(expected)
+    expect(client.result).toEqual(expected)
+    expect(client.errors).toEqual([])
   },
   timeout,
 )
 
-describe('codeSplittingOptions.splitBehavior', () => {
-  test('that is not a function is refused when the plugin is created, naming the option', async () => {
-    const { tanstackRouter } = await import('../src/vite')
-    expect(() =>
-      tanstackRouter({
-        codeSplittingOptions: { splitBehavior: [['loader']] as any },
-      }),
-    ).toThrow(/splitBehavior/)
-  })
-})
-
 describe('repeated options in split groupings', () => {
-  test('in defaultBehavior are refused with an error naming the option', async () => {
-    const { tanstackRouter } = await import('../src/vite')
-    expect(() =>
-      tanstackRouter({
-        codeSplittingOptions: {
-          defaultBehavior: [['loader'], ['loader', 'component']],
-        },
-      }),
-    ).toThrow(
-      /loader[\s\S]*(?:unique|repeated|more than once|duplicate)|(?:unique|repeated|more than once|duplicate)[\s\S]*loader/i,
-    )
-  })
-
   test('in a route are refused with an error naming the route file and the option', async () => {
-    await expect(
-      compileRouteModules(
-        `${head}export const Route = createFileRoute('/')({
+    const route = await loadRoute(
+      `${head}export const Route = createFileRoute('/')({
   codeSplitGroupings: [['loader'], ['loader', 'component']],
   loader: () => 'data',
   component: () => <p>page</p>,
 })
 `,
-        { filename: 'groupings-route.tsx' },
-      ),
-    ).rejects.toThrow(/groupings-route\.tsx[\s\S]*loader/)
+      { filename: 'groupings-route.tsx' },
+    )
+    // The error the compile throws, with what every channel reported (the
+    // wording and the channel are free, SPEC §5.7)
+    const thrown = await captureThrow(() => route.transform())
+    expect(thrown).not.toEqual([])
+    expectDiagnostic([...thrown, ...(await route.diagnostics())], {
+      severity: 'error',
+      file: 'groupings-route.tsx',
+      root: route.host.root,
+      names: ['loader'],
+    })
   })
 })
