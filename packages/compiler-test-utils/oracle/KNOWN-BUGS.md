@@ -13,7 +13,9 @@ Each entry's "Cause" names the product source its comment blames, when it does. 
 implementation, so a rewrite may have no such file. Most root causes are shared by several pins; the bug text then
 says "same root cause as above".
 
-Counts: 356 pin sites in 87 test files (a table test counts once here; Vitest counts each row).
+Counts: 367 pin sites in 102 test files (a table test counts once here; Vitest counts each row).
+
+Pins in `start-plugin-core/tests/pending-rulings/` are held by pending user rulings (README, "Pending user rulings") and reach the compiler through its internals until the ruling lands.
 
 ## Pins by compiler job
 
@@ -108,22 +110,9 @@ Counts: 356 pin sites in 87 test files (a table test counts once here; Vitest co
 - **are split, or reported once naming the route file.** The code splitter resolves the route options only from an object literal of the route file (`resolveIdentifier`, compilers.ts): for an imported binding it finds nothing, leaves the route untouched and says nothing. Cause: `router-plugin/src/core/code-splitter/compilers.ts`.
 - **lose the options of deleteNodes and what only they import, or are reported once naming the route file.** Same cause; with Start's client `deleteNodes` the `server` option (and `ssr`, `headers`) stays in the route module with the helper it imports, silently.
 
-#### `router-plugin/tests/code-splitter-imports-exports.test.ts`
-
-- **are reported once, naming the file and the option, when not code-split: $name.** The warning names the file and the exported binding ("These exports from … will not be code-split: - Page"), never the route option it leaves unsplit.
-- **reads an ambient var merged with an interface from the environment in a shared declaration, with verbatimModuleSyntax.** The route module and the split chunk import the ambient var from the shared module (the interface of the same name stays in them and counts as a read of the shared binding), and the shared module has no runtime binding to export. Cause: `router-plugin/src/core/code-splitter/compilers.ts`.
-
 #### `router-plugin/tests/code-splitter-jsx.test.ts`
 
 - **gives separate loader and component chunks the one JSX component %s.** The identifier collection that decides what split options share takes a JSX tag whose first character equals its lowercase form for an intrinsic element (router-utils compiler-helpers.ts, `first === first.toLowerCase()`), which holds for `_`, `$` and non-ASCII lowercase letters, whereas JSX only treats tags starting with an ASCII lowercase letter as intrinsic. Cause: `router-utils/src/compiler-helpers.ts`.
-
-#### `router-plugin/tests/code-splitter-module-state.test.ts`
-
-- **$name.** A class whose static initializer calls a function, read by the options of one split chunk only, is declared in that chunk and also kept in the route module, so the class is created twice.
-
-#### `router-plugin/tests/code-splitter-plugin-pipeline.test.ts`
-
-- **a route built from $name renders what the factory was given, split or reported.** Route options that only exist inside the factory (its parameters, its locals) are split out of it as if they were module-level code: a split option that closes over a parameter throws a ReferenceError, a component declared in the factory leaves a chunk that exports an undeclared binding, and a parameter that shadows a module-level component makes the chunk render the module-level one.
 
 #### `router-plugin/tests/code-splitter-pragmas.test.ts`
 
@@ -164,8 +153,8 @@ Counts: 356 pin sites in 87 test files (a table test counts once here; Vitest co
 
 #### `router-plugin/tests/integration/known-bugs-code-splitter-client-output.test.ts`
 
-- **a client build has no server code of an `ssr()` method (vite).** Build-level canary of the method pin in ../known-bugs-code-splitter.test.ts (same root cause).
-- **a client build has no server code of options wrapped in `%s` (vite).** Build-level canary of the typed-wrapper pin in ../known-bugs-code-splitter.test.ts (same root cause: options wrapped in a cast or `satisfies` are not read; one bundler, as above).
+- **a client build has no server code of an `ssr()` method (vite).** Build-level canary of the method pin in pages/known-bugs-code-splitter.test.ts (same root cause).
+- **a client build has no server code of options wrapped in `%s` (vite).** Build-level canary of the typed-wrapper pin in pages/known-bugs-code-splitter.test.ts (same root cause: options wrapped in a cast or `satisfies` are not read; one bundler, as above).
 - **a client build of a symlinked route file has no server handler code (%s).** The code splitter looks route files up by the path the generator scanned (the symlink), but bundlers resolve modules to their real path, so a symlinked route file is never compiled: nothing is split or removed, silently.
 - **a production client bundle logs no development warning in the page when NODE_ENV is unset (%s).** The code splitter's `console.warn` (today: "will not be code-split") is injected into the route module unless the build process's `NODE_ENV` is `production`, instead of following the bundler's mode as the rest of the code splitter does.
 
@@ -188,41 +177,29 @@ Counts: 356 pin sites in 87 test files (a table test counts once here; Vitest co
 - **a split loader in object form passed by reference loads route data.** An object-form loader passed by reference (`loader` holding `{ handler }`) is split as if it were the loader function, so the route calls the object ("...
 - **the split component and other modules share an exported $name.** A split chunk declares its own copy of the exported functions and classes of the route file it reads (and of the private state they read), so another module of the app that imports them gets other instances than the split component.
 - **an app in a directory with # in its name builds and preloads a split component.** The route module imports its chunks by absolute file path with the split query (`<root>/routes/index.tsx?tsr-split=component`), and a `#` in the path is read as the start of a URL fragment.
-- **an app in a directory whose name contains tsr-split builds and preloads a split component.** The code splitter compiles every module whose id contains `tsr-split` (path text, not its query) as a split chunk, and throws "The split value for the virtual route ...
+- **an app in a directory whose name contains what split module ids contain builds and preloads a split component.** The code splitter compiles every module whose id contains the marker of its split ids (today `tsr-split`: path text, not its query) as a split chunk, and throws "The split value for the virtual route ...
 - **an app in a directory with ' in its name builds and preloads a split component.** The route module's chunk importers are built by pasting the absolute file path into a single-quoted string (`import('${splitUrl}')`), so a `'` in the path ends the string early.
 - **an imported split component that head() reads renders, and head() reads it (%s build).** Same root cause as above, in a real build.
-- **a split loader sees the same `this` as an unsplit one.** A split loader is called as a method of its chunk's module namespace (`lazyFn` calls `imported[key](...args)`), so its `this` is the chunk's exports, where the router calls an unsplit loader without a `this`.
 
 #### `router-plugin/tests/integration/known-bugs-dev-server.test.ts`
 
 - **a page loading the modules of the route file before the route module renders the edited route after $name.** The route module's transform computes the bindings that go to the shared module (`?tsr-shared=1`) and stores them by file; the shared and split transforms read that stored set instead of deriving it from the code they compile (router-code-splitter-plugin.ts `sharedBindingsMap`). Cause: `router-plugin/src/core/router-code-splitter-plugin.ts`.
 
-#### `router-plugin/tests/known-bugs-code-splitter.test.ts`
+#### `router-plugin/tests/integration/pages/code-splitter-imports-exports.test.ts`
 
-- **a binding read by a computed-key option and a split option is created once.** A binding that an option with a computed key and a split option both read is created twice: the computed-key option is not seen as a reader of the route module.
-- **a binding declared by $name and read by the loader and the split component is initialized once.** A `var` nested in a statement, an enum or a namespace is not shared.
-- **top-level writes to $name stay with the binding they write.** A top-level statement that writes a binding stays in the reference module when the binding moves to the shared module or a split chunk.
-- **module state that the reference module keeps for $name is initialized once.** Shared bindings are computed from the statically named route options only (`computeSharedBindings` skips computed keys), so a declaration that one split chunk reads and that the reference module keeps as well (for an export, a top-level call, another binding of the declaration, or a route option under a computed key, pinned above) is not shared: the chunk declares its own copy.
-- **an unreferenced top-level side effect ($name) runs once, with the route module.** Split chunks keep the top-level statements that nothing references, except expression statements that read only imports: dead-code elimination only removes what the split made unreferenced, and `stripUnreferencedTopLevelExpressionStatements` only strips expression statements that name no module-level binding. Cause: `router-utils/src/compiler-helpers.ts`, `router-plugin/src/core/code-splitter/compilers.ts`.
-- **split chunks do not re-export a module-level export \*, which importers of the route file still get.** Same root cause as above: every split chunk keeps the route file's `export * from './lib'`.
-- **an ambient declare const read by the loader and the split component stays a global.** An ambient `declare const` is handled as a module binding.
-- **the initializers of $name run when the route module loads.** The route module drops a declaration that only an exported type alias reads: it loses that reader when the code splitter removes the alias with the other exports, and the initializer then never runs.
-- **the initializer of a declaration only an exported type alias reads runs when a route module compiled for HMR loads.** Same as the type alias row above, in a route module compiled by the route HMR plugin (automatic code splitting off), which runs the same reference compiler.
-- **a split component and its imports leave the route module next to $name.** Page code that only the split component needs stays in the route module, with what it imports, when something there looks like a read of it: a type of the same name (TypeScript keeps types and values in separate namespaces), an overload signature or a second `var` declaration (dead-code elimination keeps them), or an unused function that renders it (one that renders the split component itself works: control in code-splitter-dead-code.test.ts).
-- **the handler of a split loader in object form with $name loads lazily.** Once the object form compiles (pins above), its handler must also end up split: a loader configured to be split that stays in the route module is our limitation, not a pattern the user can change (decision D11).
-- **a split loader in object form keeps $name working, created once.** Same root cause as the object-form pins above.
-- **a component is split with $name.** A route whose options object or factory call is wrapped in a TypeScript cast is not split at all, and a component wrapped in `satisfies` cannot be split: the virtual compiler throws "Unexpected splitNode type ☝️: TSSatisfiesExpression".
-- **an option written as $name is split and works.** The virtual compiler accepts only a fixed list of expression types for the value of a split option; any other expression the route module splits makes the build throw "Unexpected splitNode type ☝️: MemberExpression" (LogicalExpression, TaggedTemplateExpression, ClassExpression).
-- **a component written as $name is split and renders.** A component option written as a call cannot be split when its printed code does not parse on its own with Babel's default options: the virtual compiler prints the call and parses it again as a script statement, without JSX ("Support for the experimental syntax 'jsx' isn't currently enabled") and without TypeScript ("Unexpected token"). Cause: `router-plugin/src/core/code-splitter/compilers.ts`.
-- **a component is split when createFileRoute is imported under an alias.** The code splitter only recognises `createFileRoute` under its own name, so a route whose factory is imported under an alias is not split, and nothing says so.
-- **a component is split when createFileRoute has a type argument.** The code splitter only compiles files whose code matches `createFileRoute(`, so a route whose factory call has a type argument (`createFileRoute<'/'>('/')`) is left as is, and nothing says so.
-- **route options returned by a call are split or reported.** Route options returned by a call (`createFileRoute('/')( makeOptions())`) are neither split nor reported.
-- **each of two file routes of one module renders its own component, or the module is reported.** A route file that creates two file routes compiles both routes' split options into the same chunk names, so one route renders the other's component, silently.
-- **a split chunk holds only what its option needs, not the other exports of the route file.** A split chunk keeps every exported `function`, `class` and `export default function` declaration of the route file, with the imports they use, whether its option reads them or not (`compilers.ts`, the virtual compiler keeps exported declarations). Cause: `router-plugin/src/core/code-splitter/compilers.ts`.
-- **split chunks do not re-export or declare the re-exports and default class of the route file.** Same root cause as above, for re-exports and a default-exported class: every split chunk re-exports them or declares the class again.
-- **a module without JSX does not import the classic factory ($name).** The route module keeps importing the classic JSX factory its pragma names (and the chunk the fragment factory) after the JSX that compiles to it moved to a split chunk (D5 family).
-- **a component declared by an array destructuring of a call shared with the errorComponent renders.** A split option that names a binding declared by an array destructuring cannot be split: the virtual compiler throws "Unexpected splitNode type ☝️: VariableDeclarator".
-- **a route file binding named $name keeps its value.** The code splitter declares fixed names in the modules it emits (`SplitComponent`, `SplitLoader`) without checking that the route file does not use them.
+- **are reported once, naming the file and the option, when not code-split: $name.** The warning names the file and the exported binding ("These exports from … will not be code-split: - Page"), never the route option it leaves unsplit.
+- **reads an ambient var merged with an interface from the environment in a shared declaration, with verbatimModuleSyntax.** The route module and the split chunk import the ambient var from the shared module (the interface of the same name stays in them and counts as a read of the shared binding), and the shared module has no runtime binding to export. Cause: `router-plugin/src/core/code-splitter/compilers.ts`.
+
+#### `router-plugin/tests/integration/pages/code-splitter-module-state-bindings.test.ts`
+
+- **$name.** A class whose static initializer calls a function, read by the options of one split chunk only, is declared in that chunk and also kept in the route module, so the class is created twice.
+
+#### `router-plugin/tests/integration/pages/code-splitter-plugin-pipeline-routes.test.ts`
+
+- **a route built from $name renders what the factory was given, split or reported.** Route options that only exist inside the factory (its parameters, its locals) are split out of it as if they were module-level code: a split option that closes over a parameter throws a ReferenceError, a component declared in the factory leaves a chunk that exports an undeclared binding, and a parameter that shadows a module-level component makes the chunk render the module-level one.
+
+#### `router-plugin/tests/integration/pages/known-bugs-code-splitter-bindings.test.ts`
+
 - **groupings declared in a module-level constant are honoured.** `codeSplitGroupings` must be written inline; a module-level constant holding the groupings is refused ("You must provide an array of arrays for the codeSplitGroupings").
 - **module state a method option shares with a split option is created once.** Shared bindings are computed from route options written as `key: value` only, so a binding that an option written as a method (kept in the route module) and a split option both read is not shared: the split chunk declares its own copy.
 - **a destructuring whose sibling reads Route keeps one cache for the loader and the component.** Bindings that depend on `Route` are never shared (`removeBindingsDependingOnRoute`), and a destructuring is never split across modules, so a `Map` declared next to a binding that reads `Route` is created by the route module and again by the chunk that reads it.
@@ -248,6 +225,9 @@ Counts: 356 pin sites in 87 test files (a table test counts once here; Vitest co
 - **an asserted update operand keeps its parentheses in a split component.** The split chunk prints a type assertion used as an update target without its parentheses (`count as number++`), which does not parse.
 - **an asserted conditional test keeps its parentheses in a split component.** The split chunk prints a type assertion that is the test of a conditional whose branch starts with a unary minus without its parentheses (`a as any ? -x : y`), which does not parse (`any ? -x` reads as the start of a conditional type). Cause: `router-utils/src/ast.ts`.
 - **an overloaded function the route module and a split loader share keeps working.** The overload signatures of a function that the route module and a split chunk share stay in both modules, next to the import of the shared function, and the TypeScript transform then takes them for the binding's declaration and drops the import (dead-code elimination never removes overload signatures).
+
+#### `router-plugin/tests/integration/pages/known-bugs-code-splitter-server.test.ts`
+
 - **a split component that $name reads renders from both.** When a route option names a binding that the code splitter moves into a chunk, the splitter deletes the binding's declaration from the route module (`removeIdentifierLiteral`), even when other code there still reads it.
 - **a split component renders through a function $name.** Same root cause as above, for a function that module-level code keeps reachable: it renders the split component, whose declaration the route module lost.
 - **a component read by a split and an unsplit option renders from both.** Same root cause as above, for an unsplit option that names the split component.
@@ -263,6 +243,37 @@ Counts: 356 pin sites in 87 test files (a table test counts once here; Vitest co
 - **a server-only option given through $name is removed, or the route is refused.** Server-only options whose key is not written literally in the route options (a spread, a computed key, options built by a call) are kept, with their imports, and nothing reports it.
 - **a server-only option of options wrapped in `%s` is removed with its imports.** A route whose options object is wrapped in a TypeScript cast or a `satisfies` (statically visible options, valid TypeScript) keeps its server-only options and their imports on the client.
 - **a local factory shadowing createFileRoute in a route file keeps its own semantics.** In a registered route file, the code splitter treats every call of a function named `createFileRoute` as the route's factory, including a local function shadowing the router's: it splits the options of that call too, so the local factory gets a lazy route component instead of the function it was given (and in a dev server, where route HMR is on, the route module loses that function's declaration and throws "LocalWidget is not defined" when it loads).
+
+#### `router-plugin/tests/integration/pages/known-bugs-code-splitter-shapes.test.ts`
+
+- **a component is split with $name.** A route whose options object or factory call is wrapped in a TypeScript cast is not split at all, and a component wrapped in `satisfies` cannot be split: the virtual compiler throws "Unexpected splitNode type ☝️: TSSatisfiesExpression".
+- **an option written as $name is split and works.** The virtual compiler accepts only a fixed list of expression types for the value of a split option; any other expression the route module splits makes the build throw "Unexpected splitNode type ☝️: MemberExpression" (LogicalExpression, TaggedTemplateExpression, ClassExpression).
+- **a component written as $name is split and renders.** A component option written as a call cannot be split when its printed code does not parse on its own with Babel's default options: the virtual compiler prints the call and parses it again as a script statement, without JSX ("Support for the experimental syntax 'jsx' isn't currently enabled") and without TypeScript ("Unexpected token"). Cause: `router-plugin/src/core/code-splitter/compilers.ts`.
+- **a component is split when createFileRoute is imported under an alias.** The code splitter only recognises `createFileRoute` under its own name, so a route whose factory is imported under an alias is not split, and nothing says so.
+- **a component is split when createFileRoute has a type argument.** The code splitter only compiles files whose code matches `createFileRoute(`, so a route whose factory call has a type argument (`createFileRoute<'/'>('/')`) is left as is, and nothing says so.
+- **route options returned by a call are split or reported.** Route options returned by a call (`createFileRoute('/')( makeOptions())`) are neither split nor reported.
+- **each of two file routes of one module renders its own component, or the module is reported.** A route file that creates two file routes compiles both routes' split options into the same chunk names, so one route renders the other's component, silently.
+- **a split chunk holds only what its option needs, not the other exports of the route file.** A split chunk keeps every exported `function`, `class` and `export default function` declaration of the route file, with the imports they use, whether its option reads them or not (`compilers.ts`, the virtual compiler keeps exported declarations). Cause: `router-plugin/src/core/code-splitter/compilers.ts`.
+- **split chunks do not re-export or declare the re-exports and default class of the route file.** Same root cause as above, for re-exports and a default-exported class: every split chunk re-exports them or declares the class again.
+- **a module without JSX does not import the classic factory ($name).** The route module keeps importing the classic JSX factory its pragma names after the JSX that compiles to it moved to a split chunk (D5 family).
+- **a component declared by an array destructuring of a call shared with the errorComponent renders.** A split option that names a binding declared by an array destructuring cannot be split: the virtual compiler throws "Unexpected splitNode type ☝️: VariableDeclarator".
+- **a route file binding named $name keeps its value.** The code splitter declares fixed names in the modules it emits (`SplitComponent`, `SplitLoader`) without checking that the route file does not use them.
+- **route file bindings named like what the compiled modules introduce keep their values.** As above, found adaptively, whatever names a compiler chooses: the top-level names the modules emitted for a route file declare that the same file, served untouched (an app module the router plugin does not compile, through the same framework transform), does not declare, given to bindings of the route file, keep their values in every split option.
+
+#### `router-plugin/tests/integration/pages/known-bugs-code-splitter.test.ts`
+
+- **a binding read by a computed-key option and a split option is created once.** A binding that an option with a computed key and a split option both read is created twice: the computed-key option is not seen as a reader of the route module.
+- **a binding declared by $name and read by the loader and the split component is initialized once.** A `var` nested in a statement, an enum or a namespace is not shared.
+- **top-level writes to $name stay with the binding they write.** A top-level statement that writes a binding stays in the reference module when the binding moves to the shared module or a split chunk.
+- **module state that the reference module keeps for $name is initialized once.** Shared bindings are computed from the statically named route options only (`computeSharedBindings` skips computed keys), so a declaration that one split chunk reads and that the reference module keeps as well (for an export, a top-level call, another binding of the declaration, or a route option under a computed key, pinned above) is not shared: the chunk declares its own copy.
+- **an unreferenced top-level side effect ($name) runs once, with the route module.** Split chunks keep the top-level statements that nothing references, except expression statements that read only imports: dead-code elimination only removes what the split made unreferenced, and `stripUnreferencedTopLevelExpressionStatements` only strips expression statements that name no module-level binding. Cause: `router-utils/src/compiler-helpers.ts`, `router-plugin/src/core/code-splitter/compilers.ts`.
+- **split chunks do not re-export a module-level export \*, which importers of the route file still get.** Same root cause as above: every split chunk keeps the route file's `export * from './lib'`.
+- **an ambient declare const read by the loader and the split component stays a global.** An ambient `declare const` is handled as a module binding.
+- **the initializers of $name run when the route module loads.** The route module drops a declaration that only an exported type alias reads: it loses that reader when the code splitter removes the alias with the other exports, and the initializer then never runs.
+- **the initializer of a declaration only an exported type alias reads runs when a route module compiled for HMR loads.** Same as the type alias row above, in a route module compiled by the route HMR plugin (automatic code splitting off), which runs the same reference compiler.
+- **a split component and its imports leave the route module next to $name.** Page code that only the split component needs stays in the route module, with what it imports, when something there looks like a read of it: a type of the same name (TypeScript keeps types and values in separate namespaces), an overload signature or a second `var` declaration (dead-code elimination keeps them), or an unused function that renders it (one that renders the split component itself works: control in code-splitter-dead-code.test.ts).
+- **the handler of a split loader in object form with $name loads lazily.** Once the object form compiles (pins above), its handler must also end up split: a loader configured to be split that stays in the route module is our limitation, not a pattern the user can change (decision D11).
+- **a split loader in object form keeps $name working, created once.** Same root cause as the object-form pins above.
 
 #### `router-plugin/tests/known-bugs-dev-server.test.ts`
 
@@ -302,9 +313,9 @@ Counts: 356 pin sites in 87 test files (a table test counts once here; Vitest co
 
 ### J3 Route HMR (router-plugin)
 
-24 pins.
+25 pins.
 
-#### `router-plugin/tests/integration/build-production-webpack.test.ts`
+#### `router-plugin/tests/integration/build-production-webpack-unsplit.test.ts`
 
 - **a production %s client bundle without code splitting has no dev-only code.** With automatic code splitting off, the composed router plugin adds the route HMR plugin unless `NODE_ENV` is `production` when the plugin is created (`router-composed-plugin.ts`), instead of following the bundler's mode; webpack and Rspack set `NODE_ENV` only inside the bundle. Cause: `router-plugin/src/core/router-composed-plugin.ts`.
 
@@ -320,6 +331,13 @@ Counts: 356 pin sites in 87 test files (a table test counts once here; Vitest co
 - **vite: a lowercase function component that is also the unsplit pendingComponent renders, and an edit shows in place.** React HMR renames a lowercase `function` component in its split chunk, also when the component is the unsplit `pendingComponent` too, so the chunk exports a binding nothing declares (the in-process pin "a lowercase function component that is also the unsplit pendingComponent renders as both", known-bugs-route-hmr.test.ts).
 - **vite: a split component exported by an export list renders, and an edit shows in place.** With React HMR, the code splitter moves a component exported by an export list (`export { page }`) into its chunk and leaves the export list in the route module (the in-process pin "a component exported by an export list renders for a module importing it and as the route component", known-bugs-route-hmr.test.ts).
 
+#### `router-plugin/tests/integration/known-bugs-route-hmr-removals.test.ts`
+
+- **vite: an edit that removes a split option the page loaded applies in place without errors.** An edit that removes a split component option (here `errorComponent`, which the page had loaded) leaves its split module in Vite's module graph; Vite updates it with the rest of the route file, the code splitter serves it without any export or import, and `@vitejs/plugin-react` compiles that module's JSX as CommonJS (`require("react/jsx-dev-runtime")`).
+- **rsbuild without React Refresh: an edit of the route component shows in place (autoCodeSplitting: %s).** `handleRouteUpdate` keeps the previous component options for React Refresh to patch in place, also when no React Refresh runtime is installed (an Rsbuild React app with `pluginReact({ fastRefresh: false })`, or webpack / Rspack without a refresh plugin, like the webpack quickstart example with the default `addHmr`), so the new component never renders.
+- **a route exported under another local name is hot-updated in place.** The injected HMR code reads the route through the identifier `Route`, but a route may be declared under another name and exported as `Route` (`export { MyRoute as Route }`).
+- **vite: an inline pending component hoisted before a renamed lowercase component renders it.** React HMR hoists inline component options into declarations it inserts after visiting every option, and renames a lowercase component passed to a later option.
+
 #### `router-plugin/tests/integration/known-bugs-route-hmr.test.ts`
 
 - **$bundler: an edit of a split $target route shows in place, keeping the split component.** Route HMR keeps the previous split components only for React: for Solid and Vue, the route module creates a new lazy component on every update and `handleRouteUpdate` keeps no component option (`getFrameworkHmrCompilerPlugins` returns no plugin and the kept component keys are empty for other targets); in Vite, the route module is not an HMR boundary either (its accept call is on an alias), so the page reloads.
@@ -330,10 +348,10 @@ Counts: 356 pin sites in 87 test files (a table test counts once here; Vitest co
 - **vite: an edit of a route component in an app without @vitejs/plugin-react shows in place (autoCodeSplitting: %s).** Same root cause, for a React app without `@vitejs/plugin-react` (Vite compiles the JSX itself; nothing registers React Refresh boundaries): the route module's own accept call is on an alias, so the page reloads on every edit.
 - **renaming the route component shows the renamed component in place (autoCodeSplitting: %s).** `handleRouteUpdate` keeps the previous component options for React Refresh to patch, also when the edit renamed the component (a new Refresh family that is never patched): the page keeps the old component until a reload. Cause: `router-plugin/src/core/hmr/handle-route-update.ts`.
 - **rsbuild: an edit of a split loader (codeSplitGroupings: %s) shows its data in place.** On Rsbuild (Rspack), an edit that only changes a loader split from the route module (`codeSplitGroupings` with `loader` in a chunk) never reaches the page: the route module's code is unchanged, so Rspack does not run it again and the route HMR code (`webpack-adapter.ts`, in the route module only) never refreshes the route; the split loader module accepts no update of its own. Cause: `router-plugin/src/core/hmr/webpack-adapter.ts`.
-- **vite: an edit that removes a split option the page loaded applies in place without errors.** An edit that removes a split component option (here `errorComponent`, which the page had loaded) leaves its split module in Vite's module graph; Vite updates it with the rest of the route file, the code splitter serves it without any export or import, and `@vitejs/plugin-react` compiles that module's JSX as CommonJS (`require("react/jsx-dev-runtime")`).
-- **rsbuild without React Refresh: an edit of the route component shows in place (autoCodeSplitting: %s).** `handleRouteUpdate` keeps the previous component options for React Refresh to patch in place, also when no React Refresh runtime is installed (an Rsbuild React app with `pluginReact({ fastRefresh: false })`, or webpack / Rspack without a refresh plugin, like the webpack quickstart example with the default `addHmr`), so the new component never renders.
-- **a route exported under another local name is hot-updated in place.** The injected HMR code reads the route through the identifier `Route`, but a route may be declared under another name and exported as `Route` (`export { MyRoute as Route }`).
-- **vite: an inline pending component hoisted before a renamed lowercase component renders it.** React HMR hoists inline component options into declarations it inserts after visiting every option, and renames a lowercase component passed to a later option.
+
+#### `router-plugin/tests/known-bugs-route-hmr-bindings.test.ts`
+
+- **a route file importing a binding named Map renders with route HMR.** The React Refresh bookkeeping the router plugin injects for route HMR constructs a `Map`; a route file that imports a class of its own named `Map` (a map widget's) hands the injected code the user's class, and the route module throws when it loads (SPEC G15, J3.8).
 
 #### `router-plugin/tests/known-bugs-route-hmr.test.ts`
 
@@ -345,7 +363,7 @@ Counts: 356 pin sites in 87 test files (a table test counts once here; Vitest co
 
 ### J4 Start environment separation (start-plugin-core start-compiler; RSC provider in react-start-rsc)
 
-76 pins.
+82 pins.
 
 #### `start-plugin-core/tests/createServerFn/caller-dead-code.test.ts`
 
@@ -356,6 +374,9 @@ Counts: 356 pin sites in 87 test files (a table test counts once here; Vitest co
 
 #### `start-plugin-core/tests/createServerFn/createServerFn.test.ts`
 
+- **reports the location of a diagnostic with %s line endings.** The code frame's caret, Start's only spelling of the column, is drawn one column left of the call, so the reported column is wrong; the line is right.
+- **reports the location of a diagnostic deep in the module.** The code frame's caret, Start's only spelling of the column, is drawn one column left of the call, so the reported column is wrong; the line is right.
+- **a server fn whose factory a virtual module serves by its exact id compiles in dev.** In dev, the compiler looks up a module a server fn's factory comes from under a derived id (the module's id with a query flag of its own added), which the environment then loads: a user plugin serving a virtual module by its exact id, as Vite documents it, does not know that id, so the module that defines the server fn fails to compile ("Failed to load url virtual:...?server-fn-module-lookup").
 - **a handler called with ${name} is extracted.** A module is only compiled when its text matches `createServerFn` or `.handler(`, so with the builder imported from another module, a comment between the dot and `handler` hides the server fn. Cause: `start-plugin-core/src/start-compiler/compiler.ts`.
 
 #### `start-plugin-core/tests/createServerFn/declaration-sites.test.ts`
@@ -381,6 +402,10 @@ Counts: 356 pin sites in 87 test files (a table test counts once here; Vitest co
 - **transforms a client module with a server fn and a top-level call of a pre-bundled dependency.** Next to a server fn, a top-level `const x = f()` may be a renamed or re-exported Start factory, so in dev the client compiler loads the module of `f` through the client environment, from inside the transform.
 - **calls a server fn id on a fresh dev server that has not compiled its module.** When a server fn id is not registered yet, the dev validator (`validate-server-fn-id`) transforms the source file under `?server-fn-module-lookup`, the one id the compiling transform excludes, so the id is never registered and the validator rejects it.
 
+#### `start-plugin-core/tests/integration/known-bugs-start-compiler-vue-sfc.test.ts`
+
+- **build: a server fn in a <script lang="ts"> block may use angle-bracket type assertions.** The parser is chosen from the module id without its query, so the `<script lang="ts">` block of a Vue SFC, which @vitejs/plugin-vue 6 serves in builds as `Page.vue?vue&type=script&lang.ts` (genScriptCode, attrsToQuery), is parsed as TSX.
+
 #### `start-plugin-core/tests/integration/known-bugs-start-compiler.test.ts`
 
 - **client: the server-only module of a class only server code uses is not bundled.** The client output keeps a class only server code uses, with its server-only import: the server-only module's top-level code is bundled and runs in the browser.
@@ -391,6 +416,11 @@ Counts: 356 pin sites in 87 test files (a table test counts once here; Vitest co
 - **a server fn created by a library function: the handler is not in the client bundle, or the build fails clearly.** A library function that creates server fns for its users (`createLoggedServerFn(handler)`) is never seen as a server fn in the user's module, so the handler ships to the client, silently.
 - **a build run from another directory: a library's server fn runs in the SSR build.** Start's Vite plugin looks for the Start libraries it bundles in SSR (`crawlFrameworkPkgs`: dependencies with a peer dependency on Start) in the package.json of the working directory (`root: process.cwd()`), not of Vite's root, which the plugin uses for its own root a few lines above. Cause: `start-plugin-core/src/vite/plugin.ts`.
 - **a module with a middleware and an isomorphic fn builds, and its middleware runs on the server.** In the SSR build, compiling a module with an isomorphic fn makes the Start compiler resolve the module's `createMiddleware` import (the server lookup does not know that factory). Cause: `start-plugin-core/src/rsbuild/start-compiler-host.ts`.
+
+#### `start-plugin-core/tests/integration/pages/start-compiler-import-forms.test.ts`
+
+- **$name alone in its module: the other environment neither loads nor runs the implementation.** The bundler plugins choose the modules the Start compiler transforms by their text (a factory name such as `createServerOnlyFn`, or `.handler(`). Cause: `start-plugin-core/src/start-compiler/compiler.ts`, `start-plugin-core/src/vite/start-compiler-plugin/plugin.ts`, `start-plugin-core/src/rsbuild/start-compiler-host.ts`.
+- **through a namespace member.** `<ClientOnly>` is detected by the `<ClientOnly` / imported `ClientOnly` text, so a boundary written as a member of a namespace import (`<Router.ClientOnly>`) is never compiled.
 
 #### `start-plugin-core/tests/integration/start-build-call-shapes.test.ts`
 
@@ -414,10 +444,9 @@ Counts: 356 pin sites in 87 test files (a table test counts once here; Vitest co
 
 - **the decorated class only a server fn handler uses is not in the client bundle.** A class only a server fn handler uses stays in the client output (dead-code elimination never removes class declarations; same root cause as the pins "client: a class used by a server fn handler does not load its server-only import" and "client: the server-only module of a class only server code uses is not bundled").
 
-#### `start-plugin-core/tests/integration/start-build-warnings.test.ts`
+#### `start-plugin-core/tests/integration/start-compiler-build-export-cache.test.ts`
 
-- **a compiler warning reaches the user once, naming the module, from the environment that compiled it.** The Rsbuild compiler host warns through the transform context's `emitWarning` (rsbuild/start-compiler-host.ts `warnTransformContext`), which Rsbuild's `api.transform` context does not have (it has no warning API), so the optional call does nothing. Cause: `start-plugin-core/src/rsbuild/start-compiler-host.ts`.
-- **Rsbuild dev: a compiler warning reaches the user once, naming the module.** Same as the Rsbuild build pin above: the Rsbuild compiler host warns through the transform context's `emitWarning`, which Rsbuild's `api.transform` context does not have. Cause: `start-plugin-core/src/rsbuild/start-compiler-host.ts`.
+- **export \* $name do not poison the build-mode export cache.** Build-mode export lookups are cached per module, but the parallel `export *` branches of one lookup share one visited set: in a diamond (a -> b -> d, a -> c -> d) the branch that reaches `d` second finds it visited and caches its own module (`b` or `c`) as not exporting `base`; in a cycle (a -> b -> a, a -> d) the lookup through `a` caches `b` the same way.
 
 #### `start-plugin-core/tests/integration/start-compiler-dev-server.test.ts`
 
@@ -427,9 +456,16 @@ Counts: 356 pin sites in 87 test files (a table test counts once here; Vitest co
 
 - **the server runs the route module once.** With SSR as the provider, the SSR bundle holds the route module twice (SSR module and server fn provider module of the same file), so its top-level code runs twice.
 
+#### `start-plugin-core/tests/integration/start-rsc-warnings.test.ts`
+
+- **renderToReadableStream with a variable or a spread warns once per file, naming the module.** The transform (react-start-rsc src/plugin/rscCssTransform.ts, `renderToReadableStream` branch) skips an argument that is not top-level JSX (`isTopLevelJsx`) with `continue`, and reports nothing; on Rsbuild, Start's compiler host would drop a warning of a transform too (rsbuild/start-compiler-host.ts `warnTransformContext` calls the transform context's `emitWarning`, which Rsbuild's `api.transform` context does not have). Cause: `react-start-rsc/src/plugin/rscCssTransform.ts`, `start-plugin-core/src/rsbuild/start-compiler-host.ts`.
+
+#### `start-plugin-core/tests/known-bugs-start-compiler-code-frame.test.ts`
+
+- **$name.** The caret is drawn one column left of the call.
+
 #### `start-plugin-core/tests/known-bugs-start-compiler.test.ts`
 
-- **export \* $name do not poison the build-mode export cache.** Build-mode export lookups are cached per module, but parallel `export *` branches share one visited set, so in a diamond or a cycle a module that re-exports the builder is cached as "not found".
 - **client builds compile $name finished or called in another module.** Middleware, isomorphic and env-only fns are detected by the `createMiddleware` / `createIsomorphicFn` / `createServerOnlyFn` text, so a module that only finishes a builder imported from another module, or calls a factory re-exported or aliased under another name, is never compiled.
 - **client builds compile a builder read from a namespace import.** A server fn builder read as a member of a namespace import (`F.authed.handler`) is not resolved, unlike the same builder imported by name.
 - **client builds compile factories of a re-exported Start namespace.** A namespace of the Start package re-exported by a project module (`export * as Start from '@tanstack/react-start'`) is not resolved.
@@ -437,16 +473,18 @@ Counts: 356 pin sites in 87 test files (a table test counts once here; Vitest co
 - **client builds compile a server fn whose builder passes through a helper function.** Same family as above, for a builder the user passes through a helper function (`applyStep(createServerFn().validator(schema))`): the `.handler()` chain is not traced through the call, so the module is left untransformed.
 - **each output keeps its implementation of an isomorphic fn whose chain passes through a helper function.** Same family, for an isomorphic fn whose chain passes through a helper function (`withBuilder(createIsomorphicFn().server(f)).client(g)`): the inner `createIsomorphicFn().server(f)` is compiled on its own into a plain function, so `.client(g)` is then called on that function.
 - **client: a createServerOnlyFn called through $name is compiled.** Env-only factories nested in other code are found by the factory's exported name (`isNestedDirectCallCandidate`), so a renamed import or a local alias is only compiled as a top-level variable initializer.
-- **$name: the client holds no server code, or the module is rejected at the call.** Chain methods are only recognised when called through a static member (`.handler(...)`, `.server(...)`), and a call whose result is member-called (`createServerOnlyFn(...).bind(null)`) is taken for the inner call of a method chain and never visited as a candidate itself: each module below is left untransformed on every output.
+- **$name: the client holds no server code, or the module is rejected at the call.** Chain methods are only recognised when called through a static member (`.handler(...)`, `.server(...)`), and a call whose result is member-called (`createServerOnlyFn(...).bind(null)`) is taken for the inner call of a method chain and never visited as a candidate itself: each module below is left untransformed in every environment.
 - **a createServerOnlyFn local alias called in a top-level block works in each environment, or is rejected at the call.** Env-only factories nested in other code are found by the factory's exported name (`isNestedDirectCallCandidate`), so a local alias of createServerOnlyFn called in a top-level block is neither compiled nor rejected.
 - **a createServerFn in $name does not ship its handler to the client.** With createServerFn the only factory imported, only top-level variable declarations are visited, so a server fn elsewhere is neither extracted nor rejected; with another factory imported, a nested declarator is extracted but its provider exports an undeclared handler.
 - **with another Start factory imported, a server fn in $name works or is rejected at the call.** Next to another Start factory, a server fn that is not assigned to a variable (an object property, a class field, a default export, an assignment, a call argument, a JSX attribute, a conditional, a destructuring) is rejected with a plain `Error` ("createServerFn must be assigned to a variable!") that carries no position: the user is told the file (by the bundler) but not where in it. Cause: `start-plugin-core/src/start-compiler/handleCreateServerFn.ts`.
-- **with %s imported, a nested server fn whose handler reads a local of its function is supported or rejected naming the capture.** Same cause as above; a server fn nested in a function whose handler reads a local of that function (here `id`) cannot run on its own in the provider, and is neither supported nor rejected.
+- **with %s imported, a nested server fn whose handler reads a local of its function is supported or rejected naming the capture.** Same cause as above; a server fn nested in a function whose handler reads a local of that function (here `id`) cannot run on its own on the server, and is neither supported nor rejected.
 - **distinct re-export aliases of two factories keep their own kind.** The export a re-export forwards is looked up by its local name (`wrap`) only, so two re-exports of different modules' `wrap` under distinct names resolve to the same factory.
 - **%s: parameters and locals shadowing the factories are left alone next to a compiled factory call.** Same lookup-by-local-name bug as the row above, for parameters and locals shadowing the factories next to a compiled factory call.
 - **a user binding named %s does not collide with generated code.** Generated imports and handler names are not made unique against user bindings, so a user binding named like one of them collides with it.
-- **a server fn named opts runs on the server.** The provider calls each server fn from a generated wrapper, `opts => fn.__executeServer(opts)`, whose `opts` parameter shadows a server fn named `opts`.
-- **%s: a createServerOnlyFn handler still produces an RPC caller.** When the handler passed to `.handler()` is a `createServerOnlyFn()` call, the inner call is compiled first and the caller is never rewritten into an RPC.
+- **a server fn named opts runs on the server.** The server calls each server fn from a generated wrapper, `opts => fn.__executeServer(opts)`, whose `opts` parameter shadows a server fn named `opts`.
+- **no name the compiler introduces collides with a user binding or a server fn of that name.** The same as the two pins above, for whatever names the compiler introduces (adaptive: they are read from the served code, so a compiler that only renames its generated bindings still collides here, while one that keeps them apart from user bindings passes).
+- **%s: a server fn whose handler is a createServerOnlyFn call returns the handler result.** When the handler passed to `.handler()` is a `createServerOnlyFn()` call, the inner call is compiled first and the caller is never rewritten into an RPC.
+- **a dev edit of a module a re-export chain ends in recompiles its importers.** After a dev edit of the module a re-export chain of an env-only factory ends in (here it now re-exports createClientOnlyFn under the createServerOnlyFn name), the module importing the factory, unchanged, keeps the code compiled for the old factory: its compiled output imports nothing of the chain, so no module graph links it to the edited module, and the compiler's own invalidation does not reach it.
 - **$output: hook calls read only by the removed implementation still run.** Removing the other environment's implementation of an env function declared in a hook leaves the locals only that implementation read unreferenced, and dead-code elimination (babel-dead-code-elimination, which removes newly unreferenced bindings) deletes their declarators, hook calls included.
 - **client: the factory of a classic JSX pragma stays imported.** Dead-code elimination does not count a classic JSX pragma (`/** @jsx h */`) as a use of the factory it names, so the factory import is removed when no other code reads it (the generated imports also land above the pragma comment, where Oxc no longer reads it).
 - **ssr: a module with a classic JSX runtime pragma keeps its React import.** Same family as the pin above: under a classic JSX runtime pragma (`/** @jsxRuntime classic */`, whose JSX reads `React`), the SSR output removes the `<ClientOnly>` children, then dead-code elimination drops `import * as React`, which only the JSX still reads. Cause: `start-plugin-core/src/start-compiler/handleClientOnlyJSX.ts`, `start-plugin-core/src/start-compiler/compiler.ts`.
@@ -455,7 +493,9 @@ Counts: 356 pin sites in 87 test files (a table test counts once here; Vitest co
 - **client: a server-only import last mentioned by a type alias is not loaded with verbatimModuleSyntax.** Dead-code elimination counts a `typeof auth` type query in a top-level type alias as a use of the `auth` import, so a server-only import that the handler read and that such a type still mentions stays a value import in the client output.
 - **client: a validator schema that a type alias reads with typeof is not loaded.** Same family as above, for a module-level declaration: a validator schema that a type alias also reads (`z.infer<typeof themeValidator>`) stays in the client output, with what its initializer imports, although types read no value at runtime. Cause: `router-utils/src/ast.ts`.
 - **ssr: a declaration a client-only fn reads and a type alias reads with typeof is not loaded.** Same root cause as the pin above, mirrored on the server: a module-level declaration that only a client-only implementation and a `typeof` type query read stays in the SSR output, with its initializer and imports.
-- **a <script lang="ts"> block is parsed as TypeScript.** The parser is chosen from the module id without its query, so the `<script lang="ts">` block of a Vue SFC, which @vitejs/plugin-vue 6 serves in builds as `Page.vue?vue&type=script&lang.ts` (genScriptCode, attrsToQuery), is parsed as TSX.
+
+#### `start-plugin-core/tests/pending-rulings/known-bugs-start-compiler.test.ts`
+
 - **a CommonJS dependency with $name compiles and keeps its meaning.** A module matching a detection pattern (`.handler(`) is parsed as strict ESM.
 
 #### `start-plugin-core/tests/start-compiler-factories.test.ts`
@@ -465,16 +505,12 @@ Counts: 356 pin sites in 87 test files (a table test counts once here; Vitest co
 - **each output keeps its implementation of an isomorphic fn whose $name is stored in a variable.** An isomorphic fn whose first link is stored in a variable (`const base = createIsomorphicFn().server(...)`, then `export const getEnv = base.client(...)`) loses that link's implementation: each call is compiled on its own, the chain walk from `base.client(...)` stops at the identifier, so the output of the stored link's environment gets a no-op. Cause: `start-plugin-core/src/start-compiler/handleCreateIsomorphicFn.ts`, `start-plugin-core/src/start-compiler/compiler.ts`.
 - **each output keeps its implementation of an isomorphic fn with a wrapped chain link: %s.** An isomorphic chain link wrapped in `satisfies` / `as` is not followed: the implementation of the wrapped link is lost.
 - **each output keeps its implementation of $shape with the callee in $name.** A factory callee wrapped in `as any` is not resolved, so the call is left untransformed.
-- **the provider compiles env-specific functions inside a server fn handler.** The provider leaves env-specific functions declared inside a server fn handler uncompiled, with the client-only module they read still imported.
-
-#### `start-plugin-core/tests/start-compiler-import-forms.test.ts`
-
-- **$name alone in its module: the other environment neither loads nor runs the implementation.** The bundler plugins choose the modules the Start compiler transforms by their text (a factory name such as `createServerOnlyFn`, or `.handler(`). Cause: `start-plugin-core/src/start-compiler/compiler.ts`, `start-plugin-core/src/vite/start-compiler-plugin/plugin.ts`, `start-plugin-core/src/rsbuild/start-compiler-host.ts`.
-- **through a namespace member.** `<ClientOnly>` is detected by the `<ClientOnly` / imported `ClientOnly` text, so a boundary written as a member of a namespace import (`<Router.ClientOnly>`) is never compiled.
+- **the server compiles env-specific functions inside a server fn handler.** The server leaves env-specific functions declared inside a server fn handler uncompiled, with the client-only module they read still imported.
+- **dev: editing a factory module recompiles its importers against the new code.** After a dev edit of a module a server fn builder comes from, the client keeps serving its importers compiled against the old builder: the importer is not compiled again (the dev server only refreshes its import timestamps), so its handler stays an RPC to a server fn the edited code no longer creates.
 
 #### `start-plugin-core/tests/start-compiler-jsx-pragma.test.ts`
 
-- **%s: inserted server function imports stay below the @jsxImportSource pragma.** The server fn runtime import (RPC or `createServerRpc`) is inserted above the pragma comment that leads the file.
+- **inserted server function imports stay below the @jsxImportSource pragma: %s.** The server fn runtime import (RPC or `createServerRpc`) is inserted above the pragma comment that leads the file, so Vite 8 (Oxc) compiles the module's JSX with the default runtime (same root cause as the code splitter's pragma pin).
 
 #### `start-plugin-core/tests/start-compiler-preserves-user-code.test.ts`
 
@@ -491,16 +527,7 @@ Counts: 356 pin sites in 87 test files (a table test counts once here; Vitest co
 
 ### J5 Deferred hydration `<Hydrate>` (start-plugin-core)
 
-37 pins.
-
-#### `start-plugin-core/tests/hydrate-boundary-forms.test.ts`
-
-- **client: a hook called through a namespace is rejected with the fix.** Hook calls are only detected when the callee is a bare identifier, so `React.useId()` in the children moves into the chunk component instead of being rejected (SPEC J5.5).
-- **client: children reading $name are rejected with the fix.** The rejection of `this` and `super` captures names no fix: the docs' "Wrap the UI in a function component or use split={false}" is missing from the error (function children and hook calls name theirs).
-
-#### `start-plugin-core/tests/hydrate-split-modules.test.ts`
-
-- **client: the children prop ($name) of a self-closing boundary is deferred.** `<Hydrate children={…} />` defers its children like JSX children: the parent does not need their modules before the chunk loads.
+38 pins.
 
 #### `start-plugin-core/tests/integration/hydrate-build-cases.ts`
 
@@ -517,7 +544,29 @@ Counts: 356 pin sites in 87 test files (a table test counts once here; Vitest co
 - **a namespace-imported Start.Hydrate loads its children when it hydrates.** A namespace member `<Start.Hydrate>` of `@tanstack/solid-start` is a boundary like a named import.
 - **split children read a context declared in the page module.** The chunk re-declares the module-level bindings its children use instead of using the parent module's (`createContext` runs again there), the Solid twin of known-bugs-hydrate.test.ts "client: the children use the module-level context of the parent module".
 
-#### `start-plugin-core/tests/known-bugs-hydrate.test.ts`
+#### `start-plugin-core/tests/integration/pages/hydrate-boundary-forms.test.ts`
+
+- **client: a hook called through a namespace is rejected with the fix.** Hook calls are only detected when the callee is a bare identifier, so `React.useId()` in the children moves into the split code instead of being rejected (SPEC J5.5).
+- **client: children reading $name are rejected with the fix.** The rejection of `this` and `super` captures names no fix: the docs' "Wrap the UI in a function component or use split={false}" is missing from the error (function children and hook calls name theirs).
+
+#### `start-plugin-core/tests/integration/pages/hydrate-split-modules.test.ts`
+
+- **client: the children prop ($name) of a self-closing boundary is deferred.** `<Hydrate children={…} />` defers its children like JSX children: the parent does not need their modules before the split code loads.
+
+#### `start-plugin-core/tests/integration/pages/known-bugs-hydrate-module-level.test.ts`
+
+- **client: module-level $name, named like the generated bindings, do not collide.** The chunk keeps the module-level bindings the children name (by name, even when a local shadows them) under their own names, so a binding named like one the compiler generates in the chunk (its export) collides with it.
+- **client: the children use the module-level $name of the parent module.** The chunk re-declares the module-level bindings the children use instead of using the parent module's instance.
+- **client: an exported declaration the children use has one instance, initialized once.** An exported declaration the children use is copied into the chunk, so its initializer runs again there.
+- **client: split children reading Route $name use the one route.** The client chunk removes the module's `Route` (`removeModuleLevelBindings(ast, new Set(['Route']))`) without importing it from the parent module, so split children reading it reference an undeclared binding.
+- **client: an unexported component named Route that the children render reaches the chunk.** The client chunk takes any module-level binding named `Route` for the route and removes it (the removal of the pins above), even when the module does not export it and it is a plain component.
+- **client: $name that the children rely on reaches the chunk.** Only declarations move into the chunk; the top-level statements that complete them (member assignments, registrations) are dropped.
+- **client: a var declared in a nested block that the children read reaches the chunk.** Module bindings are collected from top-level declarations only (`collectLocalBindingsFromStatement`), so a module-level `var` declared in a nested block is dropped from the chunk.
+- **client: a TypeScript import alias used by the split children is declared in the chunk.** A TypeScript import alias (`import Card = ui.Card`) used only by the split children is not declared in the client chunk.
+- **client: $name used by the children reaches the chunk.** Module-level declarations the children use are only moved into the chunk for some declaration forms and uses: a default-exported function, TypeScript enums and namespaces, and a `let` the children only assign are neither declared in the chunk nor imported from the parent.
+- **client: a module with a classic JSX pragma renders through its factory.** Dead-code elimination does not count a classic JSX pragma (`/** @jsx jsx */`) as a use of the factory it names, so the client parent drops the factory import once the children that call it are split (the generated code also lands above the pragma comment, where Oxc no longer reads it).
+
+#### `start-plugin-core/tests/integration/pages/known-bugs-hydrate.test.ts`
 
 - **a Hydrate inside a fallback does not shift the chunks of later boundaries.** The server and the client number boundaries without the Hydrate inside a `fallback`, but the chunk loader counts it.
 - **client: $name hydrates like the server renders it.** A component that declares a boundary and is rendered inside a boundary (its own, or another one) is copied into the chunk, and compiling the chunk numbers the copy's boundary after the chunk's own index.
@@ -536,16 +585,7 @@ Counts: 356 pin sites in 87 test files (a table test counts once here; Vitest co
 - **client: split children reading the component's arguments render its props.** Split children reading the component's `arguments` are moved into the chunk component unchanged, where `arguments` are the chunk's own props (`this` and `super` are rejected instead).
 - **client: split children may use the own `this` of $name.** A `this` owned by a function, class or method in the children is rejected, on the client and the server.
 - **client: await in split children is rejected clearly or renders.** Split children containing `await` (async server components) are moved as is into the synchronous chunk component the client compile emits, while the server renders them inline.
-- **client: the children use the module-level $name of the parent module.** The chunk re-declares the module-level bindings the children use instead of using the parent module's instance.
-- **client: an exported declaration the children use has one instance, initialized once.** An exported declaration the children use is copied into the chunk, so its initializer runs again there.
-- **client: split children reading Route $name use the one route.** The client chunk removes the module's `Route` (`removeModuleLevelBindings(ast, new Set(['Route']))`) without importing it from the parent module, so split children reading it reference an undeclared binding.
-- **client: an unexported component named Route that the children render reaches the chunk.** The client chunk takes any module-level binding named `Route` for the route and removes it (the removal of the pins above), even when the module does not export it and it is a plain component.
-- **client: $name that the children rely on reaches the chunk.** Only declarations move into the chunk; the top-level statements that complete them (member assignments, registrations) are dropped.
-- **client: a var declared in a nested block that the children read reaches the chunk.** Module bindings are collected from top-level declarations only (`collectLocalBindingsFromStatement`), so a module-level `var` declared in a nested block is dropped from the chunk.
-- **client: a TypeScript import alias used by the split children is declared in the chunk.** A TypeScript import alias (`import Card = ui.Card`) used only by the split children is not declared in the client chunk.
-- **client: $name used by the children reaches the chunk.** Module-level declarations the children use are only moved into the chunk for some declaration forms and uses: a default-exported function, TypeScript enums and namespaces, and a `let` the children only assign are neither declared in the chunk nor imported from the parent.
-- **client: module-level $name, named like the generated bindings, do not collide.** The chunk keeps the module-level bindings the children name (by name, even when a local shadows them) under their own names, so a binding named like one the compiler generates in the chunk (its export) collides with it.
-- **client: a module with a classic JSX pragma renders through its factory.** Dead-code elimination does not count a classic JSX pragma (`/** @jsx jsx */`) as a use of the factory it names, so the client parent drops the factory import once the children that call it are split (the generated code also lands above the pragma comment, where Oxc no longer reads it).
+- **client: the split text of a text-only boundary maps to its line and column.** A boundary whose only child is text is split into code whose text is a new string the compiler creates without the text's position, and nothing else in that code comes from the user's file: the dev server serves it with an empty source map (no mappings, no sources).
 
 #### `start-plugin-core/tests/start-compiler-jsx-pragma.test.ts`
 
@@ -553,7 +593,20 @@ Counts: 356 pin sites in 87 test files (a table test counts once here; Vitest co
 
 ### J6 Import protection (start-plugin-core)
 
-64 pins.
+67 pins.
+
+#### `start-plugin-core/tests/integration/importProtection/build-markers.test.ts`
+
+- **allows the import of %s: the build succeeds and the client gets the real module.** `onViolation` runs after the build replaced the denied module with a mock, so returning `false` only silences the report. Cause: `start-plugin-core/src/vite/import-protection-plugin/plugin.ts`, `start-plugin-core/src/rsbuild/import-protection.ts`.
+- **imported by an ignored importer and, further from the entry, another importer: the violation blames the other importer.** The Rsbuild adapter reports a marker violation at the marked module with the shortest import chain from the entry to the marked module (`buildTrace`, import-protection/trace.ts, a BFS to the nearest entry), whichever importer it runs through: here the exempt `src/ignored.ts`, two steps from the entry, while the importer the violation is for, `src/other.ts`, is three steps away. Cause: `start-plugin-core/src/import-protection/trace.ts`.
+- **imported only by an ignored importer does not fail the build.** The Vite adapter reports a marker violation for the marked module itself (`importer` is the module importing the marker) and does not look at which modules import it, so `ignoreImporters` cannot exempt them (vite/import-protection-plugin/plugin.ts, marker handling in `resolveId`). Cause: `start-plugin-core/src/vite/import-protection-plugin/plugin.ts`.
+- **imported only by an ignored importer: the ignored importer gets the real module.** An importer `ignoreImporters` exempts still gets the mock of a server-only-marked module in a mock-mode build: Rsbuild replaces the marked module itself with a mock in its loader, for every importer (the exemption pins of exemptions.test.ts, user ruling 2026-10-17); on Vite the marker violation is not exempt at all (the pin above), and in error mode the build fails.
+- **in mock mode, an ignored importer gets the real module, another importer a safe mock, and only the other importer is reported.** In a mock-mode build, a server-only-marked module imported by an exempt importer and another importer is a mock for both (Rsbuild), or the real module for the other importer (Vite). Cause: `start-plugin-core/src/vite/import-protection-plugin/plugin.ts`.
+
+#### `start-plugin-core/tests/integration/importProtection/build-mock.test.ts`
+
+- **with mockAccess $mockAccess, using the mock of $denied is reported as an $severity naming the import.** A mock-mode production build serves self-contained mocks that never report their use, whatever `mockAccess` says ("mock mode always logs"). Cause: `start-plugin-core/src/import-protection/virtualModules.ts`.
+- **%s is mocked, with a warning.** In a build, a violation of a marker (server-only in the client, client-only in the server) only replaces the marker import itself with a mock (`handleViolation` in vite/import-protection-plugin/plugin.ts returns a mock edge for the marker specifier); the marked module keeps its code, and its importers import it. Cause: `start-plugin-core/src/vite/import-protection-plugin/plugin.ts`.
 
 #### `start-plugin-core/tests/integration/importProtection/build-options.test.ts`
 
@@ -563,13 +616,11 @@ Counts: 356 pin sites in 87 test files (a table test counts once here; Vitest co
 #### `start-plugin-core/tests/integration/importProtection/build.test.ts`
 
 - **a server-only-marked module re-exported by a barrel the client uses other exports of builds without any report.** Same as the pins "a denied module the client bundle drops does not fail the build" (known-bugs.test.ts): the Rsbuild report step walks every module of the module graph, used or not, so the marked module the client bundle drops still fails the build.
-- **with mockAccess $mockAccess, using the mock of $denied is reported as an $severity naming the import.** A mock-mode production build serves self-contained mocks that never report their use, whatever `mockAccess` says ("mock mode always logs"). Cause: `start-plugin-core/src/import-protection/virtualModules.ts`.
-- **%s is mocked, with a warning.** In a build, a violation of a marker (server-only in the client, client-only in the server) only replaces the marker import itself with a mock (`handleViolation` in vite/import-protection-plugin/plugin.ts returns a mock edge for the marker specifier); the marked module keeps its code, and its importers import it. Cause: `start-plugin-core/src/vite/import-protection-plugin/plugin.ts`.
-- **allows the import of %s: the build succeeds and the client gets the real module.** `onViolation` runs after the build replaced the denied module with a mock, so returning `false` only silences the report. Cause: `start-plugin-core/src/vite/import-protection-plugin/plugin.ts`, `start-plugin-core/src/rsbuild/import-protection.ts`.
-- **imported by an ignored importer and, further from the entry, another importer: the violation blames the other importer.** The Rsbuild adapter reports a marker violation at the marked module with the shortest import chain from the entry to the marked module (`buildTrace`, import-protection/trace.ts, a BFS to the nearest entry), whichever importer it runs through: here the exempt `src/ignored.ts`, two steps from the entry, while the importer the violation is for, `src/other.ts`, is three steps away. Cause: `start-plugin-core/src/import-protection/trace.ts`.
-- **imported only by an ignored importer does not fail the build.** The Vite adapter reports a marker violation for the marked module itself (`importer` is the module importing the marker) and does not look at which modules import it, so `ignoreImporters` cannot exempt them (vite/import-protection-plugin/plugin.ts, marker handling in `resolveId`). Cause: `start-plugin-core/src/vite/import-protection-plugin/plugin.ts`.
-- **imported only by an ignored importer: the ignored importer gets the real module.** An importer `ignoreImporters` exempts still gets the mock of a server-only-marked module in a mock-mode build: Rsbuild replaces the marked module itself with a mock in its loader, for every importer (the exemption pins of exemptions.test.ts, user ruling 2026-10-17); on Vite the marker violation is not exempt at all (the pin above), and in error mode the build fails.
-- **in mock mode, an ignored importer gets the real module, another importer a safe mock, and only the other importer is reported.** In a mock-mode build, a server-only-marked module imported by an exempt importer and another importer is a mock for both (Rsbuild), or the real module for the other importer (Vite). Cause: `start-plugin-core/src/vite/import-protection-plugin/plugin.ts`.
+
+#### `start-plugin-core/tests/integration/importProtection/default-rules.test.ts`
+
+- **the client reports the dependency file it denies, and does not load it.** On the client in dev mock mode (the default), with `excludeFiles: []`, the denied import of a dependency's server file is rewritten to import the real file (`/node_modules/dep-pkg/db.server.js`, read as a `default` export it does not have) instead of a mock, and that rewritten import is reported a second time, at no position.
+- **the server reports the dependency file it denies.** On the server in dev, with `excludeFiles: []`, a dependency's file the server denies (here `dep-pkg/widget`, which resolves to `widget.client.js`) is never reported: in mock mode (the dev default) the import is rewritten to read a `default` export of the real file (`/node_modules/dep-pkg/widget.client.js`, which has none), so loading the module fails ("does not provide an export named 'default'") without a report; in error mode nothing is reported and the real module loads.
 
 #### `start-plugin-core/tests/integration/importProtection/dev-page.test.ts`
 
@@ -591,7 +642,7 @@ Counts: 356 pin sites in 87 test files (a table test counts once here; Vitest co
 - **after an edit adds the marker, the importer gets the mock.** After an edit adds a server-only marker to a module the client already loaded, the importers keep their transform, so the import is never resolved again and gets no mock. Cause: `start-plugin-core/src/vite/import-protection-plugin/plugin.ts`.
 - **by default, is not logged, and the client gets the real module.** In dev, the Vite adapter checks the server-only marker a dependency imports when it resolves the marker import, whatever `excludeFiles` says (vite/import-protection-plugin/plugin.ts, marker handling in `resolveId`; the build twin is pinned in build-options.test.ts), and then reads the importer's code from Vite's `getModuleInfo(importer).code`, which the dev server does not support: loading the dependency throws "[vite] The "code" property of ModuleInfo is not supported." Cause: `start-plugin-core/src/vite/import-protection-plugin/plugin.ts`.
 - **with excludeFiles: [], is logged, and the client gets a safe mock.** In Vite dev, a client import of a dependency that marks itself server-only (not pre-bundled) fails with "The \"code\" property of ModuleInfo is not supported" instead of being logged and mocked. Cause: `start-plugin-core/src/vite/import-protection-plugin/plugin.ts`.
-- **an SSR import of a .client file: with mockAccess $mockAccess, using the mock is reported.** The mock of a violation in a server environment is always the silent one, whatever `mockAccess` says. Cause: `start-plugin-core/src/import-protection/virtualModules.ts`.
+- **$mockAccess: the server gets a safe mock, and using it is reported as an $severity naming the import.** The mock runtime of a violation in a server environment is always the silent one, whatever `mockAccess` says ("mock mode always logs"). Cause: `start-plugin-core/src/import-protection/virtualModules.ts`.
 - **a helper a server fn factory module uses only inside .server() is not logged.** With Vite's default pre-transform requests, the Start compiler's lookup of the server fn factory module (`?server-fn-module-lookup`, in the client environment) goes through Vite's import analysis, which pre-transforms `src/helper.ts` for the client. Cause: `start-plugin-core/src/vite/import-protection-plugin/plugin.ts`.
 - **a denied import of a module a server fn factory module re-exports is reported at its original import or use, with its path.** The location of the use is read from a source map of the module whose `sources` are relative to it (`other.ts`), and import protection takes the source as it is (import-protection/sourceLocation.ts `mapGeneratedToOriginal`, `orig.source`), so `Importer:` names the file without its directory. Cause: `start-plugin-core/src/import-protection/sourceLocation.ts`.
 - **a denied import of a module warmed up before its importers is logged once the client loads the app.** A module the dev server transforms before any importer of it is known (Vite's `server.warmup`, which transforms the listed files as the server starts, or any request that comes first) has its violations discarded as unreachable from Start's entries (vite/import-protection-plugin/plugin.ts `processPendingViolations`, `'unreachable'`; only bundled dev keeps them pending), and Vite caches its transform, so they are never checked again, even once the app loads the module from its entry. Cause: `start-plugin-core/src/vite/import-protection-plugin/plugin.ts`.
@@ -605,21 +656,30 @@ Counts: 356 pin sites in 87 test files (a table test counts once here; Vitest co
 
 - **an importer that is not exempt gets the mock and is reported.** With `importProtection.include`, a denied file outside the patterns is never mocked: its own transform skips out-of-scope files before the self-denial. Cause: `start-plugin-core/src/vite/import-protection-plugin/plugin.ts`.
 - **the exempt importer gets the real module, and is not reported.** An importer exempted by `ignoreImporters`/`exclude` gets the mock instead of the real module (ruling 2026-10-17: exempt importers get the real module).
-- **an importer that is not exempt gets the mock and is reported.** Same as the `include` row above. Cause: `start-plugin-core/src/vite/import-protection-plugin/plugin.ts`.
-- **the exempt importer gets the real module, and is not reported.** Same as the exemption row above.
+- **an importer that is not exempt gets the mock and is reported.** With `importProtection.include`, a denied file outside the patterns is never mocked: its own transform skips out-of-scope files before the self-denial. Cause: `start-plugin-core/src/vite/import-protection-plugin/plugin.ts`.
+- **the exempt importer gets the real module, and is not reported.** An importer exempted by `ignoreImporters`/`exclude` gets the mock instead of the real module (ruling 2026-10-17: exempt importers get the real module).
+
+#### `start-plugin-core/tests/integration/importProtection/known-bugs-dev.test.ts`
+
+- **a server fn factory module calling a denied import at the top level fails to load.** The Start compiler resolves the imports of a server fn factory module with a lookup query (`SERVER_FN_LOOKUP`), and import protection records the module as a lookup module by its path without the query (`serverFnLookupModules`, vite/import-protection-plugin/plugin.ts `resolveId`). Cause: `start-plugin-core/src/vite/import-protection-plugin/plugin.ts`.
+- **a module a server fn factory module imports, calling a denied import at the top level, fails to load.** Same cause as the pin above, one module further: when the Start compiler's lookup of a server fn factory module resolves the module's imports, import protection records each imported module as a lookup module too (vite/import-protection-plugin/plugin.ts `resolveId`, "Propagate pre-transform status transitively"), by its path, so the client's own transform of that module is silenced as well. Cause: `start-plugin-core/src/vite/import-protection-plugin/plugin.ts`.
+- **a module of a custom type importing $name is reported, and its real code does not run.** Rsbuild import protection checks importers by file extension (`isImportProtectionSourceFile`, rsbuild/import-protection.ts, only JS/TS extensions), and its loader rule only rewrites those files, so an importer of another module type that compiles to JS (a custom type here, `.mdx` through its real loader below) is never checked: a denied file is mocked (the file rule) but not reported, and a denied specifier is neither reported nor mocked. Cause: `start-plugin-core/src/rsbuild/import-protection.ts`.
+- **an .mdx page importing $name is reported in its source, and its real code does not run.** Rsbuild import protection checks importers by file extension (JS/TS only), so an `.mdx` importer is never checked: a denied file is mocked but not reported, and a denied specifier's real code runs. Cause: `start-plugin-core/src/rsbuild/import-protection.ts`.
+- **vite dev: ${name}.** The mock edge of a denied specifier exports only the names the importer reads statically, so `ns[key]` of a namespace import is `undefined`; a mock-mode Rsbuild build also inlines the real value of an enum member of a denied file. Cause: `start-plugin-core/src/import-protection/virtualModules.ts`.
 
 #### `start-plugin-core/tests/integration/importProtection/known-bugs.test.ts`
 
 - **a denied module the client bundle drops does not fail the build.** The build check counts a denied module as surviving when the compilation contains it, whether or not the client uses it. Cause: `start-plugin-core/src/import-protection/virtualModules.ts`.
 - **in mock mode, an unused denied module leaves nothing in the client bundle and no warning.** Same as above, in mock mode: the mock of a denied module the client never uses stays in the client bundle, and the build warns about it.
-- **a server fn factory module calling a denied import at the top level fails to load.** The Start compiler resolves the imports of a server fn factory module with a lookup query (`SERVER_FN_LOOKUP`), and import protection records the module as a lookup module by its path without the query (`serverFnLookupModules`, vite/import-protection-plugin/plugin.ts `resolveId`). Cause: `start-plugin-core/src/vite/import-protection-plugin/plugin.ts`.
-- **a module a server fn factory module imports, calling a denied import at the top level, fails to load.** Same cause as the pin above, one module further: when the Start compiler's lookup of a server fn factory module resolves the module's imports, import protection records each imported module as a lookup module too (vite/import-protection-plugin/plugin.ts `resolveId`, "Propagate pre-transform status transitively"), by its path, so the client's own transform of that module is silenced as well. Cause: `start-plugin-core/src/vite/import-protection-plugin/plugin.ts`.
-- **a module of a custom type importing $name is reported, and its real code does not run.** Rsbuild import protection checks importers by file extension (`isImportProtectionSourceFile`, rsbuild/import-protection.ts, only JS/TS extensions), and its loader rule only rewrites those files, so an importer of another module type that compiles to JS (a custom type here, `.mdx` through its real loader below) is never checked: a denied file is mocked (the file rule) but not reported, and a denied specifier is neither reported nor mocked. Cause: `start-plugin-core/src/rsbuild/import-protection.ts`.
-- **an .mdx page importing $name is reported in its source, and its real code does not run.** Rsbuild import protection checks importers by file extension (JS/TS only), so an `.mdx` importer is never checked: a denied file is mocked but not reported, and a denied specifier's real code runs. Cause: `start-plugin-core/src/rsbuild/import-protection.ts`.
 - **a client dynamic import of a denied specifier fails the build, reporting one client violation.** A dynamic `import('db-lib')` of a denied specifier is neither reported nor mocked: the Rsbuild loader only rewrites static imports and re-exports (`rewriteDeniedImports`, import-protection/rewrite.ts), and the build reports specifier violations only through the mock modules of rewritten imports (`processAssets` in rsbuild/import-protection.ts). Cause: `start-plugin-core/src/import-protection/rewrite.ts`, `start-plugin-core/src/rsbuild/import-protection.ts`.
 - **in mock mode, a denied .server.json file is mocked, with a warning.** In mock mode, a denied file that is not JavaScript or TypeScript keeps its content: Vite replaces a denied file with its mock in a transform hook whose filter only lets JS/TS modules through (`/\.[cm]?[tj]sx?($|\?)/`, transform-cache plugin of vite/import-protection-plugin/plugin.ts), and the Rsbuild loader rule only applies to JS/TS modules (`test: /\.[cm]?[tj]sx?$/`, rsbuild/import-protection.ts). Cause: `start-plugin-core/src/vite/import-protection-plugin/plugin.ts`, `start-plugin-core/src/rsbuild/import-protection.ts`.
 - **in mock mode, a denied .server.cjs file is mocked, with a warning.** In mock mode, a denied CommonJS file (`.server.cjs`) fails the build: the mock that replaces the file is an ES module, which Vite's parser rejects in a `.cjs` file (`export default mock`), and whose named exports are the ES exports of the denied file, which a CommonJS file has none of, so Rspack cannot link the named import (`export 'secret' ... was not found`).
-- **vite dev: ${name}.** The mock edge of a denied specifier exports only the names the importer reads statically, so `ns[key]` of a namespace import is `undefined`; a mock-mode Rsbuild build also inlines the real value of an enum member of a denied file. Cause: `start-plugin-core/src/import-protection/virtualModules.ts`.
+
+#### `start-plugin-core/tests/integration/importProtection/reported-location-trace.test.ts`
+
+- **the trace goes through modules outside the source directory.** The trace of a Vite build starts at the first module of the trace that is in the source directory and not in `node_modules`: the Vite adapter does not record the imports of other modules in its import graph (vite/import-protection-plugin/plugin.ts). Cause: `start-plugin-core/src/vite/import-protection-plugin/plugin.ts`.
+- **the trace starts at the entry when a module imports the entry back.** Rsbuild: when a module imports the entry back, the trace collapses to the importer alone, tagged as the entry (the concatenated entry module is registered by its loader path). Cause: `start-plugin-core/src/rsbuild/import-protection.ts`.
+- **$build: after $name.** A trace step's location is the import's position in the compiled code of the module unless import protection captured a source map of it: the Vite adapter captures one only for modules whose code names a denied file or specifier pattern or a marker (`shouldCaptureDiagnosticSourceMap` in vite/import-protection-plugin/plugin.ts), the Rsbuild adapter only when the build emits source maps. Cause: `start-plugin-core/src/vite/import-protection-plugin/plugin.ts`.
 
 #### `start-plugin-core/tests/integration/importProtection/reported-location.test.ts`
 
@@ -627,9 +687,7 @@ Counts: 356 pin sites in 87 test files (a table test counts once here; Vitest co
 - **$channel: $name.** The original-source usage lookup, which the Rsbuild adapter tries first, takes any `<name>ServerFn.handler(...)` callback for a server fn handler by its name (`/ServerFn$/`, `isCompilerSafeBoundaryCall` in import-protection/analysis.ts) and skips the use inside it; the compiled-code lookup it then falls back to reports compiled-code coordinates (the same fallback as the pins below). Cause: `start-plugin-core/src/import-protection/analysis.ts`.
 - **$channel: $name.** The original-source usage lookup, which the Rsbuild adapter tries first, counts uses in type positions (`typeof secret`), which TypeScript erases, and does not count a JSX element (`<Secret />`) as a use; the compiled-code lookup it then falls back to reports compiled-code coordinates when the module has no column source map (production builds, and Rsbuild's default `cheap-module-source-map` in development).
 - **$channel: $name.** The original-source usage lookup, which the Rsbuild adapter tries first, skips only functions passed directly to a compiler-safe boundary call (`isInsideCompilerSafeBoundaryNodes`, import-protection/analysis.ts), but the client compile removes the whole `createServerOnlyFn(...)` call, whatever its argument (here a function wrapped in `wrap(...)`), so the use inside it never runs in the client; the lookup reports it (src/a.tsx:5:48) instead of the leak on line 6. Cause: `start-plugin-core/src/import-protection/analysis.ts`.
-- **the trace goes through modules outside the source directory.** The trace of a Vite build starts at the first module of the trace that is in the source directory and not in `node_modules`: the Vite adapter does not record the imports of other modules in its import graph (vite/import-protection-plugin/plugin.ts). Cause: `start-plugin-core/src/vite/import-protection-plugin/plugin.ts`.
-- **the trace starts at the entry when a module imports the entry back.** Rsbuild: when a module imports the entry back, the trace collapses to the importer alone, tagged as the entry (the concatenated entry module is registered by its loader path). Cause: `start-plugin-core/src/rsbuild/import-protection.ts`.
-- **$build: after $name.** A trace step's location is the import's position in the compiled code of the module unless import protection captured a source map of it: the Vite adapter captures one only for modules whose code names a denied file or specifier pattern or a marker (`shouldCaptureDiagnosticSourceMap` in vite/import-protection-plugin/plugin.ts), the Rsbuild adapter only when the build emits source maps. Cause: `start-plugin-core/src/vite/import-protection-plugin/plugin.ts`.
+- **$channel ($name): a JSX element.** With source maps, Rsbuild import protection names the importer after the map's source URL (`webpack://<namespace>/./src/a.tsx`), a path that is no file of the app, for imports it finds in the compiled code. Cause: `start-plugin-core/src/import-protection/sourceLocation.ts`.
 
 #### `start-plugin-core/tests/integration/importProtection/v2-alias.test.ts`
 
@@ -659,6 +717,10 @@ Counts: 356 pin sites in 87 test files (a table test counts once here; Vitest co
 
 7 pins.
 
+#### `react-start-rsc/tests/integration/rsc-css-diagnostics.test.ts`
+
+- **%s dev explains the CSS limitation once per source file.** Identifier and spread stream arguments silently miss CSS delivery: the real RSC integration skips them without a warning (J7.3, D8). Cause: `react-start-rsc/src/plugin/rscCssTransform.ts`.
+
 #### `react-start-rsc/tests/integration/rsc-css-rsbuild-root.test.ts`
 
 - **Rsbuild: the app compiles when the process does not run in the app directory.** Start's Rsbuild plugin writes its virtual modules (serialization adapters, RSC decode) under `<process.cwd()>/node_modules/.virtual` (rsbuild/virtual-modules.ts `virtualPath`, with `resolvedStartConfig.root` still empty at setup), where the app's `@tanstack/react-start` does not resolve when the process runs elsewhere (`rsbuild dev --root <app>` from a monorepo root). Cause: `start-plugin-core/src/rsbuild/virtual-modules.ts`.
@@ -671,38 +733,84 @@ Counts: 356 pin sites in 87 test files (a table test counts once here; Vitest co
 - **renderToReadableStream does not render $name before the JSX argument.** A comment before the JSX argument of `renderToReadableStream` is moved into the generated CSS fragment, where it becomes JSX text.
 - **renderServerComponent styles the server component when its result is chained.** A call whose result is immediately member-called (`renderServerComponent(...).then()`) is recorded as the inner call of a method chain and never visited as a candidate itself. Cause: `start-plugin-core/src/start-compiler/compiler.ts`.
 
-#### `react-start-rsc/tests/rsc-css-diagnostics.test.ts`
-
-- **dev explains the CSS limitation once per source file at an original call position.** Identifier/spread stream arguments silently miss CSS delivery. Cause: `react-start-rsc/src/plugin/rscCssTransform.ts`.
-
 ## Upstream issues
 
-Bugs whose root cause is in a dependency. None is worked around in product code. The tests either pin the outcome
-(the dependency is the compiler's own implementation choice) or carry an authorized harness workaround with a
-"remove when" comment ([RULINGS.md](./RULINGS.md#test-workarounds-for-upstream-bugs)).
+Bugs whose root cause is in a dependency. None is worked around in product code. Each one is either pinned (the
+dependency is the compiler's own implementation choice), kept out of the pins with its reason, or carries an
+authorized harness change with a "remove when" comment ([RULINGS.md](./RULINGS.md#test-workarounds-for-upstream-bugs)).
+Nothing here was filed upstream; the proposals are in the working notes (FOLLOWUPS, "UPSTREAM" entries).
 
-- **Rspack's vendored watchpack loses file removals.** Rspack 2.2 vendors watchpack 2.5.2, which loses a file
-  removal that lands while a compile runs (fixed in watchpack 2.6.0, webpack/watchpack#345), and never reports a
-  file removed during its first directory scan.
-  - Workaround: Rsbuild tests delete or recreate one file per edit. Remove it (merge the steps back) once Rspack
-    bundles watchpack ≥ 2.6. Where: `start-plugin-core/tests/integration/importProtection/v2-edits.test.ts`,
-    `start-plugin-core/tests/integration/importProtection/v2-edits-page-rsbuild.test.ts`,
+- **Rspack's vendored watchpack loses a removal during a compile.** Rspack 2.2 vendors watchpack 2.5.2, which loses
+  a file removal that lands while a compile runs (fixed in watchpack 2.6.0, webpack/watchpack#345).
+  - Authorized workaround: Rsbuild tests delete or recreate one file per edit and settle before the next write.
+    Remove it (merge the steps back) once Rspack bundles watchpack ≥ 2.6. Where:
+    `start-plugin-core/tests/integration/importProtection/v2-edits.test.ts`,
+    `importProtection/v2-edits-page-rsbuild.test.ts`, `importProtection/v2-hosts.ts`,
     `start-plugin-core/tests/integration/rsbuild/dev-server.test.ts`.
-  - Harness wait: the Rsbuild dev harness resolves only once every watcher is attached and has scanned the app
-    (`CompileTracker.watching` in `compiler-test-utils/src/rsbuild-dev-server.ts`). This is harness realism and may
-    stay.
-- **Vite full-bundle dev leaves a rejection unhandled.** In Vite 8 `experimental.bundledDev`, `BundledDev.listen()`
-  does not handle the `waitForInitialBuildFinish()` rejection, so closing the server during its initial build logs
-  "Failed to get bundle state". There is no public API to await it (vitejs/vite#22991).
-  - Workaround: before `close()`, the harness waits for Vite's initial-build bookkeeping, reading one Vite internal.
-    Remove it once Vite handles the rejection. Where: `compiler-test-utils/src/dev-server.ts`.
+- **Rspack's vendored watchpack never reports a file removed during its first scan.** Rspack attaches its watcher
+  on the tick after a compile, and watchpack 2.5.2's first directory scan marks a file listed but deleted before
+  its `lstat` as missing without a `remove`.
+  - Harness wait (harness realism, may stay): the Rsbuild dev harness resolves only once every compiler's watcher is
+    attached and has scanned the app, and writes the initial app files with past modification times. Where:
+    `CompileTracker.watching` and the initial-write mtimes in `compiler-test-utils/src/rsbuild-dev-server.ts`.
+- **Vite full-bundle dev leaves a rejection unhandled on close.** In Vite 8 `experimental.bundledDev`,
+  `BundledDev.listen()` does not handle the `waitForInitialBuildFinish()` rejection, so closing the server during
+  its initial build logs "Failed to get bundle state". There is no public API to await it (vitejs/vite#22991).
+  - Authorized workaround: before `close()`, the harness waits for Vite's initial-build bookkeeping, reading one
+    Vite internal. Remove it once Vite handles the rejection. Where: `compiler-test-utils/src/dev-server.ts`.
+- **Vite's dependency optimizer writes its cache after `close()` resolved (final-pass #34).** `runOptimizeDeps().cancel()`
+  cleans up without awaiting the Rolldown build, which keeps writing `node_modules/.vite/deps_temp_*` after the
+  server closed. An app removal then fails with `ENOTEMPTY`, or leaves the directory behind.
+  - Pending a user ruling; no workaround. The app removal in `compiler-test-utils/src/build-harness.ts` does not
+    retry, so the failure stays visible. Browser dev servers are git-ignored as `packages/*/tests/**/.start-*`.
+- **Vite keeps a stale pre-bundled dependency (final-pass #42).** Vite 8.3.4 computes an optimized dependency's
+  `fileHash` from the chunk's imports only. When a late-discovered dependency makes Rolldown export a shared module
+  from an existing chunk (`react_jsx-runtime.js` gains `export { … as t }`), the hash and the browser URL stay the
+  same, no reload is sent, and the page fails with "does not provide an export named 't'".
+  - Pending a user ruling (pre-bundle with discovery off in the affected apps, as
+    `start-plugin-core/tests/start-host.ts` and `router-plugin/tests/dev-page.ts` already do, or wait for Vite).
+    Seen as a flake of `start-plugin-core/tests/integration/known-bugs-start-compiler-dev.test.ts` (the client-pages
+    dev server) and `start-compiler-dev-server.test.ts` under load.
+- **The React Refresh wrapper appends its footer without a line break.** `@vitejs/plugin-react` 6.0.1 uses Rolldown's
+  `viteReactRefreshWrapperPlugin` (Vite 8.3.4), which appends `import * as RefreshRuntime …` right after the
+  module's code. A module that ends in a line comment loses the footer's first line, and the next hot update throws
+  `RefreshRuntime is not defined`. Reachable at baseline when import protection rewrites a component module whose
+  last statement has a trailing line comment.
+  - Not pinned: the compiler's output is valid JavaScript; the concatenation is the bug. The R4 printing variant
+    was changed instead (it no longer ends its output with a line comment). No harness change.
+- **Vite's resolver cuts file paths at `#`.** Outside `node_modules`, Vite's `tryFsResolve` treats `#` in a file
+  path as a fragment (`cleanUrl`), so a query import of a file under a directory named `c#proj` does not resolve
+  (dev and build). A plain Vite app fails the same way.
+  - Not pinned (the Start build-ids pin was removed): not reachable as a compiler outcome.
+- **Vite's TypeScript transform skips `.cts`.** `vite:oxc`'s default `include` has no `.cts`, and neither it nor
+  Rolldown's extension inference handles a `.cts` id with a query. A `.cts` module with TypeScript-only syntax fails
+  in dev, and in a build once it is imported with a query, also in a plain Vite app.
+  - Not pinned (the dev pin was dropped; builds are not pinned): the compiler's query-suffixed module is ordinary
+    Vite practice.
+- **es-module-lexer cannot parse a default and a string-keyed named import in one declaration.** Vite 8's
+  es-module-lexer (2.3.2) fails on `import def, { "kebab-name" as kebab } from "x"`, which is valid JavaScript, with
+  or without Start.
+  - Test input: `start-plugin-core/tests/integration/importProtection/mock-shapes.test.ts` ("every form of import and
+    re-export") writes the two imports as separate declarations. Not pinned.
+- **@vitejs/plugin-rsc's dev runtime imports a missing `default`.** Its dev runtime imports a `default` export that
+  `virtual:vite-rsc/server-references` does not provide.
+  - Scoping, not a workaround: the strict module runner of `compiler-test-utils/src/strict-runner.ts` checks named
+    imports only in the app's own modules.
+- **Node abandons a connection the kernel made when the event loop is blocked (final-pass #56).** Node's
+  address-family selection (`autoSelectFamily`) gives each address 500 ms on the event loop's clock and closes the
+  pending attempt when its timer fires. A test worker blocked for longer (other tests' synchronous work under heavy
+  load) abandoned the `::1` connection to Vite's `localhost` server and was refused at `127.0.0.1`: "no HMR
+  connection" at host start.
+  - Not a workaround: the Vite dev harness listens on `127.0.0.1`, as every other harness server does, so its URL
+    names one address. Where: `compiler-test-utils/src/dev-server.ts`; control in
+    `compiler-test-utils/tests/integration/plugin-host.test.ts`.
 - **Rspack and webpack leave unbound reads in kept dead code.** In unminified production output, Rspack 2.2 drops an
   unused import specifier whose reader is still emitted, and both Rspack and webpack 5 drop the lexical
   declarations after a computed `return` but keep the hoisted functions that read them.
-  - Not a workaround: the dangling-name check covers only the modules the compilers under test produced or changed
-    (SPEC G8, RULINGS "dangling names"). Where: `checkDanglingNames` in `compiler-test-utils/src/build-harness.ts`;
-    controls in `compiler-test-utils/tests/integration/build-harness.test.ts` ("dangling names in webpack and Rspack
-    production client builds").
+  - Scoping, not a workaround: the dangling-name check covers only the modules the compilers under test produced or
+    changed (SPEC G8, RULINGS "dangling names"). Where: `checkDanglingNames` in
+    `compiler-test-utils/src/build-harness.ts`; controls in `compiler-test-utils/tests/integration/build-harness.test.ts`
+    ("dangling names in webpack and Rspack production client builds").
 - **unplugin drops source maps on webpack and Rspack.** unplugin 3.3's webpack and Rspack transform loaders drop
   the source map a plugin returns when no earlier loader passed one in (`dist/{webpack,rspack}/loaders/transform.mjs`).
   Split chunks then map to the code splitter's output.
@@ -713,7 +821,7 @@ Bugs whose root cause is in a dependency. None is worked around in product code.
   assertion or a member access (`(<p/>)!`, `(<p/>).valueOf()`) and a type assertion that is the test of a
   conditional whose branch starts with a unary minus (`((a) as any) ? -x : y`) without their parentheses. The output
   does not parse.
-  - Pinned: Babel is today's printer. Where: `router-plugin/tests/known-bugs-code-splitter.test.ts`,
+  - Pinned: Babel is today's printer. Where: `router-plugin/tests/integration/pages/known-bugs-code-splitter-bindings.test.ts`,
     `start-plugin-core/tests/start-compiler-preserves-user-code.test.ts`.
 - **babel-dead-code-elimination counts `typeof` type queries as references.** Version 1.0.12 keeps a declaration
   that only a type reads (`z.infer<typeof schema>`), with its initializer and imports

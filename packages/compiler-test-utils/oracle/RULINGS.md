@@ -82,6 +82,48 @@ source already reads it free. Modules no compiler touched are out of scope: Rspa
 in unminified dead code of untouched dependencies (see KNOWN-BUGS.md, upstream issues), and that is not a compiler
 defect. Clause: G8.
 
+### diagnostic severity
+
+§5.7 frees the channel and the wording of a diagnostic, not its severity. Where the spec says "warn", the
+diagnostic must be at least a warning: a warning, or an error where the clause allows refusal. An info or log line
+does not satisfy it. Where the spec says the build fails, it must fail. The shared matchers
+(`compiler-test-utils/src/diagnostics.ts`, `DiagnosticExpectation.severity`) accept a warning or an error unless a
+test asks for less, and read the severity of every channel, in dev and in builds. A clause that says "warn" and
+allows no refusal asks for `'warning'`; an option that asks for a warning explicitly (`mockAccess: 'warn'`) is
+checked at that severity. Clauses: G5, §5.7.
+
+### explaining a diagnostic
+
+A diagnostic "explains" a problem when it names its actionable cause: the category (placement, an unsupported
+shape, an environment restriction) plus guidance or the API involved. A generic internal error ("unexpected node
+type", an engine `TypeError`) does not, even if it names the file. The shared matcher is `explains` of
+`compiler-test-utils/src/diagnostics.ts`, which judges content, not wording (no word lists). Clauses: G5, §5.7.
+
+### restructured compilers
+
+A correct compiler built differently from today's must pass every acceptance test. The repair measured this with
+behaviour-preserving restructures of today's compilers (R1–R11: moved modules, renamed generated names, reworded
+diagnostics, another printer, another provider architecture, other chunk layouts, extra exports, …). Rulings on
+what those restructures may do:
+
+- Extra exports of compiler packages (R7) and extra metadata on runtime objects (R8: `name`/`filename` on SSR
+  client middleware, §5.19) are allowed.
+- Import-protection traces may list the entry last (R10). J6.5 asks for a real bounded chain from an entry and J6.12
+  leaves the display free: the entry must be identifiable (by position or marker) and the direction unambiguous.
+  Tests must not require entry-first numbering or an `(entry)` marker.
+- Pins whose inputs choose names that collide with today's generated names flip when a compiler generates other
+  names (R3). That is expected (the inputs are valid); the adaptive pins next to them, which read the names a
+  compiler actually generates, are the structure-free checks.
+
+Clauses: §5.1, §5.19, J6.5, J6.12, §8.
+
+### test budgets
+
+Budgets serve local iteration, not CI: the hard limits are local runs at 4 workers (fast tier, slow tier per
+package, 15 s per slow-tier file, edit to result for one fast-tier file); CI times are reported only. A tier over
+budget is fixed, not re-budgeted: one shared host per worker, bounded browser pages, and browser-heavy files moved
+to the slow tier's `integration-pages` project. No Nx target splits or sharding to meet a number. Clause: §8.
+
 ### D4: no compile-speed benchmark
 
 No compiler benchmark or performance test is part of the oracle for now. Clause: §1.2.
@@ -206,6 +248,13 @@ Preserve the original file's effective JSX runtime decision: a pragma the transf
 must not become effective in a chunk. A warning plus leaving the file unsplit also passes. Tests assert the
 rendered outcome only. Clause: J2.16.
 
+### parentheses around components
+
+Printing is free (§5.5), but not for a component's declaration: parentheses around the function or call that
+defines a component (`const Page = (() => …)`) stop SWC's Fast Refresh from registering it on Rsbuild, so its hot
+updates fail. Found by the repair's printing restructure (R4); the user ruling on this (NEW-2) is pending, and the
+spec states the observed constraint. Clauses: §5.5, J3.2.
+
 ### R-14: license comments
 
 License comments (`/*!`, `@license`, `@preserve`) stay in the source module when the splitter moves or removes the
@@ -301,6 +350,38 @@ and nothing is reported for it. A denied target matched by `excludeFiles` is not
 real module. Non-exempt importers of the same file still get the mock and a report. Why: exempting must not merely
 silence the report. Clauses: J4.12, J6.7.
 
+### export-\* diamonds and cycles in builds
+
+Diamonds and cycles of `export *` poison the build-mode export cache for some compile orders. The order is
+deterministic for a given build, and real builds see such orders, so the bug is reachable: the rows are `.fails`
+pins (`start-plugin-core/tests/integration/start-compiler-build-export-cache.test.ts`). This supersedes the earlier
+"not reachable" call, which assumed the failure could not be reproduced. Clauses: J4.5, §8.
+
+### real requests, not a hand-built request context
+
+Server-side checks (server functions, middleware, SSR) run through Start's server entry with a real request and a
+real router: each build and dev harness app has a probe route. A hand-built request context re-implements Start
+and is not allowed. The only remaining one (`start-plugin-core/tests/start-runtime.ts`) serves the legacy helpers
+of the tests held by Q6 and Q7; delete it with them when those rulings land. Clause: §8.
+
+### code-frame column (F1)
+
+Start's code frame passes a 0-based column to Babel's 1-based frame, so the caret is one column left of the call.
+That is a product bug in a compiler diagnostic (G5 position), pinned in
+`start-plugin-core/tests/known-bugs-start-compiler-code-frame.test.ts` and the createServerFn location rows. The
+shared matcher has no ±1 caret tolerance. Clauses: G5, §5.7.
+
+### outside compiler scope (repair findings)
+
+- Start's preview server and framework-package crawl resolve against `process.cwd()`, and a custom server-function
+  id containing `/` is never routed back: Start server and runtime issues, not compiler bugs. No pins.
+- `.cts` modules with TypeScript syntax and paths with `#` fail in a plain Vite app too (Vite's TS transform and
+  resolver): upstream, no pins ([KNOWN-BUGS.md](./KNOWN-BUGS.md#upstream-issues)).
+- `@vitejs/plugin-rsc`'s dev runtime imports a missing `default` (F3): upstream. The strict module runner checks
+  named imports in the app's own modules only, which is scoping, not a workaround.
+
+Clauses: §1.2, §8.
+
 ### mock mode always logs
 
 With `behavior: 'mock'` (dev or build, client or server env), every violation is reported, and the runtime access
@@ -353,3 +434,9 @@ state after the last write, not an exact report list that excludes the in-betwee
 - The harnesses never pass port 0 to Vite or Rsbuild, whose port 0 handling probes a free port and binds it
   later (a race under load). Vite listens on its default port and moves to the next free one; Rsbuild runs in
   middleware mode on the harness's own HTTP server, which binds port 0 itself.
+- Every harness server listens on `127.0.0.1`, and its URL names that address. Vite's default `localhost` names
+  `::1` and `127.0.0.1` while the server listens on one of them, and a Node client of the test process (the idle
+  HMR client, `fetch`) could then be refused under load (KNOWN-BUGS.md, upstream issues: Node's address-family
+  selection).
+- `@vitejs/plugin-vue` is a start-plugin-core test-only devDependency, so the Vue SFC pin runs through the public
+  host.

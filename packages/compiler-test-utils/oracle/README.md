@@ -8,43 +8,12 @@ replace or rewrite a compiler (for example to move off Babel).
 - [RULINGS.md](./RULINGS.md): the maintainers' decisions behind the spec, and the authorized test workarounds.
 - [KNOWN-BUGS.md](./KNOWN-BUGS.md): the bugs of today's compilers, pinned as `.fails` tests, and the upstream
   issues.
-
-## Status: not yet an oracle (repair in progress)
-
-Read this before you rely on the suite. The goal below is not met today.
-
-- **Internal entry points.** Many acceptance tests reach the compilers through internal modules, internal ids
-  (virtual-module queries, resolver ids) and helpers built on them, not only through the public plugins. A
-  correct compiler built differently can fail them before any assertion runs. Six restructures of today's
-  compiler meant to keep its behaviour (moved modules, renamed ids and generated names, reworded diagnostics,
-  another printer, another AST seam) made 1,893 of the 4,268 acceptance test cases fail under at least one of
-  them: 44%, not counting the few failures where a restructure did change behaviour. Moved modules alone broke
-  1,849. A few tests and pins also assume today's generated names, printed text or chunk counts.
-- **Diagnostics read through today's format.** Some helpers parse import-protection reports by their labels,
-  match cause words from a fixed list, or read only one diagnostic channel. Rewording the diagnostics alone
-  failed 289 test cases, although SPEC §5.7 allows other wording and channels.
-- **Re-implemented tools.** Several helpers re-implement tool or runtime behaviour instead of running the real
-  thing: module resolution and linking, parts of Vite's plugin pipeline, the server function resolver and RPC
-  path, Start runtime stubs, hot contexts, hand-written Start plugin configurations. Some client checks run in
-  Node (server rendering, jsdom, a fake `window` or `import.meta.hot`), not in a browser.
-- **Not every selected test tests a compiler.** About a quarter of the selected test declarations check runtime
-  code, manifest, prerender, sitemap or schema code, the harness itself, or today's implementation choices. They
-  will move to separate lanes.
-- **A repair is in progress.** It reroutes these tests through the public plugins and real tools, and turns on
-  the import gate (`test:import-gate`, see [../AGENTS.md](../AGENTS.md#import-gate)) in strict mode.
-
-Until the repair lands, if you implement a compiler against this suite:
-
-- Do not change assertions, inputs or expected outcomes to fit your compiler.
-- You may adapt only the harness entry points: the helper functions that construct, configure or call a
-  compiler, and the import lines that `test:import-gate` lists. Keep what they accept from the test and what they
-  return to it.
-- Report anything that needs more than that (a test that cannot pass without another change) instead of
-  changing it.
+- [../AGENTS.md](../AGENTS.md): how to run a slice, the helpers, the lanes, the import gate and the budgets.
 
 ## The goal
 
-A compiler that passes `test:unit` and `test:integration` in these five packages should be a good compiler:
+A compiler that passes `test:unit` and `test:integration` in these five packages should be a good compiler, and a
+correct compiler built differently from today's should pass them too:
 
 - `@tanstack/compiler-test-utils` (the shared harness and its controls)
 - `@tanstack/router-generator`
@@ -52,63 +21,163 @@ A compiler that passes `test:unit` and `test:integration` in these five packages
 - `@tanstack/start-plugin-core`
 - `@tanstack/react-start-rsc`
 
-Nothing else decides acceptance. The suite is meant to assert outcomes (what users and the docs see), not today's
-printed code, generated names or module layout; the exceptions that remain are the ones the status above
-describes. SPEC §5 lists what a correct compiler may do differently.
+Nothing else decides acceptance. The tests assert outcomes that users and the docs see, not today's printed code,
+generated names or module layout. SPEC §5 lists what a correct compiler may do differently.
+
+## Status
+
+The suite was repaired (October 2026) so that it reaches the compilers only through public entry points, runs real
+tools, and judges client code in a real browser. What was measured at the end of the repair:
+
+- **Restructured compilers pass.** Eleven behaviour-preserving restructures of today's compilers (R1–R11: moved
+  modules, renamed ids and generated names, another printer, reworded diagnostics, another AST seam, other report
+  channels, another server-function provider architecture, other chunk layouts, other trace order, other loader
+  paths) were each run against the whole acceptance suite.
+  TODO(F-E-b): the final matrix at the final HEAD (failing acceptance tests per variant, expected pin flips, and
+  the rows held by pending rulings).
+- **Wrong compilers are caught, correct ones pass.** TODO(F-E-b): the V4 numbers at the final HEAD (red variants
+  of rounds 1 and 2 caught, out of 90; valid greens clean).
+- **No internal imports.** The strict import gate passes in CI. The only internal imports left are held by pending
+  user rulings, through the gate's allowlist (below).
+- **Fast.** On a quiet machine at 4 workers every tier is under its hard budget in strict mode (no slow-tier file
+  over 15 s; edit to result for one fast-tier file about 5 s). TODO(F-E-b): the stability runs (every tier twice,
+  identical counts) and the strict budgets at the final HEAD.
+
+Counts at hand-over (passed / expected-fail pins): TODO(F-E-b): the table per package and tier
+(`test:unit`, `test:integration`, `test:implementation`, `test:noncompiler`) at the final HEAD.
+
+If a test cannot pass with your compiler although the compiler is correct, report it (with the SPEC clause it
+contradicts) instead of changing the test. Do not change assertions, inputs or expected outcomes to fit a compiler.
 
 ## The seven jobs
 
-| Job                               | What it does                                                                                       | Where its tests live                                                                                                                                                                                                                                                                        |
-| --------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| J1 Route file upkeep              | keeps `createFileRoute('/path')` and its import in sync with the file; generates the route tree    | `router-generator/tests/`; generator watching in `router-plugin/tests/integration/*generator*.test.ts`                                                                                                                                                                                      |
-| J2 Route code splitting           | split options load lazily from their own chunks, with identical behaviour                          | `router-plugin/tests/code-splitter-*.test.ts`, `known-bugs-code-splitter*.test.ts`, `integration/build-*.test.ts`; Start's router wiring in `start-plugin-core/tests/integration/start-compose-*.test.ts` and `known-bugs-route-options.test.ts`                                            |
-| J3 Route HMR                      | an edited route updates in place in dev; nothing of it in production                               | `router-plugin/tests/integration/route-hmr*.test.ts`, `known-bugs-route-hmr*.test.ts`, `handle-route-update.test.ts`                                                                                                                                                                        |
-| J4 Start environment separation   | server code never reaches the client; each environment gets its runtime contract                   | `start-plugin-core/tests/createServerFn/`, `createMiddleware/`, `createIsomorphicFn/`, `clientOnlyJSX/`, `start-compiler-*.test.ts`, `known-bugs-start-compiler*.test.ts`, `integration/start-build-*.test.ts`; the RSC provider in `react-start-rsc/tests/integration/rsc-start-*.test.ts` |
-| J5 Deferred hydration `<Hydrate>` | children move to a lazy chunk on the client; hydration identities agree                            | `start-plugin-core/tests/hydrate-*.test.ts`, `known-bugs-hydrate.test.ts`, `integration/hydrate-*`                                                                                                                                                                                          |
-| J6 Import protection              | cross-environment imports are reported where they survive compilation; mock in dev, error in build | `start-plugin-core/tests/importProtection/`, `integration/importProtection/`, `integration/rsbuild/import-protection.test.ts`                                                                                                                                                               |
-| J7 RSC CSS injection              | CSS of server components reaches the client with the RSC payload                                   | `react-start-rsc/tests/rsc-css-diagnostics.test.ts`, `integration/rsc-css*.test.ts`                                                                                                                                                                                                         |
+| Job                               | What it does                                                                                       | Where its tests live                                                                                                                                                                                                                                                                                                                |
+| --------------------------------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| J1 Route file upkeep              | keeps `createFileRoute('/path')` and its import in sync with the file; generates the route tree    | `router-generator/tests/`; generator watching in `router-plugin/tests/integration/*generator*.test.ts`                                                                                                                                                                                                                              |
+| J2 Route code splitting           | split options load lazily from their own chunks, with identical behaviour                          | `router-plugin/tests/code-splitter-*.test.ts`, `integration/pages/*code-splitter*.test.ts`, `integration/build-*.test.ts`, `integration/known-bugs-code-splitter-*.test.ts`; Start's router wiring in `start-plugin-core/tests/integration/start-compose-*.test.ts`, `known-bugs-route-options.test.ts`                             |
+| J3 Route HMR                      | an edited route updates in place in dev; nothing of it in production                               | `router-plugin/tests/known-bugs-route-hmr*.test.ts`, `integration/pages/route-hmr.test.ts`, `integration/route-hmr*.test.ts`, `integration/known-bugs-route-hmr*.test.ts`, `integration/build-production*.test.ts`                                                                                                                  |
+| J4 Start environment separation   | server code never reaches the client; each environment gets its runtime contract                   | `start-plugin-core/tests/createServerFn/`, `createMiddleware/`, `createIsomorphicFn/`, `clientOnlyJSX/`, `start-compiler-*.test.ts`, `known-bugs-start-compiler*.test.ts`, `integration/start-build-*.test.ts`, `integration/start-compiler-*.test.ts`; the RSC provider in `react-start-rsc/tests/integration/rsc-start-*.test.ts` |
+| J5 Deferred hydration `<Hydrate>` | children move to a lazy chunk on the client; hydration identities agree                            | `start-plugin-core/tests/integration/pages/*hydrate*.test.ts`, `integration/hydrate-*`                                                                                                                                                                                                                                              |
+| J6 Import protection              | cross-environment imports are reported where they survive compilation; mock in dev, error in build | `start-plugin-core/tests/importProtection/`, `integration/importProtection/`, `integration/rsbuild/import-protection.test.ts`                                                                                                                                                                                                       |
+| J7 RSC CSS injection              | CSS of server components reaches the client with the RSC payload                                   | `react-start-rsc/tests/integration/rsc-css*.test.ts`                                                                                                                                                                                                                                                                                |
 
 Each package has a fast tier (`test:unit`: in process, the inner loop) and a slow tier (`test:integration`, under
-`tests/integration/`: real builds, dev servers and browser pages).
+`tests/integration/`: real builds, dev servers and browser pages; `integration-pages` holds page tests of the fast
+tier's kind that do not fit its budget).
 
-## Acceptance corpus and implementation tests
+## How tests reach the compilers
 
-The corpus is `test:unit` plus `test:integration`. Tests under a `tests/**/outside-compiler-corpus/` directory are
-implementation tests: they check choices of today's implementation (printed bytes, log policy, internal entry
-points, performance counters). They run with `test:implementation` (router-generator, router-plugin,
-start-plugin-core), and CI runs them too. A correct new compiler may legitimately fail them: delete or rewrite them
-with the implementation they describe. The rules for the label are in
-[../AGENTS.md](../AGENTS.md#corpus-and-implementation-tests).
+Only through public entry points: the plugins and options a user configures, run by the real tools. No test or
+helper imports a compiler internal, calls an internal class, or depends on module ids, queries, generated names,
+chunk layout, printed code or AST shapes.
+
+- **Hosts.** `compiler-test-utils/src/plugin-host.ts` hosts the public Vite plugins in a real Vite dev server
+  (server code through the environment's module runner, client code in the browser) and runs `vite build` with the
+  same plugins. `rsbuild-plugin-host.ts` does the same with Rsbuild's JavaScript API. Builds also run through
+  Rspack and webpack (`build-harness.ts`). The packages' own hosts build on these: router-plugin's `route-app.ts`
+  (a route file loaded as an app loads it, registered by the plugin's own generator) and start-plugin-core's
+  `start-host.ts` (a Start app with a real router and a probe route). Hosts are shared within a test process and
+  leased to one test at a time.
+- **Server code** runs inside real requests through Start's server entry, with a real router. Nothing builds
+  Start's request context by hand.
+- **Client code runs in Chromium.** `browser.ts` runs scripts in bounded run pages (a fresh document per run) and
+  opens pages of the app for the page tests, with the real Vite client, the framework's refresh runtime, real ES
+  module linking and the real framework renderer. Nothing judges client semantics in Node (no jsdom, no fake
+  `window` or `import.meta.hot`).
+- **Edits** are written to disk like a user's, reported by the real watcher, and settle on their outcome within one
+  bound (`outcome.ts` `waitForOutcome`), never on counts of compiles or updates.
+- **Laziness and provenance.** Which modules a compiler emitted is told by provenance (the plugin's own `load` and
+  `transform` hooks observed in that build), never by id, path or the helper that builds a lazy value.
+
+## Diagnostics
+
+Every channel is read together (`diagnostic-channel.ts`): console, process streams, Vite's logger, Rsbuild's
+logger, and bundler compilations (warnings and errors), in dev and in builds. Diagnostics are judged by content
+(`diagnostics.ts`): the file named (absolute or project-relative, §5.7), the original position where required, the
+API or option, and an actionable cause (`explains`: no wording lists; a generic internal error does not explain).
+Wording and channel are free. Severity is not: where SPEC says "warn", a diagnostic must be at least a warning (an
+info or log line does not count), and where it says the build fails, it must fail (RULINGS "diagnostic severity").
+"Nothing reported" (`expectNoProblems`) reads every channel.
+
+## Lanes
+
+| Lane            | Where                                                                           | Targets                                                                    | Decides acceptance |
+| --------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ------------------ |
+| Corpus          | `tests/**`, outside `outside-compiler-corpus/`                                  | `test:unit`, `test:integration`                                            | yes                |
+| Pending rulings | `start-plugin-core/tests/pending-rulings/`, and the Q5 control in router-plugin | `test:unit`, `test:integration` (held in the corpus as they are)           | yes, until ruled   |
+| Implementation  | `tests/**/outside-compiler-corpus/`                                             | `test:implementation` (router-generator, router-plugin, start-plugin-core) | no                 |
+| Noncompiler     | `tests/outside-compiler-corpus/noncompiler/`                                    | `test:noncompiler` (start-plugin-core, react-start-rsc)                    | no                 |
+
+Implementation tests check choices of today's implementation (printed bytes, log policy, internal entry points,
+performance counters); a correct new compiler may fail them: delete or rewrite them with the implementation they
+describe. Noncompiler tests cover runtime and build plumbing. CI runs every lane. Harness controls (this package's
+tests, and the packages' tests of their own helpers) check the oracle itself.
+
+## The import gate
+
+`test:import-gate:strict` (`compiler-test-utils/src/import-gate.ts`) fails if an acceptance test or a helper it
+reaches imports a compiler internal: anything not reachable through the package's `exports` (also `vi.mock`,
+dynamic `import()`, `require` and `typeof import()`). It runs in root `test:pr`/`test:ci` and in the compiler
+platform workflow. Its only exceptions are the imports of the tests held by pending rulings, listed one by one in
+`pendingRulingAllowlist` with their ruling; a stale entry fails too. Paths computed at run time are out of a static
+gate's reach. Details in [../AGENTS.md](../AGENTS.md#import-gate).
 
 ## Pins (`.fails`)
 
 A test marked `.fails` (`test.fails`, `it.fails.each`, or `bundler === 'vite' ? test : test.fails`) is a pin: it
 asserts the correct outcome for a bug that today's compiler has, so it fails today. Its comment says `Bug:`,
 `Impact:` and `Source:`. Pins are fix-agnostic: any correct fix passes them, and where the spec allows a clear
-error instead of support, the pin accepts that error too.
+error instead of support, the pin accepts that error too. A pin's cause is in a compiler or its bundler integration
+(runtime bugs are not pinned).
 
 When a pin starts passing, Vitest reports "Expect test to fail". That means the bug is fixed: remove the `.fails`
 and keep the test as a regression test. A new compiler will flip many pins at once; that is expected and good.
 [KNOWN-BUGS.md](./KNOWN-BUGS.md) indexes them by job.
 
-## Real tools and public entry points
+A few pins use names a user chose that collide with today's generated names; a compiler that generates other names
+flips them (RULINGS "restructured compilers"). The adaptive pins next to them read the names a compiler actually
+generates and are the structure-free checks.
 
-The rule (RULINGS "real tools only"): tests drive the real tools (Vite, Rsbuild, Rspack and webpack builds and dev
-servers, framework plugins, Chromium pages, React, Solid and Vue runtimes, HMR clients), run client code in a
-browser, reach the compilers only through their public entry points, and never copy a tool's, a runtime's or our
-own code's logic.
+## Pending user rulings
 
-Neither tier meets it fully today (see the status at the top). The slow tier runs real builds, dev servers and
-browser pages, but many of its helpers set the plugins up from internal modules. Much of the fast tier compiles
-through internal classes, evaluates client output in Node and relies on hand-written stand-ins. Either way, a new
-compiler must work through the real plugin entry points, not only through an in-process API.
+These tests are kept exactly as they are until the user rules; do not reroute or delete them before that.
 
-## Running tests
+| Ruling | What it holds                                                                                                                                                                               |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Q1     | router-generator `concurrent-write` and fault tests that inject an `fs` into the generator                                                                                                  |
+| Q2     | the `FileRouteTypes` check in `router-generator/tests/generator/nested/tests.test-d.ts`                                                                                                     |
+| Q3     | the client middleware `.options.server` property-shape assertions (start-plugin-core)                                                                                                       |
+| Q4     | the success criterion of the star re-export mocking rows (import protection)                                                                                                                |
+| Q5     | router-plugin `tests/handle-route-update.test.ts`: the absent-live-route updater control, which calls the emitted update function directly (import-gate allowlist)                          |
+| Q6     | `start-plugin-core/tests/pending-rulings/createServerFn.test.ts`, `createMiddleware.test.ts`: rows that drive the internal compiler with a hand-built package graph (import-gate allowlist) |
+| Q7     | `start-plugin-core/tests/pending-rulings/known-bugs-start-compiler.test.ts`: the CommonJS pin (import-gate allowlist)                                                                       |
+| Q8     | the RouterPluginContext / multi-plugin question (`router-plugin/tests/integration/pages/router-plugin-context.test.ts`)                                                                     |
+| Q9     | the immediate `tsr.config.json` reload pin                                                                                                                                                  |
+| Q10    | the owned-import numeric cap in `router-generator/tests/owned-edits.ts`                                                                                                                     |
+| NEW-1  | the decorator-after-`export` pin (`router-plugin/tests/integration/pages/known-bugs-code-splitter-bindings.test.ts`)                                                                        |
+| NEW-2  | whether parentheses around components are free; SPEC §5.5 states the observed Fast Refresh constraint                                                                                       |
+| #42    | the stale pre-bundled dependency flake of Vite (KNOWN-BUGS, upstream): pre-bundle with discovery off in the affected apps, or wait for Vite                                                 |
+| #34    | Vite's optimizer writing its cache after `close()` (KNOWN-BUGS, upstream): no workaround until ruled                                                                                        |
+| #57    | start-plugin-core integration memory: workers keep modules across files (about 4.4 GB each) to stay within the tier's time budget                                                           |
 
-Read [../AGENTS.md](../AGENTS.md) first. It explains how to run one file or one test name through Nx in about 5
-seconds, the load gate for the slow tier (at most two slow-tier runs on the machine), and the strict budget mode
-(`COMPILER_TEST_BUDGETS=strict` on a quiet machine). Always go through Nx: running Vitest directly can test a stale
-`dist` of a dependency. The repository-wide rules are in the root `AGENTS.md`.
+The legacy helpers that only Q6 and Q7 reach (`start-plugin-core/tests/outside-compiler-corpus/legacy/`, and
+`tests/start-runtime.ts`) go away with those tests.
+
+## Re-running the measurements
+
+- **Restructure variants.** Each variant is a patch of the product source that keeps its behaviour (R1–R11). The
+  runner applies one, builds through Nx, runs every acceptance tier, re-runs each failing file alone with and
+  without the patch, and reports per test: `fail`, `fail-load`, `pin-flip`, with an attribution to the helper that
+  threw. Expected pin flips (a variant that fixes a pinned bug) are listed separately. The runner and the patches
+  are in the repair's working notes, not in the repository
+  (`validation/REPAIR/variant-runner/README.md`, `validation/COUPLING/variants/`):
+  `bash local.sh <commit> <outdir> [R1 R2 ...]` runs them on one local tree. Patches are diffs of
+  `packages/*/src`; a new compiler needs new restructures of its own.
+- **Adversarial compilers.** Reviewers wrote wrong compilers ("red", each with the clause it breaks) and correct
+  but different ones ("green") as product patches, and ran the corpus against each: every red must fail some
+  acceptance test for its stated reason, every green must pass. After a major compiler change, run another round:
+  an attacker who may read the tests writes wrong compilers that pass the corpus, and each escape gets a row.
+  Re-check correct-but-different variants too, so the new rows do not pin one implementation.
 
 ## Reading a clause id in a test
 
@@ -119,43 +188,16 @@ Test comments cite the spec like `SPEC J4.5`, `(G3, J2.4)` or `§5.7`:
 - `§5.N` (or "§5 item N"): a freedom a correct compiler may use (SPEC §5).
 - `§1.x`, `§2.x`, `§8`, `§9`: scope, supported inputs, checking rules and evidence still pending.
 - `OQ12`–`OQ17`: ruled product questions (SPEC §6).
-- `R1`–`R7`: the seven cross-cutting rules the G rules refine (SPEC preamble).
+- `R1`–`R7` next to a SPEC clause: the cross-cutting rules the G rules refine (SPEC preamble). `R1`–`R11` next to
+  "variant" or "restructure": the restructure variants above.
 - `D1`–`D14`, `P1`, `P2`, `L3`, `R-09`, `R-14`, `K-19`, `PIN-A`, `D-04`: rulings ([RULINGS.md](./RULINGS.md)).
 
-Some test comments also cite `DECISIONS`, `FOLLOWUPS` or review codes (`N4`, `S16`). These were
-the working notes of the review that built the suite. Their binding content is in RULINGS.md and KNOWN-BUGS.md;
-the test itself states the outcome it asserts.
+Some test comments also cite `DECISIONS`, `FOLLOWUPS`, `FINAL-PASS #n` or review codes (`N4`, `S16`). These were
+the working notes of the review and the repair. Their binding content is in RULINGS.md and KNOWN-BUGS.md; the test
+itself states the outcome it asserts.
 
-## How the suite was validated, and what that missed
+## Running tests
 
-- **Adversarial compilers.** Reviewers wrote compiler variants as patches to the product source and ran the whole
-  corpus against each. Every variant patched today's compiler and kept its internal structure, so this method
-  could not detect tests that depend on that structure. Restructured variants did (see the status at the top).
-  In the final round, all 90 wrong compilers (from four authors over two rounds) were caught, and all 34
-  correct-but-different compilers passed. When first run, the corpus caught 47 of the 50 first-round
-  wrong compilers and 18 of the 40 second-round ones, and flagged 5 of 20 and then 4 of 15 valid ones. Every
-  escape got a new test, and every false alarm was fixed in the tests or the spec.
-- **Independent review.** Two reviewers, each a different AI model, checked every test against the spec, and an
-  arbiter settled their disagreements. Every confirmed finding was fixed.
-- **Stability.** Every flake seen under load was traced to its root cause and fixed (or pinned when the cause is a
-  product bug). The final merges ran every tier twice with identical counts and no flakes.
-- **Speed.** On a quiet machine at 4 workers every tier is under its hard budget, no slow-tier file takes over
-  15 seconds, and edit to result for one fast-tier file is about 5 seconds.
-
-Counts at hand-over (passed / expected-fail pins):
-
-| Package             | `test:unit` | `test:integration` | `test:implementation` |
-| ------------------- | ----------- | ------------------ | --------------------- |
-| compiler-test-utils | 250         | 111                | –                     |
-| router-generator    | 270 / 30    | 60 / 3             | 81 / 2                |
-| router-plugin       | 445 / 179   | 355 / 193          | 53                    |
-| start-plugin-core   | 938 / 202   | 853 / 214          | 272 / 7               |
-| react-start-rsc     | 50 / 1      | 108 / 11           | –                     |
-
-## Caveat: the oracle is only as good as its last attack
-
-In the second adversarial round, an attacker who could read the tests found 19 input shapes that no test covered.
-Each escape is now caught by a row written for it, but a fresh attacker would likely find more. After a major
-compiler change, run another adversarial round: ask an independent reviewer, who may read the tests, to write wrong
-compilers that pass the corpus, and add a row for each escape. Re-check correct-but-different variants too, so the
-new rows do not pin one implementation.
+Read [../AGENTS.md](../AGENTS.md) first: one file or one test name through Nx in about 5 seconds, the load gate for
+the slow tier, the strict budget mode (`COMPILER_TEST_BUDGETS=strict` on a quiet machine). Always go through Nx:
+running Vitest directly can test a stale `dist` of a dependency.

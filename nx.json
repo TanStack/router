@@ -194,6 +194,19 @@
     "test:e2e*": {
       "parallelism": false
     },
+    "test:import-gate:strict": {
+      "cache": true,
+      "inputs": [
+        "sharedGlobals",
+        "{workspaceRoot}/packages/compiler-test-utils/**/*",
+        "{workspaceRoot}/packages/router-generator/**/*",
+        "{workspaceRoot}/packages/router-plugin/**/*",
+        "{workspaceRoot}/packages/start-plugin-core/**/*",
+        "{workspaceRoot}/packages/react-start-rsc/**/*",
+        "{workspaceRoot}/packages/router-utils/**/*",
+        "!{workspaceRoot}/packages/*/**/*.md"
+      ]
+    },
     "test:noncompiler": {
       "cache": true,
       "dependsOn": ["^build"],
