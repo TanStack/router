@@ -20,6 +20,28 @@ import {
 import type { Plugin } from 'vite'
 
 /**
+ * The host defaults of the B2 lead's branch (until it is merged): no import
+ * protection (its dev mock would hide a leaked server import from the
+ * client's loads) and an app tsconfig with `verbatimModuleSyntax` (without
+ * it, Vite's TypeScript transform drops unreferenced imports after the
+ * compiler and hides leaks).
+ */
+const hostTsconfig = {
+  compilerOptions: {
+    target: 'ES2022',
+    module: 'ESNext',
+    moduleResolution: 'Bundler',
+    jsx: 'react-jsx',
+    strict: true,
+    verbatimModuleSyntax: true,
+  },
+}
+const hostDefaults = {
+  start: { importProtection: { enabled: false } },
+  files: { 'tsconfig.json': JSON.stringify(hostTsconfig) },
+}
+
+/**
  * `cloudflare:workers` as a Workers platform plugin gives it to the server
  * environments (a module the client cannot resolve).
  */
@@ -36,7 +58,7 @@ function workersPlatform(): Plugin {
   }
 }
 
-const host = useStartHost({ plugins: [workersPlatform()] })
+const host = useStartHost({ ...hostDefaults, plugins: [workersPlatform()] })
 
 const head = `import { createMiddleware, createServerFn } from '@tanstack/react-start'\n`
 

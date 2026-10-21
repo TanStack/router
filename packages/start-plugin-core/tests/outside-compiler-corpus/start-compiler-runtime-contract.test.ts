@@ -13,6 +13,7 @@
  * tests/start-compiler-runtime-contract.test.ts (the public Start host).
  */
 import { describe, expect, test } from 'vitest'
+import { createClientRpc, createSsrRpc } from '../start-runtime'
 import {
   callFromClient,
   callProvider,
@@ -22,7 +23,6 @@ import {
   evaluateModule,
   serverFnResult,
 } from './legacy/regression-helpers'
-import { createClientRpc, createSsrRpc } from '../start-runtime'
 
 /** Own properties (symbols included) of a value, without functions. */
 function metadata(value: object) {

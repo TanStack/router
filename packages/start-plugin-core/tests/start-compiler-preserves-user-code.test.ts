@@ -14,16 +14,42 @@ import {
 } from './regression-helpers'
 import type { StartCase, StartHost } from './regression-helpers'
 
+/**
+ * The host defaults of the B2 lead's branch (until it is merged): no import
+ * protection (its dev mock would hide a leaked server import from the
+ * client's loads) and an app tsconfig with `verbatimModuleSyntax` (without
+ * it, Vite's TypeScript transform drops unreferenced imports after the
+ * compiler and hides leaks).
+ */
+const hostTsconfig = {
+  compilerOptions: {
+    target: 'ES2022',
+    module: 'ESNext',
+    moduleResolution: 'Bundler',
+    jsx: 'react-jsx',
+    strict: true,
+    verbatimModuleSyntax: true,
+  },
+}
+const hostDefaults = {
+  start: { importProtection: { enabled: false } },
+  files: { 'tsconfig.json': JSON.stringify(hostTsconfig) },
+}
+
 // The compiler removes code that only served a transformed call. Everything
 // else is user code that must survive, even when nothing seems to read it.
 // Observed through the public Start host (`./start-host`): the client in a
 // real page, the server in the SSR environment and in real requests.
 
 const host = useStartHost({
+  start: hostDefaults.start,
   // Decorated classes are written for TypeScript's `experimentalDecorators`
   files: {
     'tsconfig.json': JSON.stringify({
-      compilerOptions: { experimentalDecorators: true, jsx: 'react-jsx' },
+      compilerOptions: {
+        ...hostTsconfig.compilerOptions,
+        experimentalDecorators: true,
+      },
     }),
   },
 })
@@ -269,7 +295,10 @@ export const getUser = createServerFn().handler(async () => User('Ada'))`,
 // module of an app whose React plugin uses the classic runtime
 // (`react({ jsxRuntime: 'classic' })`), with the real React.
 describe('keeps working with the classic JSX runtime downstream', () => {
-  const classic = useStartHost({ react: { jsxRuntime: 'classic' } })
+  const classic = useStartHost({
+    ...hostDefaults,
+    react: { jsxRuntime: 'classic' },
+  })
 
   test('the client and the server render it', async () => {
     const served = await serveCase(await classic(), {
@@ -451,7 +480,7 @@ export const Box = () => <div className="box" />
     const startCase = await started.case({ 'module.tsx': code })
     const result = await started.host.dev.vite.environments[
       environment
-    ]!.transformRequest(startCase.url())
+    ].transformRequest(startCase.url())
     expect(result, 'the served module').toBeTruthy()
     const [generated] = tokenOffsets(result!.code, { string: 'box' })
     expect(generated, 'the attribute value in the output').toBeDefined()

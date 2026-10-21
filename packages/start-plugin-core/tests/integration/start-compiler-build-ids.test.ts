@@ -26,6 +26,28 @@ import {
 } from '../regression-helpers'
 import type { StartCase, StartHost } from '../regression-helpers'
 
+/**
+ * The host defaults of the B2 lead's branch (until it is merged): no import
+ * protection (its dev mock would hide a leaked server import from the
+ * client's loads) and an app tsconfig with `verbatimModuleSyntax` (without
+ * it, Vite's TypeScript transform drops unreferenced imports after the
+ * compiler and hides leaks).
+ */
+const hostTsconfig = {
+  compilerOptions: {
+    target: 'ES2022',
+    module: 'ESNext',
+    moduleResolution: 'Bundler',
+    jsx: 'react-jsx',
+    strict: true,
+    verbatimModuleSyntax: true,
+  },
+}
+const hostDefaults = {
+  start: { importProtection: { enabled: false } },
+  files: { 'tsconfig.json': JSON.stringify(hostTsconfig) },
+}
+
 const serverFnModule = (name: string, value: string) =>
   `import { createServerFn } from '@tanstack/react-start'
 export const ${name} = createServerFn().handler(async () => '${value}')
@@ -44,14 +66,16 @@ async function callBothWays(startCase: StartCase, fn: string, file: string) {
 describe('a custom generateFunctionId', () => {
   /** The ids the custom function returned. */
   const returned: Array<string> = []
-  let host: StartHost
+  let host: StartHost | undefined
   const cases: Record<string, StartCase> = {}
 
   beforeAll(async () => {
     // One build: each case directory gets its own id policy.
     host = await createStartHost({
       serve: false,
+      files: hostDefaults.files,
       start: {
+        ...hostDefaults.start,
         serverFns: {
           generateFunctionId: ({
             filename,
@@ -177,7 +201,7 @@ describe('relocation', () => {
     await expectRelocatable(
       ['first root', 'second root'],
       async () => {
-        const host = await createStartHost({ serve: false })
+        const host = await createStartHost({ ...hostDefaults, serve: false })
         hosts.push(host)
         const startCase = await host.case({
           'fns.ts': serverFnModule('fn', 'from the server'),

@@ -3,7 +3,7 @@
  * project (SPEC J4.4, G4): the same app at the same root, built again with
  * its files written in another order, gives every server fn the same public
  * `url`, and each one reaches its own handler. Observed through the public
- * Start host in production mode (`createStartHost({ serve: false })`: real
+ * Start host in production mode (`createStartHost({ ...hostDefaults, serve: false })`: real
  * `vite build` and Start's preview server; the client in the hydrated
  * production page, calling the server through the built server entry).
  * The projection compared is the `url` of each server fn and what calling
@@ -21,6 +21,28 @@ import {
 } from '@tanstack/compiler-test-utils/determinism'
 import { callFromClient, createStartHost, inPage } from '../regression-helpers'
 import type { StartCase, StartHost } from '../regression-helpers'
+
+/**
+ * The host defaults of the B2 lead's branch (until it is merged): no import
+ * protection (its dev mock would hide a leaked server import from the
+ * client's loads) and an app tsconfig with `verbatimModuleSyntax` (without
+ * it, Vite's TypeScript transform drops unreferenced imports after the
+ * compiler and hides leaks).
+ */
+const hostTsconfig = {
+  compilerOptions: {
+    target: 'ES2022',
+    module: 'ESNext',
+    moduleResolution: 'Bundler',
+    jsx: 'react-jsx',
+    strict: true,
+    verbatimModuleSyntax: true,
+  },
+}
+const hostDefaults = {
+  start: { importProtection: { enabled: false } },
+  files: { 'tsconfig.json': JSON.stringify(hostTsconfig) },
+}
 
 const serverFnModule = (name: string, value: string) =>
   `import { createServerFn } from '@tanstack/react-start'
@@ -64,7 +86,7 @@ async function observe(startCase: StartCase) {
 }
 
 test('are deterministic for an unchanged project, whatever order its files are written in', async () => {
-  host = await createStartHost({ serve: false })
+  host = await createStartHost({ ...hostDefaults, serve: false })
   let startCase: StartCase | undefined
   const observations = await expectDeterministic(
     reorderedRecords(modules),
