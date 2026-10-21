@@ -1,12 +1,12 @@
 import type { PluginInfo, SerovalNode } from 'seroval'
-import type {
-  RegisteredConfigType,
-  RegisteredSsr,
-  SSROption,
-} from '../../router'
-import type { LooseReturnType } from '../../utils'
+import type { RegisteredConfigType, RegisteredSsr } from '../../router'
 import type { NotFoundError } from '../../not-found'
-import type { AnyRoute, ResolveAllSSR } from '../../route'
+import type {
+  AnyRoute,
+  LifecycleFunction,
+  LifecycleReturnType,
+  ResolveAllSSR,
+} from '../../route'
 import type { RawStream } from './RawStream'
 
 declare const TSR_SERIALIZABLE: unique symbol
@@ -218,11 +218,6 @@ export type RegisteredSerializationAdapters<TRegister> = RegisteredConfigType<
   'serializationAdapters'
 >
 
-export type RegisteredSSROption<TRegister> =
-  unknown extends RegisteredConfigType<TRegister, 'defaultSsr'>
-    ? SSROption
-    : RegisteredConfigType<TRegister, 'defaultSsr'>
-
 // The gate sits in the check type of an `infer` conditional: inference walks the
 // branches of a conditional return type, never its check type, so a lifecycle function
 // whose return is inferred against this does not instantiate the gate's branches.
@@ -267,25 +262,35 @@ export type ValidateSerializableLifecycleResultSSR<
   TFn,
   TExtraControlFlow = NotFoundError,
 > =
-  ResolveAllSSR<TParentRoute, TSSR> extends false
+  ResolveAllSSR<TParentRoute, TSSR, TRegister> extends false
     ? any
-    : RegisteredSSROption<TRegister> extends false
-      ? any
-      : LooseReturnType<TFn> extends infer TReturn
-        ? [TReturn] extends [Promise<infer TAwaited>]
-          ? Promise<
-              ValidateSerializableLifecycleData<
-                TRegister,
-                TAwaited,
-                TExtraControlFlow
-              >
-            >
-          : ValidateSerializableLifecycleData<
-              TRegister,
-              TReturn,
-              TExtraControlFlow
-            >
+    : LifecycleFunction<TFn> extends {
+          '~types': { server: unknown; client: unknown }
+        }
+      ? ValidateSerializableLifecycleReturn<
+          TRegister,
+          LifecycleReturnType<TFn, 'server'>,
+          TExtraControlFlow
+        > extends infer TValid
+        ? [LifecycleReturnType<TFn, 'server'>] extends [TValid]
+          ? LifecycleReturnType<TFn, 'shared'>
+          : TValid
         : never
+      : ValidateSerializableLifecycleReturn<
+          TRegister,
+          LifecycleReturnType<TFn, 'shared'>,
+          TExtraControlFlow
+        >
+
+type ValidateSerializableLifecycleReturn<
+  TRegister,
+  TReturn,
+  TExtraControlFlow,
+> = [TReturn] extends [Promise<infer TAwaited>]
+  ? Promise<
+      ValidateSerializableLifecycleData<TRegister, TAwaited, TExtraControlFlow>
+    >
+  : ValidateSerializableLifecycleData<TRegister, TReturn, TExtraControlFlow>
 
 // Redirects are control flow. Existing beforeLoad/loader returns also exempt
 // NotFoundError; context passes never because it treats returned not-found objects
@@ -341,11 +346,9 @@ export type ValidateSerializableLifecycleWire<
   ? unknown
   : false extends RegisteredSsr<TRegister>
     ? unknown
-    : ResolveAllSSR<TParentRoute, TSSR> extends false
+    : ResolveAllSSR<TParentRoute, TSSR, TRegister> extends false
       ? unknown
-      : RegisteredSSROption<TRegister> extends false
-        ? unknown
-        : ValidateSerializableInput<TRegister, TWire>
+      : ValidateSerializableInput<TRegister, TWire>
 
 export type RegisteredReadableStream =
   unknown extends SerializerExtensions['ReadableStream']

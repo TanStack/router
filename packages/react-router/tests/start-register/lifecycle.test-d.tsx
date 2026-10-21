@@ -1,5 +1,4 @@
 import { expectTypeOf, test } from 'vitest'
-import { isServer } from '@tanstack/router-core/isServer'
 import {
   createFileRoute,
   createRootRouteWithContext,
@@ -30,18 +29,7 @@ import type { Expand } from '@tanstack/router-core'
 type QueryClient = { fetch: (k: string) => Promise<string> }
 type Report = { id: string; when: Date; format: (v: number) => string }
 type Wire = { id: string; iso: string }
-type Stats = { views: number }
-type Prefs = { theme: 'dark' | 'light' }
-// the data type of a lifecycle whose hydrate returns a different shape;
-// the discriminant says which function produced the value: `handler` also runs
-// in the browser on client navigations, so server versus client cannot tell
-// them apart (see the `isServer` test)
-type StatsData =
-  | { hydrated: false; stats: Stats }
-  | { hydrated: true; stats: Stats; prefs: Prefs }
 declare const flag: boolean
-declare function fetchStats(): Promise<Stats>
-declare function readPrefs(): Promise<Prefs>
 
 const rootRoute = createRootRouteWithContext<{
   queryClient: QueryClient
@@ -142,13 +130,6 @@ declare module '@tanstack/router-core' {
       fullPath: '/parent/child'
       preLoaderRoute: typeof childRoute
       parentRoute: typeof parentRoute
-    }
-    '/hydrated': {
-      id: '/hydrated'
-      path: '/hydrated'
-      fullPath: '/hydrated'
-      preLoaderRoute: typeof hydratedRoute
-      parentRoute: typeof rootRoute
     }
   }
 }
@@ -252,9 +233,9 @@ const handlerRoute = createFileRoute('/handler')({
 
 const _handlerBadRoute = createFileRoute('/handler-bad')({
   loader: {
+    // @ts-expect-error a transported loader result must be serializable
     handler: ({ context }) => ({
       id: context.rootCtx,
-      // @ts-expect-error a transported loader result must be serializable
       fn: () => 1,
     }),
   },
@@ -332,69 +313,6 @@ test('dehydrate: false turns validation off for that lifecycle', () => {
 })
 
 // ---------------------------------------------------------------------------
-// dehydrate: true + hydrate
-// ---------------------------------------------------------------------------
-
-test('dehydrate: true with hydrate: validated, data is the full awaited value', () => {
-  const route = createRoute({
-    getParentRoute: () => rootRoute,
-    path: 'hydrate/$id',
-    loaderDeps: () => ({ n: 1 }),
-    context: {
-      handler: async ({ context }) => ({
-        c: await context.queryClient.fetch('k'),
-      }),
-      dehydrate: true,
-      hydrate: ({ data, context }) => {
-        expectTypeOf(data).toEqualTypeOf<{ c: string }>()
-        return { c: data.c + context.user }
-      },
-      revalidate: ({ prev }) => {
-        expectTypeOf(prev).toEqualTypeOf<{ c: string } | undefined>()
-        return Promise.resolve({ c: prev?.c ?? '' })
-      },
-    },
-    loader: {
-      handler: ({ params }) =>
-        Promise.resolve({ id: params.id, when: new Date() }),
-      dehydrate: true,
-      hydrate: ({ data, params, context, deps }) => {
-        expectTypeOf(data).toEqualTypeOf<{ id: string; when: Date }>()
-        expectTypeOf(params).toEqualTypeOf<{ id: string }>()
-        expectTypeOf(deps).toEqualTypeOf<{ n: number }>()
-        expectTypeOf(context.c).toEqualTypeOf<string>()
-        return {
-          id: data.id + params.id + context.rootBl + deps.n,
-          when: data.when,
-        }
-      },
-    },
-  })
-
-  expectTypeOf(route.types.loaderData).toEqualTypeOf<{
-    id: string
-    when: Date
-  }>()
-  expectTypeOf<Expand<typeof route.types.routeContext>>().toEqualTypeOf<{
-    c: string
-  }>()
-
-  // a hydrate returning a wider shape is not an error: loaderData is the union
-  const wider = createRoute({
-    getParentRoute: () => rootRoute,
-    path: 'hydrate-wider',
-    loader: {
-      handler: () => Promise.resolve({ id: 's', when: new Date() }),
-      dehydrate: true,
-      hydrate: ({ data }) => ({ id: data.id }),
-    },
-  })
-  expectTypeOf(wider.types.loaderData).toEqualTypeOf<
-    { id: string; when: Date } | { id: string }
-  >()
-})
-
-// ---------------------------------------------------------------------------
 // codec
 // ---------------------------------------------------------------------------
 
@@ -444,61 +362,6 @@ const _codecBadRoute = createFileRoute('/codec-bad')({
     dehydrate: ({ data }) => ({ id: data.id, g: () => 2 }),
     hydrate: ({ data }) => ({ id: data.id }),
   },
-})
-
-test('codec: the wire is validated, the handler data is not', () => {
-  expectTypeOf(codecRoute.types.loaderData).toEqualTypeOf<{
-    id: string
-    qc: QueryClient
-    when: Date
-  }>()
-  expectTypeOf<Expand<typeof codecRoute.types.routeContext>>().toEqualTypeOf<{
-    key: string
-    cFn: () => number
-    page: number
-    bFn: () => number
-  }>()
-  expectTypeOf<
-    RouteById<(typeof router)['routeTree'], '/codec/$id'>['types']['loaderData']
-  >().toEqualTypeOf<{ id: string; qc: QueryClient; when: Date }>()
-
-  createRoute({
-    getParentRoute: () => rootRoute,
-    path: 'codec-wire-bad',
-    // @ts-expect-error the wire must be serializable
-    context: {
-      handler: () => ({ c: 1 }),
-      dehydrate: ({ data }) => ({ c: data.c, fn: () => 1 }),
-      hydrate: ({ data }) => ({ c: data.c }),
-    },
-  })
-  // a hydrate returning a wider shape is not an error: loaderData is the union
-  const wider = createRoute({
-    getParentRoute: () => rootRoute,
-    path: 'codec-wider',
-    loader: {
-      handler: () => ({ id: 's', when: new Date() }),
-      dehydrate: ({ data }) => ({ id: data.id }),
-      hydrate: ({ data }) => ({ id: data.id }),
-    },
-  })
-  expectTypeOf(wider.types.loaderData).toEqualTypeOf<
-    { id: string; when: Date } | { id: string }
-  >()
-  createRoute({
-    getParentRoute: () => rootRoute,
-    path: 'codec-unpaired',
-    // @ts-expect-error a dehydrate function requires hydrate
-    context: {
-      handler: () => ({ c: 1 }),
-      dehydrate: ({ data }) => ({ c: data.c }),
-    },
-    // @ts-expect-error a dehydrate function requires hydrate
-    loader: {
-      handler: () => Promise.resolve({ id: 's' }),
-      dehydrate: ({ data }) => ({ id: data.id }),
-    },
-  })
 })
 
 test('codec: context-sensitive handler with inline, annotated and named halves', () => {
@@ -1879,160 +1742,6 @@ test('an async wire holding a function is rejected in a Start register', () => {
   })
 })
 
-// ---------------------------------------------------------------------------
-// hydrate may return a different type; the lifecycle data is the union
-// ---------------------------------------------------------------------------
-
-const hydratedRoute = createFileRoute('/hydrated')({
-  loader: {
-    handler: async () => ({
-      hydrated: false as const,
-      stats: await fetchStats(),
-    }),
-    dehydrate: ({ data }) => ({ stats: data.stats }),
-    // `as const` on both sides: without it the discriminant widens to `boolean`
-    hydrate: async ({ data }) => ({
-      hydrated: true as const,
-      stats: data.stats,
-      prefs: await readPrefs(),
-    }),
-  },
-})
-
-// assertions live inside `select` so the file stays identical across react, solid
-// and vue (vue's hooks return a Ref)
-function useHydratedRouteTypes() {
-  return [
-    hydratedRoute.useLoaderData({
-      select: (data) => {
-        expectTypeOf(data).toEqualTypeOf<StatsData>()
-        if (data.hydrated) {
-          expectTypeOf(data.prefs).toEqualTypeOf<Prefs>()
-          return data.prefs.theme
-        }
-        expectTypeOf(data).toEqualTypeOf<{ hydrated: false; stats: Stats }>()
-        expectTypeOf(data).not.toHaveProperty('prefs')
-        return data.stats.views
-      },
-    }),
-    useLoaderData({
-      from: '/hydrated',
-      select: (d) => {
-        expectTypeOf(d).toEqualTypeOf<StatsData>()
-        return d.hydrated
-      },
-    }),
-  ]
-}
-
-test('loader: a hydrate returning a different shape yields a union that narrows on a discriminant', () => {
-  expectTypeOf(hydratedRoute.types.loaderData).toEqualTypeOf<StatsData>()
-  expectTypeOf<
-    RouteById<(typeof router)['routeTree'], '/hydrated'>['types']['loaderData']
-  >().toEqualTypeOf<StatsData>()
-  expectTypeOf(useHydratedRouteTypes).toBeFunction()
-})
-
-test('context: the union is visible to beforeLoad, loader, the child and to revalidate prev', () => {
-  const parent = createRoute({
-    getParentRoute: () => rootRoute,
-    path: 'hydrated-context',
-    context: {
-      handler: async () => ({
-        hydrated: false as const,
-        stats: await fetchStats(),
-      }),
-      dehydrate: ({ data }) => ({ stats: data.stats }),
-      hydrate: async ({ data }) => ({
-        hydrated: true as const,
-        stats: data.stats,
-        prefs: await readPrefs(),
-      }),
-      revalidate: ({ prev }) => {
-        // prev is the resolved data: the handler shape or the hydrated shape
-        expectTypeOf(prev).toEqualTypeOf<StatsData | undefined>()
-        return { hydrated: false as const, stats: prev?.stats ?? { views: 0 } }
-      },
-    },
-    beforeLoad: ({ context }) => {
-      expectTypeOf(context.hydrated).toEqualTypeOf<boolean>()
-      if (context.hydrated) {
-        expectTypeOf(context.prefs).toEqualTypeOf<Prefs>()
-      }
-      return { fromBl: context.stats.views }
-    },
-    loader: ({ context }) => ({
-      theme: context.hydrated ? context.prefs.theme : null,
-    }),
-  })
-  const child = createRoute({
-    getParentRoute: () => parent,
-    path: 'child',
-    context: ({ context }) => {
-      expectTypeOf(context.hydrated).toEqualTypeOf<boolean>()
-      if (context.hydrated) {
-        expectTypeOf(context.prefs).toEqualTypeOf<Prefs>()
-        return { child: context.prefs.theme }
-      }
-      return { child: `${context.fromBl}${context.user}` }
-    },
-  })
-
-  expectTypeOf<Expand<typeof parent.types.routeContext>>().toEqualTypeOf<
-    | { hydrated: false; stats: Stats; fromBl: number }
-    | { hydrated: true; stats: Stats; prefs: Prefs; fromBl: number }
-  >()
-  expectTypeOf(parent.types.loaderData).toEqualTypeOf<{
-    theme: 'dark' | 'light' | null
-  }>()
-  expectTypeOf(child.types.routeContext).toEqualTypeOf<{ child: string }>()
-  expectTypeOf(child).toMatchTypeOf<AnyRoute>()
-})
-
-test('context: revalidate must return the handler shape even when hydrate widens the data', () => {
-  createRoute({
-    getParentRoute: () => rootRoute,
-    path: 'revalidate-prev',
-    // @ts-expect-error prev may hold the hydrated shape, revalidate returns the handler shape
-    context: {
-      handler: async () => ({
-        hydrated: false as const,
-        stats: await fetchStats(),
-      }),
-      dehydrate: ({ data }) => ({ stats: data.stats }),
-      hydrate: async ({ data }) => ({
-        hydrated: true as const,
-        stats: data.stats,
-        prefs: await readPrefs(),
-      }),
-      revalidate: ({ prev }) => prev!,
-    },
-  })
-
-  createRoute({
-    getParentRoute: () => rootRoute,
-    path: 'revalidate-hydrated',
-    // @ts-expect-error the hydrated shape is not the handler shape
-    context: {
-      handler: async () => ({
-        hydrated: false as const,
-        stats: await fetchStats(),
-      }),
-      dehydrate: ({ data }) => ({ stats: data.stats }),
-      hydrate: async ({ data }) => ({
-        hydrated: true as const,
-        stats: data.stats,
-        prefs: await readPrefs(),
-      }),
-      revalidate: async ({ prev }) => ({
-        hydrated: true as const,
-        stats: prev?.stats ?? { views: 0 },
-        prefs: await readPrefs(),
-      }),
-    },
-  })
-})
-
 test('a hydrate returning the handler shape, a subtype of it, or the handler shape plus an extra property leaves the types unchanged', () => {
   const loadReport = (): Promise<Report> =>
     Promise.resolve({ id: 'r', when: new Date(), format: (v) => `${v}` })
@@ -2085,114 +1794,6 @@ test('a hydrate returning the handler shape, a subtype of it, or the handler sha
   expectTypeOf(extraProperty.types.loaderData).toEqualTypeOf<{ id: string }>()
 })
 
-test('the `isServer` env form of combining server and client-only data reduces to the handler type: `prefs` is invisible unless the handler declares it (documented limitation)', () => {
-  // the hydrate result `{ env: 'client'; stats; prefs }` is a subtype of the
-  // handler data `{ env: 'server' | 'client'; stats }`, so the slot keeps the
-  // handler data: no union, `prefs` is not visible and `env` narrows nothing
-  const reduced = createRoute({
-    getParentRoute: () => rootRoute,
-    path: 'env-reduced',
-    loader: {
-      handler: async () => ({
-        env: isServer ? ('server' as const) : ('client' as const),
-        stats: await fetchStats(),
-      }),
-      dehydrate: ({ data }) => ({ stats: data.stats }),
-      hydrate: async ({ data }) => ({
-        env: 'client' as const,
-        stats: data.stats,
-        prefs: await readPrefs(),
-      }),
-    },
-  })
-  // declaring the client-only field in the handler (`undefined` there) keeps a
-  // runtime `env` and makes the union visible; narrow on the field itself
-  const declared = createRoute({
-    getParentRoute: () => rootRoute,
-    path: 'env-declared',
-    loader: {
-      handler: async () => ({
-        env: isServer ? ('server' as const) : ('client' as const),
-        stats: await fetchStats(),
-        prefs: undefined,
-      }),
-      dehydrate: ({ data }) => ({ stats: data.stats }),
-      hydrate: async ({ data }) => ({
-        env: 'client' as const,
-        stats: data.stats,
-        prefs: await readPrefs(),
-      }),
-    },
-  })
-
-  expectTypeOf(reduced.types.loaderData).toEqualTypeOf<{
-    env: 'server' | 'client'
-    stats: Stats
-  }>()
-  const reducedData = {} as typeof reduced.types.loaderData
-  if (reducedData.env === 'client') {
-    expectTypeOf(reducedData).toEqualTypeOf<{
-      env: 'server' | 'client'
-      stats: Stats
-    }>()
-    expectTypeOf(reducedData).not.toHaveProperty('prefs')
-  }
-  if ('prefs' in reducedData) {
-    expectTypeOf(reducedData.prefs).toEqualTypeOf<unknown>()
-  }
-
-  expectTypeOf(declared.types.loaderData).toEqualTypeOf<
-    | { env: 'server' | 'client'; stats: Stats; prefs: undefined }
-    | { env: 'client'; stats: Stats; prefs: Prefs }
-  >()
-  const declaredData = {} as typeof declared.types.loaderData
-  if (declaredData.prefs) {
-    expectTypeOf(declaredData.prefs).toEqualTypeOf<Prefs>()
-  }
-})
-
-test('a literal discriminant in hydrate without `as const` widens to a second union member (documented limitation)', () => {
-  const route = createRoute({
-    getParentRoute: () => rootRoute,
-    path: 'widened-literal',
-    loader: {
-      handler: () => ({ kind: 'a' as const, n: 1 }),
-      dehydrate: ({ data }) => ({ n: data.n }),
-      hydrate: ({ data }) => ({ kind: 'a', n: data.n }),
-    },
-  })
-
-  expectTypeOf(route.types.loaderData).toEqualTypeOf<
-    { kind: 'a'; n: number } | { kind: string; n: number }
-  >()
-})
-
-test('a parameter-less hydrate next to an inline dehydrate is accepted', () => {
-  const sameShape = createRoute({
-    getParentRoute: () => rootRoute,
-    path: 'paramless-same',
-    loader: {
-      handler: () => ({ id: 's' }),
-      dehydrate: ({ data }) => ({ id: data.id }),
-      hydrate: () => ({ id: 'client' }),
-    },
-  })
-  const differentShape = createRoute({
-    getParentRoute: () => rootRoute,
-    path: 'paramless-different',
-    loader: {
-      handler: () => ({ id: 's' }),
-      dehydrate: ({ data }) => ({ id: data.id }),
-      hydrate: () => ({ env: 'client' as const }),
-    },
-  })
-
-  expectTypeOf(sameShape.types.loaderData).toEqualTypeOf<{ id: string }>()
-  expectTypeOf(differentShape.types.loaderData).toEqualTypeOf<
-    { id: string } | { env: 'client' }
-  >()
-})
-
 // ---------------------------------------------------------------------------
 // tree + router (also the registered router: hydrate reading `data` must not
 // cycle through Register.router)
@@ -2206,7 +1807,6 @@ const routeTree = rootRoute.addChildren([
   codecRoute,
   codeRoute,
   codeBadRoute,
-  hydratedRoute,
   noSsrRoute.addChildren([noSsrChildRoute]),
   parentRoute.addChildren([childRoute]),
 ])

@@ -5,7 +5,6 @@ import type {
   AnyRoute,
   FileBaseRouteOptions,
   LifecycleNoWire,
-  ResolveLifecycleSlot,
   ResolveParams,
   Route,
   RouteConstraints,
@@ -54,9 +53,6 @@ export interface FileRouteOptions<
   TContextWire = LifecycleNoWire,
   TBeforeLoadWire = LifecycleNoWire,
   TLoaderWire = LifecycleNoWire,
-  TContextHydrate = never,
-  TBeforeLoadHydrate = never,
-  TLoaderHydrate = never,
 >
   extends
     FileBaseRouteOptions<
@@ -77,10 +73,7 @@ export interface FileRouteOptions<
       THandlers,
       TContextWire,
       TBeforeLoadWire,
-      TLoaderWire,
-      TContextHydrate,
-      TBeforeLoadHydrate,
-      TLoaderHydrate
+      TLoaderWire
     >,
     UpdatableRouteOptions<
       TParentRoute,
@@ -92,10 +85,7 @@ export interface FileRouteOptions<
       TLoaderDeps,
       AnyContext,
       TRouteContextFn,
-      TBeforeLoadFn,
-      TContextHydrate,
-      TBeforeLoadHydrate,
-      TLoaderHydrate
+      TBeforeLoadFn
     > {}
 
 // The return type is a conditional on purpose, see UpdatableRouteOptions.
@@ -119,9 +109,6 @@ export type CreateFileRoute<
   TContextWire = LifecycleNoWire,
   TBeforeLoadWire = LifecycleNoWire,
   TLoaderWire = LifecycleNoWire,
-  TContextHydrate = never,
-  TBeforeLoadHydrate = never,
-  TLoaderHydrate = never,
 >(
   options?: FileRouteOptions<
     TRegister,
@@ -141,10 +128,7 @@ export type CreateFileRoute<
     THandlers,
     TContextWire,
     TBeforeLoadWire,
-    TLoaderWire,
-    TContextHydrate,
-    TBeforeLoadHydrate,
-    TLoaderHydrate
+    TLoaderWire
   >,
 ) => TRegister extends unknown
   ? Route<
@@ -157,10 +141,10 @@ export type CreateFileRoute<
       TSearchValidator,
       TParams,
       AnyContext,
-      ResolveLifecycleSlot<TRouteContextFn, TContextHydrate>,
-      ResolveLifecycleSlot<TBeforeLoadFn, TBeforeLoadHydrate>,
+      TRouteContextFn,
+      TBeforeLoadFn,
       TLoaderDeps,
-      ResolveLifecycleSlot<TLoaderFn, TLoaderHydrate>,
+      TLoaderFn,
       unknown,
       unknown,
       TSSR,

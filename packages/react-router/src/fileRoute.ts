@@ -23,7 +23,6 @@ import type {
   LifecycleNoWire,
   Register,
   RegisteredRouter,
-  ResolveLifecycleSlot,
   ResolveParams,
   Route,
   RouteById,
@@ -103,9 +102,6 @@ export class FileRoute<
     TContextWire = LifecycleNoWire,
     TBeforeLoadWire = LifecycleNoWire,
     TLoaderWire = LifecycleNoWire,
-    TContextHydrate = never,
-    TBeforeLoadHydrate = never,
-    TLoaderHydrate = never,
   >(
     options?: FileBaseRouteOptions<
       TRegister,
@@ -125,10 +121,7 @@ export class FileRoute<
       THandlers,
       TContextWire,
       TBeforeLoadWire,
-      TLoaderWire,
-      TContextHydrate,
-      TBeforeLoadHydrate,
-      TLoaderHydrate
+      TLoaderWire
     > &
       UpdatableRouteOptions<
         TParentRoute,
@@ -140,10 +133,7 @@ export class FileRoute<
         TLoaderDeps,
         AnyContext,
         TRouteContextFn,
-        TBeforeLoadFn,
-        TContextHydrate,
-        TBeforeLoadHydrate,
-        TLoaderHydrate
+        TBeforeLoadFn
       >,
   ): TRegister extends unknown
     ? Route<
@@ -156,10 +146,10 @@ export class FileRoute<
         TSearchValidator,
         TParams,
         AnyContext,
-        ResolveLifecycleSlot<TRouteContextFn, TContextHydrate>,
-        ResolveLifecycleSlot<TBeforeLoadFn, TBeforeLoadHydrate>,
+        TRouteContextFn,
+        TBeforeLoadFn,
         TLoaderDeps,
-        ResolveLifecycleSlot<TLoaderFn, TLoaderHydrate>,
+        TLoaderFn,
         TChildren,
         unknown,
         TSSR,

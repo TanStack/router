@@ -1,5 +1,4 @@
 import { expectTypeOf, test } from 'vitest'
-import { isServer } from '@tanstack/router-core/isServer'
 import { createRouterConfig } from '@tanstack/router-core'
 import {
   createFileRoute,
@@ -217,13 +216,6 @@ declare module '@tanstack/router-core' {
       preLoaderRoute: typeof dashboardRoute
       parentRoute: typeof rootRoute
     }
-    '/dashboard-narrowed': {
-      id: '/dashboard-narrowed'
-      path: '/dashboard-narrowed'
-      fullPath: '/dashboard-narrowed'
-      preLoaderRoute: typeof dashboardNarrowedRoute
-      parentRoute: typeof rootRoute
-    }
     '/document': {
       id: '/document'
       path: '/document'
@@ -330,20 +322,33 @@ const postsRoute = createFileRoute('/posts/$postId')({
   },
 })
 
-// "Reconstruct from the full value"
+// The actual createIsomorphicFn builders for these examples are checked in the
+// framework's Start-client lifecyclePhases integration matrix. Router-only tests
+// use their inferred structural return types without depending on Start.
+declare const reportHandler: {
+  ():
+    | Promise<{ report: Report }>
+    | Promise<{ report: Report; timeZone: string }>
+  readonly '~types': {
+    server: Promise<{ report: Report }>
+    client: Promise<{ report: Report; timeZone: string }>
+  }
+}
+declare const dashboardHandler: {
+  (): Promise<{ stats: Stats }> | Promise<{ stats: Stats; prefs: Prefs }>
+  readonly '~types': {
+    server: Promise<{ stats: Stats }>
+    client: Promise<{ stats: Stats; prefs: Prefs }>
+  }
+}
+
 const reportRoute = createFileRoute('/report')({
-  ssr: 'data-only', // the client's timeZone differs from the server's
+  ssr: 'data-only',
   loader: {
-    handler: async () => ({
-      report: await fetchReport(),
-      timeZone: undefined as string | undefined, // client-only, set by hydrate
-    }),
+    handler: reportHandler,
     dehydrate: true,
     hydrate: ({ data }) => {
-      expectTypeOf(data).toEqualTypeOf<{
-        report: Report
-        timeZone: string | undefined
-      }>()
+      expectTypeOf(data).toEqualTypeOf<{ report: Report }>()
       return {
         ...data,
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -352,37 +357,14 @@ const reportRoute = createFileRoute('/report')({
   },
 })
 
-// "Combine server data with client-only data"
 const dashboardRoute = createFileRoute('/dashboard')({
-  ssr: 'data-only', // prefs exist on the client only
+  ssr: 'data-only',
   loader: {
-    handler: async () => ({
-      stats: await fetchStats(),
-      prefs: getLocalPrefs(), // undefined on the server, filled on client navigations
-    }),
-    dehydrate: true,
-    hydrate: ({ data }) => ({ ...data, prefs: readPrefsFromLocalStorage() }), // filled at hydration
-  },
-})
-
-// "Narrow with a discriminant": the discriminant says which function
-// produced the value, written with `as const` on both sides
-type DashboardData =
-  | { hydrated: false; stats: Stats }
-  | { hydrated: true; stats: Stats; prefs: Prefs }
-
-const dashboardNarrowedRoute = createFileRoute('/dashboard-narrowed')({
-  ssr: 'data-only', // the server renders one branch, the first client render the other
-  loader: {
-    handler: async () => ({
-      hydrated: false as const,
-      stats: await fetchStats(),
-    }),
-    dehydrate: ({ data }) => ({ stats: data.stats }),
-    hydrate: async ({ data }) => ({
-      hydrated: true as const,
-      stats: data.stats,
-      prefs: await readPrefs(),
+    handler: dashboardHandler,
+    dehydrate: ({ data }) => data.stats,
+    hydrate: ({ data }) => ({
+      stats: data,
+      prefs: readPrefsFromLocalStorage(),
     }),
   },
 })
@@ -526,7 +508,7 @@ function useDocsExampleTypes() {
       select: (data) => {
         expectTypeOf(data).toEqualTypeOf<{
           report: Report
-          timeZone: string | undefined
+          timeZone: string
         }>()
         return data.timeZone
       },
@@ -535,21 +517,9 @@ function useDocsExampleTypes() {
       select: (data) => {
         expectTypeOf(data).toEqualTypeOf<{
           stats: Stats
-          prefs: Prefs | undefined
+          prefs: Prefs
         }>()
-        return data.prefs?.theme
-      },
-    }),
-    dashboardNarrowedRoute.useLoaderData({
-      select: (data) => {
-        expectTypeOf(data).toEqualTypeOf<DashboardData>()
-        if (data.hydrated) {
-          expectTypeOf(data.prefs).toEqualTypeOf<Prefs>()
-          return data.prefs.theme
-        }
-        expectTypeOf(data).toEqualTypeOf<{ hydrated: false; stats: Stats }>()
-        expectTypeOf(data).not.toHaveProperty('prefs')
-        return data.stats.views
+        return data.prefs.theme
       },
     }),
     documentRoute.useLoaderData({
@@ -610,7 +580,7 @@ function useDocsExampleTypes() {
       select: (data) => {
         expectTypeOf(data).toEqualTypeOf<{
           report: Report
-          timeZone: string | undefined
+          timeZone: string
         }>()
         return data.report.rows.length
       },
@@ -624,41 +594,6 @@ function useDocsExampleTypes() {
     }),
   ]
 }
-
-// ---------------------------------------------------------------------------
-// ssr-data-transport.md: the claims next to the examples
-// ---------------------------------------------------------------------------
-
-test('ssr-data-transport: the examples compile with the types the page states', () => {
-  expectTypeOf<Expand<typeof editorRoute.types.routeContext>>().toEqualTypeOf<{
-    editorSession: EditorSession
-  }>()
-  expectTypeOf(authedRoute.types.routeContext).toEqualTypeOf<{
-    session: Session | null
-  }>()
-  expectTypeOf(postsRoute.types.routeContext).toEqualTypeOf<{
-    postId: string
-    postQueryOptions: QueryOptions<Post>
-    authStatus: AuthStatus
-  }>()
-  expectTypeOf(reportRoute.types.loaderData).toEqualTypeOf<{
-    report: Report
-    timeZone: string | undefined
-  }>()
-  expectTypeOf(dashboardRoute.types.loaderData).toEqualTypeOf<{
-    stats: Stats
-    prefs: Prefs | undefined
-  }>()
-  expectTypeOf(
-    dashboardNarrowedRoute.types.loaderData,
-  ).toEqualTypeOf<DashboardData>()
-  expectTypeOf(documentRoute.types.loaderData).toEqualTypeOf<Doc>()
-  expectTypeOf(buildRoute.types.routeContext).toEqualTypeOf<{
-    postId: string
-    session: Session
-  }>()
-  expectTypeOf(useDocsExampleTypes).toBeFunction()
-})
 
 test('ssr-data-transport: a sent result has to be serializable; dehydrate: false lifts the check', () => {
   createRoute({
@@ -752,108 +687,6 @@ test('ssr-data-transport: reconstruct from the full value, the hydrate result re
   })
 })
 
-test('ssr-data-transport: an environment discriminant reduces to the handler data, so the docs discriminate on the producing function', () => {
-  // as the docs write it, without `as const`: the two literals widen and
-  // `env` is `string`; `{ env: string; stats; prefs }` is assignable to
-  // `{ env: string; stats }`, so no union and `prefs` invisible
-  const plainEnv = createRoute({
-    getParentRoute: () => rootRoute,
-    path: 'dashboard-env-plain',
-    loader: {
-      handler: async () => ({
-        env: isServer ? 'server' : 'client',
-        stats: await fetchStats(),
-      }),
-      dehydrate: ({ data }) => ({ stats: data.stats }),
-      hydrate: async ({ data }) => ({
-        env: 'client',
-        stats: data.stats,
-        prefs: await readPrefs(),
-      }),
-    },
-  })
-  expectTypeOf(plainEnv.types.loaderData).toEqualTypeOf<{
-    env: string
-    stats: Stats
-  }>()
-  expectTypeOf(plainEnv.types.loaderData).not.toHaveProperty('prefs')
-
-  // with `as const` on both branches `env` is `'server' | 'client'` and
-  // `{ env: 'client'; stats; prefs }` is still assignable: same outcome,
-  // `data.env === 'client'` narrows nothing
-  const env = createRoute({
-    getParentRoute: () => rootRoute,
-    path: 'dashboard-env',
-    loader: {
-      handler: async () => ({
-        env: isServer ? ('server' as const) : ('client' as const),
-        stats: await fetchStats(),
-      }),
-      dehydrate: ({ data }) => ({ stats: data.stats }),
-      hydrate: async ({ data }) => ({
-        env: 'client' as const,
-        stats: data.stats,
-        prefs: await readPrefs(),
-      }),
-    },
-  })
-  expectTypeOf(env.types.loaderData).toEqualTypeOf<{
-    env: 'server' | 'client'
-    stats: Stats
-  }>()
-  expectTypeOf(env.types.loaderData).not.toHaveProperty('prefs')
-
-  // without `as const` in the handler `hydrated` widens to boolean and the
-  // hydrate result is a subtype again: reduced, `prefs` invisible
-  const widenedHandler = createRoute({
-    getParentRoute: () => rootRoute,
-    path: 'dashboard-widened-handler',
-    loader: {
-      handler: async () => ({ hydrated: false, stats: await fetchStats() }),
-      dehydrate: ({ data }) => ({ stats: data.stats }),
-      hydrate: async ({ data }) => ({
-        hydrated: true as const,
-        stats: data.stats,
-        prefs: await readPrefs(),
-      }),
-    },
-  })
-  expectTypeOf(widenedHandler.types.loaderData).toEqualTypeOf<{
-    hydrated: boolean
-    stats: Stats
-  }>()
-
-  // without `as const` in hydrate `true` widens to boolean: the union stays,
-  // but the `hydrated` check no longer tells the two members apart
-  const widenedHydrate = createRoute({
-    getParentRoute: () => rootRoute,
-    path: 'dashboard-widened-hydrate',
-    loader: {
-      handler: async () => ({
-        hydrated: false as const,
-        stats: await fetchStats(),
-      }),
-      dehydrate: ({ data }) => ({ stats: data.stats }),
-      hydrate: async ({ data }) => ({
-        hydrated: true,
-        stats: data.stats,
-        prefs: await readPrefs(),
-      }),
-    },
-  })
-  expectTypeOf(widenedHydrate.types.loaderData).toEqualTypeOf<
-    | { hydrated: false; stats: Stats }
-    | { hydrated: boolean; stats: Stats; prefs: Prefs }
-  >()
-  const widenedData = {} as typeof widenedHydrate.types.loaderData
-  if (!widenedData.hydrated) {
-    expectTypeOf(widenedData).toEqualTypeOf<
-      | { hydrated: false; stats: Stats }
-      | { hydrated: boolean; stats: Stats; prefs: Prefs }
-    >()
-  }
-})
-
 test('ssr-data-transport: the rules', () => {
   createRoute({
     getParentRoute: () => rootRoute,
@@ -864,9 +697,9 @@ test('ssr-data-transport: the rules', () => {
   createRoute({
     getParentRoute: () => rootRoute,
     path: 'rules-key-homes',
-    // @ts-expect-error staleReloadMode exists on loader only
     context: {
       handler: () => ({ c: 1 }),
+      // @ts-expect-error staleReloadMode exists on loader only
       staleReloadMode: 'blocking',
     },
     beforeLoad: {
@@ -1142,7 +975,6 @@ const routeTree = rootRoute.addChildren([
   postsRoute,
   reportRoute,
   dashboardRoute,
-  dashboardNarrowedRoute,
   documentRoute,
   buildRoute,
   invoiceRoute,

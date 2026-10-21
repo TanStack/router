@@ -26,7 +26,6 @@ import type {
   RegisteredRouter,
   ResolveFullPath,
   ResolveId,
-  ResolveLifecycleSlot,
   ResolveParams,
   RootRoute as RootRouteCore,
   RootRouteId,
@@ -239,9 +238,6 @@ export class Route<
       THandlers,
       any,
       any,
-      any,
-      any,
-      any,
       any
     >,
   ) {
@@ -307,9 +303,6 @@ export function createRoute<
   TContextWire = LifecycleNoWire,
   TBeforeLoadWire = LifecycleNoWire,
   TLoaderWire = LifecycleNoWire,
-  TContextHydrate = never,
-  TBeforeLoadHydrate = never,
-  TLoaderHydrate = never,
 >(
   options: RouteOptions<
     TRegister,
@@ -330,10 +323,7 @@ export function createRoute<
     undefined,
     TContextWire,
     TBeforeLoadWire,
-    TLoaderWire,
-    TContextHydrate,
-    TBeforeLoadHydrate,
-    TLoaderHydrate
+    TLoaderWire
   >,
 ): Route<
   TRegister,
@@ -345,10 +335,10 @@ export function createRoute<
   TSearchValidator,
   TParams,
   AnyContext,
-  ResolveLifecycleSlot<TRouteContextFn, TContextHydrate>,
-  ResolveLifecycleSlot<TBeforeLoadFn, TBeforeLoadHydrate>,
+  TRouteContextFn,
+  TBeforeLoadFn,
   TLoaderDeps,
-  ResolveLifecycleSlot<TLoaderFn, TLoaderHydrate>,
+  TLoaderFn,
   TChildren,
   unknown,
   TSSR,
@@ -364,10 +354,10 @@ export function createRoute<
     TSearchValidator,
     TParams,
     AnyContext,
-    ResolveLifecycleSlot<TRouteContextFn, TContextHydrate>,
-    ResolveLifecycleSlot<TBeforeLoadFn, TBeforeLoadHydrate>,
+    TRouteContextFn,
+    TBeforeLoadFn,
     TLoaderDeps,
-    ResolveLifecycleSlot<TLoaderFn, TLoaderHydrate>,
+    TLoaderFn,
     TChildren,
     unknown,
     TSSR,
@@ -404,9 +394,6 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
     TContextWire = LifecycleNoWire,
     TBeforeLoadWire = LifecycleNoWire,
     TLoaderWire = LifecycleNoWire,
-    TContextHydrate = never,
-    TBeforeLoadHydrate = never,
-    TLoaderHydrate = never,
   >(
     options?: RootRouteOptions<
       TRegister,
@@ -421,10 +408,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
       undefined,
       TContextWire,
       TBeforeLoadWire,
-      TLoaderWire,
-      TContextHydrate,
-      TBeforeLoadHydrate,
-      TLoaderHydrate
+      TLoaderWire
     >,
   ) => {
     return createRootRoute<
@@ -439,10 +423,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
       THandlers,
       TContextWire,
       TBeforeLoadWire,
-      TLoaderWire,
-      TContextHydrate,
-      TBeforeLoadHydrate,
-      TLoaderHydrate
+      TLoaderWire
     >(options)
   }
 }
@@ -508,9 +489,6 @@ export class RootRoute<
       TSSR,
       THandlers,
       undefined,
-      any,
-      any,
-      any,
       any,
       any,
       any
@@ -658,9 +636,6 @@ export function createRootRoute<
   TContextWire = LifecycleNoWire,
   TBeforeLoadWire = LifecycleNoWire,
   TLoaderWire = LifecycleNoWire,
-  TContextHydrate = never,
-  TBeforeLoadHydrate = never,
-  TLoaderHydrate = never,
 >(
   options?: RootRouteOptions<
     TRegister,
@@ -675,19 +650,16 @@ export function createRootRoute<
     undefined,
     TContextWire,
     TBeforeLoadWire,
-    TLoaderWire,
-    TContextHydrate,
-    TBeforeLoadHydrate,
-    TLoaderHydrate
+    TLoaderWire
   >,
 ): RootRoute<
   TRegister,
   TSearchValidator,
   TRouterContext,
-  ResolveLifecycleSlot<TRouteContextFn, TContextHydrate>,
-  ResolveLifecycleSlot<TBeforeLoadFn, TBeforeLoadHydrate>,
+  TRouteContextFn,
+  TBeforeLoadFn,
   TLoaderDeps,
-  ResolveLifecycleSlot<TLoaderFn, TLoaderHydrate>,
+  TLoaderFn,
   unknown,
   unknown,
   TSSR,
@@ -697,10 +669,10 @@ export function createRootRoute<
     TRegister,
     TSearchValidator,
     TRouterContext,
-    ResolveLifecycleSlot<TRouteContextFn, TContextHydrate>,
-    ResolveLifecycleSlot<TBeforeLoadFn, TBeforeLoadHydrate>,
+    TRouteContextFn,
+    TBeforeLoadFn,
     TLoaderDeps,
-    ResolveLifecycleSlot<TLoaderFn, TLoaderHydrate>,
+    TLoaderFn,
     unknown,
     unknown,
     TSSR,

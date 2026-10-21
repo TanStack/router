@@ -108,6 +108,8 @@ Using these parameters, we can do a lot of cool things, but first, let's take a 
 
 ## Consuming data from `loader`s
 
+A route component can read loader data from its own route or an ancestor. A parent route component must not read a child's loader data. The parent can render while the child is still pending.
+
 To consume data from a `loader`, use the `useLoaderData` hook defined on your Route object.
 
 ```tsx

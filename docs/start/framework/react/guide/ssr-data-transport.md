@@ -116,17 +116,21 @@ The server sends `{ postId, authStatus }`; the client rebuilds `postQueryOptions
 
 ### Reconstruct from the full value
 
-If the default wire shape is fine and you only need a client-side step, keep `dehydrate: true` and add `hydrate`. `data` is then the handler's full result. A `hydrate` result that is assignable to the handler's data type is typed as the handler's data type, so a field that only exists on the client is declared by the handler as `undefined` and filled in by `hydrate`:
+With `dehydrate: true`, `hydrate` receives the server handler's full result. Its result must satisfy the client handler's result type.
 
 ```tsx
 // src/routes/report.tsx
+import { createIsomorphicFn } from '@tanstack/react-start'
+
 export const Route = createFileRoute('/report')({
-  ssr: 'data-only', // the client's timeZone differs from the server's
+  ssr: 'data-only',
   loader: {
-    handler: async () => ({
-      report: await fetchReport(),
-      timeZone: undefined as string | undefined, // client-only, set by hydrate
-    }),
+    handler: createIsomorphicFn()
+      .server(async () => ({ report: await fetchReport() }))
+      .client(async () => ({
+        report: await fetchReport(),
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      })),
     dehydrate: true,
     hydrate: ({ data }) => ({
       ...data,
@@ -134,75 +138,51 @@ export const Route = createFileRoute('/report')({
     }),
   },
 })
-// Route.useLoaderData(): { report: Report; timeZone: string | undefined }
+// Route.useLoaderData(): { report: Report; timeZone: string }
 ```
 
-A property that `hydrate` adds to an otherwise matching shape does not show up in `Route.useLoaderData()`; a `hydrate` result with a different shape is covered under [Narrow with a discriminant](#narrow-with-a-discriminant). The field is part of the handler's result, so with `dehydrate: true` it goes through the same serializability check as the rest of the value. On a client navigation the handler runs in the browser and `timeZone` stays `undefined`; the next section fills the field on that path too.
+The client handler supplies `timeZone` after navigation. `hydrate` supplies it during hydration. The field is required in both cases, without a data annotation or narrowing.
 
 `dehydrate: true` is required next to `hydrate` so the transport is visible in the route file.
 
 ### Combine server data with client-only data
 
-A loader handler is isomorphic: during SSR it runs on the server, during a client navigation it runs in the browser. Data that only exists in the browser (a preference in `localStorage`, for example) is added in two places: in `hydrate`, which runs at hydration, and in the handler's client branch, which runs on navigation. One `Data` type covers both; the client-only field is optional because it is `undefined` while the server renders.
+A handler can use separate server and client implementations through `createIsomorphicFn`. Router infers the client data from the client implementation. `hydrate` must return that complete type, and `dehydrate` receives the server result.
 
 ```tsx
 // src/routes/dashboard.tsx
 import { createIsomorphicFn } from '@tanstack/react-start'
 
-const getLocalPrefs = createIsomorphicFn()
-  .server(() => undefined)
-  .client(() => readPrefsFromLocalStorage())
-
 export const Route = createFileRoute('/dashboard')({
-  ssr: 'data-only', // prefs exist on the client only
+  ssr: 'data-only',
   loader: {
-    handler: async () => ({
-      stats: await fetchStats(), // server fn: runs on the server during SSR, via fetch on client navigation
-      prefs: getLocalPrefs(), // undefined on the server, filled on client navigations
-    }),
-    dehydrate: true,
-    hydrate: ({ data }) => ({ ...data, prefs: readPrefsFromLocalStorage() }), // filled at hydration
-  },
-})
-// Route.useLoaderData(): { stats: Stats; prefs: Prefs | undefined }
-```
-
-The server renders without `prefs` and the first client render has them, so the route needs `ssr: 'data-only'`. `createIsomorphicFn` is described in [Environment Functions](./environment-functions.md).
-
-### Narrow with a discriminant
-
-`hydrate` may also return a different shape than the handler. The loader's data type is then the union of the handler's data and the `hydrate` data, and the component narrows on a discriminant. One rule decides whether that union exists: a `hydrate` result that is assignable to the handler's data reduces to the handler's data. Only a result with a shape of its own produces the union.
-
-That rules out server versus client as the discriminant. A handler that returns `env: isServer ? 'server' : 'client'` types `env` as `string` (the two literals widen), and with `as const` on both branches as `'server' | 'client'`. Either way a `hydrate` result `{ env: 'client', stats, prefs }` is a subtype of the handler's data. It reduces, the union disappears, and `prefs` is not visible anywhere.
-
-The discriminant has to say which function produced the value: the handler returns `hydrated: false as const`, `hydrate` returns `hydrated: true as const` plus the client-only fields. Write `as const` on both sides. Without it in the handler, `hydrated` widens to `boolean` and the `hydrate` result is a subtype again. Without it in `hydrate`, `true` widens to `boolean` and the `hydrated: false` branch no longer rules out the `hydrate` result.
-
-```tsx
-// src/routes/dashboard.tsx
-export const Route = createFileRoute('/dashboard')({
-  ssr: 'data-only', // the server renders one branch, the first client render the other
-  loader: {
-    handler: async () => ({
-      hydrated: false as const,
-      stats: await fetchStats(),
-    }),
-    dehydrate: ({ data }) => ({ stats: data.stats }),
-    hydrate: async ({ data }) => ({
-      hydrated: true as const,
-      stats: data.stats,
-      prefs: await readPrefs(),
+    handler: createIsomorphicFn()
+      .server(async () => ({ stats: await fetchStats() }))
+      .client(async () => ({
+        stats: await fetchStats(),
+        prefs: readPrefsFromLocalStorage(),
+      })),
+    dehydrate: ({ data }) => data.stats,
+    hydrate: ({ data }) => ({
+      stats: data,
+      prefs: readPrefsFromLocalStorage(),
     }),
   },
 })
-// Route.useLoaderData():
-//   | { hydrated: false; stats: Stats }
-//   | { hydrated: true; stats: Stats; prefs: Prefs }
-//
-// In the component, `if (data.hydrated)` narrows to the second member and
-// `data.prefs` is a `Prefs`; in the other branch `prefs` does not exist.
+// Route.useLoaderData(): { stats: Stats; prefs: Prefs }
 ```
 
-On a client navigation the handler runs in the browser, so the component sees the `hydrated: false` branch. That is the truth: `hydrate` did not run and `prefs` was not read. This form fits data that only exists after hydration. When the field should also be there after a client navigation, declare it in the handler as in [Combine server data with client-only data](#combine-server-data-with-client-only-data): a client-only field in a same-shape result is declared optional (`undefined`) in the handler and must itself be serializable, because the handler's result is what `dehydrate: true` checks.
+The server sends the statistics. The client adds its preferences during hydration and after navigation. `prefs` is required in the dashboard component's loader data. The [data-loading guide](/router/latest/docs/framework/react/guide/data-loading#consuming-data-from-loaders) explains where components can read loader data.
+
+If the route can render on the server, its server result must also satisfy the client type. `ssr: 'data-only'` permits missing client fields because the server does not render that component. A parent with `ssr: 'data-only'` or `ssr: false` applies the same restriction to its descendants.
+
+Functional SSR policies follow the same rule. A policy that can return `true` requires the server result to satisfy the client contract. A policy that returns only `'data-only'` or `false` permits different shapes. This also applies to asynchronous policies.
+
+An omitted `ssr`, or a policy that returns `undefined`, uses the router's `defaultSsr`. Parent restrictions still apply. Register your router configuration so the type checker can use that default.
+
+With raw transport, a partial server result requires `hydrate` to construct the complete client value. With `dehydrate: false`, the client runs its handler instead. Shared lifecycle callbacks must handle both server and client context shapes.
+
+A normal function handler has one result type for both environments. Extra properties returned only by `hydrate` do not add fields to the public data type. `createIsomorphicFn` is described in [Environment Functions](./environment-functions.md).
 
 ## Async `dehydrate` and `hydrate`
 
@@ -287,17 +267,10 @@ The object form follows a few rules. TypeScript enforces most of them; the key o
 - `revalidate` exists on `context` only; `staleReloadMode` on `loader` only.
 - A `dehydrate` function requires `hydrate`.
 - `hydrate` requires `dehydrate`: with a `dehydrate` function, `data` is the wire value; with `dehydrate: true`, `data` is the handler's full value. Without a `dehydrate` key, or with `dehydrate: false`, `hydrate` is rejected.
-- Write the keys in this order: `handler`, `dehydrate`, `hydrate`, then `revalidate` or `staleReloadMode`. The parameters of `dehydrate`, `hydrate` and `revalidate` are inferred from the keys before them. The [`create-route-property-order`](/router/latest/docs/eslint/create-route-property-order) lint rule checks the order and can fix it. TypeScript does not check the order. A wrong order shows up as a type error only when it breaks that inference, and the error rarely says so:
-  - A `handler` that reads its options (`({ params }) => ...`), written after a function that reads `data` or `prev`, gets an error that says to write `handler` first. This is the error when the object has a `dehydrate` function or `dehydrate: false`.
-  - With `dehydrate: true`, or without a `dehydrate` key, the same `handler` gets an error that its result is not assignable to `never`. On a route with `ssr: false` the result is not checked for serializability, so this error changes: next to `dehydrate: true` the order compiles, and without a `dehydrate` key the error says that `dehydrate` is missing.
-  - A `hydrate` that reads `data`, written before a `dehydrate` function, gets an error that the `dehydrate` function is not assignable to `true`. Move `dehydrate` above `hydrate`. Do not switch to `dehydrate: true`, which sends the handler's full result.
-  - A `revalidate` that reads `prev`, written before a `hydrate` that returns a different shape, gets an error about the type `hydrate` returns.
-
-  Other wrong orders compile. When one of these errors appears, fix the key order. Do not add `dehydrate: true` or switch to it to make the error go away.
-
+- Write the keys in this order: `handler`, `dehydrate`, `hydrate`, then `revalidate` or `staleReloadMode`. Later keys infer their parameters from earlier keys. The [`create-route-property-order`](/router/latest/docs/eslint/create-route-property-order) lint rule checks the order and can fix it. If inference fails, check the key order first.
 - Never annotate the parameters of `dehydrate`, `hydrate` or `revalidate`. They are inferred; an annotation is trusted instead of checked and can hide a mismatch between what the server sends and what the client expects. The [`no-lifecycle-codec-param-annotations`](/router/latest/docs/eslint/no-lifecycle-codec-param-annotations) lint rule reports annotations on functions written inline. Next to `dehydrate: true`, a `hydrate` passed by reference or typed through `satisfies` or `as` is checked by neither TypeScript nor the rule: the type it declares for `data` is taken as is. Write `hydrate` inline when `dehydrate` is `true`.
 - `dehydrate` and `hydrate` may be async. They only transform a value: a `redirect()` or `notFound()` thrown from `dehydrate` is an ordinary error, and any throw from `hydrate` makes the client load run `handler` instead.
-- `hydrate` may return a different shape than `handler`. The data type is then the union of both; a result assignable to the handler's data reduces to it. Narrow on a literal written with `as const` on both sides that says which function produced the value (`hydrated: false` in `handler`, `hydrated: true` in `hydrate`), not on server versus client.
+- `hydrate` must satisfy the client handler's inferred result type. Separate server/client handlers can return different shapes when the route cannot render on the server. See [Combine server data with client-only data](#combine-server-data-with-client-only-data).
 - A transported result must be serializable. A custom `dehydrate` moves that check to its return value.
 
 If your problem is a type that does not serialize, such as a class instance, you do not need `dehydrate` and `hydrate`. Register a [serialization adapter](./serialization-adapters.md) once and return the value as is.

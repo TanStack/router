@@ -1,11 +1,17 @@
 // a function that can have different implementations on the client and server.
 // implementations not provided will default to a no-op function.
 
-export type IsomorphicFn<
+export interface IsomorphicFn<
   TArgs extends Array<any> = [],
   TServer = undefined,
   TClient = undefined,
-> = (...args: TArgs) => TServer | TClient
+> {
+  (...args: TArgs): TServer | TClient
+  readonly '~types': {
+    server: TServer
+    client: TClient
+  }
+}
 
 export interface ServerOnlyFn<
   TArgs extends Array<any>,
@@ -13,7 +19,7 @@ export interface ServerOnlyFn<
 > extends IsomorphicFn<TArgs, TServer> {
   client: <TClient>(
     clientImpl: (...args: TArgs) => TClient,
-  ) => IsomorphicFn<TArgs, TServer, TClient>
+  ) => globalThis.NoInfer<IsomorphicFn<TArgs, TServer, TClient>>
 }
 
 export interface ClientOnlyFn<
@@ -22,16 +28,16 @@ export interface ClientOnlyFn<
 > extends IsomorphicFn<TArgs, undefined, TClient> {
   server: <TServer>(
     serverImpl: (...args: TArgs) => TServer,
-  ) => IsomorphicFn<TArgs, TServer, TClient>
+  ) => globalThis.NoInfer<IsomorphicFn<TArgs, TServer, TClient>>
 }
 
 export interface IsomorphicFnBase {
   server: <TArgs extends Array<any>, TServer>(
     serverImpl: (...args: TArgs) => TServer,
-  ) => ServerOnlyFn<TArgs, TServer>
+  ) => globalThis.NoInfer<ServerOnlyFn<TArgs, TServer>>
   client: <TArgs extends Array<any>, TClient>(
     clientImpl: (...args: TArgs) => TClient,
-  ) => ClientOnlyFn<TArgs, TClient>
+  ) => globalThis.NoInfer<ClientOnlyFn<TArgs, TClient>>
 }
 
 // The Start compiler normally rewrites createIsomorphicFn() chains before they

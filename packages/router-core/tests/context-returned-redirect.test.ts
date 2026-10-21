@@ -25,7 +25,8 @@ describe('returned context redirects', () => {
         const result = () =>
           isServer ? { session: 'server' } : clientContext()
         const handler = asynchronous ? async () => result() : result
-        const transform = asynchronous
+        // Exercise invalid JavaScript codec output and its recovery path.
+        const transform: () => any = asynchronous
           ? async () => clientContext()
           : clientContext
         const rootRoute = new BaseRootRoute({
@@ -239,7 +240,8 @@ describe('returned context redirects', () => {
       const build = (isServer: boolean) => {
         const result = () => (isServer ? { session: 'user' } : clientHandler())
         const handler = asynchronous ? async () => result() : result
-        const transform = asynchronous
+        // Exercise invalid JavaScript codec output and its recovery path.
+        const transform: () => any = asynchronous
           ? async () => contextHydrate()
           : contextHydrate
         const rootRoute = new BaseRootRoute({})

@@ -1560,21 +1560,44 @@ alternatives. Unresolved choices are separated below.
 
 ### Inference and compilation boundaries
 
-- Keep flat object options with a required handler. Helper-based and sibling-key
-  alternatives weakened contextual typing;
-  nesting under `ssr` conflicts with stripping and inheritance. Handler function
-  slots and the existing Route generic count remain stable. Factory-only wire
-  and hydrate generics infer codec data, then fold a widening hydrate result
-  into the existing slots. Awaited subtype results collapse to handler data;
-  distinct results form a union. `hydrate` requires explicit true/function
-  `dehydrate`, and a custom `dehydrate` requires `hydrate`.
+- Keep flat object options with a required handler. Preserve raw handler types
+  in Route slots. Factory-only wire generics infer codec data; hydrate results
+  do not introduce another inference source or widen client data. The client
+  handler determines the client contract, and hydrate must satisfy it.
+- Loader-data hooks follow the component hierarchy. A parent component must not
+  depend on descendant loader data, since the descendant can still be pending.
+  This applies during client navigation and SSR. Such reads do not require wider
+  client data types or an additional SSR restriction.
+- Isomorphic handlers carry type-only `~types.server` and `~types.client`
+  results. Router reads this structural protocol without importing Start.
+  The ordinary callable still returns the union of both results. Start's
+  builder returns use intrinsic `NoInfer` to prevent contextual typing of a
+  route from influencing nested implementation inference. Metadata does not
+  exist at runtime.
+- A route that can render on the server requires its successful server result
+  to satisfy its client contract. A proven false/data-only policy permits
+  different shapes. Functional policies use their awaited possible results;
+  omitted/undefined modes use the registered router default before ancestors
+  cap descendants. An unregistered default stays unknown. Explicit true can
+  override a disabled default when ancestors allow rendering, so serialization
+  and client-contract guards share this effective calculation. Raw
+  transport requires hydration when the server result lacks client fields.
+  Unsent values use the client handler. Shared callbacks and asset projection
+  retain both context/data possibilities because data-only still runs server
+  lifecycles and asset callbacks.
+- `hydrate` requires explicit true/function `dehydrate`, and a custom
+  `dehydrate` requires `hydrate`. Both return values can be asynchronous.
+  Hydration's return constraint accepts stable object and callable thenables,
+  including nested assimilation and non-chainable `then` methods. It checks
+  the final fulfilled value against the client contract; it does not infer
+  public data from the transform.
 - Preserve `LifecycleNoWire` as the uninferred sentinel: `unknown` can be an
   actual wire type, while `never` breaks assignability to constructor options
   wired with `any`. Codec inference uses intersection targets to preserve union
   wires, and shared context-plus-data aliases avoid cycles through the registered
   router. Union-arm ordering controls contextual typing and error quality.
-  Deprecated constructors retain `any` wire/hydrate generics and do not provide
-  factory codec validation or widening-result inference.
+  Deprecated constructors retain `any` wire generics and do not provide factory
+  codec validation.
 - Check transported results under registered SSR, including code-based
   factories. Redirects are control flow and are excluded from successful context
   contributions, codec `data`, and revalidation `prev`. Match redirects by their
@@ -1612,7 +1635,7 @@ alternatives. Unresolved choices are separated below.
   benchmark. Keep lifecycle keys inline in `FileBaseRouteOptions`: introducing
   a large generic alias forced variance analysis through `matches` and the whole
   registered tree. Deferred factory results, `NoInfer` upstream slots, and the
-  early `never` hydrate check avoid eagerly resolving uninferred slots. Treat
+  intrinsic inference guards avoid eagerly resolving uninferred slots. Treat
   their simplification as a measured type-performance change, not cosmetic
   cleanup. Intrinsic `NoInfer` establishes the TypeScript 5.4 floor.
 

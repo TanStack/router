@@ -38,7 +38,8 @@ test.each(
         loader: {
           handler: () => 'handler data',
           dehydrate: true,
-          hydrate: () => {
+          // Deliberately invalid JavaScript codec output.
+          hydrate: (): any => {
             const result = redirect({ to: '/target', search })
             if (mode === 'throw') {
               throw result
@@ -94,7 +95,8 @@ test.each(['success', 'error', 'redirect'] as const)(
         loader: {
           handler: isServer ? () => 'server data' : clientHandler,
           dehydrate: true,
-          hydrate: async ({ data }) => {
+          // Include invalid JavaScript output while the codec becomes obsolete.
+          hydrate: async ({ data }): Promise<any> => {
             started.resolve()
             await codecGate
             if (outcome === 'error') {

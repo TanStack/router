@@ -220,7 +220,11 @@ describe('hydration: lifecycle transport by presence', () => {
     })
 
     test('passes a transported contribution through a sync hydrate with the context ctx', async () => {
-      const handler = vi.fn(() => ({ fromClient: true }))
+      const handler = vi.fn(() => ({
+        postId: 'client',
+        rebuilt: 0,
+        fromParams: 'client',
+      }))
       const hydrateFn = vi.fn(
         ({
           data,
@@ -244,7 +248,7 @@ describe('hydration: lifecycle transport by presence', () => {
         path: '/posts/$id',
         context: {
           handler,
-          dehydrate: ({ data }: { data: any }) => ({ id: data.id }),
+          dehydrate: ({ data }: { data: any }) => ({ id: data.postId }),
           hydrate: hydrateFn,
         },
       })
@@ -420,7 +424,7 @@ describe('hydration: lifecycle transport by presence', () => {
     })
 
     test('passes a transported result through hydrate with the beforeLoad ctx', async () => {
-      const handler = vi.fn(() => ({ fromClient: true }))
+      const handler = vi.fn(() => ({ auth: 'client', fromHydrate: 'client' }))
       const hydrateFn = vi.fn(
         ({ data, context }: { data: { auth: string }; context: any }) => ({
           ...data,
@@ -1292,7 +1296,8 @@ describe('hydration: lifecycle transport by presence', () => {
         const option = {
           handler,
           dehydrate: true as const,
-          hydrate: () =>
+          // Invalid JavaScript output must trigger normal client recovery.
+          hydrate: (): any =>
             kind === 'redirect' ? redirect({ to: '/target' }) : notFound(),
         }
         const rootRoute = new BaseRootRoute({})
