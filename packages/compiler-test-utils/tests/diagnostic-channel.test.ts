@@ -18,7 +18,10 @@ import {
   expectDiagnostic,
   findDiagnostics,
 } from '../src/diagnostics'
-import type { DiagnosticChannel } from '../src/diagnostic-channel'
+import type {
+  ChannelDiagnostic,
+  DiagnosticChannel,
+} from '../src/diagnostic-channel'
 
 describe('diagnostic channel', () => {
   test('merges console, process streams, Vite logger and compilation reports in order, with their source', async () => {
@@ -229,8 +232,8 @@ test('concurrent captures do not receive each other’s output', async () => {
 })
 
 test('overlapping build-environment captures keep only their own console output', async () => {
-  const first: Array<string> = []
-  const second: Array<string> = []
+  const first: Array<ChannelDiagnostic> = []
+  const second: Array<ChannelDiagnostic> = []
   let release!: () => void
   const ready = new Promise<void>((resolve) => {
     release = resolve
@@ -249,6 +252,12 @@ test('overlapping build-environment captures keep only their own console output'
       await ready
     }),
   ])
-  expect(first).toEqual(['first build', 'first build stream'])
-  expect(second).toEqual(['second build', 'second build stream'])
+  expect(first.map(({ text }) => text)).toEqual([
+    'first build',
+    'first build stream',
+  ])
+  expect(second.map(({ text }) => text)).toEqual([
+    'second build',
+    'second build stream',
+  ])
 })

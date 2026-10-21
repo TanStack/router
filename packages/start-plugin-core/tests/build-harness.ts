@@ -49,12 +49,14 @@ import {
 } from '@tanstack/compiler-test-utils/workspace-packages'
 import {
   BuildError,
+  bundlerReports,
   chunksOfBundle,
   chunksOfStats,
   createApp,
   describeBuild,
   parsedModules,
   recordParsedModules,
+  statsDiagnostics,
   statsMessages,
   statsOptions,
   stripAnsi,
@@ -497,8 +499,11 @@ async function buildAt(
   builds: number,
 ): Promise<StartBuild> {
   const { mode } = target
-  const warnings = { client: [], ssr: [] } as Record<Env, Array<string>>
-  const consoleMessages: Array<string> = []
+  const warnings = { client: [], ssr: [] } as Record<
+    Env,
+    Array<ChannelDiagnostic>
+  >
+  const consoleMessages: Array<ChannelDiagnostic> = []
   let diagnostics: Array<ChannelDiagnostic> = []
   /** One build, recording what it reports on every channel. */
   const build = async () => {
@@ -646,7 +651,7 @@ const builders: Record<
   StartBundler,
   (
     target: BuildTarget,
-    warnings: Record<Env, Array<string>>,
+    warnings: Record<Env, Array<ChannelDiagnostic>>,
     channel: Channel,
   ) => Promise<Outputs>
 > = {
@@ -661,7 +666,7 @@ const builders: Record<
  */
 async function buildWithVite(
   target: BuildTarget,
-  warnings: Record<Env, Array<string>>,
+  warnings: Record<Env, Array<ChannelDiagnostic>>,
   channel: Channel,
 ): Promise<Outputs> {
   const { createBuilder, mergeConfig } = await import('vite')
@@ -687,7 +692,7 @@ async function buildWithVite(
       target: 'esnext',
       rolldownOptions: {
         onwarn: (warning: { message: string }) => {
-          warnings[env].push(stripAnsi(warning.message))
+          warnings[env].push(...bundlerReports([warning.message], 'warning'))
           channel.report(stripAnsi(warning.message), 'warning', 'bundler')
         },
       },
@@ -695,8 +700,8 @@ async function buildWithVite(
   })
   /** Vite's own warnings do not name the environment. */
   const warnBoth = (message: string) => {
-    warnings.client.push(stripAnsi(message))
-    warnings.ssr.push(stripAnsi(message))
+    warnings.client.push(...bundlerReports([message], 'warning', 'vite'))
+    warnings.ssr.push(...bundlerReports([message], 'warning', 'vite'))
     channel.report(stripAnsi(message), 'warning', 'vite')
   }
   // `vite build` runs in the app's directory: Start's plugin reads the
@@ -767,7 +772,7 @@ async function buildWithVite(
  */
 async function buildWithRsbuild(
   target: BuildTarget,
-  warnings: Record<Env, Array<string>>,
+  warnings: Record<Env, Array<ChannelDiagnostic>>,
   channel: Channel,
 ): Promise<Outputs> {
   const { createRsbuild, mergeRsbuildConfig } = await import('@rsbuild/core')
@@ -818,7 +823,7 @@ async function buildWithRsbuild(
           return
         }
         const json = stats.toJson(statsOptions) as StatsJson
-        warnings[env].push(...statsMessages(json.warnings))
+        warnings[env].push(...statsDiagnostics(json.warnings, 'warning'))
         errors.push(
           ...statsMessages(json.errors).map((message) => `[${env}] ${message}`),
         )

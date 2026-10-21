@@ -44,6 +44,54 @@ export function Page() {
   expectRenderedThroughChunks(client)
 })
 
+// FINAL-PASS #47: code served with an empty map is the case's own only when
+// the case module's own graph imports it. Here the page renders a component
+// of another directory whose text-only boundary is split (its chunk is
+// served with an empty map): split code, but not the case's (the former
+// rule walked through any app module).
+test("code served with an empty map that a module of another directory imports is not the case's split code", async () => {
+  const other = await (
+    await hosts()
+  ).start.case({
+    'widget.tsx': `import { Hydrate } from '@tanstack/react-start'
+import { load } from '@tanstack/react-start/hydration'
+export function Widget() {
+  return <Hydrate when={load()}>MARK_OTHER_TEXT</Hydrate>
+}
+`,
+  })
+  const client = await renderClient(
+    await hosts(),
+    `import { Widget } from '/${other.dir}/widget.tsx'
+export function Page() {
+  return <Widget />
+}`,
+  )
+  expect(client.html).toContain('MARK_OTHER_TEXT')
+  expect(client.lazyUrls.some((url) => url.includes(other.dir))).toBe(true)
+  expect(client.chunks).toEqual([])
+  expect(() => expectRenderedThroughChunks(client)).toThrow()
+})
+
+// FINAL-PASS #47: a module the dev server fails to serve (here, a syntax
+// error) is not split code, even where the case module imports it.
+test('a module the dev server fails to serve is not split code', async () => {
+  const client = await renderClient(
+    await hosts(),
+    `import { useEffect } from 'react'
+export function Page() {
+  useEffect(() => {
+    void import('./broken').catch(() => {})
+  }, [])
+  return <p>no boundary</p>
+}`,
+    { files: { './broken': `export const broken = (\n` } },
+  )
+  expect(client.lazyUrls.some((url) => url.includes('broken'))).toBe(true)
+  expect(client.chunks).toEqual([])
+  expect(() => expectRenderedThroughChunks(client)).toThrow()
+})
+
 // Per-gate control: a boundary whose gate the run leaves shut keeps its
 // children's code unrequested.
 test('gates opens only the gates it names', async () => {

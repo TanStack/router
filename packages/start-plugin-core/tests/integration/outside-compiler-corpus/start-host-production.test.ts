@@ -12,7 +12,10 @@ import { createStartHost, inPage } from '../../regression-helpers'
 import type { StartCase, StartHost } from '../../regression-helpers'
 
 let host: StartHost | undefined
-let cases: Record<'registers' | 'guarded' | 'bookkeeping', StartCase>
+let cases: Record<
+  'registers' | 'guarded' | 'bookkeeping' | 'hasOwn' | 'hasOwnProperty',
+  StartCase
+>
 
 beforeAll(async () => {
   host = await createStartHost({ serve: false })
@@ -36,6 +39,13 @@ w.__TSR_REACT_REFRESH__ ??= { ignoredExportsById: new Map() }
 export const ran = true
 `,
     }),
+    // Own-property probes of a development global (FINAL-PASS #48)
+    hasOwn: await host.case({
+      'module.tsx': `export const ran = Object.hasOwn(window, '__TSR_REACT_REFRESH__')\n`,
+    }),
+    hasOwnProperty: await host.case({
+      'module.tsx': `export const ran = Object.prototype.hasOwnProperty.call(window, '$RefreshReg$')\n`,
+    }),
   }
   await host.preview()
 }, 120_000)
@@ -53,6 +63,8 @@ describe('the production page records development-only globals', () => {
     ['registers', '$RefreshReg$'],
     ['guarded', '$RefreshSig$'],
     ['bookkeeping', '__TSR_REACT_REFRESH__'],
+    ['hasOwn', '__TSR_REACT_REFRESH__'],
+    ['hasOwnProperty', '$RefreshReg$'],
   ] as const)('%s: %s', async (name, global) => {
     const before = (await host!.devSupportTouches()).length
     await inPage(cases[name], 'return null').catch(() => {})

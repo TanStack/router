@@ -170,8 +170,8 @@ export const load = (name: string) => import(name)
       const naming = (warnings: Array<string>) =>
         warnings.some((warning) => warning.includes('warned.ts'))
       expect({
-        warnedClient: naming(warned.client.warnings),
-        warnedSsr: naming(warned.ssr.warnings),
+        warnedClient: naming(warned.client.warnings.map(({ text }) => text)),
+        warnedSsr: naming(warned.ssr.warnings.map(({ text }) => text)),
         warnedChannel: naming(warned.diagnostics.map(({ text }) => text)),
         cleanClient: clean.client.warnings,
         cleanSsr: clean.ssr.warnings,

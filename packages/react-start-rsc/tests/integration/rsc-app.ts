@@ -31,6 +31,7 @@ import {
 import { createBuilder, mergeConfig, preview } from 'vite'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
 import { onTestFinished } from 'vitest'
+import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type {
   DevServer,
@@ -211,11 +212,12 @@ export async function startRscPreviewServer(options: {
       },
       options.config ?? {},
     )
-  const messages: Array<string> = []
-  await withBuildEnvironment('production', messages, async () => {
+  const reported: Array<ChannelDiagnostic> = []
+  await withBuildEnvironment('production', reported, async () => {
     const builder = await createBuilder(config())
     await builder.buildApp()
   })
+  const messages = reported.map(({ text }) => text)
   const nodeEnv = process.env.NODE_ENV
   process.env.NODE_ENV = 'production'
   const server = await preview({

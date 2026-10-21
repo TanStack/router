@@ -13,6 +13,7 @@
     "./dev-server": "./src/dev-server.ts",
     "./diagnostic-channel": "./src/diagnostic-channel.ts",
     "./diagnostics": "./src/diagnostics.ts",
+    "./global-trap": "./src/global-trap.ts",
     "./importers": "./src/importers.ts",
     "./known-globals": "./src/known-globals.ts",
     "./lazy-probe": "./src/lazy-probe.ts",

@@ -226,6 +226,10 @@ export function diagnosticsOf(
   if (Array.isArray(value)) {
     return value.flatMap((item) => diagnosticsOf(item, severity))
   }
+  // Already a diagnostic (e.g. a `BuildError`'s warnings): its own severity
+  if (isDiagnostic(value)) {
+    return [value]
+  }
   if (typeof value === 'string') {
     return [{ severity, text: stripVTControlCharacters(value), raw: value }]
   }

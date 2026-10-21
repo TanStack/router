@@ -25,6 +25,7 @@ import {
   describeBuild,
   parsedModules,
   recordParsedModules,
+  statsDiagnostics,
   statsMessages,
   statsOptions,
   withBuildEnvironment,
@@ -42,6 +43,7 @@ import type {
   EmittedChunk,
   StatsJson,
 } from '@tanstack/compiler-test-utils/build-harness'
+import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import type { RsbuildConfig, RsbuildPlugin } from '@rsbuild/core'
 import type { CodeSplittingOptions, Config } from '../src/vite'
 
@@ -365,9 +367,9 @@ export async function buildWithRsbuild(
   try {
     const { createRsbuild } = await import('@rsbuild/core')
     const { tanstackRouter } = await import('../src/rspack')
-    const warnings: Array<string> = []
+    const warnings: Array<ChannelDiagnostic> = []
     const errors: Array<string> = []
-    const consoleMessages: Array<string> = []
+    const consoleMessages: Array<ChannelDiagnostic> = []
     let output: { outDir: string; chunks: Array<EmittedChunk> } | undefined
     /** The evidence of the dangling-name check (`describeBuild`). */
     const parsed = parsedModules()
@@ -380,7 +382,7 @@ export async function buildWithRsbuild(
             return
           }
           const json = stats.toJson(statsOptions) as StatsJson
-          warnings.push(...statsMessages(json.warnings))
+          warnings.push(...statsDiagnostics(json.warnings, 'warning'))
           errors.push(...statsMessages(json.errors))
           output = {
             outDir: environment.distPath,

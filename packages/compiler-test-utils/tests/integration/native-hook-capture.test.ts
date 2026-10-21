@@ -83,7 +83,7 @@ test(
       registerCleanup: onTestFinished,
       files: viteFiles,
     })
-    const messages: Array<string> = []
+    const messages: Array<ChannelDiagnostic> = []
     await withBuildEnvironment('production', messages, async () => {
       const builder = await createBuilder({
         root: app.root,
@@ -104,7 +104,7 @@ test(
       })
       await builder.buildApp()
     })
-    const reported = marked(messages)
+    const reported = marked(messages.map(({ text }) => text))
     expect(reported).toEqual(
       expect.arrayContaining([
         'MARK_NATIVE transform main.ts',

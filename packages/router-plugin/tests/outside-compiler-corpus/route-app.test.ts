@@ -24,7 +24,7 @@ import {
   loadRoute,
   stringValues,
 } from '../route-app'
-import type { Plugin } from 'vite'
+import type { Plugin, PluginOption } from 'vite'
 
 /** No splitting by the compiler: what is lazy is what the route file makes lazy. */
 const manual = { pluginOptions: { autoCodeSplitting: false } }
@@ -49,14 +49,17 @@ export const ErrorView = () => <p>MARK_ERROR</p>
 /**
  * The hand-written lazy route, its lazy module served by a plugin standing
  * in for a compiler (`plugins.compilers`: the observers count what it emits
- * as emitted for the route, as a compiler's chunk would be).
+ * as emitted for the route, as a compiler's chunk would be). `given` gives
+ * Vite that plugin as a compiler's entry point may (default: as it is).
  */
-const loadVirtualLazy = () =>
+const loadVirtualLazy = (
+  given: (plugin: Plugin) => PluginOption = (plugin) => plugin,
+) =>
   loadRoute(handWrittenLazy.replaceAll('./page', 'virtual:page'), {
     ...manual,
     plugins: {
       compilers: [
-        {
+        given({
           name: 'control:virtual-page',
           resolveId: (id) =>
             id === 'virtual:page' ? '\0virtual:page.tsx' : null,
@@ -67,7 +70,7 @@ export const Page = () => jsx('p', { children: 'MARK_PAGE' })
 export const ErrorView = () => jsx('p', { children: 'MARK_ERROR' })
 `
               : null,
-        } satisfies Plugin,
+        } satisfies Plugin),
       ],
     },
     files: { 'eager.ts': handWrittenFiles['eager.ts'] },
@@ -146,6 +149,33 @@ return await compiled()`)
       expect(await route.run(`return render('component')`)).toBe(
         '<p>MARK_PAGE</p>',
       )
+    },
+  )
+
+  // FINAL-PASS #49: a plugin Vite gets as a Promise, or that another plugin
+  // returns for an environment (`applyToEnvironment`), is observed too.
+  it.each([
+    {
+      how: 'as a Promise',
+      given: (plugin: Plugin): PluginOption => Promise.resolve([plugin]),
+    },
+    {
+      how: 'for an environment, by applyToEnvironment',
+      given: (plugin: Plugin): PluginOption => ({
+        name: 'control:per-environment',
+        applyToEnvironment: () => plugin,
+      }),
+    },
+  ])(
+    'a module emitted by a plugin given $how is loaded lazily',
+    async ({ given }) => {
+      const route = await loadVirtualLazy(given)
+      expect(await route.isLazy('component')).toBe(true)
+      expect(
+        (await route.loadedBy('component')).some((code) =>
+          holdsMarker(code, 'MARK_PAGE'),
+        ),
+      ).toBe(true)
     },
   )
 

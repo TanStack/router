@@ -604,9 +604,10 @@ export interface ClientRender {
    * The case's own code among `lazyUrls`: the modules the page requested
    * once hydration started whose served code's source map names a file of
    * the case directory (or, served with an empty map, that the case
-   * module's own import graph reaches), wherever the compiler put them and
-   * under any id. Code of a package, of the harness or of Vite is not the
-   * case's split code.
+   * module's own graph imports: through the case's own modules only),
+   * wherever the compiler put them and under any id. Code of a package, of
+   * the harness or of Vite, and a module the dev server fails to serve, is
+   * not the case's split code.
    */
   chunks: Array<string>
   /** What the script returned. */
@@ -911,11 +912,14 @@ ${options.script ?? 'return null'}
  * case's own, wherever the compiler put it and under any id: its source map
  * names a file of the case directory `dir` (relative to the app root), or,
  * for code whose map names no file (a split text-only child is served with
- * an empty map), the client module graph reaches it from the case module
- * `file` through the case's own modules (an import edge, static or
- * dynamic, not through a package). A package, the runtime or Vite's client
- * is neither. Observation only: the dev server's served maps and module
- * graph.
+ * an empty map), the case module `file`'s own graph imports it: a module
+ * of the case directory or one whose map names a file of it imports it
+ * (an import edge, static or dynamic), reached from the case module through
+ * such modules only (final pass #47: never through a module of the harness
+ * or another directory, a package or a virtual module of its own). A
+ * module the dev server fails to serve is not the case's code, nor is a
+ * package, the runtime or Vite's client. Observation only: the dev
+ * server's served maps and module graph.
  */
 async function caseCode(
   hosts: HydrateHost,
@@ -924,8 +928,10 @@ async function caseCode(
   urls: Array<string>,
 ): Promise<Array<string>> {
   const caseDir = `${path.join(hosts.start.root, dir)}${path.sep}`
-  const reached = caseGraph(hosts, `/${dir}/${file}`)
-  const owned: Array<string> = []
+  const servedUrls = new Map<
+    string,
+    { mapped: boolean; empty: boolean } | undefined
+  >()
   for (const url of urls) {
     if (!url.startsWith('/')) {
       continue
@@ -934,14 +940,27 @@ async function caseCode(
     const sources = (served?.map?.sources ?? []).filter(
       (source): source is string => source !== null,
     )
-    if (
-      sources.some((source) => source.startsWith(caseDir)) ||
-      (sources.length === 0 && reached.has(comparableUrl(url)))
-    ) {
-      owned.push(url)
-    }
+    servedUrls.set(
+      url,
+      served && {
+        mapped: sources.some((source) => source.startsWith(caseDir)),
+        empty: sources.length === 0,
+      },
+    )
   }
-  return owned
+  const mapped = new Set(
+    [...servedUrls]
+      .filter(([, served]) => served?.mapped)
+      .map(([url]) => comparableUrl(url)),
+  )
+  const reached = caseGraph(hosts, `/${dir}/${file}`, caseDir, mapped)
+  return [...servedUrls]
+    .filter(
+      ([url, served]) =>
+        served !== undefined &&
+        (served.mapped || (served.empty && reached.has(comparableUrl(url)))),
+    )
+    .map(([url]) => url)
 }
 
 /** A module URL without Vite's `t` (HMR timestamp) parameter. */
@@ -953,17 +972,30 @@ function comparableUrl(url: string) {
 }
 
 /**
- * The URLs of the modules the client module graph reaches from the module
- * at `url`, static and dynamic imports, through modules of the app (not
- * packages: workspace packages resolve outside the app root,
- * `node_modules` holds Vite's pre-bundled dependencies) or virtual ones.
+ * The URLs of the modules the case module at `url` imports through the
+ * case's own modules (static and dynamic imports, in the client module
+ * graph): every module a case module imports, where a case module is the
+ * module at `url`, a module of the case directory `caseDir` (any query) or
+ * one of `mapped` (served code whose map names a file of it); of them,
+ * the modules of the app and the virtual ones (a package is never case
+ * code). The walk goes on only from case modules, so a module of the
+ * harness or of another directory, a package or a virtual module adds
+ * nothing it imports.
  */
-function caseGraph(hosts: HydrateHost, url: string): Set<string> {
+function caseGraph(
+  hosts: HydrateHost,
+  url: string,
+  caseDir: string,
+  mapped: Set<string>,
+): Set<string> {
   const graph = hosts.start.host.dev.vite.environments.client.moduleGraph
   const root = `${hosts.start.root}${path.sep}`
   const start = [
     ...(graph.getModulesByFile(path.join(hosts.start.root, url)) ?? []),
   ].filter((node) => node.url === url)
+  const isCaseModule = (node: (typeof start)[number]) =>
+    (node.file !== null && node.file.startsWith(caseDir)) ||
+    mapped.has(comparableUrl(node.url))
   const reached = new Set<string>()
   const seen = new Set<unknown>(start)
   const queue = start.flatMap((node) => [...node.importedModules])
@@ -973,6 +1005,9 @@ function caseGraph(hosts: HydrateHost, url: string): Set<string> {
       continue
     }
     seen.add(node)
+    // Modules of the app (not packages: workspace packages resolve outside
+    // the app root, `node_modules` holds Vite's pre-bundled dependencies)
+    // or virtual ones
     const appFile =
       node.file !== null &&
       node.file.startsWith(root) &&
@@ -981,7 +1016,9 @@ function caseGraph(hosts: HydrateHost, url: string): Set<string> {
       continue
     }
     reached.add(comparableUrl(node.url))
-    queue.push(...node.importedModules)
+    if (isCaseModule(node)) {
+      queue.push(...node.importedModules)
+    }
   }
   return reached
 }

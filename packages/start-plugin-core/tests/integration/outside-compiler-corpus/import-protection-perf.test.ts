@@ -29,7 +29,7 @@ test.each(startBundlers)(
       },
       entry: 'src/entry.ts',
     })
-    expect(built.client.consoleMessages).toContainEqual(
+    expect(built.client.consoleMessages.map(({ text }) => text)).toContainEqual(
       expect.stringContaining('[import-protection:perf]'),
     )
   },

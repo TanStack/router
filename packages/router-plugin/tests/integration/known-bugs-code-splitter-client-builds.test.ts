@@ -85,7 +85,7 @@ export const Route = createFileRoute('/')({
       })
       const reported =
         findDiagnostics([...app.warnings, ...app.consoleMessages], {
-          severity: ['warning', 'error'],
+          severity: 'warning',
           file: 'routes/index.tsx',
           root: app.root,
           names: ['component'],
@@ -184,7 +184,7 @@ return {
       // Placement: split, or kept in the route with a report.
       const reported =
         findDiagnostics([...app.warnings, ...app.consoleMessages], {
-          severity: ['warning', 'error'],
+          severity: 'warning',
           file: 'routes/index.tsx',
           root: app.root,
           names: ['errorComponent'],

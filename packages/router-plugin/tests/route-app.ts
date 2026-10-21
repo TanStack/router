@@ -212,8 +212,15 @@ const emittedKey = (environment: string, id: string) => `${environment}\0${id}`
  * returned, or whose code one of their `transform` hooks changed, is a
  * module they emitted. The hooks run as before and their results pass
  * through unchanged; nothing of their ids, queries or paths is assumed.
+ * Every plugin of the option is observed, however Vite gets it: in nested
+ * arrays, as a Promise (the option is returned with each Promise replaced
+ * by one that resolves to the same, observed, plugins), or returned by a
+ * plugin's `applyToEnvironment` for an environment (FINAL-PASS #49).
  */
-function observeEmitted(option: PluginOption, emitted: EmittedModules) {
+function observeEmitted(
+  option: PluginOption,
+  emitted: EmittedModules,
+): PluginOption {
   const record = (
     environment: string,
     id: string,
@@ -256,16 +263,34 @@ function observeEmitted(option: PluginOption, emitted: EmittedModules) {
       ? observed
       : { ...(hook as object), handler: observed }
   }
-  const visit = (value: unknown) => {
+  const observed = new WeakSet<object>()
+  /** `value`, its plugins observed (a Promise: one resolving to them). */
+  const visit = (value: unknown): unknown => {
     if (Array.isArray(value)) {
-      value.forEach(visit)
-      return
+      value.forEach((item, index) => {
+        value[index] = visit(item)
+      })
+      return value
     }
-    if (!value || typeof value !== 'object') {
-      return
+    if (value && typeof (value as { then?: unknown }).then === 'function') {
+      return Promise.resolve(value).then(visit)
     }
+    if (!value || typeof value !== 'object' || observed.has(value)) {
+      return value
+    }
+    observed.add(value)
     const plugin = value as Plugin
     const name = plugin.name
+    // Plugins it returns for an environment (`applyToEnvironment` may
+    // return a plugin option instead of a boolean)
+    const applyToEnvironment = plugin.applyToEnvironment
+    if (typeof applyToEnvironment === 'function') {
+      plugin.applyToEnvironment = function (this: unknown, ...args) {
+        return visit(applyToEnvironment.apply(this, args)) as ReturnType<
+          NonNullable<Plugin['applyToEnvironment']>
+        >
+      }
+    }
     plugin.load = wrap(plugin.load, (context, [id, options], result) => {
       record(
         environmentOf(context, options),
@@ -286,9 +311,9 @@ function observeEmitted(option: PluginOption, emitted: EmittedModules) {
         )
       },
     ) as Plugin['transform']
+    return plugin
   }
-  visit(option)
-  return option
+  return visit(option) as PluginOption
 }
 
 /**
