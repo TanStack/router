@@ -463,11 +463,10 @@ async function viteApp(
         .map((log) => log.slice('error: '.length)),
     close: server.close,
     stop: server.stop,
+    // The dev server's merged channel: its logger and what the plugins it
+    // runs print (console, streams), which reaches the server's capture
     diagnostics: () =>
-      server.diagnostics.filter(
-        (diagnostic) =>
-          diagnostic.source === 'vite' && diagnostic.severity !== 'info',
-      ),
+      server.diagnostics.filter((diagnostic) => diagnostic.severity !== 'info'),
     hmr: {
       idle: () => server.idle(),
     },
@@ -513,17 +512,28 @@ async function rsbuildApp(
       } satisfies RsbuildPlugin,
     ],
   })
-  let logsBefore = 0
-  const logged = () => printedTexts()
+  // What the test process printed and what the dev server's own capture
+  // received (the generator prints in the server's scope), since a mark
+  const mark = () => ({
+    printed: printedTexts().length,
+    server: server.diagnostics.length,
+  })
+  let logsBefore = mark()
+  const loggedSince = (since: ReturnType<typeof mark>) => [
+    ...printedTexts().slice(since.printed),
+    ...server.diagnostics
+      .slice(since.server)
+      .map((diagnostic) => diagnostic.text),
+  ]
   return {
     root: server.root,
     url: server.url!,
     write: async (written) => {
-      logsBefore = logged().length
+      logsBefore = mark()
       await server.write(written)
     },
     rename: async (from, to) => {
-      logsBefore = logged().length
+      logsBefore = mark()
       await server.rename(from, to)
     },
     settle: (settleOptions = {}) =>
@@ -532,18 +542,15 @@ async function rsbuildApp(
         // The generator reports a route file it cannot handle, which no
         // compile then reads
         accept: (relative) =>
-          logged()
-            .slice(logsBefore)
-            .some((log) => log.includes(relative)),
+          loggedSince(logsBefore).some((log) => log.includes(relative)),
       }),
     errors: () => [...server.errors],
     close: server.close,
     stop: server.stop,
+    // The dev server's merged channel: its compilations, Rsbuild's logger and what the plugins it
+    // runs print (console, streams), which reaches the server's capture
     diagnostics: () =>
-      server.diagnostics.filter(
-        (diagnostic) =>
-          diagnostic.source === 'bundler' && diagnostic.severity !== 'info',
-      ),
+      server.diagnostics.filter((diagnostic) => diagnostic.severity !== 'info'),
   }
 }
 
