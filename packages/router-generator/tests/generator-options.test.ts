@@ -749,6 +749,8 @@ export const Route = createLazyFileRoute('/about')({})
           path.join(root, 'src/routes/about.lazy.tsx'),
         )
         expect(Route).toBeInstanceOf(routerPackage.LazyRoute)
+        // The route the tree creates itself comes from the target runtime
+        expect(router.routesById['/about']).toBeInstanceOf(routerPackage.Route)
         await router.loadRouteChunk(router.routesById['/about'])
       },
     )
