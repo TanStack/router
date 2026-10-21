@@ -109,6 +109,12 @@ export interface RouteAppOptions {
    * package, or `@emotion/react` and its JSX runtimes).
    */
   prebundle?: Array<string>
+  /**
+   * Options of the framework's own Vite plugin, as an app gives them (e.g.
+   * `{ jsxRuntime: 'classic' }` for `@vitejs/plugin-react`: a project whose
+   * JSX runtime is classic).
+   */
+  frameworkPluginOptions?: Record<string, unknown>
 }
 
 /** Route options the code splitter may split. */
@@ -140,10 +146,13 @@ const prebundled: Record<TargetFramework, Array<string>> = {
 }
 
 /** The framework's own Vite plugin, as an app adds it. */
-const frameworkPlugins: Record<TargetFramework, () => PluginOption> = {
-  react: () => react(),
-  solid: () => solid(),
-  vue: () => vueJsx(),
+const frameworkPlugins: Record<
+  TargetFramework,
+  (options?: Record<string, unknown>) => PluginOption
+> = {
+  react: (options) => react(options),
+  solid: (options) => solid(options),
+  vue: (options) => vueJsx(options),
 }
 
 /** The page-side helper module every app holds (see `probeSource`). */
@@ -323,7 +332,11 @@ export async function renderComponent(component: any, props: Record<string, unkn
  * (memory history), \`router.load()\`, then \`RouterProvider\`.
  */
 export async function renderRoute(at: string, routerOptions: Record<string, unknown> = {}) {
-  const { routeTree } = await import('/routeTree.gen.ts')
+  // Imported by its URL when the app renders, not linked when this helper
+  // loads: a run that renders no route does not depend on the route tree
+  // (which a generator that rejects the route file never writes)
+  const routeTreeUrl = '/routeTree.gen.ts'
+  const { routeTree } = await import(/* @vite-ignore */ routeTreeUrl)
   const router = createRouter({
     routeTree,
     history: createMemoryHistory({ initialEntries: [at] }),
@@ -433,6 +446,7 @@ function hostKey(options: RouteAppOptions, root: boolean) {
       pluginOptions: options.pluginOptions,
       tsconfig: options.tsconfig,
       prebundle: options.prebundle,
+      frameworkPluginOptions: options.frameworkPluginOptions,
       // A function option (e.g. `splitBehavior`) by its source: two routes
       // with different functions get different hosts
     },
@@ -508,7 +522,7 @@ async function startHost(
     plugins: ({ root: appRoot }) => [
       ...(options.plugins?.before ?? []),
       tanstackRouter(routerOptions(options, root, appRoot)),
-      frameworkPlugins[target](),
+      frameworkPlugins[target](options.frameworkPluginOptions),
       ...(options.plugins?.after ?? []),
     ],
   })
