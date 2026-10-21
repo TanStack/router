@@ -5,16 +5,32 @@
  * the dev-server and build harnesses) reads through it, so captures nest and
  * overlap in any order without one restoring the console under another.
  *
- * Only sinks in the current async scope receive output. Nested scopes
- * inherit their parent captures; concurrent scopes stay separate. Captured
- * output is silenced (recorded only); with none, the hook is removed and
- * the originals are back. A hook a
- * later patch wrapped (e.g. a test's own `vi.spyOn`) is left in place and
- * forwards to the originals once no sink listens.
+ * Output printed in an async scope goes to the sinks of that scope only:
+ * nested scopes inherit their parent captures; concurrent scopes stay
+ * separate. Output printed outside any scope goes to every sink: a bundler
+ * calls plugin hooks from native code (Rolldown's hooks in a Vite build,
+ * Rspack's compiler and compilation hooks), where Node's async context is
+ * not propagated, and what a compiler prints there must not be lost (a
+ * "nothing reported" check reads every channel, SPEC §5.7). Captured output
+ * is silenced (recorded only); with no sink, the hook is removed and the
+ * originals are back. A hook a later patch wrapped (e.g. a test's own
+ * `vi.spyOn`) is left in place and forwards to the originals once no sink
+ * listens.
  */
 import { AsyncLocalStorage } from 'node:async_hooks'
 
 const activeSinks = new AsyncLocalStorage<ReadonlySet<Sink>>()
+
+/**
+ * The sinks that receive what is printed now: those of the current async
+ * scope, or every sink outside any scope (see the module comment).
+ */
+function listeners(): Array<Sink> {
+  const scoped = activeSinks.getStore()
+  return scoped === undefined
+    ? [...sinks]
+    : [...scoped].filter((sink) => sinks.has(sink))
+}
 
 export type ConsoleMethod = 'error' | 'warn' | 'log' | 'info' | 'debug'
 
@@ -82,9 +98,7 @@ function install() {
     consoleMethods.map((method) => [
       method,
       (...args: Array<unknown>) => {
-        const listening = [...(activeSinks.getStore() ?? [])].filter(
-          (sink) => sinks.has(sink) && sink.console,
-        )
+        const listening = listeners().filter((sink) => sink.console)
         if (listening.length === 0) {
           saved.console[method].apply(console, args)
           return
@@ -97,9 +111,7 @@ function install() {
   ) as Record<ConsoleMethod, ConsoleFunction>
   const streamHook = (stream: 'stdout' | 'stderr'): Write =>
     function (this: unknown, chunk: unknown, ...rest: Array<unknown>) {
-      const listening = [...(activeSinks.getStore() ?? [])].filter(
-        (sink) => sinks.has(sink) && sink.streams,
-      )
+      const listening = listeners().filter((sink) => sink.streams)
       if (listening.length === 0) {
         return (saved[stream] as (...args: Array<unknown>) => boolean).call(
           process[stream],
