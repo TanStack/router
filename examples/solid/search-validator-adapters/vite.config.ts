@@ -10,7 +10,6 @@ export default defineConfig({
       conditions: ['development'],
       alias: {
         'solid-js/web': '@solidjs/web',
-        '@solidjs/signals': 'solid-js',
       },
     },
   }),
