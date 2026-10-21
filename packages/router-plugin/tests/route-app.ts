@@ -103,6 +103,12 @@ export interface RouteAppOptions {
   tsconfig?: Record<string, unknown>
   /** A host of its own (a fresh dev server), not shared with other routes. */
   fresh?: boolean
+  /**
+   * Directory the app is created in (default this tests directory), e.g.
+   * another project root; bare imports resolve from there, so it must be
+   * inside this package.
+   */
+  dir?: string
 }
 
 /** Route options the code splitter may split. */
@@ -220,15 +226,36 @@ const tool = ${toolModule}
 
 /** App-local modules the document requested so far, in order (path and query). */
 export function appRequests(): Array<string> {
-  const seen = new Set<string>()
+  return [...requestUrls().keys()]
+}
+
+/**
+ * The app-local requests so far, each without the timestamp Vite's import
+ * analysis adds to imports of a file it hot-updated (\`t=\`), with the URL
+ * the page actually requested.
+ */
+function requestUrls(): Map<string, string> {
+  const seen = new Map<string, string>()
   for (const entry of performance.getEntriesByType('resource')) {
     const url = new URL(entry.name)
     if (url.origin !== location.origin) continue
+    const actual = url.pathname + url.search
+    url.searchParams.delete('t')
     const request = url.pathname + url.search
     if (tool.test(request) || url.pathname === '/${probeFile}') continue
-    seen.add(request)
+    if (!seen.has(request)) seen.set(request, actual)
   }
-  return [...seen]
+  return seen
+}
+
+/**
+ * The URL to import an app module by to get the instance the page's other
+ * modules share: the URL they requested, or the plain one. (The import
+ * itself happens in the page's script: Vite rewrites the dynamic imports
+ * of the modules it serves.)
+ */
+export function requestUrl(request: string) {
+  return requestUrls().get(request) ?? request
 }
 
 /** Starts loading a route option as the router does (errors ignored). */
@@ -372,8 +399,21 @@ function hostKey(options: RouteAppOptions, root: boolean) {
     deleteNodes: options.deleteNodes,
     pluginOptions: options.pluginOptions,
     tsconfig: options.tsconfig,
+    dir: options.dir,
+    // Vite's watcher does not watch `node_modules`: package stubs are
+    // written with the app, so each set of them has its own host
+    packages: packageFiles(options.files ?? {}),
   })
 }
+
+/** The files of `files` that are packages (under `node_modules/`). */
+function packageFiles(files: Record<string, string>) {
+  return Object.fromEntries(
+    Object.entries(files).filter(([file]) => isPackageFile(file)),
+  )
+}
+
+const isPackageFile = (file: string) => /^(?:\.\/)?node_modules\//.test(file)
 
 /** The router plugin's options for a route app. */
 function routerOptions(
@@ -421,7 +461,7 @@ async function startHost(
 ): Promise<HostState> {
   const target = options.targetFramework ?? 'react'
   const host = await createPluginHost({
-    dir: import.meta.dirname,
+    dir: options.dir ?? import.meta.dirname,
     prefix: '.route-app-',
     files: {
       'tsconfig.json': JSON.stringify({
@@ -465,13 +505,14 @@ async function writeRoute(
   }
   if (state.owner !== undefined || state.used) {
     const edit: Record<string, string | null> = {}
+    // Package stubs are the host's own (see `hostKey`)
     for (const file of Object.keys(state.current)) {
-      if (!(file in files)) {
+      if (!(file in files) && !isPackageFile(file)) {
         edit[file] = null
       }
     }
     for (const [file, code] of Object.entries(files)) {
-      if (state.current[file] !== code) {
+      if (state.current[file] !== code && !isPackageFile(file)) {
         edit[file] = code
       }
     }
@@ -485,24 +526,47 @@ async function writeRoute(
   state.used = true
 }
 
+/**
+ * The URL each request is imported by from the app's modules: Vite's import
+ * analysis adds the time of a file's last hot update (`t=`) to the imports
+ * of that file, so that a page importing the plain URL would get a second
+ * instance. The page's own script imports by these URLs.
+ */
+async function stampedUrls(host: PluginHost, requests: Array<string>) {
+  const graph = host.dev.vite.environments.client.moduleGraph
+  const stamped: Record<string, string> = {}
+  for (const request of requests) {
+    const module = await graph.getModuleByUrl(request)
+    if (module && module.lastHMRTimestamp > 0) {
+      stamped[request] =
+        `${request}${request.includes('?') ? '&' : '?'}t=${module.lastHMRTimestamp}`
+    }
+  }
+  return stamped
+}
+
 /** The page-side names a script runs with (see `RouteApp.run`). */
 function prelude(
   routeUrl: string,
   own: Array<string>,
   at: string,
   before: string,
+  stamped: Record<string, string>,
 ) {
   return `const probe = module
 const own = new Set(${JSON.stringify(own)})
 const routeUrl = ${JSON.stringify(routeUrl)}
+/** The URLs the app's own modules import these by (see \`stampedUrls\`). */
+const stamped = ${JSON.stringify(stamped)}
+const importUrl = (request) => stamped[request] ?? probe.requestUrl(request)
 /** Modules the compilers emitted that the page requested so far (path and query). */
 const compiled = () => probe.appRequests().filter((request) => request === routeUrl || !own.has(request))
 /** Every app-local module the page requested so far: compiled ones and the test's files. */
 const requested = () => probe.appRequests()
 /** An app file the test wrote, as the page imports it (the instance the route gets). */
-const app = (file) => import(${JSON.stringify('/')} + file.replace(/^\\.?\\//, ''))
+const app = (file) => import(importUrl('/' + file.replace(/^\\.?\\//, '')))
 ${before}
-const exports = await import(routeUrl)
+const exports = await import(importUrl(routeUrl))
 const Route = exports.Route
 const options = Route?.options
 const trigger = (option) => probe.trigger(Route, option)
@@ -641,7 +705,7 @@ export async function loadRoute(
     try {
       return await state.host.runClient<T>(
         appUrl(probeFile),
-        `${prelude(url, [...own], at, runOptions.before ?? '')}\n${body}`,
+        `${prelude(url, [...own], at, runOptions.before ?? '', await stampedUrls(state.host, [url, ...own]))}\n${body}`,
       )
     } catch (error) {
       const sent = state.host.dev.hmr

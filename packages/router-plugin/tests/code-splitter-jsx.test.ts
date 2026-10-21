@@ -1,5 +1,10 @@
+/**
+ * JSX of split route options (SPEC J2.4, G1): a component the loader's and
+ * the component's chunks share stays one component, and JSX text survives
+ * splitting. Routes load in a real browser page (`./route-app`).
+ */
 import { expect, it } from 'vitest'
-import { expectValidModules, head, loadRoute } from './regression-helpers'
+import { expectValidModules, head, loadRoute } from './route-app'
 
 /**
  * Loads a route whose split loader returns the component `name` and whose
@@ -8,7 +13,6 @@ import { expectValidModules, head, loadRoute } from './regression-helpers'
  * returns.
  */
 async function renderSharedJsxComponent(name: string) {
-  const rendered: Array<unknown> = []
   const route = await loadRoute(
     `import { createFileRoute } from '@tanstack/react-router'
 import { see } from './see'
@@ -21,16 +25,26 @@ export const Route = createFileRoute('/widget')({
   loader: () => ${name},
   component: () => <${name} />,
 })`,
-    { stubs: { './see': { see: (value: unknown) => rendered.push(value) } } },
+    {
+      routeId: '/widget',
+      files: {
+        'see.ts': `export const rendered: Array<unknown> = []
+export const see = (value: unknown) => {
+  rendered.push(value)
+}
+`,
+      },
+    },
   )
-  await expectValidModules(route.modules)
+  await expectValidModules(route)
   expect([
     await route.isLazy('loader'),
     await route.isLazy('component'),
   ]).toEqual([true, true])
-  const html = await route.render('component')
-  const loaded = await route.options.loader()
-  return [html, rendered.length === 1 && rendered[0] === loaded]
+  return route.run<[string, boolean]>(`const html = await render('component')
+const loaded = await (await load('loader'))()
+const { rendered } = await app('see.ts')
+return [html, rendered.length === 1 && rendered[0] === loaded]`)
 }
 
 // JSX names a component by a tag that does not start with an ASCII lowercase
@@ -72,7 +86,9 @@ it('splits a component whose JSX text after a fragment starts with an em dash', 
   component: () => <p><>first</> — second</p>,
 })
 `)
-  await expectValidModules(route.modules)
+  await expectValidModules(route)
   expect(await route.isLazy('component')).toBe(true)
-  expect(await route.render('component')).toBe('<p>first — second</p>')
+  expect(await route.run(`return render('component')`)).toBe(
+    '<p>first — second</p>',
+  )
 })
