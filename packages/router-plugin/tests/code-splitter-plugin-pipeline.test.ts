@@ -772,6 +772,7 @@ export const Route = createFileRoute('/')({})
     // rendered code frame; the wording and the channel are free).
     const thrown = await captureThrow(() => route.transform())
     expectDiagnostic([...thrown, ...(await route.diagnostics())], {
+      severity: 'error',
       position: diagnosticPosition(code, code.lastIndexOf(';')),
       source: code,
     })

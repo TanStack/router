@@ -628,7 +628,11 @@ export async function expectEditShownOrReportedFallback(
   const result = await app.edit(edited, expected)
   expect(result.errors, 'errors of the page during the edit').toEqual([])
   const reported =
-    findDiagnostics(app.warnings(), { file, root: app.root }).length > 0
+    findDiagnostics(app.warnings(), {
+      severity: ['warning', 'error'],
+      file,
+      root: app.root,
+    }).length > 0
   if (!reported) {
     expect(
       result.reloaded,

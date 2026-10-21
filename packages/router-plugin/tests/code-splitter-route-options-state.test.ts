@@ -92,8 +92,12 @@ ${groupings}  loader: () => 'data',
     expect(await works(loaded)).toEqual(['data', '<p>page</p>', '<p>error</p>'])
     const reported = await loaded.diagnostics()
     const told =
-      findDiagnostics(reported, { names: ['codeSplitGroupings'] }).length > 0 ||
       findDiagnostics(reported, {
+        severity: ['warning', 'error'],
+        names: ['codeSplitGroupings'],
+      }).length > 0 ||
+      findDiagnostics(reported, {
+        severity: ['warning', 'error'],
         file: 'route.tsx',
         root: loaded.host.root,
       }).length > 0
