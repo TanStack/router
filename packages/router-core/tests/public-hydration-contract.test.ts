@@ -293,96 +293,109 @@ describe('public hydration contracts', () => {
     },
   )
 
-  test('adopts a shorter selective-SSR prefix ending at a pending client-only match', async () => {
-    const serverLoader = vi.fn(() => 'server data')
-    const serverRootRoute = new BaseRootRoute({})
-    const serverClientOnlyRoute = new BaseRoute({
-      getParentRoute: () => serverRootRoute,
-      path: '/client-only',
-      ssr: false,
-      loader: serverLoader,
-    })
-    const serverChildRoute = new BaseRoute({
-      getParentRoute: () => serverClientOnlyRoute,
-      path: '/child',
-      ssr: true,
-    })
-    const serverRouter = createTestRouter({
-      routeTree: serverRootRoute.addChildren([
-        serverClientOnlyRoute.addChildren([serverChildRoute]),
-      ]),
-      history: createMemoryHistory({
-        initialEntries: ['/client-only/child'],
-      }),
-      isServer: true,
-    })
-    const bootstrap = await dehydrateToBootstrap(serverRouter, testManifest)
-    expect(bootstrap.router?.matches).toHaveLength(2)
-    expect(bootstrap.router?.matches.at(-1)).toMatchObject({
-      s: 'pending',
-      ssr: false,
-    })
-    expect(serverLoader).not.toHaveBeenCalled()
+  test.each(['function', 'object'] as const)(
+    'adopts a shorter selective-SSR prefix ending at a pending client-only match (%s context)',
+    async (contextForm) => {
+      const serverLoader = vi.fn(() => 'server data')
+      const serverRootRoute = new BaseRootRoute({})
+      const serverClientOnlyRoute = new BaseRoute({
+        getParentRoute: () => serverRootRoute,
+        path: '/client-only',
+        ssr: false,
+        loader: serverLoader,
+      })
+      const serverChildRoute = new BaseRoute({
+        getParentRoute: () => serverClientOnlyRoute,
+        path: '/child',
+        ssr: true,
+      })
+      const serverRouter = createTestRouter({
+        routeTree: serverRootRoute.addChildren([
+          serverClientOnlyRoute.addChildren([serverChildRoute]),
+        ]),
+        history: createMemoryHistory({
+          initialEntries: ['/client-only/child'],
+        }),
+        isServer: true,
+      })
+      const bootstrap = await dehydrateToBootstrap(serverRouter, testManifest)
+      expect(bootstrap.router?.matches).toHaveLength(2)
+      expect(bootstrap.router?.matches.at(-1)).toMatchObject({
+        s: 'pending',
+        ssr: false,
+      })
+      expect(serverLoader).not.toHaveBeenCalled()
 
-    const routeContext = vi.fn(() => ({ routeContext: true }))
-    const beforeLoad = vi.fn(() => ({ clientContext: true }))
-    const loader = vi.fn(
-      ({ context }) => context.clientContext && context.routeContext,
-    )
-    const rootRoute = new BaseRootRoute({})
-    const clientOnlyRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/client-only',
-      ssr: false,
-      context: routeContext,
-      beforeLoad,
-      loader,
-    })
-    const childRoute = new BaseRoute({
-      getParentRoute: () => clientOnlyRoute,
-      path: '/child',
-      ssr: true,
-    })
-    const router = createTestRouter({
-      routeTree: rootRoute.addChildren([
-        clientOnlyRoute.addChildren([childRoute]),
-      ]),
-      history: createMemoryHistory({
-        initialEntries: ['/client-only/child'],
-      }),
-      isServer: false,
-    })
-    mockWindow.$_TSR = bootstrap
+      const routeContext = vi.fn(() => ({ routeContext: true }))
+      const hydrateContext = vi.fn(() => ({ routeContext: true }))
+      const beforeLoad = vi.fn(() => ({ clientContext: true }))
+      const loader = vi.fn(
+        ({ context }) => context.clientContext && context.routeContext,
+      )
+      const rootRoute = new BaseRootRoute({})
+      const clientOnlyRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/client-only',
+        ssr: false,
+        context:
+          contextForm === 'object'
+            ? {
+                handler: routeContext,
+                dehydrate: true,
+                hydrate: hydrateContext,
+              }
+            : routeContext,
+        beforeLoad,
+        loader,
+      })
+      const childRoute = new BaseRoute({
+        getParentRoute: () => clientOnlyRoute,
+        path: '/child',
+        ssr: true,
+      })
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([
+          clientOnlyRoute.addChildren([childRoute]),
+        ]),
+        history: createMemoryHistory({
+          initialEntries: ['/client-only/child'],
+        }),
+        isServer: false,
+      })
+      mockWindow.$_TSR = bootstrap
 
-    await hydrate(router)
+      await hydrate(router)
 
-    expect(router.state.matches.map((match) => match.routeId)).toEqual([
-      rootRoute.id,
-      clientOnlyRoute.id,
-      childRoute.id,
-    ])
-    expect(router.state.matches.slice(1)).toMatchObject([
-      { routeId: clientOnlyRoute.id, status: 'pending', ssr: false },
-      { routeId: childRoute.id, ssr: true },
-    ])
-    expect(router.state.resolvedLocation).toBeUndefined()
-    expect(router.state.matches[1]?.context).toEqual({ routeContext: true })
-    expect(routeContext).toHaveBeenCalledTimes(1)
-    expect(beforeLoad).not.toHaveBeenCalled()
-    expect(loader).not.toHaveBeenCalled()
+      expect(router.state.matches.map((match) => match.routeId)).toEqual([
+        rootRoute.id,
+        clientOnlyRoute.id,
+        childRoute.id,
+      ])
+      expect(router.state.matches.slice(1)).toMatchObject([
+        { routeId: clientOnlyRoute.id, status: 'pending', ssr: false },
+        { routeId: childRoute.id, ssr: true },
+      ])
+      expect(router.state.resolvedLocation).toBeUndefined()
+      expect(router.state.matches[1]?.context).toEqual({ routeContext: true })
+      expect(routeContext).toHaveBeenCalledTimes(1)
+      expect(hydrateContext).not.toHaveBeenCalled()
+      expect(beforeLoad).not.toHaveBeenCalled()
+      expect(loader).not.toHaveBeenCalled()
 
-    await router.load()
+      await router.load()
 
-    expect(beforeLoad).toHaveBeenCalledTimes(1)
-    expect(loader).toHaveBeenCalledTimes(1)
-    expect(routeContext).toHaveBeenCalledTimes(1)
-    expect(router.state.matches[1]).toMatchObject({
-      routeId: clientOnlyRoute.id,
-      status: 'success',
-      loaderData: true,
-    })
-    expect(router.state.resolvedLocation?.href).toBe('/client-only/child')
-  })
+      expect(beforeLoad).toHaveBeenCalledTimes(1)
+      expect(loader).toHaveBeenCalledTimes(1)
+      expect(routeContext).toHaveBeenCalledTimes(1)
+      expect(hydrateContext).not.toHaveBeenCalled()
+      expect(router.state.matches[1]).toMatchObject({
+        routeId: clientOnlyRoute.id,
+        status: 'success',
+        loaderData: true,
+      })
+      expect(router.state.resolvedLocation?.href).toBe('/client-only/child')
+    },
+  )
 
   test('selective SSR exposes the complete accepted lane to route context and head hooks', async () => {
     const serverRootRoute = new BaseRootRoute({})
