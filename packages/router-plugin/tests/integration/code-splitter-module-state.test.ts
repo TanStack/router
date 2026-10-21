@@ -1,5 +1,5 @@
 // Slow-tier half of this suite: the tests that need a real tool. Its
-// in-process tests are in ../code-splitter-module-state.test.ts (fast tier).
+// page tests are in pages/code-splitter-module-state.test.ts.
 import { describe, expect, it } from 'vitest'
 import { buildAndRun, head } from '../build-harness'
 

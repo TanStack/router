@@ -12,9 +12,13 @@
  */
 import { SourceMap } from 'node:module'
 import { describe, expect, it, test } from 'vitest'
-import { renderRoutePath, routerDevServer } from './dev-server'
-import { expectValidModules, head, loadRoute } from './route-app'
-import type { RouteApp, RouteAppOptions, TargetFramework } from './route-app'
+import { renderRoutePath, routerDevServer } from '../../dev-server'
+import { expectValidModules, head, loadRoute } from '../../route-app'
+import type {
+  RouteApp,
+  RouteAppOptions,
+  TargetFramework,
+} from '../../route-app'
 import type { Plugin } from 'vite'
 
 /** A route file whose loader returns `data`, with its other options. */

@@ -1,7 +1,7 @@
 /**
  * Scope of the code a route option moves into its chunk, loaded the way an
  * app loads it (`route-app.ts`: the public router plugin in a real Vite dev
- * server, the route run in the shared Chromium page): the split code reads
+ * server, the route run in a page of the test process's browser): the split code reads
  * the bindings it read before splitting, and a dependency only another
  * option reads is not imported by the chunk (D5: that dependency, found by
  * its request in the chunk as the dev server serves it).

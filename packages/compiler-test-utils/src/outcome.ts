@@ -22,6 +22,16 @@ export interface OutcomeWait {
   problems?: () => Array<string>
   /** The overall bound, in milliseconds. */
   timeout: number
+  /**
+   * Ends the wait as a failure once the hosts have stayed quiet this long
+   * (milliseconds, and at least five checks) while the outcome does not
+   * hold: nothing of the edit is in flight any more, so it reached its final
+   * state without the outcome. Only for a wait that starts once the hosts
+   * handled the edit (e.g. after the dev server's settle), with a `quiet`
+   * that covers every host (a step of the edit still to come is work in
+   * flight somewhere). Default: wait for the outcome until `timeout`.
+   */
+  failWhenQuietFor?: number
   /** What the failure reports (the state seen last). */
   describe: () => string | Promise<string>
 }
@@ -32,12 +42,15 @@ const sleep = (ms: number) =>
 /**
  * Resolves once the outcome holds and the hosts are quiet, checked twice in
  * a row (a host that goes quiet for an instant between two steps of the
- * same edit is not done); rejects with a problem as soon as one shows, or
- * at the timeout.
+ * same edit is not done); rejects with a problem as soon as one shows, at
+ * the timeout, or (`failWhenQuietFor`) once the hosts stayed quiet that long
+ * without the outcome.
  */
 export async function waitForOutcome(wait: OutcomeWait): Promise<void> {
   const deadline = Date.now() + wait.timeout
   let settledChecks = 0
+  /** Since when, and for how many checks, the hosts were quiet without the outcome. */
+  let quietWithout: { since: number; checks: number } | undefined
   for (;;) {
     const problems = wait.problems?.() ?? []
     if (problems.length > 0) {
@@ -45,13 +58,26 @@ export async function waitForOutcome(wait: OutcomeWait): Promise<void> {
         `the edit failed: ${problems.join('\n')}\n${await wait.describe()}`,
       )
     }
-    const done =
-      (await wait.applied()) &&
-      (await (wait.quiet?.() ?? true)) &&
-      (await wait.applied())
+    const applied = await wait.applied()
+    const quiet = await (wait.quiet?.() ?? true)
+    const done = applied && quiet && (await wait.applied())
     settledChecks = done ? settledChecks + 1 : 0
     if (settledChecks >= 2) {
       return
+    }
+    if (wait.failWhenQuietFor !== undefined && !applied && quiet) {
+      quietWithout ??= { since: Date.now(), checks: 0 }
+      quietWithout.checks++
+      if (
+        quietWithout.checks >= 5 &&
+        Date.now() - quietWithout.since >= wait.failWhenQuietFor
+      ) {
+        throw new Error(
+          `the edit reached its final state without its outcome: the hosts had nothing of it in flight for ${wait.failWhenQuietFor} ms\n${await wait.describe()}`,
+        )
+      }
+    } else {
+      quietWithout = undefined
     }
     if (Date.now() > deadline) {
       throw new Error(

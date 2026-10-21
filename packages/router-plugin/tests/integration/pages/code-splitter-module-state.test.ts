@@ -7,7 +7,7 @@
  * which record what ran, and the page reads them.
  */
 import { describe, expect, it } from 'vitest'
-import { expectValidModules, head, loadRoute } from './route-app'
+import { expectValidModules, head, loadRoute } from '../../route-app'
 
 /**
  * An app module `init.ts` (or another name) whose `init` counts its calls

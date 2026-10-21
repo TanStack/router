@@ -1,5 +1,5 @@
 // Slow-tier half of this suite: the tests that need a real tool. Its
-// in-process tests are in ../known-bugs-code-splitter.test.ts (fast tier).
+// page tests are in pages/known-bugs-code-splitter.test.ts.
 /**
  * Known code-splitter bugs. Each test asserts correct behaviour for a bug on
  * main and is marked .fails; remove .fails when the bug is fixed.
@@ -65,7 +65,7 @@ export const Route = createFileRoute('/')({
   }, 60_000)
 
   // Bug: build-level canary of the method pin in
-  // ../known-bugs-code-splitter.test.ts (same root cause).
+  // pages/known-bugs-code-splitter.test.ts (same root cause).
   // Impact: the server code of an `ssr()` method reaches the client bundle.
   test.fails(
     'a client build has no server code of an `ssr()` method (vite)',
@@ -78,7 +78,7 @@ export const Route = createFileRoute('/')({
   )
 
   // Bug: build-level canary of the typed-wrapper pin in
-  // ../known-bugs-code-splitter.test.ts (same root cause: options wrapped in
+  // pages/known-bugs-code-splitter.test.ts (same root cause: options wrapped in
   // a cast or `satisfies` are not read; one bundler, as above).
   // Impact: the server handler and its server-only import reach the client
   // bundle.

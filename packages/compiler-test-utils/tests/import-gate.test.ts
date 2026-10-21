@@ -1,15 +1,69 @@
 /**
- * Control of the import gate (src/import-gate.ts) on the real workspace and
- * the real `exports` maps: files planted in memory next to the real tests
- * import compiler packages through public and internal paths, and the gate
- * flags exactly the internal ones.
+ * Control of the import gate (src/import-gate.ts) on a fixture workspace: a
+ * temporary directory with compiler packages of their own (`package.json`
+ * with an `exports` map, and the sources it is built from), and files
+ * planted in memory next to their tests that import them through public
+ * and internal paths. The gate flags exactly the internal ones. Nothing here
+ * depends on where the real packages keep their sources (FINAL-PASS #51:
+ * a restructure of a real package's internals must not move the control).
  */
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { describe, expect, test } from 'vitest'
+import { afterAll, describe, expect, test } from 'vitest'
 import { findImportViolations } from '../src/import-gate'
 
-const root = fileURLToPath(new URL('../../..', import.meta.url))
+/** The built entries of an `exports` map entry (ESM, with types). */
+const built = (file: string) => ({
+  import: {
+    types: `./dist/esm/${file}.d.ts`,
+    default: `./dist/esm/${file}.js`,
+  },
+})
+
+/** The fixture workspace's packages: manifests and sources. */
+const fixture: Record<string, string> = {
+  'packages/router-plugin/package.json': JSON.stringify({
+    name: '@tanstack/router-plugin',
+    exports: {
+      '.': built('index'),
+      './vite': built('vite'),
+      './package.json': './package.json',
+    },
+  }),
+  'packages/router-plugin/src/index.ts': `export { getConfig } from './core/config'
+export type { Config } from './core/config'
+`,
+  'packages/router-plugin/src/vite.ts': `export const tanstackRouter = () => ({ name: 'fixture' })\n`,
+  'packages/router-plugin/src/core/config.ts': `export interface Config {
+  target: string
+}
+export const getConfig = (): Config => ({ target: 'react' })
+export const configSchema = {}
+`,
+  'packages/router-plugin/src/core/constants.ts': `export type CodeSplitGroupings = Array<Array<string>>\n`,
+  'packages/router-plugin/src/core/hmr.ts': `export const hmr = true\n`,
+  'packages/start-plugin-core/package.json': JSON.stringify({
+    name: '@tanstack/start-plugin-core',
+    exports: { './vite': built('vite/index') },
+  }),
+  'packages/start-plugin-core/src/vite/index.ts': `export const tanStackStartVite = () => ({ name: 'fixture' })\n`,
+  'packages/start-plugin-core/src/start-compiler/compiler.ts': `export class StartCompiler {}\n`,
+  'packages/compiler-test-utils/package.json': JSON.stringify({
+    name: '@tanstack/compiler-test-utils',
+    exports: {},
+  }),
+}
+
+const root = mkdtempSync(path.join(os.tmpdir(), 'import-gate-fixture-'))
+for (const [file, code] of Object.entries(fixture)) {
+  mkdirSync(path.dirname(path.join(root, file)), { recursive: true })
+  writeFileSync(path.join(root, file), code)
+}
+afterAll(() => {
+  rmSync(root, { recursive: true, force: true })
+})
+
 const routerPluginTests = path.join(root, 'packages/router-plugin/tests')
 const plantedTest = path.join(routerPluginTests, 'import-gate-planted.test.ts')
 const plantedHelper = path.join(

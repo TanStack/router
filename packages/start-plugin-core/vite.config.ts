@@ -32,6 +32,7 @@ const config = defineConfig({
     dir: './tests',
     watch: false,
     reporters: ['default', '@tanstack/compiler-test-utils/budget-reporter'],
+    setupFiles: ['@tanstack/compiler-test-utils/test-scope-setup'],
     projects: [
       {
         extends: true,
@@ -47,6 +48,9 @@ const config = defineConfig({
         extends: true,
         test: {
           name: 'unit',
+          // A test process keeps its browser and the hosts a file gives
+          // back for later files (`useStartHost`; see `start-host.ts`)
+          isolate: false,
           exclude: [
             ...configDefaults.exclude,
             'integration/**',
@@ -61,8 +65,16 @@ const config = defineConfig({
         extends: true,
         test: {
           name: 'integration',
+          // A test process keeps its modules (and its browser) across test
+          // files; the setup file gives each file the environment it
+          // started with (see `test-scope-setup`)
+          isolate: false,
           include: ['integration/**/*.test.ts'],
-          exclude: [...configDefaults.exclude, implementationTests],
+          exclude: [
+            ...configDefaults.exclude,
+            implementationTests,
+            'integration/pages/**',
+          ],
           testTimeout: 30_000,
           hookTimeout: 30_000,
           // The tests import this package's built public entries
@@ -71,6 +83,26 @@ const config = defineConfig({
           // loaders Rspack loads from the same `dist` share one module
           // instance.
           server: { deps: { external: [builtPackage] } },
+        },
+      },
+      {
+        // Slow tier too (`test:integration` runs both projects): `<Hydrate>`
+        // cases rendered and hydrated in pages of the Start host
+        // (`render.ts`), as the fast tier runs them, whose cost does not fit
+        // the fast tier's budget. The tests of a file run concurrently: each
+        // case has its own directory of the file's host, and each page run
+        // holds one of the host's pages alone (`start-host.ts`). A test
+        // process keeps its browser and the hosts a file gives back for
+        // later files (`isolate: false`).
+        extends: true,
+        test: {
+          name: 'integration-pages',
+          include: ['integration/pages/**/*.test.ts'],
+          exclude: [...configDefaults.exclude, implementationTests],
+          sequence: { concurrent: true },
+          isolate: false,
+          testTimeout: 30_000,
+          hookTimeout: 60_000,
         },
       },
       {

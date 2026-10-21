@@ -1,5 +1,5 @@
 // Slow-tier half of this suite: the tests that need a real tool. Its
-// in-process tests are in ../code-splitter-plugin-pipeline.test.ts (fast tier).
+// page tests are in pages/code-splitter-plugin-pipeline(-routes).test.ts.
 import { BuildError } from '@tanstack/compiler-test-utils/build-harness'
 import { captureDiagnostics } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import {

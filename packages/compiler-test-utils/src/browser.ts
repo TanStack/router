@@ -5,12 +5,19 @@
  * happen as in an app. The test reads the page's DOM and how many times it
  * loaded.
  *
- * One browser per test process, launched on first use; each page has its own
- * browser context. `runInPage` reuses one shared page per test process for
- * fast client checks.
+ * One browser per test process, launched on first use, and kept for the
+ * process (also across test files when the project does not isolate them).
+ * What one process opens in it is bounded (FINAL-PASS #40: under heavy load,
+ * an unbounded number of pages and in-flight module requests made Chromium
+ * fail requests with `ERR_INSUFFICIENT_RESOURCES`):
+ * - `runInPage` runs on a pool of at most `runPageLimit` pages, which runs
+ *   of concurrent tests share; a run beyond that waits for a free page;
+ * - `openPage` keeps at most `openPageLimit` pages (each with its own
+ *   browser context) open at once; a test asking for more waits until one
+ *   closes.
  */
 import { chromium } from '@playwright/test'
-import type { Browser, Page } from '@playwright/test'
+import type { Browser, BrowserContext, Page } from '@playwright/test'
 
 export interface BrowserPage {
   /** The Playwright page. */
@@ -40,6 +47,11 @@ export interface BrowserPage {
   close: () => Promise<void>
 }
 
+/** Pages `runInPage` runs on in one test process, at most. */
+export const runPageLimit = 4
+/** Pages `openPage` keeps open in one test process at once, at most. */
+export const openPageLimit = 16
+
 let browser: Promise<Browser> | undefined
 
 function launch() {
@@ -47,16 +59,73 @@ function launch() {
   return browser
 }
 
+/**
+ * A counting semaphore: `acquire()` resolves once fewer than `limit` holders
+ * hold it (first come, first served), with the function that releases it.
+ */
+function semaphore(limit: number) {
+  let held = 0
+  const waiting: Array<() => void> = []
+  return async (): Promise<() => void> => {
+    if (held >= limit) {
+      await new Promise<void>((resolve) => waiting.push(resolve))
+    } else {
+      held++
+    }
+    let released = false
+    return () => {
+      if (released) {
+        return
+      }
+      released = true
+      const next = waiting.shift()
+      if (next) {
+        next()
+      } else {
+        held--
+      }
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
-// The shared page: one per test process (one Vitest worker), reused
+// The run pages: a pool per test process (one Vitest worker), reused
 
-let shared: Promise<Page> | undefined
-/** Runs on the shared page are serialised (concurrent tests take turns). */
-let queue: Promise<unknown> = Promise.resolve()
+/** The context of the run pages: one HTTP cache for every run. */
+let runContext: Promise<BrowserContext> | undefined
+/** Run pages no run holds, ready for the next one (each on `about:blank`). */
+const idlePages: Array<Page> = []
+const runSlot = semaphore(runPageLimit)
+const openSlot = semaphore(openPageLimit)
 
-function sharedPage() {
-  shared ??= (async () => (await (await launch()).newContext()).newPage())()
-  return shared
+async function takeRunPage(): Promise<Page> {
+  const idle = idlePages.pop()
+  if (idle && !idle.isClosed()) {
+    return idle
+  }
+  runContext ??= launch().then((opened) => opened.newContext())
+  return (await runContext).newPage()
+}
+
+/**
+ * Takes a run page off the run's document before the run returns: a page
+ * still on an app's document follows its dev server, whose HMR client
+ * reloads the page when the server sends a full reload (e.g. after the
+ * edit a test makes right after the run). A reload starting while the page
+ * leaves the document outlives the navigation to `about:blank`, and then
+ * interrupts the next run's navigation (FINAL-PASS #40 follow-up: seen
+ * under load when this happened after the run returned). A page that
+ * cannot leave its document (a script holds it, the renderer crashed) is
+ * closed instead.
+ */
+async function leaveRunDocument(page: Page): Promise<boolean> {
+  try {
+    await page.goto('about:blank', { timeout: 5000 })
+    return true
+  } catch {
+    await page.close().catch(() => {})
+    return false
+  }
 }
 
 export interface PageRun<T = unknown> {
@@ -69,21 +138,24 @@ export interface PageRun<T = unknown> {
 }
 
 /**
- * Runs client code in a real browser, fast: one Chromium page per test
- * process, reused (N24; RULES-AUDIT R24). The page loads `pageUrl` fresh
- * (a new document: no module or global state of an earlier run survives),
- * then, when `moduleUrl` is given, imports that module as the browser
- * imports a module of the page (real ES module linking: a missing export
- * throws), and runs `script`: the body of an async function with the
- * module's namespace as `module` in scope (and the page's `window`,
- * `document`), whose JSON value is the result. A throw of the import or
- * of the script rejects, with the page's errors and console.
+ * Runs client code in a real browser, fast: a page of the process's run
+ * pages (N24; RULES-AUDIT R24), held by this run alone. The page loads
+ * `pageUrl` fresh (a new document: no module or global state of an earlier
+ * run survives), then, when `moduleUrl` is given, imports that module as
+ * the browser imports a module of the page (real ES module linking: a
+ * missing export throws), and runs `script`: the body of an async function
+ * with the module's namespace as `module` in scope (and the page's
+ * `window`, `document`), whose JSON value is the result. A throw of the
+ * import or of the script rejects, with the page's errors and console.
+ * Runs of concurrent tests run on different pages at once (at most
+ * `runPageLimit`); the run returns once its page left the run's document,
+ * so it no longer follows the dev server, and another run gets it.
  *
  * Use it for fast-tier client checks on a dev server's served modules
  * (`./plugin-host`); a test of a whole page across reloads opens its own
  * page (`openPage`).
  */
-export function runInPage<T = unknown>(input: {
+export async function runInPage<T = unknown>(input: {
   pageUrl: string
   moduleUrl?: string
   script?: string
@@ -93,71 +165,79 @@ export function runInPage<T = unknown>(input: {
    */
   timeout?: number
 }): Promise<PageRun<T>> {
-  const run = queue.then(async () => {
-    const page = await sharedPage()
-    const errors: Array<string> = []
-    const messages: Array<string> = []
-    const onError = (error: Error) => {
-      errors.push(error.stack ?? error.message)
+  const release = await runSlot()
+  let page: Page | undefined
+  const errors: Array<string> = []
+  const messages: Array<string> = []
+  const onError = (error: Error) => {
+    errors.push(error.stack ?? error.message)
+  }
+  const onConsole = (message: { type: () => string; text: () => string }) => {
+    messages.push(`${message.type()}: ${message.text()}`)
+    if (message.type() === 'error') {
+      errors.push(message.text())
     }
-    const onConsole = (message: { type: () => string; text: () => string }) => {
-      messages.push(`${message.type()}: ${message.text()}`)
-      if (message.type() === 'error') {
-        errors.push(message.text())
-      }
-    }
+  }
+  const timeout = input.timeout ?? 15_000
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    page = await takeRunPage()
     page.on('pageerror', onError)
     page.on('console', onConsole)
-    const timeout = input.timeout ?? 15_000
-    let timer: ReturnType<typeof setTimeout> | undefined
-    try {
-      await page.goto(input.pageUrl, { timeout })
-      // A string, run as the page's own code: a function would be
-      // serialised from this module as the test runner transformed it
-      // (its `import()` rewritten for Node)
-      const evaluated = page.evaluate(
-        `(async () => {\nconst module = ${
-          input.moduleUrl === undefined
-            ? 'undefined'
-            : `await import(${JSON.stringify(input.moduleUrl)})`
-        }\n${input.script ?? ''}\n})()`,
-      )
-      // An import or a script that never settles must not hold the shared
-      // page (and every later run) forever: the run fails after `timeout`,
-      // and the next run's navigation ends the script.
-      evaluated.catch(() => {})
-      const result = (await Promise.race([
-        evaluated,
-        new Promise<never>((_, reject) => {
-          timer = setTimeout(
-            () =>
-              reject(
-                new Error(
-                  `the import and script did not settle within ${timeout} ms`,
-                ),
+    await page.goto(input.pageUrl, { timeout })
+    // A string, run as the page's own code: a function would be
+    // serialised from this module as the test runner transformed it
+    // (its `import()` rewritten for Node)
+    const evaluated = page.evaluate(
+      `(async () => {\nconst module = ${
+        input.moduleUrl === undefined
+          ? 'undefined'
+          : `await import(${JSON.stringify(input.moduleUrl)})`
+      }\n${input.script ?? ''}\n})()`,
+    )
+    // An import or a script that never settles must not hold the page (and
+    // every later run) forever: the run fails after `timeout`, and leaving
+    // the document ends the script.
+    evaluated.catch(() => {})
+    const result = (await Promise.race([
+      evaluated,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () =>
+            reject(
+              new Error(
+                `the import and script did not settle within ${timeout} ms`,
               ),
-            timeout,
-          )
-        }),
-      ])) as T
-      return { result, errors, console: messages }
-    } catch (error) {
-      throw new Error(
-        [
-          `the page run of ${input.moduleUrl ?? input.pageUrl} failed: ${(error as Error).message}`,
-          `errors:\n${errors.join('\n') || '(none)'}`,
-          `console:\n${messages.join('\n') || '(none)'}`,
-        ].join('\n'),
-        { cause: error },
-      )
-    } finally {
-      clearTimeout(timer)
+            ),
+          timeout,
+        )
+      }),
+    ])) as T
+    return { result, errors, console: messages }
+  } catch (error) {
+    throw new Error(
+      [
+        `the page run of ${input.moduleUrl ?? input.pageUrl} failed: ${(error as Error).message}`,
+        `errors:\n${errors.join('\n') || '(none)'}`,
+        `console:\n${messages.join('\n') || '(none)'}`,
+      ].join('\n'),
+      { cause: error },
+    )
+  } finally {
+    clearTimeout(timer)
+    if (page) {
       page.off('pageerror', onError)
       page.off('console', onConsole)
+      // The run returns once its page left the run's document (see
+      // `leaveRunDocument`); then another run may have it
+      if (await leaveRunDocument(page)) {
+        idlePages.push(page)
+      }
+      release()
+    } else {
+      release()
     }
-  })
-  queue = run.catch(() => {})
-  return run
+  }
 }
 
 /**
@@ -188,7 +268,20 @@ export async function openPage(
     html?: string
   } = {},
 ): Promise<BrowserPage> {
-  const context = await (await launch()).newContext()
+  const release = await openSlot()
+  let context: BrowserContext
+  try {
+    context = await (await launch()).newContext()
+  } catch (error) {
+    release()
+    throw error
+  }
+  let closed: Promise<void> | undefined
+  const close = () => {
+    closed ??= context.close().finally(release)
+    return closed
+  }
+  options.registerCleanup?.(close)
   if (options.initScript !== undefined) {
     await context.addInitScript(options.initScript)
   }
@@ -198,12 +291,6 @@ export async function openPage(
       route.fulfill({ contentType: 'text/html', body: html }),
     )
   }
-  let closed: Promise<void> | undefined
-  const close = () => {
-    closed ??= context.close()
-    return closed
-  }
-  options.registerCleanup?.(close)
   const page = await context.newPage()
   let loads = 0
   const errors: Array<string> = []

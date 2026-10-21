@@ -36,7 +36,11 @@ import react from '@vitejs/plugin-react'
 import { afterAll, beforeAll, expect } from 'vitest'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
-import { createStartHost } from './start-host'
+import {
+  currentTest,
+  onTestFinished,
+} from '@tanstack/compiler-test-utils/test-scope'
+import { createStartHost, giveBackHost, hostKey, takeHost } from './start-host'
 import type { PluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 import type { StartCase, StartHost } from './start-host'
 
@@ -171,40 +175,23 @@ interface PageResult<T> {
  * fresh document when the page reloaded), or, on an edit host, in the page
  * itself.
  */
-const tracked = new WeakSet<object>()
-
-/**
- * Gives the host's page `window.__harnessInFlight()`: how many of its
- * requests have not finished yet (Playwright's network events), so page
- * code can wait for the split code it requested.
- */
-async function trackRequests(hosts: HydrateHost) {
-  const opened = await hosts.start.page()
-  if (tracked.has(opened)) {
-    return
-  }
-  tracked.add(opened)
-  const inFlight = new Set<unknown>()
-  opened.page.on('request', (request) => inFlight.add(request))
-  opened.page.on('requestfinished', (request) => inFlight.delete(request))
-  opened.page.on('requestfailed', (request) => inFlight.delete(request))
-  await opened.page.exposeFunction('__harnessInFlight', () => inFlight.size)
-}
-
 async function runPage<T>(
   hosts: HydrateHost,
   script: string,
   startCase?: StartCase,
+  runOptions: { fresh?: boolean } = {},
 ): Promise<PageResult<T>> {
-  await trackRequests(hosts)
   if (startCase || hosts.cases) {
     const runner = startCase ?? (await runnerCase(hosts))
     for (let attempt = 0; ; attempt++) {
       try {
-        const run = await runner.client<T>(script, { file: 'setup.ts' })
+        const run = await runner.client<T>(script, {
+          file: 'setup.ts',
+          fresh: runOptions.fresh,
+        })
         return { result: run.result, errors: run.errors }
       } catch (error) {
-        // A reload an earlier case caused (the dev server reloads the page
+        // A reload an earlier case caused (the dev server reloads its pages
         // when a module it served fails) can still be under way when this
         // run starts: run again on the new document.
         if (
@@ -213,32 +200,38 @@ async function runPage<T>(
         ) {
           throw error
         }
-        await (await hosts.start.page()).page.waitForLoadState('load')
       }
     }
   }
-  const opened = await hosts.start.page()
-  const first = opened.errors.length
-  const result = (await opened.page.evaluate(
-    `(async () => {\n${script}\n})()`,
-  )) as T
-  return { result, errors: opened.errors.slice(first) }
+  const run = await hosts.start.run<T>(`(async () => {\n${script}\n})()`, {
+    fresh: runOptions.fresh,
+  })
+  return { result: run.result, errors: run.errors }
 }
+
+/** The options of the hosts of `useHydrateHost`. */
+const hydrateHostOptions = {
+  start: startOptions,
+  files: { ...renderFiles, 'tsconfig.json': reactTsconfig },
+}
+const hydrateHostKey = `hydrate ${hostKey(hydrateHostOptions)}`
+const referenceHostKey = 'hydrate reference'
 
 /**
  * One Start host (React) and, on first use, one reference host per test
- * file, created before its tests and closed after them.
+ * file, taken before its tests (free ones an earlier file of the test
+ * process gave back, or new ones: `takeHost`) and given back after them.
  */
 export function useHydrateHost(): () => Promise<HydrateHost> {
   let started: Promise<HydrateHost> | undefined
   let reference: Promise<ReferenceHost> | undefined
   beforeAll(() => {
-    started = createStartHost({
-      start: startOptions,
-      files: { ...renderFiles, 'tsconfig.json': reactTsconfig },
-    }).then((start) => ({
+    started = takeHost(hydrateHostKey, () =>
+      createStartHost(hydrateHostOptions),
+    ).then((start) => ({
       start,
-      reference: () => (reference ??= createReferenceHost()),
+      reference: () =>
+        (reference ??= takeHost(referenceHostKey, createReferenceHost)),
       cases: true,
     }))
     // The page and the renderers, before the first test
@@ -246,9 +239,15 @@ export function useHydrateHost(): () => Promise<HydrateHost> {
   }, 60_000)
   afterAll(async () => {
     try {
-      await (await reference)?.close()
+      const referenceHost = await reference?.catch(() => undefined)
+      if (referenceHost) {
+        await giveBackHost(referenceHostKey, referenceHost)
+      }
     } finally {
-      await (await started)?.start.close()
+      const hosts = await started?.catch(() => undefined)
+      if (hosts) {
+        await giveBackHost(hydrateHostKey, hosts.start)
+      }
     }
   })
   return () => {
@@ -269,32 +268,43 @@ async function warm(hosts: HydrateHost) {
 }
 
 /**
- * A Start host for dev edits (React), created on first use and closed after
- * the file's tests: it writes no case, so its dev server's settle after an
- * edit (`StartHost.edit`) sees only watched files. Use `editableFiles` and
- * watched route files with it; `renderClient` with a `target`.
+ * A Start host for dev edits (React), one per test (its own dev server and
+ * page: an edit's hot updates and reloads reach no other test), created on
+ * first use in the test and closed when the test ends: it writes no case,
+ * so its dev server's settle after an edit (`StartHost.edit`) sees only
+ * watched files. Use `editableFiles` and watched route files with it;
+ * `renderClient` with a `target`.
  */
 export function useEditHost(): () => Promise<HydrateHost> {
-  let started: Promise<HydrateHost> | undefined
-  afterAll(async () => {
-    await (await started)?.start.close()
-  })
-  return () =>
-    (started ??= createStartHost({
-      start: startOptions,
-      files: { ...renderFiles, 'tsconfig.json': reactTsconfig },
-    }).then(async (start) => {
-      const hosts: HydrateHost = {
-        start,
-        reference: () => {
-          throw new Error('an edit host has no reference host')
-        },
-        cases: false,
-      }
-      // The page loads its runtime before an edit reloads it
-      await (await start.page()).page.evaluate('1')
-      return hosts
-    }))
+  const started = new WeakMap<object, Promise<HydrateHost>>()
+  const outsideTests = {}
+  return () => {
+    const test = currentTest()
+    const owner = test ?? outsideTests
+    let hosts = started.get(owner)
+    if (!hosts) {
+      hosts = createStartHost({
+        start: startOptions,
+        files: { ...renderFiles, 'tsconfig.json': reactTsconfig },
+      }).then(async (start) => {
+        // The page loads its runtime before an edit reloads it
+        await start.run('1')
+        return {
+          start,
+          reference: () => {
+            throw new Error('an edit host has no reference host')
+          },
+          cases: false,
+        }
+      })
+      started.set(owner, hosts)
+      const created = hosts
+      onTestFinished(async () => {
+        await (await created.catch(() => undefined))?.start.close()
+      })
+    }
+    return hosts
+  }
 }
 
 export interface RenderOptions {
@@ -765,10 +775,6 @@ export async function renderClient(
   const rendered = await serverRender(hosts, target, options)
   const file = options.file ?? 'module.tsx'
 
-  if (options.freshPage) {
-    const page = (await hosts.start.page()).page
-    await page.reload()
-  }
   const caseUrl = (name: string) => JSON.stringify(`/${target.dir}/${name}`)
   const run = await runPage<{
     raw: string
@@ -874,6 +880,7 @@ ${options.script ?? 'return null'}
   }
 }`,
     startCase,
+    { fresh: options.freshPage },
   )
   const chunks = await caseCode(hosts, target.dir, file, run.result.lazyUrls)
   const caseForResult = startCase ?? (target as unknown as StartCase)

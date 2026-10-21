@@ -94,6 +94,32 @@ export const value = missing`,
   })
 })
 
+// Concurrent tests share a file's host: each page run holds a page of the
+// host alone, so what a run reports is its own.
+describe.concurrent('page runs of concurrent tests', () => {
+  for (const name of ['first', 'second', 'third']) {
+    test(`a run reports only its own page errors and requests (${name})`, async () => {
+      const startCase = await (
+        await host()
+      ).case({
+        'module.tsx': `import { own } from './own-${name}'
+export const value = own
+`,
+        [`own-${name}.ts`]: `export const own = 'MARK_${name}'\n`,
+      })
+      const run = await startCase.client<string>(`// The runs overlap
+await new Promise((resolve) => setTimeout(resolve, 300))
+console.error('MARK_ERROR_${name}')
+return module.value`)
+      expect(run.result).toBe(`MARK_${name}`)
+      expect(run.errors).toEqual([`MARK_ERROR_${name}`])
+      expect(
+        run.requests.filter((request) => request.includes('/own-')),
+      ).toEqual([`${startCase.dir.replace(/^/, '/')}/own-${name}.ts`])
+    })
+  }
+})
+
 describe('server fn calls', () => {
   const code = `import { createServerFn } from '@tanstack/react-start'
 import { getRequestUrl } from '@tanstack/react-start/server'

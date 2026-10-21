@@ -75,6 +75,43 @@ describe('waitForOutcome', () => {
     ).rejects.toThrow(/within 200 ms\n.*the page shows "v1"/)
   })
 
+  test('failWhenQuietFor: hosts quiet without the outcome end the wait after that long, not at the bound', async () => {
+    const started = Date.now()
+    await expect(
+      waitForOutcome({
+        timeout: 10_000,
+        failWhenQuietFor: 300,
+        applied: () => false,
+        quiet: () => true,
+        describe: () => 'the page shows "v1"',
+      }),
+    ).rejects.toThrow(
+      /final state without its outcome.*300 ms\n.*the page shows "v1"/s,
+    )
+    const elapsed = Date.now() - started
+    expect(elapsed).toBeGreaterThanOrEqual(300)
+    expect(elapsed).toBeLessThan(5_000)
+  })
+
+  test('failWhenQuietFor: work in flight restarts the quiet time; an outcome that shows then completes', async () => {
+    const started = Date.now()
+    let checks = 0
+    await waitForOutcome({
+      timeout: 10_000,
+      failWhenQuietFor: 300,
+      // Quiet, but busy again every 200 ms (each step of a slow edit), until
+      // the outcome shows after 1 s
+      quiet: () => {
+        checks++
+        return (Date.now() - started) % 200 > 60
+      },
+      applied: () => Date.now() - started > 1_000,
+      describe: () => 'steps',
+    })
+    expect(Date.now() - started).toBeGreaterThan(1_000)
+    expect(checks).toBeGreaterThan(5)
+  })
+
   test('a problem ends the wait at once', async () => {
     const started = Date.now()
     await expect(

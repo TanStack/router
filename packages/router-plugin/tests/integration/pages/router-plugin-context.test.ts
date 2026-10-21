@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { runInPage } from '@tanstack/compiler-test-utils/browser'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
-import { tanstackRouter } from '../src/vite'
-import { createReactDevPage, renderProbe } from './dev-page'
-import { holdsMarker, loadRoute } from './route-app'
-import type { CodeSplittingOptions } from '../src/vite'
-import type { RouteApp } from './route-app'
+import { tanstackRouter } from '../../../src/vite'
+import { createReactDevPage, renderProbe } from '../../dev-page'
+import { holdsMarker, loadRoute } from '../../route-app'
+import type { CodeSplittingOptions } from '../../../src/vite'
+import type { RouteApp } from '../../route-app'
 
 type CodeSplitGroupings = NonNullable<CodeSplittingOptions['defaultBehavior']>
 
@@ -79,7 +78,6 @@ export const Route = createFileRoute('/changing')({
     // written again, unchanged): the same modules, groups and behaviour
     // (SPEC G4; the emitted text is free).
     const again = await separate(source('secondState', 'second version'))
-    await runInPage({ pageUrl: 'about:blank', script: 'return null' })
     await again.host.edit({ 'route.tsx': again.code })
     expect((await again.modules()).ids).toEqual(secondModules.ids)
     expect(await read(again, separateGroups)).toBe('<p>second version true</p>')

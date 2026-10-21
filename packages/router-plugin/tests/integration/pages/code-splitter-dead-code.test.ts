@@ -11,8 +11,13 @@
 import { parseSync } from 'vite'
 import { describe, expect, it } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
-import { expectValidModules, head, holdsMarker, loadRoute } from './route-app'
-import type { RouteAppOptions } from './route-app'
+import {
+  expectValidModules,
+  head,
+  holdsMarker,
+  loadRoute,
+} from '../../route-app'
+import type { RouteAppOptions } from '../../route-app'
 
 /**
  * The route compiled without and with React HMR: HMR rewrites the route

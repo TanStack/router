@@ -11,7 +11,8 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
-import { expect, onTestFinished } from 'vitest'
+import { expect } from 'vitest'
+import { onTestFinished } from '@tanstack/compiler-test-utils/test-scope'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 

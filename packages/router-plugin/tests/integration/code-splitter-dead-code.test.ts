@@ -1,5 +1,5 @@
 // Slow-tier half of this suite: the tests that need a real tool. Its
-// in-process tests are in ../code-splitter-dead-code.test.ts (fast tier).
+// page tests are in pages/code-splitter-dead-code.test.ts.
 import { describe, expect, it } from 'vitest'
 import { build, clientMountEntry, head, routeApp } from '../build-harness'
 

@@ -32,7 +32,8 @@ import { pluginVueJsx } from '@rsbuild/plugin-vue-jsx'
 import react from '@vitejs/plugin-react'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import solid from 'vite-plugin-solid'
-import { expect, onTestFinished } from 'vitest'
+import { expect } from 'vitest'
+import { onTestFinished } from '@tanstack/compiler-test-utils/test-scope'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import { openDiagnosticChannel } from '@tanstack/compiler-test-utils/diagnostic-channel'
@@ -217,7 +218,9 @@ export interface RouteHmrPage {
    * meanwhile and what it logged. One overall bound, `timeout` (default
    * 15 s): how many updates or client events the edit takes is the
    * compiler's business (a full reload shows `expected` once the page
-   * loaded again).
+   * loaded again). An edit that leaves the page without `expected` while
+   * neither has anything of it in flight for 3 s (`editQuietFailure`) has
+   * reached its final state: it fails then.
    */
   edit: (
     files: Record<string, string | null>,
@@ -337,6 +340,14 @@ interface AppServer {
 const defaultEditTimeout = 15_000
 
 /**
+ * How long the dev server and the page stay quiet (nothing of the edit in
+ * flight on either) while the page does not show the edit, before the edit
+ * counts as not shown (`waitForOutcome`'s `failWhenQuietFor`): an edit a
+ * compiler does not apply fails then, not at `defaultEditTimeout`.
+ */
+const editQuietFailure = 3_000
+
+/**
  * Starts a dev server on an app of `files` (see `RouteHmrPageOptions`), opens
  * it in a browser page and waits until it shows `ready`.
  */
@@ -400,6 +411,14 @@ export const Route = createRootRoute({})
   page.page.on('request', (request) => pageRequests.add(request))
   page.page.on('requestfinished', (request) => pageRequests.delete(request))
   page.page.on('requestfailed', (request) => pageRequests.delete(request))
+  // A new document (a full reload) ends the old one: its requests in flight
+  // end with it, whether or not the browser reports them as finished or
+  // failed (the new document's own requests come after)
+  page.page.on('framenavigated', (frame) => {
+    if (frame === page.page.mainFrame()) {
+      pageRequests.clear()
+    }
+  })
 
   const matches = (expected: string | RegExp, current: string) =>
     typeof expected === 'string'
@@ -443,6 +462,10 @@ export const Route = createRootRoute({})
         // business.
         await waitForOutcome({
           timeout: Math.max(0, deadline - Date.now()),
+          // The server handled the edit (`write` settled): once neither it
+          // nor the page has anything of it in flight for this long, the
+          // page shows what the edit leads to
+          failWhenQuietFor: editQuietFailure,
           applied: async () => matches(expected, await text()),
           quiet: async () => {
             await server.idle()

@@ -9,7 +9,8 @@
  *   time since the Vitest process started, a lower bound of edit to result
  *   (Nx adds its own startup), against the edit-to-result hard limit.
  *
- * The tier is the Vitest project: `integration` is the slow tier, the
+ * The tier is the Vitest project: `integration` (and `integration-*`, e.g.
+ * `integration-pages`) is the slow tier, the
  * implementation/noncompiler projects (outside the corpus) have no
  * budget, any other project is the fast tier. Runs at another worker count (CI, one worker) are
  * reported only.
@@ -79,7 +80,7 @@ function moduleSeconds(testModule: TestModule) {
 }
 
 const tierOf = (projectName: string): Tier | undefined =>
-  projectName === 'integration'
+  projectName === 'integration' || projectName.startsWith('integration-')
     ? 'integration'
     : projectName.startsWith('implementation') || projectName === 'noncompiler'
       ? undefined
@@ -174,7 +175,7 @@ export default class BudgetReporter implements Reporter {
 
     let slowestFile: [string, number] | undefined
     for (const testModule of testModules) {
-      if (testModule.project.name !== 'integration') {
+      if (tierOf(testModule.project.name) !== 'integration') {
         continue
       }
       const fileSeconds = moduleSeconds(testModule)

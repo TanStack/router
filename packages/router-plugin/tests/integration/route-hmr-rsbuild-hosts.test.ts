@@ -11,7 +11,7 @@
  * added as an Rsbuild app adds it, through Rsbuild's JavaScript API
  * (`@tanstack/compiler-test-utils/rsbuild-plugin-host`); the router
  * plugin's own generator registers the route (a virtual route config). The
- * page runs in the shared Chromium page; the server environment loads
+ * page runs in a run page of the test process; the server environment loads
  * through Rsbuild's own `loadBundle`.
  */
 import path from 'node:path'

@@ -12,7 +12,7 @@
  * Plugin-agnostic: the caller supplies the plugin of each build, and the
  * directory its apps live in (where their imports resolve).
  */
-import { readFileSync } from 'node:fs'
+import { readFileSync, rmSync } from 'node:fs'
 import {
   mkdir,
   mkdtemp,
@@ -294,6 +294,19 @@ const defaultPackageJson = { name: 'app', private: true, type: 'module' }
 const ssrExternal = /^(react|react-dom)(\/.*)?$/
 
 /**
+ * The apps of this process not disposed of yet. A host kept for the whole
+ * test process (shared by the test files of a worker) is never disposed of
+ * by a test: its directory is removed when the process exits.
+ */
+const liveApps = new Set<string>()
+process.once('exit', () => {
+  for (const root of liveApps) {
+    rmSync(root, { recursive: true, force: true })
+    rmSync(savingDirectory(root), { recursive: true, force: true })
+  }
+})
+
+/**
  * Writes an app to a temporary directory in `options.dir`, so that its
  * imports resolve from there. The directory is removed by `dispose()`, which
  * `registerCleanup` also receives.
@@ -302,7 +315,9 @@ export async function createApp(options: AppOptions): Promise<App> {
   const root = await mkdtemp(
     path.join(options.dir, options.prefix ?? '.build-harness-'),
   )
+  liveApps.add(root)
   const dispose = async () => {
+    liveApps.delete(root)
     await rm(root, { recursive: true, force: true })
     // What the dev-server harnesses saved the app's files through
     await rm(savingDirectory(root), { recursive: true, force: true })

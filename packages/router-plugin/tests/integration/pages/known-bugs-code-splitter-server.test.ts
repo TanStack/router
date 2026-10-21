@@ -16,8 +16,13 @@ import {
   expectDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { expectValidModules, head, holdsMarker, loadRoute } from './route-app'
-import type { RouteApp, RouteAppOptions } from './route-app'
+import {
+  expectValidModules,
+  head,
+  holdsMarker,
+  loadRoute,
+} from '../../route-app'
+import type { RouteApp, RouteAppOptions } from '../../route-app'
 
 /**
  * Whether the dev server reported (a warning on any channel: the route

@@ -52,7 +52,7 @@ export async function mount(path: string) {
 // top-level write to it (`Page.displayName = ...`) in the route module,
 // where `Page` is no longer declared (in process: "top-level writes to the
 // split component (property assignment) stay with the binding they write",
-// ../known-bugs-code-splitter.test.ts). The build harness rejects the
+// pages/known-bugs-code-splitter.test.ts). The build harness rejects the
 // production client output, whose entry chunk reads the undeclared `Page`.
 // Keeping a copy of the component and its write in the route module as
 // well is no fix: the page code then loads with the entry chunk.

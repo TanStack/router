@@ -29,7 +29,7 @@
     "test": "pnpm test:eslint && pnpm test:types && pnpm test:build && pnpm test:unit && pnpm test:integration",
     "test:unit": "vitest --project unit",
     "test:unit:dev": "vitest --project unit --watch",
-    "test:integration": "vitest --project integration",
+    "test:integration": "vitest --project integration --project integration-pages",
     "test:implementation": "vitest --project implementation --project implementation-integration",
     "test:implementation:unit": "vitest --project implementation",
     "test:integration:smoke": "vitest --project integration integration/build-production.test.ts -t \"vite.*a production react client bundle has no dev-only code|autoCodeSplitting: true. has no dev-only code\"",

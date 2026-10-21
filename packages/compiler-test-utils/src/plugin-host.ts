@@ -11,9 +11,9 @@
  *   and transforms every module by its resolved id, and a missing named
  *   import throws (`./strict-runner`);
  * - client code: the module as the dev server serves it to a browser,
- *   imported and run in a real Chromium page (`runClient`: the shared page
- *   of `./browser`, one per test process, so fast-tier client checks stay
- *   fast without Node stubs);
+ *   imported and run in a real Chromium page (`runClient`: a run page of
+ *   `./browser`, from the test process's bounded pool, so fast-tier client
+ *   checks stay fast without Node stubs);
  * - served code (`transform`), for checks of what an environment serves;
  * - edits (`edit`): written to disk, reported by Vite's own watcher,
  *   settled on a bounded outcome (`./dev-server`);
@@ -76,7 +76,7 @@ export interface PluginHostOptions extends AppOptions {
    */
   serve?: boolean
   /**
-   * Serves client modules to the shared browser page (`runClient`): the dev
+   * Serves client modules to the run pages of `./browser` (`runClient`): the dev
    * server listens and pre-bundles dependencies, as `vite dev`, and an idle
    * HMR client stays connected for the host's lifetime, so that a full
    * reload sent between runs is not handed to the next run's page (see
@@ -154,7 +154,7 @@ export interface PluginHost {
   transform: (url: string, environment?: string) => Promise<string>
   /**
    * Imports a client module as the browser loads it from the dev server,
-   * in the shared Chromium page, and runs `script` (an async function body
+   * in a run page of the test process (`runInPage`), and runs `script` (an async function body
    * with the module's namespace as `module`; its JSON value is the result).
    * Needs `client: true`.
    */
