@@ -28,7 +28,7 @@ import type {
   DevServerOptions,
 } from '@tanstack/compiler-test-utils/dev-server'
 import type { PluginOption } from 'vite'
-import type { Config } from '../src/core/config'
+import type { Config } from '../src'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 
