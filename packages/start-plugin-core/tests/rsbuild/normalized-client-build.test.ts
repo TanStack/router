@@ -563,9 +563,9 @@ describe('normalizeRspackClientBuild', () => {
         `/${route}.js`,
         '/shared.js',
       ])
-      expect(
-        clientBuild.cssContentByFileName?.get(`${route}.css`),
-      ).toMatch(/\.widget\s*\{/)
+      expect(clientBuild.cssContentByFileName?.get(`${route}.css`)).toMatch(
+        /\.widget\s*\{/,
+      )
     }
   })
 
@@ -801,9 +801,7 @@ describe('normalizeRspackClientBuild', () => {
         },
       )
 
-      expect(clientBuild.chunksByFileName.get('shared.js')?.imports).toEqual(
-        [],
-      )
+      expect(clientBuild.chunksByFileName.get('shared.js')?.imports).toEqual([])
       for (const route of ['ping', 'pong'] as const) {
         const chunk = clientBuild.chunksByFileName.get(`${route}.js`)
         expect(chunk?.imports).toEqual(['shared.js'])
