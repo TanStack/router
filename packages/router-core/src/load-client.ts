@@ -327,7 +327,7 @@ export function getRoute(router: AnyRouter, match: WorkMatch): AnyRoute {
 
 function normalize(
   value: unknown,
-  rejected: boolean,
+  kind: typeof SUCCESS | typeof ERROR,
   routeId?: string,
 ): RawLoaderOutcome {
   if (isRedirect(value)) {
@@ -337,24 +337,21 @@ function normalize(
     value.routeId ||= routeId
     return [NOT_FOUND, value]
   }
-  if (!rejected) {
-    return [SUCCESS, value]
-  }
-  if (isPromise(value)) {
+  if (kind === ERROR && isPromise(value)) {
     value = new Error('A Promise was thrown', { cause: value })
   }
-  return [ERROR, value]
+  return [kind, value]
 }
 
 function normalizeError(route: AnyRoute, cause: unknown): RawLoaderOutcome {
-  let outcome = normalize(cause, true, route.id)
+  let outcome = normalize(cause, ERROR, route.id)
   if (outcome[0 /* kind */] !== ERROR) {
     return outcome
   }
   try {
     route.options.onError?.(outcome[1 /* error */])
   } catch (onErrorCause) {
-    outcome = normalize(onErrorCause, true, route.id)
+    outcome = normalize(onErrorCause, ERROR, route.id)
   }
   return outcome
 }
@@ -458,8 +455,8 @@ function createLoaderFlight(
         ),
       )
       .then(
-        (value) => normalize(value, false, route.id),
-        (cause) => normalize(cause, true, route.id),
+        (value) => normalize(value, SUCCESS, route.id),
+        (cause) => normalize(cause, ERROR, route.id),
       )
       .then((result): RawLoaderOutcome => {
         // The registry controls discovery; leases keep current consumers
@@ -608,7 +605,7 @@ async function contextualize(
           router,
           lane,
           route,
-          normalize(result, false, route.id),
+          normalize(result, SUCCESS, route.id),
           options,
         )
         if (outcome[0 /* kind */] !== SUCCESS) {
@@ -2620,7 +2617,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
             })),
           )
           // A returned redirect or notFound is control flow too.
-          if (normalize(result, false)[0 /* kind */]) {
+          if (normalize(result, SUCCESS)[0 /* kind */]) {
             throw result
           }
           match.context = {
