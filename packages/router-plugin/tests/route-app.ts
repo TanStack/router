@@ -445,7 +445,7 @@ async function idleHmrClient(serverUrl: string): Promise<() => void> {
 const pageRunBound = 4000
 
 /** Removes the shared page's document, so that it no longer follows a host. */
-async function parkPage() {
+export async function parkPage() {
   await runInPage({ pageUrl: 'about:blank', script: 'return null' })
 }
 
@@ -822,6 +822,9 @@ ${body}
   const newlyCompiled = (option: string) =>
     run<Array<string>>(`const before = new Set(compiled())
 await trigger(${JSON.stringify(option)})
+// A module the option requested that failed to compile is no lazily
+// loaded module: the option is broken (fail, never count it as lazy)
+probe.assertNoFailedRequests()
 return compiled().filter((request) => !before.has(request))`)
 
   const route: RouteApp = {
@@ -836,6 +839,7 @@ return compiled().filter((request) => !before.has(request))`)
         Array<string>
       >(`const before = new Set(compiled())
 await trigger(${JSON.stringify(option)})
+probe.assertNoFailedRequests()
 const loaded = compiled().filter((request) => !before.has(request))
 return Promise.all(loaded.map(served))`)
       if (loaded.length === 0) {

@@ -19,7 +19,7 @@ import {
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { generatorDevApp, route } from '../../generator-dev-app'
-import { buildAndRun, head } from '../../regression-helpers'
+import { buildAndRun, head } from '../../build-harness'
 import {
   expectEditShownOrReportedFallback,
   openRouteHmrPage,

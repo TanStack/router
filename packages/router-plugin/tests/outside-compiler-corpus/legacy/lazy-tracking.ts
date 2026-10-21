@@ -1,3 +1,6 @@
+// Legacy Node-evaluation harness (module linker, Node rendering, hand-registered
+// routes), kept only for the implementation tests of outside-compiler-corpus/.
+// Acceptance tests use ../../route-app.ts (public plugin host, browser page).
 /**
  * Loads a compiled route file the way an app does, with the real router
  * package and the real framework: the route module (and what it imports
@@ -84,7 +87,7 @@ export function stubExports(stub: ModuleStub | undefined) {
  * import (`react`, `react-dom`, the router packages, Solid, Vue) resolve
  * from its dependencies.
  */
-export const packagesDirectory = path.join(import.meta.dirname, '..')
+export const packagesDirectory = path.join(import.meta.dirname, '../../..')
 
 /** A graph that only links packages: the instances every route graph gets. */
 const packageGraph = createModuleGraph({ packages: packagesDirectory })

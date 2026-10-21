@@ -22,6 +22,7 @@ import {
   loadRoute,
   pageDiagnostics,
 } from './route-app'
+import type { DiagnosticExpectation } from '@tanstack/compiler-test-utils/diagnostics'
 import type { Plugin } from 'vite'
 import type { RouteApp } from './route-app'
 
@@ -650,12 +651,12 @@ return [result, seen.length, seen[0] === exported]`),
           ...(await route.diagnostics()),
           ...pageDiagnostics(page.console),
         ]
-        const expected = {
+        const expected: DiagnosticExpectation = {
           severity: 'warning',
           file: 'route.tsx',
           root: route.host.root,
           names: [option],
-        } as const
+        }
         expectDiagnostic(all, expected)
         // Once: no channel (the dev server's, the page's console) repeats it
         const sources = findDiagnostics(all, expected).map(

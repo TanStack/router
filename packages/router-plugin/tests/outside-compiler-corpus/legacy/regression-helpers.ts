@@ -1,3 +1,6 @@
+// Legacy Node-evaluation harness (module linker, Node rendering, hand-registered
+// routes), kept only for the implementation tests of outside-compiler-corpus/.
+// Acceptance tests use ../../route-app.ts (public plugin host, browser page).
 /**
  * Helpers shared by the code-splitter and route HMR regression suites: compile
  * a route file through the code-splitter plugin the way a bundler does,
@@ -134,4 +137,4 @@ export async function getRouteOption(
   return Route.options[option] as unknown
 }
 
-export { buildAndRun } from './build-harness'
+export { buildAndRun } from '../../build-harness'

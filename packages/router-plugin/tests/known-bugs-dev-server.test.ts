@@ -13,7 +13,7 @@ import {
   rootRoute,
   routerDevServer,
 } from './dev-server'
-import { head } from './regression-helpers'
+import { head } from './route-app'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 
 const timeout = 30_000

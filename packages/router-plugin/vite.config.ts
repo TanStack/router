@@ -40,6 +40,9 @@ const config = defineConfig({
             implementationTests,
           ],
           typecheck: { enabled: true },
+          // Client checks run in a real browser page: the first run on a
+          // new dev server (dependency pre-bundling) takes seconds under load
+          testTimeout: 30_000,
         },
       },
       {

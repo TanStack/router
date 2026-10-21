@@ -29,10 +29,10 @@ import {
   loadRouteGraph,
   renderComponent,
   routeSpecifier,
-} from '../regression-helpers'
-import { labelRouteModules, projectRoot } from '../plugin-host'
+} from './legacy/regression-helpers'
+import { labelRouteModules, projectRoot } from './legacy/plugin-host'
 import type { Plugin } from 'vite'
-import type { RouteGraph } from '../plugin-host'
+import type { RouteGraph } from './legacy/plugin-host'
 
 describe('compileRouteModules', () => {
   // What the host finds is what the router plugin's output reaches; how
