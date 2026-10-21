@@ -21,7 +21,7 @@ import {
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
-import { compileError, expectCompileError } from './regression-helpers'
+import { compileError, expectCompileError } from '../../regression-helpers'
 import {
   editableFiles,
   expectClientRendersLikeServer,
@@ -34,8 +34,8 @@ import {
   useHydrateHost,
   useSolidHost,
   withoutHydrationIds,
-} from './render'
-import type { HydrateHost, RenderOptions } from './render'
+} from '../../render'
+import type { HydrateHost, RenderOptions } from '../../render'
 
 const hosts = useHydrateHost()
 const solidHost = useSolidHost()

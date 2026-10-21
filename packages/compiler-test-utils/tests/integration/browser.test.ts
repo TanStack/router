@@ -6,12 +6,19 @@
  * an update nothing accepts reloads the page. A page can be given its
  * document, and an init script runs before the page's own code.
  */
+import { createServer } from 'node:http'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, onTestFinished, test } from 'vitest'
-import { openPage, runInPage } from '../../src/browser'
+import {
+  openPage,
+  openPageLimit,
+  runInPage,
+  runPageLimit,
+} from '../../src/browser'
 import { createDevServer } from '../../src/dev-server'
 import { createRsbuildDevServer } from '../../src/rsbuild-dev-server'
+import type { AddressInfo } from 'node:net'
 import type { Rspack } from '@rsbuild/core'
 
 const timeout = 60_000
@@ -172,10 +179,10 @@ document.getElementById('app').textContent = 'MARK_DOCUMENT ' + location.href
   ])
 })
 
-// Final pass #21: the shared page serves every run of a test process in
-// turn, so a script that never settles must fail its run within the bound
-// and leave the page to the next run.
-test('a shared-page run whose script never settles fails within its bound, and the next run gets the page', async () => {
+// Final pass #21: the run pages serve every run of a test process, so a
+// script that never settles must fail its run within the bound and leave
+// its page (or a new one) to the next run.
+test('a run whose script never settles fails within its bound, and the next run gets a page', async () => {
   const started = Date.now()
   await expect(
     runInPage({
@@ -189,4 +196,64 @@ test('a shared-page run whose script never settles fails within its bound, and t
     (await runInPage({ pageUrl: 'about:blank', script: 'return 1 + 1' }))
       .result,
   ).toBe(2)
+})
+
+// FINAL-PASS #40: what a test process opens in its browser is bounded, and
+// runs of concurrent tests do not share a document.
+test('concurrent runs each hold a page of their own, at most runPageLimit at once, each on a fresh document', async () => {
+  let active = 0
+  let most = 0
+  const server = createServer((request, response) => {
+    if (request.url === '/page') {
+      response.setHeader('content-type', 'text/html')
+      response.end('<!doctype html><p>page</p>')
+      return
+    }
+    active++
+    most = Math.max(most, active)
+    setTimeout(() => {
+      active--
+      response.end('held')
+    }, 300)
+  })
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+  onTestFinished(
+    () => new Promise<void>((resolve) => server.close(() => resolve())),
+  )
+  const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/`
+  const runs = await Promise.all(
+    Array.from({ length: runPageLimit + 2 }, (_, index) =>
+      runInPage<{ earlier: unknown; held: string }>({
+        pageUrl: `${url}page`,
+        script: `const earlier = window.__earlierRun ?? null
+window.__earlierRun = ${index}
+// (a URL of its own: the browser's HTTP cache makes requests of the same
+// URL wait for each other)
+return { earlier, held: await (await fetch('/hold?run=${index}')).text() }`,
+      }),
+    ),
+  )
+  expect(runs.map((run) => run.result)).toEqual(
+    runs.map(() => ({ earlier: null, held: 'held' })),
+  )
+  expect(most).toBeGreaterThan(1)
+  expect(most).toBeLessThanOrEqual(runPageLimit)
+})
+
+test('openPage keeps at most openPageLimit pages open: one more waits until one closes', async () => {
+  const pages = await Promise.all(
+    Array.from({ length: openPageLimit }, () =>
+      openPage('about:blank', { registerCleanup: onTestFinished }),
+    ),
+  )
+  let opened = false
+  const next = openPage('about:blank', { registerCleanup: onTestFinished })
+  void next.then(() => {
+    opened = true
+  })
+  await new Promise((resolve) => setTimeout(resolve, 500))
+  expect(opened).toBe(false)
+  await pages[0]!.close()
+  await next
+  expect(opened).toBe(true)
 })

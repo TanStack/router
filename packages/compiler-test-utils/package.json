@@ -27,6 +27,8 @@
     "./source-attribution": "./src/source-attribution.ts",
     "./source-maps": "./src/source-maps.ts",
     "./strict-runner": "./src/strict-runner.ts",
+    "./test-scope": "./src/test-scope.ts",
+    "./test-scope-setup": "./src/test-scope-setup.ts",
     "./validate-module": "./src/validate-module.ts",
     "./workspace-packages": "./src/workspace-packages.ts",
     "./package.json": "./package.json"

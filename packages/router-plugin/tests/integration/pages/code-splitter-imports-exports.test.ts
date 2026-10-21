@@ -1,7 +1,7 @@
 /**
  * Imports and exports of a split route file, loaded the way an app loads it
  * (`route-app.ts`: the public router plugin in a real Vite dev server, the
- * route run in the shared Chromium page). What each module imports is
+ * route run in a page of the test process's browser). What each module imports is
  * judged by what loads and works (requests, rendered output, the instances
  * other modules of the app import), and by D5 checks of user code absent
  * from a module (decoded user markers), never by the spelling of import
@@ -21,10 +21,10 @@ import {
   holdsMarker,
   loadRoute,
   pageDiagnostics,
-} from './route-app'
+} from '../../route-app'
 import type { DiagnosticExpectation } from '@tanstack/compiler-test-utils/diagnostics'
 import type { Plugin } from 'vite'
-import type { RouteApp } from './route-app'
+import type { RouteApp } from '../../route-app'
 
 /** A package of the app's `node_modules`, as files of the app. */
 const packageFiles = (name: string, source: string) => ({

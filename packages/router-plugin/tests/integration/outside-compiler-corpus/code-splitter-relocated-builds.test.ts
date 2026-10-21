@@ -2,7 +2,7 @@
  * Not part of the compiler test corpus (implementation control: SPEC G4
  * frees emitted files and bytes across project roots; the corpus checks
  * relocation by what the built app does,
- * `../code-splitter-determinism.test.ts`).
+ * `../pages/code-splitter-determinism.test.ts`).
  *
  * With the current code splitter, building the same app twice, in two
  * directories, emits the same files. A rewrite may legitimately fail this.

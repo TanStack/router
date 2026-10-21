@@ -4,12 +4,12 @@
  * public plugin array plus `@vitejs/plugin-react`), for tests whose plugin
  * setup is not the one route of `route-app.ts`: several router plugins,
  * environment-scoped code splitters, a whole app of route and non-route
- * modules. Client code runs in the shared Chromium page (`runClient`);
+ * modules. Client code runs in a run page of the test process (`runClient`);
  * server code through the SSR environment's own module runner
  * (`importServer`).
  */
 import react from '@vitejs/plugin-react'
-import { onTestFinished } from 'vitest'
+import { onTestFinished } from '@tanstack/compiler-test-utils/test-scope'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 import type {
   PluginHost,

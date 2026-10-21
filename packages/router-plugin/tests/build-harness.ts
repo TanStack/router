@@ -31,7 +31,8 @@ import {
   withBuildEnvironment,
 } from '@tanstack/compiler-test-utils/build-harness'
 import { mergeRsbuildConfig } from '@rsbuild/core'
-import { inject, onTestFinished } from 'vitest'
+import { inject } from 'vitest'
+import { onTestFinished } from '@tanstack/compiler-test-utils/test-scope'
 import type {
   App,
   AppInfo,

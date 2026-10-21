@@ -278,6 +278,71 @@ export const Route = createFileRoute('/')({ loader: () => value })
   })
 })
 
+// The hosts of a test process are leased to one test at a time (the
+// projects that run route apps run the tests of a file concurrently).
+describe.concurrent('hosts of concurrent tests', () => {
+  const roots: Record<string, string> = {}
+  let arrived = 0
+  let bothLoaded!: () => void
+  const loaded = new Promise<void>((resolve) => {
+    bothLoaded = resolve
+  })
+  for (const name of ['first', 'second']) {
+    it(`a concurrent test of the same configuration writes its route into a host of its own (${name})`, async () => {
+      const route = await loadRoute(
+        `${head}import { label } from './label'
+export const Route = createFileRoute('/')({ loader: () => label })
+`,
+        { files: { 'label.ts': `export const label = 'MARK_${name}'\n` } },
+      )
+      roots[name] = route.host.root
+      // Both routes are loaded before either runs
+      if (++arrived === 2) {
+        bothLoaded()
+      }
+      await loaded
+      expect(await route.run('return options.loader()')).toBe(`MARK_${name}`)
+      expect(await route.requested()).toContain('/label.ts')
+      expect(roots.first).not.toBe(roots.second)
+    })
+  }
+})
+
+describe('a host given back by a test', () => {
+  let earlier: { root: string; files: Array<string> } | undefined
+  it('serves the route of the test that holds it (earlier test)', async () => {
+    const route = await loadRoute(
+      `${head}import { only } from './earlier-only'
+export const Route = createFileRoute('/')({ loader: () => only })
+`,
+      { files: { 'earlier-only.ts': `export const only = 'MARK_EARLIER'\n` } },
+    )
+    expect(await route.run('return options.loader()')).toBe('MARK_EARLIER')
+    earlier = { root: route.host.root, files: await route.requested() }
+    expect(earlier.files).toContain('/earlier-only.ts')
+  })
+
+  it('serves a later test of the same configuration without the earlier test’s files or reports', async () => {
+    const route = await loadRoute(
+      `${head}export const Route = createFileRoute('/')({ loader: () => 'MARK_LATER' })
+`,
+    )
+    // The same host, given back by the earlier test
+    expect(route.host.root).toBe(earlier?.root)
+    expect(await route.run('return options.loader()')).toBe('MARK_LATER')
+    expect(await route.requested()).not.toContain('/earlier-only.ts')
+    // (Vite's information that writing this route removed the earlier
+    // route's file is this route's edit, and no problem)
+    expect(
+      (await route.diagnostics()).filter(
+        (diagnostic) =>
+          diagnostic.severity !== 'info' &&
+          diagnostic.text.includes('earlier-only'),
+      ),
+    ).toEqual([])
+  })
+})
+
 describe('diagnostics and compile errors', () => {
   it("a plugin's warning is in the route's merged channel", async () => {
     const route = await loadRoute(

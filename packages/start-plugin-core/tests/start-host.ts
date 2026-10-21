@@ -32,8 +32,11 @@
  * Cases that need dev edits write their files with `edit`, which goes
  * through the watcher and the dev server's bounded settle.
  *
- * Use `useStartHost(options)` in a test file: one host per file (created in
- * `beforeAll`, closed in `afterAll`), and `host().case(files)` per test.
+ * Use `useStartHost(options)` in a test file: one host per file (taken in
+ * `beforeAll`, given back in `afterAll`: a later file of the same test
+ * process with the same plain options reuses it, see `freeHosts`), and
+ * `host().case(files)` per test. Page runs of concurrent tests each hold
+ * one of the host's pages (`hostPageLimit`).
  */
 import { realpathSync } from 'node:fs'
 import { mkdir, writeFile } from 'node:fs/promises'
@@ -227,6 +230,9 @@ const appTsconfig = (framework: StartFramework) =>
 
 /** How long one page run may take before the page is replaced. */
 const pageRunTimeout = 10_000
+
+/** Pages of one host at most: runs of concurrent tests beyond take turns. */
+const hostPageLimit = 4
 
 /** Where a case lives: `src/cases/c<n>`. */
 export const casesDir = 'src/cases'
@@ -464,7 +470,11 @@ export interface StartCase {
    */
   client: <T = unknown>(
     script: string,
-    options?: { file?: string },
+    options?: {
+      file?: string
+      /** Reload the run's page first: a fresh document, no module instance kept. */
+      fresh?: boolean
+    },
   ) => Promise<ClientRun<T>>
   /**
    * What importing the case file (default `module.tsx`) in the page loads:
@@ -507,6 +517,16 @@ export interface StartHost {
    * waits for the dev server's bounded settle (dev edits).
    */
   edit: (files: Record<string, string | null>) => Promise<void>
+  /**
+   * Evaluates page code (an expression, e.g. an async function called at
+   * once) on a page of the host, as `StartCase.client` runs a case's: on a
+   * page the run holds alone, again on a fresh document if the page
+   * reloaded meanwhile. `fresh`: reload the page first.
+   */
+  run: <T = unknown>(
+    source: string,
+    options?: { fresh?: boolean },
+  ) => Promise<ClientRun<T>>
   /** `vite build` of the app (`PluginHost.build`). */
   build: PluginHost['build']
   /**
@@ -527,8 +547,16 @@ export interface StartHost {
      */
     rebuild?: boolean
   }) => Promise<StartPreview>
-  /** The host's page (one per host). */
+  /**
+   * The host's first page (concurrent runs of `StartCase.client` run on up
+   * to `hostPageLimit` pages, one each).
+   */
   page: () => Promise<BrowserPage>
+  /**
+   * Whether a later test file may use the host (`useStartHost`): nothing
+   * changed the app its options give (no edit, build or preview).
+   */
+  reusable: () => boolean
   /**
    * Production mode (`preview()`): every read or write of a development-only
    * global (React Refresh's `$RefreshReg$`/`$RefreshSig$`, the router
@@ -646,8 +674,11 @@ export async function createStartHost(
   })
   const root = host.root
 
-  let page: Promise<BrowserPage> | undefined
-  const requests: Array<string> = []
+  /** A page of the host and what it requested so far. */
+  interface HostPage {
+    opened: BrowserPage
+    requests: Array<string>
+  }
   let previewState:
     | { server: PreviewServer; url: string; build: HostBuild }
     | undefined
@@ -664,105 +695,225 @@ export async function createStartHost(
     return host.dev.url!
   }
   const origin = () => new URL(baseUrl()).origin
-  const openHostPage = () => {
-    page ??= (async () => {
-      if (previewState) {
-        const opened = await openPage(
-          new URL(pageRoutePath, previewState.url).href,
-          { initScript: devSupportTrap },
-        )
-        opened.page.on('request', (request) => {
-          requests.push(request.url())
-        })
-        try {
-          await opened.page.waitForFunction(
-            () => (window as unknown as Record<string, unknown>).__harnessReady,
-            undefined,
-            { timeout: 15_000 },
-          )
-        } catch (error) {
-          throw new Error(
-            [
-              `the production page did not hydrate: ${(error as Error).message}`,
-              `html: ${(await opened.page.content()).slice(0, 2000)}`,
-              `errors:\n${opened.errors.join('\n') || '(none)'}`,
-              `console:\n${opened.console.join('\n') || '(none)'}`,
-            ].join('\n'),
-          )
-        }
-        return opened
-      }
-      const opened = await openPage(
-        new URL('/__plugin-host__/page.html', baseUrl()).href,
-      )
+  /**
+   * Opens a page of the host: the production page of the preview server
+   * (once it hydrated), or the plugin host's page of the dev server. The
+   * page gives its scripts `window.__harnessInFlight()`: how many of its
+   * requests have not finished yet (Playwright's network events), so page
+   * code can wait for the code it requested.
+   */
+  const openHostPage = async (): Promise<HostPage> => {
+    const requests: Array<string> = []
+    const inFlight = new Set<unknown>()
+    const track = (opened: BrowserPage) => {
       opened.page.on('request', (request) => {
         requests.push(request.url())
+        inFlight.add(request)
       })
-      return opened
-    })()
-    return page
+      opened.page.on('requestfinished', (request) => inFlight.delete(request))
+      opened.page.on('requestfailed', (request) => inFlight.delete(request))
+      // A new document (a reload) ends the old one: its requests in flight
+      // end with it, whether or not the browser reports them as finished
+      // or failed
+      opened.page.on('framenavigated', (frame) => {
+        if (frame === opened.page.mainFrame()) {
+          inFlight.clear()
+        }
+      })
+      return opened.page.exposeFunction(
+        '__harnessInFlight',
+        () => inFlight.size,
+      )
+    }
+    if (previewState) {
+      const opened = await openPage('about:blank', {
+        initScript: devSupportTrap,
+      })
+      await track(opened)
+      await opened.page.goto(new URL(pageRoutePath, previewState.url).href)
+      try {
+        await opened.page.waitForFunction(
+          () => (window as unknown as Record<string, unknown>).__harnessReady,
+          undefined,
+          { timeout: 15_000 },
+        )
+      } catch (error) {
+        throw new Error(
+          [
+            `the production page did not hydrate: ${(error as Error).message}`,
+            `html: ${(await opened.page.content()).slice(0, 2000)}`,
+            `errors:\n${opened.errors.join('\n') || '(none)'}`,
+            `console:\n${opened.console.join('\n') || '(none)'}`,
+          ].join('\n'),
+        )
+      }
+      return { opened, requests }
+    }
+    const opened = await openPage('about:blank')
+    await track(opened)
+    await opened.page.goto(
+      new URL('/__plugin-host__/page.html', baseUrl()).href,
+    )
+    return { opened, requests }
   }
 
-  /** Runs page code, again on a fresh document if the page reloaded. */
-  const runInHostPage = async <T>(source: string): Promise<ClientRun<T>> => {
-    const opened = await openHostPage()
-    let lastError: unknown
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const loads = opened.loads()
-      const firstRequest = requests.length
-      const firstError = opened.errors.length
-      const firstConsole = opened.console.length
-      try {
-        let timer: ReturnType<typeof setTimeout> | undefined
-        const result = (await Promise.race([
-          opened.page.evaluate(source),
-          new Promise((_, reject) => {
-            timer = setTimeout(() => {
-              // A script that never settles keeps the page busy: the next
-              // run gets a new page
-              page = undefined
-              void opened.close()
-              reject(
-                new Error(
-                  `the page run did not settle within ${pageRunTimeout} ms (the page is replaced)`,
-                ),
-              )
-            }, pageRunTimeout)
-          }),
-        ]).finally(() => clearTimeout(timer))) as T
-        return {
-          result,
-          errors: opened.errors.slice(firstError),
-          console: opened.console.slice(firstConsole),
-          requests: requests
-            .slice(firstRequest)
-            .map((url) => appPath(url, origin())),
+  // The host's pages: concurrent runs (concurrent tests) each hold one
+  // (`runInHostPage`), at most `hostPageLimit`; a page keeps its document
+  // from one run to the next (cases have their own URLs). `page()` gives
+  // the first one.
+  /** Pages open or opening. */
+  let pageCount = 0
+  /** Every open page. */
+  let allPages = new Set<HostPage>()
+  let idlePages: Array<HostPage> = []
+  let waitingForPage: Array<(page: Promise<HostPage>) => void> = []
+  const openCounted = async (): Promise<HostPage> => {
+    pageCount++
+    try {
+      const opened = await openHostPage()
+      allPages.add(opened)
+      return opened
+    } catch (error) {
+      pageCount--
+      throw error
+    }
+  }
+
+  /** The first page of the host (opened on first use). */
+  const firstPage = async () => {
+    const [first] = allPages
+    if (first) {
+      return first.opened
+    }
+    const opened = await openCounted()
+    idlePages.push(opened)
+    return opened.opened
+  }
+
+  /** A page no run holds (a new one while fewer than `hostPageLimit`). */
+  const takePage = (): Promise<HostPage> => {
+    const idle = idlePages.shift()
+    if (idle) {
+      return Promise.resolve(idle)
+    }
+    if (pageCount < hostPageLimit) {
+      return openCounted()
+    }
+    return new Promise<Promise<HostPage>>((resolve) =>
+      waitingForPage.push(resolve),
+    ).then((page) => page)
+  }
+  const givePage = (page: HostPage) => {
+    const next = waitingForPage.shift()
+    if (next) {
+      next(Promise.resolve(page))
+    } else {
+      idlePages.push(page)
+    }
+  }
+  /** Closes a page; a run waiting for a page gets a new one. */
+  const dropPage = (page: HostPage) => {
+    allPages.delete(page)
+    pageCount--
+    void page.opened.close()
+    const next = waitingForPage.shift()
+    if (next) {
+      next(openCounted())
+    }
+  }
+  /** Closes every page of the host. */
+  const closePages = async () => {
+    const all = [...allPages]
+    allPages = new Set()
+    idlePages = []
+    waitingForPage = []
+    pageCount = 0
+    for (const page of all) {
+      await page.opened.close()
+    }
+  }
+
+  /**
+   * Runs page code on a page of the host the run holds alone (concurrent
+   * runs run on different pages), again on a fresh document if the page
+   * reloaded. `fresh`: reload the page first (a new document, no module
+   * instance kept).
+   */
+  const runInHostPage = async <T>(
+    source: string,
+    runOptions: { fresh?: boolean } = {},
+  ): Promise<ClientRun<T>> => {
+    const held = await takePage()
+    /** Whether the run's page was closed (a script that never settled). */
+    const run = { dropped: false }
+    try {
+      const { opened, requests } = held
+      if (runOptions.fresh) {
+        await opened.page.reload()
+      }
+      let lastError: unknown
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const loads = opened.loads()
+        const firstRequest = requests.length
+        const firstError = opened.errors.length
+        const firstConsole = opened.console.length
+        try {
+          let timer: ReturnType<typeof setTimeout> | undefined
+          const result = (await Promise.race([
+            opened.page.evaluate(source),
+            new Promise((_, reject) => {
+              timer = setTimeout(() => {
+                // A script that never settles keeps the page busy: the next
+                // run gets a new page
+                run.dropped = true
+                dropPage(held)
+                reject(
+                  new Error(
+                    `the page run did not settle within ${pageRunTimeout} ms (the page is replaced)`,
+                  ),
+                )
+              }, pageRunTimeout)
+            }),
+          ]).finally(() => clearTimeout(timer))) as T
+          return {
+            result,
+            errors: opened.errors.slice(firstError),
+            console: opened.console.slice(firstConsole),
+            requests: requests
+              .slice(firstRequest)
+              .map((url) => appPath(url, origin())),
+          }
+        } catch (error) {
+          lastError = error
+          // A navigation destroys the run's context before the new document
+          // fires its load event
+          const navigated =
+            opened.loads() !== loads ||
+            /Execution context was destroyed/.test((error as Error).message)
+          if (run.dropped || !navigated || previewState) {
+            const errors = opened.errors.slice(firstError)
+            throw new Error(
+              [
+                `the page run failed: ${(error as Error).message}`,
+                `errors:\n${errors.join('\n') || '(none)'}`,
+                `console:\n${opened.console.slice(firstConsole).join('\n') || '(none)'}`,
+              ].join('\n'),
+              { cause: error },
+            )
+          }
+          // A reload (Vite pre-bundled a dependency the run discovered, or
+          // the dev server reloaded its pages): the document is new, so run
+          // again
+          await opened.page.waitForLoadState()
+          await host.dev.idle()
         }
-      } catch (error) {
-        lastError = error
-        // A navigation destroys the run's context before the new document
-        // fires its load event
-        const navigated =
-          opened.loads() !== loads ||
-          /Execution context was destroyed/.test((error as Error).message)
-        if (!navigated || previewState) {
-          const errors = opened.errors.slice(firstError)
-          throw new Error(
-            [
-              `the page run failed: ${(error as Error).message}`,
-              `errors:\n${errors.join('\n') || '(none)'}`,
-              `console:\n${opened.console.slice(firstConsole).join('\n') || '(none)'}`,
-            ].join('\n'),
-            { cause: error },
-          )
-        }
-        // A reload (Vite pre-bundled a dependency the run discovered): the
-        // document is new, so run again
-        await opened.page.waitForLoadState()
-        await host.dev.idle()
+      }
+      throw lastError
+    } finally {
+      if (!run.dropped) {
+        givePage(held)
       }
     }
-    throw lastError
   }
 
   /**
@@ -780,6 +931,8 @@ export async function createStartHost(
   }
 
   let cases = 0
+  /** Whether the app changed from what its options give (edits, builds). */
+  let changed = false
   const createCase = async (
     files: Record<string, string>,
   ): Promise<StartCase> => {
@@ -866,16 +1019,19 @@ export async function createStartHost(
       },
       inRequest: (run) => inAppRequest(() => run()),
       client: (script, clientOptions = {}) =>
-        runInHostPage(`(async () => {
+        runInHostPage(
+          `(async () => {
 ${pagePrelude}
 const load = ${
-          previewState
-            ? `(file) => window.__harnessCases[${JSON.stringify(`../cases/${dir.slice(casesDir.length + 1)}/`)} + file]()`
-            : `(file) => import(${JSON.stringify(`/${dir}/`)} + file)`
-        }
+            previewState
+              ? `(file) => window.__harnessCases[${JSON.stringify(`../cases/${dir.slice(casesDir.length + 1)}/`)} + file]()`
+              : `(file) => import(${JSON.stringify(`/${dir}/`)} + file)`
+          }
 const module = await load(${JSON.stringify(clientOptions.file ?? 'module.tsx')})
 ${script}
-})()`),
+})()`,
+          { fresh: clientOptions.fresh },
+        ),
       loads: async (file = 'module.tsx') => {
         devOnly('loads()')
         const run = await runInHostPage<{ error?: string; fatal?: boolean }>(
@@ -935,7 +1091,10 @@ try {
       return host.diagnostics
     },
     case: createCase,
+    reusable: () => !changed,
+    run: (source, runOptions) => runInHostPage(source, runOptions),
     edit: async (files) => {
+      changed = true
       if (cases > 0) {
         // The dev server's settle owes an event to every app file the
         // watcher has not reported, and it never reports the (ignored)
@@ -946,8 +1105,12 @@ try {
       }
       await host.edit(files)
     },
-    build: (buildOptions) => host.build(buildOptions),
+    build: (buildOptions) => {
+      changed = true
+      return host.build(buildOptions)
+    },
     preview: async (previewOptions = {}) => {
+      changed = true
       if (serve) {
         throw new Error('preview() needs a host created with `serve: false`')
       }
@@ -958,10 +1121,8 @@ try {
       }
       if (previewState && previewOptions.rebuild) {
         const previous = previewState
-        const previousPage = page
         previewState = undefined
-        page = undefined
-        await (previousPage ? (await previousPage).close() : undefined)
+        await closePages()
         await previous.server.close()
         outDirName = `dist-${++builds}`
       }
@@ -998,23 +1159,32 @@ try {
       previewState = { server, url, build }
       return { build, url }
     },
-    page: openHostPage,
+    page: firstPage,
     devSupportTouches: async () => {
       if (!previewState) {
         throw new Error(
           'devSupportTouches() reads the production page: call preview() first',
         )
       }
-      const opened = await openHostPage()
-      return opened.page.evaluate(
-        () =>
-          (window as unknown as { __harnessDevSupportTouches: Array<string> })
-            .__harnessDevSupportTouches,
-      )
+      await firstPage()
+      const touches: Array<string> = []
+      for (const { opened } of allPages) {
+        touches.push(
+          ...(await opened.page.evaluate(
+            () =>
+              (
+                window as unknown as {
+                  __harnessDevSupportTouches: Array<string>
+                }
+              ).__harnessDevSupportTouches,
+          )),
+        )
+      }
+      return touches
     },
     close: async () => {
       try {
-        await (page ? (await page).close() : undefined)
+        await closePages()
       } finally {
         try {
           await previewState?.server.close()
@@ -1026,22 +1196,91 @@ try {
   }
 }
 
-const hosts = new Map<string, Promise<StartHost>>()
+/**
+ * Free hosts of this test process, by their options (`hostKey`), for later
+ * test files: a project that keeps its modules across test files
+ * (`isolate: false`) starts a host once per worker and options, not once per
+ * file. Each case of a host has its own directory and URLs, so module
+ * instances never carry over from one file's cases to another's; a host
+ * whose app changed (an edit, a build) is closed instead. What a host
+ * reported before a file is that file's to mark (`diagnostics.length`).
+ */
+const freeHosts = new Map<string, Array<StartHost>>()
+
+/** Free hosts a test process keeps, at most. */
+const freeHostLimit = 4
 
 /**
- * One Start host per test file and options (`createStartHost`), created
- * before the file's tests and closed after them. Returns the host getter.
+ * The options of a host as a key, when they are plain data (no plugins, no
+ * functions): only those hosts are shared between files.
+ */
+export function hostKey(value: unknown): string | undefined {
+  const found = { function: false }
+  const key = JSON.stringify(value, (_, item: unknown) => {
+    if (typeof item === 'function') {
+      found.function = true
+    }
+    return item
+  })
+  return found.function ? undefined : key
+}
+
+/** A free host of these options, or a new one (`start`). */
+export async function takeHost<T extends { close: () => Promise<void> }>(
+  key: string | undefined,
+  start: () => Promise<T>,
+): Promise<T> {
+  const free = key === undefined ? undefined : freeHosts.get(key)?.pop()
+  return (free as T | undefined) ?? start()
+}
+
+/** Gives a host back for later files (or closes it, see `freeHosts`). */
+export async function giveBackHost(
+  key: string | undefined,
+  host: { close: () => Promise<void>; reusable?: () => boolean },
+) {
+  if (key === undefined || host.reusable?.() === false) {
+    await host.close()
+    return
+  }
+  const list = freeHosts.get(key) ?? []
+  list.push(host as StartHost)
+  freeHosts.set(key, list)
+  freeOrder.push({ key, host })
+  while (freeOrder.length > freeHostLimit) {
+    const oldest = freeOrder.shift()!
+    const left = freeHosts.get(oldest.key)
+    const index = left?.indexOf(oldest.host as StartHost) ?? -1
+    if (index !== -1) {
+      left!.splice(index, 1)
+      await oldest.host.close()
+    }
+  }
+}
+const freeOrder: Array<{
+  key: string
+  host: { close: () => Promise<void> }
+}> = []
+
+/**
+ * One Start host per test file and options (`createStartHost`), taken before
+ * the file's tests (a free one an earlier file of the process gave back, or
+ * a new one) and given back after them. Returns the host getter.
  */
 export function useStartHost(
   options: StartHostOptions = {},
 ): () => Promise<StartHost> {
+  const key = hostKey(options)
   let started: Promise<StartHost> | undefined
   beforeAll(() => {
-    started = createStartHost(options)
+    started = takeHost(key, () => createStartHost(options))
     return started.then(() => {})
   }, 60_000)
   afterAll(async () => {
-    await (await started)?.close()
+    const host = await started?.catch(() => undefined)
+    if (host) {
+      await giveBackHost(key, host)
+    }
   })
   return () => {
     if (!started) {
@@ -1052,29 +1291,34 @@ export function useStartHost(
 }
 
 /**
- * The hosts of a test file by framework, created on first use and closed
+ * The hosts of a test file by framework, taken on first use and given back
  * after the file's tests (a file whose cases run under several frameworks).
  */
 export function useStartHosts(
   options: Omit<StartHostOptions, 'framework'> = {},
 ): (framework?: StartFramework) => Promise<StartHost> {
   const started = new Map<StartFramework, Promise<StartHost>>()
+  const keyOf = (framework: StartFramework) =>
+    hostKey({ ...options, framework })
   afterAll(async () => {
-    for (const host of started.values()) {
-      await (await host).close()
+    for (const [framework, host] of started) {
+      const resolved = await host.catch(() => undefined)
+      if (resolved) {
+        await giveBackHost(keyOf(framework), resolved)
+      }
     }
   })
   return (framework = 'react') => {
     let host = started.get(framework)
     if (!host) {
-      host = createStartHost({ ...options, framework })
+      host = takeHost(keyOf(framework), () =>
+        createStartHost({ ...options, framework }),
+      )
       started.set(framework, host)
     }
     return host
   }
 }
-
-void hosts
 
 /** A build of a host app (`StartHost.build`). */
 export type StartHostBuild = HostBuild

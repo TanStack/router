@@ -7,8 +7,8 @@
  * tsconfig is in effect in this harness; it tests Vite, not the router
  * plugin. The corpus test it controls, which decides the compiler's outcome
  * (the route file's type-only import does not load in the client):
- * ../code-splitter-imports-exports.test.ts.
- * Moved from ../code-splitter-imports-exports.test.ts.
+ * ../pages/code-splitter-imports-exports.test.ts.
+ * Moved from the fast tier's code-splitter-imports-exports.test.ts.
  */
 import { expect, it } from 'vitest'
 import { build, clientMountEntry, head, routeApp } from '../../build-harness'

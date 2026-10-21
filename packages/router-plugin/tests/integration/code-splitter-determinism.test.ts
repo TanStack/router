@@ -1,5 +1,5 @@
 // Slow-tier half of this suite: the tests that need a real tool. Its
-// in-process tests are in ../code-splitter-determinism.test.ts (fast tier).
+// page tests are in pages/code-splitter-determinism.test.ts.
 /**
  * Code splitting does not depend on where the project lives (SPEC G4,
  * relocation): the same app built in two directories (its files written in

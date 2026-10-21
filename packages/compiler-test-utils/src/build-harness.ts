@@ -12,7 +12,7 @@
  * Plugin-agnostic: the caller supplies the plugin of each build, and the
  * directory its apps live in (where their imports resolve).
  */
-import { readFileSync } from 'node:fs'
+import { readFileSync, rmSync } from 'node:fs'
 import {
   mkdir,
   mkdtemp,
@@ -294,6 +294,33 @@ const defaultPackageJson = { name: 'app', private: true, type: 'module' }
 const ssrExternal = /^(react|react-dom)(\/.*)?$/
 
 /**
+ * How an app's directory is removed: again a moment later when a file
+ * appears in it meanwhile (`ENOTEMPTY`; Node's retries for it). A Vite dev
+ * server can still write its dependency cache after it closed (FOLLOWUPS
+ * "UPSTREAM (F-A)"; FINAL-PASS #34: after a rebuild of the product, the
+ * cleanup of a dev server's app failed the file).
+ */
+const removal = {
+  recursive: true,
+  force: true,
+  maxRetries: 10,
+  retryDelay: 50,
+} as const
+
+/**
+ * The apps of this process not disposed of yet. A host kept for the whole
+ * test process (shared by the test files of a worker) is never disposed of
+ * by a test: its directory is removed when the process exits.
+ */
+const liveApps = new Set<string>()
+process.once('exit', () => {
+  for (const root of liveApps) {
+    rmSync(root, removal)
+    rmSync(savingDirectory(root), removal)
+  }
+})
+
+/**
  * Writes an app to a temporary directory in `options.dir`, so that its
  * imports resolve from there. The directory is removed by `dispose()`, which
  * `registerCleanup` also receives.
@@ -302,10 +329,12 @@ export async function createApp(options: AppOptions): Promise<App> {
   const root = await mkdtemp(
     path.join(options.dir, options.prefix ?? '.build-harness-'),
   )
+  liveApps.add(root)
   const dispose = async () => {
-    await rm(root, { recursive: true, force: true })
+    liveApps.delete(root)
+    await rm(root, removal)
     // What the dev-server harnesses saved the app's files through
-    await rm(savingDirectory(root), { recursive: true, force: true })
+    await rm(savingDirectory(root), removal)
   }
   options.registerCleanup?.(dispose)
   try {

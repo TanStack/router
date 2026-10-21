@@ -12,7 +12,7 @@ import { mkdirSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import { afterAll, describe, expect, test } from 'vitest'
 import { expectRelocatable } from '@tanstack/compiler-test-utils/determinism'
-import { head, loadRoute } from './route-app'
+import { head, loadRoute } from '../../route-app'
 
 const route = `${head}import { format } from './format'
 const prefix = 'MARK'

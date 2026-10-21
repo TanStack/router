@@ -8,11 +8,16 @@ import {
   expectDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { expectValidModules, head, holdsMarker, loadRoute } from './route-app'
-import { directivesOfFunctionsHolding } from './served-code'
+import {
+  expectValidModules,
+  head,
+  holdsMarker,
+  loadRoute,
+} from '../../route-app'
+import { directivesOfFunctionsHolding } from '../../served-code'
 import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
-import type { RouteApp, RouteAppOptions } from './route-app'
-import type { CodeSplittingOptions } from '../src/vite'
+import type { RouteApp, RouteAppOptions } from '../../route-app'
+import type { CodeSplittingOptions } from '../../../src/vite'
 
 type CodeSplitGroupings = NonNullable<CodeSplittingOptions['defaultBehavior']>
 

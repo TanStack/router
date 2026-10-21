@@ -1299,7 +1299,7 @@ const viteClientStub = {
  * and the custom linker of `./module-linker` (RULES-AUDIT §2.D #7, N24):
  * HMR wiring never runs, and a client artifact is not run where it runs.
  * Use `runClient` of `./plugin-host` (or `runInPage` of `./browser`: the
- * served module in the shared Chromium page) or `createDevServer({ browser:
+ * served module in a run page of the test process) or `createDevServer({ browser:
  * true })` with `openPage`.
  * Kept until its remaining callers move: start-plugin-core
  * integration/start-compiler-dev-server.test.ts and

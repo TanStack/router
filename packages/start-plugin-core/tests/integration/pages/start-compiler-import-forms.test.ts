@@ -23,13 +23,13 @@ import {
   serverOnlyError,
   settle,
   useStartHosts,
-} from './regression-helpers'
+} from '../../regression-helpers'
 import type {
   Framework,
   PageSettled,
   ServedCase,
   StartCase,
-} from './regression-helpers'
+} from '../../regression-helpers'
 
 const frameworks: Array<Framework> = ['react', 'solid', 'vue']
 

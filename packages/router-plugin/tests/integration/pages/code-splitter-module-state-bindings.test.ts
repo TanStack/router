@@ -2,11 +2,16 @@
  * Module-level bindings read by route options (SPEC G3, J2.4, J2.5, J2.12),
  * across binding kinds, groupings and readers. Split from
  * code-splitter-module-state.test.ts (same harness, `./route-app`): its own
- * file so that the fast tier runs it in parallel with the rest.
+ * file so that the tier runs it in parallel with the rest.
  */
 import { describe, expect, it } from 'vitest'
-import { expectValidModules, head, holdsMarker, loadRoute } from './route-app'
-import type { CodeSplittingOptions } from '../src/vite'
+import {
+  expectValidModules,
+  head,
+  holdsMarker,
+  loadRoute,
+} from '../../route-app'
+import type { CodeSplittingOptions } from '../../../src/vite'
 
 type CodeSplitGroupings = NonNullable<CodeSplittingOptions['defaultBehavior']>
 

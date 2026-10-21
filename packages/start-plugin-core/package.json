@@ -29,7 +29,7 @@
     "clean:snapshots": "rimraf **/*snapshot* --glob",
     "test": "pnpm test:eslint && pnpm test:types && pnpm test:build && pnpm test:unit && pnpm test:integration && pnpm test:noncompiler",
     "test:unit": "vitest --project unit",
-    "test:integration": "vitest --project integration",
+    "test:integration": "vitest --project integration --project integration-pages",
     "test:implementation": "vitest --project implementation --project implementation-integration",
     "test:implementation:unit": "vitest --project implementation",
     "test:integration:smoke": "vitest --project integration integration/importProtection/build.test.ts -t \"build.*a denied re-export barrel the client uses fails the build\"",

@@ -71,7 +71,7 @@ describe.concurrent('the router plugin configured with', () => {
     {
       // Source: route-hmr.test.ts "is limited to the environment
       // plugin.vite.environmentName names" (the excluded environment: the
-      // fast tier's route-hmr.test.ts).
+      // pages/route-hmr.test.ts).
       name: 'plugin.vite.environmentName naming the client (vite)',
       options: {
         pluginOptions: {

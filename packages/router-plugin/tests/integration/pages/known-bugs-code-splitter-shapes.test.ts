@@ -14,8 +14,13 @@ import {
   expectDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { expectValidModules, head, holdsMarker, loadRoute } from './route-app'
-import type { RouteApp, TargetFramework } from './route-app'
+import {
+  expectValidModules,
+  head,
+  holdsMarker,
+  loadRoute,
+} from '../../route-app'
+import type { RouteApp, TargetFramework } from '../../route-app'
 import type { Plugin } from 'vite'
 
 /**

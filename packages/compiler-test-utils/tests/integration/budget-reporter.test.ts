@@ -130,6 +130,17 @@ test.concurrent(
   30_000,
 )
 
+test('a project named integration-* (e.g. integration-pages) is the slow tier', async (context) => {
+  const { output } = await runTier(
+    context,
+    { 'pages.test.js': passingFile },
+    'report-only',
+    'integration-pages',
+  )
+  expect(output).toContain('@tanstack/compiler-test-utils integration:')
+  expect(output).not.toContain('@tanstack/compiler-test-utils unit:')
+}, 30_000)
+
 test('noncompiler coverage does not consume compiler acceptance budgets', async (context) => {
   const { exitCode, output } = await runTier(
     context,

@@ -5,7 +5,7 @@
  * prints with `console.warn`. A user callback marker, not a compiler
  * diagnostic: it checks the oracle's capture, not the router plugin. The
  * compiler's own warnings are decided by the corpus tests that read the
- * build's merged diagnostics (e.g. ../code-splitter-plugin-pipeline.test.ts).
+ * build's merged diagnostics (e.g. ../pages/code-splitter-plugin-pipeline.test.ts).
  * Moved from ../build-harness.test.ts.
  */
 import { describe, expect, test } from 'vitest'

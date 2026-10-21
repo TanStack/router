@@ -11,7 +11,7 @@
 
 import { parseSync } from 'vite'
 import { describe, expect, test } from 'vitest'
-import { head, holdsMarker, loadRoute } from './route-app'
+import { head, holdsMarker, loadRoute } from '../../route-app'
 
 /**
  * The modules of the app the served module `code` depends on (static
