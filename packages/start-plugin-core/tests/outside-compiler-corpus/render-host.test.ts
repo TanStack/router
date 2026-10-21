@@ -8,7 +8,7 @@
  * Source: W4-hydrate-rsc H10.
  */
 import { expect, test } from 'vitest'
-import { compileHydrate, loadChunk, renderClient } from '../render'
+import { compileHydrate, loadChunk, renderClient } from './legacy/render'
 
 const source = `import { Hydrate } from '@tanstack/react-start'
 import { load } from '@tanstack/react-start/hydration'

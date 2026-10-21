@@ -1,67 +1,51 @@
 /**
- * The contract between the Start compiler's output and Start's runtime.
- * Compiled modules run on the real `@tanstack/start-client-core` and
- * `createServerRpc` (regression-helpers.ts, start-runtime.ts); these tests
- * pin the few stand-ins the harness keeps where the runtime cannot run
- * in-process (the client RPC's fetch, the server-fn resolver behind the SSR
- * RPC, the request context), so they cannot drift from the runtime, and run
- * one module through all of it.
+ * One module through the whole of Start's runtime, served by the public
+ * Start host (`./start-host`): a server fn with a function middleware and
+ * an isomorphic fn, called from the client in a real page (Start's client
+ * RPC sends its request to the dev server, whose server entry runs the
+ * middleware and the handler) and from server code in a real request; and
+ * a failing handler, whose error reaches both callers.
+ * The controls of the former in-process stand-ins (the client RPC without
+ * its fetch, the SSR RPC behind the server-fn report, the `{ error }` answer
+ * of a provider) moved to outside-compiler-corpus/
+ * start-compiler-runtime-contract.test.ts: the corpus no longer uses them.
  * Source: audit E1 missing coverage 1.
  */
-import { describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import {
   callFromClient,
-  callProvider,
-  callerRpcId,
-  compileAll,
-  createServerGraph,
-  evaluateModule,
-  serverFnResult,
+  callOnServer,
+  inPage,
+  serveCase,
+  useStartHost,
 } from './regression-helpers'
-import { createClientRpc, createSsrRpc } from './start-runtime'
 
-/** Own properties (symbols included) of a value, without functions. */
-function metadata(value: object) {
-  return Object.fromEntries(
-    Reflect.ownKeys(value)
-      .filter((key) => !['length', 'name', 'prototype'].includes(String(key)))
-      .map((key) => [key, (value as Record<PropertyKey, unknown>)[key]]),
-  )
+/**
+ * The host defaults of the B2 lead's branch (until it is merged): no import
+ * protection (its dev mock would hide a leaked server import from the
+ * client's loads) and an app tsconfig with `verbatimModuleSyntax` (without
+ * it, Vite's TypeScript transform drops unreferenced imports after the
+ * compiler and hides leaks).
+ */
+const hostTsconfig = {
+  compilerOptions: {
+    target: 'ES2022',
+    module: 'ESNext',
+    moduleResolution: 'Bundler',
+    jsx: 'react-jsx',
+    strict: true,
+    verbatimModuleSyntax: true,
+  },
+}
+const hostDefaults = {
+  start: { importProtection: { enabled: false } },
+  files: { 'tsconfig.json': JSON.stringify(hostTsconfig) },
 }
 
-describe('the stand-ins carry what Start creates', () => {
-  test('a client RPC is Start’s own, without the fetch', async () => {
-    const { rpc } =
-      await evaluateModule(`import { createClientRpc } from '@tanstack/react-start/client-rpc'
-export const rpc = createClientRpc('id-1')`)
-    const real = createClientRpc('id-1')
-    expect(rpc).toBeTypeOf('function')
-    expect(metadata(rpc)).toEqual(metadata(real))
-    expect(metadata(real)).toMatchObject({ serverFnMeta: { id: 'id-1' } })
-    expect(() => rpc()).toThrow('no server to fetch')
-  })
-
-  test('an SSR RPC is Start’s own, calling the handler the report names', async () => {
-    const provider = `import { createServerRpc } from '@tanstack/react-start/server-rpc'
-export const handler = createServerRpc({ id: 'id-1', name: 'fn' }, (opts) => ({ result: opts.data }))`
-    const { rpc } = await createServerGraph({
-      ssr: `import { createSsrRpc } from '@tanstack/react-start/ssr-rpc'
-export const rpc = createSsrRpc('id-1')`,
-      provider,
-      serverFns: {
-        'id-1': {
-          functionId: 'id-1',
-          functionName: 'handler',
-          filename: '/test/src/module.tsx',
-          extractedFilename: '/test/src/module.tsx?tss-serverfn-split',
-        },
-      },
-    }).ssr()
-    expect(metadata(rpc)).toEqual(metadata(createSsrRpc('id-1')))
-    // Start's createSsrRpc forwards its arguments to the resolved handler.
-    expect(await rpc({ data: 'data' })).toEqual({ result: 'data' })
-  })
-})
+const host = useStartHost(hostDefaults)
+beforeAll(async () => {
+  await (await host()).page()
+}, 60_000)
 
 describe('a module with a server fn, a function middleware and an isomorphic fn', () => {
   const code = `import { createIsomorphicFn, createMiddleware, createServerFn } from '@tanstack/react-start'
@@ -81,13 +65,16 @@ export const getUser = createServerFn({ method: 'POST' })
     where: where(),
   }))
 export const env = () => where()`
-  const stubs = {
-    './db.server': { db: { user: (from: string) => `user-from-${from}` } },
+  const files = {
+    'db.server.ts': `export const db = { user: (from: string) => \`user-from-\${from}\` }\n`,
   }
 
-  test('runs on Start’s runtime from the client, the SSR caller and an HTTP call by id', async () => {
-    const compiled = await compileAll(code)
-    expect(compiled.client).not.toContain('db.user')
+  test('runs on Start’s runtime from the client and from server code', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': code,
+      ...files,
+    })
+    expect(served.code.client).not.toContain('db.user')
     const expected = (from: string) => ({
       n: 2,
       user: `user-from-${from}`,
@@ -96,45 +83,37 @@ export const env = () => where()`
       where: 'server',
     })
     // The client: its middleware's `.client()` runs in the browser.
-    const client = await evaluateModule(compiled.client, stubs)
-    expect(client.env()).toBe('client')
-    expect(callerRpcId(client.getUser)).toEqual(expect.any(String))
     expect(
-      await callFromClient(
-        compiled,
-        (module) => module.getUser,
-        { n: 1 },
-        stubs,
+      await inPage(
+        served,
+        `return { env: module.env(), url: typeof module.getUser.url }`,
       ),
-    ).toEqual(expected('client'))
-    // The SSR caller: `.client()` runs on the server, then the handler.
-    const ssr = await createServerGraph(compiled, stubs).ssr()
-    expect(ssr.env()).toBe('server')
-    expect(await ssr.getUser({ data: { n: 1 } })).toEqual(expected('server'))
-    // An HTTP call by id (Start's server-fn handler calls the provider's
-    // export with the data, context and method of the request; this one
-    // sends no client context).
-    expect(await callProvider(compiled, 'getUser', stubs, { n: 1 })).toEqual(
-      expected('undefined'),
+    ).toEqual({ env: 'client', url: 'string' })
+    expect(await callFromClient(served, 'module.getUser', { n: 1 })).toEqual(
+      expected('client'),
+    )
+    // Server code: `.client()` runs on the server, then the handler.
+    expect((await served.ssr()).env()).toBe('server')
+    expect(await callOnServer(served, 'module.getUser', { n: 1 })).toEqual(
+      expected('server'),
     )
   })
 
-  test('a failing handler answers { error }, which Start’s handler rethrows', async () => {
-    const compiled =
-      await compileAll(`import { createServerFn } from '@tanstack/react-start'
+  // Source: the former test "a failing handler answers { error }, which
+  // Start’s handler rethrows" (S4 B-mixed: the error reaching the callers is
+  // the concept; the `{ error }` answer of a provider export is internal).
+  test('a failing handler’s error reaches the client and the server caller', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `import { createServerFn } from '@tanstack/react-start'
 export const fail = createServerFn().handler(async () => {
   throw new Error('handler failed')
-})`)
-    const graph = createServerGraph(compiled)
-    // The handler the id the client calls names (the provider's other
-    // exports, whatever they are, are not it).
-    const [reported] = Object.values(compiled.serverFns)
-    const handler = (await graph.import(reported!.extractedFilename))[
-      reported!.functionName
-    ]
-    const response = await handler({ data: undefined })
-    expect(response).toEqual({ error: new Error('handler failed') })
-    expect(() => serverFnResult(response)).toThrow('handler failed')
-    await expect((await graph.ssr()).fail()).rejects.toThrow('handler failed')
+})`,
+    })
+    await expect(callFromClient(served, 'module.fail')).rejects.toThrow(
+      'handler failed',
+    )
+    await expect(callOnServer(served, 'module.fail')).rejects.toThrow(
+      'handler failed',
+    )
   })
 })

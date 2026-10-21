@@ -1,13 +1,14 @@
 /**
  * What the Start compiler reports, checked through the shared diagnostic
  * oracle (`@tanstack/compiler-test-utils/diagnostics`; SPEC G5, §5.7): the
- * API a compile error names and the line it points at in the user's module,
- * never its prose or code-frame layout; and the checks that a misplaced
- * server fn is supported, or rejected that way, and kept off the client.
- * Re-exported by `regression-helpers.ts`.
+ * API a compile error names, the line (and column) it points at in the
+ * user's module and that it explains its cause in its own words
+ * (`explains`: content, not a word list), never its prose or code-frame
+ * layout; and the check that a misplaced server fn is supported, or
+ * rejected that way, and kept off the client, through the public Start host
+ * (`./start-host`). Re-exported by `regression-helpers.ts`.
  */
 import { expect } from 'vitest'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import {
   diagnosticPosition,
   diagnosticProse,
@@ -18,17 +19,14 @@ import {
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
+  CompileFailure,
   Thrown,
-  callReportedServerFns,
-  callerRpcId,
-  compileFor,
-  evaluateModule,
-  moduleLoads,
-  outputs,
+  callFromClient,
+  callOnServer,
+  compileError,
 } from './regression-helpers'
 import type { Environment } from '@tanstack/compiler-test-utils/diagnostics'
-import type { ServerFn } from '../src/start-compiler/types'
-import type { Output } from './regression-helpers'
+import type { StartHost } from './start-host'
 
 /**
  * The text of a diagnostic without what quotes `source` (code-frame lines,
@@ -42,104 +40,28 @@ export function withoutQuotedSource(text: string, source: string) {
 }
 
 /**
- * Words a diagnostic may explain an unsupported server fn placement with
- * (SPEC J4.6, G5): where it must be (assigned to a variable, at the top
- * level or module scope) or that it cannot be where it is. Any one of
- * them, in the diagnostic's own words: an internal crash naming only the
- * API does not explain the placement (V1R start S07).
- */
-export const placementCauses: Array<string | RegExp> = [
-  'assign',
-  'top-level',
-  'top level',
-  'module scope',
-  'module level',
-  'module-level',
-  'nested',
-  'inside',
-  'within',
-  'placement',
-  'declar',
-  'unsupported',
-  'not supported',
-  'cannot be used',
-  'not allowed',
-]
-
-/**
- * Words a diagnostic may explain the rejection of a call shape the compiler
- * does not support with (SPEC J4.5, G5): a builder method called through a
- * computed member (`builder['handler'](...)`), a factory result that is
- * member-called (`createServerOnlyFn(...).bind(null)`), a builder imported
- * under a string export name. That the form is computed, unsupported or not
- * recognised, or what it must be instead; any one of them, in the
- * diagnostic's own words.
- */
-export const callShapeCauses: Array<string | RegExp> = [
-  'computed',
-  'static',
-  'unsupported',
-  'not supported',
-  'unrecogni',
-  'not recogni',
-  'cannot',
-  "can't",
-  'must',
-  'expect',
-  'only',
-  'not allowed',
-  'invalid',
-]
-
-/**
- * Words a diagnostic may explain that a nested server fn's handler reads a
- * local of its enclosing function with (SPEC J4.6, D13): a capture, a
- * closure, a local, an outer or enclosing scope, a free variable. Any one
- * of them, in the diagnostic's own words (V1R start S07).
- */
-export const captureCauses: Array<string | RegExp> = [
-  'captur',
-  'closure',
-  'close over',
-  'closes over',
-  'local',
-  'outer',
-  'enclosing',
-  'scope',
-  'free variable',
-  'outside',
-]
-
-/**
  * What a diagnostic about a server fn without its handler function
  * (`.handler()`) names and explains (SPEC G5, §5.7; V1R start N04): the
- * API the user called, `createServerFn` or its `handler` method, and that
- * a handler function is missing or required, in any words. An engine crash
- * reading a property of `undefined` explains nothing.
+ * API the user called, `createServerFn` or its `handler` method, and an
+ * explanation in its own words (`explains`): an engine crash reading a
+ * property of `undefined` explains nothing.
  */
 export const missingHandler = {
   names: [['createServerFn', 'handler']],
-  causes: [
-    'missing',
-    'requir',
-    'expect',
-    'must',
-    'without',
-    'no handler',
-    'needs',
-    'provide',
-  ],
+  explains: true as const,
 }
 
 /**
  * Asserts that `error` is a compile error about the user's module `source`
  * (SPEC G5): it names every API or binding of `names` (a list: any one of
- * its alternatives) in its own words (`withoutQuotedSource`), explains one
- * of `causes` when given, and, unless `at` is `undefined`, points at the
- * line of `at` (the first occurrence of that text in `source`, or a
- * 1-based line). Prose, code-frame layout and context length are free
- * (§5.7). The file name is the bundler's to add (the compiler is called
- * here without one).
+ * its alternatives) in its own words (`withoutQuotedSource`), explains its
+ * cause in its own words when `explains` is given (`true`, or the input
+ * content it must mention), and, unless `at` is `undefined`, points at the
+ * line of `at` (the first occurrence of that text in `source`, or a 1-based
+ * line), and its column with `column`: all of it in one diagnostic, the
+ * error the environment threw or one the app reported meanwhile on any
+ * channel (a `CompileFailure` of `compileError` carries both). Prose,
+ * code-frame layout, context length and the channel are free (§5.7).
  */
 export function expectCompileError(
   error: unknown,
@@ -149,25 +71,29 @@ export function expectCompileError(
     names: Array<string | Array<string>>
     /** Also require the column of `at` (a string). */
     column?: boolean
-    /** The semantic cause the error must explain (any one of them). */
-    causes?: Array<string | RegExp>
+    /** The error must explain its cause in its own words. */
+    explains?: true | { mentions?: Array<string | Array<string>> }
   },
 ) {
   expect(error, 'a compile error').toBeInstanceOf(Error)
-  if (expected.at !== undefined) {
-    const { line, column } =
-      typeof expected.at === 'number'
-        ? { line: expected.at, column: undefined }
-        : diagnosticPosition(expected.source, expected.at)
-    expectDiagnostic(error, {
-      position: expected.column ? { line, column } : { line },
-      source: expected.source,
-    })
-  }
-  const [diagnostic] = diagnosticsOf(error)
-  expectDiagnostic(diagnostic!, {
+  // The error the environment threw and what the app reported meanwhile
+  // on any channel (`compileError`): one of them must say it all.
+  const candidates =
+    error instanceof CompileFailure
+      ? [...diagnosticsOf(error.error), ...error.reported]
+      : diagnosticsOf(error)
+  const position =
+    expected.at === undefined
+      ? undefined
+      : typeof expected.at === 'number'
+        ? { line: expected.at }
+        : expected.column
+          ? diagnosticPosition(expected.source, expected.at)
+          : { line: diagnosticPosition(expected.source, expected.at).line }
+  expectDiagnostic(candidates, {
+    ...(position && { position }),
     names: expected.names,
-    causes: expected.causes,
+    explains: expected.explains,
     prose: true,
     source: expected.source,
   })
@@ -215,123 +141,91 @@ export function expectSourceError(
 /** Server-only module the server fns of the misplacement tests read. */
 export const serverOnlyModule = './db.server'
 
+/** The real server-only module of the misplacement fixtures. */
+const serverOnlyFile = `export const db = { inner: () => 'inner', top: () => 'top' }\n`
+
 /** The handler body the misplacement fixtures give their server fn. */
 const misplacedHandlerBody = 'db.inner()'
-
-/** What compiling a module for one output gave: its code, or an error. */
-export type OutputResult =
-  | { code: string | null; serverFns: Record<string, ServerFn> }
-  | { error: unknown }
-
-/**
- * A misplaced `createServerFn` (one not assigned to a top-level variable;
- * its handler reads `db.inner()` of `serverOnlyModule`) is supported or
- * rejected clearly, never shipped to the client (SPEC J4.6, J4.12). Each
- * output, on its own, either rejects the code with a compile error naming
- * `createServerFn`, explaining the placement (`placementCauses`) and
- * pointing at the misplaced call (`expectCompileError`; an internal crash
- * without that position or explanation does not count), or is a valid
- * module: the client neither loads the server-only
- * module nor contains the handler body, the SSR caller may keep the
- * handler in place or call it through the provider, and the provider runs
- * every server fn the callers that compiled report, the misplaced one
- * included; with `read` (where an evaluated module holds the server fn),
- * the client's server fn calls the server by an id whose reported handler
- * runs the misplaced handler. One output rejecting the code does not
- * excuse another.
- *
- * `rejection: 'named'` is the loosened form of the regressions paired with
- * a goal pin: a rejection only has to name `createServerFn` and explain
- * the placement, at no particular position (main's rejections of these
- * placements carry no position; pinned in
- * known-bugs-start-compiler.test.ts).
- */
-export async function expectOutputsFreeOfHandler(
-  code: string,
-  results: Record<Output, OutputResult>,
-  options: MisplacementOptions = {},
-) {
-  const compiled: Partial<Record<Output, string>> = {}
-  let serverFns: Record<string, ServerFn> = {}
-  for (const output of outputs) {
-    const result = results[output]
-    if ('error' in result) {
-      expectCompileError(result.error, {
-        source: code,
-        at: options.rejection === 'named' ? undefined : misplacedHandlerBody,
-        names: ['createServerFn'],
-        causes: placementCauses,
-      })
-      continue
-    }
-    compiled[output] = result.code ?? code
-    if (output !== 'provider') {
-      serverFns = { ...serverFns, ...result.serverFns }
-    }
-  }
-  if (compiled.client !== undefined) {
-    expectNotLoaded(await moduleLoads(compiled.client), [serverOnlyModule])
-    expect(compiled.client, 'client').not.toContain(misplacedHandlerBody)
-  }
-  const errors: Partial<Record<Output, Array<string>>> = {}
-  for (const [output, module] of Object.entries(compiled)) {
-    errors[output as Output] = await getModuleErrors(module)
-  }
-  expect(errors).toEqual(
-    Object.fromEntries(Object.keys(compiled).map((output) => [output, []])),
-  )
-  const stubs = {
-    [serverOnlyModule]: { db: { inner: () => 'inner', top: () => 'top' } },
-  }
-  if (
-    compiled.provider !== undefined &&
-    (compiled.client !== undefined || compiled.ssr !== undefined)
-  ) {
-    const called = await callReportedServerFns(
-      { ssr: compiled.ssr, provider: compiled.provider },
-      serverFns,
-      stubs,
-    )
-    expect(called).toContain('inner')
-  }
-  if (options.read && compiled.client !== undefined) {
-    const id = callerRpcId(
-      options.read(await evaluateModule(compiled.client, stubs)),
-    )
-    expect(id, 'the client server fn calls an RPC').toEqual(expect.any(String))
-    expect(serverFns, 'the RPC id is reported').toHaveProperty(id!)
-    expect(compiled.provider, 'a provider serves the RPC').toBeDefined()
-    const [result] = await callReportedServerFns(
-      { ssr: compiled.ssr, provider: compiled.provider! },
-      { [id!]: serverFns[id!]! },
-      stubs,
-    )
-    expect(result, 'the handler the RPC reaches').toBe('inner')
-  }
-}
 
 export interface MisplacementOptions {
   /** What a rejection must carry (default: the API and the position). */
   rejection?: 'positioned' | 'named'
-  /** The misplaced server fn in an evaluated module. */
-  read?: (module: Record<string, any>) => unknown
+  /**
+   * The misplaced server fn: a JavaScript expression with the module as
+   * `module` (e.g. `module.make()`), read in the page and on the server.
+   */
+  read?: string
+  /** Other case files, by path relative to the case directory. */
+  files?: Record<string, string>
 }
 
 /**
- * Compiles every output of `code`, each on its own (an output may reject the
- * code), and checks `expectOutputsFreeOfHandler`.
+ * A misplaced `createServerFn` (one not assigned to a top-level variable;
+ * its handler reads `db.inner()` of `serverOnlyModule`, a real module of
+ * the case) is supported or rejected clearly, never shipped to the client
+ * (SPEC J4.6, J4.12). Each environment, on its own, either rejects the
+ * module with a compile error naming `createServerFn`, explaining its cause
+ * in its own words and pointing at the misplaced call (`expectCompileError`;
+ * an internal crash without that position or explanation does not count),
+ * or serves a working module: the client page imports it without loading
+ * the server-only module or receiving the handler body, and the SSR
+ * environment evaluates it; with `read` (where the module holds the server
+ * fn), calling it from the client reaches the handler through the server
+ * (`callFromClient`) and calling it from server code runs it
+ * (`callOnServer`), both giving what the misplaced handler returns. One
+ * environment rejecting the code does not excuse another.
+ *
+ * `rejection: 'named'` is the loosened form of the regressions paired with
+ * a goal pin: a rejection only has to name `createServerFn` and explain its
+ * cause, at no particular position.
  */
 export async function expectNoClientHandler(
+  host: StartHost,
   code: string,
   options: MisplacementOptions = {},
 ) {
-  const results = {} as Record<Output, OutputResult>
-  for (const output of outputs) {
-    results[output] = await compileFor(output, code).catch(
-      (error: unknown) => ({ error }),
-    )
+  const startCase = await host.case({
+    'db.server.ts': serverOnlyFile,
+    ...options.files,
+    'module.tsx': code,
+  })
+  const served: Partial<Record<'client' | 'ssr', string>> = {}
+  for (const environment of ['client', 'ssr'] as const) {
+    const failure = await compileError(startCase, environment)
+    if (failure) {
+      expectCompileError(failure, {
+        source: code,
+        at: options.rejection === 'named' ? undefined : misplacedHandlerBody,
+        names: ['createServerFn'],
+        explains: true,
+      })
+    } else {
+      served[environment] = await startCase.served('module.tsx', environment)
+    }
   }
-  await expectOutputsFreeOfHandler(code, results, options)
+  if (served.client !== undefined) {
+    expectNotLoaded(await startCase.loads(), [serverOnlyModule])
+    expect(served.client, 'client').not.toContain(misplacedHandlerBody)
+    const run = await startCase.client('return true')
+    expect(run.errors, 'client page errors').toEqual([])
+  }
+  if (served.ssr !== undefined) {
+    await startCase.ssr()
+  }
+  if (options.read !== undefined) {
+    if (served.client !== undefined) {
+      expect(
+        await callFromClient(startCase, options.read),
+        'the handler a client call reaches',
+      ).toBe('inner')
+    }
+    if (served.ssr !== undefined) {
+      expect(
+        await callOnServer(startCase, options.read),
+        'the handler a server call runs',
+      ).toBe('inner')
+    }
+  }
 }
 
 /**

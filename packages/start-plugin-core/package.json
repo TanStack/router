@@ -52,7 +52,9 @@
           "^build",
           {
             "projects": [
-              "@tanstack/react-start-client"
+              "@tanstack/react-start",
+              "@tanstack/solid-start",
+              "@tanstack/vue-start"
             ],
             "target": "build"
           }
@@ -75,9 +77,9 @@
           "^build",
           {
             "projects": [
-              "@tanstack/react-start-client",
               "@tanstack/react-start",
-              "@tanstack/solid-start"
+              "@tanstack/solid-start",
+              "@tanstack/vue-start"
             ],
             "target": "build"
           }
@@ -88,7 +90,9 @@
           "^build",
           {
             "projects": [
-              "@tanstack/react-start-client"
+              "@tanstack/react-start",
+              "@tanstack/solid-start",
+              "@tanstack/vue-start"
             ],
             "target": "build"
           }
