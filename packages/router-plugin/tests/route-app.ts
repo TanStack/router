@@ -175,8 +175,23 @@ export const probeFile = 'route-app-probe.ts'
  */
 export const entryFile = 'route-app-entry.ts'
 
-const entrySource = (filename: string) =>
-  `export * as route from './${filename.replace(/^\.\//, '')}'\n`
+/**
+ * The route's entry: the route module, and the test's files the same way
+ * (`app(file)`): a stub edited for an earlier route is imported with its
+ * timestamp by the route, so a page importing its plain URL would get
+ * another instance than the route's.
+ */
+function entrySource(filename: string, files: Array<string> = []) {
+  const thunks = files.map(
+    (file) =>
+      `  ${JSON.stringify(file)}: () => import(${JSON.stringify(`./${file}`)}),`,
+  )
+  return `export * as route from './${filename.replace(/^\.\//, '')}'
+export const files: Record<string, () => Promise<unknown>> = {
+${thunks.join('\n')}
+}
+`
+}
 
 /**
  * Tool modules the page loads that no compiler emitted for the route: Vite's
@@ -590,7 +605,11 @@ const compiled = () => probe.appRequests().filter((request) => request === route
 /** Every app-local module the page requested so far: compiled ones and the test's files. */
 const requested = () => probe.appRequests()
 /** An app file the test wrote, as the page imports it (the instance the route gets). */
-const app = (file) => import(${JSON.stringify('/')} + file.replace(/^\\.?\\//, ''))
+const app = async (file) => {
+  const name = file.replace(/^\\.?\\//, '')
+  const entry = await import(${JSON.stringify(`/${entryFile}`)})
+  return entry.files?.[name] ? entry.files[name]() : import('/' + name)
+}
 ${before}
 const exports = (await import(${JSON.stringify(`/${entryFile}`)})).route
 const Route = exports.Route
@@ -693,8 +712,21 @@ export async function loadRoute(
 ): Promise<RouteApp> {
   const filename = options.filename ?? 'route.tsx'
   const root = createsRootRoute(code)
-  const files = { ...options.files, [filename]: code }
-  const own = new Set(Object.keys(options.files ?? {}).map(appUrl))
+  const testFiles = Object.keys(options.files ?? {})
+  const files = {
+    ...options.files,
+    [filename]: code,
+    // The route's entry, with its own files (see `entrySource`)
+    [entryFile]: entrySource(
+      filename,
+      testFiles.filter(
+        (file) =>
+          !/(?:^|\/)node_modules\//.test(file) &&
+          /\.(?:[cm]?[jt]sx?|json|css)$/.test(file),
+      ),
+    ),
+  }
+  const own = new Set(testFiles.map(appUrl))
   own.add(appUrl(probeFile))
   own.add(appUrl(entryFile))
   if (!root) {

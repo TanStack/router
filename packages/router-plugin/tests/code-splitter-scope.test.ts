@@ -335,11 +335,7 @@ export const Route = createFileRoute('/')({
   options.loader(),
   await render('component'),
 ]`),
-    ).toEqual([
-      '<button>initial</button>',
-      'loaded',
-      '<button>loaded</button>',
-    ])
+    ).toEqual(['<button>initial</button>', 'loaded', '<button>loaded</button>'])
   }
 
   it('a computed key that is the only read of a binding the loader reassigns sees the reassignment', async () => {

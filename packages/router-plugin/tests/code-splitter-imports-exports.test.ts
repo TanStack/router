@@ -300,9 +300,7 @@ export const Route = createFileRoute('/')({ component: () => <p>classic</p> })
       { framework: classic },
     )
     expect(await route.isLazy('component')).toBe(true)
-    expect(await route.run(`return render('component')`)).toBe(
-      '<p>classic</p>',
-    )
+    expect(await route.run(`return render('component')`)).toBe('<p>classic</p>')
     await expectValidModules(route)
   })
 })
@@ -816,8 +814,7 @@ return [...result, requested().filter((request) => request.startsWith('/types'))
       declaration:
         'declare namespace Analytics { function track(event: string): void }',
       use: 'Analytics.track("x")',
-      global:
-        'globalThis.Analytics = { track: (event) => `tracked ${event}` }',
+      global: 'globalThis.Analytics = { track: (event) => `tracked ${event}` }',
       expected: 'tracked x',
     },
   ])(
@@ -1056,9 +1053,7 @@ export const Route = createFileRoute('/')({
     )
     await expectValidModules(route)
     expect(await route.requested()).not.toContain('/server-thing.ts')
-    expect(await route.run(`return render('component')`)).toBe(
-      '<p>server</p>',
-    )
+    expect(await route.run(`return render('component')`)).toBe('<p>server</p>')
   })
 
   it('keeps decorators before `export` for legacy decorator transforms', async () => {
@@ -1072,7 +1067,10 @@ export const Route = createFileRoute('/')({
       name: 'app:decorators-legacy',
       enforce: 'pre',
       transform(code, id) {
-        if (id.includes('/node_modules/') || /\.(?:css|json)(?:\?|$)/.test(id)) {
+        if (
+          id.includes('/node_modules/') ||
+          /\.(?:css|json)(?:\?|$)/.test(id)
+        ) {
           return null
         }
         parseWithBabel(code, {
