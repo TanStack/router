@@ -902,3 +902,112 @@ The final independent restoration audit (`independent-v26-restored-audit.json`)
 finds all 18 metric objects and all 38 JavaScript files plus 38 maps identical
 to the verified v21 AFTER artifacts. Per-file and initial/total recompression
 also matches. The primary, isolated and built sources all bind the same a4 SHA.
+
+## Typed records and outcome tags (2026-10-21)
+
+These isolated screens start from `7fe0c4154f`, **SPA 86,239 / Start 99,706**,
+source SHA256 `a4af4794048162245b039aa4a3fa6a4cb4734d31c6888b02bb779418629d15ed`.
+Every completed row passes formatting, the positive core unit suite (3,945
+cases in v27; 3,946 from v28 after adding pending-context coverage), package
+build, and focused native production timing before measurement.
+Timing screens use 800 ms windows; their roughly 5–7% margins do not establish
+tiny CPU improvements. They do not enable the Promise-resource counter.
+Full consumer, browser, all-scenario and paired mechanism validation follows
+separately; these are attribution screens, not final acceptance.
+
+| Candidate / run                                                              |   SPA gzip | Start gzip | Start initial / raw / Brotli delta |
+| ---------------------------------------------------------------------------- | ---------: | ---------: | ---------------------------------: |
+| Raw helpers before phases, `shared-raw-before-phase-v27`                     |     86,254 |     99,715 |                     +11 / −8 / −73 |
+| Argument and outcome group, `shared-args-outcomes-v27`                       |     86,238 |     99,721 |                    +13 / −8 / −170 |
+| Parent projection beside outcomes, `projection-next-to-outcomes-v27`         |     86,233 |     99,705 |                       0 / 0 / −144 |
+| Generation factory before contextualization, `generation-before-context-v27` |     86,236 |     99,704 |                      −2 / 0 / −150 |
+| Required step record, `required-step-data-v28`                               |     86,239 |     99,704 |                     −2 / −2 / −277 |
+| Required inherited context, `inherited-context-v28`                          |     86,239 |     99,708 |                      +2 / 0 / −172 |
+| Both helper moves, `outcomes-generation-v28`                                 |     86,251 |     99,715 |                    +10 / −8 / −156 |
+| Required record and inherited context, `required-step-and-inherited-v28`     |     86,239 |     99,707 |                      0 / −2 / −122 |
+| Numeric outcome tags, `numeric-normalization-v29`                            |     86,241 |     99,705 |                     −1 / −2 / −125 |
+| Default step parameter, `default-step-data-v29`                              |     86,239 |     99,705 |                     −3 / −3 / −187 |
+| Generation move and required record, `generation-required-step-v29`          |     86,236 |     99,701 |                      −4 / −2 / −83 |
+| Projection move and required record, `projection-required-step-v29`          |     86,233 |     99,703 |                     −3 / −2 / −146 |
+| Generation, record, tags, `generation-step-numeric-v31`                      | **86,237** | **99,699** |                 **−5 / −4 / −244** |
+| Projection, record, tags, `projection-step-numeric-v31`                      |     86,234 |     99,705 |                      0 / −4 / −125 |
+| Both moves and record, `both-layouts-step-v31`                               |     86,251 |     99,712 |                    +8 / −10 / −123 |
+
+The required record removes two `d &&` checks. Accepted matches supply an actual
+wire object; only the first uncommitted context can have no entry, so that call
+supplies `{}`. The internal type is `{ m?: unknown; b?: unknown; l?: unknown }`.
+Key presence still distinguishes transported `undefined` from an absent value;
+real records retain inherited-key behavior. There is at most one extra empty
+object per hydration. This does not make option/key relationships statically
+known: lifecycle options still need runtime dispatch.
+
+The predecessor context is also provably an object after a successful serial
+step, while the root retains its context fallback. A narrowed internal match
+type can remove both child fallbacks. It is safe but makes Start gzip larger,
+so it is excluded. The default-record parameter is safe but loses to the
+caller fallback. Do not retry these as unmeasured branch-removal wins.
+
+Numeric normalization accepts only `SUCCESS | ERROR` as its input mode and
+returns `[kind, value]` through one common return. Redirect and not-found
+classification still precede thrown-Promise handling; the raw outcome remains
+the original discriminated union. All six callers use literal tags. This is
+different from `ss-control-mode`: there is no third mode, overload or omitted
+success tuple. Individually it shifts 2 bytes to SPA; composed with the selected
+factory/record changes, both minimal scenarios shrink. The extra error-path
+benchmark is necessary because restoring a transported server error does not
+execute client error normalization.
+
+The declaration moves preserve complete function bodies. They group generation
+with argument construction, or parent projection with outcomes, before normal
+execution. `hydrate` remains the final declaration in its original module.
+They are distinct from the failed v18 grouping beside hydration. Applying both
+moves loses the compression benefit; savings are not additive. The projection
+alternative favors SPA, while the generation composition favors Start. Retain
+viable alternatives as separate local prototype commits; do not combine them
+blindly. The SPA alternative is saved on
+`codex/pr6631-hydration-projection-prototype`: `e1102636bb` moves projection,
+then `888ae4d7d8` requires the record. Its core/build/timing screens pass; full
+consumer/browser validation is not claimed for that branch. Final selection
+requires the all-scenario pass.
+
+The common tuple return also type-checks with the installed TypeScript 5.4.2
+compiler; see `outcome-tags-ts54-proof.json`.
+
+Five fresh reviewers found no candidate-specific correctness defect. Their
+shared performance finding was that the old selective-pending fixture has no
+context hook and misses the new empty-record path. Function/object pending
+context and normal client error/not-found workloads were added before matched
+validation. The public function/object pending-context regression is committed
+separately at `9cf83c2e53` and passes against the unoptimized source.
+
+Evidence: named runs above, exact source snapshots and command manifests
+`v27-commands.json`, `v28-commands.json`, `v29-commands.json`, `v31-commands.json`,
+and reconciled `typed-layout-attribution-v32.json` under
+`/tmp/pr6631-hydration-v11/`. Types/public-state audits are
+`required-step-data-v28-review.md`, `inherited-context-v28-fresh-audit.md`, and
+`numeric-normalization-v29-fresh-audit.md` there.
+
+### Handoff transaction guard remains required
+
+Gating `!router._tx` out of production is excluded. A public custom history's
+`location` getter can start a same-location load during handoff validation.
+The slot has already been consumed, but a new transaction now owns navigation.
+The guard rejects and aborts the old hydration controller. Without it, clone
+transfer proceeds and later preflight cleanup leaves that old public controller
+unaborted. Both runs end idle with the same matches and one child loader call;
+the observable difference is one abort versus zero. A type cannot make this
+reentrant state impossible without restricting public history behavior.
+
+The native probe reproduced both variants twice through process-local compiled
+code replacement, without modifying repository or emitted files. It uses only
+public APIs. No bundle-size result is assigned to this unsafe deletion. See
+`handoff-claim-history-reentrancy-v30.cjs`, its baseline/production-only JSON,
+and `handoff-claim-production-gate-v30-review.md` in the evidence directory.
+
+Additional source-audit exclusions: copying only the first uncommitted context
+loses completed suffix contexts after a later loader failure cuts the prefix.
+Removing `committed.length < shared` loses continuation after a chunk cut that
+does not set the pending boundary. A fresh-router entry does not prove an empty
+preflight after serialization adapters run, because their callbacks can navigate.
+These checks still distinguish supported reachable states. No size or runtime
+reproduction claim is assigned to these source-only exclusions.
