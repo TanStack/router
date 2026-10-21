@@ -87,7 +87,10 @@ export function runInPage<T = unknown>(input: {
   pageUrl: string
   moduleUrl?: string
   script?: string
-  /** Waits for the run at most this long (default 15 000 ms). */
+  /**
+   * Bounds the page's load, and then the import and the script together,
+   * each to this long (default 15 000 ms).
+   */
   timeout?: number
 }): Promise<PageRun<T>> {
   const run = queue.then(async () => {
@@ -106,18 +109,37 @@ export function runInPage<T = unknown>(input: {
     page.on('pageerror', onError)
     page.on('console', onConsole)
     const timeout = input.timeout ?? 15_000
+    let timer: ReturnType<typeof setTimeout> | undefined
     try {
       await page.goto(input.pageUrl, { timeout })
       // A string, run as the page's own code: a function would be
       // serialised from this module as the test runner transformed it
       // (its `import()` rewritten for Node)
-      const result = (await page.evaluate(
+      const evaluated = page.evaluate(
         `(async () => {\nconst module = ${
           input.moduleUrl === undefined
             ? 'undefined'
             : `await import(${JSON.stringify(input.moduleUrl)})`
         }\n${input.script ?? ''}\n})()`,
-      )) as T
+      )
+      // An import or a script that never settles must not hold the shared
+      // page (and every later run) forever: the run fails after `timeout`,
+      // and the next run's navigation ends the script.
+      evaluated.catch(() => {})
+      const result = (await Promise.race([
+        evaluated,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () =>
+              reject(
+                new Error(
+                  `the import and script did not settle within ${timeout} ms`,
+                ),
+              ),
+            timeout,
+          )
+        }),
+      ])) as T
       return { result, errors, console: messages }
     } catch (error) {
       throw new Error(
@@ -129,6 +151,7 @@ export function runInPage<T = unknown>(input: {
         { cause: error },
       )
     } finally {
+      clearTimeout(timer)
       page.off('pageerror', onError)
       page.off('console', onConsole)
     }
@@ -155,7 +178,12 @@ export async function openPage(
     /**
      * The document of `url`, instead of what its server answers (e.g. a page
      * of a dev server that serves no HTML, which loads the client code the
-     * dev server serves); the page's other requests reach the server.
+     * dev server serves); the page's other requests reach the server. Not
+     * for a check that involves HMR (final pass #16): the given document is
+     * none the dev server transformed (no HMR client or refresh preamble it
+     * injects), and a dev server's HMR client may not connect from it. Open
+     * a document the dev server serves instead (`index.html` of a `browser`
+     * dev server, the plugin host's page).
      */
     html?: string
   } = {},
