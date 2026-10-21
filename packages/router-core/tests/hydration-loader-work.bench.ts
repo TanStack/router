@@ -22,6 +22,7 @@ const {
   BaseRoute,
   createControlledPromise,
   RouterCore,
+  notFound,
   createNonReactiveMutableStore,
   createNonReactiveReadonlyStore,
 }: typeof import('../dist/esm/index.js') = require('../dist/cjs/index.cjs')
@@ -49,6 +50,11 @@ const workloads = [
   'adopt',
   'client-sync',
   'client-async',
+  'terminal-error-shallow',
+  'terminal-error-deep',
+  'terminal-notFound-shallow',
+  'terminal-notFound-deep',
+  'selective-pending',
 ] as const
 type Workload = (typeof workloads)[number]
 type Calls = {
@@ -75,7 +81,10 @@ const getStoreConfig: GetStoreConfig = (options) => {
 
 function isActive(workload: Workload, index: number) {
   return (
-    workload !== 'no-work' && (workload !== 'alternating' || index % 2 === 0)
+    workload !== 'no-work' &&
+    !workload.startsWith('terminal-') &&
+    workload !== 'selective-pending' &&
+    (workload !== 'alternating' || index % 2 === 0)
   )
 }
 
@@ -89,11 +98,36 @@ function createRouter(
   server: boolean,
   calls: Calls,
 ): AnyRouter {
+  const terminalIndex = workload.startsWith('terminal-')
+    ? workload.endsWith('-shallow')
+      ? 1
+      : depth - 1
+    : undefined
+  const presentation =
+    terminalIndex === undefined
+      ? {}
+      : {
+          errorComponent: () => null,
+          notFoundComponent: () => null,
+        }
+  const ssrAt = (index: number) =>
+    workload === 'selective-pending'
+      ? index === depth - 1
+        ? false
+        : index === 1
+          ? ('data-only' as const)
+          : true
+      : undefined
   const loaderAt = (index: number) => {
     const handler = (options: {
       parentMatchPromise?: Promise<{ loaderData?: unknown }>
     }) => {
       calls.loaders++
+      if (server && index === terminalIndex) {
+        throw workload.includes('notFound')
+          ? notFound()
+          : new Error('Terminal loader failed')
+      }
       if (workload === 'adopt' && calls.gate) {
         if (calls.loaders === depth) {
           calls.entered!.resolve()
@@ -128,13 +162,19 @@ function createRouter(
           : transform,
     }
   }
-  const rootRoute = new BaseRootRoute({ loader: loaderAt(0) })
+  const rootRoute = new BaseRootRoute({
+    ...presentation,
+    ssr: ssrAt(0),
+    loader: loaderAt(0),
+  })
   let parent: AnyRoute = rootRoute
   for (let index = 1; index < depth; index++) {
     const previous = parent
     const route = new BaseRoute({
       getParentRoute: () => previous,
       path: `p${index}`,
+      ...presentation,
+      ssr: ssrAt(index),
       loader: loaderAt(index),
     })
     previous.addChildren([route])
@@ -168,7 +208,10 @@ async function serialize(depth: number, workload: Workload) {
   try {
     await router.load()
     await router.serverSsr!.dehydrate()
-    assert.equal(calls.loaders, depth)
+    assert.equal(
+      calls.loaders,
+      workload === 'selective-pending' ? depth - 1 : depth,
+    )
     assert.equal(calls.hydrates, 0)
     const scripts = router.serverSsr!.takeInitialHydrationScriptTags()
     assert.ok(scripts?.before.length)
@@ -263,6 +306,36 @@ for (const depth of [4, 16]) {
                 : matches.filter((_, index) => isActive(workload, index))
                     .length,
             )
+            if (workload.startsWith('terminal-')) {
+              const terminalIndex = workload.endsWith('-shallow')
+                ? 1
+                : depth - 1
+              assert.equal(
+                matches[terminalIndex]!.status,
+                workload.includes('notFound') ? 'notFound' : 'error',
+              )
+              for (let index = 0; index < terminalIndex; index++) {
+                assert.equal(matches[index]!.status, 'success')
+                assert.equal(matches[index]!.loaderData, index)
+              }
+              assert.equal(
+                current.router.state.resolvedLocation?.pathname,
+                locationAtDepth(depth),
+              )
+              return
+            }
+            if (workload === 'selective-pending') {
+              // A rendered ancestor precedes a data-only prefix and an unsent
+              // client-only leaf, exercising mixed admission and pending exits.
+              assert.equal(matches[0]!.status, 'success')
+              assert.equal(matches[0]!.loaderData, 0)
+              assert.equal(matches[1]!.status, 'pending')
+              assert.equal(matches[1]!.ssr, 'data-only')
+              assert.equal(matches.at(-1)!.status, 'pending')
+              assert.equal(matches.at(-1)!.loaderData, undefined)
+              assert.equal(current.router.state.resolvedLocation, undefined)
+              return
+            }
             for (const [index, match] of matches.entries()) {
               assert.equal(match.status, 'success')
               assert.equal(
