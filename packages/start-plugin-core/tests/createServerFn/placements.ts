@@ -3,14 +3,19 @@
  * declarator, shared by the loosened placement tests
  * (declaration-sites.test.ts), their goal pins and the bug pins
  * (known-bugs-start-compiler.test.ts). Each handler reads the server-only
- * module (`serverOnlyModule`, `db.inner()`); `read` returns, from an
- * evaluated caller, the server fn the placement creates.
+ * module (`serverOnlyModule`, `db.inner()`); `read` is where the server fn
+ * the placement creates is, as a JavaScript expression with the module
+ * namespace as `module` (read in a page and on the server, e.g. by
+ * `expectNoClientHandler` and `callServerFnThroughCallers`).
  */
 export interface Placement {
   name: string
   code: string
-  /** The server fn in an evaluated module of the placement's code. */
-  read?: (module: Record<string, any>) => unknown
+  /**
+   * The server fn in the module of the placement's code: a JavaScript
+   * expression with the module namespace as `module`.
+   */
+  read?: string
   /** The server fn is created inside a function. */
   nested?: boolean
   /**
@@ -47,7 +52,7 @@ export const placements: Array<Placement> = [
   const inner = createServerFn().handler(async () => db.inner())
   return inner
 }`,
-    read: (module) => module.make(),
+    read: 'module.make()',
     nested: true,
     declarator: true,
   },
@@ -58,7 +63,7 @@ export function make() {
   const inner = createServerFn().handler(async () => db.inner())
   return inner
 }`,
-    read: (module) => module.make(),
+    read: 'module.make()',
     nested: true,
     declarator: true,
   },
@@ -71,7 +76,7 @@ export function make() {
       return inner
   }
 }`,
-    read: (module) => module.pick('a'),
+    read: "module.pick('a')",
     nested: true,
     declarator: true,
   },
@@ -80,7 +85,7 @@ export function make() {
     code: `export function make() {
   return createServerFn().handler(async () => db.inner())
 }`,
-    read: (module) => module.make(),
+    read: 'module.make()',
     nested: true,
   },
   {
@@ -92,29 +97,29 @@ export function make() {
   const inner = createServerFn().handler(async () => db.inner())
   registry.push(inner)
 }`,
-    read: (module) => module.registry[0],
+    read: 'module.registry[0]',
     declarator: true,
   },
   {
     name: 'an object property',
     code: `export const api = { read: createServerFn().handler(async () => db.inner()) }`,
-    read: (module) => module.api.read,
+    read: 'module.api.read',
   },
   {
     name: 'a class field',
     code: `export class Api { read = createServerFn().handler(async () => db.inner()) }`,
-    read: (module) => new module.Api().read,
+    read: 'new module.Api().read',
   },
   {
     name: 'an anonymous default export',
     code: `export default createServerFn().handler(async () => db.inner())`,
-    read: (module) => module.default,
+    read: 'module.default',
   },
   {
     name: 'an assignment',
     code: `export let fn: unknown
 fn = createServerFn().handler(async () => db.inner())`,
-    read: (module) => module.fn,
+    read: 'module.fn',
   },
   {
     // Source: SolidStart compile.spec.ts "keeps client and server ids
@@ -125,7 +130,7 @@ fn = createServerFn().handler(async () => db.inner())`,
   const inner = createServerFn().handler(async () => db.inner())
   return await inner()
 })`,
-    read: (module) => module.outer,
+    read: 'module.outer',
     nested: true,
     declarator: true,
   },
@@ -137,7 +142,7 @@ function register(fn: unknown) {
   registered.push(fn)
 }
 register(createServerFn().handler(async () => db.inner()))`,
-    read: (module) => module.registered[0],
+    read: 'module.registered[0]',
   },
   {
     // Source: Next.js server-actions fixtures server-graph/18, /19; #8504
@@ -147,27 +152,27 @@ register(createServerFn().handler(async () => db.inner()))`,
   return <form action={createServerFn().handler(async () => db.inner()) as any} />
 }`,
     // The element the page renders (React's), its `action` prop.
-    read: (module) => module.Page().props.action,
+    read: 'module.Page().props.action',
   },
   {
     // Source: #8504 declaration-sites.test.ts
     name: 'a conditional initializer',
     code: `export const fn = Math.random() < 2 ? createServerFn().handler(async () => db.inner()) : null`,
-    read: (module) => module.fn,
+    read: 'module.fn',
   },
   {
     // Source: Next.js server-actions fixtures server-graph/56; #8504
     // declaration-sites.test.ts
     name: 'an object destructuring declarator',
     code: `export const { fn } = { fn: createServerFn().handler(async () => db.inner()) }`,
-    read: (module) => module.fn,
+    read: 'module.fn',
   },
   {
     // Source: Next.js server-actions fixtures server-graph/20; #8504
     // declaration-sites.test.ts
     name: 'an array destructuring declarator',
     code: `export const [fn] = [createServerFn().handler(async () => db.inner())]`,
-    read: (module) => module.fn,
+    read: 'module.fn',
   },
 ]
 
