@@ -40,6 +40,7 @@ import {
   settleAsync,
   useStartHost,
 } from './regression-helpers'
+import { bindingNames } from './binding-names'
 import { runOnServerModule, shapeOf } from './page-values'
 import {
   capturingPlacement,
@@ -977,6 +978,91 @@ export const fn = createServerFn().handler(async () => 'from the server')`,
     })
     expect(results).toEqual(['from the server'])
   })
+
+  /**
+   * The names the compiler introduces into what it serves for a module with
+   * a server fn: bindings of the served client and SSR code that neither the
+   * source nor a control module (the same imports, nothing to compile, served
+   * by the same pipeline) has; digits are ignored when comparing with the
+   * control, so the dev pipeline's own numbered names never count. Read from
+   * the served code, not assumed (N14): the probe follows any compiler's
+   * naming.
+   */
+  async function introducedNames() {
+    const started = await host()
+    const source = `${head}export const fn = createServerFn().handler(async () => 'from the server')`
+    const control = `${head}export const fn = createServerFn\nexport const value = 'from the server'`
+    const probe = await serveCase(started, { 'module.tsx': source })
+    const plain = await serveCase(started, { 'module.tsx': control })
+    const shape = (name: string) => name.replace(/\d+/g, '')
+    // Vite's SSR transform turns `import { x } from 'm'` into reads of
+    // `__vite_ssr_import_<n>__.x`: those `x` are the module's imported names
+    const ssrNames = (code: string) => [
+      ...bindingNames(code),
+      ...[...code.matchAll(/__vite_ssr_import_\d+__\.([A-Za-z_$][\w$]*)/g)].map(
+        (match) => match[1]!,
+      ),
+    ]
+    const known = new Set(
+      [
+        ...bindingNames(source),
+        ...bindingNames(plain.code.client),
+        ...ssrNames(plain.code.ssr),
+      ].map(shape),
+    )
+    return [
+      ...new Set([
+        ...bindingNames(probe.code.client),
+        ...ssrNames(probe.code.ssr),
+      ]),
+    ].filter((name) => !known.has(shape(name)))
+  }
+
+  // Bug: the same as the two pins above, for whatever names the compiler
+  // introduces (adaptive: they are read from the served code, so a compiler
+  // that only renames its generated bindings still collides here, while one
+  // that keeps them apart from user bindings passes).
+  // Impact: a user binding or a server fn named like generated code breaks
+  // the module or its server calls.
+  // Source: B2 (R3 flipped the fixed-name pins above: N14, SYNTHESIS
+  // "structure-sensitive pins").
+  test.fails(
+    'no name the compiler introduces collides with a user binding or a server fn of that name',
+    async () => {
+      const names = await introducedNames()
+      expect(names.length, 'names the compiler introduced').toBeGreaterThan(0)
+      const failures: Array<string> = []
+      for (const name of names) {
+        for (const [kind, code] of [
+          [
+            'a user binding',
+            `${head}const ${name} = (value: unknown) => value
+export const used = ${name}('user')
+export const fn = createServerFn().handler(async () => 'from the server')`,
+          ],
+          [
+            'a server fn',
+            `${head}export const ${name} = createServerFn().handler(async () => 'from the server')`,
+          ],
+        ] as const) {
+          try {
+            const { results } = await callServerFns({ 'module.tsx': code })
+            if (
+              JSON.stringify(results) !== JSON.stringify(['from the server'])
+            ) {
+              failures.push(`${kind} named ${name}: ${JSON.stringify(results)}`)
+            }
+          } catch (error) {
+            failures.push(
+              `${kind} named ${name}: ${String((error as Error).message).split('\n')[0]}`,
+            )
+          }
+        }
+      }
+      expect(failures).toEqual([])
+    },
+    30_000,
+  )
 
   // Bug: when the handler passed to `.handler()` is a `createServerOnlyFn()`
   // call, the inner call is compiled first and the caller is never rewritten
