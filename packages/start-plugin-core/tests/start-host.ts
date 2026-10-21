@@ -89,6 +89,12 @@ export interface StartHostOptions {
    * `false`: no dev server (a host for `build()` only). Default `true`.
    */
   serve?: boolean
+  /**
+   * Other built workspace packages linked into the app's `node_modules`, as
+   * an installed app has them (e.g. `@tanstack/start-client-core`, which a
+   * third-party library of the app imports).
+   */
+  links?: Array<string>
 }
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
@@ -183,6 +189,13 @@ const pageRoutePath = '/harness-page'
 
 /** The case modules a production build includes (`import.meta.glob`). */
 const caseGlob = `../cases/*/*.{ts,tsx,js,jsx}`
+/**
+ * The case modules each environment's glob takes: not the ones import
+ * protection denies there (`*.server.*` on the client, `*.client.*` on the
+ * server), which only the cases' own modules import.
+ */
+const clientCaseGlob = `['${caseGlob}', '!../cases/*/*.server.*']`
+const serverCaseGlob = `['${caseGlob}', '!../cases/*/*.client.*']`
 
 /**
  * The app files of a host: the router, its root route and the probe server
@@ -199,7 +212,7 @@ function appFiles(
 ): Record<string, string> {
   const router = routerPackages[framework]
   const probeRoute = `import { createFileRoute } from '${router}'
-${serve ? '' : `const cases = import.meta.glob('${caseGlob}')\n`}export const Route = createFileRoute('${probeRoutePath}')({
+${serve ? '' : `const cases = import.meta.glob(${serverCaseGlob})\n`}export const Route = createFileRoute('${probeRoutePath}')({
   server: {
     handlers: {
       GET: async ({ request }) => {
@@ -252,7 +265,7 @@ export const Route = createRootRoute({
 `
     files['src/routes/harness-page.tsx'] = `import { useEffect } from 'react'
 import { createFileRoute } from '${router}'
-const cases = import.meta.glob('${caseGlob}')
+const cases = import.meta.glob(${clientCaseGlob})
 export const Route = createFileRoute('${pageRoutePath}')({
   component: function HarnessPage() {
     useEffect(() => {
@@ -442,6 +455,15 @@ function packageOf(file: string): string | undefined {
   return undefined
 }
 
+/** Package of a bare specifier id (an externalized server dependency). */
+function bareSpecifierPackage(id: string): string | undefined {
+  if (/^[@a-z0-9][\w.-]*(?:\/[\w.-]+)*$/i.test(id) && !id.startsWith('.')) {
+    const parts = id.split('/')
+    return id.startsWith('@') ? `${parts[0]}/${parts[1]}` : parts[0]
+  }
+  return undefined
+}
+
 /**
  * Starts a Start app on a dev server (see the module comment) and its page.
  */
@@ -477,6 +499,7 @@ export async function createStartHost(
     symlinks: workspacePackageLinks([
       startPackages[framework],
       ...(framework === 'react' ? [] : [routerPackages[framework]]),
+      ...(options.links ?? []),
     ]),
     files: { ...appFiles(framework, serve), ...options.files },
   })
@@ -579,7 +602,12 @@ export async function createStartHost(
         }
       } catch (error) {
         lastError = error
-        if (opened.loads() === loads || previewState) {
+        // A navigation destroys the run's context before the new document
+        // fires its load event
+        const navigated =
+          opened.loads() !== loads ||
+          /Execution context was destroyed/.test((error as Error).message)
+        if (!navigated || previewState) {
           const errors = opened.errors.slice(firstError)
           throw new Error(
             [
@@ -664,7 +692,16 @@ export async function createStartHost(
     }
     /** Case files and packages a module graph reaches from `file`. */
     const graphLoads = (environment: 'client' | 'ssr', file: string) => {
-      const graph = host.dev.vite.environments[environment]!.moduleGraph
+      const devEnvironment = host.dev.vite.environments[environment]
+      const graph = devEnvironment.moduleGraph
+      /** Packages by the file Vite's dependency optimizer bundled them to. */
+      const optimized = new Map<string, string>()
+      const metadata = devEnvironment.depsOptimizer?.metadata
+      for (const deps of [metadata?.optimized, metadata?.discovered]) {
+        for (const [name, info] of Object.entries(deps ?? {})) {
+          optimized.set(path.resolve(info.file), name)
+        }
+      }
       const start = graph.getModulesByFile(caseFile(file))
       const seen = new Set<unknown>()
       const names = new Set<string>()
@@ -685,7 +722,10 @@ export async function createStartHost(
               names.add(name)
             }
           }
-          const pkg = packageOf(id)
+          const optimizedName = imported.file
+            ? optimized.get(path.resolve(imported.file))
+            : undefined
+          const pkg = optimizedName ?? packageOf(id) ?? bareSpecifierPackage(id)
           if (pkg) {
             names.add(pkg)
           } else if (id.startsWith('\0') || !appFile) {
