@@ -45,6 +45,7 @@ export type {
   StartHost,
   StartHostBuild,
   StartHostOptions,
+  StartPreview,
   StartPluginOptions,
 } from './start-host'
 export {

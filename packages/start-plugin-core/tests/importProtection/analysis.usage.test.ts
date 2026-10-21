@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'vitest'
-import { compileFor, importSources } from '../regression-helpers'
+import {
+  compileFor,
+  importSources,
+} from '../outside-compiler-corpus/legacy/regression-helpers'
 
 // Whether the Start compiler keeps a module's import of a denied source in
 // the output of an environment: an import used only inside code the compiler

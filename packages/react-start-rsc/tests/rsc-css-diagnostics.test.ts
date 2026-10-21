@@ -7,7 +7,7 @@ import {
   expectDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { createStartCompiler } from '../../start-plugin-core/tests/regression-helpers'
+import { createStartCompiler } from '../../start-plugin-core/tests/outside-compiler-corpus/legacy/regression-helpers'
 import { createRscCssCompilerTransforms } from '../src/plugin/rscCssTransform'
 
 const id = '/test/src/stream.tsx'

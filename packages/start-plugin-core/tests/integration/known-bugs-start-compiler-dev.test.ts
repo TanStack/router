@@ -21,8 +21,8 @@ import {
   startPluginFiles,
   startServerEntryFiles,
 } from '../dev-server'
-import { callerRpcId } from '../regression-helpers'
-import type { ModuleStub } from '../regression-helpers'
+import { callerRpcId } from '../outside-compiler-corpus/legacy/regression-helpers'
+import type { ModuleStub } from '../outside-compiler-corpus/legacy/regression-helpers'
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 

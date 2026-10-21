@@ -18,6 +18,7 @@ import {
   getLookupKindsForEnv,
 } from '../../src/start-compiler/compiler'
 import { createStartCompiler as createHostCompiler } from '../../src/start-compiler/host'
+import { getLookupConfigurationsForEnv } from '../../src/start-compiler/config'
 import {
   callProvider,
   compileCode,
@@ -27,7 +28,6 @@ import {
   renderThingTransform,
   renderToHtml,
 } from './legacy/regression-helpers'
-import { getLookupConfigurationsForEnv } from '../../src/start-compiler/config'
 import type { StartCompilerImportTransform } from '../../src/types'
 
 /**
