@@ -18,8 +18,11 @@
  * `reported-location.test.ts`.
  */
 import { afterAll, describe, expect, test } from 'vitest'
-import { runInRequestContext } from '../../build-harness'
-import { startDevServer } from '../../dev-server'
+import {
+  inDevRequest,
+  startDevServer,
+  startRequestFiles,
+} from '../../dev-server'
 import { startRsbuildDevServer } from '../../rsbuild-dev-server'
 import { locatedImporters } from '../../importProtection/start-apps'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
@@ -131,12 +134,18 @@ describe('vite dev', () => {
   let started: Promise<DevServer> | undefined
   /**
    * The dev server (router entry `src/entry.ts`), started once for the
-   * file, with the client and the server having loaded the app.
+   * file, with the client and the server having loaded the app. The router
+   * entry also exports the app's router (`startRequestFiles`), which serves
+   * the request a handler runs in (`inDevRequest`).
    */
   const loaded = () =>
     (started ??= (async () => {
       const server = await startDevServer({
-        files,
+        files: {
+          ...startRequestFiles,
+          ...files,
+          'src/entry.ts': `${files['src/entry.ts']}\nexport { getRouter } from './router'\n`,
+        },
         registerCleanup: (cleanup) => cleanups.push(cleanup),
         start: { router: { entry: 'entry.ts' }, importProtection },
       })
@@ -175,7 +184,7 @@ describe('vite dev', () => {
         `/src/cases/client-${slug('createServerFn().handler')}.ts`,
         'ssr',
       )
-      expect(await runInRequestContext(() => fn())).toBe('REAL_server-sdk')
+      expect(await inDevRequest(server, () => fn())).toBe('REAL_server-sdk')
     },
     timeout,
   )

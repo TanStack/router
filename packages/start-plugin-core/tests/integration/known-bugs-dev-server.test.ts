@@ -8,11 +8,11 @@
  */
 import { diagnosticProse } from '@tanstack/compiler-test-utils/diagnostics'
 import { describe, expect, test } from 'vitest'
-import { runInRequestContext } from '../build-harness'
 import {
   callServerFnById,
+  inDevRequest,
   startDevServer,
-  startServerEntryFiles,
+  startRequestFiles,
 } from '../dev-server'
 import { probeMockPrelude } from '../importProtection/mock-helpers'
 import {
@@ -155,7 +155,7 @@ describe('editing a server fn factory (SSR)', () => {
   async function editFactorySsr(importFrom: string) {
     const server = await startDevServer({
       files: {
-        ...startServerEntryFiles,
+        ...startRequestFiles,
         'src/b.ts': `export const base = { handler: (fn: () => unknown) => fn }\n`,
         'src/c.ts': `export * from './b'\n`,
         'src/d.ts': `import { base } from './b'\nexport { base }\n`,
@@ -183,7 +183,7 @@ export const base = createServerFn()
     }
     return {
       id: typeof fn.serverFnMeta?.id,
-      called: await settle(() => runInRequestContext(() => fn())),
+      called: await settle(() => inDevRequest(server, () => fn())),
       byId: await settle(() => callServerFnById(server, fn.serverFnMeta?.id)),
     }
   }

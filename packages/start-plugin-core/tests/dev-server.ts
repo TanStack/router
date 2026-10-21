@@ -17,7 +17,8 @@ import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
 import { onTestFinished } from 'vitest'
 import { tanStackStartVite } from '@tanstack/start-plugin-core/vite'
-import { runInRequestContext, startRuntimeLinks } from './build-harness'
+import { startRuntimeLinks } from './build-harness'
+import { inProbeRequest, requestFiles } from './request-probe'
 import type {
   StartCompilerImportTransform,
   TanStackStartViteInputConfig,
@@ -72,8 +73,41 @@ export const startServerEntryFiles = {
 }
 
 /**
+ * The files of an app whose server code a test runs inside a real request
+ * (`inDevRequest`): Start's default server entry (`startServerEntryFiles`)
+ * and what a request needs (`requestFiles` of `request-probe.ts`): a real
+ * router over the generated route tree, its root route and the probe route.
+ * An app's own router entry must export a real router whose tree has the
+ * probe route.
+ */
+export const startRequestFiles = {
+  ...startServerEntryFiles,
+  ...requestFiles('@tanstack/react-router'),
+}
+
+/**
+ * Runs `run` inside a real request of a dev server whose app has
+ * `startRequestFiles`: the app's server entry (Start's `fetch`, imported in
+ * the SSR environment, as Start's dev server middleware calls it) serves a
+ * request for the probe route, whose handler runs `run`; so Start's request
+ * context is the one its server entry opens. Gives what `run` returned, or
+ * throws what it threw.
+ */
+export async function inDevRequest<T>(
+  server: Pick<DevServer, 'import'>,
+  run: () => T | Promise<T>,
+): Promise<Awaited<T>> {
+  // The app's server entry, by its path (`startServerEntryFiles`).
+  const serverEntry = (await server.import('/harness/server-entry.ts')).default
+  return await inProbeRequest(
+    (url) => serverEntry.fetch(new Request(new URL(url, 'http://localhost'))),
+    async () => await run(),
+  )
+}
+
+/**
  * Calls the server fn `id` of a dev server whose app has
- * `startServerEntryFiles` the way a page of the same origin does: Start's
+ * `startRequestFiles` the way a page of the same origin does: Start's
  * client RPC sends its GET request to the app's server entry (its `fetch`,
  * which Start's dev server middleware calls in the SSR environment; the
  * browser adds `Sec-Fetch-Site`, which Start's CSRF middleware checks).
@@ -98,10 +132,10 @@ export async function callServerFnById(
     )
   }
   // Start's client RPC imported through the SSR environment reads Start's
-  // options from the request context (`getStartOptions`): the call runs in
-  // the harness's test request context (`runInRequestContext`, the public
-  // `runWithStartContext`), whose options configure no `fetch`.
-  const reply = (await runInRequestContext(() =>
+  // options from the request context (`getStartOptions`): the call runs
+  // inside a real request of the app (`inDevRequest`), as server code that
+  // calls a server fn by id does.
+  const reply = (await inDevRequest(server, () =>
     createClientRpc(id)({ data, method: 'GET', fetch }),
   )) as { result: unknown } | { error: unknown }
   if ('error' in reply) {

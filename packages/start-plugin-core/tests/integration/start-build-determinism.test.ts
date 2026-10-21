@@ -41,8 +41,9 @@ export const Route = createFileRoute('/')({
   component: () => 'MARK_COMPONENT',
 })
 `,
-  'src/router.ts': `import { routeTree } from './routeTree.gen'
-export const getRouter = () => ({ routeTree })
+  'src/router.ts': `import { createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+export const getRouter = () => createRouter({ routeTree })
 `,
 }
 

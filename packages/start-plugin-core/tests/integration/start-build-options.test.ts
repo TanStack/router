@@ -154,8 +154,9 @@ export const Route = createFileRoute('/')({
   component: () => componentLabel,
 })
 `,
-    'src/router.ts': `import { routeTree } from './routeTree.gen'
-export const getRouter = () => ({ routeTree })
+    'src/router.ts': `import { createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+export const getRouter = () => createRouter({ routeTree })
 `,
     'src/entry.ts': `export { getRouter } from './router'
 export { renderPath } from '../harness/render'
@@ -284,8 +285,10 @@ export const Route = createRootRoute()
           'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({ component: () => null })
 `,
-          'src/router.ts': `import { routeTree } from './routeTree.gen'
-export const getRouter = async () => ({ brand: 'ROUTER' as const, routeTree })
+          'src/router.ts': `import { createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+export const getRouter = async () =>
+  Object.assign(createRouter({ routeTree }), { brand: 'ROUTER' as const })
 `,
           ...(withStart && {
             'src/start.ts': `export const startInstance = { getOptions: async () => ({ brand: 'CONFIG' as const }) }

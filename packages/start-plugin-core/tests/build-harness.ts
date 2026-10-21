@@ -16,18 +16,20 @@
  * `@tanstack/react-start` is the real package (`startRuntimeLinks`), and
  * `@tanstack/react-router` the real one too (a dependency of this package,
  * which the apps resolve like any dependency): both builds bundle and run
- * Start's runtime and the router. What the test process cannot do is stood
- * in for, each checked against the real runtime in the harness controls
- * (`outside-compiler-corpus/build-harness.test.ts`): SSR scripts run in a
- * request context opened with the public `runWithStartContext` of
- * `@tanstack/start-storage-context` (`inRequestContext`), and a client
- * script observes the requests a server fn call sends (`requestsOfPrelude`).
- * An SSR script calls a server fn by id through Start's own server entry and
- * client RPC (`callByIdPrelude`). The app's entries are the harness's: the
- * client and server entries Start builds import the app's documented router
- * entry (`src/router.ts`, a stub unless the app has one), its start entry
- * (`src/start.ts` when the app has one) and the test's entry module, whose
- * exports `run()` gives the script as `entry`. Vite builds run in the app's
+ * Start's runtime and the router. The server bundle's entry is Start's own
+ * server entry, over a real router whose route tree has a probe server route
+ * (`request-probe.ts`): an SSR script runs inside a real request of the app,
+ * which that server entry serves (`inAppRequest`). What the test process
+ * cannot do is stood in for, each checked in the harness controls
+ * (`outside-compiler-corpus/build-harness.test.ts`): a client script
+ * observes the requests a server fn call sends (`requestsOfPrelude`). An SSR
+ * script calls a server fn by id through Start's own server entry and client
+ * RPC (`callByIdPrelude`). The app's entries are the harness's: the client
+ * and server entries Start builds import the app's documented router entry
+ * (`src/router.ts`, the harness's real router unless the app has one; the
+ * client entry only the app's own), its start entry (`src/start.ts` when the
+ * app has one) and the test's entry module, whose exports `run()` gives the
+ * script as `entry`. Vite builds run in the app's
  * directory, as `vite build` does.
  *
  * Everything a build reports, on every channel (the bundler's warnings and
@@ -38,7 +40,6 @@
  * Import protection is on, with Start's defaults unless the test configures
  * it; it checks the modules of the source directory (`src`) only.
  */
-import { readFileSync } from 'node:fs'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -64,9 +65,11 @@ import {
   rsbuildLogger,
   trackCompiles,
 } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
+import react from '@vitejs/plugin-react'
 import { onTestFinished } from 'vitest'
 import { tanStackStartVite } from '@tanstack/start-plugin-core/vite'
 import { tanStackStartRsbuild } from '@tanstack/start-plugin-core/rsbuild'
+import { inProbeRequest, requestFiles } from './request-probe'
 import type {
   BuildMode,
   BuildResult,
@@ -110,70 +113,28 @@ export function linkStartRuntime(root: string) {
 }
 
 /**
- * The request context (the first argument of `runWithStartContext` of
- * `@tanstack/start-storage-context`) the harness runs server code in: a
- * request to `/` that ran no request middleware, with default start
- * options, like Start's request handler opens for an app without
- * `createStart`. It is the one piece of Start the harness stands in for: a
- * test calls server code outside any request. Self-contained: SSR scripts
- * run its source (`inRequestContext`). Checked against the real runtime in
- * the harness controls (`outside-compiler-corpus/build-harness.test.ts`).
+ * Wraps a script of the SSR build's `run()` so that it runs inside a real
+ * request of the app (`request-probe.ts`): the child process imports the
+ * server bundle's entry the way a host does (its default export, Start's
+ * server entry: `fetch`, or the module of a CommonJS bundle carrying it)
+ * and sends it a request for the app's probe route, whose handler runs the
+ * script while Start serves the request. Start's request context is then
+ * the one its server entry opens for that request: the app's start options
+ * and request middleware, its router.
  */
-function testRequestContext() {
-  return {
-    request: new Request('http://localhost/'),
-    startOptions: {},
-    contextAfterGlobalMiddlewares: {},
-    executedRequestMiddlewares: new Set(),
-    handlerType: 'router',
-    getRouter: () => {
-      throw new Error('no router in the test request context')
-    },
-  }
+const inAppRequest = (serverEntryFile: string, script: string) =>
+  `const inProbeRequest = ${inProbeRequest.toString()}
+const serverModule = await import(${JSON.stringify(pathToFileURL(serverEntryFile).href)})
+const serverEntry = typeof serverModule.default?.fetch === 'function' ? serverModule.default : serverModule.default?.default
+if (typeof serverEntry?.fetch !== 'function') {
+  throw new Error(${JSON.stringify(`${serverEntryFile} does not export a server entry`)})
 }
-
-/**
- * The URL of `@tanstack/start-storage-context`'s public entry (the file its
- * `package.json` exports): the package Start's runtime reads the request
- * context from, whose `runWithStartContext` opens one. Its storage is
- * shared by every copy of the package in a process (it says so), so the
- * copy a script imports opens the context the app's bundled copy reads.
- */
-function storageContextUrl(): string {
-  const root = workspacePackage('@tanstack/start-storage-context')
-  const manifest = JSON.parse(
-    readFileSync(path.join(root, 'package.json'), 'utf8'),
-  ) as { exports: Record<string, { import: { default: string } }> }
-  return pathToFileURL(path.join(root, manifest.exports['.']!.import.default))
-    .href
-}
-
-/**
- * Wraps a script of the SSR build's `run()` in the test request context
- * (`testRequestContext`), opened like Start's request handler opens one,
- * with the public `runWithStartContext`.
- */
-export const inRequestContext = (script: string) =>
-  `const { runWithStartContext } = await import(${JSON.stringify(storageContextUrl())})
-const script = async () => {
+return await inProbeRequest(
+  (path) => serverEntry.fetch(new Request(new URL(path, 'http://localhost'))),
+  async () => {
 ${script}
-}
-return await runWithStartContext((${testRequestContext.toString()})(), script)`
-
-/**
- * Runs `fn` in the test request context (`testRequestContext`), for server
- * code a test imports in its own process (e.g. through a dev server's SSR
- * module runner), with the public `runWithStartContext`.
- */
-export async function runInRequestContext<T>(fn: () => T): Promise<Awaited<T>> {
-  const { runWithStartContext } = (await import(storageContextUrl())) as {
-    runWithStartContext: <TResult>(
-      context: unknown,
-      run: () => TResult,
-    ) => TResult
-  }
-  return await runWithStartContext(testRequestContext(), fn)
-}
+  },
+)`
 
 /**
  * Exports of an SSR entry whose script calls server fns by id
@@ -346,21 +307,36 @@ const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 /** Global the harness entries assign the test entry's exports to. */
 const entryGlobal = '__tssBuildHarnessEntry'
 
+/** The router package of each framework a build can use. */
+const routerPackages = {
+  react: '@tanstack/react-router',
+  solid: '@tanstack/solid-router',
+} as const
+
 /**
- * The client or server entry of the app: imports the app's documented
- * entries that Start's default entries import (the router entry
- * `src/router.ts` and, when the app has one, the start entry
- * `src/start.ts`; Start's defaults, as no test moves them), and the test's
- * entry module.
+ * The client entry of the app: imports the app's documented entries that
+ * Start's default client entry imports (the router entry `src/router.ts`
+ * when the app has one of its own, and the start entry: `src/start.ts`
+ * when the app has one; Start's defaults, as no test moves them), and the
+ * test's entry module.
  */
-const harnessEntry = (
-  testEntry: string,
-  start: string,
-) => `import * as start from ${JSON.stringify(start)}
-import * as router from '../src/router'
-import * as entry from ${JSON.stringify(`../${testEntry}`)}
-globalThis.__tssBuildHarnessApp = { start, router }
+const clientEntry = (testEntry: string, start: string, router: boolean) =>
+  `import * as start from ${JSON.stringify(start)}
+${router ? `import * as router from '../src/router'\n` : ''}import * as entry from ${JSON.stringify(`../${testEntry}`)}
+globalThis.__tssBuildHarnessApp = { start${router ? ', router' : ''} }
 globalThis.${entryGlobal} = entry
+`
+
+/**
+ * The server entry of the app: Start's own server entry
+ * (`@tanstack/<framework>-start/server-entry`, its default export, which
+ * loads the app's router and start entries itself and serves the app's
+ * requests: `inAppRequest`), and the test's entry module.
+ */
+const serverEntry = (testEntry: string, framework: 'react' | 'solid') =>
+  `import * as entry from ${JSON.stringify(`../${testEntry}`)}
+globalThis.${entryGlobal} = entry
+export { default } from '@tanstack/${framework}-start/server-entry'
 `
 
 /**
@@ -397,28 +373,33 @@ export async function renderPath(
 }
 `
 
-/** The files the harness adds to every app, unless the app has them. */
+/**
+ * The files the harness adds to every app, unless the app has them: the
+ * entries, a start entry, the render helper, and what a request of the app
+ * needs (`requestFiles`: a real router over the generated route tree, its
+ * root route and the probe route; the router only when the app has no
+ * router entry of its own).
+ */
 const harnessFiles = (
   entries: { client: string; ssr: string },
   files: Record<string, string>,
+  framework: 'react' | 'solid',
 ) => {
   const start = 'src/start.ts' in files ? '../src/start' : './start'
+  const ownRouter = Object.keys(files).some((file) =>
+    /^src\/router\.[cm]?[jt]sx?$/.test(file),
+  )
+  const { 'src/router.ts': router, ...routes } = requestFiles(
+    routerPackages[framework],
+  )
   return {
-    'harness/client-entry.ts': harnessEntry(entries.client, start),
-    'harness/server-entry.ts': harnessEntry(entries.ssr, start),
-    ...sharedHarnessFiles,
+    'harness/client-entry.ts': clientEntry(entries.client, start, ownRouter),
+    'harness/server-entry.ts': serverEntry(entries.ssr, framework),
+    'harness/start.ts': `export const startInstance = undefined\n`,
+    'harness/render.ts': renderFile,
+    ...(!ownRouter && { 'src/router.ts': router }),
+    ...routes,
   }
-}
-
-const sharedHarnessFiles = {
-  'harness/start.ts': `export const startInstance = undefined\n`,
-  'harness/render.ts': renderFile,
-  'src/router.ts': `export const getRouter = () => undefined\n`,
-  // The router generator needs a routes directory (nothing imports the
-  // route tree unless the app's router does).
-  'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
-export const Route = createRootRoute()
-`,
 }
 
 /** The core options `@tanstack/react-start` passes to Start's plugin. */
@@ -455,7 +436,7 @@ export async function buildStart(
     packageJson: options.packageJson,
     sideEffects: options.sideEffects,
     files: {
-      ...harnessFiles(entries, files),
+      ...harnessFiles(entries, files, options.framework ?? 'react'),
       ...files,
     },
     symlinks: {
@@ -568,9 +549,13 @@ async function buildAt(
       entryGlobal,
     })
   const ssr = await describe('ssr')
+  const serverEntryFile = path.join(ssr.outDir, ssr.entry.fileName)
   return {
     client: await describe('client'),
-    ssr: { ...ssr, run: (script = '') => ssr.run(inRequestContext(script)) },
+    ssr: {
+      ...ssr,
+      run: (script = '') => ssr.run(inAppRequest(serverEntryFile, script)),
+    },
     root: app.root,
     diagnostics,
     rebuild: async (edits = {}) => {
@@ -678,21 +663,45 @@ async function buildWithVite(
       }
     },
   }
-  /** The build options of `env`, which records its bundler warnings. */
-  const environmentBuild = (env: Env) => ({
-    build: {
-      minify: target.minify,
-      sourcemap: target.sourcemap,
-      emptyOutDir: true,
-      target: 'esnext',
-      rolldownOptions: {
-        onwarn: (warning: { message: string }) => {
-          warnings[env].push(stripAnsi(warning.message))
-          channel.report(stripAnsi(warning.message), 'warning', 'bundler')
-        },
-      },
+  /**
+   * The app's own handler of bundler warnings: `build.rolldownOptions.onwarn`
+   * as the app's config and plugins resolve it (e.g. `@vitejs/plugin-react`
+   * drops the warnings about React's `"use client"` directives). Each
+   * environment's warnings go through it, and what it passes on to Vite is
+   * what the build reports, as `vite build` prints it.
+   */
+  let appOnwarn: Onwarn | undefined
+  const appOnwarnPlugin: Plugin = {
+    name: 'start-build-harness:app-onwarn',
+    configResolved(config) {
+      const resolved = config.build.rolldownOptions.onwarn as Onwarn | undefined
+      // (also called with each environment's config, whose handler is the
+      // harness's own)
+      if (resolved && !recorders.has(resolved)) {
+        appOnwarn = resolved
+      }
     },
-  })
+  }
+  const recorders = new WeakSet<Onwarn>()
+  /** The build options of `env`, which records its bundler warnings. */
+  const environmentBuild = (env: Env) => {
+    const record = (warning: { message: string }) => {
+      warnings[env].push(stripAnsi(warning.message))
+      channel.report(stripAnsi(warning.message), 'warning', 'bundler')
+    }
+    const onwarn: Onwarn = (warning) =>
+      appOnwarn ? appOnwarn(warning, record) : record(warning)
+    recorders.add(onwarn)
+    return {
+      build: {
+        minify: target.minify,
+        sourcemap: target.sourcemap,
+        emptyOutDir: true,
+        target: 'esnext',
+        rolldownOptions: { onwarn },
+      },
+    }
+  }
   /** Vite's own warnings do not name the environment. */
   const warnBoth = (message: string) => {
     warnings.client.push(stripAnsi(message))
@@ -739,7 +748,14 @@ async function buildWithVite(
               },
               target.start,
             ),
+            // A React app's own Vite plugin, as in every React Start app,
+            // unless the test configures it
+            ...(target.framework === 'react' &&
+            !hasReactPlugin(target.viteConfig?.plugins)
+              ? [react()]
+              : []),
             outputPlugin,
+            appOnwarnPlugin,
           ],
         },
         target.viteConfig ?? {},
@@ -758,6 +774,25 @@ async function buildWithVite(
     process.chdir(cwd)
   }
   return checkOutputs(outputs)
+}
+
+/** A handler of Rolldown warnings (`build.rolldownOptions.onwarn`). */
+type Onwarn = (
+  warning: { message: string; code?: string },
+  handler?: (warning: { message: string }) => void,
+) => void
+
+/** Whether a test's Vite plugins include `@vitejs/plugin-react`. */
+function hasReactPlugin(plugins: InlineConfig['plugins']): boolean {
+  return (plugins ?? [])
+    .flat(Infinity as 1)
+    .some(
+      (plugin) =>
+        !!plugin &&
+        typeof plugin === 'object' &&
+        'name' in plugin &&
+        String(plugin.name).startsWith('vite:react'),
+    )
 }
 
 /**

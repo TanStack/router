@@ -6,6 +6,7 @@
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../build-harness'
+import { probeRoutePath } from '../request-probe'
 import type { StartBuild } from '../build-harness'
 
 const timeout = 60_000
@@ -29,8 +30,9 @@ export const Route = createFileRoute('/users/profile')({ component: Profile })
   'src/components/Profile.tsx': `export const Profile = () => 'MARK_PROFILE'\n`,
   'src/routes/api.tsx': `${head}export const Route = createFileRoute('/api')({ ${handlers} })\n`,
   'src/routes/api/inner.tsx': `${head}export const Route = createFileRoute('/api/inner')({ ${handlers} })\n`,
-  'src/router.ts': `import { routeTree } from './routeTree.gen'
-export const getRouter = () => ({ routeTree })
+  'src/router.ts': `import { createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+export const getRouter = () => createRouter({ routeTree })
 `,
 }
 
@@ -81,9 +83,12 @@ describe.each(startBundlers)('%s build', (bundler) => {
         paths: Array<string>
       }
       expect(ssr.paths).toEqual(expect.arrayContaining(['/api', '/inner']))
+      // (the harness's probe route, which serves the requests SSR scripts
+      // run in, is a server-only route too)
+      const serverOnly = ['/api', '/inner', probeRoutePath]
       expect((await build.client.run(routeTree)).result).toEqual({
         rootIsRoot: true,
-        paths: ssr.paths.filter((path) => path !== '/api' && path !== '/inner'),
+        paths: ssr.paths.filter((path) => !serverOnly.includes(path)),
       })
     },
   )

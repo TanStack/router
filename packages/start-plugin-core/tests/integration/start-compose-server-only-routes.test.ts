@@ -22,6 +22,7 @@ import {
   test,
 } from 'vitest'
 import { buildStart, startBundlers } from '../build-harness'
+import { probeRoutePath } from '../request-probe'
 import {
   openAppPage,
   pageEntries,
@@ -145,7 +146,11 @@ describe.each(startBundlers)('%s build, served', (bundler) => {
     const { result } = await build.ssr.run(
       `${routeIds}\nreturn ids(entry.getRouter().routeTree)`,
     )
-    expect((result as Array<string>).sort()).toEqual([...allRoutes].sort())
+    // (besides the harness's probe route, which serves the requests SSR
+    // scripts run in)
+    expect(
+      (result as Array<string>).filter((id) => id !== probeRoutePath).sort(),
+    ).toEqual([...allRoutes].sort())
   })
 
   test('every server handler answers, and every page renders on the server', async () => {

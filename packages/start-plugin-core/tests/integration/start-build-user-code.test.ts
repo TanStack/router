@@ -247,8 +247,9 @@ function CanvasPage() {
   return 'MARK_CANVAS_' + canvas.tagName
 }
 `,
-        'src/router.ts': `import { routeTree } from './routeTree.gen'
-export const getRouter = () => ({ routeTree })
+        'src/router.ts': `import { createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+export const getRouter = () => createRouter({ routeTree })
 `,
         'src/client-entry.ts': `export { getRouter } from './router'
 export { renderPath } from '../harness/render'

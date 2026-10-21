@@ -51,6 +51,13 @@ import {
   workspacePackage,
   workspacePackageLinks,
 } from '@tanstack/compiler-test-utils/workspace-packages'
+import {
+  inProbeRequest,
+  probeRoute,
+  probeRouteFile,
+  rootRouteFile,
+  routerFile,
+} from './request-probe'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import type {
@@ -223,20 +230,15 @@ const pageRunTimeout = 10_000
 /** Where a case lives: `src/cases/c<n>`. */
 export const casesDir = 'src/cases'
 
-/** The global the app's probe route reads the server callbacks from. */
-const probesKey = 'tanstack.start-host.probes'
-const probes = ((globalThis as Record<symbol, unknown>)[
-  Symbol.for(probesKey)
-] ??= new Map()) as Map<string, (context?: ProbeContext) => Promise<void>>
-
-/** What the probe route gives a callback of a production build host. */
+/**
+ * What the probe route (`request-probe.ts`) gives a callback of a
+ * production build host.
+ */
 interface ProbeContext {
   /** A case module of the server build, by `c<n>/<file>`. */
   load: (file: string) => Promise<Record<string, any>>
 }
 
-/** The probe route of the app (a server route, so it runs in a request). */
-const probeRoutePath = '/harness-probe'
 /** The page route of a production build host. */
 const pageRoutePath = '/harness-page'
 
@@ -303,34 +305,15 @@ function appFiles(
   serve: boolean,
 ): Record<string, string> {
   const router = routerPackages[framework]
-  const probeRoute = `import { createFileRoute } from '${router}'
-${serve ? '' : `const cases = import.meta.glob(${serverCaseGlob})\n`}export const Route = createFileRoute('${probeRoutePath}')({
-  server: {
-    handlers: {
-      GET: async ({ request }) => {
-        const run = new URL(request.url).searchParams.get('run')
-        const probe = globalThis[Symbol.for(${JSON.stringify(probesKey)})].get(run)
-        if (!probe) {
-          return new Response('no probe ' + run, { status: 404 })
-        }
-        await probe(${serve ? '' : `{ load: (file) => cases['../cases/' + file]() }`})
-        return new Response('ok')
-      },
-    },
-  },
-})
-`
   const files: Record<string, string> = {
-    'src/router.tsx': `import { createRouter } from '${router}'
-import { routeTree } from './routeTree.gen'
-export function getRouter() {
-  return createRouter({ routeTree })
-}
-`,
-    'src/routes/__root.tsx': `import { createRootRoute } from '${router}'
-export const Route = createRootRoute()
-`,
-    'src/routes/harness-probe.ts': probeRoute,
+    'src/router.tsx': routerFile(router),
+    'src/routes/__root.tsx': rootRouteFile(router),
+    [probeRouteFile]: serve
+      ? probeRoute(router)
+      : probeRoute(router, {
+          prelude: `const cases = import.meta.glob(${serverCaseGlob})\n`,
+          context: `{ load: (file: string) => cases['../cases/' + file]!() }`,
+        }),
   }
   if (!serve && framework === 'vue') {
     // A build-only Vue host (`build()`; `preview()` serves React apps only):
@@ -795,40 +778,13 @@ export async function createStartHost(
     throw lastError
   }
 
-  /** Runs `run` inside a real request of the app (the probe route). */
-  const inAppRequest = async <T>(
+  /**
+   * Runs `run` inside a real request of the app (the probe route,
+   * `request-probe.ts`), sent over HTTP to the dev or preview server.
+   */
+  const inAppRequest = <T>(
     run: (context?: ProbeContext) => T | Promise<T>,
-  ): Promise<T> => {
-    const token = Math.random().toString(36).slice(2)
-    let outcome: { value: T } | { error: unknown } | undefined
-    probes.set(token, async (context) => {
-      try {
-        outcome = { value: await run(context) }
-      } catch (error) {
-        outcome = { error }
-      }
-    })
-    try {
-      const response = await fetch(
-        new URL(
-          `${probeRoutePath}?run=${encodeURIComponent(token)}`,
-          baseUrl(),
-        ),
-      )
-      const body = await response.text()
-      if (!outcome) {
-        throw new Error(
-          `the probe request did not run (${response.status}): ${body}`,
-        )
-      }
-    } finally {
-      probes.delete(token)
-    }
-    if ('error' in outcome) {
-      throw outcome.error
-    }
-    return outcome.value
-  }
+  ): Promise<T> => inProbeRequest((url) => fetch(new URL(url, baseUrl())), run)
 
   const devOnly = (what: string) => {
     if (previewState || !serve) {
