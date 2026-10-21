@@ -75,11 +75,11 @@ describe('each module imports only the specifiers it reads', () => {
       `${head}import defaultMessage, { targetMessage, otherMessage } from './messages'
 import * as messages from './messages'
 import other, * as ns from './other'
-const getDefault = () => defaultMessage
-const getTarget = () => targetMessage
+const getDefault = () => ({ marker: 'MARK_GET_DEFAULT', value: defaultMessage }).value
+const getTarget = () => ({ marker: 'MARK_GET_TARGET', value: targetMessage }).value
 const getOther = () => ['MARK_LOADER', otherMessage]
 function getNamespaced() {
-  return messages.namespaced
+  return { marker: 'MARK_GET_NAMESPACED', value: messages.namespaced }.value
 }
 export const Route = createFileRoute('/')({
   loader: () => [...getOther(), other],
@@ -104,11 +104,33 @@ export const namespaced = 'namespaced'
     // components read, and no split chunk holds what only the loader reads
     // (D5: the user code, found by its markers).
     const eager = await route.eagerModules()
-    for (const marker of ['MARK_COMPONENT', 'MARK_ERROR', 'MARK_NOT_FOUND']) {
+    for (const marker of [
+      'MARK_COMPONENT',
+      'MARK_ERROR',
+      'MARK_NOT_FOUND',
+      // The helpers only one split component reads (the default, named
+      // and namespace imports they read leave with them)
+      'MARK_GET_DEFAULT',
+      'MARK_GET_TARGET',
+      'MARK_GET_NAMESPACED',
+    ]) {
       expect(
         eager.some((code) => holdsMarker(code, marker)),
         marker,
       ).toBe(false)
+    }
+    // Each helper loads with the component that reads it
+    for (const [option, marker] of [
+      ['component', 'MARK_GET_DEFAULT'],
+      ['errorComponent', 'MARK_GET_NAMESPACED'],
+      ['notFoundComponent', 'MARK_GET_TARGET'],
+    ] as const) {
+      expect(
+        (await route.loadedBy(option)).some((code) =>
+          holdsMarker(code, marker),
+        ),
+        `${option} loads ${marker}`,
+      ).toBe(true)
     }
     for (const option of ['component', 'errorComponent', 'notFoundComponent']) {
       const loaded = await route.loadedBy(option)
