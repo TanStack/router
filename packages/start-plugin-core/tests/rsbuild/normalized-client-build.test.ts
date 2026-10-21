@@ -563,13 +563,94 @@ describe('normalizeRspackClientBuild', () => {
         `/${route}.js`,
         '/shared.js',
       ])
-      const routeCss = clientBuild.cssContentByFileName?.get(`${route}.css`)
-      expect(routeCss).toMatch(/\.widget\s*\{/)
-      expect(routeCss).toMatch(new RegExp(`\\.${route}\\s*\\{`))
-      for (const otherRoute of routes.filter((other) => other !== route)) {
-        expect(routeCss).not.toMatch(new RegExp(`\\.${otherRoute}\\s*\\{`))
-      }
+      expect(
+        clientBuild.cssContentByFileName?.get(`${route}.css`),
+      ).toMatch(/\.widget\s*\{/)
     }
+  })
+
+  test('links the split chunk a shared chunk uses in each route that loads it', async () => {
+    const routes = ['alpha', 'beta', 'gamma']
+    const { clientBuild, directory } = await buildClientFixture(
+      {
+        'index.js': `globalThis.routes = [${routes
+          .map(
+            (route) =>
+              `() => import(/* webpackChunkName: "${route}" */ './${route}.js?tsr-split=component')`,
+          )
+          .join(', ')}]`,
+        ...Object.fromEntries(
+          routes.flatMap((route) => [
+            [
+              `${route}.js`,
+              `
+                import { shared } from './shared.js'
+                import './${route}.css'
+                export const render = () => shared() + '${route}'
+              `,
+            ],
+            [`${route}.css`, `.${route} { color: red; }`],
+          ]),
+        ),
+        'shared.js': `import { widget } from './widget.js'; export const shared = () => widget()`,
+        'widget.js': `import './widget.css'; export const widget = () => 'widget'`,
+        'widget.css': '.widget { display: grid; }',
+      },
+      {
+        optimization: {
+          splitChunks: {
+            minSize: 0,
+            cacheGroups: {
+              default: false,
+              defaultVendors: false,
+              shared: {
+                name: 'shared',
+                test: /shared\.js$/,
+                chunks: 'async',
+                enforce: true,
+              },
+              widget: {
+                name: 'widget',
+                test: /widget\.(?:js|css)$/,
+                chunks: (chunk) => chunk.name !== 'gamma',
+                enforce: true,
+              },
+            },
+          },
+        },
+      },
+    )
+    const manifest = buildStartManifest({
+      clientBuild,
+      basePath: '/',
+      routeTreeRoutes: {
+        __root__: { children: routes.map((route) => `/${route}`) },
+        ...Object.fromEntries(
+          routes.map((route) => [
+            `/${route}`,
+            { filePath: join(directory, `${route}.js`) },
+          ]),
+        ),
+      },
+    })
+
+    expect(clientBuild.chunksByFileName.get('shared.js')?.imports).toEqual([])
+    for (const route of ['alpha', 'beta']) {
+      expect(manifest.routes[`/${route}`]?.css).toEqual([
+        '/widget.css',
+        `/${route}.css`,
+      ])
+      expect(manifest.routes[`/${route}`]?.preloads).toEqual([
+        `/${route}.js`,
+        '/widget.js',
+        '/shared.js',
+      ])
+    }
+    expect(manifest.routes['/gamma']?.css).toEqual(['/gamma.css'])
+    expect(manifest.routes['/gamma']?.preloads).toEqual([
+      '/gamma.js',
+      '/shared.js',
+    ])
   })
 
   test('does not import a chunk that only one parent of a lazy group supplies', async () => {
@@ -680,7 +761,7 @@ describe('normalizeRspackClientBuild', () => {
     'resolves static imports in cyclic lazy routes regardless of order ($routeOrder)',
     async ({ routeOrder }) => {
       const otherRoute = { ping: 'pong', pong: 'ping' } as const
-      const { clientBuild, directory } = await buildClientFixture(
+      const { clientBuild } = await buildClientFixture(
         {
           'index.js': `globalThis.routes = [${routeOrder
             .map(
@@ -689,22 +770,17 @@ describe('normalizeRspackClientBuild', () => {
             )
             .join(', ')}]`,
           ...Object.fromEntries(
-            (['ping', 'pong'] as const).flatMap((route) => [
-              [
-                `${route}.js`,
-                `
-                  import { shared } from './shared.js'
-                  import './${route}.css'
-                  export const render = () => shared() + '${route}'
-                  export const next = () => import(/* webpackChunkName: "${otherRoute[route]}" */ './${otherRoute[route]}.js?tsr-split=component')
-                `,
-              ],
-              [`${route}.css`, `.${route} { color: red; }`],
+            (['ping', 'pong'] as const).map((route) => [
+              `${route}.js`,
+              `
+                import { shared } from './shared.js'
+                export const render = () => shared() + '${route}'
+                export const next = () => import(/* webpackChunkName: "${otherRoute[route]}" */ './${otherRoute[route]}.js?tsr-split=component')
+              `,
             ]),
           ),
           'shared.js': `import { widget } from './widget.js'; export const shared = () => widget()`,
-          'widget.js': `import './widget.css'; export const widget = () => 'widget'`,
-          'widget.css': '.widget { display: grid; }',
+          'widget.js': `export const widget = () => 'widget'`,
         },
         {
           optimization: {
@@ -724,19 +800,6 @@ describe('normalizeRspackClientBuild', () => {
           },
         },
       )
-      const manifest = buildStartManifest({
-        clientBuild,
-        basePath: '/',
-        routeTreeRoutes: {
-          __root__: { children: routeOrder.map((route) => `/${route}`) },
-          ...Object.fromEntries(
-            routeOrder.map((route) => [
-              `/${route}`,
-              { filePath: join(directory, `${route}.js`) },
-            ]),
-          ),
-        },
-      })
 
       expect(clientBuild.chunksByFileName.get('shared.js')?.imports).toEqual(
         [],
@@ -745,7 +808,6 @@ describe('normalizeRspackClientBuild', () => {
         const chunk = clientBuild.chunksByFileName.get(`${route}.js`)
         expect(chunk?.imports).toEqual(['shared.js'])
         expect(chunk?.dynamicImports).toContain(`${otherRoute[route]}.js`)
-        expect(manifest.routes[`/${route}`]?.css).toEqual([`/${route}.css`])
       }
     },
   )
