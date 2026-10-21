@@ -12,7 +12,8 @@ import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { expect, onTestFinished, test } from 'vitest'
+import { expect, test } from 'vitest'
+import type { TestContext } from 'vitest'
 
 const reporter = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -29,21 +30,26 @@ const brokenFile = `import './missing-helper.js'\n\ntest('never runs', () => {})
 
 /**
  * Runs a whole tier (every file of the fixture) at the budgets' worker count
- * with the Vitest CLI; resolves with its exit code and output.
+ * with the Vitest CLI; resolves with its exit code and output. `context`
+ * is the calling test's: a concurrent test's cleanup must be its own (the
+ * global `onTestFinished` may register it on another running test, which
+ * then removes the fixture while this run reads it).
  */
 async function runTier(
+  context: Pick<TestContext, 'onTestFinished'>,
   files: Record<string, string>,
   budgets: 'strict' | 'report-only',
+  projectName = 'unit',
 ) {
   const root = await mkdtemp(path.join(tmpdir(), 'budget-reporter-'))
-  onTestFinished(() => rm(root, { recursive: true, force: true }))
+  context.onTestFinished(() => rm(root, { recursive: true, force: true }))
   await writeFile(
     path.join(root, 'package.json'),
     JSON.stringify({ name: '@tanstack/compiler-test-utils', type: 'module' }),
   )
   await writeFile(
     path.join(root, 'vitest.config.mjs'),
-    `export default { test: { globals: true, watch: false, reporters: ['default', ${JSON.stringify(reporter)}] } }\n`,
+    `export default { test: { name: ${JSON.stringify(projectName)}, globals: true, watch: false, reporters: ['default', ${JSON.stringify(reporter)}] } }\n`,
   )
   for (const [name, code] of Object.entries(files)) {
     await writeFile(path.join(root, name), code)
@@ -75,8 +81,9 @@ async function runTier(
 
 test.concurrent(
   'strict mode fails a run in which a test file failed to load, as an invalid measurement',
-  async () => {
+  async (context) => {
     const { exitCode, output } = await runTier(
+      context,
       { 'passing.test.js': passingFile, 'broken.test.js': brokenFile },
       'strict',
     )
@@ -92,8 +99,9 @@ test.concurrent(
 
 test.concurrent(
   'report-only mode says the times of such a run are not a measurement',
-  async () => {
+  async (context) => {
     const { output } = await runTier(
+      context,
       { 'passing.test.js': passingFile, 'broken.test.js': brokenFile },
       'report-only',
     )
@@ -107,8 +115,9 @@ test.concurrent(
 
 test.concurrent(
   'a run whose files all pass is a measurement',
-  async () => {
+  async (context) => {
     const { output } = await runTier(
+      context,
       { 'passing.test.js': passingFile },
       'strict',
     )
@@ -120,3 +129,14 @@ test.concurrent(
   },
   30_000,
 )
+
+test('noncompiler coverage does not consume compiler acceptance budgets', async (context) => {
+  const { exitCode, output } = await runTier(
+    context,
+    { 'runtime.test.js': passingFile },
+    'strict',
+    'noncompiler',
+  )
+  expect(exitCode).toBe(0)
+  expect(output).not.toContain('Test budget (strict')
+}, 30_000)

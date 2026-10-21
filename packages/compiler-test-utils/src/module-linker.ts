@@ -2,8 +2,8 @@
  * @deprecated A re-implementation of module resolution and evaluation
  * (RULES-AUDIT §2.D #4; N9, N24): stubs keyed by the emitted specifier,
  * and `fallbackStub` turns a missing import into `undefined`. Kept only
- * for the callers that have not moved yet (validation/REPAIR/A2.md lists
- * them). New tests evaluate server code through Vite's module runner
+ * for callers that have not moved yet. New tests evaluate server code
+ * through Vite's module runner
  * (`./plugin-host` `importServer`, `./dev-server` `import`: real
  * resolution by target, a missing import throws, `./strict-runner`) and
  * client code in a real browser (`./plugin-host` `runClient`,

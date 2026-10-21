@@ -43,7 +43,13 @@ const config = defineConfig({
         test: {
           name: 'types',
           include: [],
-          typecheck: { enabled: true, only: true },
+          typecheck: {
+            enabled: true,
+            only: true,
+            include: ['generator/nested/tests.test-d.ts'],
+            exclude: [...configDefaults.exclude, implementationTests],
+            tsconfig: './tests/tsconfig.acceptance.json',
+          },
         },
       },
       {

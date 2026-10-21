@@ -284,7 +284,7 @@ describe('transform', () => {
     const { exports, router } = await evaluateModule(result.output)
     expect([routeCallOf(result.output).id, exports.link]).toEqual([
       '/new',
-      router!.Link,
+      router.Link,
     ])
     expect(withoutImports(result.output)).toBe(
       withoutImports(body.join('\r\n').replace('/old', '/new')),
@@ -673,7 +673,7 @@ export const Route = createFileRoute('/old')({})`
       // (the router package exports the uses are bound to)
       expect(
         exports.uses.map((value: unknown) =>
-          Object.keys(router).find((name) => router![name] === value),
+          Object.keys(router).find((name) => router[name] === value),
         ),
       ).toEqual(bound)
       expect(withoutImports(result.output)).toBe(

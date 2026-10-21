@@ -12,12 +12,13 @@
  */
 import fs from 'node:fs/promises'
 import path, { join } from 'node:path'
+import { parseSync } from 'vite'
 import { describe, expect, it } from 'vitest'
 import {
   captureThrow,
   expectDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { Generator, getConfig } from '../src'
+import { Generator } from '../src'
 import {
   conflictingFiles,
   customTemplates,
@@ -26,10 +27,11 @@ import {
   fixtureNames,
   prepareFixture,
 } from './generator-fixture'
+import { crlfRoutes, generateCrlf } from './crlf-app'
 import { fixtureRoutes } from './generator-fixtures'
 import { expectOnlyOwnedEdits } from './owned-edits'
 import { routeCallOf } from './route-id'
-import { observeRouteTree, withRouteTree } from './route-tree'
+import { withRouteTree } from './route-tree'
 import type { FixtureRoute } from './generator-fixtures'
 import type { Config } from '../src'
 
@@ -44,13 +46,27 @@ function expectTemplateApplied(
   routePath: string,
   written: string,
 ) {
-  const reactImport = /^import (.+) from "react";$/m.exec(template)![1]!
-  expect(written).toMatch(
-    new RegExp(
-      `^import ${reactImport.replace(/[{}*]/g, '\\$&').replaceAll(' ', '\\s*')} from ['"]react['"];?$`,
-      'm',
-    ),
-  )
+  const imports = (code: string) =>
+    parseSync('route.tsx', code)
+      .program.body.filter(
+        (node) =>
+          node.type === 'ImportDeclaration' && node.source.value === 'react',
+      )
+      .flatMap((node) =>
+        node.type === 'ImportDeclaration'
+          ? node.specifiers.map((specifier) => ({
+              kind: specifier.type,
+              local: specifier.local.name,
+              imported:
+                specifier.type === 'ImportSpecifier'
+                  ? specifier.imported.type === 'Identifier'
+                    ? specifier.imported.name
+                    : specifier.imported.value
+                  : undefined,
+            }))
+          : [],
+      )
+  expect(imports(written)).toEqual(imports(template.split('%%')[0]!))
   expect(written).toContain(`Hello ${routePath}!`)
 }
 
@@ -209,6 +225,7 @@ describe('generator fixtures', async () => {
         for (const file of conflicting) {
           expectDiagnostic(error, {
             severity: 'error',
+            root: fixtureDir(name),
             file,
             distinctFrom: conflicting.filter((other) => other !== file),
           })
@@ -228,65 +245,15 @@ describe('generator fixtures', async () => {
 // routes are the same as with LF sources, and a second run changes nothing.
 // Source: the #8504 confidence campaign (crlf-gen-run).
 describe('route files with CRLF line endings', () => {
-  const routes = {
-    '__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
-export const Route = createRootRoute()
-`,
-    'index.tsx': `import { createFileRoute } from '@tanstack/react-router'
-export const Route = createFileRoute('/')({
-  component: () => null,
-})
-`,
-    'posts.$postId.tsx': `import { createFileRoute } from '@tanstack/react-router'
-export const Route = createFileRoute('/posts/$postId')({
-  loader: () => 'post',
-})
-`,
-  }
-
-  /** Runs the generator twice on the routes with `newline` line endings. */
-  async function generate(newline: string) {
-    const root = await fs.mkdtemp(path.join(process.cwd(), '.tsr-crlf-'))
-    try {
-      await fs.mkdir(join(root, 'routes'))
-      for (const [file, code] of Object.entries(routes)) {
-        await fs.writeFile(
-          join(root, 'routes', file),
-          code.replaceAll('\n', newline),
-        )
-      }
-      const config = getConfig({
-        disableLogging: true,
-        routesDirectory: join(root, 'routes'),
-        generatedRouteTree: join(root, 'routeTree.gen.ts'),
-        tmpDir: join(root, '.tanstack/tmp'),
-      })
-      const read = async () => ({
-        tree: await fs.readFile(config.generatedRouteTree, 'utf8'),
-        routes: await Promise.all(
-          Object.keys(routes).map((file) =>
-            fs.readFile(join(root, 'routes', file), 'utf8'),
-          ),
-        ),
-      })
-      await new Generator({ config, root }).run()
-      const first = await read()
-      const observed = await observeRouteTree(config.generatedRouteTree)
-      await new Generator({ config, root }).run()
-      return { first, observed, second: await read() }
-    } finally {
-      await fs.rm(root, { recursive: true, force: true })
-    }
-  }
-
   it('gives the routes of LF sources, and a second run changes nothing', async () => {
-    const lf = await generate('\n')
-    const crlf = await generate('\r\n')
+    const lf = await generateCrlf('\n')
+    const crlf = await generateCrlf('\r\n')
     expect(crlf.observed).toEqual(lf.observed)
-    expect(crlf.second).toEqual(crlf.first)
+    expect(crlf.second.observed).toEqual(crlf.first.observed)
+    expect(crlf.second.routes).toEqual(crlf.first.routes)
     // The route files are left as written.
     expect(crlf.first.routes).toEqual(
-      Object.values(routes).map((code) => code.replaceAll('\n', '\r\n')),
+      Object.values(crlfRoutes).map((code) => code.replaceAll('\n', '\r\n')),
     )
   })
 })

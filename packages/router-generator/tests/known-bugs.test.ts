@@ -6,12 +6,11 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { parseSync } from 'vite'
-import { describe, expect, test, vi } from 'vitest'
-import {
-  diagnosticsOf,
-  expectDiagnostic,
-} from '@tanstack/compiler-test-utils/diagnostics'
+import { describe, expect, test } from 'vitest'
+import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
+import { captureDiagnostics } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { Generator, getConfig } from '../src'
+import { recordDirectoryInputs } from './consumer-inputs'
 import { routeIdOf } from './route-id'
 import { routesOf } from './route-tree'
 
@@ -21,13 +20,10 @@ import { routesOf } from './route-tree'
  * route file as the generator wrote it, the routes of the route tree (route
  * id to file) and the warnings.
  */
-async function generateMovedRoute(source: string) {
-  const warnings: Array<string> = []
-  const warn = vi
-    .spyOn(console, 'warn')
-    .mockImplementation((...args) => warnings.push(args.join(' ')))
-  const log = vi.spyOn(console, 'log').mockImplementation(() => {})
-  const info = vi.spyOn(console, 'info').mockImplementation(() => {})
+async function generateMovedRoute(
+  source: string,
+  otherFiles: Record<string, string> = {},
+) {
   const root = await mkdtemp(path.join(tmpdir(), 'tsr-known-bugs-'))
   try {
     await mkdir(path.join(root, 'routes'))
@@ -37,23 +33,38 @@ async function generateMovedRoute(source: string) {
 export const Route = createRootRoute()`,
     )
     await writeFile(path.join(root, 'routes/moved.tsx'), source)
+    for (const [file, content] of Object.entries(otherFiles)) {
+      await mkdir(path.dirname(path.join(root, file)), { recursive: true })
+      await writeFile(path.join(root, file), content)
+    }
     const config = getConfig({
       routesDirectory: path.join(root, 'routes'),
       generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
       // Same filesystem as the app, so the generator can rename its temp files
       tmpDir: path.join(root, '.tanstack/tmp'),
     })
-    await new Generator({ config, root }).run()
+    await recordDirectoryInputs(root, config.generatedRouteTree)
+    let error: unknown
+    const { diagnostics, result: routes } = await captureDiagnostics(
+      async () => {
+        try {
+          await new Generator({ config, root }).run()
+          return await routesOf(config.generatedRouteTree)
+        } catch (caught) {
+          error = caught
+          return undefined
+        }
+      },
+    )
     return {
+      error,
       written: await readFile(path.join(root, 'routes/moved.tsx'), 'utf8'),
-      routes: await routesOf(config.generatedRouteTree),
-      warnings,
+      routes,
+      diagnostics,
+      root,
       file: path.join(root, 'routes/moved.tsx'),
     }
   } finally {
-    warn.mockRestore()
-    log.mockRestore()
-    info.mockRestore()
     await rm(root, { recursive: true, force: true })
   }
 }
@@ -68,9 +79,9 @@ describe('route files without a Route export', () => {
   test.each(['export const helper = 1', 'const helper = 1\nexport { helper }'])(
     'a route file without a Route export is left out with a warning: %s',
     async (code) => {
-      const { routes, warnings, file } = await generateMovedRoute(code)
+      const { routes, diagnostics, file, root } = await generateMovedRoute(code)
       expect(routes).toEqual({ __root__: 'routes/__root.tsx' })
-      expectDiagnostic(diagnosticsOf(warnings, 'warning'), { file })
+      expectDiagnostic(diagnostics, { file, root })
     },
   )
 })
@@ -78,10 +89,11 @@ describe('route files without a Route export', () => {
 describe('route constructor imports', () => {
   // Control for the route constructor pin below (same harness).
   test('a moved route gets the id of its new path', async () => {
-    const { written } =
+    const { written, error } =
       await generateMovedRoute(`import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/old')({})`)
     expect(await routeIdOf(written)).toBe('/moved')
+    expect(error).toBeUndefined()
   })
 
   // Bug: the route constructor call is recognized by its callee name, apart
@@ -91,10 +103,11 @@ export const Route = createFileRoute('/old')({})`)
   test.fails(
     'a moved route with an aliased import of the constructor gets the id of its new path',
     async () => {
-      const { written } =
+      const { written, error } =
         await generateMovedRoute(`import { createFileRoute as route } from '@tanstack/react-router'
 export const Route = route('/old')({})`)
       expect(await routeIdOf(written)).toBe('/moved')
+      expect(error).toBeUndefined()
     },
   )
 
@@ -111,14 +124,19 @@ export const Route = route('/old')({})`)
   test.fails(
     'a moved route importing createFileRoute from a module of the app stays a valid module',
     async () => {
-      const { written } =
-        await generateMovedRoute(`import { createFileRoute } from '@/lib/router'
-export const Route = createFileRoute('/old')({})`)
+      const { written, error } = await generateMovedRoute(
+        `import { createFileRoute } from '../lib/router'
+export const Route = createFileRoute('/old')({})`,
+        {
+          'lib/router.ts': `export { createFileRoute } from '@tanstack/react-router'`,
+        },
+      )
       const { errors } = parseSync('route.tsx', written, {
         sourceType: 'module',
         showSemanticErrors: true,
       })
       expect(errors.map((error) => error.message)).toEqual([])
+      expect(error).toBeUndefined()
     },
   )
 })

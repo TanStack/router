@@ -336,7 +336,7 @@ export function rscCssApp(options: {
           `/src/rows/${row.key}.${row.jsx ? 'jsx' : 'tsx'}`,
           {
             environment: 'client',
-            skip: /\/node_modules\/|^\/@(vite|react-refresh|fs|id)\b/,
+            skip: /\/node_modules\/|^\/@(vite|react-refresh)\b/,
           },
         ),
       ),

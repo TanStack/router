@@ -1,0 +1,14 @@
+{
+  "extends": "../tsconfig.json",
+  "include": ["./*.test.ts", "./generator/nested/tests.test-d.ts"],
+  "exclude": [
+    "./**/outside-compiler-corpus/**",
+    "./integration/**",
+    "./generator/**/*.tsx",
+    "./generator/**/routeTree.gen.js",
+    "./generator/**/routeTree.gen.ts",
+    "./generator/**/routeTree.snapshot.js",
+    "./generator/**/routeTree.snapshot.ts",
+    "./**/node_modules/**"
+  ]
+}
