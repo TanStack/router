@@ -16,6 +16,7 @@
  * dev server nor the page has work in flight (`waitForOutcome`), never on
  * how many hot updates or invalidations an edit takes (N21).
  */
+import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
@@ -241,7 +242,21 @@ export async function generatorDevApp(
     scripts = []
     const requests = new Set<unknown>()
     inFlight = requests
-    page.page.on('request', (request) => requests.add(request))
+    page.page.on('request', (request) => {
+      // A navigation of the page (a reload) ends the old document: its
+      // requests in flight end with it, whether or not the browser reports
+      // them as finished or failed
+      if (
+        request.isNavigationRequest() &&
+        request.frame() === page.page.mainFrame()
+      ) {
+        requests.clear()
+      }
+      requests.add(request)
+    })
+    // Answered: the server's work for it is done (its body, which the
+    // browser may stop reading when it drops the module, is not awaited)
+    page.page.on('response', (response) => requests.delete(response.request()))
     page.page.on('requestfinished', (request) => requests.delete(request))
     page.page.on('requestfailed', (request) => requests.delete(request))
     page.page.on('response', (response) => {
@@ -271,6 +286,25 @@ export async function generatorDevApp(
    * transforms may report errors; a reload), twice in a row, within one
    * bound.
    */
+  /**
+   * The page's requests in flight, but for a module whose file an edit
+   * deleted or renamed away: the page's hot import of it (a module it had
+   * loaded) can stay unanswered, as nothing serves the file any more; what
+   * the page shows decides the edit's outcome, not that request.
+   */
+  const pending = () =>
+    [...inFlight]
+      .map((request) => (request as { url: () => string }).url())
+      .filter((url) => {
+        const { pathname, origin } = new URL(url)
+        if (
+          origin !== new URL(app.url).origin ||
+          !/\.[cm]?[jt]sx?$/.test(pathname)
+        ) {
+          return true
+        }
+        return existsSync(path.join(app.root, decodeURIComponent(pathname)))
+      })
   const pageSettled = async (timeout = 15_000) => {
     const { hmr } = app
     if (!hmr) {
@@ -281,11 +315,11 @@ export async function generatorDevApp(
       applied: () => Promise.resolve(true),
       quiet: async () => {
         await hmr.idle()
-        return inFlight.size === 0
+        return pending().length === 0
       },
       describe: () =>
         Promise.resolve(
-          `the page still has ${inFlight.size} request(s) in flight`,
+          `the page still has ${pending().length} request(s) in flight: ${pending().join(', ')}`,
         ),
     })
   }
