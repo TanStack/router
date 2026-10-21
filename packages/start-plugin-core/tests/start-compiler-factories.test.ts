@@ -1089,7 +1089,16 @@ export const serverOnly = createServerOnlyFn(() => 'server-only-marker')`,
   // own host: it writes no case directories (which its watcher ignores, and
   // the edit settle would wait for).
   describe('dev edits', () => {
-    const editHost = useStartHost(hostDefaults)
+    // The edit directories exist before the dev server starts, so its
+    // watcher watches them from the start (as in an app)
+    const editHost = useStartHost({
+      ...hostDefaults,
+      files: {
+        ...hostDefaults.files,
+        'src/edits/factory/.keep': '',
+        'src/edits/export-star/.keep': '',
+      },
+    })
     beforeAll(async () => {
       await (await editHost()).page()
     }, 60_000)

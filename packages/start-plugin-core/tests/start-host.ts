@@ -209,6 +209,9 @@ const appTsconfig = `${JSON.stringify(
   2,
 )}\n`
 
+/** How long one page run may take before the page is replaced. */
+const pageRunTimeout = 10_000
+
 /** Where a case lives: `src/cases/c<n>`. */
 export const casesDir = 'src/cases'
 
@@ -660,7 +663,23 @@ export async function createStartHost(
       const firstError = opened.errors.length
       const firstConsole = opened.console.length
       try {
-        const result = (await opened.page.evaluate(source)) as T
+        let timer: ReturnType<typeof setTimeout> | undefined
+        const result = (await Promise.race([
+          opened.page.evaluate(source),
+          new Promise((_, reject) => {
+            timer = setTimeout(() => {
+              // A script that never settles keeps the page busy: the next
+              // run gets a new page
+              page = undefined
+              void opened.close()
+              reject(
+                new Error(
+                  `the page run did not settle within ${pageRunTimeout} ms (the page is replaced)`,
+                ),
+              )
+            }, pageRunTimeout)
+          }),
+        ]).finally(() => clearTimeout(timer))) as T
         return {
           result,
           errors: opened.errors.slice(firstError),
@@ -890,6 +909,14 @@ try {
     },
     case: createCase,
     edit: async (files) => {
+      if (cases > 0) {
+        // The dev server's settle owes an event to every app file the
+        // watcher has not reported, and it never reports the (ignored)
+        // case directories
+        throw new Error(
+          'edit() on a host that has cases: use a host of its own for dev edits (files on disk before it starts, edits outside src/cases)',
+        )
+      }
       await host.edit(files)
     },
     build: (buildOptions) => host.build(buildOptions),
