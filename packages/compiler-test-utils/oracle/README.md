@@ -16,13 +16,20 @@ Read this before you rely on the suite. The goal below is not met today.
 - **Internal entry points.** Many acceptance tests reach the compilers through internal modules, internal ids
   (virtual-module queries, resolver ids) and helpers built on them, not only through the public plugins. A
   correct compiler built differently can fail them before any assertion runs. Six restructures of today's
-  compiler that keep its behaviour (moved modules, renamed ids and generated names, reworded diagnostics, another
-  printer, another AST seam) made 1,893 of the 4,268 acceptance test cases fail under at least one of them: 44%.
-  Moved modules alone broke 1,849.
+  compiler meant to keep its behaviour (moved modules, renamed ids and generated names, reworded diagnostics,
+  another printer, another AST seam) made 1,893 of the 4,268 acceptance test cases fail under at least one of
+  them: 44%, not counting the few failures where a restructure did change behaviour. Moved modules alone broke
+  1,849. A few tests and pins also assume today's generated names, printed text or chunk counts.
+- **Diagnostics read through today's format.** Some helpers parse import-protection reports by their labels,
+  match cause words from a fixed list, or read only one diagnostic channel. Rewording the diagnostics alone
+  failed 289 test cases, although SPEC §5.7 allows other wording and channels.
 - **Re-implemented tools.** Several helpers re-implement tool or runtime behaviour instead of running the real
   thing: module resolution and linking, parts of Vite's plugin pipeline, the server function resolver and RPC
-  path, Start runtime stubs, hot contexts. Some client checks run in Node (server rendering, jsdom, a fake
-  `window` or `import.meta.hot`), not in a browser.
+  path, Start runtime stubs, hot contexts, hand-written Start plugin configurations. Some client checks run in
+  Node (server rendering, jsdom, a fake `window` or `import.meta.hot`), not in a browser.
+- **Not every selected test tests a compiler.** About a quarter of the selected test declarations check runtime
+  code, manifest, prerender, sitemap or schema code, the harness itself, or today's implementation choices. They
+  will move to separate lanes.
 - **A repair is in progress.** It reroutes these tests through the public plugins and real tools, and turns on
   the import gate (`test:import-gate`, see [../AGENTS.md](../AGENTS.md#import-gate)) in strict mode.
 
@@ -123,8 +130,9 @@ the test itself states the outcome it asserts.
 
 - **Adversarial compilers.** Reviewers wrote compiler variants as patches to the product source and ran the whole
   corpus against each. Every variant patched today's compiler and kept its internal structure, so this method
-  could not detect tests that depend on that structure. Restructured variants did (see the status at the top). In the final round, all 90 wrong compilers (from four authors over two rounds) were caught,
-  and all 34 correct-but-different compilers passed. When first run, the corpus caught 47 of the 50 first-round
+  could not detect tests that depend on that structure. Restructured variants did (see the status at the top).
+  In the final round, all 90 wrong compilers (from four authors over two rounds) were caught, and all 34
+  correct-but-different compilers passed. When first run, the corpus caught 47 of the 50 first-round
   wrong compilers and 18 of the 40 second-round ones, and flagged 5 of 20 and then 4 of 15 valid ones. Every
   escape got a new test, and every false alarm was fixed in the tests or the spec.
 - **Independent review.** Two reviewers, each a different AI model, checked every test against the spec, and an

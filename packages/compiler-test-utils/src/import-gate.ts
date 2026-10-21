@@ -3,7 +3,7 @@
  * acceptance test files of the compiler oracle and in the helpers they use.
  *
  * The acceptance tests reach the compilers only through public entry points
- * (oracle/README.md, "Public entry points"). An internal is any module of a
+ * (oracle/README.md, "Real tools and public entry points"). An internal is any module of a
  * compiler package that its `package.json` `exports` does not expose. These
  * are allowed:
  *
