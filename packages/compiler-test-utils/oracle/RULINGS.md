@@ -248,12 +248,12 @@ Preserve the original file's effective JSX runtime decision: a pragma the transf
 must not become effective in a chunk. A warning plus leaving the file unsplit also passes. Tests assert the
 rendered outcome only. Clause: J2.16.
 
-### parentheses around components
+### parentheses around components (pending: NEW-2)
 
-Printing is free (§5.5), but not for a component's declaration: parentheses around the function or call that
-defines a component (`const Page = (() => …)`) stop SWC's Fast Refresh from registering it on Rsbuild, so its hot
-updates fail. Found by the repair's printing restructure (R4); the user ruling on this (NEW-2) is pending, and the
-spec states the observed constraint. Clauses: §5.5, J3.2.
+Not ruled. Pending user ruling NEW-2: whether redundant parentheses around component-defining expressions are free;
+they break React Fast Refresh registration under SWC/Rsbuild (`const Page = (() => …)` is not registered, so its
+hot updates fail). Found by the repair's printing restructure (R4). Until the ruling, the spec records the open
+question and no test decides it. Clauses: §5.5, J3.2.
 
 ### R-14: license comments
 

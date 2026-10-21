@@ -168,7 +168,7 @@ Pins in `start-plugin-core/tests/pending-rulings/` are held by pending user ruli
 
 #### `router-plugin/tests/integration/known-bugs-code-splitter-property-write.test.ts`
 
-- **await entry.mount('/display-name').** The code splitter moves a component into its chunk but leaves a top-level write to it (`Page.displayName = ...`) in the route module, where `Page` is no longer declared: the entry throws "Page is not defined".
+- **a component the route file writes a property of loads with its chunk and renders the property ($hint).** The code splitter moves a component into its chunk but leaves a top-level write to it (`Page.displayName = ...`) in the route module, where `Page` is no longer declared: the entry throws "Page is not defined".
 
 #### `router-plugin/tests/integration/known-bugs-code-splitter-ssr-builds.test.ts`
 

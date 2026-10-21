@@ -794,9 +794,9 @@ as `§5.N` (or "§5 item N").
   neither made eager nor loaded together when only one is needed, and no chunk carries unrelated code (J2.5).
 - **§5.4 SSR handler placement** in place or extracted, when SSR and the provider share an environment (P2, J4.3); the
   forwarding mechanism for a separate provider.
-- **§5.5 Statement/import order, printing** (quotes, semicolons, parentheses beyond necessity — except around the
-  function or call that defines a component, which stop Fast Refresh from registering it (SWC on Rsbuild)
-  `[ruling: parentheses around components]` — whitespace, comment placement except license comments the splitter
+- **§5.5 Statement/import order, printing** (quotes, semicolons, parentheses beyond necessity — pending user ruling
+  NEW-2: whether redundant parentheses around component-defining expressions are free; they break React Fast
+  Refresh registration under SWC/Rsbuild — whitespace, comment placement except license comments the splitter
   moves code away from, which stay in the source module, G12 — license-comment placement is free for the Start compiler and the import-protection rewrite — and pragma
   semantics, J2.16; the
   order among directives of one prologue, as long as each still precedes executable code), dropping

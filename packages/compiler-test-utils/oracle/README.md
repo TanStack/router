@@ -124,7 +124,7 @@ gate's reach. Details in [../AGENTS.md](../AGENTS.md#import-gate).
 
 ## Pins (`.fails`)
 
-A test marked `.fails` (`test.fails`, `it.fails.each`, or `bundler === 'vite' ? test : test.fails`) is a pin: it
+A test marked `.fails` (`test.fails`, `it.fails.each`, `bundler === 'vite' ? test : test.fails`, or the `{ fails: true }` option) is a pin: it
 asserts the correct outcome for a bug that today's compiler has, so it fails today. Its comment says `Bug:`,
 `Impact:` and `Source:`. Pins are fix-agnostic: any correct fix passes them, and where the spec allows a clear
 error instead of support, the pin accepts that error too. A pin's cause is in a compiler or its bundler integration
@@ -155,7 +155,7 @@ These tests are kept exactly as they are until the user rules; do not reroute or
 | Q9     | the immediate `tsr.config.json` reload pin                                                                                                                                                  |
 | Q10    | the owned-import numeric cap in `router-generator/tests/owned-edits.ts`                                                                                                                     |
 | NEW-1  | the decorator-after-`export` pin (`router-plugin/tests/integration/pages/known-bugs-code-splitter-bindings.test.ts`)                                                                        |
-| NEW-2  | whether parentheses around components are free; SPEC §5.5 states the observed Fast Refresh constraint                                                                                       |
+| NEW-2  | whether redundant parentheses around component-defining expressions are free; they break React Fast Refresh registration under SWC/Rsbuild (SPEC §5.5 records the open question)            |
 | #42    | the stale pre-bundled dependency flake of Vite (KNOWN-BUGS, upstream): pre-bundle with discovery off in the affected apps, or wait for Vite                                                 |
 | #34    | Vite's optimizer writing its cache after `close()` (KNOWN-BUGS, upstream): no workaround until ruled                                                                                        |
 | #57    | start-plugin-core integration memory: workers keep modules across files (about 4.4 GB each) to stay within the tier's time budget                                                           |
