@@ -1,10 +1,22 @@
-// Slow-tier half of this suite: the tests that need a real tool. Its
-// in-process tests are in ../../rsbuild/normalized-client-build.test.ts (fast tier).
+/**
+ * Not part of the compiler test corpus (SYNTHESIS S6, normalized-client-build
+ * x8: the Start manifest, B-other). These check how Start's Rsbuild
+ * integration reads a client build into its manifest (CSS and chunks per
+ * route) by calling the manifest code directly on fixture builds; no
+ * compiler job decides them. The fixtures mark route-split chunks with the
+ * code splitter's public query name (`tsrSplit` of `@tanstack/router-plugin`),
+ * not a literal copy of it.
+ *
+ * Slow-tier half of this suite: the tests that need a real tool. Its
+ * in-process tests are in ../../rsbuild/normalized-client-build.test.ts (fast
+ * tier).
+ */
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { promisify } from 'node:util'
 import { rspack } from '@rsbuild/core'
 import { join } from 'pathe'
+import { tsrSplit } from '@tanstack/router-plugin'
 import { describe, expect, test, vi } from 'vitest'
 import {
   normalizeRspackClientBuild,
@@ -93,7 +105,7 @@ async function buildClientFixture(
 const stylesheetFiles = {
   'index.js': `
     import './root.css'
-    globalThis.route = () => import(/* webpackChunkName: "posts" */ './posts.js?tsr-split=component')
+    globalThis.route = () => import(/* webpackChunkName: "posts" */ './posts.js?${tsrSplit}=component')
   `,
   'posts.js': `import './posts.css'; export const render = () => 'posts'`,
   'root.css': '.card{background:url(./dot.svg)}',
@@ -119,8 +131,8 @@ describe('normalizeRspackClientBuild', () => {
         'index.js': `
           import './root.css'
           globalThis.routes = [
-            () => import(/* webpackChunkName: "alpha" */ './alpha.js?tsr-split=component'),
-            () => import(/* webpackChunkName: "beta" */ './beta.js?tsr-split=component'),
+            () => import(/* webpackChunkName: "alpha" */ './alpha.js?${tsrSplit}=component'),
+            () => import(/* webpackChunkName: "beta" */ './beta.js?${tsrSplit}=component'),
           ]
         `,
         'alpha.js': `
@@ -234,8 +246,8 @@ describe('normalizeRspackClientBuild', () => {
         'index.js': `
           import './root.css'
           globalThis.routes = [
-            () => import(/* webpackChunkName: "alpha" */ './alpha.js?tsr-split=component'),
-            () => import(/* webpackChunkName: "beta" */ './beta.js?tsr-split=component'),
+            () => import(/* webpackChunkName: "alpha" */ './alpha.js?${tsrSplit}=component'),
+            () => import(/* webpackChunkName: "beta" */ './beta.js?${tsrSplit}=component'),
           ]
         `,
         'alpha.js': `
@@ -320,9 +332,9 @@ describe('normalizeRspackClientBuild', () => {
           import { lib } from './lib.js'
           globalThis.lib = lib()
           globalThis.routes = [
-            () => import(/* webpackChunkName: "root" */ './root.js?tsr-split=component'),
-            () => import(/* webpackChunkName: "alpha" */ './alpha.js?tsr-split=component'),
-            () => import(/* webpackChunkName: "beta" */ './beta.js?tsr-split=component'),
+            () => import(/* webpackChunkName: "root" */ './root.js?${tsrSplit}=component'),
+            () => import(/* webpackChunkName: "alpha" */ './alpha.js?${tsrSplit}=component'),
+            () => import(/* webpackChunkName: "beta" */ './beta.js?${tsrSplit}=component'),
           ]
         `,
         'root.js': `
@@ -400,7 +412,7 @@ describe('normalizeRspackClientBuild', () => {
         'index.js': `
         import { unused } from './unused.js'
         globalThis.value = unused
-        globalThis.route = () => import(/* webpackChunkName: "alpha" */ './alpha.js?tsr-split=component')
+        globalThis.route = () => import(/* webpackChunkName: "alpha" */ './alpha.js?${tsrSplit}=component')
       `,
         'alpha.js': `
         import { unused } from './unused.js'
@@ -432,7 +444,7 @@ describe('normalizeRspackClientBuild', () => {
         'index.js': `
         import { header } from './header.js'
         globalThis.header = header
-        globalThis.route = () => import(/* webpackChunkName: "alpha" */ './alpha.js?tsr-split=component')
+        globalThis.route = () => import(/* webpackChunkName: "alpha" */ './alpha.js?${tsrSplit}=component')
       `,
         'other.js': `import { header } from './header.js'; globalThis.otherHeader = header`,
         'alpha.js': `import { header } from './header.js'; export const render = () => header()`,
@@ -456,7 +468,7 @@ describe('normalizeRspackClientBuild', () => {
   test('collects nested CSS imports before the importing route stylesheet', async () => {
     const { clientBuild, directory } = await buildClientFixture(
       {
-        'index.js': `globalThis.route = () => import(/* webpackChunkName: "alpha" */ './alpha.js?tsr-split=component')`,
+        'index.js': `globalThis.route = () => import(/* webpackChunkName: "alpha" */ './alpha.js?${tsrSplit}=component')`,
         'alpha.js': `import './alpha.css'; export const render = () => 'alpha'`,
         'alpha.css': '@import "./theme.css"; .alpha { color: red; }',
         'theme.css': '@import "./base.css"; .theme { color: blue; }',

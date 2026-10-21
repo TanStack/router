@@ -12,17 +12,17 @@ import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
 import {
   getMockExportNamesBySource,
   getNamedExports,
-} from '../../src/import-protection/analysis'
-import { MOCK_MODULE_ID } from '../../src/import-protection/constants'
+} from '../../../src/import-protection/analysis'
+import { MOCK_MODULE_ID } from '../../../src/import-protection/constants'
 import {
   generateDevSelfDenialModule,
   generateSelfContainedMockModule,
   makeMockEdgeModuleId,
-} from '../../src/import-protection/virtualModules'
+} from '../../../src/import-protection/virtualModules'
 import {
   loadResolvedVirtualModule,
   resolveInternalVirtualModuleId,
-} from '../../src/vite/import-protection-plugin/virtualModules'
+} from '../../../src/vite/import-protection-plugin/virtualModules'
 import type { ModuleStub } from '@tanstack/compiler-test-utils/module-linker'
 
 /**

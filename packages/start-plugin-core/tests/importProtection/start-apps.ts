@@ -14,15 +14,25 @@
  * user sees, on every channel, through the reader of `violation-report.ts`
  * (`reportedViolations`, `violationTexts`, `violationReports`).
  */
+import { readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import path from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import react from '@vitejs/plugin-react'
-import { expect } from 'vitest'
+import { expect, onTestFinished } from 'vitest'
+import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import {
   expectRelevantLocation,
+  findDiagnostics,
   parseLocation,
 } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  workspacePackage,
+  workspacePackageLinks,
+} from '@tanstack/compiler-test-utils/workspace-packages'
 import { startDevServer } from '../dev-server'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
+import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import type { ImportProtectionOptions, ViolationInfo } from './public-types'
 import type { StartDevServerOptions } from '../dev-server'
 import type { PluginOption } from 'vite'
@@ -58,8 +68,12 @@ export interface ProtectedDevServerOptions {
   /** Vite configuration of the app (e.g. `server.warmup`). */
   config?: StartDevServerOptions['config']
   /**
-   * Bundles the client from this entry (Vite's full-bundle dev,
-   * `experimental.bundledDev`): `server.clientBundle()`.
+   * Vite's full-bundle dev (`experimental.bundledDev`): Rolldown bundles the
+   * client from Start's own client entry (the bundle input Start's plugin
+   * configures), which imports the app's client entry: `src/client.ts`
+   * when the app has one, else one that imports `entry` (as a real client
+   * entry reaches the router entry through `StartClient`).
+   * `server.clientBundle()` gives the bundle.
    */
   bundledDev?: StartDevServerOptions['bundledDev']
 }
@@ -97,8 +111,19 @@ export async function startProtectedDevServer(
       return userOnViolation?.(info)
     },
   }
+  const hasClientEntry = Object.keys(files).some((file) =>
+    /^src\/client\.[cm]?[jt]sx?$/.test(file),
+  )
   const server = await startDevServer({
-    files,
+    files: {
+      ...(bundledDev &&
+        !hasClientEntry && {
+          'harness/client-entry.ts': `import ${JSON.stringify(
+            `../${bundledDev.entry.replace(/\.[cm]?[jt]sx?$/, '')}`,
+          )}\n`,
+        }),
+      ...files,
+    },
     browser: options.browser,
     bundledDev,
     config,
@@ -110,6 +135,88 @@ export async function startProtectedDevServer(
     plugins: bundledDev ? [react(), ...plugins] : plugins,
   })
   return Object.assign(server, { violations })
+}
+
+/**
+ * The file a package's `package.json` exports for `subpath` (its `import`
+ * condition), as Node resolves an app's import of it.
+ */
+function exportedFile(root: string, subpath: string): string {
+  const manifest = JSON.parse(
+    readFileSync(path.join(root, 'package.json'), 'utf8'),
+  ) as {
+    exports: Record<string, string | { import?: unknown; default?: unknown }>
+  }
+  const entry = manifest.exports[subpath]!
+  const target =
+    typeof entry === 'string'
+      ? entry
+      : typeof entry.import === 'string'
+        ? entry.import
+        : ((entry.import as { default?: string } | undefined)?.default ??
+          (entry.default as string))
+  return path.join(root, target)
+}
+
+/**
+ * Starts a Vite dev server on a React Start app with RSC enabled, the way
+ * its `vite.config.ts` configures it: `tanstackStart({ rsc: { enabled:
+ * true }, importProtection, router })` of the built
+ * `@tanstack/react-start/plugin/vite`, Vite's RSC plugin
+ * (`@vitejs/plugin-rsc`, as `@tanstack/react-start-rsc` installs it) and
+ * `@vitejs/plugin-react`. Its server fn provider environment is `rsc`, a
+ * third environment beside `client` and `ssr`. `@tanstack/react-start`,
+ * `@tanstack/react-start-rsc` and `@vitejs/plugin-rsc` are linked into the
+ * app (it imports them, as an installed app does).
+ */
+export async function startRscProtectedDevServer(
+  files: Record<string, string>,
+  importProtection: ImportProtectionOptions = {},
+  options: { router?: string } = {},
+): Promise<DevServer> {
+  const { router = 'src/entry.ts' } = options
+  const reactStart = workspacePackage('@tanstack/react-start')
+  const reactStartRsc = workspacePackage('@tanstack/react-start-rsc')
+  const rscPluginRoot = path.dirname(
+    createRequire(path.join(reactStartRsc, 'package.json')).resolve(
+      '@vitejs/plugin-rsc/package.json',
+    ),
+  )
+  const { tanstackStart } = (await import(
+    pathToFileURL(exportedFile(reactStart, './plugin/vite')).href
+  )) as { tanstackStart: (options?: Record<string, unknown>) => PluginOption }
+  const { default: rsc } = (await import(
+    pathToFileURL(exportedFile(rscPluginRoot, '.')).href
+  )) as { default: () => PluginOption }
+  return createDevServer({
+    dir: path.dirname(path.dirname(fileURLToPath(import.meta.url))),
+    prefix: '.start-rsc-dev-server-',
+    registerCleanup: onTestFinished,
+    files: {
+      'src/router.tsx': `export const getRouter = () => undefined\n`,
+      'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute()
+`,
+      ...files,
+    },
+    symlinks: {
+      ...workspacePackageLinks([
+        '@tanstack/react-start',
+        '@tanstack/react-start-rsc',
+      ]),
+      'node_modules/@vitejs/plugin-rsc': rscPluginRoot,
+    },
+    config: { appType: 'custom' },
+    plugins: [
+      tanstackStart({
+        rsc: { enabled: true },
+        importProtection,
+        router: { entry: path.posix.relative('src', router) },
+      }),
+      rsc(),
+      react(),
+    ],
+  })
 }
 
 /**
@@ -176,6 +283,55 @@ export function expectMarkerViolation(
   })
   for (const file of [marker.file, use.file]) {
     expect(report.text).toContain(file)
+  }
+}
+
+/**
+ * What a dev server reported, on any channel (`server.diagnostics`: the
+ * console, the process streams, Vite's logger), as a warning or an error
+ * naming one of `files` (relative to the app root, or absolute), from
+ * `since` (a `server.diagnostics.length` mark) on: for checks that nothing
+ * is reported about a module, whatever the report's wording or layout
+ * (SPEC §5.7, J6.12), next to the report reader's check.
+ */
+export function problemsNaming(
+  server: Pick<DevServer, 'diagnostics' | 'root'>,
+  files: Array<string>,
+  since = 0,
+): Array<string> {
+  const reported = server.diagnostics
+    .slice(since)
+    .filter(({ severity }) => severity !== 'info') as Array<Diagnostic>
+  return [
+    ...new Set(
+      files.flatMap((file) =>
+        findDiagnostics(reported, { file, root: server.root }).map(
+          ({ text }) => text,
+        ),
+      ),
+    ),
+  ]
+}
+
+/**
+ * What a failed dev load reported: the rejection and everything the server
+ * reported on any channel since `since` (a `server.diagnostics.length`
+ * mark). A compiler may print the report on the console and reject with a
+ * short error (SPEC §5.7); the report reader reads both.
+ */
+export function failureOutput(
+  error: Error,
+  server: Pick<DevServer, 'diagnostics' | 'root'>,
+  since: number,
+) {
+  return {
+    root: server.root,
+    diagnostics: [
+      { text: error.message },
+      ...server.diagnostics
+        .slice(since)
+        .filter(({ severity }) => severity !== 'info'),
+    ],
   }
 }
 

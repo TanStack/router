@@ -8,6 +8,8 @@ import {
   violationReports,
 } from '../../importProtection/start-apps'
 import { probeMockPrelude, safeMock } from '../../importProtection/mock-helpers'
+import { inEnvironment } from '../../importProtection/violation-report'
+import { failureOf } from './channels'
 import { runViteClient, startBrowserProtectedDevServer } from './client-pages'
 import type { ImportProtectionOptions } from '../../importProtection/public-types'
 
@@ -55,15 +57,13 @@ describe.each(startBundlers)('%s public import rules', (bundler) => {
           start: { importProtection: { client: { specifiers } } },
         }),
       )
-      expect(violationReports(error.message)).toEqual([
+      expect(violationReports(error)).toEqual([
         expect.objectContaining({
           environment: 'client',
           specifier: 'private-sdk',
         }),
       ])
-      expect(locatedImporters(error.message, files)).toEqual([
-        'client src/entry.ts',
-      ])
+      expect(locatedImporters(error, files)).toEqual(['client src/entry.ts'])
     },
     timeout,
   )
@@ -71,7 +71,7 @@ describe.each(startBundlers)('%s public import rules', (bundler) => {
   test.each(['private-sdk-ui', 'private-sdk2'])(
     'a literal permits the near-prefix package %s',
     async (name) => {
-      const { client } = await buildStart({
+      const build = await buildStart({
         bundler,
         entry: 'src/entry.ts',
         files: {
@@ -82,7 +82,8 @@ describe.each(startBundlers)('%s public import rules', (bundler) => {
           importProtection: { client: { specifiers: ['private-sdk'] } },
         },
       })
-      expect(violationReports(client.warnings)).toEqual([])
+      const { client } = build
+      expect(violationReports(inEnvironment(build, 'client'))).toEqual([])
       expect((await client.run('return entry.value')).result).toBe(
         `REAL_${name}`,
       )
@@ -93,7 +94,7 @@ describe.each(startBundlers)('%s public import rules', (bundler) => {
   test.skipIf(process.platform !== 'linux')(
     'Src is outside the case-sensitive srcDirectory',
     async () => {
-      const { client } = await buildStart({
+      const build = await buildStart({
         bundler,
         entry: 'src/entry.ts',
         files: {
@@ -106,7 +107,8 @@ describe.each(startBundlers)('%s public import rules', (bundler) => {
           importProtection: { client: { specifiers: ['private-sdk'] } },
         },
       })
-      expect(violationReports(client.warnings)).toEqual([])
+      const { client } = build
+      expect(violationReports(inEnvironment(build, 'client'))).toEqual([])
       expect((await client.run('return entry.value')).result).toBe(
         'REAL_private-sdk',
       )
@@ -117,7 +119,7 @@ describe.each(startBundlers)('%s public import rules', (bundler) => {
   test(
     'inherited member names of a mocked import remain safe to consume',
     async () => {
-      const { client } = await buildStart({
+      const build = await buildStart({
         bundler,
         entry: 'src/entry.ts',
         files: {
@@ -126,7 +128,8 @@ describe.each(startBundlers)('%s public import rules', (bundler) => {
         },
         start: { importProtection: { behavior: 'mock', mockAccess: 'off' } },
       })
-      expect(violationReports(client.warnings)).toHaveLength(1)
+      const { client } = build
+      expect(violationReports(inEnvironment(build, 'client'))).toHaveLength(1)
       expect(client.where('MARK_SECRET')).toBe('nowhere')
       expect(
         (
@@ -155,17 +158,17 @@ test(
       behavior: 'error',
       client: { specifiers: ['@(private-sdk|internal-sdk)'] },
     })
-    const error = await rejection(server.load('/src/entry.ts'))
-    expect(violationReports(error.message)).toEqual([
+    const { reported } = await failureOf(server, () =>
+      server.load('/src/entry.ts'),
+    )
+    expect(violationReports(reported)).toEqual([
       expect.objectContaining({
         environment: 'client',
         specifier: 'private-sdk',
       }),
     ])
     // (at the bare import, line 1)
-    expect(locatedImporters(error.message, files)).toEqual([
-      'client src/entry.ts',
-    ])
+    expect(locatedImporters(reported, files)).toEqual(['client src/entry.ts'])
   },
   timeout,
 )

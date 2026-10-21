@@ -1,8 +1,20 @@
+/**
+ * Internal control (SPEC §8): not part of the compiler test corpus. It
+ * reads today's default rule objects (`getDefaultImportProtectionRules`,
+ * `getMarkerSpecifiers`, including how many markers exist); a correct
+ * rewrite may represent its defaults differently. The outcome the defaults
+ * stand for, on a real app with no `importProtection` option, is decided by
+ * `integration/importProtection/default-rules.test.ts` (every framework's
+ * server entry and markers, `node_modules` excluded in both environments,
+ * no server specifier) and `integration/importProtection/build.test.ts`
+ * ("default rules": `**\/*.server.*`, `**\/*.client.*`,
+ * `@tanstack/react-start/server`, the markers).
+ */
 import { describe, expect, test } from 'vitest'
 import {
   getDefaultImportProtectionRules,
   getMarkerSpecifiers,
-} from '../../src/import-protection/defaults'
+} from '../../../src/import-protection/defaults'
 
 describe('getDefaultImportProtectionRules', () => {
   test('returns client rules with all framework specifiers', () => {

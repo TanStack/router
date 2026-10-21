@@ -38,7 +38,7 @@ import {
   requestsOfPrelude,
   startBundlers,
 } from '../build-harness'
-import { expectSourceError } from '../regression-helpers'
+import { expectSourceError } from './source-errors'
 import type { StartBuild, StartBundler } from '../build-harness'
 
 const timeout = 60_000

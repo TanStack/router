@@ -208,15 +208,13 @@ describe('formatViolation', () => {
         importer: 'src/routes/index.tsx',
         specifier: '@tanstack/react-start/server',
         trace: [
-          { at: 'src/main.tsx', entry: true, imports: undefined },
-          {
-            at: 'src/routes/index.tsx',
-            entry: false,
-            imports: './routes/index',
-          },
+          { at: 'src/main.tsx' },
+          { at: 'src/routes/index.tsx', imports: './routes/index' },
         ],
       }),
     ])
+    // (today's formatter tags the first step, the entry)
+    expect(formatted).toMatch(/src\/main\.tsx \(entry\)/)
     expect(suggestedDirections(formatted)).toEqual(['server'])
   })
 

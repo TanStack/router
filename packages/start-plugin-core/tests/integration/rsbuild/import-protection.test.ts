@@ -31,8 +31,10 @@ import { originalLocation } from '../../importProtection/original-location'
 import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import type { ExpectedViolation } from '../../importProtection/start-apps'
-import type { ViolationInfo } from '../../importProtection/public-types'
-import type { ImportProtectionOptions } from '../../importProtection/public-types'
+import type {
+  ImportProtectionOptions,
+  ViolationInfo,
+} from '../../importProtection/public-types'
 
 /**
  * Each test's timeout, and the time an Rsbuild dev server may take to
@@ -333,12 +335,18 @@ console.log(secret(), other)
 
   // The compile ends (import protection neither hangs nor crashes on a
   // module that is gone) with an error naming the missing module, as a file
-  // or as its specifier; additional correct errors are allowed (SPEC G5;
+  // or as the specifier its importer wrote (the entry module: as Start's
+  // client entry imports it); additional correct errors are allowed (SPEC G5;
   // V1 ip S21).
   // Source: round 4 mutation testing (rsbuild host, entries without a
   // module).
   test.each([
-    { module: 'the entry module', file: 'src/entry.ts', specifier: undefined },
+    // (the module Start's client entry imports, by its specifier there)
+    {
+      module: 'the entry module',
+      file: 'src/entry.ts',
+      specifier: '../src/entry',
+    },
     {
       module: 'an imported module',
       file: 'src/other.ts',
@@ -359,8 +367,7 @@ console.log(secret(), other)
       })
       const namesTheModule = (diagnostic: Diagnostic) =>
         findDiagnostics(diagnostic, { file, root: server.root }).length > 0 ||
-        (specifier !== undefined &&
-          findDiagnostics(diagnostic, { names: [specifier] }).length > 0)
+        findDiagnostics(diagnostic, { names: [specifier] }).length > 0
       expect(errors).not.toEqual([])
       expect(
         errors.some(namesTheModule),
@@ -498,7 +505,7 @@ export const read = () => button()
 
   // (where it is reported is pinned below: the location is wrong)
   test('the file rule denies the module it resolves to: the build fails, naming the importer', async () => {
-    expect(reportedViolations((await fileRuleDenied()).message)).toEqual([
+    expect(reportedViolations(await fileRuleDenied())).toEqual([
       {
         environment: 'client',
         importer: expect.stringMatching(/^src\/entry\.ts\b/),
@@ -517,7 +524,7 @@ export const read = () => button()
   test.fails(
     'the file rule denies the module it resolves to: the importer is reported at the import or the use',
     async () => {
-      expect(reportedViolations((await fileRuleDenied()).message)).toEqual([
+      expect(reportedViolations(await fileRuleDenied())).toEqual([
         { environment: 'client', importer: atImportOrUse },
       ])
     },
@@ -534,7 +541,7 @@ export const read = () => button()
         },
       ),
     )
-    const [report, ...others] = violationReports(error.message)
+    const [report, ...others] = violationReports(error)
     expect(others).toEqual([])
     expect(report!.environment).toBe('client')
     expectMarkerViolation(report!, {
@@ -558,8 +565,7 @@ export const read = () => button()
     async () => {
       expect(
         reportedViolations(
-          (await rejection(build({ client: { specifiers: ['ui-lib'] } })))
-            .message,
+          await rejection(build({ client: { specifiers: ['ui-lib'] } })),
         ),
       ).toEqual([{ environment: 'client', importer: atImportOrUse }])
     },
@@ -590,7 +596,7 @@ export const read = () => secret() + other
   )
   // Rspack may compile the client more than once for the edit (each
   // distinct report counts once).
-  expectViolationsAt(error.message, [
+  expectViolationsAt(error, [
     {
       environment: 'client',
       use: locationIn('src/entry.ts', entry, 3, 'secret()'),

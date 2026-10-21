@@ -7,6 +7,7 @@
  */
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
+import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import {
   diagnosticsOf,
   expectDiagnostic,
@@ -25,7 +26,10 @@ import {
   reportedViolations,
   violationReports,
 } from '../../importProtection/start-apps'
-import { suggestedDirections } from '../../importProtection/violation-report'
+import {
+  inEnvironment,
+  suggestedDirections,
+} from '../../importProtection/violation-report'
 import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import type { TanStackStartInputConfig } from '../../../src'
 import type { ViolationInfo } from '../../importProtection/public-types'
@@ -101,18 +105,30 @@ export const read = () => secret()
   }
 }
 
-/** Builds `files` with `bundler`; what the client gets from `entry.read()`. */
+/**
+ * What a failed build reported, on every channel (a compiler may print the
+ * details to the console and fail the build with a short error, SPEC §5.7):
+ * the `StartBuildError`'s diagnostics.
+ */
+const everyChannel = (error: Error) =>
+  (error as Error & { diagnostics?: Array<unknown> }).diagnostics ?? error
+
+/**
+ * Builds `files` with `bundler`; what the client gets from `entry.read()`,
+ * and what the build reported as a problem on any channel (`warnings`).
+ */
 async function clientRead(
   bundler: (typeof startBundlers)[number],
   files: Record<string, string>,
   start: TanStackStartInputConfig,
 ) {
-  const { client } = await buildStart({
+  const build = await buildStart({
     bundler,
     files,
     entry: 'src/entry.ts',
     start,
   })
+  const { client } = build
   const read = (await client.run(`return String(entry.read())`))
     .result as string
   return {
@@ -120,14 +136,14 @@ async function clientRead(
     hasRealCode: client.where('MARK_SECRET') !== 'nowhere',
     /** `entry.read()` ran the real module. */
     ranReal: read === 'MARK_SECRET',
-    warnings: client.warnings,
+    warnings: problems(build.diagnostics).map(({ text }) => text),
   }
 }
 
 /** The one report of a failed build, read by its sections. */
 async function failureReport(build: Promise<unknown>) {
   const error = await rejection(build)
-  const [report, ...others] = violationReports(error.message)
+  const [report, ...others] = violationReports(error)
   expect(others).toEqual([])
   return report!
 }
@@ -179,7 +195,7 @@ export const value = 1
       )
       // The markers by name (`server-only`, `client-only`, or their full
       // specifiers), whatever the wording.
-      expectDiagnostic(error, {
+      expectDiagnostic(everyChannel(error), {
         severity: 'error',
         file: 'src/both.ts',
         names: ['server-only', 'client-only'],
@@ -376,13 +392,7 @@ export const read = () => secret() + '|' + d()
       expect((await built[env].run(`return entry.read()`)).result).toBe(
         'MARK_SECRET|MARK_SECRET',
       )
-      expect(
-        reportedViolations([
-          ...built.client.warnings,
-          ...built.ssr.warnings,
-          ...built.client.consoleMessages,
-        ]),
-      ).toEqual([])
+      expect(reportedViolations(built)).toEqual([])
     },
     timeout,
   )
@@ -417,7 +427,7 @@ describe.each(startBundlers)('%s build, tree-shaken imports', (bundler) => {
   barrelTest(
     'a server-only-marked module re-exported by a barrel the client uses other exports of builds without any report',
     async () => {
-      const { client } = await buildStart({
+      const build = await buildStart({
         bundler,
         files: {
           ...deniedModules['a server-only-marked module'].files,
@@ -430,8 +440,9 @@ export const read = () => label()
         },
         entry: 'src/entry.ts',
       })
+      const { client } = build
       expect({
-        reported: reportedViolations(client.warnings),
+        reported: reportedViolations(build),
         hasRealCode: client.where('MARK_SECRET') !== 'nowhere',
         read: (await client.run(`return entry.read()`)).result,
       }).toEqual({ reported: [], hasRealCode: false, read: 'client' })
@@ -516,7 +527,10 @@ return { read, ran: globalThis.secretLoaded ?? null, logged }`)
         file: deniedFile,
       }).length > 0
     return {
-      warned: reportedViolations(built[env].warnings).length > 0,
+      warned:
+        reportedViolations(
+          inEnvironment(built, env === 'ssr' ? 'server' : 'client'),
+        ).length > 0,
       hasRealCode: built[env].where('MARK_SECRET') !== 'nowhere',
       ran,
       read,
@@ -715,7 +729,7 @@ export const Route = createFileRoute('/')({
   component: () => String(secret()),
 })
 `
-      const { client } = await buildStart({
+      const build = await buildStart({
         bundler,
         files: {
           ...deniedModules['a denied file'].files,
@@ -728,10 +742,11 @@ export const getRouter = () => ({ routeTree })
         entry: 'src/entry.ts',
         start: { importProtection: { behavior: 'mock' } },
       })
-      expect(client.where('MARK_SECRET')).toBe('nowhere')
-      expect(reportedViolations(client.warnings)).toHaveLength(1)
+      expect(build.client.where('MARK_SECRET')).toBe('nowhere')
+      const reports = inEnvironment(build, 'client')
+      expect(reportedViolations(reports)).toHaveLength(1)
       // At either use or at the import (SPEC J6.5)
-      expectViolationsAt(client.warnings, [
+      expectViolationsAt(reports, [
         {
           environment: 'client',
           use: locationIn('src/routes/index.tsx', route, 4, 'secret()'),
@@ -859,7 +874,7 @@ describe.each(startBundlers)('%s build, server-only marker', (bundler) => {
           start: { importProtection: { ignoreImporters: ['**/ignored.ts'] } },
         }),
       )
-      expect(reportedViolations(error.message)).toHaveLength(1)
+      expect(reportedViolations(error)).toHaveLength(1)
     },
     timeout,
   )
@@ -929,13 +944,15 @@ describe.each(startBundlers)('%s build, server-only marker', (bundler) => {
   ignoredTest(
     'imported only by an ignored importer does not fail the build',
     async () => {
-      const { client } = await buildStart({
+      const build = await buildStart({
         bundler,
         files: ignoredOnly,
         entry: 'src/entry.ts',
         start: { importProtection: { ignoreImporters: ['**/ignored.ts'] } },
       })
-      expect(reportedViolations(client.warnings)).toEqual([])
+      // Nothing reported, on any channel
+      expect(reportedViolations(build)).toEqual([])
+      expect(problems(build.diagnostics).map(({ text }) => text)).toEqual([])
     },
     timeout,
   )
@@ -1060,7 +1077,7 @@ export const getRouter = () => ({ routeTree })
           entry: 'src/entry.ts',
         }),
       )
-      const [report, ...others] = violationReports(error.message)
+      const [report, ...others] = violationReports(error)
       expect(others).toEqual([])
       expectMarkerViolation(report!, {
         marker: 'src/marked.ts:1',
@@ -1088,8 +1105,8 @@ console.log('client')
         }),
       )
       // At the client entry's marker import, line 1 (any column)
-      expect(reportedViolations(error.message)).toHaveLength(1)
-      expectViolationsAt(error.message, [
+      expect(reportedViolations(error)).toHaveLength(1)
+      expectViolationsAt(error, [
         { environment: 'client', use: 'src/client.ts:1', source: client },
       ])
     },
@@ -1114,7 +1131,7 @@ export const read = ( => secret()
           entry: 'src/entry.ts',
         }),
       )
-      expectDiagnostic(error, {
+      expectDiagnostic(everyChannel(error), {
         severity: 'error',
         file: 'src/broken.ts',
         position: { line: 2 },

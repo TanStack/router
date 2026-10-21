@@ -20,7 +20,10 @@ import { describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { buildStart, startBundlers } from '../build-harness'
 import { startDevServer } from '../dev-server'
-import { startRsbuildStartDevServer } from '../rsbuild-dev-server'
+import {
+  reportedErrors,
+  startRsbuildStartDevServer,
+} from '../rsbuild-dev-server'
 
 const timeout = 60_000
 
@@ -189,7 +192,7 @@ function Root() {
           'src/routes/index.tsx': pageRoute(),
         },
       })
-      expect(server.errors).toEqual([])
+      expect(reportedErrors(server)).toEqual([])
       const page = await openPage(server.url!, {
         registerCleanup: onTestFinished,
       })
@@ -197,7 +200,7 @@ function Root() {
       await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
       await server.write({ 'src/routes/index.tsx': pageRoute('_V2') })
       await server.settle()
-      expect(server.errors).toEqual([])
+      expect(reportedErrors(server)).toEqual([])
       await page.waitForText('MARK_PAGE MARK_LOADER_V2', { selector: '#app' })
       expect(page.loads()).toBe(1)
       expect(page.errors).toEqual([])

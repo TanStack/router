@@ -1,15 +1,17 @@
 /**
- * The names the mock modules of import protection expose, in process: every
- * name an importer uses from a denied source, every export of a denied file
- * Each exposed name is a safe mock
- * (`mock-helpers.ts`). The names the mocks miss (reserved words, namespace
- * re-exports, enums and namespaces, a member read before the import) are
- * pinned on real apps: integration/importProtection/known-bugs.test.ts,
- * "app-level twins of the mock pins".
+ * Internal control (SPEC §8): not part of the compiler test corpus. It
+ * evaluates today's generated mock modules (`mock-modules.ts`: the analysis
+ * of export names and the mock generators, linked in process), including
+ * the requirement that a denied file's mock keeps every original export
+ * name. The outcome is decided on real apps, Vite dev and Vite/Rsbuild
+ * mock-mode builds: `integration/importProtection/mock-shapes.test.ts`
+ * (every importable name, every way of importing, every export shape) and
+ * `integration/importProtection/known-bugs.test.ts` ("app-level twins of
+ * the mock pins": the names today's mocks miss).
  */
 import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
 import { describe, expect, test } from 'vitest'
-import { expectSafeMock, isSafeMock } from './mock-helpers'
+import { expectSafeMock, isSafeMock } from '../../importProtection/mock-helpers'
 import { evaluateWithMock, mockModules, selfMock } from './mock-modules'
 
 // Every name a consumer can import is exposed by each mock module import

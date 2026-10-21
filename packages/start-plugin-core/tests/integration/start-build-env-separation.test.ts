@@ -8,27 +8,13 @@
  * Route options go through Start's own router plugin wiring (its list of
  * options deleted from client route modules).
  */
-import { readdir } from 'node:fs/promises'
-import path from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
-import { createApp } from '@tanstack/compiler-test-utils/build-harness'
-import {
-  afterAll,
-  beforeAll,
-  describe,
-  expect,
-  onTestFinished,
-  test,
-} from 'vitest'
-import { startCompilerPlugin } from '../../src/vite/start-compiler-plugin/plugin'
+import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import {
   buildStart,
   callByIdExports,
   callByIdPrelude,
   requestsOfPrelude,
-  runInRequestContext,
   startBundlers,
-  startRuntimeLinks,
 } from '../build-harness'
 import type { StartBuild } from '../build-harness'
 
@@ -307,10 +293,10 @@ export { fnMiddleware } from './middleware'
 export { startInstance } from './start'
 export { getRouter } from './router'
 `,
-      // The server-fn HTTP handler calls server fns through the resolver.
+      // Start's server entry: its server-fn HTTP handler finds the server
+      // fns by id, as in an app.
       'src/ssr-entry.ts': `export * from './entry'
-export { getServerFnById } from '#tanstack-start-server-fn-resolver'
-`,
+${callByIdExports}`,
     }
 
     /** SSR script prelude: `route(id)` is the route with that id. */
@@ -612,19 +598,19 @@ export const label = () => 'MARK_CLIENT_LABEL'
 })
 
 describe('Vite: an environment built twice by one builder', () => {
-  // `@vitejs/plugin-rsc` runs a scan build of an environment before its real
-  // build, with the same plugins: the second build compiles server fns
-  // again, including ones whose builder the compiler loads from another
-  // module.
+  // `@vitejs/plugin-rsc` runs a scan build of an environment besides its
+  // real build, with the same plugins: the build after the first compiles
+  // server fns again, including ones whose builder the compiler loads from
+  // another module. Here an app plugin builds the SSR environment once more
+  // after Start's builds (Vite's public `buildApp` hook), and the SSR
+  // output of that last build serves the client's calls.
   // Source: mutation round 3 sc-hosts 4.
   test(
     'the second build compiles the server fns of its modules',
     async () => {
-      const app = await createApp({
-        dir: path.dirname(fileURLToPath(import.meta.url)),
-        prefix: '.start-build-twice-',
-        registerCleanup: onTestFinished,
-        symlinks: startRuntimeLinks(),
+      let ssrBuilds = 0
+      const { client, ssr } = await buildStart({
+        bundler: 'vite',
         files: {
           'src/direct.ts': `import { createServerFn } from '@tanstack/react-start'
 export const direct = createServerFn().handler(async () => 'MARK_DIRECT')
@@ -635,60 +621,49 @@ export const base = createServerFn()
           'src/fns.ts': `import { base } from './base'
 export const greet = base.handler(async () => 'MARK_HANDLER')
 `,
+          'src/client-entry.ts': `export { direct } from './direct'
+export { greet } from './fns'
+`,
+          'src/ssr-entry.ts': `export { direct } from './direct'
+export { greet } from './fns'
+${callByIdExports}`,
+        },
+        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+        viteConfig: {
+          plugins: [
+            {
+              name: 'build-ssr-again',
+              buildApp: {
+                order: 'post',
+                handler: async (builder) => {
+                  await builder.build(builder.environments.ssr!)
+                },
+              },
+              writeBundle() {
+                if (this.environment.name === 'ssr') {
+                  ssrBuilds++
+                }
+              },
+            },
+          ],
         },
       })
-      const { createBuilder } = await import('vite')
-      /** Entry module of each build of the SSR environment. */
-      const inputs = ['src/direct.ts', 'src/fns.ts']
-      let builds = 0
-      const builder = await createBuilder({
-        root: app.root,
-        configFile: false,
-        logLevel: 'silent',
-        environments: {
-          client: { build: { outDir: 'dist/client' } },
-          // `ssr` names an entry; `build-twice-input` sets each build's
-          ssr: { build: { outDir: 'dist/ssr', ssr: inputs[0] } },
-        },
-        ssr: { noExternal: true },
-        builder: {
-          async buildApp(appBuilder) {
-            for (const _input of inputs) {
-              await appBuilder.build(appBuilder.environments.ssr!)
-              builds++
-            }
-          },
-        },
-        plugins: [
-          {
-            name: 'build-twice-input',
-            applyToEnvironment: (environment) => environment.name === 'ssr',
-            options: (options) => ({
-              ...options,
-              input: path.join(app.root, inputs[builds]!),
-            }),
-          },
-          startCompilerPlugin({
-            framework: 'react',
-            environments: [
-              { name: 'client', type: 'client' },
-              { name: 'ssr', type: 'server' },
-            ],
-            providerEnvName: 'ssr',
-          }),
-        ],
+      expect(ssrBuilds).toBe(2)
+      expect(client.where('MARK_HANDLER')).toBe('nowhere')
+      const ids = (
+        await client.run(
+          `return [entry.direct.serverFnMeta.id, entry.greet.serverFnMeta.id]`,
+        )
+      ).result
+      const { result } = await ssr.run(`${callByIdPrelude}const results = []
+for (const id of ${JSON.stringify(ids)}) {
+  results.push(await callById(id))
+}
+return { byId: results, direct: await entry.greet() }`)
+      expect(result).toEqual({
+        byId: ['MARK_DIRECT', 'MARK_HANDLER'],
+        direct: 'MARK_HANDLER',
       })
-      await builder.buildApp()
-      expect(builds).toBe(2)
-      const outDir = path.join(app.root, 'dist/ssr')
-      const output = (await readdir(outDir)).find((file) =>
-        /^fns\.m?js$/.test(file),
-      )
-      const { greet } = await import(
-        pathToFileURL(path.join(outDir, output!)).href
-      )
-      expect(typeof greet.serverFnMeta.id).toBe('string')
-      expect(await runInRequestContext(() => greet())).toBe('MARK_HANDLER')
     },
     timeout,
   )

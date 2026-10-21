@@ -162,7 +162,10 @@ return await runWithStartContext((${testRequestContext.toString()})(), script)`
  */
 export async function runInRequestContext<T>(fn: () => T): Promise<Awaited<T>> {
   const { runWithStartContext } = (await import(storageContextUrl())) as {
-    runWithStartContext: <R>(context: unknown, run: () => R) => R
+    runWithStartContext: <TResult>(
+      context: unknown,
+      run: () => TResult,
+    ) => TResult
   }
   return await runWithStartContext(testRequestContext(), fn)
 }
@@ -498,6 +501,8 @@ async function buildAt(
     warnings.ssr.length = 0
     consoleMessages.length = 0
     const channel = openDiagnosticChannel()
+    /** What the build described reported (a watch build: the rebuild's). */
+    const described = () => channel.since(describedFrom.get(channel) ?? 0)
     try {
       return await withBuildEnvironment(mode, consoleMessages, () =>
         builders[bundler](target, warnings, channel),
@@ -506,11 +511,11 @@ async function buildAt(
       if (error instanceof BuildError) {
         // Its errors (its warnings are in the channel already)
         channel.report(error.message, 'error', 'thrown')
-        throw new StartBuildError(error, app.root, [...channel.diagnostics])
+        throw new StartBuildError(error, app.root, described())
       }
       throw error
     } finally {
-      diagnostics = [...channel.diagnostics]
+      diagnostics = described()
       channel.close()
     }
   }
@@ -581,6 +586,12 @@ export class StartBuildError extends BuildError {
 type Env = 'client' | 'ssr'
 
 type Channel = ReturnType<typeof openDiagnosticChannel>
+
+/**
+ * Where in its channel the build a result describes starts: a watch mode
+ * build describes the rebuild its edits cause, not the first build.
+ */
+const describedFrom = new WeakMap<Channel, number>()
 
 interface BuildTarget {
   root: string
@@ -825,6 +836,7 @@ async function buildWithRsbuild(
         errors.length = 0
         warnings.client.length = 0
         warnings.ssr.length = 0
+        describedFrom.set(channel, channel.mark())
         await compiles.edit(target.root, target.watchEdits, watchTimeout)
       } finally {
         await watching.close()

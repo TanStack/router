@@ -332,15 +332,17 @@ export { getData as b } from './b'
         registerCleanup: onTestFinished,
       })
       await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
-      const { ids, values } = await page.page.evaluate(async () => {
+      // A server fn's identity is the URL its calls fetch (`fn.url`, which
+      // carries its id; the metadata object holding the id is Start's own)
+      const { urls, values } = await page.page.evaluate(async () => {
         const { a, b } = (globalThis as any).__app
         return {
-          ids: [a.serverFnMeta.id, b.serverFnMeta.id],
+          urls: [a.url, b.url],
           values: [await a(), await b()],
         }
       })
-      expect(ids).toEqual([expect.any(String), expect.any(String)])
-      expect(ids[0]).not.toBe(ids[1])
+      expect(urls).toEqual([expect.any(String), expect.any(String)])
+      expect(urls[0]).not.toBe(urls[1])
       expect(values).toEqual(['from a', 'from b'])
       expect(page.errors).toEqual([])
     },

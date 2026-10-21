@@ -31,6 +31,7 @@ import {
   violationReports,
 } from '../../importProtection/start-apps'
 import { originalLocation } from '../../importProtection/original-location'
+import { failureOf, failureText } from './channels'
 import {
   clientFixturePlugin,
   runInClient,
@@ -182,15 +183,19 @@ function startAliasDevServer(
   })
 }
 
-/** A third-party resolver may refuse safely with actionable composition guidance (G11). */
-function expectAliasFailure(output: string, thirdParty: boolean) {
+/**
+ * A third-party resolver may refuse safely with actionable composition
+ * guidance (G11), on any channel of `output`.
+ */
+function expectAliasFailure(output: unknown, thirdParty: boolean) {
+  const text = failureText(output)
   if (
     thirdParty &&
     /(?:vite-tsconfig-paths|plugin[ -]order|resolve\.tsconfigPaths)/i.test(
-      output,
+      text,
     ) &&
     /(?:move|place|reorder|before|after|enable|use|remove|configure)[^\n]*(?:vite-tsconfig-paths|plugin|resolve\.tsconfigPaths)|(?:vite-tsconfig-paths|plugin)[^\n]*(?:before|after|order)/i.test(
-      output,
+      text,
     )
   ) {
     return
@@ -223,7 +228,7 @@ describe.each(viteAliases)('vite: $alias', (alias) => {
           viteConfig: alias.viteConfig,
         }),
       )
-      expectAliasFailure(error.message, alias.reportPinned)
+      expectAliasFailure(error, alias.reportPinned)
     },
     timeout,
   )
@@ -249,8 +254,10 @@ return { probe: probeMock(entry.widget(), 'MARK_SECRET'), loaded: globalThis.sec
       const server = await startAliasDevServer(alias, {
         behavior: { dev: 'error' },
       })
-      const error = await rejection(server.load('/src/entry.ts'))
-      expectAliasFailure(error.message, alias.reportPinned)
+      const { reported } = await failureOf(server, () =>
+        server.load('/src/entry.ts'),
+      )
+      expectAliasFailure(reported, alias.reportPinned)
     },
     timeout,
   )
@@ -267,7 +274,7 @@ describe('rsbuild: tsconfig paths', () => {
           entry: 'src/entry.ts',
         }),
       )
-      expect(reportsOf(error.message)).toEqual([expectedReport])
+      expect(reportsOf(error)).toEqual([expectedReport])
     },
     timeout,
   )
@@ -281,7 +288,10 @@ describe('rsbuild: tsconfig paths', () => {
         hmr: false,
         files: aliasApp,
       })
-      expect(server.errors).toEqual([])
+      // Nothing fails, on any channel
+      expect(
+        findDiagnostics(server.diagnostics, { severity: 'error' }),
+      ).toEqual([])
       // The probe of `expectSafeMock`, run where the mock lives.
       const { result } = await captureConsole(() =>
         runInClient(

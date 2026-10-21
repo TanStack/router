@@ -1,26 +1,31 @@
 /**
- * Control tests of the Start build harness (build-harness.ts), with each
- * bundler: what `where()` reports and `run()` runs in each environment,
- * that the builds go through Start's plugin (server fn RPCs and the
- * generated resolver, the route generator and code splitter), and that
- * warnings and errors reach the test. Also the client runs of the Rsbuild
- * dev-server harness (rsbuild-dev-server.ts).
+ * Not part of the compiler test corpus (harness controls, SYNTHESIS S7-001,
+ * S7-002, S7-004, S7-006, S7-007, S7-008 and the prose half of S7-003):
+ * these check the Start build harness (build-harness.ts) and the Rsbuild
+ * dev-server harness (rsbuild-dev-server.ts) themselves, with each bundler:
+ * what `where()` reports and `run()` runs in each environment, the request
+ * context SSR scripts run in, that warnings and errors reach the test on
+ * every channel, the wording of the server entry's answer to an unknown id,
+ * and the client runs of the Rsbuild dev server in a real browser. A correct
+ * compiler rewrite does not change them; the corpus tests that use the
+ * harness decide the compiler's outcomes (e.g.
+ * `integration/start-build-rpc-and-routes.test.ts`).
  */
 import { describe, expect, test } from 'vitest'
 import { BuildError } from '@tanstack/compiler-test-utils/build-harness'
 import {
+  StartBuildError,
   buildStart,
   callByIdExports,
   callByIdPrelude,
-  requestsOfPrelude,
   startBundlers,
-} from '../build-harness'
+} from '../../build-harness'
 import {
   clientPage,
   runInClient,
   runRsbuildClient,
   startRsbuildDevServer,
-} from '../rsbuild-dev-server'
+} from '../../rsbuild-dev-server'
 
 const timeout = 60_000
 
@@ -80,10 +85,14 @@ describe.each(startBundlers)('%s', (bundler) => {
     timeout,
   )
 
+  // The prose half of the corpus test "a server fn is Start's RPC on the
+  // client" (start-build-rpc-and-routes.test.ts), which checks only that
+  // an unknown id is rejected: Start's server entry says the server fn is
+  // not found.
   test(
-    "a server fn is Start's RPC on the client: calling it fetches its URL, which carries its id; the SSR build runs the handler, directly and for a request of that id",
+    'the server entry answers a call of an unknown id with a "not found" error',
     async () => {
-      const { client, ssr } = await buildStart({
+      const { ssr } = await buildStart({
         bundler,
         files: {
           'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
@@ -95,46 +104,14 @@ ${callByIdExports}`,
         },
         entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
       })
-      // The client run has no server: `requestsOf` records the requests
-      // the call sends.
-      const clientRpc = (
-        await client.run(`${requestsOfPrelude}
-return {
-  id: entry.greet.serverFnMeta.id,
-  url: entry.greet.url,
-  requests: await requestsOf(entry.greet),
-}`)
-      ).result as {
-        id: string
-        url: string
-        requests: Array<{ url: string; method: string }>
-      }
-      expect(clientRpc).toEqual({
-        id: expect.any(String),
-        url: `/_serverFn/${clientRpc.id}`,
-        requests: [{ url: clientRpc.url, method: 'GET' }],
-      })
       const { result } = await ssr.run(`${callByIdPrelude}
-const settle = async (run) => {
-  try {
-    return await run()
-  } catch (error) {
-    return error.message
-  }
-}
-const id = ${JSON.stringify(clientRpc.id)}
-return {
-  sameId: entry.greet.serverFnMeta.id === id,
-  called: await settle(() => entry.greet()),
-  byId: await settle(() => callById(id)),
-  unknown: await settle(() => callById('unknown-id')),
+try {
+  await callById('unknown-id')
+  return 'resolved'
+} catch (error) {
+  return error.message
 }`)
-      expect(result).toEqual({
-        sameId: true,
-        called: 'hello',
-        byId: 'hello',
-        unknown: expect.stringMatching(/not found/),
-      })
+      expect(result).toMatch(/not found/)
     },
     timeout,
   )
@@ -171,46 +148,7 @@ export const inspect = createServerFn()
   )
 
   test(
-    'the route generator and code splitter run: the route tree links a route whose component loads on demand',
-    async () => {
-      const { client, ssr } = await buildStart({
-        bundler,
-        files: {
-          'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
-export const Route = createRootRoute()
-`,
-          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
-export const Route = createFileRoute('/')({
-  component: () => 'MARK_COMPONENT',
-})
-`,
-          'src/router.ts': `import { routeTree } from './routeTree.gen'
-export const getRouter = () => ({ routeTree })
-`,
-          'src/entry.ts': `export { getRouter } from './router'
-export { renderPath } from '../harness/render'
-`,
-        },
-        entry: 'src/entry.ts',
-      })
-      expect(client.where('MARK_COMPONENT')).toBe('lazy')
-      // The real router over the generated tree renders the page at `/`
-      // (loading the route's component chunk).
-      const { result } = await ssr.run(`const { routeTree } = entry.getRouter()
-return {
-  ids: Object.values(routeTree.children).map((route) => route.options.id),
-  rendered: await entry.renderPath(routeTree, '/'),
-}`)
-      expect(result).toEqual({
-        ids: ['/'],
-        rendered: expect.stringContaining('MARK_COMPONENT'),
-      })
-    },
-    timeout,
-  )
-
-  test(
-    "the bundler's warnings reach the result of each environment, and a clean app has none",
+    "the bundler's warnings reach the result of each environment and the build's channel, and a clean app has none",
     async () => {
       const warned = await buildStart({
         bundler,
@@ -234,20 +172,26 @@ export const load = (name: string) => import(name)
       expect({
         warnedClient: naming(warned.client.warnings),
         warnedSsr: naming(warned.ssr.warnings),
+        warnedChannel: naming(warned.diagnostics.map(({ text }) => text)),
         cleanClient: clean.client.warnings,
         cleanSsr: clean.ssr.warnings,
+        cleanChannel: clean.diagnostics.filter(
+          ({ severity }) => severity !== 'info',
+        ),
       }).toEqual({
         warnedClient: true,
         warnedSsr: true,
+        warnedChannel: true,
         cleanClient: [],
         cleanSsr: [],
+        cleanChannel: [],
       })
     },
     timeout,
   )
 
   test(
-    "a failing build rejects with the bundler's errors",
+    "a failing build rejects with the bundler's errors, and with what it printed",
     async () => {
       const failure = await buildStart({
         bundler,
@@ -255,11 +199,40 @@ export const load = (name: string) => import(name)
           'src/entry.ts': `export { value } from './missing-module'\n`,
         },
         entry: 'src/entry.ts',
+        // A plugin of the app that prints while the build runs.
+        ...(bundler === 'vite'
+          ? {
+              viteConfig: {
+                plugins: [
+                  {
+                    name: 'prints',
+                    buildStart: () => console.warn('MARK_PRINTED'),
+                  },
+                ],
+              },
+            }
+          : {
+              rsbuildConfig: {
+                plugins: [
+                  {
+                    name: 'prints',
+                    setup: (api) =>
+                      api.onBeforeBuild(() => console.warn('MARK_PRINTED')),
+                  },
+                ],
+              },
+            }),
       }).catch((error: unknown) => error)
       expect(failure).toBeInstanceOf(BuildError)
+      expect(failure).toBeInstanceOf(StartBuildError)
       expect((failure as BuildError).errors.join('\n')).toMatch(
         /missing-module/,
       )
+      const texts = (failure as StartBuildError).diagnostics.map(
+        ({ text }) => text,
+      )
+      expect(texts.some((text) => text.includes('MARK_PRINTED'))).toBe(true)
+      expect(texts.some((text) => text.includes('missing-module'))).toBe(true)
     },
     timeout,
   )

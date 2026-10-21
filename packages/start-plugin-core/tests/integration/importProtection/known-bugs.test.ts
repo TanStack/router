@@ -7,7 +7,7 @@
 import { createRequire } from 'node:module'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { addedCode } from '@tanstack/compiler-test-utils/added-code'
+import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { buildStart, startBundlers } from '../../build-harness'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import {
@@ -19,6 +19,8 @@ import {
   startProtectedDevServer,
 } from '../../importProtection/start-apps'
 import { originalLocation } from '../../importProtection/original-location'
+import { inEnvironment } from '../../importProtection/violation-report'
+import { failureOf } from './channels'
 import {
   runRsbuildClient,
   runViteClient,
@@ -82,7 +84,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
       }),
     )
     expect(
-      reportedViolations(error.message).map(({ environment }) => environment),
+      reportedViolations(error).map(({ environment }) => environment),
     ).toEqual(['client'])
   }, 60_000)
 
@@ -145,24 +147,21 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // imports, and report violations the client never reaches.
   // Source: weak check virtualModules.test.ts "returns mock code" (asserted
   // the purity annotations as text), oracle-gaps REPORT.md "Weak checks".
-  // Paired real builds attribute added executable statements to protection.
-  // This is independent of module/chunk placement, printer choices and bound
-  // names, including support inlined into an otherwise legitimate module.
-  // The live-denial control proves the oracle sees a retained mock.
+  // Judged by what the user sees (coupling watch list S6 known-bugs :152):
+  // no report on any channel, no code or effect of the module in the
+  // bundle; not by comparing the bundle's statements with another build's.
+  // The live-denial controls show the same harness sees a used mock: its
+  // report, its safe value, and the real value without protection.
   test.fails(
     'in mock mode, an unused denied module leaves nothing in the client bundle and no warning',
     async () => {
-      const build = (start: Parameters<typeof buildStart>[0]['start']) =>
-        buildStart({
-          bundler,
-          files: droppedCorpusFiles,
-          entry: 'src/entry.ts',
-          sourcemap: true,
-          start,
-        })
       // (one build at a time: a Vite build runs in its app's directory)
-      const mocked = await build(mockToClient(['**/corpus.ts']))
-      const disabled = await build({ importProtection: { enabled: false } })
+      const mocked = await buildStart({
+        bundler,
+        files: droppedCorpusFiles,
+        entry: 'src/entry.ts',
+        start: mockToClient(['**/corpus.ts']),
+      })
       const usedFiles = {
         ...droppedCorpusFiles,
         'src/entry.ts': `export { size } from './layout'\n`,
@@ -171,17 +170,15 @@ describe.each(startBundlers)('%s build', (bundler) => {
         bundler,
         files: usedFiles,
         entry: 'src/entry.ts',
-        sourcemap: true,
         start: mockToClient(['**/corpus.ts']),
       })
       const usedDisabled = await buildStart({
         bundler,
         files: usedFiles,
         entry: 'src/entry.ts',
-        sourcemap: true,
         start: { importProtection: { enabled: false } },
       })
-      expect(reportedViolations(used.client.warnings)).toHaveLength(1)
+      expect(reportedViolations(inEnvironment(used, 'client'))).toHaveLength(1)
       expect(
         (
           await used.client.run(
@@ -192,11 +189,9 @@ describe.each(startBundlers)('%s build', (bundler) => {
       expect(
         (await usedDisabled.client.run('return entry.size()')).result,
       ).toContain('MARK_CORPUS')
-      expect(
-        addedCode(used.client, usedDisabled.client).length,
-      ).toBeGreaterThan(0)
-      expect(addedCode(mocked.client, disabled.client)).toEqual([])
-      expect(reportedViolations(mocked.client.warnings)).toEqual([])
+      // Nothing reported, on any channel
+      expect(reportedViolations(mocked)).toEqual([])
+      expect(problems(mocked.diagnostics).map(({ text }) => text)).toEqual([])
       expect(mocked.client.where('MARK_CORPUS')).toBe('nowhere')
       expect(
         (await mocked.client.run('return globalThis.corpusInitialized ?? null'))
@@ -236,10 +231,11 @@ describe('Vite dev, behavior "error"', () => {
    */
   async function loadOutcome(files: Record<string, string>) {
     const server = await startProtectedDevServer(files, { behavior: 'error' })
-    return server.load('/src/entry.ts', { skip: /^\/@(vite|fs)\// }).then(
-      () => 'loaded',
-      (error: Error) => locatedImporters(error.message, files),
-    )
+    // (what a failed load reported, on every channel)
+    const failure = await failureOf(server, () =>
+      server.load('/src/entry.ts', { skip: /^\/@(vite|fs)\// }),
+    ).catch(() => undefined)
+    return failure ? locatedImporters(failure.reported, files) : 'loaded'
   }
 
   // Control for the pin below (same harness): a top-level call of a denied
@@ -333,7 +329,10 @@ describe('Rsbuild dev', () => {
           'src/entry.ts': `import { page } from './home.page'\nconsole.log(page())\n`,
         },
       })
-      expect(server.errors).toEqual([])
+      // Nothing fails, on any channel
+      expect(
+        findDiagnostics(server.diagnostics, { severity: 'error' }),
+      ).toEqual([])
       expect(
         (await runRsbuildClient(server)).filter((text) =>
           text.includes('MARK_'),
@@ -496,7 +495,10 @@ export const page = () => 'MARK_PAGE'
           'src/entry.ts': `import { page } from './home.mdx'\nconsole.log(page())\n`,
         },
       })
-      expect(server.errors).toEqual([])
+      // Nothing fails, on any channel
+      expect(
+        findDiagnostics(server.diagnostics, { severity: 'error' }),
+      ).toEqual([])
       expect(
         (await runRsbuildClient(server)).filter((text) =>
           text.includes('MARK_'),
@@ -573,7 +575,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
         }),
       )
       expect(
-        reportedViolations(error.message).map(({ environment }) => environment),
+        reportedViolations(error).map(({ environment }) => environment),
       ).toEqual(['client'])
     },
     60_000,
@@ -589,7 +591,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
     code: string,
     importStatement: string,
   ) {
-    const { client } = await buildStart({
+    const build = await buildStart({
       bundler,
       files: {
         [`src/${file}`]: code,
@@ -600,8 +602,9 @@ export const read = () => secret
       entry: 'src/entry.ts',
       start: { importProtection: { behavior: 'mock', mockAccess: 'off' } },
     })
+    const { client } = build
     return {
-      warned: reportedViolations(client.warnings).length > 0,
+      warned: reportedViolations(inEnvironment(build, 'client')).length > 0,
       hasRealCode: client.where('MARK_SECRET') !== 'nowhere',
       read: (
         await client.run(`${describeValuePrelude}

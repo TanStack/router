@@ -28,13 +28,16 @@ import {
   expectReportFrame,
   expectViolationsAt,
   factoryTopLevelCall,
+  failureOutput,
   locationIn,
+  problemsNaming,
   receivedViolations,
   rejection,
   relevantViolations,
   reportedViolations,
   serverFnFactoryApp,
   startProtectedDevServer,
+  startRscProtectedDevServer,
   violationLabel,
   violationReports,
 } from '../../importProtection/start-apps'
@@ -46,9 +49,14 @@ import {
   startBrowserProtectedDevServer,
 } from './client-pages'
 import type { ViolationReport } from '../../importProtection/violation-report'
-import type { ExpectedViolation } from '../../importProtection/start-apps'
-import type { ImportProtectionOptions } from '../../importProtection/public-types'
-import type { ViolationInfo } from '../../importProtection/public-types'
+import type {
+  ExpectedViolation,
+  ProtectedDevServer,
+} from '../../importProtection/start-apps'
+import type {
+  ImportProtectionOptions,
+  ViolationInfo,
+} from '../../importProtection/public-types'
 import type { DevEnvironment, Plugin } from 'vite'
 
 const timeout = 30_000
@@ -69,6 +77,33 @@ function loggedViolations(logs: Array<string>) {
       ({ environment, importer }) => `${environment} ${importer}`,
     ),
   )
+}
+
+/**
+ * The reports in `output`, one per violation (environment type and
+ * importer): a report printed on two channels counts once.
+ */
+function distinctReports(output: unknown): Array<ViolationReport> {
+  const seen = new Set<string>()
+  return violationReports(output).filter((report) => {
+    const key = `${report.environment} ${report.importer}`
+    const fresh = !seen.has(key)
+    seen.add(key)
+    return fresh
+  })
+}
+
+/**
+ * Nothing is reported about `files` (relative to the app root): no report
+ * the reader finds, and no warning or error naming them on any channel,
+ * whatever its wording.
+ */
+function expectNothingReportedAbout(
+  server: ProtectedDevServer | Parameters<typeof problemsNaming>[0],
+  files: Array<string>,
+) {
+  expect(reportedViolations(server)).toEqual([])
+  expect(problemsNaming(server, files)).toEqual([])
 }
 
 /** The modules of the trace of `report`, without locations. */
@@ -191,8 +226,11 @@ describe('a client import of a denied file', () => {
       const server = await startProtectedDevServer(deniedFileApp, {
         behavior,
       })
+      const since = server.diagnostics.length
       const error = await rejection(server.load('/src/entry.ts'))
-      expectViolationsAt(error.message, [deniedFileViolation])
+      expectViolationsAt(failureOutput(error, server, since), [
+        deniedFileViolation,
+      ])
     },
     timeout,
   )
@@ -248,10 +286,13 @@ describe('the trace of a client import of a denied file', () => {
       )
       await server.load('/src/entry.ts')
       await server.edit({ 'src/a.ts': deniedFileApp['src/a.ts'] })
+      const since = server.diagnostics.length
       const error = await rejection(server.load('/src/entry.ts'))
-      const [report, ...others] = violationReports(error.message)
+      const output = failureOutput(error, server, since)
+      // (one violation, however many channels print its report)
+      const [report, ...others] = distinctReports(output)
       expect(others).toEqual([])
-      expectViolationsAt(error.message, [deniedFileViolation])
+      expectViolationsAt(output, [deniedFileViolation])
       expect(traceModules(report!)).toEqual(['src/entry.ts', 'src/a.ts'])
     },
     timeout,
@@ -860,7 +901,7 @@ describe('onViolation', () => {
         },
       })
       await server.load('/src/entry.ts')
-      expect(reportedViolations(server.logs)).toEqual([])
+      expectNothingReportedAbout(server, ['src/a.ts', 'src/secret.server.ts'])
       expect(
         distinct(
           importers.map((importer) => path.relative(server.root, importer)),
@@ -884,13 +925,16 @@ describe('onViolation', () => {
   test.fails(
     'returning false allows the import: the client gets the real module',
     async () => {
-      const server = await startProtectedDevServer(deniedFileApp, {
+      const server = await startBrowserProtectedDevServer(deniedFileApp, {
         onViolation: () => false,
       })
-      const client = await server.load('/src/entry.ts')
-      expect(modulesContaining(client, 'MARK_SECRET')).toEqual([
-        '/src/secret.server.ts',
-      ])
+      // The real module's value, in the browser (a mock gives none)
+      const { result } = await runViteClient(
+        server,
+        '/src/entry.ts',
+        'return String(entry.read())',
+      )
+      expect(result).toBe('MARK_SECRET')
     },
     timeout,
   )
@@ -920,7 +964,7 @@ export const read = () => getRequest()
         skip: /^\/@(vite|fs)\//,
       })
       expect(Object.keys(client)).toContain('/src/a.ts')
-      expect(reportedViolations(server.logs)).toEqual([])
+      expectNothingReportedAbout(server, ['src/a.ts'])
     },
     timeout,
   )
@@ -933,14 +977,17 @@ export const read = () => getRequest()
   test.fails(
     'with behavior "error", an import of a denied file it allows gets the real module',
     async () => {
-      const server = await startProtectedDevServer(deniedFileApp, {
+      const server = await startBrowserProtectedDevServer(deniedFileApp, {
         behavior: 'error',
         onViolation: () => false,
       })
-      const client = await server.load('/src/entry.ts')
-      expect(modulesContaining(client, 'MARK_SECRET')).toEqual([
-        '/src/secret.server.ts',
-      ])
+      // The real module's value, in the browser (a mock gives none)
+      const { result } = await runViteClient(
+        server,
+        '/src/entry.ts',
+        'return String(entry.read())',
+      )
+      expect(result).toBe('MARK_SECRET')
     },
     timeout,
   )
@@ -989,8 +1036,9 @@ export const read = () => getRequest()
         behavior: 'error',
         onViolation: () => true,
       })
+      const since = server.diagnostics.length
       const error = await rejection(server.load('/src/entry.ts'))
-      expectViolationsAt(error.message, [
+      expectViolationsAt(failureOutput(error, server, since), [
         { environment: 'client', use, source: files['src/a.ts']! },
       ])
     },
@@ -1228,21 +1276,19 @@ export const read = () => widget()
   timeout,
 )
 
+// The provider environment of a React Start app with RSC enabled (its
+// `rsc` environment, `tanstackStart({ rsc: { enabled: true } })`).
 // Source: mutation run R3 ip-vite V9.
 test(
   'the server fn provider environment (rsc) mocks and logs an import of a .client file',
   async () => {
-    const server = await startProtectedDevServer(
-      {
-        'src/widget.client.ts': `export const widget = () => 'MARK_CLIENT'\n`,
-        'src/fn.ts': `import { widget } from './widget.client'
+    const server = await startRscProtectedDevServer({
+      'src/widget.client.ts': `export const widget = () => 'MARK_CLIENT'\n`,
+      'src/fn.ts': `import { widget } from './widget.client'
 export const read = () => widget()
 `,
-        'src/entry.ts': `export * from './fn'\n`,
-      },
-      {},
-      { providerEnvironment: 'rsc' },
-    )
+      'src/entry.ts': `export * from './fn'\n`,
+    })
     const served = await server.load('/src/entry.ts', { environment: 'rsc' })
     expect(modulesContaining(served, 'MARK_CLIENT')).toEqual([])
     expect(loggedViolations(server.logs)).toEqual([
@@ -1309,7 +1355,7 @@ export const read = () => query()
         (await runViteClient(server, '/src/entry.ts', 'return entry.read()'))
           .result,
       ).toBe('MARK_LIB')
-      expect(loggedViolations(server.logs)).toEqual([])
+      expectNothingReportedAbout(server, ['src/a.ts'])
     },
     timeout,
   )
@@ -1536,7 +1582,7 @@ export const createSecretFn = createServerFn().middleware([mw])
       await server.idle()
       expect(Object.keys(client)).not.toContain('/src/helper.ts')
       expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
-      expect(loggedViolations(server.logs)).toEqual([])
+      expectNothingReportedAbout(server, ['src/helper.ts'])
     },
     timeout,
   )
@@ -1611,7 +1657,7 @@ export const createSecretFn = createServerFn().middleware([mw])
       await server.idle()
       expect(Object.keys(client)).not.toContain('/src/helper.ts')
       expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
-      expect(loggedViolations(server.logs)).toEqual([])
+      expectNothingReportedAbout(server, ['src/helper.ts'])
     },
     timeout,
   )
@@ -2352,16 +2398,25 @@ export const fn = createSecretFn().handler(async () => 'data')
       const released = new Promise<void>((resolve) => {
         release = resolve
       })
-      // Holds the router entry until the bundle loads the denied file, which
-      // it only does once it has resolved `src/a.ts`'s import of it
+      // Holds the router entry until the bundle has asked for `src/a.ts`'s
+      // import of the denied file (its resolution, which happens whatever
+      // the compiler then serves: the real file, a mock, a virtual module),
+      // or for at most 5 s: fix-agnostic, and it never hangs.
       const slowEntry: Plugin = {
         name: 'slow-entry',
         enforce: 'pre',
+        resolveId(source, importer) {
+          if (source === './secret.server' && importer?.endsWith('/src/a.ts')) {
+            release()
+          }
+          return null
+        },
         async transform(_code, id) {
           if (id.endsWith('/src/entry.ts')) {
-            await released
-          } else if (id.endsWith('/src/secret.server.ts')) {
-            release()
+            await Promise.race([
+              released,
+              new Promise((resolve) => setTimeout(resolve, 5_000)),
+            ])
           }
           return null
         },

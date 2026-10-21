@@ -2,26 +2,48 @@
  * Known Start bugs that only show on a running dev server, after edits. Each
  * pin asserts correct behaviour for a bug on main and is marked .fails;
  * remove .fails when the bug is fixed. Each pin has a control test that runs
- * the same harness on a case that works.
+ * the same harness on a case that works. The dev servers run Start's whole
+ * public Vite plugin; client code runs in a real browser page of the dev
+ * server (`runViteClient`).
  */
-import path from 'node:path'
-import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
+import { diagnosticProse } from '@tanstack/compiler-test-utils/diagnostics'
 import { describe, expect, test } from 'vitest'
-import { importProtectionPlugin } from '../../src/vite/import-protection-plugin/plugin'
 import { runInRequestContext } from '../build-harness'
 import {
   callServerFnById,
-  servedStartRuntime,
   startDevServer,
   startServerEntryFiles,
 } from '../dev-server'
-import { isSafeMock } from '../importProtection/mock-helpers'
-import type { ImportProtectionPluginOptions } from '../../src/vite/import-protection-plugin/types'
+import { probeMockPrelude } from '../importProtection/mock-helpers'
+import {
+  runViteClient,
+  startBrowserStartDevServer,
+} from './importProtection/client-pages'
+import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 
 const timeout = 30_000
 
-/** A server-only module whose code marks the modules it ends up in. */
+/**
+ * A module only a handler reads, whose code marks the modules it ends up in
+ * (no denied file: what the client gets of it is the compiler's doing, not
+ * import protection's mock).
+ */
 const dbModule = `export const db = { x: () => 'MARK_DB_SECRET' }\n`
+
+/**
+ * Runs `script` in a real page of `server` that loaded `entry` (as `entry`):
+ * what it returns, or `throws: <message>` when loading or running fails.
+ */
+async function inClient(
+  server: Pick<DevServer, 'url'>,
+  entry: string,
+  script: string,
+): Promise<unknown> {
+  return runViteClient(server, entry, script).then(
+    ({ result }) => result,
+    (error: Error) => `throws: ${error.message.split('\n')[0]}`,
+  )
+}
 
 /** Modules of the client environment that contain `marker`. */
 function modulesContaining(modules: Record<string, string>, marker: string) {
@@ -36,22 +58,22 @@ describe('editing a server fn factory', () => {
    * a plain object and becomes a `createServerFn()` builder.
    */
   async function editFactory(importFrom: string) {
-    const server = await startDevServer({
+    const server = await startBrowserStartDevServer({
       files: {
         'src/b.ts': `export const base = { handler: (fn: () => unknown) => fn }\n`,
         'src/c.ts': `export * from './b'\n`,
         'src/d.ts': `import { base } from './b'\nexport { base }\n`,
-        'src/db.server.ts': dbModule,
+        'src/db.ts': dbModule,
         'src/a.tsx': `import { base } from '${importFrom}'
-import { db } from './db.server'
+import { db } from './db'
 export const fn = base.handler(async () => db.x())
 `,
       },
     })
     // The page loads: `fn` is a plain function, its code runs in the browser
     expect(
-      modulesContaining(await server.load('/src/a.tsx'), 'MARK_DB_SECRET'),
-    ).toEqual(['/src/db.server.ts'])
+      await inClient(server, '/src/a.tsx', 'return await entry.fn()'),
+    ).toBe('MARK_DB_SECRET')
 
     await server.edit({
       'src/b.ts': `import { createServerFn } from '@tanstack/react-start'
@@ -83,9 +105,9 @@ export const base = createServerFn()
 export const base = createServerFn()
 `,
           'src/c.ts': `export * from './b'\n`,
-          'src/db.server.ts': dbModule,
+          'src/db.ts': dbModule,
           'src/a.tsx': `import { base } from './c'
-import { db } from './db.server'
+import { db } from './db'
 export const fn = base.handler(async () => db.x())
 `,
         },
@@ -132,7 +154,6 @@ describe('editing a server fn factory (SSR)', () => {
    */
   async function editFactorySsr(importFrom: string) {
     const server = await startDevServer({
-      start: {},
       files: {
         ...startServerEntryFiles,
         'src/b.ts': `export const base = { handler: (fn: () => unknown) => fn }\n`,
@@ -211,29 +232,14 @@ export const base = createServerFn()
 
 describe('import protection', () => {
   /**
-   * Import protection with the default rules, in its dev (mock) mode, with
-   * `router` (the module the test loads first) registered as the app's router
-   * entry, like `tanStackStart()` registers `src/router.tsx`.
+   * Start's options of an app with import protection's default rules, in
+   * its dev (mock) mode, whose router entry (Start's public `router.entry`)
+   * is `router` in `src` (the module the test loads first).
    */
-  const importProtection =
-    (router: string) =>
-    ({ root }: { root: string }) => [
-      importProtectionPlugin({
-        getConfig: (() => ({
-          startConfig: { importProtection: {} },
-          resolvedStartConfig: {
-            srcDirectory: path.join(root, 'src'),
-            routerFilePath: path.join(root, router),
-          },
-        })) as unknown as ImportProtectionPluginOptions['getConfig'],
-        framework: 'react',
-        environments: [
-          { name: 'client', type: 'client' },
-          { name: 'ssr', type: 'server' },
-        ],
-        providerEnvName: 'ssr',
-      }),
-    ]
+  const importProtection = (router: string) => ({
+    importProtection: {},
+    router: { entry: router },
+  })
 
   /**
    * A client module with a server fn whose top-level code calls a function
@@ -249,21 +255,21 @@ export const fn = createServerFn().handler(async () => request)
   })
 
   /**
-   * Loads `src/a.ts` in the client as the browser does: the URLs of the
-   * served modules with the denied file's code, and the client's server fn
-   * (dependencies loaded from the dev server too).
+   * Loads `src/a.ts` in the client: the served modules with the denied
+   * file's code, and, in a real page, the type of the id the client's server
+   * fn carries (or why the page could not load it).
    */
   async function loadClient(
     server: Awaited<ReturnType<typeof startDevServer>>,
   ) {
     const modules = await server.load('/src/a.ts', { skip: /^\/@vite\b/ })
-    const { fn } = await evaluateServed(server, '/src/a.ts', {
-      skip: /^\/@vite\b/,
-      stubs: servedStartRuntime,
-    })
     return {
       secret: modulesContaining(modules, 'MARK_REQUEST_SECRET'),
-      functionId: typeof fn.serverFnMeta?.id,
+      functionId: await inClient(
+        server,
+        '/src/a.ts',
+        'return typeof entry.fn.serverFnMeta?.id',
+      ),
     }
   }
 
@@ -272,9 +278,9 @@ export const fn = createServerFn().handler(async () => request)
   test(
     'client: a server fn module calling a function of a denied file at the top level loads, without the denied code',
     async () => {
-      const server = await startDevServer({
+      const server = await startBrowserStartDevServer({
         files: deniedCallFiles('./request.server'),
-        plugins: importProtection('src/a.ts'),
+        start: importProtection('a.ts'),
       })
       expect(await loadClient(server)).toEqual({
         secret: [],
@@ -296,9 +302,9 @@ export const fn = createServerFn().handler(async () => request)
   test.fails(
     'client: a server fn module calling a function of a denied specifier at the top level loads',
     async () => {
-      const server = await startDevServer({
+      const server = await startBrowserStartDevServer({
         files: deniedCallFiles('@tanstack/react-start/server'),
-        plugins: importProtection('src/a.ts'),
+        start: importProtection('a.ts'),
       })
       expect(await loadClient(server)).toEqual({
         secret: [],
@@ -311,11 +317,12 @@ export const fn = createServerFn().handler(async () => request)
   /**
    * `src/a.ts` imports `src/b.ts`, which starts with a server-only marker:
    * the client loads `src/b.ts` and then `src/a.ts` (which gets a mock of
-   * it), then the marker is removed, with `edits`. Returns the client modules
-   * `src/a.ts` loads afterwards.
+   * it), then the marker is removed, with `edits`. Returns what `read()` of
+   * `src/a.ts` gives in a real page afterwards: the module's value, or what
+   * it is not.
    */
   async function removeMarker(edits: Record<string, string> = {}) {
-    const server = await startDevServer({
+    const server = await startBrowserStartDevServer({
       files: {
         'src/b.ts': `import '@tanstack/react-start/server-only'
 export const secret = () => 'MARK_B_CODE'
@@ -324,7 +331,7 @@ export const secret = () => 'MARK_B_CODE'
 export const read = () => secret()
 `,
       },
-      plugins: importProtection('src/a.ts'),
+      start: importProtection('a.ts'),
     })
     await server.load('/src/b.ts')
     expect(
@@ -335,7 +342,12 @@ export const read = () => secret()
       'src/b.ts': `export const secret = () => 'MARK_B_CODE'\n`,
       ...edits,
     })
-    return server.load('/src/a.ts')
+    return inClient(
+      server,
+      '/src/a.ts',
+      `const value = entry.read()
+return typeof value === 'string' ? value : 'not the module value (' + typeof value + ')'`,
+    )
   }
 
   // Control for the pin below (same harness): an importer edited with the
@@ -343,12 +355,13 @@ export const read = () => secret()
   test(
     'client: an edited importer of a module whose server-only marker was removed loads the module',
     async () => {
-      const client = await removeMarker({
-        'src/a.ts': `import { secret } from './b'
+      expect(
+        await removeMarker({
+          'src/a.ts': `import { secret } from './b'
 export const read = () => secret() + '!'
 `,
-      })
-      expect(modulesContaining(client, 'MARK_B_CODE')).toEqual(['/src/b.ts'])
+        }),
+      ).toBe('MARK_B_CODE!')
     },
     timeout,
   )
@@ -366,30 +379,34 @@ export const read = () => secret() + '!'
   test.fails(
     'client: the importer of a module whose server-only marker was removed loads the module',
     async () => {
-      const client = await removeMarker()
-      expect(modulesContaining(client, 'MARK_B_CODE')).toEqual(['/src/b.ts'])
+      expect(await removeMarker()).toBe('MARK_B_CODE')
     },
     timeout,
   )
 
   /**
    * Starts a dev server with import protection on an app of `files` and a
-   * denied file `src/request.server.ts`, and evaluates `src/c.ts` as the
-   * browser loads it. Returns `src/c.ts`'s namespace, or the error loading it
-   * throws, and the server logs.
+   * denied file `src/request.server.ts`, and runs `script` in a real page
+   * that loaded `src/c.ts` (`entry`; `probeMockPrelude` defines
+   * `isSafeMock`). Returns what the script returns (or why the page could
+   * not load `src/c.ts`), and the server.
    */
-  async function evaluateClient(files: Record<string, string>) {
-    const server = await startDevServer({
+  async function inClientOf(files: Record<string, string>, script: string) {
+    const server = await startBrowserStartDevServer({
       files: {
         'src/request.server.ts': `export const getRequest = () => ({ url: '/' })\n`,
         ...files,
       },
-      plugins: importProtection('src/c.ts'),
+      start: importProtection('c.ts'),
     })
-    const module = await evaluateServed(server, '/src/c.ts').catch(
-      (error: unknown) => error,
-    )
-    return { module, logs: server.logs }
+    return {
+      result: await inClient(
+        server,
+        '/src/c.ts',
+        `${probeMockPrelude}${script}`,
+      ),
+      server,
+    }
   }
 
   const deniedModules = [
@@ -416,19 +433,33 @@ export const values = [getRequest, getHeader, server.setCookie]
   test.each(deniedModules)(
     'client: names imported from $name are mocks',
     async ({ client }) => {
-      const { module } = await evaluateClient({ 'src/c.ts': client })
-      const { values } = module as { values: Array<unknown> }
-      expect(values.map((value: unknown) => isSafeMock(value))).toEqual(
-        values.map(() => true),
+      const { result } = await inClientOf(
+        { 'src/c.ts': client },
+        `return {
+  values: entry.values.length,
+  safeMocks: entry.values.filter((value) => isSafeMock(value)).length,
+}`,
       )
+      const { values } = result as { values: number }
+      expect(values).toBeGreaterThan(0)
+      expect(result).toEqual({ values, safeMocks: values })
     },
     timeout,
   )
 
-  /** Log lines without the code frames of import-protection warnings. */
-  const messages = (logs: Array<string>) =>
-    logs.flatMap((log) =>
-      log.split('\n').filter((line) => !/^\s*(>\s*)?\d*\s*\|/.test(line)),
+  /**
+   * Whether the dev server warned, on any channel, about the `export *` of
+   * `source` (`src/b.ts`): a warning or error whose own words (its prose,
+   * without the lines quoting the source, `diagnosticProse`) speak of that
+   * star re-export, whatever the wording (SPEC J6.12, §5.7).
+   */
+  const warnsAboutStarReexport = (server: DevServer, source: string) =>
+    server.diagnostics.some(
+      ({ severity, text }) =>
+        severity !== 'info' &&
+        /\bexport\s*\*|\bre-?export(?:s|ed|ing)?\b|\bstar export/i.test(
+          diagnosticProse(text, source),
+        ),
     )
 
   // Bug: in dev, a client module's `export * from` a denied module re-exports
@@ -445,14 +476,17 @@ export const values = [getRequest, getHeader, server.setCookie]
   test.fails.each(deniedModules)(
     'client: a name re-exported with `export *` from $name is a mock, or the server warns about the `export *`',
     async ({ denied }) => {
-      const { module, logs } = await evaluateClient({
-        'src/b.ts': `export * from '${denied}'\n`,
-        'src/c.ts': `import { getRequest } from './b'\nexport const v = getRequest\n`,
-      })
-      expect(
-        isSafeMock((module as Record<string, unknown>).v) ||
-          messages(logs).some((line) => line.includes('export *')),
-      ).toBe(true)
+      const reexport = `export * from '${denied}'\n`
+      const { result, server } = await inClientOf(
+        {
+          'src/b.ts': reexport,
+          'src/c.ts': `import { getRequest } from './b'\nexport const v = getRequest\n`,
+        },
+        'return isSafeMock(entry.v)',
+      )
+      expect(result === true || warnsAboutStarReexport(server, reexport)).toBe(
+        true,
+      )
     },
     timeout,
   )

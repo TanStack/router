@@ -11,18 +11,17 @@ import path from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { createServer, isRunnableDevEnvironment } from 'vite'
 import { describe, expect, test, vi } from 'vitest'
-import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
-import { startCompilerPlugin } from '../../src/vite/start-compiler-plugin/plugin'
 import { linkStartRuntime } from '../build-harness'
 import {
   callServerFnById,
-  servedStartRuntime,
   startPlugin,
   startPluginFiles,
   startServerEntryFiles,
 } from '../dev-server'
-import { callerRpcId } from '../regression-helpers'
-import type { ModuleStub } from '../regression-helpers'
+import {
+  runViteClient,
+  startBrowserStartDevServer,
+} from './importProtection/client-pages'
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 
@@ -72,12 +71,11 @@ describe('Vite dev server', () => {
 
   /**
    * Starts a Vite dev server (middleware mode, empty dependency cache) on a
-   * temporary project with the Start compiler, Start's real runtime
-   * (`linkStartRuntime`), `src/fn.ts` = `code` and `files`, and requests the
-   * client transform of `src/fn.ts`. Returns `'hang'` when the transform
-   * stops making progress before it finishes (`settledOrHung`); otherwise
-   * its code and the module evaluated with Start's real client runtime
-   * (`clientRuntime`) and `zod`.
+   * temporary project with Start's whole Vite plugin, Start's real runtime
+   * (`linkStartRuntime`), `src/fn.ts` = `code` and `files` (in `src`), and
+   * requests the client transform of `src/fn.ts`, as the first request of
+   * the server. Returns `'hang'` when the transform stops making progress
+   * before it finishes (`settledOrHung`); otherwise the code it served.
    */
   async function transformClientModule(
     code: string,
@@ -92,12 +90,17 @@ describe('Vite dev server', () => {
       return null
     }
     try {
-      await mkdir(path.join(root, 'src'))
       for (const [file, content] of Object.entries({
-        'fn.ts': code,
-        ...files,
+        ...startPluginFiles,
+        ...Object.fromEntries(
+          Object.entries({ 'fn.ts': code, ...files }).map(([name, source]) => [
+            `src/${name}`,
+            source,
+          ]),
+        ),
       })) {
-        await writeFile(path.join(root, 'src', file), content)
+        await mkdir(path.dirname(path.join(root, file)), { recursive: true })
+        await writeFile(path.join(root, file), content)
       }
       await linkStartRuntime(root)
       server = await createServer({
@@ -115,14 +118,7 @@ describe('Vite dev server', () => {
             load: active,
             transform: active,
           },
-          startCompilerPlugin({
-            framework: 'react',
-            environments: [
-              { name: 'client', type: 'client' },
-              { name: 'ssr', type: 'server' },
-            ],
-            providerEnvName: 'ssr',
-          }),
+          startPlugin(root, {}, undefined),
         ],
       })
       const transformed =
@@ -131,27 +127,7 @@ describe('Vite dev server', () => {
         transformed.catch(() => {})
         return 'hang' as const
       }
-      const served = (await transformed)!.code
-      const client = server.environments.client
-      const zod = (await import('zod')) as ModuleStub
-      const module = await createModuleGraph({
-        modules: { '/src/fn.ts': served },
-        // Project modules as the dev server serves them.
-        load: async (id) =>
-          id.startsWith('/src/')
-            ? (await client.transformRequest(id))?.code
-            : null,
-        transform: (source) => source,
-        stubs: servedStartRuntime,
-        // `zod`, served pre-bundled (`/node_modules/.vite/deps/zod.js`)
-        fallbackStub: (specifier) => {
-          if (specifier.includes('/zod')) {
-            return zod
-          }
-          throw new Error(`no stub for ${specifier}`)
-        },
-      }).import('/src/fn.ts')
-      return { code: served, module }
+      return { code: (await transformed)!.code }
     } finally {
       await Promise.race([
         server?.close(),
@@ -163,26 +139,46 @@ describe('Vite dev server', () => {
 
   /**
    * The client got `fn` as an RPC carrying its id, without the handler body
-   * (`MARK_HANDLER`).
+   * (`MARK_HANDLER`): the first request of a fresh dev server finishes
+   * (`transformClientModule`) without the handler, and a real page of a dev
+   * server of the same app runs `fn` as an RPC (its URL carries its id).
    */
-  function expectClientRpc(
-    result: Awaited<ReturnType<typeof transformClientModule>>,
+  async function expectClientRpc(
+    code: string,
+    files: Record<string, string> = {},
   ) {
+    const result = await transformClientModule(code, files)
     expect(result).not.toBe('hang')
-    const { code, module } = result as Exclude<typeof result, 'hang'>
-    expect(code).not.toContain('MARK_HANDLER')
-    expect(callerRpcId(module.fn)).toEqual(expect.any(String))
+    expect((result as Exclude<typeof result, 'hang'>).code).not.toContain(
+      'MARK_HANDLER',
+    )
+    const server = await startBrowserStartDevServer({
+      files: Object.fromEntries(
+        Object.entries({ 'fn.ts': code, ...files }).map(([name, source]) => [
+          `src/${name}`,
+          source,
+        ]),
+      ),
+    })
+    const { result: rpc } = await runViteClient(
+      server,
+      '/src/fn.ts',
+      `return { id: entry.fn.serverFnMeta?.id, url: entry.fn.url }`,
+    )
+    const { id } = rpc as { id: unknown }
+    expect(rpc).toEqual({
+      id: expect.any(String),
+      url: expect.stringMatching(new RegExp(`${String(id)}$`)),
+    })
   }
 
   // Control for the pin below (same harness).
   test('transforms a client module with a server fn and a top-level call of a project function', async () => {
-    expectClientRpc(
-      await transformClientModule(
-        `${head}import { define } from './define'
+    await expectClientRpc(
+      `${head}import { define } from './define'
 export const schema = define()
 export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
-        { 'define.ts': `export const define = () => ({})` },
-      ),
+      { 'define.ts': `export const define = () => ({})` },
     )
   }, 30_000)
 
@@ -192,12 +188,10 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
   // environment from inside the transform, and that load waited for the
   // dependency optimizer, which waited for this transform.
   test('transforms a client module with a server fn and a top-level member call of a pre-bundled dependency', async () => {
-    expectClientRpc(
-      await transformClientModule(
-        `${head}import { z } from 'zod'
+    await expectClientRpc(
+      `${head}import { z } from 'zod'
 export const schema = z.object({})
 export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
-      ),
     )
   }, 30_000)
 
@@ -217,12 +211,10 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
   test.fails(
     'transforms a client module with a server fn and a top-level call of a pre-bundled dependency',
     async () => {
-      expectClientRpc(
-        await transformClientModule(
-          `${head}import { object } from 'zod'
+      await expectClientRpc(
+        `${head}import { object } from 'zod'
 export const schema = object({})
 export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
-        ),
       )
     },
     30_000,

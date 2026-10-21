@@ -12,7 +12,7 @@ import {
   callByIdPrelude,
   startBundlers,
 } from '../build-harness'
-import { expectSourceError } from '../regression-helpers'
+import { expectSourceError } from './source-errors'
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 
@@ -161,20 +161,20 @@ return { initialised: globalThis.initialised, isSession, count: entry.readCount(
 
   /**
    * An app whose client imports one server fn (`clientFn`) and whose server
-   * entry imports another one only server code uses (`serverOnlyFn`), with
-   * the server fn resolver the server-fn HTTP handler calls. The resolver is
-   * imported by the server-only module, so the SSR build compiles that
-   * module (and reports its server fn) before it generates the resolver.
+   * entry imports another one only server code uses (`serverOnlyFn`), and
+   * Start's server entry, whose server-fn HTTP handler finds server fns by
+   * id (`callByIdExports`). (Were `serverOnlyFn` missing from what the
+   * server knows, issue #7213, the SSR call below would fail too: the
+   * control catches that, so the pin cannot pass by a missing server fn.)
    */
   const clientAccessFiles = {
     'client-fns.ts': `${head}export const clientFn = createServerFn().handler(async () => 'client fn')
 `,
     'server-only-fns.ts': `${head}export const serverOnlyFn = createServerFn().handler(async () => 'server-only fn')
-export { getServerFnById } from '#tanstack-start-server-fn-resolver'
 `,
     'client-entry.ts': `export { clientFn } from './client-fns'
 `,
-    'ssr-entry.ts': `export { serverOnlyFn, getServerFnById } from './server-only-fns'
+    'ssr-entry.ts': `export { serverOnlyFn } from './server-only-fns'
 ${callByIdExports}`,
   }
 
@@ -191,7 +191,8 @@ ${callByIdExports}`,
       files: clientAccessFiles,
       entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
     })
-    expect(client.where("'server-only fn'")).toBe('nowhere')
+    // (the handler's text, however the bundle quotes it)
+    expect(client.where('server-only fn')).toBe('nowhere')
     const clientFnId = (
       await client.run(`return entry.clientFn.serverFnMeta.id`)
     ).result

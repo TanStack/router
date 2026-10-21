@@ -12,6 +12,7 @@ import { afterAll, afterEach, describe, expect, test, vi } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import { locatedImporters } from '../../importProtection/start-apps'
+import { inEnvironment } from '../../importProtection/violation-report'
 import { runViteClient, startBrowserProtectedDevServer } from './client-pages'
 import type { StartBuild, StartBundler } from '../../build-harness'
 import type { ImportProtectionOptions } from '../../importProtection/public-types'
@@ -111,10 +112,8 @@ const exemptions: Array<{
  * reported at a relevant original place of the file in `sources`
  * (`locatedImporters`), never at compiled coordinates.
  */
-const reportedFiles = (
-  output: string | Array<string>,
-  sources: Record<string, string>,
-) => [...new Set(locatedImporters(output, sources))].sort()
+const reportedFiles = (output: unknown, sources: Record<string, string>) =>
+  [...new Set(locatedImporters(output, sources))].sort()
 
 /** What each re-exported use returns, and whether the denied file ran. */
 const readScript = `${readPrelude}
@@ -183,11 +182,12 @@ describe.each(startBundlers)('%s build', (bundler) => {
     afterAll(() => dispose?.())
 
     async function outcome(): Promise<Outcome> {
-      const { client } = await app()
-      const { result } = await client.run(readScript)
+      const build = await app()
+      const { result } = await build.client.run(readScript)
       return {
         ...(result as Omit<Outcome, 'reported'>),
-        reported: reportedFiles(client.warnings, files),
+        // What the build reported for the client, on every channel
+        reported: reportedFiles(inEnvironment(build, 'client'), files),
       }
     }
 
@@ -339,11 +339,15 @@ function excludedBuild(
         dispose = cleanup
       },
     })
-    const result = (await built)[environment]
-    const { result: read } = await result.run(excludedReadScript)
+    const build = await built
+    const { result: read } = await build[environment].run(excludedReadScript)
     return {
       ...(read as Omit<ExcludedOutcome, 'reported'>),
-      reported: reportedFiles(result.warnings, excludedFiles),
+      // What the build reported for the environment, on every channel
+      reported: reportedFiles(
+        inEnvironment(build, environment === 'ssr' ? 'server' : 'client'),
+        excludedFiles,
+      ),
     }
   }
 }

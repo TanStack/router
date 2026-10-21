@@ -1,21 +1,23 @@
 /**
- * The Start compiler on a running Vite dev server (client and SSR
- * environments, SSR as the server fn provider): edits of server fn factories
- * and handlers reach every environment without a restart.
+ * The Start compiler on a running Vite dev server with Start's whole public
+ * Vite plugin (client and SSR environments, SSR as the server fn provider):
+ * edits of server fn factories and handlers reach every environment without
+ * a restart. Client code runs in a real browser page of the dev server
+ * (`runViteClient`).
  */
 import react from '@vitejs/plugin-react'
 import { describe, expect, test } from 'vitest'
-import {
-  describeHmr,
-  evaluateServed,
-} from '@tanstack/compiler-test-utils/dev-server'
-import { requestsOf, runInRequestContext } from '../build-harness'
+import { describeHmr } from '@tanstack/compiler-test-utils/dev-server'
+import { requestsOfPrelude, runInRequestContext } from '../build-harness'
 import {
   callServerFnById,
-  servedStartRuntime,
   startDevServer,
   startServerEntryFiles,
 } from '../dev-server'
+import {
+  runViteClient,
+  startBrowserStartDevServer,
+} from './importProtection/client-pages'
 
 const timeout = 30_000
 
@@ -30,39 +32,38 @@ describe('Vite dev: editing a server fn factory', () => {
   test(
     'client: a module importing a factory that stops being one keeps its handler',
     async () => {
-      const server = await startDevServer({
+      // (`src/db.ts` is no denied file: what the client gets of it is the
+      // compiler's doing, not import protection's mock)
+      const server = await startBrowserStartDevServer({
         files: {
           'src/b.ts': factory,
-          'src/db.server.ts': `export const db = { x: () => 'MARK_DB_SECRET' }\n`,
+          'src/db.ts': `export const db = { x: () => 'MARK_DB_SECRET' }\n`,
           'src/a.tsx': `import { base } from './b'
-import { db } from './db.server'
+import { db } from './db'
 export const fn = base.handler(async () => db.x())
 `,
         },
       })
-      /** The client's `fn` (dependencies loaded from the dev server too). */
-      const clientFn = async () =>
-        (
-          await evaluateServed(server, '/src/a.tsx', {
-            skip: /^\/@vite\b/,
-            stubs: servedStartRuntime,
-          })
-        ).fn as () => Promise<unknown>
+      /** Runs `script` in a real page that loaded `src/a.tsx` (`entry`). */
+      const inClient = async (script: string) =>
+        (await runViteClient(server, '/src/a.tsx', script)).result
       expect(
         containing(await server.load('/src/a.tsx'), 'MARK_DB_SECRET'),
       ).toEqual([])
       // A server fn: the client calls the server, at the server fn's URL
-      const rpc = (await clientFn()) as unknown as {
-        url: string
-        serverFnMeta: { id: string }
-      } & (() => Promise<unknown>)
-      expect(rpc.url.endsWith(rpc.serverFnMeta.id)).toBe(true)
-      expect(await requestsOf(rpc)).toEqual([{ url: rpc.url, method: 'GET' }])
+      const rpc = (await inClient(`${requestsOfPrelude}
+return {
+  url: entry.fn.url,
+  id: entry.fn.serverFnMeta.id,
+  requests: await requestsOf(entry.fn),
+}`)) as { url: string; id: string; requests: Array<unknown> }
+      expect(rpc.url.endsWith(rpc.id)).toBe(true)
+      expect(rpc.requests).toEqual([{ url: rpc.url, method: 'GET' }])
 
       await server.edit({ 'src/b.ts': plain })
 
       // A plain function now: the client runs it
-      expect(await (await clientFn())()).toBe('MARK_DB_SECRET')
+      expect(await inClient(`return await entry.fn()`)).toBe('MARK_DB_SECRET')
     },
     timeout,
   )
@@ -137,7 +138,7 @@ describe('Vite dev: editing a server fn handler', () => {
   // and the HMR half of exports-and-directives.test.ts "dev providers export
   // the handler and accept HMR updates" (N16; gap DV24).
   test(
-    'SSR: the server fn resolver runs the edited handler under the same id, without a restart',
+    'SSR: the server fn resolver runs the edited handler, without a restart',
     async () => {
       const server = await startDevServer({
         start: {},
@@ -148,14 +149,15 @@ export const greet = createServerFn().handler(() => 'before')
 `,
         },
       })
-      /** Calls `greet` the way a page does: by id. */
+      /**
+       * Calls `greet` the way a page does: by the id its current caller
+       * carries (an edit may give the server fn a new id, J4.4).
+       */
       const call = async () => {
         const { greet } = await server.import('/src/fns.ts')
-        const id = greet.serverFnMeta.id
-        return { id, result: await callServerFnById(server, id) }
+        return callServerFnById(server, greet.serverFnMeta.id)
       }
-      const before = await call()
-      expect(before.result).toBe('before')
+      expect(await call()).toBe('before')
 
       await server.edit({
         'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
@@ -163,7 +165,7 @@ export const greet = createServerFn().handler(() => 'after')
 `,
       })
 
-      expect(await call()).toEqual({ id: before.id, result: 'after' })
+      expect(await call()).toBe('after')
     },
     timeout,
   )
@@ -268,12 +270,14 @@ export const where = createIsomorphicFn()
   test(
     'each environment runs its edited branch, and the client never gets the server one',
     async () => {
-      const server = await startDevServer({
+      const server = await startBrowserStartDevServer({
         files: { 'src/iso.ts': isomorphic('V1') },
       })
       /** What `where()` returns in each environment, and server code in the client. */
       const run = async (version: string) => ({
-        client: (await evaluateServed(server, '/src/iso.ts')).where(),
+        client: (
+          await runViteClient(server, '/src/iso.ts', 'return entry.where()')
+        ).result,
         ssr: (await server.import('/src/iso.ts')).where(),
         serverCodeInClient: containing(
           await server.load('/src/iso.ts'),
@@ -354,8 +358,10 @@ export const label = () => 'MARK_CLIENT_LABEL'
     'a server fn module with a top-level call of a dependency bundles for the client without its handler',
     async () => {
       const server = await startDevServer({
+        plugins: [react()],
         bundledDev: { entry: 'src/entry.ts' },
         files: {
+          ...bundledClientEntry,
           'src/fns.ts': fns(
             'V1',
             `import { z } from 'zod'\nexport const schema = z.object({})\n`,
@@ -363,9 +369,9 @@ export const label = () => 'MARK_CLIENT_LABEL'
           'src/entry.ts': entry,
         },
       })
-      expect(
-        containing(await server.clientBundle(), 'MARK_HANDLER_V1'),
-      ).toEqual([])
+      const bundle = await server.clientBundle()
+      expect(containing(bundle, 'MARK_CLIENT_LABEL')).not.toEqual([])
+      expect(containing(bundle, 'MARK_HANDLER_V1')).toEqual([])
       expect(server.logs.filter((log) => log.startsWith('error:'))).toEqual([])
     },
     timeout,
@@ -405,17 +411,21 @@ export const label = () => 'MARK_CLIENT_LABEL'
 
   /**
    * Serves `src/a.tsx`, which calls `.handler()` on `base` from `src/b.ts`
-   * (a plain object at first) with a handler reading a server-only module,
+   * (a plain object at first) with a handler reading the module `src/db.ts`
+   * (no denied file: what the client gets of it is the compiler's doing),
    * and edits `src/b.ts` so that `base` becomes a server fn builder.
    */
   async function editFactoryIntoBuilder() {
     const server = await startDevServer({
+      plugins: [react()],
       bundledDev: { entry: 'src/a.tsx' },
       files: {
+        // Start's client entry, which the client bundle starts from
+        'harness/client-entry.ts': `export * from '../src/a'\n`,
         'src/b.ts': plain,
-        'src/db.server.ts': `export const db = { x: () => 'MARK_DB_SECRET' }\n`,
+        'src/db.ts': `export const db = { x: () => 'MARK_DB_SECRET' }\n`,
         'src/a.tsx': `import { base } from './b'
-import { db } from './db.server'
+import { db } from './db'
 export const fn = base.handler(async () => db.x())
 `,
       },
@@ -452,8 +462,8 @@ export const fn = base.handler(async () => db.x())
   // (client: `invalidateModule(id)` of the edited module only; the
   // unbundled path invalidates the importers, :318-358).
   // Impact: with `experimental.bundledDev`, the page keeps loading the
-  // handler and its server-only modules (here a `.server` module) in the
-  // client until the dev server restarts. Found with the real watchers
+  // handler and the modules only it reads (server-only code) in the client
+  // until the dev server restarts. Found with the real watchers
   // (the replaying harness forced a full rebuild, which hid it).
   test.fails(
     'a module whose factory becomes a server fn builder: the client bundle drops the handler',

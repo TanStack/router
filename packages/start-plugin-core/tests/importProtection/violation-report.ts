@@ -233,11 +233,19 @@ function startsReport(line: string): boolean {
 
 /** The candidate report blocks of a text, each from a line that starts one. */
 function blocks(text: string): Array<Array<string>> {
-  const lines = text
+  const boxed = text
     // Rsbuild boxes the lines of an error with `│`
     .replace(/^.*│ ?/gm, '')
     .replace(ansi, '')
     .split('\n')
+  // A text indented as a whole (a tool's own indentation) is read as if it
+  // was not
+  const margin = Math.min(
+    ...boxed.filter((line) => line.trim() !== '').map(indentOf),
+  )
+  const lines = Number.isFinite(margin)
+    ? boxed.map((line) => line.slice(Math.min(margin, indentOf(line))))
+    : boxed
   const result: Array<Array<string>> = []
   let current: Array<string> | undefined
   for (const line of lines) {
@@ -270,22 +278,61 @@ const withoutLocation = (file: string) => parseLocation(file).file
 const withoutExtension = (file: string) => file.replace(/\.[^./]+$/, '')
 
 /** Whether `file` is what `specifier` imported from `importer` resolves to. */
-function resolvesTo(specifier: string, importer: string, file: string) {
+function resolvesTo(
+  specifier: string,
+  importer: string,
+  file: string,
+  { aliases = true }: { aliases?: boolean } = {},
+) {
   const target = withoutExtension(withoutLocation(file))
   if (specifier.startsWith('.')) {
     const joined = path.posix.join(
       path.posix.dirname(withoutLocation(importer)),
       specifier,
     )
-    return (
-      withoutExtension(joined) === target || joined === withoutLocation(file)
-    )
+    // (the specifier may name the file with or without its extension)
+    return joined === target || joined === withoutLocation(file)
+  }
+  // A package's file (a dependency, or outside the app), or an aliased path
+  // ending with the specifier's segments (`~/lib/x` -> `src/lib/x.ts`)
+  return (
+    /(^|\/)node_modules\//.test(file) ||
+    path.isAbsolute(withoutLocation(file)) ||
+    (aliases &&
+      `/${target}`.endsWith(
+        `/${withoutExtension(specifier.replace(/^[#~@]+\/?/, ''))}`,
+      ))
+  )
+}
+
+/**
+ * Whether `file` is what `specifier` names, from whichever importer: the
+ * same file name for a relative specifier, a dependency's file for a
+ * package one.
+ */
+function namesTarget(specifier: string, file: string) {
+  const base = path.posix.basename(withoutLocation(file))
+  if (specifier.startsWith('.')) {
+    // (with or without its extension)
+    const named = path.posix.basename(specifier)
+    return named === base || named === withoutExtension(base)
   }
   return (
     /(^|\/)node_modules\//.test(file) ||
-    target.endsWith(withoutExtension(specifier.replace(/^[#~@]+\/?/, '')))
+    withoutExtension(withoutLocation(file)).endsWith(
+      withoutExtension(specifier.replace(/^[#~@]+\/?/, '')),
+    )
   )
 }
+
+/**
+ * An operation running code performs on a value (the traps of a mock): a
+ * call, a construction, a member read or write, a primitive conversion.
+ */
+const isMockAccess = (value: string) =>
+  /(?:^|[\s(])(?:call|construct|apply|get|set|has|toPrimitive|toString|valueOf|toJSON)(?:$|[\s)])/.test(
+    value,
+  ) && /\w(?:\(\)|\.\w)|\bnew \w/.test(value)
 
 /**
  * The environment type a report is about: the one its header names; when
@@ -361,30 +408,55 @@ function parseReport(
   let importer: string | undefined
   let resolved: string | undefined
   if (files.length === 1) {
-    importer = files[0]
+    // The one file is the importer, unless it is what the specifier names
+    if (specifier !== undefined && namesTarget(specifier, files[0]!)) {
+      resolved = files[0]
+    } else {
+      importer = files[0]
+    }
   } else if (files.length > 1) {
+    // (a package's file before an aliased app file, and a file without a
+    // location first: the importer has one when the report locates it)
+    const ordered = [...files].sort(
+      (a, b) => Number(/:\d+/.test(a)) - Number(/:\d+/.test(b)),
+    )
+    const resolvedBy = (aliases: boolean) =>
+      ordered.find((candidate) =>
+        files.some(
+          (other) =>
+            other !== candidate &&
+            resolvesTo(specifier!, other, candidate, { aliases }),
+        ),
+      )
     const resolvedFile =
       specifier === undefined
         ? undefined
-        : files.find((candidate) =>
-            files.some(
-              (other) =>
-                other !== candidate && resolvesTo(specifier, other, candidate),
-            ),
-          )
+        : (resolvedBy(false) ?? resolvedBy(true))
     resolved = resolvedFile
     importer =
       files.find((file) => file !== resolvedFile && /:\d+/.test(file)) ??
       files.find((file) => file !== resolvedFile)
   }
   const code = parseCodeFrame(body, root)
-  importer ??= code?.location || undefined
+  // Without a file of its own, the importer is where the frame shows the
+  // import, or the step of the chain that imports the specifier
+  importer ??=
+    code?.location ||
+    steps.find((step) => specifier !== undefined && step.imports === specifier)
+      ?.at
 
   const environment = environmentOf(
     [header, ...body.filter((line) => !fieldOf(line) && indentOf(line) === 0)]
       .join(' ')
       .replace(quoted, ''),
   )
+  // The runtime diagnostic of a use of a dev mock (SPEC J6.3, `mockAccess`)
+  // says what the running code did with the mock (an access: a call, a
+  // construction, a member read or write, a conversion); a violation
+  // report is about an import, and says no such thing
+  if (code === undefined && fields.some(({ value }) => isMockAccess(value))) {
+    return undefined
+  }
   // (a bundler's plugin tag or error class before a report is not one)
   const hasBody = fields.length > 0 || items.length > 0 || code !== undefined
   const announced =

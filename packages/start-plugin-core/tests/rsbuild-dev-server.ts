@@ -16,8 +16,8 @@ import { fileURLToPath } from 'node:url'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
-import { tanStackStartRsbuild } from '@tanstack/start-plugin-core/rsbuild'
 import { onTestFinished } from 'vitest'
+import { tanStackStartRsbuild } from '@tanstack/start-plugin-core/rsbuild'
 import { startRuntimeLinks } from './build-harness'
 import type {
   StartCompilerImportTransform,
@@ -74,6 +74,37 @@ const clientEntries = new WeakMap<object, ClientEntry>()
 function withClientEntry(server: RsbuildDevServer, entry: ClientEntry) {
   clientEntries.set(server, entry)
   return server
+}
+
+/**
+ * The initial JavaScript files of the `client` environment's entry as its
+ * last compile emitted them (Rspack's stats entrypoints, the configured
+ * input), relative to the client output directory: the files a page loads
+ * first. A dev server of this harness only.
+ */
+export function clientEntryFiles(
+  server: Pick<RsbuildDevServer, 'url'>,
+): Array<string> {
+  const entry = clientEntries.get(server)
+  if (!entry) {
+    throw new Error('not a dev server of this harness')
+  }
+  return entry.files.map((file) => file.replace(/^\/+/, ''))
+}
+
+/**
+ * The errors a dev server reported on every channel (the compilations, the
+ * console, the process streams; SPEC §5.7) since `since` (a length of its
+ * `diagnostics`), by text: what "nothing failed" reads.
+ */
+export function reportedErrors(
+  server: Pick<RsbuildDevServer, 'diagnostics'>,
+  since = 0,
+): Array<string> {
+  return server.diagnostics
+    .slice(since)
+    .filter(({ severity }) => severity === 'error')
+    .map(({ text }) => text)
 }
 
 /**

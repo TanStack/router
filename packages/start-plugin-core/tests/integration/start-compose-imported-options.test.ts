@@ -9,13 +9,16 @@
  * naming the route file. Built with Start's Vite and Rsbuild plugins.
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-import { BuildError } from '@tanstack/compiler-test-utils/build-harness'
 import {
-  diagnosticsOf,
   expectDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { buildStart, callByIdExports, startBundlers } from '../build-harness'
+import {
+  StartBuildError,
+  buildStart,
+  callByIdExports,
+  startBundlers,
+} from '../build-harness'
 import type { StartBuild } from '../build-harness'
 
 const timeout = 60_000
@@ -48,7 +51,7 @@ ${callByIdExports}`,
 
 describe.each(startBundlers)('%s build', (bundler) => {
   let build: StartBuild | undefined
-  let failure: BuildError | undefined
+  let failure: StartBuildError | undefined
   let dispose: (() => Promise<void>) | undefined
 
   beforeAll(async () => {
@@ -62,7 +65,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
         },
       })
     } catch (error) {
-      if (!(error instanceof BuildError)) {
+      if (!(error instanceof StartBuildError)) {
         throw error
       }
       failure = error
@@ -72,7 +75,10 @@ describe.each(startBundlers)('%s build', (bundler) => {
 
   test('the route renders and its handler answers on the server', async () => {
     if (failure) {
-      expectDiagnostic(failure, { severity: 'error', file: 'src/routes/x.tsx' })
+      expectDiagnostic(failure.diagnostics, {
+        severity: 'error',
+        file: 'src/routes/x.tsx',
+      })
       return
     }
     expect(build).toBeDefined()
@@ -103,20 +109,19 @@ return {
     'the client build never ships the server handlers of imported route options silently',
     () => {
       if (failure) {
-        // A build that refuses the shape must name the route file.
-        expectDiagnostic(failure, {
+        // A build that refuses the shape must name the route file (on any
+        // channel of the build).
+        expectDiagnostic(failure.diagnostics, {
           severity: 'error',
           file: 'src/routes/x.tsx',
         })
         return
       }
-      const reported = findDiagnostics(
-        diagnosticsOf(
-          [...build!.client.warnings, ...build!.client.consoleMessages],
-          'warning',
-        ),
-        { severity: 'warning', file: 'src/routes/x.tsx' },
-      )
+      // (every channel of the build)
+      const reported = findDiagnostics(build!.diagnostics, {
+        severity: 'warning',
+        file: 'src/routes/x.tsx',
+      })
       if (reported.length === 0) {
         expect(build!.client.where('MARK_HELPER_SECRET')).toBe('nowhere')
       }
