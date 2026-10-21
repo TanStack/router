@@ -9,6 +9,7 @@
  * navigates to it; edits of the routes a page shows, created ones included,
  * are hot updates.
  */
+import { writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import {
@@ -22,6 +23,7 @@ import {
   generatorDevApp,
   rootRoute,
   route,
+  scriptHolds,
 } from './generator-dev-app'
 import type {
   Bundler,
@@ -270,13 +272,13 @@ export function describeRouteFileUpkeep(
         await app.visit('/', 'MARK_INDEX')
         await app.write({ 'routes/posts.tsx': route('/posts', 'MARK_POSTS') })
         await app.page.page.waitForFunction(
-          () => !!(window as any).__TSR_ROUTER__?.routesById['/posts'],
+          () => !!(window as any).__APP_ROUTER__?.routesById['/posts'],
           undefined,
           { timeout: 20_000 },
         )
         expect(
           (await app.scripts())
-            .filter((script) => script.code.includes('MARK_POSTS'))
+            .filter((script) => scriptHolds(script, 'MARK_POSTS'))
             .map((script) => script.url),
         ).toEqual([])
         await app.navigate('/posts', 'MARK_POSTS')
@@ -560,7 +562,7 @@ export function describeGeneratorWatching(
     }
 
     test(
-      'closing the dev server stops the generator: its file watchers close with it',
+      'closing the dev server stops the generator: a route file created afterwards is left as it is, and the route tree with it',
       async () => {
         await expectGeneratorStopsWithServer(bundler)
       },
@@ -580,7 +582,7 @@ async function waitForLiveRoute(
 ) {
   await app.page.page.waitForFunction(
     (wanted) =>
-      Object.values((window as any).__TSR_ROUTER__?.routesById ?? {}).some(
+      Object.values((window as any).__APP_ROUTER__?.routesById ?? {}).some(
         (liveRoute: any) => liveRoute.fullPath === wanted,
       ),
     fullPath,
@@ -674,6 +676,38 @@ export async function expectVirtualSubtreeEdit(
   await app.visit('/posts/1', 'MARK_DETAILS')
 }
 
+/**
+ * Closing the dev server stops the generator's watching (SPEC J1.10): a
+ * route file created afterwards is neither scaffolded nor added to the route
+ * tree. A route file the running generator sees first shows its watching
+ * was live. Nothing reacting cannot be awaited: the observation is bounded
+ * by `quietFor` (a running generator scaffolds an empty route file within a
+ * few hundred milliseconds of its creation, in these harnesses).
+ */
+export async function expectGeneratorStopsWithServer(
+  bundler: Bundler,
+  quietFor = 1500,
+) {
+  const app = await generatorDevApp({ bundler, files: index })
+  // (a route file the running generator sees: its watching is live)
+  await app.edit({ 'routes/posts.tsx': '' })
+  expect(createFileRouteCall(await app.read('routes/posts.tsx')).path).toBe(
+    '/posts',
+  )
+  const tree = await app.read('routeTree.gen.ts')
+  await app.stop()
+  await writeFile(path.join(app.root, 'routes/later.tsx'), '')
+  await new Promise((resolve) => setTimeout(resolve, quietFor))
+  expect(
+    await app.read('routes/later.tsx'),
+    'a route file created after the dev server closed',
+  ).toBe('')
+  expect(
+    await app.read('routeTree.gen.ts'),
+    'the route tree after the dev server closed',
+  ).toBe(tree)
+}
+
 /** Node's handles of file watchers (`fs.watch`, `fs.watchFile`). */
 const fileWatchers = () =>
   process
@@ -683,21 +717,19 @@ const fileWatchers = () =>
     ).length
 
 /**
- * Closing the dev server stops the generator's watching (SPEC J1.10): every
- * file watcher the running dev server holds, the generator's own included,
- * is closed with it. (The harness removes the app when it closes the dev
- * server, so an edit after the close cannot be observed here; with no file
- * watcher left, none could reach the generator. Waits are on Node's file
- * watcher handles, never on time.)
+ * Host-resource control, outside the compiler corpus
+ * (integration/outside-compiler-corpus/generator-file-watchers.test.ts):
+ * every Node file watcher handle the running dev server holds, the
+ * generator's own included, is closed with it. Which handles a watcher
+ * uses is the host's and the generator's implementation choice; the corpus
+ * decides the outcome through `expectGeneratorStopsWithServer`. Waits are
+ * on Node's file watcher handles, never on time.
  */
-export async function expectGeneratorStopsWithServer(bundler: Bundler) {
+export async function expectGeneratorWatchersClosed(bundler: Bundler) {
   const watchersBefore = fileWatchers()
   const app = await generatorDevApp({ bundler, files: index })
   // (a route file the running generator sees: its watching is live)
   await app.edit({ 'routes/posts.tsx': '' })
-  expect(createFileRouteCall(await app.read('routes/posts.tsx')).path).toBe(
-    '/posts',
-  )
   expect(
     fileWatchers(),
     'file watchers of the running dev server',

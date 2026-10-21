@@ -34,8 +34,7 @@ import {
 import { tanstackRouter as tanstackRouterRspack } from '../../src/rspack'
 import { build, buildWithRsbuild, routeHead } from '../build-harness'
 import { routerDevServer } from '../dev-server'
-import type { RouterPluginOptions } from '../build-harness'
-import type { CodeSplitGroupings } from '../../src/core/constants'
+import type { CodeSplitGroupings, RouterPluginOptions } from '../build-harness'
 import type { RsbuildPlugin } from '@rsbuild/core'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))

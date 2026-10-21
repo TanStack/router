@@ -1,8 +1,16 @@
+/**
+ * Not part of the compiler test corpus (B-other, SYNTHESIS N1/N2): the
+ * public `getConfig` resolves inline options, `tsr.config.json` and their
+ * relative or absolute paths. This is option resolution of the package, not
+ * a compiler job (J1–J3): no route is generated, split or hot-updated. The
+ * corpus decides what the resolved options do through real apps (e.g.
+ * integration/generator-watch-mode.test.ts, the route-app tests).
+ */
 import path from 'node:path'
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { getConfig } from '../src'
-import type { Config } from '../src'
+import { getConfig } from '../../src'
+import type { Config } from '../../src'
 
 describe('getConfig', () => {
   const testCases = [
@@ -63,7 +71,7 @@ describe('getConfig', () => {
 
   it.each(testCases)('must resolve $name', ({ inlineConfig, withJson }) => {
     const rootPath = withJson ? 'withJson' : 'withoutJson'
-    const root = path.resolve(import.meta.dirname, 'config', rootPath)
+    const root = path.resolve(import.meta.dirname, '..', 'config', rootPath)
 
     const jsonConfig = withJson
       ? JSON.parse(readFileSync(path.resolve(root, 'tsr.config.json'), 'utf-8'))
@@ -81,6 +89,7 @@ describe('getConfig', () => {
 
     const routesDirectory = path.resolve(
       import.meta.dirname,
+      '..',
       'config',
       rootPath,
       routesPath,
@@ -88,6 +97,7 @@ describe('getConfig', () => {
 
     const generatedRouteTree = path.resolve(
       import.meta.dirname,
+      '..',
       'config',
       rootPath,
       routeTreePath,

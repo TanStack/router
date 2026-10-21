@@ -8,7 +8,7 @@
  * own id is replaced by `<route>`. A rewrite may legitimately fail this.
  */
 import { describe, expect, test, vi } from 'vitest'
-import { head, loadRoute } from '../regression-helpers'
+import { head, loadRoute } from './legacy/regression-helpers'
 import type * as NodeUrl from 'node:url'
 
 const route = `${head}import { format } from './format'

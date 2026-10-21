@@ -1,3 +1,6 @@
+// Legacy Node-evaluation harness (module linker, Node rendering, hand-registered
+// routes), kept only for the implementation tests of outside-compiler-corpus/.
+// Acceptance tests use ../../route-app.ts (public plugin host, browser page).
 /**
  * Helpers shared by the code-splitter and route HMR regression suites: compile
  * a route file through the code-splitter plugin the way a bundler does,
@@ -12,14 +15,12 @@ import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
 import { frameworkTransform } from '@tanstack/compiler-test-utils/render'
 import { parseSync } from 'vite'
 import { expect } from 'vitest'
-import { build, routeApp } from './build-harness'
 import {
   packagesDirectory,
   refreshScope,
   transformWithReactRefresh,
 } from './lazy-tracking'
 import type { TargetFramework } from './plugin-host'
-import type { CodeSplitGroupings } from '../src/core/constants'
 import type { ESTree } from 'vite'
 import type { Stubs } from './lazy-tracking'
 
@@ -136,44 +137,4 @@ export async function getRouteOption(
   return Route.options[option] as unknown
 }
 
-/**
- * Builds a small app with the real Vite plugin (code splitting on, default
- * groupings unless `groupings` is given): `routes/index.tsx` holds `route`,
- * and `entry.ts` re-exports the route module next to `render(component)`,
- * which preloads a component and renders it to a string. `files` adds files
- * or replaces `entry.ts`. The app directory name starts with `prefix`. Then
- * imports the built entry in a separate Node process and returns the JSON
- * value returned by `script`, which has the entry's exports in scope as
- * `entry`.
- *
- * A production Vite SSR build of `build-harness.ts`, without minification.
- * The app's `package.json` declares no side-effect hint unless `sideEffects`
- * gives one, like an app's.
- */
-export async function buildAndRun(
-  route: string,
-  script: string,
-  options: {
-    files?: Record<string, string>
-    groupings?: CodeSplitGroupings
-    prefix?: string
-    sideEffects?: boolean
-  } = {},
-) {
-  const app = await build({
-    bundler: 'vite',
-    env: 'ssr',
-    minify: false,
-    sideEffects: options.sideEffects,
-    prefix: options.prefix ?? '.regression-build-',
-    files: routeApp(route, { files: options.files }),
-    pluginOptions: options.groupings && {
-      codeSplittingOptions: { defaultBehavior: options.groupings },
-    },
-  })
-  try {
-    return (await app.run(script)).result
-  } finally {
-    await app.dispose()
-  }
-}
+export { buildAndRun } from '../../build-harness'

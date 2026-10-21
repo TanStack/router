@@ -5,25 +5,27 @@
  * (integration/route-hmr-browser-names.test.ts,
  * integration/route-hmr-browser-options.test.ts). Here: the route modules
  * the HMR transforms emit keep the route's components working, and modules
- * importing the route module's exports get the components the route uses
- * (a real importer module in a Vite dev server running the real plugin).
+ * importing the route module's exports get the components the route uses:
+ * the real plugin in a Vite dev server with the real React plugin, the
+ * route module and a real importer module run in a real page
+ * (`route-app.ts`), with the real router and React Refresh.
  */
 import { describe, expect, it } from 'vitest'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import {
+  appTsconfig,
   expectExportedRouteOptions,
   expectSharedOverloads,
   exportedComponentsLostWhenSplit,
-  importFromRouteModule,
+  exportsImporter,
 } from './dev-server'
-import {
-  evaluateModule,
-  getRouteOption,
-  head,
-  renderComponent,
-  transformWithRouteHmrPlugin,
-} from './regression-helpers'
+import { expectValidModules, head, loadRoute } from './route-app'
 import type { ExportedRouteOptionsCase } from './dev-server'
+
+/**
+ * The route HMR plugin `tanstackRouter` adds in development when automatic
+ * code splitting is off, with React Refresh.
+ */
+const unsplit = { hmr: true, pluginOptions: { autoCodeSplitting: false } }
 
 describe('route HMR keeps route components working under their names', () => {
   // Source: ReactFreshBabelPlugin-test "registers top-level exported function
@@ -50,46 +52,53 @@ describe('route HMR keeps route components working under their names', () => {
   ])(
     'a lowercase component exported as %s is what a module importing it gets (autoCodeSplitting: false)',
     async (_, declaration, name) => {
-      const { imported } = await importFromRouteModule(
+      const route = await loadRoute(
         `${head}${declaration}\nexport const Route = createFileRoute('/page')({ component: page })`,
-        [name, 'Route'],
-        { autoCodeSplitting: false },
+        {
+          ...unsplit,
+          routeId: '/page',
+          tsconfig: appTsconfig,
+          files: { 'importer.ts': exportsImporter },
+        },
       )
-      expect(imported[name]).toBe(imported.Route.options.component)
-      expect(await renderComponent(imported[name])).toBe('<p>hi</p>')
+      expect(
+        await route.run(`const { bindings } = await app('importer.ts')
+const value = bindings[${JSON.stringify(name)}]
+return [value === Route.options.component, await renderComponent(value)]`),
+      ).toEqual([true, '<p>hi</p>'])
     },
-    30_000,
   )
 
   // Source: ReactFreshBabelPlugin-test "does not consider require-like methods to be HOCs"
   it('leaves an imported lowercase component to the module that declares it', async () => {
-    const code = await transformWithRouteHmrPlugin(
+    const route = await loadRoute(
       `${head}import { page } from './page'
 export const Route = createFileRoute('/')({ component: page })`,
+      {
+        ...unsplit,
+        files: { 'page.tsx': `export const page = () => null\n` },
+      },
     )
-    const page = () => null
     expect(
-      await getRouteOption(code, 'component', { './page': { page } }),
-    ).toBe(page)
+      await route.run(
+        `return options.component === (await app('page.tsx')).page`,
+      ),
+    ).toBe(true)
   })
 
   // Source: ReactFreshBabelPlugin-test "registers top-level function
   // declarations" (an inner binding with the component's name)
   it('keeps an inner binding named like the lowercase component working', async () => {
-    const code = await transformWithRouteHmrPlugin(
+    const route = await loadRoute(
       `${head}function page() {
   const page = 'inner-marker'
   return <p>{page}</p>
 }
 export const Route = createFileRoute('/')({ component: page })`,
+      unsplit,
     )
-    expect(await getModuleErrors(code)).toEqual([])
-    const { Route } = await evaluateModule(code, {
-      '@tanstack/react-router': {
-        createFileRoute: () => (options: unknown) => ({ options }),
-      },
-    })
-    expect(await renderComponent((Route as any).options.component)).toBe(
+    await expectValidModules(route)
+    expect(await route.run(`return render('component')`)).toBe(
       '<p>inner-marker</p>',
     )
   })
@@ -113,25 +122,25 @@ describe('route HMR leaves options React Refresh does not handle as they are', (
   // by the "method shorthand" rows of
   // integration/known-bugs-route-hmr-components.test.ts.
   it('keeps a method-shorthand component option working', async () => {
-    const code = await transformWithRouteHmrPlugin(
+    const route = await loadRoute(
       `${head}export const Route = createFileRoute('/')({
   component() {
     return <p>hi</p>
   },
 })`,
+      unsplit,
     )
-    expect(await getModuleErrors(code)).toEqual([])
-    const component = await getRouteOption(code, 'component')
-    expect(await renderComponent(component)).toBe('<p>hi</p>')
+    await expectValidModules(route)
+    expect(await route.run(`return render('component')`)).toBe('<p>hi</p>')
   })
 })
 
 /**
  * React HMR renames and hoists route components, and may split them out of
  * the route module. Modules that import the route module's exports still need
- * them, as the same values the route options use. These tests serve the
- * route file and a module importing its exports from a Vite dev server
- * running the real plugin (`importFromRouteModule`).
+ * them, as the same values the route options use. These tests load the
+ * route file and a module importing its exports in a real page
+ * (`expectExportedRouteOptions`).
  *
  * Source: #8504 react-refresh-route-components "route module exports with
  * React HMR and autoCodeSplitting". The class, aliased and overload-alias

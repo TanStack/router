@@ -1,24 +1,70 @@
-import { parseSync as parseWithBabel } from '@babel/core'
-import { parseSync, transformWithOxc } from 'vite'
-import { describe, expect, it, onTestFinished, vi } from 'vitest'
+/**
+ * Imports and exports of a split route file, loaded the way an app loads it
+ * (`route-app.ts`: the public router plugin in a real Vite dev server, the
+ * route run in the shared Chromium page). What each module imports is
+ * judged by what loads and works (requests, rendered output, the instances
+ * other modules of the app import), and by D5 checks of user code absent
+ * from a module (decoded user markers), never by the spelling of import
+ * statements. The attribute of an import moved into a chunk is judged by a
+ * bundler that honours it: integration/code-splitter-import-attributes.test.ts.
+ */
+import { parse as parseWithBabel } from '@babel/core'
+import { describe, expect, it } from 'vitest'
 import {
-  captureConsole,
   expectDiagnostic,
+  findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import {
-  compileRouteModules,
-  componentModules,
-  declaredNames,
-  evaluateModule,
   expectValidModules,
   head,
-  importSources,
-  importedNames,
+  holdsMarker,
   loadRoute,
-  routeSpecifier,
-  transformWithRouteHmrPlugin,
-} from './regression-helpers'
+  pageDiagnostics,
+} from './route-app'
+import type { DiagnosticExpectation } from '@tanstack/compiler-test-utils/diagnostics'
+import type { Plugin } from 'vite'
+import type { RouteApp } from './route-app'
+
+/** A package of the app's `node_modules`, as files of the app. */
+const packageFiles = (name: string, source: string) => ({
+  [`node_modules/${name}/package.json`]: JSON.stringify({
+    name,
+    type: 'module',
+    exports: './index.js',
+  }),
+  [`node_modules/${name}/index.js`]: source,
+})
+
+/**
+ * The code of every module of the route as the dev server serves it,
+ * following the dev server's own module graph from the route module (the
+ * modules it imports, statically or lazily, that are files of the app or
+ * derived from them), without running them: for code the browser cannot
+ * run yet.
+ */
+async function servedGraph(route: RouteApp) {
+  const graph = route.host.dev.vite.environments.client.moduleGraph
+  const modules: Record<string, string> = {}
+  const queue = [route.url]
+  while (queue.length > 0) {
+    const url = queue.shift()!
+    if (url in modules) {
+      continue
+    }
+    modules[url] = await route.transform(url)
+    const node = await graph.getModuleByUrl(url)
+    for (const imported of node?.importedModules ?? []) {
+      if (
+        imported.file?.startsWith(route.host.root) &&
+        !imported.file.includes('/node_modules/')
+      ) {
+        queue.push(imported.url)
+      }
+    }
+  }
+  return modules
+}
 
 describe('each module imports only the specifiers it reads', () => {
   // Source: React Router route-chunks-test.ts "functions referencing their own
@@ -31,65 +77,59 @@ import * as messages from './messages'
 import other, * as ns from './other'
 const getDefault = () => defaultMessage
 const getTarget = () => targetMessage
-const getOther = () => otherMessage
+const getOther = () => ['MARK_LOADER', otherMessage]
 function getNamespaced() {
   return messages.namespaced
 }
 export const Route = createFileRoute('/')({
-  loader: () => [getOther(), other],
-  component: () => <div>{getDefault()}{ns.x}</div>,
-  errorComponent: () => <div>{getNamespaced()}</div>,
-  notFoundComponent: () => <div>{getTarget()}</div>,
+  loader: () => [...getOther(), other],
+  component: () => <div title="MARK_COMPONENT">{getDefault()}{ns.x}</div>,
+  errorComponent: () => <div title="MARK_ERROR">{getNamespaced()}</div>,
+  notFoundComponent: () => <div title="MARK_NOT_FOUND">{getTarget()}</div>,
 })
 `,
       {
-        stubs: {
-          './messages': {
-            default: 'default',
-            targetMessage: 'target',
-            otherMessage: 'other',
-            namespaced: 'namespaced',
-          },
-          './other': { default: 'otherDefault', x: 'x' },
+        files: {
+          'messages.ts': `export default 'default'
+export const targetMessage = 'target'
+export const otherMessage = 'other'
+export const namespaced = 'namespaced'
+`,
+          'other.ts': `export default 'otherDefault'\nexport const x = 'x'\n`,
         },
       },
     )
     // Nothing that loads with the route module (the route module and the
-    // modules it imports statically, V1 split F30) imports what only the
-    // split components read, and no split chunk imports what only the loader
-    // reads.
-    expect(
-      route.eagerModules.flatMap((code) => importedNames(code, './messages')),
-    ).not.toEqual(
-      expect.arrayContaining([
-        expect.stringMatching(/^(?:default|targetMessage|namespaced|\*)$/),
-      ]),
-    )
-    expect(
-      route.eagerModules.flatMap((code) => importedNames(code, './other')),
-    ).not.toEqual(expect.arrayContaining([expect.stringMatching(/^(?:x|\*)$/)]))
+    // modules it imports statically, V1 split F30) holds what only the split
+    // components read, and no split chunk holds what only the loader reads
+    // (D5: the user code, found by its markers).
+    const eager = await route.eagerModules()
+    for (const marker of ['MARK_COMPONENT', 'MARK_ERROR', 'MARK_NOT_FOUND']) {
+      expect(
+        eager.some((code) => holdsMarker(code, marker)),
+        marker,
+      ).toBe(false)
+    }
     for (const option of ['component', 'errorComponent', 'notFoundComponent']) {
       const loaded = await route.loadedBy(option)
       expect(
-        loaded.flatMap((code) => importedNames(code, './messages')),
+        loaded.some((code) => holdsMarker(code, 'MARK_LOADER')),
         option,
-      ).not.toContain('otherMessage')
-      expect(
-        loaded.flatMap((code) => importedNames(code, './other')),
-        option,
-      ).not.toContain('default')
+      ).toBe(false)
     }
-    await expectValidModules(route.modules)
-    expect([
-      route.options.loader(),
-      await route.render('component'),
-      await route.render('errorComponent'),
-      await route.render('notFoundComponent'),
-    ]).toEqual([
-      ['other', 'otherDefault'],
-      '<div>defaultx</div>',
-      '<div>namespaced</div>',
-      '<div>target</div>',
+    await expectValidModules(route)
+    expect(
+      await route.run(`return [
+  options.loader(),
+  await render('component'),
+  await render('errorComponent'),
+  await render('notFoundComponent'),
+]`),
+    ).toEqual([
+      ['MARK_LOADER', 'other', 'otherDefault'],
+      '<div title="MARK_COMPONENT">defaultx</div>',
+      '<div title="MARK_ERROR">namespaced</div>',
+      '<div title="MARK_NOT_FOUND">target</div>',
     ])
   })
 
@@ -101,14 +141,17 @@ export const Route = createFileRoute('/')({
   component: Page,
 })
 `,
-      { stubs: { './page': { Page: () => 'page', title: 'title' } } },
+      {
+        files: {
+          'page.ts': `export const Page = () => 'page'\nexport const title = 'title'\n`,
+        },
+      },
     )
-    await expectValidModules(route.modules)
+    await expectValidModules(route)
     expect(await route.isLazy('component')).toBe(true)
-    expect([route.options.loader(), await route.render('component')]).toEqual([
-      'title',
-      'page',
-    ])
+    expect(
+      await route.run(`return [options.loader(), await render('component')]`),
+    ).toEqual(['title', 'page'])
   })
 
   it('moves a specifier with a string name into the chunk', async () => {
@@ -119,12 +162,16 @@ export const Route = createFileRoute('/')({
   component: () => <Kebab />,
 })
 `,
-      { stubs: { './icons': { 'kebab-name': () => 'kebab' } } },
+      {
+        files: {
+          'icons.ts': `const kebab = () => 'kebab'\nexport { kebab as 'kebab-name' }\n`,
+        },
+      },
     )
     // Nothing the route module loads requests what only the component reads.
-    expect(route.eager).not.toContain('./icons')
-    await expectValidModules(route.modules)
-    expect(await route.render('component')).toBe('kebab')
+    expect(await route.requested()).not.toContain('/icons.ts')
+    await expectValidModules(route)
+    expect(await route.run(`return render('component')`)).toBe('kebab')
   })
 
   // Source: babel-dead-code-elimination dead-code-elimination.test.ts "import" >
@@ -141,60 +188,62 @@ export const Route = createFileRoute('/')({
   component: () => <p>{a}{b}</p>,
 })
 `,
-        { hmr, stubs: { pkg: { default: 'a', b: 'b' }, './styles.css': {} } },
+        {
+          hmr,
+          files: {
+            ...packageFiles(
+              'pkg',
+              `globalThis.pkgLoads = (globalThis.pkgLoads ?? 0) + 1
+export default 'a'
+export const b = 'b'
+`,
+            ),
+            'styles.css': `p { margin: 0 }\n`,
+          },
+        },
       )
       // The side-effect import still loads with the route; what only the
       // component reads does not.
-      expect(route.eager).toContain('./styles.css')
-      expect(route.eager).not.toContain('pkg')
-      await expectValidModules(route.modules)
-      expect(await route.render('component')).toBe('<p>ab</p>')
+      expect(
+        await route.run(
+          `return { requested: requested(), pkg: globalThis.pkgLoads ?? 0 }`,
+        ),
+      ).toEqual({ requested: expect.arrayContaining(['/styles.css']), pkg: 0 })
+      await expectValidModules(route)
+      expect(
+        await route.run(
+          `return [await render('component'), globalThis.pkgLoads]`,
+        ),
+      ).toEqual(['<p>ab</p>', 1])
     },
   )
 
   // Import attributes change what a module is (`type: 'json'`, a bundler
-  // macro), so they move with the import.
-  it('keeps the attributes of an import moved into the chunk', async () => {
+  // macro), so they move with the import. Vite gives an attribute no
+  // meaning: here the moved import keeps working; that the attribute
+  // still applies in the chunk is judged where a bundler honours it
+  // (integration/code-splitter-import-attributes.test.ts, webpack).
+  it('keeps an import with attributes working when it moves into the chunk', async () => {
     const route = await loadRoute(
       `${head}import { test } from './test' with { type: 'macro' }
 export const Route = createFileRoute('/')({
   component: () => test,
 })
 `,
-      { stubs: { './test': { test: 'macro value' } } },
+      { files: { 'test.ts': `export const test = 'macro value'\n` } },
     )
-    const { modules } = route
     // Nothing that loads with the route module (whichever modules a
     // compiler emits) requests `./test`; the component gets it.
-    expect(route.eager).not.toContain('./test')
-    expect(await route.render('component')).toBe('macro value')
-    // Every module that imports `./test` imports it with the attribute.
-    const attributes = Object.values(modules).flatMap((code) =>
-      parseSync('module.tsx', code, { sourceType: 'module' })
-        .program.body.filter(
-          (statement) =>
-            statement.type === 'ImportDeclaration' &&
-            statement.source.value === './test',
-        )
-        .map((statement: any) =>
-          Object.fromEntries(
-            statement.attributes.map((attribute: any) => [
-              attribute.key.name ?? attribute.key.value,
-              attribute.value.value,
-            ]),
-          ),
-        ),
-    )
-    expect(attributes.length).toBeGreaterThan(0)
-    expect(attributes).toEqual(attributes.map(() => ({ type: 'macro' })))
-    await expectValidModules(modules)
+    expect(await route.requested()).not.toContain('/test.ts')
+    expect(await route.run(`return render('component')`)).toBe('macro value')
+    await expectValidModules(route)
   })
 
   // Import assertions (`assert { type: 'json' }`) are the deprecated form of
-  // import attributes; the modules the code splitter emits use the `with`
-  // keyword, which current runtimes and bundlers accept. Supporting `assert`
-  // can be dropped (with this test) once nobody uses it (decision D9).
-  it('compiles an import assertion of a route file into an import attribute', async () => {
+  // import attributes (decision D9, J2.17). Here: the route keeps working
+  // and the JSON module moves with the component. That the attribute keeps
+  // its meaning in the chunk: integration/code-splitter-import-attributes.test.ts.
+  it('keeps an import assertion of a route file working', async () => {
     const route = await loadRoute(
       `${head}import data from './data.json' assert { type: 'json' }
 export const Route = createFileRoute('/')({
@@ -202,62 +251,60 @@ export const Route = createFileRoute('/')({
   component: () => <p>{data.title}</p>,
 })
 `,
-      { stubs: { './data.json': '{ "title": "from json" }' } },
+      { files: { 'data.json': '{ "title": "from json" }' } },
     )
-    const importers = Object.values(route.modules).filter((code) =>
-      importSources(code).includes('./data.json'),
+    expect(await route.requested()).not.toContain('/data.json?import')
+    expect(await route.run(`return render('component')`)).toBe(
+      '<p>from json</p>',
     )
-    expect(importers.length).toBeGreaterThan(0)
-    for (const code of importers) {
-      expect(code).toMatch(
-        /from\s*["']\.\/data\.json["']\s*with\s*\{\s*type:\s*["']json["']\s*\}/,
-      )
-      expect(code).not.toMatch(/\bassert\s*\{/)
-    }
-    expect(await route.render('component')).toBe('<p>from json</p>')
+    await expectValidModules(route)
   })
 
-  // With React's classic JSX runtime (`jsx: "react"` in tsconfig), JSX
-  // compiles to `React.createElement`, so a React import that the TypeScript
-  // code only uses in types must stay.
+  // With React's classic JSX runtime, JSX compiles to `React.createElement`,
+  // so a React import that the TypeScript code only uses in types must stay:
+  // the app's own classic transform runs on what the router plugin emits,
+  // and the page renders the component.
   it.each([
-    { name: 'split component modules', compile: componentModules },
+    { name: 'split component modules', pluginOptions: undefined },
     {
       name: 'route module compiled for HMR',
-      compile: async (code: string) => [
-        await transformWithRouteHmrPlugin(code),
-      ],
+      pluginOptions: { autoCodeSplitting: false },
     },
   ])(
     'keeps the React import of the $name for classic JSX',
-    async ({ compile }) => {
-      const outputs = await compile(`import * as React from 'react'
+    async ({ pluginOptions }) => {
+      const route = await loadRoute(
+        `import * as React from 'react'
 ${head}function Page({ title = 'classic' }: { title?: React.ReactNode }) {
   return <p>{title}</p>
 }
 export const Route = createFileRoute('/')({ component: Page })
-`)
-      for (const output of outputs) {
-        const { code } = await transformWithOxc(output, 'module.tsx', {
-          jsx: { runtime: 'classic' },
-        })
-        // `React.createElement` reads an imported `React`.
-        expect(await getModuleErrors(code)).toEqual([])
-      }
+`,
+        {
+          frameworkPluginOptions: { jsxRuntime: 'classic' },
+          pluginOptions,
+          hmr: pluginOptions !== undefined,
+        },
+      )
+      // `React.createElement` reads an imported `React`.
+      expect(await route.run(`return render('component')`)).toBe(
+        '<p>classic</p>',
+      )
+      await expectValidModules(route)
     },
   )
 
   it('keeps the React import of the split component modules with inline JSX when only a top-level type reads React', async () => {
-    const outputs = await componentModules(`import * as React from 'react'
+    const route = await loadRoute(
+      `import * as React from 'react'
 ${head}type Title = React.ReactNode
 export const Route = createFileRoute('/')({ component: () => <p>classic</p> })
-`)
-    for (const output of outputs) {
-      const { code } = await transformWithOxc(output, 'module.tsx', {
-        jsx: { runtime: 'classic' },
-      })
-      expect(await getModuleErrors(code)).toEqual([])
-    }
+`,
+      { frameworkPluginOptions: { jsxRuntime: 'classic' } },
+    )
+    expect(await route.isLazy('component')).toBe(true)
+    expect(await route.run(`return render('component')`)).toBe('<p>classic</p>')
+    await expectValidModules(route)
   })
 })
 
@@ -268,7 +315,6 @@ describe('exports of the route file', () => {
   ])(
     'are not redeclared when they re-export an import $name',
     async ({ exports, exported }) => {
-      const Foo = () => 'foo'
       const route = await loadRoute(
         `${head}import { Foo } from './foo'
 ${exports}
@@ -277,17 +323,19 @@ function Page() {
   return <Foo />
 }
 `,
-        { stubs: { './foo': { Foo } } },
+        {
+          files: {
+            'foo.ts': `export const Foo = () => 'foo'\n`,
+            // Another module of the app imports the re-export (ruling P1)
+            'importer.ts': `export { ${exported} } from './route'\n`,
+          },
+        },
       )
-      await expectValidModules(route.modules)
-      // Another module of the app imports the re-export (ruling P1)
-      const importer = await route.importFromRoute(
-        `export { ${exported} } from '${routeSpecifier}'`,
-      )
-      expect([importer[exported], await route.render('component')]).toEqual([
-        Foo,
-        'foo',
-      ])
+      await expectValidModules(route)
+      expect(
+        await route.run(`const importer = await app('importer.ts')
+return [importer.${exported} === (await app('foo.ts')).Foo, await render('component')]`),
+      ).toEqual([true, 'foo'])
     },
   )
 
@@ -303,16 +351,19 @@ export const Route = createFileRoute('/')({
   component: () => <div>{a}{b}</div>,
 })
 `,
-      { stubs: { './stuff': { getStuff: () => ({ a: 'A', b: 'B' }) } } },
+      {
+        files: {
+          'stuff.ts': `export const getStuff = () => ({ a: 'A', b: 'B' })\n`,
+          'importer.ts': `export { a } from './route'\n`,
+        },
+      },
     )
-    await expectValidModules(route.modules)
-    const importer = await route.importFromRoute(
-      `export { a } from '${routeSpecifier}'`,
-    )
-    expect([importer.a, await route.render('component')]).toEqual([
-      'A',
-      '<div>AB</div>',
-    ])
+    await expectValidModules(route)
+    expect(
+      await route.run(
+        `return [(await app('importer.ts')).a, await render('component')]`,
+      ),
+    ).toEqual(['A', '<div>AB</div>'])
   })
 
   it.each([
@@ -325,7 +376,8 @@ export const Route = createFileRoute('/')({
   ])(
     'keep an anonymous default-exported $name valid in every module',
     async ({ declaration, type }) => {
-      const route = await loadRoute(`${head}const cache = new Map()
+      const route = await loadRoute(
+        `${head}const cache = new Map()
 function Page() {
   return <div>{cache.size}</div>
 }
@@ -334,15 +386,19 @@ export const Route = createFileRoute('/')({
   component: Page,
 })
 export default ${declaration}
-`)
-      await expectValidModules(route.modules)
-      // As another module of the app imports it.
-      const { default: exported } = await route.importBindings(['default'])
-      expect(typeof exported).toBe('function')
-      expect(type === 'class' ? new exported().x : exported()).toBe(
-        type === 'class' ? 1 : null,
+`,
+        // As another module of the app imports it.
+        { files: { 'importer.ts': `export { default } from './route'\n` } },
       )
-      expect(await route.render('component')).toBe('<div>0</div>')
+      await expectValidModules(route)
+      expect(
+        await route.run(`const { default: exported } = await app('importer.ts')
+return [
+  typeof exported,
+  ${type === 'class' ? 'new exported().x' : 'exported()'},
+  await render('component'),
+]`),
+      ).toEqual(['function', type === 'class' ? 1 : null, '<div>0</div>'])
     },
   )
 
@@ -359,22 +415,24 @@ const Route = createFileRoute('/')({
 const title = 'title'
 export { Route, title }
 `,
-      { stubs: { './store': { createStore: () => ({ get: () => 'value' }) } } },
+      {
+        files: {
+          'store.ts': `export const createStore = () => ({ get: () => 'value' })\n`,
+          'importer.ts': `export { Route, title } from './route'\n`,
+        },
+      },
     )
-    const other = await route.importFromRoute(
-      `export { Route, title } from '${routeSpecifier}'`,
-    )
-    expect([other.title, other.Route]).toEqual(['title', route.Route])
-    expect([route.options.loader(), await route.render('component')]).toEqual([
-      'value',
-      '<p>value</p>',
-    ])
-    await expectValidModules(route.modules)
+    expect(
+      await route.run(`const other = await app('importer.ts')
+return [other.title, other.Route === Route, options.loader(), await render('component')]`),
+    ).toEqual(['title', true, 'value', '<p>value</p>'])
+    await expectValidModules(route)
   })
 
   // Source: Next.js ssg/getStaticProps/issue-31855 and multi-declarator-export
   it('keep one instance when declared in one statement and read by the chunk', async () => {
-    const route = await loadRoute(`${head}export const a = { n: 0 },
+    const route = await loadRoute(
+      `${head}export const a = { n: 0 },
   b = { n: 10 }
 export const Route = createFileRoute('/')({
   component: () => {
@@ -382,21 +440,27 @@ export const Route = createFileRoute('/')({
     return <div>{a.n + b.n}</div>
   },
 })
-`)
-    const other = await route.importFromRoute(
-      `import { a, b } from '${routeSpecifier}'
-export const read = () => [a.n, b.n]`,
+`,
+      {
+        files: {
+          'importer.ts': `import { a, b } from './route'
+export const read = () => [a.n, b.n]
+`,
+        },
+      },
     )
-    expect(await route.render('component')).toBe('<div>11</div>')
     // The component updated the object other modules import.
-    expect(other.read()).toEqual([1, 10])
-    await expectValidModules(route.modules)
+    expect(
+      await route.run(`const other = await app('importer.ts')
+return [await render('component'), other.read()]`),
+    ).toEqual(['<div>11</div>', [1, 10]])
+    await expectValidModules(route)
   })
 
   // Source: #8504.
   it('keep working when the route module reassigns a binding declared with what the split component reads', async () => {
-    const route =
-      await loadRoute(`${head}let { title, visits } = { title: 'Home', visits: 0 }
+    const route = await loadRoute(
+      `${head}let { title, visits } = { title: 'Home', visits: 0 }
 export function reset() {
   visits = 0
   return visits
@@ -407,13 +471,14 @@ export function Title() {
 export const Route = createFileRoute('/')({
   component: () => <Title />,
 })
-`)
-    await expectValidModules(route.modules)
-    const { reset } = await route.importBindings(['reset'])
-    expect([reset(), await route.render('component')]).toEqual([
-      0,
-      '<h1>Home</h1>',
-    ])
+`,
+      { files: { 'importer.ts': `export { reset } from './route'\n` } },
+    )
+    await expectValidModules(route)
+    expect(
+      await route.run(`const { reset } = await app('importer.ts')
+return [reset(), await render('component')]`),
+    ).toEqual([0, '<h1>Home</h1>'])
   })
 
   it('keep module-level re-exports importable', async () => {
@@ -427,18 +492,20 @@ export const Route = createFileRoute('/')({
   component: () => <div>{cache.size}</div>,
 })
 `,
-      { stubs: { './lib': { value: 'lib value' } } },
+      {
+        files: {
+          'lib.ts': `export const value = 'lib value'\n`,
+          'importer.ts': `import { value, lib } from './route'
+export const read = () => [value, lib.value]
+`,
+        },
+      },
     )
-    const other = await route.importFromRoute(
-      `import { value, lib } from '${routeSpecifier}'
-export const read = () => [value, lib.value]`,
-    )
-    expect(other.read()).toEqual(['lib value', 'lib value'])
-    expect([route.options.loader(), await route.render('component')]).toEqual([
-      0,
-      '<div>0</div>',
-    ])
-    await expectValidModules(route.modules)
+    expect(
+      await route.run(`const other = await app('importer.ts')
+return [other.read(), options.loader(), await render('component')]`),
+    ).toEqual([['lib value', 'lib value'], 0, '<div>0</div>'])
+    await expectValidModules(route)
   })
 
   // An exported split option keeps working and keeps its identity (the
@@ -460,6 +527,7 @@ export const Route = createFileRoute('/')({
   errorComponent: () => <p>error</p>,
 })
 `,
+      routeId: '/',
       split: 'errorComponent',
       option: 'component',
       binding: 'Page',
@@ -480,6 +548,7 @@ export default function Home() {
   return <h1>home</h1>
 }
 `,
+      routeId: '/home',
       split: 'notFoundComponent',
       option: 'component',
       binding: 'default',
@@ -501,6 +570,7 @@ export const Route = createFileRoute('/_layout')({
   loader: loaderFn,
 })
 `,
+      routeId: '/_layout',
       split: 'component',
       option: 'loader',
       binding: 'loaderFn',
@@ -519,6 +589,7 @@ export const Route = createFileRoute('/')({
   errorComponent: () => <p>error</p>,
 })
 `,
+      routeId: '/',
       split: 'errorComponent',
       option: 'component',
       binding: 'default',
@@ -526,34 +597,41 @@ export const Route = createFileRoute('/')({
     },
   ]
 
+  const seeFile = `export const seen: Array<unknown> = []
+export const see = (value: unknown) => seen.push(value)
+`
+
   it.each(exportedOptions)(
     'keep working: $name',
-    async ({ code, split, option, binding, value }) => {
-      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-      onTestFinished(() => warn.mockRestore())
-      const seen: Array<unknown> = []
+    async ({ code, routeId, split, option, binding, value }) => {
       const route = await loadRoute(code, {
-        stubs: { './see': { see: (value: unknown) => seen.push(value) } },
+        routeId,
+        files: {
+          'see.ts': seeFile,
+          'importer.ts': `export { ${binding} as exported } from './route'\n`,
+        },
       })
-      await expectValidModules(route.modules)
-      if (option === 'loader') {
-        expect(await (await route.load(option))()).toEqual(value)
-      } else {
-        expect(await route.render(option)).toBe(value)
-      }
+      await expectValidModules(route)
       // The function the route ran is the one another module of the app
       // imports (SPEC J2.4, G9): one instance, not a copy.
-      const importer = await route.importFromRoute(
-        `export { ${binding} as exported } from '${routeSpecifier}'`,
-      )
-      expect(seen).toEqual([importer.exported])
+      expect(
+        await route.run(`const result = ${
+          option === 'loader'
+            ? `await (await load('loader'))()`
+            : `await render(${JSON.stringify(option)})`
+        }
+const { seen } = await app('see.ts')
+const { exported } = await app('importer.ts')
+return [result, seen.length, seen[0] === exported]`),
+      ).toEqual([value, 1, true])
       expect(await route.isLazy(split)).toBe(true)
     },
   )
 
   // When it leaves an exported option unsplit, the compiler tells the
   // developer once, naming the file and the option (J2.8; naming the
-  // binding too is fine, the wording is free).
+  // binding too is fine, the wording is free). Every channel is read: the
+  // dev server's and the page's console.
   // Bug: the warning names the file and the exported binding ("These
   // exports from … will not be code-split: - Page"), never the route
   // option it leaves unsplit.
@@ -562,17 +640,29 @@ export const Route = createFileRoute('/')({
   // named export is (`component`, `errorComponent`, a `loader`...).
   it.fails.each(exportedOptions)(
     'are reported once, naming the file and the option, when not code-split: $name',
-    async ({ code, option }) => {
-      const { result: route, diagnostics } = await captureConsole(() =>
-        loadRoute(code, { stubs: { './see': { see: () => {} } } }),
-      )
+    async ({ code, routeId, option }) => {
+      const route = await loadRoute(code, {
+        routeId,
+        files: { 'see.ts': seeFile },
+      })
       if (!(await route.isLazy(option))) {
-        expectDiagnostic(diagnostics, {
+        const page = await route.runPage(`return null`)
+        const all = [
+          ...(await route.diagnostics()),
+          ...pageDiagnostics(page.console),
+        ]
+        const expected: DiagnosticExpectation = {
           severity: 'warning',
-          file: route.ids.reference!,
+          file: 'route.tsx',
+          root: route.host.root,
           names: [option],
-          times: 1,
-        })
+        }
+        expectDiagnostic(all, expected)
+        // Once: no channel (the dev server's, the page's console) repeats it
+        const sources = findDiagnostics(all, expected).map(
+          (diagnostic) => diagnostic.source,
+        )
+        expect(sources).toEqual([...new Set(sources)])
       }
     },
   )
@@ -597,9 +687,9 @@ function Page() {
 }
 export const Route = createFileRoute('/')({ component: Page })
 `)
-      await expectValidModules(route.modules)
+      await expectValidModules(route)
       expect(await route.isLazy('component')).toBe(true)
-      expect(await route.render('component')).toBe('<p>page</p>')
+      expect(await route.run(`return render('component')`)).toBe('<p>page</p>')
     },
   )
 
@@ -612,7 +702,8 @@ export const Route = createFileRoute('/')({ component: Page })
   ])(
     'stay readable by a split component next to an exported option component ($name)',
     async ({ declaration }) => {
-      const route = await loadRoute(`${head}${declaration}
+      const route = await loadRoute(
+        `${head}${declaration}
 export function NotFound() {
   return <i>nf</i>
 }
@@ -620,15 +711,20 @@ export const Route = createFileRoute('/')({
   component: () => <p>{helper()}</p>,
   notFoundComponent: NotFound,
 })
-`)
-      expect(await route.render('component')).toBe('<p>h</p>')
-      const { helper } = await route.importBindings(['helper'])
-      expect(helper()).toBe('h')
+`,
+        { files: { 'importer.ts': `export { helper } from './route'\n` } },
+      )
+      expect(
+        await route.run(
+          `return [await render('component'), (await app('importer.ts')).helper()]`,
+        ),
+      ).toEqual(['<p>h</p>', 'h'])
     },
   )
 
   // The chunk of a split option holds only what that option needs: an
-  // exported component of another option is not copied into it.
+  // exported component of another option is not copied into it (D5: its
+  // code, found by its marker).
   it.each([
     {
       name: 'export default function',
@@ -655,21 +751,21 @@ export const Route = createFileRoute('/')({
   notFoundComponent: NotFound,
 })
 `)
-      expect(await route.render('component')).toBe('<p>page</p>')
-      expect(await route.render('notFoundComponent')).toBe('<i>MARK_NF</i>')
+      expect(
+        await route.run(
+          `return [await render('component'), await render('notFoundComponent')]`,
+        ),
+      ).toEqual(['<p>page</p>', '<i>MARK_NF</i>'])
       const loaded = await route.loadedBy('component')
-      expect({
-        declares: loaded.some((code) => declaredNames(code).has('NotFound')),
-        marker: loaded.some((code) => code.includes('MARK_NF')),
-      }).toEqual({ declares: false, marker: false })
+      expect(loaded.some((code) => holdsMarker(code, 'MARK_NF'))).toBe(false)
     },
   )
 })
 
 describe('TypeScript-only syntax', () => {
   it('erases type-only imports and exports from the split modules', async () => {
-    // `./types` has no stub: a module that still imported a value from it
-    // would fail to link.
+    // `./types` is no file of the app: a module that still imported a value
+    // from it would fail to load in the page.
     const route = await loadRoute(
       `${head}import type { User } from './types'
 import type * as Types from './types'
@@ -683,21 +779,13 @@ export const Route = createFileRoute('/')({
   component: () => <div>{String(current)}</div>,
 })
 `,
-      { stubs: { './settings': { defaults: 'defaults' } } },
+      { files: { 'settings.ts': `export const defaults = 'defaults'\n` } },
     )
-    for (const [name, code] of Object.entries(route.modules)) {
-      expect(importedNames(code, './types'), name).toEqual([])
-    }
+    await expectValidModules(route)
     expect(
-      Object.values(route.modules).some((code) =>
-        importedNames(code, './settings').includes('defaults'),
-      ),
-    ).toBe(true)
-    await expectValidModules(route.modules)
-    expect([route.options.loader(), await route.render('component')]).toEqual([
-      'defaults',
-      '<div>defaults</div>',
-    ])
+      await route.run(`const result = [options.loader(), await render('component')]
+return [...result, requested().filter((request) => request.startsWith('/types'))]`),
+    ).toEqual(['defaults', '<div>defaults</div>', []])
   })
 
   // Ambient declarations (`declare ...`) have no runtime binding: the
@@ -707,21 +795,21 @@ export const Route = createFileRoute('/')({
       name: 'a declare function',
       declaration: 'declare function track(event: string): void',
       use: 'track("x")',
-      global: ['track', (event: string) => `tracked ${event}`],
+      global: 'globalThis.track = (event) => `tracked ${event}`',
       expected: 'tracked x',
     },
     {
       name: 'an exported declare function',
       declaration: 'export declare function track(event: string): void',
       use: 'track("x")',
-      global: ['track', (event: string) => `tracked ${event}`],
+      global: 'globalThis.track = (event) => `tracked ${event}`',
       expected: 'tracked x',
     },
     {
       name: 'a declare enum',
       declaration: 'declare enum Flags { On = 1 }',
       use: 'Flags.On',
-      global: ['Flags', { On: 1 }],
+      global: 'globalThis.Flags = { On: 1 }',
       expected: 1,
     },
     {
@@ -729,26 +817,25 @@ export const Route = createFileRoute('/')({
       declaration:
         'declare namespace Analytics { function track(event: string): void }',
       use: 'Analytics.track("x")',
-      global: ['Analytics', { track: (event: string) => `tracked ${event}` }],
+      global: 'globalThis.Analytics = { track: (event) => `tracked ${event}` }',
       expected: 'tracked x',
     },
-  ] as const)(
+  ])(
     'reads $name that the loader and the component use from the environment',
-    async ({ declaration, use, global: [name, value], expected }) => {
-      vi.stubGlobal(name, value)
-      onTestFinished(() => {
-        vi.unstubAllGlobals()
-      })
-      const route = await loadRoute(`${head}${declaration}
+    async ({ declaration, use, global, expected }) => {
+      const route = await loadRoute(
+        `${head}${declaration}
 export const Route = createFileRoute('/ambient')({
   loader: () => ${use},
   component: () => <button onClick={() => ${use}}>{String(${use})}</button>,
 })
-`)
-      await expectValidModules(route.modules)
-      expect([route.options.loader(), await route.render('component')]).toEqual(
-        [expected, `<button>${expected}</button>`],
+`,
+        { routeId: '/ambient', pageScript: global },
       )
+      await expectValidModules(route)
+      expect(
+        await route.run(`return [options.loader(), await render('component')]`),
+      ).toEqual([expected, `<button>${expected}</button>`])
     },
   )
 
@@ -768,11 +855,11 @@ export const Route = createFileRoute('/')({
   },
 })
 `,
-      { stubs: { './projects': { Framework: 'Framework' } } },
+      { files: { 'projects.ts': `export const Framework = 'Framework'\n` } },
     )
-    expect(route.eager).not.toContain('./projects')
-    await expectValidModules(route.modules)
-    expect(await route.render('component')).toBe('<p>react</p>')
+    expect(await route.requested()).not.toContain('/projects.ts')
+    await expectValidModules(route)
+    expect(await route.run(`return render('component')`)).toBe('<p>react</p>')
   })
 
   // Source: @babel/plugin-transform-typescript class/private-method-override;
@@ -793,8 +880,8 @@ export const Route = createFileRoute('/')({
   component: () => <p>{new Parser().run()}</p>,
 })
 `)
-    await expectValidModules(route.modules)
-    expect(await route.render('component')).toBe('<p>3|7</p>')
+    await expectValidModules(route)
+    expect(await route.run(`return render('component')`)).toBe('<p>3|7</p>')
   })
 
   // An ambient var merged with an interface has no runtime declaration:
@@ -802,10 +889,6 @@ export const Route = createFileRoute('/')({
   // global. Source: TypeScript conformance test
   // expressions/functionCalls/overloadResolutionConstructors.ts; #8504.
   async function readsAmbientVar(verbatimModuleSyntax: boolean) {
-    vi.stubGlobal('readVersion', () => '1.0')
-    onTestFinished(() => {
-      vi.unstubAllGlobals()
-    })
     const route = await loadRoute(
       `${head}interface readVersion {
   (): string
@@ -817,13 +900,15 @@ export const Route = createFileRoute('/')({
   component: () => <p>{version}</p>,
 })
 `,
-      { verbatimModuleSyntax },
+      {
+        tsconfig: { verbatimModuleSyntax },
+        pageScript: `globalThis.readVersion = () => '1.0'`,
+      },
     )
-    await expectValidModules(route.modules)
-    expect([route.options.loader(), await route.render('component')]).toEqual([
-      '1.0',
-      '<p>1.0</p>',
-    ])
+    await expectValidModules(route)
+    expect(
+      await route.run(`return [options.loader(), await render('component')]`),
+    ).toEqual(['1.0', '<p>1.0</p>'])
   }
 
   it('reads an ambient var merged with an interface from the environment in a shared declaration', async () => {
@@ -856,10 +941,12 @@ export const Route = createFileRoute('/')({
   component: () => <div>{Helper.x}</div>,
 })
 `,
-      { stubs: { './lib': { Helper: { x: 'helper' } } } },
+      { files: { 'lib.ts': `export const Helper = { x: 'helper' }\n` } },
     )
-    await expectValidModules(route.modules)
-    expect(await route.render('component')).toBe('<div>helper</div>')
+    await expectValidModules(route)
+    expect(await route.run(`return render('component')`)).toBe(
+      '<div>helper</div>',
+    )
   })
 
   // Source: Qwik optimizer test.rs example_ts_enums, example_exports
@@ -872,8 +959,10 @@ export const Route = createFileRoute('/')({
   component: () => <p>{[Tone.Loud, label('x')].join('|')}</p>,
 })
 `)
-    await expectValidModules(route.modules)
-    expect(await route.render('component')).toBe('<p>LOUD|label:x</p>')
+    await expectValidModules(route)
+    expect(await route.run(`return render('component')`)).toBe(
+      '<p>LOUD|label:x</p>',
+    )
   })
 
   it.each([
@@ -908,12 +997,17 @@ export const Route = createFileRoute('/')({
   component: () => <p>{${render}}</p>,
 })
 `)
-      await expectValidModules(route.modules)
-      expect(await route.render('component')).toBe(`<p>${expected}</p>`)
+      await expectValidModules(route)
+      expect(await route.run(`return render('component')`)).toBe(
+        `<p>${expected}</p>`,
+      )
     },
   )
 
-  // TypeScript lets a type and a value share a name; exporting both is valid.
+  // TypeScript lets a type and a value share a name; exporting both is
+  // valid: another module of the app imports the value, from the split
+  // route module and from the route module the route HMR plugin compiles
+  // (automatic code splitting off).
   it.each([
     {
       name: 'a type alias and an export specifier',
@@ -931,20 +1025,18 @@ export const Route = createFileRoute('/posts')({
   component: () => <p>posts</p>,
 })
 `
-      const stubs = {
-        './post-values': { Post: (id: string) => ({ id }) },
-      }
-      const route = await loadRoute(code, { stubs })
-      await expectValidModules(route.modules)
-      const other = await route.importFromRoute(
-        `export { Post } from '${routeSpecifier}'`,
-      )
-      expect(other.Post('1')).toEqual({ id: '1' })
-      const hmr = await evaluateModule(
-        await transformWithRouteHmrPlugin(code),
-        stubs,
-      )
-      expect(hmr.Post!('2')).toEqual({ id: '2' })
+      const files = { 'importer.ts': `export { Post } from './route'\n` }
+      const read = `return (await app('importer.ts')).Post('1')`
+      const route = await loadRoute(code, { routeId: '/posts', files })
+      await expectValidModules(route)
+      expect(await route.run(read)).toEqual({ id: '1' })
+      const hmr = await loadRoute(code, {
+        routeId: '/posts',
+        files,
+        hmr: true,
+        pluginOptions: { autoCodeSplitting: false },
+      })
+      expect(await hmr.run(read)).toEqual({ id: '1' })
     },
   )
 
@@ -960,50 +1052,89 @@ export const Route = createFileRoute('/')({
   component: () => <p>{secret}</p>,
 })
 `,
-      { stubs: { './server-thing': { secret: 'server' } } },
+      { files: { 'server-thing.ts': `export const secret = 'server'\n` } },
     )
-    await expectValidModules(route.modules)
-    expect(route.eager).not.toContain('./server-thing')
-    expect(await route.render('component')).toBe('<p>server</p>')
+    await expectValidModules(route)
+    expect(await route.requested()).not.toContain('/server-thing.ts')
+    expect(await route.run(`return render('component')`)).toBe('<p>server</p>')
   })
 
   it('keeps decorators before `export` for legacy decorator transforms', async () => {
     // TypeScript `experimentalDecorators` and Babel `decorators-legacy` only
-    // accept decorators before the `export` keyword: every emitted module
-    // must still parse with them.
-    const { modules } =
-      await compileRouteModules(`${head}import { injectable } from 'tsyringe'
+    // accept decorators before the `export` keyword: every module the
+    // router plugin emits must still parse with them. The app runs Babel's
+    // parser with `decorators-legacy` on every module of the app right
+    // after the router plugin (as a Babel step of an app's pipeline would),
+    // then Vite's legacy decorator transform (`experimentalDecorators`).
+    const legacyDecorators: Plugin = {
+      name: 'app:decorators-legacy',
+      enforce: 'pre',
+      transform(code, id) {
+        if (
+          id.includes('/node_modules/') ||
+          /\.(?:css|json)(?:\?|$)/.test(id)
+        ) {
+          return null
+        }
+        parseWithBabel(code, {
+          babelrc: false,
+          configFile: false,
+          filename: 'module.tsx',
+          parserOpts: { plugins: ['typescript', 'jsx', 'decorators-legacy'] },
+        })
+        return null
+      },
+    }
+    const route = await loadRoute(
+      `${head}import { injectable } from 'tsyringe'
 import { observable } from 'mobx'
 @injectable() export class Store { @observable count = 0 }
 export const Route = createFileRoute('/')({
   loader: () => new Store().count,
   component: () => <div />,
 })
-`)
-    expect(Object.keys(modules).length).toBeGreaterThan(1)
-    for (const code of Object.values(modules)) {
-      expect(() =>
-        parseWithBabel(code, {
-          babelrc: false,
-          configFile: false,
-          filename: 'module.tsx',
-          parserOpts: { plugins: ['typescript', 'jsx', 'decorators-legacy'] },
-        }),
-      ).not.toThrow()
-    }
+`,
+      {
+        tsconfig: { experimentalDecorators: true },
+        plugins: { after: [legacyDecorators] },
+        files: {
+          ...packageFiles(
+            'tsyringe',
+            `export const injectable = () => (target) => target\n`,
+          ),
+          ...packageFiles('mobx', `export const observable = () => {}\n`),
+        },
+      },
+    )
+    expect(await route.isLazy('component')).toBe(true)
+    await expectValidModules(route)
+    expect(
+      await route.run(`return [options.loader(), await render('component')]`),
+    ).toEqual([0, '<div></div>'])
   })
 
   // Auto-accessor fields (TypeScript 4.9+, ES decorators; MobX 6 and Lit use
-  // them). Compiled only: the module evaluator does not run `accessor`.
+  // them). Compiled only: the browser does not run `accessor` yet, so the
+  // modules are read from the dev server's own module graph.
   it('compiles a class with an auto-accessor field that the split component uses', async () => {
-    const { modules } =
-      await compileRouteModules(`${head}class Store { accessor count = 1 }
+    const route = await loadRoute(`${head}class Store { accessor count = 1 }
 const store = new Store()
 export const Route = createFileRoute('/')({
   loader: () => store,
   component: () => <p>{store.count}</p>,
 })
 `)
-    await expectValidModules(modules)
+    const modules = await servedGraph(route)
+    expect(Object.keys(modules).length).toBeGreaterThan(0)
+    for (const [url, code] of Object.entries(modules)) {
+      expect(
+        await getModuleErrors(code, 'module.tsx', {
+          env: 'client',
+          source: route.code,
+          globals: ['$RefreshReg$', '$RefreshSig$'],
+        }),
+        url,
+      ).toEqual([])
+    }
   })
 })

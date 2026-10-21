@@ -7,8 +7,7 @@
  * bug is fixed.
  */
 import { describe, expect, test } from 'vitest'
-import { build, routeApp } from '../build-harness'
-import { head } from '../regression-helpers'
+import { build, head, routeApp } from '../build-harness'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
 
 describe('production builds', () => {

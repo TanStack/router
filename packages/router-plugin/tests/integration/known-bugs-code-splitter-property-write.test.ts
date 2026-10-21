@@ -13,8 +13,7 @@
  * shared app down with it); the cells build concurrently.
  */
 import { describe, it } from 'vitest'
-import { build, buildWithRsbuild } from '../build-harness'
-import { head } from '../regression-helpers'
+import { build, buildWithRsbuild, head } from '../build-harness'
 import type { TestContext } from 'vitest'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
 

@@ -18,9 +18,10 @@
  * reload), within one overall bound; never on how many hot updates or
  * client events an edit takes. Warnings are diagnostics
  * (`@tanstack/compiler-test-utils/diagnostics`): every channel of the dev
- * server (its logger or the bundler's compilation, and the process's
- * console naming this app) and the page's console.
+ * server (its logger or the bundler's compilation, and what the process
+ * printed while doing this app's work) and the page's console.
  */
+import { AsyncLocalStorage } from 'node:async_hooks'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { pluginBabel } from '@rsbuild/plugin-babel'
@@ -34,45 +35,50 @@ import solid from 'vite-plugin-solid'
 import { expect, onTestFinished } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
+import { openDiagnosticChannel } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import {
   diagnosticsOf,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
-import { getConfig } from '../src/core/config'
 import { tanstackRouter as tanstackRouterRspack } from '../src/rspack'
-import { tanstackRouter } from '../src/vite'
+import { getConfig, tanstackRouter } from '../src/vite'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import type { RsbuildPlugin } from '@rsbuild/core'
 import type { PluginOption } from 'vite'
-import type { Config } from '../src/core/config'
-import type { TargetFramework } from './regression-helpers'
+import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
+import type { Config } from '../src/vite'
+import type { TargetFramework } from './route-app'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 
 /**
  * How the app mounts the router into `#app`, per framework, with the router
- * options `ROUTER_OPTIONS` stands for.
+ * options `ROUTER_OPTIONS` stands for. The app keeps its own reference to its
+ * router (`window.__APP_ROUTER__`), which tests read.
  */
 const mains: Record<TargetFramework, string> = {
   react: `import { createRoot } from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 const router = createRouter({ routeTree, ROUTER_OPTIONS })
+;(window as any).__APP_ROUTER__ = router
 createRoot(document.getElementById('app')!).render(<RouterProvider router={router} />)
 `,
   solid: `import { render } from 'solid-js/web'
 import { RouterProvider, createRouter } from '@tanstack/solid-router'
 import { routeTree } from './routeTree.gen'
 const router = createRouter({ routeTree, ROUTER_OPTIONS })
+;(window as any).__APP_ROUTER__ = router
 render(() => <RouterProvider router={router} />, document.getElementById('app')!)
 `,
   vue: `import { createApp } from 'vue'
 import { RouterProvider, createRouter } from '@tanstack/vue-router'
 import { routeTree } from './routeTree.gen'
 const router = createRouter({ routeTree, ROUTER_OPTIONS })
+;(window as any).__APP_ROUTER__ = router
 createApp({ setup: () => () => <RouterProvider router={router} /> }).mount('#app')
 `,
 }
@@ -219,37 +225,88 @@ export interface RouteHmrPage {
     options?: { timeout?: number },
   ) => Promise<EditResult>
   /**
-   * Runs `script` in the page (e.g. reads the live router,
-   * `window.__TSR_ROUTER__`) and returns its JSON value.
+   * Runs `script` in the page (e.g. reads the app's live router,
+   * `window.__APP_ROUTER__`) and returns its JSON value.
    */
   evaluate: <T>(script: string) => Promise<T>
   /**
    * Warnings reported so far through the real channels, as diagnostics (read
    * them with `findDiagnostics` / `expectDiagnostic`): every channel of the
    * dev server (`appWarnings`: its logger or the bundler's compilation, and
-   * what the process printed naming this app's root: concurrent pages share
-   * the process, and the root tells their warnings apart), and what the page
-   * logged as a warning (e.g. a warning the compiler put into the served
-   * module).
+   * what the process printed while doing this app's work: concurrent pages
+   * share the process, and the async context of the app's dev server tells
+   * their output apart, whatever the warning's wording or path form), and
+   * what the page logged as a warning (e.g. a warning the compiler put into
+   * the served module).
    */
   warnings: () => Array<Diagnostic>
 }
 
 /**
- * The warnings of an app on every channel of its dev server: the
- * bundler's and the dev server's own, and what the process printed naming
- * the app's root (pages of concurrent tests share the process's console;
- * the root tells their warnings apart).
+ * The async context of each app's dev server: everything a dev server does
+ * (its watcher, its HTTP requests, its compiles) runs in the context it was
+ * created in, so what the process prints meanwhile is that app's.
  */
-function appWarnings(diagnostics: Array<Diagnostic>, root: string) {
-  return diagnostics
-    .filter(
+const appScope = new AsyncLocalStorage<string>()
+let apps = 0
+
+/**
+ * What the process printed (console, stdout/stderr) while doing the work of
+ * app `id` (`appScope`), from now on until the test ends. Pages of
+ * concurrent tests share the process's console; the context tells their
+ * output apart, so a warning counts whatever path form (absolute or
+ * project-relative) and wording it has. Output outside any app's context
+ * counts only when it names the app's root (`root()`, once known).
+ */
+function processOutput(
+  id: string,
+  root: () => string | undefined,
+  registerCleanup: (cleanup: () => Promise<void>) => void,
+) {
+  const channel = openDiagnosticChannel({ console: true, streams: true })
+  const scoped: Array<ChannelDiagnostic> = []
+  const unscoped: Array<ChannelDiagnostic> = []
+  channel.onDiagnostic((diagnostic) => {
+    const store = appScope.getStore()
+    if (store === id) {
+      scoped.push(diagnostic)
+    } else if (store === undefined) {
+      unscoped.push(diagnostic)
+    }
+  })
+  registerCleanup(() => {
+    channel.close()
+    return Promise.resolve()
+  })
+  return () => {
+    const appRoot = root()
+    return [
+      ...scoped,
+      ...(appRoot === undefined
+        ? []
+        : unscoped.filter((diagnostic) => diagnostic.text.includes(appRoot))),
+    ]
+  }
+}
+
+/**
+ * The warnings of an app on every channel of its dev server: the
+ * bundler's and the dev server's own (`server`, from the server's own
+ * logger and compilations), and what the process printed doing the app's
+ * work (`printed`, see `processOutput`).
+ */
+function appWarnings(
+  server: Array<ChannelDiagnostic>,
+  printed: Array<ChannelDiagnostic>,
+) {
+  return [
+    ...server.filter(
       (diagnostic) =>
-        diagnostic.severity === 'warning' &&
-        (diagnostic.source === 'vite' ||
-          diagnostic.source === 'bundler' ||
-          diagnostic.text.includes(root)),
-    )
+        diagnostic.source === 'vite' || diagnostic.source === 'bundler',
+    ),
+    ...printed,
+  ]
+    .filter((diagnostic) => diagnostic.severity === 'warning')
     .map((diagnostic) => diagnostic.text)
 }
 
@@ -258,8 +315,11 @@ interface AppServer {
   url: string
   /** The app's root on disk. */
   root: string
-  /** Warnings the dev server's logger reported so far. */
-  warnings: () => Array<string>
+  /**
+   * What the dev server's own logger and compilations reported so far
+   * (`appWarnings` takes their warnings).
+   */
+  diagnostics: () => Array<ChannelDiagnostic>
   /**
    * Writes files for the server's watcher and waits until the server
    * handled them, by the harness's event-based `settle()` (Vite: the
@@ -295,14 +355,24 @@ export const Route = createRootRoute({})
 `,
     ...options.files,
   }
-  // The dev server's channel records the console of this process while it
-  // runs (the compiler may warn there, e.g. about a route it leaves
-  // unsplit)
+  // What the process prints doing this app's work (the compiler may warn
+  // there, e.g. about a route it leaves unsplit): the dev server is created
+  // in the app's async context, so its watcher, requests and compiles run
+  // there
+  const id = `route-hmr-page-${++apps}`
+  let appRoot: string | undefined
+  const printed = processOutput(
+    id,
+    () => appRoot,
+    options.onTestFinished ?? onTestFinished,
+  )
   const { server, page } = await (async () => {
-    const started =
+    const started = await appScope.run(id, () =>
       bundler === 'vite'
-        ? await viteServer(target, files, options)
-        : await rsbuildServer(target, files, options)
+        ? viteServer(target, files, options)
+        : rsbuildServer(target, files, options),
+    )
+    appRoot = started.root
     const opened = await openPage(started.url, {
       registerCleanup: options.onTestFinished ?? onTestFinished,
     })
@@ -392,7 +462,7 @@ export const Route = createRootRoute({})
       })(),
     evaluate: (script) => page.page.evaluate(script),
     warnings: () => [
-      ...diagnosticsOf(server.warnings(), 'warning'),
+      ...diagnosticsOf(appWarnings(server.diagnostics(), printed()), 'warning'),
       ...diagnosticsOf(
         page.console
           .filter((message) => message.startsWith('warning: '))
@@ -467,7 +537,7 @@ async function viteServer(
     idle: () => server.idle(),
     fullReloads,
     root: server.root,
-    warnings: () => appWarnings(server.diagnostics, server.root),
+    diagnostics: () => server.diagnostics,
   }
 }
 
@@ -519,7 +589,7 @@ async function rsbuildServer(
     fullReloads: () => 0,
     root: server.root,
     // Every compile's (the page's edits settle before they are read)
-    warnings: () => appWarnings(server.diagnostics, server.root),
+    diagnostics: () => server.diagnostics,
   }
 }
 
@@ -558,7 +628,11 @@ export async function expectEditShownOrReportedFallback(
   const result = await app.edit(edited, expected)
   expect(result.errors, 'errors of the page during the edit').toEqual([])
   const reported =
-    findDiagnostics(app.warnings(), { file, root: app.root }).length > 0
+    findDiagnostics(app.warnings(), {
+      severity: ['warning', 'error'],
+      file,
+      root: app.root,
+    }).length > 0
   if (!reported) {
     expect(
       result.reloaded,

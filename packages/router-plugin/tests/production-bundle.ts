@@ -6,14 +6,24 @@
  * The build decides production by its own signal (the bundler's production
  * mode), with `NODE_ENV` unset, and the plugin's default for `addHmr`.
  *
- * Two oracles, neither tied to how our own support code is named:
- * - the public hot APIs and the React Refresh runtime's globals are absent;
- * - a build with route HMR off (`addHmr: false`, `NODE_ENV=production` when
- *   the plugin is created) is the control: the production bundle ships no
- *   statement the control lacks (`addedCode` of
- *   `@tanstack/compiler-test-utils/added-code`: private names, printing
- *   and chunk placement are free), so it holds no extra support code or
- *   dependency, whatever it is called and whatever names it reuses.
+ * The decision is by purpose, through paired real builds (N18): a build
+ * with route HMR off (`addHmr: false`, `NODE_ENV=production` when the
+ * plugin is created) is the control, which differs in the development
+ * features only, so what the production bundle has and the control lacks
+ * serves development. Neither oracle is tied to how our own support code is
+ * named, printed or placed:
+ * - the bundle runs in a real browser with no hot context and renders the
+ *   route;
+ * - it references none of the public development APIs (the bundlers' hot
+ *   module APIs, the React Refresh runtime's globals);
+ * - the route module a user imports has the same exports as the control's
+ *   (an export added for a refresh runtime, e.g. a refresh boundary anchor,
+ *   is development support the user's module surface ships).
+ * The statements the bundle has and the control lacks (`addedCode` of
+ * `@tanstack/compiler-test-utils/added-code`) are inspection evidence only:
+ * they are attached to every failure message, never a reason to reject on
+ * their own (a production specialisation may print or factor code
+ * differently from the control).
  */
 import { addedCode } from '@tanstack/compiler-test-utils/added-code'
 import { expect } from 'vitest'
@@ -79,9 +89,12 @@ async function productionBuild(
       })
 }
 
+/** The exports of the route module, as the user's entry re-exports them. */
+const routeExports = `return Object.keys(entry).sort()`
+
 /**
  * Builds the route for production and asserts that the bundle renders the
- * route and has none of the dev server's additions.
+ * route and has none of the dev server's additions (see the module comment).
  */
 export async function expectProductionClientBundle(
   bundler: Bundler | 'rsbuild',
@@ -94,18 +107,30 @@ export async function expectProductionClientBundle(
     autoCodeSplitting,
     false,
   )
-  const run = await app.run(`await entry.mount(entry.Route.options.component)`)
-  expect(run.html).toContain('MARK_PAGE')
-  expect(
-    Object.keys(publicDevApis).filter(
-      (name) => app.where(publicDevApis[name]!) !== 'nowhere',
-    ),
-  ).toEqual([])
   const control = await productionBuild(
     bundler,
     framework,
     autoCodeSplitting,
     true,
   )
-  expect(addedCode(app, control), 'code the control build lacks').toEqual([])
+  // Evidence for a failure's reader: what the bundle ships that the control
+  // does not, statement by statement
+  const added = addedCode(app, control)
+  const evidence = `statements the bundle has and the control lacks (inspection evidence, not the decision):\n${
+    added
+      .map((statement) => `  [${statement.chunk}] ${statement.code}`)
+      .join('\n') || '  (none)'
+  }`
+  const run = await app.run(`await entry.mount(entry.Route.options.component)`)
+  expect(run.html, evidence).toContain('MARK_PAGE')
+  expect(
+    Object.keys(publicDevApis).filter(
+      (name) => app.where(publicDevApis[name]!) !== 'nowhere',
+    ),
+    `public development APIs the bundle references\n${evidence}`,
+  ).toEqual([])
+  expect(
+    (await app.run(routeExports)).result,
+    `exports of the route module, the control's being ${JSON.stringify((await control.run(routeExports)).result)}\n${evidence}`,
+  ).toEqual((await control.run(routeExports)).result)
 }

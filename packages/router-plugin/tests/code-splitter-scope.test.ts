@@ -1,14 +1,40 @@
-import { describe, expect, it, onTestFinished, vi } from 'vitest'
+/**
+ * Scope of the code a route option moves into its chunk, loaded the way an
+ * app loads it (`route-app.ts`: the public router plugin in a real Vite dev
+ * server, the route run in the shared Chromium page): the split code reads
+ * the bindings it read before splitting, and a dependency only another
+ * option reads is not imported by the chunk (D5: that dependency, found by
+ * its request in the chunk as the dev server serves it).
+ */
+import { parseSync, transformWithOxc } from 'vite'
+import { describe, expect, it } from 'vitest'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
-import {
-  expectValidModules,
-  head,
-  importSources,
-  loadRoute,
-} from './regression-helpers'
+import { expectValidModules, head, loadRoute } from './route-app'
+import type { Plugin } from 'vite'
 
 const pageRoute = (body: string) => `${head}${body}
 export const Route = createFileRoute('/')({ component: Page })
+`
+
+/**
+ * The app files a served module imports statically, as the dev server
+ * rewrote their requests (`/load.ts`; Vite's query left out).
+ */
+function staticImports(code: string) {
+  return parseSync('module.js', code, {
+    sourceType: 'module',
+  }).module.staticImports.map(
+    (statement) => statement.moduleRequest.value.split('?')[0]!,
+  )
+}
+
+/** `load()` returns `value` and counts its calls (`loads()`). */
+const loadFile = (value: string) => `let count = 0
+export const load = () => {
+  count++
+  return ${JSON.stringify(value)}
+}
+export const loads = () => count
 `
 
 describe('a split component keeps the module bindings it reads', () => {
@@ -142,9 +168,9 @@ const Page = () => <p>{getComponentName({ Page })}</p>`,
     },
   ])('$name', async ({ body, expected }) => {
     const route = await loadRoute(pageRoute(body))
-    await expectValidModules(route.modules)
+    await expectValidModules(route)
     expect(await route.isLazy('component')).toBe(true)
-    expect(await route.render('component')).toBe(expected)
+    expect(await route.run(`return render('component')`)).toBe(expected)
   })
 })
 
@@ -195,11 +221,6 @@ describe('names a route option declares itself do not reference module bindings'
       rendered: '<p>3</p>',
     },
   ])('$name', async ({ options, unread, rendered }) => {
-    vi.spyOn(console, 'log').mockImplementation(() => {})
-    onTestFinished(() => {
-      vi.restoreAllMocks()
-    })
-    let loads = 0
     const route = await loadRoute(
       `${head}import { load } from './load'
 const label = load()
@@ -208,35 +229,25 @@ export const Route = createFileRoute('/')({
   ${options}
 })
 `,
-      {
-        stubs: {
-          './load': {
-            load: () => {
-              loads++
-              return 'module'
-            },
-          },
-        },
-      },
+      { files: { 'load.ts': loadFile('module') } },
     )
-    await expectValidModules(route.modules)
-    route.options.loader({})
-    expect(await route.render('component')).toBe(rendered)
-    expect(loads).toBe(1)
+    await expectValidModules(route)
+    expect(
+      await route.run(`options.loader({})
+return [await render('component'), (await app('load.ts')).loads()]`),
+    ).toEqual([rendered, 1])
     // The option's own names do not make the split component's modules load
     // the module-level `label`, which only the loader reads. (When only the
-    // split component reads it, when its initializer runs is free.) (After
-    // the count: `loadedBy` evaluates the route module again in a fork.)
+    // split component reads it, when its initializer runs is free.)
     if (unread) {
       expect(
-        (await route.loadedBy(unread)).flatMap(importSources),
-      ).not.toContain('./load')
+        (await route.loadedBy(unread)).flatMap(staticImports),
+      ).not.toContain('/load.ts')
     }
   })
 
   // Source: Next.js ssg/getStaticProps/should-not-remove-import-used-in-render
   it('neither do intrinsic tag and attribute names, unlike component tags and JSX expressions', async () => {
-    let loads = 0
     const route = await loadRoute(
       `${head}import { A, B } from './ui'
 import { load } from './load'
@@ -255,39 +266,31 @@ export const Route = createFileRoute('/')({
 })
 `,
       {
-        stubs: {
-          './ui': {
-            A: () => 'A',
-            B: {
-              Deep: { C: ({ icon }: { icon: unknown }) => icon },
-            },
-          },
-          './load': {
-            load: () => {
-              loads++
-              return 'loaded'
-            },
-          },
+        files: {
+          'ui.tsx': `export const A = () => 'A'
+export const B = { Deep: { C: ({ icon }: { icon: unknown }) => icon } }
+`,
+          'load.ts': loadFile('loaded'),
         },
       },
     )
     // Nothing the route module loads requests what only the component reads.
-    expect(route.eager).not.toContain('./ui')
-    await expectValidModules(route.modules)
-    expect([
-      route.options.loader(),
-      await route.render('component'),
-      loads,
-    ]).toEqual([
+    expect(await route.requested()).not.toContain('/ui.tsx')
+    await expectValidModules(route)
+    expect(
+      await route.run(`return [
+  options.loader(),
+  await render('component'),
+  (await app('load.ts')).loads(),
+]`),
+    ).toEqual([
       ['loaded', 'loaded', 'loaded'],
       '<p title="x"><option label="x"></option><a href="/">home</a>A</p>',
       3,
     ])
-    // (After the count: `loadedBy` evaluates the route module again in a
-    // fork.)
     expect(
-      (await route.loadedBy('component')).flatMap(importSources),
-    ).not.toContain('./load')
+      (await route.loadedBy('component')).flatMap(staticImports),
+    ).not.toContain('/load.ts')
   })
 
   // Source: React Router route-chunks-test.ts "computed object property"
@@ -304,16 +307,15 @@ export const Route = createFileRoute('/')({
   },
 })
 `,
-      { stubs: { './load': { load: () => 'loaded' } } },
+      { files: { 'load.ts': loadFile('loaded') } },
     )
-    await expectValidModules(route.modules)
+    await expectValidModules(route)
     expect(
-      (await route.loadedBy('component')).flatMap(importSources),
-    ).not.toContain('./load')
-    expect([route.options.loader(), await route.render('component')]).toEqual([
-      ['loaded', 'kind'],
-      '<div>12</div>',
-    ])
+      (await route.loadedBy('component')).flatMap(staticImports),
+    ).not.toContain('/load.ts')
+    expect(
+      await route.run(`return [options.loader(), await render('component')]`),
+    ).toEqual([['loaded', 'kind'], '<div>12</div>'])
   })
 
   // A computed key reads its binding like any other expression: when that
@@ -324,11 +326,15 @@ export const Route = createFileRoute('/')({
   // computed ones included).
   async function expectKeySeesReassignment(code: string) {
     const route = await loadRoute(code)
-    await expectValidModules(route.modules)
+    await expectValidModules(route)
     expect(await route.isLazy('component')).toBe(true)
-    expect(await route.render('component')).toBe('<button>initial</button>')
-    expect(route.options.loader()).toBe('loaded')
-    expect(await route.render('component')).toBe('<button>loaded</button>')
+    expect(
+      await route.run(`return [
+  await render('component'),
+  options.loader(),
+  await render('component'),
+]`),
+    ).toEqual(['<button>initial</button>', 'loaded', '<button>loaded</button>'])
   }
 
   it('a computed key that is the only read of a binding the loader reassigns sees the reassignment', async () => {
@@ -360,7 +366,6 @@ export const Route = createFileRoute('/')({
   // the binding). (A `let` the route module reassigns while a chunk reads
   // it: pinned in integration/known-bugs-code-splitter-ssr-builds.test.ts.)
   it('do read a binding the loader shares when a computed key is the only read', async () => {
-    let tokens = 0
     const route = await loadRoute(
       `${head}import { makeToken } from './token'
 const token = makeToken()
@@ -372,14 +377,22 @@ export const Route = createFileRoute('/')({
   },
 })
 `,
-      { stubs: { './token': { makeToken: () => `token-${++tokens}` } } },
+      {
+        files: {
+          'token.ts': `export let tokens = 0
+export const makeToken = () => 'token-' + ++tokens
+`,
+        },
+      },
     )
-    await expectValidModules(route.modules)
-    expect([
-      await (await route.load('loader'))(),
-      await route.render('component'),
-      tokens,
-    ]).toEqual(['token-1', '<p>token-1</p>', 1])
+    await expectValidModules(route)
+    expect(
+      await route.run(`return [
+  await (await load('loader'))(),
+  await render('component'),
+  (await app('token.ts')).tokens,
+]`),
+    ).toEqual(['token-1', '<p>token-1</p>', 1])
   })
 
   it('neither do declarations in helpers that move into the chunk, named like a shared binding', async () => {
@@ -408,14 +421,15 @@ export const Route = createFileRoute('/')({
 })
 `,
       {
-        stubs: { './store': { createStore: () => ({ get: () => 'shared' }) } },
+        files: {
+          'store.ts': `export const createStore = () => ({ get: () => 'shared' })\n`,
+        },
       },
     )
-    await expectValidModules(route.modules)
-    expect([route.options.loader(), await route.render('component')]).toEqual([
-      'shared',
-      '<p>var,function,class,enum,shared</p>',
-    ])
+    await expectValidModules(route)
+    expect(
+      await route.run(`return [options.loader(), await render('component')]`),
+    ).toEqual(['shared', '<p>var,function,class,enum,shared</p>'])
   })
 })
 
@@ -474,12 +488,14 @@ export const Route = createFileRoute('/')({
   component: () => <p>{String(${call})}</p>,
 })
 `,
-      { stubs: { './x': { x: 'x' } } },
+      { files: { 'x.ts': `export const x = 'x'\n` } },
     )
     // Nothing the route module loads requests what only the component reads.
-    expect(route.eager).not.toContain('./x')
-    await expectValidModules(route.modules)
-    expect(await route.render('component')).toBe(`<p>${rendered}</p>`)
+    expect(await route.requested()).not.toContain('/x.ts')
+    await expectValidModules(route)
+    expect(await route.run(`return render('component')`)).toBe(
+      `<p>${rendered}</p>`,
+    )
   })
 
   it.each([
@@ -520,19 +536,36 @@ function Page() {
 }
 export const Route = createFileRoute('/')({ loader: ${loader}, component: Page })
 `,
-      { stubs: { './store': { store: { value: 'stored' } } } },
+      { files: { 'store.ts': `export const store = { value: 'stored' }\n` } },
     )
-    await expectValidModules(route.modules)
-    expect([route.options.loader({}), await route.render('component')]).toEqual(
-      ['stored', 'page'],
-    )
+    await expectValidModules(route)
+    expect(
+      await route.run(`return [options.loader({}), await render('component')]`),
+    ).toEqual(['stored', 'page'])
   })
 })
 
 describe('plain JavaScript route files', () => {
   // A JavaScript route file (any JavaScript extension) may contain JSX.
   // Source: #8504 router-utils source-language.test.ts (the other JavaScript
-  // extensions).
+  // extensions). Vite and its React plugin compile JSX in `.jsx`/`.tsx`
+  // files only: an app with JSX in `.js`/`.mjs` files adds a JSX transform
+  // for them, here Vite's own Oxc transform, after the router plugin and
+  // before the React plugin (both run before Vite's own plugins).
+  const jsxInJs: Plugin = {
+    name: 'app:jsx-in-js',
+    enforce: 'pre',
+    async transform(code, id) {
+      if (!/\.m?js(?:\?|$)/.test(id) || id.includes('/node_modules/')) {
+        return null
+      }
+      const result = await transformWithOxc(code, id.split('?')[0]!, {
+        lang: 'jsx',
+        jsx: { runtime: 'automatic', development: true },
+      })
+      return { code: result.code, map: result.map }
+    },
+  }
   it.each(['route.js', 'route.jsx', 'route.mjs'])(
     'splits a route file with JSX (%s)',
     async (filename) => {
@@ -543,14 +576,13 @@ export const Route = createFileRoute('/js')({
   component: () => <p>{label}</p>,
 })
 `,
-        { filename },
+        { filename, routeId: '/js', plugins: { after: [jsxInJs] } },
       )
-      await expectValidModules(route.modules)
+      await expectValidModules(route)
       expect([
         await route.isLazy('component'),
-        route.options.loader(),
-        await route.render('component'),
-      ]).toEqual([true, 'label', '<p>label</p>'])
+        await route.run(`return [options.loader(), await render('component')]`),
+      ]).toEqual([true, ['label', '<p>label</p>']])
     },
   )
 
@@ -568,9 +600,11 @@ function Page() {
 }`),
       { filename: 'route.js' },
     )
-    await expectValidModules(route.modules)
+    await expectValidModules(route)
     expect(await route.isLazy('component')).toBe(true)
-    expect(await route.render('component')).toBe('body,second,first')
+    expect(await route.run(`return render('component')`)).toBe(
+      'body,second,first',
+    )
   })
 })
 
@@ -587,12 +621,20 @@ export const Route = createFileRoute('/')({
 `,
       { filename: 'route.ts' },
     )
-    for (const [name, code] of Object.entries(route.modules)) {
-      expect(await getModuleErrors(code, 'module.ts'), name).toEqual([])
+    // Every module as the browser receives it is valid (read as
+    // TypeScript, as the source's angle brackets are not JSX)
+    const { modules } = await route.modules()
+    for (const [name, code] of Object.entries(modules)) {
+      expect(
+        await getModuleErrors(code, 'module.ts', {
+          env: 'client',
+          globals: ['$RefreshReg$', '$RefreshSig$'],
+        }),
+        name,
+      ).toEqual([])
     }
-    expect([route.options.loader(), await route.render('component')]).toEqual([
-      1,
-      'page',
-    ])
+    expect(
+      await route.run(`return [options.loader(), await render('component')]`),
+    ).toEqual([1, 'page'])
   })
 })

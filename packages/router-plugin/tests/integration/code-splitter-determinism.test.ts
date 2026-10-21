@@ -9,8 +9,7 @@
  */
 import { expect, test, vi } from 'vitest'
 import { expectRelocatable } from '@tanstack/compiler-test-utils/determinism'
-import { build, routeApp } from '../build-harness'
-import { head } from '../regression-helpers'
+import { build, head, routeApp } from '../build-harness'
 import type * as NodeUrl from 'node:url'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
 

@@ -1,3 +1,6 @@
+// Legacy Node-evaluation harness (module linker, Node rendering, hand-registered
+// routes), kept only for the implementation tests of outside-compiler-corpus/.
+// Acceptance tests use ../../route-app.ts (public plugin host, browser page).
 /**
  * Hosts the router plugin in a real bundler plugin host: its public Vite
  * adapters (`tanStackRouterCodeSplitter` with a router plugin context from
@@ -45,11 +48,11 @@ import { moduleLang } from '@tanstack/compiler-test-utils/module-linker'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import { build, createServer, parseSync } from 'vite'
 import { afterAll, expect, onTestFinished } from 'vitest'
-import { createRouterPluginContext } from '../src/context'
-import { tanStackRouterCodeSplitter, tanstackRouter } from '../src/vite'
+import { createRouterPluginContext } from '../../../src/context'
+import { tanStackRouterCodeSplitter, tanstackRouter } from '../../../src/vite'
 import type { ModuleErrorOptions } from '@tanstack/compiler-test-utils/validate-module'
 import type { Logger, Plugin, PluginOption, ViteDevServer } from 'vite'
-import type { Config, DeletableNodes } from '../src/core/config'
+import type { Config, DeletableNodes } from '../../../src/core/config'
 
 /** A framework the router plugin targets. */
 export type TargetFramework = 'react' | 'solid' | 'vue'

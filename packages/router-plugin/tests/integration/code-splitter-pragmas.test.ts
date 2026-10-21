@@ -61,6 +61,7 @@ return getComputedStyle(document.getElementById('styled')).color`)
     const split = await styledColour(bundler, true)
     if (split.app.where('MARK_STYLED') !== 'lazy') {
       expectDiagnostic([...split.app.warnings, ...split.app.consoleMessages], {
+        severity: ['warning', 'error'],
         file: 'routes/index.tsx',
         root: split.app.root,
         names: ['component'],
@@ -175,8 +176,12 @@ export const Route = createFileRoute('/')({ component: Page })
           'warning',
         )
         expect(
-          reported.some(({ text }) => namesBoth(text, names)) ||
+          reported.some(
+            ({ text, severity }) =>
+              severity !== 'info' && namesBoth(text, names),
+          ) ||
             findDiagnostics(reported, {
+              severity: ['warning', 'error'],
               file: 'routes/index.tsx',
               root: app.root,
             }).length > 0,

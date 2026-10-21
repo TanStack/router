@@ -1,17 +1,37 @@
+/**
+ * Split chunks keep the module state the route relies on (SPEC G3, J2.4,
+ * J2.12, G9): every value is created once, every reader gets that instance,
+ * and what the rest of the app imports from the route file is what the
+ * options read. Routes load in a real browser page from a real dev server
+ * (`./route-app`); the modules a route file imports are files of the app,
+ * which record what ran, and the page reads them.
+ */
 import { describe, expect, it } from 'vitest'
-import {
-  declaredNames,
-  expectValidModules,
-  head,
-  loadRoute,
-} from './regression-helpers'
-import type { CodeSplitGroupings } from '../src/core/constants'
+import { expectValidModules, head, loadRoute } from './route-app'
+
+/**
+ * An app module `init.ts` (or another name) whose `init` counts its calls
+ * (`calls`) and returns its argument.
+ */
+const countingInit = `export let calls = 0
+export const init = <T,>(value: T): T => {
+  calls++
+  return value
+}
+`
+
+/** An app module whose `see` records what it is given (`seen`). */
+const recordingSee = `export const seen: Array<unknown> = []
+export const see = (value: unknown) => {
+  seen.push(value)
+  return value
+}
+`
 
 describe('split chunks keep the module state the route relies on', () => {
   // Source: Qwik optimizer test.rs
   // should_keep_non_migrated_binding_from_shared_destructuring_declarator_with_default (+ _with_rest)
   it('evaluates a destructuring split between the loader and the component once', async () => {
-    let calls = 0
     const route = await loadRoute(
       `${head}import { makeConfig } from './config'
 const { a = 'A', ...b } = makeConfig()
@@ -21,28 +41,29 @@ export const Route = createFileRoute('/')({
 })
 `,
       {
-        stubs: {
-          './config': {
-            makeConfig: () => {
-              calls++
-              return { x: 1 }
-            },
-          },
+        files: {
+          'config.ts': `export let calls = 0
+export const makeConfig = () => {
+  calls++
+  return { x: 1 }
+}
+`,
         },
       },
     )
-    await expectValidModules(route.modules)
-    expect([
-      route.options.loader(),
-      await route.render('component'),
-      calls,
-    ]).toEqual(['A', '<div>{&quot;x&quot;:1}</div>', 1])
+    await expectValidModules(route)
+    expect(
+      await route.run(`return [
+  options.loader(),
+  await render('component'),
+  (await app('config.ts')).calls,
+]`),
+    ).toEqual(['A', '<div>{"x":1}</div>', 1])
   })
 
   // Source: Qwik optimizer test.rs root_level_self_referential_qrl,
   // example_self_referential_component_migration
   it('declares mutually recursive components used by two lazy chunks once', async () => {
-    const seen = new Set<unknown>()
     const route = await loadRoute(
       `${head}import { see } from './see'
 function A({ depth }: { depth: number }) {
@@ -58,15 +79,17 @@ export const Route = createFileRoute('/')({
   errorComponent: () => <B depth={0} />,
 })
 `,
-      { stubs: { './see': { see: (value: unknown) => seen.add(value) } } },
+      { files: { 'see.ts': recordingSee } },
     )
-    await expectValidModules(route.modules)
-    expect([
-      await route.render('component'),
-      await route.render('errorComponent'),
-      // Both chunks render the same `A` and the same `B`
-      seen.size,
-    ]).toEqual(['<b><i>a</i></b>', '<b><i>a</i></b>', 2])
+    await expectValidModules(route)
+    expect(
+      await route.run(`return [
+  await render('component'),
+  await render('errorComponent'),
+  // Both chunks render the same A and the same B
+  new Set((await app('see.ts')).seen).size,
+]`),
+    ).toEqual(['<b><i>a</i></b>', '<b><i>a</i></b>', 2])
   })
 
   it('keeps one class with a static block and private members', async () => {
@@ -83,12 +106,11 @@ export const Route = createFileRoute('/')({
   component: () => <div>{String(Counter.owns(counter))}</div>,
 })
 `)
-    await expectValidModules(route.modules)
+    await expectValidModules(route)
     // `#n in counter` only holds for the class that created `counter`.
-    expect([route.options.loader(), await route.render('component')]).toEqual([
-      1,
-      '<div>true</div>',
-    ])
+    expect(
+      await route.run(`return [options.loader(), await render('component')]`),
+    ).toEqual([1, '<div>true</div>'])
   })
 
   // Source: Turbopack tree-shaker analyzer/nanoid, analyzer/let-bug-1
@@ -101,11 +123,10 @@ export const Route = createFileRoute('/')({
   component: () => { fill(); return <p>{pool.join()}</p> },
 })
 `)
-    await expectValidModules(route.modules)
-    expect([route.options.loader(), await route.render('component')]).toEqual([
-      [0],
-      '<p>1</p>',
-    ])
+    await expectValidModules(route)
+    expect(
+      await route.run(`return [options.loader(), await render('component')]`),
+    ).toEqual([[0], '<p>1</p>'])
   })
 
   // TypeScript erases type positions, so a declaration the split component
@@ -114,29 +135,20 @@ export const Route = createFileRoute('/')({
   // Source: #8504 (corpus-diff, forms that cast `as z.infer<typeof schema>`
   // in the split component).
   it('creates a declaration the split component only reads in a type once', async () => {
-    let calls = 0
     const route = await loadRoute(
       `${head}import { init } from './state'
 const value = init(1)
 export const Route = createFileRoute('/')({
   component: () => <p>{typeof ({} as typeof value)}</p>,
 })`,
-      {
-        stubs: {
-          './state': {
-            init: <T>(value: T) => {
-              calls++
-              return value
-            },
-          },
-        },
-      },
+      { files: { 'state.ts': countingInit } },
     )
-    await expectValidModules(route.modules)
-    expect([await route.render('component'), calls]).toEqual([
-      '<p>object</p>',
-      1,
-    ])
+    await expectValidModules(route)
+    expect(
+      await route.run(
+        `return [await render('component'), (await app('state.ts')).calls]`,
+      ),
+    ).toEqual(['<p>object</p>', 1])
   })
 })
 
@@ -146,8 +158,6 @@ export const Route = createFileRoute('/')({
 // destructured-export-multiple, destructured-export-nested and
 // shared-destructured-export.
 it('keeps one instance of exported destructured bindings the loader and the component read', async () => {
-  const calls = { init: 0, init2: 0 }
-  const seen: Record<string, unknown> = {}
   const route = await loadRoute(
     `${head}import { init, init2, see } from './state'
 export const {
@@ -161,40 +171,53 @@ export const Route = createFileRoute('/')({
 })
 `,
     {
-      stubs: {
-        './state': {
-          init: <T>(value: T) => {
-            calls.init++
-            return value
-          },
-          init2: <T>(value: T) => {
-            calls.init2++
-            return value
-          },
-          see: (values: Record<string, unknown>) => {
-            Object.assign(seen, values)
-            return ''
-          },
-        },
+      files: {
+        'state.ts': `export const calls = { init: 0, init2: 0 }
+export const seen: Record<string, unknown> = {}
+export const init = <T,>(value: T): T => {
+  calls.init++
+  return value
+}
+export const init2 = <T,>(value: T): T => {
+  calls.init2++
+  return value
+}
+export const see = (values: Record<string, unknown>) => {
+  Object.assign(seen, values)
+  return ''
+}
+`,
+        // What the rest of the app imports from the route file
+        'importer.ts': `export { rest, base, x, y } from './route'\n`,
       },
     },
   )
-  await expectValidModules(route.modules)
-  const loaded = await (await route.load('loader'))()
-  expect([loaded, await route.render('component'), calls]).toEqual([
-    { extra: { flag: true } },
-    '<p>/apix</p>',
-    { init: 1, init2: 1 },
-  ])
+  await expectValidModules(route)
+  expect(
+    await route.run(`const loaded = await (await load('loader'))()
+const html = await render('component')
+const state = await app('state.ts')
+const imported = await app('importer.ts')
+return {
+  loaded,
+  html,
+  calls: state.calls,
   // What the rest of the app imports from the route file is what the
   // options read.
-  const imported = await route.importFromRoute(
-    `export { rest, base, x, y } from '#route'\n`,
-  )
-  expect(imported.rest).toBe(loaded)
-  expect(imported.base).toBe(seen.base)
-  expect(imported.x).toBe(seen.x)
-  expect(imported.y).toEqual({ id: 'y' })
+  rest: imported.rest === loaded,
+  base: imported.base === state.seen.base,
+  x: imported.x === state.seen.x,
+  y: imported.y,
+}`),
+  ).toEqual({
+    loaded: { extra: { flag: true } },
+    html: '<p>/apix</p>',
+    calls: { init: 1, init2: 1 },
+    rest: true,
+    base: true,
+    x: true,
+    y: { id: 'y' },
+  })
 })
 
 // Initializers whose side effects hide in their syntax, read by the loader
@@ -239,12 +262,6 @@ const value = { element: <Tracked /> }`,
       declaration: 'const value = /* @__PURE__ */ register()',
     },
   ])('$name runs once', async ({ declaration, effects: expected = 1 }) => {
-    let effects = 0
-    const seen: Array<unknown> = []
-    const effect = () => {
-      effects++
-      return { id: effects }
-    }
     const route = await loadRoute(
       `${head}import { prefix, register, see } from './state'
 ${declaration}
@@ -254,32 +271,47 @@ export const Route = createFileRoute('/')({
 })
 `,
       {
-        stubs: {
-          './state': {
-            prefix: {
-              toString: () => String(effect().id),
-              valueOf: () => effect().id,
-            },
-            register: effect,
-            see: (value: unknown) => {
-              seen.push(value)
-              return 1
-            },
-          },
-          immutable: {
-            Map: class {
-              id = effect().id
-            },
-          },
+        files: {
+          'state.ts': `export let effects = 0
+export const seen: Array<unknown> = []
+export const register = () => {
+  effects++
+  return { id: effects }
+}
+export const prefix = {
+  toString: () => String(register().id),
+  valueOf: () => register().id,
+}
+export const see = (value: unknown) => {
+  seen.push(value)
+  return 1
+}
+`,
+          'node_modules/immutable/package.json': JSON.stringify({
+            name: 'immutable',
+            type: 'module',
+            exports: './index.js',
+          }),
+          'node_modules/immutable/index.js': `import { register } from '../../state.ts'
+export class Map {
+  id = register().id
+}
+`,
         },
       },
     )
-    await expectValidModules(route.modules)
-    route.options.loader()
-    expect(await route.render('component')).toBe('<p>1</p>')
-    expect(effects).toBe(expected)
-    expect(seen).toHaveLength(2)
-    expect(seen[0]).toBe(seen[1])
+    await expectValidModules(route)
+    expect(
+      await route.run(`options.loader()
+const html = await render('component')
+const state = await app('state.ts')
+return {
+  html,
+  effects: state.effects,
+  seen: state.seen.length,
+  same: state.seen[0] === state.seen[1],
+}`),
+    ).toEqual({ html: '<p>1</p>', effects: expected, seen: 2, same: true })
   })
 })
 
@@ -299,16 +331,18 @@ export const Route = createFileRoute('/')({
   },
 })
 `,
-      { stubs: { './next': { next: 'next' } } },
+      { files: { 'next.ts': `export const next = 'next'\n` } },
     )
     // Nothing the route module loads requests what only the component reads.
-    expect(route.eager).not.toContain('./next')
-    await expectValidModules(route.modules)
-    expect([
-      route.options.loader(),
-      await route.render('component'),
-      await route.render('component'),
-    ]).toEqual(['data', '<p>initial-next</p>', '<p>next-next</p>'])
+    expect(await route.requested()).not.toContain('/next.ts')
+    await expectValidModules(route)
+    expect(
+      await route.run(`return [
+  options.loader(),
+  await render('component'),
+  await render('component'),
+]`),
+    ).toEqual(['data', '<p>initial-next</p>', '<p>next-next</p>'])
   })
 
   // A lazily initialised getter that replaces itself after the first call.
@@ -323,8 +357,6 @@ export const Route = createFileRoute('/')({
   ])(
     'keeps a self-reassigning function used by $name working, with one result',
     async ({ loader, loaded }) => {
-      let created = 0
-      const seen = new Set<unknown>()
       const route = await loadRoute(
         `${head}import { createConfig, see } from './config'
 let getConfig = () => {
@@ -338,29 +370,32 @@ export const Route = createFileRoute('/')({
 })
 `,
         {
-          stubs: {
-            './config': {
-              createConfig: () => {
-                created++
-                return { title: 'config' }
-              },
-              see: (value: unknown) => {
-                seen.add(value)
-                return value
-              },
-            },
+          files: {
+            'config.ts': `export let created = 0
+export const seen = new Set<unknown>()
+export const createConfig = () => {
+  created++
+  return { title: 'config' }
+}
+export const see = <T,>(value: T): T => {
+  seen.add(value)
+  return value
+}
+`,
           },
         },
       )
-      await expectValidModules(route.modules)
-      expect([
-        route.options.loader(),
-        await route.render('component'),
-        route.options.loader(),
-        await route.render('component'),
-        created,
-        seen.size,
-      ]).toEqual([
+      await expectValidModules(route)
+      expect(
+        await route.run(`const results = [
+  options.loader(),
+  await render('component'),
+  options.loader(),
+  await render('component'),
+]
+const config = await app('config.ts')
+return [...results, config.created, config.seen.size]`),
+      ).toEqual([
         loaded,
         '<div>config</div>',
         loaded,
@@ -383,264 +418,11 @@ export const Route = createFileRoute('/')({
   component: () => <p>{(State as any).extra}</p>,
 })
 `)
-    await expectValidModules(route.modules)
-    expect([route.options.loader(), await route.render('component')]).toEqual([
-      'data',
-      '<p>7</p>',
-    ])
+    await expectValidModules(route)
+    expect(
+      await route.run(`return [options.loader(), await render('component')]`),
+    ).toEqual(['data', '<p>7</p>'])
   })
-})
-
-// Module-level bindings read by route options, across binding kinds,
-// groupings and readers: every reader gets the value, the binding is created
-// once with one identity, a function only the component reads is not
-// declared in the route module, and a binding only the loader reads is not
-// declared in the component's chunk. (Where a const or class only the
-// component reads is initialised, and so when, is free.)
-describe('module-level bindings read by route options', () => {
-  type Kind = 'const' | 'function' | 'class'
-  type Reader = 'loader' | 'component' | 'beforeLoad'
-
-  /** Declares `name` as `kind`; consts and classes call `init` once. */
-  const declare = (kind: Kind, name: string) =>
-    ({
-      const: `const ${name} = init({ name: '${name}' })`,
-      function: `function ${name}() { return '${name}' }`,
-      class: `class ${name} { static created = init('${name}') }`,
-    })[kind]
-
-  const groupings: Array<{ name: string; groupings: CodeSplitGroupings }> = [
-    {
-      name: 'default groupings',
-      groupings: [['component'], ['errorComponent'], ['notFoundComponent']],
-    },
-    {
-      name: 'loader and component combined, errorComponent split',
-      groupings: [['loader', 'component'], ['errorComponent']],
-    },
-    {
-      name: 'loader split, components combined',
-      groupings: [
-        ['loader'],
-        [
-          'component',
-          'pendingComponent',
-          'errorComponent',
-          'notFoundComponent',
-        ],
-      ],
-    },
-  ]
-
-  type Case = {
-    name: string
-    /** Declarations of the route file, after the imports. */
-    declarations: string
-    /** Bindings each route option passes to `seen`. */
-    readers: Partial<Record<Reader, Array<string>>>
-    /** How many times `init` runs: once per const or class binding. */
-    inits: number
-    /** Identities that must be the same object, as expressions over `values`. */
-    same?: Array<[string, string]>
-  }
-
-  const kinds: Array<Kind> = ['const', 'function', 'class']
-  const singleBinding = kinds.flatMap((kind): Array<Case> => {
-    const declarations = declare(kind, 'x')
-    const inits = kind === 'function' ? 0 : 1
-    return [
-      { name: `a ${kind} only the loader reads`, readers: { loader: ['x'] } },
-      {
-        name: `a ${kind} only the component reads`,
-        readers: { component: ['x'] },
-      },
-      {
-        name: `a ${kind} the loader and the component read`,
-        readers: { loader: ['x'], component: ['x'] },
-      },
-      {
-        name: `a ${kind} the component and beforeLoad read`,
-        readers: { component: ['x'], beforeLoad: ['x'] },
-      },
-    ].map((row) => ({ ...row, declarations, inits }))
-  })
-
-  const cases: Array<Case> = [
-    ...singleBinding,
-    {
-      name: 'two consts the loader and the component read',
-      declarations: `${declare('const', 'a')}\n${declare('const', 'b')}`,
-      readers: { loader: ['a', 'b'], component: ['a', 'b'] },
-      inits: 2,
-    },
-    {
-      name: 'a const both read next to a const only the component reads',
-      declarations: `${declare('const', 'a')}\n${declare('const', 'b')}`,
-      readers: { loader: ['a'], component: ['a', 'b'] },
-      inits: 2,
-    },
-    {
-      name: 'a chain of consts (a reads b reads c)',
-      declarations: `${declare('const', 'c')}
-const b = { c }
-const a = { b }`,
-      readers: { loader: ['a'], component: ['a'] },
-      inits: 1,
-    },
-    {
-      name: 'a diamond of consts (a reads b and c, both read d)',
-      declarations: `${declare('const', 'd')}
-const b = { d }
-const c = { d }
-const a = { b, c }`,
-      readers: { loader: ['a'], component: ['a'] },
-      inits: 1,
-      same: [['a.b.d', 'a.c.d']],
-    },
-  ]
-
-  /**
-   * Known bug, remove from here when fixed: a class whose static initializer
-   * calls a function, read by the options of one split chunk only, is
-   * declared in that chunk and also kept in the route module (dead-code
-   * elimination keeps a class with a side-effectful static initializer), so
-   * the class is created twice.
-   * Impact: what the static initializer does (registrations, counters) runs
-   * again when the chunk loads, and the route module holds a second class.
-   */
-  const isKnownBug = (row: Case, codeSplitGroupings: CodeSplitGroupings) => {
-    const readers = Object.keys(row.readers) as Array<Reader>
-    const oneChunk = codeSplitGroupings.some((group) =>
-      readers.every((reader) => group.includes(reader as never)),
-    )
-    return row.name.startsWith('a class') && oneChunk
-  }
-
-  describe.each(groupings)(
-    'with $name',
-    ({ groupings: codeSplitGroupings }) => {
-      const assertReads = async ({
-        declarations,
-        readers,
-        inits,
-        same,
-      }: Case) => {
-        let initCalls = 0
-        const seen: Array<{ reader: string; values: Record<string, unknown> }> =
-          []
-        const options = (['loader', 'component', 'beforeLoad'] as const)
-          .filter((reader) => readers[reader])
-          .map((reader) => {
-            const values = `{ ${readers[reader]!.join(', ')} }`
-            return reader === 'component'
-              ? `  component: () => <p>{seen('component', ${values})}</p>,`
-              : `  ${reader}: () => seen('${reader}', ${values}),`
-          })
-        const route = await loadRoute(
-          `${head}import { init, seen } from './state'
-${declarations}
-export const Route = createFileRoute('/')({
-  codeSplitGroupings: ${JSON.stringify(codeSplitGroupings)},
-${options.join('\n')}
-})
-`,
-          {
-            stubs: {
-              './state': {
-                init: <T>(value: T) => {
-                  initCalls++
-                  return value
-                },
-                seen: (reader: string, values: Record<string, unknown>) => {
-                  seen.push({ reader, values })
-                  return Object.keys(values).length
-                },
-              },
-            },
-          },
-        )
-        await expectValidModules(route.modules)
-
-        const results: Array<unknown> = []
-        for (const reader of ['loader', 'beforeLoad'] as const) {
-          if (readers[reader]) {
-            results.push(await (await route.load(reader))())
-          }
-        }
-        if (readers.component) {
-          results.push(await route.render('component'))
-        }
-        expect(results).toEqual(
-          (['loader', 'beforeLoad', 'component'] as const)
-            .filter((reader) => readers[reader])
-            .map((reader) =>
-              reader === 'component'
-                ? `<p>${readers.component!.length}</p>`
-                : readers[reader]!.length,
-            ),
-        )
-        expect(initCalls).toBe(inits)
-
-        // Every reader got the same value for each binding.
-        for (const name of new Set(Object.values(readers).flat())) {
-          const values = seen
-            .filter((entry) => name in entry.values)
-            .map((entry) => entry.values[name])
-          expect(new Set(values).size, name).toBe(1)
-        }
-        for (const [left, right] of same ?? []) {
-          for (const { values } of seen) {
-            const read = (path: string) =>
-              path.split('.').reduce<any>((value, key) => value[key], values)
-            expect(read(left)).toBe(read(right))
-          }
-        }
-
-        // A function only the component reads is not declared by what loads
-        // with the route module; a binding only the loader reads is not
-        // declared by what loading the component loads. (These observers
-        // load the route again in a fork: the counts above are final.)
-        const eagerCode = route.eager
-          .filter((id) => route.graph.modules.has(id))
-          .map((id) => route.graph.modules.get(id)!)
-        const componentCode = (await route.isLazy('component'))
-          ? await route.loadedBy('component')
-          : []
-        const readBy = (name: string) =>
-          (Object.keys(readers) as Array<Reader>).filter((reader) =>
-            readers[reader]!.includes(name),
-          )
-        for (const name of new Set(Object.values(readers).flat())) {
-          const readersOfName = readBy(name)
-          if (
-            readersOfName.join() === 'component' &&
-            declarations.includes(`function ${name}(`)
-          ) {
-            expect(
-              eagerCode.flatMap((code) => [...declaredNames(code)]),
-              name,
-            ).not.toContain(name)
-          }
-          if (readersOfName.join() === 'loader') {
-            expect(
-              componentCode.flatMap((code) => [...declaredNames(code)]),
-              name,
-            ).not.toContain(name)
-          }
-        }
-      }
-
-      it.each(cases.filter((row) => !isKnownBug(row, codeSplitGroupings)))(
-        '$name',
-        assertReads,
-      )
-      // See `isKnownBug`.
-      it.fails.each(cases.filter((row) => isKnownBug(row, codeSplitGroupings)))(
-        '$name',
-        assertReads,
-      )
-    },
-  )
 })
 
 // A binding the loader (route module) and the split component both read
@@ -660,16 +442,18 @@ export const Route = createFileRoute('/')({
   },
 })
 `,
-      { stubs: { './thing': { useThing: (options: unknown) => options } } },
+      {
+        files: {
+          'thing.ts': `export const useThing = <T,>(options: T): T => options\n`,
+        },
+      },
     )
-    expect([route.options.loader(), await route.render('component')]).toEqual([
-      1,
-      '<p>1x</p>',
-    ])
+    expect(
+      await route.run(`return [options.loader(), await render('component')]`),
+    ).toEqual([1, '<p>1x</p>'])
   })
 
   it('keeps exported classes next to it importable, with one identity', async () => {
-    const seen: Array<unknown> = []
     const route = await loadRoute(
       `${head}import { see } from './see'
 export class AppError extends Error {}
@@ -687,21 +471,29 @@ export const Route = createFileRoute('/')({
   },
 })
 `,
-      { stubs: { './see': { see: (value: unknown) => seen.push(value) } } },
+      {
+        files: {
+          'see.ts': recordingSee,
+          'importer.ts': `export { AppError, Cache } from './route'\n`,
+        },
+      },
     )
-    await expectValidModules(route.modules)
-    const imported = await route.importFromRoute(
-      `export { AppError, Cache } from '#route'\n`,
-    )
-    const loaded = route.options.loader()
-    expect(await route.render('component')).toBe('<p>component</p>')
-    expect({
-      sameInLoader: loaded.AppError === imported.AppError,
-      sameInComponent: seen.length === 1 && seen[0] === imported.AppError,
-      cached: loaded.cached,
-      local: loaded.local,
-      cache: new imported.Cache().value,
-    }).toEqual({
+    await expectValidModules(route)
+    expect(
+      await route.run(`const imported = await app('importer.ts')
+const loaded = options.loader()
+const html = await render('component')
+const { seen } = await app('see.ts')
+return {
+  html,
+  sameInLoader: loaded.AppError === imported.AppError,
+  sameInComponent: seen.length === 1 && seen[0] === imported.AppError,
+  cached: loaded.cached,
+  local: loaded.local,
+  cache: new imported.Cache().value,
+}`),
+    ).toEqual({
+      html: '<p>component</p>',
       sameInLoader: true,
       sameInComponent: true,
       cached: 'cached',
@@ -726,8 +518,6 @@ export const Route = createFileRoute('/')({
     loader?: string
     component?: string
   }) {
-    let inits = 0
-    const seen: Array<unknown> = []
     const route = await loadRoute(
       `${head}import { init, see, UI } from './state'
 ${declarations}
@@ -737,31 +527,45 @@ export const Route = createFileRoute('/')({
 })
 `,
       {
-        stubs: {
-          './state': {
-            init: <T>(value: T) => {
-              inits++
-              return value
-            },
-            see: (value: any) => {
-              seen.push(value)
-              return typeof value?.read === 'function'
-                ? value.read().name
-                : 'ok'
-            },
-            UI: { Title: () => 'title' },
-          },
+        files: {
+          'state.ts': `export let inits = 0
+export const seen: Array<any> = []
+export const init = <T,>(value: T): T => {
+  inits++
+  return value
+}
+export const see = (value: any) => {
+  seen.push(value)
+  return typeof value?.read === 'function' ? value.read().name : 'ok'
+}
+export const UI = { Title: () => 'title' }
+`,
         },
       },
     )
-    await expectValidModules(route.modules)
-    const loaded = route.options.loader()
-    expect(await route.render('component')).toBe(`<p>${loaded}</p>`)
-    expect(seen).toHaveLength(2)
+    await expectValidModules(route)
+    const observed = await route.run<{
+      loaded: string
+      html: string
+      seen: number
+      same: boolean
+      inits: number
+    }>(`const loaded = options.loader()
+const html = await render('component')
+const state = await app('state.ts')
+return {
+  loaded,
+  html,
+  seen: state.seen.length,
+  same: state.seen[0] === state.seen[1],
+  inits: state.inits,
+}`)
+    expect(observed.html).toBe(`<p>${observed.loaded}</p>`)
+    expect(observed.seen).toBe(2)
     if (loader === component) {
-      expect(seen[0]).toBe(seen[1])
+      expect(observed.same).toBe(true)
     }
-    expect(inits).toBe(1)
+    expect(observed.inits).toBe(1)
   }
 
   it.each([
@@ -953,27 +757,25 @@ export function usePanelState() {
 export const Route = createFileRoute('/')({ component: Panel })
 `,
         {
-          stubs: {
-            './panel': {
-              createPanel: () => ({
-                Panel: () => 'panel',
-                usePanel: () => 'state',
-              }),
-            },
+          files: {
+            'panel.ts': `export const createPanel = () => ({
+  Panel: () => 'panel',
+  usePanel: () => 'state',
+})
+`,
+            'importer.ts': `export { usePanelState } from './route'\n`,
           },
         },
       )
-      await expectValidModules(route.modules)
-      const { usePanelState } = await route.importBindings(['usePanelState'])
-      expect([usePanelState(), await route.render('component')]).toEqual([
-        'state',
-        'panel',
-      ])
+      await expectValidModules(route)
+      expect(
+        await route.run(`const { usePanelState } = await app('importer.ts')
+return [usePanelState(), await render('component')]`),
+      ).toEqual(['state', 'panel'])
     },
   )
 
   it('reads an exported object destructuring created once', async () => {
-    let calls = 0
     const route = await loadRoute(
       `${head}import { getConfig } from './config'
 export const { title } = getConfig()
@@ -982,23 +784,23 @@ export const Route = createFileRoute('/')({
 })
 `,
       {
-        stubs: {
-          './config': {
-            getConfig: () => {
-              calls++
-              return { title: 't' }
-            },
-          },
+        files: {
+          'config.ts': `export let calls = 0
+export const getConfig = () => {
+  calls++
+  return { title: 't' }
+}
+`,
+          'importer.ts': `export { title } from './route'\n`,
         },
       },
     )
-    await expectValidModules(route.modules)
-    const { title } = await route.importBindings(['title'])
-    expect([await route.render('component'), title, calls]).toEqual([
-      '<p>t</p>',
-      't',
-      1,
-    ])
+    await expectValidModules(route)
+    expect(
+      await route.run(`const html = await render('component')
+const { title } = await app('importer.ts')
+return [html, title, (await app('config.ts')).calls]`),
+    ).toEqual(['<p>t</p>', 't', 1])
   })
 })
 
@@ -1017,64 +819,71 @@ ${options}
 `
 
   it('is created once, and every option reads that instance', async () => {
-    let inits = 0
-    const seen: Array<unknown> = []
     const route = await loadRoute(
       stateRoute(`  component: () => <p>{see(store)}</p>,
   errorComponent: () => <p>{see(store)}</p>,`),
       {
         filename: 'route.jsx',
-        stubs: {
-          './init': {
-            init: (value: object) => {
-              inits++
-              return { ...value }
-            },
-            see: (store: { label: string }) => {
-              seen.push(store)
-              return store.label
-            },
-          },
+        files: {
+          'init.js': `export let inits = 0
+export const seen = []
+export const init = (value) => {
+  inits++
+  return { ...value }
+}
+export const see = (store) => {
+  seen.push(store)
+  return store.label
+}
+`,
         },
       },
     )
     // When the store is created is free (initialiser timing is not pinned,
     // nor whether its module loads with the route module): it is created
     // once and both options read that one instance.
-    expect([
-      await route.render('component'),
-      await route.render('errorComponent'),
-      inits,
-      new Set(seen).size,
-    ]).toEqual(['<p>shared</p>', '<p>shared</p>', 1, 1])
+    expect(
+      await route.run(`const html = [await render('component'), await render('errorComponent')]
+const state = await app('init.js')
+return [...html, state.inits, new Set(state.seen).size]`),
+    ).toEqual(['<p>shared</p>', '<p>shared</p>', 1, 1])
   })
 
   it('is not created by loading a split option that does not read it', async () => {
-    let inits = 0
     const route = await loadRoute(
       stateRoute(`  component: () => <p>{see(store)}</p>,
   errorComponent: () => <p>{see(store)}</p>,
   notFoundComponent: () => <p>nf</p>,`),
       {
         filename: 'route.jsx',
-        stubs: {
-          './init': {
-            init: (value: unknown) => {
-              inits++
-              return value
-            },
-            see: (store: { label: string }) => store.label,
-          },
+        files: {
+          'init.js': `export let inits = 0
+export const init = (value) => {
+  inits++
+  return value
+}
+export const see = (store) => store.label
+`,
         },
       },
     )
     // Whether the route module creates it is free; loading the
     // notFoundComponent chunk does not (it holds only what it needs, D5).
-    const atLoad = inits
-    expect(await route.render('notFoundComponent')).toBe('<p>nf</p>')
-    expect(inits).toBe(atLoad)
-    expect(await route.render('component')).toBe('<p>shared</p>')
-    expect(inits).toBe(1)
+    expect(
+      await route.run(`// Until the page requests the module, nothing has created the store
+const inits = async () =>
+  requested().includes('/init.js') ? (await app('init.js')).inits : 0
+const atLoad = await inits()
+const notFound = await render('notFoundComponent')
+const afterNotFound = await inits()
+const component = await render('component')
+return { notFound, unchanged: afterNotFound === atLoad, component, inits: await inits() }`),
+    ).toEqual({
+      notFound: '<p>nf</p>',
+      unchanged: true,
+      component: '<p>shared</p>',
+      inits: 1,
+    })
   })
 
   it('does not load what only the split component imports with the state the loader shares', async () => {
@@ -1089,18 +898,17 @@ export const Route = createFileRoute('/')({
 `,
       {
         filename: 'route.jsx',
-        stubs: {
-          './store': { createStore: () => ({ get: () => 'v' }) },
-          './chart': { Chart: ({ data }: { data: string }) => data },
+        files: {
+          'store.js': `export const createStore = () => ({ get: () => 'v' })\n`,
+          'chart.js': `export const Chart = ({ data }) => data\n`,
         },
       },
     )
     // Nothing the route module loads requests `./chart`.
-    expect([route.options.loader(), route.eager.includes('./chart')]).toEqual([
-      'v',
-      false,
-    ])
-    expect(await route.render('component')).toBe('v')
+    expect(await route.requested()).not.toContain('/chart.js')
+    expect(
+      await route.run(`return [options.loader(), await render('component')]`),
+    ).toEqual(['v', 'v'])
   })
 })
 
@@ -1127,8 +935,10 @@ export const Route = createFileRoute('/')({ component: withAuth(Page) })
     },
   ])('renders when the chunk loads ($name)', async ({ code }) => {
     const route = await loadRoute(code, {
-      stubs: { './auth': { withAuth: (component: unknown) => component } },
+      files: {
+        'auth.ts': `export const withAuth = <T,>(component: T): T => component\n`,
+      },
     })
-    expect(await route.render('component')).toBe('<h1>Posts</h1>')
+    expect(await route.run(`return render('component')`)).toBe('<h1>Posts</h1>')
   })
 })

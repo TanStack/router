@@ -7,8 +7,7 @@
 import { BuildError } from '@tanstack/compiler-test-utils/build-harness'
 import { describe, expect, test } from 'vitest'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
-import { build, routeApp } from '../build-harness'
-import { head } from '../regression-helpers'
+import { build, head, routeApp } from '../build-harness'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
 
 /**
@@ -214,8 +213,10 @@ export const Route = createFileRoute('/')({
       split: app.where('MARK_PAGE') === 'lazy',
       // The option name is pinned in code-splitter-imports-exports.test.ts
       warned:
-        findDiagnostics([...app.warnings, ...app.consoleMessages], namingRoute)
-          .length > 0,
+        findDiagnostics([...app.warnings, ...app.consoleMessages], {
+          ...namingRoute,
+          severity: ['warning', 'error'],
+        }).length > 0,
       loggedInPage: findDiagnostics(run.logs, namingRoute).length > 0,
     }
   }

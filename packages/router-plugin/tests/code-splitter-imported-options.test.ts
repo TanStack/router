@@ -11,22 +11,22 @@
  * object is the control.
  *
  * The imported options are real source files of a real Vite dev server
- * app (`routes/-x.options.tsx`, ignored by the route generator, and the
+ * app (`routes/-x.options.tsx`, which no route registers, and the
  * `admin-helper.ts` it imports), so a compiler that analyses imported
- * modules can. Whether the client build ships the server code: the real
- * Start build twin, start-plugin-core
- * tests/integration/start-compose-imported-options.test.ts.
+ * modules can. The route runs in a real browser page (`./route-app`): what
+ * the client gets is what the page requests and evaluates. Whether the
+ * client build ships the server code: the real Start build twin,
+ * start-plugin-core tests/integration/start-compose-imported-options.test.ts.
  */
 import { describe, expect, it } from 'vitest'
 import {
-  captureConsole,
   diagnosticsOf,
   expectDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { renderRoutePath, routerDevServer } from './dev-server'
-import { expectValidModules, head, loadRoute } from './regression-helpers'
-import type { DeletableNodes } from '../src/core/config'
-import type { LoadRouteOptions } from './lazy-tracking'
+import { expectNoProblems } from '@tanstack/compiler-test-utils/diagnostic-channel'
+import { expectValidModules, head, loadRoute } from './route-app'
+import type { DeletableNodes } from '../src'
+import type { RouteAppOptions } from './route-app'
 
 const localOptions = `${head}import { readSecret } from './admin-helper'
 const options = {
@@ -40,38 +40,43 @@ export const Route = createFileRoute('/x')(options)
 /** Start's client list of `deleteNodes`. */
 const deleteNodes: Array<DeletableNodes> = ['ssr', 'server', 'headers']
 
-/**
- * Loads the local-options route (warnings captured) and returns it with
- * what the console reported.
- */
-async function loadLocal(options: LoadRouteOptions = {}) {
-  const { result: route, diagnostics } = await captureConsole(() =>
-    loadRoute(localOptions, {
-      stubs: { './admin-helper': { readSecret: () => 'MARK_HELPER_SECRET' } },
-      routeId: '/x',
-      ...options,
-    }),
-  )
-  await expectValidModules(route.modules)
-  return { route, diagnostics }
+/** Loads the local-options route, its modules checked. */
+async function loadLocal(options: RouteAppOptions = {}) {
+  const route = await loadRoute(localOptions, {
+    files: {
+      'admin-helper.ts': `export const readSecret = () => 'MARK_HELPER_SECRET'\n`,
+    },
+    routeId: '/x',
+    ...options,
+  })
+  await expectValidModules(route)
+  return route
 }
 
 describe('route options held in a local object (control)', () => {
   it('splits the component and keeps the route working, with nothing reported', async () => {
-    const { route, diagnostics } = await loadLocal()
-    expect(diagnostics).toEqual([])
+    const route = await loadLocal()
     expect(await route.isLazy('component')).toBe(true)
-    expect(await route.renderRoute()).toContain('MARK_X_PAGE')
-    expect(await route.options.loader()).toBe('MARK_X_DATA')
+    const [html, loaded] = await route.run<[string, unknown]>(
+      `return [await renderRoute(), await options.loader()]`,
+    )
+    expect(html).toContain('MARK_X_PAGE')
+    expect(loaded).toBe('MARK_X_DATA')
+    // No warning or error on any channel of the dev server (info is free,
+    // N15).
+    expectNoProblems(await route.diagnostics())
   })
 
   it('removes the options of deleteNodes, and what only they import', async () => {
-    const { route } = await loadLocal({ deleteNodes })
-    expect('server' in route.options).toBe(false)
+    const route = await loadLocal({ deleteNodes })
     // Nothing that loads with the route module requests the helper only
     // the removed `server` option read.
-    expect(route.eager).not.toContain('./admin-helper')
-    expect(await route.renderRoute()).toContain('MARK_X_PAGE')
+    expect(await route.requested()).not.toContain('/admin-helper.ts')
+    const [server, html] = await route.run<[boolean, string]>(
+      `return ['server' in options, await renderRoute()]`,
+    )
+    expect(server).toBe(false)
+    expect(html).toContain('MARK_X_PAGE')
   })
 })
 
@@ -80,7 +85,6 @@ describe('route options imported from another module', () => {
 export const Route = createFileRoute('/x')(options)
 `
   const files = {
-    'routes/x.tsx': importedOptions,
     'routes/-x.options.tsx': `import { readSecret } from '../admin-helper'
 export const options = {
   component: () => 'MARK_X_PAGE',
@@ -92,52 +96,67 @@ export const options = {
   }
 
   /**
-   * Serves the app in a real Vite dev server with the router plugin
-   * (`deleteNodes` given to the code splitter) and imports the route
-   * module. Returns the route (or the error the import failed with), the
-   * route file, and what the console and Vite's logger reported.
+   * Serves the app in a real Vite dev server with the router plugin (with
+   * route HMR, as a dev server has it; `deleteNodes` given to the code
+   * splitter) and loads the route in the page. Returns what the page saw of
+   * the route (or the error compiling or loading it threw), the route file,
+   * and what the dev server reported on every channel.
    */
   async function serve(nodes?: Array<DeletableNodes>) {
-    const { result, diagnostics } = await captureConsole(async () => {
-      const server = await routerDevServer({
-        files,
-        pluginOptions: nodes && {
-          codeSplittingOptions: { deleteNodes: nodes },
-        },
-      })
-      try {
-        const { Route } = await server.import('/routes/x.tsx')
-        return { server, Route, error: undefined }
-      } catch (error) {
-        return { server, Route: undefined, error }
-      }
+    const route = await loadRoute(importedOptions, {
+      filename: 'routes/x.tsx',
+      routeId: '/x',
+      hmr: true,
+      deleteNodes: nodes,
+      files,
     })
+    const file = route.host.file('routes/x.tsx')
+    let error: unknown
+    let seen:
+      | { html: string; loaded: unknown; split: boolean; server: boolean }
+      | undefined
+    try {
+      await route.transform()
+      seen = await route.run(`return {
+  html: await renderRoute(),
+  loaded: await options.loader(),
+  split: 'preload' in options.component,
+  server: 'server' in options,
+}`)
+    } catch (caught) {
+      error = caught
+    }
     return {
-      ...result,
-      file: result.server.file('routes/x.tsx'),
-      diagnostics: [...diagnostics, ...diagnosticsOf(result.server.logs)],
+      route,
+      file,
+      error,
+      seen,
+      diagnostics: [...diagnosticsOf(error), ...(await route.diagnostics())],
     }
   }
 
   /**
-   * A refusal is an error naming the route file; otherwise the route works
-   * through the real router. Returns whether it works.
+   * A refusal is an error naming the route file (on any channel); otherwise
+   * the route works through the real router in the page. Returns whether it
+   * works.
    */
-  async function expectWorkingOrRefused(
-    served: Awaited<ReturnType<typeof serve>>,
-  ) {
-    const { server, Route, error, file } = served
-    if (error !== undefined) {
-      expectDiagnostic(error, { severity: 'error', file })
+  function expectWorkingOrRefused(served: Awaited<ReturnType<typeof serve>>) {
+    const { route, seen, error, file, diagnostics } = served
+    if (error !== undefined || !seen) {
+      expectDiagnostic(diagnostics, {
+        severity: 'error',
+        file,
+        root: route.host.root,
+      })
       return false
     }
-    expect(await renderRoutePath(server, '/x')).toContain('MARK_X_PAGE')
-    expect(await Route.options.loader()).toBe('MARK_X_DATA')
+    expect(seen.html).toContain('MARK_X_PAGE')
+    expect(seen.loaded).toBe('MARK_X_DATA')
     return true
   }
 
   it('keep the route working through the real router, or are refused naming the route file', async () => {
-    await expectWorkingOrRefused(await serve())
+    expectWorkingOrRefused(await serve())
   })
 
   // Bug: the code splitter resolves the route options only from an object
@@ -149,15 +168,16 @@ export const options = {
   // Source: FIX-PLAN V2-10 (split-fable O3/gap 5).
   it.fails('are split, or reported once naming the route file', async () => {
     const served = await serve()
-    if (!(await expectWorkingOrRefused(served))) {
+    if (!expectWorkingOrRefused(served)) {
       return
     }
     // Split: the route's component is the router's lazy component (its
     // public `preload()`).
-    if (!('preload' in served.Route.options.component)) {
+    if (!served.seen!.split) {
       expectDiagnostic(served.diagnostics, {
         severity: 'warning',
         file: served.file,
+        root: served.route.host.root,
         times: 1,
       })
     }
@@ -173,21 +193,18 @@ export const options = {
     'lose the options of deleteNodes and what only they import, or are reported once naming the route file',
     async () => {
       const served = await serve(deleteNodes)
-      if (!(await expectWorkingOrRefused(served))) {
+      if (!expectWorkingOrRefused(served)) {
         return
       }
-      // What the client environment serves with the route module, followed
-      // through every static import, as a browser loads it.
-      const clientModules = Object.keys(
-        await served.server.load('/routes/x.tsx', { environment: 'client' }),
-      )
+      // What the page requests with the route module.
       const kept =
-        'server' in served.Route.options ||
-        clientModules.some((url) => url.includes('admin-helper'))
+        served.seen!.server ||
+        (await served.route.requested()).includes('/admin-helper.ts')
       if (kept) {
         expectDiagnostic(served.diagnostics, {
           severity: 'warning',
           file: served.file,
+          root: served.route.host.root,
           times: 1,
         })
       }

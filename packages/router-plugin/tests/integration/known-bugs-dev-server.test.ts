@@ -7,8 +7,8 @@
  */
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { routeHead } from '../build-harness'
 import { isServedAppModule, routerDevServer } from '../dev-server'
-import { head, importRequests } from '../regression-helpers'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 
@@ -16,34 +16,6 @@ const timeout = 60_000
 
 describe('a dev server compiling an edited route out of order', () => {
   const route = '/routes/page.tsx'
-
-  /** Without the HMR timestamps an edit adds to import URLs. */
-  const withoutTimestamps = (code: string) =>
-    code.replace(/([?&])t=\d+(&?)/g, (_, before, after) =>
-      after ? before : '',
-    )
-
-  /**
-   * The route module and every module of the app it reaches through
-   * static and dynamic imports as the dev server serves them (its split
-   * chunks, the modules they share, a module a plugin serves: whatever
-   * their URLs), breadth first, as a page loading the route and its chunks
-   * requests them: the dev server compiles each one now.
-   */
-  async function loadRouteModules(server: DevServer) {
-    const urls = [route]
-    // (The array's iterator reads its length at each step: it also visits
-    // the requests pushed below.)
-    for (const url of urls) {
-      const code = withoutTimestamps(await server.transform(url))
-      for (const { specifier } of importRequests(code, url)) {
-        if (isServedAppModule(specifier) && !urls.includes(specifier)) {
-          urls.push(specifier)
-        }
-      }
-    }
-    return urls
-  }
 
   /**
    * The page: it imports the route module from the dev server, like an app
@@ -87,16 +59,23 @@ for (const option of ['component', 'errorComponent'] as const) {
   flushSync(() => root.render(createElement(component)))
   rendered.push(container.innerHTML)
 }
-;(window as any).__rendered = { rendered, errors }
+// The app's modules the page requested: the route module and what it
+// loaded, statically or lazily (path and query)
+const requested = performance
+  .getEntriesByType('resource')
+  .map((entry) => new URL(entry.name))
+  .filter((url) => url.origin === location.origin)
+  .map((url) => url.pathname + url.search)
+;(window as any).__rendered = { rendered, errors, requested }
 `,
   }
 
   /**
-   * Opens the page and returns the HTML it rendered, or throws with what
-   * the page reported when it could not render (e.g. a module failing to
-   * link).
+   * Opens the page and returns the HTML it rendered and the modules of the
+   * app it requested, or throws with what the page reported when it could
+   * not render (e.g. a module failing to link).
    */
-  async function renderInPage(server: DevServer): Promise<Array<string>> {
+  async function renderInPage(server: DevServer) {
     const opened = await openPage(server.url!, {
       registerCleanup: onTestFinished,
     })
@@ -108,7 +87,9 @@ for (const option of ['component', 'errorComponent'] as const) {
   }
 
   /** What the page rendered, once it did (see `renderInPage`). */
-  async function renderedBy(opened: BrowserPage): Promise<Array<string>> {
+  async function renderedBy(
+    opened: BrowserPage,
+  ): Promise<{ rendered: Array<string>; requested: Array<string> }> {
     const deadline = Date.now() + 15_000
     for (;;) {
       // (A page opened after an edit loads twice: Vite's server keeps the
@@ -117,11 +98,15 @@ for (const option of ['component', 'errorComponent'] as const) {
       const result = (await opened.page
         .evaluate(() => (window as any).__rendered)
         .catch(() => undefined)) as
-        | { rendered: Array<string>; errors: Array<string> }
+        | {
+            rendered: Array<string>
+            errors: Array<string>
+            requested: Array<string>
+          }
         | undefined
       const errors = [...opened.errors, ...(result?.errors ?? [])]
       if (result && errors.length === 0) {
-        return result.rendered
+        return { rendered: result.rendered, requested: result.requested }
       }
       if (errors.length > 0 || Date.now() > deadline) {
         throw new Error(
@@ -163,10 +148,16 @@ for (const option of ['component', 'errorComponent'] as const) {
       files: { ...page, 'routes/page.tsx': before },
     })
     // A page loads the route first, then leaves (the edit's own update
-    // must not reach a page: the test orders the requests).
-    await renderInPage(server)
-    // Whatever the layout: one module or many, any URLs (V1R hmr HMR-27).
-    const urls = await loadRouteModules(server)
+    // must not reach a page: the test orders the requests). The modules
+    // of the route it loaded, whatever the layout: one module or many, any
+    // URLs (V1R hmr HMR-27), are the ones the page requested from the route
+    // module on (the route module first).
+    const { requested } = await renderInPage(server)
+    const urls = requested
+      .filter(isServedAppModule)
+      .slice(requested.filter(isServedAppModule).indexOf(route))
+      .filter((url) => url !== '/main.tsx')
+    expect(urls[0], 'the route module, which the page requested').toBe(route)
     await server.edit({ 'routes/page.tsx': after })
     for (const url of reorder(urls)) {
       // A module the edit removed from the graph may no longer compile, as
@@ -175,7 +166,7 @@ for (const option of ['component', 'errorComponent'] as const) {
       // fails the test there.
       await server.transform(url).catch(() => undefined)
     }
-    return renderInPage(server)
+    return (await renderInPage(server)).rendered
   }
 
   /** The route module after the other modules the page had loaded. */
@@ -186,7 +177,9 @@ for (const option of ['component', 'errorComponent'] as const) {
    * `CardA` and, with `cardB`, `CardB`, which counts its renders in module
    * state: the two chunks share it.
    */
-  const cards = (cardB: boolean) => `${head}function CardA() { return <b>A</b> }
+  const cards = (
+    cardB: boolean,
+  ) => `${routeHead()}function CardA() { return <b>A</b> }
 ${cardB ? 'let renders = 0\nfunction CardB() { renders++; return <i>{"B" + renders}</i> }\n' : ''}export const Route = createFileRoute('/page')({
   component: () => <p><CardA />${cardB ? '<CardB />' : ''}</p>,
   errorComponent: () => <p><CardA />${cardB ? '<CardB />' : ''}</p>,
@@ -269,12 +262,12 @@ ${cardB ? 'let renders = 0\nfunction CardB() { renders++; return <i>{"B" + rende
       expect(
         await editOutOfOrder(
           routeModuleLast,
-          `${head}const prefix = 'a'
+          `${routeHead()}const prefix = 'a'
 const suffix = 'b'
 export function Card() { return <b>{prefix}{suffix}</b> }
 export const Route = createFileRoute('/page')({ component: () => <Card /> })
 `,
-          `${head}const prefix = 'a'
+          `${routeHead()}const prefix = 'a'
 export function Card() { return <b>{prefix}</b> }
 export const Route = createFileRoute('/page')({ component: () => <Card /> })
 `,

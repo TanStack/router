@@ -7,8 +7,7 @@
 
 import { afterAll, describe, expect, test } from 'vitest'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
-import { build, buildWithRsbuild } from '../build-harness'
-import { head } from '../regression-helpers'
+import { build, buildWithRsbuild, head } from '../build-harness'
 import type {
   BuildResult,
   Bundler,
@@ -511,6 +510,7 @@ export const Route = createFileRoute('/imports-exported')({ component: Page })
           const built = await app()
           const reported =
             findDiagnostics([...built.warnings, ...built.consoleMessages], {
+              severity: ['warning', 'error'],
               file: `routes/${destructured.file}.tsx`,
               root: built.root,
               names: ['component'],

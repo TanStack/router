@@ -13,8 +13,7 @@
  * environments only.)
  */
 import { expect, test } from 'vitest'
-import { build, routeApp } from '../../build-harness'
-import { head } from '../../regression-helpers'
+import { build, head, routeApp } from '../../build-harness'
 
 const route = `${head}import { useState } from 'react'
 function Page() {

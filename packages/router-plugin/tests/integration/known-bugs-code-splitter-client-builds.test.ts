@@ -7,8 +7,7 @@
 
 import { describe, expect, test } from 'vitest'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
-import { build, clientMountEntry, routeApp } from '../build-harness'
-import { head } from '../regression-helpers'
+import { build, clientMountEntry, head, routeApp } from '../build-harness'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
 
 /**
@@ -86,6 +85,7 @@ export const Route = createFileRoute('/')({
       })
       const reported =
         findDiagnostics([...app.warnings, ...app.consoleMessages], {
+          severity: ['warning', 'error'],
           file: 'routes/index.tsx',
           root: app.root,
           names: ['component'],
@@ -184,6 +184,7 @@ return {
       // Placement: split, or kept in the route with a report.
       const reported =
         findDiagnostics([...app.warnings, ...app.consoleMessages], {
+          severity: ['warning', 'error'],
           file: 'routes/index.tsx',
           root: app.root,
           names: ['errorComponent'],

@@ -107,7 +107,7 @@ function component() {
       ] as const) {
         if (mode) {
           await app.evaluate(
-            `void window.__TSR_ROUTER__.navigate({ to: '/', search: { mode: '${mode}' } })`,
+            `void window.__APP_ROUTER__.navigate({ to: '/', search: { mode: '${mode}' } })`,
           )
           await app.page.waitForText(`${option} v${version}`, {
             selector: '#app',

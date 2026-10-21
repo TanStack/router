@@ -109,8 +109,9 @@ describe.each([false, undefined])(
             script: 'return await entry.renderTree()',
           },
         )
+        // The route's component loads with the app (whatever other chunks
+        // a correct compiler or the bundler emits)
         expect(app.where('MARK_COMPONENT')).toBe('eager')
-        expect(app.lazy).toEqual([])
         expect(html).toContain('MARK_COMPONENT')
         // The generated tree exists, and the real router over it renders
         // the index route at `/` (however the tree spells its imports).
