@@ -5,10 +5,8 @@
  * main and is marked .fails; remove .fails when the bug is fixed.
  */
 import { describe, expect, test } from 'vitest'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
-import { build, routeApp } from '../build-harness'
-import { buildAndRun, head } from '../regression-helpers'
-import type { CodeSplitGroupings } from '../../src/core/constants'
+import { build, buildAndRun, head, routeApp } from '../build-harness'
+import { loadRoute } from '../route-app'
 
 describe('module state shared with split chunks', () => {
   // Bug: a `let` that code in another module than its declaration reassigns
@@ -264,6 +262,38 @@ return globalThis.__inits === undefined ? [html] : [html, globalThis.__inits]`,
   )
 })
 
+/**
+ * The names a directory could share with the ids of the modules the
+ * compilers emit for a route's split component: the query keys of those
+ * modules' requests on a real dev server (`?tsr-split=component` gives
+ * `tsr-split`), else the file name of a request whose path is not the
+ * route file's. Read from the requests a page makes (`loadRoute`), so the
+ * probe follows the compiler's own id scheme.
+ */
+async function splitIdNames(route: string) {
+  const loaded = await loadRoute(route, { filename: 'routes/index.tsx' })
+  const { ids } = await loaded.modules()
+  const names = new Set<string>()
+  for (const [label, id] of Object.entries(ids)) {
+    if (label === 'reference') {
+      continue
+    }
+    const url = new URL(id, 'http://app.invalid')
+    const keys = [...url.searchParams.keys()]
+    if (keys.length > 0) {
+      keys.forEach((key) => names.add(key))
+    } else if (url.pathname !== loaded.url) {
+      names.add(
+        url.pathname
+          .split('/')
+          .at(-1)!
+          .replace(/\.[^.]*$/, ''),
+      )
+    }
+  }
+  return [...names].filter((name) => /^[\w.-]+$/.test(name))
+}
+
 describe('app paths', () => {
   const route = `${head}export const Route = createFileRoute('/')({
   component: () => <p>index</p>,
@@ -290,22 +320,31 @@ describe('app paths', () => {
     30_000,
   )
 
-  // Bug: the code splitter compiles every module whose id contains
-  // `tsr-split` (path text, not its query) as a split chunk, and throws "The
-  // split value for the virtual route ... was not found" for the modules of
-  // an app in a directory named like `tsr-split-demo`.
+  // Bug: the code splitter compiles every module whose id contains the
+  // marker of its split ids (today `tsr-split`: path text, not its query)
+  // as a split chunk, and throws "The split value for the virtual route ...
+  // was not found" for the modules of an app in a directory named like
+  // `tsr-split-demo`.
   // Source: round-3 mutation testing (splitter-hosts P3).
   // Impact: an app in such a directory cannot be built.
+  // Fix-agnostic: the directory name holds what the compiler's own split
+  // ids hold, read from the modules a dev server serves for the route's
+  // split component (`splitIdNames`), whatever the compiler names them.
   test.fails(
-    'an app in a directory whose name contains tsr-split builds and preloads a split component',
+    'an app in a directory whose name contains what split module ids contain builds and preloads a split component',
     async () => {
-      expect(
-        await buildAndRun(route, script, {
-          prefix: '.regression-build-tsr-split-',
-        }),
-      ).toBe('<p>index</p>')
+      const names = await splitIdNames(route)
+      expect(names.length, 'names read from the split ids').toBeGreaterThan(0)
+      for (const name of names) {
+        expect(
+          await buildAndRun(route, script, {
+            prefix: `.regression-build-${name}-demo-`,
+          }),
+          `an app in a directory named after ${name}`,
+        ).toBe('<p>index</p>')
+      }
     },
-    30_000,
+    60_000,
   )
 
   // Bug: the route module's chunk importers are built by pasting the
@@ -364,84 +403,7 @@ PostsPage.title = 'Posts'
   )
 })
 
-describe('`this` in split callbacks', () => {
-  /**
-   * Builds an app whose `/` route has `loader` (a function reading `this`),
-   * with the given groupings, loads `/` with a real router and returns the
-   * route's loader data, whether the loader was split, and whether the
-   * build warned naming the route file and the option.
-   */
-  async function loadWithLoader(loader: string, groupings: CodeSplitGroupings) {
-    const app = await build({
-      bundler: 'vite',
-      env: 'ssr',
-      minify: false,
-      files: routeApp(
-        `${head}export const Route = createFileRoute('/')({
-  loader: ${loader},
-  component: () => <p>index</p>,
-})`,
-        {
-          files: {
-            'entry.ts': `import { createMemoryHistory, createRouter } from '@tanstack/react-router'
-import { routeTree } from './routeTree.gen'
-export async function load() {
-  const router = createRouter({
-    routeTree,
-    history: createMemoryHistory({ initialEntries: ['/'] }),
-  })
-  await router.load()
-  return router.state.matches.at(-1)?.loaderData
-}`,
-          },
-        },
-      ),
-      pluginOptions: { codeSplittingOptions: { defaultBehavior: groupings } },
-    })
-    return {
-      data: (await app.run('return await entry.load()')).result,
-      split: app.where('MARK_THIS') === 'lazy',
-      reported:
-        findDiagnostics([...app.warnings, ...app.consoleMessages], {
-          file: 'routes/index.tsx',
-          root: app.root,
-          names: ['loader'],
-        }).length > 0,
-    }
-  }
-
-  const readsThis = `function () {
-  return this === undefined ? 'MARK_THIS none' : 'MARK_THIS ' + Object.keys(this).join()
-}`
-
-  // Control for the pin below: the router calls an unsplit loader without a
-  // `this`.
-  test('an unsplit loader is called without a `this`', async () => {
-    expect(await loadWithLoader(readsThis, [['component']])).toEqual({
-      data: 'MARK_THIS none',
-      split: false,
-      reported: false,
-    })
-  }, 60_000)
-
-  // Bug: a split loader is called as a method of its chunk's module
-  // namespace (`lazyFn` calls `imported[key](...args)`), so its `this` is
-  // the chunk's exports, where the router calls an unsplit loader without a
-  // `this`. Source: #8688. A compiler that leaves such a loader unsplit
-  // warns naming the file and the option (J2.8); either way the loader runs
-  // through the real router with the result the unsplit route gives.
-  // Impact: a loader that reads `this` behaves differently once split,
-  // without any diagnostic.
-  test.fails(
-    'a split loader sees the same `this` as an unsplit one',
-    async () => {
-      const { data, split, reported } = await loadWithLoader(readsThis, [
-        ['loader'],
-        ['component'],
-      ])
-      expect(split || reported).toBe(true)
-      expect(data).toBe('MARK_THIS none')
-    },
-    60_000,
-  )
-})
+// `this` in split callbacks (a split loader called as a method of its
+// chunk's namespace by router-core's `lazyFn`): a runtime cause, kept as a
+// runtime regression outside the compiler corpus,
+// outside-compiler-corpus/lazy-fn-this.test.ts.

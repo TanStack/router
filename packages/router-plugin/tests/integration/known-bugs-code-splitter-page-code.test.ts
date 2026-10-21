@@ -7,8 +7,7 @@
 
 import { afterAll, describe, expect, test } from 'vitest'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
-import { build, buildWithRsbuild } from '../build-harness'
-import { head } from '../regression-helpers'
+import { build, buildWithRsbuild, head } from '../build-harness'
 import type {
   BuildResult,
   Bundler,

@@ -259,7 +259,10 @@ export const Route = createFileRoute('/')({ component: () => <p>page</p> })
       },
     )
 
-    it('fails an edit the page applied without showing it, without waiting for its timeout', async () => {
+    // An edit whose outcome never shows fails at the edit's one bound (N21:
+    // no early failure on a count of updates or a grace after the first
+    // one), saying what the page shows.
+    it('fails an edit the page does not show at its bound, with what the page shows', async () => {
       const app = await openRouteHmrPage({
         bundler,
         files: { 'routes/index.tsx': route('v1') },
@@ -268,9 +271,9 @@ export const Route = createFileRoute('/')({ component: () => <p>page</p> })
       const started = Date.now()
       await expect(
         app.edit({ 'routes/index.tsx': route('v2') }, 'Counter v3', {
-          timeout: 20_000,
+          timeout: 3_000,
         }),
-      ).rejects.toThrow(/applied the update .* but the page does not show/s)
+      ).rejects.toThrow(/did not reach its outcome.*Counter v2/s)
       expect(Date.now() - started).toBeLessThan(10_000)
     }, 60_000)
   },

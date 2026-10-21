@@ -7,8 +7,7 @@
 import { BuildError } from '@tanstack/compiler-test-utils/build-harness'
 import { describe, expect, test } from 'vitest'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
-import { build, routeApp } from '../build-harness'
-import { head } from '../regression-helpers'
+import { build, head, routeApp } from '../build-harness'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
 
 /**

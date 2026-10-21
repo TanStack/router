@@ -1,7 +1,7 @@
 // Slow-tier half of this suite: the tests that need a real tool. Its
 // in-process tests are in ../code-splitter-module-state.test.ts (fast tier).
 import { describe, expect, it } from 'vitest'
-import { buildAndRun, head } from '../regression-helpers'
+import { buildAndRun, head } from '../build-harness'
 
 describe('split chunks keep the module state the route relies on', () => {
   // Route files commonly export a store or helpers over private state next to

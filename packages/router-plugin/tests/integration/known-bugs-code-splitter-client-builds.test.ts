@@ -7,8 +7,7 @@
 
 import { describe, expect, test } from 'vitest'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
-import { build, clientMountEntry, routeApp } from '../build-harness'
-import { head } from '../regression-helpers'
+import { build, clientMountEntry, head, routeApp } from '../build-harness'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
 
 /**

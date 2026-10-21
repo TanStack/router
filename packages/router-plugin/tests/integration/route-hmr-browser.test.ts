@@ -217,7 +217,7 @@ function Missing() {
 
 /** Navigates the app's router (client side: the page does not reload). */
 async function navigate(app: RouteHmrPage, to: string) {
-  await app.evaluate(`window.__TSR_ROUTER__.navigate({ to: '${to}' })`)
+  await app.evaluate(`window.__APP_ROUTER__.navigate({ to: '${to}' })`)
 }
 
 /** Clicks the counter until the page shows `count <n>`. */

@@ -1,17 +1,14 @@
 /**
  * Control tests of the router plugin's real-build harness (build-harness.ts):
  * with each bundler's router plugin, a split component loads lazily and
- * renders, and the plugin's console warnings are recorded. The harness core
- * has its own controls in `@tanstack/compiler-test-utils`.
+ * renders. (The harness's record of console warnings is a control outside
+ * the corpus: outside-compiler-corpus/build-harness-console.test.ts.) The
+ * harness core has its own controls in `@tanstack/compiler-test-utils`.
  */
 import { describe, expect, test } from 'vitest'
-import {
-  BuildError,
-  bundlers,
-} from '@tanstack/compiler-test-utils/build-harness'
+import { BuildError } from '@tanstack/compiler-test-utils/build-harness'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
-import { build, buildWithRsbuild, routeApp } from '../build-harness'
-import { head } from '../regression-helpers'
+import { build, buildWithRsbuild, head, routeApp } from '../build-harness'
 import type {
   BuildResult,
   Bundler,
@@ -71,50 +68,22 @@ const splitRouteExpected = {
   },
 }
 
-describe.each(bundlers.filter((bundler) => bundler !== 'esbuild'))(
-  'router plugin with %s',
-  (bundler) => {
-    // Vite and Rspack: the same harness call and outcome as the React cells
-    // of build-frameworks.test.ts ("<bundler> react ssr/client build the
-    // split component loads lazily and renders"), which decide it (speedup
-    // 6). webpack here builds minified, as an app does (build-frameworks
-    // builds webpack unminified).
-    if (bundler === 'webpack') {
-      test.each(['ssr', 'client'] as const)(
-        'loads a split component lazily and renders it (%s)',
-        async (env) => {
-          expect(await buildSplitRoute(bundler, env)).toEqual(
-            splitRouteExpected[env],
-          )
-        },
-        timeout,
+// Vite and Rspack: the same harness call and outcome as the React cells of
+// build-frameworks.test.ts ("<bundler> react ssr/client build the split
+// component loads lazily and renders"), which decide it (speedup 6).
+// webpack here builds minified, as an app does (build-frameworks builds
+// webpack unminified).
+describe('router plugin with webpack', () => {
+  test.each(['ssr', 'client'] as const)(
+    'loads a split component lazily and renders it (%s)',
+    async (env) => {
+      expect(await buildSplitRoute('webpack', env)).toEqual(
+        splitRouteExpected[env],
       )
-    }
-
-    // The router plugin reports what it cannot split with `console.warn`;
-    // here a plugin option the build calls warns.
-    test('records console warnings of the build', async () => {
-      const app = await build({
-        bundler,
-        pluginOptions: {
-          codeSplittingOptions: {
-            splitBehavior: ({ routeId }) => {
-              console.warn(`MARK_BUILD_WARNING ${routeId}`)
-              return undefined
-            },
-          },
-        },
-        files: routeApp(`${head}export const Route = createFileRoute('/')({
-  component: () => <p>page</p>,
+    },
+    timeout,
+  )
 })
-`),
-      })
-      expect(app.consoleMessages).toContainEqual(
-        expect.stringContaining('MARK_BUILD_WARNING /'),
-      )
-    })
-  },
-)
 
 // Rsbuild with its production defaults and the router plugin of Rspack,
 // as an Rsbuild app adds it.
