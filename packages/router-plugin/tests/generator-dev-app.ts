@@ -385,10 +385,27 @@ export async function generatorDevApp(
       console: printed().length,
       server: app.diagnostics().length,
     }),
-    diagnostics: (since = { console: 0, server: 0 }) => [
-      ...printed().slice(since.console),
-      ...app.diagnostics().slice(since.server),
-    ],
+    diagnostics: (since = { console: 0, server: 0 }) => {
+      const server = app.diagnostics().slice(since.server)
+      // What the process printed outside the dev server's work reaches both
+      // captures: count each entry once
+      const unmatched = server.map(
+        (diagnostic) => `${diagnostic.severity}\0${diagnostic.text}`,
+      )
+      const own = printed()
+        .slice(since.console)
+        .filter((diagnostic) => {
+          const at = unmatched.indexOf(
+            `${diagnostic.severity}\0${diagnostic.text}`,
+          )
+          if (at === -1) {
+            return true
+          }
+          unmatched.splice(at, 1)
+          return false
+        })
+      return [...own, ...server]
+    },
   }
 }
 
