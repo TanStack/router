@@ -7,11 +7,14 @@
  * and the test creates, edits, renames and deletes files on disk, which the
  * dev server's own watchers report (and the generator's, on Rspack).
  *
- * The test reads what an app shows: the live router's routes, what a page
- * renders at a path, and which scripts the page loaded before and after a
- * navigation (code splitting: a route's component loads when the app
- * navigates to it). `settle()` waits for the dev server by events only (the
- * harnesses' own `settle()`).
+ * The test reads what an app shows: the live router's routes (the app's
+ * own router, which its entry publishes as `window.__APP_ROUTER__`), what a
+ * page renders at a path, and which scripts the page loaded before and
+ * after a navigation (code splitting: a route's component loads when the
+ * app navigates to it). `settle()` waits for the dev server by its events
+ * (the harnesses' own `settle()`), then for the page's outcome: neither the
+ * dev server nor the page has work in flight (`waitForOutcome`), never on
+ * how many hot updates or invalidations an edit takes (N21).
  */
 import path from 'node:path'
 import { readFile } from 'node:fs/promises'
@@ -22,18 +25,17 @@ import { parseSync } from 'vite'
 import { expect, onTestFinished } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
-import { diagnosticsOf } from '@tanstack/compiler-test-utils/diagnostics'
+import { openDiagnosticChannel } from '@tanstack/compiler-test-utils/diagnostic-channel'
+import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
 import { tanstackRouter as tanstackRouterRspack } from '../src/rspack'
 import { tanstackRouter } from '../src/vite'
+import { holdsMarker } from './route-app'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
-import type {
-  Diagnostic,
-  Severity,
-} from '@tanstack/compiler-test-utils/diagnostics'
+import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import type { RsbuildPlugin } from '@rsbuild/core'
-import type { Config } from '../src/core/config'
+import type { Config } from '../src/vite'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 
@@ -66,23 +68,9 @@ const main = `import { createRoot } from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 const router = createRouter({ routeTree })
+// The app's own reference to its router, for the test to read
+;(window as any).__APP_ROUTER__ = router
 createRoot(document.getElementById('app')!).render(<RouterProvider router={router} />)
-`
-
-/**
- * How the page counts what its HMR client did, through Vite's client API:
- * the updates it handled (`vite:afterUpdate` comes once the client fetched
- * the updated modules, whether or not a fetch failed) and the
- * invalidations it sent. Read by `settle()`.
- */
-const viteHmrProbe = `if (import.meta.hot) {
-  import.meta.hot.on('vite:afterUpdate', () => {
-    window.__hmrApplied = (window.__hmrApplied ?? 0) + 1
-  })
-  import.meta.hot.on('vite:invalidate', () => {
-    window.__hmrInvalidated = (window.__hmrInvalidated ?? 0) + 1
-  })
-}
 `
 
 /**
@@ -121,11 +109,11 @@ export interface GeneratorDevApp {
   rename: (from: string, to: string) => Promise<void>
   /**
    * Waits until the dev server is done with every write so far, and (Vite)
-   * the page with what the server sent it meanwhile: its HMR client
-   * handled every update (fetching the updated modules, whose transforms
-   * may report errors) and a full reload loaded it again. A report of an
-   * edit therefore comes before the next write. `timeout` only guards
-   * against events that never come.
+   * the page with what the server sent it meanwhile: neither the dev server
+   * (transforms) nor the page (module and hot-update fetches, the document
+   * of a reload) has work in flight, twice in a row (`waitForOutcome`). A
+   * report of an edit therefore comes before the next write. `timeout`
+   * bounds the wait in all.
    */
   settle: (options?: { timeout?: number }) => Promise<void>
   /** `write(files)`, then `settle()`. */
@@ -150,6 +138,12 @@ export interface GeneratorDevApp {
   errors: () => Array<string>
   /** Closes the dev server (and the page), like stopping `vite`/`rsbuild dev`. */
   close: () => Promise<void>
+  /**
+   * Stops the dev server (and closes the page), like stopping `vite`/
+   * `rsbuild dev`, but keeps the app on disk, to edit it afterwards and
+   * observe that nothing reacts; the app is removed when the test ends.
+   */
+  stop: () => Promise<void>
   /**
    * What the test process printed while the app ran: every `console` method
    * and direct stdout/stderr writes (e.g. the generator reporting a route
@@ -201,68 +195,22 @@ export async function generatorDevApp(
   options: GeneratorDevAppOptions,
 ): Promise<GeneratorDevApp> {
   const { bundler } = options
-  const logged: Array<string> = []
-  const consoleDiagnostics: Array<Diagnostic> = []
   /**
    * Every channel a plugin of the test process can print through: the
-   * console's methods (silenced) and direct writes to stdout and stderr
-   * (passed on). A write to stderr carries no severity: it counts as a
-   * warning (a report), not as an error.
+   * console's methods and direct writes to stdout and stderr (a write to
+   * stderr carries no severity: it counts as a warning, a report, not as an
+   * error), merged (`openDiagnosticChannel`).
    */
-  const record = (text: string, severity: Severity) => {
-    logged.push(text)
-    consoleDiagnostics.push(...diagnosticsOf(text, severity))
-  }
-  const consoleMethods = {
-    error: 'error',
-    warn: 'warning',
-    log: 'info',
-    info: 'info',
-    debug: 'info',
-  } as const
-  const restore: Array<() => void> = []
-  for (const method of Object.keys(consoleMethods) as Array<
-    keyof typeof consoleMethods
-  >) {
-    const original = console[method]
-    console[method] = (...args: Array<unknown>) => {
-      record(args.map(String).join(' '), consoleMethods[method])
-    }
-    restore.push(() => {
-      console[method] = original
-    })
-  }
-  for (const [stream, severity] of [
-    [process.stdout, 'info'],
-    [process.stderr, 'warning'],
-  ] as const) {
-    const original = stream.write
-    stream.write = ((chunk: unknown, ...rest: Array<unknown>) => {
-      record(
-        typeof chunk === 'string'
-          ? chunk
-          : Buffer.from(chunk as Uint8Array).toString(),
-        severity,
-      )
-      return (original as (...args: Array<unknown>) => boolean).call(
-        stream,
-        chunk,
-        ...rest,
-      )
-    }) as typeof stream.write
-    restore.push(() => {
-      stream.write = original
-    })
-  }
-  onTestFinished(() => {
-    for (const undo of restore.reverse()) {
-      undo()
-    }
-  })
-  const logs = () => logged.join('\n')
+  const channel = openDiagnosticChannel({ console: true, streams: true })
+  onTestFinished(() => channel.close())
+  const printed = () => channel.diagnostics
+  const logs = () =>
+    printed()
+      .map((diagnostic) => diagnostic.text)
+      .join('\n')
 
   const files = {
-    'main.tsx': bundler === 'vite' ? `${main}${viteHmrProbe}` : main,
+    'main.tsx': main,
     'routes/__root.tsx': rootRoute,
     ...options.files,
   }
@@ -270,11 +218,15 @@ export async function generatorDevApp(
   const app =
     bundler === 'vite'
       ? await viteApp(files, symlinks, options.pluginOptions)
-      : await rsbuildApp(files, symlinks, options.pluginOptions, logged)
+      : await rsbuildApp(files, symlinks, options.pluginOptions, () =>
+          printed().map((diagnostic) => diagnostic.text),
+        )
   await app.settle()
 
   let page: BrowserPage
   let scripts: Array<Promise<{ url: string; code: string }>> = []
+  /** The page's requests in flight (module fetches, a reload's document). */
+  let inFlight = new Set<unknown>()
   const waitForApp = (expected: string | RegExp) =>
     page.waitForText(expected, { selector: '#app' })
   /**
@@ -287,6 +239,11 @@ export async function generatorDevApp(
     page = await openPage('about:blank', { registerCleanup: onTestFinished })
     await last?.close()
     scripts = []
+    const requests = new Set<unknown>()
+    inFlight = requests
+    page.page.on('request', (request) => requests.add(request))
+    page.page.on('requestfinished', (request) => requests.delete(request))
+    page.page.on('requestfailed', (request) => requests.delete(request))
     page.page.on('response', (response) => {
       // A script the server answered with an error ran no code; and
       // Playwright fetches the body of such a response again (the browser
@@ -309,85 +266,34 @@ export async function generatorDevApp(
   await open('/')
 
   /**
-   * A count the page's HMR probe keeps (`viteHmrProbe`), or `undefined`
-   * while the page is reloading.
-   */
-  const probe = async (name: string) => {
-    try {
-      return await page.page.evaluate<number>(`window.${name} ?? 0`)
-    } catch {
-      return undefined
-    }
-  }
-  /** The counts `settle()` compares, taken before the first write since. */
-  let start:
-    | {
-        loads: number
-        applied: number
-        invalidated: number
-        updates: number
-        fullReloads: number
-        invalidations: number
-      }
-    | undefined
-  const writing = async () => {
-    if (app.hmr && !start) {
-      start = {
-        loads: page.loads(),
-        applied: (await probe('__hmrApplied')) ?? 0,
-        invalidated: (await probe('__hmrInvalidated')) ?? 0,
-        updates: app.hmr.updates(),
-        fullReloads: app.hmr.fullReloads(),
-        invalidations: app.hmr.invalidations(),
-      }
-    }
-  }
-  /**
-   * Vite: until the page handled what the server sent it since `start` (a
-   * full reload loaded the page again; otherwise the server received every
-   * invalidation the page's client sent, and the client handled every
-   * update the server sent).
+   * Vite: until the page handled what the server sent it: neither the dev
+   * server nor the page has work in flight (a hot update's fetches, whose
+   * transforms may report errors; a reload), twice in a row, within one
+   * bound.
    */
   const pageSettled = async (timeout = 15_000) => {
     const { hmr } = app
-    const from = start
-    start = undefined
-    if (!hmr || !from) {
+    if (!hmr) {
       return
     }
-    const deadline = Date.now() + timeout
-    for (;;) {
-      await hmr.idle()
-      let settled: boolean
-      if (hmr.fullReloads() > from.fullReloads || page.loads() > from.loads) {
-        settled = page.loads() > from.loads
-      } else {
-        const applied = await probe('__hmrApplied')
-        const invalidated = await probe('__hmrInvalidated')
-        settled =
-          applied !== undefined &&
-          invalidated !== undefined &&
-          invalidated - from.invalidated <=
-            hmr.invalidations() - from.invalidations &&
-          applied - from.applied >= hmr.updates() - from.updates
-      }
-      if (settled) {
-        return
-      }
-      if (Date.now() > deadline) {
-        throw new Error(
-          `the page did not handle what the dev server sent it within ${timeout} ms`,
-        )
-      }
-      await new Promise((resolve) => setTimeout(resolve, 25))
-    }
+    await waitForOutcome({
+      timeout,
+      applied: () => Promise.resolve(true),
+      quiet: async () => {
+        await hmr.idle()
+        return inFlight.size === 0
+      },
+      describe: () =>
+        Promise.resolve(
+          `the page still has ${inFlight.size} request(s) in flight`,
+        ),
+    })
   }
   const settle = async (settleOptions?: { timeout?: number }) => {
     await app.settle(settleOptions)
     await pageSettled(settleOptions?.timeout)
   }
   const write = async (written: Record<string, string | null>) => {
-    await writing()
     await app.write(written)
   }
 
@@ -397,7 +303,6 @@ export async function generatorDevApp(
     read: (relative) => readFile(path.join(app.root, relative), 'utf8'),
     write,
     rename: async (from, to) => {
-      await writing()
       await app.rename(from, to)
     },
     settle,
@@ -414,14 +319,14 @@ export async function generatorDevApp(
     },
     navigate: async (pathname, expected) => {
       await page.page.evaluate(
-        (to) => (window as any).__TSR_ROUTER__.navigate({ to }),
+        (to) => (window as any).__APP_ROUTER__.navigate({ to }),
         pathname,
       )
       await waitForApp(expected)
     },
     routes: async () => {
       const live: Array<LiveRoute> = await page.page.evaluate(() =>
-        Object.values((window as any).__TSR_ROUTER__.routesById).map(
+        Object.values((window as any).__APP_ROUTER__.routesById).map(
           (liveRoute: any) => ({
             id: liveRoute.id,
             fullPath: liveRoute.fullPath,
@@ -437,13 +342,17 @@ export async function generatorDevApp(
       await page.close()
       await app.close()
     },
+    stop: async () => {
+      await page.close()
+      await app.stop()
+    },
     logs,
     mark: () => ({
-      console: consoleDiagnostics.length,
+      console: printed().length,
       server: app.diagnostics().length,
     }),
     diagnostics: (since = { console: 0, server: 0 }) => [
-      ...consoleDiagnostics.slice(since.console),
+      ...printed().slice(since.console),
       ...app.diagnostics().slice(since.server),
     ],
   }
@@ -458,17 +367,14 @@ interface AppServer {
   settle: (options?: { timeout?: number }) => Promise<void>
   errors: () => Array<string>
   close: () => Promise<void>
-  /** The server's own errors and warnings so far, in order. */
-  diagnostics: () => Array<Diagnostic>
+  stop: () => Promise<void>
   /**
-   * Vite: the HMR payloads the server sent the page so far, the
-   * invalidations it received from it, and a wait until no transform is in
-   * flight.
+   * The server's own errors and warnings so far, in order: its logger's and
+   * its compilations' (what the process prints is the app's channel).
    */
+  diagnostics: () => Array<Diagnostic>
+  /** Vite: a wait until no transform is in flight. */
   hmr?: {
-    updates: () => number
-    fullReloads: () => number
-    invalidations: () => number
     idle: () => Promise<void>
   }
 }
@@ -509,16 +415,6 @@ async function viteApp(
       react(),
     ],
   })
-  // Vite's own handler of an invalidation runs first and sends its answer
-  // (an update or a full reload) before this listener runs.
-  let invalidations = 0
-  server.vite.environments.client.hot.on('vite:invalidate', () => {
-    invalidations++
-  })
-  const clientMessages = (type: 'update' | 'full-reload') => () =>
-    server.hmr.filter(
-      (message) => message.environment === 'client' && message.type === type,
-    ).length
   return {
     root: server.root,
     url: server.url!,
@@ -532,18 +428,13 @@ async function viteApp(
         .filter((log) => log.startsWith('error:'))
         .map((log) => log.slice('error: '.length)),
     close: server.close,
+    stop: server.stop,
     diagnostics: () =>
-      server.logs.flatMap((log) =>
-        log.startsWith('error: ')
-          ? diagnosticsOf(log.slice('error: '.length), 'error')
-          : log.startsWith('warn: ')
-            ? diagnosticsOf(log.slice('warn: '.length), 'warning')
-            : [],
+      server.diagnostics.filter(
+        (diagnostic) =>
+          diagnostic.source === 'vite' && diagnostic.severity !== 'info',
       ),
     hmr: {
-      updates: clientMessages('update'),
-      fullReloads: clientMessages('full-reload'),
-      invalidations: () => invalidations,
       idle: () => server.idle(),
     },
   }
@@ -553,7 +444,7 @@ async function rsbuildApp(
   files: Record<string, string>,
   symlinks: Record<string, string>,
   pluginOptions: GeneratorDevAppOptions['pluginOptions'] = {},
-  logged: Array<string>,
+  printedTexts: () => Array<string>,
 ): Promise<AppServer> {
   const server = await createRsbuildDevServer({
     dir: harnessDir,
@@ -589,15 +480,16 @@ async function rsbuildApp(
     ],
   })
   let logsBefore = 0
+  const logged = () => printedTexts()
   return {
     root: server.root,
     url: server.url!,
     write: async (written) => {
-      logsBefore = logged.length
+      logsBefore = logged().length
       await server.write(written)
     },
     rename: async (from, to) => {
-      logsBefore = logged.length
+      logsBefore = logged().length
       await server.rename(from, to)
     },
     settle: (settleOptions = {}) =>
@@ -606,23 +498,62 @@ async function rsbuildApp(
         // The generator reports a route file it cannot handle, which no
         // compile then reads
         accept: (relative) =>
-          logged.slice(logsBefore).some((log) => log.includes(relative)),
+          logged()
+            .slice(logsBefore)
+            .some((log) => log.includes(relative)),
       }),
     errors: () => [...server.errors],
     close: server.close,
-    diagnostics: () => server.diagnostics,
+    stop: server.stop,
+    diagnostics: () =>
+      server.diagnostics.filter(
+        (diagnostic) =>
+          diagnostic.source === 'bundler' && diagnostic.severity !== 'info',
+      ),
   }
 }
 
 /**
  * The path a route file's `createFileRoute(path)` call names (parsed), and
- * the file's code with that string literal left out.
+ * the file's code with that string literal left out. The call is found by
+ * its binding, not its spelling: a local the file imports as
+ * `createFileRoute` (an alias included) or a member of a namespace import
+ * (`router.createFileRoute`); in a file that imports no such binding, a
+ * call of `createFileRoute` by that name.
  */
 export function createFileRouteCall(code: string): {
   path: string | undefined
   rest: string
 } {
   const { program } = parseSync('route.tsx', code, { sourceType: 'module' })
+  const locals = new Set<string>()
+  const namespaces = new Set<string>()
+  for (const statement of program.body as Array<any>) {
+    if (statement.type !== 'ImportDeclaration') {
+      continue
+    }
+    for (const specifier of statement.specifiers ?? []) {
+      if (
+        specifier.type === 'ImportSpecifier' &&
+        (specifier.imported?.name ?? specifier.imported?.value) ===
+          'createFileRoute'
+      ) {
+        locals.add(specifier.local.name)
+      } else if (specifier.type === 'ImportNamespaceSpecifier') {
+        namespaces.add(specifier.local.name)
+      }
+    }
+  }
+  if (locals.size === 0 && namespaces.size === 0) {
+    locals.add('createFileRoute')
+  }
+  const isFactory = (callee: any) =>
+    (callee?.type === 'Identifier' && locals.has(callee.name)) ||
+    (callee?.type === 'MemberExpression' &&
+      !callee.computed &&
+      callee.object?.type === 'Identifier' &&
+      namespaces.has(callee.object.name) &&
+      callee.property?.name === 'createFileRoute')
   let found: { value: string; start: number; end: number } | undefined
   const visit = (node: unknown) => {
     if (found || !node || typeof node !== 'object') {
@@ -635,8 +566,7 @@ export function createFileRouteCall(code: string): {
     const candidate = node as Record<string, any>
     if (
       candidate.type === 'CallExpression' &&
-      candidate.callee?.type === 'Identifier' &&
-      candidate.callee.name === 'createFileRoute' &&
+      isFactory(candidate.callee) &&
       candidate.arguments?.[0]?.type === 'Literal' &&
       typeof candidate.arguments[0].value === 'string'
     ) {
@@ -674,9 +604,26 @@ export async function expectRouteFile(
 }
 
 /**
+ * Whether a script the page loaded holds the user's string `text`: a
+ * decoded string value of its code (`holdsMarker`), whatever its quoting,
+ * escaping or JSX compilation. Dependencies and the tools' own modules (in
+ * `node_modules`, Vite's client) hold no user code.
+ */
+export function scriptHolds(
+  script: { url: string; code: string },
+  text: string,
+) {
+  const { pathname } = new URL(script.url)
+  if (/\/node_modules\/|^\/@(?:vite|react-refresh)\b/.test(pathname)) {
+    return false
+  }
+  return holdsMarker(script.code, text)
+}
+
+/**
  * Asserts that the app loads the code rendering `text` (a route component's)
  * only when it navigates to `pathname`: no script the page loaded at `from`
- * contains it, and the app shows it after navigating.
+ * holds it (`scriptHolds`), and the app shows it after navigating.
  */
 export async function expectLoadedOnNavigation(
   app: GeneratorDevApp,
@@ -687,13 +634,13 @@ export async function expectLoadedOnNavigation(
   await app.visit(from.pathname, from.shows)
   expect(
     (await app.scripts())
-      .filter((script) => script.code.includes(text))
+      .filter((script) => scriptHolds(script, text))
       .map((script) => script.url),
     `scripts loaded at ${from.pathname} containing ${text}`,
   ).toEqual([])
   await app.navigate(pathname, text)
   expect(
-    (await app.scripts()).some((script) => script.code.includes(text)),
+    (await app.scripts()).some((script) => scriptHolds(script, text)),
     `a script loaded on navigating to ${pathname} contains ${text}`,
   ).toBe(true)
 }

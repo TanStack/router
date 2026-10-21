@@ -43,7 +43,7 @@ import type {
   StatsJson,
 } from '@tanstack/compiler-test-utils/build-harness'
 import type { RsbuildConfig, RsbuildPlugin } from '@rsbuild/core'
-import type { Config } from '../src/core/config'
+import type { CodeSplittingOptions, Config } from '../src/vite'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 const require = createRequire(import.meta.url)
@@ -469,3 +469,53 @@ export async function buildWithRsbuild(
     throw error
   }
 }
+
+/** The groupings of `codeSplittingOptions.defaultBehavior` (public type). */
+export type CodeSplitGroupings = NonNullable<
+  CodeSplittingOptions['defaultBehavior']
+>
+
+/**
+ * Builds a small app with the real Vite plugin (code splitting on, default
+ * groupings unless `groupings` is given): `routes/index.tsx` holds `route`,
+ * and `entry.ts` re-exports the route module next to `render(component)`,
+ * which preloads a component and renders it to a string. `files` adds files
+ * or replaces `entry.ts`. The app directory name starts with `prefix`. Then
+ * imports the built entry in a separate Node process and returns the JSON
+ * value returned by `script`, which has the entry's exports in scope as
+ * `entry`.
+ *
+ * A production Vite SSR build, without minification. The app's
+ * `package.json` declares no side-effect hint unless `sideEffects` gives
+ * one, like an app's.
+ */
+export async function buildAndRun(
+  route: string,
+  script: string,
+  options: {
+    files?: Record<string, string>
+    groupings?: CodeSplitGroupings
+    prefix?: string
+    sideEffects?: boolean
+  } = {},
+) {
+  const app = await build({
+    bundler: 'vite',
+    env: 'ssr',
+    minify: false,
+    sideEffects: options.sideEffects,
+    prefix: options.prefix ?? '.regression-build-',
+    files: routeApp(route, { files: options.files }),
+    pluginOptions: options.groupings && {
+      codeSplittingOptions: { defaultBehavior: options.groupings },
+    },
+  })
+  try {
+    return (await app.run(script)).result
+  } finally {
+    await app.dispose()
+  }
+}
+
+/** Imports `createFileRoute` from the React router package. */
+export const head = routeHead('react')

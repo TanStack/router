@@ -60,7 +60,7 @@ export const Route = createFileRoute('/')({ component: () => <p>home</p> })`,
         const fallbackTitle = await app.evaluate<string>('document.title')
         const visit = async (to: string, term?: string) => {
           await app.evaluate(
-            `window.__TSR_ROUTER__.navigate(${JSON.stringify({ to, search: term === undefined ? {} : { term } })})`,
+            `window.__APP_ROUTER__.navigate(${JSON.stringify({ to, search: term === undefined ? {} : { term } })})`,
           )
         }
         const documentOptions = () =>
@@ -137,7 +137,7 @@ export const Route = createFileRoute('/')({ component: () => <p>home</p> })`,
           },
           ready: 'home',
         })
-        await app.evaluate(`window.__TSR_ROUTER__.navigate({ to: '/posts' })`)
+        await app.evaluate(`window.__APP_ROUTER__.navigate({ to: '/posts' })`)
         await app.page.waitForText('posts v1')
         expect(await app.page.page.locator('a').getAttribute('href')).toBe(
           '/posts',

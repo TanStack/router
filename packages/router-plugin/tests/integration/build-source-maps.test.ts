@@ -8,16 +8,19 @@
  * shared module. Map layout, `names`, granularity and the source names a
  * map lists are free (SPEC G6, §5.14).
  */
-import { describe, expect, test } from 'vitest'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import react from '@vitejs/plugin-react'
+import { describe, expect, onTestFinished, test } from 'vitest'
 import { originalFrameOf } from '@tanstack/compiler-test-utils/build-harness'
-import {
-  findNodes,
-  positionAt,
-} from '@tanstack/compiler-test-utils/source-maps'
+import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
+import { positionAt } from '@tanstack/compiler-test-utils/source-maps'
+import { tanstackRouter as tanstackRouterVite } from '../../src/vite'
 import { build, routeApp, routeHead } from '../build-harness'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
-import type { SyntaxNode } from '@tanstack/compiler-test-utils/source-maps'
 import type { RouterPluginOptions } from '../build-harness'
+
+const appsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 
 const timeout = 60_000
 
@@ -51,20 +54,13 @@ export async function mountError(component: any) {
 `
 
 /**
- * Where the error of the first `throw` statement of `code` is created (its
- * `new Error(...)`, which a stack frame points at): 1-based line and column,
- * as `originalFrameOf` reports them.
+ * Where the error of the route file's throw is created (its first
+ * `new Error(`, which a stack frame points at), by its offset in the
+ * route file as written: 1-based line and column, as `originalFrameOf`
+ * reports them.
  */
 function thrownAt(code: string) {
-  const [statement] = findNodes(
-    code,
-    (node) => node.type === 'ThrowStatement',
-    { filename: 'route.tsx' },
-  )
-  const { line, column } = positionAt(
-    code,
-    (statement!.argument as SyntaxNode).start,
-  )
+  const { line, column } = positionAt(code, code.indexOf('new Error('))
   return { line, column: column + 1 }
 }
 
@@ -179,6 +175,10 @@ async function expectModuleThrowMapsToRouteFile(
   source: string,
   marker: string,
 ) {
+  if (bundler === 'vite') {
+    await expectModuleThrowMapsToRouteFileVite(source, marker)
+    return
+  }
   const app = await build({
     bundler,
     env: 'client',
@@ -271,3 +271,66 @@ describe.each(['rspack', 'webpack'] as const)('%s', (bundler) => {
     timeout,
   )
 })
+
+/**
+ * `expectModuleThrowMapsToRouteFile` on Vite, through the public plugin host
+ * (`vite build` with the app's plugins): every chunk the build emits is
+ * read with the map it has, if any (a chunk with no mapping of its own, e.g.
+ * a facade re-exporting another chunk, may have none); the frame of the
+ * throw is resolved through the map of the chunk it names.
+ */
+async function expectModuleThrowMapsToRouteFileVite(
+  source: string,
+  marker: string,
+) {
+  const host = await createPluginHost({
+    dir: appsDir,
+    prefix: '.build-source-maps-',
+    registerCleanup: onTestFinished,
+    serve: false,
+    files: routeApp(source, {
+      env: 'client',
+      files: {
+        'lib/label.ts': `export const label = 'MARK_LABEL'\n`,
+        'entry.ts': `export * from './routes/index'\n`,
+      },
+    }),
+    plugins: () => [
+      tanstackRouterVite({
+        target: 'react',
+        autoCodeSplitting: true,
+        routesDirectory: './routes',
+        generatedRouteTree: './routeTree.gen.ts',
+      }),
+      react(),
+    ],
+  })
+  const built = await host.build({
+    config: {
+      build: {
+        minify: false,
+        sourcemap: true,
+        rollupOptions: {
+          input: 'entry.ts',
+          preserveEntrySignatures: 'exports-only',
+          output: { entryFileNames: 'entry.mjs' },
+        },
+      },
+    },
+  })
+  const app = await built.describe('client')
+  const { result: stack } = await app.run(
+    `try { entry.Route.options.loader() } catch (error) { return error.stack }`,
+  )
+  expect(stack).toMatch(marker)
+  expectFrameAtThrow(
+    {
+      root: host.root,
+      outDir: built.environments.client!.outDir,
+      chunks: built.environments.client!.chunks,
+    },
+    stack,
+    source,
+    { minify: false },
+  )
+}

@@ -98,7 +98,7 @@ function Page() {
         files: { 'routes/index.tsx': route('v1') },
         ready: 'page v1 data v1',
       })
-      const liveComponent = `window.__TSR_ROUTER__.routesById['/'].options.component`
+      const liveComponent = `window.__APP_ROUTER__.routesById['/'].options.component`
       await app.evaluate(`window.shownComponent = ${liveComponent}`)
       expect(
         await app.edit({ 'routes/index.tsx': route('v2') }, 'page v2 data v2'),

@@ -53,7 +53,7 @@ describe.concurrent('vite: React route components', { timeout: 60_000 }, () => {
     })
     if (path) {
       await app.evaluate(
-        `void window.__TSR_ROUTER__.navigate({ to: '${path}' })`,
+        `void window.__APP_ROUTER__.navigate({ to: '${path}' })`,
       )
       await app.page.waitForText(shows('v1'), { selector: '#app' })
     }

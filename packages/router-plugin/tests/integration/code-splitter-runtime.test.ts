@@ -5,7 +5,7 @@ import { runNodeProgram } from '@tanstack/compiler-test-utils/run-node'
 import { build } from 'vite'
 import { expect, it } from 'vitest'
 import { tanstackRouter } from '../../src/vite'
-import type { CodeSplitGroupings } from '../../src/core/constants'
+import type { CodeSplitGroupings } from '../build-harness'
 
 const fixture = path.resolve(__dirname, '../test-files/shared-runtime.tsx')
 

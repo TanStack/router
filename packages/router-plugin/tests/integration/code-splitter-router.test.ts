@@ -4,8 +4,7 @@
  * render where the router needs them.
  */
 import { describe, expect, test } from 'vitest'
-import { build } from '../build-harness'
-import { head } from '../regression-helpers'
+import { build, head } from '../build-harness'
 import type { BuildEnv } from '@tanstack/compiler-test-utils/build-harness'
 
 const rootRoute = `import { createRootRoute, Outlet } from '@tanstack/react-router'

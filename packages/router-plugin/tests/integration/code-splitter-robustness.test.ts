@@ -3,8 +3,7 @@
  * non-ASCII names and JavaScript route files, in real builds.
  */
 import { expect, test } from 'vitest'
-import { build, clientMountEntry, rootRoute } from '../build-harness'
-import { head } from '../regression-helpers'
+import { build, clientMountEntry, head, rootRoute } from '../build-harness'
 
 /**
  * One app per bundler holds both unusual route files (speedup 6): a route

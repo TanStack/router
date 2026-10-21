@@ -1,8 +1,7 @@
 // Slow-tier half of this suite: the tests that need a real tool. Its
 // in-process tests are in ../code-splitter-dead-code.test.ts (fast tier).
 import { describe, expect, it } from 'vitest'
-import { build, clientMountEntry, routeApp } from '../build-harness'
-import { head } from '../regression-helpers'
+import { build, clientMountEntry, head, routeApp } from '../build-harness'
 
 /**
  * Which code a production client build drops is the bundler's decision: one
