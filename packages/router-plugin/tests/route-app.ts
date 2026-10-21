@@ -104,14 +104,20 @@ export interface RouteAppOptions {
   /** A host of its own (a fresh dev server), not shared with other routes. */
   fresh?: boolean
   /**
+   * Other dependencies the app imports that the page needs pre-bundled, as
+   * Vite pre-bundles an app's installed dependencies (e.g. a CommonJS
+   * package, or `@emotion/react` and its JSX runtimes).
+   */
+  prebundle?: Array<string>
+  /**
    * The framework's Vite plugin as the app configures it (e.g.
-   * `react({ jsxRuntime: 'classic' })`), instead of the plugin with its
-   * defaults (a host of its own).
+   * `react({ jsxRuntime: 'classic' })`, or an app's own JSX transform
+   * before it), instead of the plugin with its defaults (a host of its own).
    */
   framework?: PluginOption
   /**
    * Vite configuration over the host's, as the app's `vite.config` sets it
-   * (e.g. `oxc.target`; a host of its own).
+   * (a host of its own).
    */
   config?: InlineConfig
   /**
@@ -161,25 +167,16 @@ const frameworkPlugins: Record<TargetFramework, () => PluginOption> = {
 export const probeFile = 'route-app-probe.ts'
 
 /**
- * The module the page imports the route and the test's files through
- * (see `entrySource`): written with each route.
+ * The app module the page imports the route module through, as the app's
+ * own modules import it (the route tree does): after an edit, Vite's import
+ * analysis gives every import of the edited module its HMR timestamp, so
+ * the split chunks import `/route.tsx?t=…`; a page importing
+ * `/route.tsx` itself would get a second instance of the route module.
  */
 export const entryFile = 'route-app-entry.ts'
 
-/**
- * Imports the route module and gives the test's files, as modules of the
- * app import them. Vite rewrites an import of a module edited earlier with
- * that edit's timestamp (`?t=`), as it serves every module of the app: a
- * page importing the route by its plain URL would get a second instance
- * once the host has served an edit of it.
- */
-function entrySource(filename: string, files: Array<string>) {
-  return `export * as route from './${filename}'
-export const files: Record<string, () => Promise<unknown>> = {
-${files.map((file) => `  ${JSON.stringify(file)}: () => import(${JSON.stringify(`./${file}`)}),`).join('\n')}
-}
-`
-}
+const entrySource = (filename: string) =>
+  `export * as route from './${filename.replace(/^\.\//, '')}'\n`
 
 /**
  * Tool modules the page loads that no compiler emitted for the route: Vite's
@@ -262,7 +259,8 @@ export function appRequests(): Array<string> {
   for (const entry of performance.getEntriesByType('resource')) {
     const url = new URL(entry.name)
     if (url.origin !== location.origin) continue
-    // Vite's HMR timestamp of a module edited earlier (\`t\`): the same module
+    // Without Vite's HMR timestamp (the t= query, which import analysis adds to
+    // imports of a module an edit changed): one request per module
     url.searchParams.delete('t')
     const request = url.pathname + url.search
     if (tool.test(request) || url.pathname === '/${probeFile}' || url.pathname === '/${entryFile}') continue
@@ -284,10 +282,26 @@ export async function trigger(route: any, option: string) {
   } catch {}
 }
 
+/**
+ * Throws when a module of the app the document requested failed (an HTTP
+ * error: the dev server could not compile it). The router hides a failed
+ * route chunk until it renders the lazy component, and then reloads the
+ * page once (as after a deployment): rendering it would navigate the page
+ * away from the run instead of failing it.
+ */
+export function assertNoFailedRequests() {
+  const failed = performance
+    .getEntriesByType('resource')
+    .filter((entry: any) => entry.responseStatus >= 400)
+    .map((entry: any) => \`\${new URL(entry.name).pathname}\${new URL(entry.name).search} (HTTP \${entry.responseStatus})\`)
+  if (failed.length > 0) throw new Error(\`a module of the app failed to load: \${failed.join(', ')}\`)
+}
+
 /** The option as the router uses it, once its module loaded. */
 export async function load(route: any, option: string) {
   const value = route.options[option]
   if (option !== 'loader') await value?.preload?.()
+  assertNoFailedRequests()
   return value
 }
 
@@ -309,6 +323,7 @@ function settled(el: HTMLElement, isIdle: () => boolean, timeout: number) {
 
 /** Renders a component with the framework's client renderer: its HTML. */
 export async function renderComponent(component: any, props: Record<string, unknown> = {}) {
+  assertNoFailedRequests()
   const el = document.createElement('div')
   document.body.append(el)
   const { errors, unmount } = mount(component, props, el, false)
@@ -332,6 +347,7 @@ export async function renderRoute(at: string, routerOptions: Record<string, unkn
     ...routerOptions,
   })
   await router.load()
+  assertNoFailedRequests()
   const el = document.createElement('div')
   document.body.append(el)
   const { errors } = mount(RouterProvider, { router }, el, true)
@@ -397,22 +413,49 @@ async function idleHmrClient(serverUrl: string): Promise<() => void> {
   return () => socket.close()
 }
 
+/** The bound of one page run's script (below Vitest's default test timeout). */
+const pageRunBound = 4000
+
 /** Removes the shared page's document, so that it no longer follows a host. */
 async function parkPage() {
   await runInPage({ pageUrl: 'about:blank', script: 'return null' })
 }
 
+/**
+ * Parks the shared page after a failed run: what failed may have started a
+ * navigation of the page (the router reloads the page once when a lazy
+ * route chunk fails to load, as after a deployment), which would interrupt
+ * the next run's own navigation. Retries until a park completes.
+ */
+async function recoverPage() {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      await parkPage()
+      return
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    }
+  }
+}
+
 function hostKey(options: RouteAppOptions, root: boolean) {
-  return JSON.stringify({
-    target: options.targetFramework ?? 'react',
-    filename: options.filename ?? 'route.tsx',
-    routeId: options.routeId ?? '/',
-    root,
-    hmr: options.hmr ?? false,
-    deleteNodes: options.deleteNodes,
-    pluginOptions: options.pluginOptions,
-    tsconfig: options.tsconfig,
-  })
+  return JSON.stringify(
+    {
+      target: options.targetFramework ?? 'react',
+      filename: options.filename ?? 'route.tsx',
+      routeId: options.routeId ?? '/',
+      root,
+      hmr: options.hmr ?? false,
+      deleteNodes: options.deleteNodes,
+      pluginOptions: options.pluginOptions,
+      tsconfig: options.tsconfig,
+      prebundle: options.prebundle,
+      // A function option (e.g. `splitBehavior`) by its source: two routes
+      // with different functions get different hosts
+    },
+    (_, value: unknown) =>
+      typeof value === 'function' ? `function ${String(value)}` : value,
+  )
 }
 
 /** The router plugin's options for a route app. */
@@ -469,11 +512,17 @@ async function startHost(
       }),
       ...(root ? {} : { '__root.tsx': rootRoute(target) }),
       [probeFile]: probeSource(target),
+      [entryFile]: entrySource(options.filename ?? 'route.tsx'),
       ...files,
     },
     client: true,
     config: mergeConfig(
-      { optimizeDeps: { noDiscovery: true, include: prebundled[target] } },
+      {
+        optimizeDeps: {
+          noDiscovery: true,
+          include: [...prebundled[target], ...(options.prebundle ?? [])],
+        },
+      },
       options.config ?? {},
     ),
     plugins: ({ root: appRoot }) => [
@@ -516,7 +565,7 @@ async function writeRoute(
         edit[file] = code
       }
     }
-    await parkPage()
+    await recoverPage()
     if (Object.keys(edit).length > 0) {
       await state.host.edit(edit)
     }
@@ -541,11 +590,7 @@ const compiled = () => probe.appRequests().filter((request) => request === route
 /** Every app-local module the page requested so far: compiled ones and the test's files. */
 const requested = () => probe.appRequests()
 /** An app file the test wrote, as the page imports it (the instance the route gets). */
-const app = async (file) => {
-  const name = file.replace(/^\\.?\\//, '')
-  const entry = await import(${JSON.stringify(`/${entryFile}`)})
-  return entry.files[name] ? entry.files[name]() : import('/' + name)
-}
+const app = (file) => import(${JSON.stringify('/')} + file.replace(/^\\.?\\//, ''))
 ${before}
 const exports = (await import(${JSON.stringify(`/${entryFile}`)})).route
 const Route = exports.Route
@@ -648,20 +693,8 @@ export async function loadRoute(
 ): Promise<RouteApp> {
   const filename = options.filename ?? 'route.tsx'
   const root = createsRootRoute(code)
-  const testFiles = Object.keys(options.files ?? {})
-  const files = {
-    ...options.files,
-    [filename]: code,
-    [entryFile]: entrySource(
-      filename,
-      testFiles.filter(
-        (file) =>
-          !/(?:^|\/)node_modules\//.test(file) &&
-          /\.(?:[cm]?[jt]sx?|json|css)$/.test(file),
-      ),
-    ),
-  }
-  const own = new Set(testFiles.map(appUrl))
+  const files = { ...options.files, [filename]: code }
+  const own = new Set(Object.keys(options.files ?? {}).map(appUrl))
   own.add(appUrl(probeFile))
   own.add(appUrl(entryFile))
   if (!root) {
@@ -708,9 +741,18 @@ export async function loadRoute(
     try {
       return await state.host.runClient<T>(
         appUrl(probeFile),
-        `${prelude(url, [...own], at, `${options.pageScript ?? ''}\n${runOptions.before ?? ''}`)}\n${body}`,
+        `${prelude(url, [...own], at, `${options.pageScript ?? ''}\n${runOptions.before ?? ''}`)}
+// A run that never settles (e.g. a page left suspended while a navigation
+// is pending) fails at a bound, instead of holding the shared page
+return await Promise.race([
+  (async () => {
+${body}
+  })(),
+  new Promise((_, reject) => setTimeout(() => reject(new Error('the page run did not settle within ${pageRunBound} ms')), ${pageRunBound})),
+])`,
       )
     } catch (error) {
+      await recoverPage()
       const sent = state.host.dev.hmr
         .slice(hmr)
         .map((message) => `${message.type} ${message.paths.join(', ')}`)
@@ -723,11 +765,6 @@ export async function loadRoute(
   const run = async <T>(body: string, runOptions?: { before?: string }) =>
     (await runPage<T>(body, runOptions)).result
 
-  /**
-   * Code of a module the page requested, as the dev server serves it to
-   * the client (its transform of that request).
-   */
-  const serve = (request: string) => state.host.transform(request, 'client')
   const newlyCompiled = (option: string) =>
     run<Array<string>>(`const before = new Set(compiled())
 await trigger(${JSON.stringify(option)})
@@ -745,11 +782,12 @@ return compiled().filter((request) => !before.has(request))`)
         Array<string>
       >(`const before = new Set(compiled())
 await trigger(${JSON.stringify(option)})
-return compiled().filter((request) => !before.has(request))`)
+const loaded = compiled().filter((request) => !before.has(request))
+return Promise.all(loaded.map(served))`)
       if (loaded.length === 0) {
         throw new Error(`\`${option}\` loads no module of the route lazily`)
       }
-      return Promise.all(loaded.map(serve))
+      return loaded
     },
     groups: async () => {
       const present = await run<Array<string>>(
@@ -785,10 +823,12 @@ return compiled().filter((request) => !before.has(request)).length`)
       )
     },
     requested: () => run<Array<string>>('return requested()'),
-    eagerModules: async () =>
-      Promise.all((await run<Array<string>>('return compiled()')).map(serve)),
+    eagerModules: () =>
+      run<Array<string>>('return Promise.all(compiled().map(served))'),
     modules: async () => {
-      const requests = await run<Array<{ request: string; label: string }>>(
+      const found = await run<
+        Array<{ request: string; label: string; code: string }>
+      >(
         `const found = []
 for (const request of compiled()) {
   found.push({ request, label: request === routeUrl ? 'reference' : 'shared' })
@@ -801,13 +841,7 @@ for (const option of ${JSON.stringify(splittableOptions)}) {
     if (!before.has(request)) found.push({ request, label: 'lazy ' + option })
   }
 }
-return found`,
-      )
-      const found = await Promise.all(
-        requests.map(async (module) => ({
-          ...module,
-          code: await serve(module.request),
-        })),
+return Promise.all(found.map(async (module) => ({ ...module, code: await served(module.request) })))`,
       )
       const modules: Record<string, string> = {}
       const ids: Record<string, string> = {}
@@ -834,6 +868,10 @@ return found`,
   return route
 }
 
+function isRouteApp(value: unknown): value is RouteApp {
+  return typeof (value as RouteApp).run === 'function'
+}
+
 /** Route file each `modules()` result was compiled from. */
 const routeSources = new WeakMap<object, { code: string; filename: string }>()
 
@@ -847,7 +885,9 @@ const routeSources = new WeakMap<object, { code: string; filename: string }>()
 export async function expectValidModules(
   route: RouteApp | RouteModules['modules'],
 ) {
-  const modules = 'run' in route ? (await route.modules()).modules : route
+  const modules: Record<string, string> = isRouteApp(route)
+    ? (await route.modules()).modules
+    : route
   const source = routeSources.get(modules)
   const errors: Record<string, Array<string>> = {}
   for (const [name, code] of Object.entries(modules)) {
