@@ -446,8 +446,10 @@ export const Route = createFileRoute('/')({ component: Page })
       expect(await route.run(`return render('component')`)).toBe(
         '<div>page</div>',
       )
-      // What loading the component requests
+      // What loading the component requests, and what loads with the route
+      // module (the route file's exports, which it keeps)
       const loaded = await route.loadedBy('component')
+      const eager = await route.eagerModules()
       expect({
         holds: ['MARK_helper', 'MARK_api', 'MARK_def'].filter((marker) =>
           loaded.some((code) => holdsMarker(code, marker)),
@@ -455,7 +457,14 @@ export const Route = createFileRoute('/')({ component: Page })
         dependsOnHeavy: loaded.some((code) =>
           dependencies(code).includes('/heavy.ts'),
         ),
-      }).toEqual({ holds: [], dependsOnHeavy: false })
+        eagerHolds: ['MARK_helper', 'MARK_api', 'MARK_def'].filter((marker) =>
+          eager.some((code) => holdsMarker(code, marker)),
+        ),
+      }).toEqual({
+        holds: [],
+        dependsOnHeavy: false,
+        eagerHolds: ['MARK_helper', 'MARK_api', 'MARK_def'],
+      })
     },
   )
 
@@ -516,6 +525,11 @@ export const bar = 4
           holdsClass: holdsMarker(code, marker),
         })),
       ).toEqual(loaded.map(() => ({ requests: [], holdsClass: false })))
+      // ... while what loads with the route module (which keeps the class)
+      // holds it
+      expect(
+        (await route.eagerModules()).some((code) => holdsMarker(code, marker)),
+      ).toBe(true)
     },
   )
 

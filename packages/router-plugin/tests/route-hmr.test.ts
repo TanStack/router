@@ -165,7 +165,9 @@ describe('route modules compiled for the dev server', () => {
   // Vite dev server always has Vite's hot API (also with `server.hmr:
   // false`); a page without a hot API, and webpack's hot API
   // (`import.meta.webpackHot`) present: Rsbuild's dev server,
-  // integration/route-hmr-rsbuild-hosts.test.ts.
+  // integration/route-hmr-rsbuild-hosts.test.ts; webpack's hot API without a
+  // `window`: a webpack or Rspack server build with hot module replacement,
+  // integration/route-hmr-webpack-server-hosts.test.ts.
   const vite: Array<Host> = [
     {
       name: 'a page (hot API present, window)',

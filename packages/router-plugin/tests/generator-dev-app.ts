@@ -664,17 +664,14 @@ export async function expectRouteFile(
 /**
  * Whether a script the page loaded holds the user's string `text`: a
  * decoded string value of its code (`holdsMarker`), whatever its quoting,
- * escaping or JSX compilation. Dependencies and the tools' own modules (in
- * `node_modules`, Vite's client) hold no user code.
+ * escaping or JSX compilation. Every script counts, wherever it is served
+ * from: a compiler's module may be served under `/node_modules/` or `/@fs/`
+ * too (SPEC §5.3), and the tools' own modules hold no user marker.
  */
 export function scriptHolds(
   script: { url: string; code: string },
   text: string,
 ) {
-  const { pathname } = new URL(script.url)
-  if (/\/node_modules\/|^\/@(?:vite|react-refresh)\b/.test(pathname)) {
-    return false
-  }
   return holdsMarker(script.code, text)
 }
 

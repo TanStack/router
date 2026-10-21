@@ -16,6 +16,12 @@
  *   route;
  * - it references none of the public development APIs (the bundlers' hot
  *   module APIs, the React Refresh runtime's globals);
+ * - running it never touches a development global (G7 outcome): the page
+ *   traps the React Refresh runtime's globals, the ignored-exports hook of
+ *   `@vitejs/plugin-react`'s refresh runtime and the router's HMR globals
+ *   before any module of the app evaluates, and records every read and
+ *   write; and it leaves no global the control's page lacks (whatever the
+ *   name: e.g. refresh bookkeeping shipped without its hot-API guard);
  * - the route module a user imports has the same exports as the control's
  *   (an export added for a refresh runtime, e.g. a refresh boundary anchor,
  *   is development support the user's module surface ships).
@@ -62,6 +68,80 @@ const publicDevApis: Record<string, RegExp> = {
 }
 
 /**
+ * Development globals a production page must never touch: the React
+ * Refresh runtime's registration globals, the hook through which
+ * `@vitejs/plugin-react`'s refresh runtime asks for the exports it ignores,
+ * and the router's HMR globals (route HMR finds the live router through
+ * `__TSR_ROUTER__`; the page creates no router, so only HMR code would read
+ * it here). A trap fires only when a module touches the name, so a
+ * production bundle that touches none of them, whatever its own names,
+ * passes; the global comparison with the control is the name-free check.
+ */
+const devGlobals = [
+  '$RefreshReg$',
+  '$RefreshSig$',
+  '__getReactRefreshIgnoredExports',
+  '__TSR_REACT_REFRESH__',
+  '__TSR_ROUTER__',
+]
+
+/**
+ * The module the entry imports first (so it evaluates before any other
+ * module of the app): traps `devGlobals` on the page's global object and
+ * records each read, write or redefinition. (An app module like any other:
+ * the bundlers compile it, the router plugin does not.)
+ */
+const devGlobalsTrap = `// Encoded, so that the bundle's text holds none of the names the
+// static check of the development APIs looks for
+const names: Array<string> = ${JSON.stringify(devGlobals.map((name) => Buffer.from(name).toString('base64')))}.map((name) => atob(name))
+const touched: Array<string> = []
+const traps = new Map<string, () => unknown>()
+for (const name of names) {
+  const get = () => {
+    touched.push('read ' + name)
+    return undefined
+  }
+  traps.set(name, get)
+  Object.defineProperty(globalThis, name, {
+    configurable: true,
+    get,
+    set() {
+      touched.push('write ' + name)
+    },
+  })
+}
+/** Every touch of a development global so far (a redefinition included). */
+export function devGlobalsTouched() {
+  const redefined = names.filter(
+    (name) => Object.getOwnPropertyDescriptor(globalThis, name)?.get !== traps.get(name),
+  )
+  return [...touched, ...redefined.map((name) => 'redefine ' + name)]
+}
+`
+
+/**
+ * The app's files with the trap module (`devGlobalsTrap`) imported first by
+ * the client entry.
+ */
+function withDevGlobalsTrap(files: Record<string, string>) {
+  return {
+    ...files,
+    'dev-globals-trap.ts': devGlobalsTrap,
+    'entry.ts': `export { devGlobalsTouched } from './dev-globals-trap'\n${files['entry.ts']}`,
+  }
+}
+
+/**
+ * Renders the route's component in the production page and returns what the
+ * page touched of `devGlobals` and the page's global names.
+ */
+const renderScript = `await entry.mount(entry.Route.options.component)
+return {
+  touched: entry.devGlobalsTouched(),
+  globals: Object.getOwnPropertyNames(globalThis),
+}`
+
+/**
  * Builds the route for production: as an app builds it (`NODE_ENV` unset,
  * the plugin's default `addHmr`), or as the control with route HMR off.
  */
@@ -76,7 +156,9 @@ async function productionBuild(
     codeSplittingOptions: { addHmr: control ? false : undefined },
   }
   const nodeEnv = control ? 'production' : null
-  const files = routeApp(route(framework), { env: 'client', framework })
+  const files = withDevGlobalsTrap(
+    routeApp(route(framework), { env: 'client', framework }),
+  )
   return bundler === 'rsbuild'
     ? buildWithRsbuild({ nodeEnv, pluginOptions, files })
     : build({
@@ -121,13 +203,29 @@ export async function expectProductionClientBundle(
       .map((statement) => `  [${statement.chunk}] ${statement.code}`)
       .join('\n') || '  (none)'
   }`
-  const run = await app.run(`await entry.mount(entry.Route.options.component)`)
+  const run = await app.run(renderScript)
   expect(run.html, evidence).toContain('MARK_PAGE')
+  const rendered = run.result as {
+    touched: Array<string>
+    globals: Array<string>
+  }
+  const controlRun = await control.run(renderScript)
+  const controlGlobals = new Set(
+    (controlRun.result as { globals: Array<string> }).globals,
+  )
   expect(
     Object.keys(publicDevApis).filter(
       (name) => app.where(publicDevApis[name]!) !== 'nowhere',
     ),
     `public development APIs the bundle references\n${evidence}`,
+  ).toEqual([])
+  expect(
+    rendered.touched,
+    `development globals the production page touched\n${evidence}`,
+  ).toEqual([])
+  expect(
+    rendered.globals.filter((name) => !controlGlobals.has(name)),
+    `globals the production page has and the control's page lacks\n${evidence}`,
   ).toEqual([])
   expect(
     (await app.run(routeExports)).result,

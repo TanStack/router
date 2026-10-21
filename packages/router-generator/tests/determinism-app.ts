@@ -77,6 +77,8 @@ export async function generateFresh(root: string) {
     new Generator({ config, root }).run(),
   )
   const diagnosticContract = {
+    // (a warning: the run goes on, so no error)
+    severity: 'warning' as const,
     file: 'src/routes/helper.tsx',
     root,
     names: ['Route'],

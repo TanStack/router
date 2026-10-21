@@ -20,14 +20,16 @@ import { expectValidModules, head, holdsMarker, loadRoute } from './route-app'
 import type { RouteApp, RouteAppOptions } from './route-app'
 
 /**
- * Whether the dev server reported (a warning or an error on any channel)
- * that the option `option` (default `component`) of the route file is left
- * unsplit, naming the file and the option (J2.8; naming the binding too is
- * fine, the wording is free). Read once the page loaded the route.
+ * Whether the dev server reported (a warning on any channel: the route
+ * loaded, so nothing was refused) that the option `option` (default
+ * `component`) of the route file is left unsplit, naming the file and the
+ * option (J2.8; naming the binding too is fine, the wording is free). Read
+ * once the page loaded the route.
  */
 async function reportsNotSplit(route: RouteApp, option = 'component') {
   return (
-    findDiagnostics(problems(await route.diagnostics()), {
+    findDiagnostics(await route.diagnostics(), {
+      severity: 'warning',
       file: route.url.slice(1),
       root: route.host.root,
       names: [option],
@@ -593,7 +595,7 @@ describe('server-only route options on the client', () => {
   async function clientRoute(route: RouteApp) {
     return route.run(`for (const option of Object.keys(options)) await trigger(option)
 return {
-  serverRequested: requested().includes('/secret-db.ts'),
+  serverRequested: (await requested()).includes('/secret-db.ts'),
   serverOptions: ${JSON.stringify(deleteNodes)}.filter((key) => key in options),
   rendered: await render('component'),
 }`)
@@ -659,7 +661,7 @@ export const Route = createFileRoute('/')({
   ssr: () => db.flag('MARK_SSR_CODE'),
   server: { handlers: { GET: () => db.all('MARK_SERVER_CODE') } },
   headers: () => db.headers('MARK_HEADERS_CODE'),
-  component: () => <p>x</p>,
+  component: () => <p data-mark="MARK_COMPONENT_CODE">x</p>,
 })`,
       {
         targetFramework: 'solid',
@@ -675,7 +677,10 @@ export const Route = createFileRoute('/')({
       },
     )
     await expectValidModules(route)
-    expect(await clientRoute(route)).toEqual(stripped)
+    expect(await clientRoute(route)).toEqual({
+      ...stripped,
+      rendered: '<p data-mark="MARK_COMPONENT_CODE">x</p>',
+    })
     const { modules } = await route.modules()
     expect(
       Object.entries(modules).flatMap(([label, code]) =>
@@ -684,6 +689,12 @@ export const Route = createFileRoute('/')({
           .map((marker) => `${label}: ${marker}`),
       ),
     ).toEqual([])
+    // ... while what the component loads holds the component's code
+    expect(
+      (await route.loadedBy('component')).some((code) =>
+        holdsMarker(code, 'MARK_COMPONENT_CODE'),
+      ),
+    ).toBe(true)
   })
 
   // Without `deleteNodes` (a Router app without Start), the options are the

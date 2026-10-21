@@ -562,6 +562,7 @@ export const Route = createFileRoute('/old')({})
         return
       }
       expectDiagnostic([...diagnosticsOf(error), ...diagnostics], {
+        severity: ['warning', 'error'],
         file,
         root,
       })
@@ -642,6 +643,7 @@ export const makeRoute = () => createFileRoute('/new')
         return
       }
       expectDiagnostic([...diagnosticsOf(error), ...diagnostics], {
+        severity: ['warning', 'error'],
         file,
         root,
       })
@@ -690,6 +692,7 @@ export const Route = createFileRoute(\`/\${x}\`)({})
         })
       } else {
         expectDiagnostic([...diagnosticsOf(error), ...diagnostics], {
+          severity: ['warning', 'error'],
           file,
           root,
         })
@@ -750,6 +753,7 @@ export const Route = createLazyFileRoute({ component: () => null })
         return
       }
       expectDiagnostic([...diagnosticsOf(error), ...diagnostics], {
+        severity: ['warning', 'error'],
         file,
         root,
       })

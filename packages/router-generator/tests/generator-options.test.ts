@@ -921,8 +921,9 @@ export const Route = createFileRoute('/')({})
       generate(root, { disableLogging: false }),
     )
 
+    // (a warning: the run goes on, so no error)
     expectDiagnostic(diagnostics, {
-      severity: ['warning', 'error'],
+      severity: 'warning',
       file: path.join(root, 'src/routes/helpers.tsx'),
       root,
     })
@@ -943,6 +944,7 @@ export const Route = createFileRoute('/')({})
     )
 
     const actionable = findDiagnostics(diagnostics, {
+      severity: ['warning', 'error'],
       file: path.join(root, 'src/routes/helpers.tsx'),
       root,
     })

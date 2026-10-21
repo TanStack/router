@@ -20,14 +20,16 @@ import { expectValidModules, head, loadRoute } from './route-app'
 import type { RouteApp, RouteAppOptions } from './route-app'
 
 /**
- * Whether the dev server reported (a warning or an error on any channel)
- * that the option `option` (default `component`) of the route file is left
- * unsplit, naming the file and the option (J2.8; naming the binding too is
- * fine, the wording is free). Read once the page loaded the route.
+ * Whether the dev server reported (a warning on any channel: the route
+ * loaded, so nothing was refused) that the option `option` (default
+ * `component`) of the route file is left unsplit, naming the file and the
+ * option (J2.8; naming the binding too is fine, the wording is free). Read
+ * once the page loaded the route.
  */
 async function reportsNotSplit(route: RouteApp, option = 'component') {
   return (
-    findDiagnostics(problems(await route.diagnostics()), {
+    findDiagnostics(await route.diagnostics(), {
+      severity: 'warning',
       file: route.url.slice(1),
       root: route.host.root,
       names: [option],
@@ -980,9 +982,9 @@ export const Route = createFileRoute('/')({
       })
       const loaded = await route.run<
         Array<string>
-      >(`const before = new Set(compiled())
+      >(`const before = new Set(await compiled())
 for (const option of Object.keys(options)) await trigger(option)
-const loaded = compiled().filter((request) => !before.has(request))
+const loaded = (await compiled()).filter((request) => !before.has(request))
 return Promise.all(loaded.map(served))`)
       expect(loaded.length).toBeGreaterThan(0)
       expect(

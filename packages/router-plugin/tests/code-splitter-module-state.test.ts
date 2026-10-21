@@ -872,7 +872,7 @@ export const see = (store) => store.label
     expect(
       await route.run(`// Until the page requests the module, nothing has created the store
 const inits = async () =>
-  requested().includes('/init.js') ? (await app('init.js')).inits : 0
+  (await requested()).includes('/init.js') ? (await app('init.js')).inits : 0
 const atLoad = await inits()
 const notFound = await render('notFoundComponent')
 const afterNotFound = await inits()

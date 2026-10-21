@@ -826,13 +826,23 @@ export const Route = createFileRoute('/')({
 })
 `)
       // What loads with the route module loads with the entry: the
-      // handler's code (its user marker, decoded) is not in it.
+      // handler's code (its user marker, decoded) is not in it, but in what
+      // loading the loader loads.
       expect({
         eagerHandler: (await route.eagerModules()).some((code) =>
           holdsMarker(code, 'MARK_handler'),
         ),
+        lazyHandler:
+          (await route.isLazy('loader')) &&
+          (await route.loadedBy('loader')).some((code) =>
+            holdsMarker(code, 'MARK_handler'),
+          ),
         loaded: await route.run(`return options.loader.handler()`),
-      }).toEqual({ eagerHandler: false, loaded: 'MARK_handler' })
+      }).toEqual({
+        eagerHandler: false,
+        lazyHandler: true,
+        loaded: 'MARK_handler',
+      })
     },
   )
 

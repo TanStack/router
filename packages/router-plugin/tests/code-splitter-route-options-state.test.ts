@@ -91,13 +91,14 @@ ${groupings}  loader: () => 'data',
     }
     expect(await works(loaded)).toEqual(['data', '<p>page</p>', '<p>error</p>'])
     const reported = await loaded.diagnostics()
+    // (a warning: the route works, so it was not refused)
     const told =
       findDiagnostics(reported, {
-        severity: ['warning', 'error'],
+        severity: 'warning',
         names: ['codeSplitGroupings'],
       }).length > 0 ||
       findDiagnostics(reported, {
-        severity: ['warning', 'error'],
+        severity: 'warning',
         file: 'route.tsx',
         root: loaded.host.root,
       }).length > 0
@@ -259,6 +260,13 @@ export const Route = createFileRoute('/posts')({
             holdsMarker(code, 'MARK_FETCH_POSTS') || holdsMarker(code, 'post:'),
         ),
       ).toBe(false)
+      // ... what loads with the route module (the loader's) holds both
+      const eager = await route.eagerModules()
+      expect(
+        ['MARK_FETCH_POSTS', 'post:'].filter((marker) =>
+          eager.some((code) => holdsMarker(code, marker)),
+        ),
+      ).toEqual(['MARK_FETCH_POSTS', 'post:'])
       await expectValidModules(route)
       // The loader's data has two items; the search has `page=2`.
       expect(

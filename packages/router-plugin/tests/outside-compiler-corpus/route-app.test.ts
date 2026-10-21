@@ -9,7 +9,10 @@
  * packages/compiler-test-utils/AGENTS.md): they check the test helper, not
  * the compiler. `test:implementation` runs them.
  */
-import { describe, expect, it } from 'vitest'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { rm } from 'node:fs/promises'
+import path from 'node:path'
+import { describe, expect, it, onTestFinished } from 'vitest'
 import {
   captureThrow,
   findDiagnostics,
@@ -44,15 +47,15 @@ export const ErrorView = () => <p>MARK_ERROR</p>
 }
 
 /**
- * The hand-written lazy route, its lazy module served by a plugin (a module
- * no file of the test holds: what the observers count as emitted for the
- * route, as a compiler's chunk would be).
+ * The hand-written lazy route, its lazy module served by a plugin standing
+ * in for a compiler (`plugins.compilers`: the observers count what it emits
+ * as emitted for the route, as a compiler's chunk would be).
  */
 const loadVirtualLazy = () =>
   loadRoute(handWrittenLazy.replaceAll('./page', 'virtual:page'), {
     ...manual,
     plugins: {
-      before: [
+      compilers: [
         {
           name: 'control:virtual-page',
           resolveId: (id) =>
@@ -70,7 +73,82 @@ export const ErrorView = () => jsx('p', { children: 'MARK_ERROR' })
     files: { 'eager.ts': handWrittenFiles['eager.ts'] },
   })
 
+/**
+ * The hand-written lazy route, its lazy module emitted by a plugin standing
+ * in for a compiler at an id `at(root)` gives: a module served from wherever
+ * a compiler may serve one (SPEC §5.3), e.g. under `/node_modules/` or
+ * `/@fs/`. The file there is a placeholder (Vite serves an existing file
+ * outside the app root under `/@fs/`); the module's code is the plugin's.
+ */
+const loadEmittedAt = async (at: (root: string) => string) => {
+  let root = ''
+  const id = () => at(root)
+  const route = await loadRoute(
+    handWrittenLazy.replaceAll('./page', 'virtual:page'),
+    {
+      ...manual,
+      fresh: true,
+      plugins: {
+        compilers: [
+          {
+            name: 'control:emitted-elsewhere',
+            configResolved: (config) => {
+              root = config.root
+              mkdirSync(path.dirname(id()), { recursive: true })
+              writeFileSync(id(), 'export {}\n')
+            },
+            resolveId: (source) => (source === 'virtual:page' ? id() : null),
+            load: (loaded) =>
+              loaded.split('?')[0] === id()
+                ? `import { jsx } from 'react/jsx-runtime'
+export const Page = () => jsx('p', { children: 'MARK_PAGE' })
+export const ErrorView = () => jsx('p', { children: 'MARK_ERROR' })
+`
+                : null,
+          } satisfies Plugin,
+        ],
+      },
+      files: { 'eager.ts': handWrittenFiles['eager.ts'] },
+    },
+  )
+  onTestFinished(() => rm(path.dirname(id()), { recursive: true, force: true }))
+  return route
+}
+
 describe('observers on a route that is lazy by hand', () => {
+  // A module the compilers emit counts by provenance (the plugin that gave
+  // it its code), not by where it is served from: `/node_modules/` and
+  // `/@fs/` (an id outside the app root) included.
+  it.each([
+    {
+      served: '/node_modules/',
+      at: (root: string) =>
+        path.join(root, 'node_modules/.compiler-out/page.tsx'),
+    },
+    {
+      served: '/@fs/',
+      at: (root: string) => path.join(`${root}-out`, 'page.tsx'),
+    },
+  ])(
+    'a module emitted for the route and served under $served is lazy and loaded',
+    async ({ served, at }) => {
+      const route = await loadEmittedAt(at)
+      expect(await route.isLazy('component')).toBe(true)
+      expect(await route.isLazy('pendingComponent')).toBe(false)
+      const loaded = await route.run<Array<string>>(`await trigger('component')
+return await compiled()`)
+      expect(loaded.some((request) => request.startsWith(served))).toBe(true)
+      expect(
+        (await route.loadedBy('component')).some((code) =>
+          holdsMarker(code, 'MARK_PAGE'),
+        ),
+      ).toBe(true)
+      expect(await route.run(`return render('component')`)).toBe(
+        '<p>MARK_PAGE</p>',
+      )
+    },
+  )
+
   it('a component the route loads lazily is lazy; an inline one and the loader are not', async () => {
     const route = await loadVirtualLazy()
     expect(await route.isLazy('component')).toBe(true)
@@ -156,7 +234,7 @@ export const Route = createFileRoute('/')({ loader: () => label })
 
   it('an edit that deletes a module the page loaded does not reload the next run', async () => {
     // Vite keeps the full reload of the deletion for the next client; the
-    // route app keeps a client connected, so the next page run is not
+    // plugin host keeps a client connected, so the next page run is not
     // reloaded under it.
     for (let round = 0; round < 3; round++) {
       const route = await loadRoute(
@@ -226,5 +304,14 @@ describe('stringValues', () => {
     expect(values.has('MARK_A')).toBe(true)
     expect([...values].some((value) => value.includes('MARK_C'))).toBe(true)
     expect(holdsMarker('const b = `MARK_${x}B`', 'MARK_')).toBe(true)
+  })
+
+  // An absence check on code that does not parse would pass whatever the
+  // code holds: it fails instead.
+  it('fails on code that does not parse', () => {
+    expect(() => stringValues(`const a = 'MARK_A' +;`)).toThrow(/parse/)
+    expect(() => holdsMarker(`const a = 'MARK_A' +;`, 'MARK_B')).toThrow(
+      /parse/,
+    )
   })
 })

@@ -283,6 +283,12 @@ export function describeRouteFileUpkeep(
         ).toEqual([])
         await app.navigate('/posts', 'MARK_POSTS')
         await app.settle()
+        // (the check sees the component's code once it loaded)
+        expect(
+          (await app.scripts()).some((script) =>
+            scriptHolds(script, 'MARK_POSTS'),
+          ),
+        ).toBe(true)
         expect(app.errors()).toEqual([])
       },
       timeout,
