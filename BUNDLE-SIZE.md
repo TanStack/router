@@ -20,17 +20,18 @@ JavaScript gzip**, summed across separately compressed files, for
 | Serial cleanup `ee5df0122640`           |     99,688 |       99,549 | 311,317 | 86,585 |
 | Ownership-round baseline `3b3fa2f5c787` |     99,720 |       99,581 | 311,434 | 86,683 |
 | Ownership cuts `5ff5291a24`             |     99,710 |       99,570 | 311,487 | 86,540 |
-| Current `7fe0c4154f`                    | **99,706** |       99,566 | 311,450 | 86,769 |
+| Admission `7fe0c4154f`                  |     99,706 |       99,566 | 311,450 | 86,769 |
+| Current `45ff24b408`                    | **99,699** |       99,561 | 311,446 | 86,525 |
 
 At `83e38a349dc5` the increase over main was **605 gzip bytes**: **446** from the
 original PR and **159** from subsequent fixes and optimizations. The
 serial cleanup below is committed at `ee5df0122640`. Run `cc-final-v2` and
 the fresh `ss-baseline` reproduce its **26-byte** reduction, leaving **579** over
 main. The target, 100 bytes below the original PR, is **99,455**. Current
-`7fe0c4154f` measures **99,706**: **14 below this round's baseline**,
-**151 above the original PR**, **597 above main**, and **251 above the target**.
-The target remains unmet. Router-only `react-router.minimal` is **86,239**,
-8 below this round's baseline and 67 above the original PR's 86,172.
+`45ff24b408` measures **99,699**: **21 below this round's baseline**,
+**144 above the original PR**, **590 above main**, and **244 above the target**.
+The target remains unmet. Router-only `react-router.minimal` is **86,237**,
+10 below this round's baseline and 65 above the original PR's 86,172.
 The ownership extraction fixes lost parent results; subsequent branch/state
 removals recover its cost and reduce Promise work. No runtime metadata filter
 is retained. See the ownership follow-up below and
@@ -1011,3 +1012,83 @@ does not set the pending boundary. A fresh-router entry does not prove an empty
 preflight after serialization adapters run, because their callbacks can navigate.
 These checks still distinguish supported reachable states. No size or runtime
 reproduction claim is assigned to these source-only exclusions.
+
+### Full-matrix attribution of the final composition
+
+The full v33 run reproduces the targeted 99,699 / 86,237 numbers, passes all
+32 package/consumer targets, 86 browser cases and 40 timed case assertions,
+and matches all 36 Promise-resource counts. Its 18-scenario result has ten
+reductions, one unchanged result and seven increases. Two timing outliers need
+narrow confirmation; final CPU acceptance is deferred to v35 below.
+
+The largest gzip increase is React Router full: **+25**, with unchanged total
+raw bytes. Two additional full-matrix subset screens isolate the compression
+tradeoff. Both pass all 3,946 positive core cases, build and native active,
+client and pending-context assertions before measurement.
+
+| Composition                                                           | SPA minimal | Start minimal | React Router full delta | Start query delta | Solid Start minimal delta | Vue Start minimal delta |
+| --------------------------------------------------------------------- | ----------: | ------------: | ----------------------: | ----------------: | ------------------------: | ----------------------: |
+| Generation move + record + tags, `hydration-v33-after-all`            |      86,237 |        99,699 |                     +25 |                −3 |                        +4 |                      −6 |
+| Record + tags, no move, `record-tags-no-move-v34-all`                 |      86,241 |        99,705 |                      +7 |               +16 |                        −4 |                     −13 |
+| Generation move + record, no tags, `generation-required-step-v29-all` |      86,236 |        99,701 |                     +17 |               +15 |                        +2 |                       0 |
+
+The relocation is body-identical; the no-move subset restores baseline
+function order. No function, dependency or runtime policy is added by moving it.
+Its minifier/gzip layout helps the requested minimal apps but does not improve
+every application. Dropping it adds six Start and four SPA bytes compared with
+the selected composition. Dropping numeric tags saves one SPA byte but adds two
+Start bytes and 18 query-integration bytes. The selection therefore remains the
+99,699-byte Start composition; the 99,701-byte intermediate remains recoverable
+as its own commit, and the SPA-favoring projection alternative has its own branch.
+No result is claimed to reduce every scenario.
+
+Subset output is saved in immutable named metrics and
+`emitted-record-tags-no-move-v34/` / `emitted-generation-required-step-v29/` under
+`/tmp/pr6631-hydration-v11/`. `v34-commands.json` and
+`v34-archived-command-logs.json` retain commands and copied current logs.
+The second subset reused the old v29 per-step log filenames, overwriting those
+original screen logs with broader v34 fixture runs. Do not cite them as the
+original v29 timing samples. The old named byte results and source snapshot
+remain unchanged; the new full run has the distinct `-all` suffix.
+
+### Final acceptance and timing confirmation
+
+The retained changes are separate commits: `60882ae780` groups generation,
+`ffaf4143a2` requires the step record, and `45ff24b408` uses typed outcome tags.
+The intermediate commits retain their different SPA/Start tradeoffs. Final
+source SHA256 is `07075cda9dbcd52d07199f9782e73701a12833f0ad527a840471dd8b558e05f7`;
+`hydrate` remains the last declaration in the original `load-client.ts`.
+
+Both matched v33 phases pass all 32 unit/types/lint/build targets, 75 lifecycle
+and 11 selective-SSR browser cases, 40 timed case assertions and 36 resource
+probes. The core suite has 3,946 positive passes in each phase. No feature cut
+or runtime metadata filtering is retained. The published-code patch changeset
+remains `tidy-hydration-owners.md`.
+
+The 800 ms screens initially showed two non-overlapping mean slowdowns:
+terminal-error/depth4 +4.32%, and terminal-notFound/depth16 +12.37%. Isolated
+1,200 ms A/B/B/A repetitions do not reproduce either consistently:
+
+| Workload                         | Before means µs |  After means µs | Equal-process mean change |  RME range |
+| -------------------------------- | --------------: | --------------: | ------------------------: | ---------: |
+| terminal-error-deep, depth 4     | 12.845 / 12.582 | 12.885 / 12.715 |                    +0.68% | 2.41–2.75% |
+| terminal-notFound-deep, depth 16 | 36.913 / 35.957 | 35.762 / 37.500 |                    +0.54% | 4.58–4.94% |
+
+Intervals overlap. The latter now has 3.13–3.36 ms p999 tails in both sources;
+the old baseline's 0.21 ms tail was not stable. Every repetition has the same
+34/106 Promise count. These runs establish no confirmed CPU regression and
+no speedup. Resource counts describe created Promises, not retained heap.
+The historical 11.5% async-overhead figure is not claimed to be eliminated.
+The current async fixture deliberately awaits inside each transform and still
+creates 64 additional Promise resources at depth16 in both sources.
+
+After all prototypes and timing reruns, `hydration-v35-restored-all` reproduces
+every metric of `hydration-v33-after-all`. Source/recompression, all-scenario
+tradeoffs and timing uncertainty are recorded in
+`RESULT-optimization-hydration-ownership.md` and the independent v33/v34/v35
+audit files under `/tmp/pr6631-hydration-v11/`.
+
+The requested 99,455-byte threshold remains unmet by **244 bytes**. Further
+whole-branch audits found supported states behind the remaining checks; no
+additional safe deletion was identified in this round. This is a retained
+reduction, not completion of the 100-byte target.

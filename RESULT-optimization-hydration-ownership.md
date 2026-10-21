@@ -311,3 +311,158 @@ The final independent restoration audit (`independent-v26-restored-audit.json`)
 finds all 18 metric objects and all 38 JavaScript files plus 38 maps identical
 to the verified v21 AFTER artifacts. Per-file and initial/total recompression
 also matches. The primary, isolated and built sources all bind the same a4 SHA.
+
+## Typed record and outcome-tag follow-up — BEFORE
+
+This round starts from `7fe0c4154f`, source SHA-256
+`a4af4794048162245b039aa4a3fa6a4cb4734d31c6888b02bb779418629d15ed`.
+It compares the required-record invariant, numeric normalization mode and
+body-identical generation-factory relocation. Their exact proposed composition
+is SHA-256 `07075cda9dbcd52d07199f9782e73701a12833f0ad527a840471dd8b558e05f7`.
+All five fresh post-optimization reviews found no correctness blocker.
+
+The public pending-context regression is committed separately at `9cf83c2e53`.
+The benchmark-only commit `a83d36e7e4` adds pending-context function/object and
+normal client error/not-found families. The selective fixture renders its
+ancestors and leaves the `ssr: false` leaf uncommitted, exercising the actual
+empty-record fallback; context/codecs/handler counts are asserted outside timing.
+Client failure families execute normalization during timing rather than merely
+restoring a server error. Baseline preflights pass. The tuple return also passes
+an isolated TypeScript 5.4.2 compatibility proof.
+
+Only `load-client.ts` is stashed in the isolated checkout, with implementation
+stash `b5036815597ede7b7c9f0fbdbea52983b2ade8ca`. `FINDINGS.md` is untracked in
+the primary checkout and is neither stashed nor committed. The worktree baseline
+snapshot commit is `962e0ed5fb`; unrelated primary WIP is excluded. The full
+32-target baseline package matrix and 75 lifecycle plus 11 selective-SSR browser
+cases pass. All native mechanism and full-18 measurements also pass. BEFORE includes 36
+loader-work timings and resource probes plus four serial timings: 40 timed cases
+per phase. The entire loader-work file registers 40 cases; this matched selection
+omits its alternating/adopt cases and adds the four serial cases. AFTER repeats
+identical commands with the implementation restored.
+
+| Scenario             | Total gzip | Initial gzip |     Raw | Brotli |
+| -------------------- | ---------: | -----------: | ------: | -----: |
+| react-router.minimal |     86,239 |       86,100 | 268,380 | 75,189 |
+| react-start.minimal  |     99,706 |       99,566 | 311,450 | 86,769 |
+
+Run `hydration-v33-before-all` reproduces all 18 prior a4 metric objects. An
+independent audit also finds all 38 JavaScript files and 38 maps byte-for-byte
+identical to the verified v26 artifacts, with exact recompression and source
+hashes: `independent-v33-before-audit.json`.
+
+Evidence is `/tmp/pr6631-hydration-v11/typed-record-phase-v33.py`,
+`v33-before-commands.json`, and the associated logs/source snapshot. The
+attribution log in `BUNDLE-SIZE.md` distinguishes the chosen composition from
+the SPA-favoring alternative preserved on its own local prototype branch.
+
+## Typed record and outcome-tag follow-up — AFTER
+
+The exact restored implementation is committed separately as `60882ae780`,
+`ffaf4143a2`, and `45ff24b408`. Source SHA-256 is
+`07075cda9dbcd52d07199f9782e73701a12833f0ad527a840471dd8b558e05f7`.
+The 99,701-byte / 86,236-byte intermediate remains in commit ancestry;
+`codex/pr6631-hydration-projection-prototype` preserves the alternative
+99,703-byte / 86,233-byte layout as two separate commits. Those alternatives
+are not combined with the selected source.
+
+AFTER repeats all 32 package/consumer unit/types/lint/build targets, 86 browser
+cases, 40 timing assertions and 36 resource probes. All pass; the core suite has
+3,946 positive passes in both phases. The new pending-context fixtures execute
+both function and object handlers at the first uncommitted boundary, and the
+new client failures execute error/not-found normalization during timing.
+
+| Scenario                         | BEFORE gzip | AFTER gzip | Delta |
+| -------------------------------- | ----------: | ---------: | ----: |
+| react-router.minimal             |      86,239 |     86,237 |    -2 |
+| react-router.full                |      89,925 |     89,950 |   +25 |
+| solid-router.minimal             |      34,334 |     34,336 |    +2 |
+| solid-router.full                |      39,378 |     39,379 |    +1 |
+| vue-router.minimal               |      50,817 |     50,809 |    -8 |
+| vue-router.full                  |      56,523 |     56,523 |    +0 |
+| react-start.minimal              |      99,706 |     99,699 |    -7 |
+| react-start.query-integration    |     107,300 |    107,297 |    -3 |
+| react-start.deferred-hydration   |     100,451 |    100,450 |    -1 |
+| react-start.full                 |     102,848 |    102,842 |    -6 |
+| react-start.rsbuild.minimal      |     103,518 |    103,513 |    -5 |
+| react-start.rsbuild.minimal-iife |     103,938 |    103,931 |    -7 |
+| react-start.rsbuild.full         |     106,765 |    106,759 |    -6 |
+| solid-start.minimal              |      47,908 |     47,912 |    +4 |
+| solid-start.deferred-hydration   |      51,022 |     51,028 |    +6 |
+| solid-start.full                 |      53,056 |     53,060 |    +4 |
+| vue-start.minimal                |      67,573 |     67,567 |    -6 |
+| vue-start.full                   |      71,391 |     71,397 |    +6 |
+
+Start minimal is **99,699 total gzip / 99,561 initial / 311,446 raw / 86,525
+Brotli**. SPA minimal is **86,237 total gzip / 86,098 initial / 268,374 raw /
+75,242 Brotli**. These reduce this pair's baselines by 7/2 gzip bytes. The full
+matrix has ten reductions, one unchanged result and seven increases; the largest
+is React Router full +25 gzip with unchanged total raw bytes. Independent
+source-map attribution finds only `load-client.ts` changed. No dependencies or
+new modules account for the outlier. Full-matrix no-move and no-tags subset
+measurements confirm the compression tradeoffs described in `BUNDLE-SIZE.md`.
+No universal all-application size reduction is claimed.
+
+### Mechanism timings and limits
+
+These single-process 800 ms screens have GC tails and do not demonstrate tiny
+speedups. Means below are microseconds; relative margins are percentages.
+
+| Workload                                     | BEFORE µs | AFTER µs | BEFORE / AFTER RME |
+| -------------------------------------------- | --------: | -------: | -----------------: |
+| client-sync, depth 16                        |     40.28 |    38.54 |        3.61 / 3.60 |
+| client-async, depth 16                       |     41.53 |    40.36 |        3.68 / 3.80 |
+| all-active-sync, depth 16                    |     44.73 |    43.55 |        6.02 / 5.76 |
+| all-active-async, depth 16                   |     45.04 |    44.75 |        5.70 / 5.60 |
+| selective-pending-context-function, depth 4  |     12.86 |    12.82 |        2.39 / 2.59 |
+| selective-pending-context-object, depth 4    |     12.63 |    12.39 |        2.20 / 1.23 |
+| selective-pending-context-function, depth 16 |     30.27 |    30.02 |        3.58 / 3.58 |
+| selective-pending-context-object, depth 16   |     31.00 |    29.64 |        4.17 / 3.37 |
+
+All 36 created-Promise counts match. New pending-context cases remain 32 at
+depth4 and 104 at depth16 for both context forms. Fully active sync/async cases
+remain 234/298 at depth16; their extra 64 resources come from the explicit async
+transform suspension in this workload, not this change. These counts do not
+measure retained heap. The new fallback creates at most one transient empty
+record per reconstruction; no new Promise, listener or retained wire closure is
+introduced. Server execution is unchanged and no new SSR CPU speedup is claimed.
+The historical 11.5% async-overhead figure is not proven eliminated.
+
+Two broad timing outliers were checked in independent 1,200 ms A/B/B/A runs:
+
+| Workload                         | BEFORE means µs |  AFTER means µs | Mean difference |  RME range |
+| -------------------------------- | --------------: | --------------: | --------------: | ---------: |
+| terminal-error-deep, depth 4     | 12.845 / 12.582 | 12.885 / 12.715 |          +0.68% | 2.41–2.75% |
+| terminal-notFound-deep, depth 16 | 36.913 / 35.957 | 35.762 / 37.500 |          +0.54% | 4.58–4.94% |
+
+The original +4.32%/+12.37% increases do not reproduce consistently. All
+intervals overlap, and not-found p999 tails are now 3.13–3.36 ms in both sources.
+Resources remain 34/106 for every repetition. The evidence shows no confirmed
+CPU regression, and supports no speedup claim. The process means are not pooled
+as if their many correlated samples were independent replications.
+
+### Final artifacts and completion limit
+
+`hydration-v33-after-all` is the matched full-18 AFTER run. Following subset
+experiments and narrow timing confirmation, `hydration-v35-restored-all` rebuilds
+the exact final source and reproduces all 18 metrics. The v33 independent audit
+recompresses all 76 before/after JavaScript files and verifies their per-file,
+initial and total raw/gzip/Brotli sums. It verifies 38 maps per phase and the
+exact `a4af479…` → `07075cda…` source change. The independent v35 restoration
+audit also verifies all 18 metric objects, 38 JavaScript files and 38 maps are
+byte-for-byte identical to the validated v33 candidate; the primary, isolated
+and built package sources match.
+
+Evidence: `v33-*-commands.json`, `v33-*-load-client.ts`,
+`independent-v33-before-audit.json`, `independent-v33-full-candidate-audit.json`,
+`independent-v33-performance-audit.json`, `independent-v34-subset-attribution-audit.json`,
+`v35-commands.json`, `independent-v35-narrow-audit.json`,
+`independent-v35-restored-audit.json`, emitted snapshots, and
+`production-commits-v35.json` under `/tmp/pr6631-hydration-v11/`.
+
+Final Start remains **244 bytes above** the 99,455-byte target and **144 above**
+the original PR head. It is 21 below the 99,720-byte ownership-round baseline;
+SPA is 10 below that round's 86,247. The remaining branches still distinguish
+supported transport, terminal, cancellation and ownership states. No further safe
+whole-branch deletion was identified. The requested target is **not complete**.
+`FINDINGS.md` stays untracked and uncommitted.

@@ -1477,6 +1477,10 @@ alternatives. Unresolved choices are separated below.
   client-side default. A custom wire value cannot become application data until
   its transform succeeds. This does not relax the document URL/build/prefix
   compatibility contract above.
+  The internal step dispatcher requires a record. Accepted matches provide
+  their wire record; the first uncommitted context gets an empty record because
+  it has no accepted transport. This removes optional-record states from the
+  dispatcher without treating absent keys as transported undefined values.
 - Codecs can be asynchronous and are awaited at lifecycle settlement. Server
   rendering keeps the full result; `_dehydrated` keeps the
   separate wire value. A failed server codec belongs to that match's error
