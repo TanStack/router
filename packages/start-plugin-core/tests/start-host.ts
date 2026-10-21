@@ -46,7 +46,6 @@ import { resolveModulePath } from 'exsolve'
 import { mergeConfig, preview as vitePreview } from 'vite'
 import { afterAll, beforeAll, expect } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
-import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 import {
   workspacePackage,
@@ -386,28 +385,31 @@ export const Route = createFileRoute('${pageRoutePath}')({
   return files
 }
 
-/** The modules the page imports first, so Vite pre-bundles them at once. */
-function warmModules(framework: StartFramework): Array<string> {
-  const start = startPackages[framework]
-  const common = [
-    start,
-    `${start}/client-rpc`,
-    `${start}/hydration`,
-    routerPackages[framework],
-  ]
+/**
+ * The dependencies the dev server pre-bundles up front (`optimizeDeps`
+ * `include`, with discovery off, as router-plugin's `route-app.ts` does):
+ * the framework runtime and the router. With nothing left to discover,
+ * Vite's optimizer never reruns and reloads the page while a case runs.
+ * Start's own packages are not pre-bundled: the app serves them through
+ * Start's plugin, which gives each environment its own entries (a
+ * pre-bundle would take their server code into the client).
+ */
+function prebundledModules(framework: StartFramework): Array<string> {
+  const router = routerPackages[framework]
   if (framework === 'react') {
     return [
-      ...common,
       'react',
+      'react-dom',
       'react/jsx-dev-runtime',
       'react/jsx-runtime',
       'react-dom/client',
+      router,
     ]
   }
   if (framework === 'solid') {
-    return [...common, 'solid-js', 'solid-js/web']
+    return ['solid-js', 'solid-js/web', 'solid-js/store', router]
   }
-  return [...common, 'vue', 'vue/jsx-dev-runtime']
+  return ['vue', 'vue/jsx-runtime', 'vue/jsx-dev-runtime', router]
 }
 
 /**
@@ -641,6 +643,14 @@ export async function createStartHost(
     ],
     config: {
       ...options.config,
+      optimizeDeps: {
+        noDiscovery: true,
+        ...options.config?.optimizeDeps,
+        include: [
+          ...prebundledModules(framework),
+          ...(options.config?.optimizeDeps?.include ?? []),
+        ],
+      },
       server: {
         ...options.config?.server,
         watch: {
@@ -718,50 +728,6 @@ export async function createStartHost(
       opened.page.on('request', (request) => {
         requests.push(request.url())
       })
-      // Vite pre-bundles what the page's first imports discover and reloads
-      // the page when that changes the bundles: import the runtime first,
-      // until a round ends with nothing left to pre-bundle and no reload.
-      // A round ends on its outcome: the dependency optimizer has no
-      // discovered dependency left to bundle (observation only: its
-      // metadata), and every full reload the dev server sent during the
-      // round has reloaded the page.
-      const warm = `await Promise.allSettled(${JSON.stringify(
-        warmModules(framework).map((specifier) => `/@id/${specifier}`),
-      )}.map((url) => import(url)))`
-      const optimizer = host.dev.vite.environments.client.depsOptimizer
-      const toBundle = () =>
-        Object.keys(optimizer?.metadata.discovered ?? {}).length
-      const fullReloads = () =>
-        host.dev.hmr.filter(
-          (message) =>
-            message.environment === 'client' && message.type === 'full-reload',
-        ).length
-      for (let round = 0; round < 10; round++) {
-        const loads = opened.loads()
-        const reloads = fullReloads()
-        try {
-          await opened.page.evaluate(`(async () => { ${warm} })()`)
-        } catch {
-          // The page reloaded meanwhile
-        }
-        await host.dev.idle()
-        await waitForOutcome({
-          applied: () =>
-            toBundle() === 0 &&
-            (fullReloads() === reloads || opened.loads() !== loads),
-          quiet: async () => {
-            await host.dev.idle()
-            return true
-          },
-          timeout: 20_000,
-          describe: () =>
-            `dependencies left to pre-bundle: ${toBundle()}; full reloads sent: ${fullReloads() - reloads}; page loads: ${opened.loads() - loads}`,
-        })
-        if (fullReloads() === reloads && opened.loads() === loads) {
-          break
-        }
-        await opened.page.waitForLoadState()
-      }
       return opened
     })()
     return page

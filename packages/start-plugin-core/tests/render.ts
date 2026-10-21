@@ -602,10 +602,10 @@ export interface ClientRender {
   lazyUrls: Array<string>
   /**
    * The case's own code among `lazyUrls`: the modules the page requested
-   * once hydration started that the module's own import graph reaches
-   * (Vite's client module graph from the module, static and dynamic edges,
-   * without packages and without the module itself), wherever the compiler
-   * put them. Code of a package, of the harness or of Vite is not the
+   * once hydration started whose served code's source map names a file of
+   * the case directory (or, served with an empty map, that the case
+   * module's own import graph reaches), wherever the compiler put them and
+   * under any id. Code of a package, of the harness or of Vite is not the
    * case's split code.
    */
   chunks: Array<string>
@@ -874,7 +874,7 @@ ${options.script ?? 'return null'}
 }`,
     startCase,
   )
-  const owned = caseOwnedUrls(hosts, `/${target.dir}/${file}`)
+  const chunks = await caseCode(hosts, target.dir, file, run.result.lazyUrls)
   const caseForResult = startCase ?? (target as unknown as StartCase)
   return {
     case: caseForResult,
@@ -901,9 +901,47 @@ ${options.script ?? 'return null'}
     loaded: run.result.loaded,
     lazy: run.result.lazy,
     lazyUrls: run.result.lazyUrls,
-    chunks: run.result.lazyUrls.filter((url) => owned.has(comparableUrl(url))),
+    chunks,
     result: run.result.result,
   }
+}
+
+/**
+ * The URLs among `urls` (what the page requested) whose served code is the
+ * case's own, wherever the compiler put it and under any id: its source map
+ * names a file of the case directory `dir` (relative to the app root), or,
+ * for code whose map names no file (a split text-only child is served with
+ * an empty map), the client module graph reaches it from the case module
+ * `file` through the case's own modules (an import edge, static or
+ * dynamic, not through a package). A package, the runtime or Vite's client
+ * is neither. Observation only: the dev server's served maps and module
+ * graph.
+ */
+async function caseCode(
+  hosts: HydrateHost,
+  dir: string,
+  file: string,
+  urls: Array<string>,
+): Promise<Array<string>> {
+  const caseDir = `${path.join(hosts.start.root, dir)}${path.sep}`
+  const reached = caseGraph(hosts, `/${dir}/${file}`)
+  const owned: Array<string> = []
+  for (const url of urls) {
+    if (!url.startsWith('/')) {
+      continue
+    }
+    const served = await servedWithMap(hosts, url).catch(() => undefined)
+    const sources = (served?.map?.sources ?? []).filter(
+      (source): source is string => source !== null,
+    )
+    if (
+      sources.some((source) => source.startsWith(caseDir)) ||
+      (sources.length === 0 && reached.has(comparableUrl(url)))
+    ) {
+      owned.push(url)
+    }
+  }
+  return owned
 }
 
 /** A module URL without Vite's `t` (HMR timestamp) parameter. */
@@ -915,21 +953,18 @@ function comparableUrl(url: string) {
 }
 
 /**
- * The URLs of the modules the client module graph reaches from an app file
- * (its URL), static and dynamic imports: the app's own files (under the app
- * root, outside `node_modules`) and virtual modules (`\0` ids), without the
- * module itself and without packages (workspace packages resolve outside
- * the app root; `node_modules` includes Vite's pre-bundled dependencies) or
- * tool modules (`/@react-refresh`): the code that file itself brings,
- * wherever a compiler put it. Observation only (Vite's module graph).
+ * The URLs of the modules the client module graph reaches from the module
+ * at `url`, static and dynamic imports, through modules of the app (not
+ * packages: workspace packages resolve outside the app root,
+ * `node_modules` holds Vite's pre-bundled dependencies) or virtual ones.
  */
-function caseOwnedUrls(hosts: HydrateHost, url: string): Set<string> {
+function caseGraph(hosts: HydrateHost, url: string): Set<string> {
   const graph = hosts.start.host.dev.vite.environments.client.moduleGraph
   const root = `${hosts.start.root}${path.sep}`
   const start = [
     ...(graph.getModulesByFile(path.join(hosts.start.root, url)) ?? []),
   ].filter((node) => node.url === url)
-  const owned = new Set<string>()
+  const reached = new Set<string>()
   const seen = new Set<unknown>(start)
   const queue = start.flatMap((node) => [...node.importedModules])
   while (queue.length > 0) {
@@ -942,14 +977,13 @@ function caseOwnedUrls(hosts: HydrateHost, url: string): Set<string> {
       node.file !== null &&
       node.file.startsWith(root) &&
       !/[\\/]node_modules[\\/]/.test(node.file)
-    const virtual = node.id?.startsWith('\0') ?? false
-    if (!appFile && !virtual) {
+    if (!appFile && !(node.id?.startsWith('\0') ?? false)) {
       continue
     }
-    owned.add(comparableUrl(node.url))
+    reached.add(comparableUrl(node.url))
     queue.push(...node.importedModules)
   }
-  return owned
+  return reached
 }
 
 /**

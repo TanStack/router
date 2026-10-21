@@ -82,7 +82,14 @@ describe('createServerFn compiles correctly', () => {
   // \r\n, a lone \r, U+2028 and U+2029 as line terminators, so the
   // reported line and column must count every one. Prose, frame layout and
   // context length are free (§5.7).
-  test.each([
+  // Bug: the code frame's caret, Start's only spelling of the column, is
+  // drawn one column left of the call (F1), so the reported column is
+  // wrong; the line is right.
+  // Impact: the frame highlights the character before the offending call.
+  // Source: validation/REPAIR/A2.md F1 (DECISIONS 2026-10-21; pin:
+  // known-bugs-start-compiler-code-frame.test.ts); passed only through the
+  // ctu matcher's former ±1 caret tolerance (removed by F-A, FINAL-PASS #12).
+  test.fails.each([
     ['\\n', '\n'],
     ['\\r\\n', '\r\n'],
     ['a lone \\r', '\r'],
@@ -105,20 +112,30 @@ describe('createServerFn compiles correctly', () => {
     },
   )
 
-  test('reports the location of a diagnostic deep in the module', async () => {
-    const source = [
-      `import { createServerFn } from '@tanstack/react-start'`,
-      ...Array.from({ length: 10 }, (_, i) => `export const v${i} = ${i}`),
-      `export const fn = createServerFn().handler()`,
-    ].join('\n')
-    const startCase = await (await host()).case({ 'module.tsx': source })
-    expectCompileError(await compileError(startCase), {
-      source,
-      at: 'createServerFn()',
-      column: true,
-      ...missingHandler,
-    })
-  })
+  // Bug: the code frame's caret, Start's only spelling of the column, is
+  // drawn one column left of the call (F1), so the reported column is
+  // wrong; the line is right.
+  // Impact: the frame highlights the character before the offending call.
+  // Source: validation/REPAIR/A2.md F1 (DECISIONS 2026-10-21; pin:
+  // known-bugs-start-compiler-code-frame.test.ts); passed only through the
+  // ctu matcher's former ±1 caret tolerance (removed by F-A, FINAL-PASS #12).
+  test.fails(
+    'reports the location of a diagnostic deep in the module',
+    async () => {
+      const source = [
+        `import { createServerFn } from '@tanstack/react-start'`,
+        ...Array.from({ length: 10 }, (_, i) => `export const v${i} = ${i}`),
+        `export const fn = createServerFn().handler()`,
+      ].join('\n')
+      const startCase = await (await host()).case({ 'module.tsx': source })
+      expectCompileError(await compileError(startCase), {
+        source,
+        at: 'createServerFn()',
+        column: true,
+        ...missingHandler,
+      })
+    },
+  )
 
   // Malformed-input diagnostic control (SPEC §8, G5): destructuring a server
   // fn is a type error (tsc against the real declarations: TS2339 "Property
