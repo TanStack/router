@@ -67,12 +67,14 @@ export const fn =
     },
   ])('$name', async ({ source }) => {
     const startCase = await (await host()).case({ 'module.tsx': source })
-    const error = await compileError(startCase)
-    expect(error, 'a compile error').toBeInstanceOf(Error)
+    const failure = await compileError(startCase)
+    expect(failure, 'a compile error').toBeInstanceOf(Error)
     const at = diagnosticPosition(source, 'createServerFn()')
+    // Every frame the failure shows, on any channel
     const text = [
-      (error as Error).message,
-      (error as { frame?: string }).frame ?? '',
+      (failure!.error as Error).message,
+      (failure!.error as { frame?: string }).frame ?? '',
+      ...failure!.reported.map((diagnostic) => diagnostic.text),
     ].join('\n')
     const carets = caretColumns(text, source, at.line)
     expect(carets, 'columns the carets point at').toEqual(

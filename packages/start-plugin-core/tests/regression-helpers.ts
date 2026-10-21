@@ -25,6 +25,7 @@
  */
 import { parseSync } from 'vite'
 import { expect } from 'vitest'
+import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import type { ClientRun, StartCase, StartHost } from './start-host'
 
 export {
@@ -112,19 +113,46 @@ export function fromPage(settled: PageSettled): unknown {
 }
 
 /**
- * The error an environment (default `client`) throws when serving a case
- * file (default `module.tsx`), or `undefined` when it serves it.
+ * An environment's refusal to serve a module: the error it threw, and what
+ * the app reported on every channel meanwhile (a compiler may give its
+ * explanation on the console or the dev server's logger and hand the
+ * bundler a short error, SPEC §5.7, N15). `expectCompileError` reads both.
+ */
+export class CompileFailure extends Error {
+  constructor(
+    readonly error: unknown,
+    readonly reported: Array<ChannelDiagnostic>,
+  ) {
+    super(error instanceof Error ? error.message : String(error), {
+      cause: error,
+    })
+    this.name = 'CompileFailure'
+  }
+}
+
+/**
+ * The failure of an environment (default `client`) to serve a case file
+ * (default `module.tsx`): a `CompileFailure` (the error it threw and the
+ * warnings and errors the app reported on any channel while it tried), or
+ * `undefined` when it serves the file.
  */
 export async function compileError(
   startCase: StartCase,
   environment: 'client' | 'ssr' = 'client',
   file = moduleFile,
-): Promise<unknown> {
+): Promise<CompileFailure | undefined> {
+  const mark = startCase.diagnostics().length
   try {
     await startCase.served(file, environment)
     return undefined
   } catch (error) {
-    return error
+    return new CompileFailure(
+      error,
+      startCase
+        .diagnostics()
+        .slice(mark)
+        .filter((diagnostic) => diagnostic.severity !== 'info'),
+    )
   }
 }
 

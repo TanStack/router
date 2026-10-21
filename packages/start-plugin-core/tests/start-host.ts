@@ -375,6 +375,12 @@ export interface StartCase {
    * without their extension, packages by name), static and dynamic.
    */
   serverLoads: (file?: string) => Promise<Array<string>>
+  /**
+   * Everything the app's server reported so far, on every channel (the dev
+   * server's merged channel; on a production build, what the build
+   * reported). Mark a point with `.length`.
+   */
+  diagnostics: () => Array<ChannelDiagnostic>
 }
 
 export interface StartHost {
@@ -758,6 +764,8 @@ try {
         names.delete(`./${file}`)
         return [...names]
       },
+      diagnostics: () =>
+        previewState ? previewState.build.diagnostics : host.diagnostics,
       serverLoads: async (file = 'module.tsx') => {
         devOnly('serverLoads()')
         await host.importServer(url(file), 'ssr').catch(() => {})

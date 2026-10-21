@@ -18,7 +18,13 @@ import {
   mismatches,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
-import { Thrown, callFromClient, callOnServer } from './regression-helpers'
+import {
+  CompileFailure,
+  Thrown,
+  callFromClient,
+  callOnServer,
+  compileError,
+} from './regression-helpers'
 import type { Environment } from '@tanstack/compiler-test-utils/diagnostics'
 import type { StartHost } from './start-host'
 
@@ -52,8 +58,10 @@ export const missingHandler = {
  * cause in its own words when `explains` is given (`true`, or the input
  * content it must mention), and, unless `at` is `undefined`, points at the
  * line of `at` (the first occurrence of that text in `source`, or a 1-based
- * line), and its column with `column`. Prose, code-frame layout and context
- * length are free (§5.7).
+ * line), and its column with `column`: all of it in one diagnostic, the
+ * error the environment threw or one the app reported meanwhile on any
+ * channel (a `CompileFailure` of `compileError` carries both). Prose,
+ * code-frame layout, context length and the channel are free (§5.7).
  */
 export function expectCompileError(
   error: unknown,
@@ -68,18 +76,22 @@ export function expectCompileError(
   },
 ) {
   expect(error, 'a compile error').toBeInstanceOf(Error)
-  if (expected.at !== undefined) {
-    const { line, column } =
-      typeof expected.at === 'number'
-        ? { line: expected.at, column: undefined }
-        : diagnosticPosition(expected.source, expected.at)
-    expectDiagnostic(error, {
-      position: expected.column ? { line, column } : { line },
-      source: expected.source,
-    })
-  }
-  const [diagnostic] = diagnosticsOf(error)
-  expectDiagnostic(diagnostic!, {
+  // The error the environment threw and what the app reported meanwhile
+  // on any channel (`compileError`): one of them must say it all.
+  const candidates =
+    error instanceof CompileFailure
+      ? [...diagnosticsOf(error.error), ...error.reported]
+      : diagnosticsOf(error)
+  const position =
+    expected.at === undefined
+      ? undefined
+      : typeof expected.at === 'number'
+        ? { line: expected.at }
+        : expected.column
+          ? diagnosticPosition(expected.source, expected.at)
+          : { line: diagnosticPosition(expected.source, expected.at).line }
+  expectDiagnostic(candidates, {
+    ...(position && { position }),
     names: expected.names,
     explains: expected.explains,
     prose: true,
@@ -179,15 +191,16 @@ export async function expectNoClientHandler(
   })
   const served: Partial<Record<'client' | 'ssr', string>> = {}
   for (const environment of ['client', 'ssr'] as const) {
-    try {
-      served[environment] = await startCase.served('module.tsx', environment)
-    } catch (error) {
-      expectCompileError(error, {
+    const failure = await compileError(startCase, environment)
+    if (failure) {
+      expectCompileError(failure, {
         source: code,
         at: options.rejection === 'named' ? undefined : misplacedHandlerBody,
         names: ['createServerFn'],
         explains: true,
       })
+    } else {
+      served[environment] = await startCase.served('module.tsx', environment)
     }
   }
   if (served.client !== undefined) {
