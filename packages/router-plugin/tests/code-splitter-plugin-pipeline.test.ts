@@ -7,7 +7,7 @@
  * by content on every channel at once (the error a compile throws, the
  * console, Vite's logger).
  */
-import { parseSync } from 'vite'
+import { createServerModuleRunner, parseSync } from 'vite'
 import { describe, expect, it } from 'vitest'
 import { runInPage } from '@tanstack/compiler-test-utils/browser'
 import { expectNoProblems } from '@tanstack/compiler-test-utils/diagnostic-channel'
@@ -368,6 +368,41 @@ return {
     )
   })
 })
+
+// A route compiled for route HMR also serves where no HMR runtime runs:
+// the dev server's SSR environment through a module runner without HMR
+// (Vite's public \`createServerModuleRunner(environment, { hmr: false })\`,
+// as a custom SSR server or a non-Node runtime creates one: no
+// \`import.meta.hot\`). SPEC J3.8: without an HMR runtime the module still
+// evaluates and \`Route\` works.
+it.each([
+  { name: 'code splitter', options: {} },
+  {
+    name: 'route HMR plugin (code splitting off)',
+    options: { pluginOptions: { autoCodeSplitting: false } },
+  },
+])(
+  'a route compiled for HMR by the $name evaluates and works in the SSR environment',
+  async ({ options }) => {
+    const route = await loadRoute(routeSource('ssr'), {
+      routeId: '/ssr',
+      hmr: true,
+      ...options,
+    })
+    const runner = createServerModuleRunner(
+      route.host.dev.vite.environments.ssr,
+      { hmr: false },
+    )
+    const { Route } = await runner.import(route.url)
+    const { loader, component } = Route.options
+    await component.preload?.()
+    await runner.close()
+    expect([
+      await (typeof loader === 'function' ? loader() : loader.handler()),
+      typeof component,
+    ]).toEqual([{ name: 'ssr' }, 'function'])
+  },
+)
 
 // Modules the router plugin does not own pass its transform untouched, and
 // behave as written, in a real app (SPEC J2.1, G15): the composed
