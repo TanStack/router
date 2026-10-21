@@ -89,6 +89,11 @@ export interface StartHostOptions {
    * `false`: no dev server (a host for `build()` only). Default `true`.
    */
   serve?: boolean
+  /**
+   * Options of the React app's `@vitejs/plugin-react` (`react(options)`),
+   * e.g. `{ jsxRuntime: 'classic' }`.
+   */
+  react?: Parameters<typeof react>[0]
 }
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
@@ -135,9 +140,12 @@ export function startPluginFactory(
 }
 
 /** The framework's own Vite plugin, as a user configures it. */
-function frameworkPlugins(framework: StartFramework): Array<PluginOption> {
+function frameworkPlugins(
+  framework: StartFramework,
+  options: StartHostOptions = {},
+): Array<PluginOption> {
   if (framework === 'react') {
-    return [react()]
+    return [react(options.react)]
   }
   if (framework === 'solid') {
     return [solid({ ssr: true })]
@@ -460,7 +468,7 @@ export async function createStartHost(
     plugins: (app) => [
       ...(serve ? [] : [absoluteOutDir(app.root)]),
       tanstackStart(options.start),
-      ...frameworkPlugins(framework),
+      ...frameworkPlugins(framework, options),
       ...(typeof userPlugins === 'function' ? userPlugins(app) : userPlugins),
     ],
     config: {
@@ -801,7 +809,7 @@ try {
             plugins: [
               absoluteOutDir(root),
               tanstackStart(options.start),
-              ...frameworkPlugins(framework),
+              ...frameworkPlugins(framework, options),
               ...(typeof userPlugins === 'function'
                 ? userPlugins({ root, command: 'build' })
                 : userPlugins),
