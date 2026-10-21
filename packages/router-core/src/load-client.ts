@@ -2671,6 +2671,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
         (transported ? loader.hydrate : !terminal) &&
         !signal.aborted
       ) {
+        // Hydration starts from fresh matches; only this loop creates flights.
         const flight = (match._flight = createLoaderFlight(
           router,
           lane,
@@ -2788,7 +2789,8 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       pendingBoundary !== undefined || committed.length < shared
     const committedMatches =
       isTerminal && committed.length === shared ? candidates : committed
-    let presented = needsClientLoad ? candidates : committedMatches
+    // A complete accepted lane has the same matches as `candidates`.
+    let presented = candidates
     let dataOnlyAssetEnd: number | undefined
     if (pendingBoundary !== undefined) {
       const boundary = presented[pendingBoundary]!
@@ -2843,7 +2845,8 @@ export async function hydrate(router: AnyRouter): Promise<void> {
         if (
           handoffAssetEnd !== undefined &&
           prefix < handoffAssetEnd &&
-          candidates[prefix]?.id !== matches[prefix]?.id
+          // The verified asset bound proves this candidate exists.
+          candidates[prefix]!.id !== matches[prefix]?.id
         ) {
           handoffAssetEnd = prefix > pendingBoundary! + 1 ? prefix : undefined
         }
