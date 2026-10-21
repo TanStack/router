@@ -152,7 +152,7 @@ export interface DevServer {
   vite: ViteDevServer
   /** Absolute path of a file given relative to the app root. */
   file: (relative: string) => string
-  /** URL of the server (`listen` or `browser` only). */
+  /** URL of the server on 127.0.0.1 (`listen` or `browser` only). */
   url: string | undefined
   /** Content of an app file (relative to the app root). */
   read: (relative: string) => Promise<string>
@@ -672,6 +672,16 @@ async function startServer(
             : { optimizeDeps: { noDiscovery: true, include: [] } }),
           server: {
             middlewareMode: !listen,
+            // One address, as the harness's other servers (Rsbuild, static,
+            // preview): Vite's default `localhost` names `::1` and
+            // `127.0.0.1` while the server listens on only the first. A
+            // client in this process (the idle HMR client, `fetch()`) then
+            // goes through Node's address-family selection, which gives the
+            // first address 500 ms on the event loop's clock: a loop blocked
+            // past that (other tests' synchronous work under load) abandons
+            // the connection the kernel made, and the other address refuses
+            // it (FINAL-PASS #56; FOLLOWUPS "UPSTREAM (final pass F-E-a)").
+            ...(listen && { host: '127.0.0.1' }),
             // Vite's default `preTransformRequests` stays on, as in an app:
             // the client environment transforms the static imports of each
             // module it serves in the background, before the browser

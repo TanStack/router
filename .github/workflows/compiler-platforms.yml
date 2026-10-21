@@ -110,6 +110,14 @@ jobs:
           pnpm nx run-many --targets=test:noncompiler
           --projects=@tanstack/start-plugin-core,@tanstack/react-start-rsc
           --skip-nx-cache --outputStyle=static
+      - name: Import gate (strict)
+        # Acceptance tests and their helpers import no compiler internal,
+        # except what a pending ruling's allowlist entry holds
+        # (packages/compiler-test-utils/AGENTS.md, "Import gate")
+        run: >-
+          pnpm nx run-many --targets=test:import-gate:strict
+          --projects=@tanstack/compiler-test-utils,@tanstack/router-generator,@tanstack/router-plugin,@tanstack/start-plugin-core,@tanstack/react-start-rsc
+          --skip-nx-cache --outputStyle=static
       - name: Integration smoke (no browser)
         run: >-
           pnpm nx run-many --targets=test:integration:smoke

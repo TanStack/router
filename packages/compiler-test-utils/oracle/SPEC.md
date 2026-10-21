@@ -229,7 +229,10 @@ rsc, srcDirectory, … })` `[type: start-plugin-core/src/schema.ts]`. Which clau
   is told once per file (naming the file and, where applicable, the option/API), in every mode. When the obstacle is
   our own limitation, that is a bug to fix (goal pin), not a warning to document. Errors about the user's source
   carry a position/code frame in the user's file; configuration or resolution errors name the actionable
-  file/option and need no fabricated source position. `[ruling: D11, D14; R5]`
+  file/option and need no fabricated source position. A diagnostic explains its cause (the category, plus guidance
+  or the API); a generic internal error does not. "Warn" means at least a warning (an error where refusal is
+  allowed); an info or log line does not count.
+  `[ruling: D11, D14, diagnostic severity, explaining a diagnostic; R5]`
 - **G6 Source maps.** Every emitted module derived from user source (route modules, split chunks, Start
   client/ssr/provider output, Hydrate chunks, rewritten import-protection modules) carries a map so stack traces
   and import-protection reports resolve to the user's original line and column, through composed maps when other
@@ -713,7 +716,9 @@ createServerFn().middleware([auth])`, then `createServerFn().middleware([authed]
   once per load. The importer location is a relevant original import span or a genuine surviving use of the
   binding; it is never an erased type position, a use inside a removed boundary body, or compiled coordinates. The
   chain is any real import chain from an entry to the importer (not necessarily the shortest), bounded by
-  `maxTraceDepth`. `[doc: import-protection.md:245-327,500-502,556-560]`
+  `maxTraceDepth`; it may be listed entry first or entry last, as long as the entry is identifiable (by position or
+  a marker) and the direction is unambiguous.
+  `[doc: import-protection.md:245-327,500-502,556-560; ruling: restructured compilers]`
 - **J6.6 `onViolation`.** Called for every violation with the documented info; returning `false` allows the import:
   real module, no mock, no report (dev and build). `[doc: import-protection.md:488-510]`
 - **J6.7 Exemptions give the real module.** An importer exempted by `ignoreImporters`, `exclude` or outside `include`
@@ -789,16 +794,17 @@ as `§5.N` (or "§5 item N").
   neither made eager nor loaded together when only one is needed, and no chunk carries unrelated code (J2.5).
 - **§5.4 SSR handler placement** in place or extracted, when SSR and the provider share an environment (P2, J4.3); the
   forwarding mechanism for a separate provider.
-- **§5.5 Statement/import order, printing** (quotes, semicolons, parentheses beyond necessity, whitespace, comment
-  placement except license comments the splitter moves code away from, which stay in the source module, G12 —
-  license-comment placement is free for the Start compiler and the import-protection rewrite — and pragma
+- **§5.5 Statement/import order, printing** (quotes, semicolons, parentheses beyond necessity — except around the
+  function or call that defines a component, which stop Fast Refresh from registering it (SWC on Rsbuild)
+  `[ruling: parentheses around components]` — whitespace, comment placement except license comments the splitter
+  moves code away from, which stay in the source module, G12 — license-comment placement is free for the Start compiler and the import-protection rewrite — and pragma
   semantics, J2.16; the
   order among directives of one prologue, as long as each still precedes executable code), dropping
   or keeping type-only exports/imports that are runtime-neutral — within G3 (ordering dependencies of surviving
   effects preserved; initialiser timing and printed order free).
 - **§5.6 Export lists** of compiled modules: adding exports, removing never-imported exports (G9).
-- **§5.7 Warning/error wording and channel** (console vs bundler diagnostics), including the exact prose of the
-  environment-misuse runtime errors (J4.10), as long as the file (and option/API where J2.8 applies) or the
+- **§5.7 Warning/error wording and channel** (console vs bundler diagnostics), not their severity (G5), including
+  the exact prose of the environment-misuse runtime errors (J4.10), as long as the file (and option/API where J2.8 applies) or the
   environment restriction is named and the user can act. File names in diagnostics may be absolute or
   project-relative if unambiguous; a bare basename that is only a suffix of the project-relative path (`other.ts`
   for `src/other.ts`) does not name the file `[ruling: file names in diagnostics]`. Code-frame layout and context
@@ -885,9 +891,13 @@ api/router/RouteOptionsType.md:32]`; the docs recommend `createLazyFileRoute` in
   behaviour that a bundler, a framework or an HMR runtime decides drive the real supported tools — real dev servers
   with the real framework plugins, the real HMR client, real `react-dom`/Solid/Vue runtimes, real production builds —
   and observe page/build/runtime outcomes. No copies of Vite/webpack/Rspack/React update-propagation, Refresh-family,
-  tree-shaking or runtime logic in the oracle. Thin glue only at unavoidable external boundaries (request context,
-  the network, by-id HTTP calls); each stand-in has a documented contract and its own contract test, and is replaced
-  by the real package when feasible.
+  tree-shaking or runtime logic in the oracle. Server code runs inside real requests through Start's server entry
+  (no hand-built request context). Thin glue only at unavoidable external boundaries (the network); each stand-in
+  has a documented contract and its own contract test, and is replaced by the real package when feasible.
+- **Public entry points only.** Acceptance tests reach the compilers through the plugins and options a user
+  configures (Vite, Rsbuild, Rspack and webpack builds and dev servers, or the public Vite plugin driven in-process),
+  never through internal modules, classes, ids or queries. The import gate (`test:import-gate:strict`) enforces it
+  for imports; the only exceptions are the tests held by pending user rulings, each listed in the gate's allowlist.
 - **Assert at the level where the outcome is decided** `[ruling: first review rulings]`: compiler-level tests assert what the compiler
   alone decides (semantics, identity, validity, server code absent, chunk contents it emits within J2.5's D5
   boundary, warnings); bundle-level placement, DCE and dangling names are asserted on production output per bundler

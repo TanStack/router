@@ -11,7 +11,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterAll, describe, expect, test } from 'vitest'
-import { findImportViolations } from '../src/import-gate'
+import { findImportViolations, strictFailures } from '../src/import-gate'
+import type { PendingRulingAllowance } from '../src/import-gate'
 
 /** The built entries of an `exports` map entry (ESM, with types). */
 const built = (file: string) => ({
@@ -180,4 +181,82 @@ test('the noncompiler lanes are excluded while fast and integration acceptance s
       .filter(({ file }) => file.includes('-planted.test.'))
       .map(({ file }) => file),
   ).toEqual(paths.slice(0, 2).map(relative))
+})
+
+// Strict mode (`test:import-gate:strict`, required in CI) fails on every
+// internal import except the ones an allowlist entry of a pending ruling
+// holds (`pendingRulingAllowlist`); these controls use an allowlist of
+// their own on the fixture workspace.
+describe('strict mode and the pending rulings allowlist', () => {
+  const heldTest = path.join(routerPluginTests, 'held-by-ruling.test.ts')
+  const otherTest = path.join(routerPluginTests, 'not-held.test.ts')
+  const heldHelper = path.join(routerPluginTests, 'held-helper.ts')
+  const allowlist: Array<PendingRulingAllowance> = [
+    {
+      ruling: 'Q-test',
+      file: relative(heldTest),
+      requests: ['../src/core/hmr'],
+      why: 'control',
+    },
+    {
+      ruling: 'Q-test',
+      file: relative(heldHelper),
+      requests: ['../src/core/constants'],
+      reachedOnlyBy: [relative(heldTest)],
+      why: 'control',
+    },
+  ]
+  const run = (planted: Record<string, string>) =>
+    findImportViolations({ root, files: planted, allowlist })
+  const heldFiles: Record<string, string> = {
+    [heldTest]: `import { hmr } from '../src/core/hmr'
+import './held-helper'
+export const used = hmr
+`,
+    [heldHelper]: `import { constants } from '../src/core/constants'
+export const used = constants
+`,
+  }
+
+  test('passes when every internal import is held by an allowlist entry', () => {
+    const result = run(heldFiles)
+    expect(strictFailures(result)).toEqual([])
+    expect(result.allowed.map(({ file, line }) => `${file}:${line}`)).toEqual([
+      `${relative(heldTest)}:1`,
+      `${relative(heldHelper)}:1`,
+    ])
+  })
+
+  test('fails on an internal import that no allowlist entry holds, also of an allowlisted module', () => {
+    const result = run({
+      ...heldFiles,
+      [otherTest]: `import { hmr } from '../src/core/hmr'
+export const used = hmr
+`,
+    })
+    expect(strictFailures(result)).toEqual([
+      `${relative(otherTest)}:1 imports ../src/core/hmr`,
+    ])
+  })
+
+  test('fails on an allowlisted helper once another acceptance test reaches it', () => {
+    const result = run({
+      ...heldFiles,
+      [otherTest]: `import './held-helper'\n`,
+    })
+    expect(strictFailures(result)).toEqual([
+      `${relative(heldHelper)}:1 imports ../src/core/constants`,
+    ])
+    expect(result.violations[0]?.reason).toContain(relative(otherTest))
+  })
+
+  test('fails on a stale entry once the held file no longer imports it', () => {
+    const result = run({
+      [heldTest]: `import './held-helper'\n`,
+      [heldHelper]: heldFiles[heldHelper]!,
+    })
+    expect(strictFailures(result)).toEqual([
+      `stale allowlist entry (Q-test): ${relative(heldTest)} no longer imports ../src/core/hmr; remove it`,
+    ])
+  })
 })

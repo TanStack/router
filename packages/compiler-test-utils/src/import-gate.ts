@@ -30,10 +30,17 @@
  * Paths computed at run time (a `path.join` passed to `import()`) are out of
  * reach of a static gate.
  *
+ * The only exceptions are the tests held by pending user rulings, listed in
+ * `pendingRulingAllowlist` below: each entry names its ruling and goes away
+ * when the ruling lands. A helper on that list is allowed only while no
+ * other acceptance test reaches it, and an entry that matches nothing fails
+ * strict mode (remove it).
+ *
  * Run it through Nx (packages/compiler-test-utils/AGENTS.md):
  * `test:import-gate` reports and exits 0; `test:import-gate:strict` (or
- * `--strict`, or `COMPILER_IMPORT_GATE=strict`) exits 1 on any violation or
- * on a file it could not parse. `--json` prints the result as JSON.
+ * `--strict`, or `COMPILER_IMPORT_GATE=strict`; CI runs it) exits 1 on any
+ * violation the allowlist does not hold, on a stale allowlist entry, or on a
+ * file it could not parse. `--json` prints the result as JSON.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
@@ -62,6 +69,97 @@ export const acceptancePackages = [
 ] as const
 
 const helperPackage = '@tanstack/compiler-test-utils'
+
+/**
+ * Internal imports held by a pending user ruling (REPAIR/BRIEF, "Do NOT
+ * touch: pending user rulings"). Every other internal import fails strict
+ * mode.
+ */
+export interface PendingRulingAllowance {
+  /** The ruling that holds the import (`Q5`, ...). */
+  ruling: string
+  /** The importing file, relative to the workspace root. */
+  file: string
+  /** The internal requests the file may import, as written. */
+  requests: Array<string>
+  /**
+   * The acceptance files that may reach this file (a helper). A helper is
+   * allowed only while no other acceptance file reaches it. Leave it out
+   * for an acceptance test.
+   */
+  reachedOnlyBy?: Array<string>
+  /** Why the ruling holds it, and what to do when it lands. */
+  why: string
+}
+
+const startPendingRulings = [
+  'packages/start-plugin-core/tests/pending-rulings/createMiddleware.test.ts',
+  'packages/start-plugin-core/tests/pending-rulings/createServerFn.test.ts',
+  'packages/start-plugin-core/tests/pending-rulings/known-bugs-start-compiler.test.ts',
+]
+
+/**
+ * The allowlist of strict mode. Remove an entry when its ruling lands: the
+ * test is rerouted through a public entry point, moved out of the corpus,
+ * or deleted, and the entry would then match nothing (a stale entry fails
+ * strict mode).
+ */
+export const pendingRulingAllowlist: ReadonlyArray<PendingRulingAllowance> = [
+  {
+    ruling: 'Q5',
+    file: 'packages/router-plugin/tests/handle-route-update.test.ts',
+    requests: [
+      '../src/core/code-splitter/plugins/framework-plugins',
+      '../src/core/hmr',
+    ],
+    why: 'the absent-live-route updater control calls the emitted handleRouteUpdate directly; remove when Q5 (is that state reachable through real tools?) is ruled',
+  },
+  {
+    ruling: 'Q6',
+    file: 'packages/start-plugin-core/tests/pending-rulings/createServerFn.test.ts',
+    requests: [
+      '../../src/start-compiler/compiler',
+      '../../src/start-compiler/types',
+    ],
+    why: 'the createServerFn :293 internal-package-graph row drives StartCompiler; remove when Q6 is ruled',
+  },
+  {
+    ruling: 'Q6',
+    file: 'packages/start-plugin-core/tests/pending-rulings/createMiddleware.test.ts',
+    requests: ['../../src/start-compiler/compiler'],
+    why: 'the createMiddleware :75/:145 internal-package-graph rows drive StartCompiler; remove when Q6 is ruled',
+  },
+  ...(
+    [
+      ['diagnostics.ts', ['../../../src/start-compiler/types']],
+      [
+        'regression-helpers.ts',
+        [
+          '../../../src/start-compiler/compiler',
+          '../../../src/start-compiler/config',
+          '../../../src/start-compiler/types',
+          '../../../src/types',
+        ],
+      ],
+      [
+        'render.ts',
+        [
+          '../../../src/hydrate-when-transform',
+          '../../../src/start-compiler/host',
+          '../../../src/types',
+        ],
+      ],
+    ] as const
+  ).map(
+    ([helper, requests]): PendingRulingAllowance => ({
+      ruling: 'Q6, Q7',
+      file: `packages/start-plugin-core/tests/outside-compiler-corpus/legacy/${helper}`,
+      requests: [...requests],
+      reachedOnlyBy: startPendingRulings,
+      why: 'legacy StartCompiler harness reached only by the pending-rulings files (Q6 rows, the Q7 CommonJS pin); remove with them when Q6 and Q7 are ruled, and delete tests/start-runtime.ts with it (FINAL-PASS #55)',
+    }),
+  ),
+]
 
 type ReferenceKind =
   | 'import'
@@ -133,6 +231,10 @@ export interface ImportGateResult {
   parseErrors: Array<{ file: string; message: string }>
   /** For each helper, the acceptance files that reach it. */
   usersOf: Record<string, Array<string>>
+  /** Internal imports an allowlist entry holds (not in `violations`). */
+  allowed: Array<Violation & { ruling: string }>
+  /** Allowlist entries (one per request) that matched no import. */
+  staleAllowances: Array<{ ruling: string; file: string; request: string }>
 }
 
 export interface ImportGateOptions {
@@ -140,6 +242,11 @@ export interface ImportGateOptions {
   root: string
   /** File contents by absolute path, read instead of the disk (controls). */
   files?: Record<string, string>
+  /**
+   * Internal imports held by pending rulings (the CLI passes
+   * `pendingRulingAllowlist`). Default: none.
+   */
+  allowlist?: ReadonlyArray<PendingRulingAllowance>
 }
 
 const sourceExtensions = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs']
@@ -514,17 +621,66 @@ export function findImportViolations(
     }
   }
 
+  // The pending rulings' allowlist.
+  const allowlist = options.allowlist ?? []
+  const allowed: ImportGateResult['allowed'] = []
+  const used = new Set<string>()
+  const remaining = violations.filter((violation) => {
+    const entry = allowlist.find(
+      (candidate) =>
+        candidate.file === violation.file &&
+        candidate.requests.includes(violation.request),
+    )
+    if (!entry) {
+      return true
+    }
+    used.add(`${entry.file}\0${violation.request}`)
+    const others = entry.reachedOnlyBy
+      ? (usersOf[violation.file] ?? []).filter(
+          (user) => !entry.reachedOnlyBy!.includes(user),
+        )
+      : []
+    if (others.length > 0) {
+      violation.reason += ` (allowlisted for ${entry.ruling} only while reached by its tests, but also reached by ${others.join(', ')})`
+      return true
+    }
+    allowed.push({ ...violation, ruling: entry.ruling })
+    return false
+  })
+  const staleAllowances = allowlist.flatMap((entry) =>
+    entry.requests
+      .filter((request) => !used.has(`${entry.file}\0${request}`))
+      .map((request) => ({ ruling: entry.ruling, file: entry.file, request })),
+  )
+
   const byLocation = (a: Violation, b: Violation) =>
     a.file === b.file ? a.line - b.line : a.file < b.file ? -1 : 1
   return {
     root,
     acceptanceFiles: acceptanceFiles.map(relative),
     helperFiles: helperFiles.map(relative).sort(),
-    violations: violations.sort(byLocation),
+    violations: remaining.sort(byLocation),
     publicTypesByPath: publicTypesByPath.sort(byLocation),
     parseErrors,
     usersOf,
+    allowed: allowed.sort(byLocation),
+    staleAllowances,
   }
+}
+
+/** Whether strict mode fails: what it fails on, empty when it passes. */
+export function strictFailures(result: ImportGateResult): Array<string> {
+  return [
+    ...result.violations.map(
+      (violation) =>
+        `${violation.file}:${violation.line} imports ${violation.request}`,
+    ),
+    ...result.staleAllowances.map(
+      (entry) =>
+        `stale allowlist entry (${entry.ruling}): ${entry.file} no longer imports ${entry.request}; remove it`,
+    ),
+    ...result.parseErrors.map((error) => `${error.file} did not parse`),
+  ]
 }
 
 /** The file paths of an `exports` value (all conditions). */
@@ -853,7 +1009,7 @@ export function formatImportGateReport(
     (file) => !acceptance.has(file),
   ).length
   lines.push(
-    `${result.violations.length} imports of compiler internals in ${byFile.size} files (${byFile.size - helperFilesWithViolations} acceptance test files, ${helperFilesWithViolations} helpers).`,
+    `${result.violations.length} imports of compiler internals outside the pending rulings' allowlist, in ${byFile.size} files (${byFile.size - helperFilesWithViolations} acceptance test files, ${helperFilesWithViolations} helpers).`,
     `${affected.size} of ${result.acceptanceFiles.length} acceptance test files import an internal directly or through a helper.`,
     `By package: ${[...byPackage].map(([name, count]) => `${name} ${count}`).join(', ') || 'none'}.`,
   )
@@ -875,12 +1031,31 @@ export function formatImportGateReport(
       ),
     )
   }
+  if (result.allowed.length > 0) {
+    lines.push(
+      '',
+      `Held by pending rulings (allowlist, remove each entry when its ruling lands): ${result.allowed.length} imports:`,
+      ...result.allowed.map(
+        (entry) =>
+          `  ${entry.ruling}: ${entry.file}:${entry.line} '${entry.request}'`,
+      ),
+    )
+  }
+  if (result.staleAllowances.length > 0) {
+    lines.push(
+      '',
+      `${result.staleAllowances.length} allowlist entries match no import; remove them:`,
+      ...result.staleAllowances.map(
+        (entry) => `  ${entry.ruling}: ${entry.file} '${entry.request}'`,
+      ),
+    )
+  }
   if (mode === 'strict') {
     lines.push(
       '',
-      result.violations.length > 0 || result.parseErrors.length > 0
-        ? 'FAIL: acceptance tests and their helpers must reach the compilers through public entry points.'
-        : 'OK: no acceptance test or helper imports a compiler internal.',
+      strictFailures(result).length > 0
+        ? "FAIL: acceptance tests and their helpers must reach the compilers through public entry points (only the pending rulings' allowlist is exempt, and it must be current)."
+        : "OK: no acceptance test or helper imports a compiler internal outside the pending rulings' allowlist.",
     )
   }
   return lines.join('\n')
@@ -895,16 +1070,14 @@ if (
     process.env.COMPILER_IMPORT_GATE === 'strict'
   const result = findImportViolations({
     root: fileURLToPath(new URL('../../..', import.meta.url)),
+    allowlist: pendingRulingAllowlist,
   })
   if (process.argv.includes('--json')) {
     console.log(JSON.stringify(result, null, 2))
   } else {
     console.log(formatImportGateReport(result, strict ? 'strict' : 'report'))
   }
-  if (
-    strict &&
-    (result.violations.length > 0 || result.parseErrors.length > 0)
-  ) {
+  if (strict && strictFailures(result).length > 0) {
     process.exitCode = 1
   }
 }
