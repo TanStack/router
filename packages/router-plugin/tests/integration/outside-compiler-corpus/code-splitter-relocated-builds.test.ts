@@ -8,7 +8,7 @@
  * directories, emits the same files. A rewrite may legitimately fail this.
  */
 import { expect, test, vi } from 'vitest'
-import { build, head, routeApp  } from '../../build-harness'
+import { build, head, routeApp } from '../../build-harness'
 import type * as NodeUrl from 'node:url'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
 
