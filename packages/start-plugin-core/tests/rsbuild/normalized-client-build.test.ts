@@ -124,6 +124,7 @@ function makeWindowsCompilation(readCss: () => string | Uint8Array) {
   const compilation = {
     entrypoints: new Map([['index', { chunks: [entryChunk] }]]),
     chunks: new Set([entryChunk, routeChunk]),
+    chunkGroups: [],
     moduleGraph: { getConnection: () => undefined },
     chunkGraph: {
       getModuleChunksIterable: () => [],
@@ -495,6 +496,259 @@ describe('normalizeRspackClientBuild', () => {
       'index.js',
     ])
   })
+
+  test('does not import sibling route copies of a module from a shared chunk', async () => {
+    const routes = ['alpha', 'beta', 'gamma']
+    const { clientBuild, directory } = await buildClientFixture(
+      {
+        'index.js': `globalThis.routes = [${routes
+          .map(
+            (route) =>
+              `() => import(/* webpackChunkName: "${route}" */ './${route}.js?tsr-split=component')`,
+          )
+          .join(', ')}]`,
+        ...Object.fromEntries(
+          routes.flatMap((route) => [
+            [
+              `${route}.js`,
+              `
+                import { shared } from './shared.js'
+                import './${route}.css'
+                export const render = () => shared() + '${route}'
+              `,
+            ],
+            [`${route}.css`, `.${route} { color: red; }`],
+          ]),
+        ),
+        'shared.js': `import { widget } from './widget.js'; export const shared = () => widget()`,
+        'widget.js': `import './widget.css'; export const widget = () => 'widget'`,
+        'widget.css': '.widget { display: grid; }',
+      },
+      {
+        optimization: {
+          splitChunks: {
+            minSize: 0,
+            cacheGroups: {
+              default: false,
+              defaultVendors: false,
+              shared: {
+                name: 'shared',
+                test: /shared\.js$/,
+                chunks: 'async',
+                enforce: true,
+              },
+            },
+          },
+        },
+      },
+    )
+    const manifest = buildStartManifest({
+      clientBuild,
+      basePath: '/',
+      routeTreeRoutes: {
+        __root__: { children: routes.map((route) => `/${route}`) },
+        ...Object.fromEntries(
+          routes.map((route) => [
+            `/${route}`,
+            { filePath: join(directory, `${route}.js`) },
+          ]),
+        ),
+      },
+    })
+
+    expect(clientBuild.chunksByFileName.get('shared.js')?.imports).toEqual([])
+    for (const route of routes) {
+      expect(manifest.routes[`/${route}`]?.css).toEqual([`/${route}.css`])
+      expect(manifest.routes[`/${route}`]?.preloads).toEqual([
+        `/${route}.js`,
+        '/shared.js',
+      ])
+      const routeCss = clientBuild.cssContentByFileName?.get(`${route}.css`)
+      expect(routeCss).toMatch(/\.widget\s*\{/)
+      expect(routeCss).toMatch(new RegExp(`\\.${route}\\s*\\{`))
+      for (const otherRoute of routes.filter((other) => other !== route)) {
+        expect(routeCss).not.toMatch(new RegExp(`\\.${otherRoute}\\s*\\{`))
+      }
+    }
+  })
+
+  test('does not import a chunk that only one parent of a lazy group supplies', async () => {
+    const { clientBuild } = await buildClientFixture(
+      {
+        'index.js': `
+          globalThis.routes = [
+            () => import(/* webpackChunkName: "first" */ './first.js?tsr-split=component'),
+            () => import(/* webpackChunkName: "second" */ './second.js?tsr-split=component'),
+          ]
+        `,
+        'first.js': `
+          import { dep } from './dep.js'
+          export const render = () => dep() + 'first'
+          export const open = () => import(/* webpackChunkName: "lazy" */ './lazy.js')
+        `,
+        'second.js': `
+          import { dep } from './dep.js'
+          export const render = () => dep() + 'second'
+          export const open = () => import(/* webpackChunkName: "lazy" */ './lazy.js')
+        `,
+        'lazy.js': `import { dep } from './dep.js'; export const lazy = () => dep()`,
+        'dep.js': `export const dep = () => 'dep'`,
+      },
+      {
+        optimization: {
+          splitChunks: {
+            minSize: 0,
+            cacheGroups: {
+              default: false,
+              defaultVendors: false,
+              dep: {
+                name: 'dep',
+                test: /dep\.js$/,
+                chunks: (chunk) => chunk.name === 'first',
+                enforce: true,
+              },
+            },
+          },
+        },
+      },
+    )
+
+    expect(clientBuild.chunksByFileName.get('first.js')?.imports).toEqual([
+      'dep.js',
+    ])
+    expect(clientBuild.chunksByFileName.get('lazy.js')?.imports).toEqual([])
+  })
+
+  test('imports a chunk that every parent of a lazy group supplies', async () => {
+    const { clientBuild } = await buildClientFixture(
+      {
+        'index.js': `
+          import { base } from './base.js'
+          globalThis.base = base
+          globalThis.routes = [
+            () => import(/* webpackChunkName: "first" */ './first.js?tsr-split=component'),
+            () => import(/* webpackChunkName: "second" */ './second.js?tsr-split=component'),
+          ]
+        `,
+        'first.js': `
+          import { common } from './common.js'
+          export const render = () => common() + 'first'
+          export const open = () => import(/* webpackChunkName: "lazy" */ './lazy.js')
+        `,
+        'second.js': `
+          import { common } from './common.js'
+          export const render = () => common() + 'second'
+          export const open = () => import(/* webpackChunkName: "lazy" */ './lazy.js')
+        `,
+        'lazy.js': `
+          import { base } from './base.js'
+          import { common } from './common.js'
+          export const lazy = () => base() + common()
+        `,
+        'base.js': `export const base = () => 'base'`,
+        'common.js': `export const common = () => 'common'`,
+      },
+      {
+        optimization: {
+          splitChunks: {
+            minSize: 0,
+            cacheGroups: {
+              default: false,
+              defaultVendors: false,
+              common: {
+                name: 'common',
+                test: /common\.js$/,
+                chunks: 'async',
+                enforce: true,
+              },
+            },
+          },
+        },
+      },
+    )
+
+    expect(clientBuild.chunksByFileName.get('lazy.js')?.imports).toEqual([
+      'index.js',
+      'common.js',
+    ])
+  })
+
+  test.each([
+    { routeOrder: ['ping', 'pong'] },
+    { routeOrder: ['pong', 'ping'] },
+  ])(
+    'resolves static imports in cyclic lazy routes regardless of order ($routeOrder)',
+    async ({ routeOrder }) => {
+      const otherRoute = { ping: 'pong', pong: 'ping' } as const
+      const { clientBuild, directory } = await buildClientFixture(
+        {
+          'index.js': `globalThis.routes = [${routeOrder
+            .map(
+              (route) =>
+                `() => import(/* webpackChunkName: "${route}" */ './${route}.js?tsr-split=component')`,
+            )
+            .join(', ')}]`,
+          ...Object.fromEntries(
+            (['ping', 'pong'] as const).flatMap((route) => [
+              [
+                `${route}.js`,
+                `
+                  import { shared } from './shared.js'
+                  import './${route}.css'
+                  export const render = () => shared() + '${route}'
+                  export const next = () => import(/* webpackChunkName: "${otherRoute[route]}" */ './${otherRoute[route]}.js?tsr-split=component')
+                `,
+              ],
+              [`${route}.css`, `.${route} { color: red; }`],
+            ]),
+          ),
+          'shared.js': `import { widget } from './widget.js'; export const shared = () => widget()`,
+          'widget.js': `import './widget.css'; export const widget = () => 'widget'`,
+          'widget.css': '.widget { display: grid; }',
+        },
+        {
+          optimization: {
+            splitChunks: {
+              minSize: 0,
+              cacheGroups: {
+                default: false,
+                defaultVendors: false,
+                shared: {
+                  name: 'shared',
+                  test: /shared\.js$/,
+                  chunks: 'async',
+                  enforce: true,
+                },
+              },
+            },
+          },
+        },
+      )
+      const manifest = buildStartManifest({
+        clientBuild,
+        basePath: '/',
+        routeTreeRoutes: {
+          __root__: { children: routeOrder.map((route) => `/${route}`) },
+          ...Object.fromEntries(
+            routeOrder.map((route) => [
+              `/${route}`,
+              { filePath: join(directory, `${route}.js`) },
+            ]),
+          ),
+        },
+      })
+
+      expect(clientBuild.chunksByFileName.get('shared.js')?.imports).toEqual(
+        [],
+      )
+      for (const route of ['ping', 'pong'] as const) {
+        const chunk = clientBuild.chunksByFileName.get(`${route}.js`)
+        expect(chunk?.imports).toEqual(['shared.js'])
+        expect(chunk?.dynamicImports).toContain(`${otherRoute[route]}.js`)
+        expect(manifest.routes[`/${route}`]?.css).toEqual([`/${route}.css`])
+      }
+    },
+  )
 
   test('collects nested CSS imports before the importing route stylesheet', async () => {
     const { clientBuild, directory } = await buildClientFixture(

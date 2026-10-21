@@ -14,7 +14,12 @@ type ProcessAssetsContext = Parameters<
 >[0]
 type RspackCompilation = Rspack.Compilation
 type RspackCompilationChunk = Rspack.Chunk
+type RspackChunkGroup = Rspack.ChunkGroup
 type RspackModule = Rspack.Module
+type ChunkGroupAvailability = Map<
+  RspackChunkGroup,
+  ReadonlySet<RspackCompilationChunk>
+>
 
 const backslashRegex = /\\/g
 
@@ -211,6 +216,75 @@ function computeDynamicImports(chunk: RspackCompilationChunk): Array<string> {
   return dynamicImportFiles
 }
 
+function intersect<T>(
+  left: ReadonlySet<T>,
+  right: ReadonlySet<T>,
+): ReadonlySet<T> {
+  const result = new Set<T>()
+  for (const value of left) {
+    if (right.has(value)) {
+      result.add(value)
+    }
+  }
+  return result
+}
+
+/**
+ * Compute the chunks loaded whenever each chunk group loads: the group's own
+ * chunks plus the intersection of its parents' availability. Rspack's code
+ * splitter applies the same rule to modules. Entrypoints supply only their own
+ * chunks.
+ */
+function computeChunkGroupAvailability(
+  compilation: RspackCompilation,
+): ChunkGroupAvailability {
+  const groups = compilation.chunkGroups.map((group) => ({
+    group,
+    chunks: group.chunks,
+    parents: group.isInitial() ? [] : group.getParents(),
+  }))
+
+  // A group missing from `availability` is not yet known and constrains no
+  // child. Known sets only shrink, so cyclic async graphs converge to the same
+  // result in any visiting order.
+  const availability: ChunkGroupAvailability = new Map()
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const { group, chunks, parents } of groups) {
+      let inherited: ReadonlySet<RspackCompilationChunk> | undefined
+      for (const parent of parents) {
+        const parentAvailable = availability.get(parent)
+        if (parentAvailable) {
+          inherited = inherited
+            ? intersect(inherited, parentAvailable)
+            : parentAvailable
+        }
+      }
+      if (parents.length > 0 && !inherited) {
+        continue
+      }
+
+      const available = new Set(inherited)
+      for (const chunk of chunks) {
+        available.add(chunk)
+      }
+      if (availability.get(group)?.size !== available.size) {
+        availability.set(group, available)
+        changed = true
+      }
+    }
+  }
+
+  for (const { group, chunks } of groups) {
+    if (!availability.has(group)) {
+      availability.set(group, new Set(chunks))
+    }
+  }
+
+  return availability
+}
+
 /**
  * Compute the emitted chunks reached by active static module dependencies.
  * Dependencies nested in async blocks are deliberately excluded: those are
@@ -218,6 +292,7 @@ function computeDynamicImports(chunk: RspackCompilationChunk): Array<string> {
  */
 function computeStaticDependencyChunks(
   compilation: RspackCompilation,
+  groupAvailability: ChunkGroupAvailability,
   chunk: RspackCompilationChunk,
 ): Array<RspackCompilationChunk> {
   const importedChunks: Array<RspackCompilationChunk> = []
@@ -227,18 +302,15 @@ function computeStaticDependencyChunks(
   )
   const localModules = new Set(modules)
   const runtime = Array.from(chunk.runtime)
-  // A shared chunk can belong to several route groups. Group membership
-  // limits where dependencies can be loaded from; it does not establish
-  // an import from the shared chunk back to every route in those groups.
-  const availableChunks = new Set<RspackCompilationChunk>()
-  const groups = new Set(chunk.groupsIterable)
-  for (const group of groups) {
-    for (const availableChunk of group.chunks) {
-      availableChunks.add(availableChunk)
-    }
-    for (const parent of group.getParents()) {
-      groups.add(parent)
-    }
+  // A module can be copied into a different chunk for each loading context of
+  // a shared chunk, so only chunks loaded in every one of its groups count.
+  let availableChunks: ReadonlySet<RspackCompilationChunk> | undefined
+  for (const group of chunk.groupsIterable) {
+    const groupAvailable =
+      groupAvailability.get(group) ?? new Set<RspackCompilationChunk>()
+    availableChunks = availableChunks
+      ? intersect(availableChunks, groupAvailable)
+      : groupAvailable
   }
 
   for (const module of modules) {
@@ -255,7 +327,7 @@ function computeStaticDependencyChunks(
       for (const importedChunk of compilation.chunkGraph.getModuleChunksIterable(
         importedModule,
       )) {
-        if (availableChunks.has(importedChunk) && !seen.has(importedChunk)) {
+        if (availableChunks?.has(importedChunk) && !seen.has(importedChunk)) {
           seen.add(importedChunk)
           importedChunks.push(importedChunk)
         }
@@ -279,11 +351,16 @@ function createStaticDependencyChunkResolver(
   compilation: RspackCompilation,
 ): GetStaticDependencyChunks {
   const cache = new Map<RspackCompilationChunk, Array<RspackCompilationChunk>>()
+  const groupAvailability = computeChunkGroupAvailability(compilation)
 
   return (chunk) => {
     let importedChunks = cache.get(chunk)
     if (!importedChunks) {
-      importedChunks = computeStaticDependencyChunks(compilation, chunk)
+      importedChunks = computeStaticDependencyChunks(
+        compilation,
+        groupAvailability,
+        chunk,
+      )
       cache.set(chunk, importedChunks)
     }
     return importedChunks
