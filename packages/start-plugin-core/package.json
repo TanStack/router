@@ -198,6 +198,7 @@
     "@tanstack/react-router": "workspace:*",
     "@tanstack/vite-config": "catalog:",
     "@vitejs/plugin-react": "catalog:",
+    "@vitejs/plugin-vue": "^6.0.5",
     "react": "catalog:",
     "react-dom": "catalog:",
     "solid-js": "catalog:",

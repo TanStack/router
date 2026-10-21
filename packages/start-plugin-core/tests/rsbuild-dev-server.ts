@@ -324,6 +324,14 @@ export async function withRecordedPage<T>(
  * dev server renders the app's HTML with its server entry, which the
  * harness's apps do not have). Rejects with the errors the page's code did
  * not catch while the page loaded, and when a file did not load.
+ *
+ * Not for HMR checks (FINAL-PASS #16): the document is fulfilled by the
+ * test, not served by the dev server, so the page's HMR client never
+ * connects. Every caller opens a fresh page per run and reads the code a
+ * fresh load gives (e.g. `v2-edits.test.ts` after an edit); a check of a
+ * hot update needs a document the dev server serves (ctu
+ * `rsbuild-plugin-host` `runClient`, or the `browser` mode of ctu's Rsbuild
+ * dev server, which serves `index.html`).
  */
 async function withClientPage<T>(
   server: Pick<RsbuildDevServer, 'url'>,

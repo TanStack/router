@@ -13,7 +13,12 @@ import {
   problems,
 } from '../src/diagnostic-channel'
 import { withBuildEnvironment } from '../src/build-harness'
-import { captureConsole, expectDiagnostic } from '../src/diagnostics'
+import {
+  captureConsole,
+  expectDiagnostic,
+  findDiagnostics,
+} from '../src/diagnostics'
+import type { DiagnosticChannel } from '../src/diagnostic-channel'
 
 describe('diagnostic channel', () => {
   test('merges console, process streams, Vite logger and compilation reports in order, with their source', async () => {
@@ -150,6 +155,47 @@ describe('diagnostic channel', () => {
     })
     expect(diagnostics).toHaveLength(4)
     expectNoProblems(diagnostics)
+  })
+
+  // DECISIONS 2026-10-21 "diagnostic severity": where SPEC says "warn", an
+  // info or log line on any channel is no warning. The merged matchers keep
+  // the floor by default; an expectation asks for `info` to read one.
+  test('an info line does not meet an expectation that does not ask for info (severity floor)', async () => {
+    const report = 'src/routes/a.tsx: the export Route is missing'
+    const said = async (print: (channel: DiagnosticChannel) => void) =>
+      (await captureDiagnostics(print)).diagnostics
+    const contract = { file: 'src/routes/a.tsx', names: ['Route'] }
+    for (const info of [
+      await said(() => console.log(report)),
+      await said(() => console.info(report)),
+      await said(() => process.stdout.write(`${report}\n`)),
+      await said((channel) => channel.viteLogger().info(report)),
+    ]) {
+      expect(info).toHaveLength(1)
+      expect(findDiagnostics(info, contract)).toEqual([])
+      expect(() => expectDiagnostic(info, contract)).toThrow(
+        /severity info, expected warning or error/,
+      )
+      expectDiagnostic(info, { ...contract, severity: 'info' })
+    }
+    for (const problem of [
+      await said(() => console.warn(report)),
+      await said(() => console.error(report)),
+      await said(() => process.stderr.write(`${report}\n`)),
+      await said((channel) => channel.viteLogger().warn(report)),
+      await said((channel) =>
+        channel.reportCompilation({ warnings: [{ message: report }] }),
+      ),
+    ]) {
+      expectDiagnostic(problem, contract)
+    }
+    // A clause that says "warn" without allowing refusal asks for warning
+    expect(
+      findDiagnostics(await said(() => console.error(report)), {
+        ...contract,
+        severity: 'warning',
+      }),
+    ).toEqual([])
   })
 })
 

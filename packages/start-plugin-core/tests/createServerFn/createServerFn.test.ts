@@ -1,5 +1,8 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
+import { linkWorkspacePackages } from '@tanstack/compiler-test-utils/workspace-packages'
 import {
   callFromClient,
   callOnServer,
@@ -79,7 +82,14 @@ describe('createServerFn compiles correctly', () => {
   // \r\n, a lone \r, U+2028 and U+2029 as line terminators, so the
   // reported line and column must count every one. Prose, frame layout and
   // context length are free (§5.7).
-  test.each([
+  // Bug: the code frame's caret, Start's only spelling of the column, is
+  // drawn one column left of the call (F1), so the reported column is
+  // wrong; the line is right.
+  // Impact: the frame highlights the character before the offending call.
+  // Source: validation/REPAIR/A2.md F1 (DECISIONS 2026-10-21; pin:
+  // known-bugs-start-compiler-code-frame.test.ts); passed only through the
+  // ctu matcher's former ±1 caret tolerance (removed by F-A, FINAL-PASS #12).
+  test.fails.each([
     ['\\n', '\n'],
     ['\\r\\n', '\r\n'],
     ['a lone \\r', '\r'],
@@ -102,20 +112,30 @@ describe('createServerFn compiles correctly', () => {
     },
   )
 
-  test('reports the location of a diagnostic deep in the module', async () => {
-    const source = [
-      `import { createServerFn } from '@tanstack/react-start'`,
-      ...Array.from({ length: 10 }, (_, i) => `export const v${i} = ${i}`),
-      `export const fn = createServerFn().handler()`,
-    ].join('\n')
-    const startCase = await (await host()).case({ 'module.tsx': source })
-    expectCompileError(await compileError(startCase), {
-      source,
-      at: 'createServerFn()',
-      column: true,
-      ...missingHandler,
-    })
-  })
+  // Bug: the code frame's caret, Start's only spelling of the column, is
+  // drawn one column left of the call (F1), so the reported column is
+  // wrong; the line is right.
+  // Impact: the frame highlights the character before the offending call.
+  // Source: validation/REPAIR/A2.md F1 (DECISIONS 2026-10-21; pin:
+  // known-bugs-start-compiler-code-frame.test.ts); passed only through the
+  // ctu matcher's former ±1 caret tolerance (removed by F-A, FINAL-PASS #12).
+  test.fails(
+    'reports the location of a diagnostic deep in the module',
+    async () => {
+      const source = [
+        `import { createServerFn } from '@tanstack/react-start'`,
+        ...Array.from({ length: 10 }, (_, i) => `export const v${i} = ${i}`),
+        `export const fn = createServerFn().handler()`,
+      ].join('\n')
+      const startCase = await (await host()).case({ 'module.tsx': source })
+      expectCompileError(await compileError(startCase), {
+        source,
+        at: 'createServerFn()',
+        column: true,
+        ...missingHandler,
+      })
+    },
+  )
 
   // Malformed-input diagnostic control (SPEC §8, G5): destructuring a server
   // fn is a type error (tsc against the real declarations: TS2339 "Property
@@ -429,6 +449,59 @@ export const fn = base${call}async () => db.x())`,
         expect(await serverFnUrls(served)).toHaveLength(1)
         expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('x')
       })
+    }
+  })
+})
+
+describe('server fns outside the app root', () => {
+  // A server fn in a module outside the Vite root (a workspace package
+  // whose source the app imports, which the dev server serves from
+  // `/@fs/`): the client calls it by id through Start's server entry,
+  // server code calls it directly, and the client loads none of the
+  // server-only modules its handler reads.
+  // Source: outside-compiler-corpus/vite-start-compiler-utils.test.ts
+  // "preserves POSIX absolute /@fs paths outside the app root" (the dev
+  // server fn id encoding, an internal helper), rerouted to its outcome.
+  test('dev: a server fn in a module outside the app root runs by id', async () => {
+    const started = await host()
+    const shared = await mkdtemp(
+      path.join(path.dirname(started.root), '.start-shared-'),
+    )
+    try {
+      // The shared package resolves Start from its own node_modules, as a
+      // workspace package does
+      await linkWorkspacePackages(shared, ['@tanstack/react-start'])
+      await writeFile(
+        path.join(shared, 'fn.ts'),
+        `import { createServerFn } from '@tanstack/react-start'
+import { db } from './db.server'
+export const sharedFn = createServerFn().handler(async () => db.x())
+`,
+      )
+      await writeFile(
+        path.join(shared, 'db.server.ts'),
+        `export const db = { x: () => 'from outside the root' }\n`,
+      )
+      // Every case directory is `src/cases/c<n>`, one level deep
+      const specifier = path
+        .relative(
+          path.join(started.root, 'src/cases/c'),
+          path.join(shared, 'fn'),
+        )
+        .split(path.sep)
+        .join('/')
+      const served = await serveCase(started, {
+        'module.tsx': `export { sharedFn as fn } from '${specifier}'\n`,
+      })
+      expect(await serverFnUrls(served)).toHaveLength(1)
+      expect(await callServerFnThroughCallers(served, 'module.fn')).toBe(
+        'from outside the root',
+      )
+      expect(
+        (await served.loads()).filter((loaded) => loaded.includes('db.server')),
+      ).toEqual([])
+    } finally {
+      await rm(shared, { recursive: true, force: true })
     }
   })
 })

@@ -338,8 +338,14 @@ export interface ClientOptions extends RenderOptions {
    * `openGates()` in scope; its JSON value is `result`.
    */
   script?: string
-  /** Leave the gates closed (only idle and load gates open). */
-  closedGates?: boolean
+  /**
+   * Which gates the run opens: `'all'` (default), `'none'` (only idle and
+   * load gates open themselves), or a page expression of a function that
+   * gets a boundary still waiting for its gate (the element carrying the
+   * runtime's gate marker) and says whether to open it, e.g.
+   * `(boundary) => boundary.textContent.includes('chart')`.
+   */
+  gates?: 'all' | 'none' | string
 }
 
 const caseFileName = (specifier: string) => {
@@ -594,6 +600,15 @@ export interface ClientRender {
   lazy: Array<string>
   /** `lazy` as the page requested it (paths with their query). */
   lazyUrls: Array<string>
+  /**
+   * The case's own code among `lazyUrls`: the modules the page requested
+   * once hydration started whose served code's source map names a file of
+   * the case directory (or, served with an empty map, that the case
+   * module's own import graph reaches), wherever the compiler put them and
+   * under any id. Code of a package, of the harness or of Vite is not the
+   * case's split code.
+   */
+  chunks: Array<string>
   /** What the script returned. */
   result: unknown
 }
@@ -625,21 +640,21 @@ const settleSource = `const settled = async (quiet = 30, timeout = 10000) => {
 const nonActivating = (events) => events.filter((name) => !/click|pointerdown|mousedown|mouseup|pointerup|keydown|keyup|contextmenu/.test(name))
 // Boundaries still waiting for their gate (the runtime drops the marker once
 // one hydrated); a never() gate never opens.
-const pending = () => [...root.querySelectorAll('[data-ts-hydrate-when]')].filter((marker) => marker.getAttribute('data-ts-hydrate-when') !== 'never')
+const pending = (which = () => true) => [...root.querySelectorAll('[data-ts-hydrate-when]')].filter((marker) => marker.getAttribute('data-ts-hydrate-when') !== 'never').filter(which)
 // Gates that open on their own or on an event this opens: wait for them
 // (an idle gate waits for the page to be idle, which a busy machine
 // delays); a media or condition gate may never open.
-const awaited = () => pending().filter((marker) => ['idle', 'interaction', 'dynamic', 'visible', 'load'].includes(marker.getAttribute('data-ts-hydrate-when')))
-const openGates = async (timeout = 8000, stuck = 1500) => {
+const awaited = (which) => pending(which).filter((marker) => ['idle', 'interaction', 'dynamic', 'visible', 'load'].includes(marker.getAttribute('data-ts-hydrate-when')))
+const openGates = async (timeout = 8000, stuck = 1500, which = () => true) => {
   const deadline = performance.now() + timeout
   let unchanged = 0
   let changedAt = performance.now()
   // An awaited gate gets time to open (an idle callback waits for an idle
   // page); one that stays shut with nothing changing for \`stuck\` ms
   // (its split code failed) does not hold the run up to the deadline.
-  for (let round = 0; pending().length > 0 && (awaited().length > 0 ? performance.now() < deadline && performance.now() - changedAt < stuck : unchanged < 4); round++) {
+  for (let round = 0; pending(which).length > 0 && (awaited(which).length > 0 ? performance.now() < deadline && performance.now() - changedAt < stuck : unchanged < 4); round++) {
     const before = root.innerHTML + ':' + performance.getEntriesByType('resource').length
-    for (const marker of pending()) {
+    for (const marker of pending(which)) {
       marker.scrollIntoView()
       const when = marker.getAttribute('data-ts-hydrate-when')
       if (when === 'interaction' || when === 'dynamic') {
@@ -722,7 +737,7 @@ let edits = 0
 /**
  * Compiles `code` with the Start plugin, renders it on the server and
  * hydrates the HTML in the host's page (see the module comment), opening
- * every gate (unless `closedGates`), then runs `script`. With `target`, the
+ * the gates `options.gates` names (default every gate), then runs `script`. With `target`, the
  * module is not written: it is the one of that case or directory.
  */
 export async function renderClient(
@@ -821,7 +836,13 @@ try {
     },
   })
   await settled()
-  ${options.closedGates ? '' : 'await openGates()'}
+  ${
+    options.gates === 'none'
+      ? ''
+      : options.gates === undefined || options.gates === 'all'
+        ? 'await openGates()'
+        : `await openGates(undefined, undefined, ${options.gates})`
+  }
   const result = await (async () => {
 ${options.script ?? 'return null'}
   })()
@@ -853,6 +874,7 @@ ${options.script ?? 'return null'}
 }`,
     startCase,
   )
+  const chunks = await caseCode(hosts, target.dir, file, run.result.lazyUrls)
   const caseForResult = startCase ?? (target as unknown as StartCase)
   return {
     case: caseForResult,
@@ -879,8 +901,89 @@ ${options.script ?? 'return null'}
     loaded: run.result.loaded,
     lazy: run.result.lazy,
     lazyUrls: run.result.lazyUrls,
+    chunks,
     result: run.result.result,
   }
+}
+
+/**
+ * The URLs among `urls` (what the page requested) whose served code is the
+ * case's own, wherever the compiler put it and under any id: its source map
+ * names a file of the case directory `dir` (relative to the app root), or,
+ * for code whose map names no file (a split text-only child is served with
+ * an empty map), the client module graph reaches it from the case module
+ * `file` through the case's own modules (an import edge, static or
+ * dynamic, not through a package). A package, the runtime or Vite's client
+ * is neither. Observation only: the dev server's served maps and module
+ * graph.
+ */
+async function caseCode(
+  hosts: HydrateHost,
+  dir: string,
+  file: string,
+  urls: Array<string>,
+): Promise<Array<string>> {
+  const caseDir = `${path.join(hosts.start.root, dir)}${path.sep}`
+  const reached = caseGraph(hosts, `/${dir}/${file}`)
+  const owned: Array<string> = []
+  for (const url of urls) {
+    if (!url.startsWith('/')) {
+      continue
+    }
+    const served = await servedWithMap(hosts, url).catch(() => undefined)
+    const sources = (served?.map?.sources ?? []).filter(
+      (source): source is string => source !== null,
+    )
+    if (
+      sources.some((source) => source.startsWith(caseDir)) ||
+      (sources.length === 0 && reached.has(comparableUrl(url)))
+    ) {
+      owned.push(url)
+    }
+  }
+  return owned
+}
+
+/** A module URL without Vite's `t` (HMR timestamp) parameter. */
+function comparableUrl(url: string) {
+  const parsed = new URL(url, 'http://page.invalid')
+  parsed.searchParams.delete('t')
+  const query = parsed.searchParams.toString()
+  return decodeURIComponent(parsed.pathname) + (query ? `?${query}` : '')
+}
+
+/**
+ * The URLs of the modules the client module graph reaches from the module
+ * at `url`, static and dynamic imports, through modules of the app (not
+ * packages: workspace packages resolve outside the app root,
+ * `node_modules` holds Vite's pre-bundled dependencies) or virtual ones.
+ */
+function caseGraph(hosts: HydrateHost, url: string): Set<string> {
+  const graph = hosts.start.host.dev.vite.environments.client.moduleGraph
+  const root = `${hosts.start.root}${path.sep}`
+  const start = [
+    ...(graph.getModulesByFile(path.join(hosts.start.root, url)) ?? []),
+  ].filter((node) => node.url === url)
+  const reached = new Set<string>()
+  const seen = new Set<unknown>(start)
+  const queue = start.flatMap((node) => [...node.importedModules])
+  while (queue.length > 0) {
+    const node = queue.shift()!
+    if (seen.has(node)) {
+      continue
+    }
+    seen.add(node)
+    const appFile =
+      node.file !== null &&
+      node.file.startsWith(root) &&
+      !/[\\/]node_modules[\\/]/.test(node.file)
+    if (!appFile && !(node.id?.startsWith('\0') ?? false)) {
+      continue
+    }
+    reached.add(comparableUrl(node.url))
+    queue.push(...node.importedModules)
+  }
+  return reached
 }
 
 /**
@@ -925,13 +1028,17 @@ export function expectHydratedCleanly(client: ClientRender) {
   expect(client.errors, 'page errors while hydrating').toEqual([])
 }
 
-/** The page loaded code on demand once hydration started. */
+/**
+ * The page loaded the case's own code on demand once hydration started
+ * (`ClientRender.chunks`): not just any module (a package, Vite's client).
+ */
 export function expectRenderedThroughChunks(
-  client: Pick<ClientRender, 'lazy'>,
+  client: Pick<ClientRender, 'chunks'>,
 ) {
-  expect(client.lazy, 'what the page requested once it hydrated').not.toEqual(
-    [],
-  )
+  expect(
+    client.chunks,
+    'the case code the page requested once it hydrated',
+  ).not.toEqual([])
 }
 
 /**

@@ -722,6 +722,36 @@ export function Page() {
     expect(client.lazy).not.toContain('./inner')
   })
 
+  // SPEC J5.2: sibling boundaries have split code of their own, each behind
+  // its own gate: opening one gate loads that boundary's children only (how
+  // many modules either split takes is free, SPEC N13).
+  test('client: opening one of two sibling boundaries loads its children only', async () => {
+    const client = await renderClient(
+      await hosts(),
+      `${head}import { interaction } from '@tanstack/react-start/hydration'
+import { Chart } from './chart'
+import { Table } from './table'
+export function Page() {
+  return <><Hydrate when={interaction()}><Chart /></Hydrate><Hydrate when={interaction()}><Table /></Hydrate></>
+}`,
+      {
+        files: {
+          './chart': `export const Chart = () => <figure>chart</figure>`,
+          './table': `export const Table = () => <table><tbody><tr><td>table</td></tr></tbody></table>`,
+        },
+        gates: `(boundary) => boundary.textContent.includes('chart')`,
+      },
+    )
+    expectHydratedCleanly(client)
+    expect(client.html).toContain('<figure>chart</figure>')
+    expect(client.html).toContain('<td>table</td>')
+    expect(client.loaded).not.toContain('./chart')
+    expect(client.loaded).not.toContain('./table')
+    expect(client.lazy).toContain('./chart')
+    expect(client.lazy).not.toContain('./table')
+    expectRenderedThroughChunks(client)
+  })
+
   // The split code of a boundary, and of the nested boundary it contains,
   // uses the packages of the module's framework only (a React module graph
   // has no Solid packages, and the other way around). How many modules the

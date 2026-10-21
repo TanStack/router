@@ -116,7 +116,11 @@ async function inPage(
 const value = entry.denied.${name}
 ${script}`,
   )
-  return { result, logged: warningsAndErrors(diagnostics) }
+  return {
+    result,
+    logged: warningsAndErrors(diagnostics),
+    all: diagnostics.map(({ severity, text }) => `${severity}: ${text}`),
+  }
 }
 
 const modes = ['error', 'warn', 'off'] as const
@@ -176,17 +180,25 @@ describe.each(deniedImports)('a client import of $specifier', (denied) => {
     timeout,
   )
 
+  // Silent means no side effect a page can see: nothing logged on any
+  // channel at any severity (the same output as a page that does not use
+  // the mock), and no global the uses define.
   test(
-    'mockAccess off: no use is reported',
+    'mockAccess off: no use is reported, and the uses have no side effect',
     async () => {
-      const { logged } = await inPage(
+      const control = await inPage('off', denied.name, `return []`)
+      const { logged, all, result } = await inPage(
         'off',
         denied.name,
-        `${Object.values(uses).join('\n')}
+        `const before = new Set(Object.getOwnPropertyNames(globalThis))
+${Object.values(uses).join('\n')}
 String(value.member())
-new value.Client()`,
+new value.Client()
+return Object.getOwnPropertyNames(globalThis).filter((name) => !before.has(name))`,
       )
       expect(logged).toEqual([])
+      expect(all).toEqual(control.all)
+      expect(result).toEqual([])
     },
     timeout,
   )

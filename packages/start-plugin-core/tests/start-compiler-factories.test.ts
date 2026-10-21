@@ -1006,14 +1006,20 @@ export { createServerFn, createServerOnlyFn } from '@tanstack/react-start'`,
       resolvesServerOnlyFn: true,
     },
     {
-      // expand-export-all/bad-resolve. A star export that no bundler
-      // resolves fails every real build, so the module it names exists here
-      // and gives nothing (as the former harness's empty stand-in did).
-      name: 'an empty star export next to the package',
+      // expand-export-all/bad-resolve. The star export names a module the
+      // bundler's resolver gives no id for (Vite resolves no `data:` URL; the
+      // browser and Node import it themselves), so a compiler following the
+      // chain cannot read it and must go on with the other star export. A
+      // star export to a missing file is not usable: it fails every real
+      // build and every dev page.
+      name: 'an unresolvable star export next to the package',
       files: {
-        'start.ts': `export * from './missing'
+        'start.ts': `export * from 'data:text/javascript,export const unrelated = 1'
 export * from '@tanstack/react-start'`,
-        'missing.ts': `export {}\n`,
+        'data-modules.d.ts': `declare module 'data:text/javascript,*' {
+  export const unrelated: number
+}
+`,
       },
       resolvesServerOnlyFn: true,
     },

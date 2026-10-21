@@ -28,7 +28,10 @@
  *   `expectDiagnostic(diagnostics, expectation)`: the diagnostics meeting a
  *   `DiagnosticExpectation`; the latter fails, listing why each diagnostic
  *   does not match, unless one (or exactly `times`) does. Both take
- *   diagnostics or any value `diagnosticsOf` reads. `mismatches(diagnostic,
+ *   diagnostics or any value `diagnosticsOf` reads. Severity has a floor:
+ *   unless an expectation asks for `info`, only a `warning` or an `error`
+ *   meets it (DECISIONS 2026-10-21: an info line is no warning).
+ *   `mismatches(diagnostic,
  *   expectation)` gives the reasons for one diagnostic.
  * - `mentionsFile(text, file, options?)`: whether a text names a file.
  * - `diagnosticProse(text, source?)`: what a diagnostic says in its own
@@ -75,13 +78,16 @@
  * - Names: each API or option name as a whole identifier, anywhere (only in
  *   `diagnosticProse` with `prose`). A name given as a list is satisfied by
  *   any one of its alternatives.
- * - Causes (`explains`): an explanation in the diagnostic's own words,
- *   any wording: no engine crash, something said beyond the names, paths,
- *   positions and generic failure words, and the input-specific content
- *   that tells the cause apart (`mentions`, e.g. the captured local). An
- *   internal crash that only names the API, or quotes it in a frame, does
- *   not pass. (`causes`, a closed word list, is deprecated: it rejected
- *   equivalent wording.)
+ * - Causes (`explains`): an actionable explanation in the diagnostic's own
+ *   words, any wording: no engine crash and no internal-error report; the
+ *   cause's category, said beyond the names, paths, positions, generic
+ *   failure words and the compiler's own representation ("unexpected node
+ *   type" says none); the API it names or guidance (what is required,
+ *   allowed or to be done instead); and the input-specific content that
+ *   tells the cause apart (`mentions`, e.g. the captured local). An internal
+ *   crash that only names the API, or quotes it in a frame, does not pass.
+ *   (`causes`, a closed word list, is deprecated: it rejected equivalent
+ *   wording.)
  */
 import path from 'node:path'
 import { realpathSync } from 'node:fs'
@@ -134,8 +140,21 @@ export interface Diagnostic {
   columnBase?: 0 | 1
 }
 
+/**
+ * The severities a diagnostic meets when an expectation names none: a
+ * warning or an error (DECISIONS 2026-10-21, "diagnostic severity"). Where
+ * SPEC says a compiler warns, an info or log line does not satisfy it;
+ * nothing a user is told about a problem is printed as `info` (N15).
+ */
+const defaultSeverities: Array<Severity> = ['warning', 'error']
+
 export interface DiagnosticExpectation {
-  /** Accepted severities (any by default). */
+  /**
+   * Accepted severities. Default: `warning` or `error` (the severity floor:
+   * an `info` line never meets an expectation that does not ask for
+   * `info`). A clause that says "warn" and does not allow refusal asks
+   * for `'warning'`; one that allows refusal, for the default.
+   */
   severity?: Severity | Array<Severity>
   /**
    * The file the diagnostic must name: absolute, or relative to `root`
@@ -172,12 +191,16 @@ export interface DiagnosticExpectation {
    */
   causes?: Array<string | RegExp>
   /**
-   * The diagnostic must explain a cause in its own words, whatever the
-   * wording (SPEC G5, §5.7; `explanationMismatch`): it is no engine crash
-   * (a `TypeError`, `Cannot read properties of undefined`, ...), and its
-   * prose (`diagnosticProse`, quoted source left out) says something beyond
-   * the names it gives, file paths, positions, tool tags and generic
-   * failure words ("internal error", "failed to compile"). `mentions`: what
+   * The diagnostic must give an actionable cause in its own words, whatever
+   * the wording (SPEC G5, §5.7; `explanationMismatch`): it is no engine
+   * crash (a `TypeError`, `Cannot read properties of undefined`, ...) and no
+   * internal-error report (an invariant, "this is a bug"); its prose
+   * (`diagnosticProse`, quoted source left out) gives the cause's category
+   * beyond the names it gives, file paths, positions, tool tags, generic
+   * failure words ("internal error", "failed to compile") and the
+   * compiler's own representation ("unexpected node type"); and it names
+   * the API (one of `names` or `mentions`) or gives guidance (what is
+   * required, allowed or to be done instead). `mentions`: what
    * from the user's input the explanation must name in its own words (a
    * list: any one of its alternatives), e.g. the local a handler captures:
    * the content that tells this cause from another.
@@ -370,13 +393,13 @@ export function mismatches(
   expected: DiagnosticExpectation,
 ): Array<string> {
   const reasons: Array<string> = []
-  if (expected.severity !== undefined) {
-    const severities = ([] as Array<Severity>).concat(expected.severity)
-    if (!severities.includes(diagnostic.severity)) {
-      reasons.push(
-        `severity ${diagnostic.severity}, expected ${severities.join(' or ')}`,
-      )
-    }
+  const severities = ([] as Array<Severity>).concat(
+    expected.severity ?? defaultSeverities,
+  )
+  if (!severities.includes(diagnostic.severity)) {
+    reasons.push(
+      `severity ${diagnostic.severity}, expected ${severities.join(' or ')}${expected.severity === undefined ? ' (the default floor: an info line reports nothing)' : ''}`,
+    )
   }
   const fileMentions =
     expected.file === undefined
@@ -483,16 +506,62 @@ const genericFailureWords = new Set(
   compile compiling compiled compiler compilation transform transforming transformed
   transformation process processing processed plugin vite rollup rolldown webpack
   rspack rsbuild esbuild babel oxc build building module file line column code
-  warning warn info note see details`
+  warning warn info note see details invalid bad unhandled unrecognized
+  unrecognised parse parsing parsed`
     .split(/\s+/)
     .filter(Boolean),
 )
 
 /**
- * Why a diagnostic is not an explanation in its own words (see
+ * Words of a compiler's own representation (its syntax tree and its walk
+ * over it): "unexpected node type" names no cause the user can act on, so
+ * these do not count as a cause either. Language terms a user writes
+ * (identifier, expression, property, argument, ...) do count.
+ */
+const internalRepresentationWords = new Set(
+  `node nodes ast type types kind token tokens visitor visit visiting traverse
+  traversal traversing callee declarator`
+    .split(/\s+/)
+    .filter(Boolean),
+)
+
+/**
+ * What a tool prints for a failure of its own, not of the user's input: an
+ * explanation never reads like one of these.
+ */
+const internalErrorSignatures = [
+  /\binvariant\b/i,
+  /\bassertion (?:failed|error)\b/i,
+  /\bunreachable\b/i,
+  /\bshould (?:never|not) (?:happen|be reached)\b/i,
+  /\bthis is a bug\b/i,
+  /\bplease (?:report|file|open)\b/i,
+]
+
+/**
+ * Guidance: the explanation says what is required, allowed or to be done
+ * instead (a requirement, a restriction or a directive), in any words that
+ * carry one of these.
+ */
+const guidance =
+  /(?<![\w$'-])(?:must|should|shall|needs?|requires?|required|has to|have to|only|cannot|can't|can ?not|isn't|aren't|doesn't|don't|not|no longer|never|instead|use|move|wrap|avoid|allowed|supported|unsupported|expects?|expected)(?![\w$'-])/i
+
+/**
+ * Why a diagnostic is not an actionable explanation in its own words (see
  * `DiagnosticExpectation.explains`), or `undefined` when it is. `prose` is
  * its text without quoted source; `names` the identifiers it is expected
- * to give (they do not count as explanation).
+ * to give (they do not count as explanation, but naming one of them is
+ * naming the API).
+ *
+ * An actionable cause (SPEC G5, §5.7; DECISIONS 2026-10-21, final pass #3)
+ * has two parts:
+ * - the cause's category, in the diagnostic's own words: something beyond
+ *   the names, paths, positions, tool tags, generic failure words and the
+ *   compiler's own representation ("unexpected node type" has none); no
+ *   engine crash and no internal-error report (an invariant, "this is a
+ *   bug");
+ * - and what to act on: the API or option it names (one of `names`, in the
+ *   prose), or guidance (what is required, allowed or to be done instead).
  */
 export function explanationMismatch(
   diagnostic: Pick<Diagnostic, 'text' | 'raw'>,
@@ -512,32 +581,43 @@ export function explanationMismatch(
   if (crash) {
     return `reads as an engine crash (${crash}), not an explanation`
   }
-  const names = new Set(
-    (options.names ?? []).flatMap((name) => ([] as Array<string>).concat(name)),
+  const internal = internalErrorSignatures.find((signature) =>
+    signature.test(prose),
   )
-  const words =
-    prose
-      // Stack frames are not prose
-      .replace(/^\s*at .*$/gm, ' ')
-      // Tool tags such as `[plugin:vite:x]` or `[import-protection]`
-      .replace(/\[[^\]\n]*\]/g, ' ')
-      // Quoted code: the user's, not the diagnostic's words
-      .replace(/`[^`\n]*`|"[^"\n]*"|(?<!\w)'[^'\n]*'(?!\w)/g, ' ')
-      // Paths, URLs and positions
-      .replace(/\S*[\\/]\S*/g, ' ')
-      .replace(/\b[\w-]+\.[cm]?[jt]sx?\b\S*/g, ' ')
-      .replace(/\d+(?::\d+)*/g, ' ')
-      .match(/[A-Za-z][\w$'-]*/g) ?? []
+  if (internal) {
+    return `reads as an internal error of the tool (${internal}), not an explanation`
+  }
+  const nameList = (options.names ?? []).flatMap((name) =>
+    ([] as Array<string>).concat(name),
+  )
+  const names = new Set(nameList)
+  const said = prose
+    // Stack frames are not prose
+    .replace(/^\s*at .*$/gm, ' ')
+    // Tool tags such as `[plugin:vite:x]` or `[import-protection]`
+    .replace(/\[[^\]\n]*\]/g, ' ')
+    // Quoted code: the user's, not the diagnostic's words
+    .replace(/`[^`\n]*`|"[^"\n]*"|(?<!\w)'[^'\n]*'(?!\w)/g, ' ')
+    // Paths, URLs and positions
+    .replace(/\S*[\\/]\S*/g, ' ')
+    .replace(/\b[\w-]+\.[cm]?[jt]sx?\b\S*/g, ' ')
+    .replace(/\d+(?::\d+)*/g, ' ')
+  const words = said.match(/[A-Za-z][\w$'-]*/g) ?? []
   const own = words.filter(
     (word) =>
       word.length > 1 &&
       !names.has(word) &&
       !genericFailureWords.has(word.toLowerCase()) &&
+      !internalRepresentationWords.has(word.toLowerCase()) &&
       // Code, not words: `serverFn`, `__x`, `$lang`, `x1`
       !/[a-z][A-Z]|[_$\d]/.test(word),
   )
   if (own.length < 1) {
     return `does not explain a cause in its own words (it says: ${JSON.stringify(prose.trim().slice(0, 160))})`
+  }
+  const namesApi = nameList.some((name) => namesIdentifier(prose, name))
+  if (!namesApi && !guidance.test(said)) {
+    return `names no API${nameList.length > 0 ? ` (${nameList.join(', ')})` : ''} and gives no guidance (what is required, allowed or to be done instead), so the cause is not actionable (it says: ${JSON.stringify(prose.trim().slice(0, 160))})`
   }
   return undefined
 }
@@ -982,11 +1062,11 @@ function frameReportsPosition(
     const sourceLine = source.split(lineTerminator)[line - 1] ?? ''
     const gutter = lines[index]!.search(/[|│]/)
     const start = lines[index]!.indexOf(sourceLine, gutter + 1)
-    // The caret, or one column left of it: a compiler handing a 0-based
-    // AST column to a 1-based code-frame API (Babel's `codeFrameColumns`)
-    // draws it there. Start's `codeFrameError` does today; keep the tolerance
-    // for the caret only.
-    if (start >= 0 && columnMatches(caret - start + 1, column, 'either')) {
+    // The caret points at the column exactly: one column left of it is the
+    // character before (a 0-based column handed to a 1-based code-frame API,
+    // Start's bug F1, pinned in start-plugin-core's
+    // `known-bugs-start-compiler-code-frame.test.ts`).
+    if (start >= 0 && columnMatches(caret - start + 1, column, 1)) {
       return true
     }
   }

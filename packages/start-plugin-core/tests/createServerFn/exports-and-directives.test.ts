@@ -392,19 +392,17 @@ describe('module formats', () => {
     )
   })
 
-  // .cts/.mts sources are TypeScript without JSX.
-  // Bug (.cts): in dev, calling a server fn of a `.cts` module fails on the
-  // server: the module the server runs the handler from is served with its
-  // TypeScript left in place (Vite: "Parse failure: Unexpected JSX
-  // expression" at `<number>`), while the module itself is served and
-  // evaluated fine in both environments.
-  // Impact: a server fn in a `.cts` module cannot be called in `vite dev`.
-  // Source: B2 repair (this row rerouted through the public Start plugin;
-  // the internal compiler alone gave valid output).
+  // .mts sources are TypeScript without JSX.
+  // No `.cts` row: Vite's TypeScript transform skips `.cts` by default
+  // (`vite:oxc` includes `.ts`, `.mts`, `.tsx`, `.jsx`), so a plain Vite app
+  // without Start cannot run a `.cts` module with TypeScript syntax in dev
+  // either (SSR: "Parse failure: Unexpected JSX expression"; the client gets
+  // the TypeScript as is), and its build fails the same way for any query
+  // import of a `.cts` module (`./fn.cts?x`). Not a compiler outcome
+  // (coordinator 2026-10-21; FOLLOWUPS UPSTREAM "`.cts`").
   // Source: @vitejs/plugin-rsc cjs.test.ts (fixtures/cjs)
-  for (const file of ['fn.cts', 'fn.mts']) {
-    const run = file === 'fn.cts' ? test.fails : test
-    run(`${file} may use angle-bracket type assertions`, async () => {
+  for (const file of ['fn.mts']) {
+    test(`${file} may use angle-bracket type assertions`, async () => {
       const served = await serveCase(
         await host(),
         {

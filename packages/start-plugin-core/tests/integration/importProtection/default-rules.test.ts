@@ -66,6 +66,31 @@ function plainPackage(name: string, files: Record<string, string>) {
 }
 
 /**
+ * A dependency whose own entries resolve to files named like environment
+ * files (as `react-tweet` exports `index.client.js`): `dep-pkg/secret` is
+ * `db.server.js`, `dep-pkg/widget` is `widget.client.js`. The app imports
+ * both from `src/uses/dep.ts`, so the resolved targets the default
+ * `excludeFiles` skip are what the app's own module imports (a dependency's
+ * imports of its own files are outside Start's `srcDirectory`, which import
+ * protection never checks).
+ */
+const dependencyFiles = {
+  'node_modules/dep-pkg/package.json': JSON.stringify({
+    name: 'dep-pkg',
+    type: 'module',
+    exports: { './secret': './db.server.js', './widget': './widget.client.js' },
+  }),
+  'node_modules/dep-pkg/db.server.js': `export const secret = () => 'REAL_DEP_SERVER'\n`,
+  'node_modules/dep-pkg/widget.client.js': `export const widget = () => 'REAL_DEP_CLIENT'\n`,
+}
+const dependencyUse = {
+  'src/uses/dep.ts': `import { secret } from 'dep-pkg/secret'
+import { widget } from 'dep-pkg/widget'
+export const useDep = () => [secret(), widget()]
+`,
+}
+
+/**
  * Asserts that the reports of `environment` (`located`, from
  * `locatedImporters`) are exactly the `expected` violations, each reported
  * (at least once) at one of its relevant files: the importer, or for a
@@ -106,13 +131,7 @@ describe('the default rules', () => {
     ]),
     // A dependency whose own files are named like denied files: excluded by
     // default in both environments
-    ...plainPackage('dep-pkg', {
-      'index.js': `export { secret } from './db.server.js'
-export { widget } from './widget.client.js'
-`,
-      'db.server.js': `export const secret = () => 'REAL_DEP_SERVER'\n`,
-      'widget.client.js': `export const widget = () => 'REAL_DEP_CLIENT'\n`,
-    }),
+    ...dependencyFiles,
     // Server entries of each framework (denied to the client by specifier)
     'src/uses/react-server.ts': `import { getRequest } from '@tanstack/react-start/server'
 export const reactServer = () => getRequest()
@@ -149,9 +168,7 @@ export const useSolidClient = () => solidClient()
     'src/uses/vue-client-marked.ts': `import { vueClient } from '../vue-client-marked'
 export const useVueClient = () => vueClient()
 `,
-    'src/uses/dep.ts': `import { secret, widget } from 'dep-pkg'
-export const useDep = () => [secret(), widget()]
-`,
+    ...dependencyUse,
     'src/entry.ts': `export * from './uses/react-server'
 export * from './uses/solid-server'
 export * from './uses/vue-server'
@@ -210,6 +227,83 @@ export * from './uses/dep'
           'src/uses/vue-client-marked.ts',
           'src/vue-client-marked.ts',
         ],
+      })
+    },
+    timeout,
+  )
+})
+
+// The default `excludeFiles` is what keeps the dependency's files out of
+// the reports above: with it replaced by `[]` (the guide: "If you need to
+// check third-party files, set `excludeFiles: []`"), the same imports must
+// be reported; both environments are pinned (bugs below). The default rows
+// above are not vacuous: without the exclusion, the server's mock rewrite of
+// `dep-pkg/widget` fails the app's SSR import, so their shared run fails.
+describe('excludeFiles: [] checks the files of a dependency', () => {
+  const files = {
+    ...dependencyFiles,
+    ...dependencyUse,
+    'src/entry.ts': `export * from './uses/dep'\n`,
+  }
+
+  // Bug: on the client in dev mock mode (the default), with
+  // `excludeFiles: []`, the denied import of a dependency's server file is
+  // rewritten to import the real file (`/node_modules/dep-pkg/db.server.js`,
+  // read as a `default` export it does not have) instead of a mock, and
+  // that rewritten import is reported a second time, at no position.
+  // Impact: the documented way to check third-party files still sends the
+  // dependency's server file to the browser, and the module reading it
+  // breaks.
+  // Fix-agnostic: the import is reported at its place only, and the client
+  // loads no code of the denied file.
+  // Source: final pass F-C (FINAL-PASS #33: the default `excludeFiles` had
+  // no reachable contrast).
+  test.fails(
+    'the client reports the dependency file it denies, and does not load it',
+    async () => {
+      const server = await startProtectedDevServer(files, {
+        mockAccess: 'off',
+        client: { excludeFiles: [] },
+      })
+      const loaded = await server.load('/src/entry.ts', {
+        skip: /^node:|^\/@vite\//,
+      })
+      expectReported(locatedImporters(server.logs, files), 'client', {
+        'dependency server file': ['src/uses/dep.ts'],
+      })
+      expect(
+        Object.entries(loaded)
+          .filter(([, code]) => code.includes('REAL_DEP_SERVER'))
+          .map(([url]) => url),
+      ).toEqual([])
+    },
+    timeout,
+  )
+
+  // Bug: on the server in dev, with `excludeFiles: []`, a dependency's file
+  // the server denies (here `dep-pkg/widget`, which resolves to
+  // `widget.client.js`) is never reported: in mock mode (the dev default)
+  // the import is rewritten to read a `default` export of the real file
+  // (`/node_modules/dep-pkg/widget.client.js`, which has none), so loading
+  // the module fails ("does not provide an export named 'default'") without
+  // a report; in error mode nothing is reported and the real module loads.
+  // Impact: the documented way to check third-party files does nothing on
+  // the server in `vite dev`, and in mock mode breaks the module that
+  // imports the file.
+  // Fix-agnostic: the server reports the import at the importer, and the
+  // app loads.
+  // Source: final pass F-C (FINAL-PASS #33: the server's default
+  // `excludeFiles` had no reachable contrast).
+  test.fails(
+    'the server reports the dependency file it denies',
+    async () => {
+      const server = await startProtectedDevServer(files, {
+        mockAccess: 'off',
+        server: { excludeFiles: [] },
+      })
+      await server.import('/src/entry.ts', 'ssr')
+      expectReported(locatedImporters(server.logs, files), 'server', {
+        'dependency client file': ['src/uses/dep.ts'],
       })
     },
     timeout,
