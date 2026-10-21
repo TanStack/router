@@ -25,11 +25,13 @@ import { createServer } from 'node:http'
 import { SourceMap as NodeSourceMap } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { format } from 'node:util'
+import { openDiagnosticChannel } from './diagnostic-channel'
 import { runNodeProgram } from './run-node'
 import { savingDirectory } from './save-file'
 import type { AddressInfo } from 'node:net'
 import type { BrowserPage } from './browser'
+import type { DiagnosticChannel } from './diagnostic-channel'
+import type { Rspack } from '@rsbuild/core'
 
 export type Bundler = 'vite' | 'rspack' | 'webpack' | 'esbuild'
 
@@ -362,6 +364,7 @@ export async function bundleApp(
 }
 
 interface BundlerConfig {
+  diagnosticChannel?: DiagnosticChannel
   root: string
   outDir: string
   entry: string
@@ -436,7 +439,13 @@ async function bundle(
   const output = await withBuildEnvironment(
     target.nodeEnv === undefined ? mode : target.nodeEnv,
     consoleMessages,
-    () => builders[bundler](config, warnings),
+    (channel) => {
+      channel.claim(root)
+      return builders[bundler](
+        { ...config, diagnosticChannel: channel },
+        warnings,
+      )
+    },
   )
   const duration = performance.now() - started
   return describeBuild({
@@ -753,6 +762,7 @@ async function buildWithWebpackApi(
       config.root,
       config.rebuildAfter,
       warnings,
+      config.diagnosticChannel,
     )
     const json = stats.toJson(statsOptions)
     warnings.push(...statsMessages(json.warnings))
@@ -775,7 +785,11 @@ async function buildWithWebpackApi(
       })
     if (bundler === 'rspack') {
       import('@rsbuild/core')
-        .then(({ rspack }) => run(rspack(options as never) as never))
+        .then(({ rspack }) => {
+          const compiler = rspack(options as unknown as Rspack.Configuration)
+          config.diagnosticChannel?.scopeRspack(compiler)
+          return run(compiler as never)
+        })
         .catch(reject)
     } else {
       import('webpack')
@@ -804,6 +818,7 @@ async function watchAndRebuild(
   root: string,
   files: Record<string, string>,
   warnings: Array<string>,
+  diagnosticChannel?: DiagnosticChannel,
 ): Promise<WebpackStats> {
   const compiler = (bundler === 'rspack'
     ? (await import('@rsbuild/core')).rspack(options as never)
@@ -814,6 +829,9 @@ async function watchAndRebuild(
       options: { aggregateTimeout: number },
       callback: (error: Error | null, stats?: WebpackStats) => void,
     ) => { close: (callback: () => void) => void }
+  }
+  if (bundler === 'rspack') {
+    diagnosticChannel?.scopeRspack(compiler as unknown as Rspack.Compiler)
   }
   let builds = 0
   let last: { error: Error | null; stats?: WebpackStats } | undefined
@@ -1471,60 +1489,6 @@ export function parsedModules(): ParsedModules {
   return { resourceById: new Map(), modules: new Set(), transformed: new Map() }
 }
 
-/**
- * The segments of a source map that carry a name (`names`), with the
- * original position each maps to: `source` as the map names it, `line`
- * 1-based, `column` 0-based (source map columns).
- */
-export function namedSegments(
-  map: SourceMap,
-): Array<{ name: string; source: string; line: number; column: number }> {
-  const base64 =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-  const segments: Array<{
-    name: string
-    source: string
-    line: number
-    column: number
-  }> = []
-  // Running values of the source index, line, column and name index.
-  const state = [0, 0, 0, 0]
-  for (const line of map.mappings.split(';')) {
-    for (const segment of line.split(',')) {
-      if (!segment) {
-        continue
-      }
-      const fields: Array<number> = []
-      let value = 0
-      let shift = 0
-      for (const char of segment) {
-        const digit = base64.indexOf(char)
-        value += (digit & 31) << shift
-        if (digit & 32) {
-          shift += 5
-        } else {
-          fields.push(value & 1 ? -(value >>> 1) : value >>> 1)
-          value = 0
-          shift = 0
-        }
-      }
-      // fields[0] is the generated column.
-      for (let index = 1; index < fields.length; index++) {
-        state[index - 1]! += fields[index]!
-      }
-      if (fields.length === 5) {
-        segments.push({
-          name: map.names[state[3]!]!,
-          source: map.sources[state[0]!]!,
-          line: state[1]! + 1,
-          column: state[2]!,
-        })
-      }
-    }
-  }
-  return segments
-}
-
 /** A position in an original source file, according to a source map. */
 export interface OriginalPosition {
   /** The source as the source map names it. */
@@ -1786,8 +1750,8 @@ function swcOptions(
 /**
  * Runs a build the way a build command does (`NODE_ENV` set to the mode by
  * default, which decides e.g. the JSX runtime and the `development` export
- * condition; `null` unsets it) and records `console.warn`/`console.error`
- * output. An error no one handles while the build runs fails the build: a
+ * condition; `null` unsets it) and records warnings/errors from the merged
+ * console/stream channel for this build’s async work. An error no one handles while the build runs fails the build: a
  * bundler that loses a plugin's error (e.g. a throw in a hook Rspack calls
  * without catching it) would otherwise never finish the build, and the test
  * would wait for its timeout.
@@ -1795,7 +1759,7 @@ function swcOptions(
 export async function withBuildEnvironment<T>(
   buildNodeEnv: string | null,
   messages: Array<string>,
-  run: () => Promise<T>,
+  run: (channel: DiagnosticChannel) => Promise<T>,
 ): Promise<T> {
   const nodeEnv = process.env.NODE_ENV
   if (buildNodeEnv === null) {
@@ -1803,15 +1767,12 @@ export async function withBuildEnvironment<T>(
   } else {
     process.env.NODE_ENV = buildNodeEnv
   }
-  const original = { warn: console.warn, error: console.error }
-  console.warn = (...args: Array<unknown>) => {
-    messages.push(format(...args))
-    original.warn.apply(console, args)
-  }
-  console.error = (...args: Array<unknown>) => {
-    messages.push(format(...args))
-    original.error.apply(console, args)
-  }
+  const channel = openDiagnosticChannel()
+  channel.onDiagnostic(({ severity, text }) => {
+    if (severity === 'warning' || severity === 'error') {
+      messages.push(text)
+    }
+  })
   let onUnhandled!: (error: unknown) => void
   const unhandled = new Promise<never>((_, reject) => {
     onUnhandled = (error) => {
@@ -1826,12 +1787,11 @@ export async function withBuildEnvironment<T>(
   process.on('unhandledRejection', onUnhandled)
   process.on('uncaughtException', onUnhandled)
   try {
-    return await Promise.race([run(), unhandled])
+    return await channel.run(() => Promise.race([run(channel), unhandled]))
   } finally {
     process.off('unhandledRejection', onUnhandled)
     process.off('uncaughtException', onUnhandled)
-    console.warn = original.warn
-    console.error = original.error
+    channel.close()
     if (nodeEnv === undefined) {
       delete process.env.NODE_ENV
     } else {

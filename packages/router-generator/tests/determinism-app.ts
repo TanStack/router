@@ -9,9 +9,17 @@ import { syncBuiltinESMExports } from 'node:module'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { onTestFinished, vi } from 'vitest'
-import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  expectDiagnostic,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  captureDiagnostics,
+  expectNoProblems,
+} from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { Generator } from '../src'
 import { configOf, fileRoute, lazyFileRoute, rootRoute } from './app'
+import { recordInputs } from './consumer-inputs'
 import { observeRouteTree } from './route-tree'
 
 /**
@@ -21,6 +29,8 @@ import { observeRouteTree } from './route-tree'
  */
 export const files: Record<string, string> = {
   'src/routes/__root.tsx': rootRoute(),
+  // A required J1.12 diagnostic exercises semantic diagnostic determinism.
+  'src/routes/helper.tsx': 'export const helper = 1',
   'src/routes/index.tsx': fileRoute('/wrong'),
   'src/routes/about.tsx': fileRoute('/wrong'),
   'src/routes/posts.tsx': fileRoute('/wrong'),
@@ -61,18 +71,30 @@ export async function generateFresh(root: string) {
     await mkdir(path.dirname(path.join(root, file)), { recursive: true })
     await writeFile(path.join(root, file), content)
   }
+  recordInputs(root, files)
   const config = configOf(root, { disableLogging: false })
-  const { diagnostics } = await captureConsole(() =>
+  const { diagnostics } = await captureDiagnostics(() =>
     new Generator({ config, root }).run(),
+  )
+  const diagnosticContract = {
+    file: 'src/routes/helper.tsx',
+    root,
+    names: ['Route'],
+    explains: true as const,
+  }
+  expectDiagnostic(diagnostics, diagnosticContract)
+  const reported = findDiagnostics(diagnostics, diagnosticContract)
+  expectNoProblems(
+    diagnostics.filter((diagnostic) => !reported.includes(diagnostic)),
   )
   return {
     tree: await readFile(config.generatedRouteTree, 'utf8'),
     routes: await observeRouteTree(config.generatedRouteTree),
-    // (in any order: the order of the diagnostics is free)
-    diagnostics: diagnostics
-      .filter(({ severity }) => severity !== 'info')
-      .map(({ severity, text }) => `${severity}: ${text}`)
-      .sort(),
+    // Compare the required file/API/cause, not wording, grouping, channel,
+    // severity labels, or duplicate presentations of the same diagnosis.
+    diagnostics: [
+      { file: diagnosticContract.file, api: 'Route', cause: 'missing export' },
+    ],
   }
 }
 

@@ -18,6 +18,8 @@ import {
   route,
 } from '@tanstack/virtual-file-routes'
 import { getConfig } from '../src'
+import { recordInputs } from './consumer-inputs'
+import { fixtureRoutes } from './generator-fixtures'
 import type { Config } from '../src'
 
 /** The directory of the fixtures. */
@@ -43,7 +45,9 @@ export async function copyFixture(name: string) {
   onTestFinished(() => fs.rm(dir, { recursive: true, force: true }))
   await fs.cp(fixtureDir(name), dir, {
     recursive: true,
-    filter: (source) => !/[\\/]routeTree\.gen\.[jt]s$/.test(source),
+    filter: (source) =>
+      path.basename(source) !== 'node_modules' &&
+      !/[\\/]routeTree\.gen\.[jt]s$/.test(source),
   })
   await fs.symlink(
     path.resolve(import.meta.dirname, '../node_modules'),
@@ -289,6 +293,26 @@ export async function prepareFixture(name: string, dir = fixtureDir(name)) {
       before[file] = ''
     }
   }
+  // Only fixture-declared source identities participate. A previous run's
+  // generated support modules must never become fixture inputs.
+  const sourceFiles = new Set(
+    Object.values(fixtureRoutes[name] ?? {}).flatMap(([, , file, ...lazy]) => [
+      ...(file ? [file] : []),
+      ...lazy,
+    ]),
+  )
+  recordInputs(
+    dir,
+    Object.fromEntries(
+      await Promise.all(
+        [...sourceFiles].map(async (file) => [
+          file,
+          await fs.readFile(join(dir, file), 'utf8'),
+        ]),
+      ),
+    ),
+    fixtureConfig(name, dir).target,
+  )
   return before
 }
 

@@ -37,9 +37,6 @@ describe.each(['react', 'solid', 'vue'] as const)(
 
       const scaffolded = async (file: string) =>
         routeCallOf(await read(root, `src/routes/${file}`))
-      expect((await scaffolded('__root.tsx')).constructor).toBe(
-        'createRootRoute',
-      )
       const pages = {
         '/posts': ['posts.tsx', '/posts', 'createFileRoute'],
         '/about': ['about.lazy.tsx', '/about', 'createLazyFileRoute'],
@@ -66,6 +63,9 @@ describe.each(['react', 'solid', 'vue'] as const)(
       })
 
       await withRouteTree(generatedRouteTree, async (tree) => {
+        const rootModule = await tree.import(`${root}/src/routes/__root.tsx`)
+        expect(rootModule.Route).toBe(tree.router.routeTree)
+        expect(rootModule.Route.isRoot).toBe(true)
         for (const [url, [, id]] of Object.entries(pages)) {
           const route = tree.router.routesById[id]!
           await tree.router.loadRouteChunk(route)

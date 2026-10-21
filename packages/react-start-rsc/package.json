@@ -24,8 +24,8 @@
   ],
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
-    "test": "pnpm test:eslint && pnpm test:types && pnpm test:build && pnpm test:unit && pnpm test:integration",
-    "test:unit": "vitest --project unit",
+    "test": "pnpm test:eslint && pnpm test:types && pnpm test:build && pnpm test:unit && pnpm test:integration && pnpm test:noncompiler",
+    "test:unit": "vitest --project unit --passWithNoTests",
     "test:unit:dev": "vitest --project unit --watch",
     "test:integration": "vitest --project integration",
     "test:eslint": "eslint ./src ./tests",
@@ -37,7 +37,8 @@
     "test:types:ts60": "tsc6 && tsc6 -p tests",
     "test:types:ts70": "tsc && tsc -p tests",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
-    "build": "vite build"
+    "build": "vite build",
+    "test:noncompiler": "vitest --project noncompiler"
   },
   "nx": {
     "targets": {
@@ -58,6 +59,17 @@
           {
             "projects": [
               "@tanstack/react-start"
+            ],
+            "target": "build"
+          }
+        ]
+      },
+      "test:noncompiler": {
+        "dependsOn": [
+          "^build",
+          {
+            "projects": [
+              "@tanstack/react-start-client"
             ],
             "target": "build"
           }

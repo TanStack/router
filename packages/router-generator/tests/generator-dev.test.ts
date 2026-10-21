@@ -19,10 +19,10 @@ import {
   route as virtualRoute,
 } from '@tanstack/virtual-file-routes'
 import {
-  captureConsole,
   diagnosticsOf,
   expectDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
+import { captureDiagnostics } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { Generator } from '../src'
 import { configOf, createApp, fileRoute, read, rootRoute, save } from './app'
 import { expectOnlyOwnedEdits } from './owned-edits'
@@ -150,7 +150,7 @@ describe('route edits', () => {
 
 export const Route = (`
     const posts = await save(root, 'src/routes/posts.tsx', broken)
-    const { result: error, diagnostics } = await captureConsole(() =>
+    const { result: error, diagnostics } = await captureDiagnostics(() =>
       generator.run({ type: 'update', path: posts }).then(
         () => undefined,
         (e: unknown) => e,
@@ -159,6 +159,7 @@ export const Route = (`
     expectDiagnostic([...diagnosticsOf(error), ...diagnostics], {
       severity: ['error', 'warning'],
       file: posts,
+      root,
       position: { line: 3 },
     })
     await save(root, 'src/routes/posts.tsx', fileRoute('/wrong'))

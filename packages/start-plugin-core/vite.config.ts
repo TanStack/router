@@ -28,6 +28,14 @@ const config = defineConfig({
     reporters: ['default', '@tanstack/compiler-test-utils/budget-reporter'],
     projects: [
       {
+        extends: true,
+        test: {
+          name: 'noncompiler',
+          include: ['outside-compiler-corpus/noncompiler/**/*.test.ts'],
+          typecheck: { enabled: true },
+        },
+      },
+      {
         // Fast tier (`test:unit`): compiles and evaluates in process; a Vite
         // dev server in middleware mode is allowed.
         extends: true,
@@ -63,7 +71,11 @@ const config = defineConfig({
         test: {
           name: 'implementation',
           include: ['**/outside-compiler-corpus/**/*.test.ts'],
-          exclude: [...configDefaults.exclude, 'integration/**'],
+          exclude: [
+            ...configDefaults.exclude,
+            'integration/**',
+            '**/noncompiler/**',
+          ],
           typecheck: { enabled: true },
         },
       },

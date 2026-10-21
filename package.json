@@ -14,8 +14,8 @@
     "cleanNodeModules": "pnpm -r exec rm -rf node_modules",
     "clean": "pnpm --filter \"./packages/**\" run clean",
     "test": "pnpm run test:ci",
-    "test:pr": "nx affected --targets=test:eslint,test:unit,test:integration,test:implementation,test:e2e,test:types,test:build,build",
-    "test:ci": "nx run-many --targets=test:eslint,test:unit,test:integration,test:implementation,test:e2e,test:types,test:build,build",
+    "test:pr": "nx affected --targets=test:eslint,test:unit,test:integration,test:implementation,test:noncompiler,test:e2e,test:types,test:build,build",
+    "test:ci": "nx run-many --targets=test:eslint,test:unit,test:integration,test:implementation,test:noncompiler,test:e2e,test:types,test:build,build",
     "test:eslint": "nx affected --target=test:eslint --exclude=examples/**,e2e/**",
     "test:unit": "nx affected --target=test:unit --exclude=examples/**,e2e/**",
     "test:integration": "nx affected --target=test:integration --exclude=examples/**,e2e/**",
@@ -57,7 +57,8 @@
     "ts:symbol-references": "node scripts/ts-symbol-references.mjs",
     "vite-ecosystem-ci:build": "nx run-many --targets=build --projects=@tanstack/router-plugin,@tanstack/start-plugin-core,@tanstack/react-start,@tanstack/react-start-client,@tanstack/react-start-server --skipRemoteCache",
     "vite-ecosystem-ci:before-test": "pnpm exec playwright install chromium",
-    "vite-ecosystem-ci:test": "nx run-many --targets=test:unit,test:integration,test:implementation --projects=@tanstack/router-plugin,@tanstack/start-plugin-core,@tanstack/react-start-client --skipRemoteCache && nx run-many --target=test:e2e --projects=tanstack-router-e2e-react-basic-file-based,tanstack-router-e2e-react-basic-file-based-code-splitting,tanstack-react-start-e2e-basic,tanstack-vue-start-e2e-basic,tanstack-solid-start-e2e-basic --skipRemoteCache"
+    "vite-ecosystem-ci:test": "nx run-many --targets=test:unit,test:integration,test:implementation,test:noncompiler --projects=@tanstack/router-plugin,@tanstack/start-plugin-core,@tanstack/react-start-client --skipRemoteCache && nx run-many --target=test:e2e --projects=tanstack-router-e2e-react-basic-file-based,tanstack-router-e2e-react-basic-file-based-code-splitting,tanstack-react-start-e2e-basic,tanstack-vue-start-e2e-basic,tanstack-solid-start-e2e-basic --skipRemoteCache",
+    "test:noncompiler": "nx affected --target=test:noncompiler --exclude=examples/**,e2e/**"
   },
   "nx": {
     "includedScripts": [

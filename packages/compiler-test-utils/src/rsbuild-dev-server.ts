@@ -18,8 +18,11 @@
  * file removed before that is never reported.
  *
  * Diagnostics: one channel (`./diagnostic-channel`) records, from the start
- * until `stop()`, every compile's errors and warnings and what `console.*`
- * and direct writes to `process.stdout`/`stderr` report (`diagnostics`).
+ * until `stop()`, every compile's errors and warnings, what Rsbuild's logger
+ * reports (`rsbuildLogger`), and what `console.*` and direct writes to
+ * `process.stdout`/`stderr` report (`diagnostics`). Rsbuild prints nothing
+ * itself, to the terminal or to the page's console (`logLevel` and
+ * `dev.client.logLevel` are `silent`).
  *
  * Plugin-agnostic: the caller supplies the Rsbuild plugins and the directory
  * the apps live in (where their imports resolve).
@@ -28,14 +31,16 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { mkdir, readFile, readdir, rename, rm, utimes } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import path from 'node:path'
-import { createRsbuild, mergeRsbuildConfig } from '@rsbuild/core'
+import { createLogger, createRsbuild, mergeRsbuildConfig } from '@rsbuild/core'
 import { createApp } from './build-harness'
+import { scopeMethods } from './console-hook'
 import { openDiagnosticChannel } from './diagnostic-channel'
 import { saveAppFile } from './save-file'
 import type { AppOptions } from './build-harness'
-import type { ChannelDiagnostic } from './diagnostic-channel'
+import type { ChannelDiagnostic, DiagnosticChannel } from './diagnostic-channel'
 import type { AddressInfo, Socket } from 'node:net'
 import type {
+  Logger,
   RsbuildConfig,
   RsbuildInstance,
   RsbuildPlugin,
@@ -83,6 +88,25 @@ export interface RsbuildDevServerOptions extends AppOptions {
  * fail with it on). Tests of hot updates set `hmr: true`.
  */
 const defaultHmr = false
+
+/**
+ * Rsbuild's logger for one Rsbuild instance (`customLogger`), feeding
+ * `channel`: the warnings and errors Rsbuild and the plugins (`api.logger`)
+ * report are recorded (source `rsbuild`), except Rsbuild's summaries of the
+ * compilations the channel recorded (`reportLogged`); nothing is printed.
+ * Read through Rsbuild's public logger API, not by raising `logLevel`,
+ * which would also make Rsbuild's HMR client log to the page.
+ */
+export function rsbuildLogger(channel: DiagnosticChannel): Logger {
+  const logger = createLogger({ level: 'silent' })
+  logger.override({
+    warn: (message, ...args) =>
+      channel.reportLogged(message, args, 'warning', 'rsbuild'),
+    error: (message, ...args) =>
+      channel.reportLogged(message, args, 'error', 'rsbuild'),
+  })
+  return logger
+}
 
 /** Hot-update chunks and manifests (`*.hot-update.js`, `.json`). */
 const hotUpdate = /\.hot-update\.[^/]*$/
@@ -195,6 +219,19 @@ export interface RsbuildDevServer {
 export async function createRsbuildDevServer(
   options: RsbuildDevServerOptions,
 ): Promise<RsbuildDevServer> {
+  const channel = openDiagnosticChannel()
+  try {
+    return await channel.run(() => startServer(options, channel))
+  } catch (error) {
+    channel.close()
+    throw error
+  }
+}
+
+async function startServer(
+  options: RsbuildDevServerOptions,
+  channel: DiagnosticChannel,
+): Promise<RsbuildDevServer> {
   const {
     plugins = [],
     config = {},
@@ -207,6 +244,7 @@ export async function createRsbuildDevServer(
     prefix: options.prefix ?? '.rsbuild-dev-server-',
   })
   const root = app.root
+  channel.claim(root)
   try {
     await predateAppFiles(root)
   } catch (error) {
@@ -218,7 +256,6 @@ export async function createRsbuildDevServer(
   const errors: Array<string> = []
   const warnings: Array<string> = []
   /** Every channel the server's work may report on (see the module comment). */
-  const channel = openDiagnosticChannel()
   const diagnostics = channel.diagnostics
   const compiles = trackCompiles()
 
@@ -289,6 +326,7 @@ export async function createRsbuildDevServer(
         for (const environmentCompiler of 'compilers' in compiler
           ? compiler.compilers
           : [compiler]) {
+          channel.scopeRspack(environmentCompiler)
           const name = 'rsbuild-dev-server-harness:settle'
           // Before the plugins' own `watchRun` taps: what they write then is
           // read by the next compile, not this one
@@ -319,7 +357,8 @@ export async function createRsbuildDevServer(
               ended++
               // Read here, while the compilation is still accessible: Rspack
               // drops it once the next compile starts (`onDevCompileDone`
-              // then cannot read it).
+              // then cannot read it). And before Rsbuild's logger prints
+              // its summary of the compile (`reportLogged`).
               channel.reportCompilation(compilation)
               const state = startState.get(environmentCompiler) ?? new Map()
               lastInputs.set(
@@ -421,12 +460,15 @@ export async function createRsbuildDevServer(
           root,
           mode: 'development',
           logLevel: 'silent',
+          customLogger: rsbuildLogger(channel),
           source: { entry: { index: `./${entry}` } },
           // Without a browser page, live reload would do nothing
           dev: {
             writeToDisk: true,
             hmr: options.hmr ?? (browser || defaultHmr),
             liveReload: browser,
+            // The page's console has only the app's output
+            client: { logLevel: 'silent' },
           },
           server: {
             printUrls: false,
@@ -499,7 +541,7 @@ export async function createRsbuildDevServer(
     })()
     return closed
   }
-  options.registerCleanup?.(close)
+  options.registerCleanup?.(() => channel.run(close))
 
   const distPathOf = (environment: string | undefined) => {
     const name = environment ?? Object.keys(distPaths)[0]!
@@ -592,7 +634,7 @@ export async function createRsbuildDevServer(
     }
   }
 
-  return {
+  return scopeMethods(channel.run, {
     root,
     rsbuild,
     url,
@@ -633,7 +675,7 @@ export async function createRsbuildDevServer(
     devServer: server,
     stop,
     close,
-  }
+  })
 }
 
 export interface CompileTracker {
