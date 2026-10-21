@@ -64,11 +64,12 @@ import {
 } from 'vite'
 import { createApp } from './build-harness'
 import { createModuleGraph } from './module-linker'
+import { scopeMethods } from './console-hook'
 import { openDiagnosticChannel } from './diagnostic-channel'
 import { saveAppFile } from './save-file'
 import { makeRunnerStrict } from './strict-runner'
 import type { AppOptions } from './build-harness'
-import type { ChannelDiagnostic } from './diagnostic-channel'
+import type { ChannelDiagnostic, DiagnosticChannel } from './diagnostic-channel'
 import type { ModuleGraphOptions, ModuleStub } from './module-linker'
 import type {
   DevEnvironment,
@@ -298,6 +299,19 @@ interface ReportedEvent {
 export async function createDevServer(
   options: DevServerOptions,
 ): Promise<DevServer> {
+  const channel = openDiagnosticChannel()
+  try {
+    return await channel.run(() => startServer(options, channel))
+  } catch (error) {
+    channel.close()
+    throw error
+  }
+}
+
+async function startServer(
+  options: DevServerOptions,
+  channel: DiagnosticChannel,
+): Promise<DevServer> {
   const { plugins = [], config = {}, bundledDev, browser = false } = options
   const listen = options.listen ?? browser
   const eventTimeout = options.eventTimeout ?? 20_000
@@ -321,7 +335,6 @@ export async function createDevServer(
   const file = (relative: string) => path.join(root, relative)
   const logs: Array<string> = []
   /** Every channel the server's work may report on (see the module comment). */
-  const channel = openDiagnosticChannel()
   channel.onDiagnostic((diagnostic) => {
     // Vite's logger writes its own lines (below)
     if (diagnostic.source !== 'vite' && diagnostic.severity !== 'info') {
@@ -771,7 +784,7 @@ export async function createDevServer(
     })()
     return closed
   }
-  options.registerCleanup?.(close)
+  options.registerCleanup?.(() => channel.run(close))
 
   /**
    * Waits until `check` holds, checking again whenever something happened
@@ -1149,7 +1162,7 @@ export async function createDevServer(
     throw error
   }
 
-  return {
+  return scopeMethods(channel.run, {
     root,
     vite,
     file,
@@ -1221,7 +1234,7 @@ export async function createDevServer(
     diagnostics: channel.diagnostics,
     stop,
     close,
-  }
+  })
 }
 
 /** Dependencies and the HMR clients, which no test inspects. */
@@ -1287,8 +1300,7 @@ const viteClientStub = {
  * Use `runClient` of `./plugin-host` (or `runInPage` of `./browser`: the
  * served module in the shared Chromium page) or `createDevServer({ browser:
  * true })` with `openPage`.
- * Kept until its remaining callers move (listed in
- * validation/REPAIR/A2.md): start-plugin-core
+ * Kept until its remaining callers move: start-plugin-core
  * integration/start-compiler-dev-server.test.ts and
  * integration/known-bugs-dev-server.test.ts, router-plugin
  * plugin-options.test.ts, and this package's dev-server.test.ts.

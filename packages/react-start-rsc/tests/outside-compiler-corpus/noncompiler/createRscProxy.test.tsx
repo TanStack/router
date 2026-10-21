@@ -1,11 +1,12 @@
+// Noncompiler coverage: runtime/build plumbing, outside the J1–J7 compiler oracle.
 import React from 'react'
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { ReactElement, ReactLazy } from '../src/reactSymbols'
+import { ReactElement, ReactLazy } from '../../../src/reactSymbols'
 
-import { awaitLazyElements } from '../src/awaitLazyElements'
-import { CompositeComponent } from '../src/CompositeComponent'
-import { createRscProxy } from '../src/createRscProxy'
+import { awaitLazyElements } from '../../../src/awaitLazyElements'
+import { CompositeComponent } from '../../../src/CompositeComponent'
+import { createRscProxy } from '../../../src/createRscProxy'
 
 describe('createRscProxy rendering', () => {
   it('a renderable proxy renders its tree inline', () => {

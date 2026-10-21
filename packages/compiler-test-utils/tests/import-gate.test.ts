@@ -101,3 +101,29 @@ describe('the import gate', () => {
     ).toBe(false)
   })
 })
+
+test('the noncompiler lanes are excluded while fast and integration acceptance stay gated', () => {
+  const paths = [
+    'react-start-rsc/tests/compiler-planted.test.ts',
+    'react-start-rsc/tests/integration/compiler-planted.test.ts',
+    'react-start-rsc/tests/outside-compiler-corpus/noncompiler/runtime-planted.test.tsx',
+    'start-plugin-core/tests/outside-compiler-corpus/noncompiler/plumbing-planted.test.ts',
+  ].map((file) => path.join(root, 'packages', file))
+  const result = findImportViolations({
+    root,
+    files: Object.fromEntries(
+      paths.map((file) => [
+        file,
+        `import { StartCompiler } from '@tanstack/start-plugin-core/src/start-compiler/compiler'`,
+      ]),
+    ),
+  })
+  expect(
+    result.acceptanceFiles.filter((file) => file.includes('-planted.test.')),
+  ).toEqual(paths.slice(0, 2).map(relative))
+  expect(
+    result.violations
+      .filter(({ file }) => file.includes('-planted.test.'))
+      .map(({ file }) => file),
+  ).toEqual(paths.slice(0, 2).map(relative))
+})

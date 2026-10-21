@@ -29,10 +29,7 @@ import {
   withBuildEnvironment,
 } from '@tanstack/compiler-test-utils/build-harness'
 import { createBuilder, mergeConfig, preview } from 'vite'
-import {
-  workspacePackage,
-  workspacePackageLinks,
-} from '@tanstack/compiler-test-utils/workspace-packages'
+import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
 import { onTestFinished } from 'vitest'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type {
@@ -46,39 +43,27 @@ import type {
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 
-/** The built workspace package `@tanstack/react-start`. */
-export const reactStartPackage = workspacePackage('@tanstack/react-start')
-
-/**
- * `tanstackStart` of the built `@tanstack/react-start/plugin/vite`, what an
- * app's `vite.config.ts` imports.
- */
-async function tanstackStartVitePlugin(): Promise<
-  (options?: Record<string, unknown>) => unknown
-> {
-  const entry = pathToFileURL(
-    path.join(reactStartPackage, 'dist/esm/plugin/vite.js'),
-  ).href
-  const { tanstackStart } = (await import(/* @vite-ignore */ entry)) as {
-    tanstackStart: (options?: Record<string, unknown>) => unknown
+/** Resolve the installed public export with Node, independent of dist layout. */
+async function tanstackStartPlugin(
+  bundler: 'vite' | 'rsbuild',
+): Promise<(options?: Record<string, unknown>) => unknown> {
+  const app = await createApp({
+    dir: harnessDir,
+    prefix: '.rsc-plugin-import-',
+    files: {
+      'plugin.mjs': `export { tanstackStart } from '@tanstack/react-start/plugin/${bundler}'`,
+    },
+    symlinks: workspacePackageLinks(['@tanstack/react-start']),
+  })
+  try {
+    return (
+      await import(
+        /* @vite-ignore */ pathToFileURL(path.join(app.root, 'plugin.mjs')).href
+      )
+    ).tanstackStart
+  } finally {
+    await app.dispose()
   }
-  return tanstackStart
-}
-
-/**
- * `tanstackStart` of the built `@tanstack/react-start/plugin/rsbuild`, what
- * an app's `rsbuild.config.ts` imports.
- */
-async function tanstackStartRsbuildPlugin(): Promise<
-  (options?: Record<string, unknown>) => unknown
-> {
-  const entry = pathToFileURL(
-    path.join(reactStartPackage, 'dist/esm/plugin/rsbuild.js'),
-  ).href
-  const { tanstackStart } = (await import(/* @vite-ignore */ entry)) as {
-    tanstackStart: (options?: Record<string, unknown>) => unknown
-  }
-  return tanstackStart
 }
 
 /**
@@ -133,7 +118,7 @@ export async function startRscDevServer(
   options: RscDevServerOptions,
 ): Promise<DevServer> {
   const { files, start, config, ...devServerOptions } = options
-  const tanstackStart = await tanstackStartVitePlugin()
+  const tanstackStart = await tanstackStartPlugin('vite')
   return createDevServer({
     dir: harnessDir,
     prefix: '.rsc-dev-server-',
@@ -201,7 +186,7 @@ export async function startRscPreviewServer(options: {
   registerCleanup?: (cleanup: () => Promise<void>) => void
 }): Promise<RscPreviewServer> {
   const registerCleanup = options.registerCleanup ?? onTestFinished
-  const tanstackStart = await tanstackStartVitePlugin()
+  const tanstackStart = await tanstackStartPlugin('vite')
   const app = await createApp({
     dir: harnessDir,
     prefix: '.rsc-preview-server-',
@@ -284,7 +269,7 @@ export async function startRscRsbuildDevServer(
     inAppDirectory = true,
     ...devServerOptions
   } = options
-  const tanstackStart = await tanstackStartRsbuildPlugin()
+  const tanstackStart = await tanstackStartPlugin('rsbuild')
   const cwd = process.cwd()
   try {
     return await createRsbuildDevServer({

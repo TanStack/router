@@ -30,10 +30,11 @@ import { createServer } from 'node:http'
 import path from 'node:path'
 import { createRsbuild, mergeRsbuildConfig } from '@rsbuild/core'
 import { createApp } from './build-harness'
+import { scopeMethods } from './console-hook'
 import { openDiagnosticChannel } from './diagnostic-channel'
 import { saveAppFile } from './save-file'
 import type { AppOptions } from './build-harness'
-import type { ChannelDiagnostic } from './diagnostic-channel'
+import type { ChannelDiagnostic, DiagnosticChannel } from './diagnostic-channel'
 import type { AddressInfo, Socket } from 'node:net'
 import type {
   RsbuildConfig,
@@ -195,6 +196,19 @@ export interface RsbuildDevServer {
 export async function createRsbuildDevServer(
   options: RsbuildDevServerOptions,
 ): Promise<RsbuildDevServer> {
+  const channel = openDiagnosticChannel()
+  try {
+    return await channel.run(() => startServer(options, channel))
+  } catch (error) {
+    channel.close()
+    throw error
+  }
+}
+
+async function startServer(
+  options: RsbuildDevServerOptions,
+  channel: DiagnosticChannel,
+): Promise<RsbuildDevServer> {
   const {
     plugins = [],
     config = {},
@@ -218,7 +232,6 @@ export async function createRsbuildDevServer(
   const errors: Array<string> = []
   const warnings: Array<string> = []
   /** Every channel the server's work may report on (see the module comment). */
-  const channel = openDiagnosticChannel()
   const diagnostics = channel.diagnostics
   const compiles = trackCompiles()
 
@@ -289,6 +302,7 @@ export async function createRsbuildDevServer(
         for (const environmentCompiler of 'compilers' in compiler
           ? compiler.compilers
           : [compiler]) {
+          channel.scopeRspack(environmentCompiler)
           const name = 'rsbuild-dev-server-harness:settle'
           // Before the plugins' own `watchRun` taps: what they write then is
           // read by the next compile, not this one
@@ -420,7 +434,7 @@ export async function createRsbuildDevServer(
         {
           root,
           mode: 'development',
-          logLevel: 'silent',
+          logLevel: 'warn',
           source: { entry: { index: `./${entry}` } },
           // Without a browser page, live reload would do nothing
           dev: {
@@ -499,7 +513,7 @@ export async function createRsbuildDevServer(
     })()
     return closed
   }
-  options.registerCleanup?.(close)
+  options.registerCleanup?.(() => channel.run(close))
 
   const distPathOf = (environment: string | undefined) => {
     const name = environment ?? Object.keys(distPaths)[0]!
@@ -592,7 +606,7 @@ export async function createRsbuildDevServer(
     }
   }
 
-  return {
+  return scopeMethods(channel.run, {
     root,
     rsbuild,
     url,
@@ -633,7 +647,7 @@ export async function createRsbuildDevServer(
     devServer: server,
     stop,
     close,
-  }
+  })
 }
 
 export interface CompileTracker {

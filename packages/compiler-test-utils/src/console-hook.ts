@@ -5,11 +5,17 @@
  * the dev-server and build harnesses) reads through it, so captures nest and
  * overlap in any order without one restoring the console under another.
  *
- * While at least one sink listens, what it listens to is silenced (recorded
- * only); with none, the hook is removed and the originals are back. A hook a
+ * Only sinks in the current async scope receive output. Nested scopes
+ * inherit their parent captures; concurrent scopes stay separate. Captured
+ * output is silenced (recorded only); with none, the hook is removed and
+ * the originals are back. A hook a
  * later patch wrapped (e.g. a test's own `vi.spyOn`) is left in place and
  * forwards to the originals once no sink listens.
  */
+import { AsyncLocalStorage } from 'node:async_hooks'
+
+const activeSinks = new AsyncLocalStorage<ReadonlySet<Sink>>()
+
 export type ConsoleMethod = 'error' | 'warn' | 'log' | 'info' | 'debug'
 
 export const consoleMethods: ReadonlyArray<ConsoleMethod> = [
@@ -76,7 +82,9 @@ function install() {
     consoleMethods.map((method) => [
       method,
       (...args: Array<unknown>) => {
-        const listening = [...sinks].filter((sink) => sink.console)
+        const listening = [...(activeSinks.getStore() ?? [])].filter(
+          (sink) => sinks.has(sink) && sink.console,
+        )
         if (listening.length === 0) {
           saved.console[method].apply(console, args)
           return
@@ -89,7 +97,9 @@ function install() {
   ) as Record<ConsoleMethod, ConsoleFunction>
   const streamHook = (stream: 'stdout' | 'stderr'): Write =>
     function (this: unknown, chunk: unknown, ...rest: Array<unknown>) {
-      const listening = [...sinks].filter((sink) => sink.streams)
+      const listening = [...(activeSinks.getStore() ?? [])].filter(
+        (sink) => sinks.has(sink) && sink.streams,
+      )
       if (listening.length === 0) {
         return (saved[stream] as (...args: Array<unknown>) => boolean).call(
           process[stream],
@@ -142,16 +152,46 @@ function uninstall() {
 }
 
 /**
- * Starts delivering what is printed to `sink`; returns the function that
- * stops it (the hook goes once no sink listens).
+ * Installs a sink. Only its run() work and async descendants are captured;
+ * the returned function stops it. enter() restores ownership at a native
+ * bundler callback boundary, where Node async context is not propagated.
  */
-export function listen(sink: Sink): () => void {
+export function listen(
+  sink: Sink,
+): (() => void) & { run: <T>(run: () => T) => T; enter: () => void } {
   sinks.add(sink)
   install()
-  return () => {
+  const stop = () => {
     sinks.delete(sink)
     if (sinks.size === 0) {
       uninstall()
     }
   }
+  const parents = activeSinks.getStore() ?? []
+  return Object.assign(stop, {
+    enter: () => activeSinks.enterWith(new Set([...parents, sink])),
+    run: <T>(run: () => T): T =>
+      activeSinks.run(new Set([...(activeSinks.getStore() ?? []), sink]), run),
+  })
+}
+
+/** Keep later API calls in the same async scope as server creation/watchers. */
+export function scopeMethods<T extends object>(
+  run: <TResult>(fn: () => TResult) => TResult,
+  methods: T,
+): T {
+  for (const [key, descriptor] of Object.entries(
+    Object.getOwnPropertyDescriptors(methods),
+  )) {
+    if (typeof descriptor.value === 'function') {
+      const method = descriptor.value
+      Object.defineProperty(methods, key, {
+        ...descriptor,
+        value: function (this: T, ...args: Array<unknown>) {
+          return run(() => method.apply(this, args))
+        },
+      })
+    }
+  }
+  return methods
 }

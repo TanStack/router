@@ -35,13 +35,28 @@ const config = defineConfig({
     reporters: ['default', '@tanstack/compiler-test-utils/budget-reporter'],
     projects: [
       {
-        // Fast tier (`test:unit`): the runtime's unit tests (jsdom). The type
-        // tests (`*.test-d.tsx`) are checked by `test:types` (`tsc -p tests`).
+        // Fast compiler acceptance tier; real apps run in integration.
+        // Runtime coverage is selected by test:noncompiler below.
         extends: true,
         test: {
           name: 'unit',
           include: ['**/*.{test,spec}.?(c|m)[jt]s?(x)'],
-          exclude: [...configDefaults.exclude, 'tests/integration/**'],
+          exclude: [
+            ...configDefaults.exclude,
+            'tests/integration/**',
+            '**/outside-compiler-corpus/**',
+          ],
+          environment: 'jsdom',
+          setupFiles: ['./tests/setup.ts'],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'noncompiler',
+          include: [
+            'tests/outside-compiler-corpus/noncompiler/**/*.test.ts?(x)',
+          ],
           environment: 'jsdom',
           setupFiles: ['./tests/setup.ts'],
         },
@@ -54,6 +69,7 @@ const config = defineConfig({
         test: {
           name: 'integration',
           include: ['tests/integration/**/*.test.ts?(x)'],
+          exclude: [...configDefaults.exclude, '**/outside-compiler-corpus/**'],
           environment: 'node',
           // The dev servers and their module runners run in the test
           // process, and `vite dev` runs with `development`: Vitest's `test`

@@ -1,7 +1,8 @@
+// Noncompiler coverage: runtime/build plumbing, outside the J1–J7 compiler oracle.
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { parseStartConfig as parseViteStartConfig } from '../src/vite/schema'
-import { parseStartConfig as parseRsbuildStartConfig } from '../src/rsbuild/schema'
+import { parseStartConfig as parseViteStartConfig } from '../../../src/vite/schema'
+import { parseStartConfig as parseRsbuildStartConfig } from '../../../src/rsbuild/schema'
 
 const root = process.cwd()
 const corePluginOpts = { framework: 'react' as const }
