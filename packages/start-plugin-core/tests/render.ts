@@ -1,268 +1,55 @@
 /**
- * `<Hydrate>` modules compiled by the Start compiler and its Hydrate plugin,
- * then evaluated and rendered in this process with the real packages: React
- * and `react-dom`, the real `@tanstack/react-router` (its
- * `lazyRouteComponent`, `ClientOnly`) and Start's real `Hydrate` and
- * hydration strategies (`@tanstack/react-start-client`, which
- * `@tanstack/react-start` re-exports). Re-exported by `regression-helpers.ts`.
+ * `<Hydrate>` modules rendered and hydrated through the public Start plugin
+ * (SYNTHESIS recipe P4): the case module of a Start app on a real dev server
+ * (`./start-host`: `tanstackStart()` and the framework's Vite plugin) is
  *
- * - `compileHydrate(env, code)`: the compiled parent module and the chunks it
- *   imports, as the plugin serves them (the host contract of the plugin).
- * - `renderSource`, `renderServer`, `renderClient`: the uncompiled source,
- *   the server output and the client output (its chunks loaded through the
- *   parent's own dynamic imports, each compiled like the bundler compiles the
- *   virtual module) rendered to HTML by `react-dom/static`, which waits for
- *   lazy components and Suspense like a streaming server render does. A
- *   render error (React's `onError`) fails the render.
- * - `expectClientRendersLikeServer`: the client output renders the markup
- *   the server output renders (boundary markers and ids included) and loads
- *   split code while it renders.
+ * - rendered on the server by the SSR environment (its module runner
+ *   evaluates the module as the dev server compiles it for SSR) with React's
+ *   own server renderer (`react-dom/static`'s `prerenderToNodeStream`, which
+ *   waits for lazy components and Suspense like a streaming render), reached
+ *   through an app module so React is the app's own instance;
+ * - hydrated on the client in a real Chromium page of the same dev server:
+ *   the page imports the module as a browser does, puts the server's HTML in
+ *   a fresh container and hydrates it with `hydrateRoot` (React's
+ *   development build, which reports mismatches through
+ *   `onRecoverableError` and `console.error`), then opens every boundary's
+ *   gate (a boundary becomes visible, an interaction event reaches it, idle
+ *   and load gates open themselves) and waits until the page is quiet;
+ * - compared with the uncompiled source (`renderSource`): the same files on
+ *   a plain Vite dev server with only `@vitejs/plugin-react` (no Start
+ *   plugin), rendered by its SSR environment with the same renderer, where
+ *   the real `Hydrate` renders its children in place.
  *
- * Rendering the client output here runs it outside a browser: the real
- * `Hydrate` takes its server path (no gate, children rendered), which is
- * what the markup comparison needs. Hydration itself, effects, `prefetch`,
- * `onHydrated` and events need a page: `integration/hydrate-pages.ts`.
- *
- * Solid: `@tanstack/solid-router` cannot be linked in process (its build
- * calls client-only Solid APIs under Node; see router-plugin's
- * `lazy-tracking.ts`), so Solid modules are only compiled here.
+ * Markup is compared semantically (SPEC N13): the page parses each HTML
+ * string and serializes its DOM again with sorted attributes, merged text
+ * and no comments (`html`), hydration ids blanked where the uncompiled
+ * source is the reference. What loads when is read from the page's own
+ * resource timing: `loaded` (the case files the import of the module
+ * requested) and `lazy` (everything the page requested once hydration
+ * started: the split code, wherever the compiler put it). Nothing here names
+ * a compiler internal: no plugin, virtual module id, query or chunk count.
  */
+import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { expect } from 'vitest'
-import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
-import { workspacePackage } from '@tanstack/compiler-test-utils/workspace-packages'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
-import { createHydrateCompilerPlugin } from '../src/hydrate-when-transform'
-import {
-  createCompilerVirtualModuleIdPattern,
-  loadCompilerVirtualModule,
-} from '../src/start-compiler/host'
-import { moduleRequests } from './imports'
-import {
-  createStartCompiler,
-  createTestModuleGraph,
-  moduleId,
-} from './regression-helpers'
-import type {
-  ModuleGraph,
-  ModuleStub,
-} from '@tanstack/compiler-test-utils/module-linker'
-import type { StartCompilerTransformResult } from '../src/types'
-import type { Framework } from './regression-helpers'
+import react from '@vitejs/plugin-react'
+import { afterAll, beforeAll, expect } from 'vitest'
+import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
+import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
+import { createStartHost } from './start-host'
+import type { PluginHost } from '@tanstack/compiler-test-utils/plugin-host'
+import type { StartCase, StartHost } from './start-host'
 
-type HydratePlugin = ReturnType<typeof createHydrateCompilerPlugin>
+const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 
-/** Where the real packages of an in-process graph resolve from. */
-export const packagesDir = path.dirname(fileURLToPath(import.meta.url))
-
-/** Ids of the virtual modules the Hydrate plugin serves (its host contract). */
-const hydrateVirtualModuleIds =
-  createHydrateCompilerPlugin().virtualModuleIdPattern!
-
-/**
- * The `<Hydrate>` chunk ids a compiled module imports, in source order: the
- * modules it imports dynamically that the Hydrate plugin serves.
- */
-export function getChunkIds(code: string) {
-  return moduleRequests(code).dynamic.filter((id) => {
-    hydrateVirtualModuleIds.lastIndex = 0
-    return hydrateVirtualModuleIds.test(id)
-  })
-}
-
-/**
- * Loads a `<Hydrate>` chunk the way the bundler loads the virtual module
- * (`code`: the source module's code, as Rsbuild passes it).
- */
-export function loadChunk(
-  plugin: HydratePlugin,
-  env: 'client' | 'server',
-  id: string,
-  code?: string,
-) {
-  return loadChunkResult(plugin, env, id, code)?.code ?? null
-}
-
-function loadChunkResult(
-  plugin: HydratePlugin,
-  env: 'client' | 'server',
-  id: string,
-  code?: string,
-): StartCompilerTransformResult | null {
-  // (dispatched like the Vite and Rsbuild hosts dispatch a virtual module)
-  return loadCompilerVirtualModule([plugin], {
-    id,
-    code,
-    root: '/test',
-    env,
-    envName: env === 'client' ? 'client' : 'ssr',
-  })
-}
-
-/**
- * Compiles a module with `<Hydrate>` for `env` and loads the split chunks it
- * imports (`chunks`, as the plugin serves them, before the bundler compiles
- * them; their ids in `chunkIds`, in import order). A module the compiler
- * leaves untouched is its own parent, without chunks.
- */
-export async function compileHydrate(
-  env: 'client' | 'server',
-  code: string,
-  options: { id?: string; framework?: Framework } = {},
-) {
-  const plugin = createHydrateCompilerPlugin()
-  const { compile } = createStartCompiler({
-    env,
-    compilerPlugins: [plugin],
-    framework: options.framework,
-  })
-  const parent = (await compile(code, options.id)) ?? code
-  const chunkIds = getChunkIds(parent)
-  const chunks = chunkIds.map((id) => {
-    const chunk = loadChunk(plugin, env, id)
-    if (chunk === null) {
-      throw new Error(`expected virtual module ${id} to load`)
-    }
-    return chunk
-  })
-  return { parent, chunks, chunkIds, plugin }
-}
-
-/**
- * Loads the first chunk a parent module imports and compiles it for the
- * client under its virtual module id, like the bundler does.
- */
-export async function compileFirstChunk(plugin: HydratePlugin, parent: string) {
-  const id = getChunkIds(parent)[0]!
-  const { compile, serverFns } = createStartCompiler({
-    env: 'client',
-    compilerPlugins: [plugin],
-  })
-  const code = await compile(loadChunk(plugin, 'client', id)!, id)
-  return { code, serverFns }
-}
-
-/**
- * The built `@tanstack/react-start-client`, whose `Hydrate` and hydration
- * strategies `@tanstack/react-start` re-exports (this package's `test:unit`
- * depends on its `build`).
- */
-const reactStartClient = workspacePackage('@tanstack/react-start-client')
-const importer = createModuleGraph({ packages: packagesDir })
-
-let startPackages: Promise<Record<string, ModuleStub>> | undefined
-
-/**
- * `@tanstack/react-start` and `@tanstack/react-start/hydration` as the
- * package exports them: Start's runtime (`./start-runtime`, which every test
- * graph links) with the real `Hydrate` of `@tanstack/react-start-client`, and
- * its real hydration strategies.
- */
-function reactStartPackages() {
-  startPackages ??= (async () => {
-    const [{ Hydrate }, hydration, { startClientCore }] = await Promise.all([
-      importer.importPackage(
-        path.join(reactStartClient, 'dist/esm/Hydrate.js'),
-      ),
-      importer.importPackage(
-        path.join(reactStartClient, 'dist/esm/hydration.js'),
-      ),
-      import('./start-runtime'),
-    ])
-    return {
-      '@tanstack/react-start': { ...startClientCore, Hydrate },
-      '@tanstack/react-start/hydration': { ...hydration },
-    }
-  })()
-  return startPackages
-}
-
-/**
- * The module the test graphs link for a `@tanstack/react-start` specifier
- * (`@tanstack/react-start`, `@tanstack/react-start/hydration`): e.g. a real
- * hydration strategy for a global the page reads.
- */
-export async function startPackage(specifier: string) {
-  return (await reactStartPackages())[specifier] as Record<string, any>
-}
-
-/** What a test renders: React nodes made with `h` (React's `createElement`). */
-export type Render = (
-  module: Record<string, any>,
-  h: (type: any, props?: any, ...children: Array<any>) => unknown,
-) => unknown
-
-export interface RenderOptions {
-  /** What to render; default `<Page {...props} />`. */
-  render?: Render
-  /** Props of the default render. */
-  props?: Record<string, unknown>
-  /** Id the module is compiled under (default `/test/src/module.tsx`). */
-  id?: string
-  /**
-   * Project modules the module imports, by relative specifier from
-   * `/test/src` (`'./widgets'`, a `.tsx` module) or absolute id, linked as
-   * they are (TypeScript and JSX erased like any module).
-   */
-  files?: Record<string, string>
-  /** Modules by specifier, linked over the real packages. */
-  stubs?: Record<string, ModuleStub>
-  /** Runs app code once the module evaluated, before it renders. */
-  beforeRender?: (module: Record<string, any>) => unknown
-}
-
-const projectId = (specifier: string) =>
-  specifier.startsWith('./')
-    ? `/test/src/${specifier.slice(2)}${/\.[cm]?[jt]sx?$/.test(specifier) ? '' : '.tsx'}`
-    : specifier
-
-const projectFiles = (files: Record<string, string> = {}) =>
-  Object.fromEntries(
-    Object.entries(files).map(([specifier, code]) => [
-      projectId(specifier),
-      code,
-    ]),
-  )
-
-/** A graph of the module `id` (`code`) linked to the real packages. */
-async function realGraph(
-  id: string,
-  code: string,
-  options: Pick<RenderOptions, 'files' | 'stubs'> & {
-    load?: (id: string) => Promise<string | null>
-    env: 'client' | 'server'
-  },
-) {
-  return createTestModuleGraph({
-    modules: { ...projectFiles(options.files), [id]: code },
-    stubs: { ...(await reactStartPackages()), ...options.stubs },
-    packages: packagesDir,
-    env: options.env,
-    load: options.load,
-  })
-}
-
-/**
- * Renders what `options.render` returns with the graph's React to HTML
- * (`react-dom/static`), once every lazy component and Suspense boundary
- * resolved. An error React reports while rendering fails the render.
- */
-export async function renderGraph(
-  graph: ModuleGraph,
-  module: Record<string, any>,
-  options: Pick<RenderOptions, 'render' | 'props'> = {},
-): Promise<string> {
-  const [React, { prerenderToNodeStream }] = await Promise.all([
-    graph.importPackage('react'),
-    graph.importPackage('react-dom/static'),
-  ])
-  const render: Render =
-    options.render ?? ((m, h) => h(m.Page, options.props ?? {}))
-  // Rendered inside a component: hooks a test's render calls run in it.
-  const Root = () => render(module, React.createElement)
+/** The app modules that render (server) and hydrate (client) a case. */
+const renderFiles = {
+  'src/harness/render.server.tsx': `import { createElement } from 'react'
+import { prerenderToNodeStream } from 'react-dom/static'
+export const h = createElement
+export async function renderToHtml(element: unknown) {
   const errors: Array<unknown> = []
-  const { prelude } = await prerenderToNodeStream(React.createElement(Root), {
+  const { prelude } = await prerenderToNodeStream(element as any, {
     onError: (error: unknown) => {
       errors.push(error)
     },
@@ -274,193 +61,1021 @@ export async function renderGraph(
   if (errors.length > 0) {
     throw new AggregateError(
       errors,
-      `rendering failed: ${errors.map((error) => (error instanceof Error ? error.message : String(error))).join('; ')}`,
+      'rendering failed: ' +
+        errors.map((error) => (error instanceof Error ? error.message : String(error))).join('; '),
     )
   }
   return html
 }
-
-/**
- * Renders the uncompiled `code` (the reference: `<Hydrate>` renders its
- * children in place).
- */
-export async function renderSource(code: string, options: RenderOptions = {}) {
-  const id = options.id ?? moduleId
-  const graph = await realGraph(id, code, { ...options, env: 'client' })
-  const module = await graph.import(id)
-  await options.beforeRender?.(module)
-  return { html: await renderGraph(graph, module, options), module, graph }
+`,
+  'src/harness/render.client.tsx': `export { createElement as h } from 'react'
+export { createRoot, hydrateRoot } from 'react-dom/client'
+`,
 }
 
-/** Compiles `code` for the server and renders the result. */
-export async function renderServer(code: string, options: RenderOptions = {}) {
-  const id = options.id ?? moduleId
-  const { parent } = await compileHydrate('server', code, { id })
-  expect(await getModuleErrors(parent, undefined, { source: code })).toEqual([])
-  const graph = await realGraph(id, parent, { ...options, env: 'server' })
-  const module = await graph.import(id)
-  await options.beforeRender?.(module)
+/** The reference host's files: the renderer and the cases' runtime. */
+const referenceFiles = {
+  'src/harness/render.server.tsx': renderFiles['src/harness/render.server.tsx'],
+}
+
+const casesDir = 'src/cases'
+
+/**
+ * The app's `tsconfig.json`: with `verbatimModuleSyntax`, as a Start app
+ * configures it (otherwise the app inherits this package's tsconfig, and
+ * Vite's TypeScript transform erases unreferenced imports after the
+ * compilers ran, hiding what they left behind).
+ */
+const appTsconfig = (jsx: Record<string, string>) =>
+  JSON.stringify({
+    compilerOptions: {
+      target: 'ES2022',
+      module: 'ESNext',
+      moduleResolution: 'Bundler',
+      strict: true,
+      verbatimModuleSyntax: true,
+      ...jsx,
+    },
+  })
+const reactTsconfig = appTsconfig({ jsx: 'react-jsx' })
+
+/**
+ * The Start plugin options of the hosts: import protection off (its dev
+ * mocks of denied `*.server.*` imports on the client would hide what the
+ * compiler ships), as the other Start compiler suites run it.
+ */
+const startOptions = { importProtection: { enabled: false } }
+
+/** A plain Vite dev server rendering uncompiled modules (no Start plugin). */
+export interface ReferenceHost {
+  host: PluginHost
+  /** Writes a case (files relative to its directory); returns its directory. */
+  case: (files: Record<string, string>) => Promise<string>
+  close: () => Promise<void>
+}
+
+async function createReferenceHost(): Promise<ReferenceHost> {
+  const host = await createPluginHost({
+    dir: harnessDir,
+    prefix: '.hydrate-reference-',
+    plugins: [react()],
+    config: { server: { watch: { ignored: [`**/${casesDir}/**`] } } },
+    symlinks: workspacePackageLinks(['@tanstack/react-start']),
+    files: { ...referenceFiles, 'tsconfig.json': reactTsconfig },
+  })
+  let cases = 0
   return {
-    html: await renderGraph(graph, module, options),
-    module,
-    parent,
-    graph,
+    host,
+    case: async (files) => {
+      const dir = `${casesDir}/r${++cases}`
+      await writeCase(host.root, dir, files)
+      return dir
+    },
+    close: () => host.close(),
   }
+}
+
+async function writeCase(
+  root: string,
+  dir: string,
+  files: Record<string, string>,
+) {
+  for (const [file, code] of Object.entries(files)) {
+    const absolute = path.join(root, dir, file)
+    await mkdir(path.dirname(absolute), { recursive: true })
+    await writeFile(absolute, code)
+  }
+}
+
+/** The Start host and the uncompiled-source reference host of a test file. */
+export interface HydrateHost {
+  start: StartHost
+  reference: () => Promise<ReferenceHost>
+  /**
+   * Whether the Start host writes cases (`StartHost.case`). An edit host
+   * (`useEditHost`) writes only watched files, through the dev server's
+   * watcher, and runs page code in its page directly.
+   */
+  cases: boolean
+}
+
+/** The result of page code (`runPage`). */
+interface PageResult<T> {
+  result: T
+  errors: Array<string>
+}
+
+/**
+ * Runs page code (the body of an async function) in the Start host's page:
+ * through a case of the host (`StartCase.client`, which reruns it on a
+ * fresh document when the page reloaded), or, on an edit host, in the page
+ * itself.
+ */
+const tracked = new WeakSet<object>()
+
+/**
+ * Gives the host's page `window.__harnessInFlight()`: how many of its
+ * requests have not finished yet (Playwright's network events), so page
+ * code can wait for the split code it requested.
+ */
+async function trackRequests(hosts: HydrateHost) {
+  const opened = await hosts.start.page()
+  if (tracked.has(opened)) {
+    return
+  }
+  tracked.add(opened)
+  const inFlight = new Set<unknown>()
+  opened.page.on('request', (request) => inFlight.add(request))
+  opened.page.on('requestfinished', (request) => inFlight.delete(request))
+  opened.page.on('requestfailed', (request) => inFlight.delete(request))
+  await opened.page.exposeFunction('__harnessInFlight', () => inFlight.size)
+}
+
+async function runPage<T>(
+  hosts: HydrateHost,
+  script: string,
+  startCase?: StartCase,
+): Promise<PageResult<T>> {
+  await trackRequests(hosts)
+  if (startCase || hosts.cases) {
+    const runner = startCase ?? (await runnerCase(hosts))
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const run = await runner.client<T>(script, { file: 'setup.ts' })
+        return { result: run.result, errors: run.errors }
+      } catch (error) {
+        // A reload an earlier case caused (the dev server reloads the page
+        // when a module it served fails) can still be under way when this
+        // run starts: run again on the new document.
+        if (
+          attempt >= 2 ||
+          !/Execution context was destroyed/.test(String(error))
+        ) {
+          throw error
+        }
+        await (await hosts.start.page()).page.waitForLoadState('load')
+      }
+    }
+  }
+  const opened = await hosts.start.page()
+  const first = opened.errors.length
+  const result = (await opened.page.evaluate(
+    `(async () => {\n${script}\n})()`,
+  )) as T
+  return { result, errors: opened.errors.slice(first) }
+}
+
+/**
+ * One Start host (React) and, on first use, one reference host per test
+ * file, created before its tests and closed after them.
+ */
+export function useHydrateHost(): () => Promise<HydrateHost> {
+  let started: Promise<HydrateHost> | undefined
+  let reference: Promise<ReferenceHost> | undefined
+  beforeAll(() => {
+    started = createStartHost({
+      start: startOptions,
+      files: { ...renderFiles, 'tsconfig.json': reactTsconfig },
+    }).then((start) => ({
+      start,
+      reference: () => (reference ??= createReferenceHost()),
+      cases: true,
+    }))
+    // The page and the renderers, before the first test
+    return started.then((hosts) => warm(hosts))
+  }, 60_000)
+  afterAll(async () => {
+    try {
+      await (await reference)?.close()
+    } finally {
+      await (await started)?.start.close()
+    }
+  })
+  return () => {
+    if (!started) {
+      throw new Error('useHydrateHost: no host before beforeAll ran')
+    }
+    return started
+  }
+}
+
+/** Loads the page and the renderers. */
+async function warm(hosts: HydrateHost) {
+  await runPage(
+    hosts,
+    `await Promise.all([import('/src/harness/render.client.tsx'), import('/@id/@tanstack/react-start'), import('/@id/@tanstack/react-start/hydration')])`,
+  )
+  await hosts.start.host.importServer('/src/harness/render.server.tsx')
+}
+
+/**
+ * A Start host for dev edits (React), created on first use and closed after
+ * the file's tests: it writes no case, so its dev server's settle after an
+ * edit (`StartHost.edit`) sees only watched files. Use `editableFiles` and
+ * watched route files with it; `renderClient` with a `target`.
+ */
+export function useEditHost(): () => Promise<HydrateHost> {
+  let started: Promise<HydrateHost> | undefined
+  afterAll(async () => {
+    await (await started)?.start.close()
+  })
+  return () =>
+    (started ??= createStartHost({
+      start: startOptions,
+      files: { ...renderFiles, 'tsconfig.json': reactTsconfig },
+    }).then(async (start) => {
+      const hosts: HydrateHost = {
+        start,
+        reference: () => {
+          throw new Error('an edit host has no reference host')
+        },
+        cases: false,
+      }
+      // The page loads its runtime before an edit reloads it
+      await (await start.page()).page.evaluate('1')
+      return hosts
+    }))
+}
+
+export interface RenderOptions {
+  /**
+   * What to render: a JavaScript expression with the module as `m`, React's
+   * `createElement` as `h` and `props` in scope, evaluated on the server and
+   * in the page (default `h(m.Page, props)`). It runs inside a component, so
+   * hooks it calls run there.
+   */
+  render?: string
+  /** JSON props of the render. */
+  props?: Record<string, unknown>
+  /**
+   * Project modules the module imports, by relative specifier
+   * (`'./widgets'`, a `.tsx` module unless it has an extension) or path
+   * relative to the case directory, written as real files.
+   */
+  files?: Record<string, string>
+  /**
+   * Source of a module (`setup.ts` of the case) each realm (the server, the
+   * reference, the page) evaluates before the module: globals the fixture
+   * reads, counters it resets. The page is shared by the cases of a file:
+   * the module exports `cleanup`, the names of the globals it defines, which
+   * the page deletes after the run.
+   */
+  setup?: string
+  /**
+   * App code each realm runs once the module evaluated, before it renders
+   * (statements with the module as `m` in scope), e.g. what the route tree
+   * of an app does to a route module.
+   */
+  beforeRender?: string
+  /** The module's file in the case (default `module.tsx`). */
+  file?: string
 }
 
 export interface ClientOptions extends RenderOptions {
   /**
-   * The chunks load the way Rsbuild loads them: given the source file's
-   * code, from a Hydrate plugin that did not compile the parent (e.g.
-   * another build worker).
+   * Body of an async function run in the page once the page hydrated and
+   * every gate opened, with `root` (the container), `m`, `settled()` and
+   * `openGates()` in scope; its JSON value is `result`.
    */
-  chunksFromSource?: boolean
-  /** An already compiled client parent and the plugin that compiled it. */
-  compiled?: { parent: string; plugin: HydratePlugin }
-  /** Source of a chunk, instead of the plugin's (e.g. an edited source). */
-  loadChunk?: (chunkId: string) => string | null
+  script?: string
+  /** Leave the gates closed (only idle and load gates open). */
+  closedGates?: boolean
 }
 
-/**
- * Compiles `code` for the client (unless `compiled` is given) and evaluates
- * it like the browser does: the parent module and, when they are imported,
- * its chunks (each compiled for the client under its virtual module id,
- * like the bundler compiles it) form one linked graph. Every emitted module
- * is checked to be valid (`getModuleErrors`, with the source as the
- * evidence of its bindings). `requestedAtLoad` lists what evaluating the
- * parent requested (graph module ids, stub and package specifiers);
- * `loadedChunks` the ids of the chunk modules the graph fetched and
- * compiled so far (the linker fetches the targets of dynamic imports
- * ahead of their evaluation, so this says which chunks exist, not which
- * ones a render needed: that is `renderClient`'s `lazy`).
- */
-export async function loadClient(code: string, options: ClientOptions = {}) {
-  const id = options.id ?? moduleId
-  const { parent, plugin } =
-    options.compiled ?? (await compileHydrate('client', code, { id }))
-  expect(await getModuleErrors(parent, undefined, { source: code })).toEqual([])
-  const chunkPlugin = options.chunksFromSource
-    ? createHydrateCompilerPlugin()
-    : plugin
-  const { compile } = createStartCompiler({
-    env: 'client',
-    compilerPlugins: [chunkPlugin],
-  })
-  const virtualModuleIds = createCompilerVirtualModuleIdPattern([chunkPlugin])
-  const loadedChunks: Array<string> = []
-  const graph = await realGraph(id, parent, {
-    ...options,
-    env: 'client',
-    // The bundler compiles each virtual module it loads like any other module.
-    // Like the Vite and Rsbuild hosts, only ids the plugins' virtual module
-    // pattern matches go to the plugin; the linker's other ids (e.g. the
-    // extension probes of a relative import) are no modules of this graph.
-    load: async (chunkId) => {
-      if (!virtualModuleIds) {
-        return null
-      }
-      virtualModuleIds.lastIndex = 0
-      if (!virtualModuleIds.test(chunkId)) {
-        return null
-      }
-      const chunk = options.loadChunk
-        ? options.loadChunk(chunkId)
-        : loadChunk(
-            chunkPlugin,
-            'client',
-            chunkId,
-            options.chunksFromSource ? code : undefined,
-          )
-      if (chunk === null) {
-        return null
-      }
-      loadedChunks.push(chunkId)
-      const compiled = (await compile(chunk, chunkId)) ?? chunk
-      expect(
-        await getModuleErrors(compiled, undefined, { source: code }),
-        chunkId,
-      ).toEqual([])
-      return compiled
-    },
-  })
-  const module = await graph.import(id)
-  return {
-    module,
-    graph,
-    parent,
-    plugin,
-    chunkIds: getChunkIds(parent),
-    requestedAtLoad: [...graph.requested],
-    loadedChunks,
+const caseFileName = (specifier: string) => {
+  if (!specifier.startsWith('./')) {
+    return specifier
   }
+  const relative = specifier.slice(2)
+  return /\.[\w]+$/.test(relative) ? relative : `${relative}.tsx`
 }
 
-/**
- * `loadClient`, then renders the client module (`renderGraph`). `lazy` lists
- * the graph modules the render requested that loading the parent did not:
- * the split code the render loaded on demand.
- */
-export async function renderClient(code: string, options: ClientOptions = {}) {
-  const loaded = await loadClient(code, options)
-  await options.beforeRender?.(loaded.module)
-  const html = await renderGraph(loaded.graph, loaded.module, options)
-  const lazy = loaded.graph.requested.filter(
-    (requested) =>
-      !loaded.requestedAtLoad.includes(requested) &&
-      loaded.graph.has(requested),
-  )
-  return { ...loaded, html, lazy }
+/** The case files of `code` and `options.files`. */
+function caseFiles(code: string, options: RenderOptions) {
+  const files: Record<string, string> = {
+    'setup.ts': options.setup ?? 'export {}\n',
+  }
+  for (const [specifier, source] of Object.entries(options.files ?? {})) {
+    files[caseFileName(specifier)] = source
+  }
+  files[options.file ?? 'module.tsx'] = code
+  return files
 }
 
-/** The render loaded split code on demand (`renderClient`'s `lazy`). */
-export function expectRenderedThroughChunks(rendered: { lazy: Array<string> }) {
-  expect(rendered.lazy).not.toEqual([])
-}
+const renderExpression = (options: RenderOptions) =>
+  options.render ?? 'h(m.Page, props)'
 
-/**
- * The client output renders the markup the server output renders (the
- * boundary markers and hydration ids of the real `Hydrate` included, so
- * the client would hydrate the server's HTML), and loaded split code while
- * rendering (unless `split: false`). Returns both renders.
- */
-export async function expectClientRendersLikeServer(
-  code: string,
-  options: ClientOptions & { split?: boolean } = {},
+/** Renders `m` with the SSR renderer module of a host (in this process). */
+async function renderWith(
+  renderer: Record<string, any>,
+  module: Record<string, any>,
+  options: RenderOptions,
 ) {
-  const server = await renderServer(code, options)
-  const client = await renderClient(code, options)
-  expect(client.html).toBe(server.html)
-  if (options.split !== false) {
-    expectRenderedThroughChunks(client)
+  const render = new Function(
+    'm',
+    'h',
+    'props',
+    `return (${renderExpression(options)})`,
+  ) as (m: unknown, h: unknown, props: unknown) => unknown
+  if (options.beforeRender !== undefined) {
+    await (
+      new Function(
+        'm',
+        `return (async () => {\n${options.beforeRender}\n})()`,
+      ) as (m: unknown) => Promise<unknown>
+    )(module)
   }
-  return { server, client }
+  const props = options.props ?? {}
+  const Root = () => render(module, renderer.h, props)
+  return (await renderer.renderToHtml(renderer.h(Root))) as string
 }
 
 /**
- * `html` with the value of every hydration id Start's `Hydrate` renders
- * (`data-ts-hydrate-id`) blanked: what is left is the markup the uncompiled
- * source must render too. The id may carry a compiler-assigned part that
- * the source has not (SPEC J5.4, §5.17); the server and client renders are
- * compared with their ids.
+ * Page code: `normalize(html, { ids })`, the DOM of `html` serialized again
+ * with sorted attributes, merged text nodes and no comments; hydration ids
+ * kept (`ids: true`), blanked (`false`), or kept for the boundaries no other
+ * boundary contains (`'outer'`).
  */
+const normalizeSource = `const normalize = (html, { ids = true } = {}) => {
+  const template = document.createElement('template')
+  template.innerHTML = html
+  const voids = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'])
+  const text = (value) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\\u00a0/g, '&nbsp;')
+  const attribute = (value) => value.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+  const walk = (node) => {
+    let out = ''
+    let pending = null
+    for (const child of node.childNodes) {
+      if (child.nodeType === 3) {
+        pending = (pending ?? '') + child.data
+        continue
+      }
+      if (pending !== null) {
+        out += text(pending)
+        pending = null
+      }
+      if (child.nodeType !== 1) {
+        continue
+      }
+      // A wrapper the runtime renders around a boundary's content while it
+      // waits (display: contents: no box of its own) is not markup.
+      if (child.localName === 'div' && child.attributes.length === 1 && child.getAttribute('style')?.replace(/\\s/g, '') === 'display:contents;') {
+        out += walk(child)
+        continue
+      }
+      const tag = child.localName
+      // The gate-state marker is the runtime's (it drops it once a boundary
+      // hydrated): not markup the compiler renders.
+      const attributes = [...child.attributes]
+        .filter((attr) => attr.name !== 'data-ts-hydrate-when')
+        .map((attr) => [
+          attr.name,
+          attr.name === 'data-ts-hydrate-id' &&
+          (ids === false || (ids === 'outer' && child.parentElement?.closest('[data-ts-hydrate-id]')))
+            ? ''
+            : attr.value,
+        ])
+        .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      out += '<' + tag + attributes.map(([name, value]) => ' ' + name + '="' + attribute(value) + '"').join('') + '>'
+      if (!voids.has(tag)) {
+        out += walk(child.content ?? child) + '</' + tag + '>'
+      }
+    }
+    if (pending !== null) {
+      out += text(pending)
+    }
+    return out
+  }
+  return walk(template.content)
+}`
+
+/** Normalizes HTML strings in the host page (`normalizeSource`). */
+async function normalizeInPage(
+  hosts: HydrateHost,
+  htmls: Array<string>,
+  ids: boolean,
+): Promise<Array<string>> {
+  const run = await runPage<Array<string>>(
+    hosts,
+    `${normalizeSource}
+return ${JSON.stringify(htmls)}.map((html) => normalize(html, { ids: ${ids} }))`,
+  )
+  return run.result
+}
+
+/** The markup with every hydration id blanked. */
 export function withoutHydrationIds(html: string) {
   return html.replace(/ data-ts-hydrate-id="[^"]*"/g, ' data-ts-hydrate-id=""')
 }
 
+/** A case of the Start host whose page runs the render kit's page code. */
+const runners = new WeakMap<HydrateHost, Promise<StartCase>>()
+function runnerCase(hosts: HydrateHost) {
+  let runner = runners.get(hosts)
+  if (!runner) {
+    runner = hosts.start.case({ 'setup.ts': 'export {}\n' })
+    runners.set(hosts, runner)
+  }
+  return runner
+}
+
+export interface ServerRender {
+  /** The normalized markup (hydration ids kept). */
+  html: string
+  /** The HTML React rendered. */
+  raw: string
+  /** The case the module was written to. */
+  case: StartCase
+  /** What the SSR environment serves for the module. */
+  code: string
+  /** The module the SSR environment evaluated. */
+  module?: Record<string, any>
+}
+
 /**
- * The uncompiled source, the server output and the client output render
- * the same markup (`expectClientRendersLikeServer`; the source's markup
- * compared without hydration ids, `withoutHydrationIds`), and the client
- * loaded split code while rendering (unless `split: false`).
+ * Renders the uncompiled `code` (the reference: `<Hydrate>` renders its
+ * children in place) on the reference host's server. `html` is normalized
+ * (in the Start host's page) with hydration ids blanked.
  */
-export async function expectRendersLikeSource(
+export async function renderSource(
+  hosts: HydrateHost,
+  code: string,
+  options: RenderOptions = {},
+): Promise<{ html: string; raw: string }> {
+  const reference = await hosts.reference()
+  const dir = await reference.case(caseFiles(code, options))
+  await reference.host.importServer(`/${dir}/setup.ts`)
+  const module = await reference.host.importServer(
+    `/${dir}/${options.file ?? 'module.tsx'}`,
+  )
+  const renderer = await reference.host.importServer(
+    '/src/harness/render.server.tsx',
+  )
+  const raw = await renderWith(renderer, module, options)
+  const [html] = await normalizeInPage(hosts, [raw], false)
+  return { html: html!, raw }
+}
+
+/** Renders the case module on the Start host's server (SSR environment). */
+async function serverRender(
+  hosts: HydrateHost,
+  target: RenderTarget,
+  options: RenderOptions,
+) {
+  const file = options.file ?? 'module.tsx'
+  const code = await target.served(file, 'ssr')
+  if (target.setup !== false) {
+    await target.ssr(target.setup ?? 'setup.ts')
+  }
+  const module = await target.ssr(file)
+  const renderer = await hosts.start.host.importServer(
+    '/src/harness/render.server.tsx',
+  )
+  return { raw: await renderWith(renderer, module, options), code, module }
+}
+
+/**
+ * Compiles `code` with the Start plugin for the server (the SSR environment
+ * serves and evaluates it) and renders it.
+ */
+export async function renderServer(
+  hosts: HydrateHost,
+  code: string,
+  options: RenderOptions = {},
+): Promise<ServerRender> {
+  const startCase = await hosts.start.case(caseFiles(code, options))
+  const rendered = await serverRender(hosts, caseTarget(startCase), options)
+  const [html] = await normalizeInPage(hosts, [rendered.raw], true)
+  return {
+    html: html!,
+    raw: rendered.raw,
+    case: startCase,
+    code: rendered.code,
+    module: rendered.module,
+  }
+}
+
+export interface ClientRender {
+  case: StartCase
+  /** The server render the page hydrated. */
+  server: ServerRender
+  /** The normalized markup of the container after hydration and the script. */
+  html: string
+  /** The container's `innerHTML` after hydration and the script. */
+  raw: string
+  /**
+   * `html` with the hydration ids of nested boundaries blanked: a boundary
+   * inside split children renders with them when their code loads, so its
+   * id is the client's own (`serverOuter`: the server's markup the same way).
+   */
+  outer: string
+  serverOuter: string
+  /** What React reported through `onRecoverableError` (mismatches). */
+  recoverableErrors: Array<string>
+  /**
+   * Uncaught errors of the page during the run, and what React logged about
+   * hydration (`console.error` messages about hydration or a mismatch).
+   * React's other development warnings (a missing `key`, an unknown DOM
+   * property) are about the fixture's own code, not its compilation: they
+   * are in `warnings`.
+   */
+  errors: Array<string>
+  /** Every other `console.error` message of the page during the run. */
+  warnings: Array<string>
+  /**
+   * Case files (`./name`, with and without extension) the import of the
+   * module requested, before hydration.
+   */
+  loaded: Array<string>
+  /**
+   * What the page requested once hydration started: case files as
+   * `./name` (with and without extension), other modules by path.
+   */
+  lazy: Array<string>
+  /** `lazy` as the page requested it (paths with their query). */
+  lazyUrls: Array<string>
+  /** What the script returned. */
+  result: unknown
+}
+
+/** A `console.error` message of React about hydration. */
+const hydrationMessage =
+  /hydration failed|tree hydrated|didn't match|did not match|while hydrating|hydration mismatch/i
+
+/** Page code: `settled(quiet)`, `openGates()`. */
+const settleSource = `const settled = async (quiet = 30, timeout = 10000) => {
+  const start = performance.now()
+  let last = ''
+  let since = performance.now()
+  while (performance.now() - start < timeout) {
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    // A module request still in flight (the page's own count, from the
+    // browser's network events) keeps the page busy.
+    const inFlight = window.__harnessInFlight ? await window.__harnessInFlight() : 0
+    const state = performance.getEntriesByType('resource').length + ':' + inFlight + ':' + root.innerHTML
+    if (state !== last || inFlight > 0) {
+      last = state
+      since = performance.now()
+    } else if (performance.now() - since >= quiet) {
+      return
+    }
+  }
+  throw new Error('the page did not settle: ' + root.innerHTML)
+}
+const nonActivating = (events) => events.filter((name) => !/click|pointerdown|mousedown|mouseup|pointerup|keydown|keyup|contextmenu/.test(name))
+// Boundaries still waiting for their gate (the runtime drops the marker once
+// one hydrated); a never() gate never opens.
+const pending = () => [...root.querySelectorAll('[data-ts-hydrate-when]')].filter((marker) => marker.getAttribute('data-ts-hydrate-when') !== 'never')
+// Gates that open on their own or on an event this opens: wait for them
+// (an idle gate waits for the page to be idle, which a busy machine
+// delays); a media or condition gate may never open.
+const awaited = () => pending().filter((marker) => ['idle', 'interaction', 'dynamic', 'visible', 'load'].includes(marker.getAttribute('data-ts-hydrate-when')))
+const openGates = async (timeout = 8000, stuck = 1500) => {
+  const deadline = performance.now() + timeout
+  let unchanged = 0
+  let changedAt = performance.now()
+  // An awaited gate gets time to open (an idle callback waits for an idle
+  // page); one that stays shut with nothing changing for \`stuck\` ms
+  // (its split code failed) does not hold the run up to the deadline.
+  for (let round = 0; pending().length > 0 && (awaited().length > 0 ? performance.now() < deadline && performance.now() - changedAt < stuck : unchanged < 4); round++) {
+    const before = root.innerHTML + ':' + performance.getEntriesByType('resource').length
+    for (const marker of pending()) {
+      marker.scrollIntoView()
+      const when = marker.getAttribute('data-ts-hydrate-when')
+      if (when === 'interaction' || when === 'dynamic') {
+        const listed = marker.getAttribute('data-ts-hydrate-interaction-events')
+        const events = listed === null ? ['pointerenter', 'focusin', 'pointerdown', 'click'] : listed.split(/\\s+/).filter(Boolean)
+        const quiet = nonActivating(events)
+        // Not bubbling: the gate opens, and no handler replays the event.
+        for (const name of when === 'dynamic' ? ['click'] : quiet.length > 0 ? quiet : events) {
+          marker.dispatchEvent(new Event(name, { bubbles: false }))
+        }
+      }
+    }
+    await settled()
+    unchanged = root.innerHTML + ':' + performance.getEntriesByType('resource').length === before ? unchanged + 1 : 0
+    if (unchanged === 0) {
+      changedAt = performance.now()
+    }
+  }
+}`
+
+/**
+ * Where a module to render lives: a case of the Start host (`StartCase`), or
+ * a directory of watched app files (`editableFiles`, for dev edits).
+ */
+export interface RenderTarget {
+  /** Directory relative to the app root. */
+  dir: string
+  /** The SSR environment's namespace of a file of the directory. */
+  ssr: (file: string) => Promise<Record<string, any>>
+  /** What the SSR environment serves for a file of the directory. */
+  served: (file: string, environment: 'client' | 'ssr') => Promise<string>
+  /** The setup module of the directory (default `setup.ts`; `false`: none). */
+  setup?: string | false
+}
+
+function caseTarget(startCase: StartCase): RenderTarget {
+  return {
+    dir: startCase.dir,
+    ssr: (file) => startCase.ssr(file),
+    served: (file, environment) => startCase.served(file, environment),
+  }
+}
+
+/**
+ * A directory of watched app files of the Start host (`src/edits/e<n>`),
+ * written and edited through the dev server's watcher (`StartHost.edit`):
+ * for dev-edit scenarios, where the dev server compiles a module again.
+ */
+export async function editableFiles(
+  hosts: HydrateHost,
+  code: string,
+  options: RenderOptions = {},
+) {
+  const dir = `src/edits/e${++edits}`
+  const write = (files: Record<string, string>) =>
+    hosts.start.edit(
+      Object.fromEntries(
+        Object.entries(files).map(([file, source]) => [
+          `${dir}/${file}`,
+          source,
+        ]),
+      ),
+    )
+  await write(caseFiles(code, options))
+  const url = (file: string) => `/${dir}/${file}`
+  const target: RenderTarget = {
+    dir,
+    ssr: (file) => hosts.start.host.importServer(url(file), 'ssr'),
+    served: (file, environment) =>
+      hosts.start.host.transform(url(file), environment),
+  }
+  return {
+    target,
+    /** Writes the module again (through the watcher). */
+    edit: (source: string) => write({ [options.file ?? 'module.tsx']: source }),
+  }
+}
+let edits = 0
+
+/**
+ * Compiles `code` with the Start plugin, renders it on the server and
+ * hydrates the HTML in the host's page (see the module comment), opening
+ * every gate (unless `closedGates`), then runs `script`. With `target`, the
+ * module is not written: it is the one of that case or directory.
+ */
+export async function renderClient(
+  hosts: HydrateHost,
+  code: string,
+  options: ClientOptions & {
+    target?: RenderTarget | StartCase
+    /** Reload the page first: a fresh document, no module instance kept. */
+    freshPage?: boolean
+  } = {},
+): Promise<ClientRender> {
+  const given = options.target
+  // The case of the module (a new one, or the given case); a directory of
+  // other files renders through the runner case's page.
+  const startCase: StartCase | undefined =
+    given === undefined
+      ? await hosts.start.case(caseFiles(code, options))
+      : 'client' in given
+        ? given
+        : undefined
+  const target: RenderTarget = startCase
+    ? caseTarget(startCase)
+    : (given as RenderTarget)
+  const rendered = await serverRender(hosts, target, options)
+  const file = options.file ?? 'module.tsx'
+
+  if (options.freshPage) {
+    const page = (await hosts.start.page()).page
+    await page.reload()
+  }
+  const caseUrl = (name: string) => JSON.stringify(`/${target.dir}/${name}`)
+  const run = await runPage<{
+    raw: string
+    serverHtml: string
+    html: string
+    recoverableErrors: Array<string>
+    consoleErrors: Array<string>
+    uncaught: Array<string>
+    loaded: Array<string>
+    lazy: Array<string>
+    lazyUrls: Array<string>
+    serverOuter: string
+    outer: string
+    result: unknown
+  }>(
+    hosts,
+    `performance.setResourceTimingBufferSize(100000)
+const caseDir = ${JSON.stringify(`/${target.dir}/`)}
+const requested = (from) => performance.getEntriesByType('resource').slice(from).map((entry) => {
+  const url = new URL(entry.name)
+  return url.origin === location.origin ? decodeURIComponent(url.pathname) + url.search : entry.name
+})
+const caseNames = (urls) => [...new Set(urls.flatMap((url) => {
+  const pathname = url.split('?')[0]
+  if (!pathname.startsWith(caseDir)) {
+    return [pathname]
+  }
+  const relative = pathname.slice(caseDir.length)
+  return ['./' + relative.replace(/\\.[cm]?[jt]sx?$/, ''), './' + relative]
+}))]
+const glue = await import('/src/harness/render.client.tsx')
+const setup = ${target.setup === false ? '{}' : `await import(${caseUrl(target.setup ?? 'setup.ts')})`}
+const beforeImport = performance.getEntriesByType('resource').length
+const m = await import(${caseUrl(file)})
+const loaded = caseNames(requested(beforeImport)).filter((name) => name.startsWith('./'))
+await (async () => {
+${options.beforeRender ?? ''}
+})()
+const root = document.createElement('div')
+document.body.append(root)
+${normalizeSource}
+${settleSource}
+const serverHtml = ${JSON.stringify(rendered.raw)}
+root.innerHTML = serverHtml
+const recoverableErrors = []
+const consoleErrors = []
+const consoleError = console.error
+console.error = (...args) => {
+  consoleErrors.push(args.map((arg) => (arg instanceof Error ? arg.stack ?? arg.message : String(arg))).join(' '))
+  consoleError(...args)
+}
+const uncaught = []
+const onError = (event) => uncaught.push(String(event.error && (event.error.stack || event.error.message) || event.message))
+const onRejection = (event) => uncaught.push(String(event.reason && (event.reason.stack || event.reason.message) || event.reason))
+window.addEventListener('error', onError)
+window.addEventListener('unhandledrejection', onRejection)
+let reactRoot
+try {
+  const h = glue.h
+  const props = ${JSON.stringify(options.props ?? {})}
+  const Root = () => (${renderExpression(options)})
+  const beforeHydration = performance.getEntriesByType('resource').length
+  reactRoot = glue.hydrateRoot(root, h(Root), {
+    onRecoverableError: (error) => {
+      recoverableErrors.push(error instanceof Error ? error.message : String(error))
+    },
+  })
+  await settled()
+  ${options.closedGates ? '' : 'await openGates()'}
+  const result = await (async () => {
+${options.script ?? 'return null'}
+  })()
+  ${options.script ? 'await settled()' : ''}
+  const lazyUrls = requested(beforeHydration)
+  return {
+    raw: root.innerHTML,
+    serverHtml: normalize(serverHtml),
+    html: normalize(root.innerHTML),
+    serverOuter: normalize(serverHtml, { ids: 'outer' }),
+    outer: normalize(root.innerHTML, { ids: 'outer' }),
+    recoverableErrors,
+    consoleErrors,
+    uncaught,
+    loaded,
+    lazy: caseNames(lazyUrls),
+    lazyUrls,
+    result: result === undefined ? null : result,
+  }
+} finally {
+  console.error = consoleError
+  window.removeEventListener('error', onError)
+  window.removeEventListener('unhandledrejection', onRejection)
+  reactRoot?.unmount()
+  root.remove()
+  for (const name of setup.cleanup ?? []) {
+    delete globalThis[name]
+  }
+}`,
+    startCase,
+  )
+  const caseForResult = startCase ?? (target as unknown as StartCase)
+  return {
+    case: caseForResult,
+    server: {
+      html: run.result.serverHtml,
+      raw: rendered.raw,
+      case: caseForResult,
+      code: rendered.code,
+    },
+    html: run.result.html,
+    outer: run.result.outer,
+    serverOuter: run.result.serverOuter,
+    raw: run.result.raw,
+    recoverableErrors: run.result.recoverableErrors,
+    errors: [
+      ...run.result.uncaught,
+      ...run.result.consoleErrors.filter((message) =>
+        hydrationMessage.test(message),
+      ),
+    ],
+    warnings: run.result.consoleErrors.filter(
+      (message) => !hydrationMessage.test(message),
+    ),
+    loaded: run.result.loaded,
+    lazy: run.result.lazy,
+    lazyUrls: run.result.lazyUrls,
+    result: run.result.result,
+  }
+}
+
+/**
+ * The code and source map the client environment serves for a URL the page
+ * requested (Vite's `transformRequest`, the dev server's own pipeline).
+ */
+export async function servedWithMap(hosts: HydrateHost, url: string) {
+  const result =
+    await hosts.start.host.dev.vite.environments.client.transformRequest(url)
+  if (!result) {
+    throw new Error(`the client environment serves nothing for ${url}`)
+  }
+  const map = result.map as { sources?: Array<string | null> } | null
+  if (map?.sources) {
+    // Sources are relative to the module's own location (the standard
+    // reading of a source map); absolute paths are left as they are
+    const file = hosts.start.host.file(url.split('?')[0]!.slice(1))
+    map.sources = map.sources.map((source) =>
+      source === null ? source : path.resolve(path.dirname(file), source),
+    )
+  }
+  return { code: result.code, map }
+}
+
+/**
+ * What the client environment serves for each module the page requested
+ * once hydration started (the split code, wherever it lives), by URL.
+ */
+export async function lazyCode(hosts: HydrateHost, client: ClientRender) {
+  const code: Record<string, string> = {}
+  for (const url of client.lazyUrls) {
+    if (url.startsWith('/') && !url.startsWith('/node_modules/')) {
+      code[url] = await hosts.start.host.transform(url, 'client')
+    }
+  }
+  return code
+}
+
+/** The page hydrated without a mismatch or an error. */
+export function expectHydratedCleanly(client: ClientRender) {
+  expect(client.recoverableErrors, 'recoverable hydration errors').toEqual([])
+  expect(client.errors, 'page errors while hydrating').toEqual([])
+}
+
+/** The page loaded code on demand once hydration started. */
+export function expectRenderedThroughChunks(
+  client: Pick<ClientRender, 'lazy'>,
+) {
+  expect(client.lazy, 'what the page requested once it hydrated').not.toEqual(
+    [],
+  )
+}
+
+/**
+ * The client hydrates the server's HTML without an error or mismatch and,
+ * once every gate opened, shows the markup the server rendered (the
+ * hydration ids of the boundaries no other boundary contains included:
+ * `ClientRender.outer`), and loaded code on demand (unless `split: false`: then
+ * nothing is required of what loads). Returns the renders.
+ */
+export async function expectClientRendersLikeServer(
+  hosts: HydrateHost,
   code: string,
   options: ClientOptions & { split?: boolean } = {},
 ) {
-  const source = await renderSource(code, options)
-  const rendered = await expectClientRendersLikeServer(code, options)
-  expect(withoutHydrationIds(rendered.server.html)).toBe(
-    withoutHydrationIds(source.html),
+  const client = await renderClient(hosts, code, options)
+  expectHydratedCleanly(client)
+  expect(client.outer, 'the hydrated page').toBe(client.serverOuter)
+  if (options.split !== false) {
+    expectRenderedThroughChunks(client)
+  }
+  return { server: client.server, client }
+}
+
+/**
+ * `expectClientRendersLikeServer`, and the server's markup is the markup
+ * the uncompiled source renders (hydration ids blanked).
+ */
+export async function expectRendersLikeSource(
+  hosts: HydrateHost,
+  code: string,
+  options: ClientOptions & { split?: boolean } = {},
+) {
+  const source = await renderSource(hosts, code, options)
+  const rendered = await expectClientRendersLikeServer(hosts, code, options)
+  expect(withoutHydrationIds(rendered.server.html), 'the server markup').toBe(
+    source.html,
   )
   return { source, ...rendered }
+}
+
+/** What mounting a Solid case in the page gave (`SolidHost.mount`). */
+export interface SolidMount {
+  case: StartCase
+  /** The normalized markup of the container once every gate opened. */
+  html: string
+  /** `console.error` output and uncaught errors of the page during the run. */
+  errors: Array<string>
+  /** What the page requested once the mount started (paths with query). */
+  lazy: Array<string>
+  /** `StartCase.loads()` of the module (client graph, static and dynamic). */
+  loads: Array<string>
+  /** `StartCase.serverLoads()` of the module. */
+  serverLoads: Array<string>
+}
+
+/** A Solid Start host (`vite-plugin-solid`) whose page mounts a module. */
+export interface SolidHost {
+  start: StartHost
+  /**
+   * Writes `code` (and `files`) as a case of the Solid app, checks that the
+   * client and SSR environments serve it and the SSR environment evaluates
+   * it, then mounts `<Page />` in the page (Solid's `render`: the boundary
+   * appears after startup), opens every gate and waits until it is quiet.
+   */
+  mount: (code: string, files?: Record<string, string>) => Promise<SolidMount>
+}
+
+/**
+ * One Solid Start host per test file, created on first use and closed after
+ * the file's tests.
+ */
+export function useSolidHost(): () => Promise<SolidHost> {
+  let started: Promise<StartHost> | undefined
+  afterAll(async () => {
+    await (await started)?.close()
+  })
+  return async () => {
+    started ??= createStartHost({
+      framework: 'solid',
+      start: startOptions,
+      files: {
+        'tsconfig.json': appTsconfig({
+          jsx: 'preserve',
+          jsxImportSource: 'solid-js',
+        }),
+        'src/harness/solid.client.tsx': `export { createComponent, render } from 'solid-js/web'
+`,
+      },
+    })
+    const start = await started
+    return {
+      start,
+      mount: async (code, files = {}) => {
+        const startCase = await start.case({
+          'setup.ts': 'export {}\n',
+          ...Object.fromEntries(
+            Object.entries(files).map(([name, source]) => [
+              caseFileName(name),
+              source,
+            ]),
+          ),
+          'module.tsx': code,
+        })
+        await startCase.served('module.tsx', 'client')
+        await startCase.served('module.tsx', 'ssr')
+        await startCase.ssr()
+        const run = await startCase.client<{
+          html: string
+          lazy: Array<string>
+        }>(
+          `performance.setResourceTimingBufferSize(100000)
+const glue = await import('/src/harness/solid.client.tsx')
+const m = await load('module.tsx')
+const root = document.createElement('div')
+document.body.append(root)
+${normalizeSource}
+${settleSource}
+const before = performance.getEntriesByType('resource').length
+const dispose = glue.render(() => glue.createComponent(m.Page, {}), root)
+try {
+  await settled()
+  await openGates()
+  return {
+    html: normalize(root.innerHTML),
+    lazy: performance.getEntriesByType('resource').slice(before).map((entry) => {
+      const url = new URL(entry.name)
+      return url.origin === location.origin ? decodeURIComponent(url.pathname) + url.search : entry.name
+    }),
+  }
+} finally {
+  dispose()
+  root.remove()
+}`,
+          { file: 'setup.ts' },
+        )
+        return {
+          case: startCase,
+          html: run.result.html,
+          errors: run.errors,
+          lazy: run.result.lazy,
+          loads: await startCase.loads(),
+          serverLoads: await startCase.serverLoads(),
+        }
+      },
+    }
+  }
 }

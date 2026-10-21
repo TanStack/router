@@ -1,30 +1,28 @@
 import { expect, test } from 'vitest'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
-  callProvider,
+  callFromClient,
   callServerFnThroughCallers,
-  compileAll,
-  compileCode,
-  compileServer,
-  createServerGraph,
-  evaluateModule,
-  evaluateProvider,
-  moduleLoads,
-  outputs,
+  inPage,
+  serveCase,
+  useStartHost,
 } from '../regression-helpers'
-import type { Output } from '../regression-helpers'
 
-// The provider module runs the extracted handler: it must keep every module
-// binding the handler closes over, however the handler is written and
-// however its scopes shadow module names.
+// The server must run the handler with every module binding it closes over,
+// however the handler is written and however its scopes shadow module
+// names: a client call reaches it by id through Start's server entry, and a
+// call from server code runs it (`callServerFnThroughCallers`). Where the
+// handler lives on the server is free (SPEC J4.2, §5.4).
+
+const host = useStartHost()
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
-const dbServer = `export const db = { x: () => 'x', y: () => 'y' }`
+const dbServer = `export const db = { x: () => 'x', y: () => 'y' }\n`
 
 // Source: Next.js server-actions fixtures server-graph/5, /6, /16
 test('the provider keeps every kind of module binding the handler reads', async () => {
-  const compiled = await compileAll(`${head}import * as ns from './ns'
+  const served = await serveCase(await host(), {
+    'module.tsx': `${head}import * as ns from './ns'
 var counter = 4
 class Repo {
   static get() {
@@ -34,42 +32,67 @@ class Repo {
 enum Role {
   Admin = 'admin',
 }
-export const fn = createServerFn().handler(async () => [ns.x, counter, Repo.get(), Role.Admin])`)
-  expectNotLoaded(await moduleLoads(compiled.client), ['./ns'])
-  expect(
-    await callProvider(compiled, 'fn', { './ns': `export const x = 'ns'` }),
-  ).toEqual(['ns', 4, 'repo', 'admin'])
+export const fn = createServerFn().handler(async () => [ns.x, counter, Repo.get(), Role.Admin])`,
+    'ns.ts': `export const x = 'ns'\n`,
+  })
+  expectNotLoaded(await served.loads(), ['./ns'])
+  expect(await callServerFnThroughCallers(served, 'module.fn')).toEqual([
+    'ns',
+    4,
+    'repo',
+    'admin',
+  ])
 })
 
-const handlerStubs = {
-  './db.server': dbServer,
-  './auth.server': `export const withAuth = (fn) => async (opts) => 'auth:' + (await fn(opts))`,
-  './users.server': `export const getUsers = async () => 'users'`,
+/** The server-only modules the handlers below may read, as real files. */
+const handlerFiles = {
+  'db.server.ts': dbServer,
+  'auth.server.ts': `export const withAuth = (fn: (opts: unknown) => Promise<unknown>) => async (opts: unknown) => 'auth:' + (await fn(opts))\n`,
+  'users.server.ts': `export const getUsers = async () => 'users'\n`,
 }
+const handlerModules = ['./db.server', './auth.server', './users.server']
 
 /**
- * Compiles a module with the server fn `fn`: the client loads none of the
- * server modules the handler reads and calls it through its RPC, whose id
- * runs the handler on the server, as does calling it from the SSR caller
- * (`callServerFnThroughCallers`). Returns what the handler returns.
+ * Serves a module with the server fn `fn`: the client loads none of the
+ * server modules the handler reads, and calling the server fn from the
+ * client (through its RPC) and from server code both run the handler.
+ * Returns what the handler returns; with `iterate`, the handler returns an
+ * async iterable, read on each side.
  */
-async function callHandler(code: string) {
-  const compiled = await compileAll(
-    `${head}${code.includes('db.') ? `import { db } from './db.server'\n` : ''}${code}`,
+async function callHandler(code: string, iterate = false) {
+  const served = await serveCase(await host(), {
+    'module.tsx': `${head}${code.includes('db.') ? `import { db } from './db.server'\n` : ''}${code}`,
+    ...handlerFiles,
+  })
+  expectNotLoaded(await served.loads(), handlerModules)
+  if (!iterate) {
+    return callServerFnThroughCallers(served, 'module.fn')
+  }
+  const client = await inPage(
+    served,
+    `const values = []
+for await (const value of await module.fn()) {
+  values.push(value)
+}
+return values`,
   )
-  expectNotLoaded(await moduleLoads(compiled.client), Object.keys(handlerStubs))
-  return callServerFnThroughCallers(
-    compiled,
-    (module) => module.fn,
-    handlerStubs,
-  )
+  const ssr = await served.ssr()
+  const server = await served.inRequest(async () => {
+    const values: Array<unknown> = []
+    for await (const value of (await ssr.fn()) as AsyncIterable<unknown>) {
+      values.push(value)
+    }
+    return values
+  })
+  expect(server, 'read by server code').toEqual(client)
+  return client
 }
 
 test.each<{
   name: string
   code: string
   expected: unknown
-  read?: (value: any) => Promise<unknown>
+  iterate?: boolean
 }>([
   {
     // Source: Next.js server-actions fixtures server-graph/7, /44
@@ -96,13 +119,7 @@ test.each<{
   yield db.x()
   yield 'done'
 })`,
-    read: async (iterator: AsyncIterable<unknown>) => {
-      const values: Array<unknown> = []
-      for await (const value of iterator) {
-        values.push(value)
-      }
-      return values
-    },
+    iterate: true,
     expected: ['x', 'done'],
   },
   {
@@ -164,12 +181,9 @@ export const fn = createServerFn().handler(async () =>
 )`,
     expected: 'yx!',
   },
-])(
-  'the handler can be $name',
-  async ({ code, expected, read = async (value) => value }) => {
-    expect(await read(await callHandler(code))).toEqual(expected)
-  },
-)
+])('the handler can be $name', async ({ code, expected, iterate }) => {
+  expect(await callHandler(code, iterate)).toEqual(expected)
+})
 
 // Bug: when the handler passed to `.handler()` is a `createIsomorphicFn()`
 // chain, the chain is compiled first and the caller is never rewritten into
@@ -193,26 +207,21 @@ export const fn = createServerFn().handler(
 // Source: TanStack/router#7341. In a `.ts` module, `<T>value` is a type
 // assertion and `<T>(value: T) => value` a generic arrow function, not JSX.
 test('a handler in a .ts module can use angle-bracket type assertions', async () => {
-  const id = '/test/src/module.ts'
-  const code = `${head}import { db } from './db.server'
+  const file = 'module.ts'
+  const served = await serveCase(
+    await host(),
+    {
+      [file]: `${head}import { db } from './db.server'
 const identity = <T>(value: T) => value
-export const fn = createServerFn().handler(async () => <string>identity(<unknown>db.x()))`
-  const compiled = {} as Record<Output, string>
-  for (const output of outputs) {
-    compiled[output] = (await compileCode(output, code, { id }))!
-    expect(
-      await getModuleErrors(compiled[output], 'module.ts'),
-      output,
-    ).toEqual([])
-  }
-  expectNotLoaded(await moduleLoads(compiled.client, { id }), ['./db.server'])
-  // Linked under the `.ts` id, the modules are evaluated as TypeScript.
-  const server = { ssr: compiled.ssr, provider: compiled.provider, id }
-  const stubs = { './db.server': dbServer }
-  expect(await callProvider(server, 'fn', stubs)).toBe('x')
-  const serverFns = (await compileServer(code, { id })).serverFns
-  const ssr = await createServerGraph({ ...server, serverFns }, stubs).ssr()
-  expect(await ssr.fn()).toBe('x')
+export const fn = createServerFn().handler(async () => <string>identity(<unknown>db.x()))`,
+      'db.server.ts': dbServer,
+    },
+    { file },
+  )
+  expectNotLoaded(await served.loads(file), ['./db.server'])
+  expect(
+    await callServerFnThroughCallers(served, 'module.fn', undefined, { file }),
+  ).toBe('x')
 })
 
 // Each handler reads the module binding `value` (or `key`) through a scope
@@ -392,41 +401,50 @@ export const fn = createServerFn().handler(async () => ({ value }))`,
 ])(
   'the provider keeps a module binding the handler reads $name',
   async ({ code, data, expected }) => {
-    const server = await compileServer(`${head}${code}`)
-    expect(await callProvider(server, 'fn', {}, data)).toEqual(expected)
+    const served = await serveCase(await host(), {
+      'module.tsx': `${head}${code}`,
+    })
+    expect(await callServerFnThroughCallers(served, 'module.fn', data)).toEqual(
+      expected,
+    )
   },
 )
 
 // Source: @vitejs/plugin-rsc hoist/self-ref-nested-function.js,
 // hoist/direct-recursion-self-binding.js
 test('a handler can call its own server fn', async () => {
-  const server = await compileServer(
-    `${head}export const fn = createServerFn().handler(async ({ data }) =>
+  const served = await serveCase(await host(), {
+    'module.tsx': `${head}export const fn = createServerFn().handler(async ({ data }) =>
   data > 0 ? fn({ data: data - 1 }) : 'done')`,
-  )
-  expect(await callProvider(server, 'fn', {}, 2)).toBe('done')
+  })
+  expect(await callServerFnThroughCallers(served, 'module.fn', 2)).toBe('done')
 })
 
 // Source: @vitejs/plugin-rsc hoist/captured-local-assignment.js,
 // wrap-export.test.ts "preserve reference"
 test('a handler and client code can both update an exported let', async () => {
-  const compiled = await compileAll(`${head}export let count = 0
+  const served = await serveCase(await host(), {
+    'module.tsx': `${head}export let count = 0
 export function changeCount() {
   count += 1
   return count
 }
-export const bump = createServerFn().handler(async () => ++count)`)
-  const client = await evaluateModule(compiled.client)
-  expect(client.changeCount()).toBe(1)
-  expect(client.count).toBe(1)
-  const provider = await evaluateProvider(compiled)
-  expect(await callProvider(provider, 'bump')).toBe(1)
-  expect(await callProvider(provider, 'bump')).toBe(2)
+export const bump = createServerFn().handler(async () => ++count)`,
+  })
+  expect(
+    await inPage(served, 'return [module.changeCount(), module.count]'),
+  ).toEqual([1, 1])
+  // Two calls reach one server instance: the handler updates its `count`.
+  expect([
+    await callFromClient(served, 'module.bump'),
+    await callFromClient(served, 'module.bump'),
+  ]).toEqual([1, 2])
 })
 
 // Source: Next.js server-actions fixtures server-graph/27
 test('exported helpers the handler uses are callable from the handler', async () => {
-  const compiled = await compileAll(`${head}import { db } from './db.server'
+  const served = await serveCase(await host(), {
+    'module.tsx': `${head}import { db } from './db.server'
 export async function load() {
   return db.x()
 }
@@ -440,8 +458,13 @@ export class Repo {
 }
 const local = () => 'w'
 export { local as alias }
-export const fn = createServerFn().handler(async () => [await load(), helper(), Repo.z(), local()])`)
-  expect(
-    await callProvider(compiled, 'fn', { './db.server': dbServer }),
-  ).toEqual(['x', 'y', 'z', 'w'])
+export const fn = createServerFn().handler(async () => [await load(), helper(), Repo.z(), local()])`,
+    'db.server.ts': dbServer,
+  })
+  expect(await callServerFnThroughCallers(served, 'module.fn')).toEqual([
+    'x',
+    'y',
+    'z',
+    'w',
+  ])
 })

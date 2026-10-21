@@ -1,55 +1,71 @@
 import { describe, expect, test } from 'vitest'
-import { renderServer, renderSource } from '../regression-helpers'
-import type { ModuleStub, Render } from '../regression-helpers'
+import { renderServer, renderSource, useHydrateHost } from '../render'
+
+const hosts = useHydrateHost()
 
 // On the server, `<ClientOnly>` (of a TanStack router package) renders its
 // fallback: the server output drops its children, so the server never
-// evaluates them (on the server, the libraries the children use throw when
-// called, here even while the children's elements are created). Rendered
-// with the real React and the real `ClientOnly` of `@tanstack/react-router`
+// evaluates them (in the Start app, the libraries the children use throw
+// when called, here even while the children's elements are created).
+// Rendered by the SSR environment of the public Start plugin with React's
+// server renderer and the real `ClientOnly` of `@tanstack/react-router`
 // (which renders its fallback whenever it renders on a server), the server
-// output renders what the uncompiled source renders there. Whether the SSR
+// output renders what the uncompiled source renders there (a plain Vite
+// host, `render.ts`). Whether the SSR
 // output keeps the children's imports is left open (neutral names, user
 // ruling 2026-10-17). The client keeps the children: it renders them once
 // the page hydrated (integration/clientOnlyJSX.test.ts). Other components
 // named ClientOnly are left alone.
 // N4 (replaces the former snapshot fixtures of this directory).
 describe('<ClientOnly> children', () => {
-  /** The libraries the fixtures import (plain text components). */
-  const libraries: Record<string, Record<string, unknown>> = {
-    'heavy-chart-library': { Chart: () => 'chart' },
-    './utils': { formatData: () => 'data' },
-    'video-player-lib': { VideoPlayer: () => 'video' },
-    'audio-viz-lib': { AudioVisualizer: () => 'audio' },
-    'animation-library': { HeavyAnimation: () => 'animation' },
-    './WindowSize': { WindowSize: () => 'size' },
-    'outer-lib': { OuterWidget: () => 'outer' },
-    'inner-lib': { InnerWidget: () => 'inner' },
-    'some-other-package': {
-      ClientOnly: (props: { children?: unknown }) => props.children ?? null,
-    },
+  /**
+   * The libraries the fixtures import (plain text components): the source
+   * of each export, by module (packages of the app, or project modules).
+   */
+  const libraries: Record<string, Record<string, string>> = {
+    'heavy-chart-library': { Chart: `() => 'chart'` },
+    './utils': { formatData: `() => 'data'` },
+    'video-player-lib': { VideoPlayer: `() => 'video'` },
+    'audio-viz-lib': { AudioVisualizer: `() => 'audio'` },
+    'animation-library': { HeavyAnimation: `() => 'animation'` },
+    './WindowSize': { WindowSize: `() => 'size'` },
+    'outer-lib': { OuterWidget: `() => 'outer'` },
+    'inner-lib': { InnerWidget: `() => 'inner'` },
+    'some-other-package': { ClientOnly: `(props) => props.children ?? null` },
   }
   /**
-   * The libraries the children of `childModules` use, as the server must
-   * never run them: each export throws when called.
+   * The app files of the libraries: a package of the case's own
+   * `node_modules` for a bare specifier, a project module otherwise. The
+   * libraries of `childModules` throw when called, as the server must never
+   * run them.
    */
-  const serverLibraries = (
-    childModules: Array<string>,
-  ): Record<string, ModuleStub> =>
+  const libraryFiles = (childModules: Array<string> = []) =>
     Object.fromEntries(
-      childModules.map((specifier) => [
-        specifier,
-        Object.fromEntries(
-          Object.keys(libraries[specifier]!).map((name) => [
-            name,
-            () => {
-              throw new Error(`client-only code ran during SSR: ${name}`)
-            },
-          ]),
-        ),
-      ]),
+      Object.entries(libraries).flatMap(([specifier, exports]) => {
+        const source = Object.entries(exports)
+          .map(([name, value]) =>
+            childModules.includes(specifier)
+              ? `export const ${name} = () => {\n  throw new Error('client-only code ran during SSR: ${name}')\n}\n`
+              : `export const ${name} = ${value}\n`,
+          )
+          .join('')
+        if (specifier.startsWith('./')) {
+          return [[`${specifier}.ts`, source]]
+        }
+        return [
+          [
+            `node_modules/${specifier}/package.json`,
+            JSON.stringify({
+              name: specifier,
+              type: 'module',
+              exports: './index.js',
+            }),
+          ],
+          [`node_modules/${specifier}/index.js`, source],
+        ]
+      }),
     )
-  const render: Render = (m, h) => h(m.MyComponent)
+  const render = 'h(m.MyComponent)'
 
   test.each([
     {
@@ -153,10 +169,14 @@ export function MyComponent() {
   ])(
     'a boundary with $name renders its fallback on the server without running its children',
     async ({ code, childModules, ssr }) => {
-      const source = await renderSource(code, { render, stubs: libraries })
-      const server = await renderServer(code, {
+      const started = await hosts()
+      const source = await renderSource(started, code, {
         render,
-        stubs: { ...libraries, ...serverLibraries(childModules) },
+        files: libraryFiles(),
+      })
+      const server = await renderServer(started, code, {
+        render,
+        files: libraryFiles(childModules),
       })
       expect(server.html).toBe(source.html)
       expect(server.html).toBe(ssr)
@@ -195,8 +215,15 @@ export function MyComponent() {
       html: '<div>Go to About</div>',
     },
   ])('the server renders the children of $name', async ({ code, html }) => {
-    const source = await renderSource(code, { render, stubs: libraries })
-    const server = await renderServer(code, { render, stubs: libraries })
+    const started = await hosts()
+    const source = await renderSource(started, code, {
+      render,
+      files: libraryFiles(),
+    })
+    const server = await renderServer(started, code, {
+      render,
+      files: libraryFiles(),
+    })
     expect(server.html).toBe(source.html)
     expect(server.html).toBe(html)
   })

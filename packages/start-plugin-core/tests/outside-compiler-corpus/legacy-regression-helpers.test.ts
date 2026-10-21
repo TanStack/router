@@ -1,7 +1,19 @@
 /**
- * Controls of the shared harness (`regression-helpers.ts`): each helper
- * checks behaviour through public contracts, not through the printed form of
- * the compiled code or generated names.
+ * Outside the compiler corpus: controls of the LEGACY internal harness
+ * (`./legacy/regression-helpers.ts`, the `StartCompiler`-based helpers the
+ * corpus used before it was rerouted through the public Start host), moved
+ * here unchanged from `tests/regression-helpers.test.ts` (B2, 2026-10-21).
+ * They check the legacy helpers (provider linking, the server-fn report,
+ * the RPC stubs, the module linker, the Hydrate plugin loader), not a
+ * compiler: a correct compiler built differently may not fit them.
+ *
+ * The concepts some of them carried are decided in the corpus now:
+ * - `.handler(...args)` rejected clearly (was :251):
+ *   `tests/start-compiler-diagnostics.test.ts`;
+ * - nested boundaries render and load lazily, and the client hydrates the
+ *   boundary identities the server renders (were :676, :728): the Hydrate
+ *   suites (`tests/hydrate-*.test.ts`);
+ * - the new host's own controls: `./start-host.test.ts`.
  */
 import { describe, expect, test } from 'vitest'
 import {
@@ -31,7 +43,7 @@ import {
   placementCauses,
   renderClient,
   renderServer,
-} from './regression-helpers'
+} from './legacy/regression-helpers'
 
 describe('server functions', () => {
   // A provider handler answers the server-fn router `{ result }`.

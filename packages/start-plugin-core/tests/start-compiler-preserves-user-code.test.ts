@@ -1,85 +1,118 @@
-import { transformWithOxc } from 'vite'
-import { describe, expect, test, vi } from 'vitest'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
+import { pathToFileURL } from 'node:url'
+import { beforeAll, describe, expect, test } from 'vitest'
 import {
   expectMapsTo,
   positionAt,
   tokenOffsets,
 } from '@tanstack/compiler-test-utils/source-maps'
 import {
-  callReportedServerFns,
+  callFromClient,
   callServerFnThroughCallers,
-  compileAll,
-  compileCode,
-  compileFor,
-  compileServer,
-  createTestModuleGraph,
-  evaluateModule,
-  moduleId,
-  renderToHtml,
+  inPage,
+  serveCase,
+  useStartHost,
 } from './regression-helpers'
-import type { ModuleStub, Output } from './regression-helpers'
+import type { StartCase, StartHost } from './regression-helpers'
+
+/**
+ * The host defaults of the B2 lead's branch (until it is merged): no import
+ * protection (its dev mock would hide a leaked server import from the
+ * client's loads) and an app tsconfig with `verbatimModuleSyntax` (without
+ * it, Vite's TypeScript transform drops unreferenced imports after the
+ * compiler and hides leaks).
+ */
+const hostTsconfig = {
+  compilerOptions: {
+    target: 'ES2022',
+    module: 'ESNext',
+    moduleResolution: 'Bundler',
+    jsx: 'react-jsx',
+    strict: true,
+    verbatimModuleSyntax: true,
+  },
+}
+const hostDefaults = {
+  start: { importProtection: { enabled: false } },
+  files: { 'tsconfig.json': JSON.stringify(hostTsconfig) },
+}
 
 // The compiler removes code that only served a transformed call. Everything
 // else is user code that must survive, even when nothing seems to read it.
+// Observed through the public Start host (`./start-host`): the client in a
+// real page, the server in the SSR environment and in real requests.
+
+const host = useStartHost({
+  start: hostDefaults.start,
+  // Decorated classes are written for TypeScript's `experimentalDecorators`
+  files: {
+    'tsconfig.json': JSON.stringify({
+      compilerOptions: {
+        ...hostTsconfig.compilerOptions,
+        experimentalDecorators: true,
+      },
+    }),
+  },
+})
+beforeAll(async () => {
+  await (await host()).page()
+}, 60_000)
+
+/** Where the recording modules below record, in the realm they run in. */
+const effectsKey = '__startHostSideEffects'
+
+/** A recording function `name` (returning `value`) of a recording module. */
+const recorder = (name: string, value: string) =>
+  `export const ${name} = (...args: Array<unknown>) => {
+  ;((globalThis as any).${effectsKey} ??= []).push([${JSON.stringify(name)}, ...args.filter((arg) => typeof arg === 'string')].join(':'))
+  return ${value}
+}
+`
 
 /**
- * Runs `evaluate` with recording stubs of the side effects the modules of
- * these tests run (`setInterval`, `./persist`, `./registry`, `./analytics`,
- * `./store`) and returns what ran, in order.
+ * The modules of the side effects these tests run (`./persist`,
+ * `./registry`, `./analytics`, `./store`), each recording its calls, in
+ * order, and `recorder.ts`, which starts the record and replaces
+ * `setInterval` with a recording one (`restore()` puts it back).
  */
-async function recordSideEffectsOf(
-  evaluate: (stubs: Record<string, ModuleStub>) => Promise<unknown>,
-) {
-  const calls: Array<string> = []
-  const record =
-    (name: string, value: unknown = {}) =>
-    (...args: Array<unknown>) => {
-      calls.push(
-        [name, ...args.filter((arg) => typeof arg === 'string')].join(':'),
-      )
-      return value
-    }
-  vi.stubGlobal('setInterval', record('setInterval', 1))
-  vi.stubGlobal('clearInterval', () => {})
-  try {
-    await evaluate({
-      './persist': { createPersister: record('createPersister') },
-      './registry': { register: record('register', 'registered') },
-      './analytics': { registerAnalytics: record('registerAnalytics') },
-      './store': { createStore: record('createStore') },
-    })
-  } finally {
-    vi.unstubAllGlobals()
-  }
-  return calls
+const effectFiles = {
+  'persist.ts': recorder('createPersister', '{}'),
+  'registry.ts': recorder('register', "'registered'"),
+  'analytics.ts': recorder('registerAnalytics', '{}'),
+  'store.ts': recorder('createStore', '{}'),
+  'recorder.ts': `const original = { setInterval: globalThis.setInterval, clearInterval: globalThis.clearInterval }
+;(globalThis as any).${effectsKey} = []
+;(globalThis as any).setInterval = (...args: Array<unknown>) => {
+  ;(globalThis as any).${effectsKey}.push('setInterval')
+  return 1
+}
+;(globalThis as any).clearInterval = () => {}
+export function restore() {
+  Object.assign(globalThis, original)
+}
+`,
 }
 
 /**
- * Evaluates `code` with the recording stubs of `recordSideEffectsOf`, then
- * `run` on its exports, and returns what ran, in order.
+ * Imports the case module in the page after `recorder.ts`, runs `run` (a
+ * page script with the case module as `m`) and returns what ran, in order.
  */
-function recordSideEffects(
-  code: string,
-  run: (module: Record<string, any>) => void = () => {},
-) {
-  return recordSideEffectsOf(async (stubs) =>
-    run(await evaluateModule(code, stubs)),
+async function recordClientSideEffects(startCase: StartCase, run = '') {
+  return inPage(
+    startCase,
+    `try {
+  const m = await load('module.tsx')
+  ${run}
+  return globalThis.${effectsKey}
+} finally {
+  module.restore()
+}`,
+    { file: 'recorder.ts' },
   )
 }
 
-/**
- * Compiles `code` into the modules of the SSR bundle, calls each server fn
- * the SSR caller reports through the module and export the report names
- * (like the server-fn resolver), with the recording stubs of
- * `recordSideEffectsOf`, and returns what ran, in order. The SSR caller only
- * runs if the provider imports it.
- */
-async function recordServerSideEffects(code: string) {
-  const server = await compileServer(code)
-  return recordSideEffectsOf((stubs) =>
-    callReportedServerFns(server, server.serverFns, stubs),
-  )
+/** A case of `code` with the recording modules. */
+async function effectCase(started: StartHost, code: string) {
+  return started.case({ 'module.tsx': code, ...effectFiles })
 }
 
 // A declaration that only references itself, or a sibling that references
@@ -87,7 +120,8 @@ async function recordServerSideEffects(code: string) {
 test.each<{
   name: string
   code: string
-  run?: (module: Record<string, any>) => void
+  /** A page script with the module as `m`. */
+  run?: string
   calls: Array<string>
 }>([
   {
@@ -172,13 +206,14 @@ export function Page() {
   return 'page'
 }
 export const fn = createServerFn().handler(async () => 1)`,
-    run: (module) => module.Page(),
+    run: 'm.Page()',
     calls: ['register:nested-effect'],
   },
 ])('keeps $name', async ({ code, run, calls }) => {
-  const client = await compileCode('client', code)
-  expect(await getModuleErrors(client!)).toEqual([])
-  expect(await recordSideEffects(client!, run)).toEqual(calls)
+  const startCase = await effectCase(await host(), code)
+  // The client serves a module that imports and runs
+  await startCase.served()
+  expect(await recordClientSideEffects(startCase, run)).toEqual(calls)
 })
 
 // TypeScript erases type positions, so a declaration whose binding only
@@ -216,24 +251,30 @@ export const getKind = createIsomorphicFn()
   test.each([typeQuery, globalAugmentation])(
     'client: $name',
     async ({ code, call }) => {
-      const compiled = await compileCode('client', code)
-      expect(await getModuleErrors(compiled!)).toEqual([])
-      expect(await recordSideEffects(compiled!)).toEqual([call])
+      const startCase = await effectCase(await host(), code)
+      expect(await recordClientSideEffects(startCase)).toEqual([call])
     },
   )
 
-  // Handling a server fn call runs the module's initializer, once.
+  // Handling a server fn call runs the module's initializer, once: what the
+  // server records while it handles a client's call (the module is first
+  // evaluated by that request).
   test(`server: ${typeQuery.name}`, async () => {
-    expect(await recordServerSideEffects(typeQuery.code)).toEqual([
-      typeQuery.call,
-    ])
+    const startCase = await effectCase(await host(), typeQuery.code)
+    const global = globalThis as Record<string, unknown>
+    global[effectsKey] = []
+    try {
+      expect(await callFromClient(startCase, 'module.getPosts')).toEqual([])
+      expect(global[effectsKey]).toEqual([typeQuery.call])
+    } finally {
+      delete global[effectsKey]
+    }
   })
 })
 
 test('accepts type-only namespace imports and exports, and a type and a value exported under the same name', async () => {
-  const client = await compileCode(
-    'client',
-    `import { createServerFn } from '@tanstack/react-start'
+  const served = await serveCase(await host(), {
+    'module.tsx': `import { createServerFn } from '@tanstack/react-start'
 import type * as Start from '@tanstack/react-start'
 export type * as start from '@tanstack/react-start'
 export type User = { name: string; register?: Start.Register }
@@ -242,54 +283,60 @@ function User(name: string): User {
 }
 export { User }
 export const getUser = createServerFn().handler(async () => User('Ada'))`,
-  )
-  const module = await evaluateModule(client!)
-  expect(module.User('Ada')).toEqual({ name: 'Ada' })
+  })
+  expect(await inPage(served, `return module.User('Ada')`)).toEqual({
+    name: 'Ada',
+  })
 })
 
 // With the classic runtime the bundler compiles JSX to React.createElement
 // after this compiler ran, so an import the source only reads in types is
-// still needed by the JSX (SPEC J4.17, G12). Checked by rendering the client
-// output after a classic JSX transform, with the real React.
-test('keeps working with the classic JSX runtime downstream', async () => {
-  const client = await compileCode(
-    'client',
-    `import * as React from 'react'
+// still needed by the JSX (SPEC J4.17, G12). Checked by rendering the
+// module of an app whose React plugin uses the classic runtime
+// (`react({ jsxRuntime: 'classic' })`), with the real React.
+describe('keeps working with the classic JSX runtime downstream', () => {
+  const classic = useStartHost({
+    ...hostDefaults,
+    react: { jsxRuntime: 'classic' },
+  })
+
+  test('the client and the server render it', async () => {
+    const served = await serveCase(await classic(), {
+      'module.tsx': `import * as React from 'react'
 import { createServerFn } from '@tanstack/react-start'
 export const getGreeting = createServerFn().handler(async () => 'hi')
 export function Greeting({ children }: { children: React.ReactNode }) {
   return <p>{children}</p>
 }`,
-  )
-  const graph = createTestModuleGraph({
-    modules: { [moduleId]: client! },
-    // What `@vitejs/plugin-react` with `jsxRuntime: 'classic'` (or esbuild's
-    // default) does after the Start compiler.
-    transform: async (code, id) =>
-      (
-        await transformWithOxc(code, id, {
-          lang: /\.tsx?$/.test(id) || id === moduleId ? 'tsx' : 'js',
-          jsx: { runtime: 'classic' },
-        })
-      ).code,
+      'render.tsx': `import * as React from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { Greeting } from './module'
+export const html = () => renderToStaticMarkup(<Greeting>hi</Greeting>)
+`,
+    })
+    expect(
+      await inPage(
+        served,
+        `const element = module.Greeting({ children: 'hi' })
+return { type: element.type, children: element.props.children }`,
+      ),
+    ).toEqual({ type: 'p', children: 'hi' })
+    expect((await served.ssr('render.tsx')).html()).toBe('<p>hi</p>')
   })
-  const { Greeting } = await graph.import(moduleId)
-  expect(await renderToHtml(Greeting({ children: 'hi' }))).toBe('<p>hi</p>')
 })
 
 test('keeps a namespace only read through a TypeScript import alias', async () => {
   // `import red = Labels.red` compiles to `var red = Labels.red`.
-  const client = await compileCode(
-    'client',
-    `import { createServerFn } from '@tanstack/react-start'
+  const served = await serveCase(await host(), {
+    'module.tsx': `import { createServerFn } from '@tanstack/react-start'
 namespace Labels {
   export const red = 'red'
 }
 import red = Labels.red
 export const label = red
 export const fn = createServerFn().handler(async () => red)`,
-  )
-  expect((await evaluateModule(client!)).label).toBe('red')
+  })
+  expect(await inPage(served, 'return module.label')).toBe('red')
 })
 
 // A JSON import written with the deprecated `assert` keyword (Node 22+ and
@@ -297,28 +344,27 @@ export const fn = createServerFn().handler(async () => red)`,
 // D9: `assert` stays supported; dropping it once nobody writes it is fine).
 // Source: FIX-PLAN V2-23.
 test('an import attribute written with assert keeps working in every output', async () => {
-  const compiled =
-    await compileAll(`import { createServerFn } from '@tanstack/react-start'
+  const served = await serveCase(await host(), {
+    'module.tsx': `import { createServerFn } from '@tanstack/react-start'
 import config from './config.json' assert { type: 'json' }
 import secrets from './secrets.json' assert { type: 'json' }
 export const theme = config.theme
-export const fn = createServerFn().handler(async () => secrets.key)`)
-  const stubs = {
-    './config.json': `{ "theme": "dark" }`,
-    './secrets.json': `{ "key": "MARK_KEY" }`,
-  }
-  expect((await evaluateModule(compiled.client, stubs)).theme).toBe('dark')
-  expect(
-    await callServerFnThroughCallers(compiled, (module) => module.fn, stubs),
-  ).toBe('MARK_KEY')
+export const fn = createServerFn().handler(async () => secrets.key)`,
+    'config.json': `{ "theme": "dark" }`,
+    'secrets.json': `{ "key": "MARK_KEY" }`,
+  })
+  expect(await inPage(served, 'return module.theme')).toBe('dark')
+  expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('MARK_KEY')
 })
 
 // Decorated classes (TypeScript `experimentalDecorators`) next to a server
-// fn: every output is a valid module (running them, decorators included, is
-// checked through real builds: integration/start-build-user-code.test.ts).
+// fn: every environment serves and evaluates the module (running them,
+// decorators included, is checked through real builds too:
+// integration/start-build-user-code.test.ts).
 // Source: FIX-PLAN V2-23.
 test('decorated classes next to a server fn compile to valid modules', async () => {
-  await compileAll(`import { createServerFn } from '@tanstack/react-start'
+  const served = await serveCase(await host(), {
+    'module.tsx': `import { createServerFn } from '@tanstack/react-start'
 const tag = (name: string) => (target: unknown) => target
 @tag('repository')
 class Repository {
@@ -332,7 +378,12 @@ export class Widget {
     return 'widget'
   }
 }
-export const fn = createServerFn().handler(async () => new Repository().read())`)
+export const fn = createServerFn().handler(async () => new Repository().read())`,
+  })
+  expect(await inPage(served, 'return new module.Widget().label()')).toBe(
+    'widget',
+  )
+  expect(await callFromClient(served, 'module.fn')).toBe('from repository')
 })
 
 // Bug: the client output prints an asserted update operand without its
@@ -342,9 +393,8 @@ export const fn = createServerFn().handler(async () => new Repository().read())`
 // type-assertion/increment/non-null-increment.js, type-assertion/satisfies.js;
 // #8504 start-compiler-preserves-user-code.test.ts (red on main)
 test.fails('keeps the parentheses of asserted update operands', async () => {
-  const client = await compileCode(
-    'client',
-    `import { createServerFn } from '@tanstack/react-start'
+  const served = await serveCase(await host(), {
+    'module.tsx': `import { createServerFn } from '@tanstack/react-start'
 export const fn = createServerFn().handler(async () => 1)
 let count = 0
 export function bump() {
@@ -354,9 +404,8 @@ export function bump() {
   ;(count as any) += 1
   return count
 }`,
-  )
-  expect(await getModuleErrors(client!)).toEqual([])
-  expect((await evaluateModule(client!)).bump()).toBe(4)
+  })
+  expect(await inPage(served, 'return module.bump()')).toBe(4)
 })
 
 // Bug: the client output prints a type assertion that is the test of a
@@ -372,39 +421,44 @@ export function bump() {
 test.fails(
   'keeps the parentheses of an asserted conditional test',
   async () => {
-    const client = await compileCode(
-      'client',
-      `import { createServerFn } from '@tanstack/react-start'
+    const served = await serveCase(await host(), {
+      'module.tsx': `import { createServerFn } from '@tanstack/react-start'
 export const fn = createServerFn().handler(async () => 1)
 export function pick(flag: unknown, x: number, y: number) {
   return ((flag) as any) ? -x : y
 }`,
-    )
-    expect(await getModuleErrors(client!)).toEqual([])
-    expect((await evaluateModule(client!)).pick(true, 1, 2)).toBe(-1)
+    })
+    expect(await inPage(served, 'return module.pick(true, 1, 2)')).toBe(-1)
   },
 )
 
-/** Compiles a module whose `Page` returns `expression` for the client. */
-async function compilePageReturning(expression: string) {
-  const client = await compileCode(
-    'client',
-    `import { createServerFn } from '@tanstack/react-start'
-export const fn = createServerFn().handler(async () => 1)
-export function Page() {
-  return ${expression}
-}`,
-  )
-  return client!
-}
-
 // Parenthesized JSX keeps working.
 test('client: keeps parenthesized JSX working', async () => {
-  const client = await compilePageReturning('(<p>page</p>)')
-  expect(await getModuleErrors(client)).toEqual([])
-  expect(await renderToHtml((await evaluateModule(client)).Page())).toBe(
-    '<p>page</p>',
-  )
+  const served = await serveCase(await host(), {
+    'module.tsx': `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => 1)
+export function Page() {
+  return (<p>page</p>)
+}`,
+    'render.client.tsx': `import { createElement } from 'react'
+import { flushSync } from 'react-dom'
+import { createRoot } from 'react-dom/client'
+import { Page } from './module'
+export function html() {
+  const container = document.createElement('div')
+  const root = createRoot(container)
+  flushSync(() => root.render(createElement(Page)))
+  const markup = container.innerHTML
+  root.unmount()
+  return markup
+}
+`,
+  })
+  expect(
+    await inPage(served, 'return module.html()', {
+      file: 'render.client.tsx',
+    }),
+  ).toBe('<p>page</p>')
 })
 
 // Where license comments end up is free outside the code splitter (SPEC G12,
@@ -412,21 +466,30 @@ test('client: keeps parenthesized JSX working', async () => {
 // checked through a real production build
 // (integration/start-build-user-code.test.ts).
 
-// Source maps point to the user's code (R6).
+// Source maps point to the user's code (R6): the map each environment
+// serves with the module (Vite's composed map of every plugin's transform).
 // Source: #8504 start-compiler-preserves-user-code.test.ts
-test.each(['client', 'ssr'] satisfies Array<Output>)(
+test.each(['client', 'ssr'] as const)(
   '%s: maps the string value of a JSX attribute to its own source column',
-  async (output) => {
+  async (environment) => {
     const code = `import { createServerFn } from '@tanstack/react-start'
 export const fn = createServerFn().handler(async () => 1)
 export const Box = () => <div className="box" />
 `
-    const result = await compileFor(output, code)
-    const [generated] = tokenOffsets(result.code!, { string: 'box' })
+    const started = await host()
+    const startCase = await started.case({ 'module.tsx': code })
+    const result = await started.host.dev.vite.environments[
+      environment
+    ].transformRequest(startCase.url())
+    expect(result, 'the served module').toBeTruthy()
+    const [generated] = tokenOffsets(result!.code, { string: 'box' })
     expect(generated, 'the attribute value in the output').toBeDefined()
     const [original] = tokenOffsets(code, { string: 'box' })
-    expectMapsTo(result.map as never, positionAt(result.code!, generated!), {
-      file: '/test/src/module.tsx',
+    expectMapsTo(result!.map as never, positionAt(result!.code, generated!), {
+      file: startCase.file(),
+      root: started.root,
+      // Vite's map names its sources relative to the served module
+      mapUrl: pathToFileURL(startCase.file()).href,
       ...positionAt(code, original!),
     })
   },

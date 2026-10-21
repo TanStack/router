@@ -1,18 +1,17 @@
 import { afterEach, describe, expect, test } from 'vitest'
-import {
-  expectRendersLikeSource,
-  renderClient,
-  startPackage,
-} from './regression-helpers'
+import { expectRendersLikeSource, useHydrateHost } from './render'
 import { generatedNames } from './hydrate-helpers'
-import type { ClientOptions } from './regression-helpers'
+import type { ClientOptions } from './render'
+
+const hosts = useHydrateHost()
 
 // `<Hydrate>` moves its children into a lazily loaded chunk on the client.
 // Whatever the children read from the enclosing scopes and the module must
-// still be the value the original reads: the client output, once its chunks
-// have loaded, renders what the uncompiled source and the server output
-// render (real React and Start's real `Hydrate`, `render.ts`). How the
-// values reach the chunk is left open. React keeps the `key` and `ref` props
+// still be the value the original reads: the client hydrates the server
+// output in a real page and, once its split code has loaded, shows what the
+// uncompiled source and the server output render (the public Start plugin
+// on a dev server, `render.ts`). How the values reach the split code is left
+// open. React keeps the `key` and `ref` props
 // for itself, so no captured local here is named like them (pinned in
 // known-bugs-hydrate.test.ts).
 
@@ -31,10 +30,11 @@ async function renderPage(
   props?: Record<string, unknown>,
   options: ClientOptions = {},
 ) {
-  const { client } = await expectRendersLikeSource(`${head}${code}`, {
-    ...options,
-    props,
-  })
+  const { client } = await expectRendersLikeSource(
+    await hosts(),
+    `${head}${code}`,
+    { ...options, props },
+  )
   return client.html
 }
 
@@ -193,6 +193,7 @@ export function Page({ entries }) {
 describe('a binding named like an intrinsic tag', () => {
   afterEach(() => {
     delete (globalThis as { sideEffect?: unknown }).sideEffect
+    delete (globalThis as { __sideEffects?: unknown }).__sideEffects
   })
 
   // Source: Qwik optimizer jsx_tag_names_are_not_segment_uses,
@@ -217,19 +218,22 @@ export function Page() {
   ])(
     'client: a $scope binding named like the tag the children render runs once',
     async ({ code }) => {
-      let calls = 0
-      ;(globalThis as { sideEffect?: unknown }).sideEffect = (
-        value: unknown,
-      ) => {
-        calls++
-        return value
-      }
-      const { client } = await expectRendersLikeSource(`${head}${code}`)
+      const { client } = await expectRendersLikeSource(
+        await hosts(),
+        `${head}${code}`,
+        {
+          setup: `globalThis.__sideEffects = 0
+globalThis.sideEffect = (value) => {
+  globalThis.__sideEffects++
+  return value
+}
+export const cleanup = ['sideEffect', '__sideEffects']`,
+          // The client alone: the page's own count.
+          script: 'return globalThis.__sideEffects',
+        },
+      )
       expect(client.html).toContain('<div>x</div>')
-      // The client output alone.
-      calls = 0
-      await renderClient(`${head}${code}`)
-      expect(calls).toBe(1)
+      expect(client.result).toBe(1)
     },
   )
 })
@@ -248,7 +252,7 @@ test('client: names the children declare themselves shadow the locals of the com
 }`,
     { value: 'v' },
   )
-  expect(html).toContain('<input value="v"/><p>catch:e</p>')
+  expect(html).toContain('<input value="v"><p>catch:e</p>')
 })
 
 // Source: Qwik optimizer example_functional_component_capture_props,
@@ -324,7 +328,10 @@ export function Page() {
    */
   const introducedNames = async () => [
     ...new Set([
-      ...(await generatedNames(page('[captured]', `const captured = 'c'\n  `))),
+      ...(await generatedNames(
+        await hosts(),
+        page('[captured]', `const captured = 'c'\n  `),
+      )),
       ...fixedNames,
     ]),
   ]
@@ -342,16 +349,21 @@ export function Page() {
   // references"
   test('client: globals named like the generated bindings keep their values', async () => {
     globals = await introducedNames()
-    for (const name of globals) {
-      ;(globalThis as Record<string, unknown>)[name] = `global:${name}`
-    }
+    // In every realm (the server, the reference and the page)
     const { client } = await expectRendersLikeSource(
+      await hosts(),
       `export const before = [${globals.join(', ')}]
 ${page(`['child']`)}`,
+      {
+        setup: `const names = ${JSON.stringify(globals)}
+for (const name of names) {
+  globalThis[name] = 'global:' + name
+}
+export const cleanup = names`,
+        script: 'return m.before',
+      },
     )
-    expect(client.module.before).toEqual(
-      globals.map((name) => `global:${name}`),
-    )
+    expect(client.result).toEqual(globals.map((name) => `global:${name}`))
     expect(client.html).toContain('<p>child</p>')
     expect(client.html).toContain('<b>nested</b>')
   })
@@ -372,6 +384,7 @@ ${page(`['child']`)}`,
         .join('\n  ')
       const read = reads === 'names' ? `[${names.join(', ')}]` : reads
       const { client } = await expectRendersLikeSource(
+        await hosts(),
         `import { lazyRouteComponent } from '@tanstack/react-router'
 ${scope === 'module' ? declare : ''}
 export const fromModule = ${scope === 'module' ? `[${names.join(', ')}].join('|')` : 'null'}
@@ -380,13 +393,11 @@ ${page(read, scope === 'local' ? `${declare}\n  ` : '')}`,
         {
           files: { './other': `export default () => <i>other</i>` },
           // The user's own lazy component still loads its module.
-          render: (m, h) => [
-            h(m.Page, { key: 'page' }),
-            h(m.Lazy, { key: 'lazy' }),
-          ],
+          render: `[h(m.Page, { key: 'page' }), h(m.Lazy, { key: 'lazy' })]`,
+          script: 'return m.fromModule',
         },
       )
-      expect(client.module.fromModule).toBe(scope === 'module' ? values : null)
+      expect(client.result).toBe(scope === 'module' ? values : null)
       expect(client.html).toContain(
         `<p>${scope === 'local' ? values : 'child'}</p>`,
       )
@@ -423,6 +434,7 @@ export function Page() {
 // Source: Qwik optimizer nested_segment_param_does_not_collide_with_captured_props
 test('client: a nested boundary reads the locals of the component around its enclosing boundary', async () => {
   const { client } = await expectRendersLikeSource(
+    await hosts(),
     `${head}export function Page({ isOpen, fee }) {
   const label = 'fee'
   return <Hydrate when={load()}><section><Hydrate when={load()}><p>{label + ':' + (isOpen ? fee : 0)}</p></Hydrate></section></Hydrate>
@@ -489,15 +501,22 @@ describe('globals', () => {
   })
 
   test('client: a boundary spreading a global splits children rendering a global component', async () => {
-    const { load } = await startPackage('@tanstack/react-start/hydration')
-    Object.assign(globalThis, {
-      GlobalWidget: () => 'global-widget',
-      hydrateDefaults: { when: load() },
-    })
+    // The app's own hydration strategy, in every realm.
     expect(
-      await renderPage(`export function Page() {
+      await renderPage(
+        `export function Page() {
   return <Hydrate {...hydrateDefaults}><GlobalWidget /></Hydrate>
-}`),
+}`,
+        undefined,
+        {
+          setup: `import { load } from '@tanstack/react-start/hydration'
+Object.assign(globalThis, {
+  GlobalWidget: () => 'global-widget',
+  hydrateDefaults: { when: load() },
+})
+export const cleanup = ['GlobalWidget', 'hydrateDefaults']`,
+        },
+      ),
     ).toContain('global-widget')
   })
 })

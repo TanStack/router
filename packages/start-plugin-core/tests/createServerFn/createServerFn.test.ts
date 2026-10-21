@@ -1,76 +1,76 @@
 import { describe, expect, test } from 'vitest'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
-  StartCompiler,
-  getLookupKindsForEnv,
-} from '../../src/start-compiler/compiler'
-import { getLookupConfigurationsForEnv } from '../../src/start-compiler/config'
-import {
   callFromClient,
-  callProvider,
-  callReportedServerFns,
-  callerRpcId,
-  compileAll,
-  compileFor,
-  compileServer,
-  createServerGraph,
-  createStartCompiler,
-  evaluateModule,
-  evaluateProvider,
+  callOnServer,
+  callServerFnThroughCallers,
+  compileError,
   expectCompileError,
+  inPage,
   missingHandler,
-  moduleLoads,
-  outputs,
-  serverFnResult,
-  startClientCore,
+  serveCase,
+  serverFnUrls,
+  useStartHost,
 } from '../regression-helpers'
-import type { ServerFn } from '../../src/start-compiler/types'
+import type { Plugin } from 'vite'
 
-// API alternatives are semantic: a diagnosis may name either the builder
-// or the handler call, with an actionable missing-handler cause; the quoted
-// source cannot provide it (the shared `missingHandler` expectation).
-function expectMissingHandler(error: unknown, source: string, column = false) {
-  expectCompileError(error, {
-    source,
-    at: 'createServerFn()',
-    column,
-    ...missingHandler,
-  })
-}
+// Moved: the missing-handler matcher controls (formerly :43, :53) are in
+// outside-compiler-corpus/createServerFn-controls.test.ts; the custom-id
+// build test (formerly :223) is in
+// integration/start-compiler-build-ids.test.ts; the internal package-graph
+// row (formerly :293, pending ruling Q6) is in
+// pending-rulings/createServerFn.test.ts.
 
-// Internal matcher controls: varied actionable prose remains valid, while an
-// internal crash cannot borrow the handler API from its quoted source.
-test.each([
-  'handler() expects a function',
-  'createServerFn needs a handler implementation',
-])('missing-handler diagnostics accept %s', (message) => {
-  const source = `import { createServerFn } from '@tanstack/react-start'\nexport const fn = createServerFn().handler()`
-  const error = Object.assign(new Error(`${message} (2:19)`), {
-    loc: { file: 'module.tsx', line: 2, column: 18 },
-  })
-  expect(() => expectMissingHandler(error, source)).not.toThrow()
-})
-test('missing-handler diagnostics reject a positioned internal crash', () => {
-  const source = `import { createServerFn } from '@tanstack/react-start'\nexport const fn = createServerFn().handler()`
-  const error = Object.assign(
-    new Error(
-      `createServerFn internal compiler error (2:19)\n> 2 | ${source.split('\n')[1]}`,
-    ),
-    { loc: { file: 'module.tsx', line: 2, column: 18 } },
-  )
-  expect(() => expectMissingHandler(error, source)).toThrow()
-})
-
-// Default test options for StartCompiler
-function getDefaultTestOptions(env: 'client' | 'server') {
-  const envName = env === 'client' ? 'client' : 'ssr'
+/**
+ * A user plugin serving two virtual modules that differ only by their
+ * `variant` query: the public one re-exports the factory the
+ * implementation one defines. It reads its own query parameter and ignores
+ * any other (a plugin of query-bearing modules does).
+ */
+function virtualFactories(): Plugin {
+  const prefix = '\0virtual:server-fn-factory?'
+  const modules: Record<string, string> = {
+    public: `import { createIssueServerFn } from 'virtual:server-fn-factory?variant=implementation'
+export { createIssueServerFn }`,
+    implementation: `import { createServerFn } from '@tanstack/react-start'
+export const createIssueServerFn = createServerFn`,
+  }
   return {
-    envName,
-    root: '/test',
-    framework: 'react' as const,
-    providerEnvName: 'ssr',
+    name: 'test:virtual-server-fn-factories',
+    resolveId: (source) =>
+      source.startsWith('virtual:server-fn-factory?') ? `\0${source}` : null,
+    load: (id) => {
+      if (!id.startsWith(prefix)) {
+        return null
+      }
+      const variant = new URLSearchParams(id.slice(prefix.length)).get(
+        'variant',
+      )
+      return variant ? (modules[variant] ?? null) : null
+    },
   }
 }
+
+/**
+ * A user plugin serving one virtual module by its exact id, as Vite's
+ * documentation writes one (`if (id === resolvedVirtualModuleId)`): it
+ * re-exports Start's factory.
+ */
+function exactVirtualFactory(): Plugin {
+  const id = 'virtual:exact-server-fn-factory'
+  return {
+    name: 'test:exact-virtual-server-fn-factory',
+    resolveId: (source) => (source === id ? `\0${id}` : null),
+    load: (loaded) =>
+      loaded === `\0${id}`
+        ? `export { createServerFn as createAppServerFn } from '@tanstack/react-start'`
+        : null,
+  }
+}
+
+const host = useStartHost({
+  plugins: [virtualFactories(), exactVirtualFactory()],
+})
 
 describe('createServerFn compiles correctly', () => {
   // A server fn without its handler (`.handler()` type-checks against the
@@ -83,8 +83,8 @@ describe('createServerFn compiles correctly', () => {
     ['\\n', '\n'],
     ['\\r\\n', '\r\n'],
     ['a lone \\r', '\r'],
-    ['U+2028', '\u2028'],
-    ['U+2029', '\u2029'],
+    ['U+2028', ' '],
+    ['U+2029', ' '],
   ])(
     'reports the location of a diagnostic with %s line endings',
     async (_name, eol) => {
@@ -92,10 +92,8 @@ describe('createServerFn compiles correctly', () => {
         `import { createServerFn } from '@tanstack/react-start'`,
         `export const fn = createServerFn().handler()`,
       ].join(eol)
-      const error = await compileFor('client', source).catch(
-        (caught: unknown) => caught,
-      )
-      expectCompileError(error, {
+      const startCase = await (await host()).case({ 'module.tsx': source })
+      expectCompileError(await compileError(startCase), {
         source,
         at: 'createServerFn()',
         column: true,
@@ -110,10 +108,8 @@ describe('createServerFn compiles correctly', () => {
       ...Array.from({ length: 10 }, (_, i) => `export const v${i} = ${i}`),
       `export const fn = createServerFn().handler()`,
     ].join('\n')
-    const error = await compileFor('client', source).catch(
-      (caught: unknown) => caught,
-    )
-    expectCompileError(error, {
+    const startCase = await (await host()).case({ 'module.tsx': source })
+    expectCompileError(await compileError(startCase), {
       source,
       at: 'createServerFn()',
       column: true,
@@ -128,10 +124,8 @@ describe('createServerFn compiles correctly', () => {
   test('rejects a destructured server fn', async () => {
     const source = `import { createServerFn } from '@tanstack/react-start'
 export const { fn } = createServerFn().handler(async () => 1)`
-    const error = await compileFor('client', source).catch(
-      (caught: unknown) => caught,
-    )
-    expectCompileError(error, {
+    const startCase = await (await host()).case({ 'module.tsx': source })
+    expectCompileError(await compileError(startCase), {
       source,
       at: '{ fn }',
       names: ['createServerFn'],
@@ -139,233 +133,91 @@ export const { fn } = createServerFn().handler(async () => 1)`
   })
 
   test('should not remove handler identifier bindings that are still referenced', async () => {
-    const compiled =
-      await compileAll(`import { createServerFn } from '@tanstack/react-start'
+    const served = await serveCase(await host(), {
+      'module.tsx': `import { createServerFn } from '@tanstack/react-start'
 import { getUsers } from './server'
 
 export const getUsersFn = createServerFn().handler(getUsers)
-export const ref = getUsers`)
-    const stubs = { './server': { getUsers: async () => 'users' } }
-
-    const client = await evaluateModule(compiled.client, stubs)
-    expect(client.ref).toBe(stubs['./server'].getUsers)
-    expect(callerRpcId(client.getUsersFn)).toEqual(expect.any(String))
-    expect(await callProvider(compiled, 'getUsersFn', stubs)).toBe('users')
+export const ref = getUsers`,
+      'server.ts': `export const getUsers = async () => 'users'\n`,
+    })
+    expect(
+      await inPage(
+        served,
+        `return [module.ref === (await load('server.ts')).getUsers, typeof module.getUsersFn.url]`,
+      ),
+    ).toEqual([true, 'string'])
+    expect(await callServerFnThroughCallers(served, 'module.getUsersFn')).toBe(
+      'users',
+    )
   })
 
   test('keeps query-bearing virtual module identities distinct', async () => {
-    // Two virtual modules that differ only by their query: the public one
-    // re-exports the factory the implementation one defines.
-    const publicFactoryId = '\0virtual:server-fn-factory?variant=public'
-    const implementationFactoryId =
-      '\0virtual:server-fn-factory?variant=implementation'
-    const { compile, serverFns } = createStartCompiler({
-      env: 'client',
-      files: {
-        [publicFactoryId]: `import { createIssueServerFn } from 'virtual:server-fn-factory?variant=implementation'
-export { createIssueServerFn }`,
-        [implementationFactoryId]: `import { createServerFn } from '@tanstack/react-start'
-export const createIssueServerFn = createServerFn`,
+    // Two virtual modules that differ only by their query (a user plugin
+    // serves them): the public one re-exports the factory the
+    // implementation one defines.
+    const served = await serveCase(
+      await host(),
+      {
+        'test.ts': `import { createIssueServerFn } from 'virtual:server-fn-factory?variant=public'
+export const issueServerFn = createIssueServerFn().handler(async () => 'issue-handler')`,
       },
-      host: {
-        resolveId: async (source) =>
-          source.startsWith('virtual:server-fn-factory?')
-            ? `\0${source}`
-            : source.startsWith('@tanstack/')
-              ? source
-              : null,
-      },
-    })
-
-    const code = `import { createIssueServerFn } from 'virtual:server-fn-factory?variant=public'
-export const issueServerFn = createIssueServerFn().handler(async () => 'issue-handler')`
-    const result = await compile(code, '/test/src/test.ts')
-
-    expect(result).not.toBeNull()
-    expect(result).not.toContain('issue-handler')
-    expect(Object.keys(serverFns)).toHaveLength(1)
-    // The client calls the server fn through an RPC by the reported id, and
-    // that id runs the handler on the server.
-    const stubs = {
-      'virtual:server-fn-factory?variant=public': {
-        createIssueServerFn: startClientCore.createServerFn,
-      },
-    }
+      { file: 'test.ts' },
+    )
+    expect(served.code.client).not.toContain('issue-handler')
+    // The client calls the server fn through an RPC, and that RPC runs the
+    // handler on the server.
     expect(
-      callerRpcId((await evaluateModule(result!, stubs)).issueServerFn),
-    ).toBe(Object.keys(serverFns)[0])
-    const server = await compileServer(code, {
-      id: '/test/src/test.ts',
-      files: {
-        [publicFactoryId]: `import { createIssueServerFn } from 'virtual:server-fn-factory?variant=implementation'
-export { createIssueServerFn }`,
-        [implementationFactoryId]: `import { createServerFn } from '@tanstack/react-start'
-export const createIssueServerFn = createServerFn`,
-      },
-      host: {
-        resolveId: async (source) =>
-          source.startsWith('virtual:server-fn-factory?')
-            ? `\0${source}`
-            : source.startsWith('@tanstack/')
-              ? source
-              : null,
-      },
-    })
+      await serverFnUrls(served, 'module', { file: 'test.ts' }),
+    ).toHaveLength(1)
     expect(
-      await callReportedServerFns(
-        { ...server, files: undefined },
-        serverFns,
-        stubs,
+      await callServerFnThroughCallers(
+        served,
+        'module.issueServerFn',
+        undefined,
+        { file: 'test.ts' },
       ),
-    ).toEqual(['issue-handler'])
-  })
-
-  test('dedupes custom ids, the same way across compiler instances', async () => {
-    const serverFnsById: Record<string, ServerFn> = {}
-
-    // `generateFunctionId` gives every server fn the same id.
-    function createCompiler(env: 'client' | 'server') {
-      return new StartCompiler({
-        env,
-        ...getDefaultTestOptions(env),
-        mode: 'build',
-        loadModule: async () => {},
-        lookupKinds: getLookupKindsForEnv(env),
-        lookupConfigurations: getLookupConfigurationsForEnv(env, 'react'),
-        resolveId: async (id) => id,
-        generateFunctionId: () => 'constant_id',
-        getKnownServerFns: () => serverFnsById,
-        onServerFnsById: (discovered) => {
-          Object.assign(serverFnsById, discovered)
-        },
-      })
-    }
-    const files = {
-      '/test/src/submit-post-formdata.tsx': `import { createServerFn } from '@tanstack/react-start'
-export const greetUser = createServerFn().handler(async () => 'first')`,
-      '/test/src/formdata-redirect/index.tsx': `import { createServerFn } from '@tanstack/react-start'
-export const greetUser = createServerFn().handler(async () => 'second')`,
-    }
-
-    const client = createCompiler('client')
-    const clientIds: Record<string, unknown> = {}
-    for (const [id, code] of Object.entries(files)) {
-      const { greetUser } = await evaluateModule(
-        (await client.compile({ code, id }))!.code,
-      )
-      clientIds[id] = callerRpcId(greetUser)
-    }
-    const ids = Object.keys(serverFnsById)
-    expect(ids).toHaveLength(2)
-    expect(Object.values(clientIds).sort()).toEqual([...ids].sort())
-
-    // A second compiler instance (e.g. the SSR build) gives each server fn
-    // the id the first one gave it: its provider handler carries it, and the
-    // SSR caller runs that handler.
-    const server = createCompiler('server')
-    for (const [id, code] of Object.entries(files)) {
-      const ssr = (await server.compile({ code, id }))!.code
-      const provider = (await server.compile({
-        code,
-        id: `${id}?tss-serverfn-split`,
-      }))!.code
-      const graph = createServerGraph({
-        ssr,
-        provider,
-        id,
-        serverFns: serverFnsById,
-      })
-      expect(await (await graph.ssr()).greetUser()).toBe(
-        id.includes('formdata-redirect') ? 'second' : 'first',
-      )
-      // The provider's handler of that id runs this module's server fn.
-      const handler = Object.values(await graph.provider()).find(
-        (value) => value?.serverFnMeta?.id === clientIds[id],
-      )
-      expect(handler, id).toBeTypeOf('function')
-      expect(serverFnResult(await handler({}))).toBe(
-        id.includes('formdata-redirect') ? 'second' : 'first',
-      )
-    }
-    expect(Object.keys(serverFnsById).sort()).toEqual([...ids].sort())
-  })
-
-  test('should resolve createServerFn from the same binding as a known root export', async () => {
-    const virtualModules: Record<string, string> = {
-      '@tanstack/start-client-core': `
-        export { createServerFn } from './createServerFn'
-      `,
-      '/virtual/compiler-known/server-fn-factory.ts': `
-        export const createServerFn = () => ({
-          handler: () => createServerFn(),
-        })
-      `,
-    }
-
-    const reported: Record<string, ServerFn> = {}
-    const compiler = new StartCompiler({
-      env: 'client',
-      ...getDefaultTestOptions('client'),
-      root: '/test',
-      mode: 'build',
-      loadModule: async (id) => {
-        const code = virtualModules[id]
-        if (code) {
-          compiler.ingestModule({ code, id })
-        }
-      },
-      lookupKinds: new Set(['ServerFn']),
-      lookupConfigurations: [],
-      getKnownServerFns: () => ({}),
-      onServerFnsById: (serverFns) => Object.assign(reported, serverFns),
-      resolveId: async (source) => {
-        if (source === '@tanstack/start-client-core') {
-          return '@tanstack/start-client-core'
-        }
-
-        if (source === './createServerFn') {
-          return '/virtual/compiler-known/server-fn-factory.ts'
-        }
-
-        return null
-      },
-    })
-
-    const result = await compiler.compile({
-      id: '/test/src/internal-server-fn.ts',
-      code: `
-        import { createServerFn } from './createServerFn'
-
-        export const getMessage = createServerFn().handler(() => {
-          return 'server-only-value'
-        })
-      `,
-    })
-
-    expect(result).not.toBeNull()
-    expect(result!.code).not.toContain('server-only-value')
-    const ids = Object.keys(reported)
-    expect(ids).toHaveLength(1)
-    const { getMessage } = await evaluateModule(result!.code, {
-      './createServerFn': {
-        createServerFn: startClientCore.createServerFn,
-      },
-    })
-    expect(callerRpcId(getMessage)).toBe(ids[0])
+    ).toBe('issue-handler')
   })
 })
 
+// Bug: in dev, the compiler looks up a module a server fn's factory comes
+// from under a derived id (the module's id with a query flag of its own
+// added), which the environment then loads: a user plugin serving a
+// virtual module by its exact id, as Vite documents it, does not know that
+// id, so the module that defines the server fn fails to compile ("Failed to
+// load url virtual:...?server-fn-module-lookup"). A build loads the
+// module under its own id.
+// Impact: `vite dev` cannot serve a server fn whose factory a virtual
+// module of the app (or of a plugin) provides.
+// Fix-agnostic: however the compiler learns the factory's provenance, the
+// module compiles and its server fn works.
+// Source: B2 repair (rerouting "keeps query-bearing virtual module
+// identities distinct" through the public plugin).
+test.fails(
+  'a server fn whose factory a virtual module serves by its exact id compiles in dev',
+  async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `import { createAppServerFn } from 'virtual:exact-server-fn-factory'
+export const fn = createAppServerFn().handler(async () => 'virtual-factory-handler')`,
+    })
+    expect(served.code.client).not.toContain('virtual-factory-handler')
+    expect(await callServerFnThroughCallers(served, 'module.fn')).toBe(
+      'virtual-factory-handler',
+    )
+  },
+)
+
 describe('server fns need a handler', () => {
   // `.handler()` type-checks (tsc against the real declarations), so this
-  // is a user error the compiler reports at the server fn (SPEC G5).
+  // is a user error the compiler reports at the server fn (SPEC G5), in
+  // every environment that serves the module.
   test('require a handler function', async () => {
     const source = `import { createServerFn } from '@tanstack/react-start'
 export const greet = createServerFn().handler()`
-    for (const output of outputs) {
-      const error = await compileFor(output, source).catch(
-        (caught: unknown) => caught,
-      )
-      expectCompileError(error, {
+    const startCase = await (await host()).case({ 'module.tsx': source })
+    for (const environment of ['client', 'ssr'] as const) {
+      expectCompileError(await compileError(startCase, environment), {
         source,
         at: 'createServerFn()',
         ...missingHandler,
@@ -380,8 +232,8 @@ export const greet = createServerFn().handler()`
 describe('server fns of builders, route files and reformatted code', () => {
   // Source: snapshot fixture factory.tsx (N5)
   test('a server fn builder with middleware is callable as a factory', async () => {
-    const compiled =
-      await compileAll(`import { createServerFn, createMiddleware } from '@tanstack/react-start'
+    const served = await serveCase(await host(), {
+      'module.tsx': `import { createServerFn, createMiddleware } from '@tanstack/react-start'
 const authMiddleware = createMiddleware({ type: 'function' }).server(
   ({ next }) => next({ context: { auth: 'auth' } }),
 )
@@ -405,26 +257,26 @@ function createFakeFn() {
 }
 export const x = createFakeFn().handler(() => {
   return 'fakeFn'
-})`)
-    expect(compiled.client).not.toContain('MARK_AUTHED_HANDLER_BODY')
-    expect(compiled.client).not.toContain('MARK_DELETE_HANDLER_BODY')
-    expect(Object.keys(compiled.serverFns)).toHaveLength(2)
-    const client = await evaluateModule(compiled.client)
-    expect(client.x).toBe('fakeFn')
-    // Each server fn runs the middleware of its factory chain.
+})`,
+    })
+    expect(served.code.client).not.toContain('MARK_AUTHED_HANDLER_BODY')
+    expect(served.code.client).not.toContain('MARK_DELETE_HANDLER_BODY')
+    expect(await serverFnUrls(served)).toHaveLength(2)
+    expect(await inPage(served, 'return module.x')).toBe('fakeFn')
+    // Each server fn runs the middleware of its factory chain, called from
+    // the client and from server code.
     const auth = { auth: 'auth' }
     const admin = { auth: 'auth', admin: 'admin' }
     expect([
-      await callFromClient(compiled, (module) => module.myAuthedFn),
-      await callFromClient(compiled, (module) => module.deleteUserFn),
+      await callFromClient(served, 'module.myAuthedFn'),
+      await callFromClient(served, 'module.deleteUserFn'),
     ]).toEqual([
       ['myAuthedFn', auth],
       ['deleteUserFn', admin],
     ])
-    const provider = await evaluateProvider(compiled)
     expect([
-      await callProvider(provider, 'myAuthedFn'),
-      await callProvider(provider, 'deleteUserFn'),
+      await callOnServer(served, 'module.myAuthedFn'),
+      await callOnServer(served, 'module.deleteUserFn'),
     ]).toEqual([
       ['myAuthedFn', auth],
       ['deleteUserFn', admin],
@@ -470,20 +322,57 @@ function RouteComponent() {
   }
   return <button onClick={handleClick}>{JSON.stringify(results)}</button>
 }`
-    // The real router (`createFileRoute`) and React.
-    const stubs = {}
-    const compiled = await compileAll(code)
-    expect(await callProvider(compiled, 'getServerEnv', stubs)).toBe('server')
-    expect(await callProvider(compiled, 'getServerEcho', stubs, 'hello')).toBe(
-      'server received hello',
-    )
-    for (const [output, env] of [
-      ['client', 'client'],
-      ['ssr', 'server'],
-    ] as const) {
-      const { Route } = await evaluateModule(compiled[output], stubs)
-      expect(Route.options.loader(), output).toEqual({ envOnLoad: env })
-    }
+    const served = await serveCase(await host(), {
+      'module.tsx': code,
+      // The app's code rendering the route's component in the page.
+      'mount.tsx': `import { createRoot } from 'react-dom/client'
+import { Route } from './module'
+export function mount(element: HTMLElement) {
+  const Component = Route.options.component!
+  createRoot(element).render(<Component />)
+}
+`,
+    })
+    // The page's click calls both server fns through their RPCs: the
+    // server runs them.
+    expect(
+      await inPage(
+        served,
+        `const element = document.createElement('div')
+document.body.append(element)
+const { mount } = await load('mount.tsx')
+mount(element)
+const button = async () => {
+  for (let tries = 0; tries < 200; tries++) {
+    const found = element.querySelector('button')
+    if (found) return found
+    await new Promise((resolve) => setTimeout(resolve, 10))
+  }
+  throw new Error('the route component did not render')
+}
+;(await button()).click()
+for (let tries = 0; tries < 500; tries++) {
+  if (element.textContent) {
+    const results = JSON.parse(element.textContent)
+    element.remove()
+    return results
+  }
+  await new Promise((resolve) => setTimeout(resolve, 10))
+}
+throw new Error('the click gave no results: ' + element.innerHTML)`,
+      ),
+    ).toEqual({
+      envOnClick: 'client',
+      echo: 'client received hello',
+      serverEnv: 'server',
+      serverEcho: 'server received hello',
+    })
+    expect(
+      await inPage(served, 'return module.Route.options.loader()'),
+    ).toEqual({ envOnLoad: 'client' })
+    expect((await served.ssr()).Route.options.loader()).toEqual({
+      envOnLoad: 'server',
+    })
   })
 
   // Reformatted code (Vite/Babel may move the dot to its own line) and a
@@ -504,7 +393,7 @@ const base = createServerFn()`,
     {
       where: 'another module',
       files: {
-        '/test/src/builder.ts': `import { createServerFn } from '@tanstack/react-start'
+        'builder.ts': `import { createServerFn } from '@tanstack/react-start'
 export const base = createServerFn()`,
       },
       head: `import { base } from './builder'`,
@@ -529,24 +418,16 @@ export const base = createServerFn()`,
           ? test.fails
           : test
       run(`a handler called with ${name} is extracted`, async () => {
-        const code = `${head}
+        const served = await serveCase(await host(), {
+          'module.tsx': `${head}
 import { db } from './db.server'
-export const fn = base${call}async () => db.x())`
-        const compiled = await compileAll(code, { files })
-        expectNotLoaded(
-          await moduleLoads(compiled.client, {
-            stubs: { './builder': { base: startClientCore.createServerFn() } },
-          }),
-          ['./db.server'],
-        )
-        expect(Object.keys(compiled.serverFns)).toHaveLength(1)
-        expect(
-          await callProvider(compiled, 'fn', {
-            './db.server': { db: { x: () => 'x' } },
-            // The provider keeps the import of the builder.
-            './builder': { base: startClientCore.createServerFn() },
-          }),
-        ).toBe('x')
+export const fn = base${call}async () => db.x())`,
+          'db.server.ts': `export const db = { x: () => 'x' }\n`,
+          ...files,
+        })
+        expectNotLoaded(await served.loads(), ['./db.server'])
+        expect(await serverFnUrls(served)).toHaveLength(1)
+        expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('x')
       })
     }
   })

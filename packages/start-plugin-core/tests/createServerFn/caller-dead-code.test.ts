@@ -1,32 +1,45 @@
 import { describe, expect, test, vi } from 'vitest'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   callFromClient,
-  callProvider,
+  callOnServer,
   callServerFnThroughCallers,
-  compileAll,
-  compileCode,
-  evaluateModule,
-  evaluateProvider,
-  moduleLoads,
+  inPage,
+  serveCase,
+  useStartHost,
 } from '../regression-helpers'
-import type { ModuleStub } from '../regression-helpers'
 
 // The client replaces a server fn handler with an RPC, then drops the module
 // code only the handler read, so server-only imports never reach it. Code the
-// client still reads must survive with its values. The SSR caller may do the
+// client still reads must survive with its values. Server code may do the
 // same or keep the handler in place: calling the server fn from it runs the
-// handler either way. "Drops" is observed as loading: the module the client
-// output loads when it is evaluated (`moduleLoads`), never as an inventory
-// of its import declarations (FIX-PLAN S06).
+// handler either way. "Drops" is observed as loading: the modules a page
+// importing the module loads (`loads`: what the browser requests and Vite's
+// client module graph holds), never as an inventory of its import
+// declarations (FIX-PLAN S06). Every module the fixtures import is a real
+// file of the case.
+
+const host = useStartHost()
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
-const dbServer = `export const db = { x: () => 'x' }`
+const dbServer = `export const db = { x: () => 'x' }\n`
+
+/** A page check: a script and what it must return. */
+interface PageCheck {
+  script: string
+  expected: unknown
+}
 
 describe('callers drop a server import only the handler reads', () => {
   // Source: Next.js server-actions fixtures server-graph/6 (shadowed bindings)
-  test.each([
+  test.each<{
+    name: string
+    code: string
+    files: Record<string, string>
+    forbidden: Array<string>
+    check: PageCheck
+    expected: unknown
+  }>([
     {
       name: 'a handler local shadows an import the client uses',
       code: `import { db } from './db.server'
@@ -36,15 +49,12 @@ export const fn = createServerFn().handler(async () => {
   const format = (value: unknown) => \`local:\${value}\`
   return format(db.x())
 })`,
+      files: {
+        'format.ts':
+          'export const format = (value: string) => `format:${value}`\n',
+      },
       forbidden: ['./db.server'],
-      check: async (client: string) =>
-        expect(
-          (
-            await evaluateModule(client, {
-              './format': { format: (value: string) => `format:${value}` },
-            })
-          ).label,
-        ).toBe('format:x'),
+      check: { script: 'return module.label', expected: 'format:x' },
       expected: 'local:x',
     },
     {
@@ -53,22 +63,23 @@ export const fn = createServerFn().handler(async () => {
       code: `import { db } from './db.server'
 export const fn = createServerFn().handler(async ({ data: db }: { data: string }) => db)
 export const clientDb = db`,
+      files: {},
       forbidden: [],
-      check: async (client: string) => {
-        const db = { x: () => 'x' }
-        expect(
-          (await evaluateModule(client, { './db.server': { db } })).clientDb,
-        ).toBe(db)
+      check: {
+        script: `return module.clientDb === (await load('db.server.ts')).db`,
+        expected: true,
       },
       expected: 'param',
     },
-  ])('when $name', async ({ code, forbidden, check, expected }) => {
-    const compiled = await compileAll(`${head}${code}`)
-    expectNotLoaded(await moduleLoads(compiled.client), forbidden)
-    await check(compiled.client)
-    expect(
-      await callProvider(compiled, 'fn', { './db.server': dbServer }, 'param'),
-    ).toBe(expected)
+  ])('when $name', async ({ code, files, forbidden, check, expected }) => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `${head}${code}`,
+      'db.server.ts': dbServer,
+      ...files,
+    })
+    expectNotLoaded(await served.loads(), forbidden)
+    expect(await inPage(served, check.script)).toEqual(check.expected)
+    expect(await callFromClient(served, 'module.fn', 'param')).toBe(expected)
   })
 
   // Each snippet uses the name `db` in a position that is not a reference to
@@ -76,8 +87,8 @@ export const clientDb = db`,
   test.each<{
     name: string
     code: string
-    stubs?: Record<string, ModuleStub>
-    check?: (client: Record<string, any>) => void
+    files?: Record<string, string>
+    check?: PageCheck
   }>([
     {
       // Source: @vitejs/plugin-rsc scope/label.js
@@ -90,20 +101,26 @@ export const clientDb = db`,
   }
   return 'loop'
 }`,
-      check: (client) => expect(client.loop()).toBe('loop'),
+      check: { script: 'return module.loop()', expected: 'loop' },
     },
     {
       // Source: @vitejs/plugin-rsc scope/object-expr-vs-pattern.js
       name: 'an object key and a pattern key',
       code: `export const options = { db: 'key' }
 export const pick = ({ db: local }) => local`,
-      check: (client) => expect(client.pick(client.options)).toBe('key'),
+      check: {
+        script: 'return module.pick(module.options)',
+        expected: 'key',
+      },
     },
     {
       // Source: @vitejs/plugin-rsc scope/member-expr.js
       name: 'a member property',
       code: `export const read = (object) => object.db`,
-      check: (client) => expect(client.read({ db: 'member' })).toBe('member'),
+      check: {
+        script: `return module.read({ db: 'member' })`,
+        expected: 'member',
+      },
     },
     {
       // Source: @vitejs/plugin-rsc scope/method-definition.js,
@@ -120,10 +137,9 @@ export class Store {
     return [this.db, this.#db]
   }
 }`,
-      check: (client) => {
-        expect(client.api.db()).toBe('method')
-        expect(client.Store.db()).toBe('static')
-        expect(new client.Store().read()).toEqual(['field', 'private'])
+      check: {
+        script: `return [module.api.db(), module.Store.db(), new module.Store().read()]`,
+        expected: ['method', 'static', ['field', 'private']],
       },
     },
     {
@@ -131,7 +147,7 @@ export class Store {
       name: 'an export alias',
       code: `const local = 'alias'
 export { local as db }`,
-      check: (client) => expect(client.db).toBe('alias'),
+      check: { script: 'return module.db', expected: 'alias' },
     },
     {
       // Source: @vitejs/plugin-rsc scope/destructuring-assignment.js
@@ -139,7 +155,7 @@ export { local as db }`,
       code: `let bound
 ;({ db: bound } = { db: 'assigned' })
 export { bound }`,
-      check: (client) => expect(client.bound).toBe('assigned'),
+      check: { script: 'return module.bound', expected: 'assigned' },
     },
     {
       // Source: @vitejs/plugin-rsc scope/catch-param.js
@@ -151,7 +167,7 @@ export { bound }`,
     return db
   }
 }`,
-      check: (client) => expect(client.safe()).toBe('caught'),
+      check: { script: 'return module.safe()', expected: 'caught' },
     },
     {
       // Source: @vitejs/plugin-rsc scope/fn-expr-name.js, scope/class-expr-self.js
@@ -164,9 +180,9 @@ export const Self = class db {
     return db
   }
 }`,
-      check: (client) => {
-        expect(client.self()).toBe(client.self)
-        expect(client.Self.self()).toBe(client.Self)
+      check: {
+        script: `return [module.self() === module.self, module.Self.self() === module.Self]`,
+        expected: [true, true],
       },
     },
     {
@@ -184,9 +200,9 @@ export function hoistedFunction() {
     return 'function'
   }
 }`,
-      check: (client) => {
-        expect(client.hoistedVar()).toBe('var')
-        expect(client.hoistedFunction()).toBe('function')
+      check: {
+        script: 'return [module.hoistedVar(), module.hoistedFunction()]',
+        expected: ['var', 'function'],
       },
     },
     {
@@ -216,10 +232,9 @@ export class Block {
     Block.value = db
   }
 }`,
-      check: (client) => {
-        expect(client.loops()).toEqual([0, 'of', 'in'])
-        expect(client.choose(2)).toBe('switch')
-        expect(client.Block.value).toBe('static')
+      check: {
+        script: 'return [module.loops(), module.choose(2), module.Block.value]',
+        expected: [[0, 'of', 'in'], 'switch', 'static'],
       },
     },
     {
@@ -236,25 +251,24 @@ export const accessors = {
 export function rest(...db) {
   return db
 }`,
-      check: (client) => {
-        expect(client.params('param')).toBe('param')
-        client.accessors.value = 'set'
-        expect(client.accessors.stored).toBe('set')
-        expect(client.rest(1, 2)).toEqual([1, 2])
+      check: {
+        script: `module.accessors.value = 'set'
+return [module.params('param'), module.accessors.stored, module.rest(1, 2)]`,
+        expected: ['param', 'set', [1, 2]],
       },
     },
     {
       // Source: @vitejs/plugin-rsc scope/import-meta.js
       name: 'an import.meta property',
       code: `export const meta = typeof import.meta.db`,
-      check: (client) => expect(client.meta).toBe('undefined'),
+      check: { script: 'return module.meta', expected: 'undefined' },
     },
     {
       // Source: @vitejs/plugin-rsc hoist/reexport-import-not-bound.js
       name: 'a re-export',
       code: `export { db } from './other'`,
-      stubs: { './other': `export const db = 'other'` },
-      check: (client) => expect(client.db).toBe('other'),
+      files: { 'other.ts': `export const db = 'other'\n` },
+      check: { script: 'return module.db', expected: 'other' },
     },
     {
       // Source: typescript-eslint ts-module/namespace.js, ts-module/scope.js
@@ -263,7 +277,7 @@ export function rest(...db) {
   export const db = 'namespace'
   export const read = () => db
 }`,
-      check: (client) => expect(client.Repo.read()).toBe('namespace'),
+      check: { script: 'return module.Repo.read()', expected: 'namespace' },
     },
     {
       // Source: typescript-eslint type-declaration/interface1.js, type1.js,
@@ -276,7 +290,7 @@ export type Shape = { db: number }
 export function identity<db>(value: db): db {
   return value
 }`,
-      check: (client) => expect(client.identity('id')).toBe('id'),
+      check: { script: `return module.identity('id')`, expected: 'id' },
     },
     {
       // Source: typescript-eslint jsx/attribute.js, jsx/namespaced-attribute.js,
@@ -294,16 +308,18 @@ export class View {
     },
   ])(
     'when client code uses its name in $name',
-    async ({ code, stubs = {}, check }) => {
-      const client = await compileCode(
-        'client',
-        `${head}import { db } from './db.server'
+    async ({ code, files = {}, check }) => {
+      const served = await serveCase(await host(), {
+        'module.tsx': `${head}import { db } from './db.server'
 export const fn = createServerFn().handler(async () => db.x())
 ${code}`,
-      )
-      expect(await getModuleErrors(client!)).toEqual([])
-      expectNotLoaded(await moduleLoads(client!, { stubs }), ['./db.server'])
-      check?.(await evaluateModule(client!, stubs))
+        'db.server.ts': dbServer,
+        ...files,
+      })
+      expectNotLoaded(await served.loads(), ['./db.server'])
+      if (check) {
+        expect(await inPage(served, check.script)).toEqual(check.expected)
+      }
     },
   )
 
@@ -318,7 +334,7 @@ ${code}`,
   test.fails.each<{
     name: string
     code: string
-    check: (client: Record<string, any>) => void
+    check: PageCheck
   }>([
     {
       // Source: typescript-eslint ts-enum/member-ref.js; #8504
@@ -328,7 +344,7 @@ ${code}`,
   db = 1,
   other = db + 1,
 }`,
-      check: (client) => expect(client.Flags.other).toBe(2),
+      check: { script: 'return module.Flags.other', expected: 2 },
     },
     {
       // Source: typescript-eslint functions/function-declaration/overload.js;
@@ -338,7 +354,7 @@ ${code}`,
 export function call(value: string) {
   return value
 }`,
-      check: (client) => expect(client.call('call')).toBe('call'),
+      check: { script: `return module.call('call')`, expected: 'call' },
     },
     {
       // Source: typescript-eslint class/declaration/parameter-properties.js;
@@ -350,19 +366,20 @@ export function call(value: string) {
     return this.db
   }
 }`,
-      check: (client) =>
-        expect(new client.Service('param').read()).toBe('param'),
+      check: {
+        script: `return new module.Service('param').read()`,
+        expected: 'param',
+      },
     },
   ])('when client code uses its name in $name', async ({ code, check }) => {
-    const client = await compileCode(
-      'client',
-      `${head}import { db } from './db.server'
+    const served = await serveCase(await host(), {
+      'module.tsx': `${head}import { db } from './db.server'
 export const fn = createServerFn().handler(async () => db.x())
 ${code}`,
-    )
-    expect(await getModuleErrors(client!)).toEqual([])
-    expectNotLoaded(await moduleLoads(client!), ['./db.server'])
-    check(await evaluateModule(client!))
+      'db.server.ts': dbServer,
+    })
+    expectNotLoaded(await served.loads(), ['./db.server'])
+    expect(await inPage(served, check.script)).toEqual(check.expected)
   })
 
   // Source: SolidStart compile.spec.ts "removes an import when only type
@@ -392,28 +409,26 @@ export const value = clientDefault`,
   ])(
     'when it shares a mixed import in which $name',
     async ({ code, client, value }) => {
-      const compiled = await compileAll(`${head}${code}
-export const fn = createServerFn().handler(async (): Promise<Session | null> => verify())`)
+      // `verify` is the default export where the module imports it as such.
+      const verify = `() => 'verified'`
+      const served = await serveCase(await host(), {
+        'module.tsx': `${head}${code}
+export const fn = createServerFn().handler(async (): Promise<Session | null> => verify())`,
+        'server-module.ts': `export type Session = { id: string }
+export const clientValue = 'client'
+export const verify = ${verify}
+export default ${code.startsWith('import verify') ? verify : `'default'`}
+`,
+      })
       // The server module loads only for a value the client reads.
-      const loads = await moduleLoads(compiled.client)
+      const loads = await served.loads()
       if (client.length === 0) {
         expectNotLoaded(loads, ['./server-module'])
       }
-      // `verify` is the default export where the module imports it as such.
-      const verify = `() => 'verified'`
-      const stubs = {
-        './server-module': `export const clientValue = 'client'
-export const verify = ${verify}
-export default ${code.startsWith('import verify') ? verify : `'default'`}`,
-      }
-      expect((await evaluateModule(compiled.client, stubs)).value).toBe(value)
-      expect(
-        await callServerFnThroughCallers(
-          compiled,
-          (module) => module.fn,
-          stubs,
-        ),
-      ).toBe('verified')
+      expect(await inPage(served, 'return module.value')).toBe(value)
+      expect(await callServerFnThroughCallers(served, 'module.fn')).toBe(
+        'verified',
+      )
     },
   )
 
@@ -422,8 +437,12 @@ export default ${code.startsWith('import verify') ? verify : `'default'`}`,
   // fn's validator read; the server runs both before the handler.
   // Source: Next.js server-actions fixtures server-graph/47, /58
   test('when the handler only reads it through a validator or a middleware', async () => {
-    const compiled =
-      await compileAll(`import { createMiddleware, createServerFn } from '@tanstack/react-start'
+    // The server modules record their calls in this process (the dev
+    // server's SSR environment runs here).
+    const calls = ((globalThis as Record<string, unknown>).__b2DeadCodeCalls =
+      []) as Array<string>
+    const served = await serveCase(await host(), {
+      'module.tsx': `import { createMiddleware, createServerFn } from '@tanstack/react-start'
 import { db } from './db.server'
 import { schema } from './schema.server'
 const auth = createMiddleware({ type: 'function' })
@@ -432,25 +451,22 @@ const auth = createMiddleware({ type: 'function' })
 export const fn = createServerFn({ method: 'POST' })
   .middleware([auth])
   .validator((data: unknown) => schema.parse(data))
-  .handler(async ({ data, context }) => [data, context.user, context.from])`)
-    expectNotLoaded(await moduleLoads(compiled.client), [
-      './db.server',
-      './schema.server',
+  .handler(async ({ data, context }) => [data, context.user, context.from])`,
+      'db.server.ts': `export const db = {
+  user: () => ((globalThis as any).__b2DeadCodeCalls.push('db.user'), 'user'),
+}
+`,
+      'schema.server.ts': `export const schema = {
+  parse: (data: unknown) => ((globalThis as any).__b2DeadCodeCalls.push('schema.parse'), \`\${data}!\`),
+}
+`,
+    })
+    expectNotLoaded(await served.loads(), ['./db.server', './schema.server'])
+    expect(await callFromClient(served, 'module.fn', 'data')).toEqual([
+      'data!',
+      'user',
+      'client',
     ])
-    const calls: Array<string> = []
-    const stubs = {
-      './db.server': {
-        db: { user: () => (calls.push('db.user'), 'user') },
-      },
-      './schema.server': {
-        schema: {
-          parse: (data: unknown) => (calls.push('schema.parse'), `${data}!`),
-        },
-      },
-    }
-    expect(
-      await callFromClient(compiled, (module) => module.fn, 'data', stubs),
-    ).toEqual(['data!', 'user', 'client'])
     expect(calls).toEqual(['db.user', 'schema.parse'])
   })
 
@@ -468,18 +484,13 @@ export const fn = createServerFn({ method: 'POST' })
   ])(
     'when the validator link is wrapped in a $name expression',
     async ({ wrap }) => {
-      const compiled =
-        await compileAll(`${head}import { schema } from './schema'
-export const fn = ${wrap(`createServerFn().validator(schema)`)}.handler(async ({ data }) => data)`)
-      expectNotLoaded(await moduleLoads(compiled.client), ['./schema'])
-      expect(
-        await callProvider(
-          compiled,
-          'fn',
-          { './schema': { schema: (data: string) => `${data}!` } },
-          'data',
-        ),
-      ).toBe('data!')
+      const served = await serveCase(await host(), {
+        'module.tsx': `${head}import { schema } from './schema'
+export const fn = ${wrap(`createServerFn().validator(schema)`)}.handler(async ({ data }) => data)`,
+        'schema.ts': 'export const schema = (data: string) => `${data}!`\n',
+      })
+      expectNotLoaded(await served.loads(), ['./schema'])
+      expect(await callFromClient(served, 'module.fn', 'data')).toBe('data!')
     },
   )
 
@@ -506,19 +517,14 @@ export const other = withPost.handler(async ({ data }) => data)`,
   ])(
     'when the validator link is on a builder stored in a variable ($name)',
     async ({ handlers }) => {
-      const compiled =
-        await compileAll(`${head}import { schema } from './schema'
+      const served = await serveCase(await host(), {
+        'module.tsx': `${head}import { schema } from './schema'
 const withPost = createServerFn({ method: 'POST' }).validator(schema)
-${handlers}`)
-      expectNotLoaded(await moduleLoads(compiled.client), ['./schema'])
-      expect(
-        await callProvider(
-          compiled,
-          'fn',
-          { './schema': { schema: (data: string) => `${data}!` } },
-          'data',
-        ),
-      ).toBe('data!')
+${handlers}`,
+        'schema.ts': 'export const schema = (data: string) => `${data}!`\n',
+      })
+      expectNotLoaded(await served.loads(), ['./schema'])
+      expect(await callFromClient(served, 'module.fn', 'data')).toBe('data!')
     },
   )
 })
@@ -564,18 +570,16 @@ test.each([
 }`,
   },
 ])('client code that reads an import $name keeps it', async ({ code }) => {
-  const client = await compileCode(
-    'client',
-    `${head}import { store } from './store'
+  const served = await serveCase(await host(), {
+    'module.tsx': `${head}import { store } from './store'
 import { db } from './db.server'
 export const fn = createServerFn().handler(async () => db.x())
 ${code}`,
-  )
-  expectNotLoaded(await moduleLoads(client!), ['./db.server'])
-  const module = await evaluateModule(client!, {
-    './store': `export const store = { value: 'store' }`,
+    'store.ts': `export const store = { value: 'store' }\n`,
+    'db.server.ts': dbServer,
   })
-  expect(module.read()).toBe('store')
+  expectNotLoaded(await served.loads(), ['./db.server'])
+  expect(await inPage(served, 'return module.read()')).toBe('store')
 })
 
 describe('destructurings shared by the handler and client code', () => {
@@ -583,7 +587,7 @@ describe('destructurings shared by the handler and client code', () => {
   test.each<{
     name: string
     code: string
-    stubs: Record<string, ModuleStub>
+    files: Record<string, string>
     clientValue: unknown
     handlerValue: unknown
   }>([
@@ -593,7 +597,7 @@ describe('destructurings shared by the handler and client code', () => {
 const [serverOnly, shared] = values
 export const clientValue = shared
 export const fn = createServerFn().handler(async () => serverOnly)`,
-      stubs: { './values': `export const values = ['server', 'shared']` },
+      files: { 'values.ts': `export const values = ['server', 'shared']\n` },
       clientValue: 'shared',
       handlerValue: 'server',
     },
@@ -604,19 +608,23 @@ export const fn = createServerFn().handler(async () => serverOnly)`,
 const { secretKey, ...publicConfig } = config
 export const clientValue = publicConfig
 export const fn = createServerFn().handler(async () => secretKey)`,
-      stubs: {
-        './config': `export const config = { secretKey: 'key', theme: 'dark' }`,
+      files: {
+        'config.ts': `export const config = { secretKey: 'key', theme: 'dark' }\n`,
       },
       clientValue: { theme: 'dark' },
       handlerValue: 'key',
     },
   ])(
     'keep their values in every output for $name',
-    async ({ code, stubs, clientValue, handlerValue }) => {
-      const compiled = await compileAll(`${head}${code}`)
-      const client = await evaluateModule(compiled.client, stubs)
-      expect(client.clientValue).toEqual(clientValue)
-      expect(await callProvider(compiled, 'fn', stubs)).toEqual(handlerValue)
+    async ({ code, files, clientValue, handlerValue }) => {
+      const served = await serveCase(await host(), {
+        'module.tsx': `${head}${code}`,
+        ...files,
+      })
+      expect(await inPage(served, 'return module.clientValue')).toEqual(
+        clientValue,
+      )
+      expect(await callFromClient(served, 'module.fn')).toEqual(handlerValue)
     },
   )
 
@@ -648,16 +656,18 @@ const { db: { apiKey = readSecret() } = {}, theme } = config`,
   ])(
     'drop a server import read by $name of a handler-only binding',
     async ({ code }) => {
-      const compiled =
-        await compileAll(`${head}import { config } from './config'
+      const served = await serveCase(await host(), {
+        'module.tsx': `${head}import { config } from './config'
 ${code}
 export const fn = createServerFn().handler(async () => apiKey)
-export const currentTheme = theme`)
-      expectNotLoaded(await moduleLoads(compiled.client), ['./secrets.server'])
-      const client = await evaluateModule(compiled.client, {
-        './config': `export const config = { theme: 'dark', list: [undefined, 'dark'] }`,
+export const currentTheme = theme`,
+        'config.ts': `export const config = { theme: 'dark', list: [undefined, 'dark'] }\n`,
+        'secrets.server.ts': `export const readSecret = () => 'secret'
+export const secretKeyName = 'apiKey'
+`,
       })
-      expect(client.currentTheme).toBe('dark')
+      expectNotLoaded(await served.loads(), ['./secrets.server'])
+      expect(await inPage(served, 'return module.currentTheme')).toBe('dark')
     },
   )
 })
@@ -673,22 +683,19 @@ describe('declarations only the handler needs', () => {
   test.fails(
     'callers drop a handler-only function that declares a local of its own name',
     async () => {
-      const compiled =
-        await compileAll(`${head}import { readSecret } from './server-only'
+      const served = await serveCase(await host(), {
+        'module.tsx': `${head}import { readSecret } from './server-only'
 function session() {
   const session = readSecret()
   return session.id
 }
-export const getReport = createServerFn().handler(async () => session())`)
-      expectNotLoaded(await moduleLoads(compiled.client), ['./server-only'])
-      expect(compiled.client).not.toContain('readSecret')
-      expect(
-        await callServerFnThroughCallers(
-          compiled,
-          (module) => module.getReport,
-          { './server-only': { readSecret: () => ({ id: 'report' }) } },
-        ),
-      ).toBe('report')
+export const getReport = createServerFn().handler(async () => session())`,
+        'server-only.ts': `export const readSecret = () => ({ id: 'report' })\n`,
+      })
+      expectNotLoaded(await served.loads(), ['./server-only'])
+      expect(await callServerFnThroughCallers(served, 'module.getReport')).toBe(
+        'report',
+      )
     },
   )
 
@@ -697,34 +704,37 @@ export const getReport = createServerFn().handler(async () => session())`)
   // Source: babel-dead-code-elimination "SCC dead code elimination" (mutual
   // recursion, self-recursive functions, unexported circular references)
   test('the client drops handler-only cycles and default parameters', async () => {
-    const compiled =
-      await compileAll(`${head}import { secret, defaultId } from './secret.server'
+    const served = await serveCase(await host(), {
+      'module.tsx': `${head}import { secret, defaultId } from './secret.server'
 function walk(n: number): number { return n > 0 ? walkBack(n - 1) : secret.length }
 function walkBack(n: number): number { return n > 0 ? walk(n - 1) : 0 }
 const loop = (n: number): number => (n > 0 ? loop(n - 1) : 0)
 function load(id = defaultId()) { return id }
 function unusedA(): number { return unusedB() }
 function unusedB(): number { return unusedA() }
-export const fn = createServerFn().handler(async () => [walk(3), loop(2), load()])`)
-    expectNotLoaded(await moduleLoads(compiled.client), ['./secret.server'])
-    expect(
-      await callServerFnThroughCallers(compiled, (module) => module.fn, {
-        './secret.server': `export const secret = 'secret'; export const defaultId = () => 'id'`,
-      }),
-    ).toEqual([0, 0, 'id'])
+export const fn = createServerFn().handler(async () => [walk(3), loop(2), load()])`,
+      'secret.server.ts': `export const secret = 'secret'; export const defaultId = () => 'id'\n`,
+    })
+    expectNotLoaded(await served.loads(), ['./secret.server'])
+    expect(await callServerFnThroughCallers(served, 'module.fn')).toEqual([
+      0,
+      0,
+      'id',
+    ])
   })
 
   // Source: babel-dead-code-elimination "assignment"
   test('callers keep handler-read bindings that top-level statements assign', async () => {
-    const compiled = await compileAll(`${head}let x: string
+    // An assignment left without its declaration throws in a module:
+    // `serveCase` evaluates the module on the client and the server.
+    const served = await serveCase(await host(), {
+      'module.tsx': `${head}let x: string
 x = 'x-assigned'
 y = 'y-assigned'
 var y: string
-export const fn = createServerFn().handler(async () => [x, y])`)
-    // An assignment left without its declaration throws in a module.
-    await evaluateModule(compiled.client)
-    await evaluateModule(compiled.ssr)
-    expect(await callProvider(compiled, 'fn')).toEqual([
+export const fn = createServerFn().handler(async () => [x, y])`,
+    })
+    expect(await callFromClient(served, 'module.fn')).toEqual([
       'x-assigned',
       'y-assigned',
     ])
@@ -732,64 +742,71 @@ export const fn = createServerFn().handler(async () => [x, y])`)
 
   // Source: babel-dead-code-elimination "repeated elimination"
   test('a binding only the handler writes and a declarator a kept sibling reads keep working', async () => {
-    const compiled =
-      await compileAll(`${head}import { serverValue } from './db.server'
+    const served = await serveCase(await host(), {
+      'module.tsx': `${head}import { serverValue } from './db.server'
 let hits = 0
 let a = serverValue(), clientCopy = a
 export const fn = createServerFn().handler(async () => {
   hits++
   return [a, hits]
 })
-export const clientB = clientCopy`)
-    const stubs = { './db.server': { serverValue: () => 'value' } }
+export const clientB = clientCopy`,
+      'db.server.ts': `export const serverValue = () => 'value'\n`,
+    })
     // The client reads `clientCopy = a`, so it keeps `serverValue()`.
-    expect((await evaluateModule(compiled.client, stubs)).clientB).toBe('value')
-    // Two calls on one server instance: the handler updates its own `hits`.
-    const provider = await evaluateProvider(compiled, stubs)
+    expect(await inPage(served, 'return module.clientB')).toBe('value')
+    // Two calls reach one server instance: the handler updates its own
+    // `hits`.
     expect([
-      await callProvider(provider, 'fn'),
-      await callProvider(provider, 'fn'),
+      await callFromClient(served, 'module.fn'),
+      await callFromClient(served, 'module.fn'),
     ]).toEqual([
       ['value', 1],
       ['value', 2],
     ])
-    expect(
-      await callServerFnThroughCallers(compiled, (module) => module.fn, stubs),
-    ).toEqual(['value', 1])
+    // Server code runs the handler too, in that instance or its own
+    // (where the handler lives on the server is free, §5.4).
+    const fromServer = (await callOnServer(served, 'module.fn')) as [
+      string,
+      number,
+    ]
+    expect(fromServer[0]).toBe('value')
+    expect([1, 3]).toContain(fromServer[1])
   })
 
   // Source: babel-dead-code-elimination "variable" > "within for...in",
   // "within for...of" (var bindings declared inside nested statements)
   test('the client drops handler-only vars declared inside top-level statements', async () => {
     const calls = ['openFlag', 'connect', 'readMode']
-    const compiled =
-      await compileAll(`${head}import { ${calls.join(', ')} } from './db.server'
+    // The page has no `process`: the module reads the server's environment
+    // through `globalThis`.
+    const served = await serveCase(await host(), {
+      'module.tsx': `${head}import { ${calls.join(', ')} } from './db.server'
 if (typeof window === 'undefined') {
   var flag = openFlag()
 }
 try {
   var conn = connect()
 } catch {}
-switch (process.env.MODE) {
+switch (globalThis.process?.env.MODE) {
   case 'x':
     var mode = readMode()
 }
-export const fn = createServerFn().handler(async () => [flag, conn, mode])`)
-    expectNotLoaded(await moduleLoads(compiled.client), ['./db.server'])
-    for (const call of calls) {
-      expect(compiled.client).not.toContain(call)
-    }
+export const fn = createServerFn().handler(async () => [flag, conn, mode])`,
+      'db.server.ts': calls
+        .map((call) => `export const ${call} = () => '${call}'\n`)
+        .join(''),
+    })
+    expectNotLoaded(await served.loads(), ['./db.server'])
     // On the server (no `window`, MODE unset), the handler reads what the
     // statements it depends on assigned.
     vi.stubEnv('MODE', '')
     try {
-      expect(
-        await callServerFnThroughCallers(compiled, (module) => module.fn, {
-          './db.server': Object.fromEntries(
-            calls.map((call) => [call, () => call]),
-          ),
-        }),
-      ).toEqual(['openFlag', 'connect', undefined])
+      expect(await callServerFnThroughCallers(served, 'module.fn')).toEqual([
+        'openFlag',
+        'connect',
+        undefined,
+      ])
     } finally {
       vi.unstubAllEnvs()
     }
