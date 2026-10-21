@@ -195,7 +195,10 @@ describe('route modules compiled for the dev server', () => {
   // The webpack style in Vite: Vite gives no `import.meta.webpackHot`
   const webpackInVite: Array<Host> = [
     { ...vite[0]!, name: 'a page (no webpack hot API, window)' },
-    { ...vite[1]!, name: 'the SSR module runner (no webpack hot API, no window)' },
+    {
+      ...vite[1]!,
+      name: 'the SSR module runner (no webpack hot API, no window)',
+    },
   ]
 
   describe.each([

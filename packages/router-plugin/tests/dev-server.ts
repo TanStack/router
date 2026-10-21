@@ -5,6 +5,15 @@
  * shared dev-server harness (`@tanstack/compiler-test-utils/dev-server`). The
  * temporary apps live in this directory, so their imports resolve to this
  * package's dependencies: the real router packages, React, Solid and Vue.
+ *
+ * Its server-side helpers (`renderRoutePath`, `import` of the SSR
+ * environment) judge server semantics. Client semantics of route module
+ * exports (`expectExportedRouteOptions`, `expectSharedOverloads`) run in a
+ * real page through `route-app.ts`. Deprecated, for their remaining
+ * callers outside this harness's own tests: `renderRouteComponent` (Node
+ * rendering of a client option), `servedRouterPackageUrl` (a stub key for
+ * `evaluateServed`) and `isServedAppModule` (a served-URL filter that skips
+ * `/@fs/` and `node_modules`); route-app's page requests replace them.
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'

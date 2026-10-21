@@ -27,7 +27,6 @@ import type { ExportedRouteOptionsCase } from './dev-server'
  */
 const unsplit = { hmr: true, pluginOptions: { autoCodeSplitting: false } }
 
-
 describe('route HMR keeps route components working under their names', () => {
   // Source: ReactFreshBabelPlugin-test "registers top-level exported function
   // declarations" and "registers top-level exported named arrow functions";

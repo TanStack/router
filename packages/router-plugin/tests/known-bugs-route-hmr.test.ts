@@ -33,7 +33,9 @@ function topLevelNames(code: string) {
       case 'ObjectPattern':
         for (const property of pattern.properties) {
           addPattern(
-            property.type === 'RestElement' ? property.argument : property.value,
+            property.type === 'RestElement'
+              ? property.argument
+              : property.value,
           )
         }
         break

@@ -128,7 +128,7 @@ async function editWhileLoaded(
   await page.page.evaluate(`(async () => {
   const probe = await import('/${probeFile}')
   const entry = await import('/${entryFile}')
-  const { Route } = await entry.route()
+  const { Route } = entry.route
   for (const option of ['component', 'errorComponent', 'pendingComponent', 'notFoundComponent', 'loader']) {
     await probe.trigger(Route, option)
   }
@@ -141,21 +141,33 @@ async function editWhileLoaded(
 })()`)
   const edited = route.replace('({', '({ staticData: { edited: true },')
   expect(edited).not.toBe(route)
+  const consoleBefore = page.console.length
   await app.host.edit({ 'route.tsx': edited })
   const editedInPlace = () =>
-    page.page.evaluate(
+    page.page.evaluate<boolean>(
       `Object.values(window.__router?.routesById ?? {}).some((route) => route.options.staticData?.edited === true)`,
-    ) as Promise<boolean>
+    )
   let shown = true
   try {
     await waitForOutcome({
-      applied: async () => page.loads() > 1 || (await editedInPlace()),
+      // A reload, the edit in the live route, or Vite's client reporting
+      // the update applied (after every accept callback ran: e.g. the
+      // framework's own refresh of the split component)
+      applied: async () =>
+        page.loads() > 1 ||
+        (await editedInPlace()) ||
+        page.console
+          .slice(consoleBefore)
+          .some((line) => line.includes('[vite] hot updated')),
       timeout: options.bound ?? 10_000,
       describe: () => `the page loaded ${page.loads()} time(s)`,
     })
   } catch {
     shown = false
   }
+  // Every module of the update fetched (its accept callbacks run once it
+  // is): what the page shows is the edit's whole outcome
+  await page.page.waitForLoadState('networkidle').catch(() => {})
   const reloaded = page.loads() > 1
   return {
     shown,
