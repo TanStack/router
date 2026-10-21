@@ -2649,7 +2649,6 @@ export async function hydrate(router: AnyRouter): Promise<void> {
 
     // Loaders start together after the serial phase, as in a client lane. A
     // superseded hydration aborted `controller`, so none of them runs then.
-    let parent: WorkMatch | Promise<WorkMatch> | undefined
     const loads: Array<Promise<WorkMatch>> = []
     // A loop, not a callback, reads the payload, so no closure keeps it alive.
     for (let index = 0; index < Math.min(failed, committed.length); index++) {
@@ -2667,6 +2666,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
         (transported ? loader.hydrate : !terminal) &&
         !signal.aborted
       ) {
+        const previous = committed[index - 1]
         // Hydration starts from fresh matches; only this loop creates flights.
         const flight = (match._flight = createLoaderFlight(
           router,
@@ -2674,23 +2674,22 @@ export async function hydrate(router: AnyRouter): Promise<void> {
           match,
           route,
           (ctx) => step(loader, dehydrated, 'l', () => ctx),
-          parent && Promise.resolve(parent),
+          previous && Promise.resolve(loads[index - 1] ?? previous),
           laneOptions,
         ))
         match.isFetching = 'loader'
         match.abortController = flight[1 /* controller */]
-        const previous = committed[index - 1]!
         if (
           transported ||
           (loads[index - 1] &&
-            router._flights!.get(previous.id) !== previous._flight)
+            router._flights!.get(previous!.id) !== previous!._flight)
         ) {
           // Fresh flights register synchronously, before any callbacks run.
           // Transforms and work depending on them belong to this hydration.
           // Their leases remain private; a new load runs its own handlers.
           router._flights!.delete(match.id)
         }
-        loads[index] = parent = flight[0 /* outcome */].then((result) => {
+        loads[index] = flight[0 /* outcome */].then((result) => {
           match.isFetching = false
           const current = isCurrent() && index < committed.length
           // Parent data belongs to the shared generation even after this
@@ -2719,8 +2718,6 @@ export async function hydrate(router: AnyRouter): Promise<void> {
           }
           return getParentSnapshot(snapshot, result)
         })
-      } else {
-        parent = match
       }
     }
     // Work starts in parallel. Once a route fails, only its ancestors can
