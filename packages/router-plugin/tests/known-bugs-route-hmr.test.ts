@@ -3,29 +3,85 @@
  * Each test asserts correct behaviour for a bug on main and is marked
  * .fails; remove .fails when the bug is fixed.
  *
+ * The route file, the modules the test gives and a module importing the
+ * route module run in a real page served by a Vite dev server with the
+ * router plugin and React's plugin (`route-app.ts`): the real hot context,
+ * React Refresh, the real router.
+ *
  * Pins of what the page shows after an edit (React Refresh keeping state,
  * lowercase, inline and exported components) run a real dev server and a
  * real browser page (`route-hmr-page.ts`):
  * integration/known-bugs-route-hmr.test.ts.
  */
+import { parseSync } from 'vite'
 import { describe, expect, test } from 'vitest'
-import {
-  evaluateModule,
-  expectValidModules,
-  head,
-  loadRoute,
-  renderComponent,
-  routeSpecifier,
-  transformWithRouteHmrPlugin,
-} from './regression-helpers'
+import { expectValidModules, head, loadRoute } from './route-app'
+import type { ESTree } from 'vite'
+
+/** Top-level names a module declares (an independent parse). */
+function topLevelNames(code: string) {
+  const { program } = parseSync('module.js', code, { sourceType: 'module' })
+  const names = new Set<string>()
+  const addPattern = (pattern: ESTree.Node | null | undefined): void => {
+    if (!pattern) {
+      return
+    }
+    switch (pattern.type) {
+      case 'Identifier':
+        names.add(pattern.name)
+        break
+      case 'ObjectPattern':
+        for (const property of pattern.properties) {
+          addPattern(
+            property.type === 'RestElement'
+              ? property.argument
+              : property.value,
+          )
+        }
+        break
+      case 'ArrayPattern':
+        pattern.elements.forEach((element) => addPattern(element))
+        break
+      case 'RestElement':
+        addPattern(pattern.argument)
+        break
+      case 'AssignmentPattern':
+        addPattern(pattern.left)
+        break
+    }
+  }
+  const addDeclaration = (node: ESTree.Node | null | undefined): void => {
+    if (!node) {
+      return
+    }
+    if (node.type === 'VariableDeclaration') {
+      node.declarations.forEach((declarator) => addPattern(declarator.id))
+    } else if (
+      (node.type === 'FunctionDeclaration' ||
+        node.type === 'ClassDeclaration') &&
+      node.id
+    ) {
+      names.add(node.id.name)
+    }
+  }
+  for (const statement of program.body) {
+    if (statement.type === 'ImportDeclaration') {
+      statement.specifiers.forEach((specifier) =>
+        names.add(specifier.local.name),
+      )
+    } else if (
+      statement.type === 'ExportNamedDeclaration' ||
+      statement.type === 'ExportDefaultDeclaration'
+    ) {
+      addDeclaration(statement.declaration as ESTree.Node)
+    } else {
+      addDeclaration(statement)
+    }
+  }
+  return names
+}
 
 describe('generated code', () => {
-  /** Evaluates the route module compiled with HMR and returns its route. */
-  async function evaluateRoute(code: string) {
-    const { Route } = await loadRoute(code, { hmr: true })
-    return Route as { options: { component?: unknown } }
-  }
-
   // Control for the options-in-a-variable pins below (same harness).
   test.each([
     {
@@ -44,8 +100,10 @@ export const Route = createRootRoute({
   ])(
     'inline route options ($name) evaluate to a route with a component',
     async ({ code }) => {
-      const Route = await evaluateRoute(code)
-      expect(typeof Route.options.component).toBe('function')
+      const route = await loadRoute(code, { hmr: true })
+      expect(await route.run(`return typeof options.component`)).toBe(
+        'function',
+      )
     },
   )
 
@@ -72,43 +130,102 @@ export const Route = createFileRoute('/')(options)`,
   ])(
     'route options in a variable ($name) evaluate to a route with a component',
     async ({ code }) => {
-      const Route = await evaluateRoute(code)
-      expect(typeof Route.options.component).toBe('function')
+      const route = await loadRoute(code, { hmr: true })
+      expect(await route.run(`return typeof options.component`)).toBe(
+        'function',
+      )
     },
   )
+
+  /**
+   * Names a user binding may take: `hot` (the binding of the bug report),
+   * and every top-level name the route module the page receives declares
+   * with HMR and not without it (adaptive: whatever names the compiler
+   * introduces for HMR, not one spelling of today's), except the names the
+   * tools introduce in any module of the app (Vite's hot context, React
+   * Refresh): those of a module that is not a route, with components, served
+   * by the same dev server.
+   */
+  async function candidateNames() {
+    const code = `${head}const marker = 'marker'
+export const Route = createFileRoute('/')({
+  component: () => <p>{marker}</p>,
+})`
+    const hmr = await loadRoute(code, {
+      hmr: true,
+      files: {
+        'widgets.tsx': ['A', 'B', 'C', 'D']
+          .map((name) => `export function ${name}() { return <p>${name}</p> }`)
+          .join('\n'),
+      },
+    })
+    const withHmr = await hmr.transform()
+    const tools = topLevelNames(await hmr.transform('/widgets.tsx'))
+    const without = topLevelNames(
+      await (await loadRoute(code, { hmr: false })).transform(),
+    )
+    return [
+      ...new Set([
+        'hot',
+        ...[...topLevelNames(withHmr)].filter(
+          (name) => !without.has(name) && !tools.has(name),
+        ),
+      ]),
+    ]
+  }
 
   // Bug: our `react-refresh-ignored-route-exports` compiler plugin injects a
   // top-level `const hot = import.meta.hot` that collides with a user's
   // top-level `hot` binding (compile error `Duplicate declaration "hot"`).
   // Impact: the route cannot be served in development.
   test.fails.each([
-    { name: 'a constant', declaration: `const hot = 'hot'`, exported: false },
-    {
-      name: 'an exported constant',
-      declaration: `export const hot = 'hot'`,
-      exported: true,
-    },
+    { name: 'a constant', keyword: 'const', exported: false },
+    { name: 'an exported constant', keyword: 'export const', exported: true },
   ])(
     'a user binding named hot ($name) does not collide with the injected HMR code',
-    async ({ declaration, exported }) => {
-      const route = await loadRoute(
-        `${head}${declaration}
+    async ({ keyword, exported }) => {
+      const results: Record<string, unknown> = {}
+      for (const name of await candidateNames()) {
+        const route = await loadRoute(
+          `${head}${keyword} ${name} = 'hot'
 export const Route = createFileRoute('/')({
-  component: () => <p>{hot}</p>,
+  component: () => <p>{${name}}</p>,
 })`,
-        { hmr: true },
-      )
-      await expectValidModules(route.modules)
-      expect(await route.render('component')).toBe('<p>hot</p>')
-      if (exported) {
-        // A module importing it gets the user's value.
-        const { hot } = await route.importFromRoute(
-          `export { hot } from '${routeSpecifier}'`,
+          {
+            hmr: true,
+            files: exported
+              ? { 'importer.ts': `export { ${name} } from './route'\n` }
+              : {},
+          },
         )
-        expect(hot).toBe('hot')
+        try {
+          await expectValidModules(route)
+          results[name] = await route.run(`return [
+  await render('component'),
+  ${exported ? `(await app('importer.ts'))[${JSON.stringify(name)}]` : `'hot'`},
+]`)
+        } catch (error) {
+          results[name] = String(error).split('\n')[0]
+        }
       }
+      // Each module importing it gets the user's value.
+      expect(results).toEqual(
+        Object.fromEntries(
+          Object.keys(results).map((name) => [name, ['<p>hot</p>', 'hot']]),
+        ),
+      )
     },
   )
+
+  /** `./state`: `init` returns its argument and counts its calls. */
+  const state = {
+    'state.ts': `export let inits = 0
+export const init = (value: number) => {
+  inits++
+  return value
+}
+`,
+  }
 
   /**
    * Loads, with HMR, a route whose `page` component (declared by
@@ -120,7 +237,6 @@ export const Route = createFileRoute('/')({
    * ran.
    */
   async function renderSharedComponent(declaration: string) {
-    let inits = 0
     const route = await loadRoute(
       `${head}import { init } from './state'
 let renders = init(0)
@@ -129,23 +245,13 @@ export const Route = createFileRoute('/')({
   component: page,
   notFoundComponent: page,
 })`,
-      {
-        hmr: true,
-        stubs: {
-          './state': {
-            init: (value: number) => {
-              inits++
-              return value
-            },
-          },
-        },
-      },
+      { hmr: true, files: state },
     )
-    return [
-      await route.render('component'),
-      await route.render('notFoundComponent'),
-      inits,
-    ]
+    return route.run(`return [
+  await render('component'),
+  await render('notFoundComponent'),
+  (await app('state.ts')).inits,
+]`)
   }
 
   // Control for the lowercase shared component pin below (same harness).
@@ -190,13 +296,14 @@ export const Route = createFileRoute('/')({
   return <p>hi</p>
 }
 export const Route = createFileRoute('/')({ component: page, pendingComponent: page })`,
-        { hmr: true, refresh: true },
+        { hmr: true },
       )
-      await expectValidModules(route.modules)
-      expect([
-        await route.render('component'),
-        await route.render('pendingComponent'),
-      ]).toEqual(['<p>hi</p>', '<p>hi</p>'])
+      await expectValidModules(route)
+      expect(
+        await route.run(
+          `return [await render('component'), await render('pendingComponent')]`,
+        ),
+      ).toEqual(['<p>hi</p>', '<p>hi</p>'])
     },
   )
 
@@ -220,32 +327,20 @@ export const Route = createFileRoute('/')({ component: page, pendingComponent: p
         `${head}const page = () => <p>hi</p>
 export { page }
 export const Route = createFileRoute('/')({ component: page })`,
-        { hmr: true, refresh: true },
+        {
+          hmr: true,
+          files: { 'importer.ts': `export { page } from './route'\n` },
+        },
       )
-      await expectValidModules(route.modules)
-      expect(await route.render('component')).toBe('<p>hi</p>')
-      const { page } = await route.importFromRoute(
-        `export { page } from '${routeSpecifier}'`,
-      )
-      expect(await renderComponent(page)).toBe('<p>hi</p>')
+      await expectValidModules(route)
+      expect(
+        await route.run(`return [
+  await render('component'),
+  await renderComponent((await app('importer.ts')).page),
+]`),
+      ).toEqual(['<p>hi</p>', '<p>hi</p>'])
     },
   )
-
-  /**
-   * Compiles a route with the route HMR plugin (automatic code splitting
-   * off), evaluates it and returns its route.
-   */
-  async function evaluateUnsplitRoute(code: string) {
-    const { Route } = await evaluateModule(
-      await transformWithRouteHmrPlugin(code),
-      {
-        '@tanstack/react-router': {
-          createFileRoute: () => (options: unknown) => ({ options }),
-        },
-      },
-    )
-    return Route as unknown as { options: Record<string, any> }
-  }
 
   // Control for the lowercase shared component pins above: a lowercase
   // `function` loader that the split component also calls.
@@ -261,29 +356,35 @@ export const Route = createFileRoute('/')({
 })`,
       { hmr: true },
     )
-    await expectValidModules(route.modules)
+    await expectValidModules(route)
     expect(await route.isLazy('loader')).toBe(true)
-    expect(await route.options.loader()).toBe('data')
-    expect(await route.render('component')).toBe('<p>data</p>')
+    expect(
+      await route.run(
+        `return [await options.loader(), await render('component')]`,
+      ),
+    ).toEqual(['data', '<p>data</p>'])
   })
 
   // Control for the hoisted inline component pin (a real page:
   // integration/known-bugs-route-hmr.test.ts "an inline pending component
-  // hoisted before a renamed lowercase component"): an option that is not
-  // an inline component, reading a lowercase component a later option
-  // passes, gets that component.
+  // hoisted before a renamed lowercase component"): with the route HMR
+  // plugin (automatic code splitting off), an option that is not an inline
+  // component, reading a lowercase component a later option passes, gets
+  // that component.
   test('an option reading a lowercase component a later option passes gets that component', async () => {
-    const Route =
-      await evaluateUnsplitRoute(`${head}const errorFallback = () => <p>error</p>
+    const route = await loadRoute(
+      `${head}const errorFallback = () => <p>error</p>
 export const Route = createFileRoute('/')({
   staticData: { errorFallback },
   errorComponent: errorFallback,
-})`)
-    expect(Route.options.staticData.errorFallback).toBe(
-      Route.options.errorComponent,
+})`,
+      { hmr: true, pluginOptions: { autoCodeSplitting: false } },
     )
-    expect(await renderComponent(Route.options.errorComponent)).toBe(
-      '<p>error</p>',
-    )
+    expect(
+      await route.run(`return [
+  options.staticData.errorFallback === options.errorComponent,
+  await renderComponent(options.errorComponent),
+]`),
+    ).toEqual([true, '<p>error</p>'])
   })
 })
