@@ -16,6 +16,7 @@ on:
       - 'packages/router-plugin/**'
       - 'packages/start-plugin-core/**'
       - 'packages/compiler-test-utils/**'
+      - 'packages/react-start-rsc/**'
       - 'pnpm-lock.yaml'
       - '.github/workflows/compiler-platforms.yml'
   schedule:
@@ -92,6 +93,7 @@ jobs:
           --filter "@tanstack/router-generator..."
           --filter "@tanstack/router-plugin..."
           --filter "@tanstack/start-plugin-core..."
+          --filter "@tanstack/react-start-rsc..."
           --filter "tanstack-react-start-e2e-basic..."
       - name: Unit tests (fast tier)
         run: >-
@@ -102,6 +104,11 @@ jobs:
         run: >-
           pnpm nx run-many --targets=test:implementation:unit
           --projects=@tanstack/router-generator,@tanstack/router-plugin,@tanstack/start-plugin-core
+          --skip-nx-cache --outputStyle=static
+      - name: Noncompiler tests (runtime and build plumbing)
+        run: >-
+          pnpm nx run-many --targets=test:noncompiler
+          --projects=@tanstack/start-plugin-core,@tanstack/react-start-rsc
           --skip-nx-cache --outputStyle=static
       - name: Integration smoke (no browser)
         run: >-

@@ -1,19 +1,20 @@
+// Noncompiler coverage: runtime/build plumbing, outside the J1–J7 compiler oracle.
 import { describe, expect, test } from 'vitest'
 import { deserialize } from 'seroval'
-import { shouldRebaseInlineCssUrls } from '../../src/start-manifest-plugin/inlineCss'
+import { shouldRebaseInlineCssUrls } from '../../../../src/start-manifest-plugin/inlineCss'
 import {
   appendUniqueStrings,
   buildStartManifest,
   createManifestAssetResolvers,
   scanClientChunks,
   serializeStartManifest,
-} from '../../src/start-manifest-plugin/manifestBuilder'
+} from '../../../../src/start-manifest-plugin/manifestBuilder'
 import {
   getRouteFilePathsFromModuleIds,
   normalizeViteClientBuild,
   normalizeViteClientChunk,
-} from '../../src/vite/start-manifest-plugin/normalized-client-build'
-import type { StartManifest } from '../../src/start-manifest-plugin/manifestBuilder'
+} from '../../../../src/vite/start-manifest-plugin/normalized-client-build'
+import type { StartManifest } from '../../../../src/start-manifest-plugin/manifestBuilder'
 import type { ManifestCssLink } from '@tanstack/router-core'
 import type { Rollup } from 'vite'
 

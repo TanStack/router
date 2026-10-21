@@ -1,10 +1,11 @@
+// Noncompiler coverage: runtime/build plumbing, outside the J1–J7 compiler oracle.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { prerenderWithVite } from '../src/vite/prerender'
+import { prerenderWithVite } from '../../../src/vite/prerender'
 
 const preview = vi.hoisted(() => vi.fn())
 
-vi.mock('../src/utils', async () => {
-  const actual = await vi.importActual<any>('../src/utils')
+vi.mock('../../../src/utils', async () => {
+  const actual = await vi.importActual<any>('../../../src/utils')
   return {
     ...actual,
     createLogger: () => ({ info: () => {}, warn: () => {}, error: () => {} }),

@@ -1,6 +1,7 @@
+// Noncompiler coverage: runtime/build plumbing, outside the J1–J7 compiler oracle.
 import { describe, expect, test } from 'vitest'
-import { normalizeRspackClientBuild } from '../../src/rsbuild/normalized-client-build'
-import { buildStartManifest } from '../../src/start-manifest-plugin/manifestBuilder'
+import { normalizeRspackClientBuild } from '../../../../src/rsbuild/normalized-client-build'
+import { buildStartManifest } from '../../../../src/start-manifest-plugin/manifestBuilder'
 import type { Rspack } from '@rsbuild/core'
 
 // Rspack reports module paths using the OS native separator on Windows

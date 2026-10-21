@@ -136,3 +136,65 @@ test(
   },
   timeout,
 )
+
+test.each(['dev', 'build'] as const)(
+  'the %s host records warnings through Rsbuild’s logger',
+  async (mode) => {
+    const host = await createRsbuildPluginHost({
+      dir: testsDir,
+      registerCleanup: onTestFinished,
+      files: { 'src/entry.ts': 'export const value = 1' },
+      serve: mode === 'dev',
+      plugins: [
+        {
+          name: 'logger-control',
+          setup(api) {
+            api.onBeforeEnvironmentCompile(() => {
+              api.logger.warn('src/entry.ts: logger control warning')
+            })
+          },
+        },
+      ],
+    })
+    const diagnostics =
+      mode === 'dev' ? host.diagnostics : (await host.build()).diagnostics
+    expectDiagnostic(diagnostics, {
+      severity: 'warning',
+      file: 'src/entry.ts',
+      explains: { mentions: ['logger control'] },
+    })
+  },
+  timeout,
+)
+
+test(
+  'concurrent Rsbuild apps retain their own native-loader diagnostics',
+  async () => {
+    const start = () =>
+      createRsbuildPluginHost({
+        dir: testsDir,
+        registerCleanup: onTestFinished,
+        files: { 'src/entry.ts': "export const value = '__MARK__'" },
+        plugins: [userPlugin()],
+      })
+    const [first, second] = await Promise.all([start(), start()])
+    await Promise.all([
+      first.edit({ 'src/entry.ts': "export const value = '__MARK__ edited'" }),
+      second.edit({ 'src/entry.ts': "export const value = '__MARK__ edited'" }),
+    ])
+    for (const [app, other] of [
+      [first, second],
+      [second, first],
+    ] as const) {
+      expectDiagnostic(app.diagnostics, {
+        severity: 'warning',
+        file: 'src/entry.ts',
+        root: app.root,
+      })
+      expect(
+        app.diagnostics.some(({ text }) => text.includes(other.root)),
+      ).toBe(false)
+    }
+  },
+  timeout,
+)

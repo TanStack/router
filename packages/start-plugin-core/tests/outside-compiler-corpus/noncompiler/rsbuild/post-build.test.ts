@@ -1,3 +1,4 @@
+// Noncompiler coverage: runtime/build plumbing, outside the J1–J7 compiler oracle.
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { describe, expect, it, vi } from 'vitest'
@@ -17,8 +18,8 @@ describe('postBuildWithRsbuild', () => {
       expect(await response.text()).toBe('ok')
     })
 
-    vi.doMock('../../src/prerender', async () => {
-      const actual = await vi.importActual<any>('../../src/prerender')
+    vi.doMock('../../../../src/prerender', async () => {
+      const actual = await vi.importActual<any>('../../../../src/prerender')
       return {
         ...actual,
         prerender: prerenderSpy,
@@ -37,7 +38,7 @@ describe('postBuildWithRsbuild', () => {
     )
 
     const { postBuildWithRsbuild } =
-      await import('../../src/rsbuild/post-build')
+      await import('../../../../src/rsbuild/post-build')
 
     try {
       await postBuildWithRsbuild({

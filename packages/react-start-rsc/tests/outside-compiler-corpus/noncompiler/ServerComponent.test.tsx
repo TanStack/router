@@ -1,3 +1,4 @@
+// Noncompiler coverage: runtime/build plumbing, outside the J1–J7 compiler oracle.
 import React from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { act, render } from '@testing-library/react'
@@ -7,11 +8,11 @@ import { createFromReadableStream as browserDecode } from '@vitejs/plugin-rsc/br
 import {
   createCompositeFromStream,
   createServerComponentFromStream,
-} from '../src/createServerComponentFromStream'
+} from '../../../src/createServerComponentFromStream'
 import {
   SERVER_COMPONENT_CSS_HREFS,
   SERVER_COMPONENT_JS_PRELOADS,
-} from '../src/ServerComponentTypes'
+} from '../../../src/ServerComponentTypes'
 
 // Force the client implementation to be used in tests.
 vi.mock('@tanstack/start-client-core', () => {
@@ -69,7 +70,8 @@ describe('ServerComponent (client)', () => {
 
     const Component = createServerComponentFromStream(stream)
 
-    const { CompositeComponent } = await import('../src/CompositeComponent')
+    const { CompositeComponent } =
+      await import('../../../src/CompositeComponent')
 
     await act(async () => {
       render(

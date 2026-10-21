@@ -1,3 +1,4 @@
+// Noncompiler coverage: runtime/build plumbing, outside the J1–J7 compiler oracle.
 import {
   mkdirSync,
   mkdtempSync,
@@ -9,9 +10,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { normalize } from 'pathe'
 import { afterEach, describe, expect, test } from 'vitest'
-import { resolveStartEntryPlan } from '../src/planning'
-import { parseStartConfig as parseRsbuildStartConfig } from '../src/rsbuild/schema'
-import { parseStartConfig as parseViteStartConfig } from '../src/vite/schema'
+import { resolveStartEntryPlan } from '../../../src/planning'
+import { parseStartConfig as parseRsbuildStartConfig } from '../../../src/rsbuild/schema'
+import { parseStartConfig as parseViteStartConfig } from '../../../src/vite/schema'
 
 const corePluginOpts = { framework: 'react' as const }
 const defaultEntryPaths = {

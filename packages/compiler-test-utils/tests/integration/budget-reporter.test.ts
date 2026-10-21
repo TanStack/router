@@ -34,6 +34,7 @@ const brokenFile = `import './missing-helper.js'\n\ntest('never runs', () => {})
 async function runTier(
   files: Record<string, string>,
   budgets: 'strict' | 'report-only',
+  projectName = 'unit',
 ) {
   const root = await mkdtemp(path.join(tmpdir(), 'budget-reporter-'))
   onTestFinished(() => rm(root, { recursive: true, force: true }))
@@ -43,7 +44,7 @@ async function runTier(
   )
   await writeFile(
     path.join(root, 'vitest.config.mjs'),
-    `export default { test: { globals: true, watch: false, reporters: ['default', ${JSON.stringify(reporter)}] } }\n`,
+    `export default { test: { name: ${JSON.stringify(projectName)}, globals: true, watch: false, reporters: ['default', ${JSON.stringify(reporter)}] } }\n`,
   )
   for (const [name, code] of Object.entries(files)) {
     await writeFile(path.join(root, name), code)
@@ -120,3 +121,13 @@ test.concurrent(
   },
   30_000,
 )
+
+test('noncompiler coverage does not consume compiler acceptance budgets', async () => {
+  const { exitCode, output } = await runTier(
+    { 'runtime.test.js': passingFile },
+    'strict',
+    'noncompiler',
+  )
+  expect(exitCode).toBe(0)
+  expect(output).not.toContain('Test budget (strict')
+}, 30_000)

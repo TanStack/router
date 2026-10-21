@@ -1,5 +1,6 @@
+// Noncompiler coverage: runtime/build plumbing, outside the J1–J7 compiler oracle.
 import { describe, expect, test } from 'vitest'
-import { createVirtualModule } from '../src/vite/createVirtualModule'
+import { createVirtualModule } from '../../../src/vite/createVirtualModule'
 
 describe('createVirtualModule', () => {
   test('resolves and loads the default vite virtual id', () => {

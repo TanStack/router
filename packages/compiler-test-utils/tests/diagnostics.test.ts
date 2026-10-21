@@ -96,7 +96,7 @@ describe('real channels', () => {
     })
   })
 
-  test('overlapping captureConsole calls each get what is logged while they run, and the last one restores the console', async () => {
+  test('overlapping captureConsole calls keep their own output and restore the console', async () => {
     const before = console.warn
     let releaseFirst!: () => void
     const first = captureConsole(async () => {
@@ -107,18 +107,17 @@ describe('real channels', () => {
       console.warn('after the second ended')
     })
     const second = await captureConsole(() => {
-      console.warn('both')
+      console.warn('second only')
     })
     expect(console.warn).not.toBe(before)
     releaseFirst()
     const { diagnostics } = await first
     expect(console.warn).toBe(before)
     expect(second.diagnostics.map((diagnostic) => diagnostic.text)).toEqual([
-      'both',
+      'second only',
     ])
     expect(diagnostics.map((diagnostic) => diagnostic.text)).toEqual([
       'first only',
-      'both',
       'after the second ended',
     ])
   })
@@ -449,6 +448,12 @@ describe('position strictness', () => {
 // failure, quoted code alone, or a message missing what tells the cause
 // apart fails.
 describe("explains: a cause in the diagnostic's own words", () => {
+  test('accepts an actionable client-access refusal without a wording whitelist', () => {
+    expectDiagnostic(
+      diagnosticsOf('Server function not accessible from client', 'error'),
+      { severity: 'error', explains: true },
+    )
+  })
   const source = `import { createServerFn } from '@tanstack/react-start'
 export const value = wrap(createServerFn().handler(() => 1))
 `

@@ -17,11 +17,12 @@
  * reported" is `expectNoProblems(channel.diagnostics)` (no `warning` and no
  * `error`; `info` is not a problem, N15).
  *
- * Scoping: a channel records from `openDiagnosticChannel()` until `close()`;
+ * Scoping: a channel records its `run()` work and async descendants until
+ * `close()`;
  * `mark()` / `since(mark)` slice what a step (an edit, a build) reported, and
  * `scope(run)` records exactly what `run` reported. Channels may overlap
  * (nested captures, or concurrent tests in one file): each receives what is
- * printed while it is open.
+ * printed by their own async work; concurrent scopes do not share output.
  *
  * Every entry is a `Diagnostic` of `./diagnostics` with its `source`, so the
  * content matchers (`expectDiagnostic`, `findDiagnostics`) read it as they
@@ -33,6 +34,7 @@ import { describeError, diagnosticsOf } from './diagnostics'
 import type { ConsoleMethod, PrintedEntry } from './console-hook'
 import type { Diagnostic, DiagnosticSource, Severity } from './diagnostics'
 import type { LogErrorOptions, Logger } from 'vite'
+import type { Rspack } from '@rsbuild/core'
 
 export type { DiagnosticSource } from './diagnostics'
 
@@ -68,6 +70,10 @@ export interface DiagnosticChannel {
   report: (value: unknown, severity: Severity, source: DiagnosticSource) => void
   /** Called with each diagnostic as it is recorded. */
   onDiagnostic: (listener: (diagnostic: ChannelDiagnostic) => void) => void
+  /** Runs work in this channel; descendants (watchers, requests) inherit it. */
+  run: <T>(run: () => T) => T
+  /** Restore this app’s scope at Rspack’s native-to-JS loader boundary. */
+  scopeRspack: (compiler: Rspack.Compiler) => void
   /** Stops recording (idempotent). */
   close: () => void
 }
@@ -120,7 +126,7 @@ export function printedDiagnostic(entry: PrintedEntry): ChannelDiagnostic {
   }
 }
 
-/** Opens a channel; it records until `close()`. */
+/** Opens a channel for run()/scope() work, recording until close(). */
 export function openDiagnosticChannel(
   options: DiagnosticChannelOptions = {},
 ): DiagnosticChannel {
@@ -145,7 +151,10 @@ export function openDiagnosticChannel(
           streams: recordsStreams,
           receive: (entry) => push(printedDiagnostic(entry)),
         })
-      : () => {}
+      : Object.assign(() => {}, {
+          run: <T>(run: () => T) => run(),
+          enter: () => {},
+        })
 
   const report = (
     value: unknown,
@@ -159,11 +168,20 @@ export function openDiagnosticChannel(
 
   const channel: DiagnosticChannel = {
     diagnostics,
+    run: stop.run,
+    scopeRspack: (compiler) => {
+      const name = 'diagnostic-channel:loader-scope'
+      compiler.hooks.compilation.tap(name, (compilation) => {
+        compiler.webpack.NormalModule.getCompilationHooks(
+          compilation,
+        ).loader.tap(name, stop.enter)
+      })
+    },
     mark: () => diagnostics.length,
     since: (mark) => diagnostics.slice(mark),
     scope: async (run) => {
       const from = diagnostics.length
-      const result = await run()
+      const result = await stop.run(run)
       return { result, diagnostics: diagnostics.slice(from) }
     },
     viteLogger: () => {
@@ -226,7 +244,7 @@ export async function captureDiagnostics<T>(
 ): Promise<{ result: T; diagnostics: Array<ChannelDiagnostic> }> {
   const channel = openDiagnosticChannel(options)
   try {
-    const result = await run(channel)
+    const result = await channel.run(() => run(channel))
     return { result, diagnostics: [...channel.diagnostics] }
   } finally {
     channel.close()

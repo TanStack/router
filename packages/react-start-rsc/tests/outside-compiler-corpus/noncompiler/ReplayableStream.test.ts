@@ -1,8 +1,9 @@
+// Noncompiler coverage: runtime/build plumbing, outside the J1–J7 compiler oracle.
 import { describe, expect, it } from 'vitest'
 import {
   REPLAYABLE_STREAM_MARKER,
   ReplayableStream,
-} from '../src/ReplayableStream'
+} from '../../../src/ReplayableStream'
 
 describe('ReplayableStream', () => {
   describe('basic functionality', () => {

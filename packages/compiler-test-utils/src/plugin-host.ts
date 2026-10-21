@@ -332,85 +332,87 @@ export async function createPluginHost(
       const outputs: Record<string, HostBuildEnvironment> = {}
       const clientModules = parsedModules()
       const channel = openDiagnosticChannel()
-      try {
-        const builder = await createBuilder(
-          mergeConfig(
+      return channel.run(async () => {
+        try {
+          const builder = await createBuilder(
             mergeConfig(
-              {
-                root: buildRoot,
-                configFile: false,
-                envDir: false,
-                publicDir: false,
-                mode,
-                clearScreen: false,
-                customLogger: channel.viteLogger(),
-                plugins: [
-                  ...pluginsFor('build', buildRoot),
-                  outputRecorder(outputs),
-                  // The evidence of the client's dangling-name check
-                  recordViteModules(clientModules, { environment: 'client' }),
-                ],
-              } satisfies InlineConfig,
-              config,
+              mergeConfig(
+                {
+                  root: buildRoot,
+                  configFile: false,
+                  envDir: false,
+                  publicDir: false,
+                  mode,
+                  clearScreen: false,
+                  customLogger: channel.viteLogger(),
+                  plugins: [
+                    ...pluginsFor('build', buildRoot),
+                    outputRecorder(outputs),
+                    // The evidence of the client's dangling-name check
+                    recordViteModules(clientModules, { environment: 'client' }),
+                  ],
+                } satisfies InlineConfig,
+                config,
+              ),
+              buildOptions.config ?? {},
             ),
-            buildOptions.config ?? {},
-          ),
-          // As the CLI: every environment when a plugin configures the app
-          // builder, else the client
-          null,
-        )
-        await builder.buildApp()
-      } catch (error) {
-        channel.close()
-        throw new HostBuildError(error, [...channel.diagnostics])
-      }
-      channel.close()
-      const diagnostics = [...channel.diagnostics]
-      return {
-        environments: outputs,
-        diagnostics,
-        describe: async (name, describeOptions = {}) => {
-          const environment = outputs[name]
-          if (!environment) {
-            throw new Error(
-              `no "${name}" environment was built (built: ${Object.keys(outputs).join(', ') || 'none'})`,
-            )
-          }
-          const env =
-            describeOptions.env ?? (name === 'client' ? 'client' : 'ssr')
-          // An app's own entry: the one emitted entry, unless named
-          const chunks = environment.chunks.filter(
-            (chunk) =>
-              describeOptions.entry === undefined ||
-              !chunk.isEntry ||
-              chunk.fileName === describeOptions.entry,
+            // As the CLI: every environment when a plugin configures the app
+            // builder, else the client
+            null,
           )
-          return describeBuild({
-            bundler: 'vite',
-            env,
-            mode,
-            minify: true,
-            root: buildRoot,
-            outDir: environment.outDir,
-            chunks: chunks.map(
-              ({ fileName, isEntry, imports, dynamicImports }) => ({
-                fileName,
-                isEntry,
-                imports,
-                dynamicImports,
-              }),
-            ),
-            sourcemap: chunks.every((chunk) => chunk.map !== undefined),
-            ...(name === 'client' && { parsedModules: clientModules }),
-            warnings: diagnostics
-              .filter((diagnostic) => diagnostic.severity === 'warning')
-              .map((diagnostic) => diagnostic.text),
-            consoleMessages: [],
-            duration: 0,
-            dispose: async () => {},
-          })
-        },
-      }
+          await builder.buildApp()
+        } catch (error) {
+          channel.close()
+          throw new HostBuildError(error, [...channel.diagnostics])
+        }
+        channel.close()
+        const diagnostics = [...channel.diagnostics]
+        return {
+          environments: outputs,
+          diagnostics,
+          describe: async (name, describeOptions = {}) => {
+            const environment = outputs[name]
+            if (!environment) {
+              throw new Error(
+                `no "${name}" environment was built (built: ${Object.keys(outputs).join(', ') || 'none'})`,
+              )
+            }
+            const env =
+              describeOptions.env ?? (name === 'client' ? 'client' : 'ssr')
+            // An app's own entry: the one emitted entry, unless named
+            const chunks = environment.chunks.filter(
+              (chunk) =>
+                describeOptions.entry === undefined ||
+                !chunk.isEntry ||
+                chunk.fileName === describeOptions.entry,
+            )
+            return describeBuild({
+              bundler: 'vite',
+              env,
+              mode,
+              minify: true,
+              root: buildRoot,
+              outDir: environment.outDir,
+              chunks: chunks.map(
+                ({ fileName, isEntry, imports, dynamicImports }) => ({
+                  fileName,
+                  isEntry,
+                  imports,
+                  dynamicImports,
+                }),
+              ),
+              sourcemap: chunks.every((chunk) => chunk.map !== undefined),
+              ...(name === 'client' && { parsedModules: clientModules }),
+              warnings: diagnostics
+                .filter((diagnostic) => diagnostic.severity === 'warning')
+                .map((diagnostic) => diagnostic.text),
+              consoleMessages: [],
+              duration: 0,
+              dispose: async () => {},
+            })
+          },
+        }
+      })
     },
     close,
   }

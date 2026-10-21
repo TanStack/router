@@ -1,3 +1,4 @@
+// Noncompiler coverage: runtime/build plumbing, outside the J1–J7 compiler oracle.
 import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('@tanstack/start-server-core/constants', () => ({
@@ -6,14 +7,14 @@ vi.mock('@tanstack/start-server-core/constants', () => ({
   },
 }))
 
-vi.mock('../src/build-sitemap', () => ({
+vi.mock('../../../src/build-sitemap', () => ({
   buildSitemap: vi.fn(),
 }))
 
 describe('postServerBuild', () => {
   it('rejects absolute SPA maskPath URLs to avoid external prerendering', async () => {
     const prerender = vi.fn(async () => {})
-    const { postBuild } = await import('../src/post-build')
+    const { postBuild } = await import('../../../src/post-build')
 
     const startConfig = {
       spa: {

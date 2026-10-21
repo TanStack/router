@@ -8,10 +8,7 @@
  */
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
-import {
-  diagnosticsOf,
-  expectDiagnostic,
-} from '@tanstack/compiler-test-utils/diagnostics'
+import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   BADGE_BACKGROUND,
   CARD_BACKGROUND,
@@ -492,8 +489,11 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
     'dev: renderToReadableStream with $name warns, naming the file',
     ({ row }) => {
       const server = app.server()
-      expectDiagnostic(diagnosticsOf(server.logs, 'warning'), {
+      expectDiagnostic(server.diagnostics, {
+        severity: 'warning',
         names: ['renderToReadableStream'],
+        explains: true,
+        times: 1,
         file: path.join('src/rows', `${row.key}.tsx`),
         root: server.root,
       })
