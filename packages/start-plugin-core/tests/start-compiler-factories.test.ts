@@ -769,7 +769,7 @@ export const other = \`createClientOnlyFn(\${label})\``,
       // `.server` module on the client, which is another subject.)
       name: 'calls .handler() on an object that is not a server fn',
       code: `import { api } from './api'
-import { secret } from './secret'
+import { secret } from './secret.server'
 export const route = api.handler(async () => secret())`,
       read: 'module.route()',
       expected: 'secret',
@@ -788,7 +788,9 @@ export const value = createServerOnlyFn(() => 'mine')`,
     async ({ code, read, expected }) => {
       const served = await serve(code, {
         'api.ts': `export const api = { handler: (fn: () => unknown) => fn }\n`,
-        'secret.ts': `export const secret = () => 'secret'\n`,
+        // A server-only file name: the module stays as written whatever its
+        // imports are called (import protection is off on this host)
+        'secret.server.ts': `export const secret = () => 'secret'\n`,
       })
       expect(await inPage(served, `return await (${read})`), 'client').toEqual(
         expected,

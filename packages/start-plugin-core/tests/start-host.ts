@@ -430,7 +430,8 @@ export interface StartCase {
   /**
    * The case files that the SSR environment's module graph reaches from a
    * case file (default `module.tsx`) once evaluated (`./name`, with and
-   * without their extension, packages by name), static and dynamic.
+   * without their extension, packages by name), static and dynamic. A
+   * module the SSR environment fails to compile rejects.
    */
   serverLoads: (file?: string) => Promise<Array<string>>
   /**
@@ -890,6 +891,10 @@ try {
         previewState ? previewState.build.diagnostics : host.diagnostics,
       serverLoads: async (file = 'module.tsx') => {
         devOnly('serverLoads()')
+        // A module the SSR environment cannot compile has no outcome (its
+        // graph would be empty): that fails, as in `loads()`. A throw of the
+        // module's own code still counts.
+        await host.transform(url(file), 'ssr')
         await host.importServer(url(file), 'ssr').catch(() => {})
         const names = graphLoads('ssr', file)
         names.delete(`./${file.replace(/\.[cm]?[jt]sx?$/, '')}`)

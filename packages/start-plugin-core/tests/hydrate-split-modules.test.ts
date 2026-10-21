@@ -692,11 +692,41 @@ export function Page() {
     }
   })
 
+  // SPEC J5.2: a boundary nested in another one has split code of its own,
+  // behind its own gate: once the outer gate opens, the outer children's
+  // modules load, and the nested children's modules wait for the nested
+  // gate (here `never()`, which stays shut). How many modules either split
+  // takes is free (SPEC N13).
+  test('client: the children of a nested boundary wait for its own gate', async () => {
+    const client = await renderClient(
+      await hosts(),
+      `${head}import { never } from '@tanstack/react-start/hydration'
+import { Chart } from './chart'
+import { Inner } from './inner'
+export function Page() {
+  return <Hydrate when={load()}><section><Chart /><Hydrate when={never()}><Inner /></Hydrate></section></Hydrate>
+}`,
+      {
+        files: {
+          './chart': `export const Chart = () => <figure>chart</figure>`,
+          './inner': `export const Inner = () => <p>inner</p>`,
+        },
+      },
+    )
+    expectHydratedCleanly(client)
+    expect(client.html).toContain('<figure>chart</figure>')
+    expect(client.html).toContain('<p>inner</p>')
+    expect(client.loaded).not.toContain('./chart')
+    expect(client.lazy).toContain('./chart')
+    expect(client.loaded).not.toContain('./inner')
+    expect(client.lazy).not.toContain('./inner')
+  })
+
   // The split code of a boundary, and of the nested boundary it contains,
   // uses the packages of the module's framework only (a React module graph
   // has no Solid packages, and the other way around). How many modules the
   // split takes is free (SPEC N13).
-  test('client: react chunks loaded from the source code alone render with their own packages', async () => {
+  test('client: react split code of a boundary and a nested one renders with its own packages', async () => {
     const { client } = await expectRendersLikeSource(
       await hosts(),
       `import { Hydrate } from '@tanstack/react-start'
@@ -716,7 +746,7 @@ export function Page() {
   // split code of the boundary and of the nested one loads and renders,
   // and needs no React package. How many modules the split takes is free
   // (SPEC N13).
-  test('client: solid chunks loaded from the source code alone are valid and use the Solid packages only', async () => {
+  test('client: solid split code of a boundary and a nested one is valid and uses the Solid packages only', async () => {
     const solid = await solidHost()
     const mounted =
       await solid.mount(`import { Hydrate } from '@tanstack/solid-start'
