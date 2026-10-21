@@ -89,6 +89,51 @@ test(
   timeout,
 )
 
+// Final pass #21: Vite keeps a full reload sent while no client is
+// connected and hands it to the next client that connects. Between two
+// `runClient` runs no page is connected, so the next run's page would
+// reload under its run; a client host keeps an idle HMR client connected
+// instead. The probe connects as the next page's Vite client would, and
+// reads everything the server sends it up to a marker sent after it
+// connected (a held message is sent right after `connected`, before it).
+test(
+  'a full reload sent while no page runs is not handed to the next page that connects',
+  async () => {
+    const app = await createPluginHost({
+      dir: testsDir,
+      registerCleanup: onTestFinished,
+      files,
+      plugins: [],
+      client: true,
+    })
+    // No page of this host is open (as between two runs once the shared page
+    // moved on to another host or app): an edit's full reload now
+    app.dev.vite.ws.send({ type: 'full-reload', path: '*' })
+
+    const url = new URL(app.dev.url!)
+    url.protocol = 'ws:'
+    url.searchParams.set('token', app.dev.vite.config.webSocketToken)
+    const probe = new WebSocket(url, 'vite-hmr')
+    onTestFinished(() => probe.close())
+    const received: Array<{ type: string; event?: string }> = []
+    await new Promise<void>((resolve, reject) => {
+      probe.addEventListener('error', () => reject(new Error('no connection')))
+      probe.addEventListener('message', (event) => {
+        const message = JSON.parse(String(event.data))
+        received.push(message)
+        if (message.type === 'connected') {
+          app.dev.vite.ws.send({ type: 'custom', event: 'probe:end' })
+        }
+        if (message.event === 'probe:end') {
+          resolve()
+        }
+      })
+    })
+    expect(received.map(({ type }) => type)).toEqual(['connected', 'custom'])
+  },
+  timeout,
+)
+
 test(
   'vite build runs the same public plugins; chunks, describe() and diagnostics',
   async () => {
