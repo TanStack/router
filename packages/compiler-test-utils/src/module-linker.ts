@@ -1,4 +1,15 @@
 /**
+ * @deprecated A re-implementation of module resolution and evaluation
+ * (RULES-AUDIT §2.D #4; N9, N24): stubs keyed by the emitted specifier,
+ * and `fallbackStub` turns a missing import into `undefined`. Kept only
+ * for the callers that have not moved yet (validation/REPAIR/A2.md lists
+ * them). New tests evaluate server code through Vite's module runner
+ * (`./plugin-host` `importServer`, `./dev-server` `import`: real
+ * resolution by target, a missing import throws, `./strict-runner`) and
+ * client code in a real browser (`./plugin-host` `runClient`,
+ * `./browser` `runInPage`). Its own controls (module-linker.test.ts) are
+ * fixed-input controls, not compiler acceptance.
+ *
  * Evaluates test modules as real ES modules, the way a bundler's output runs:
  * Node's own linker links every import and export form (default, namespace,
  * side-effect imports, `export * from`, `export { x } from`, JSON modules),

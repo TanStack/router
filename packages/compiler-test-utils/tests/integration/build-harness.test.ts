@@ -20,6 +20,7 @@ import {
 import { unboundNames } from '../../src/validate-module'
 import type {
   BundleOptions,
+  BundlerPlugins,
   DanglingNameError,
   Placement,
 } from '../../src/build-harness'
@@ -29,7 +30,9 @@ const timeout = 60_000
 const testsDir = path.dirname(fileURLToPath(import.meta.url))
 
 /** Builds a one-off app (`bundleApp`) in this directory, without a plugin. */
-function bundleApp(options: Omit<BundleOptions, 'dir'>) {
+function bundleApp(
+  options: Omit<BundleOptions, 'dir'> & { plugins?: BundlerPlugins },
+) {
   return bundleAppIn({
     dir: testsDir,
     registerCleanup: onTestFinished,
@@ -683,8 +686,185 @@ export const read = () => used()
       },
       timeout,
     )
+
+    // Coupling N19 / RULES-AUDIT R11: attribution comes from the chunk's
+    // source map, not from printed module headers, so a minified build (no
+    // headers) is attributed like an unminified one.
+    test(
+      'minified: an untouched dependency reading a name free in its own source passes; a transform that makes a dependency read a dangling name is rejected',
+      async () => {
+        const app = await bundleApp({
+          bundler,
+          env: 'client',
+          entry: 'entry.js',
+          files: entry,
+          symlinks: await dependency(freeRead),
+        })
+        expect(unboundNames(app.entry.code).has('T')).toBe(true)
+        expect((await app.run('return entry.read()')).result).toBe(true)
+
+        await expect(
+          bundleApp({
+            bundler,
+            env: 'client',
+            entry: 'entry.js',
+            files: {
+              ...entry,
+              'dangling-loader.cjs': `module.exports = (source) => source.replace("'MARK_USED'", 'lostBinding')\n`,
+            },
+            symlinks: await dependency(unusedImport),
+            sourceRules: transformDependency('./dangling-loader.cjs'),
+          }),
+        ).rejects.toMatchObject({
+          name: 'DanglingNameError',
+          names: { 'entry.mjs': ['lostBinding'] },
+        })
+      },
+      timeout,
+    )
+
+    if (bundler === 'rspack') {
+      // The provenance is what the build changed, not who changed it: a
+      // compiler under test may be a built-in transform (here Rspack's
+      // built-in SWC loader inlining a constant module), which the old
+      // check left out of scope by its `builtin:` loader name.
+      test(
+        'a dependency a built-in transform changed is in scope',
+        async () => {
+          await expect(
+            bundleApp({
+              bundler,
+              env: 'client',
+              // Unminified: the old check attributed by printed module
+              // headers here, and left the dependency out by the loader's
+              // name
+              minify: false,
+              entry: 'entry.js',
+              files: entry,
+              symlinks: await dependency({
+                'a.js': `import { flag } from 'config'
+export const used = () => flag
+`,
+              }),
+              sourceRules: [
+                {
+                  test: /a\.js$/,
+                  include: /\.dependency-/,
+                  loader: 'builtin:swc-loader',
+                  options: {
+                    jsc: {
+                      target: 'esnext',
+                      transform: {
+                        constModules: {
+                          globals: { config: { flag: 'builtinLost' } },
+                        },
+                      },
+                    },
+                  },
+                },
+              ],
+            }),
+          ).rejects.toMatchObject({
+            name: 'DanglingNameError',
+            names: { 'entry.mjs': ['builtinLost'] },
+          })
+        },
+        timeout,
+      )
+    }
   },
 )
+
+describe('dangling names in Vite production client builds', () => {
+  /** A dependency linked into the app, as in the webpack/Rspack block. */
+  async function dependency(files: Record<string, string>) {
+    const directory = await mkdtemp(path.join(testsDir, '.dependency-'))
+    onTestFinished(() => rm(directory, { recursive: true, force: true }))
+    await writeFile(
+      path.join(directory, 'package.json'),
+      `{ "name": "dep", "type": "module", "main": "./a.js" }\n`,
+    )
+    for (const [file, code] of Object.entries(files)) {
+      await writeFile(path.join(directory, file), code)
+    }
+    return { 'node_modules/dep': directory }
+  }
+  const entry = {
+    'entry.js': `import { used } from 'dep'
+export const read = () => used()
+`,
+  }
+
+  test(
+    'an untouched dependency reading a name free in its own source passes (minified), the same code in the app is rejected',
+    async () => {
+      const app = await bundleApp({
+        bundler: 'vite',
+        env: 'client',
+        entry: 'entry.js',
+        files: entry,
+        symlinks: await dependency({
+          'a.js': `const RETURN = () => T
+export const used = () => /=>/.test(RETURN.toString())
+`,
+        }),
+      })
+      expect(unboundNames(app.entry.code).has('T')).toBe(true)
+      expect(
+        app.chunks
+          .map((chunk) => chunk.fileName)
+          .filter((file) => file.endsWith('.map')),
+      ).toEqual([])
+
+      await expect(
+        bundleApp({
+          bundler: 'vite',
+          env: 'client',
+          entry: 'entry.js',
+          files: {
+            'entry.js': `const RETURN = () => T
+export const read = () => /=>/.test(RETURN.toString())
+`,
+          },
+        }),
+      ).rejects.toMatchObject({ name: 'DanglingNameError' })
+    },
+    timeout,
+  )
+
+  test(
+    "a dependency a plugin's transform hook made read a dangling name is rejected",
+    async () => {
+      await expect(
+        bundleApp({
+          bundler: 'vite',
+          env: 'client',
+          entry: 'entry.js',
+          files: entry,
+          symlinks: await dependency({
+            'a.js': `export const used = () => 'MARK_USED'\n`,
+          }),
+          plugins: {
+            vite: () => [
+              {
+                name: 'loses-a-binding',
+                transform(code: string, id: string) {
+                  return id.includes('.dependency-')
+                    ? code.replace("'MARK_USED'", 'viteLost')
+                    : null
+                },
+              },
+            ],
+          },
+        }),
+      ).rejects.toMatchObject({
+        name: 'DanglingNameError',
+        names: { 'entry.mjs': ['viteLost'] },
+      })
+    },
+    timeout,
+  )
+})
 
 describe('client runs in the browser', () => {
   /** Describes classic script chunks written to an app's `dist`. */

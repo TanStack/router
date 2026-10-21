@@ -48,9 +48,24 @@ export const clientGlobals: ReadonlySet<string> = new Set([
 ])
 
 /**
- * The globals of code that may run on the client or the server: the client
- * globals and those of Node.js as an ES module sees them (no CommonJS
- * wrapper variables such as `require` or `__dirname`).
+ * The globals server code can count on: the language's and those of
+ * Node.js as an ES module sees them (no CommonJS wrapper variables such as
+ * `require` or `__dirname`), without the browser's (`window`, `document`:
+ * a read of one that survives in server code throws in Node.js, unless a
+ * `typeof` check guards it).
+ */
+export const serverGlobals: ReadonlySet<string> = new Set([
+  ...Object.keys(globals.builtin),
+  ...languageNames,
+  ...Object.keys(globals.nodeBuiltin),
+  ...frameworkNames,
+])
+
+/**
+ * The globals of code that may run on the client or the server
+ * (`universal`): the client globals and the server globals. A module known
+ * to run on one side reads only that side's (`clientGlobals`,
+ * `serverGlobals`): this union admits `process` in a client module.
  */
 export const knownGlobals: ReadonlySet<string> = new Set([
   ...clientGlobals,

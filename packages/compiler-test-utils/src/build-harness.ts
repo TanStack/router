@@ -12,6 +12,7 @@
  * Plugin-agnostic: the caller supplies the plugin of each build, and the
  * directory its apps live in (where their imports resolve).
  */
+import { readFileSync } from 'node:fs'
 import {
   mkdir,
   mkdtemp,
@@ -374,7 +375,7 @@ interface BundlerConfig {
   conditions: Array<string>
   rebuildAfter: Record<string, string> | undefined
   configure: ((options: Record<string, unknown>) => void) | undefined
-  /** webpack and Rspack: records `describeBuild`'s `parsedModules`. */
+  /** Production client builds: records `describeBuild`'s `parsedModules`. */
   parsedModules: ParsedModules | undefined
 }
 
@@ -419,9 +420,7 @@ async function bundle(
     rebuildAfter: target.rebuildAfter,
     configure: target.configure,
     parsedModules:
-      (bundler === 'webpack' || bundler === 'rspack') &&
-      env === 'client' &&
-      mode === 'production'
+      bundler !== 'esbuild' && env === 'client' && mode === 'production'
         ? parsedModules()
         : undefined,
   }
@@ -501,9 +500,15 @@ async function buildWithVite(
         hasErrorLogged: () => false,
         hasWarned: false,
       },
-      plugins: config.plugin
-        ? [trackingHooks(config.plugin(), hooks) as never]
-        : [],
+      plugins: [
+        ...(config.plugin
+          ? [trackingHooks(config.plugin(), hooks) as never]
+          : []),
+        // The evidence of the dangling-name check (`checkDanglingNames`)
+        ...(config.parsedModules
+          ? [recordViteModules(config.parsedModules) as never]
+          : []),
+      ],
       ...(config.jsxImportSource !== 'react' && {
         oxc: { jsx: { importSource: config.jsxImportSource } },
       }),
@@ -1136,24 +1141,30 @@ export async function describeBuild(
  * the artifact the configuration ships (SPEC G8).
  *
  * Which modules are checked (ruling "dangling-name attribution", amended
- * 2026-10-20): the ones the compilers under test produced or changed in
- * that build, attributed from the build's own evidence:
- * - the app's modules (user and route code after the transforms, split
- *   chunks: files of the build's root) and modules without a file (virtual
- *   and support modules): every free read counts;
- * - a dependency's module that a transform hook (a loader other than the
- *   bundler's built-in ones) saw in this build (`recordParsedModules`): a
- *   free read counts when the module, as the transforms left it, reads the
- *   name free while its original source on disk does not (the transforms
- *   lost a binding or added a read); a name the original already reads
- *   free and binds nowhere is valid third-party JavaScript (e.g. seroval's
- *   `const RETURN = () => T`, used through `RETURN.toString()`);
- * - any other dependency's module is out of scope, whatever the bundler
- *   does inside it (e.g. Rspack 2.2.7 dropping the import bindings the kept
- *   unused code of a concatenated module reads), and so is a binding the
- *   bundler drops after the transforms left it in place.
- * Nothing is excepted per package or by name. A read without that evidence
- * counts (Vite's output, or a build that does not record its modules).
+ * 2026-10-20; coupling N19, RULES-AUDIT R11): the ones the compilers under
+ * test produced or changed in that build, attributed from the build's own
+ * public evidence (`ParsedModules`: every module's code after the build's
+ * transforms, recorded through the bundler's hooks), never from the
+ * printed layout of the output (module headers, which minified output has
+ * not) and never from who transformed a module (a compiler may be a
+ * built-in transform). A name the chunk reads free is attributed to the
+ * modules whose code after the transforms reads it free:
+ * - a module of the app (a file of the build's root) or one without a file
+ *   (virtual and support modules): it counts;
+ * - a dependency's module the build changed (its code after the
+ *   transforms differs from its file on disk): it counts when the module
+ *   reads the name free while its original source does not (the
+ *   transforms lost a binding or added a read); a name the original
+ *   already reads free and binds nowhere is valid third-party JavaScript
+ *   (e.g. seroval's `const RETURN = () => T`, used through
+ *   `RETURN.toString()`);
+ * - a dependency's module the build did not change: out of scope.
+ * A name no module reads free is the bundler's when a module binds it (it
+ * dropped a binding the transforms left in place, e.g. Rspack 2.2.7 and
+ * the import bindings the kept unused code of a concatenated module reads:
+ * out of scope); when no module binds it either, code outside the modules
+ * (a bundle-level hook) introduced it, and it counts. Nothing is excepted
+ * per package or by name. Without evidence, every free read counts.
  */
 async function checkDanglingNames(
   bundler: Exclude<Bundler, 'esbuild'>,
@@ -1188,24 +1199,21 @@ async function checkDanglingNames(
     },
   }
   const dangling: Record<string, Array<string>> = {}
+  /** Whether each name counts (one decision per build). */
+  const decided = new Map<string, Promise<boolean>>()
   for (const chunk of chunks) {
-    const regions =
-      bundler === 'vite' || !evidence.parsedModules
-        ? []
-        : moduleRegions(chunk.code, evidence.root, evidence.parsedModules)
     const names: Array<string> = []
-    for (const [name, starts] of unboundReads(chunk.code)) {
+    for (const name of unboundReads(chunk.code).keys()) {
       if (clientGlobals.has(name)) {
         continue
       }
-      for (const start of starts) {
-        const resource = regions.find(
-          (candidate) => candidate.start <= start && start < candidate.end,
-        )?.resource
-        if (await countsAsDangling(name, resource, scope)) {
-          names.push(name)
-          break
-        }
+      let counts = decided.get(name)
+      if (!counts) {
+        counts = nameCounts(name, scope)
+        decided.set(name, counts)
+      }
+      if (await counts) {
+        names.push(name)
       }
     }
     if (names.length > 0) {
@@ -1217,10 +1225,49 @@ async function checkDanglingNames(
   }
 }
 
+/**
+ * Whether a name a chunk reads free is a defect (see `checkDanglingNames`):
+ * attributed to the modules whose code after the build's transforms reads
+ * it free.
+ */
+async function nameCounts(name: string, scope: ScopeEvidence) {
+  const parsed = scope.parsedModules
+  if (!parsed) {
+    // No evidence of the modules
+    return true
+  }
+  const readers: Array<string> = []
+  let bound = false
+  for (const resource of parsed.modules) {
+    const code =
+      parsed.transformed.get(resource) ?? (await scope.originalOf(resource))
+    if (code === undefined || !code.includes(name)) {
+      continue
+    }
+    const reads = scope.readsOf(code)
+    if (!reads || reads.unbound.has(name)) {
+      readers.push(resource)
+    }
+    if (reads?.bound.has(name)) {
+      bound = true
+    }
+  }
+  if (readers.length === 0) {
+    // The bundler dropped a binding, or a bundle-level hook added the read
+    return !bound
+  }
+  for (const resource of readers) {
+    if (await countsAsDangling(name, resource, scope)) {
+      return true
+    }
+  }
+  return false
+}
+
 interface ModuleEvidence {
-  /** The build's context (the app): what readable module identifiers are relative to. */
+  /** The build's context (the app). */
   root: string
-  /** The modules of the output (`recordParsedModules`). */
+  /** The modules of the output (`recordParsedModules`, `recordViteModules`). */
   parsedModules?: ParsedModules
 }
 
@@ -1233,56 +1280,6 @@ interface ScopeEvidence extends ModuleEvidence {
 interface NameReads {
   bound: Set<string>
   unbound: Map<string, Array<number>>
-}
-
-interface ModuleRegion {
-  /** Resource path of the module whose code the region holds. */
-  resource: string | undefined
-  start: number
-  end: number
-}
-
-/**
- * The regions of a webpack or Rspack chunk that hold the code of one module
- * each, as the bundler delimits them:
- * - a concatenated module, from the comment the bundler writes before its
- *   code (`;// CONCATENATED MODULE: ./a.ts`, or webpack's `;// ./a.ts`: the
- *   module's readable identifier, relative to the build's context `root`);
- * - a module of its own, from the start of its factory, which names the
- *   module's id (`parsed.resourceById` maps it to its resource): webpack
- *   writes a line of three stars between slashes and the id before it,
- *   Rspack starts a line with the id and the factory's parameters;
- * each to the next such start or the end of a webpack factory (another
- * line starting with that three-star comment).
- */
-function moduleRegions(
-  code: string,
-  root: string,
-  parsed: ParsedModules,
-): Array<ModuleRegion> {
-  const regions: Array<ModuleRegion> = []
-  const boundary =
-    /^(?:;\/\/ (?:CONCATENATED MODULE: )?(\S[^\n]*)|\/\*{3}\/(?: (?:"([^"\n]+)"|([\w-]+))(?=:|\s*$))?|(?:"([^"\n]+)"|(\d+))\()/gm
-  let current: Omit<ModuleRegion, 'end'> | undefined
-  for (const match of code.matchAll(boundary)) {
-    if (current) {
-      regions.push({ ...current, end: match.index })
-    }
-    const [, readable, ...ids] = match as Array<string | undefined>
-    const id = ids.find((candidate) => candidate !== undefined)
-    const start = match.index + match[0].length
-    if (readable !== undefined) {
-      current = { resource: path.resolve(root, readable), start }
-    } else if (id !== undefined) {
-      current = { resource: parsed.resourceById.get(id), start }
-    } else {
-      current = undefined
-    }
-  }
-  if (current) {
-    regions.push({ ...current, end: code.length })
-  }
-  return regions
 }
 
 /**
@@ -1310,7 +1307,7 @@ async function countsAsDangling(
   }
   const transformed = scope.parsedModules.transformed.get(resource)
   if (transformed === undefined) {
-    // A dependency no transform hook of this build saw: out of scope
+    // A dependency the build did not change: out of scope
     return false
   }
   const after = scope.readsOf(transformed)
@@ -1333,35 +1330,39 @@ async function countsAsDangling(
 export interface ParsedModules {
   /** Resource path of each module of the output, by module id. */
   resourceById: Map<string, string>
+  /** Every module of the build, by resource path (or id, without a file). */
+  modules: Set<string>
   /**
-   * The code of each module that a loader other than the bundler's
-   * built-in ones (`builtin:…`) ran on, as the bundler parsed it (after its
-   * loaders), by resource path: a transform hook of this build saw it.
+   * The code of each module whose code after the build's transforms (every
+   * loader or transform hook, the bundler's built-in ones included) differs
+   * from its file on disk, by resource path: the build changed it. (The
+   * code of the others is their file.)
    */
   transformed: Map<string, string>
 }
 
 interface RecordedModule {
   resource?: string
-  loaders?: Array<{ loader?: string }>
   originalSource?: () => { source: () => string | Buffer } | null | undefined
+}
+
+interface RecordingCompilation {
+  hooks: {
+    finishModules: {
+      tap: (
+        name: string,
+        callback: (modules: Iterable<RecordedModule>) => void,
+      ) => void
+    }
+  }
 }
 
 interface RecordingCompiler {
   hooks: {
-    compilation: {
+    thisCompilation: {
       tap: (
         name: string,
-        callback: (compilation: {
-          hooks: {
-            finishModules: {
-              tap: (
-                name: string,
-                callback: (modules: Iterable<RecordedModule>) => void,
-              ) => void
-            }
-          }
-        }) => void,
+        callback: (compilation: RecordingCompilation) => void,
       ) => void
     }
     done: {
@@ -1381,27 +1382,40 @@ interface RecordingCompiler {
 }
 
 /**
- * A webpack or Rspack plugin recording the modules of the output into
- * `parsed` (`ParsedModules`), for a production client build's dangling-name
- * check (`describeBuild`'s `parsedModules`).
+ * Records a module's code after the build's transforms into `parsed`: every
+ * module, and the code of the ones that differ from their file on disk.
+ */
+function recordModule(parsed: ParsedModules, resource: string, code: string) {
+  parsed.modules.add(resource)
+  let original: string | undefined
+  try {
+    original = readFileSync(resource, 'utf8')
+  } catch {
+    // No file: a virtual module
+  }
+  if (original !== code) {
+    parsed.transformed.set(resource, code)
+  }
+}
+
+/**
+ * A webpack or Rspack plugin recording the evidence of a production client
+ * build's dangling-name check into `parsed` (`ParsedModules`), through the
+ * bundler's public hooks: each module's code after its loaders, the
+ * bundler's built-in ones included (`finishModules`). It changes nothing
+ * in the build.
  */
 export function recordParsedModules(parsed: ParsedModules) {
   const name = 'test:record-parsed-modules'
   return {
     name,
     apply(compiler: RecordingCompiler) {
-      compiler.hooks.compilation.tap(name, (compilation) => {
+      compiler.hooks.thisCompilation.tap(name, (compilation) => {
         compilation.hooks.finishModules.tap(name, (modules) => {
           for (const module of modules) {
-            const transformed = (module.loaders ?? []).some(
-              ({ loader }) =>
-                loader !== undefined && !loader.startsWith('builtin:'),
-            )
-            const source = transformed
-              ? module.originalSource?.()?.source()
-              : undefined
+            const source = module.originalSource?.()?.source()
             if (module.resource && source !== undefined) {
-              parsed.transformed.set(module.resource, String(source))
+              recordModule(parsed, module.resource, String(source))
             }
           }
         })
@@ -1422,9 +1436,35 @@ export function recordParsedModules(parsed: ParsedModules) {
   }
 }
 
+/**
+ * A Vite plugin recording the evidence of a production client build's
+ * dangling-name check into `parsed` (`ParsedModules`), through Vite's public
+ * hooks: each module's code after every other transform hook. It changes
+ * nothing in the build.
+ */
+export function recordViteModules(
+  parsed: ParsedModules,
+  options: { environment?: string } = {},
+) {
+  return {
+    name: 'test:record-vite-modules',
+    // One environment's modules only, when given (e.g. `client`)
+    applyToEnvironment: (environment: { name: string }) =>
+      options.environment === undefined ||
+      environment.name === options.environment,
+    transform: {
+      order: 'post' as const,
+      handler(code: string, id: string) {
+        recordModule(parsed, id.replace(/[?#].*$/, ''), code)
+        return null
+      },
+    },
+  }
+}
+
 /** An empty `ParsedModules`, for `recordParsedModules` to fill. */
 export function parsedModules(): ParsedModules {
-  return { resourceById: new Map(), transformed: new Map() }
+  return { resourceById: new Map(), modules: new Set(), transformed: new Map() }
 }
 
 /**

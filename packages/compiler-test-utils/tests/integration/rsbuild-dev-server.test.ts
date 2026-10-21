@@ -4,12 +4,14 @@
  * compiles of every write (plugins' included), and `outputs()` returns what
  * the environment emits afterwards.
  */
+import { watch } from 'node:fs'
 import { readFile, stat, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, onTestFinished, test } from 'vitest'
 import { createRsbuildDevServer } from '../../src/rsbuild-dev-server'
 import type { RsbuildPlugin, Rspack } from '@rsbuild/core'
+import type { FSWatcher } from 'node:fs'
 
 const testsDir = path.dirname(fileURLToPath(import.meta.url))
 
@@ -34,8 +36,9 @@ test('rebuilds the edited module and emits the edit', async () => {
 
 // The watcher may start the compile of an edit before its writes finish
 // (on a loaded machine, before the harness even sees the write done): the
-// wait must still end with that compile. Here a large file nothing imports
-// keeps the writes going after the module's.
+// wait must still end with that compile, which started after the module's
+// write. Here a large file nothing imports, which the test accepts no
+// compile for, keeps the writes going after the module's.
 test('a compile that starts before the writes of the edit finish ends the wait', async () => {
   const server = await createRsbuildDevServer({
     dir: testsDir,
@@ -46,10 +49,13 @@ test('a compile that starts before the writes of the edit finish ends the wait',
     },
   })
 
-  await server.edit({
-    'src/leaf.ts': `export const leaf = 'MARK_V2'\n`,
-    'notes/large.txt': 'x'.repeat(64 * 1024 * 1024),
-  })
+  await server.edit(
+    {
+      'src/leaf.ts': `export const leaf = 'MARK_V2'\n`,
+      'notes/large.txt': 'x'.repeat(64 * 1024 * 1024),
+    },
+    { accept: (relative) => relative === 'notes/large.txt' },
+  )
 
   expect(server.rebuilt).toContain('src/leaf.ts')
   expect(Object.values(await server.outputs()).join('\n')).toContain('MARK_V2')
@@ -189,7 +195,7 @@ test('settle() waits for the compiles of the files a plugin writes in a compile'
   expect(outputs).not.toContain('MARK_GENERATED_V1')
 }, 30_000)
 
-test('settle() waits for a compile reading each written file, unless accept() takes it', async () => {
+test('settle() waits for a compile that started after each written file, unless accept() takes it', async () => {
   const server = await createRsbuildDevServer({
     dir: testsDir,
     registerCleanup: onTestFinished,
@@ -197,7 +203,7 @@ test('settle() waits for a compile reading each written file, unless accept() ta
   })
   await server.write({ 'notes.txt': 'unread' })
   await expect(server.settle({ timeout: 1_000 })).rejects.toThrow(
-    /no compile read notes\.txt/,
+    /no compile started after the write of notes\.txt/,
   )
   await server.settle({ accept: (relative) => relative === 'notes.txt' })
 
@@ -211,7 +217,7 @@ test('settle() waits for a compile reading each written file, unless accept() ta
   )
 }, 30_000)
 
-test('settle() rejects while a plugin writes a file the compiles read on each compile', async () => {
+test('settle() rejects at its bound while a plugin writes a file the compiles read on each compile', async () => {
   const server = await createRsbuildDevServer({
     dir: testsDir,
     registerCleanup: onTestFinished,
@@ -219,8 +225,82 @@ test('settle() rejects while a plugin writes a file the compiles read on each co
     plugins: [generator(true)],
   })
   await server.write({ 'src/source.ts': `export const source = 'V2'\n` })
-  await expect(server.settle()).rejects.toThrow(/keeps compiling/)
+  await expect(server.settle({ timeout: 3_000 })).rejects.toThrow(
+    /did not settle within 3000 ms/,
+  )
 }, 30_000)
+
+// Coupling N21: a plugin may watch an original source itself and hand
+// Rspack a module built from it, so the source is in no compile's
+// dependencies. The edit's outcome is still awaited: the plugin's own
+// watcher invalidates the compiler, and the compile that follows the write
+// ends the wait. (The old wait required every written file to be a
+// dependency of the compile and timed out here.)
+test('edit() and settle() wait for the compile a plugin-owned watcher starts', async () => {
+  const server = await createRsbuildDevServer({
+    dir: testsDir,
+    registerCleanup: onTestFinished,
+    files: {
+      'src/entry.ts': `import { text } from './virtual'\nconsole.log(text)\n`,
+      'src/virtual.ts': `export const text = 'placeholder'\n`,
+      'content/source.txt': 'MARK_SOURCE_V1',
+      // Reads the original source without registering it as a dependency
+      'loader.cjs': `const { readFileSync } = require('node:fs')
+const path = require('node:path')
+module.exports = function () {
+  const source = readFileSync(path.join(this.rootContext, 'content/source.txt'), 'utf8')
+  return 'export const text = ' + JSON.stringify(source) + '\\n'
+}
+`,
+    },
+    plugins: [ownWatcher()],
+  })
+  const joined = async () => Object.values(await server.outputs()).join('\n')
+  expect(await joined()).toContain('MARK_SOURCE_V1')
+
+  await server.edit({ 'content/source.txt': 'MARK_SOURCE_V2' })
+  expect(await joined()).toContain('MARK_SOURCE_V2')
+
+  await server.write({ 'content/source.txt': 'MARK_SOURCE_V3' })
+  await server.settle()
+  expect(await joined()).toContain('MARK_SOURCE_V3')
+}, 30_000)
+
+/**
+ * Builds `src/virtual.ts` from `content/source.txt` (`loader.cjs`) and
+ * watches that source with a watcher of its own: on each change of it, it
+ * invalidates the compiler with the module it builds from it.
+ */
+function ownWatcher(): RsbuildPlugin {
+  return {
+    name: 'own-watcher',
+    setup(api) {
+      api.modifyRspackConfig((config) => {
+        config.module.rules = [
+          ...(config.module.rules ?? []),
+          {
+            test: /virtual\.ts$/,
+            use: [{ loader: path.join(api.context.rootPath, 'loader.cjs') }],
+          },
+        ]
+        config.plugins.push({
+          apply(compiler: Rspack.Compiler) {
+            let watcher: FSWatcher | undefined
+            compiler.hooks.afterDone.tap('own-watcher', () => {
+              // The plugin tells Rspack which module of its own changed
+              watcher ??= watch(path.join(compiler.context, 'content'), () =>
+                compiler.watching?.invalidateWithChangesAndRemovals(
+                  new Set([path.join(compiler.context, 'src/virtual.ts')]),
+                ),
+              )
+            })
+            compiler.hooks.watchClose.tap('own-watcher', () => watcher?.close())
+          },
+        })
+      })
+    },
+  }
+}
 
 // A plugin that reports a problem once (Start's import protection with
 // `log: 'once'`) reports it in the first compile that sees it; a dev server

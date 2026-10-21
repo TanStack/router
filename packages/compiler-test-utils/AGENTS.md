@@ -23,6 +23,13 @@ Shared by the compiler test suites (router-plugin, start-plugin-core, router-gen
   until [ "$(pgrep -fc '[v]itest --project integration')" -lt 2 ]; do sleep 30; done; <nx command>
   ```
 
+## Which helper for a new or rerouted test
+
+- Drive a compiler only through the public plugins a user configures: `./plugin-host` (`createPluginHost`, Vite: server code through the environment's module runner, client code in the shared Chromium page, `vite build`) and `./rsbuild-plugin-host` (`createRsbuildPluginHost`, Rsbuild's JavaScript API). No hook recorders, module ids, queries or hand-registered routes.
+- Client semantics run in a real browser: `runClient` of a host, or `runInPage` of `./browser` (one page per test process, reused). `evaluateServed`, `./module-linker`, `./render` and `./lazy-probe` are deprecated (Node stand-ins); do not add callers.
+- Diagnostics: read every channel at once (`./diagnostic-channel`: console, process streams, Vite's logger, bundler compilations; the dev harnesses' `diagnostics`). "Nothing reported" is `expectNoProblems`. Judge causes with `explains` (content), not `causes` (a deprecated word list).
+- Edits settle on their outcome within one bound (`./outcome` `waitForOutcome`, the dev harnesses' `edit`/`settle`), never on counts of events, compiles or updates.
+
 ## Corpus and implementation tests
 
 The compiler test corpus is an oracle: a compiler that passes every corpus test is a good compiler. Some useful tests check choices of today's implementation that a correct rewrite may make differently (printed bytes, log policy, internal generators called with forced options such as the server fn resolver generator, perf counters). Those are **implementation tests**, kept and run, but not part of the corpus.

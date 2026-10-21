@@ -528,6 +528,45 @@ Page.displayName = 'Page'`,
   })
 })
 
+// RULES-AUDIT R11: the globals a module may read are those of where it
+// runs; the old single set admitted Node.js globals in client modules.
+describe('getModuleErrors env', () => {
+  const nodeRead = `export const mode = () => process.env.MODE + Buffer.from('x')\n`
+  const browserRead = `export const width = () => window.innerWidth\n`
+
+  test('a client module may not read a Node.js-only global', async () => {
+    expect(
+      await getModuleErrors(nodeRead, 'module.ts', { env: 'client' }),
+    ).toEqual([
+      '`process` is referenced but never declared or imported',
+      '`Buffer` is referenced but never declared or imported',
+    ])
+    expect(
+      await getModuleErrors(browserRead, 'module.ts', { env: 'client' }),
+    ).toEqual([])
+  })
+
+  test('a server module may not read a browser-only global', async () => {
+    expect(
+      await getModuleErrors(browserRead, 'module.ts', { env: 'server' }),
+    ).toEqual(['`window` is referenced but never declared or imported'])
+    expect(
+      await getModuleErrors(nodeRead, 'module.ts', { env: 'server' }),
+    ).toEqual([])
+  })
+
+  test('a typeof-guarded read stays valid on either side', async () => {
+    const guarded = `export const mode = () => typeof process !== 'undefined' && process.env.MODE\n`
+    expect(
+      await getModuleErrors(guarded, 'module.ts', { env: 'client' }),
+    ).toEqual([])
+  })
+
+  test('universal (the default) admits both, as for code that may run on either side', async () => {
+    expect(await getModuleErrors(nodeRead + browserRead)).toEqual([])
+  })
+})
+
 describe('declaredNames', () => {
   test('lists every runtime declaration, at any depth, whatever its form', () => {
     expect(

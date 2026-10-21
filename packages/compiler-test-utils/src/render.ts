@@ -1,4 +1,10 @@
 /**
+ * @deprecated Renders client components in Node with a framework's server
+ * renderer and a hand-assembled plugin pipeline (RULES-AUDIT §2.D #5, R24):
+ * client semantics belong in a real browser (`./plugin-host` `runClient`
+ * on the served module with the real framework plugins). Kept for the
+ * callers that have not moved yet (validation/REPAIR/A2.md).
+ *
  * Real framework rendering of module graphs (`module-linker.ts`): compile the
  * graph's JSX with the framework's real transform and render what its
  * modules export with the framework's real server renderer, all from the

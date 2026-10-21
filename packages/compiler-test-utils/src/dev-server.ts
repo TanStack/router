@@ -22,8 +22,17 @@
  *   app file is as the watcher last saw it (when the server finished
  *   handling its event, or when chokidar dropped a change of it); until a
  *   round sees no new event.
- * A plugin that keeps writing files on each event never settles (an error
- * after `settleRounds` rounds, 10 by default).
+ * The outcome is bounded, not counted: `settle()` ends once a round of
+ * events brings no new one, and fails when the app's files still change at
+ * `settleTimeout` (a plugin that keeps writing files on each event never
+ * settles). How many events, rounds or hot updates an edit causes is the
+ * plugins' business (coupling N21).
+ *
+ * Diagnostics: one channel (`./diagnostic-channel`) records, from the start
+ * until `stop()`, what Vite's logger, `console.*` and direct writes to
+ * `process.stdout`/`stderr` report (`diagnostics`); `logs` holds its
+ * warnings and errors as text. A check that nothing is reported reads them
+ * all (SPEC §5.7: a compiler may warn on any of them).
  *
  * In Vite's full-bundle dev (`bundledDev`), Rolldown's dev engine watches
  * the modules it bundled and Vite's watcher watches what plugins add to it:
@@ -55,8 +64,11 @@ import {
 } from 'vite'
 import { createApp } from './build-harness'
 import { createModuleGraph } from './module-linker'
+import { openDiagnosticChannel } from './diagnostic-channel'
 import { saveAppFile } from './save-file'
+import { makeRunnerStrict } from './strict-runner'
 import type { AppOptions } from './build-harness'
+import type { ChannelDiagnostic } from './diagnostic-channel'
 import type { ModuleGraphOptions, ModuleStub } from './module-linker'
 import type {
   DevEnvironment,
@@ -92,12 +104,12 @@ export interface DevServerOptions extends AppOptions {
    */
   eventTimeout?: number
   /**
-   * Rounds of file events after which `settle()` gives up on an app whose
-   * files keep changing (a plugin rewriting a file on each event). Default
-   * 10: enough for the chains plugins write (a generated file read by
-   * another plugin); a control test of that failure lowers it.
+   * How long one `settle()` may take in all, in milliseconds: a bound on
+   * the outcome, not a count of events (an app whose files keep changing,
+   * e.g. a plugin rewriting a file on each event, fails at this deadline).
+   * Default 60 000; a control test of that failure lowers it.
    */
-  settleRounds?: number
+  settleTimeout?: number
   /**
    * Serves the client environment in Vite's full-bundle dev mode
    * (`experimental.bundledDev`: Rolldown's dev engine bundles it) from
@@ -194,7 +206,13 @@ export interface DevServer {
   idle: () => Promise<void>
   /** Requests a URL over HTTP (`listen: true` only). */
   fetch: (url: string) => Promise<{ status: number; body: string }>
-  /** Imports a module in a runnable environment (default `ssr`). */
+  /**
+   * Imports a module in a runnable environment (default `ssr`) through
+   * Vite's own module runner of that environment: Vite resolves, loads and
+   * transforms every module by its resolved id, and a static import of a
+   * name a module does not export throws in the app's modules, as in
+   * Node.js and a build (`./strict-runner`).
+   */
   import: (url: string, environment?: string) => Promise<Record<string, any>>
   /**
    * `bundledDev` servers only: the latest client bundle (code of each chunk
@@ -204,8 +222,20 @@ export interface DevServer {
   clientBundle: () => Promise<Record<string, string>>
   /** HMR payloads sent to every environment since the server started. */
   hmr: Array<HmrMessage>
-  /** Warnings and errors logged by Vite and the plugins. */
+  /**
+   * Warnings and errors reported on any channel since the server started,
+   * as `warn: <text>` / `error: <text>`: Vite's logger, `console.warn`/
+   * `console.error`, and direct writes to `process.stderr` (as `warn`).
+   * For the reports since a point, mark it (`const since = logs.length`).
+   */
   logs: Array<string>
+  /**
+   * Everything reported since the server started, on every channel, as
+   * diagnostics (`./diagnostic-channel`; `info` included): read with
+   * `expectDiagnostic`/`findDiagnostics`, and "nothing reported" with
+   * `expectNoProblems`. Mark a point with `diagnostics.length`.
+   */
+  diagnostics: Array<ChannelDiagnostic>
   /**
    * Closes the server (and its watcher) but keeps the app directory, e.g. to
    * edit the app afterwards and observe that nothing reacts; `close()`
@@ -271,7 +301,7 @@ export async function createDevServer(
   const { plugins = [], config = {}, bundledDev, browser = false } = options
   const listen = options.listen ?? browser
   const eventTimeout = options.eventTimeout ?? 20_000
-  const settleRounds = options.settleRounds ?? 10
+  const settleTimeout = options.settleTimeout ?? 60_000
   // Vite handles file events with HMR only: without it, nothing tells when
   // the server has handled one, so the server runs without a watcher. In
   // full-bundle dev, Vite's watcher watches only what plugins add to it, and
@@ -290,6 +320,17 @@ export async function createDevServer(
   const root = app.root
   const file = (relative: string) => path.join(root, relative)
   const logs: Array<string> = []
+  /** Every channel the server's work may report on (see the module comment). */
+  const channel = openDiagnosticChannel()
+  channel.onDiagnostic((diagnostic) => {
+    // Vite's logger writes its own lines (below)
+    if (diagnostic.source !== 'vite' && diagnostic.severity !== 'info') {
+      logs.push(
+        `${diagnostic.severity === 'warning' ? 'warn' : 'error'}: ${diagnostic.text}`,
+      )
+      notify()
+    }
+  })
   const hmr: Array<HmrMessage> = []
   const events: Array<{ event: FileEvent; file: string }> = []
 
@@ -365,6 +406,11 @@ export async function createDevServer(
           : String(message),
       )
       logs.push(`${level}: ${text}`)
+      channel.report(
+        level === 'error' ? (logOptions?.error ?? message) : message,
+        level === 'error' ? 'error' : 'warning',
+        'vite',
+      )
       // An error that stopped the handling of a file event
       const event = handling.getStore()
       if (level === 'error' && event) {
@@ -382,7 +428,10 @@ export async function createDevServer(
   const warned = new Set<string>()
   const logger: Logger = {
     // e.g. "server restarted."
-    info: () => notify(),
+    info: (message) => {
+      channel.report(message, 'info', 'vite')
+      notify()
+    },
     warn: record('warn'),
     warnOnce: (message) => {
       if (!warned.has(message)) {
@@ -648,6 +697,7 @@ export async function createDevServer(
       ),
     )
   } catch (error) {
+    channel.close()
     await app.dispose()
     throw error
   }
@@ -701,7 +751,11 @@ export async function createDevServer(
           await initialBuildFinished()
         }
       } finally {
-        await vite.close()
+        try {
+          await vite.close()
+        } finally {
+          channel.close()
+        }
       }
     })()
     return stopped
@@ -932,7 +986,8 @@ export async function createDevServer(
     }
     const from = writtenFrom ?? hmr.length
     writtenFrom = undefined
-    for (let round = 0; ; round++) {
+    const settleDeadline = Date.now() + settleTimeout
+    for (;;) {
       await waitForExpected()
       await waitForHandling()
       throwFailure()
@@ -952,9 +1007,9 @@ export async function createDevServer(
       if (events.length === before) {
         break
       }
-      if (round === settleRounds) {
+      if (Date.now() > settleDeadline) {
         throw new Error(
-          `the app's files keep changing after ${settleRounds} rounds of file events: ${[
+          `the app's files keep changing ${settleTimeout} ms after settle() began: ${[
             ...new Set(events.slice(before).map((event) => event.file)),
           ].join(', ')}`,
         )
@@ -1068,6 +1123,13 @@ export async function createDevServer(
   }
 
   try {
+    // Every runnable environment's runner checks named imports, also when
+    // a plugin (e.g. a framework's dev middleware) imports through it
+    for (const environment of Object.values(vite.environments)) {
+      if (isRunnableDevEnvironment(environment)) {
+        makeRunnerStrict(environment.runner, root)
+      }
+    }
     if (listen) {
       // Vite's default port (`strictPort` off): the server binds a port
       // itself, trying the next one while a port is in use, and `url` reads
@@ -1142,7 +1204,7 @@ export async function createDevServer(
       if (!isRunnableDevEnvironment(runnable)) {
         throw new Error(`the "${environmentName}" environment is not runnable`)
       }
-      return runnable.runner.import(url)
+      return makeRunnerStrict(runnable.runner, root).import(url)
     },
     clientBundle: async () => {
       const engine = devEngine()
@@ -1156,6 +1218,7 @@ export async function createDevServer(
     },
     hmr,
     logs,
+    diagnostics: channel.diagnostics,
     stop,
     close,
   }
@@ -1218,6 +1281,17 @@ const viteClientStub = {
 }
 
 /**
+ * @deprecated Judges client code in Node with an inert `/@vite/client` stub
+ * and the custom linker of `./module-linker` (RULES-AUDIT §2.D #7, N24):
+ * HMR wiring never runs, and a client artifact is not run where it runs.
+ * Use `runInPage` of `./plugin-host` (the served module in the shared
+ * Chromium page) or `createDevServer({ browser: true })` with `openPage`.
+ * Kept until its remaining callers move (listed in
+ * validation/REPAIR/A2.md): start-plugin-core
+ * integration/start-compiler-dev-server.test.ts and
+ * integration/known-bugs-dev-server.test.ts, router-plugin
+ * plugin-options.test.ts, and this package's dev-server.test.ts.
+ *
  * Evaluates a module as a browser loading it from the dev server would:
  * `server.load(url)` transforms it and every module it imports statically
  * (in an environment that serves ES modules, default `client`), and these

@@ -390,6 +390,134 @@ export const value = a(
   })
 })
 
+// RULES-AUDIT R18: each spelling counts its column from its own base, and a
+// position is tied to the named file. A spelling whose producer is unknown
+// (a plain string; Vite and esbuild print 0-based columns in `file:line:col`,
+// editors 1-based) still reads either base.
+describe('position strictness', () => {
+  const at = { line: 3, column: 3 }
+
+  test.each([
+    ['TypeScript (line,column) is 1-based', 'src/a.ts(3,2): x'],
+    ['Babel (line:column) is 0-based', 'src/a.ts: x (3:3)'],
+    ['webpack line:column-column is 0-based', 'ERROR in ./src/a.ts 3:3-16'],
+  ])('rejects the other base: %s', (_, text) => {
+    expect(findDiagnostics(text, { file: 'src/a.ts', position: at })).toEqual(
+      [],
+    )
+  })
+
+  test('a structured location is printed 1-based and read exactly', () => {
+    const exact = diagnosticsOf({
+      message: 'bad',
+      id: '/app/src/a.ts',
+      loc: { file: '/app/src/a.ts', line: 3, column: 2 },
+    })
+    expect(exact[0]!.columnBase).toBe(1)
+    expectDiagnostic(exact, {
+      file: 'src/a.ts',
+      root: '/app',
+      position: { line: 3, column: 3 },
+    })
+    // One column off (a 0-based reading of the printed position) fails
+    expect(
+      findDiagnostics(exact, {
+        file: 'src/a.ts',
+        root: '/app',
+        position: { line: 3, column: 4 },
+      }),
+    ).toEqual([])
+  })
+
+  test('a `line N` phrase counts only beside the named file', () => {
+    expectDiagnostic('src/a.ts, line 3: bad', {
+      file: 'src/a.ts',
+      position: { line: 3 },
+    })
+    expect(
+      findDiagnostics('src/a.ts: bad\nsee line 3 of the guide', {
+        file: 'src/a.ts',
+        position: { line: 3 },
+      }),
+    ).toEqual([])
+  })
+})
+
+// SPEC G5, §5.7: a cause is judged by content, never by a closed list of
+// words (EMPIRICAL R5: "has to be stored in a variable" failed the old
+// placement list). An explanation in any words passes; a crash, a bare
+// failure, quoted code alone, or a message missing what tells the cause
+// apart fails.
+describe("explains: a cause in the diagnostic's own words", () => {
+  const source = `import { createServerFn } from '@tanstack/react-start'
+export const value = wrap(createServerFn().handler(() => 1))
+`
+  test.each([
+    'createServerFn result has to be stored in a variable',
+    'createServerFn() must live at module scope',
+    'Move this createServerFn call to the top level of the module',
+    "createServerFn() can't be nested inside another call",
+    'Nested createServerFn() calls are unsupported',
+    '[plugin:start] /app/src/a.ts:2:27: createServerFn() is only supported in a variable declaration',
+  ])('accepts %s', (text) => {
+    expectDiagnostic(text, {
+      names: ['createServerFn'],
+      explains: true,
+      source,
+    })
+  })
+
+  test.each([
+    [
+      'an engine crash naming the API',
+      new TypeError(
+        "Cannot read properties of undefined (reading 'createServerFn')",
+      ),
+    ],
+    [
+      'an engine crash message in a plain error',
+      new Error('createServerFn: x.handler is not a function'),
+    ],
+    ['a bare failure', new Error('createServerFn internal error')],
+    [
+      'a bare failure with quoted code',
+      new Error('Failed to compile createServerFn at `wrap(createServerFn())`'),
+    ],
+    [
+      'a code frame of the source only',
+      new Error(`createServerFn
+> 2 | export const value = wrap(createServerFn().handler(() => 1))
+    |                           ^`),
+    ],
+  ])('rejects %s', (_, error) => {
+    expect(
+      findDiagnostics(error, {
+        names: ['createServerFn'],
+        explains: true,
+        source,
+      }),
+    ).toEqual([])
+  })
+
+  test('mentions: what tells the cause apart must be named in the explanation', () => {
+    const capture = {
+      names: ['createServerFn'],
+      explains: { mentions: ['id'] },
+    }
+    expectDiagnostic(
+      'createServerFn handler reads `id` from the enclosing function',
+      capture,
+    )
+    expectDiagnostic('the handler of createServerFn closes over id', capture)
+    expect(
+      findDiagnostics(
+        'createServerFn must be declared at the top level',
+        capture,
+      ),
+    ).toEqual([])
+  })
+})
+
 describe('names, severity and counts', () => {
   test('names match whole identifiers only', () => {
     expect(
@@ -731,7 +859,34 @@ describe('environment restrictions', () => {
   })
 
   test.each([
+    'Cannot call a server-only function on the client.',
+    'createServerOnlyFn() is not available in the browser',
+    'This function must not run on the client',
+  ])(
+    'accepts a restriction stated as a forbidden other side: %s',
+    (message) => {
+      expect(identifiesEnvRestriction(new Error(message), 'server')).toBe(true)
+      expect(identifiesEnvRestriction(new Error(message), 'client')).toBe(false)
+    },
+  )
+
+  // RULES-AUDIT R18: the old check accepted any message containing
+  // "server", whatever it said.
+  test.each([
+    'Server function not found',
+    'Failed to reach the server',
+    'serverFn handler threw',
+  ])(
+    'rejects a message that names the environment without restricting the call: %s',
+    (message) => {
+      expect(identifiesEnvRestriction(new Error(message), 'server')).toBe(false)
+      expect(identifiesEnvRestriction(new Error(message), 'client')).toBe(false)
+    },
+  )
+
+  test.each([
     ['the other environment', new Error('only callable on the client')],
+    ['a restriction away from it', new Error('not available on the server')],
     [
       'an engine crash',
       new TypeError("Cannot read properties of undefined (reading 'server')"),
