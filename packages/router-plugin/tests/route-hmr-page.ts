@@ -11,14 +11,15 @@
  * Nothing of the HMR path is modelled: the bundler decides which modules
  * accept the update, the framework's refresh runtime (React Refresh, Solid
  * Refresh, Vue's HMR runtime) patches components, and the route HMR code
- * the router plugin emits updates the live router. The harness only waits on
- * what the real tools report: the dev-server harnesses' event-based
- * `settle()` (the watcher's reports, the server's handling of each, the
- * compiles), the HMR messages the server sent, the HMR client's public
- * update and invalidation events, the page's document loads, and the page's
- * text. Warnings are diagnostics (`@tanstack/compiler-test-utils/
- * diagnostics`): the dev server's logger, the server process's console
- * (`captureConsole`) and the page's console.
+ * the router plugin emits updates the live router. The harness waits on the
+ * edit's outcome (`waitForOutcome`, coupling N21): the dev-server harnesses'
+ * `settle()`, then the page showing the edit with neither the dev server
+ * nor the page having work in flight (transforms, the page's requests, a
+ * reload), within one overall bound; never on how many hot updates or
+ * client events an edit takes. Warnings are diagnostics
+ * (`@tanstack/compiler-test-utils/diagnostics`): every channel of the dev
+ * server (its logger or the bundler's compilation, and the process's
+ * console naming this app) and the page's console.
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -34,10 +35,10 @@ import { expect, onTestFinished } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import {
-  captureConsole,
   diagnosticsOf,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
+import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import { getConfig } from '../src/core/config'
 import { tanstackRouter as tanstackRouterRspack } from '../src/rspack'
@@ -50,37 +51,6 @@ import type { Config } from '../src/core/config'
 import type { TargetFramework } from './regression-helpers'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
-
-/**
- * How the app counts the updates its HMR client applied, through the
- * client's public API: Vite's `vite:afterUpdate` event, and the
- * webpack-style hot API's status handler (Rspack), which reports `idle`
- * again once an update is applied. Vite's client also reports each
- * `invalidate()` a module's hot code calls (e.g. React Refresh for a module
- * that is no Refresh boundary), which it sends to the server to propagate
- * the update further. The counts are read by `edit()`.
- */
-const hmrProbes = {
-  vite: `if (import.meta.hot) {
-  import.meta.hot.on('vite:afterUpdate', () => {
-    window.__routeHmrApplied = (window.__routeHmrApplied ?? 0) + 1
-  })
-  import.meta.hot.on('vite:invalidate', () => {
-    window.__routeHmrInvalidated = (window.__routeHmrInvalidated ?? 0) + 1
-  })
-}
-`,
-  rsbuild: `if (import.meta.webpackHot) {
-  let status = import.meta.webpackHot.status()
-  import.meta.webpackHot.addStatusHandler((next) => {
-    if (next === 'idle' && status !== 'idle') {
-      window.__routeHmrApplied = (window.__routeHmrApplied ?? 0) + 1
-    }
-    status = next
-  })
-}
-`,
-}
 
 /**
  * How the app mounts the router into `#app`, per framework, with the router
@@ -234,15 +204,13 @@ export interface RouteHmrPage {
   click: (selector: string) => Promise<void>
   /**
    * Writes app files (`null` deletes one) for the dev server's watcher to
-   * pick up, waits until the dev server handled them (`settle()`) and the
-   * app shows `expected`, then until the server received every
-   * invalidation the page's HMR client sent, the client applied every
-   * update the server sent, and a full reload the server sent loaded, and
-   * returns whether the page reloaded meanwhile and what it logged.
-   *
-   * Fails as soon as the HMR client reports the update applied and the app
-   * still does not show `expected` shortly after, or after `timeout`
-   * (default 15 s) otherwise (a full reload shows `expected` once the page
+   * pick up, waits until the dev server handled them (`settle()`), then for
+   * the edit's outcome (`waitForOutcome`): the app shows `expected` and
+   * neither the dev server (transforms) nor the page (requests, a reload)
+   * has work in flight, twice in a row; returns whether the page reloaded
+   * meanwhile and what it logged. One overall bound, `timeout` (default
+   * 15 s): how many updates or client events the edit takes is the
+   * compiler's business (a full reload shows `expected` once the page
    * loaded again).
    */
   edit: (
@@ -257,14 +225,32 @@ export interface RouteHmrPage {
   evaluate: <T>(script: string) => Promise<T>
   /**
    * Warnings reported so far through the real channels, as diagnostics (read
-   * them with `findDiagnostics` / `expectDiagnostic`): the dev server's
-   * logger, what the dev server's process logged with `console.warn` naming
-   * this app's root while the page opened, edited or clicked
-   * (`captureConsole`; concurrent pages share the process, and the root
-   * tells their warnings apart), and what the page logged as a warning (e.g.
-   * a warning the compiler put into the served module).
+   * them with `findDiagnostics` / `expectDiagnostic`): every channel of the
+   * dev server (`appWarnings`: its logger or the bundler's compilation, and
+   * what the process printed naming this app's root: concurrent pages share
+   * the process, and the root tells their warnings apart), and what the page
+   * logged as a warning (e.g. a warning the compiler put into the served
+   * module).
    */
   warnings: () => Array<Diagnostic>
+}
+
+/**
+ * The warnings of an app on every channel of its dev server: the
+ * bundler's and the dev server's own, and what the process printed naming
+ * the app's root (pages of concurrent tests share the process's console;
+ * the root tells their warnings apart).
+ */
+function appWarnings(diagnostics: Array<Diagnostic>, root: string) {
+  return diagnostics
+    .filter(
+      (diagnostic) =>
+        diagnostic.severity === 'warning' &&
+        (diagnostic.source === 'vite' ||
+          diagnostic.source === 'bundler' ||
+          diagnostic.text.includes(root)),
+    )
+    .map((diagnostic) => diagnostic.text)
 }
 
 /** The part of a dev server the page needs. */
@@ -284,30 +270,11 @@ interface AppServer {
   write: (files: Record<string, string | null>) => Promise<void>
   /** Waits until the server has no work in flight. */
   idle: () => Promise<void>
-  /** Hot updates the server sent the page so far. */
-  updates: () => number
   /** Full reloads the server sent the page so far. */
   fullReloads: () => number
-  /**
-   * Invalidations (`import.meta.hot.invalidate()`) the server received
-   * from the page so far; Vite answers each with an update or a full
-   * reload.
-   */
-  invalidations: () => number
 }
 
-/**
- * How long the page may take to show an edit once its HMR client reported
- * the update applied: the framework's refresh runtime patches components a
- * few milliseconds later (React Refresh debounces by 16–30 ms), then the
- * router re-runs loaders and renders.
- */
-const appliedGrace = 500
-
 const defaultEditTimeout = 15_000
-
-const sleep = (ms: number) =>
-  new Promise<void>((resolve) => setTimeout(resolve, ms))
 
 /**
  * Starts a dev server on an app of `files` (see `RouteHmrPageOptions`), opens
@@ -319,25 +286,19 @@ export async function openRouteHmrPage(
   const target = options.target ?? 'react'
   const bundler = options.bundler ?? 'vite'
   const files = {
-    'main.tsx': `${mains[target].replace('ROUTER_OPTIONS', options.routerOptions ?? '')}${hmrProbes[bundler]}`,
+    'main.tsx': mains[target].replace(
+      'ROUTER_OPTIONS',
+      options.routerOptions ?? '',
+    ),
     'routes/__root.tsx': `import { createRootRoute } from '@tanstack/${target}-router'
 export const Route = createRootRoute({})
 `,
     ...options.files,
   }
-  /** What the server process logged through `console` while it worked. */
-  const processLogs: Array<Diagnostic> = []
-  /**
-   * Runs `run` capturing the console of this process: the dev server runs
-   * here, and the compiler may warn there (e.g. about a route it leaves
-   * unsplit) while the server starts, serves the page or handles an edit.
-   */
-  const capturing = async <T>(run: () => Promise<T>): Promise<T> => {
-    const { result, diagnostics } = await captureConsole(run)
-    processLogs.push(...diagnostics)
-    return result
-  }
-  const { server, page } = await capturing(async () => {
+  // The dev server's channel records the console of this process while it
+  // runs (the compiler may warn there, e.g. about a route it leaves
+  // unsplit)
+  const { server, page } = await (async () => {
     const started =
       bundler === 'vite'
         ? await viteServer(target, files, options)
@@ -351,7 +312,7 @@ export const Route = createRootRoute({})
     })
     await started.idle()
     return { server: started, page: opened }
-  })
+  })()
 
   const text = async () => {
     try {
@@ -361,26 +322,19 @@ export const Route = createRootRoute({})
       return ''
     }
   }
+  /**
+   * The page's requests in flight: module and hot-update fetches, and the
+   * document of a full reload.
+   */
+  const pageRequests = new Set<unknown>()
+  page.page.on('request', (request) => pageRequests.add(request))
+  page.page.on('requestfinished', (request) => pageRequests.delete(request))
+  page.page.on('requestfailed', (request) => pageRequests.delete(request))
+
   const matches = (expected: string | RegExp, current: string) =>
     typeof expected === 'string'
       ? current.includes(expected)
       : expected.test(current)
-  /**
-   * A count the page's HMR probe keeps (see `hmrProbes`), or `undefined`
-   * while the page is reloading.
-   */
-  const probe = async (name: string) => {
-    try {
-      return await page.page.evaluate<number>(`window.${name} ?? 0`)
-    } catch {
-      // The page is reloading
-      return undefined
-    }
-  }
-  /** Updates the page's HMR client applied so far. */
-  const applied = () => probe('__routeHmrApplied')
-  /** Invalidations the page's HMR client sent so far. */
-  const invalidated = () => probe('__routeHmrInvalidated')
   const describe = (expected: string | RegExp, current: string) =>
     [
       `the page shows: ${JSON.stringify(current)}`,
@@ -394,21 +348,16 @@ export const Route = createRootRoute({})
     page,
     root: server.root,
     loads: () => page.loads(),
-    click: (selector) =>
-      capturing(async () => {
-        await page.page.locator(selector).first().click()
-      }),
+    click: async (selector) => {
+      await page.page.locator(selector).first().click()
+    },
     edit: (edited, expected, editOptions = {}) =>
-      capturing(async () => {
+      (async () => {
         const timeout = editOptions.timeout ?? defaultEditTimeout
         const start = {
           loads: page.loads(),
           errors: page.errors.length,
-          applied: (await applied()) ?? 0,
-          invalidated: (await invalidated()) ?? 0,
-          updates: server.updates(),
           fullReloads: server.fullReloads(),
-          invalidations: server.invalidations(),
         }
         const reloaded = () =>
           page.loads() > start.loads || server.fullReloads() > start.fullReloads
@@ -416,64 +365,22 @@ export const Route = createRootRoute({})
         const files = Object.keys(edited).join(', ')
         await server.write(edited)
 
-        // Until the page shows the edit
-        let appliedAt: number | undefined
-        for (;;) {
-          const current = await text()
-          if (matches(expected, current)) {
-            break
-          }
-          if (!reloaded()) {
-            const count = await applied()
-            if (count !== undefined && count > start.applied) {
-              appliedAt ??= Date.now()
-              if (Date.now() - appliedAt > appliedGrace) {
-                throw new Error(
-                  `the page's HMR client applied the update of ${files} but the page does not show the edit\n${describe(expected, current)}`,
-                )
-              }
-            }
-          }
-          if (Date.now() > deadline) {
-            throw new Error(
-              `the page did not show the edit of ${files} within ${timeout} ms\n${describe(expected, current)}`,
-            )
-          }
-          await sleep(25)
-        }
-
-        // Until nothing of the edit is in flight: the server received every
-        // invalidation the client sent (and answered it), the client applied
-        // every update the server sent, and a full reload the server sent
-        // (or the client decided) loaded the page again
-        for (;;) {
-          await server.idle()
-          let settled: boolean
-          if (
-            server.fullReloads() > start.fullReloads ||
-            page.loads() > start.loads
-          ) {
-            settled = page.loads() > start.loads
-          } else {
-            const count = await applied()
-            const sent = await invalidated()
-            settled =
-              count !== undefined &&
-              sent !== undefined &&
-              sent - start.invalidated <=
-                server.invalidations() - start.invalidations &&
-              count - start.applied >= server.updates() - start.updates
-          }
-          if (settled) {
-            break
-          }
-          if (Date.now() > deadline) {
-            throw new Error(
-              `the dev server and the page did not settle after the edit of ${files} within ${timeout} ms\n${describe(expected, await text())}`,
-            )
-          }
-          await sleep(25)
-        }
+        // Until the edit's outcome (N21; `waitForOutcome`): the page shows
+        // the edit, and neither the dev server nor the page has work of it
+        // in flight, within one overall bound. How many hot updates,
+        // invalidations or `vite:afterUpdate` events the edit takes, and how
+        // soon after the first one the page shows it, are the compiler's
+        // business.
+        await waitForOutcome({
+          timeout: Math.max(0, deadline - Date.now()),
+          applied: async () => matches(expected, await text()),
+          quiet: async () => {
+            await server.idle()
+            return pageRequests.size === 0
+          },
+          describe: async () =>
+            `edit of ${files}\n${describe(expected, await text())}`,
+        })
         return {
           get reloaded() {
             return reloaded()
@@ -482,15 +389,10 @@ export const Route = createRootRoute({})
             return page.errors.slice(start.errors)
           },
         }
-      }),
+      })(),
     evaluate: (script) => page.page.evaluate(script),
     warnings: () => [
       ...diagnosticsOf(server.warnings(), 'warning'),
-      ...processLogs.filter(
-        (diagnostic) =>
-          diagnostic.severity === 'warning' &&
-          diagnostic.text.includes(server.root),
-      ),
       ...diagnosticsOf(
         page.console
           .filter((message) => message.startsWith('warning: '))
@@ -552,15 +454,10 @@ async function viteServer(
       ...(options.plugins?.vite ?? []),
     ],
   })
-  // Vite's own handler of an invalidation runs first and sends its answer
-  // (an update or a full reload) before this listener runs.
-  let invalidations = 0
-  server.vite.environments.client.hot.on('vite:invalidate', () => {
-    invalidations++
-  })
-  const clientMessages = (type: 'update' | 'full-reload') => () =>
+  const fullReloads = () =>
     server.hmr.filter(
-      (message) => message.environment === 'client' && message.type === type,
+      (message) =>
+        message.environment === 'client' && message.type === 'full-reload',
     ).length
   return {
     url: server.url!,
@@ -568,14 +465,9 @@ async function viteServer(
       await server.edit(edited)
     },
     idle: () => server.idle(),
-    updates: clientMessages('update'),
-    fullReloads: clientMessages('full-reload'),
-    invalidations: () => invalidations,
+    fullReloads,
     root: server.root,
-    warnings: () =>
-      server.logs
-        .filter((log) => log.startsWith('warn: '))
-        .map((log) => log.slice('warn: '.length)),
+    warnings: () => appWarnings(server.diagnostics, server.root),
   }
 }
 
@@ -614,33 +506,20 @@ async function rsbuildServer(
       ...(options.plugins?.rsbuild ?? []),
     ],
   })
-  let updates = 0
-  const hotUpdateChunks = async () =>
-    Object.keys(await server.hotUpdates()).length
   return {
     url: server.url!,
     write: async (edited) => {
-      // Until the compiles read the edit and nothing compiles anymore; the
-      // hot-update chunks they emitted are what the page applies
-      const before = await hotUpdateChunks()
+      // Until the edit's outcome on the server: a compile that read it
+      // ended and nothing compiles anymore
       await server.write(edited)
       await server.settle()
-      if ((await hotUpdateChunks()) > before) {
-        updates++
-      }
     },
     idle: () => Promise.resolve(),
-    updates: () => updates,
     // Rsbuild's client reloads the page itself: the page's loads tell
     fullReloads: () => 0,
-    // A webpack-style invalidation is applied within the client's update
-    invalidations: () => 0,
     root: server.root,
     // Every compile's (the page's edits settle before they are read)
-    warnings: () =>
-      server.diagnostics
-        .filter((diagnostic) => diagnostic.severity === 'warning')
-        .map((diagnostic) => diagnostic.text),
+    warnings: () => appWarnings(server.diagnostics, server.root),
   }
 }
 

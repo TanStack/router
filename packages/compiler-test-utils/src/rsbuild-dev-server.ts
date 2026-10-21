@@ -4,15 +4,22 @@
  * written to disk) on a temporary app, lets the test edit files, waits for
  * the rebuild the edit causes, and reads what each environment emitted.
  *
- * Unlike the Vite harness, file events come from Rspack's own file watcher:
- * `edit()` writes the files and waits for the compile that includes them
- * (`trackCompiles`). When plugins write files too (a generated route tree),
- * `write()` and `settle()` wait until the compiles are done with every
- * write, by events only (see `settle`). Both also wait until Rspack's
+ * Unlike the Vite harness, file events come from Rspack's own file watcher
+ * (or a plugin's, which invalidates the compiler): `edit()` writes the
+ * files and waits for the bounded outcome of the edit (`trackCompiles`): a
+ * compile that started after the last write ended, and nothing compiles or
+ * is pending, within an overall timeout. Which files a compile reads, and
+ * how many compiles an edit takes, are the plugins' business (coupling
+ * N21): a plugin may watch an original source itself and hand Rspack a
+ * virtual module. When plugins write files too (a generated route tree),
+ * `write()` and `settle()` wait the same way. Both also wait until Rspack's
  * watcher is attached and has scanned the app's directories, as the start
- * does (`CompileTracker.watching`): a file removed before that is never
- * reported. `diagnostics` keeps the errors and warnings of every compile
- * since the server started.
+ * does (`CompileTracker.watching`: the authorised initial-scan adapter): a
+ * file removed before that is never reported.
+ *
+ * Diagnostics: one channel (`./diagnostic-channel`) records, from the start
+ * until `stop()`, every compile's errors and warnings and what `console.*`
+ * and direct writes to `process.stdout`/`stderr` report (`diagnostics`).
  *
  * Plugin-agnostic: the caller supplies the Rsbuild plugins and the directory
  * the apps live in (where their imports resolve).
@@ -23,10 +30,10 @@ import { createServer } from 'node:http'
 import path from 'node:path'
 import { createRsbuild, mergeRsbuildConfig } from '@rsbuild/core'
 import { createApp } from './build-harness'
-import { diagnosticsOf } from './diagnostics'
+import { openDiagnosticChannel } from './diagnostic-channel'
 import { saveAppFile } from './save-file'
 import type { AppOptions } from './build-harness'
-import type { Diagnostic } from './diagnostics'
+import type { ChannelDiagnostic } from './diagnostic-channel'
 import type { AddressInfo, Socket } from 'node:net'
 import type {
   RsbuildConfig,
@@ -94,10 +101,17 @@ export interface RsbuildDevServer {
   url: string | undefined
   /**
    * Writes app files (relative to the app root; `null` deletes a file) and
-   * waits for the compile that includes them; rejects with the error of a
-   * compile of them Rspack gave up on.
+   * waits for the edit's outcome: a compile that started after the last
+   * write ended and nothing compiles or is pending (`compileTimeout` bounds
+   * it); rejects with the error of a compile of them Rspack gave up on.
+   * `accept` takes the files the caller expects no compile for (a file
+   * nothing reads): when it takes them all, the wait ends once they are
+   * written.
    */
-  edit: (files: Record<string, string | null>) => Promise<void>
+  edit: (
+    files: Record<string, string | null>,
+    options?: { accept?: (relative: string) => boolean },
+  ) => Promise<void>
   /**
    * Writes app files (relative to the app root; `null` deletes a file)
    * without waiting: Rspack's watcher (and plugins' own watchers) report
@@ -107,18 +121,17 @@ export interface RsbuildDevServer {
   /** Moves an app file without waiting (see `write`). */
   rename: (from: string, to: string) => Promise<void>
   /**
-   * Waits until the compiles are done with every write so far, the test's
-   * (`write()`) and the plugins' (e.g. a generated route tree), by the
-   * compiles' own events: no compile runs or is pending (Rspack's watcher
-   * reports a change with its `invalid` hook), the outputs of the last one
-   * are recorded, every app file the last compile read is as it was when
-   * that compile started (else Rspack's watcher compiles again), and every
-   * file `write()` wrote since the last call is read by the last compile or
-   * accepted by `accept` (e.g. a file a plugin reported it cannot handle,
-   * which no compile reads). Rejects when more than 10 compiles start
-   * meanwhile (a plugin rewriting a file on each compile), and with the error
-   * of a compile Rspack gave up on. `timeout` (default `compileTimeout`) only
-   * guards against compiles that never come.
+   * Waits for the outcome of every write so far, the test's (`write()`) and
+   * the plugins' (e.g. a generated route tree), by the compiles' own
+   * events: a compile started after the last `write()` (unless `accept`
+   * takes every file written since the last call: a file nothing reads),
+   * no compile runs or is pending (Rspack's watcher, or a plugin, reports a
+   * change with the `invalid` hook), the outputs of the last one are
+   * recorded, and every app file the last compile read is as it was when
+   * that compile started (else Rspack's watcher compiles again). Bounded by
+   * `timeout` in all (default `compileTimeout`), not by a count of compiles:
+   * an app that keeps compiling (a plugin rewriting a file on each compile)
+   * fails there. Rejects with the error of a compile Rspack gave up on.
    */
   settle: (options?: {
     accept?: (relative: string) => boolean
@@ -144,18 +157,25 @@ export interface RsbuildDevServer {
   /** Warnings of the last compile (`diagnostics` keeps every compile's). */
   warnings: Array<string>
   /**
-   * The errors and warnings of every compile of every environment since the
-   * server started, in the order the compiles ended, as diagnostics
-   * (`./diagnostics`: `severity` `error` or `warning`). A compile's report
-   * is never lost to a later compile: a dev server compiles again on its own
-   * (a file a plugin wrote, a file the watcher finds outdated when it
-   * attaches after a compile), and a plugin that reports a problem once
-   * (Start's import protection, `log: 'once'`) does not repeat it. For the
-   * reports since a point, mark it (`const since = server.diagnostics.length`)
-   * and read `server.diagnostics.slice(since)` afterwards, as with the Vite
-   * harness's `logs`. Read through `diagnosticsOf`/`expectDiagnostic`.
+   * Everything reported since the server started, on every channel, in
+   * order (`./diagnostic-channel`): the errors and warnings of every compile
+   * of every environment (source `bundler`, read when each compile ends),
+   * and `console.*` and direct writes to `process.stdout`/`stderr` (a
+   * plugin may report through the console instead of the compilation,
+   * SPEC §5.7). A compile's report is never lost to a later compile: a dev
+   * server compiles again on its own, and a plugin that reports a problem
+   * once (Start's import protection, `log: 'once'`) does not repeat it. For
+   * the reports since a point, mark it (`const since =
+   * server.diagnostics.length`) and read `server.diagnostics.slice(since)`
+   * afterwards. Read through `expectDiagnostic`; "nothing reported" through
+   * `expectNoProblems`.
    */
-  diagnostics: Array<Diagnostic>
+  diagnostics: Array<ChannelDiagnostic>
+  /**
+   * The Rsbuild dev server (`createDevServer()` of the public API), e.g.
+   * for `environments.<name>.loadBundle(entry)` (server code).
+   */
+  devServer: RsbuildServer
   /**
    * Stops the dev server (and its watcher) but keeps the app directory, e.g.
    * to edit the app afterwards and observe that nothing reacts; `close()`
@@ -197,7 +217,9 @@ export async function createRsbuildDevServer(
   const rebuilt: Array<string> = []
   const errors: Array<string> = []
   const warnings: Array<string> = []
-  const diagnostics: Array<Diagnostic> = []
+  /** Every channel the server's work may report on (see the module comment). */
+  const channel = openDiagnosticChannel()
+  const diagnostics = channel.diagnostics
   const compiles = trackCompiles()
 
   /**
@@ -221,8 +243,23 @@ export async function createRsbuildDevServer(
   const lastInputs = new Map<object, Map<string, AppFile | undefined>>()
   /** The app files each compile saw when it started, by compiler. */
   const startState = new Map<object, Map<string, AppFile>>()
-  /** Files `write()` wrote since the last `settle()` (absolute). */
-  const written = new Set<string>()
+  /**
+   * Files `write()` wrote since the last `settle()` (absolute): each one as
+   * it was before the write, and the first compile (`started`) that began
+   * once the file held the write (it reads the file after it began).
+   */
+  const written = new Map<
+    string,
+    { before: AppFile | undefined; seenBy?: number }
+  >()
+  /** Records the write of `absolute`, before writing it. */
+  const willWrite = (absolute: string) => {
+    if (!written.has(absolute)) {
+      written.set(absolute, { before: readAppFile(absolute) })
+    } else {
+      written.get(absolute)!.seenBy = undefined
+    }
+  }
   /** Wakes up `settle()` whenever a compile starts, ends or is pending. */
   let wake = () => {}
   let woken = new Promise<void>((resolve) => {
@@ -260,6 +297,15 @@ export async function createRsbuildDevServer(
             started++
             invalidated = false
             startState.set(environmentCompiler, readAppFiles(root))
+            // This compile reads what the written files hold now
+            for (const [absolute, state] of written) {
+              if (
+                state.seenBy === undefined &&
+                !sameAppFile(state.before, readAppFile(absolute))
+              ) {
+                state.seenBy = started
+              }
+            }
             notify()
           })
           environmentCompiler.hooks.invalid.tap(name, () => {
@@ -274,10 +320,7 @@ export async function createRsbuildDevServer(
               // Read here, while the compilation is still accessible: Rspack
               // drops it once the next compile starts (`onDevCompileDone`
               // then cannot read it).
-              diagnostics.push(
-                ...diagnosticsOf(compilation.errors, 'error'),
-                ...diagnosticsOf(compilation.warnings, 'warning'),
-              )
+              channel.reportCompilation(compilation)
               const state = startState.get(environmentCompiler) ?? new Map()
               lastInputs.set(
                 environmentCompiler,
@@ -424,6 +467,7 @@ export async function createRsbuildDevServer(
       // e.g. the first compile timed out: stop watching the app
       await created?.close()
     } finally {
+      channel.close()
       await app.dispose()
     }
     throw error
@@ -435,7 +479,11 @@ export async function createRsbuildDevServer(
       try {
         await server.close()
       } finally {
-        await http?.close()
+        try {
+          await http?.close()
+        } finally {
+          channel.close()
+        }
       }
     })()
     return stopped
@@ -470,7 +518,7 @@ export async function createRsbuildDevServer(
     gaveUp = undefined
     for (const [relative, code] of Object.entries(files)) {
       const absolute = file(relative)
-      written.add(absolute)
+      willWrite(absolute)
       if (code === null) {
         await rm(absolute, { force: true })
       } else {
@@ -483,6 +531,15 @@ export async function createRsbuildDevServer(
   function unsettled(accept: (relative: string) => boolean) {
     if (gaveUp) {
       return undefined
+    }
+    const owed = [...written].filter(
+      ([absolute, state]) =>
+        state.seenBy === undefined &&
+        !sameAppFile(state.before, readAppFile(absolute)) &&
+        !accept(path.relative(root, absolute).split(path.sep).join('/')),
+    )
+    if (owed.length > 0) {
+      return `no compile started after the write of ${owed.map(([absolute]) => path.relative(root, absolute)).join(', ')}`
     }
     if (compiling.size > 0 || invalidated || recordedAt !== ended) {
       return 'a compile runs or is pending'
@@ -498,15 +555,6 @@ export async function createRsbuildDevServer(
     if (changed.length) {
       return `no compile read ${changed.map((input) => path.relative(root, input)).join(', ')} as it is now`
     }
-    const unread = [...written].filter(
-      (absolute) =>
-        readAppFile(absolute) !== undefined &&
-        ![...lastInputs.values()].some((inputs) => inputs.has(absolute)) &&
-        !accept(path.relative(root, absolute).split(path.sep).join('/')),
-    )
-    if (unread.length) {
-      return `no compile read ${unread.map((absolute) => path.relative(root, absolute)).join(', ')}`
-    }
     return undefined
   }
 
@@ -516,7 +564,6 @@ export async function createRsbuildDevServer(
     const accept = options.accept ?? (() => false)
     const timeout = options.timeout ?? compileTimeout
     const deadline = Date.now() + timeout
-    const startedBefore = started
     for (;;) {
       const reason = unsettled(accept)
       if (gaveUp) {
@@ -528,11 +575,6 @@ export async function createRsbuildDevServer(
         await compiles.watching(root, timeout)
         written.clear()
         return
-      }
-      if (started - startedBefore > 10) {
-        throw new Error(
-          `the app keeps compiling: ${started - startedBefore} compiles since settle() began (${reason})`,
-        )
       }
       if (Date.now() > deadline) {
         throw new Error(
@@ -557,19 +599,19 @@ export async function createRsbuildDevServer(
     write,
     rename: async (from, to) => {
       gaveUp = undefined
-      written.add(file(from))
-      written.add(file(to))
+      willWrite(file(from))
+      willWrite(file(to))
       await mkdir(path.dirname(file(to)), { recursive: true })
       await rename(file(from), file(to))
     },
     settle,
-    edit: (files) => {
+    edit: (files, editOptions = {}) => {
       for (const chunks of hotUpdateChunks.values()) {
         for (const file of Object.keys(chunks)) {
           delete chunks[file]
         }
       }
-      return compiles.edit(root, files, compileTimeout)
+      return compiles.edit(root, files, compileTimeout, editOptions.accept)
     },
     outputs: async (environment) => {
       const files = await readJavaScript(distPathOf(environment))
@@ -588,6 +630,7 @@ export async function createRsbuildDevServer(
     errors,
     warnings,
     diagnostics,
+    devServer: server,
     stop,
     close,
   }
@@ -628,54 +671,50 @@ export interface CompileTracker {
   watching: (root: string, timeout: number) => Promise<void>
   /**
    * Writes files (relative to `root`; `null` deletes a file) and waits for
-   * the compile that includes the edit (see `CompileTracker`), then for the
-   * watcher (`watching`).
+   * the edit's outcome (see `trackCompiles`), then for the watcher
+   * (`watching`). `accept` takes the files no compile is expected for.
    */
   edit: (
     root: string,
     files: Record<string, string | null>,
     timeout: number,
+    accept?: (relative: string) => boolean,
   ) => Promise<void>
 }
 
 /**
  * Follows the compiles of a watch mode Rspack build, to wait for the
- * compile that includes an edit, by what each compile reports changed
- * (`compiler.modifiedFiles` and `removedFiles`) rather than by when it
- * starts: the watcher may start the compile of an edit before the writes
- * finish, all the more on a loaded machine.
- *
- * The wait for an edit begins before the files are written. It ends at the
- * end of a compile once a compile reported an edited file (or a directory
- * of one) changed, every compiler that read an edited file reported it
- * changed (each in a compile that started after its write),
- * and every other written file (e.g. a new module) was read or is
- * looked for by no compile (which then failed to find it, before the
- * write). A compile Rspack gives up on (a plugin hook threw) fails the waits
- * for the edits it includes, with its error. `timeout` only guards against
- * a compile that never comes.
+ * outcome of an edit, bounded by a timeout (coupling N21): the edit is
+ * applied once a compile that started after the last write ended and every
+ * compile that started meanwhile ended (`done()`). Which compiler reads the
+ * edited files, what a compile reports changed, and how many compiles an
+ * edit takes are not assumed: a plugin may watch an original source itself
+ * and invalidate the compiler. A compile that started before the writes
+ * ended does not count: Rspack's watcher compiles again for a file written
+ * after a compile started. A compile Rspack gives up on (a plugin hook
+ * threw) after the writes fails the wait, with its error. `timeout` bounds
+ * the whole wait.
  */
 export function trackCompiles(): CompileTracker {
   interface EditWait {
     files: Array<string>
-    /** Edited files a compiler read and did not report changed yet. */
-    pending: Map<Rspack.Compiler, Set<string>>
-    /** Written files no compiler read. */
-    unread: Array<string>
-    /** Each edited file as it was before the edit (`undefined`: absent). */
-    before: Map<string, AppFile | undefined>
+    /** The writes ended. */
     written: boolean
-    /** A compile reported an edited file (or a directory of one). */
-    reached: boolean
-    /** `started` when a compile last reported an edited file. */
-    lastReport: number
+    /**
+     * The files a compile is owed for (`accept` takes the others), each as
+     * it was before the edit, and the first compile (`started`) that began
+     * once the file held the edit: it reads the edit (a compile reads its
+     * files after `watchRun`).
+     */
+    owed: Map<string, { before: AppFile | undefined; seenBy?: number }>
     resolve: () => void
     reject: (error: Error) => void
   }
   const compilers: Array<Rspack.Compiler> = []
   /**
    * The dependencies of each compiler's last compile: the files it read,
-   * and the paths it looked for and did not find.
+   * and the paths it looked for and did not find (for `watching`, the
+   * initial-scan adapter).
    */
   const dependencies = new Map<
     Rspack.Compiler,
@@ -693,38 +732,32 @@ export function trackCompiles(): CompileTracker {
     reject: (error: Error) => void
   }>()
 
-  const touches = (changed: string, file: string) =>
-    file === changed || file.startsWith(changed + path.sep)
+  /** Compilers whose watcher reported a change no compile began for. */
+  const invalid = new Set<Rspack.Compiler>()
 
-  const isRead = (file: string) =>
-    compilers.some((compiler) => dependencies.get(compiler)?.files.has(file))
+  /** The last compile that read part of the edit, if every owed file was. */
+  const lastReader = (wait: EditWait) => {
+    let last = 0
+    for (const { seenBy } of wait.owed.values()) {
+      if (seenBy === undefined) {
+        return undefined
+      }
+      last = Math.max(last, seenBy)
+    }
+    return last
+  }
 
-  /** Whether a compile looked for the file, or a directory of it. */
-  const isMissing = (file: string) =>
-    compilers.some((compiler) =>
-      [...(dependencies.get(compiler)?.missing ?? [])].some(
-        (missing) => missing !== '/' && touches(missing, file),
-      ),
+  /** Whether the edit's outcome is in (see `trackCompiles`). */
+  const settled = (wait: EditWait) => {
+    const last = lastReader(wait)
+    return (
+      wait.written &&
+      last !== undefined &&
+      startedBeforeDone >= last &&
+      startedBeforeDone === started &&
+      invalid.size === 0
     )
-
-  const unreported = (wait: EditWait) => [
-    ...new Set([...wait.pending.values()].flatMap((files) => [...files])),
-  ]
-
-  /** Written files a compile still has to read. */
-  const unreadButNeeded = (wait: EditWait) =>
-    wait.unread.filter((file) => !isRead(file) && isMissing(file))
-
-  /**
-   * Whether the compiles include the whole edit, and the last one that
-   * reported part of it ended (no compiler compiles when `done()` is called).
-   */
-  const settled = (wait: EditWait) =>
-    wait.written &&
-    wait.reached &&
-    unreported(wait).length === 0 &&
-    unreadButNeeded(wait).length === 0 &&
-    startedBeforeDone >= wait.lastReport
+  }
 
   const withTimeout = (
     timeout: number,
@@ -812,39 +845,20 @@ export function trackCompiles(): CompileTracker {
         const name = 'compile-tracker'
         environmentCompiler.hooks.watchRun.tap(name, () => {
           started++
-          const changed = [
-            ...(environmentCompiler.modifiedFiles ?? []),
-            ...(environmentCompiler.removedFiles ?? []),
-          ]
+          invalid.delete(environmentCompiler)
           for (const wait of waits) {
-            // A compile counts toward an edited file only if it started
-            // after the write: the file is no longer as it was before the
-            // edit (contents or modification time; the compile reads its
-            // files after `watchRun`, a plugin may rewrite the file then).
-            // One that started before (for a change the watcher saw
-            // earlier, e.g. on its first scan) does not compile the edit,
-            // even if it names the file (DECISIONS 2026-10-20 "Rsbuild
-            // first-edit harness fixes").
-            const edited = (file: string) =>
-              wait.before.has(file) &&
-              !sameAppFile(wait.before.get(file), readAppFile(file))
-            const pending = wait.pending.get(environmentCompiler)
-            for (const file of changed) {
-              if (edited(file)) {
-                pending?.delete(file)
+            for (const [file, state] of wait.owed) {
+              if (
+                state.seenBy === undefined &&
+                !sameAppFile(state.before, readAppFile(file))
+              ) {
+                state.seenBy = started
               }
             }
-            if (
-              wait.files.some(
-                (file) =>
-                  edited(file) &&
-                  changed.some((changedPath) => touches(changedPath, file)),
-              )
-            ) {
-              wait.reached = true
-              wait.lastReport = started
-            }
           }
+        })
+        environmentCompiler.hooks.invalid.tap(name, () => {
+          invalid.add(environmentCompiler)
         })
         // Before Rsbuild's own `done` taps, which announce the end of the
         // compile: the next edit may begin right then.
@@ -867,7 +881,10 @@ export function trackCompiles(): CompileTracker {
             }
           }
           for (const wait of waits) {
-            if (wait.reached) {
+            // A compile of the edit (it read part of it)
+            if (
+              [...wait.owed.values()].some(({ seenBy }) => seenBy !== undefined)
+            ) {
               wait.reject(error)
             }
           }
@@ -902,44 +919,37 @@ export function trackCompiles(): CompileTracker {
         },
       )
     },
-    async edit(root, edits, timeout) {
+    async edit(root, edits, timeout, accept = () => false) {
       const files = Object.keys(edits).map((file) => path.join(root, file))
       const startedBefore = started
       const wait: EditWait = {
         files,
-        pending: new Map(
-          compilers.map((compiler) => [
-            compiler,
-            new Set(
-              files.filter((file) =>
-                dependencies.get(compiler)?.files.has(file),
-              ),
-            ),
-          ]),
-        ),
-        unread: Object.entries(edits)
-          .filter(([, code]) => code !== null)
-          .map(([file]) => path.join(root, file))
-          .filter((file) => !isRead(file)),
-        before: new Map(files.map((file) => [file, readAppFile(file)])),
         written: false,
-        reached: false,
-        lastReport: 0,
+        owed: new Map(
+          Object.keys(edits)
+            .filter((relative) => !accept(relative.split(path.sep).join('/')))
+            .map((relative) => {
+              const file = path.join(root, relative)
+              return [file, { before: readAppFile(file) }]
+            }),
+        ),
         resolve: () => {},
         reject: () => {},
       }
-      // Listens before writing: the watcher may start the compile of the
-      // edit before the writes finish.
+      // Listens before writing: a compile may fail while the writes finish
       const compiled = withTimeout(
         timeout,
-        () => {
-          const missing = [...unreported(wait), ...unreadButNeeded(wait)]
-          return `Rsbuild did not finish a compile of the edit of ${Object.keys(edits).join(', ')} within ${timeout} ms (${started - startedBefore} compiles started since the edit; no compile included ${
-            missing.length
-              ? missing.map((file) => path.relative(root, file)).join(', ')
-              : 'an edited file'
-          })`
-        },
+        () =>
+          `Rsbuild did not finish a compile of the edit of ${Object.keys(edits).join(', ')} within ${timeout} ms (${started - startedBefore} compiles started since the edit began, ${
+            !wait.written
+              ? 'the writes did not finish'
+              : lastReader(wait) !== undefined
+                ? 'the compiles of the edit did not end'
+                : `none read ${[...wait.owed]
+                    .filter(([, { seenBy }]) => seenBy === undefined)
+                    .map(([file]) => path.relative(root, file))
+                    .join(', ')} as edited`
+          })`,
         (handlers) => {
           wait.resolve = handlers.resolve
           wait.reject = handlers.reject
@@ -947,7 +957,6 @@ export function trackCompiles(): CompileTracker {
           return () => waits.delete(wait)
         },
       )
-      // A compile of the edit may fail while the writes finish
       compiled.catch(() => {})
       try {
         for (const [relative, code] of Object.entries(edits)) {
@@ -962,7 +971,6 @@ export function trackCompiles(): CompileTracker {
         wait.reject(error as Error)
       }
       wait.written = true
-      // The compile of the edit may have ended while the writes finished
       if (settled(wait)) {
         wait.resolve()
       }

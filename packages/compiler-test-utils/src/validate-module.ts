@@ -2,17 +2,27 @@
  * Dangling names in dead code (user ruling "Dead-code references, widened",
  * 2026-10-17): code that the supported bundlers delete from a production
  * build may read names that are never declared or imported; a dangling name
- * that survives into production output is a bug. So `getModuleErrors`
- * reports only the free names of what real tree-shaking keeps: the module
- * bundled alone by Rolldown (Vite's production bundler) with its exports as
- * roots and every import external (and side-effectful). The build harness
- * checks the production client chunks themselves (`build-harness.ts`).
+ * that survives into production output is a bug. That is decided on the
+ * real build (SPEC G8; RULES-AUDIT R11; coupling N19): `getModuleErrors`
+ * with `build` reports only the free names the real build's chunks still
+ * read in the module's code. Without `build` it approximates the build by
+ * the module bundled alone by Rolldown (Vite's production bundler) with its
+ * exports as roots and every import external (and side-effectful): that
+ * keeps exports and code the real graph drops, so it is stricter than a
+ * real build (deprecated for G8 decisions; kept for the callers that do not
+ * build yet). The build harness checks the production client chunks
+ * themselves (`build-harness.ts`).
+ *
+ * Globals: a module may read the globals of where it runs (`env`): a
+ * client module only the browser's, a server module only Node.js's
+ * (`known-globals.ts`).
  */
 import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import { stripVTControlCharacters } from 'node:util'
 import { parseSync, transformWithOxc } from 'vite'
-import { knownGlobals } from './known-globals'
+import { clientGlobals, knownGlobals, serverGlobals } from './known-globals'
+import { sourceAttribution } from './source-attribution'
 import type { ESTree, Rolldown } from 'vite'
 
 /**
@@ -33,9 +43,50 @@ export interface ProjectJsx {
   pragmaFrag?: string
 }
 
+/** A real production build a module ships in (`ModuleErrorOptions.build`). */
+export interface ShippedModule {
+  /**
+   * The build's emitted chunks, each with its source map (e.g. a
+   * `describeBuild` result of a `sourcemap: true` build, or the chunks of a
+   * `./plugin-host` build).
+   */
+  chunks: Array<{
+    code: string
+    map?: {
+      version: number
+      sources: Array<string | null>
+      names: Array<string>
+      mappings: string
+    }
+  }>
+  /** Where the maps' relative sources are relative to (the output directory). */
+  outDir: string
+  /** The module's file (absolute path), as the maps name it. */
+  module: string
+}
+
+/** Where a module runs: the globals it may read (`known-globals.ts`). */
+export type ModuleEnv = 'client' | 'server' | 'universal'
+
 export interface ModuleErrorOptions {
   /** Names the module may read as globals besides the known ones. */
   globals?: Iterable<string>
+  /**
+   * Where the module runs: `client` (a browser: no Node.js-only global such
+   * as `process` or `Buffer`), `server` (Node.js: no browser-only global
+   * such as `window` or `document`), or `universal` (either: both sets).
+   * Default `universal`, which admits Node.js globals in a client module:
+   * callers that know where the module runs pass it.
+   */
+  env?: ModuleEnv
+  /**
+   * The real production build the module ships in: a free name is then
+   * reported only when that build's chunks still read it in the module's
+   * code (attributed by the chunks' source maps), as the real graph and
+   * the real settings (defines, minification, unused exports dropped)
+   * decide. Required for a G8 decision; without it, see the module comment.
+   */
+  build?: ShippedModule
   /** The JSX settings of the module's project (see `ProjectJsx`). */
   jsx?: ProjectJsx
   /**
@@ -114,12 +165,17 @@ export async function getModuleErrors(
     }
   }
   const compiled = await compileModule(code, filename, options.jsx)
+  const globals = globalsOf(options.env)
   let names = [...unboundNames(compiled)].filter(
-    (name) => lost.has(name) || !(knownGlobals.has(name) || allowed.has(name)),
+    (name) => lost.has(name) || !(globals.has(name) || allowed.has(name)),
   )
-  // Tree-shaking only deletes code, so it runs only when there is a name to
-  // clear.
-  if (names.length > 0) {
+  if (names.length > 0 && options.build) {
+    // What the real build still reads free in the module's code
+    const shipped = await freeNamesShipped(options.build)
+    names = names.filter((name) => shipped.has(name))
+  } else if (names.length > 0) {
+    // Tree-shaking only deletes code, so it runs only when there is a name
+    // to clear.
     let kept: Set<string>
     try {
       kept = unboundNames(await treeShake(compiled))
@@ -135,18 +191,59 @@ export async function getModuleErrors(
   )
 }
 
+/** The globals a module that runs in `env` may read. */
+function globalsOf(env: ModuleEnv = 'universal'): ReadonlySet<string> {
+  return env === 'client'
+    ? clientGlobals
+    : env === 'server'
+      ? serverGlobals
+      : knownGlobals
+}
+
+/**
+ * The names the chunks of a real build read free in the code of `module`
+ * (attributed by each chunk's source map; a chunk without a map attributes
+ * nothing, so it confirms no name).
+ */
+async function freeNamesShipped(build: ShippedModule): Promise<Set<string>> {
+  const names = new Set<string>()
+  for (const chunk of build.chunks) {
+    if (!chunk.map) {
+      continue
+    }
+    const moduleAt = await sourceAttribution(
+      chunk.code,
+      chunk.map,
+      build.outDir,
+    )
+    for (const [name, starts] of unboundReads(chunk.code)) {
+      if (starts.some((start) => moduleAt(start) === build.module)) {
+        names.add(name)
+      }
+    }
+  }
+  return names
+}
+
 /**
  * Names a module references without declaring or importing them, other than
- * known globals and reads a `typeof` check guards, once TypeScript is erased
- * and JSX compiled with the project's JSX settings (`jsx`, see `ProjectJsx`)
- * and the module's own pragmas. Dead code counts too.
+ * the globals of where it runs (`env`, default `universal`: see
+ * `ModuleErrorOptions.env`) and reads a `typeof` check guards, once
+ * TypeScript is erased and JSX compiled with the project's JSX settings
+ * (`jsx`, see `ProjectJsx`) and the module's own pragmas. Dead code counts
+ * too.
  */
 export async function freeIdentifiers(
   code: string,
   filename = 'module.tsx',
-  options: { jsx?: ProjectJsx } = {},
+  options: { jsx?: ProjectJsx; env?: ModuleEnv } = {},
 ): Promise<Set<string>> {
-  return freeNamesOf(await compileModule(code, filename, options.jsx))
+  const globals = globalsOf(options.env)
+  return new Set(
+    [...unboundNames(await compileModule(code, filename, options.jsx))].filter(
+      (name) => !globals.has(name),
+    ),
+  )
 }
 
 /**
@@ -205,12 +302,6 @@ async function compileModule(
     typescript: { onlyRemoveTypeImports: true },
   })
   return javascript
-}
-
-function freeNamesOf(javascript: string): Set<string> {
-  return new Set(
-    [...unboundNames(javascript)].filter((name) => !knownGlobals.has(name)),
-  )
 }
 
 const require = createRequire(import.meta.url)

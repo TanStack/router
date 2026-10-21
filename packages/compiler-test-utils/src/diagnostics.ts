@@ -2,7 +2,8 @@
  * One diagnostic oracle (FIX-PLAN A9; SPEC G5, J2.8, J4.10, §5.7).
  *
  * Tests capture what the user actually sees (a thrown or rejected error, a
- * bundler's errors and warnings, console output) and assert outcomes only:
+ * bundler's errors and warnings, console output; every channel at once:
+ * `./diagnostic-channel`) and assert outcomes only:
  * the severity, the file named, the original position, the API or option
  * names the user acts on, and, for `createServerOnlyFn`/`createClientOnlyFn`,
  * the environment restriction. Never the prose, the code-frame layout or
@@ -19,6 +20,10 @@
  *   with; fails when it completes.
  * - `captureConsole(run)`: what `run` logs through `console`, by severity
  *   (`error`; `warn` is `warning`; `log`/`info`/`debug` are `info`), silenced.
+ *   The console alone: a check that something (or nothing) is reported
+ *   reads every channel (`captureDiagnostics` of `./diagnostic-channel`).
+ * - `explanationMismatch(diagnostic, prose)`: why a diagnostic is not an
+ *   explanation in its own words (`explains`).
  * - `findDiagnostics(diagnostics, expectation)` and
  *   `expectDiagnostic(diagnostics, expectation)`: the diagnostics meeting a
  *   `DiagnosticExpectation`; the latter fails, listing why each diagnostic
@@ -42,7 +47,9 @@
  * - `diagnosticPosition(source, needle)`: the 1-based line and column of
  *   the first occurrence of `needle` in `source`.
  * - `identifiesEnvRestriction(error, env)`, `envRestrictionError(env)` (an
- *   asymmetric matcher) and `expectEnvRestrictionThrow(run, env)`: J4.10.
+ *   asymmetric matcher) and `expectEnvRestrictionThrow(run, env)`: J4.10,
+ *   read semantically (`restrictedEnvironments`: the message restricts the
+ *   call to `env`, in any words; naming the environment is not enough).
  *
  * Accepted spellings (any one suffices):
  * - File (SPEC §5.7, "absolute or project-relative if unambiguous"): an
@@ -55,27 +62,45 @@
  *   cannot tell which file it is. Segments may hold bracketed groups
  *   (`(group).tsx`, `[id].tsx`). A spelling that also names a file of
  *   `distinctFrom` is ambiguous and does not count.
- * - Position: the file followed by `:line`, `:line:column`, `(line,column)`
- *   or ` line:column`; a code frame line for `line` marked with `>` or
- *   followed by a `^` marker (the marker gives the column when `source` is
- *   known); a bracketed `(line:column)` or `[line:column]`; `line <line>` (and
- *   `column <column>`); or a structured `loc`. Tools disagree on 0- or
- *   1-based columns, so both are accepted.
+ * - Position, tied to the named file: the file followed by `:line`,
+ *   `:line:column`, `(line,column)` or ` line:column`; a code frame line for
+ *   `line` marked with `>` or followed by a `^` marker (the marker gives the
+ *   exact column when `source` is known); a bracketed `(line:column)` or
+ *   `[line:column]`, or `line <line>` (and `column <column>`), on the same
+ *   line as a mention of the file; or a structured `loc` (printed 1-based).
+ *   Each spelling counts its column from its own base (see
+ *   `reportsPosition`): only where the producer is unknown and tools
+ *   disagree (`file:line:column`: Vite and esbuild print 0-based columns,
+ *   editors and Rspack 1-based) are both bases read.
  * - Names: each API or option name as a whole identifier, anywhere (only in
  *   `diagnosticProse` with `prose`). A name given as a list is satisfied by
  *   any one of its alternatives.
- * - Causes (`causes`): one of the given words or patterns, in the
- *   diagnostic's prose (never in quoted source): what the caller accepts as
- *   the semantic reason, so an internal crash that only names the API, or
- *   quotes it in a frame, does not pass.
+ * - Causes (`explains`): an explanation in the diagnostic's own words,
+ *   any wording: no engine crash, something said beyond the names, paths,
+ *   positions and generic failure words, and the input-specific content
+ *   that tells the cause apart (`mentions`, e.g. the captured local). An
+ *   internal crash that only names the API, or quotes it in a frame, does
+ *   not pass. (`causes`, a closed word list, is deprecated: it rejected
+ *   equivalent wording.)
  */
 import path from 'node:path'
 import { realpathSync } from 'node:fs'
-import { formatWithOptions, inspect, stripVTControlCharacters } from 'node:util'
+import { inspect, stripVTControlCharacters } from 'node:util'
 import { parseSync } from 'vite'
-import { expect, vi } from 'vitest'
+import { expect } from 'vitest'
+import { listen } from './console-hook'
 
 export type Severity = 'error' | 'warning' | 'info'
+
+/** The channel a diagnostic was reported on (`./diagnostic-channel`). */
+export type DiagnosticSource =
+  | 'console'
+  | 'stdout'
+  | 'stderr'
+  | 'vite'
+  | 'bundler'
+  | 'page'
+  | 'thrown'
 
 /** One message a user sees. */
 export interface Diagnostic {
@@ -88,6 +113,16 @@ export interface Diagnostic {
   text: string
   /** The captured value this diagnostic comes from. */
   raw: unknown
+  /** The channel it was reported on, when a channel recorded it. */
+  source?: DiagnosticSource
+  /**
+   * The base of the columns of the `file:line:column` spellings in `text`,
+   * when the producer is known: `1` once a structured location was printed
+   * by `diagnosticsOf` (normalised to 1-based). Unknown (a plain string
+   * from an unknown tool): both bases are read, as tools disagree (Vite and
+   * esbuild print 0-based columns there, editors and Rspack 1-based).
+   */
+  columnBase?: 0 | 1
 }
 
 export interface DiagnosticExpectation {
@@ -120,12 +155,25 @@ export interface DiagnosticExpectation {
    */
   names?: Array<string | Array<string>>
   /**
-   * The semantic cause the diagnostic must explain: at least one of these
-   * words (case-insensitive, at word starts: `captur` matches `captured`)
-   * or patterns must appear in its prose (`diagnosticProse`), not in quoted
-   * source. The caller lists every wording it accepts for that cause.
+   * @deprecated A closed vocabulary: at least one of these words
+   * (case-insensitive, at word starts) or patterns must appear in the
+   * prose. It rejects an equivalent explanation in other words (EMPIRICAL
+   * R5: "has to be stored in a variable" failed a placement list). Use
+   * `explains`, which judges content, not wording.
    */
   causes?: Array<string | RegExp>
+  /**
+   * The diagnostic must explain a cause in its own words, whatever the
+   * wording (SPEC G5, §5.7; `explanationMismatch`): it is no engine crash
+   * (a `TypeError`, `Cannot read properties of undefined`, ...), and its
+   * prose (`diagnosticProse`, quoted source left out) says something beyond
+   * the names it gives, file paths, positions, tool tags and generic
+   * failure words ("internal error", "failed to compile"). `mentions`: what
+   * from the user's input the explanation must name in its own words (a
+   * list: any one of its alternatives), e.g. the local a handler captures:
+   * the content that tells this cause from another.
+   */
+  explains?: true | { mentions?: Array<string | Array<string>> }
   /**
    * Match `names` in the diagnostic's prose only (`diagnosticProse`, with
    * `source`): a name the code frame quotes does not count.
@@ -165,9 +213,33 @@ export function diagnosticsOf(
   // An error (with the errors it aggregates, e.g. a `BuildError` or an
   // esbuild failure, read as one) and the warnings it carries.
   return [
-    { severity, text: describe(record), raw: value },
+    {
+      severity,
+      text: describe(record),
+      raw: value,
+      ...(hasStructuredColumn(record) && { columnBase: 1 as const }),
+    },
     ...diagnosticsOf(warnings, 'warning'),
   ]
+}
+
+/** Whether `describe` prints a structured location with a column for it. */
+function hasStructuredColumn(record: Record<string, unknown>) {
+  const loc = record.loc ?? record.location
+  return (
+    typeof loc === 'object' &&
+    loc !== null &&
+    typeof (loc as { line?: unknown }).line === 'number' &&
+    typeof (loc as { column?: unknown }).column === 'number'
+  )
+}
+
+/**
+ * The text a user reads of an error object: its message, frame, structured
+ * location (1-based column), aggregated errors and cause (see `Diagnostic`).
+ */
+export function describeError(error: object): string {
+  return describe(error as Record<string, unknown>)
 }
 
 function hasMessage(record: Record<string, unknown>) {
@@ -251,65 +323,35 @@ export async function captureThrow(
   )
 }
 
-const consoleSeverities = {
-  error: 'error',
-  warn: 'warning',
-  log: 'info',
-  info: 'info',
-  debug: 'info',
-} as const
-
-/** The diagnostics arrays of the `captureConsole` calls running now. */
-const activeCaptures = new Set<Array<Diagnostic>>()
-/** The console spies, installed while a capture runs. */
-let consoleSpies: Array<{ mockRestore: () => void }> | undefined
-
 /**
  * Runs `run` and collects what it logs through `console` (silenced), as
- * diagnostics. Console methods are restored afterwards, also when `run`
- * throws. Captures may overlap (concurrent tests): each one gets what is
- * logged while it runs, and the console is restored when the last one
- * ends.
+ * diagnostics (`error`; `warn` is `warning`; `log`/`info`/`debug` are
+ * `info`). The console is restored afterwards, also when `run` throws.
+ * Captures may overlap and nest with every other capture of the harness
+ * (the shared hook of `./console-hook`): each one gets what is logged while
+ * it runs, and the console is restored when the last one ends.
+ *
+ * This reads the console only. A check that a compiler reports something,
+ * or that nothing is reported, reads every channel instead
+ * (`captureDiagnostics` of `./diagnostic-channel`, SPEC §5.7).
  */
 export async function captureConsole<T>(
   run: () => T | Promise<T>,
 ): Promise<{ result: T; diagnostics: Array<Diagnostic> }> {
+  const { printedDiagnostic } = await import('./diagnostic-channel')
   const diagnostics: Array<Diagnostic> = []
-  activeCaptures.add(diagnostics)
-  const spies = (consoleSpies ??= (
-    Object.keys(consoleSeverities) as Array<keyof typeof consoleSeverities>
-  ).map((method) =>
-    vi.spyOn(console, method).mockImplementation((...args: Array<unknown>) => {
-      const diagnostic: Diagnostic = {
-        severity: consoleSeverities[method],
-        text: stripVTControlCharacters(
-          args
-            .map((arg) =>
-              arg instanceof Error
-                ? describe(arg as unknown as Record<string, unknown>)
-                : typeof arg === 'string'
-                  ? arg
-                  : formatWithOptions({ colors: false }, '%o', arg),
-            )
-            .join(' '),
-        ),
-        raw: args,
-      }
-      for (const capture of activeCaptures) {
-        capture.push(diagnostic)
-      }
-    }),
-  ))
+  const stop = listen({
+    console: true,
+    streams: false,
+    receive: (entry) => {
+      const { source: _source, ...diagnostic } = printedDiagnostic(entry)
+      diagnostics.push(diagnostic)
+    },
+  })
   try {
     return { result: await run(), diagnostics }
   } finally {
-    activeCaptures.delete(diagnostics)
-    if (activeCaptures.size === 0) {
-      for (const spy of spies) {
-        spy.mockRestore()
-      }
-      consoleSpies = undefined
-    }
+    stop()
   }
 }
 
@@ -337,10 +379,11 @@ export function mismatches(
   if (
     expected.position !== undefined &&
     !reportsPosition(
-      diagnostic.text,
+      diagnostic,
       expected.position,
       fileMentions,
       expected.source,
+      expected.file !== undefined,
     )
   ) {
     const { line, column } = expected.position
@@ -349,7 +392,9 @@ export function mismatches(
     )
   }
   const prose =
-    expected.prose || expected.causes !== undefined
+    expected.prose ||
+    expected.causes !== undefined ||
+    expected.explains !== undefined
       ? diagnosticProse(diagnostic.text, expected.source)
       : diagnostic.text
   for (const name of expected.names ?? []) {
@@ -372,7 +417,120 @@ export function mismatches(
       `does not explain the cause (${expected.causes.map(String).join(', ')}) in its own words`,
     )
   }
+  if (expected.explains !== undefined) {
+    const mismatch = explanationMismatch(diagnostic, prose, {
+      names: [
+        ...(expected.names ?? []),
+        ...(expected.explains === true
+          ? []
+          : (expected.explains.mentions ?? [])),
+      ],
+    })
+    if (mismatch !== undefined) {
+      reasons.push(mismatch)
+    }
+    for (const mention of expected.explains === true
+      ? []
+      : (expected.explains.mentions ?? [])) {
+      const alternatives = ([] as Array<string>).concat(mention)
+      if (
+        !alternatives.some((alternative) => namesIdentifier(prose, alternative))
+      ) {
+        reasons.push(
+          `does not name ${alternatives.map((alternative) => `\`${alternative}\``).join(' or ')} in its explanation`,
+        )
+      }
+    }
+  }
   return reasons
+}
+
+/** Error classes the engine throws when code crashes. */
+const crashClasses = new Set(['TypeError', 'ReferenceError', 'RangeError'])
+
+/** What an engine prints when code crashes (V8, JavaScriptCore, SpiderMonkey). */
+const crashSignatures = [
+  /\bcannot read propert(?:y|ies) of (?:undefined|null)\b/i,
+  /\bcannot set propert(?:y|ies) of (?:undefined|null)\b/i,
+  /\bcannot destructure\b/i,
+  /\bis not a (?:function|constructor)\b/i,
+  /\bis not iterable\b/i,
+  /\bis not defined\b/i,
+  /\bundefined is not an object\b/i,
+  /\bcannot access '[^']*' before initialization\b/i,
+  /\bmaximum call stack size exceeded\b/i,
+  /\b(?:TypeError|ReferenceError|RangeError):/,
+]
+
+/**
+ * Words that say only that something failed, not why: an explanation must
+ * say more than these (and than the names, paths and positions it gives).
+ */
+const genericFailureWords = new Set(
+  `a an the of in at on to for from by with while during when and or it its this that
+  is was be been being are were has have had
+  error errors failed fail fails failure failing internal unexpected unexpectedly unknown
+  exception crash crashed occurred happened went wrong something could not unable
+  compile compiling compiled compiler compilation transform transforming transformed
+  transformation process processing processed plugin vite rollup rolldown webpack
+  rspack rsbuild esbuild babel oxc build building module file line column code
+  warning warn info note see details`
+    .split(/\s+/)
+    .filter(Boolean),
+)
+
+/**
+ * Why a diagnostic is not an explanation in its own words (see
+ * `DiagnosticExpectation.explains`), or `undefined` when it is. `prose` is
+ * its text without quoted source; `names` the identifiers it is expected
+ * to give (they do not count as explanation).
+ */
+export function explanationMismatch(
+  diagnostic: Pick<Diagnostic, 'text' | 'raw'>,
+  prose: string,
+  options: { names?: Array<string | Array<string>> } = {},
+): string | undefined {
+  const raw = diagnostic.raw as { name?: unknown } | null
+  if (
+    raw !== null &&
+    typeof raw === 'object' &&
+    typeof raw.name === 'string' &&
+    crashClasses.has(raw.name)
+  ) {
+    return `is an engine crash (${raw.name}), not an explanation`
+  }
+  const crash = crashSignatures.find((signature) => signature.test(prose))
+  if (crash) {
+    return `reads as an engine crash (${crash}), not an explanation`
+  }
+  const names = new Set(
+    (options.names ?? []).flatMap((name) => ([] as Array<string>).concat(name)),
+  )
+  const words =
+    prose
+      // Stack frames are not prose
+      .replace(/^\s*at .*$/gm, ' ')
+      // Tool tags such as `[plugin:vite:x]` or `[import-protection]`
+      .replace(/\[[^\]\n]*\]/g, ' ')
+      // Quoted code: the user's, not the diagnostic's words
+      .replace(/`[^`\n]*`|"[^"\n]*"|(?<!\w)'[^'\n]*'(?!\w)/g, ' ')
+      // Paths, URLs and positions
+      .replace(/\S*[\\/]\S*/g, ' ')
+      .replace(/\b[\w-]+\.[cm]?[jt]sx?\b\S*/g, ' ')
+      .replace(/\d+(?::\d+)*/g, ' ')
+      .match(/[A-Za-z][\w$'-]*/g) ?? []
+  const own = words.filter(
+    (word) =>
+      word.length > 1 &&
+      !names.has(word) &&
+      !genericFailureWords.has(word.toLowerCase()) &&
+      // Code, not words: `serverFn`, `__x`, `$lang`, `x1`
+      !/[a-z][A-Z]|[_$\d]/.test(word),
+  )
+  if (own.length < 1) {
+    return `does not explain a cause in its own words (it says: ${JSON.stringify(prose.trim().slice(0, 160))})`
+  }
+  return undefined
 }
 
 /** Whether `prose` gives `cause` (a word start, case-insensitive, or a pattern). */
@@ -653,52 +811,117 @@ export function diagnosticPosition(source: string, needle: string | number) {
   return { line: lines.length, column: lines.at(-1)!.length + 1 }
 }
 
-function columnMatches(reported: number, column: number | undefined) {
-  return column === undefined || reported === column || reported === column - 1
+/**
+ * The base a spelling's column is counted from: `0`, `1`, or `either` where
+ * tools disagree and the producer is unknown (see `Diagnostic.columnBase`).
+ */
+type ColumnBase = 0 | 1 | 'either'
+
+function columnMatches(
+  reported: number,
+  column: number | undefined,
+  base: ColumnBase,
+) {
+  return (
+    column === undefined ||
+    (base !== 0 && reported === column) ||
+    (base !== 1 && reported === column - 1)
+  )
 }
 
+/**
+ * Whether `text` reports `position` in a spelling tied to the named file
+ * (see the file header): the file followed by its position; a bracketed
+ * position or a `line N` phrase on the same line as a mention of the file
+ * (when a file is expected; anywhere otherwise); or a code frame marking
+ * the line (a frame quotes the reported file). Each spelling counts its
+ * column from its own base: `(line,column)` (TypeScript) from 1, Babel's
+ * `(line:column)` and webpack's `line:column-column` from 0, a caret under
+ * the quoted source exactly, and `file:line:column`, ` line:column`,
+ * `[line:column]` (miette, which SWC fills 0-based) and `line N, column M`
+ * from the producer's base when known (`Diagnostic.columnBase`), from
+ * either base otherwise.
+ */
 function reportsPosition(
-  text: string,
+  diagnostic: Pick<Diagnostic, 'text' | 'columnBase'>,
   position: { line: number; column?: number },
   fileMentions: Array<{ end: number }>,
   source: string | undefined,
+  fileExpected: boolean,
 ) {
+  const { text } = diagnostic
   const { line, column } = position
+  const producerBase: ColumnBase = diagnostic.columnBase ?? 'either'
   // The file followed by its position.
   for (const { end } of fileMentions) {
     const after = text.slice(end, end + 24)
-    const suffix = /^(?::(\d+)(?::(\d+))?|\((\d+),(\d+)\)| (\d+):(\d+))/.exec(
-      after,
-    )
+    const suffix =
+      /^(?::(\d+)(?::(\d+))?|\((\d+),(\d+)\)| (\d+):(\d+)(-\d+)?)/.exec(after)
     if (suffix) {
       const reportedLine = Number(suffix[1] ?? suffix[3] ?? suffix[5])
       const reportedColumn = suffix[2] ?? suffix[4] ?? suffix[6]
+      const base: ColumnBase =
+        suffix[4] !== undefined ? 1 : suffix[7] !== undefined ? 0 : producerBase
       if (
         reportedLine === line &&
         (column === undefined ||
           (reportedColumn !== undefined &&
-            columnMatches(Number(reportedColumn), column)))
+            columnMatches(Number(reportedColumn), column, base)))
       ) {
         return true
       }
     }
   }
-  // A bracketed `(line:column)` (Babel) or `[line:column]` (a miette
-  // frame header, as SWC prints it).
-  for (const match of text.matchAll(/[([](\d+):(\d+)[)\]]/g)) {
-    if (Number(match[1]) === line && columnMatches(Number(match[2]), column)) {
+  /** Whether the offset is on a line of `text` that names the file. */
+  const besideFile = (offset: number, linesBefore = 0) => {
+    if (!fileExpected) {
+      return true
+    }
+    let lineStart = text.lastIndexOf('\n', offset - 1) + 1
+    // A report's header line may name the file a few lines above its frame
+    for (let line = 0; line < linesBefore && lineStart > 0; line++) {
+      lineStart = text.lastIndexOf('\n', lineStart - 2) + 1
+    }
+    const nextBreak = text.indexOf('\n', offset)
+    const lineEnd = nextBreak === -1 ? text.length : nextBreak
+    return fileMentions.some(({ end }) => end > lineStart && end <= lineEnd + 1)
+  }
+  // A bracketed `(line:column)` (Babel, 0-based column) or `[line:column]`
+  // (a miette frame header: SWC prints a 0-based column there, miette's own
+  // reports a 1-based one).
+  for (const match of text.matchAll(/([([])(\d+):(\d+)[)\]]/g)) {
+    if (
+      Number(match[2]) === line &&
+      columnMatches(
+        Number(match[3]),
+        column,
+        match[1] === '(' ? 0 : producerBase,
+      ) &&
+      // A miette frame header sits below the report line naming the file
+      besideFile(match.index, match[1] === '[' ? 3 : 0)
+    ) {
       return true
     }
   }
-  // `line 12` (and `column 5`).
-  if (
-    new RegExp(`\\bline:?\\s+${line}\\b`, 'i').test(text) &&
-    (column === undefined ||
-      [column, column - 1].some((candidate) =>
-        new RegExp(`\\bcol(?:umn)?:?\\s+${candidate}\\b`, 'i').test(text),
-      ))
-  ) {
-    return true
+  // `line 12` (and `column 5`), beside the file.
+  for (const match of text.matchAll(
+    new RegExp(`\\bline:?\\s+${line}\\b`, 'gi'),
+  )) {
+    if (!besideFile(match.index)) {
+      continue
+    }
+    if (column === undefined) {
+      return true
+    }
+    const lineEnd = text.indexOf('\n', match.index)
+    const rest = text.slice(match.index, lineEnd === -1 ? text.length : lineEnd)
+    const columnMatch = /\bcol(?:umn)?:?\s+(\d+)\b/i.exec(rest)
+    if (
+      columnMatch &&
+      columnMatches(Number(columnMatch[1]), column, producerBase)
+    ) {
+      return true
+    }
   }
   return frameReportsPosition(text, line, column, source)
 }
@@ -750,7 +973,12 @@ function frameReportsPosition(
     const sourceLine = source.split(lineTerminator)[line - 1] ?? ''
     const gutter = lines[index]!.search(/[|│]/)
     const start = lines[index]!.indexOf(sourceLine, gutter + 1)
-    if (start >= 0 && columnMatches(caret - start + 1, column)) {
+    // The caret, or one column left of it: a compiler handing a 0-based
+    // AST column to a 1-based code-frame API (Babel's `codeFrameColumns`)
+    // draws it there. Start's `codeFrameError` does today (finding of
+    // validation/REPAIR/A2.md, for a ruling); this keeps the old tolerance
+    // for the caret only.
+    if (start >= 0 && columnMatches(caret - start + 1, column, 'either')) {
       return true
     }
   }
@@ -1402,11 +1630,14 @@ export function expectFrameAt(
 
 export type Environment = 'server' | 'client'
 
-/** How a message may name each environment. */
-const environmentNames: Record<Environment, RegExp> = {
-  server: /server/i,
-  client: /client|browser/i,
+/** How a message names each environment, as a whole word. */
+const environmentWords: Record<Environment, RegExp> = {
+  server: /\bserver(?:[- ]side)?\b/gi,
+  client: /\b(?:client(?:[- ]side)?|browser)\b/gi,
 }
+
+const otherEnvironment = (env: Environment): Environment =>
+  env === 'server' ? 'client' : 'server'
 
 /** Errors the engine throws when code crashes, not deliberate errors. */
 const engineErrors = new Set([
@@ -1417,10 +1648,75 @@ const engineErrors = new Set([
 ])
 
 /**
+ * A use limited to what follows, before a mention of an environment in its
+ * sentence ("can only be called on", "is restricted to", "move this call
+ * to").
+ */
+const restrictingUse =
+  // (`only` of a compound such as `server-only` modifies its own word)
+  /\b(?:(?<!-)only|restricted|limited|reserved|exclusive(?:ly)?|move[sd]?\b[^,]*\bto)\b/i
+
+/** A negated use, before a mention of an environment in its sentence. */
+const negatedUse =
+  /\b(?:cannot|can't|can ?not|must ?not|mustn't|may ?not|should ?not|never|not (?:be )?(?:available|allowed|supported|permitted|callable|accessible|usable|runnable)|unavailable|disallowed|forbidden|prohibited)\b/i
+
+/** The index of the last match of `pattern` in `text`, or -1. */
+function lastMatch(pattern: RegExp, text: string) {
+  let last = -1
+  for (const match of text.matchAll(new RegExp(pattern.source, 'gi'))) {
+    last = match.index
+  }
+  return last
+}
+
+/**
+ * The environments a message restricts a call to, read from how it names
+ * each one (J4.10; the wording is free, SPEC §5.7), sentence by sentence:
+ * - allowed: `X-only` / `X only`, or a limited use before the mention in
+ *   its sentence ("can only be called on the server", "only available in
+ *   the browser", "restricted to the server", "move this call to the
+ *   server");
+ * - forbidden: a negated use before the mention in its sentence ("cannot
+ *   be called on the client", "is not available in the browser", "must
+ *   not run on the server"), which restricts the call to the other
+ *   environment.
+ * A mention in a sentence that says neither ("server function not found")
+ * restricts nothing.
+ */
+export function restrictedEnvironments(message: string): Set<Environment> {
+  const restricted = new Set<Environment>()
+  const sentences = stripVTControlCharacters(message).split(/[.!?;\n]+/)
+  for (const sentence of sentences) {
+    for (const env of ['server', 'client'] as const) {
+      for (const match of sentence.matchAll(environmentWords[env])) {
+        const before = sentence.slice(0, match.index)
+        const after = sentence.slice(match.index + match[0].length)
+        if (/^\s*-?\s*only\b/i.test(after)) {
+          restricted.add(env)
+          continue
+        }
+        // The cue nearest the mention decides ("cannot call a server-only
+        // function on the client": `cannot` governs the client)
+        const restricting = lastMatch(restrictingUse, before)
+        const negated = lastMatch(negatedUse, before)
+        if (negated > restricting) {
+          restricted.add(otherEnvironment(env))
+        } else if (restricting > negated) {
+          restricted.add(env)
+        }
+      }
+    }
+  }
+  return restricted
+}
+
+/**
  * Whether `error` is a deliberate error (not an engine `TypeError`,
- * `ReferenceError`, …) whose message names the environment `env` the
- * called function is restricted to (`client` may be called `browser`).
- * The prose is free (SPEC §5.7, J4.10).
+ * `ReferenceError`, …) whose message restricts the called function to the
+ * environment `env` (`client` may be called `browser`) and not to the other
+ * one (`restrictedEnvironments`). The prose is free (SPEC §5.7, J4.10); a
+ * message that only names the environment ("server function not found")
+ * or restricts the call to the other one does not identify the restriction.
  */
 export function identifiesEnvRestriction(error: unknown, env: Environment) {
   if (typeof error !== 'object' || error === null) {
@@ -1433,7 +1729,8 @@ export function identifiesEnvRestriction(error: unknown, env: Environment) {
   if (typeof name === 'string' && engineErrors.has(name)) {
     return false
   }
-  return environmentNames[env].test(stripVTControlCharacters(message))
+  const restricted = restrictedEnvironments(message)
+  return restricted.has(env) && !restricted.has(otherEnvironment(env))
 }
 
 /**

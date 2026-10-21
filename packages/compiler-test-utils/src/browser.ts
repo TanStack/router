@@ -6,7 +6,8 @@
  * loaded.
  *
  * One browser per test process, launched on first use; each page has its own
- * browser context.
+ * browser context. `runInPage` reuses one shared page per test process for
+ * fast client checks.
  */
 import { chromium } from '@playwright/test'
 import type { Browser, Page } from '@playwright/test'
@@ -44,6 +45,96 @@ let browser: Promise<Browser> | undefined
 function launch() {
   browser ??= chromium.launch({ headless: true })
   return browser
+}
+
+// ---------------------------------------------------------------------------
+// The shared page: one per test process (one Vitest worker), reused
+
+let shared: Promise<Page> | undefined
+/** Runs on the shared page are serialised (concurrent tests take turns). */
+let queue: Promise<unknown> = Promise.resolve()
+
+function sharedPage() {
+  shared ??= (async () => (await (await launch()).newContext()).newPage())()
+  return shared
+}
+
+export interface PageRun<T = unknown> {
+  /** The JSON value the script returned. */
+  result: T
+  /** Uncaught errors of the page and its `console.error` output. */
+  errors: Array<string>
+  /** Every console message of the page during the run, as `type: text`. */
+  console: Array<string>
+}
+
+/**
+ * Runs client code in a real browser, fast: one Chromium page per test
+ * process, reused (N24; RULES-AUDIT R24). The page loads `pageUrl` fresh
+ * (a new document: no module or global state of an earlier run survives),
+ * then, when `moduleUrl` is given, imports that module as the browser
+ * imports a module of the page (real ES module linking: a missing export
+ * throws), and runs `script`: the body of an async function with the
+ * module's namespace as `module` in scope (and the page's `window`,
+ * `document`), whose JSON value is the result. A throw of the import or
+ * of the script rejects, with the page's errors and console.
+ *
+ * Use it for fast-tier client checks on a dev server's served modules
+ * (`./plugin-host`); a test of a whole page across reloads opens its own
+ * page (`openPage`).
+ */
+export function runInPage<T = unknown>(input: {
+  pageUrl: string
+  moduleUrl?: string
+  script?: string
+  /** Waits for the run at most this long (default 15 000 ms). */
+  timeout?: number
+}): Promise<PageRun<T>> {
+  const run = queue.then(async () => {
+    const page = await sharedPage()
+    const errors: Array<string> = []
+    const messages: Array<string> = []
+    const onError = (error: Error) => {
+      errors.push(error.stack ?? error.message)
+    }
+    const onConsole = (message: { type: () => string; text: () => string }) => {
+      messages.push(`${message.type()}: ${message.text()}`)
+      if (message.type() === 'error') {
+        errors.push(message.text())
+      }
+    }
+    page.on('pageerror', onError)
+    page.on('console', onConsole)
+    const timeout = input.timeout ?? 15_000
+    try {
+      await page.goto(input.pageUrl, { timeout })
+      // A string, run as the page's own code: a function would be
+      // serialised from this module as the test runner transformed it
+      // (its `import()` rewritten for Node)
+      const result = (await page.evaluate(
+        `(async () => {\nconst module = ${
+          input.moduleUrl === undefined
+            ? 'undefined'
+            : `await import(${JSON.stringify(input.moduleUrl)})`
+        }\n${input.script ?? ''}\n})()`,
+      )) as T
+      return { result, errors, console: messages }
+    } catch (error) {
+      throw new Error(
+        [
+          `the page run of ${input.moduleUrl ?? input.pageUrl} failed: ${(error as Error).message}`,
+          `errors:\n${errors.join('\n') || '(none)'}`,
+          `console:\n${messages.join('\n') || '(none)'}`,
+        ].join('\n'),
+        { cause: error },
+      )
+    } finally {
+      page.off('pageerror', onError)
+      page.off('console', onConsole)
+    }
+  })
+  queue = run.catch(() => {})
+  return run
 }
 
 /**
