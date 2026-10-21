@@ -39,7 +39,7 @@ import path from 'node:path'
 import react from '@vitejs/plugin-react'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import solid from 'vite-plugin-solid'
-import { parseSync } from 'vite'
+import { mergeConfig, parseSync } from 'vite'
 import { afterAll, expect } from 'vitest'
 import { runInPage } from '@tanstack/compiler-test-utils/browser'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
@@ -48,7 +48,7 @@ import { tanstackRouter } from '../src/vite'
 import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import type { PageRun } from '@tanstack/compiler-test-utils/browser'
 import type { PluginHost } from '@tanstack/compiler-test-utils/plugin-host'
-import type { ESTree, PluginOption } from 'vite'
+import type { ESTree, InlineConfig, PluginOption } from 'vite'
 import type { Config, DeletableNodes } from '../src'
 
 /** A framework the router plugin targets. */
@@ -103,6 +103,23 @@ export interface RouteAppOptions {
   tsconfig?: Record<string, unknown>
   /** A host of its own (a fresh dev server), not shared with other routes. */
   fresh?: boolean
+  /**
+   * The framework's Vite plugin as the app configures it (e.g.
+   * `react({ jsxRuntime: 'classic' })`), instead of the plugin with its
+   * defaults (a host of its own).
+   */
+  framework?: PluginOption
+  /**
+   * Vite configuration over the host's, as the app's `vite.config` sets it
+   * (e.g. `oxc.target`; a host of its own).
+   */
+  config?: InlineConfig
+  /**
+   * A script the app's page runs before the route module loads, in every
+   * page run of the route (as a `<script>` of the page defining globals the
+   * route reads); a run's `before` runs after it.
+   */
+  pageScript?: string
 }
 
 /** Route options the code splitter may split. */
@@ -142,6 +159,27 @@ const frameworkPlugins: Record<TargetFramework, () => PluginOption> = {
 
 /** The page-side helper module every app holds (see `probeSource`). */
 export const probeFile = 'route-app-probe.ts'
+
+/**
+ * The module the page imports the route and the test's files through
+ * (see `entrySource`): written with each route.
+ */
+export const entryFile = 'route-app-entry.ts'
+
+/**
+ * Imports the route module and gives the test's files, as modules of the
+ * app import them. Vite rewrites an import of a module edited earlier with
+ * that edit's timestamp (`?t=`), as it serves every module of the app: a
+ * page importing the route by its plain URL would get a second instance
+ * once the host has served an edit of it.
+ */
+function entrySource(filename: string, files: Array<string>) {
+  return `export * as route from './${filename}'
+export const files: Record<string, () => Promise<unknown>> = {
+${files.map((file) => `  ${JSON.stringify(file)}: () => import(${JSON.stringify(`./${file}`)}),`).join('\n')}
+}
+`
+}
 
 /**
  * Tool modules the page loads that no compiler emitted for the route: Vite's
@@ -224,8 +262,10 @@ export function appRequests(): Array<string> {
   for (const entry of performance.getEntriesByType('resource')) {
     const url = new URL(entry.name)
     if (url.origin !== location.origin) continue
+    // Vite's HMR timestamp of a module edited earlier (\`t\`): the same module
+    url.searchParams.delete('t')
     const request = url.pathname + url.search
-    if (tool.test(request) || url.pathname === '/${probeFile}') continue
+    if (tool.test(request) || url.pathname === '/${probeFile}' || url.pathname === '/${entryFile}') continue
     seen.add(request)
   }
   return [...seen]
@@ -432,13 +472,14 @@ async function startHost(
       ...files,
     },
     client: true,
-    config: {
-      optimizeDeps: { noDiscovery: true, include: prebundled[target] },
-    },
+    config: mergeConfig(
+      { optimizeDeps: { noDiscovery: true, include: prebundled[target] } },
+      options.config ?? {},
+    ),
     plugins: ({ root: appRoot }) => [
       ...(options.plugins?.before ?? []),
       tanstackRouter(routerOptions(options, root, appRoot)),
-      frameworkPlugins[target](),
+      options.framework ?? frameworkPlugins[target](),
       ...(options.plugins?.after ?? []),
     ],
   })
@@ -500,9 +541,13 @@ const compiled = () => probe.appRequests().filter((request) => request === route
 /** Every app-local module the page requested so far: compiled ones and the test's files. */
 const requested = () => probe.appRequests()
 /** An app file the test wrote, as the page imports it (the instance the route gets). */
-const app = (file) => import(${JSON.stringify('/')} + file.replace(/^\\.?\\//, ''))
+const app = async (file) => {
+  const name = file.replace(/^\\.?\\//, '')
+  const entry = await import(${JSON.stringify(`/${entryFile}`)})
+  return entry.files[name] ? entry.files[name]() : import('/' + name)
+}
 ${before}
-const exports = await import(routeUrl)
+const exports = (await import(${JSON.stringify(`/${entryFile}`)})).route
 const Route = exports.Route
 const options = Route?.options
 const trigger = (option) => probe.trigger(Route, option)
@@ -603,16 +648,38 @@ export async function loadRoute(
 ): Promise<RouteApp> {
   const filename = options.filename ?? 'route.tsx'
   const root = createsRootRoute(code)
-  const files = { ...options.files, [filename]: code }
-  const own = new Set(Object.keys(options.files ?? {}).map(appUrl))
+  const testFiles = Object.keys(options.files ?? {})
+  const files = {
+    ...options.files,
+    [filename]: code,
+    [entryFile]: entrySource(
+      filename,
+      testFiles.filter(
+        (file) =>
+          !/(?:^|\/)node_modules\//.test(file) &&
+          /\.(?:[cm]?[jt]sx?|json|css)$/.test(file),
+      ),
+    ),
+  }
+  const own = new Set(testFiles.map(appUrl))
   own.add(appUrl(probeFile))
+  own.add(appUrl(entryFile))
   if (!root) {
     own.add(appUrl('__root.tsx'))
   }
   const url = appUrl(filename)
   const at = root ? '/' : (options.routeId ?? '/')
 
-  const custom = options.fresh || options.plugins !== undefined
+  const custom =
+    options.fresh ||
+    options.plugins !== undefined ||
+    options.framework !== undefined ||
+    options.config !== undefined ||
+    // Vite's watcher does not report files of `node_modules`: an app with
+    // packages of its own is written once, by a host of its own
+    Object.keys(options.files ?? {}).some((file) =>
+      /(?:^|\/)node_modules\//.test(file),
+    )
   const key = hostKey(options, root)
   let statePromise = custom ? undefined : hosts.get(key)
   const owner = {}
@@ -641,7 +708,7 @@ export async function loadRoute(
     try {
       return await state.host.runClient<T>(
         appUrl(probeFile),
-        `${prelude(url, [...own], at, runOptions.before ?? '')}\n${body}`,
+        `${prelude(url, [...own], at, `${options.pageScript ?? ''}\n${runOptions.before ?? ''}`)}\n${body}`,
       )
     } catch (error) {
       const sent = state.host.dev.hmr
@@ -656,6 +723,11 @@ export async function loadRoute(
   const run = async <T>(body: string, runOptions?: { before?: string }) =>
     (await runPage<T>(body, runOptions)).result
 
+  /**
+   * Code of a module the page requested, as the dev server serves it to
+   * the client (its transform of that request).
+   */
+  const serve = (request: string) => state.host.transform(request, 'client')
   const newlyCompiled = (option: string) =>
     run<Array<string>>(`const before = new Set(compiled())
 await trigger(${JSON.stringify(option)})
@@ -673,12 +745,11 @@ return compiled().filter((request) => !before.has(request))`)
         Array<string>
       >(`const before = new Set(compiled())
 await trigger(${JSON.stringify(option)})
-const loaded = compiled().filter((request) => !before.has(request))
-return Promise.all(loaded.map(served))`)
+return compiled().filter((request) => !before.has(request))`)
       if (loaded.length === 0) {
         throw new Error(`\`${option}\` loads no module of the route lazily`)
       }
-      return loaded
+      return Promise.all(loaded.map(serve))
     },
     groups: async () => {
       const present = await run<Array<string>>(
@@ -714,12 +785,10 @@ return compiled().filter((request) => !before.has(request)).length`)
       )
     },
     requested: () => run<Array<string>>('return requested()'),
-    eagerModules: () =>
-      run<Array<string>>('return Promise.all(compiled().map(served))'),
+    eagerModules: async () =>
+      Promise.all((await run<Array<string>>('return compiled()')).map(serve)),
     modules: async () => {
-      const found = await run<
-        Array<{ request: string; label: string; code: string }>
-      >(
+      const requests = await run<Array<{ request: string; label: string }>>(
         `const found = []
 for (const request of compiled()) {
   found.push({ request, label: request === routeUrl ? 'reference' : 'shared' })
@@ -732,7 +801,13 @@ for (const option of ${JSON.stringify(splittableOptions)}) {
     if (!before.has(request)) found.push({ request, label: 'lazy ' + option })
   }
 }
-return Promise.all(found.map(async (module) => ({ ...module, code: await served(module.request) })))`,
+return found`,
+      )
+      const found = await Promise.all(
+        requests.map(async (module) => ({
+          ...module,
+          code: await serve(module.request),
+        })),
       )
       const modules: Record<string, string> = {}
       const ids: Record<string, string> = {}
@@ -843,3 +918,32 @@ export function holdsMarker(code: string, marker: string) {
 }
 
 export const head = `import { createFileRoute } from '@tanstack/react-router'\n`
+
+/**
+ * The warnings and errors a page run logged (`PageRun.console`, `type: text`)
+ * as diagnostics of the `page` channel: what a developer reads in the
+ * browser's console (e.g. a warning a served module prints when it loads).
+ * Merge them with `route.diagnostics()` to read every channel.
+ */
+export function pageDiagnostics(
+  console: Array<string>,
+): Array<ChannelDiagnostic> {
+  const severities: Record<string, 'warning' | 'error'> = {
+    warning: 'warning',
+    error: 'error',
+  }
+  return console.flatMap((line) => {
+    const separator = line.indexOf(': ')
+    const severity = severities[line.slice(0, separator)]
+    return severity
+      ? [
+          {
+            severity,
+            text: line.slice(separator + 2),
+            raw: line,
+            source: 'page' as const,
+          },
+        ]
+      : []
+  })
+}
