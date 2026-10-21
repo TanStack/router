@@ -1221,10 +1221,12 @@ Development failure diagnostics are cleared on every exit. Neither the handoff
 nor abandoned loader work must retain an Error or input referenced by its cause.
 A promise need not observe the signal itself: cancellation stops the router's
 wait while retaining rejection handling for late settlement. It does not stop
-application work that ignores the signal. Loader work goes through
-`loadResource`. Normal lanes wait cancellably per consumer; hydration owns the
-cancellable wait where it consumes the ordered ancestor prefix. Detached
-descendants then have no owner-signal listener retaining their abandoned wire
+application work that ignores the signal. `createLoaderFlight` owns shared
+loader execution and its raw outcome. Normal lanes use `loadResource` to wait
+cancellably and resolve redirects for each consumer. Hydration consumes the raw
+outcome and owns cancellation at its ordered ancestor-prefix wait. Cancellation
+is a consumer outcome, excluded from the raw generation's TypeScript union.
+Detached descendants then have no owner-signal listener retaining their abandoned wire
 data. Releasing a consumer does not change a shared loader's self-abort contract.
 Reconstruction rechecks ownership before publication and before
 admitting subsequent work; completed promises can still mutate their private
@@ -1516,15 +1518,19 @@ alternatives. Unresolved choices are separated below.
   regain normal error handling and destination resolution.
 - Loader reruns and loader transforms start in parallel after serial
   context/guard reconstruction. Serializing them would add a latency waterfall.
-  Both reuse `loadResource` and ordered parent snapshots, including private
-  ownership for transforms and real parent promises for omitted handlers.
+  Both use shared raw loader flights and ordered parent snapshots, including
+  private ownership for transforms and real parent promises for omitted handlers.
+  Normal lanes apply their own cancellation and redirect handling; hydration
+  waits at its ordered prefix. Detaching hydration does not erase the parent
+  result used by an adopted ordinary handler.
   Neither uses `createLoaderTask` freshness,
   `shouldReload`, background reload, or pending decisions. Settlement writes
   data/timestamps directly: a transform preserves server time and terminal
   state, while an in-place loader receives a new timestamp. Only matches with
-  actual loader work need new promises. An idle parent is retained as its match
-  and wrapped only when a child needs `parentMatchPromise`; an active parent
-  retains its loader promise. Ordered readiness consumption permits fallback
+  actual loader work need new promises. The immediate parent comes from the
+  preceding load promise, or its committed match when idle, and is wrapped only
+  when a child needs `parentMatchPromise`. No separate mutable parent is needed.
+  Ordered readiness consumption permits fallback
   after the relevant ancestors settle while unrelated descendants remain
   pending. This preserves parallel startup and immediate-parent identity.
 - Raw transported serial results do not need callback arguments. Construct

@@ -12,27 +12,29 @@ The primary metric is **total application
 JavaScript gzip**, summed across separately compressed files, for
 `react-start.minimal`.
 
-| Source                        | Total gzip | Initial gzip |     Raw | Brotli |
-| ----------------------------- | ---------: | -----------: | ------: | -----: |
-| Main `b1b111761bdf`           |     99,109 |       98,970 | 309,641 | 86,129 |
-| Original PR `1ca9150440cc`    |     99,555 |       99,414 | 310,847 | 86,441 |
-| Retained `83e38a349dc5`       |     99,714 |       99,574 | 311,434 | 86,664 |
-| Serial cleanup `ee5df0122640` |     99,688 |       99,549 | 311,317 | 86,585 |
-| Current `3b3fa2f5c787`        | **99,720** |       99,581 | 311,434 | 86,683 |
+| Source                                  | Total gzip | Initial gzip |     Raw | Brotli |
+| --------------------------------------- | ---------: | -----------: | ------: | -----: |
+| Main `b1b111761bdf`                     |     99,109 |       98,970 | 309,641 | 86,129 |
+| Original PR `1ca9150440cc`              |     99,555 |       99,414 | 310,847 | 86,441 |
+| Retained `83e38a349dc5`                 |     99,714 |       99,574 | 311,434 | 86,664 |
+| Serial cleanup `ee5df0122640`           |     99,688 |       99,549 | 311,317 | 86,585 |
+| Ownership-round baseline `3b3fa2f5c787` |     99,720 |       99,581 | 311,434 | 86,683 |
+| Ownership cuts `5ff5291a24`             |     99,710 |       99,570 | 311,487 | 86,540 |
+| Current `7fe0c4154f`                    | **99,706** |       99,566 | 311,450 | 86,769 |
 
 At `83e38a349dc5` the increase over main was **605 gzip bytes**: **446** from the
 original PR and **159** from subsequent fixes and optimizations. The
 serial cleanup below is committed at `ee5df0122640`. Run `cc-final-v2` and
 the fresh `ss-baseline` reproduce its **26-byte** reduction, leaving **579** over
 main. The target, 100 bytes below the original PR, is **99,455**. Current
-`3b3fa2f5c787` measures **99,720**: **32 above the previous committed runtime**,
-**165 above the original PR**, **611 above main**, and **265 above the target**.
-The target remains unmet. The approved private-codec policy costs 47 bytes;
-three separately committed simplifications recover 15, leaving the net 32.
-The full BEFORE/AFTER workflow and final all-18 pass reproduce these metrics
-(`ss-codecs-before-all`, `ss-codecs-after-all`, `ss-codecs-final-all`). Router-only
-`react-router.minimal` remains **86,247**, down 26 from the earlier 86,273-byte
-reference. No runtime metadata filter is retained.
+`7fe0c4154f` measures **99,706**: **14 below this round's baseline**,
+**151 above the original PR**, **597 above main**, and **251 above the target**.
+The target remains unmet. Router-only `react-router.minimal` is **86,239**,
+8 below this round's baseline and 67 above the original PR's 86,172.
+The ownership extraction fixes lost parent results; subsequent branch/state
+removals recover its cost and reduce Promise work. No runtime metadata filter
+is retained. See the ownership follow-up below and
+`RESULT-optimization-hydration-ownership.md` for the full 18-scenario comparison.
 
 Reference runs: `review-6631-base-20261018` in the main review checkout;
 `review-6631-head-20261018`; `fixes-r3-retained-v34-final` (all 18 scenarios);
@@ -561,3 +563,274 @@ combined change is not a byte win against the previous runtime.
 Restore the exact source and rebuild after diagnostic cuts; keep `hydrate` at
 the bottom of `load-client.ts`. `FINDINGS.md` remains uncommitted working
 documentation.
+
+## Ownership and derived-state follow-up (2026-10-21)
+
+This round starts from the committed **SPA 86,247 / Start 99,720** runtime.
+It runs in the attached `pr6631-hydration-branch-removal` checkout to exclude
+concurrent API/type work. All screens use Node 26.10.0/pnpm 11.21.0, Nx rebuilds,
+real app gzip and source analysis. The original-head target remains **99,455**.
+
+A public regression exposed lost parent data when navigation adopts ordinary
+loaders started during hydration. The corrected architecture shares raw loader
+generation outcomes; cancellation belongs to each consumer. Hydration therefore
+uses its existing ordered shared wait, without an ordinary-loader async wrapper.
+`RawLoaderOutcome` cannot contain cancellation in TypeScript. Detached successful
+results use a separate parent snapshot, while errors/not-found preserve semantic
+parent state. Ordinary handler sharing, private codec dependencies, controller
+lifetimes and recovery-cache behavior remain supported.
+
+| Step or independent hunk                                        |   SPA gzip | Start gzip | Evidence                                                     |
+| --------------------------------------------------------------- | ---------: | ---------: | ------------------------------------------------------------ |
+| Baseline, full 18                                               |     86,247 |     99,720 | `hydration-before-all`                                       |
+| Required raw-generation/parent correctness extraction           |     86,247 |     99,735 | `hydr11-isolated-shared-parent`                              |
+| Presentation branch alone, on extraction                        |     86,247 |     99,729 | `hydr12-hunk-presentation`                                   |
+| Verified asset-candidate access alone, on extraction            |     86,247 |     99,737 | `hydr12-hunk-asset-candidate`                                |
+| Those two bounds cuts together                                  |     86,247 |     99,725 | `hydr11-proven-branches`                                     |
+| Normal consumer cleanup alone, on extraction                    |     86,239 |     99,724 | `hydr12-hunk-normal-cleanup`                                 |
+| All three together                                              |     86,239 |     99,721 | `hydr11-normal-fetching`                                     |
+| Immediate parent from existing arrays, on that composition      |     86,239 |     99,712 | `hydr12-indexed-parent`                                      |
+| Positive optional asset bounds, independently on 99,721         |     86,239 |     99,718 | `hydr12-positive-asset-bounds`                               |
+| Indexed parent + positive bounds, including pending-null syntax |     86,239 |     99,711 | `hydr12-indexed-positive`                                    |
+| Indexed parent + positive asset bounds only, retained           | **86,239** | **99,710** | `hydr12-indexed-positive-assets-only`, `hydration-after-all` |
+| Indexed parent + pending-null syntax only                       |     86,239 |     99,720 | `hydr12-indexed-pending-null-only`                           |
+| Three-cut composition without asset access cut                  |     86,239 |     99,717 | `hydr12-without-asset`                                       |
+| Three-cut composition without presentation cut                  |     86,239 |     99,728 | `hydr12-without-presentation`                                |
+| Indexed parent without asset access cut                         |     86,239 |     99,714 | `hydr12-indexed-without-asset`                               |
+| Correctness extraction + indexed parent only                    |     86,247 |     99,729 | `hydr12-indexed-correctness`                                 |
+
+Do not add independent gzip deltas. The optional asset access grows by two bytes
+alone, but reduces the presentation-only composition by four. Removing the local
+context contribution saves two alone and grows the indexed-parent composition
+by two. The complete retained composition is reproduced by the final all-18 run.
+
+The indexed parent removes both mutable `parent` state and its idle-loader
+branch. At index `i`, the old value is exactly `loads[i-1] ?? committed[i-1]`;
+keep its surrounding `Promise.resolve` to preserve assimilation and identity.
+The optional handoff asset bound is either absent or an integer of at least two.
+The pending boundary can be zero and keeps its explicit undefined check. Completed
+presentation and candidate-access cuts use already verified prefix bounds.
+Normal cleanup can lose its hydration branch only after raw consumption is
+separate; retain the post-await identity guard for discarded background work.
+
+Additional screens below are independent against **SPA 86,239 / Start 99,721**.
+Core unit runs pass in each measured screen. These are not accepted performance
+claims; failed contracts exclude a candidate even when its app gzip shrinks.
+
+| Candidate                                        | SPA gzip | Start gzip | Decision / run (`hydr12-` prefix)                                     |
+| ------------------------------------------------ | -------: | ---------: | --------------------------------------------------------------------- |
+| Direct fresh `ctx.data` assignment               |   86,239 |     99,721 | Neutral gzip; short timing inconclusive; `direct-codec-data`          |
+| Clone only successful detached snapshots         |   86,239 |     99,722 | +1; saves stale error copying only; `success-snapshot`                |
+| General producer callback for flight creation    |   86,250 |     99,748 | Growth; `producer-flight`                                             |
+| Register only discoverable generations           |   86,245 |     99,739 | Growth after required repeated-ID eviction; `selective-registration`  |
+| Transported codecs without loader flights        |   86,239 |     99,768 | +47 despite shared consumer; `codec-no-flight`                        |
+| Move argument builders beside hydration          |   86,255 |     99,727 | Growth; `argument-layout`                                             |
+| Move new flight factory beside hydration         |   86,249 |     99,731 | Growth; `flight-layout`                                               |
+| Merge `match._ctx` instead of local contribution |   86,239 |     99,719 | −2 alone; `context-authority`                                         |
+| Same context change + indexed parent             |   86,239 |     99,714 | Worse than indexed alone; `single-authorities`                        |
+| Native global-hook result through shared wait    |   86,239 |     99,715 | Excluded Promise-subclass getter change; `native-global-hook`         |
+| Local ordinary consumer inside its only planner  |   86,229 |     99,730 | Shifts cost to Start; unused-helper allocation risk; `local-resource` |
+| Local consumer + indexed parent                  |   86,229 |     99,725 | Still above smaller Start composition; `local-indexed`                |
+| Monotone committed-context cursor                |   86,288 |     99,779 | Growth and more invariant machinery; `committed-monotone-prefix`      |
+| Shared terminal-boundary predicate               |   86,239 |     99,729 | +8; `server-boundary-helper`                                          |
+
+Important exclusions and changed blockers:
+
+- Conditional registry insertion must still delete a prior same-ID entry when
+  the current flight is private. A registered legacy fallback can repeat its
+  parent's ID. Omitting that deletion makes replacement navigation adopt blocked
+  obsolete work. The measured version above includes the deletion.
+- Removing the global hook's outer `Promise.resolve` reads a Promise subclass's
+  stable own `then` getter twice instead of once. A getter that navigates using
+  public router state changes the resulting navigation. The stable-property
+  contract does not imply a side-effect-free getter; the six-byte saving is
+  excluded. There is no public self-abort exposure at that early stage, but that
+  fact does not establish equivalence of normalization.
+- Committed arrays can be frozen by public lifecycle code. Memoizing the context
+  ID Set on the array itself is invalid (`hydr11-committed-index`, Start 99,729
+  against the 99,735 extraction). The WeakMap alternative is safe but grows
+  both bundles: SPA 86,249 / Start 99,741 (`hydr11-committed-weak-index`).
+- Same-index context lookup is insufficient even with a current tree capture:
+  committed matches may belong to the old hierarchy. The same route instance
+  and ID can move depth through `router.update`. A retired async context can
+  also repopulate the cache before its replacement's first visit; this new
+  verified finding is recorded separately in the working findings document.
+- Do not merge `failed` with the accepted prefix. Completed descendant data can
+  become reusable while hydration waits for a slower ancestor. Early truncation
+  loses that existing recovery reuse.
+
+Full logs, commands, formatted source snapshots and emitted JS are under
+`/tmp/pr6631-hydration-v11/`; named app measurements are in the isolated checkout's
+`benchmarks/bundle-size/results/runs/`. Final validation and performance/resource
+counts are recorded in `RESULT-optimization-hydration-ownership.md`.
+
+Additional rejected or excluded paths:
+
+- The initial separate-consumer extraction measured Start 99,751 (+31 against
+  99,720) and did not fix adopted parent data (`hydr11-separate-consumers`).
+  Its missing semantic parent result is superseded by the raw-generation design.
+- A callable handoff measured Start 99,738 / SPA 86,248 against the 99,725 /
+  86,247 bounds composition (`hydr11-callable-handoff`). It grows by 13 Start
+  bytes and can add a history read on discard; no equivalence claim is made.
+- Replacing normal loader `typeof` dispatch with `loader.handler || loader`
+  is excluded without a new app measurement. A function loader may have its own
+  `handler` property and still means the function itself. Negative type fields
+  would remove that accepted callable shape rather than prove it impossible.
+- Unconditionally calling ordinary hydration handlers directly bypasses the
+  current producer cancellation guard. An already-planned child can then run
+  after its parent's transform navigates away. Existing public tests require
+  that callback to stop; the draft is excluded without measurement.
+
+Retained commits: `d2fdee32de` fixes shared parent results and narrows raw outcomes;
+`12b2a12625` removes presentation/verified-access branches; `aee2e40de3` removes
+hydration handling from ordinary cleanup; `99c33764fd` removes mutable parent
+state and its idle branch; `5ff5291a24` simplifies positive handoff asset bounds.
+The corrected extraction alone costs 15 Start bytes; its final simplifications
+recover 25, for a **net 10-byte reduction** against 99,720. These are composed
+measurements, not additive independent hunk prices.
+
+Full AFTER validation passes the eight-package unit/type/lint/build matrix and
+86 lifecycle/selective-SSR browser cases. Core has 3,944 passes, four expected
+failures and three skips, with no type errors. All 18 scenarios build. Four
+combined-change outliers grow: React Start Rsbuild minimal +11 and IIFE +12;
+Solid Start minimal +5 and full +9. The other 14 shrink. A subsequent full-18 correctness-only build (`hydr17-correctness-all`) separates
+required behavior from optional cuts: the selected simplifications shrink **every
+scenario** against that extraction, by 8–42 gzip bytes. For example, Rsbuild
+minimal improves 103,544→103,508 and IIFE 103,965→103,927; Solid Start minimal
+47,928→47,915 and full 53,081→53,059. Their residual increases against the old
+baseline therefore remain after recovering part of the correctness cost; the
+optional simplification group itself does not regress these four.
+
+Promise-resource probes remove exactly two created resources per active
+hydration loader (32 at depth 16); idle and normal client counts stay unchanged.
+These count created PROMISE async resources, including fixed harness overhead,
+not retained promises or heap bytes. Paired timing remains noisy: depth-16 async
+codec hydration moves 50.75→46.84 µs with roughly 6% RME in each run. Its gap from
+sync drops from 6.54% to 1.31% in that sample, but confidence intervals overlap.
+The historical 11.5% overhead is not conclusively established or eliminated.
+Broader DOM benchmark commands pass but print no timing statistics.
+
+Independent recompression checks all 76 before/after JS files and every
+initial/total raw/gzip/Brotli sum. Source maps bind the exact final TypeScript
+SHA `2f212b943497632cacc83d19e209e5bb80dcac47afe038239af5c1c08cd7b587`
+to the built packages. Only `load-client` changes across all 18 application maps.
+The report and detailed evidence are in `RESULT-optimization-hydration-ownership.md`
+and `/tmp/pr6631-hydration-v11/independent-ownership-final-full-audit.json`.
+
+## Admission and compression follow-up
+
+The next branch merge uses the existing terminal flag as the classification,
+admits a restored match once, and sets its selective-SSR boundary in one place.
+It removes duplicate terminal/success blocks without new allocation or waiting.
+`hydr17-restore-admission` measures **SPA 86,239 / Start 99,706**, initial 99,566,
+raw 311,450 and Brotli 86,769. This is **−4 gzip / −37 raw / +229 Brotli** against
+99,710; the compression tradeoff is explicit. Five fresh reviews found no
+merge-specific correctness defect. Public success, terminal and selective-SSR
+coverage passes; deeper pending/terminal benchmark workloads were added next.
+
+Grouping helpers was tested on that same 99,706-byte source. Declaration order
+alone does not alter callbacks or allocation, but changes minifier/compression
+layout. Each group passes core units and focused native workloads; none helps
+Start gzip, so none is retained:
+
+| Group moved next to hydration                                            | SPA gzip | Start gzip | Start initial / raw / Brotli delta | Run                              |
+| ------------------------------------------------------------------------ | -------: | ---------: | ---------------------------------- | -------------------------------- |
+| Serial/loader arguments, generation factory and parent snapshot          |   86,236 |     99,734 | +28 / 0 / −122                     | `hydration-shared-group-v18`     |
+| Outcome normalization, parent snapshot, generation and ordinary consumer |   86,254 |     99,734 | +29 / 0 / −132                     | `hydration-outcomes-group-v18`   |
+| All these shared helpers, including route lookup                         |   86,259 |     99,738 | +33 / 0 / −126                     | `hydration-all-shared-group-v18` |
+
+Do not retry these grouped layouts unchanged. A shorter source or closer
+functions do not imply smaller gzip; `hydrate` stays last in its original file.
+The branch-focused workloads include shallow/deep errors and not-found plus a
+rendered/data-only prefix ending at a pending client-only leaf, at depths 4/16.
+They use real SSR/bootstrap, check public outcomes before timing, and keep setup
+and serialization outside the timed call.
+
+The new real SSR round-trip coverage also exposed a correctness issue in the
+old admission exemption: a pending client-only global-not-found match was
+counted as completed. The following client load therefore skipped its guard and
+loader. A plain SPA control runs both. Removing that exemption lets existing
+continuation ownership do the work; no new flag, timer or completion authority
+is needed. This prototype passes the full core suite including both new public
+cases. Its bytes and final validation are recorded below once complete.
+
+The pending-terminal exemption prototype is **not retained**. Run
+`admission-pending-only-v20` measures SPA 86,239 / Start 99,708: **+2** against the
+99,706 merge, initial +3, raw −4, Brotli −91. It passes 3,946 core cases, including
+the new eager pending-not-found round trip, and the focused branch benchmarks.
+A fresh source review then identified a missing presentation guarantee: server
+not-found resolution may have loaded a lazy `pendingComponent` for that pending
+route. Excluding it from chunk preparation can leave the first client render
+without the server's pending UI. A complete fix must preserve that preparation
+while shortening the executed/resolved prefix. The public readiness test now reproduces this defect;
+no SSR-render/hydrateRoot mismatch test was executed. The eager regression alone
+does not establish equivalence. The public bug and alternatives remain in the
+uncommitted findings.
+
+Two further flag-shape variants were prepared. The boolean-only variant passed
+core tests and success-path timing before its terminal screen was interrupted
+once the shared presentation flaw was found. It has **no app-size result**.
+The false-initialized union variant was not run. Do not assign numbers or claim
+failed contracts became safe through type narrowing. Sources/logs remain under
+`/tmp/pr6631-hydration-v11/`; none is applied to the primary runtime.
+
+A proposed canonical semantic match on each shared loader generation is also
+excluded without a byte measurement. A public preload/navigation probe shows
+one producer with `{ preload: true, context: { lane: 'preload' } }`, while an
+adopting navigation child's parent snapshot must contain
+`{ preload: false, context: { lane: 'navigation' }, loaderData: 'parent data' }`.
+The raw outcome is already canonical; full semantic match metadata belongs to
+each consuming lane. A raw-first projection therefore needs per-lane success
+snapshots or additional settlement/fallback handling, while hydration still owns
+its server timestamp, terminal and publication policies. No substantial safe
+deletion was found without new state or ordinary-path allocation. Evidence:
+`semantic-parent-lane-metadata.json` in the same temporary evidence directory.
+
+A public chunk-readiness regression subsequently confirms the shortcut's lost
+preparation: on `admission-pending-only-v20`, the client `.lazy()` callback runs
+zero times and hydration finishes without starting the gated pending preload.
+The exact baseline and shell-preserving variant both wait correctly. This
+positive readiness test is committed separately at `f406dbd062`; the rejected
+shortcut's red log is `pending-only-readiness-v22-red.log`. A full DOM hydration
+mismatch was not measured.
+
+The shell-preserving variant `pending-after-shell-v22` keeps initial admission
+for chunk preparation, then truncates a pending tail before context/execution
+prefix calculation. It introduces no flag or timer and passes 3,947 core cases,
+including all three temporary public controls. It measures **SPA 86,239 / Start
+99,721**, versus 99,706: **+15 gzip / +14 initial / +43 raw / −124 Brotli**.
+Idle/active native screens pass; no end-to-end speedup is claimed against the
+broken baseline. It remains a correctness follow-up, excluded from the size
+composition because it grows Start. No complete consumer/e2e validation was run
+for this excluded variant. Its source and regression files remain in the local
+evidence directory for a future fix.
+
+### Validated admission composition
+
+Commit `7fe0c4154f` retains only the admission merge. The full BEFORE/AFTER
+workflow uses `hydration-v21-before-all` and `hydration-v21-after-all`. All 32
+AFTER unit/type/lint/build targets and all 86 browser cases pass; core has 3,945
+passes, four expected failures and three skips. The additional positive lazy-shell
+readiness test passed separately on the baseline.
+
+Final Start is **99,706 gzip / 99,566 initial / 311,450 raw / 86,769 Brotli**;
+SPA stays **86,239**. Compared with the 99,720-byte runtime, 14 scenarios shrink
+and four grow: React Start full +1, Rsbuild minimal +21 and IIFE +23, Solid Start
+full +6. Admission alone adds 10/11 bytes to Rsbuild minimal/IIFE while saving
+4 in Vite Start; this layout tradeoff is retained for the requested target.
+Against the required correctness extraction, the complete optional group still
+shrinks every scenario by 8–47 gzip bytes.
+
+Independent recompression verifies all 76 before/after JavaScript files and
+every initial/total raw/gzip/Brotli sum. All 18 source maps change only
+`load-client`; the exact TypeScript SHA is
+`a4af4794048162245b039aa4a3fa6a4cb4734d31c6888b02bb779418629d15ed`.
+The final paired resource counts reproduce two fewer Promise resources per
+active hydration loader, with terminal/selective/idle/client counts unchanged.
+Depth-16 active async means are 48.16→44.16 µs and sync 44.74→45.02 µs, with
+roughly 5–6% RME. The historical async overhead remains unresolved at this
+precision. Full evidence is in `RESULT-optimization-hydration-ownership.md`.
+
+The target remains unmet by **251 gzip bytes**. No feature reduction is counted
+as an optimization, and no helper relocation outside the original module is
+retained.
