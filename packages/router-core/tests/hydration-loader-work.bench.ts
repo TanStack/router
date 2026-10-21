@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module'
+import { createHook } from 'node:async_hooks'
 import { test } from 'vitest'
 import type { AnyRoute, AnyRouter, GetStoreConfig } from '../dist/esm/index.js'
 import type { TsrSsrGlobal } from '../dist/esm/ssr/client.js'
@@ -281,8 +282,32 @@ for (const depth of [4, 16]) {
         try {
           // Assert the public round trip before collecting any timing samples.
           before()
-          await run()
+          let promises = 0
+          const resources = process.env.HYDRATION_BENCH_RESOURCES
+            ? createHook({
+                init(_id, type) {
+                  if (type === 'PROMISE') {
+                    promises++
+                  }
+                },
+              })
+            : undefined
+          resources?.enable()
+          try {
+            await run()
+          } finally {
+            resources?.disable()
+          }
           after()
+          if (resources) {
+            console.log(
+              JSON.stringify({
+                benchmark: 'hydration-promise-resources',
+                name,
+                promises,
+              }),
+            )
+          }
           const result = await bench(
             name,
             { beforeEach: before, afterEach: after },
