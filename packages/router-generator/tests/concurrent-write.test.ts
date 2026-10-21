@@ -10,6 +10,7 @@ import path from 'node:path'
 import { afterEach, describe, expect, it, onTestFinished } from 'vitest'
 
 import { Generator, getConfig } from '../src'
+import { recordDirectoryInputs, recordInputs } from './consumer-inputs'
 import { expectOnlyOwnedEdits } from './owned-edits'
 import { routeIdOf } from './route-id'
 import { routesOf } from './route-tree'
@@ -76,6 +77,7 @@ async function createApp(postsSource: string) {
   await fs.mkdir(routesDirectory)
   await fs.writeFile(path.join(routesDirectory, '__root.tsx'), rootRouteSource)
   await fs.writeFile(postsRoutePath, postsSource)
+  await recordDirectoryInputs(tempDir, path.join(tempDir, 'routeTree.gen.ts'))
   const config = getConfig(
     {
       disableLogging: true,
@@ -441,6 +443,9 @@ async function appBeforeRewrite() {
     path.join(root, 'routes/about.tsx'),
     postsRouteSource.replace("'/posts'", "'/about'"),
   )
+  recordInputs(root, {
+    'routes/about.tsx': postsRouteSource.replace("'/posts'", "'/about'"),
+  })
   const files = [postsRoutePath, config.generatedRouteTree]
   const before = await Promise.all(
     files.map((file) => fs.readFile(file, 'utf8')),

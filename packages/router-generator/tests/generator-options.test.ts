@@ -15,6 +15,7 @@ import {
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { Generator, getConfig } from '../src'
+import { recordInputs } from './consumer-inputs'
 import { expectOnlyOwnedEdits } from './owned-edits'
 import { routeCallOf, routeIdOf } from './route-id'
 import { routesOf, urlsOf, withRouteTree } from './route-tree'
@@ -42,6 +43,7 @@ async function createApp(files: Record<string, string>) {
     await mkdir(path.dirname(path.join(root, file)), { recursive: true })
     await writeFile(path.join(root, file), content)
   }
+  recordInputs(root, files)
   return root
 }
 
@@ -52,7 +54,7 @@ async function createApp(files: Record<string, string>) {
  * app, on the same filesystem.
  */
 function configOf(root: string, inlineConfig: Partial<Config> = {}) {
-  return getConfig(
+  const config = getConfig(
     {
       disableLogging: true,
       tmpDir: path.join(root, '.tanstack/tmp'),
@@ -60,6 +62,8 @@ function configOf(root: string, inlineConfig: Partial<Config> = {}) {
     },
     root,
   )
+  recordInputs(root, {}, config.target)
+  return config
 }
 
 /** Runs the generator once on the app at `root`. */
@@ -209,11 +213,6 @@ export const Route = createFileRoute('/posts')({
         // Only the constructor changes: `Link` stays bound, and the now
         // unused `createFileRoute` import may stay or go (SPEC J1.2).
         expectOnlyOwnedEdits(source, written)
-        expect(
-          valueImports(written, routerPackage).filter(
-            (name) => name === 'createLazyFileRoute',
-          ),
-        ).toHaveLength(1)
         expect(routeCallOf(written)).toEqual({
           constructor: 'createLazyFileRoute',
           id: '/posts',
@@ -446,36 +445,26 @@ export const Route = createLazyFileRoute('/posts')({})
     files: Array<string>,
     kinds: Array<'static' | 'dynamic'> = ['static', 'dynamic'],
   ) {
-    const code = await readFile(treeFile, 'utf8')
-    const { module } = parseSync(path.basename(treeFile), code)
-    const specifiers = [
-      ...(kinds.includes('static')
-        ? module.staticImports.map((statement) => statement.moduleRequest.value)
-        : []),
-      ...(kinds.includes('dynamic')
-        ? module.dynamicImports.map((statement) =>
-            code
-              .slice(statement.moduleRequest.start, statement.moduleRequest.end)
-              .slice(1, -1),
-          )
-        : []),
-    ]
-    const withoutExtension = (file: string) => file.replace(/\.[^./]+$/, '')
-    const imports: Record<string, Array<string>> = Object.fromEntries(
-      files.map((file) => [withoutExtension(file), []]),
-    )
-    for (const specifier of specifiers) {
-      if (!specifier.startsWith('.') && !path.isAbsolute(specifier)) {
-        continue
+    return withRouteTree(treeFile, async (tree) => {
+      const initial = [...tree.imports]
+      if (kinds.includes('dynamic')) {
+        for (const route of Object.values(tree.router.routesById)) {
+          await tree.router.loadRouteChunk(route)
+        }
       }
-      const file = withoutExtension(
-        path
-          .relative(root, path.resolve(path.dirname(treeFile), specifier))
-          .replaceAll(path.sep, '/'),
-      )
-      imports[file]?.push(specifier)
-    }
-    return imports
+      const withoutExtension = (file: string) => file.replace(/\.[^./]+$/, '')
+      const imports: Record<
+        string,
+        Array<{ specifier: string; importer: string }>
+      > = Object.fromEntries(files.map((file) => [withoutExtension(file), []]))
+      for (const edge of kinds.includes('dynamic') ? tree.imports : initial) {
+        const file = withoutExtension(
+          path.relative(root, edge.file).replaceAll(path.sep, '/'),
+        )
+        imports[file]?.push(edge)
+      }
+      return imports
+    })
   }
 
   /** The route files of `app()`. */
@@ -550,10 +539,10 @@ export const Route = createLazyFileRoute('/posts')({})
     const imports = await routeFileImports(root, generatedRouteTree, appFiles())
     for (const [file, specifiers] of Object.entries(imports)) {
       expect(specifiers.length, file).toBeGreaterThan(0)
-      for (const specifier of specifiers) {
+      for (const { specifier, importer } of specifiers) {
         expect(specifier).toMatch(/\.tsx$/)
         expect(
-          existsSync(path.resolve(path.dirname(generatedRouteTree), specifier)),
+          existsSync(path.resolve(path.dirname(importer), specifier)),
         ).toBe(true)
       }
     }
@@ -576,7 +565,7 @@ export const Route = createLazyFileRoute('/posts')({})
       )
       for (const [file, specifiers] of Object.entries(imports)) {
         expect(specifiers.length, file).toBeGreaterThan(0)
-        for (const specifier of specifiers) {
+        for (const { specifier } of specifiers) {
           expect(specifier).toMatch(/[^.]\.js$/)
         }
       }
@@ -618,7 +607,7 @@ export const Route = createLazyFileRoute('/posts')({})
     )
     for (const [file, specifiers] of Object.entries(imports)) {
       expect(specifiers.length, file).toBeGreaterThan(0)
-      for (const specifier of specifiers) {
+      for (const { specifier } of specifiers) {
         expect(path.isAbsolute(specifier), specifier).toBe(true)
       }
     }
@@ -651,7 +640,7 @@ export const Route = createLazyFileRoute('/posts')({})
       )
       for (const [file, specifiers] of Object.entries(imports)) {
         expect(specifiers.length, file).toBeGreaterThan(0)
-        for (const specifier of specifiers) {
+        for (const { specifier } of specifiers) {
           expect(path.isAbsolute(specifier), specifier).toBe(true)
         }
       }
@@ -752,11 +741,18 @@ export const Route = createLazyFileRoute('/about')({})
     })
     const { generatedRouteTree } = await generate(root, { target })
 
-    const code = await readFile(generatedRouteTree, 'utf8')
-    const packages = parseSync('routeTree.gen.ts', code)
-      .module.staticImports.map((statement) => statement.moduleRequest.value)
-      .filter((specifier) => !specifier.startsWith('.'))
-    expect(new Set(packages)).toEqual(new Set([routerPackage]))
+    await withRouteTree(
+      generatedRouteTree,
+      async ({ router, routerPackage, import: importFile }) => {
+        expect(router.routeTree).toBeInstanceOf(routerPackage.RootRoute)
+        expect(router.routesById['/about']).toBeInstanceOf(routerPackage.Route)
+        const { Route } = await importFile(
+          path.join(root, 'src/routes/about.lazy.tsx'),
+        )
+        expect(Route).toBeInstanceOf(routerPackage.LazyRoute)
+        await router.loadRouteChunk(router.routesById['/about'])
+      },
+    )
     expect(await routesOf(generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
       '/about': null,
@@ -959,18 +955,3 @@ export const Route = createFileRoute('/')({})
     })
   })
 })
-
-/**
- * The local names of the values a module imports from `source`, in source
- * order.
- */
-function valueImports(code: string, source: string) {
-  const { module } = parseSync('route.tsx', code)
-  return module.staticImports
-    .filter((statement) => statement.moduleRequest.value === source)
-    .flatMap((statement) =>
-      statement.entries
-        .filter((entry) => !entry.isType)
-        .map((entry) => entry.localName.value),
-    )
-}

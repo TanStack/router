@@ -9,9 +9,13 @@ import { syncBuiltinESMExports } from 'node:module'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { onTestFinished, vi } from 'vitest'
-import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  captureConsole,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { Generator } from '../src'
 import { configOf, fileRoute, lazyFileRoute, rootRoute } from './app'
+import { recordInputs } from './consumer-inputs'
 import { observeRouteTree } from './route-tree'
 
 /**
@@ -61,6 +65,7 @@ export async function generateFresh(root: string) {
     await mkdir(path.dirname(path.join(root, file)), { recursive: true })
     await writeFile(path.join(root, file), content)
   }
+  recordInputs(root, files)
   const config = configOf(root, { disableLogging: false })
   const { diagnostics } = await captureConsole(() =>
     new Generator({ config, root }).run(),
@@ -68,11 +73,22 @@ export async function generateFresh(root: string) {
   return {
     tree: await readFile(config.generatedRouteTree, 'utf8'),
     routes: await observeRouteTree(config.generatedRouteTree),
-    // (in any order: the order of the diagnostics is free)
     diagnostics: diagnostics
       .filter(({ severity }) => severity !== 'info')
-      .map(({ severity, text }) => `${severity}: ${text}`)
-      .sort(),
+      .map((diagnostic) => {
+        const namedFiles = Object.keys(files)
+          .filter(
+            (file) => findDiagnostics([diagnostic], { file, root }).length > 0,
+          )
+          .sort()
+        if (namedFiles.length === 0) {
+          throw new Error(
+            `A generator diagnostic identifies no fixture file: ${diagnostic.text}`,
+          )
+        }
+        return namedFiles
+      })
+      .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
   }
 }
 

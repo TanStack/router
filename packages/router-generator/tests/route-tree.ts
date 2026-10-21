@@ -1,257 +1,221 @@
 /**
- * Shared test helper: a generated route tree as the app gets it. The tree and
- * the modules it imports are loaded by a real Vite server with the app's
- * framework plugin (`@vitejs/plugin-vue` for single-file components,
- * `vite-plugin-solid` for Solid JSX), and the app's own router package
- * (`@tanstack/react-router`, `@tanstack/solid-router`, `@tanstack/vue-router`)
- * builds a real router from it with `createRouter`. Route ids, full paths,
- * parents, matching and lazily loaded options are the router's, and pages
- * render with the framework's own server renderer; nothing here derives them.
+ * A public generator consumer: Vite resolves the app's explicit public
+ * runtime/renderer imports. Fixture source identities are compared with their
+ * real exports; no dependency layout or runner module inventory is inspected.
+ * A public Vite transform hook observes requests for fixture-owned files only.
  */
-import { existsSync } from 'node:fs'
-import {
-  mkdtemp,
-  readFile,
-  readdir,
-  realpath,
-  rm,
-  symlink,
-  writeFile,
-} from 'node:fs/promises'
+import { mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { createServer, createServerModuleRunner } from 'vite'
-import type { PluginOption, ViteDevServer } from 'vite'
-import type { ModuleRunner } from 'vite/module-runner'
+import { randomUUID } from 'node:crypto'
+import { createServer, createServerModuleRunner, parseSync } from 'vite'
+import { makeRunnerStrict } from '@tanstack/compiler-test-utils/strict-runner'
+import { openDiagnosticChannel } from '@tanstack/compiler-test-utils/diagnostic-channel'
+import { inputsOf, recordInputs } from './consumer-inputs'
+import type { PluginOption } from 'vite'
+import type { createClientConsumer as CreateClientConsumer } from './consumer-client'
 
-/** This package's dependencies, for apps to import their packages from. */
 const nodeModules = path.resolve(import.meta.dirname, '../node_modules')
 
-/** This package's directory: the app root of the generator fixtures. */
-const packageRoot = await realpath(path.resolve(import.meta.dirname, '..'))
-
-/** The entry file of a router package, and the framework it is for. */
-const routerPackageFile =
-  /[\\/](react|solid|vue)-router[\\/]dist[\\/][^\\/]+[\\/]index(?:\.dev)?\.[cm]?jsx?$/
-
-/**
- * The root of the app `file` belongs to: the nearest directory above it with
- * a `node_modules`, or, for an app in a temporary directory, the temporary
- * directory, which gets this package's `node_modules`.
- */
-async function appRootOf(file: string) {
-  const temporary = await realpath(tmpdir())
-  let dir = path.dirname(await realpath(file))
-  for (;;) {
-    if (existsSync(path.join(dir, 'node_modules'))) {
-      return dir
-    }
-    const parent = path.dirname(dir)
-    if (parent === temporary) {
-      await symlink(
-        nodeModules,
-        path.join(dir, 'node_modules'),
-        'junction',
-      ).catch((error: NodeJS.ErrnoException) => {
-        if (error.code !== 'EEXIST') {
-          throw error
-        }
-      })
-      return dir
-    }
-    if (parent === dir) {
-      throw new Error(`${file} is in no app (no node_modules above it)`)
-    }
-    dir = parent
+/** Imports chosen from fixture INPUTS, never from generated imports or dist paths. */
+function frameworkOf(files: Record<string, string>) {
+  const sources = Object.values(files).join('\n')
+  if (sources.includes('@tanstack/solid-router')) {
+    return 'solid'
   }
+  if (
+    sources.includes('@tanstack/vue-router') ||
+    Object.keys(files).some((file) => file.endsWith('.vue'))
+  ) {
+    return 'vue'
+  }
+  return 'react'
 }
 
-/** The frameworks of an app that need a Vite plugin. */
-interface Frameworks {
-  vue: boolean
-  solid: boolean
+/** A normal app entry with explicit public package imports, in the same runner. */
+function consumerSource(framework: string) {
+  const render =
+    framework === 'react'
+      ? `import { createElement } from 'react'
+import { renderToString } from 'react-dom/server'
+export const render = (Component, props = {}) => renderToString(createElement(Component, props))`
+      : framework === 'vue'
+        ? `import { createSSRApp, h } from 'vue'
+import { renderToString } from 'vue/server-renderer'
+export const render = (Component, props = {}) => renderToString(createSSRApp({ render: () => h(Component, props) }))`
+        : `import { renderToStringAsync, createComponent } from 'solid-js/web'
+export const render = (Component, props = {}) => renderToStringAsync(() => createComponent(Component, props))`
+  return `export * as runtime from '@tanstack/${framework}-router'\n${render}`
 }
 
-/**
- * The frameworks of the app whose sources are in `dir` (not in its
- * `node_modules`): Vue when it has single-file components, Solid when its
- * modules import Solid.
- */
-async function frameworksIn(
-  dir: string,
-  found: Frameworks = { vue: false, solid: false },
-) {
-  for (const entry of await readdir(dir, { withFileTypes: true })) {
-    const file = path.join(dir, entry.name)
-    if (entry.isDirectory()) {
-      if (entry.name !== 'node_modules' && !entry.name.startsWith('.')) {
-        await frameworksIn(file, found)
+async function withModule<T>(
+  file: string,
+  use: (loaded: {
+    exports: Record<string, any>
+    runtime: Record<string, any>
+    framework: string
+    sources: Map<string, Record<string, any>>
+    loadedFiles: () => Array<string>
+    import: (file: string) => Promise<Record<string, any>>
+    render: (Component: any, props?: object) => Promise<string>
+    imports: Array<{ file: string; specifier: string; importer: string }>
+  }) => Promise<T> | T,
+): Promise<T> {
+  const realFile = await realpath(file)
+  const { root, files, target: framework } = inputsOf(realFile)
+  // In-repository fixtures already resolve the package's dependencies from
+  // their parent. Only standalone temporary apps need their own link.
+  const fromPackage = path.relative(path.dirname(nodeModules), root)
+  if (fromPackage.startsWith('..') || path.isAbsolute(fromPackage)) {
+    await symlink(
+      nodeModules,
+      path.join(root, 'node_modules'),
+      'junction',
+    ).catch((error: NodeJS.ErrnoException) => {
+      if (error.code !== 'EEXIST') {
+        throw error
       }
-    } else if (entry.name.endsWith('.vue')) {
-      found.vue = true
-    } else if (
-      !found.solid &&
-      /\.[cm]?[jt]sx?$/.test(entry.name) &&
-      /from\s*['"](?:@tanstack\/solid-router|solid-js)['"/]/.test(
-        await readFile(file, 'utf8'),
-      )
-    ) {
-      found.solid = true
-    }
+    })
   }
-  return found
-}
-
-/**
- * Creates a Vite dev server for apps with `frameworks`, configured like such
- * an app would configure Vite: the Vue plugin for single-file components,
- * the Solid plugin for Solid (with Solid's own choice of which packages to
- * bundle for the server; otherwise Node loads the packages). The plugins are
- * loaded only when needed: they are large.
- */
-async function createAppServer(frameworks: Frameworks, root: string) {
-  const plugins: Array<PluginOption> = []
-  if (frameworks.vue) {
+  const requested = new Set<string>()
+  const printedRequests = new Map<string, Set<string>>()
+  const imports: Array<{ file: string; specifier: string; importer: string }> =
+    []
+  const plugins: Array<PluginOption> = [
+    {
+      name: 'generator-consumer:fixture-requests',
+      enforce: 'pre',
+      async resolveId(specifier, importer) {
+        if (
+          !importer ||
+          (!specifier.startsWith('.') && !path.isAbsolute(specifier))
+        ) {
+          return
+        }
+        const resolved = await this.resolve(specifier, importer, {
+          skipSelf: true,
+        })
+        if (resolved) {
+          const file = resolved.id.split('?')[0]!
+          if (
+            file in files &&
+            printedRequests.get(importer.split('?')[0]!)?.has(specifier)
+          ) {
+            imports.push({ file, specifier, importer: importer.split('?')[0]! })
+          }
+        }
+        return resolved
+      },
+      transform(code, id) {
+        const file = id.split('?')[0]!
+        if (file in files) {
+          requested.add(file)
+        } else if (
+          file.startsWith(root + path.sep) &&
+          !file.includes('/node_modules/') &&
+          /\.[cm]?[jt]sx?$/.test(file)
+        ) {
+          // Distinguish source imports from Vite's subsequent canonical-id
+          // requests. Oxc decodes literals; Vite still resolves every edge.
+          const specifiers = new Set<string>()
+          const visit = (node: any): void => {
+            if (!node || typeof node !== 'object') {
+              return
+            }
+            if (
+              [
+                'ImportDeclaration',
+                'ExportNamedDeclaration',
+                'ExportAllDeclaration',
+                'ImportExpression',
+              ].includes(node.type) &&
+              typeof node.source?.value === 'string'
+            ) {
+              specifiers.add(node.source.value)
+            }
+            for (const child of Object.values(node)) {
+              if (Array.isArray(child)) {
+                child.forEach(visit)
+              } else if (child && typeof child === 'object') {
+                visit(child)
+              }
+            }
+          }
+          visit(parseSync(file, code).program)
+          printedRequests.set(file, specifiers)
+        }
+      },
+    },
+  ]
+  if (framework === 'vue') {
     const { default: vue } = await import('@vitejs/plugin-vue')
     plugins.push(vue())
   }
-  if (frameworks.solid) {
+  if (framework === 'solid') {
     const { default: solid } = await import('vite-plugin-solid')
     plugins.push(solid({ ssr: true }))
   }
-  return createServer({
+  const entry = path.join(path.dirname(file), `.consumer-${randomUUID()}.ts`)
+  await writeFile(entry, consumerSource(framework))
+  const channel = openDiagnosticChannel()
+  const server = await createServer({
     root,
     configFile: false,
     envDir: false,
-    logLevel: 'silent',
     appType: 'custom',
+    customLogger: channel.viteLogger(),
     clearScreen: false,
     plugins,
     server: { middlewareMode: true, hmr: false, watch: null, ws: false },
     optimizeDeps: { noDiscovery: true, include: [] },
-    ssr: frameworks.solid ? {} : { external: true },
+    ssr: framework === 'solid' ? {} : { external: true },
   })
-}
-
-/**
- * The dev servers apps share in a worker, by root and frameworks: the
- * shared Solid server (rooted at the temporary directory: Solid apps bundle
- * the Solid router's sources for the server, and compiling them again for
- * every load would take most of a second), and the servers of the apps in
- * this package (the generator fixtures, which share this package's root:
- * creating a server took most of the time of loading a fixture's tree).
- * Other apps (in temporary directories) get a server of their own. Nothing
- * of an app is reused between loads (`withModule`).
- */
-const sharedServers = new Map<string, Promise<ViteDevServer>>()
-
-/** A module of the app, loaded by a Vite server of the app. */
-interface LoadedModule {
-  /** The module's exports. */
-  exports: Record<string, any>
-  /** The module runner that loaded it, with the modules it evaluated. */
-  runner: ModuleRunner
-}
-
-/**
- * Loads `file` (absolute path) like its app's dev server does for server
- * rendering, with a Vite server configured for the app's frameworks (from
- * the sources next to `file`) and a fresh module runner: a new server rooted
- * at the app, or a shared server (`sharedServers`), which first forgets
- * every module of the app so that an edited or regenerated file is
- * transformed again. JSX in the `.tsx`/`.jsx` files of a React or Vue app
- * compiles with Vite's default (React) transform. Runs `use` with the module.
- */
-async function withModule<T>(
-  file: string,
-  use: (loaded: LoadedModule) => Promise<T> | T,
-): Promise<T> {
-  const root = await appRootOf(file)
-  const realFile = await realpath(file)
-  const frameworks = await frameworksIn(path.dirname(realFile))
-  const serverRoot =
-    frameworks.solid && !frameworks.vue
-      ? await realpath(tmpdir())
-      : root === packageRoot
-        ? root
-        : undefined
-  let server: ViteDevServer
-  if (serverRoot) {
-    const key = JSON.stringify([serverRoot, frameworks])
-    if (!sharedServers.has(key)) {
-      sharedServers.set(key, createAppServer(frameworks, serverRoot))
-    }
-    server = await sharedServers.get(key)!
-    const { moduleGraph } = server.environments.ssr
-    for (const module of moduleGraph.idToModuleMap.values()) {
-      if (
-        module.file?.startsWith(root + path.sep) &&
-        !module.file
-          .slice(root.length)
-          .includes(`${path.sep}node_modules${path.sep}`)
-      ) {
-        moduleGraph.invalidateModule(module)
-      }
-    }
-  } else {
-    server = await createAppServer(frameworks, root)
-  }
   const runner = createServerModuleRunner(server.environments.ssr, {
     hmr: false,
   })
+  makeRunnerStrict(runner, root)
   try {
+    const consumer = await runner.import(entry)
     const exports = await runner.import(realFile)
-    return await use({ exports, runner })
+    const sources = new Map<string, Record<string, any>>()
+    // Import only fixture files the app already requested. This cannot eagerly
+    // pull in a lazy source, and a generated facade can never own its identity.
+    for (const source of [...requested]) {
+      sources.set(source, await runner.import(source))
+    }
+    return await use({
+      exports,
+      runtime: consumer.runtime,
+      framework,
+      sources,
+      imports,
+      loadedFiles: () => [...requested].sort(),
+      import: (source) => runner.import(source),
+      render: consumer.render,
+    })
   } finally {
     await runner.close()
-    if (!serverRoot) {
-      await server.close()
-    }
+    await server.close()
+    channel.close()
+    await rm(entry, { force: true })
   }
 }
 
-/**
- * The router package the app's modules loaded (the instance they use), and
- * its framework; undefined when they loaded none.
- */
-function routerPackageOf(runner: ModuleRunner) {
-  const packages = new Map<unknown, { framework: string; exports: any }>()
-  for (const node of runner.evaluatedModules.idToModuleMap.values()) {
-    const framework = routerPackageFile.exec(node.id)?.[1]
-    if (framework && typeof node.exports?.createRouter === 'function') {
-      // (a development entry re-exports the same bindings)
-      packages.set(node.exports.createRouter, {
-        framework,
-        exports: node.exports,
-      })
-    }
-  }
-  if (packages.size > 1) {
-    throw new Error(`The app loaded ${packages.size} router packages`)
-  }
-  return [...packages.values()][0]
-}
-
-/**
- * Evaluates `code` as a module of an app (a file named `fileName` in a new
- * temporary app) with the real packages. Returns its exports and the router
- * package it imports (its own exports, to compare bindings with).
- */
 export async function evaluateModule(code: string, fileName = 'route.tsx') {
   const root = await mkdtemp(path.join(tmpdir(), 'tsr-module-'))
   try {
     const file = path.join(root, fileName)
     await writeFile(file, code)
-    return await withModule(file, ({ exports, runner }) => ({
+    recordInputs(root, { [fileName]: code }, frameworkOf({ [fileName]: code }))
+    return await withModule(file, ({ exports, runtime }) => ({
       exports,
-      router: routerPackageOf(runner)?.exports,
+      router: runtime,
     }))
   } finally {
     await rm(root, { recursive: true, force: true })
   }
 }
 
-/** A route of the real router. */
 export interface RouterRoute {
   id: string
   fullPath: string
@@ -260,134 +224,116 @@ export interface RouterRoute {
   options: Record<string, any>
 }
 
-/** A generated route tree loaded by the app, and the router built from it. */
 export interface LoadedRouteTree {
-  /** The real router (`createRouter` of the app's router package). */
   router: {
     routeTree: RouterRoute
     routesById: Record<string, RouterRoute>
     matchRoutes: (pathname: string) => Array<{ routeId: string }>
     [key: string]: any
   }
-  /** The app's router package, as the app's modules import it. */
   routerPackage: Record<string, any>
-  /** `react`, `solid` or `vue`. */
   framework: string
-  /**
-   * The module file (relative to the tree, `/` separated) whose `Route`
-   * export is the route `routeId` of the router; null for a route the tree
-   * creates itself.
-   */
   fileOf: (routeId: string) => string | null
-  /**
-   * The app's own modules (not packages) the app has evaluated so far,
-   * relative to the tree and `/` separated, sorted.
-   */
+  /** Fixture-owned modules requested by the real host, relative to the tree. */
   loadedFiles: () => Array<string>
-  /** Imports a module of the app (absolute path) like the tree's imports. */
   import: (file: string) => Promise<Record<string, any>>
-  /**
-   * Server-renders `component` with the app's framework, after loading it if
-   * it is a lazily loaded route component (`preload`).
-   */
   render: (component: unknown) => Promise<string>
-  /**
-   * Server-renders the app at `url`: a new router over the tree with a memory
-   * history at `url` loads the location, and its `RouterProvider` renders.
-   */
+  renderClientAt: (url: string) => Promise<string>
   renderAt: (url: string) => Promise<string>
+  imports: Array<{ file: string; specifier: string; importer: string }>
 }
 
-/**
- * Loads the generated route tree at `treeFile` like the app does, builds the
- * router, and runs `use` with them. Fails like a bundler or the router on a
- * module that does not load or a tree the router rejects.
- */
 export function withRouteTree<T>(
   treeFile: string,
   use: (tree: LoadedRouteTree) => Promise<T> | T,
 ): Promise<T> {
-  return withModule(treeFile, async ({ exports, runner }) => {
-    const loaded = routerPackageOf(runner)
-    if (!loaded) {
-      throw new Error('The app loaded no router package')
-    }
-    const { framework, exports: routerPackage } = loaded
-    const { routeTree } = exports
-    const router = routerPackage.createRouter({
-      routeTree,
-      history: routerPackage.createMemoryHistory(),
-    })
-    const treeDir = path.dirname(await realpath(treeFile))
-    const fileOf = (routeId: string) => {
-      const route = router.routesById[routeId]
-      if (!route) {
-        throw new Error(`The router has no route ${routeId}`)
-      }
-      for (const [file, nodes] of runner.evaluatedModules.fileToModulesMap) {
-        if ([...nodes].some((node) => node.exports?.Route === route)) {
-          return path.relative(treeDir, file).replaceAll(path.sep, '/')
-        }
-      }
-      return null
-    }
-    const loadedFiles = () =>
-      [...runner.evaluatedModules.fileToModulesMap.keys()]
-        .filter((file) => !/[\\/]node_modules[\\/]/.test(file))
-        .map((file) => path.relative(treeDir, file).replaceAll(path.sep, '/'))
-        .sort()
-    /** Renders `Component` with `props` with the framework's renderer. */
-    const renderElement = async (Component: any, props: object = {}) => {
-      if (framework === 'vue') {
-        // (the Vue the app's modules import: Node loads packages)
-        const { createSSRApp, h } = await import('vue')
-        const { renderToString } = await import('vue/server-renderer')
-        return renderToString(
-          createSSRApp({ render: () => h(Component, props) }),
-        )
-      }
-      if (framework === 'react') {
-        // (the React the app's modules import: Node loads packages)
-        const { createElement } = await import('react')
-        const { renderToString } = await import('react-dom/server')
-        return renderToString(createElement(Component, props))
-      }
-      // Solid's server renderer, as the router package loaded it
-      const web = [...runner.evaluatedModules.idToModuleMap.values()].find(
-        (node) =>
-          /[\\/]solid-js[\\/]web[\\/]dist[\\/]/.test(node.id) &&
-          typeof node.exports?.renderToStringAsync === 'function',
-      )?.exports
-      if (!web) {
-        throw new Error('The app loaded no solid-js/web')
-      }
-      return web.renderToStringAsync(() =>
-        web.createComponent(Component, props),
-      )
-    }
-    return use({
-      router,
-      routerPackage,
+  return withModule(
+    treeFile,
+    async ({
+      exports,
+      runtime,
       framework,
-      fileOf,
+      sources,
       loadedFiles,
-      import: (file) => runner.import(file),
-      render: async (component: any) => {
-        await component?.preload?.()
-        return renderElement(component)
-      },
-      renderAt: async (url) => {
-        const pageRouter = routerPackage.createRouter({
-          routeTree,
-          history: routerPackage.createMemoryHistory({ initialEntries: [url] }),
+      import: importFile,
+      render,
+      imports,
+    }) => {
+      const { routeTree } = exports
+      const router: LoadedRouteTree['router'] = runtime.createRouter({
+        routeTree,
+        history: runtime.createMemoryHistory(),
+      })
+      const treeDir = path.dirname(await realpath(treeFile))
+      const relative = (file: string) =>
+        path.relative(treeDir, file).replaceAll(path.sep, '/')
+      const fileOf = (id: string) => {
+        const route = router.routesById[id]
+        if (!route) {
+          throw new Error(`The router has no route ${id}`)
+        }
+        const owners = [...sources].filter(
+          ([, module]) => module.Route === route,
+        )
+        if (owners.length > 1) {
+          throw new Error(
+            `Ambiguous fixture Route identity: ${owners.map(([file]) => relative(file)).join(', ')}`,
+          )
+        }
+        return owners.length ? relative(owners[0]![0]) : null
+      }
+      let client: Awaited<ReturnType<typeof CreateClientConsumer>> | undefined
+      try {
+        return await use({
+          router,
+          routerPackage: runtime,
+          framework,
+          fileOf,
+          imports,
+          loadedFiles: () => loadedFiles().map(relative).sort(),
+          import: importFile,
+          render: async (component) => {
+            // Ask the router to load its option, rather than reaching into the
+            // lazy wrapper. loadRouteChunk's componentType is a public argument.
+            for (const route of Object.values(router.routesById)) {
+              for (const option of [
+                'component',
+                'errorComponent',
+                'pendingComponent',
+                'notFoundComponent',
+              ]) {
+                if (route.options[option] === component) {
+                  await router.loadRouteChunk(
+                    route,
+                    option === 'errorComponent' ||
+                      option === 'notFoundComponent'
+                      ? option
+                      : undefined,
+                  )
+                }
+              }
+            }
+            return render(component)
+          },
+          renderClientAt: async (url) => {
+            const { createClientConsumer } = await import('./consumer-client')
+            client ??= await createClientConsumer(treeFile, framework)
+            return client.renderAt(url)
+          },
+          renderAt: async (url) => {
+            const pageRouter = runtime.createRouter({
+              routeTree,
+              history: runtime.createMemoryHistory({ initialEntries: [url] }),
+            })
+            await pageRouter.load()
+            return render(runtime.RouterProvider, { router: pageRouter })
+          },
         })
-        await pageRouter.load()
-        return renderElement(routerPackage.RouterProvider, {
-          router: pageRouter,
-        })
-      },
-    })
-  })
+      } finally {
+        await client?.close()
+      }
+    },
+  )
 }
 
 /**
@@ -454,11 +400,8 @@ export interface ObservedRoute {
  * The routes of the router built from the generated route tree at
  * `treeFile`, by route id: full path, parent, route file, and the app files
  * that load lazily with the route (routes are loaded in route id order; a
- * route's lazy files are those no route loaded before). The lazy files
- * include whatever support modules the generator emits and attribute a
- * shared dependency to the first route loaded: compare them only between
- * trees of the same generator (e.g. a dev run and a fresh run), never with
- * a list of expected files (generator.test.ts checks those on demand).
+ * route's lazy files are those no route loaded before). Only fixture-owned files participate; generated support filenames and
+ * placement are free.
  */
 export function observeRouteTree(
   treeFile: string,

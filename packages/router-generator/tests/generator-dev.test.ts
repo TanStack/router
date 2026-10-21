@@ -159,6 +159,7 @@ export const Route = (`
     expectDiagnostic([...diagnosticsOf(error), ...diagnostics], {
       severity: ['error', 'warning'],
       file: posts,
+      root,
       position: { line: 3 },
     })
     await save(root, 'src/routes/posts.tsx', fileRoute('/wrong'))

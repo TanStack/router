@@ -14,6 +14,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { onTestFinished } from 'vitest'
 import { Generator, getConfig } from '../src'
+import { recordInputs } from './consumer-inputs'
 import type { Config } from '../src'
 
 /**
@@ -28,6 +29,7 @@ export async function createApp(files: Record<string, string>) {
     await mkdir(path.dirname(path.join(root, file)), { recursive: true })
     await writeFile(path.join(root, file), content)
   }
+  recordInputs(root, files)
   return root
 }
 
@@ -38,7 +40,7 @@ export async function createApp(files: Record<string, string>) {
  * app, on the same filesystem.
  */
 export function configOf(root: string, inlineConfig: Partial<Config> = {}) {
-  return getConfig(
+  const config = getConfig(
     {
       disableLogging: true,
       tmpDir: path.join(root, '.tanstack/tmp'),
@@ -46,6 +48,8 @@ export function configOf(root: string, inlineConfig: Partial<Config> = {}) {
     },
     root,
   )
+  recordInputs(root, {}, config.target)
+  return config
 }
 
 /** Runs a new generator once on the app at `root`. */
@@ -76,6 +80,7 @@ export async function save(root: string, file: string, content: string) {
   await writeFile(filePath, content)
   const savedAt = new Date(Date.now() + 10_000 + ++saves * 1000)
   await utimes(filePath, savedAt, savedAt)
+  recordInputs(root, { [file]: content })
   return filePath
 }
 
