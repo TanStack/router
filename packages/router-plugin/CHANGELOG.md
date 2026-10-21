@@ -1,5 +1,18 @@
 # @tanstack/router-plugin
 
+## 1.168.48
+
+### Patch Changes
+
+- [#8670](https://github.com/TanStack/router/pull/8670) [`32a3360`](https://github.com/TanStack/router/commit/32a3360cba0e0f884b3215813a48c63467f5a53c) - Reference agent skills in other packages by their `intent load` identifier (`@tanstack/<package>#<skill>`) instead of relative file links that break once packages are installed.
+
+- [#8737](https://github.com/TanStack/router/pull/8737) [`647cb73`](https://github.com/TanStack/router/commit/647cb737a5622813d276d6042766692ca5ae67ed) - Remove the `enableRouteGeneration` option. Route generation now always runs, so `autoCodeSplitting` always has the route metadata it needs.
+
+- Updated dependencies [[`32a3360`](https://github.com/TanStack/router/commit/32a3360cba0e0f884b3215813a48c63467f5a53c), [`689a7c5`](https://github.com/TanStack/router/commit/689a7c5419de68bce0aaaef72b9a36f115ea1398)]:
+  - @tanstack/react-router@1.170.46
+  - @tanstack/router-core@1.171.39
+  - @tanstack/router-generator@1.167.46
+
 ## 1.168.47
 
 ### Patch Changes
