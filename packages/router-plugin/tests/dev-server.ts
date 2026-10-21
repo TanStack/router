@@ -9,11 +9,9 @@
  * Its server-side helpers (`renderRoutePath`, `import` of the SSR
  * environment) judge server semantics. Client semantics of route module
  * exports (`expectExportedRouteOptions`, `expectSharedOverloads`) run in a
- * real page through `route-app.ts`. Deprecated, for their remaining
- * callers outside this harness's own tests: `renderRouteComponent` (Node
- * rendering of a client option), `servedRouterPackageUrl` (a stub key for
- * `evaluateServed`) and `isServedAppModule` (a served-URL filter that skips
- * `/@fs/` and `node_modules`); route-app's page requests replace them.
+ * real page through `route-app.ts`. `isServedAppModule` tells the app's
+ * modules among the requests of a page from dependencies and the tools'
+ * own modules.
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -97,38 +95,6 @@ export async function renderRoutePath(
   })
   await router.load()
   return renderToString(createElement(RouterProvider, { router }))
-}
-
-/**
- * The URL `server` serves the router package of `target` at in the client
- * environment (the built workspace package, outside the app root, which
- * Vite's resolver picks with its development condition): the key of a stub
- * of it for `evaluateServed`, e.g. the same package loaded in the SSR
- * environment (`server.import('@tanstack/react-router')`).
- */
-export async function servedRouterPackageUrl(
-  server: Pick<DevServer, 'vite' | 'root'>,
-  target: Config['target'] = 'react',
-): Promise<string> {
-  const resolved =
-    await server.vite.environments.client.pluginContainer.resolveId(
-      `@tanstack/${target}-router`,
-      path.join(server.root, 'routes/__root.tsx'),
-    )
-  if (!resolved) {
-    throw new Error(`@tanstack/${target}-router does not resolve from the app`)
-  }
-  return `/@fs${resolved.id}`
-}
-
-/**
- * Renders a React component option of a served route module (loaded first,
- * when the code splitter made it lazy: `preload()` of the real router's lazy
- * route component) to HTML with React, like a route render does.
- */
-export async function renderRouteComponent(component: any): Promise<string> {
-  await component.preload?.()
-  return renderToString(createElement(component))
 }
 
 /**
