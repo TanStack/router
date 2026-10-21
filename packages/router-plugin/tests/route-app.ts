@@ -759,6 +759,10 @@ return Promise.all(found.map(async (module) => ({ ...module, code: await served(
   return route
 }
 
+function isRouteApp(value: unknown): value is RouteApp {
+  return typeof (value as RouteApp).run === 'function'
+}
+
 /** Route file each `modules()` result was compiled from. */
 const routeSources = new WeakMap<object, { code: string; filename: string }>()
 
@@ -772,7 +776,9 @@ const routeSources = new WeakMap<object, { code: string; filename: string }>()
 export async function expectValidModules(
   route: RouteApp | RouteModules['modules'],
 ) {
-  const modules = 'run' in route ? (await route.modules()).modules : route
+  const modules: Record<string, string> = isRouteApp(route)
+    ? (await route.modules()).modules
+    : route
   const source = routeSources.get(modules)
   const errors: Record<string, Array<string>> = {}
   for (const [name, code] of Object.entries(modules)) {
