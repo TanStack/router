@@ -119,10 +119,11 @@ Caveats:
     one row in 3 runs on an idle beetle. Held by the #34 ruling: no workaround.
   - Re-run a file that failed only on these alone before reading it as a compiler failure.
 - **Known gaps of the final audit (F-F), not fixed:**
-  - start-plugin-core's `compilerTransforms` option of its harnesses (one implementation-lane file,
-    `integration/outside-compiler-corpus/start-build-warnings.test.ts`) builds Start's plugin from the core factory
-    (`tests/outside-compiler-corpus/core-start-plugin.ts`): no public option takes external compiler transforms
-    (react-start passes its own RSC CSS transforms with `rsc: { enabled: true }`). No corpus test uses it.
+  - One implementation-lane file of start-plugin-core, `integration/outside-compiler-corpus/start-build-warnings.test.ts`,
+    builds Start's plugin from the core factory with external compiler transforms (`coreStartPlugins` of
+    `tests/outside-compiler-corpus/core-start-plugin.ts`, given to the harnesses as `corePlugins`): no public option
+    takes them (react-start passes its own RSC CSS transforms with `rsc: { enabled: true }`). The harnesses do not
+    import that module, so no corpus test reaches the core factory.
   - Two fast-tier rows of start-plugin-core call a middleware's `.server()` on the server module with a stand-in
     `next` to read what it gives (`compiler.test.ts` "leaves unrelated SSR middleware chains as written",
     `start-compiler-factories.test.ts` `mw.options.server`; F-F D3), and the pin "a function middleware validator
