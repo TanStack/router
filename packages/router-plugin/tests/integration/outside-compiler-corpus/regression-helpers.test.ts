@@ -1,6 +1,3 @@
-// Slow-tier half of this suite: the tests that need a real tool. Its
-// in-process tests are in tests/outside-compiler-corpus/regression-helpers.test.ts
-// (fast tier).
 /**
  * Controls for the regression harness itself: module discovery, lazy
  * evaluation and output validation (module linking and module validation:

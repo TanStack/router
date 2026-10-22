@@ -362,7 +362,35 @@ pins (`start-plugin-core/tests/integration/start-compiler-build-export-cache.tes
 Server-side checks (server functions, middleware, SSR) run through Start's server entry with a real request and a
 real router: each build and dev harness app has a probe route. A hand-built request context re-implements Start
 and is not allowed. The only remaining one (`start-plugin-core/tests/start-runtime.ts`) serves the legacy helpers
-of the tests held by Q6 and Q7; delete it with them when those rulings land. Clause: §8.
+(`tests/outside-compiler-corpus/legacy/`), which only implementation tests use since Q6 and Q7 were ruled; delete
+it with them. Clause: §8.
+
+### Q6: no hand-built Start package graphs (2026-10-22)
+
+Tests that hand-write a fake `@tanstack/start-client-core` and drive the internal `StartCompiler` with it are
+deleted ("this seems absurd. Yes we should absolutely delete them. We just need to make sure what they were trying
+to cover is still covered by higher quality tests."). What they covered is decided through real apps: a factory
+read through a project module that re-exports it, by name, under another name, through `export *` or as a member
+of a namespace import (`start-compiler-factories.test.ts`, "factories resolved through project modules"; the
+namespace row for `createMiddleware` was added), a library importing the factories from
+`@tanstack/start-client-core` (`integration/start-build-v2-libraries.test.ts`), and Start's own built
+`createCsrfMiddleware` (an isomorphic fn whose server implementation builds a middleware), a no-op in the client
+and a request middleware on the server (`createMiddleware/createMiddleware.test.ts`, added). A factory imported
+from an implementation module of Start's package (its deep path) is not reachable: the package's `exports` do not
+expose it. Clauses: J4.5, J4.16, G15, §1.2.
+
+### Q7: CommonJS dependencies (2026-10-22)
+
+Reachable, so pinned through real apps. A CommonJS package installed in `node_modules` (no `"type"`, so its `.js`
+files are scripts) whose code has the text `.handler(` reaches the Start compiler: Vite's client build, Vite's SSR
+build with `noExternal`, both Rsbuild builds and Rsbuild's dev server hand it over (Vite's dev client gets the
+pre-bundled module, and Vite's SSR externalizes it by default). The compiler parses it as an ES module, so a
+top-level `return`, which the same package without that text builds and runs with on both bundlers, fails the
+build: pinned in `start-plugin-core/tests/integration/known-bugs-start-compiler.test.ts` (both builds, Rsbuild
+dev). The other sloppy-mode forms of the former in-process pin (a legacy octal escape, a `with` statement) break
+these apps without Start too (Rolldown's parser in Vite's builds and dependency pre-bundling, Rspack's minifier in
+Rsbuild's builds, the strict code Rsbuild's dev server runs them in), so they carry no compiler requirement and
+have no pin. Clauses: J4.16, G1, §8.
 
 ### code-frame column (F1)
 

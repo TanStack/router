@@ -12,7 +12,7 @@
  * the host's resolver and loads the way the host loads it, whatever its id
  * (a query on the route file, a virtual id, another module). A production
  * compile (`command: 'build'`) is a real Vite production build of the route
- * file instead. Re-exported by `regression-helpers.ts`.
+ * file instead.
  *
  * What the tests observe is each module as it leaves the router plugin: a
  * plugin right after the router plugin records it (the router transform
@@ -45,17 +45,15 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { moduleLang } from '@tanstack/compiler-test-utils/module-linker'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import { build, createServer, parseSync } from 'vite'
-import { afterAll, expect, onTestFinished } from 'vitest'
+import { afterAll, onTestFinished } from 'vitest'
 import { createRouterPluginContext } from '../../../src/context'
-import { tanStackRouterCodeSplitter, tanstackRouter } from '../../../src/vite'
-import type { ModuleErrorOptions } from '@tanstack/compiler-test-utils/validate-module'
+import { tanStackRouterCodeSplitter } from '../../../src/vite'
 import type { Logger, Plugin, PluginOption, ViteDevServer } from 'vite'
 import type { Config, DeletableNodes } from '../../../src/core/config'
 
 /** A framework the router plugin targets. */
-export type TargetFramework = 'react' | 'solid' | 'vue'
+type TargetFramework = 'react' | 'solid' | 'vue'
 
 export type CompileOptions = {
   /**
@@ -112,7 +110,7 @@ function normalizePath(file: string) {
  * file (the hook registers while the test file imports this module).
  */
 let projectsDir: string | undefined
-export function projectRoot() {
+function projectRoot() {
   projectsDir ??= mkdtempSync(path.join(tmpdir(), 'tsr-plugin-host-'))
   return projectsDir
 }
@@ -148,7 +146,7 @@ class BoundaryReached extends Error {}
  * what Vite does with the router plugin's output afterwards is not under
  * test.
  */
-export function boundaryRecorder(recorded: Map<string, string>, stop = false) {
+function boundaryRecorder(recorded: Map<string, string>, stop = false) {
   return {
     name: 'test:router-transform-boundary',
     enforce: 'pre',
@@ -306,7 +304,7 @@ async function transformToBoundary(
  * specifier, in source order (static ones first). `id` gives the module's
  * language.
  */
-export function importRequests(code: string, id = 'module.tsx') {
+function importRequests(code: string, id = 'module.tsx') {
   const { module } = parseSync(`module.${moduleLang(id)}`, code, {
     sourceType: 'module',
   })
@@ -416,13 +414,6 @@ async function collectGraph(
   }
 }
 
-export function compileRouteGraph(
-  code: string,
-  options: CompileOptions = {},
-): Promise<RouteGraph> {
-  return createRouteGraphCompiler(options)(code)
-}
-
 /** The code-splitter plugin options of a compile. */
 function codeSplitterOptions(options: CompileOptions): Partial<Config> {
   const {
@@ -468,7 +459,7 @@ async function hostPlugins(
 }
 
 /** A route file a host compiles: where it is and the route id it has. */
-export type RouteFileOptions = Pick<
+type RouteFileOptions = Pick<
   CompileOptions,
   'filename' | 'moduleId' | 'routeId'
 >
@@ -478,7 +469,7 @@ export type RouteFileOptions = Pick<
  * files registered as the route generator registers them. The host closes
  * when the test (or, created outside a test, the suite) ends.
  */
-export interface RouterHost {
+interface RouterHost {
   /**
    * Writes a version of a route file, registers it and compiles it: the
    * route module and every module of the route its output reaches, as the
@@ -489,7 +480,7 @@ export interface RouterHost {
   emit: (moduleId: string) => Promise<string>
 }
 
-export function createRouterHost(options: CompileOptions = {}): RouterHost {
+function createRouterHost(options: CompileOptions = {}): RouterHost {
   if (options.command === 'build') {
     return {
       compile: (code, file) => buildRouteGraph(code, { ...options, ...file }),
@@ -699,29 +690,11 @@ async function buildRouteGraph(
   )
 }
 
-/** Route file each `compileRouteModules` result was compiled from. */
+/** Route file each compiled route graph was compiled from. */
 const routeSources = new WeakMap<object, { code: string; id: string }>()
 
 /**
- * Compiles a route file in the host (default groupings, unless the route
- * sets its own) and returns every module the router plugin emits for it,
- * found by following the imports of the output, without evaluating them.
- *
- * The modules are labelled `reference` (the route module), `shared` for a
- * module another one imports statically, and `lazy <n>` for a module only
- * imported lazily, in discovery order. Which route option loads which lazy
- * module is only known once the route is evaluated: `loadRoute` labels them
- * by option. `ids` gives the module id of each label.
- */
-export async function compileRouteModules(
-  code: string,
-  options: CompileOptions = {},
-) {
-  return labelRouteModules(code, await compileRouteGraph(code, options))
-}
-
-/**
- * Labels the modules of a compiled route file (see `compileRouteModules`):
+ * Labels the modules of a compiled route file (`createRouteGraphCompiler`):
  * a lazy module is labelled `lazy <options>` after the route options whose
  * loading imports it (`lazyOptions`, by module id), else `lazy <n>`.
  */
@@ -751,162 +724,4 @@ export function labelRouteModules(
   }
   routeSources.set(modules, { code, id: graph.id })
   return { modules, ids, graph }
-}
-
-/**
- * Asserts that every module is valid, reporting the errors by module name.
- * For the modules of `compileRouteModules`, the globals the route file reads
- * itself may be read by its modules too, and a name the route file binds
- * must not lose its binding in them (`source` of `getModuleErrors`). `jsx`
- * gives the JSX settings of the route's project (default: React's automatic
- * runtime), which decide what the modules' JSX pragmas mean.
- */
-export async function expectValidModules(
-  modules: Record<string, string>,
-  options: Pick<ModuleErrorOptions, 'jsx'> = {},
-) {
-  const source = routeSources.get(modules)
-  const filename = source ? `module.${moduleLang(source.id)}` : undefined
-  const errors: Record<string, Array<string>> = {}
-  for (const [name, code] of Object.entries(modules)) {
-    errors[name] = await getModuleErrors(code, filename, {
-      source: source?.code,
-      jsx: options.jsx,
-    })
-  }
-  expect(errors).toEqual(
-    Object.fromEntries(Object.keys(modules).map((name) => [name, []])),
-  )
-}
-
-function moduleRecord(code: string) {
-  return parseSync('module.tsx', code, { sourceType: 'module' }).module
-}
-
-/** Sources a module imports, side-effect imports included, sorted. */
-export function importSources(code: string) {
-  return [
-    ...new Set(
-      moduleRecord(code).staticImports.map(
-        (statement) => statement.moduleRequest.value,
-      ),
-    ),
-  ].sort()
-}
-
-/**
- * The values a module imports from `source`, sorted: `default`, `*` for a
- * namespace import, or the imported name. Type-only specifiers are skipped.
- */
-export function importedNames(code: string, source: string) {
-  return moduleRecord(code)
-    .staticImports.filter(
-      (statement) => statement.moduleRequest.value === source,
-    )
-    .flatMap((statement) =>
-      statement.entries
-        .filter((entry) => !entry.isType)
-        .map((entry) =>
-          entry.importName.kind === 'Default'
-            ? 'default'
-            : entry.importName.kind === 'NamespaceObject'
-              ? '*'
-              : entry.importName.name!,
-        ),
-    )
-    .sort()
-}
-
-/** Path of a route file in the routes directory of `transformWithRouteHmrPlugin`. */
-export function routeFile(name: string) {
-  return `${name}.tsx`
-}
-
-/** An empty root route of the router package of `target`. */
-const rootRoute = (target: Config['target']) =>
-  `import { createRootRoute } from '@tanstack/${target}-router'
-export const Route = createRootRoute({})
-`
-
-/**
- * Runs the route HMR plugin (what the composed `tanstackRouter` plugin uses
- * in dev when automatic code splitting is off) on the route file `file`
- * (relative to the routes directory, `routeFile(name)`), registered by the
- * plugin's route generator.
- */
-export async function transformWithRouteHmrPlugin(
-  code: string,
-  options: Partial<Config> = { target: 'react' },
-  file = routeFile('index'),
-) {
-  const output = await (
-    await createRouteHmrTransform(options, [file])
-  )(code, file)
-  if (output === null) {
-    throw new Error('expected the route HMR plugin to transform the route')
-  }
-  return output
-}
-
-/**
- * The transform of the composed `tanstackRouter` plugin with automatic code
- * splitting off (its route HMR plugin), in a real Vite dev server on a
- * project whose routes directory holds `files` (paths relative to it; the
- * generator registers them as routes). Returns, for a version of one of
- * them, the module as the router plugin emits it, or `null` when the plugin
- * leaves it as is.
- */
-export async function createRouteHmrTransform(
-  options: Partial<Config>,
-  files: Array<string>,
-) {
-  const target = options.target ?? 'react'
-  const root = mkdtempSync(path.join(projectRoot(), 'hmr-'))
-  const routes = path.join(root, 'routes')
-  await mkdir(routes, { recursive: true })
-  await writeFile(path.join(routes, '__root.tsx'), rootRoute(target))
-  for (const file of files) {
-    await mkdir(path.dirname(path.join(routes, file)), { recursive: true })
-    await writeFile(
-      path.join(routes, file),
-      `import { createFileRoute } from '@tanstack/${target}-router'
-export const Route = createFileRoute('/')({})
-`,
-    )
-  }
-  const recorded = new Map<string, string>()
-  const server = await createServer({
-    configFile: false,
-    root,
-    ...hostLogging(),
-    appType: 'custom',
-    server: {
-      middlewareMode: true,
-      ws: false,
-      watch: null,
-      preTransformRequests: false,
-    },
-    optimizeDeps: { noDiscovery: true, include: [] },
-    plugins: [
-      tanstackRouter({
-        routesDirectory: './routes',
-        generatedRouteTree: './routeTree.gen.ts',
-        // On the project's device: the generator renames its temporary
-        // files into place.
-        tmpDir: path.join(root, '.tanstack/tmp'),
-        disableLogging: true,
-        ...options,
-        target,
-        autoCodeSplitting: false,
-      }),
-      boundaryRecorder(recorded, true),
-    ],
-  })
-  registerCleanup(() => server.close())
-  return async (code: string, file: string) => {
-    const id = normalizePath(path.join(routes, file))
-    await writeFile(id, code)
-    const output = await transformToBoundary(server, recorded, code, id)
-    return output === code ? null : output
-  }
 }

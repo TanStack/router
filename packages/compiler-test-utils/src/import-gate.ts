@@ -92,12 +92,6 @@ export interface PendingRulingAllowance {
   why: string
 }
 
-const startPendingRulings = [
-  'packages/start-plugin-core/tests/pending-rulings/createMiddleware.test.ts',
-  'packages/start-plugin-core/tests/pending-rulings/createServerFn.test.ts',
-  'packages/start-plugin-core/tests/pending-rulings/known-bugs-start-compiler.test.ts',
-]
-
 /**
  * The allowlist of strict mode. Remove an entry when its ruling lands: the
  * test is rerouted through a public entry point, moved out of the corpus,
@@ -114,51 +108,6 @@ export const pendingRulingAllowlist: ReadonlyArray<PendingRulingAllowance> = [
     ],
     why: 'the absent-live-route updater control calls the emitted handleRouteUpdate directly; remove when Q5 (is that state reachable through real tools?) is ruled',
   },
-  {
-    ruling: 'Q6',
-    file: 'packages/start-plugin-core/tests/pending-rulings/createServerFn.test.ts',
-    requests: [
-      '../../src/start-compiler/compiler',
-      '../../src/start-compiler/types',
-    ],
-    why: 'the createServerFn :293 internal-package-graph row drives StartCompiler; remove when Q6 is ruled',
-  },
-  {
-    ruling: 'Q6',
-    file: 'packages/start-plugin-core/tests/pending-rulings/createMiddleware.test.ts',
-    requests: ['../../src/start-compiler/compiler'],
-    why: 'the createMiddleware :75/:145 internal-package-graph rows drive StartCompiler; remove when Q6 is ruled',
-  },
-  ...(
-    [
-      ['diagnostics.ts', ['../../../src/start-compiler/types']],
-      [
-        'regression-helpers.ts',
-        [
-          '../../../src/start-compiler/compiler',
-          '../../../src/start-compiler/config',
-          '../../../src/start-compiler/types',
-          '../../../src/types',
-        ],
-      ],
-      [
-        'render.ts',
-        [
-          '../../../src/hydrate-when-transform',
-          '../../../src/start-compiler/host',
-          '../../../src/types',
-        ],
-      ],
-    ] as const
-  ).map(
-    ([helper, requests]): PendingRulingAllowance => ({
-      ruling: 'Q6, Q7',
-      file: `packages/start-plugin-core/tests/outside-compiler-corpus/legacy/${helper}`,
-      requests: [...requests],
-      reachedOnlyBy: startPendingRulings,
-      why: 'legacy StartCompiler harness reached only by the pending-rulings files (Q6 rows, the Q7 CommonJS pin); remove with them when Q6 and Q7 are ruled, and delete tests/start-runtime.ts with it (FINAL-PASS #55)',
-    }),
-  ),
 ]
 
 type ReferenceKind =

@@ -13,9 +13,7 @@ Each entry's "Cause" names the product source its comment blames, when it does. 
 implementation, so a rewrite may have no such file. Most root causes are shared by several pins; the bug text then
 says "same root cause as above".
 
-Counts: 368 pin sites in 102 test files (a table test counts once here; Vitest counts each row).
-
-Pins in `start-plugin-core/tests/pending-rulings/` are held by pending user rulings (README, "Pending user rulings") and reach the compiler through its internals until the ruling lands.
+Counts: 369 pin sites in 101 test files (a table test counts once here; Vitest counts each row).
 
 ## Pins by compiler job
 
@@ -363,7 +361,7 @@ Pins in `start-plugin-core/tests/pending-rulings/` are held by pending user ruli
 
 ### J4 Start environment separation (start-plugin-core start-compiler; RSC provider in react-start-rsc)
 
-83 pins.
+84 pins.
 
 #### `start-plugin-core/tests/createServerFn/caller-dead-code.test.ts`
 
@@ -417,6 +415,8 @@ Pins in `start-plugin-core/tests/pending-rulings/` are held by pending user ruli
 - **a server fn created by a library function: the handler is not in the client bundle, or the build fails clearly.** A library function that creates server fns for its users (`createLoggedServerFn(handler)`) is never seen as a server fn in the user's module, so the handler ships to the client, silently.
 - **a build run from another directory: a library's server fn runs in the SSR build.** Start's Vite plugin looks for the Start libraries it bundles in SSR (`crawlFrameworkPkgs`: dependencies with a peer dependency on Start) in the package.json of the working directory (`root: process.cwd()`), not of Vite's root, which the plugin uses for its own root a few lines above. Cause: `start-plugin-core/src/vite/plugin.ts`.
 - **a module with a middleware and an isomorphic fn builds, and its middleware runs on the server.** In the SSR build, compiling a module with an isomorphic fn makes the Start compiler resolve the module's `createMiddleware` import (the server lookup does not know that factory). Cause: `start-plugin-core/src/rsbuild/start-compiler-host.ts`.
+- **a CommonJS dependency with a top-level return builds and keeps its meaning.** The bundler plugins hand every module whose text matches a detection pattern (here `.handler(`) to the Start compiler, which parses it as an ES module and fails on a CommonJS script's top-level `return` (an installed package without `"type"`); the same package without that text builds and runs on both bundlers.
+- **a CommonJS dependency with a top-level return compiles and keeps its meaning.** Same as above, in Rsbuild's dev server.
 
 #### `start-plugin-core/tests/integration/pages/start-compiler-import-forms.test.ts`
 
@@ -494,10 +494,6 @@ Pins in `start-plugin-core/tests/pending-rulings/` are held by pending user ruli
 - **client: a server-only import last mentioned by a type alias is not loaded with verbatimModuleSyntax.** Dead-code elimination counts a `typeof auth` type query in a top-level type alias as a use of the `auth` import, so a server-only import that the handler read and that such a type still mentions stays a value import in the client output.
 - **client: a validator schema that a type alias reads with typeof is not loaded.** Same family as above, for a module-level declaration: a validator schema that a type alias also reads (`z.infer<typeof themeValidator>`) stays in the client output, with what its initializer imports, although types read no value at runtime. Cause: `router-utils/src/ast.ts`.
 - **ssr: a declaration a client-only fn reads and a type alias reads with typeof is not loaded.** Same root cause as the pin above, mirrored on the server: a module-level declaration that only a client-only implementation and a `typeof` type query read stays in the SSR output, with its initializer and imports.
-
-#### `start-plugin-core/tests/pending-rulings/known-bugs-start-compiler.test.ts`
-
-- **a CommonJS dependency with $name compiles and keeps its meaning.** A module matching a detection pattern (`.handler(`) is parsed as strict ESM.
 
 #### `start-plugin-core/tests/start-compiler-factories.test.ts`
 

@@ -5,9 +5,8 @@
  * the API and points at the offending line. Prose, frame layout and
  * context length are free (§5.7).
  *
- * Source: `regression-helpers.test.ts:251` (B-mixed, split by B2: the
- * matcher-control half stays outside the corpus in
- * `outside-compiler-corpus/legacy-regression-helpers.test.ts`).
+ * Source: `regression-helpers.test.ts:251` (B-mixed, split by B2; its
+ * matcher-control half, a test of the legacy harness, is deleted).
  */
 import { test } from 'vitest'
 import {
