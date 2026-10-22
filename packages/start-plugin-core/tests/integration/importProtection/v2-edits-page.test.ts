@@ -12,13 +12,13 @@
 import react from '@vitejs/plugin-react'
 import { afterAll, describe, expect, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
-import { startDevServer } from '../../dev-server'
-import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import {
   hmrSyncModule,
   settlePage,
   trackRequests,
 } from '@tanstack/compiler-test-utils/hmr-sync'
+import { startDevServer } from '../../dev-server'
+import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import {
   appSources,
   pageApp,

@@ -8,12 +8,12 @@
 import react from '@vitejs/plugin-react'
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
-import { startDevServer, startServerEntryFiles } from '../dev-server'
 import {
   hmrSyncModule,
   settlePage,
   trackRequests,
 } from '@tanstack/compiler-test-utils/hmr-sync'
+import { startDevServer, startServerEntryFiles } from '../dev-server'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 
 const timeout = 30_000
