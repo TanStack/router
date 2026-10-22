@@ -11,10 +11,6 @@ import {
 } from '../regression-helpers'
 import { shapeOf } from '../page-values'
 
-// The rows resolving createMiddleware through hand-written Start package
-// sources (formerly :75 and :145) wait for ruling Q6:
-// tests/pending-rulings/createMiddleware.test.ts.
-
 /** A third-party library the middlewares below import (a real package). */
 const someLib = {
   'node_modules/@some/lib/package.json': JSON.stringify({
@@ -231,6 +227,23 @@ return [
       ),
     ).toEqual(['function', true, { type: 'request' }])
   })
+})
+
+// Start's own CSRF middleware factory is an isomorphic fn whose server
+// implementation builds a middleware (`createMiddleware().server()` in
+// Start's built package): an app's client gets the no-op of an isomorphic
+// fn without a client implementation, its server a request middleware.
+test("Start's createCsrfMiddleware is a no-op in the client and a request middleware on the server", async () => {
+  const served = await serveCase(await host(), {
+    'module.tsx': `import { createCsrfMiddleware } from '@tanstack/react-start'
+export const csrf = createCsrfMiddleware()`,
+  })
+  expect(await inPage(served, 'return module.csrf === undefined')).toBe(true)
+  const { csrf } = await served.ssr()
+  expect([csrf.options.type, typeof csrf.options.server]).toEqual([
+    'request',
+    'function',
+  ])
 })
 
 // A valid full chain (`.middleware().validator().client().server()`) of a
