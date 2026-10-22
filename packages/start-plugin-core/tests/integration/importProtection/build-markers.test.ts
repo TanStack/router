@@ -18,6 +18,7 @@ import {
   expectViolationsAt,
   locationIn,
   rejection,
+  reportedImporters,
   reportedViolations,
   violationsOf,
 } from '../../importProtection/start-apps'
@@ -215,7 +216,11 @@ describe.each(startBundlers)('%s build, server-only marker', (bundler) => {
           start: { importProtection: { ignoreImporters: ['**/ignored.ts'] } },
         }),
       )
-      expect(reportedViolations(error)).toHaveLength(1)
+      // (the exempt importer is never reported; with behavior "error",
+      // `onViolation` may get the other violation more than once)
+      const importers = reportedImporters(error)
+      expect(importers).not.toEqual([])
+      expect(importers).not.toContain('client src/ignored.ts')
     },
     timeout,
   )
