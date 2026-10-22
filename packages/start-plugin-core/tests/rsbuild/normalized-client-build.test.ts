@@ -145,6 +145,48 @@ function makeWindowsCompilation(readCss: () => string | Uint8Array) {
 }
 
 describe('normalizeRspackClientBuild', () => {
+  test('deduplicates direct dynamic imports without including CSS or nested imports', async () => {
+    const { clientBuild } = await buildClientFixture(
+      {
+        'index.js': `
+          globalThis.alpha = () => import(/* webpackChunkName: "alpha" */ './alpha.js')
+          globalThis.beta = () => import(/* webpackChunkName: "beta" */ './beta.js')
+        `,
+        'alpha.js': `
+          export { shared } from './shared.js'
+          export const lazy = () => import(/* webpackChunkName: "lazy" */ './lazy.js')
+        `,
+        'beta.js': `export { shared } from './shared.js'`,
+        'shared.js': `import './shared.css'; export const shared = 'shared'`,
+        'shared.css': '.shared { color: red; }',
+        'lazy.js': `export const lazy = 'lazy'`,
+      },
+      {
+        optimization: {
+          splitChunks: {
+            cacheGroups: {
+              default: false,
+              defaultVendors: false,
+              shared: {
+                name: 'shared',
+                test: /shared\.(js|css)$/,
+                chunks: 'async',
+                enforce: true,
+              },
+            },
+          },
+        },
+      },
+    )
+
+    expect(
+      clientBuild.chunksByFileName.get('index.js')?.dynamicImports,
+    ).toEqual(['shared.js', 'alpha.js', 'beta.js'])
+    expect(
+      clientBuild.chunksByFileName.get('alpha.js')?.dynamicImports,
+    ).toEqual(['lazy.js'])
+  })
+
   test.each(
     ['shared', 'none', 'css-module', 'css-only'].flatMap((extraction) =>
       [false, true].flatMap((concatenateModules) =>
