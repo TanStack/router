@@ -103,3 +103,72 @@ describe('cached matches', () => {
     expect(container.textContent).not.toContain('old data')
   }, 10_000)
 })
+
+describe('bigint search params', () => {
+  let panel: TanStackRouterDevtoolsPanelCore | undefined
+
+  afterEach(() => {
+    panel?.unmount()
+    panel = undefined
+    document.body.innerHTML = ''
+  })
+
+  it('does not throw when the active match search contains a bigint', async () => {
+    const bigId = 9007199254740993n
+    const route = {
+      id: '/big',
+      path: 'big',
+      fullPath: '/big',
+      rank: 0,
+      children: [],
+      options: {},
+    }
+    const routeTree = {
+      id: '__root__',
+      path: '/',
+      fullPath: '/',
+      rank: 0,
+      children: [route],
+      options: {},
+    }
+    const match: AnyRouteMatch = {
+      id: 'big-match',
+      routeId: '/big',
+      pathname: '/big',
+      params: {},
+      search: { id: bigId },
+      status: 'success',
+      isFetching: false,
+      updatedAt: Date.now(),
+    } as AnyRouteMatch
+    const router = {
+      _cache: new Map(),
+      routeTree,
+      routesById: { __root__: routeTree, '/big': route },
+      options: {},
+      navigate: vi.fn(),
+    } as unknown as AnyRouter
+    const routerState = {
+      location: {
+        href: '/big',
+        pathname: '/big',
+        search: { id: bigId },
+        searchStr: `id=${bigId.toString()}`,
+        hash: '',
+      },
+      matches: [match],
+    }
+    const container = document.createElement('div')
+    document.body.append(container)
+
+    panel = new TanStackRouterDevtoolsPanelCore({ router, routerState })
+    panel.mount(container)
+
+    // The history-tracking effect compares successive matches with
+    // stringifySearchValue; a throwing comparison would surface as an
+    // unhandled rejection during mount and blank the panel.
+    await vi.waitFor(() => {
+      expect(container.textContent).toBeDefined()
+    })
+  }, 10_000)
+})
