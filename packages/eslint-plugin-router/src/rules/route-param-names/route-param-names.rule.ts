@@ -1,16 +1,16 @@
 import { AST_NODE_TYPES, ESLintUtils } from '@typescript-eslint/utils'
 
 import { getDocsUrl } from '../../utils/get-docs-url'
-import { detectTanstackRouterImports } from '../../utils/detect-router-imports'
+import { getRouterCalls } from '../../utils/router-calls'
 import { getInvalidParams } from './route-param-names.utils'
-import { pathAsFirstArgFunctions, pathAsPropertyFunctions } from './constants'
+import { allRouteFunctions, pathAsPropertyFunctions } from './constants'
 import type { TSESTree } from '@typescript-eslint/utils'
 import type { ExtraRuleDocs } from '../../types'
 
 const createRule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)
 
-const pathAsFirstArgSet = new Set<string>(pathAsFirstArgFunctions)
 const pathAsPropertySet = new Set<string>(pathAsPropertyFunctions)
+const routeFunctionSet = new Set<string>(allRouteFunctions)
 
 export const name = 'route-param-names'
 
@@ -30,7 +30,7 @@ export const rule = createRule({
   },
   defaultOptions: [],
 
-  create: detectTanstackRouterImports((context, _, helpers) => {
+  create(context) {
     function reportInvalidParams(node: TSESTree.Node, path: string) {
       const invalidParams = getInvalidParams(path)
 
@@ -63,19 +63,15 @@ export const rule = createRule({
     }
 
     return {
-      CallExpression(node) {
-        // Handle direct function call: createRoute({ path: '...' })
-        if (node.callee.type === AST_NODE_TYPES.Identifier) {
-          const funcName = node.callee.name
-
-          // Skip if not imported from TanStack Router
-          if (!helpers.isTanstackRouterImport(node.callee)) {
-            return
-          }
-
+      Program(program) {
+        for (const { name: funcName, call } of getRouterCalls(
+          context.sourceCode,
+          program,
+          routeFunctionSet,
+        )) {
           // Case: createRoute({ path: '/path/$param' }) or createRoute({ 'path': '/path/$param' })
           if (pathAsPropertySet.has(funcName)) {
-            const arg = node.arguments[0]
+            const arg = call.arguments[0]
             if (arg?.type === AST_NODE_TYPES.ObjectExpression) {
               for (const prop of arg.properties) {
                 if (prop.type === AST_NODE_TYPES.Property) {
@@ -93,35 +89,25 @@ export const rule = createRule({
                 }
               }
             }
-            return
+            continue
           }
-        }
 
-        // Handle curried function call: createFileRoute('/path')({ ... })
-        if (node.callee.type === AST_NODE_TYPES.CallExpression) {
-          const innerCall = node.callee
-
-          if (innerCall.callee.type === AST_NODE_TYPES.Identifier) {
-            const funcName = innerCall.callee.name
-
-            // Skip if not imported from TanStack Router
-            if (!helpers.isTanstackRouterImport(innerCall.callee)) {
-              return
-            }
-
-            // Case: createFileRoute('/path/$param')(...) or similar
-            if (pathAsFirstArgSet.has(funcName)) {
-              const pathArg = innerCall.arguments[0]
-              if (pathArg) {
-                const pathValue = getStringLiteralValue(pathArg)
-                if (pathValue) {
-                  reportInvalidParams(pathArg, pathValue)
-                }
+          // Case: createFileRoute('/path/$param')(...) or similar; every other
+          // route function takes the path as its first argument
+          if (
+            call.parent.type === AST_NODE_TYPES.CallExpression &&
+            call.parent.callee === call
+          ) {
+            const pathArg = call.arguments[0]
+            if (pathArg) {
+              const pathValue = getStringLiteralValue(pathArg)
+              if (pathValue) {
+                reportInvalidParams(pathArg, pathValue)
               }
             }
           }
         }
       },
     }
-  }),
+  },
 })

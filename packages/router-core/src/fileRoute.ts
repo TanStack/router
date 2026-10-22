@@ -4,6 +4,7 @@ import type {
   AnyPathParams,
   AnyRoute,
   FileBaseRouteOptions,
+  LifecycleNoWire,
   ResolveParams,
   Route,
   RouteConstraints,
@@ -49,6 +50,9 @@ export interface FileRouteOptions<
   TSSR = unknown,
   TServerMiddlewares = unknown,
   THandlers = undefined,
+  TContextWire = LifecycleNoWire,
+  TBeforeLoadWire = LifecycleNoWire,
+  TLoaderWire = LifecycleNoWire,
 >
   extends
     FileBaseRouteOptions<
@@ -66,7 +70,10 @@ export interface FileRouteOptions<
       AnyContext,
       TSSR,
       TServerMiddlewares,
-      THandlers
+      THandlers,
+      TContextWire,
+      TBeforeLoadWire,
+      TLoaderWire
     >,
     UpdatableRouteOptions<
       TParentRoute,
@@ -81,6 +88,7 @@ export interface FileRouteOptions<
       TBeforeLoadFn
     > {}
 
+// The return type is a conditional on purpose, see UpdatableRouteOptions.
 export type CreateFileRoute<
   TFilePath extends string,
   TParentRoute extends AnyRoute,
@@ -98,6 +106,9 @@ export type CreateFileRoute<
   TSSR = unknown,
   TServerMiddlewares = unknown,
   THandlers = undefined,
+  TContextWire = LifecycleNoWire,
+  TBeforeLoadWire = LifecycleNoWire,
+  TLoaderWire = LifecycleNoWire,
 >(
   options?: FileRouteOptions<
     TRegister,
@@ -114,28 +125,33 @@ export type CreateFileRoute<
     TLoaderFn,
     TSSR,
     TServerMiddlewares,
-    THandlers
+    THandlers,
+    TContextWire,
+    TBeforeLoadWire,
+    TLoaderWire
   >,
-) => Route<
-  TRegister,
-  TParentRoute,
-  TPath,
-  TFullPath,
-  TFilePath,
-  TId,
-  TSearchValidator,
-  TParams,
-  AnyContext,
-  TRouteContextFn,
-  TBeforeLoadFn,
-  TLoaderDeps,
-  TLoaderFn,
-  unknown,
-  unknown,
-  TSSR,
-  TServerMiddlewares,
-  THandlers
->
+) => TRegister extends unknown
+  ? Route<
+      TRegister,
+      TParentRoute,
+      TPath,
+      TFullPath,
+      TFilePath,
+      TId,
+      TSearchValidator,
+      TParams,
+      AnyContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps,
+      TLoaderFn,
+      unknown,
+      unknown,
+      TSSR,
+      TServerMiddlewares,
+      THandlers
+    >
+  : never
 
 export type LazyRouteOptions = Pick<
   UpdatableRouteOptions<
