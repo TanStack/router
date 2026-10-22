@@ -118,6 +118,12 @@ depends on that race. The validation V-I (after F-I) added start-plugin-core `te
 control, on both bundlers, of a server fn the app's server entry defines, called from SSR code (caveats below).
 Without it, a Vite compiler whose resolver drops every server fn the client build did not find passed every
 acceptance tier.
+The rulings Q6 and Q7 (2026-10-22, RULINGS) changed: start-plugin-core `test:unit` −1 passed (the 3 Q6 rows on a
+hand-built Start package deleted; 2 real-app rows added: Start's own `createCsrfMiddleware` in the client and on the
+server, a `createMiddleware` read through a namespace of a re-exporting module) and −3 expected-fail rows (the
+in-process CommonJS pin); start-plugin-core `test:integration` +3 expected-fail rows (the CommonJS pin through real
+apps: Vite and Rsbuild builds, Rsbuild dev); start-plugin-core `test:implementation` −72 and router-plugin
+`test:implementation` −21 (the tests of the legacy harness's own helpers, deleted with the pending-rulings files).
 
 The `test:unit` counts include the pending-rulings lane: 1 row in router-plugin (Q5).
 
