@@ -362,9 +362,10 @@ function indent(text: string) {
 /**
  * Whether `text` names `file` (SPEC §5.7, "absolute or project-relative"):
  * its absolute path (or its real path), or its project-relative path
- * (`file` itself when relative, else relative to `root`) as a whole path,
- * maybe behind `/`, `./` or `../`. With a root, never the tail of another
- * path (`/other/src/a.ts` does not name `src/a.ts` of `/app`).
+ * (`file` itself when relative, else relative to `root`) as a whole path.
+ * With a root, a longer path ending with it must be the end of the absolute
+ * path (a path relative to the working directory names it, `/other/src/a.ts`
+ * does not); what follows `./`, `../` or a leading `/` counts on its own.
  */
 export function mentionsFile(
   text: string,
@@ -380,24 +381,47 @@ export function mentionsFile(
       : undefined
   const relative = path.isAbsolute(file)
     ? options.root !== undefined
-      ? path.relative(options.root, file)
+      ? posix(path.relative(options.root, file))
       : undefined
-    : path.normalize(file)
+    : posix(path.normalize(file))
+  const spellings = absolute === undefined ? [] : [absolute, realOf(absolute)]
   if (
-    absolute !== undefined &&
-    [absolute, realOf(absolute)].some(
-      (spelling) => spelling !== undefined && said.includes(posix(spelling)),
-    )
+    spellings.some((spelling) => spelling && said.includes(posix(spelling)))
   ) {
     return true
   }
-  // Without a root, the project's own directory may come before it
-  const before =
-    options.root === undefined ? '(?<![\\w.@$-])' : '(?<![\\w.@$-]|[\\w@$-]/)'
-  return (
-    relative !== undefined &&
-    new RegExp(`${before}${escape(posix(relative))}(?![\\w/-])`).test(said)
-  )
+  if (relative === undefined) {
+    return false
+  }
+  for (
+    let at = said.indexOf(relative);
+    at !== -1;
+    at = said.indexOf(relative, at + 1)
+  ) {
+    const end = at + relative.length
+    if (/[\w/-]/.test(said[end] ?? '')) {
+      continue
+    }
+    let start = at
+    while (start > 0 && /[\w.@$~+%#/-]/.test(said[start - 1]!)) {
+      start--
+    }
+    const whole = said
+      .slice(start, end)
+      .replace(/^.*(?:^|\/)\.{1,2}\//, '')
+      .replace(/^\/+/, '')
+    if (
+      whole === relative ||
+      (whole.endsWith(`/${relative}`) &&
+        (options.root === undefined ||
+          spellings.some(
+            (spelling) => spelling && posix(spelling).endsWith(`/${whole}`),
+          )))
+    ) {
+      return true
+    }
+  }
+  return false
 }
 
 function realOf(file: string) {

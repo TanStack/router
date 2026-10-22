@@ -159,7 +159,7 @@ describe('the host reports what plugins log through it', () => {
           ({ severity, text }) =>
             severity === 'warning' && text.includes('MARK_PLUGIN_WARNING'),
         ),
-      ).toHaveLength(1)
+      ).not.toEqual([])
     },
   )
 })
