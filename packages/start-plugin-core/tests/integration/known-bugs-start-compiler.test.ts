@@ -256,16 +256,24 @@ return {
 
   // Bug (Vite): the production server fn resolver is generated when the SSR
   // build first loads it, from the server fns found so far. A server fn that
-  // only another server fn's handler (or a middleware `.server()`) calls is
-  // found later, when the SSR build compiles the provider that imports it, so
-  // it is missing from the resolver. Rsbuild rebuilds the resolver after the
-  // SSR compilation found every server fn.
+  // only server code calls (another server fn's handler, a middleware
+  // `.server()`) is found when the SSR build compiles the module that calls
+  // it. When the SSR build reaches that module only through the resolver,
+  // the server fn is found after the resolver was generated and is missing
+  // from it. Only the resolver imports a server fn's handler (its provider
+  // module) and, when only client code imports a server fn, everything that
+  // server fn uses, its middleware included. Rsbuild rebuilds the resolver
+  // after the SSR compilation found every server fn.
   // Impact: in production, calling it throws "Server function info not
   // found" (works in dev), from SSR code and over HTTP alike.
   // Source: issue #7213; SPEC J4.2 ("in any module processing order", G4).
-  // The caller #7213 quotes, a middleware `.server()` of another module,
-  // works on both bundlers today (regression rows, not pinned): Vite finds
-  // that server fn before it generates the resolver.
+  // Not run on Vite: the middleware caller (the one #7213 quotes) when SSR
+  // code imports the server fn that uses the middleware. The SSR build then
+  // reaches the middleware's module and the resolver in parallel, and
+  // whether it finds the server fn first is a race, which Vite usually wins
+  // by a few milliseconds and loses under heavy load; no app input orders
+  // the two. The rows where only client code imports that server fn pin
+  // this caller deterministically.
   const innerFn = `${head}export const inner = createServerFn().handler(async () => 'inner')
 `
   const calledByServerCode = {
@@ -293,37 +301,62 @@ export const outer = createServerFn()
   describe.each(Object.entries(calledByServerCode))(
     'SSR: a server fn that only %s calls',
     (caller, modules) => {
-      const files = (order: 'as written' | 'reversed') => {
+      const files = (order: 'as written' | 'reversed', ssrEntry: string) => {
         const entries = Object.entries({
           ...modules,
           'client-entry.ts': `export { outer } from './outer'\n`,
-          'ssr-entry.ts': `export { outer } from './outer'
-${callByIdExports}`,
+          'ssr-entry.ts': ssrEntry,
         })
         return Object.fromEntries(
           order === 'reversed' ? entries.reverse() : entries,
         )
       }
 
-      ;(bundler === 'vite' && caller === 'another server fn'
-        ? test.fails
-        : test
-      ).each(['as written', 'reversed'] as const)(
-        'is callable, the app files written %s',
-        async (order) => {
-          const { ssr } = await buildStart({
-            bundler,
-            files: files(order),
-            entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
-          })
-          const { result } = await ssr.run(`${callByIdPrelude}return {
+      if (bundler !== 'vite' || caller === 'another server fn') {
+        ;(bundler === 'vite' ? test.fails : test).each([
+          'as written',
+          'reversed',
+        ] as const)(
+          'is callable, the app files written %s',
+          async (order) => {
+            const { ssr } = await buildStart({
+              bundler,
+              files: files(
+                order,
+                `export { outer } from './outer'\n${callByIdExports}`,
+              ),
+              entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+            })
+            const { result } = await ssr.run(`${callByIdPrelude}return {
   fromSsr: await entry.outer(),
   overHttp: await callById(serverFnId(entry.outer)),
 }`)
-          expect(result).toEqual({
-            fromSsr: 'outer:inner',
-            overHttp: 'outer:inner',
+            expect(result).toEqual({
+              fromSsr: 'outer:inner',
+              overHttp: 'outer:inner',
+            })
+          },
+          timeout,
+        )
+      }
+
+      ;(bundler === 'vite' ? test.fails : test).each([
+        'as written',
+        'reversed',
+      ] as const)(
+        'its caller only client code imports: the caller is callable over HTTP, the app files written %s',
+        async (order) => {
+          const { client, ssr } = await buildStart({
+            bundler,
+            files: files(order, callByIdExports),
+            entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
           })
+          // (the caller by its public URL: the server fn base, then its id)
+          const url = (await client.run(`return entry.outer.url`)).result
+          const { result } = await ssr.run(
+            `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
+          )
+          expect(result).toBe('outer:inner')
         },
         timeout,
       )

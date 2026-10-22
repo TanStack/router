@@ -92,6 +92,10 @@ copy of the computed-member request middleware pin; its build twin in `integrati
 pins the same input and outcomes through a real request). No pin site was added or removed. The pass F-G1 (after F-F) builds the apps of the start-plugin-core,
 router-plugin and react-start-rsc harnesses with the plugins a real app configures ("How tests reach the
 compilers"); no count or pin changed, and a sample of V4 reds is still caught; R1–R11 and V4 were not re-measured.
+The pass F-I (after V-G1) made the #7213 rows of start-plugin-core `integration/known-bugs-start-compiler.test.ts`
+deterministic (caveats below): start-plugin-core `test:integration` +2 passed and +4 expected-fail rows (the Vite
+cells of the middleware caller where SSR code imports the server fn removed; a pin site added: the caller only client
+code imports, on both callers and bundlers, pinned on Vite).
 
 The `test:unit` counts include the pending-rulings lane: 4 passing rows and 3 pins in start-plugin-core, 1 row in
 router-plugin.
@@ -121,11 +125,17 @@ Caveats:
     right after they start; every one with the #34 signature (`ENOTEMPTY` removing `node_modules/.vite` or
     `.vite/deps_temp_*`). Held by the #34 ruling: no workaround.
   - Re-run a file that failed only on these alone before reading it as a compiler failure.
-  - Not a flake of the tests: at an extreme load (80 to 110 on beetle) V-G1 saw `known-bugs-start-compiler` "SSR: a
-    server fn that only a middleware .server() of another module calls > is callable, the app files written
-    reversed" fail once in 15 runs with "Server function info not found". That is today's compiler losing the #7213
-    race (Vite generates the server fn resolver before it has found that server fn; KNOWN-BUGS says Vite finds it
-    first, which holds only on timing). Not seen in 20 runs of that file at a load of about 50.
+  - Not a flake of the tests, and no longer a row: at an extreme load (80 to 110 on beetle) V-G1 saw the Vite row
+    `known-bugs-start-compiler` "SSR: a server fn that only a middleware .server() of another module calls > is
+    callable, the app files written reversed" fail once in 15 runs with "Server function info not found". That was
+    today's compiler losing the #7213 race: when SSR code imports the middleware's module, the Vite SSR build
+    reaches it and the server fn resolver in parallel, and the resolver lists only the server fns found before it
+    loads (won by 1 to 9 ms in traced idle runs). No app input orders the two, so the pass F-I removed that Vite
+    cell (Rsbuild keeps it: it rebuilds the resolver after the compilation) and pins the caller deterministically:
+    rows where only client code imports the server fn, whose middleware the SSR build then reaches only through
+    the resolver. The same race in principle decides any Vite row in which SSR code imports a server fn the client
+    build did not find (e.g. the control "SSR: a server fn the client references is callable over HTTP, and a
+    server-only one from SSR code", won by 14 ms in a traced idle run); no such failure has been seen.
 - **Known gaps of the final audit (F-F), not fixed:**
   - One implementation-lane file of start-plugin-core, `integration/outside-compiler-corpus/start-build-warnings.test.ts`,
     builds Start's plugin from the core factory with external compiler transforms (`coreStartPlugins` of

@@ -13,7 +13,7 @@ Each entry's "Cause" names the product source its comment blames, when it does. 
 implementation, so a rewrite may have no such file. Most root causes are shared by several pins; the bug text then
 says "same root cause as above".
 
-Counts: 367 pin sites in 102 test files (a table test counts once here; Vitest counts each row).
+Counts: 368 pin sites in 102 test files (a table test counts once here; Vitest counts each row).
 
 Pins in `start-plugin-core/tests/pending-rulings/` are held by pending user rulings (README, "Pending user rulings") and reach the compiler through its internals until the ruling lands.
 
@@ -363,7 +363,7 @@ Pins in `start-plugin-core/tests/pending-rulings/` are held by pending user ruli
 
 ### J4 Start environment separation (start-plugin-core start-compiler; RSC provider in react-start-rsc)
 
-82 pins.
+83 pins.
 
 #### `start-plugin-core/tests/createServerFn/caller-dead-code.test.ts`
 
@@ -413,6 +413,7 @@ Pins in `start-plugin-core/tests/pending-rulings/` are held by pending user ruli
 - **SSR: a server fn module is initialised once and shares its state with SSR code.** With SSR as the server fn provider, the SSR caller module and the provider module (`?tss-serverfn-split`) are two module instances of the same file in the SSR bundle, and the provider repeats the file's top-level code (exports-and-directives.test.ts "side-effect imports and top-level statements stay in every output" asserts this).
 - **SSR: a server fn only server code references is not callable over HTTP.** With SSR as the provider, the production resolver lists every server fn the builds found and never checks the caller's origin (`includeClientReferencedCheck` is off, and the flag it would check is true for every SSR-caller compile, handleCreateServerFn.ts `isClientReferenced`). Cause: `start-plugin-core/src/start-compiler/handleCreateServerFn.ts`.
 - **is callable, the app files written %s.** Vite: the production server fn resolver is generated before the SSR build has found a server fn that only another server fn's handler calls, so calling it throws "Server function info not found" (#7213).
+- **its caller only client code imports: the caller is callable over HTTP, the app files written %s.** Same root cause as above: Vite's SSR build reaches a server fn only client code imports, and everything it uses (its middleware's module included), only through the resolver, so a server fn that only its handler or a middleware `.server()` calls is missing from the resolver (#7213).
 - **a server fn created by a library function: the handler is not in the client bundle, or the build fails clearly.** A library function that creates server fns for its users (`createLoggedServerFn(handler)`) is never seen as a server fn in the user's module, so the handler ships to the client, silently.
 - **a build run from another directory: a library's server fn runs in the SSR build.** Start's Vite plugin looks for the Start libraries it bundles in SSR (`crawlFrameworkPkgs`: dependencies with a peer dependency on Start) in the package.json of the working directory (`root: process.cwd()`), not of Vite's root, which the plugin uses for its own root a few lines above. Cause: `start-plugin-core/src/vite/plugin.ts`.
 - **a module with a middleware and an isomorphic fn builds, and its middleware runs on the server.** In the SSR build, compiling a module with an isomorphic fn makes the Start compiler resolve the module's `createMiddleware` import (the server lookup does not know that factory). Cause: `start-plugin-core/src/rsbuild/start-compiler-host.ts`.
