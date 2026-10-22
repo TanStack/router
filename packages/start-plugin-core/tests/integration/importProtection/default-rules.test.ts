@@ -18,7 +18,7 @@
  * specifier, so the app needs only modules for them to resolve to.
  *
  * Replaces the internal controls of the default rule lists and of the
- * matcher (`outside-compiler-corpus/importProtection/defaults.test.ts`,
+ * matcher (main's `importProtection/defaults.test.ts`,
  * `matchers.test.ts`), which read today's rule objects.
  */
 import { describe, expect, test } from 'vitest'

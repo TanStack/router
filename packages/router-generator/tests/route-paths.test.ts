@@ -641,8 +641,8 @@ describe('conflicting routes', () => {
   })
 
   // (A layout route file at the root of a directory merged at the current
-  // level, `physical('', 'merged')` with `merged/route.tsx`: outside the
-  // compiler test corpus, tests/outside-compiler-corpus/virtual-routes.test.ts.)
+  // level, `physical('', 'merged')` with `merged/route.tsx`: not tested; the
+  // spec, J1.7, leaves virtual route configs the docs do not describe open.)
 })
 
 describe('route names', () => {
@@ -790,10 +790,8 @@ describe('token options', () => {
 })
 
 // (Warnings about param names that are no identifiers, e.g. `$user-name`:
-// neither required nor forbidden, SPEC J1.12; characterised outside the
-// compiler test corpus, tests/outside-compiler-corpus/param-name-warnings.test.ts.
-// The routes of such files: the invalid-param-names fixture,
-// generator.test.ts.)
+// neither required nor forbidden, SPEC J1.12; not tested. The routes of
+// such files: the invalid-param-names fixture, generator.test.ts.)
 
 // (The route tree types of these shapes, FileRoutesByTo and
 // routes by full path: integration/route-types.test.ts.)

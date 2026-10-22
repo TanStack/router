@@ -10,7 +10,7 @@
  * never read.
  *
  * Replaces the internal control that read the source map of today's
- * rewrite output (`outside-compiler-corpus/importProtection/rewrite.test.ts`,
+ * rewrite output (main's `importProtection/rewrite.test.ts`,
  * "the source map maps code after a rewritten import back to its origin").
  */
 import { describe, test } from 'vitest'

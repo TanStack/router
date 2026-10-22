@@ -8,9 +8,8 @@
  * with a route the live router (`window.__TSR_ROUTER__`) does not have, and
  * asserts that the router is left as it is and keeps navigating.
  *
- * The other updater-entry controls of this file moved to
- * outside-compiler-corpus/handle-route-update.test.ts: the real-page rows of
- * integration/route-hmr-browser-updates.test.ts (and
+ * The other updater-entry controls of main's file are deleted: the
+ * real-page rows of integration/route-hmr-browser-updates.test.ts (and
  * integration/route-hmr-browser-metadata.test.ts:45 for head and scripts)
  * decide their concepts through real edits. This control reaches the
  * emitted update function through `getHandleRouteUpdateCode`, an internal

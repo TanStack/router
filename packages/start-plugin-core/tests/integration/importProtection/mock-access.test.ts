@@ -13,7 +13,7 @@
  *
  * Replaces the internal controls that evaluated today's generated dev mock
  * modules and mock runtime in process
- * (`outside-compiler-corpus/importProtection/virtualModules.test.ts`).
+ * (main's `importProtection/virtualModules.test.ts`).
  */
 import { afterAll, describe, expect, test } from 'vitest'
 import { startDevServer } from '../../dev-server'

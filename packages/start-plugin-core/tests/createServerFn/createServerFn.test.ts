@@ -459,8 +459,8 @@ describe('server fns outside the app root', () => {
   // `/@fs/`): the client calls it by id through Start's server entry,
   // server code calls it directly, and the client loads none of the
   // server-only modules its handler reads.
-  // Source: outside-compiler-corpus/vite-start-compiler-utils.test.ts
-  // "preserves POSIX absolute /@fs paths outside the app root" (the dev
+  // Source: main's tests/vite/start-compiler-utils.test.ts "preserves
+  // POSIX absolute /@fs paths outside the app root" (the dev
   // server fn id encoding, an internal helper), rerouted to its outcome.
   test('dev: a server fn in a module outside the app root runs by id', async () => {
     const started = await host()

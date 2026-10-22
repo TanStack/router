@@ -4,6 +4,11 @@ import { fileURLToPath } from 'node:url'
 import { configDefaults, defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/vite-config'
 import packageJson from './package.json'
+// Main's tests of features that are not compilers (Start manifest, sitemap,
+// prerender, config schema, entries, build output, dev styles), at main's
+// paths and unchanged: `test:noncompiler` runs them; the corpus projects,
+// ESLint and the import gate leave them out. Paths relative to `tests/`.
+import noncompilerTests from './tests/noncompiler-tests.json' with { type: 'json' }
 
 // Under Vitest: Node's compile cache for the test workers and the child
 // Node runs they start (the harness passes this environment on). No outcome
@@ -38,7 +43,7 @@ const config = defineConfig({
         extends: true,
         test: {
           name: 'noncompiler',
-          include: ['outside-compiler-corpus/noncompiler/**/*.test.ts'],
+          include: noncompilerTests,
           typecheck: { enabled: true },
         },
       },
@@ -55,6 +60,7 @@ const config = defineConfig({
             ...configDefaults.exclude,
             'integration/**',
             implementationTests,
+            ...noncompilerTests,
           ],
           typecheck: { enabled: true },
         },
@@ -115,11 +121,7 @@ const config = defineConfig({
         test: {
           name: 'implementation',
           include: ['**/outside-compiler-corpus/**/*.test.ts'],
-          exclude: [
-            ...configDefaults.exclude,
-            'integration/**',
-            '**/noncompiler/**',
-          ],
+          exclude: [...configDefaults.exclude, 'integration/**'],
           typecheck: { enabled: true },
         },
       },

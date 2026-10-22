@@ -23,8 +23,9 @@
  *
  * The acceptance files are the files `test:unit` and `test:integration`
  * select (router-generator: also its `types` project's `*.test-d.ts`), outside
- * `outside-compiler-corpus/` (implementation and noncompiler lanes). Their
- * helpers are the modules they reach
+ * `outside-compiler-corpus/` (implementation lane) and outside the list in
+ * the package's `tests/noncompiler-tests.json` (main's tests of features
+ * that are not compilers, run by `test:noncompiler`). Their helpers are the modules they reach
  * through relative paths into a package's `tests/`, or into this package's
  * `src/` (also through `@tanstack/compiler-test-utils/*`), transitively.
  * Paths computed at run time (a `path.join` passed to `import()`) are out of
@@ -63,8 +64,7 @@ export const acceptancePackages = [
   { dir: 'packages/router-generator', typeTests: true },
   { dir: 'packages/router-plugin', typeTests: false },
   { dir: 'packages/start-plugin-core', typeTests: false },
-  // RSC runtime tests live in outside-compiler-corpus/noncompiler.
-  // Its test-d files run with test:types, not a compiler acceptance target.
+  // Its runtime tests and test-d files are main's (noncompiler-tests.json).
   { dir: 'packages/react-start-rsc', typeTests: false },
 ] as const
 
@@ -452,6 +452,11 @@ export function findImportViolations(
   const acceptanceFiles: Array<string> = []
   for (const { dir, typeTests } of acceptancePackages) {
     const testsDir = path.join(root, dir, 'tests')
+    const noncompiler = new Set(
+      noncompilerTestsOf(testsDir, isFile, read).map((entry) =>
+        path.join(testsDir, entry),
+      ),
+    )
     const candidates = new Set([
       ...walk(testsDir),
       ...[...virtual.keys()].filter((file) =>
@@ -462,7 +467,8 @@ export function findImportViolations(
       const rel = path.relative(testsDir, file).split(path.sep)
       if (
         rel.includes('outside-compiler-corpus') ||
-        rel.includes('node_modules')
+        rel.includes('node_modules') ||
+        noncompiler.has(file)
       ) {
         continue
       }
@@ -707,6 +713,20 @@ function matchesSubpath(key: string, subpath: string) {
     subpath.endsWith(key.slice(star + 1)) &&
     subpath.length >= key.length - 1
   )
+}
+
+/**
+ * The list in a package's `tests/noncompiler-tests.json` (paths relative to
+ * its `tests/`): main's tests of features that are not compilers, which its
+ * `noncompiler` Vitest project selects and the corpus projects exclude.
+ */
+function noncompilerTestsOf(
+  testsDir: string,
+  isFile: (file: string) => boolean,
+  read: (file: string) => string,
+): Array<string> {
+  const list = path.join(testsDir, 'noncompiler-tests.json')
+  return isFile(list) ? (JSON.parse(read(list)) as Array<string>) : []
 }
 
 function walk(dir: string): Array<string> {

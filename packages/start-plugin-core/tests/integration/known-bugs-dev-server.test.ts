@@ -477,7 +477,7 @@ export const values = [getRequest, getHeader, server.setCookie]
   // one, which does not say that the re-exported names are not mocked.
   // Source: gap IP12 (gaps/start-env.md); the rewrite of the same form
   // (Rsbuild) also only removes the `export *`
-  // (outside-compiler-corpus/importProtection/rewrite.test.ts).
+  // (today's `rewriteDeniedImports`).
   test.fails.each(deniedModules)(
     'client: a name re-exported with `export *` from $name is a mock, or the server warns about the `export *`',
     async ({ denied }) => {

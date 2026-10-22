@@ -157,30 +157,41 @@ describe('the import gate', () => {
   })
 })
 
-test('the noncompiler lanes are excluded while fast and integration acceptance stay gated', () => {
+test("the files of a package's tests/noncompiler-tests.json are excluded while the other tests stay gated", () => {
   const paths = [
     'react-start-rsc/tests/compiler-planted.test.ts',
     'react-start-rsc/tests/integration/compiler-planted.test.ts',
-    'react-start-rsc/tests/outside-compiler-corpus/noncompiler/runtime-planted.test.tsx',
-    'start-plugin-core/tests/outside-compiler-corpus/noncompiler/plumbing-planted.test.ts',
+    'start-plugin-core/tests/vite/compiler-planted.test.ts',
+    'react-start-rsc/tests/runtime-planted.test.tsx',
+    'start-plugin-core/tests/vite/plumbing-planted.test.ts',
   ].map((file) => path.join(root, 'packages', file))
   const result = findImportViolations({
     root,
-    files: Object.fromEntries(
-      paths.map((file) => [
-        file,
-        `import { StartCompiler } from '@tanstack/start-plugin-core/src/start-compiler/compiler'`,
-      ]),
-    ),
+    files: {
+      ...Object.fromEntries(
+        paths.map((file) => [
+          file,
+          `import { StartCompiler } from '@tanstack/start-plugin-core/src/start-compiler/compiler'`,
+        ]),
+      ),
+      [path.join(
+        root,
+        'packages/react-start-rsc/tests/noncompiler-tests.json',
+      )]: JSON.stringify(['runtime-planted.test.tsx']),
+      [path.join(
+        root,
+        'packages/start-plugin-core/tests/noncompiler-tests.json',
+      )]: JSON.stringify(['vite/plumbing-planted.test.ts']),
+    },
   })
   expect(
     result.acceptanceFiles.filter((file) => file.includes('-planted.test.')),
-  ).toEqual(paths.slice(0, 2).map(relative))
+  ).toEqual(paths.slice(0, 3).map(relative))
   expect(
     result.violations
       .filter(({ file }) => file.includes('-planted.test.'))
       .map(({ file }) => file),
-  ).toEqual(paths.slice(0, 2).map(relative))
+  ).toEqual(paths.slice(0, 3).map(relative))
 })
 
 // Strict mode (`test:import-gate:strict`, required in CI) fails on every

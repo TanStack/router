@@ -4,5 +4,5 @@
     "target": "esnext",
     "types": ["node"]
   },
-  "include": [".", "../src/**/*.d.ts"]
+  "include": ["integration", "../src/**/*.d.ts"]
 }
