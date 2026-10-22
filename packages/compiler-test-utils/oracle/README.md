@@ -83,14 +83,15 @@ after the final passes F-F, F-G1, F-G2 and F-G3; the start-plugin-core part agai
   and under their hard limit.
 
 Counts at d07614d3b3 (passed / expected-fail pins; at 633a4c0917, where the measurements above ran, start-plugin-core
-`test:integration` was 1199 / 288):
+`test:integration` was 1199 / 288). The implementation lane is after NOL-delete (below); the acceptance tiers and the
+noncompiler lane are unchanged by it:
 
 | Package                         | `test:unit` | `test:integration` | `test:implementation` | `test:noncompiler` |
 | ------------------------------- | ----------- | ------------------ | --------------------- | ------------------ |
 | `@tanstack/compiler-test-utils` | 330 / 0     | 171 / 0            | –                     | –                  |
-| `@tanstack/router-generator`    | 239 / 30    | 67 / 3             | 114 / 2               | –                  |
-| `@tanstack/router-plugin`       | 107 / 20    | 674 / 355          | 104 / 1               | –                  |
-| `@tanstack/start-plugin-core`   | 389 / 143   | 1204 / 292         | 609 / 9               | 121 / 0            |
+| `@tanstack/router-generator`    | 239 / 30    | 67 / 3             | 51 / 0                | –                  |
+| `@tanstack/router-plugin`       | 107 / 20    | 674 / 355          | 17 / 0                | –                  |
+| `@tanstack/start-plugin-core`   | 389 / 143   | 1204 / 292         | 468 / 0               | 121 / 0            |
 | `@tanstack/react-start-rsc`     | no files    | 108 / 13           | –                     | 49 / 0             |
 
 The previous measurement (F-E-b) ran at 45f58967ea; the passes below came after it and are covered by the
@@ -107,7 +108,10 @@ its control), start-plugin-core `test:integration` +1 (a control of the unused-c
 copy of the computed-member request middleware pin; its build twin in `integration/start-build-call-shapes.test.ts`
 pins the same input and outcomes through a real request). No pin site was added or removed. The pass F-G1 (after F-F) builds the apps of the start-plugin-core,
 router-plugin and react-start-rsc harnesses with the plugins a real app configures ("How tests reach the
-compilers"); no count or pin changed.
+compilers"); no count or pin changed. NOL-delete (2026-10-22, after F-H) deleted the branch's own implementation-lane
+files: tests of test helpers, of today's compiler internals and of non-compiler behaviour, and router-plugin's
+legacy harness (53 files). Implementation lane, before → after: router-generator 114 / 2 → 51 / 0, router-plugin
+104 / 1 → 17 / 0, start-plugin-core 609 / 9 → 468 / 0; every acceptance tier and noncompiler lane kept its count.
 The pass F-I (after V-G1) made the #7213 rows of start-plugin-core `integration/known-bugs-start-compiler.test.ts`
 deterministic (caveats below): start-plugin-core `test:integration` +3 passed and +4 expected-fail rows (the Vite
 cells of the middleware caller where SSR code imports the server fn removed; a pin site added: the caller only client
@@ -172,12 +176,6 @@ Caveats:
     entry before any module it imports, the resolver included (V-I traced it with the entry's compile delayed by
     1.5 s). The control "SSR: a server fn the server entry defines and only server code references is callable
     from SSR code" asserts that call on both bundlers.
-- **Known gaps of the final audit (F-F), not fixed:**
-  - One implementation-lane file of start-plugin-core, `integration/outside-compiler-corpus/start-build-warnings.test.ts`,
-    builds Start's plugin from the core factory with external compiler transforms (`coreStartPlugins` of
-    `tests/outside-compiler-corpus/core-start-plugin.ts`, given to the harnesses as `corePlugins`): no public option
-    takes them (react-start passes its own RSC CSS transforms with `rsc: { enabled: true }`). The harnesses do not
-    import that module, so no corpus test reaches the core factory.
 - **The adversarial evidence is not independent of the tests.** Round 2's escapes are caught by rows written for
   them, and the attackers of rounds 1 and 2 wrote against earlier versions of the suite. After a major change of the
   compilers or of these tests, run a new round with test-aware attackers and re-check correct-but-different
@@ -268,10 +266,12 @@ info or log line does not count), and where it says the build fails, it must fai
 | Implementation  | `tests/**/outside-compiler-corpus/`                                             | `test:implementation` (router-generator, router-plugin, start-plugin-core) | no                 |
 | Noncompiler     | `tests/outside-compiler-corpus/noncompiler/`                                    | `test:noncompiler` (start-plugin-core, react-start-rsc)                    | no                 |
 
-Implementation tests check choices of today's implementation (printed bytes, log policy, internal entry points,
-performance counters); a correct new compiler may fail them: delete or rewrite them with the implementation they
-describe. Noncompiler tests cover runtime and build plumbing. CI runs every lane. Harness controls (this package's
-tests, and the packages' tests of their own helpers) check the oracle itself.
+Implementation tests are main's own tests of today's compiler internals (moved out of the corpus, not written for
+it) and the legacy harness that only the pending rulings Q6/Q7 still use, with its controls; a correct new compiler
+may fail them: delete or rewrite them with the implementation they describe. Noncompiler tests cover runtime and
+build plumbing. CI runs every lane. Harness controls (this package's tests, and the controls on fixed inputs the
+packages keep next to their helpers) check the oracle itself. The branch's own tests of test helpers, of today's internals and of non-compiler behaviour were deleted (NOL-delete, 2026-10-22); the
+bugs only they pinned are recorded outside the repo, not in KNOWN-BUGS.
 
 ## The import gate
 
