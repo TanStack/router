@@ -71,7 +71,7 @@ Counts at hand-over (passed / expected-fail pins; the final passes F-F and F-G2 
 
 | Package                         | `test:unit` | `test:integration` | `test:implementation` | `test:noncompiler` |
 | ------------------------------- | ----------- | ------------------ | --------------------- | ------------------ |
-| `@tanstack/compiler-test-utils` | 330 / 0     | 170 / 0            | –                     | –                  |
+| `@tanstack/compiler-test-utils` | 330 / 0     | 171 / 0            | –                     | –                  |
 | `@tanstack/router-generator`    | 239 / 30    | 67 / 3             | 114 / 2               | –                  |
 | `@tanstack/router-plugin`       | 107 / 20    | 674 / 355          | 104 / 1               | –                  |
 | `@tanstack/start-plugin-core`   | 389 / 143   | 1199 / 288         | 609 / 9               | 121 / 0            |
@@ -87,7 +87,7 @@ router-plugin `test:implementation` −1 (the control of a deleted path filter),
 router-plugin `test:integration` +1 (the webpack `addHmr: false` build cell replaced by a webpack dev server row and
 its control), start-plugin-core `test:integration` +1 (a control of the unused-chunk pins of
 `known-bugs-hydrate.test.ts`), start-plugin-core `test:implementation` +1 (a control of the safe-mock probe), ctu
-`test:integration` +2 (controls of `hmr-sync.ts`), start-plugin-core `test:unit` −1 expected-fail row (the fast-tier
+`test:integration` +3 (controls of `hmr-sync.ts`, one of them for an update the page invalidates), start-plugin-core `test:unit` −1 expected-fail row (the fast-tier
 copy of the computed-member request middleware pin; its build twin in `integration/start-build-call-shapes.test.ts`
 pins the same input and outcomes through a real request). No pin site was added or removed.
 
@@ -115,6 +115,11 @@ Caveats:
     built framework package, so react-start's config plugin (dedupe, externals, dependency optimisation) is absent;
     the Rsbuild builds of router-plugin and react-start-rsc configure SWC by hand instead of `@rsbuild/plugin-react`.
     `start-host.ts` (the fast tier and the page tests) already uses `tanstackStart()`. RULES-AUDIT §3 item 6.
+  - Two fast-tier rows of start-plugin-core call a middleware's `.server()` on the server module with a stand-in
+    `next` to read what it gives (`compiler.test.ts` "leaves unrelated SSR middleware chains as written",
+    `start-compiler-factories.test.ts` `mw.options.server`; F-F D3), and the pin "a function middleware validator
+    on a builder variable" of `integration/start-build-env-separation.test.ts` calls the validator directly. The
+    build and dev-server tiers run middleware through requests.
 - **The adversarial evidence is not independent of the tests.** Round 2's escapes are caught by rows written for
   them, and the attackers of rounds 1 and 2 wrote against earlier versions of the suite. After a major change of the
   compilers or of these tests, run a new round with test-aware attackers and re-check correct-but-different
@@ -154,8 +159,9 @@ chunk layout, printed code or AST shapes.
   `start-host.ts` (a Start app with a real router and a probe route). Hosts are shared within a test process and
   leased to one test at a time.
 - **Server code** runs inside real requests through Start's server entry, with a real router. Nothing builds
-  Start's request context or middleware chain by hand: middleware runs for a server function called over HTTP or
-  as the app's request middleware, route handlers for a request of their path. A server function is identified by its public `url` (the server function base,
+  Start's request context by hand. In the build and dev-server tiers middleware runs for a server function called
+  over HTTP or as the app's request middleware, route handlers for a request of their path (for the fast-tier rows
+  that still call `.server()` with a stand-in `next`, see the known gaps). A server function is identified by its public `url` (the server function base,
   then its id), never by Start's own metadata fields.
 - **What a dev server serves** to a client is read through Vite's own module graph of the environment (static and
   lazy imports), never by parsing served code for imports.
@@ -165,8 +171,9 @@ chunk layout, printed code or AST shapes.
   `window` or `import.meta.hot`).
 - **Edits** are written to disk like a user's, reported by the real watcher, and settle on their outcome within one
   bound (`outcome.ts` `waitForOutcome`), never on counts of compiles or updates or on a quiet period. Whether a
-  page reloaded, or got an update in place, is told by the page once it handled everything the server sent
-  (`hmr-sync.ts` `settlePage`), not by a time bound or by counting HMR messages.
+  page reloaded, or got an update in place, is told by the page once it handled everything the server sent, and
+  what that made it ask of the server (an accept callback's `invalidate()`) (`hmr-sync.ts` `settlePage`), not by a
+  time bound or by counting HMR messages.
 - **Laziness and provenance.** Which modules a compiler emitted is told by provenance (the plugin's own `load` and
   `transform` hooks observed in that build), never by id, path or the helper that builds a lazy value.
 - **Dead code (G8)** is decided on a real production build: a dev module that reads a name it never declares fails
