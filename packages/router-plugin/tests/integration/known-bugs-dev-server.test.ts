@@ -157,8 +157,11 @@ if (!location.search.includes('later')) {
       await stale.page.reload()
       await stale.page.waitForFunction(() => (window as any).__routeLoaded)
     }
-    // (What this page renders is the old route module's: not judged)
-    await stale.page.evaluate(() => (window as any).__renderRoute())
+    // (What this page renders is the old route module's, and a stale
+    // module it asks for may fail as a stale request does: not judged)
+    await stale.page
+      .evaluate(() => (window as any).__renderRoute())
+      .catch(() => undefined)
     await stale.close()
     return (await renderInPage(server)).rendered
   }
