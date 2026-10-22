@@ -93,9 +93,11 @@ pins the same input and outcomes through a real request). No pin site was added 
 router-plugin and react-start-rsc harnesses with the plugins a real app configures ("How tests reach the
 compilers"); no count or pin changed, and a sample of V4 reds is still caught; R1–R11 and V4 were not re-measured.
 The pass F-I (after V-G1) made the #7213 rows of start-plugin-core `integration/known-bugs-start-compiler.test.ts`
-deterministic (caveats below): start-plugin-core `test:integration` +2 passed and +4 expected-fail rows (the Vite
+deterministic (caveats below): start-plugin-core `test:integration` +3 passed and +4 expected-fail rows (the Vite
 cells of the middleware caller where SSR code imports the server fn removed; a pin site added: the caller only client
-code imports, on both callers and bundlers, pinned on Vite).
+code imports, on both callers and bundlers, pinned on Vite; the D6 control split in two, its SSR-code half not run on
+Vite). A traced run of every start-plugin-core and react-start-rsc acceptance tier found no other row whose outcome
+depends on that race.
 
 The `test:unit` counts include the pending-rulings lane: 4 passing rows and 3 pins in start-plugin-core, 1 row in
 router-plugin.
@@ -133,9 +135,13 @@ Caveats:
     loads (won by 1 to 9 ms in traced idle runs). No app input orders the two, so the pass F-I removed that Vite
     cell (Rsbuild keeps it: it rebuilds the resolver after the compilation) and pins the caller deterministically:
     rows where only client code imports the server fn, whose middleware the SSR build then reaches only through
-    the resolver. The same race in principle decides any Vite row in which SSR code imports a server fn the client
-    build did not find (e.g. the control "SSR: a server fn the client references is callable over HTTP, and a
-    server-only one from SSR code", won by 14 ms in a traced idle run); no such failure has been seen.
+    the resolver. The same race decides any Vite build in which SSR code imports a server fn the client build did
+    not find. F-I traced the start-plugin-core and react-start-rsc acceptance tiers (`test:unit`,
+    `test:integration`) and found one more: the D6 control "SSR: a server fn the client references is callable over
+    HTTP, and a server-only one from SSR code" (won by 12 to 14 ms). Its SSR-code half is no longer run on Vite
+    (the D6 pin, red either way, still asserts it); react-start-rsc's builds find their server fns in an earlier
+    build step (the RSC plugin's scan builds), and dev servers resolve server fns by id, without a generated
+    resolver.
 - **Known gaps of the final audit (F-F), not fixed:**
   - One implementation-lane file of start-plugin-core, `integration/outside-compiler-corpus/start-build-warnings.test.ts`,
     builds Start's plugin from the core factory with external compiler transforms (`coreStartPlugins` of

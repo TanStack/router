@@ -164,8 +164,8 @@ return { initialised: globalThis.initialised, isSession, count: entry.readCount(
    * entry imports another one only server code uses (`serverOnlyFn`), and
    * Start's server entry, whose server-fn HTTP handler finds server fns by
    * id (`callByIdExports`). (Were `serverOnlyFn` missing from what the
-   * server knows, issue #7213, the SSR call below would fail too: the
-   * control catches that, so the pin cannot pass by a missing server fn.)
+   * server knows, issue #7213, the SSR call below would fail too: the pin
+   * asserts it, so it cannot pass by a missing server fn.)
    */
   const clientAccessFiles = {
     'client-fns.ts': `${head}export const clientFn = createServerFn().handler(async () => 'client fn')
@@ -219,17 +219,31 @@ return {
   let clientAccess: ReturnType<typeof buildAndCallClientAccess> | undefined
   const callClientAccess = () => (clientAccess ??= buildAndCallClientAccess())
 
-  // Control for the pin below (same harness).
+  // Controls for the pin below (same harness).
   test(
-    'SSR: a server fn the client references is callable over HTTP, and a server-only one from SSR code',
+    'SSR: a server fn the client references is callable over HTTP',
     async () => {
-      expect(await callClientAccess()).toMatchObject({
-        clientFn: 'client fn',
-        serverOnlyFnFromSsr: 'server-only fn',
-      })
+      expect(await callClientAccess()).toMatchObject({ clientFn: 'client fn' })
     },
     timeout,
   )
+  // Not run on Vite: there, whether `serverOnlyFn` is in the production
+  // resolver is the #7213 race (below): the SSR build reaches its module
+  // and the resolver in parallel, and finds it first by about 12 ms on an
+  // idle machine. With Start's server entry in the SSR build, no app input
+  // orders the two. The #7213 pins below pin that mechanism
+  // deterministically, and the pin below asserts this call too.
+  if (bundler !== 'vite') {
+    test(
+      'SSR: a server fn only server code references is callable from SSR code',
+      async () => {
+        expect(await callClientAccess()).toMatchObject({
+          serverOnlyFnFromSsr: 'server-only fn',
+        })
+      },
+      timeout,
+    )
+  }
 
   // Bug: with SSR as the provider, the production resolver lists every
   // server fn the builds found and never checks the caller's origin
@@ -242,6 +256,9 @@ return {
   // Source: user ruling D6 (only server fns client code references are
   // HTTP-callable); the RSC-provider variant is pinned through a real RSC
   // provider in react-start-rsc tests/integration/rsc-start-dev.test.ts.
+  // On Vite, when the SSR build loses the #7213 race (below), the server fn
+  // is missing from the resolver: the call from SSR code fails too, so the
+  // pin stays red (for #7213) and cannot pass by the missing server fn.
   test.fails(
     'SSR: a server fn only server code references is not callable over HTTP',
     async () => {
@@ -267,6 +284,9 @@ return {
   // Impact: in production, calling it throws "Server function info not
   // found" (works in dev), from SSR code and over HTTP alike.
   // Source: issue #7213; SPEC J4.2 ("in any module processing order", G4).
+  // When SSR code imports the server fn, or its caller, the SSR build
+  // reaches the module that calls it and the resolver in parallel: then
+  // whether it is in the resolver is a race (see the controls above).
   // Not run on Vite: the middleware caller (the one #7213 quotes) when SSR
   // code imports the server fn that uses the middleware. The SSR build then
   // reaches the middleware's module and the resolver in parallel, and
