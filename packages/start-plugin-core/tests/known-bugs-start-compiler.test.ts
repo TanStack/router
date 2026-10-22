@@ -626,6 +626,11 @@ export const db = {
   // follows its contract: the client neither loads the server-only module
   // nor holds the server code, and each environment runs what the runtime
   // contract promises.
+  // The request middleware shape (`createMiddleware()['server'](...)`, the
+  // same root cause) is pinned once, in its build twin:
+  // integration/start-build-call-shapes.test.ts runs it as the app's request
+  // middleware in a real request (same input, same outcomes), which this
+  // file's shared host has no start entry for.
   test.fails.each<CallShape>([
     {
       name: 'a server fn handler called through a computed member',
@@ -636,25 +641,6 @@ export const fn = createServerFn()['handler'](async () => db.x())`,
       body: 'db.x()',
       client: { expression: 'typeof module.fn.url', expected: 'string' },
       serverFn: 'module.fn',
-    },
-    {
-      name: 'a request middleware server implementation called through a computed member',
-      code: `import { createMiddleware } from '@tanstack/react-start'
-import { db } from './db.server'
-export const mw = createMiddleware()['server'](async ({ next }) => {
-  db.x()
-  return next()
-})`,
-      at: `createMiddleware()['server']`,
-      names: [['createMiddleware', 'server']],
-      body: 'db.x()',
-      client: { expression: 'typeof module.mw', expected: 'object' },
-      ssr: async (module, calls) => {
-        expect(await module.mw.options.server({ next: () => 'next' })).toBe(
-          'next',
-        )
-        expect(calls).toEqual(['x'])
-      },
     },
     {
       name: 'an isomorphic server implementation called through a computed member',
