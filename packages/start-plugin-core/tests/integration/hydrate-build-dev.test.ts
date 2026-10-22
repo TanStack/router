@@ -109,11 +109,7 @@ createRoot(document.getElementById('root')!).render(<Page />)
         logLevel: 'error',
         server: { host: '127.0.0.1', port: 0 },
         optimizeDeps,
-        plugins: [
-          startPlugin(server.root, {}, undefined),
-          clientFixturePlugin,
-          react(),
-        ],
+        plugins: [startPlugin(server.root, {}), clientFixturePlugin, react()],
       })
       onTestFinished(() => restarted.close())
       await restarted.listen()

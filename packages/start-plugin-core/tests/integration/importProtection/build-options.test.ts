@@ -263,9 +263,7 @@ export const read = () => getRequest()
         expect(reports).not.toEqual([])
         for (const report of reports) {
           // The rule that matched is in the report: the pattern's source,
-          // however it is spelled (N16: not necessarily `String(regex)`;
-          // the exact spelling is an implementation test,
-          // outside-compiler-corpus/build-options-rule-spelling.test.ts).
+          // however it is spelled (N16: not necessarily `String(regex)`).
           expect(report.text).toContain('^db-lib$')
         }
       },

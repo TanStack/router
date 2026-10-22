@@ -5,10 +5,6 @@
  * RPC sends its request to the dev server, whose server entry runs the
  * middleware and the handler) and from server code in a real request; and
  * a failing handler, whose error reaches both callers.
- * The controls of the former in-process stand-ins (the client RPC without
- * its fetch, the SSR RPC behind the server-fn report, the `{ error }` answer
- * of a provider) moved to outside-compiler-corpus/
- * start-compiler-runtime-contract.test.ts: the corpus no longer uses them.
  * Source: audit E1 missing coverage 1.
  */
 import { beforeAll, describe, expect, test } from 'vitest'

@@ -26,8 +26,6 @@ function Page(props: { db?: Db }) {
 export const Route = createFileRoute('/')({ component: Page })
 `
 
-    // (Control that the tsconfig is in effect, outside the corpus:
-    // outside-compiler-corpus/code-splitter-imports-exports.test.ts.)
     it('does not load in the client of a split route file, which renders', async () => {
       const app = await build({
         bundler: 'vite',

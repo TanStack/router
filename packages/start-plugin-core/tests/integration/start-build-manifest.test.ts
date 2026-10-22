@@ -1,8 +1,6 @@
 /**
  * The client route tree of a real build, through Start's Vite and Rsbuild
- * plugins (build-harness.ts): it leaves out server-only routes. (The start
- * manifest of the same app is tested in
- * outside-compiler-corpus/start-build-manifest.test.ts.)
+ * plugins (build-harness.ts): it leaves out server-only routes.
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../build-harness'

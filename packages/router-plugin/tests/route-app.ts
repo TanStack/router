@@ -1357,10 +1357,7 @@ const refreshGlobals = ['$RefreshReg$', '$RefreshSig$']
  * escaping), for D5 checks that user code is absent from a module. Throws
  * on code that does not parse: an absence check on it would prove nothing.
  */
-export function stringValues(
-  code: string,
-  filename = 'module.js',
-): Set<string> {
+function stringValues(code: string, filename = 'module.js'): Set<string> {
   const { program, errors } = parseSync(filename, code, {
     sourceType: 'module',
   })

@@ -784,9 +784,6 @@ describe('token options', () => {
       })
     },
   )
-
-  // (A token regex that does not compile: outside the compiler test corpus,
-  // tests/outside-compiler-corpus/config-options.test.ts.)
 })
 
 // (Warnings about param names that are no identifiers, e.g. `$user-name`:

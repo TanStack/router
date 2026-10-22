@@ -8,8 +8,7 @@
  * are server-only (pruned from the client route tree), and strips the server
  * options (`server`, `headers`, `ssr`) of route modules from the client.
  * Resolving every option key is best effort, but a missed key must never
- * prune a route or leave server code in the client bundle. (The prerender
- * pins are in outside-compiler-corpus/prerender-route-options.test.ts.)
+ * prune a route or leave server code in the client bundle.
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../build-harness'

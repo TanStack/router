@@ -14,9 +14,8 @@
  * calls were compiled for the server (the precondition: the page shows the
  * streamed component); then the warning is read.
  *
- * This replaces, as compiler acceptance, the synthetic `compilerTransforms`
- * warning plumbing of `outside-compiler-corpus/start-build-warnings.test.ts`
- * (SYNTHESIS S7-164/S7-167). The Vite dev twin with a real page and CSS is
+ * This replaces, as compiler acceptance, the former synthetic
+ * `compilerTransforms` warning plumbing tests (SYNTHESIS S7-164/S7-167). The Vite dev twin with a real page and CSS is
  * react-start-rsc's `tests/integration/rsc-css.test.ts` ("dev:
  * renderToReadableStream with $name warns, naming the file").
  */

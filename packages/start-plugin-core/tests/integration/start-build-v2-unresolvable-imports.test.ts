@@ -8,9 +8,7 @@
  * a Cloudflare app does, and Node's builtin is external anyway; the SSR run
  * provides the platform module the way the worker runtime would (a module
  * resolve hook of Node, registered by the SSR entry before any module of
- * the app links: the one stand-in, as the test process is no worker; its
- * agreement with workerd is checked outside the corpus,
- * `outside-compiler-corpus/start-build-v2-unresolvable-imports.test.ts`).
+ * the app links: the one stand-in, as the test process is no worker).
  * Source: FIX-PLAN V2-02 (start-fable SF-22/MW-7; #6185, #7460, #3990;
  * 1,007 corpus files, 241 with `cloudflare:workers`).
  */

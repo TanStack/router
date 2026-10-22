@@ -99,7 +99,7 @@ function Posts() {
 `
 
   // (UTF-8 BOMs: outside the compiler test corpus, SPEC \u00A72.1 selects
-  // BOM-free sources; tests/outside-compiler-corpus/bom.test.ts)
+  // BOM-free sources.)
   test.each([
     {
       name: 'CRLF line endings',
@@ -341,9 +341,6 @@ export const Route = createFileRoute('/old')({})
       })
     }
   })
-
-  // (A route file starting with a UTF-8 BOM: outside the compiler test
-  // corpus, tests/outside-compiler-corpus/bom.test.ts.)
 })
 
 describe('virtual route config in tsr.config.json', () => {

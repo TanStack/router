@@ -10,10 +10,8 @@
  * the dev server) and from server code (in a real request). Each case is a
  * directory of real files (the module and every module it imports).
  *
- * Elsewhere: the harness controls of the legacy internal harness
- * (outside-compiler-corpus/known-bugs-start-compiler-controls.test.ts); the
- * build-mode export cache rows, which only a production build exercises and
- * which a real build does not reproduce (regression tests now:
+ * Elsewhere: the build-mode export cache rows, which only a production
+ * build exercises and which a real build does not reproduce (regression tests now:
  * integration/start-compiler-build-export-cache.test.ts); the CommonJS
  * dependency pin (ruling Q7) and the Vue SFC pin (needs `@vitejs/plugin-vue`),
  * both in tests/pending-rulings/.

@@ -178,7 +178,7 @@ function startAliasDevServer(
     config: alias.devConfig,
     plugins: ({ root }) => [
       clientFixturePlugin,
-      ...alias.devPlugins(startPlugin(root, { importProtection }, undefined)),
+      ...alias.devPlugins(startPlugin(root, { importProtection })),
     ],
   })
 }

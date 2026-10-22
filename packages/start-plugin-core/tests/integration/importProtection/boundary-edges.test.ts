@@ -12,9 +12,8 @@
  * and Rsbuild, from what each reports (`locatedImporters`). Each case is a
  * module of its own under `src/cases/`.
  *
- * Replaces the internal control that compiled each case with today's
- * compiler and read its imports (`outside-compiler-corpus/importProtection/
- * analysis.survival.test.ts`). Where a surviving use is reported:
+ * Replaces the former internal control that compiled each case with today's
+ * compiler and read its imports. Where a surviving use is reported:
  * `reported-location.test.ts`.
  */
 import { afterAll, describe, expect, test } from 'vitest'

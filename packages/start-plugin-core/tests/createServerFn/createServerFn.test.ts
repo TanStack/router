@@ -17,9 +17,7 @@ import {
 } from '../regression-helpers'
 import type { Plugin } from 'vite'
 
-// Moved: the missing-handler matcher controls (formerly :43, :53) are in
-// outside-compiler-corpus/createServerFn-controls.test.ts; the custom-id
-// build test (formerly :223) is in
+// Moved: the custom-id build test (formerly :223) is in
 // integration/start-compiler-build-ids.test.ts; the internal package-graph
 // row (formerly :293, pending ruling Q6) is in
 // pending-rulings/createServerFn.test.ts.

@@ -1,9 +1,7 @@
 /**
  * Control tests of the router plugin's real-build harness (build-harness.ts):
  * with each bundler's router plugin, a split component loads lazily and
- * renders. (The harness's record of console warnings is a control outside
- * the corpus: outside-compiler-corpus/build-harness-console.test.ts.) The
- * harness core has its own controls in `@tanstack/compiler-test-utils`.
+ * renders. The harness core has its own controls in `@tanstack/compiler-test-utils`.
  */
 import { describe, expect, test } from 'vitest'
 import { BuildError } from '@tanstack/compiler-test-utils/build-harness'

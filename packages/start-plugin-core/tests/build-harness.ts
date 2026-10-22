@@ -23,8 +23,7 @@
  * server entry, over a real router whose route tree has a probe server route
  * (`request-probe.ts`): an SSR script runs inside a real request of the app,
  * which that server entry serves (`inAppRequest`). What the test process
- * cannot do is stood in for, each checked in the harness controls
- * (`outside-compiler-corpus/build-harness.test.ts`): a client script
+ * cannot do is stood in for: a client script
  * observes the requests a server fn call sends (`requestsOfPrelude`). An SSR
  * script calls a server fn by id through Start's own server entry and client
  * RPC (`callByIdPrelude`). The app's entries are the harness's unless the app
@@ -78,7 +77,6 @@ import { pluginReact } from '@rsbuild/plugin-react'
 import { onTestFinished } from 'vitest'
 import { inProbeRequest, requestFiles } from './request-probe'
 import { startPlugins, startRsbuildPlugin } from './start-plugins'
-import type { CoreStartPlugins } from './start-plugins'
 import type {
   BuildMode,
   BuildResult,
@@ -260,15 +258,6 @@ export interface StartBuildOptions {
   sourcemap?: boolean
   /** Start's plugin options (`tanstackStart(options)`). */
   start?: TanStackStartInputConfig
-  /**
-   * Implementation tests only (outside the corpus): Start's plugins from the
-   * core factory with external import transforms of the Start compiler,
-   * which no public option takes (a framework package passes its own, e.g.
-   * React's RSC CSS transforms with `rsc: { enabled: true }`), instead of
-   * `tanstackStart()` (`coreStartPlugins` of
-   * `outside-compiler-corpus/core-start-plugin.ts`).
-   */
-  corePlugins?: CoreStartPlugins
   /**
    * Registers the removal of the app (default: when the current test
    * finishes). A build shared by several tests keeps the cleanup and runs
@@ -472,7 +461,6 @@ export async function buildStart(
     minify: options.minify ?? mode === 'production',
     sourcemap: options.sourcemap ?? false,
     start: options.start ?? {},
-    corePlugins: options.corePlugins,
     rsbuildConfig: options.rsbuildConfig,
     viteConfig: options.viteConfig,
     watchEdits: options.watchEdits,
@@ -626,7 +614,6 @@ interface BuildTarget {
   minify: boolean
   sourcemap: boolean
   start: TanStackStartInputConfig
-  corePlugins: CoreStartPlugins | undefined
   rsbuildConfig: RsbuildConfig | undefined
   viteConfig?: InlineConfig
   watchEdits?: Record<string, string | null>
@@ -759,18 +746,12 @@ async function buildWithVite(
             ssr: environmentBuild('ssr'),
           },
           plugins: [
-            target.corePlugins
-              ? target.corePlugins.vite(
-                  target.framework,
-                  target.start,
-                  harnessEntries(target.root),
-                )
-              : startPlugins(
-                  target.framework,
-                  target.root,
-                  target.start,
-                  harnessEntries(target.root),
-                ),
+            startPlugins(
+              target.framework,
+              target.root,
+              target.start,
+              harnessEntries(target.root),
+            ),
             // A React app's own Vite plugin, as in every React Start app,
             // unless the test configures it
             ...(target.framework === 'react' &&
@@ -931,18 +912,12 @@ async function buildWithRsbuild(
             !hasRsbuildPlugin(target.rsbuildConfig?.plugins, 'rsbuild:react')
               ? [pluginReact()]
               : []),
-            target.corePlugins
-              ? target.corePlugins.rsbuild(
-                  target.framework,
-                  target.start,
-                  harnessEntries(target.root),
-                )
-              : startRsbuildPlugin(
-                  target.framework,
-                  target.root,
-                  target.start,
-                  harnessEntries(target.root),
-                ),
+            startRsbuildPlugin(
+              target.framework,
+              target.root,
+              target.start,
+              harnessEntries(target.root),
+            ),
             outputPlugin,
           ],
         },

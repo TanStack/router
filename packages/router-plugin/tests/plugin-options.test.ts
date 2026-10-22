@@ -1,8 +1,6 @@
 /**
  * Router plugin options and entry points: what each option changes in a
  * real app, through the public plugins in a real Vite dev server.
- * Validation of the options a plugin factory receives (no route compiled):
- * outside-compiler-corpus/plugin-options-validation.test.ts.
  */
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'

@@ -223,9 +223,7 @@ return {
   // only use of the factory is its JSX drops the factory import. Same root
   // cause as the JSX pragma pins in
   // start-plugin-core/tests/known-bugs-start-compiler.test.ts and
-  // known-bugs-hydrate.test.ts. (The control that the untouched file
-  // renders through the factory, so that this comparison means something:
-  // outside-compiler-corpus/classic-jsx-pragma-control.test.ts.)
+  // known-bugs-hydrate.test.ts.
   // Impact: the split component throws "jsx is not defined".
   test.fails(
     'a split component renders through the factory of a classic JSX pragma',

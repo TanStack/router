@@ -6,9 +6,7 @@
  * succeeds, and closing the watch session stops the generator's watching
  * (SPEC J1.10): a route file created afterwards is left as it is. Waits are
  * on the compiler's own build events; nothing reacting after the close is
- * observed for a bounded time. (Which file watcher handles the session holds
- * and releases is a host control outside the corpus:
- * outside-compiler-corpus/generator-file-watchers.test.ts.)
+ * observed for a bounded time.
  */
 import { readFile, writeFile } from 'node:fs/promises'
 import { expect, test } from 'vitest'

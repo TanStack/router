@@ -1,9 +1,7 @@
 /**
  * Documented Start plugin options that reach the compilers (server fn ids,
  * the code splitter, the route tree) have their effect in real builds,
- * through Start's Vite and Rsbuild plugins (build-harness.ts). (Options that
- * only become runtime defines are tested in
- * outside-compiler-corpus/start-build-options.test.ts.)
+ * through Start's Vite and Rsbuild plugins (build-harness.ts).
  */
 import { writeFile } from 'node:fs/promises'
 import path from 'node:path'

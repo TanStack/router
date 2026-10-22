@@ -113,9 +113,6 @@ async function expectNoUnusedChunks(client: ClientRender) {
   expect(unloaded, 'split code the page never loaded').toEqual([])
 }
 
-// The rejection matcher control (a harness control, not a compiler test) is
-// in outside-compiler-corpus/known-bugs-hydrate-controls.test.ts.
-
 /**
  * The markup of the boundary element (the one the runtime renders with a
  * hydration id) whose whole content is `children`, if the (normalized)

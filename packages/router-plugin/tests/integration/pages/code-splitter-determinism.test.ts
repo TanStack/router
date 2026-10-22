@@ -5,8 +5,7 @@
  * determinism`). Each root is a real app directory served by its own dev
  * server (`./route-app`), observed in a real browser page. The slow tier
  * builds the same app in two directories. Windows module ids are platform
- * evidence for a Windows run (N24): the emulated-id control lives in
- * outside-compiler-corpus/code-splitter-windows-ids.test.ts.
+ * evidence for a Windows run (N24).
  */
 import { mkdirSync, rmSync } from 'node:fs'
 import path from 'node:path'

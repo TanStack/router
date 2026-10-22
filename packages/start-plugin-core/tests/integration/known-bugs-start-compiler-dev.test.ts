@@ -118,7 +118,7 @@ describe('Vite dev server', () => {
             load: active,
             transform: active,
           },
-          startPlugin(root, {}, undefined),
+          startPlugin(root, {}),
         ],
       })
       const transformed =
@@ -233,7 +233,7 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
       cacheDir: path.join(root, '.vite'),
       appType: 'custom',
       server: { middlewareMode: true, hmr: false, ws: false, watch: null },
-      plugins: [startPlugin(root, {}, undefined)],
+      plugins: [startPlugin(root, {})],
     })
   }
 
