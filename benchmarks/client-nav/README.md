@@ -203,9 +203,30 @@ It covers 100, 1,000, and 10,000 static, dynamic, nested, or mixed routes.
 The processing-only case creates fresh route objects in an untimed
 `beforeEach`, then measures `processRouteTree` and `route.init`. A separate
 case includes route-object creation. Neither case measures first interpolation
-or navigation. Remove the name filter to run all sizes. Compare identical
+or navigation. Additional cases include the first match and a ten-route session.
+Remove the name filter to run all sizes. Compare identical
 benchmark sources in separate checkouts and repeat fresh processes; a cached
 router or repeatedly initialized tree is not a construction baseline.
+
+`tests/route-tree-expansion.bench.ts` isolates cold matching and misses, warm
+uncached matching, and complete traversal on shallow, shared-prefix, and
+competing-parser trees. Run it through the same core Nx target. Cold matching
+excludes registration, so compare it alongside construction and session costs.
+
+For diagnostic retained JavaScript heap measurements after registration, a
+ten-route session, and complete traversal, use:
+
+```bash
+RUN_ROUTE_TREE_RETENTION=1 CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-core:test:unit --outputStyle=stream --skipRemoteCache --skipNxCache -- tests/route-tree-retention.test.ts --pool=forks --execArgv=--expose-gc --reporter=verbose --silent=false
+```
+
+This workload covers 10,000 deep dynamic and shallow static routes, retains the
+route objects and lookup maps through collection, and reports one sample per fresh process. Set
+`ROUTE_TREE_RETENTION_SHAPE=shallow` for shallow routes; the default is deep.
+Repeat fresh invocations to collect multiple samples. Do not repeat trees within
+one worker, because previous-tree lifetimes can contaminate heap subtraction. It measures retained JS heap beyond the original route objects, rather
+than CodSpeed's native allocation metrics. Compare identical Node versions and
+sources, and inspect sample variance before drawing conclusions.
 
 ## Opt-in React Link performance suite
 
