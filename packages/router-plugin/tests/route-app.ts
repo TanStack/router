@@ -48,7 +48,7 @@ import path from 'node:path'
 import react from '@vitejs/plugin-react'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import solid from 'vite-plugin-solid'
-import { parseSync } from 'vite'
+import { parseSync, transformWithOxc } from 'vite'
 import { expect } from 'vitest'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 import { currentTest } from '@tanstack/compiler-test-utils/test-scope'
@@ -1263,7 +1263,7 @@ const routeSources = new WeakMap<
  * it parses, and reads no name it does not bind (`readNames`, Yuku's
  * unresolved references) other than a browser global, a global the
  * framework's refresh runtime installs in the page, or a name the route
- * file itself reads free.
+ * file itself reads free once its TypeScript is erased.
  *
  * Code the bundler deletes from the production build may dangle (G8,
  * §5.9): when a module reads such a name, the production build of the same
@@ -1278,11 +1278,20 @@ export async function expectValidModules(
     ? (await route.modules()).modules
     : route
   const source = routeSources.get(modules)
-  const allowed = new Set([
-    ...clientGlobals,
-    ...refreshGlobals,
-    ...(source ? readNames(source.code, source.filename).free : []),
-  ])
+  // What the route file reads free at run time: its code with TypeScript
+  // erased (a `declare` binding has no runtime value)
+  const sourceReads = source
+    ? readNames(
+        (
+          await transformWithOxc(source.code, source.filename, {
+            jsx: 'preserve',
+            typescript: { onlyRemoveTypeImports: true },
+          })
+        ).code,
+        'route.jsx',
+      ).free
+    : []
+  const allowed = new Set([...clientGlobals, ...refreshGlobals, ...sourceReads])
   const errors: Record<string, Array<string>> = {}
   const free: Record<string, Array<string>> = {}
   for (const [name, code] of Object.entries(modules)) {
