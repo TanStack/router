@@ -176,7 +176,10 @@ chunk layout, printed code or AST shapes.
 - **Laziness and provenance.** Which modules a compiler emitted is told by provenance (the plugin's own `load` and
   `transform` hooks observed in that build), never by id, path or the helper that builds a lazy value.
 - **Dead code (G8)** is decided on a real production build: a dev module that reads a name it never declares fails
-  only if the production build of the same app still reads it.
+  if the production build of the same app still reads it, or if that build fails the build harness's own
+  dangling-name check (it may spell the name otherwise). Routes compiled with route HMR, and two direct
+  module-alone checks (router-plugin `integration/pages/code-splitter-imports-exports.test.ts` and
+  `router-plugin-context.test.ts`), still judge the dev module alone, which is stricter than G8.
 
 ## Diagnostics
 

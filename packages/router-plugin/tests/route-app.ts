@@ -52,7 +52,11 @@ import { parseSync } from 'vite'
 import { expect } from 'vitest'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 import { currentTest } from '@tanstack/compiler-test-utils/test-scope'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
+import { DanglingNameError } from '@tanstack/compiler-test-utils/build-harness'
+import {
+  freeIdentifiers,
+  getModuleErrors,
+} from '@tanstack/compiler-test-utils/validate-module'
 import { tanstackRouter } from '../src/vite'
 import type { ShippedModule } from '@tanstack/compiler-test-utils/validate-module'
 import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
@@ -1100,9 +1104,13 @@ return (await compiled()).filter((request) => !before.has(request))`)
    * input is the generated route tree, with its export kept, as an app's
    * router reads it: each route's `Route` and what its options load, not
    * the route file's other exports. Its output goes under `node_modules/`,
-   * which the dev server's watcher ignores.
+   * which the dev server's watcher ignores. `dangling`: the names the build's
+   * own dangling-name check (the production client check of every build the
+   * harness describes) finds in the modules the compilers produced: the
+   * build may read a dangling name the dev server's modules spell
+   * otherwise.
    */
-  const shipped = async (): Promise<ShippedModule> => {
+  const shipped = async (): Promise<ShippedBuild> => {
     await writeRoute(state, owner, files)
     const outDir = path.join(state.host.root, 'node_modules/.route-app-build')
     const built = await state.host.build({
@@ -1122,9 +1130,18 @@ return (await compiled()).filter((request) => !before.has(request))`)
     if (!client) {
       throw new Error('the production build has no client environment')
     }
+    let dangling: Array<string> = []
+    try {
+      await built.describe('client')
+    } catch (error) {
+      if (!(error instanceof DanglingNameError)) {
+        throw error
+      }
+      dangling = [...new Set(Object.values(error.names).flat())]
+    }
     // A free name counts wherever the build still reads it: code a
     // compiler generates without mappings (§5.14) maps to no file
-    return { chunks: client.chunks, outDir: client.outDir }
+    return { build: { chunks: client.chunks, outDir: client.outDir }, dangling }
   }
 
   const route: RouteApp = {
@@ -1250,9 +1267,16 @@ const routeSources = new WeakMap<
   {
     code: string
     filename: string
-    shipped: (() => Promise<ShippedModule>) | undefined
+    shipped: (() => Promise<ShippedBuild>) | undefined
   }
 >()
+
+/** The production build of a route app (`shipped` of `routeSources`). */
+interface ShippedBuild {
+  build: ShippedModule
+  /** The free names its own dangling-name check found. */
+  dangling: Array<string>
+}
 
 /**
  * Asserts that every module the compilers emitted for the route is a valid
@@ -1267,7 +1291,10 @@ const routeSources = new WeakMap<
  * with one is checked again against a `vite build` of the same app, and the
  * name counts only if the build's client chunks still read it free
  * (`build` of `getModuleErrors`, without a module: anywhere in the chunks,
- * since generated code may map to no file). The check of the module alone runs
+ * since generated code may map to no file), and the build itself must pass
+ * the build harness's dangling-name check, except for names the route file
+ * itself reads free (a production module may spell a dangling name
+ * otherwise than the dev server's). The check of the module alone runs
  * first, and the build only when it finds a free name, so a correct
  * compiler costs no build. Parse and binding errors need no build. A route
  * compiled with route HMR (`hmr: true`) keeps the check of the module
@@ -1281,10 +1308,13 @@ export async function expectValidModules(
     : route
   const source = routeSources.get(modules)
   const errors: Record<string, Array<string>> = {}
+  // Served code is JavaScript; read with the route file's language, as
+  // the `source` comparison needs (in a `.ts` file, `<T>value` is a type
+  // assertion, not JSX)
+  const filename =
+    source && /\.[cm]?ts$/.test(source.filename) ? 'module.ts' : 'module.tsx'
   const check = (code: string, build?: ShippedModule) =>
-    // Served code is JavaScript; read with the route file's language, as
-    // the `source` comparison needs
-    getModuleErrors(code, 'module.tsx', {
+    getModuleErrors(code, filename, {
       env: 'client',
       source: source?.code,
       globals: refreshGlobals,
@@ -1297,11 +1327,20 @@ export async function expectValidModules(
     source?.shipped &&
     Object.values(errors).some((found) => found.length > 0)
   ) {
-    const build = await source.shipped()
+    const { build, dangling } = await source.shipped()
     for (const [name, code] of Object.entries(modules)) {
       if (errors[name]!.length > 0) {
         errors[name] = await check(code, build)
       }
+    }
+    const sourceReads = await freeIdentifiers(source.code, filename, {
+      env: 'client',
+    })
+    const shippedErrors = dangling
+      .filter((name) => !sourceReads.has(name))
+      .map((name) => `\`${name}\` is read free by the production build`)
+    if (shippedErrors.length > 0) {
+      errors['production build'] = shippedErrors
     }
   }
   expect(errors).toEqual(
