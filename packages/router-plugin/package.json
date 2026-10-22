@@ -168,5 +168,10 @@
     "webpack": {
       "optional": true
     }
+  },
+  "nx": {
+    "implicitDependencies": [
+      "!@tanstack/react-router"
+    ]
   }
 }

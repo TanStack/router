@@ -1,0 +1,23 @@
+{
+  "name": "tanstack-router-e2e-react-tooling-integration",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:unit": "vitest",
+    "test:types": "tsr generate && tsc"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "workspace:^",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@tanstack/router-cli": "workspace:^",
+    "@tanstack/router-plugin": "workspace:^",
+    "@types/node": ">=20",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  }
+}
