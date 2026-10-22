@@ -1,5 +1,28 @@
 # @tanstack/solid-router-devtools
 
+## 2.0.0-rc.7
+
+### Patch Changes
+
+- [#8751](https://github.com/TanStack/router/pull/8751) [`acd08ef`](https://github.com/TanStack/router/commit/acd08ef685fc164c836ec85b9cde940a4580b0b9) - Bump solid-js and @solidjs/web to ^2.0.0-rc.16 and @solidjs/vite-plugin to ^3.0.0-next.51 across the monorepo (with @solidjs/babel-plugin 2.0.0-rc.16 for the webpack path and the `@rsbuild/plugin-solid` compiler overrides), and raise the Solid packages' solid-js / @solidjs/web peer floors to 2.0.0-rc.16. @solidjs/vite-plugin 3.0.0-next.51 peer-requires rc.16 and no longer adds a `$$moduleUrl` export to SSR entry chunks, which Cloudflare Workers rejected (solidjs/solid-vite-plugin#423).
+
+  Bump @tanstack/solid-query to ^6.0.0-rc.5 and move @tanstack/solid-query-devtools off its exact 6.0.0-rc.1 pin to ^6.0.0-rc.5; every solid-js export the rc.5 devtools import exists in rc.16.
+
+  `<Await>` no longer renders its children with `undefined` data while hydrating a streamed deferred promise. seroval has already settled the promise by then, but `defer()` only records the result in a `.then` callback, so `<Await>` now reads seroval's synchronous status markers when the deferred state is still pending.
+
+- [#8467](https://github.com/TanStack/router/pull/8467) [`0dc3a9e`](https://github.com/TanStack/router/commit/0dc3a9e3a56f589578d8bae994171211f7b148c6) - Bump solid-js and @solidjs/web to ^2.0.0-rc.9 and @solidjs/vite-plugin to ^3.0.0-next.44 across the monorepo (with @solidjs/babel-plugin 2.0.0-rc.9 for the webpack path). @solidjs/vite-plugin 3.0.0-next.44 peer-requires solid-js ^2.0.0-rc.9 and ships the rc.9 compiler.
+
+  rc.9 changed `serverFunctionUrl` to describe a `GET()` reference's own call (`serverFunctionUrl(fn, ...args)`) and moved the id-based form-post address to `serverFunctionActionUrl` / `parseServerFunctionActionUrl` (solidjs/solid#3440); @tanstack/solid-start's server-function handler now uses those.
+
+  Rsbuild apps: `@rsbuild/plugin-solid@2.0.0-rc.0` hard-pins the rc.6 compiler, which emits the old delegated-event key (`el.$$click`) that the rc.9 runtime no longer reads (`_$$click`), so delegated handlers never fire. Until the plugin ships an rc.9-based release, override its `@solidjs/compiler` and `@solidjs/babel-plugin` to 2.0.0-rc.9 (the monorepo does this in `pnpm-workspace.yaml`).
+
+- [#8569](https://github.com/TanStack/router/pull/8569) [`665e9d8`](https://github.com/TanStack/router/commit/665e9d86a4c6fb630684677eb371b359d57c2efa) - Bump solid-js and @solidjs/web to ^2.0.0-rc.13 (and @solidjs/vite-plugin to ^3.0.0-next.46), and raise the Solid peer floors to 2.0.0-rc.13.
+
+  @tanstack/solid-router moves off Solid's internal `sharedConfig` and the raw `_$HY` registry onto the public hydration API rc.13 ships (solidjs/solid#3718): `useHydrated` reads `isHydrating()`; the native SSR match transfer writes through `getHydrationWriter()` gated on `isHydratable()`, so it now respects `<NoHydration>`; and the client boot takes each match's entry with `takeHydrationValue()`.
+
+- Updated dependencies [[`acd08ef`](https://github.com/TanStack/router/commit/acd08ef685fc164c836ec85b9cde940a4580b0b9), [`0dc3a9e`](https://github.com/TanStack/router/commit/0dc3a9e3a56f589578d8bae994171211f7b148c6), [`1015223`](https://github.com/TanStack/router/commit/10152238ab8cdc993ace477f19ca19d4d3ce3a61), [`1015223`](https://github.com/TanStack/router/commit/10152238ab8cdc993ace477f19ca19d4d3ce3a61), [`1015223`](https://github.com/TanStack/router/commit/10152238ab8cdc993ace477f19ca19d4d3ce3a61), [`1015223`](https://github.com/TanStack/router/commit/10152238ab8cdc993ace477f19ca19d4d3ce3a61), [`1015223`](https://github.com/TanStack/router/commit/10152238ab8cdc993ace477f19ca19d4d3ce3a61), [`1015223`](https://github.com/TanStack/router/commit/10152238ab8cdc993ace477f19ca19d4d3ce3a61), [`1015223`](https://github.com/TanStack/router/commit/10152238ab8cdc993ace477f19ca19d4d3ce3a61), [`1015223`](https://github.com/TanStack/router/commit/10152238ab8cdc993ace477f19ca19d4d3ce3a61), [`665e9d8`](https://github.com/TanStack/router/commit/665e9d86a4c6fb630684677eb371b359d57c2efa), [`81ee38e`](https://github.com/TanStack/router/commit/81ee38eee5695cfdeb623f085f7e54b0e1ef2fe5)]:
+  - @tanstack/solid-router@2.0.0-rc.9
+
 ## 2.0.0-rc.6
 
 ### Patch Changes
