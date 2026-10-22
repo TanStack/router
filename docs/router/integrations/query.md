@@ -216,7 +216,7 @@ export const Route = createFileRoute('/user/$id')({
 
 ## Redirect handling
 
-If a query or mutation throws a `redirect(...)`, the integration intercepts it on the client and performs a router navigation.
+If a query or mutation throws a `redirect(...)`, the integration intercepts it on the client and performs a router navigation. You do not need to individually wrap [server functions](/start/latest/docs/framework/react/guide/server-functions) in `useServerFn` if they are called in a `queryFn` or `mutationFn`.
 
 - Enabled by default
 - Disable with `handleRedirects: false` if you need custom handling

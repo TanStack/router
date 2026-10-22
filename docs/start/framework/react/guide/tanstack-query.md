@@ -85,6 +85,8 @@ Both calls use the same query key and options. The loader populates the request'
 
 For a parameterized resource, include its identity in the key, such as `['post', postId]`. If search values affect the result, validate them and include them in both `loaderDeps` and the query key. Keep secrets out of keys and serialized query data.
 
+Note that if you are using server functions and you have the [integration](#install-and-create-a-queryclient-per-router) installed, you do not need to use `useServerFn` to properly handle thrown errors or redirects. Simply call the server function in a `queryFn` or `mutationFn` normally.
+
 ## Await critical data and stream secondary data
 
 Await queries that determine the page's main content, title, authorization, redirects, or whether it exists. Return title and description data from the loader when a route's `head` needs them, as the example's post route does.
@@ -95,13 +97,12 @@ The example's existing `/deferred` route shows a separate Suspense boundary. See
 
 ## Invalidate Query after a server mutation
 
-The preference example validates the display name and writes its cookie inside a POST server function. Its `src/start.ts` enables Start's CSRF middleware for server-function requests. The component calls that function through `useServerFn`, then invalidates the query that reads the cookie:
+The preference example validates the display name and writes its cookie inside a POST server function. Its `src/start.ts` enables Start's CSRF middleware for server-function requests. The component calls that function, then invalidates the query that reads the cookie:
 
 ```tsx
 const queryClient = useQueryClient()
-const save = useServerFn(saveReaderName)
 const mutation = useMutation({
-  mutationFn: (name: string) => save({ data: name }),
+  mutationFn: (name: string) => saveReaderName({ data: name }),
   onSuccess: () =>
     queryClient.invalidateQueries({ queryKey: readerNameOptions.queryKey }),
 })
