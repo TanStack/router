@@ -12,9 +12,38 @@ import {
   callByIdPrelude,
   startBundlers,
 } from '../build-harness'
+import {
+  clientPage,
+  runInClient,
+  startRsbuildStartDevServer,
+} from '../rsbuild-dev-server'
 import { expectSourceError } from './source-errors'
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
+
+/**
+ * An installed CommonJS package (no `"type"`, so its `.js` file is a
+ * script, as in old npm packages) with a top-level `return`, which only a
+ * script may have, and the text `.handler(` but no Start API.
+ */
+const commonJsPackage = {
+  'node_modules/legacy-lib/package.json': JSON.stringify({
+    name: 'legacy-lib',
+    version: '1.0.0',
+    main: 'index.js',
+  }),
+  'node_modules/legacy-lib/index.js': `if (typeof module !== 'object') return
+module.exports = function (app) {
+  return app.handler(1)
+}
+`,
+}
+
+/** App code that calls the package and keeps what it returned. */
+const commonJsImporter = `import legacy from 'legacy-lib'
+export const result = legacy({ handler: (value: unknown) => ['handled', value] })
+;(globalThis as any).legacyResult = result
+`
 
 describe.each(startBundlers)('%s build', (bundler) => {
   const timeout = 60_000
@@ -589,5 +618,49 @@ ${callByIdExports}`,
       })
     },
     timeout,
+  )
+
+  // Bug: the bundler plugins hand every module whose text matches a
+  // detection pattern (here `.handler(`) to the Start compiler, which parses
+  // it as an ES module and fails on a CommonJS script's top-level `return`.
+  // The same package without that text builds and runs on both bundlers.
+  // Impact: an app with such a dependency does not build (Vite: when client
+  // code imports it, or SSR code with `noExternal`; Rsbuild: client or SSR).
+  // Source: ruling Q7 (oracle RULINGS "CommonJS dependencies"), which
+  // replaced the in-process compiler pin of this name with these apps.
+  test.fails(
+    'a CommonJS dependency with a top-level return builds and keeps its meaning',
+    async () => {
+      const { client, ssr } = await buildStart({
+        bundler,
+        files: { ...commonJsPackage, 'entry.ts': commonJsImporter },
+      })
+      for (const output of [client, ssr]) {
+        const { result } = await output.run('return entry.result')
+        expect(result, output.env).toEqual(['handled', 1])
+      }
+    },
+    timeout,
+  )
+})
+
+describe('rsbuild dev', () => {
+  // Bug: same as the build pin above; Rsbuild's dev server compiles the
+  // same package without the `.handler(` text, and the page runs it.
+  // Impact: the dev server fails to compile an app with such a dependency.
+  // Source: as the build pin above.
+  test.fails(
+    'a CommonJS dependency with a top-level return compiles and keeps its meaning',
+    async () => {
+      const server = await startRsbuildStartDevServer({
+        ...clientPage,
+        files: { ...commonJsPackage, 'src/entry.ts': commonJsImporter },
+      })
+      expect(server.errors).toEqual([])
+      expect(
+        await runInClient(server, 'return globalThis.legacyResult'),
+      ).toEqual({ result: ['handled', 1] })
+    },
+    60_000,
   )
 })
