@@ -5,7 +5,6 @@
   "description": "Test infrastructure shared by the compiler test suites: a public in-process plugin host (Vite, Rsbuild) driving the plugins a user configures, a real-build harness, dev-server harnesses (Vite, Rsbuild), a real browser page, one merged diagnostic channel, and a validator of generated modules",
   "type": "module",
   "exports": {
-    "./added-code": "./src/added-code.ts",
     "./browser": "./src/browser.ts",
     "./budget-reporter": "./src/budget-reporter.ts",
     "./build-harness": "./src/build-harness.ts",
