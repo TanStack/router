@@ -32,19 +32,72 @@ tools, and judges client code in a real browser. What was measured at the end of
 - **Restructured compilers pass.** Eleven behaviour-preserving restructures of today's compilers (R1–R11: moved
   modules, renamed ids and generated names, another printer, reworded diagnostics, another AST seam, other report
   channels, another server-function provider architecture, other chunk layouts, other trace order, other loader
-  paths) were each run against the whole acceptance suite.
-  TODO(F-E-b): the final matrix at the final HEAD (failing acceptance tests per variant, expected pin flips, and
-  the rows held by pending rulings).
-- **Wrong compilers are caught, correct ones pass.** TODO(F-E-b): the V4 numbers at the final HEAD (red variants
-  of rounds 1 and 2 caught, out of 90; valid greens clean).
+  paths) were each run against the whole acceptance suite, with every failing file re-run alone with and without the
+  restructure. At 45f58967ea:
+  - R1 and R3–R11: no acceptance test fails.
+  - R2 (moved internal modules) fails the 7 rows that pending rulings hold on internal imports (Q5:
+    `handle-route-update.test.ts` ×1; Q6: `pending-rulings/createMiddleware.test.ts` ×2, `createServerFn.test.ts`
+    ×1; Q7: `pending-rulings/known-bugs-start-compiler.test.ts` ×3). Nothing else fails under R2.
+  - Expected pin flips, where the restructure fixes the pinned bug: R3 ×6 (user names that collide with today's
+    generated names), R8 ×6 (SSR runs server functions in place), R9 ×3 (entry re-export of shared bindings).
+  - One #42 failure under R3 passed alone (a flake, below).
+- **Wrong compilers are caught, correct ones pass.** The adversarial variants of rounds 1 and 2 (written by
+  reviewers as product patches) were re-run at 45f58967ea against `test:unit` + `test:integration` (the
+  pending-rulings, implementation and noncompiler lanes recorded, never counted):
+  - all 90 red (wrong) variants are caught, each by acceptance tests that fail again when their file runs alone;
+    none is caught only by a non-acceptance lane;
+  - all 34 valid green (correct but different) variants pass; green-sol/20 flips its two expected pins (it fixes
+    that bug), and green-sol/01 is ruled not a valid green.
+  - Every red caught before the repair's last waves is still caught; two now only through rerouted public-entry
+    tests, because the internal-entry tests that caught them moved to the implementation lane.
 - **No internal imports.** The strict import gate passes in CI. The only internal imports left are held by pending
   user rulings, through the gate's allowlist (below).
-- **Fast.** On a quiet machine at 4 workers every tier is under its hard budget in strict mode (no slow-tier file
-  over 15 s; edit to result for one fast-tier file about 5 s). TODO(F-E-b): the stability runs (every tier twice,
-  identical counts) and the strict budgets at the final HEAD.
+- **Stable.** The unpatched suite ran 9 times (3 rounds of 3 trees in parallel, 4 workers each, 1-minute load up to
+  55): all 15 tiers and lanes gave identical counts, except one #42 failure in one start-plugin-core integration run.
+- **Fast.** On a quiet machine (load below 4 at the start) at 4 workers every tier passes its hard budget in strict
+  mode, and no slow-tier file takes over 15 s:
 
-Counts at hand-over (passed / expected-fail pins): TODO(F-E-b): the table per package and tier
-(`test:unit`, `test:integration`, `test:implementation`, `test:noncompiler`) at the final HEAD.
+  | Package                         | `test:unit` (target / hard) | `test:integration` (target / hard) | slowest slow-tier file |
+  | ------------------------------- | --------------------------- | ---------------------------------- | ---------------------- |
+  | `@tanstack/compiler-test-utils` | 3.0 s (2.5 / 4)             | 8.0 s (9 / 15)                     | 8.0 s                  |
+  | `@tanstack/router-generator`    | 3.8 s (3 / 5)               | 6.6 s (8 / 12)                     | 6.5 s                  |
+  | `@tanstack/router-plugin`       | 8.0 s (7.5 / 10)            | 73.7 s (60 / 80)                   | 11.6 s                 |
+  | `@tanstack/start-plugin-core`   | 6.4 s (5.5 / 8)             | 83.3 s (65 / 90)                   | 12.8 s                 |
+  | `@tanstack/react-start-rsc`     | no test files               | 13.0 s (13 / 20)                   | 6.3 s                  |
+
+  Edit to result for one fast-tier file is about 5 s. Several tiers are over their target and under their hard limit.
+
+Counts at hand-over (45f58967ea; passed / expected-fail pins):
+
+| Package                         | `test:unit` | `test:integration` | `test:implementation` | `test:noncompiler` |
+| ------------------------------- | ----------- | ------------------ | --------------------- | ------------------ |
+| `@tanstack/compiler-test-utils` | 333 / 0     | 167 / 0            | –                     | –                  |
+| `@tanstack/router-generator`    | 239 / 30    | 67 / 3             | 114 / 2               | –                  |
+| `@tanstack/router-plugin`       | 107 / 20    | 673 / 355          | 105 / 1               | –                  |
+| `@tanstack/start-plugin-core`   | 385 / 144   | 1198 / 288         | 608 / 9               | 121 / 0            |
+| `@tanstack/react-start-rsc`     | no files    | 108 / 13           | –                     | 49 / 0             |
+
+The `test:unit` counts include the pending-rulings lane: 4 passing rows and 3 pins in start-plugin-core, 1 row in
+router-plugin.
+
+Caveats:
+
+- **Pending user rulings hold some rows** (table below). They count toward acceptance as they are until ruled, and a
+  correct compiler may fail some of them: the Q5, Q6 and Q7 rows import compiler internals (R2 fails all 7), and the
+  others (Q1–Q4, Q8–Q10, NEW-1, NEW-2) keep an assertion or input whose fate the ruling decides.
+- **Two upstream flakes can fail rows no compiler change explains.**
+  - #42 (Vite's stale pre-bundled dependency): it fails up to three start-plugin-core integration rows,
+    `known-bugs-start-compiler-dev` "top-level call of a project function" and "top-level member call of a
+    pre-bundled dependency", and `start-compiler-dev-server` "a module importing a factory that stops being one keeps
+    its handler". It currently fails these three rows in most start-plugin-core integration runs on a developer
+    machine. In the 145 runs of this measurement on beetle it failed one or two of them in 13 runs.
+  - #34 (Vite's optimizer writes its cache after `close()`): an `ENOTEMPTY` on cleanup fails all 33 rows of
+    `integration/importProtection/mock-shapes.test.ts` in a run. It hit 3 of 145 runs.
+  - Re-run a file that failed only on these alone before reading it as a compiler failure.
+- **The adversarial evidence is not independent of the tests.** Round 2's escapes are caught by rows written for
+  them, and the attackers of rounds 1 and 2 wrote against earlier versions of the suite. After a major change of the
+  compilers or of these tests, run a new round with test-aware attackers and re-check correct-but-different
+  compilers (see "Re-running the measurements").
 
 If a test cannot pass with your compiler although the compiler is correct, report it (with the SPEC clause it
 contradicts) instead of changing the test. Do not change assertions, inputs or expected outcomes to fit a compiler.
