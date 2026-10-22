@@ -656,8 +656,8 @@ export function suggestedDirections(text: string): Array<'server' | 'client'> {
     if (byApi.length > 0) {
       return byApi
     }
-    const byEnvironment = (['server', 'client'] as const).filter(
-      (direction) => explainsEnvironment(item, direction),
+    const byEnvironment = (['server', 'client'] as const).filter((direction) =>
+      explainsEnvironment(item, direction),
     )
     return byEnvironment.length === 1 ? byEnvironment : []
   }
