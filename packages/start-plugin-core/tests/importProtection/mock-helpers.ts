@@ -164,14 +164,15 @@ export const describeValuePrelude = `${probeMockPrelude}const describeValue = ${
 
 /**
  * What identifies the runtime diagnostic of a use of a mock: its severity
- * and the denied import. (Which importer used the mock is not required: the
- * violation report names it, SPEC J6.5; main's mock of a denied file names
- * the denied file in its place.)
+ * and, for a denied file, the file (ruling 2026-10-22: diagnostics are
+ * checked by file and position only; a use of the mock of a denied
+ * specifier names no file of the app). Which importer used the mock is not
+ * required: the violation names it, SPEC J6.5.
  */
 export interface MockAccessExpectation {
   /** The console severity (`mockAccess: 'error'` or `'warn'`). */
   severity: Severity
-  /** The denied import as the importer wrote it. */
+  /** The denied import as the importer wrote it (for the failure message). */
   specifier: string
   /** The file the denied import resolves to, when it is a file. */
   file?: string
@@ -181,24 +182,15 @@ export interface MockAccessExpectation {
 
 /**
  * The runtime diagnostics of a use of a mock (SPEC J6.3, `mockAccess`)
- * among `diagnostics` (what the console received while the app ran, read
- * by the shared A9 oracle `@tanstack/compiler-test-utils/diagnostics`):
- * those of the expected severity that name the denied import, as written
- * (`specifier`, a whole name) or as the file it resolves to (`file`). The
- * prose and whether a file is spelled absolute or relative are free (SPEC
- * §5.7, J6.12).
+ * among `diagnostics` (what the console received while the app ran): those
+ * of the expected severity, naming `file` when one is expected.
  */
 export function mockAccessDiagnostics(
   diagnostics: Array<Diagnostic>,
   expected: MockAccessExpectation,
 ): Array<Diagnostic> {
-  const { severity, specifier, file, root } = expected
-  return findDiagnostics(diagnostics, { severity }).filter(
-    (diagnostic) =>
-      findDiagnostics(diagnostic, { names: [specifier] }).length > 0 ||
-      (file !== undefined &&
-        findDiagnostics(diagnostic, { file, root }).length > 0),
-  )
+  const { severity, file, root } = expected
+  return findDiagnostics(diagnostics, { severity, file, root })
 }
 
 /**

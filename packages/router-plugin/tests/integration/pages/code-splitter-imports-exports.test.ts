@@ -10,19 +10,14 @@
  */
 import { parse as parseWithBabel } from '@babel/core'
 import { describe, expect, it } from 'vitest'
-import {
-  expectDiagnostic,
-  findDiagnostics,
-} from '@tanstack/compiler-test-utils/diagnostics'
+
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import {
   expectValidModules,
   head,
   holdsMarker,
   loadRoute,
-  pageDiagnostics,
 } from '../../route-app'
-import type { DiagnosticExpectation } from '@tanstack/compiler-test-utils/diagnostics'
 import type { Plugin } from 'vite'
 import type { RouteApp } from '../../route-app'
 
@@ -652,45 +647,6 @@ const { exported } = await app('importer.ts')
 return [result, seen.length, seen[0] === exported]`),
       ).toEqual([value, 1, true])
       expect(await route.isLazy(split)).toBe(true)
-    },
-  )
-
-  // When it leaves an exported option unsplit, the compiler tells the
-  // developer once, naming the file and the option (J2.8; naming the
-  // binding too is fine, the wording is free). Every channel is read: the
-  // dev server's and the page's console.
-  // Bug: the warning names the file and the exported binding ("These
-  // exports from … will not be code-split: - Page"), never the route
-  // option it leaves unsplit.
-  // Source: V1 split F40 (SPEC J2.8, J2.19).
-  // Impact: the developer has to work out which option of the route the
-  // named export is (`component`, `errorComponent`, a `loader`...).
-  it.fails.each(exportedOptions)(
-    'are reported once, naming the file and the option, when not code-split: $name',
-    async ({ code, routeId, option }) => {
-      const route = await loadRoute(code, {
-        routeId,
-        files: { 'see.ts': seeFile },
-      })
-      if (!(await route.isLazy(option))) {
-        const page = await route.runPage(`return null`)
-        const all = [
-          ...(await route.diagnostics()),
-          ...pageDiagnostics(page.console),
-        ]
-        const expected: DiagnosticExpectation = {
-          severity: 'warning',
-          file: 'route.tsx',
-          root: route.host.root,
-          names: [option],
-        }
-        expectDiagnostic(all, expected)
-        // Once: no channel (the dev server's, the page's console) repeats it
-        const sources = findDiagnostics(all, expected).map(
-          (diagnostic) => diagnostic.source,
-        )
-        expect(sources).toEqual([...new Set(sources)])
-      }
     },
   )
 

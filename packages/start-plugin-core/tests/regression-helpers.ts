@@ -49,14 +49,11 @@ export type {
   StartPluginOptions,
 } from './start-host'
 export {
-  clientOnlyError,
   expectCompileError,
   expectNoClientHandler,
   expectSourceError,
-  missingHandler,
-  serverOnlyError,
   serverOnlyModule,
-  withoutQuotedSource,
+  throwsError,
 } from './diagnostics'
 export type { MisplacementOptions } from './diagnostics'
 
@@ -65,7 +62,7 @@ export const moduleFile = 'module.tsx'
 
 /**
  * What `settle` gives for a call that throws: the thrown value itself, so
- * oracles (`serverOnlyError`, `clientOnlyError`) read the real error, and a
+ * oracles (`throwsError`) read the real error, and a
  * value the call returns is never mistaken for a throw.
  */
 export class Thrown {
@@ -221,7 +218,6 @@ return settle(() => fn({ data: ${dataExpression(data)} }))`,
 
 /** `read` (a JavaScript expression with the module as `module`) in Node. */
 function readExpression(expression: string) {
-  // eslint-disable-next-line @typescript-eslint/no-implied-eval
   return new Function('module', `return (${expression})`) as (
     module: Record<string, any>,
   ) => unknown

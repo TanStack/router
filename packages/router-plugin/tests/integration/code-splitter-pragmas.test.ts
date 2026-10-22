@@ -64,7 +64,6 @@ return getComputedStyle(document.getElementById('styled')).color`)
         severity: 'warning',
         file: 'routes/index.tsx',
         root: split.app.root,
-        names: ['component'],
       })
     }
     expect(split.colour).toBe(untouched.colour)

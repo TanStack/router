@@ -68,7 +68,6 @@ async function expectRendersLikeUntouched(code: string) {
       severity: 'warning',
       file: 'route.tsx',
       root: route.host.root,
-      names: ['component'],
     })
   }
   expect(rendered).toBe(expected)

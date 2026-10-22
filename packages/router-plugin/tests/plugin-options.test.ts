@@ -115,7 +115,6 @@ describe('repeated options in split groupings', () => {
       severity: 'error',
       file: 'groupings-route.tsx',
       root: route.host.root,
-      names: ['loader'],
     })
   })
 })

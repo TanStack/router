@@ -8,10 +8,7 @@
  */
 import path from 'node:path'
 import mdx from '@mdx-js/rollup'
-import {
-  captureConsole,
-  isRelevantLocation,
-} from '@tanstack/compiler-test-utils/diagnostics'
+import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { startDevServer } from '../../dev-server'
 import {
@@ -25,10 +22,9 @@ import {
 } from '../../importProtection/mock-helpers'
 import {
   distinct,
-  expectReportFrame,
   expectViolationsAt,
   factoryTopLevelCall,
-  failureOutput,
+  isAt,
   locationIn,
   problemsNaming,
   receivedViolations,
@@ -39,19 +35,20 @@ import {
   startProtectedDevServer,
   startRscProtectedDevServer,
   violationLabel,
-  violationReports,
+  violationRecorder,
+  violationsOf,
 } from '../../importProtection/start-apps'
-import { suggestedDirections } from '../../importProtection/violation-report'
 import { originalLocation } from '../../importProtection/original-location'
 import {
   clientFixturePlugin,
   runViteClient,
   startBrowserProtectedDevServer,
 } from './client-pages'
-import type { ViolationReport } from '../../importProtection/violation-report'
 import type {
   ExpectedViolation,
   ProtectedDevServer,
+  Recorded,
+  Violation,
 } from '../../importProtection/start-apps'
 import type {
   ImportProtectionOptions,
@@ -65,27 +62,38 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+/**
+ * Starts a dev server with Start's whole plugin (without HMR), recording
+ * the violations Start reports through `onViolation` (`violations`).
+ */
+async function startRecordingApp(files: Record<string, string>) {
+  const recorder = violationRecorder()
+  const server = await startDevServer({
+    start: { importProtection: { onViolation: recorder.onViolation } },
+    files,
+    config: { server: { hmr: false } },
+  })
+  return Object.assign(server, { violations: recorder.violations })
+}
+
 /** Client modules (by URL) whose served code contains `marker`. */
 function modulesContaining(modules: Record<string, string>, marker: string) {
   return Object.keys(modules).filter((url) => modules[url]!.includes(marker))
 }
 
-/** `environment importer` of each distinct violation logged in `logs`. */
-function loggedViolations(logs: Array<string>) {
+/** `environment importer` of each distinct violation of `recorded`. */
+function loggedViolations(recorded: Recorded) {
   return distinct(
-    reportedViolations(logs).map(
+    reportedViolations(recorded).map(
       ({ environment, importer }) => `${environment} ${importer}`,
     ),
   )
 }
 
-/**
- * The reports in `output`, one per violation (environment type and
- * importer): a report printed on two channels counts once.
- */
-function distinctReports(output: unknown): Array<ViolationReport> {
+/** The violations of `recorded`, one per environment type and importer. */
+function distinctReports(recorded: Recorded): Array<Violation> {
   const seen = new Set<string>()
-  return violationReports(output).filter((report) => {
+  return violationsOf(recorded).filter((report) => {
     const key = `${report.environment} ${report.importer}`
     const fresh = !seen.has(key)
     seen.add(key)
@@ -94,12 +102,12 @@ function distinctReports(output: unknown): Array<ViolationReport> {
 }
 
 /**
- * Nothing is reported about `files` (relative to the app root): no report
- * the reader finds, and no warning or error naming them on any channel,
- * whatever its wording.
+ * Nothing is reported about `files` (relative to the app root): no
+ * violation `onViolation` received, and no warning or error naming them on
+ * any channel, whatever its wording.
  */
 function expectNothingReportedAbout(
-  server: ProtectedDevServer | Parameters<typeof problemsNaming>[0],
+  server: ProtectedDevServer,
   files: Array<string>,
 ) {
   expect(reportedViolations(server)).toEqual([])
@@ -107,8 +115,8 @@ function expectNothingReportedAbout(
 }
 
 /** The modules of the trace of `report`, without locations. */
-const traceModules = (report: ViolationReport) =>
-  report.trace.map(({ at }) => at.replace(/:\d+:\d+$/, ''))
+const traceModules = (report: Violation) =>
+  report.trace.map(({ at }) => at.replace(/(?::\d+)+$/, ''))
 
 /**
  * `src/a.ts` uses `secret` of the denied file `src/secret.server.ts`; the
@@ -132,16 +140,14 @@ const deniedFileUse = 'src/a.ts:2:27'
 const deniedFileViolation: ExpectedViolation = {
   environment: 'client',
   use: deniedFileUse,
-  source: deniedFileApp['src/a.ts'],
+  also: ['src/a.ts:1'],
 }
 
-/** Where `deniedFileApp`'s violation may be reported (`isRelevantLocation`). */
-const deniedFileImporter = {
-  file: 'src/a.ts',
-  source: deniedFileApp['src/a.ts'],
-  uses: [{ line: 2, column: 27 }],
-  imports: ['./secret.server'],
-}
+/** Whether `importer` is where `deniedFileApp`'s violation may be reported. */
+const atDeniedFileViolation = (importer: string) =>
+  [deniedFileViolation.use, ...deniedFileViolation.also!].some((place) =>
+    isAt(importer, place),
+  )
 
 describe('a client import of a denied file', () => {
   // Source: oracle-gaps M2 (the warning channel of dev violations).
@@ -151,15 +157,7 @@ describe('a client import of a denied file', () => {
       const server = await startProtectedDevServer(deniedFileApp)
       const client = await server.load('/src/entry.ts')
       expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
-      expectViolationsAt(server.logs, [deniedFileViolation])
-      // A server-side fix is suggested (SPEC J6.5, J6.12), whatever the words.
-      expect(
-        distinct(
-          violationReports(server.logs).map(({ text }) =>
-            suggestedDirections(text).join(),
-          ),
-        ),
-      ).toEqual(['server'])
+      expectViolationsAt(server, [deniedFileViolation])
     },
     timeout,
   )
@@ -206,8 +204,8 @@ describe('a client import of a denied file', () => {
     'added by an edit of the importer is logged at its original import or surviving use, with a trace from the entry',
     async () => {
       const { server } = await addDeniedImportByAnEdit()
-      const reports = violationReports(server.logs)
-      expectViolationsAt(server.logs, [deniedFileViolation])
+      const reports = violationsOf(server)
+      expectViolationsAt(server, [deniedFileViolation])
       for (const report of reports) {
         expect(traceModules(report)).toEqual(['src/entry.ts', 'src/a.ts'])
       }
@@ -226,11 +224,8 @@ describe('a client import of a denied file', () => {
       const server = await startProtectedDevServer(deniedFileApp, {
         behavior,
       })
-      const since = server.diagnostics.length
-      const error = await rejection(server.load('/src/entry.ts'))
-      expectViolationsAt(failureOutput(error, server, since), [
-        deniedFileViolation,
-      ])
+      await rejection(server.load('/src/entry.ts'))
+      expectViolationsAt(server, [deniedFileViolation])
     },
     timeout,
   )
@@ -243,7 +238,7 @@ describe('a client import of a denied file', () => {
       })
       const client = await server.load('/src/entry.ts')
       expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
-      expect(reportedViolations(server.logs)).not.toEqual([])
+      expect(reportedViolations(server)).not.toEqual([])
     },
     timeout,
   )
@@ -262,7 +257,7 @@ describe('the trace of a client import of a denied file', () => {
         'src/entry.ts': `export * from './routes/page'\n`,
       })
       await server.load('/src/entry.ts')
-      const reports = violationReports(server.logs)
+      const reports = violationsOf(server)
       expect(reports).not.toEqual([])
       for (const report of reports) {
         expect(traceModules(report)).toEqual([
@@ -286,13 +281,11 @@ describe('the trace of a client import of a denied file', () => {
       )
       await server.load('/src/entry.ts')
       await server.edit({ 'src/a.ts': deniedFileApp['src/a.ts'] })
-      const since = server.diagnostics.length
-      const error = await rejection(server.load('/src/entry.ts'))
-      const output = failureOutput(error, server, since)
-      // (one violation, however many channels print its report)
-      const [report, ...others] = distinctReports(output)
+      await rejection(server.load('/src/entry.ts'))
+      // (one violation)
+      const [report, ...others] = distinctReports(server)
       expect(others).toEqual([])
-      expectViolationsAt(output, [deniedFileViolation])
+      expectViolationsAt(server, [deniedFileViolation])
       expect(traceModules(report!)).toEqual(['src/entry.ts', 'src/a.ts'])
     },
     timeout,
@@ -310,7 +303,7 @@ describe('the trace of a client import of a denied file', () => {
         'src/main.ts': `export * from './entry'\n`,
       })
       await server.load('/src/main.ts')
-      const reports = violationReports(server.logs)
+      const reports = violationsOf(server)
       expect(reports).not.toEqual([])
       for (const report of reports) {
         expect(traceModules(report)).toEqual(['src/entry.ts', 'src/a.ts'])
@@ -348,7 +341,7 @@ export const page = () => c() + s()
         { config: { server: { preTransformRequests: false } } },
       )
       await server.load('/src/entry.ts')
-      const reports = violationReports(server.logs)
+      const reports = violationsOf(server)
       expect(reports).not.toEqual([])
       for (const report of reports) {
         expect([
@@ -454,7 +447,7 @@ describe('log', () => {
   async function logsAroundAnEdit(log: 'once' | 'always') {
     const server = await startProtectedDevServer(deniedFileApp, { log })
     await server.load('/src/entry.ts')
-    const first = reportedViolations(server.logs)
+    const first = reportedViolations(server)
     await server.edit({
       'src/a.ts': `import { secret } from './secret.server'
 export const read = () => secret()
@@ -464,7 +457,7 @@ export const other = 1
     await server.load('/src/entry.ts')
     return {
       first,
-      afterEdit: reportedViolations(server.logs).slice(first.length),
+      afterEdit: reportedViolations(server).slice(first.length),
     }
   }
 
@@ -494,9 +487,7 @@ export const other = 1
       const { first, afterEdit } = await logsAroundAnEdit('always')
       expect(first).not.toEqual([])
       expect(
-        distinct(afterEdit.map((v) => v.importer)).map((importer) =>
-          isRelevantLocation(importer, deniedFileImporter),
-        ),
+        distinct(afterEdit.map((v) => v.importer)).map(atDeniedFileViolation),
       ).toEqual([true])
     },
     timeout,
@@ -517,12 +508,12 @@ export const other = 1
       { log },
     )
     await server.load('/src/entry.ts')
-    const first = reportedViolations(server.logs)
+    const first = reportedViolations(server)
     await server.edit({ 'tsconfig.json': `{ "compilerOptions": {} }\n` })
     await server.load('/src/entry.ts')
     return {
       first,
-      afterReload: reportedViolations(server.logs).slice(first.length),
+      afterReload: reportedViolations(server).slice(first.length),
     }
   }
 
@@ -545,9 +536,7 @@ export const other = 1
       const { first, afterReload } = await logsAroundAReload('always')
       expect(first).not.toEqual([])
       expect(
-        distinct(afterReload.map((v) => v.importer)).map((importer) =>
-          isRelevantLocation(importer, deniedFileImporter),
-        ),
+        distinct(afterReload.map((v) => v.importer)).map(atDeniedFileViolation),
       ).toEqual([true])
     },
     timeout,
@@ -569,10 +558,10 @@ export { b } from './b'
         { log: 'always' },
       )
       await server.load('/src/entry.ts')
-      const first = reportedViolations(server.logs)
+      const first = reportedViolations(server)
       expect(first).not.toEqual([])
       await server.load('/src/c.ts')
-      expect(reportedViolations(server.logs)).toEqual(first)
+      expect(reportedViolations(server)).toEqual(first)
     },
     timeout,
   )
@@ -592,7 +581,7 @@ export { b } from './b'
     async () => {
       const server = await startProtectedDevServer(deniedFileApp)
       await server.load('/src/entry.ts')
-      expect(reportedViolations(server.logs)).toHaveLength(1)
+      expect(reportedViolations(server)).toHaveLength(1)
     },
     timeout,
   )
@@ -615,7 +604,7 @@ export { b } from './b'
         log: 'always',
       })
       await server.load('/src/entry.ts')
-      expect(reportedViolations(server.logs)).toHaveLength(1)
+      expect(reportedViolations(server)).toHaveLength(1)
     },
     timeout,
   )
@@ -642,7 +631,7 @@ export const request = () => getRequest()
     async () => {
       const server = await startProtectedDevServer(deniedSpecifierApp)
       await server.load('/src/entry.ts')
-      const reports = loggedViolations(server.logs)
+      const reports = loggedViolations(server)
       expect(reports).toHaveLength(2)
       expect(reports).toEqual(
         expect.arrayContaining([
@@ -797,7 +786,7 @@ export const leak = () => secret()
       const client = await server.load('/src/entry.ts')
       expect(Object.keys(client)).toContain('/src/page.mdx')
       expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
-      const importers = reportedViolations(server.logs).map(
+      const importers = reportedViolations(server).map(
         ({ importer }) => importer,
       )
       // (located if at all at the import or the use: no coordinates is the
@@ -838,7 +827,7 @@ export const leak = () => secret()
       )
       await server.load('/src/entry.ts')
       expect(
-        reportedViolations(server.logs).map(({ importer }) => importer),
+        reportedViolations(server).map(({ importer }) => importer),
       ).toEqual([inPage()])
     },
     timeout,
@@ -880,7 +869,7 @@ return probeMock(entry.request(), 'MARK_')`,
       // (the page, located if at all at the import, line 2, or at the use
       // `getRequest()`, 3:30, of the .mdx source)
       expect(
-        reportedViolations(server.logs).map(({ importer }) => importer),
+        reportedViolations(server).map(({ importer }) => importer),
       ).toContainEqual(originalLocation('src/page.mdx:3:30', 2))
     },
     timeout,
@@ -1006,7 +995,7 @@ export const read = () => getRequest()
       })
       const client = await server.load('/src/entry.ts')
       expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
-      expectViolationsAt(server.logs, [deniedFileViolation])
+      expectViolationsAt(server, [deniedFileViolation])
       expect(
         distinct(
           importers.map((importer) => path.relative(server.root, importer)),
@@ -1036,10 +1025,9 @@ export const read = () => getRequest()
         behavior: 'error',
         onViolation: () => true,
       })
-      const since = server.diagnostics.length
-      const error = await rejection(server.load('/src/entry.ts'))
-      expectViolationsAt(failureOutput(error, server, since), [
-        { environment: 'client', use, source: files['src/a.ts']! },
+      await rejection(server.load('/src/entry.ts'))
+      expectViolationsAt(server, [
+        { environment: 'client', use, also: ['src/a.ts:1'] },
       ])
     },
     timeout,
@@ -1068,7 +1056,7 @@ export const read = () => secret()
    */
   const markerReport = (importer: string, marked: string) =>
     originalLocation(`client src/${importer}.ts:2:27`, 1, {
-      others: [{ file: `src/${marked}.ts`, lines: [1], unlocated: true }],
+      others: [`src/${marked}.ts:1`, `src/${marked}.ts`],
     })
 
   // Control for the pins below (same harness): once the server knows the
@@ -1091,9 +1079,7 @@ export const read = () => secret()
     async () => {
       const server = await startProtectedDevServer(markedApp(serverOnly))
       await server.load('/src/entry.ts')
-      expect(loggedViolations(server.logs)).toContainEqual(
-        markerReport('a', 'b'),
-      )
+      expect(loggedViolations(server)).toContainEqual(markerReport('a', 'b'))
     },
     timeout,
   )
@@ -1112,7 +1098,7 @@ export const peek = () => other()
         'src/entry.ts': `export * from './a'\nexport * from './c'\n`,
       })
       await server.load('/src/entry.ts')
-      expect(loggedViolations(server.logs)).toEqual(
+      expect(loggedViolations(server)).toEqual(
         expect.arrayContaining([
           markerReport('a', 'b'),
           markerReport('c', 'd'),
@@ -1154,13 +1140,16 @@ export const peek = () => other()
     expect(
       modulesContaining(await server.load('/src/entry.ts'), 'MARK_B_CODE'),
     ).toEqual(['/src/b.ts'])
-    const logged = server.logs.length
+    const logged = server.violations.length
     await server.edit({ 'src/b.ts': markedApp(serverOnly)['src/b.ts'] })
     await server.load('/src/b.ts')
     const client = await server.load('/src/entry.ts')
     await server.idle()
     return {
-      reported: loggedViolations(server.logs.slice(logged)),
+      reported: loggedViolations({
+        root: server.root,
+        violations: server.violations.slice(logged),
+      }),
       realCodeIn: modulesContaining(client, 'MARK_B_CODE'),
     }
   }
@@ -1216,7 +1205,7 @@ export const read = () => widget()
     await server.load('/src/b.ts', { environment: 'ssr' })
     const served = await server.load('/src/entry.ts', { environment: 'ssr' })
     expect(modulesContaining(served, 'MARK_B_CODE')).toEqual([])
-    expect(relevantViolations(server.logs, [clientOnlyImporter.a])).toContain(
+    expect(relevantViolations(server, [clientOnlyImporter.a])).toContain(
       violationLabel(clientOnlyImporter.a),
     )
   },
@@ -1229,20 +1218,8 @@ export const read = () => widget()
  * at `b`'s marker import (audit F ASK-1; SPEC J6.5).
  */
 const clientOnlyImporter = {
-  a: {
-    environment: 'server',
-    use: 'src/a.ts:2:27',
-    source: `import { widget } from './b'
-export const read = () => widget()
-`,
-  },
-  marker: {
-    environment: 'server',
-    use: 'src/b.ts:1:8',
-    source: `import '@tanstack/react-start/client-only'
-export const widget = () => 'MARK_B_CODE'
-`,
-  },
+  a: { environment: 'server', use: 'src/a.ts:2:27', also: ['src/a.ts:1'] },
+  marker: { environment: 'server', use: 'src/b.ts:1:8', also: ['src/b.ts:1'] },
 } satisfies Record<string, ExpectedViolation>
 
 // A marker violation may also be reported at the marker (audit F ASK-1);
@@ -1264,7 +1241,7 @@ export const read = () => widget()
     })
     await server.load('/src/entry.ts', { environment: 'ssr' })
     const expected = [clientOnlyImporter.a, clientOnlyImporter.marker]
-    const logged = relevantViolations(server.logs, expected)
+    const logged = relevantViolations(server, expected)
     expect(logged).toContain(violationLabel(clientOnlyImporter.a))
     // (any other report is at the marker)
     expect(
@@ -1291,17 +1268,9 @@ export const read = () => widget()
     })
     const served = await server.load('/src/entry.ts', { environment: 'rsc' })
     expect(modulesContaining(served, 'MARK_CLIENT')).toEqual([])
-    expect(loggedViolations(server.logs)).toEqual([
+    expect(loggedViolations(server)).toEqual([
       originalLocation('server src/fn.ts:2:27', 1),
     ])
-    // A client-side fix is suggested (SPEC J6.5, J6.12), whatever the words.
-    expect(
-      distinct(
-        violationReports(server.logs).map(({ text }) =>
-          suggestedDirections(text).join(),
-        ),
-      ),
-    ).toEqual(['client'])
   },
   timeout,
 )
@@ -1377,14 +1346,11 @@ return probeMock(entry.read(), 'MARK_LIB')`,
       expect(result).toEqual(safeMock)
       // (at the importer's import or use, or at the dependency's marker
       // import, audit F ASK-1)
-      expect(loggedViolations(server.logs)).toEqual([
+      expect(loggedViolations(server)).toEqual([
         originalLocation('client src/a.ts:2:27', 1, {
           others: [
-            {
-              file: 'node_modules/db-lib/index.js',
-              lines: [1],
-              unlocated: true,
-            },
+            'node_modules/db-lib/index.js:1',
+            'node_modules/db-lib/index.js',
           ],
         }),
       ])
@@ -1417,16 +1383,16 @@ export const read = () => [secret(), widget()]
       const server = await startProtectedDevServer(app)
       await server.load('/src/entry.ts', { environment: first })
       await server.load('/src/entry.ts', { environment: second })
-      expectViolationsAt(server.logs, [
+      expectViolationsAt(server, [
         {
           environment: 'client',
           use: locationIn('src/a.ts', app['src/a.ts'], 3, 'secret()'),
-          source: app['src/a.ts'],
+          also: ['src/a.ts:1'],
         },
         {
           environment: 'server',
           use: locationIn('src/a.ts', app['src/a.ts'], 3, 'widget()'),
-          source: app['src/a.ts'],
+          also: ['src/a.ts:2'],
         },
       ])
     },
@@ -1459,7 +1425,7 @@ export const read = () => widget()
     )
     const module = await server.import('/src/entry.ts', 'ssr')
     expect(
-      reportedViolations(server.logs).some(
+      reportedViolations(server).some(
         ({ environment }) => environment === 'server',
       ),
     ).toBe(true)
@@ -1532,7 +1498,7 @@ describe('reachability from the router entry', () => {
       const server = await startProtectedDevServer(serverFnFactoryApp())
       const client = await server.load('/src/entry.ts')
       expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
-      expect(loggedViolations(server.logs)).toEqual([
+      expect(loggedViolations(server)).toEqual([
         originalLocation('client src/leak.ts:2:27', 1),
       ])
     },
@@ -1681,7 +1647,7 @@ export const startInstance = { leak }
       const client = await server.load('/src/start.ts')
       expect(Object.keys(client)).toContain('/src/leak.ts')
       expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
-      expect(loggedViolations(server.logs)).toEqual([
+      expect(loggedViolations(server)).toEqual([
         originalLocation('client src/leak.ts:2:27', 1),
       ])
     },
@@ -1700,7 +1666,7 @@ export const startInstance = { leak }
         serverFnFactoryApp(factoryTopLevelCall),
       )
       await server.load('/src/entry.ts')
-      expect(loggedViolations(server.logs)).toContainEqual(
+      expect(loggedViolations(server)).toContainEqual(
         originalLocation('client src/factory.ts:9:24', 2),
       )
     },
@@ -1717,7 +1683,7 @@ export const startInstance = { leak }
       const server = await startProtectedDevServer(serverFnFactoryApp(tail))
       await server.load('/src/entry.ts')
       await server.idle()
-      expect(loggedViolations(server.logs).sort()).toEqual([
+      expect(loggedViolations(server).sort()).toEqual([
         originalLocation(
           `client src/factory.ts:9:${tail.indexOf('getSecret') + 1}`,
           3,
@@ -1752,7 +1718,7 @@ ${factoryTopLevelCall}`
     await server.idle()
     expect(Object.keys(client)).toContain('/src/other.ts')
     return {
-      reports: violationReports(server.logs),
+      reports: violationsOf(server),
       use: locationIn('src/other.ts', other, 2, 'getRequest()'),
     }
   }
@@ -1821,7 +1787,7 @@ export const request = getRequest()
       })
       const client = await server.load('/src/entry.ts')
       expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
-      expect(loggedViolations(server.logs).sort()).toEqual([
+      expect(loggedViolations(server).sort()).toEqual([
         originalLocation(
           `client ${locationIn('src/factory.ts', factory, 8, 'getSecret')}`,
           2,
@@ -1906,23 +1872,23 @@ export const q = () => [read(), request(), slow]
       const { server, served } = await serveWhileItsImporterTransforms()
       expect(modulesContaining(served, 'MARK_SECRET')).toEqual([])
       const p = overlapApp['src/p.ts']
-      expectViolationsAt(server.logs, [
+      expectViolationsAt(server, [
         {
           environment: 'client',
           use: locationIn('src/p.ts', p, 3, 'secret()'),
-          source: p,
+          also: ['src/p.ts:1'],
         },
         {
           environment: 'client',
           use: locationIn('src/p.ts', p, 4, 'getRequest()'),
-          source: p,
+          also: ['src/p.ts:2'],
         },
       ])
       // Source: r5-gaps N8 (spc:4216, 4218, 4219: the trace from Vite's
       // module graph, which does not have the importer yet, replaced it).
-      for (const report of violationReports(server.logs)) {
+      for (const report of violationsOf(server)) {
         expect(
-          report.trace.map(({ at }) => at.replace(/:\d+:\d+$/, '')),
+          report.trace.map(({ at }) => at.replace(/(?::\d+)+$/, '')),
         ).toEqual(['src/entry.ts', 'src/q.ts', 'src/p.ts'])
       }
     },
@@ -1954,7 +1920,7 @@ export const q = () => [read(), request(), slow]
       await server.transform('/src/a.ts')
       const client = await server.load('/src/entry.ts')
       expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
-      expect(loggedViolations(server.logs)).toEqual([
+      expect(loggedViolations(server)).toEqual([
         originalLocation(`client ${deniedFileUse}`, 1),
       ])
     },
@@ -1987,7 +1953,7 @@ export const read = () => secret()
     await server.transform('/src/a.ts')
     await server.load('/src/entry.ts', { environment: 'ssr' })
     await server.load('/src/late.ts')
-    return loggedViolations(server.logs)
+    return loggedViolations(server)
   }
 
   // Control for the pin below (same harness).
@@ -2056,8 +2022,7 @@ export const leak = () => secret()
    * Starts a dev server with Start's whole plugin (without HMR, so that its
    * dev client entry imports the app's client entry statically).
    */
-  const startApp = (files: Record<string, string>) =>
-    startDevServer({ start: {}, files, config: { server: { hmr: false } } })
+  const startApp = startRecordingApp
 
   // The router entry counts; its client entry twin is pinned in
   // dev-page.test.ts.
@@ -2068,7 +2033,7 @@ export const leak = () => secret()
       const client = await server.load('/src/router.ts')
       expect(Object.keys(client)).toContain('/src/leak.ts')
       expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
-      expect(loggedViolations(server.logs)).toEqual([
+      expect(loggedViolations(server)).toEqual([
         originalLocation(`client ${leakUse}`, 1),
       ])
     },
@@ -2139,8 +2104,7 @@ export default { fetch: () => new Response(String(handler())) }
   })
   const handlerUse = `server ${locationIn('src/handler.ts', handler, 2, 'widget()')}`
 
-  const startApp = (files: Record<string, string>) =>
-    startDevServer({ start: {}, files, config: { server: { hmr: false } } })
+  const startApp = startRecordingApp
 
   // The router entry counts; its server entry twin is pinned in
   // dev-page.test.ts.
@@ -2150,7 +2114,7 @@ export default { fetch: () => new Response(String(handler())) }
       const server = await startApp(handlerApp('src/router.ts'))
       const router = await server.import('/src/router.ts')
       expect(String(router.getRouter()())).not.toContain('MARK_CLIENT')
-      expect(loggedViolations(server.logs)).toEqual([
+      expect(loggedViolations(server)).toEqual([
         originalLocation(handlerUse, 1),
       ])
     },
@@ -2186,7 +2150,7 @@ describe('full-bundle dev', () => {
       )
       const bundle = await server.clientBundle()
       expect(modulesContaining(bundle, 'MARK_SECRET')).toEqual([])
-      expect(loggedViolations(server.logs)).toEqual([
+      expect(loggedViolations(server)).toEqual([
         originalLocation(`client ${deniedFileUse}`, 1),
       ])
     },
@@ -2211,7 +2175,7 @@ export const request = () => getRequest()
       )
       const bundle = await server.clientBundle()
       expect(modulesContaining(bundle, 'MARK_SECRET')).toEqual([])
-      expect(loggedViolations(server.logs).sort()).toEqual([
+      expect(loggedViolations(server).sort()).toEqual([
         originalLocation(`client ${deniedFileUse}`, 1),
         originalLocation(
           `client ${locationIn('src/x.ts', x, 2, 'getRequest()')}`,
@@ -2222,11 +2186,9 @@ export const request = () => getRequest()
     timeout,
   )
 
-  /** The modules of the trace of each report logged in `logs`. */
-  const traces = (logs: Array<string>) =>
-    violationReports(logs).map((report) =>
-      report.trace.map(({ at }) => at.replace(/:\d+:\d+$/, '')),
-    )
+  /** The modules of the trace of each violation of `recorded`. */
+  const traces = (recorded: Recorded) =>
+    violationsOf(recorded).map(traceModules)
 
   // Source: r5-gaps N8 (spc:4997, 4998: every importer taken as an entry).
   test(
@@ -2245,7 +2207,7 @@ export const read = () => secret()
         { bundledDev: { entry: 'src/entry.ts' } },
       )
       await server.clientBundle()
-      const logged = traces(server.logs)
+      const logged = traces(server)
       expect(logged).not.toEqual([])
       for (const trace of logged) {
         expect(trace).toEqual(['src/entry.ts', 'src/b.ts', 'src/lib/a.ts'])
@@ -2278,7 +2240,7 @@ export const read = () => secret()
         { bundledDev: { entry: 'src/entry.ts' } },
       )
       await server.clientBundle()
-      const logged = traces(server.logs)
+      const logged = traces(server)
       expect(logged).not.toEqual([])
       for (const trace of logged) {
         expect(trace).toEqual([
@@ -2311,7 +2273,7 @@ export const read = () => widget()
         { bundledDev: { entry: 'src/entry.ts' } },
       )
       await server.load('/src/entry.ts', { environment: 'ssr' })
-      const logged = traces(server.logs)
+      const logged = traces(server)
       expect(logged).not.toEqual([])
       for (const trace of logged) {
         expect(trace).toEqual([
@@ -2354,7 +2316,7 @@ export const fn = createSecretFn().handler(async () => 'data')
       )
       const bundle = await server.clientBundle()
       expect(modulesContaining(bundle, 'MARK_SECRET')).toEqual([])
-      expect(loggedViolations(server.logs)).toContainEqual(
+      expect(loggedViolations(server)).toContainEqual(
         originalLocation(`client ${deniedFactoryUse}`, 1),
       )
     },
@@ -2383,7 +2345,7 @@ export const fn = createSecretFn().handler(async () => 'data')
       )
       const bundle = await server.clientBundle()
       expect(modulesContaining(bundle, 'MARK_SECRET')).toEqual([])
-      expect(loggedViolations(server.logs)).toContainEqual(
+      expect(loggedViolations(server)).toContainEqual(
         originalLocation(`client ${deniedFactoryUse}`, 1),
       )
     },
@@ -2440,7 +2402,7 @@ export const app = [read, router]
       )
       const bundle = await server.clientBundle()
       expect(modulesContaining(bundle, 'MARK_SECRET')).toEqual([])
-      expect(loggedViolations(server.logs)).toEqual([
+      expect(loggedViolations(server)).toEqual([
         originalLocation(`client ${deniedFileUse}`, 1),
       ])
     },
@@ -2450,12 +2412,12 @@ export const app = [read, router]
 
 // A split route component, rendered by a real page: dev-page.test.ts.
 
-// The route module the router plugin compiles (with route HMR in dev): the
-// code frame of a violation shows the route file as the user wrote it.
+// The route module the router plugin compiles (with route HMR in dev): a
+// violation is located in the route file as the user wrote it.
 // Source: r5-gaps N12 (rp:532-534: the route module's source map without
 // the source text, so import protection showed the compiled module).
 test(
-  "the code frame of a denied import used in a route module shows the route file's source, with Start's whole plugin",
+  "a denied import used in a route module is located in the route file's source, with Start's whole plugin",
   async () => {
     const route = `import { createFileRoute } from '@tanstack/react-router'
 import { secret } from '../secret.server' /* ORIGINAL_IMPORT */
@@ -2466,31 +2428,20 @@ export const Route = createFileRoute('/')({
   component: () => 'page',
 })
 `
-    const server = await startDevServer({
-      start: {},
-      files: {
-        'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
-        'src/routes/index.tsx': route,
-        'src/router.ts': `import { routeTree } from './routeTree.gen'
+    const server = await startRecordingApp({
+      'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+      'src/routes/index.tsx': route,
+      'src/router.ts': `import { routeTree } from './routeTree.gen'
 export const getRouter = () => ({ routeTree })
 `,
-      },
-      config: { server: { hmr: false } },
     })
     await server.load('/src/router.ts')
     await server.idle()
-    const reports = violationReports(server.logs)
-    expect(reports).not.toEqual([])
     const use = locationIn('src/routes/index.tsx', route, 6, 'secret()')
-    // At the use or the import (SPEC J6.5), the frame shows the route
-    // file's own line there, caret at the reported column; its context is
-    // free (§5.7; V1R ip I01).
-    expectViolationsAt(server.logs, [
-      { environment: 'client', use, source: route },
+    // At the use or the import (SPEC J6.5; V1R ip I01).
+    expectViolationsAt(server, [
+      { environment: 'client', use, also: ['src/routes/index.tsx:2'] },
     ])
-    for (const report of reports) {
-      expectReportFrame(report, route)
-    }
   },
   timeout,
 )
@@ -2553,13 +2504,13 @@ export const Page = () => <div>{String(1)}</div>
       )
       await server.load('/src/entry.ts', { environment })
       // (SSR: the entry's import of the marked module is reported as well)
-      const inA = loggedViolations(server.logs).filter((violation) =>
+      const inA = loggedViolations(server).filter((violation) =>
         violation.includes(' src/a.tsx'),
       )
       expect(marker ? distinct([...inA, expected]) : inA).toEqual([
         originalLocation(expected, 1),
       ])
-      expect(loggedViolations(server.logs)).not.toEqual([])
+      expect(loggedViolations(server)).not.toEqual([])
     },
     timeout,
   )
@@ -2596,7 +2547,7 @@ export const Page = () => <div>{String(secret())}</div>
       // (the reports with a location: the one naming the resolved path
       // has none, see the 'once' pin of `log`)
       expect(
-        loggedViolations(server.logs).filter((v) => /:\d+:\d+$/.test(v)),
+        loggedViolations(server).filter((v) => /:\d+:\d+$/.test(v)),
       ).toEqual([originalLocation('client src/a.tsx:2:40', 1)])
     },
     timeout,
@@ -2623,7 +2574,7 @@ export const Page = () => <div>{String(secret())}</div>
         { client: { specifiers: ['@acme/*'] } },
       )
       await server.load('/src/entry.ts')
-      expect(loggedViolations(server.logs)).toEqual([
+      expect(loggedViolations(server)).toEqual([
         originalLocation('client src/a.tsx:2:40', 1),
       ])
     },
@@ -2647,11 +2598,11 @@ export const read = () => secret()
   async function tracesOf(importProtection: ImportProtectionOptions) {
     const server = await startProtectedDevServer(chainApp, importProtection)
     await server.load('/src/entry.ts')
-    const reports = violationReports(server.logs)
+    const reports = violationsOf(server)
     expect(reports).not.toEqual([])
     return reports.map(({ trace }) =>
       trace.map(({ at, imports }) => ({
-        file: at.replace(/:\d+:\d+$/, ''),
+        file: at.replace(/(?::\d+)+$/, ''),
         imports,
       })),
     )

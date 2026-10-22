@@ -15,6 +15,7 @@ import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import {
   expectViolationsAt,
   locationIn,
+  violationRecorder,
 } from '../../importProtection/start-apps'
 
 const timeout = 30_000
@@ -80,15 +81,20 @@ const plainIndex = `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({ component: () => 'MARK_PAGE' })
 `
 
-/** Starts the app of `files` and opens its page `/` once it hydrated. */
+/**
+ * Starts the app of `files` and opens its page `/` once it hydrated; the
+ * server records the violations Start reports (`violations`).
+ */
 async function openApp(files: Record<string, string>) {
-  const server = await startDevServer({
-    start: {},
+  const recorder = violationRecorder()
+  const started = await startDevServer({
+    start: { importProtection: { onViolation: recorder.onViolation } },
     browser: true,
     config,
     plugins: [react()],
     files,
   })
+  const server = Object.assign(started, { violations: recorder.violations })
   const browser = await openPage(new URL('/', server.url).href, {
     registerCleanup: onTestFinished,
   })
@@ -150,11 +156,11 @@ return describeValue(window.leaked(), 'MARK_SECRET')
     'a denied import of a module the client entry imports is logged',
     async () => {
       const { server } = await openApp(clientEntryApp)
-      expectViolationsAt(server.logs, [
+      expectViolationsAt(server, [
         {
           environment: 'client',
           use: locationIn('src/leak.ts', leak, 2, 'secret()'),
-          source: leak,
+          also: ['src/leak.ts:1'],
         },
       ])
     },
@@ -180,7 +186,13 @@ export default { fetch: () => new Response(String(handler())) }
   })
 
   const request = async (files: Record<string, string>) => {
-    const server = await startDevServer({ start: {}, listen: true, files })
+    const recorder = violationRecorder()
+    const started = await startDevServer({
+      start: { importProtection: { onViolation: recorder.onViolation } },
+      listen: true,
+      files,
+    })
+    const server = Object.assign(started, { violations: recorder.violations })
     return { server, response: await server.fetch('/') }
   }
 
@@ -215,11 +227,11 @@ export default { fetch: () => new Response(String(handler())) }
     async () => {
       const { server, response } = await request(serverEntryApp(handler))
       expect(response.body).not.toContain('MARK_CLIENT')
-      expectViolationsAt(server.logs, [
+      expectViolationsAt(server, [
         {
           environment: 'server',
           use: locationIn('src/handler.ts', handler, 2, 'widget()'),
-          source: handler,
+          also: ['src/handler.ts:1'],
         },
       ])
     },
@@ -258,16 +270,16 @@ export const Route = createFileRoute('/')({
       })
       await browser.waitForText('MARK_RENDERED', { selector: '#app' })
       expect(await browser.text('#app')).not.toContain('MARK_SECRET')
-      expectViolationsAt(server.logs, [
+      expectViolationsAt(server, [
         {
           environment: 'client',
           use: locationIn('src/routes/index.tsx', route, 6, 'secret()'),
-          source: route,
+          also: ['src/routes/index.tsx:2'],
         },
         {
           environment: 'client',
           use: locationIn('src/widget.ts', widget, 2, 'secret()'),
-          source: widget,
+          also: ['src/widget.ts:1'],
         },
       ])
     },

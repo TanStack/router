@@ -12,10 +12,7 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import {
-  captureConsole,
-  expectDiagnostic,
-} from '@tanstack/compiler-test-utils/diagnostics'
+import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
 import { routerDevServer } from '../dev-server'
 import {
   compileRouteModules,
@@ -157,10 +154,12 @@ describe('the host reports what plugins log through it', () => {
           { command, filename: 'warned.tsx', plugins: { before: [warner()] } },
         ),
       )
-      expectDiagnostic(diagnostics, {
-        severity: 'warning',
-        names: ['MARK_PLUGIN_WARNING'],
-      })
+      expect(
+        diagnostics.filter(
+          ({ severity, text }) =>
+            severity === 'warning' && text.includes('MARK_PLUGIN_WARNING'),
+        ),
+      ).toHaveLength(1)
     },
   )
 })

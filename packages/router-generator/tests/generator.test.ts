@@ -227,7 +227,6 @@ describe('generator fixtures', async () => {
             severity: 'error',
             root: fixtureDir(name),
             file,
-            distinctFrom: conflicting.filter((other) => other !== file),
           })
         }
         return

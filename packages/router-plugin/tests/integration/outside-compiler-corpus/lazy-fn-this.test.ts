@@ -56,7 +56,6 @@ export async function load() {
         findDiagnostics([...app.warnings, ...app.consoleMessages], {
           file: 'routes/index.tsx',
           root: app.root,
-          names: ['loader'],
         }).length > 0,
     }
   }

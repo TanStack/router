@@ -2,14 +2,14 @@
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import {
-  locatedImporters,
+  inEnvironment,
+  receivedViolations,
   rejection,
   startProtectedDevServer,
-  violationReports,
+  violationsOf,
 } from '../../importProtection/start-apps'
 import { probeMockPrelude, safeMock } from '../../importProtection/mock-helpers'
-import { inEnvironment } from '../../importProtection/violation-report'
-import { failureOf } from './channels'
+import { originalLocation } from '../../importProtection/original-location'
 import { runViteClient, startBrowserProtectedDevServer } from './client-pages'
 import type { ImportProtectionOptions } from '../../importProtection/public-types'
 
@@ -57,13 +57,16 @@ describe.each(startBundlers)('%s public import rules', (bundler) => {
           start: { importProtection: { client: { specifiers } } },
         }),
       )
-      expect(violationReports(error)).toEqual([
+      expect(violationsOf(error)).toEqual([
         expect.objectContaining({
           environment: 'client',
           specifier: 'private-sdk',
         }),
       ])
-      expect(locatedImporters(error, files)).toEqual(['client src/entry.ts'])
+      // (at the use, or the import on line 1)
+      expect(receivedViolations(error.violations, error.root)).toEqual([
+        originalLocation('client src/entry.ts:2:21', 1),
+      ])
     },
     timeout,
   )
@@ -83,7 +86,7 @@ describe.each(startBundlers)('%s public import rules', (bundler) => {
         },
       })
       const { client } = build
-      expect(violationReports(inEnvironment(build, 'client'))).toEqual([])
+      expect(violationsOf(inEnvironment(build, 'client'))).toEqual([])
       expect((await client.run('return entry.value')).result).toBe(
         `REAL_${name}`,
       )
@@ -108,7 +111,7 @@ describe.each(startBundlers)('%s public import rules', (bundler) => {
         },
       })
       const { client } = build
-      expect(violationReports(inEnvironment(build, 'client'))).toEqual([])
+      expect(violationsOf(inEnvironment(build, 'client'))).toEqual([])
       expect((await client.run('return entry.value')).result).toBe(
         'REAL_private-sdk',
       )
@@ -129,7 +132,7 @@ describe.each(startBundlers)('%s public import rules', (bundler) => {
         start: { importProtection: { behavior: 'mock', mockAccess: 'off' } },
       })
       const { client } = build
-      expect(violationReports(inEnvironment(build, 'client'))).toHaveLength(1)
+      expect(violationsOf(inEnvironment(build, 'client'))).toHaveLength(1)
       expect(client.where('MARK_SECRET')).toBe('nowhere')
       expect(
         (
@@ -158,17 +161,22 @@ test(
       behavior: 'error',
       client: { specifiers: ['@(private-sdk|internal-sdk)'] },
     })
-    const { reported } = await failureOf(server, () =>
-      server.load('/src/entry.ts'),
-    )
-    expect(violationReports(reported)).toEqual([
-      expect.objectContaining({
-        environment: 'client',
-        specifier: 'private-sdk',
-      }),
-    ])
+    await rejection(server.load('/src/entry.ts'))
+    // (each time the dev server resolves the import, with behavior "error")
+    const reported = violationsOf(server)
+    expect(reported).not.toEqual([])
+    for (const violation of reported) {
+      expect(violation).toEqual(
+        expect.objectContaining({
+          environment: 'client',
+          specifier: 'private-sdk',
+        }),
+      )
+    }
     // (at the bare import, line 1)
-    expect(locatedImporters(reported, files)).toEqual(['client src/entry.ts'])
+    expect(receivedViolations(server.violations, server.root)).toEqual([
+      originalLocation('client src/entry.ts:1:1', 1),
+    ])
   },
   timeout,
 )
@@ -199,11 +207,12 @@ test.each([/^private-sdk$/g, /^private-sdk$/y])(
 return entry.readAll().map((value) => probeMock(value, 'REAL_private-sdk'))`,
     )
     expect(result).toEqual([safeMock, safeMock, safeMock])
-    expect(locatedImporters(server.logs, files).sort()).toEqual([
-      'client src/a.ts',
-      'client src/b.ts',
-      'client src/c.ts',
-    ])
+    // (each at its use, or its import on line 1)
+    expect(receivedViolations(server.violations, server.root).sort()).toEqual(
+      ['a', 'b', 'c'].map((name) =>
+        originalLocation(`client src/${name}.ts:2:24`, 1),
+      ),
+    )
   },
   timeout,
 )

@@ -163,10 +163,13 @@ export const topLevelIsomorphicFn = createIsomorphicFn()
       'client',
     ])
     const ssr = await served.ssr()
-    expect(
-      // eslint-disable-next-line @typescript-eslint/no-implied-eval
-      new Function('module', `return ${callFactories}`)(ssr),
-    ).toEqual(['server-web', 'server-a', UNDEFINED, UNDEFINED, 'server'])
+    expect(new Function('module', `return ${callFactories}`)(ssr)).toEqual([
+      'server-web',
+      'server-a',
+      UNDEFINED,
+      UNDEFINED,
+      'server',
+    ])
     await expectEnvImports(served)
   })
 

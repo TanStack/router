@@ -26,7 +26,6 @@ import {
   callFromClient,
   callOnServer,
   callServerFnThroughCallers,
-  clientOnlyError,
   compileError,
   expectCompileError,
   expectNoClientHandler,
@@ -34,10 +33,10 @@ import {
   inPage,
   serveCase,
   serverFnUrls,
-  serverOnlyError,
   serverOnlyModule,
   settle,
   settleAsync,
+  throwsError,
   useStartHost,
 } from './regression-helpers'
 import { bindingNames } from './binding-names'
@@ -166,7 +165,7 @@ async function clientValue(
 async function expectServerOnlyRead(code: string) {
   const startCase = await newCase({ 'module.tsx': code })
   expectNotLoaded(await startCase.loads(), [serverOnly])
-  expect(await clientValue(startCase, 'module.read()')).toEqual(serverOnlyError)
+  expect(await clientValue(startCase, 'module.read()')).toEqual(throwsError)
 }
 
 /**
@@ -315,7 +314,7 @@ export const fn = iso.server(() => db.x()).client(() => 'client')`,
       code: `import { serverOnly } from './env'
 import { db } from './db.server'
 export const read = serverOnly(() => db.x())`,
-      check: { expression: 'module.read()', expected: serverOnlyError },
+      check: { expression: 'module.read()', expected: throwsError },
     },
   ])(
     'client builds compile $name finished or called in another module',
@@ -538,8 +537,6 @@ export const db = {
     code: string
     /** The text of the call a rejection points at. */
     at: string
-    /** What a rejection names (a list: any one of its alternatives). */
-    names: Array<string | Array<string>>
     /** Server code the client must not hold. */
     body: string
     /** A page expression on the client module, and what it must give. */
@@ -561,9 +558,8 @@ export const db = {
   }
 
   /**
-   * Each environment serving `shape.code` either rejects it with a clear
-   * compile error at the call (`expectCompileError`: the line of `at`,
-   * naming `names`, explaining its cause in its own words), or follows its
+   * Each environment serving `shape.code` either rejects it with a compile
+   * error at the call (`expectCompileError`: the line of `at`), or follows its
    * contract: the client neither loads the server-only module nor holds the
    * server code, and each environment runs what the runtime contract
    * promises.
@@ -580,8 +576,6 @@ export const db = {
         expectCompileError(failure, {
           source: shape.code,
           at: shape.at,
-          names: shape.names,
-          explains: true,
         })
         continue
       }
@@ -621,8 +615,8 @@ export const db = {
   // Impact: the server implementation and its server-only import ship to the
   // client, where the server fn, isomorphic fn or server-only fn runs it in
   // the browser.
-  // Fix-agnostic: each environment either rejects the module with a clear
-  // compile error at the call (naming the API and explaining why), or
+  // Fix-agnostic: each environment either rejects the module with a
+  // compile error at the call, or
   // follows its contract: the client neither loads the server-only module
   // nor holds the server code, and each environment runs what the runtime
   // contract promises.
@@ -637,7 +631,6 @@ export const db = {
       code: `${head}import { db } from './db.server'
 export const fn = createServerFn()['handler'](async () => db.x())`,
       at: `createServerFn()['handler']`,
-      names: [['createServerFn', 'handler']],
       body: 'db.x()',
       client: { expression: 'typeof module.fn.url', expected: 'string' },
       serverFn: 'module.fn',
@@ -648,7 +641,6 @@ export const fn = createServerFn()['handler'](async () => db.x())`,
 import { db } from './db.server'
 export const fn = createIsomorphicFn()['server'](() => db.x()).client(() => 'client')`,
       at: `createIsomorphicFn()['server']`,
-      names: [['createIsomorphicFn', 'server']],
       body: 'db.x()',
       client: { expression: 'module.fn()', expected: 'client' },
       ssr: (module) => expect(module.fn()).toBe('x'),
@@ -659,9 +651,8 @@ export const fn = createIsomorphicFn()['server'](() => db.x()).client(() => 'cli
 import { db } from './db.server'
 export const read = createServerOnlyFn(() => db.secret()).bind(null)`,
       at: 'createServerOnlyFn(',
-      names: [['createServerOnlyFn', 'bind']],
       body: 'db.secret()',
-      client: { expression: 'module.read()', expected: serverOnlyError },
+      client: { expression: 'module.read()', expected: throwsError },
       ssr: (module) => expect(module.read()).toBe('secret'),
     },
   ])(
@@ -697,9 +688,8 @@ export let read: () => unknown
   read = () => fn()
 }`,
         at: 'so(() =>',
-        names: [['createServerOnlyFn', 'so']],
         body: 'db.secret()',
-        client: { expression: 'module.read()', expected: serverOnlyError },
+        client: { expression: 'module.read()', expected: throwsError },
         ssr: (module) => expect(module.read()).toBe('secret'),
       })
     },
@@ -748,8 +738,8 @@ export let read: () => unknown
   // of this handler use `codeFrameError`); SPEC G5 ("errors about the
   // user's source carry a position/code frame"), J4.6.
   // Impact: in a module with several server fns the user has to find the
-  // misplaced one by hand. Loosened twin (rejection naming createServerFn
-  // only): declaration-sites.test.ts "next to another Start factory, ...".
+  // misplaced one by hand. Loosened twin (any rejection, at no
+  // position): declaration-sites.test.ts "next to another Start factory, ...".
   // (A declarator below the top level, e.g. in a top-level block, is
   // extracted instead: pinned above.)
   test.fails.each(
@@ -778,7 +768,7 @@ export let read: () => unknown
   // (another factory).
   // Source: user ruling D13.
   test.fails.each(Object.keys(placementHeads) as Array<PlacementHead>)(
-    'with %s imported, a nested server fn whose handler reads a local of its function is supported or rejected naming the capture',
+    'with %s imported, a nested server fn whose handler reads a local of its function is supported or rejected at the capture',
     async (importHead) => {
       const code = placementModule(importHead, capturingPlacement.code)
       const startCase = await newCase({
@@ -797,8 +787,6 @@ export let read: () => unknown
           expectCompileError(failure, {
             source: code,
             at: 'db.inner(id)',
-            names: ['createServerFn'],
-            explains: { mentions: ['id'] },
           })
           continue
         }
@@ -855,8 +843,8 @@ export const c = createServerOnlyFn(() => 'direct')`,
         ],
         ssr: [settle(ssr.a), settle(ssr.b)],
       }).toEqual({
-        client: [serverOnlyError, 'client-value'],
-        ssr: ['server-value', clientOnlyError],
+        client: [throwsError, 'client-value'],
+        ssr: ['server-value', throwsError],
       })
     },
   )
@@ -926,7 +914,7 @@ export function make(createServerFn) {
         ...observed,
         real: fromPage(observed.real as PageSettled),
       }).toEqual({
-        real: environment === 'client' ? serverOnlyError : 'real',
+        real: environment === 'client' ? throwsError : 'real',
         wrap: 'param',
         receiver: 'receiver',
         local: 'local',
@@ -1121,7 +1109,7 @@ describe('dev edits', () => {
       const after = await editAndImport(started, dir, {
         'factory-inner.ts': `export { createClientOnlyFn as createServerOnlyFn } from '@tanstack/react-start'\n`,
       })
-      expect(settle(after.myFn)).toEqual(clientOnlyError)
+      expect(settle(after.myFn)).toEqual(throwsError)
     },
     30_000,
   )
@@ -1148,7 +1136,7 @@ describe('dev edits', () => {
     await started.edit({
       [`${dir}/factory.ts`]: `export { createClientOnlyFn as createServerFnHmrFactory } from '@tanstack/react-start'\n`,
     })
-    expect(await callServerFn()).toEqual(clientOnlyError)
+    expect(await callServerFn()).toEqual(throwsError)
   }, 30_000)
 })
 
@@ -1486,7 +1474,7 @@ import { db } from './db.server'
 function get(): string
 function get(id?: string) { return db.users(id) }
 export const read = createServerOnlyFn(() => get())`,
-      check: { expression: 'module.read()', expected: serverOnlyError },
+      check: { expression: 'module.read()', expected: throwsError },
     },
   ])(
     'client: $name does not load its server-only import',

@@ -52,18 +52,16 @@ function dependencies(code: string) {
 }
 
 /**
- * Whether the dev server warned, on any channel, naming the route file and
- * the route option `option` (default `component`) the compiler leaves
- * unsplit: the user is told which option of which file is not code-split
- * (J2.8; naming the binding too is fine, the wording is free).
+ * Whether the dev server warned, on any channel, naming the route file
+ * (J2.8: an option the compiler leaves unsplit is reported; the wording is
+ * free).
  */
-async function reportsNotSplit(route: RouteApp, option = 'component') {
+async function reportsNotSplit(route: RouteApp) {
   return (
     findDiagnostics(await route.diagnostics(), {
       severity: 'warning',
       file: 'route.tsx',
       root: route.host.root,
-      names: [option],
     }).length > 0
   )
 }

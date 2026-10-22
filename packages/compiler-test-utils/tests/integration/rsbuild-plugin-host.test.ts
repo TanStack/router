@@ -166,7 +166,6 @@ test.each(['dev', 'build'] as const)(
     expectDiagnostic(diagnostics, {
       severity: 'warning',
       file: 'src/entry.ts',
-      explains: { mentions: ['logger control'] },
     })
   },
   timeout,

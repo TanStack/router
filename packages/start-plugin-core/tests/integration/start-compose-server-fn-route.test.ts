@@ -23,7 +23,10 @@ import {
 } from 'vitest'
 import { buildStart, callByIdPrelude, startBundlers } from '../build-harness'
 import { startDevServer, startServerEntryFiles } from '../dev-server'
-import { reportedViolations } from '../importProtection/start-apps'
+import {
+  reportedViolations,
+  violationRecorder,
+} from '../importProtection/start-apps'
 import {
   openAppPage,
   pageEntries,
@@ -220,8 +223,9 @@ describe('Vite dev server with Start', () => {
   test(
     'the page navigates to the route, and the loader and a click call the same server fn the dev server answers',
     async () => {
+      const recorder = violationRecorder()
       const server = await startDevServer({
-        start: {},
+        start: { importProtection: recorder.importProtection },
         browser: true,
         config: {
           optimizeDeps: {
@@ -264,8 +268,7 @@ describe('Vite dev server with Start', () => {
         true,
       )
       expect(result.requests[1]).toBe(result.requests[0])
-      // (every channel of the dev server)
-      expect(reportedViolations(server)).toEqual([])
+      expect(reportedViolations({ root: server.root, ...recorder })).toEqual([])
     },
     timeout,
   )

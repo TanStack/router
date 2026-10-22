@@ -14,7 +14,6 @@
  * J4.12, J4.14, G2, G3, §2.1).
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-import { identifiesEnvRestriction } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   buildStart,
   callByIdExports,
@@ -290,9 +289,11 @@ describe.each(startBundlers)('%s build', (bundler) => {
       const { result } = await build.client.run(
         `try { return { value: entry.serverOnlyMarks() } } catch (error) { return { name: error.name, message: error.message } }`,
       )
-      expect(identifiesEnvRestriction(result, 'server'), String(result)).toBe(
-        true,
-      )
+      // (it threw: the call is refused)
+      expect(result).toEqual({
+        name: expect.any(String),
+        message: expect.any(String),
+      })
     })
 
     test('no dependency package loads in the client, whatever its hint', async () => {

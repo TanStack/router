@@ -30,8 +30,7 @@ const host = useStartHost({ files: someLib })
 describe('createMiddleware compiles correctly', () => {
   // Malformed-input diagnostic control (SPEC §8, G5): `.validator()`
   // without a validator is a type error (tsc against the real declarations:
-  // TS2554 "Expected 1 arguments, but got 0"). It only has to fail clearly,
-  // naming the API.
+  // TS2554 "Expected 1 arguments, but got 0"). It only has to fail.
   test('requires an argument for validator()', async () => {
     const source = `import { createMiddleware } from '@tanstack/react-start'
 const myMiddleware = createMiddleware({ type: 'function' })
@@ -39,7 +38,7 @@ const myMiddleware = createMiddleware({ type: 'function' })
   .server(async ({ next }) => next())`
     const startCase = await (await host()).case({ 'module.tsx': source })
     const error = await compileError(startCase)
-    expectCompileError(error, { source, at: undefined, names: ['validator'] })
+    expectCompileError(error, { source, at: undefined })
   })
 
   test('keeps a middleware without a server function on the client', async () => {

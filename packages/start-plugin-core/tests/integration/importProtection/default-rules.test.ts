@@ -3,8 +3,8 @@
  * app (Vite dev server with Start's whole public plugin, mock mode): what a
  * user gets with no `importProtection` option (SPEC J6.1, J6.10; the guide's
  * options table), and how a configured glob or RegExp matches (J6.1,
- * J6.11). Read from what the dev server reports (`locatedImporters`: the
- * reported importer, at a relevant original place), in each environment.
+ * J6.11). Read from what the dev server reports (`reportedImporters`: the
+ * importer `onViolation` receives), in each environment.
  *
  * - The client denies the server entry of every Start framework
  *   (`@tanstack/{react,solid,vue}-start/server`) and every module marked
@@ -23,7 +23,7 @@
  */
 import { describe, expect, test } from 'vitest'
 import {
-  locatedImporters,
+  reportedImporters,
   startProtectedDevServer,
 } from '../../importProtection/start-apps'
 
@@ -92,7 +92,7 @@ export const useDep = () => [secret(), widget()]
 
 /**
  * Asserts that the reports of `environment` (`located`, from
- * `locatedImporters`) are exactly the `expected` violations, each reported
+ * `reportedImporters`) are exactly the `expected` violations, each reported
  * (at least once) at one of its relevant files: the importer, or for a
  * marker violation the marked module (audit F ASK-1).
  */
@@ -192,7 +192,7 @@ export * from './uses/dep'
         skip: /(?:^|\/)node_modules\/|^node:|^\/@vite\//,
       })
       await server.import('/src/entry.ts', 'ssr')
-      return locatedImporters(server.logs, files)
+      return reportedImporters(server)
     })())
 
   test(
@@ -268,7 +268,7 @@ describe('excludeFiles: [] checks the files of a dependency', () => {
       const loaded = await server.load('/src/entry.ts', {
         skip: /^node:|^\/@vite\//,
       })
-      expectReported(locatedImporters(server.logs, files), 'client', {
+      expectReported(reportedImporters(server), 'client', {
         'dependency server file': ['src/uses/dep.ts'],
       })
       expect(
@@ -302,7 +302,7 @@ describe('excludeFiles: [] checks the files of a dependency', () => {
         server: { excludeFiles: [] },
       })
       await server.import('/src/entry.ts', 'ssr')
-      expectReported(locatedImporters(server.logs, files), 'server', {
+      expectReported(reportedImporters(server), 'server', {
         'dependency client file': ['src/uses/dep.ts'],
       })
     },
@@ -347,7 +347,7 @@ export * from './uses/pg-pool'
         mockAccess: 'off',
       })
       await server.load('/src/entry.ts')
-      expectReported(locatedImporters(server.logs, files), 'client', {
+      expectReported(reportedImporters(server), 'client', {
         'the deep glob': ['src/uses/deep-server.ts'],
         'the anchored RegExp': ['src/uses/postgres.ts'],
       })

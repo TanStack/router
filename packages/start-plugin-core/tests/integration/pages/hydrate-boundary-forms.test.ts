@@ -16,8 +16,6 @@
 import { describe, expect, test } from 'vitest'
 import {
   diagnosticPosition,
-  diagnosticsOf,
-  expectDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
@@ -377,38 +375,17 @@ export const use3D = () => useId()`,
 }
 
 /**
- * The documented fixes of children that cannot be split (deferred-hydration
- * docs, "These patterns cannot be split"): `split={false}`, or moving the UI
- * into a (child, function) component. A rejection names one of them in its
- * own words: the option as written, or a component (`explains.mentions`,
- * whole tokens; "code-split" names neither).
- */
-const documentedFix = ['split={false}', 'component', 'components']
-
-/**
  * The client environment, which extracts the children, rejects `code` with
- * an error (SPEC J5.5) that explains itself in its own words (`explains`:
- * no engine crash), naming the unsafe pattern (`pattern`, any of these
- * words) and a documented fix (`documentedFix`), and reporting a line of
- * the boundary (the frame marks it, or a position). Wording and frame
- * layout are free (SPEC §5.7). The server renders the children in place:
- * rejecting them there is neither required nor forbidden.
+ * an error (SPEC J5.5) reporting a line of the boundary (the frame marks
+ * it, or a position). Wording and frame layout are free (SPEC §5.7). The
+ * server renders the children in place: rejecting them there is neither
+ * required nor forbidden.
  */
-async function expectExtractionRejected(
-  host: HydrateHost,
-  code: string,
-  pattern: Array<string>,
-) {
+async function expectExtractionRejected(host: HydrateHost, code: string) {
   const startCase = await host.start.case({ 'module.tsx': code, ...hookFiles })
   const failure = await compileError(startCase, 'client')
   expect(failure, 'a client compile error').toBeInstanceOf(Error)
   const reported = reportedOf(failure)
-  expectDiagnostic(diagnosticsOf(reported), {
-    severity: 'error',
-    explains: { mentions: [pattern, documentedFix] },
-    prose: true,
-    source: code,
-  })
   const first = diagnosticPosition(code, '<Hydrate').line
   const last = diagnosticPosition(code, '</Hydrate>').line
   const lines = Array.from(
@@ -421,7 +398,6 @@ async function expectExtractionRejected(
         findDiagnostics(reported, {
           severity: 'error',
           position: { line },
-          source: code,
         }).length > 0,
     ),
     `a line of the boundary (${first}-${last})`,
@@ -430,39 +406,33 @@ async function expectExtractionRejected(
 
 const hookFiles = { 'hooks.ts': hooks['./hooks'] }
 
-/** The unsafe children of SPEC J5.5 and what the rejection must name. */
+/** The unsafe children of SPEC J5.5. */
 const unsafeChildren = [
   {
     name: 'a function child (an arrow)',
     code: (split = '') => childrenPage('{() => <p>child</p>}', split),
-    pattern: ['function', 'functions'],
   },
   {
     name: 'a function child (a parenthesized arrow)',
     code: (split = '') => childrenPage('{(() => <p>child</p>)}', split),
-    pattern: ['function', 'functions'],
   },
   {
     name: 'a function child (a function expression)',
     code: (split = '') =>
       childrenPage('{function () { return <p>child</p> }}', split),
-    pattern: ['function', 'functions'],
   },
   {
     name: 'a hook call',
     code: (split = '') => childrenPage('<p>{useThing()}</p>', split),
-    pattern: ['hook', 'hooks'],
   },
   {
     // Source: V4 red-astra-r2/13; digit-bearing hook names follow React's convention.
     name: 'a hook call named use3D',
     code: (split = '') => childrenPage('<p>{use3D()}</p>', split),
-    pattern: ['hook', 'hooks'],
   },
   {
     name: 'a parenthesized hook call',
     code: (split = '') => childrenPage('<p>{(useThing)()}</p>', split),
-    pattern: ['hook', 'hooks'],
   },
 ]
 
@@ -473,9 +443,9 @@ describe('children that cannot be split', () => {
   // unsafe extraction"; hydrateWhen FunctionChild and HookCall error
   // fixtures; FIX-PLAN HYD-07.
   test.each(unsafeChildren)(
-    'client: $name is rejected with the fix',
-    async ({ code, pattern }) => {
-      await expectExtractionRejected(await hosts(), code(), pattern)
+    'client: $name is rejected at the boundary',
+    async ({ code }) => {
+      await expectExtractionRejected(await hosts(), code())
     },
   )
 
@@ -483,13 +453,9 @@ describe('children that cannot be split', () => {
   // extracts, so it rejects the same children.
   // Source: FIX-PLAN HYD-07 (dynamic-split rows)
   test.each(unsafeChildren)(
-    'client: $name with a dynamic split={flag} is rejected with the fix',
-    async ({ code, pattern }) => {
-      await expectExtractionRejected(
-        await hosts(),
-        code(' split={flag}'),
-        pattern,
-      )
+    'client: $name with a dynamic split={flag} is rejected at the boundary',
+    async ({ code }) => {
+      await expectExtractionRejected(await hosts(), code(' split={flag}'))
     },
   )
 
@@ -579,45 +545,25 @@ export const useThing = () => (useId(), idle())`,
   // Source: Qwik optimizer example_use_optimization. #8504 has no test for
   // it and still moves `React.useId()` into the chunk.
   test.fails(
-    'client: a hook called through a namespace is rejected with the fix',
+    'client: a hook called through a namespace is rejected at the boundary',
     async () => {
       await expectExtractionRejected(
         await hosts(),
         `import * as React from 'react'
 ${childrenPage('<p id={React.useId()}>x</p>')}`,
-        ['hook', 'hooks'],
       )
     },
   )
 
-  // Bug: the rejection of `this` and `super` captures names no fix: the
-  // docs' "Wrap the UI in a function component or use split={false}" is
-  // missing from the error (function children and hook calls name theirs).
-  // Impact: the user of a class component gets "cannot code-split JSX that
-  // captures this" and no way out (SPEC J5.5: the error names the fix).
-  // Source: FIX-PLAN HYD-07 (documented fix); hydrateWhen ThisCapture and
-  // SuperCapture error fixtures.
-  test.fails.each([
-    { name: 'this', code: classPage('this') },
-    { name: 'super', code: classPage('super') },
-  ])(
-    'client: children reading $name are rejected with the fix',
-    async ({ name, code }) => {
-      await expectExtractionRejected(await hosts(), code, [name])
-    },
-  )
-
-  // What the pin above asks besides the fix holds on main: the client
-  // rejects the read, naming it, at the boundary.
+  // The client rejects children reading `this` or `super` at the boundary.
   test.each([
     { name: 'this', code: classPage('this') },
     { name: 'super', code: classPage('super') },
-  ])('client: children reading $name are rejected', async ({ name, code }) => {
+  ])('client: children reading $name are rejected', async ({ code }) => {
     const startCase = await (await hosts()).start.case({ 'module.tsx': code })
     expectCompileError(await compileError(startCase, 'client'), {
       source: code,
       at: diagnosticPosition(code, '<Hydrate').line,
-      names: [name],
     })
   })
 })

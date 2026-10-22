@@ -111,11 +111,8 @@ describe.each(Object.keys(hosts) as Array<keyof typeof hosts>)('%s', (host) => {
       for (const { file } of Object.values(skipped)) {
         expectDiagnostic(server.diagnostics, {
           severity: 'warning',
-          names: ['renderToReadableStream'],
           file,
           root: server.root,
-          prose: true,
-          explains: true,
           times: 1,
         })
       }

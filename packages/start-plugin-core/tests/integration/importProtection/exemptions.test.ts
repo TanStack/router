@@ -11,9 +11,12 @@
 import { afterAll, afterEach, describe, expect, test, vi } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
-import { locatedImporters } from '../../importProtection/start-apps'
-import { inEnvironment } from '../../importProtection/violation-report'
+import {
+  inEnvironment,
+  reportedImporters,
+} from '../../importProtection/start-apps'
 import { runViteClient, startBrowserProtectedDevServer } from './client-pages'
+import type { Recorded } from '../../importProtection/start-apps'
 import type { StartBuild, StartBundler } from '../../build-harness'
 import type { ImportProtectionOptions } from '../../importProtection/public-types'
 
@@ -108,12 +111,11 @@ const exemptions: Array<{
 ]
 
 /**
- * The files of the reported violations, `<environment> <file>`, each
- * reported at a relevant original place of the file in `sources`
- * (`locatedImporters`), never at compiled coordinates.
+ * The files of the reported violations (`onViolation`), `<environment>
+ * <file>`, each once, sorted.
  */
-const reportedFiles = (output: unknown, sources: Record<string, string>) =>
-  [...new Set(locatedImporters(output, sources))].sort()
+const reportedFiles = (recorded: Recorded) =>
+  [...new Set(reportedImporters(recorded))].sort()
 
 /** What each re-exported use returns, and whether the denied file ran. */
 const readScript = `${readPrelude}
@@ -186,8 +188,8 @@ describe.each(startBundlers)('%s build', (bundler) => {
       const { result } = await build.client.run(readScript)
       return {
         ...(result as Omit<Outcome, 'reported'>),
-        // What the build reported for the client, on every channel
-        reported: reportedFiles(inEnvironment(build, 'client'), files),
+        // What the build reported for the client
+        reported: reportedFiles(inEnvironment(build, 'client')),
       }
     }
 
@@ -224,7 +226,7 @@ describe.each(exemptions)(
       )
       return {
         ...(result as Omit<Outcome, 'reported'>),
-        reported: reportedFiles(server.logs, files),
+        reported: reportedFiles(server),
       }
     }
 
@@ -343,10 +345,9 @@ function excludedBuild(
     const { result: read } = await build[environment].run(excludedReadScript)
     return {
       ...(read as Omit<ExcludedOutcome, 'reported'>),
-      // What the build reported for the environment, on every channel
+      // What the build reported for the environment
       reported: reportedFiles(
         inEnvironment(build, environment === 'ssr' ? 'server' : 'client'),
-        excludedFiles,
       ),
     }
   }
@@ -440,7 +441,7 @@ return { vendor: use(entry.vendorRead, 'vendorLoaded'), package: use(entry.packa
     )
     return {
       ...(result as Omit<ExcludedOutcome, 'widget' | 'reported'>),
-      reported: reportedFiles(server.logs, excludedFiles),
+      reported: reportedFiles(server),
     }
   }
 

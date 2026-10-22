@@ -20,7 +20,8 @@ import {
   reportedLocations,
   timeout,
 } from './reported-location-app'
-import type { ReportOutput } from '../../importProtection/violation-report'
+import type { Recorded } from '../../importProtection/start-apps'
+import type { StartBuildError } from '../../build-harness'
 
 // A use inside code the Start compiler removes from the client (a safe
 // boundary) is not reported: the client no longer imports the denied file.
@@ -98,7 +99,7 @@ export const fn = createClientOnlyFn(() => widget())
       'src/entry.ts': `export * from './a'\n`,
       'src/client.ts': `export const read = () => 'client'\n`,
     }
-    let output: ReportOutput
+    let output: Recorded
     if (channel === 'vite dev') {
       const server = await startProtectedDevServer(files)
       await server.load('/src/entry.ts', { environment: 'ssr' })
@@ -111,7 +112,7 @@ export const fn = createClientOnlyFn(() => widget())
         entry: { client: 'src/client.ts', ssr: 'src/entry.ts' },
       }).then(
         (build) => build,
-        (error: unknown) => {
+        (error: StartBuildError) => {
           if (reportedViolations(error).length === 0) {
             throw error
           }
@@ -133,9 +134,7 @@ export const fn = createClientOnlyFn(() => widget())
       expect(reports.map((report) => report.split(' ')[0])).toEqual(['server'])
       expectRelevantLocation(
         reports.map((report) => report.split(' ')[1]!),
-        insideAndOutside,
-        [locationIn('src/a.ts', insideAndOutside, 4, 'widget()')],
-        'src/a.ts',
+        [locationIn('src/a.ts', insideAndOutside, 4, 'widget()'), 'src/a.ts:2'],
       )
     },
     timeout,
@@ -153,9 +152,7 @@ export const readServer = createIsomorphicFn().server(() => widget())
       expect(reports.map((report) => report.split(' ')[0])).toEqual(['server'])
       expectRelevantLocation(
         reports.map((report) => report.split(' ')[1]!),
-        code,
-        [locationIn('src/a.ts', code, 4, 'widget()')],
-        'src/a.ts',
+        [locationIn('src/a.ts', code, 4, 'widget()'), 'src/a.ts:2'],
       )
     },
     timeout,

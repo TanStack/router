@@ -21,6 +21,7 @@ import {
   describeValue,
   describeValuePrelude,
 } from '../../importProtection/mock-helpers'
+import { violationRecorder } from '../../importProtection/start-apps'
 import {
   runInClient,
   runViteClient,
@@ -28,8 +29,8 @@ import {
   startBrowserRsbuildStartDevServer as startRsbuildStartDevServer,
 } from './client-pages'
 import {
-  appSources,
-  reportedImporters,
+  importersIn,
+  recordedSince,
   runRsbuildSsr,
   settledAcrossTurn,
   ssrNodeOutput,
@@ -212,17 +213,18 @@ describe('vite dev', () => {
 
   hostSuite(
     async () => {
+      // `log: 'always'`: a violation is logged on each load, so a stale
+      // violation shows in the logs of the step that removed it.
+      const recorder = violationRecorder({ log: 'always' })
       const server = await startDevServer({
         browser: true,
-        // `log: 'always'`: a violation is logged on each load, so a stale
-        // violation shows in the logs of the step that removed it.
-        start: { importProtection: { log: 'always' } },
+        start: { importProtection: recorder.importProtection },
         files: app,
         registerCleanup: (cleanup) => {
           dispose = cleanup
         },
       })
-      const sources = appSources(server.root)
+      const recorded = { root: server.root, ...recorder }
       const outcomes: Array<StepOutcome> = []
       for (const [index, step] of steps.entries()) {
         let clientReports: Array<string> | undefined
@@ -245,16 +247,15 @@ describe('vite dev', () => {
           await server.import('/src/router.ts', 'ssr')
           await server.idle()
           // The logs of the step: from its edit on
-          const clientSince = server.logs.length
+          const clientSince = recorder.violations.length
           await server.edit({ 'src/client-side.ts': clientSide(step.live) })
           await server.load('/src/router.ts')
           await server.idle()
-          clientReports = reportedImporters(
-            server.logs.slice(clientSince),
+          clientReports = importersIn(
+            recordedSince(recorded, clientSince),
             'client',
-            sources,
           )
-          serverSince = server.logs.length
+          serverSince = recorder.violations.length
           await server.edit({ 'src/server-side.ts': serverSide(step.live) })
         }
         const client = await runViteClient(
@@ -275,16 +276,15 @@ describe('vite dev', () => {
         }
         const served = await server.load('/src/router.ts')
         await server.idle()
-        const logs = server.logs.slice(serverSince)
+        const logs = recordedSince(recorded, serverSince)
         outcomes.push({
           client: {
             values: result.clientValues,
-            reported:
-              clientReports ?? reportedImporters(logs, 'client', sources),
+            reported: clientReports ?? importersIn(logs, 'client'),
           },
           server: {
             values: result.serverValues,
-            reported: reportedImporters(logs, 'server', sources),
+            reported: importersIn(logs, 'server'),
           },
           clientHasSecret: Object.values(served).some((code) =>
             code.includes('MARK_SECRET'),
@@ -304,20 +304,21 @@ describe('rsbuild dev', () => {
   afterAll(() => dispose?.())
 
   hostSuite(async () => {
+    // `log: 'always'`: each compile reports what it finds, so a stale
+    // violation shows in the compile of the step that removed it.
+    const recorder = violationRecorder({ log: 'always', mockAccess: 'off' })
     const server = await startRsbuildStartDevServer({
       compileTimeout,
       browser: true,
       hmr: false,
       config: ssrNodeOutput,
       files: app,
-      // `log: 'always'`: each compile reports what it finds, so a stale
-      // violation shows in the compile of the step that removed it.
-      start: { importProtection: { log: 'always', mockAccess: 'off' } },
+      start: { importProtection: recorder.importProtection },
       registerCleanup: (cleanup) => {
         dispose = cleanup
       },
     })
-    const sources = appSources(server.root)
+    const recorded = { root: server.root, ...recorder }
     const outcomes: Array<StepOutcome> = []
     for (const [index, step] of steps.entries()) {
       let clientReports: Array<string> | undefined
@@ -340,15 +341,14 @@ describe('rsbuild dev', () => {
         await settledAcrossTurn(server)
         await server.edit({ 'src/widget.client.ts': widgetClient(index) })
         await settledAcrossTurn(server)
-        const clientSince = server.diagnostics.length
+        const clientSince = recorder.violations.length
         await server.edit({ 'src/client-side.ts': clientSide(step.live) })
         await settledAcrossTurn(server)
-        clientReports = reportedImporters(
-          server.diagnostics.slice(clientSince),
+        clientReports = importersIn(
+          recordedSince(recorded, clientSince),
           'client',
-          sources,
         )
-        serverSince = server.diagnostics.length
+        serverSince = recorder.violations.length
         await server.edit({ 'src/server-side.ts': serverSide(step.live) })
         await settledAcrossTurn(server)
       }
@@ -356,17 +356,16 @@ describe('rsbuild dev', () => {
         expect(ran).toEqual({ result: expect.anything() })
         return (ran as { result: Record<string, string> }).result
       }
-      // Copy this settled state's diagnostic window before executing code.
-      const warnings = server.diagnostics.slice(serverSince)
+      // Copy this settled state's window before executing code.
+      const warnings = recordedSince(recorded, serverSince)
       outcomes.push({
         client: {
           values: values(await runInClient(server, observeScript)),
-          reported:
-            clientReports ?? reportedImporters(warnings, 'client', sources),
+          reported: clientReports ?? importersIn(warnings, 'client'),
         },
         server: {
           values: values(await runRsbuildSsr(server, observeScript)),
-          reported: reportedImporters(warnings, 'server', sources),
+          reported: importersIn(warnings, 'server'),
         },
         clientHasSecret: Object.values(await server.outputs('client')).some(
           (code) => code.includes('MARK_SECRET'),

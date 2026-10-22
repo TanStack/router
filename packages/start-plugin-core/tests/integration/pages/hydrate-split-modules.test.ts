@@ -6,11 +6,10 @@ import {
   positionAt,
   tokenOffsets,
 } from '@tanstack/compiler-test-utils/source-maps'
-import { diagnosticsOf } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   compileError,
+  expectCompileError,
   serverOnlyModule,
-  withoutQuotedSource,
 } from '../../regression-helpers'
 import {
   editableFiles,
@@ -507,27 +506,27 @@ export function Page() {
 
   // Not a supported input (TypeScript rejects all three: `children` is a
   // required prop), but a mistake a JavaScript user can make: a boundary
-  // without children renders nothing and keeps its props, or is rejected
-  // clearly. Leaving it unsplit is valid too.
+  // without children renders nothing and keeps its props, or is rejected at
+  // its line. Leaving it unsplit is valid too.
   // Source: #8504 hydrate-split-modules.test.ts (self-closing row, "a
   // self-closing boundary without a children prop keeps its props")
-  test('client: empty, self-closing and comment-only boundaries render nothing and keep their props, or are rejected clearly', async () => {
+  test('client: empty, self-closing and comment-only boundaries render nothing and keep their props, or are rejected at their line', async () => {
     const code = `${head}import { idle } from '@tanstack/react-start/hydration'
 export function Page() {
   return <div><Hydrate when={idle()}></Hydrate><Hydrate when={idle()} /><Hydrate when={idle()}>{/* nothing */}</Hydrate></div>
 }`
     const started = await hosts()
     const startCase = await started.start.case({ 'module.tsx': code })
-    const errors: Array<string> = []
+    let rejected = false
     for (const environment of ['client', 'ssr'] as const) {
       const error = await compileError(startCase, environment)
       if (error !== undefined) {
-        // What the error says, without the lines quoting the source.
-        errors.push(withoutQuotedSource(diagnosticsOf(error)[0]!.text, code))
+        // A rejection points at the boundaries' line
+        expectCompileError(error, { source: code, at: '<Hydrate' })
+        rejected = true
       }
     }
-    if (errors.length > 0) {
-      expect(errors).toContainEqual(expect.stringMatching(/\bHydrate\b/))
+    if (rejected) {
       return
     }
     // The strategy each boundary keeps shows in the markup it renders.

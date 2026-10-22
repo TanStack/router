@@ -19,12 +19,13 @@ import {
 } from '@tanstack/compiler-test-utils/hmr-sync'
 import { startDevServer } from '../../dev-server'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
+import { violationRecorder } from '../../importProtection/start-apps'
 import {
-  appSources,
+  importersIn,
   pageApp,
   pageSteps,
   pageWidget,
-  reportedImporters,
+  recordedSince,
   secretServerModule,
 } from './v2-hosts'
 
@@ -76,8 +77,9 @@ const registerCleanup = (cleanup: () => Promise<void>) => {
 let outcomes: Promise<Array<StepOutcome>> | undefined
 const run = () =>
   (outcomes ??= (async () => {
+    const recorder = violationRecorder({ log: 'always' })
     const server = await startDevServer({
-      start: { importProtection: { log: 'always' } },
+      start: { importProtection: recorder.importProtection },
       browser: true,
       config,
       plugins: [react()],
@@ -95,12 +97,12 @@ const run = () =>
     const inFlight = trackRequests(browser)
     const result: Array<StepOutcome> = []
     for (const { step, live } of pageSteps) {
-      let since = { logs: 0 }
+      let since = 0
       if (step > 1) {
         await server.edit({ 'src/secret.server.ts': null })
         await server.edit({ 'src/secret.server.ts': secretServerModule })
         await server.idle()
-        since = { logs: server.logs.length }
+        since = recorder.violations.length
         await server.edit({ 'src/widget.tsx': pageWidget(step, live) })
       }
       await browser.waitForText(`step-${step}`, {
@@ -121,10 +123,9 @@ return describeValue(window.liveSecret(), 'MARK_SECRET')
         servedSecret: Object.values(served).some((code) =>
           code.includes('MARK_SECRET'),
         ),
-        reported: reportedImporters(
-          server.logs.slice(since.logs),
+        reported: importersIn(
+          recordedSince({ root: server.root, ...recorder }, since),
           'client',
-          appSources(server.root),
         ),
       })
     }

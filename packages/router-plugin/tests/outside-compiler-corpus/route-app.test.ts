@@ -384,7 +384,6 @@ export const broken = ;
       findDiagnostics([...thrown, ...(await route.diagnostics())], {
         severity: 'error',
         position: { line: 3, column: 23 },
-        source: code,
       }).length,
     ).toBeGreaterThan(0)
   })

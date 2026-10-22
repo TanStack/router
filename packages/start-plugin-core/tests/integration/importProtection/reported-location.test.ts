@@ -10,7 +10,6 @@
  * and the code frame of a report: reported-location-trace.test.ts.
  */
 import { describe, expect, test } from 'vitest'
-import { parseLocation } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   at,
   channels,
@@ -24,9 +23,9 @@ interface LocationCase {
   name: string
   code: string
   /**
-   * The genuine surviving uses the report may point at
+   * The places the report may point at: the genuine surviving uses
    * (`src/a.tsx:line:column`, or `src/a.tsx:line` for any column of the
-   * line); the static import of the denied module is accepted too
+   * line) and the line of the static import of the denied module
    * (`expectRelevantLocation`).
    */
   expected: Array<string>
@@ -111,38 +110,42 @@ const cases: Record<string, LocationCase> = {
   afterHandler: {
     name: 'a use after a server fn handler (the handler is not reported)',
     code: afterHandler,
-    expected: [at(afterHandler, 4, 'secret()')],
+    expected: [at(afterHandler, 4, 'secret()'), 'src/a.tsx:2'],
   },
   memberProperty: {
     name: 'a use after a member property named like the import',
     code: memberProperty,
-    expected: [at(memberProperty, 4, 'eq')],
+    expected: [at(memberProperty, 4, 'eq'), 'src/a.tsx:1'],
   },
   typePosition: {
     name: 'a use after a type position',
     code: typePosition,
-    expected: [at(typePosition, 4, 'secret')],
+    expected: [at(typePosition, 4, 'secret'), 'src/a.tsx:1'],
   },
   jsxElement: {
     name: 'a JSX element',
     code: jsxElement,
-    expected: [at(jsxElement, 2, '<Secret'), at(jsxElement, 2, 'Secret')],
+    expected: [
+      at(jsxElement, 2, '<Secret'),
+      at(jsxElement, 2, 'Secret'),
+      'src/a.tsx:1',
+    ],
   },
   lookAlike: {
     name: 'a use inside the handler method of an object named like a server fn',
     code: lookAlike,
-    expected: [at(lookAlike, 3, 'secret()')],
+    expected: [at(lookAlike, 3, 'secret()'), 'src/a.tsx:1'],
   },
   isomorphicClient: {
     name: 'a use inside createIsomorphicFn().client',
     code: isomorphicClient,
-    expected: [at(isomorphicClient, 3, 'secret()')],
+    expected: [at(isomorphicClient, 3, 'secret()'), 'src/a.tsx:2'],
   },
   // A lone CR is a line terminator, like LF. Source: the #8504 probe (R-11).
   loneCr: {
     name: 'a use after a server fn handler, in a file with lone CR line endings',
     code: afterHandler.replaceAll('\n', '\r'),
-    expected: [at(afterHandler, 4, 'secret()')],
+    expected: [at(afterHandler, 4, 'secret()'), 'src/a.tsx:2'],
   },
   // Ported from the internal usage lookup (V1 ip S24): columns count UTF-16
   // code units (what editors and source maps count) after astral
@@ -150,17 +153,17 @@ const cases: Record<string, LocationCase> = {
   unicode: {
     name: 'a use after astral characters and a tab, with CRLF line endings',
     code: unicode,
-    expected: [at(unicode, 3, 'secret()')],
+    expected: [at(unicode, 3, 'secret()'), 'src/a.tsx:1'],
   },
   catchShadow: {
     name: 'a use after a catch clause parameter named like the import',
     code: catchShadow,
-    expected: [at(catchShadow, 5, 'secret')],
+    expected: [at(catchShadow, 5, 'secret'), 'src/a.tsx:1'],
   },
   scopeShadow: {
     name: 'a use after a parameter and a hoisted var named like the import',
     code: scopeShadow,
-    expected: [at(scopeShadow, 9, 'secret')],
+    expected: [at(scopeShadow, 9, 'secret'), 'src/a.tsx:1'],
   },
   // The client compile removes a `createServerOnlyFn(...)` call whatever
   // its argument is, so a use inside a wrapped function is gone (V1 ip
@@ -168,7 +171,7 @@ const cases: Record<string, LocationCase> = {
   wrappedBoundary: {
     name: 'a use after a createServerOnlyFn whose function is wrapped in a call',
     code: wrappedBoundary,
-    expected: [at(wrappedBoundary, 6, 'secret()')],
+    expected: [at(wrappedBoundary, 6, 'secret()'), 'src/a.tsx:2'],
   },
   // Other import forms (V1 ip S14): the dynamic import (with import
   // attributes) and the re-export are the uses, on their line.
@@ -201,11 +204,7 @@ describe('the reported location of a violation is the leaking use or the import'
   ])(
     '$channel: $name',
     async ({ channel, code, expected }) => {
-      expectRelevantLocation(
-        await reportedLocations(channel, code),
-        code,
-        expected,
-      )
+      expectRelevantLocation(await reportedLocations(channel, code), expected)
     },
     timeout,
   )
@@ -222,11 +221,7 @@ describe('the reported location of a violation is the leaking use or the import'
   test.fails.each(rows(['memberProperty'], channels))(
     '$channel: $name',
     async ({ channel, code, expected }) => {
-      expectRelevantLocation(
-        await reportedLocations(channel, code),
-        code,
-        expected,
-      )
+      expectRelevantLocation(await reportedLocations(channel, code), expected)
     },
     timeout,
   )
@@ -247,11 +242,7 @@ describe('the reported location of a violation is the leaking use or the import'
   test.fails.each(rows(['lookAlike'], ['rsbuild dev', 'rsbuild build']))(
     '$channel: $name',
     async ({ channel, code, expected }) => {
-      expectRelevantLocation(
-        await reportedLocations(channel, code),
-        code,
-        expected,
-      )
+      expectRelevantLocation(await reportedLocations(channel, code), expected)
     },
     timeout,
   )
@@ -273,11 +264,7 @@ describe('the reported location of a violation is the leaking use or the import'
   )(
     '$channel: $name',
     async ({ channel, code, expected }) => {
-      expectRelevantLocation(
-        await reportedLocations(channel, code),
-        code,
-        expected,
-      )
+      expectRelevantLocation(await reportedLocations(channel, code), expected)
     },
     timeout,
   )
@@ -311,11 +298,7 @@ describe('the reported location of a violation is the leaking use or the import'
   )(
     '$channel: $name',
     async ({ channel, code, expected }) => {
-      expectRelevantLocation(
-        await reportedLocations(channel, code),
-        code,
-        expected,
-      )
+      expectRelevantLocation(await reportedLocations(channel, code), expected)
     },
     timeout,
   )
@@ -346,7 +329,7 @@ describe('the reported importer is a file of the app, whatever source maps it ha
     options: { sourcemap?: boolean } = {},
   ) =>
     (await reportedLocations(channel, jsx, options)).map(
-      (importer) => parseLocation(importer).file,
+      (importer) => importer.split(':')[0],
     )
 
   // (the location itself is pinned above, "a JSX element")

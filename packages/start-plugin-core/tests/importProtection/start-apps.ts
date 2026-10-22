@@ -10,10 +10,10 @@
  * fixtures), the module every client module of a Start app is reached from.
  * The start entry `src/start.ts` is Start's default.
  *
- * The violations a run reports are read two ways: structured, as
- * `onViolation` receives them (`server.violations`), and as the text the
- * user sees, on every channel, through the reader of `violation-report.ts`
- * (`reportedViolations`, `violationTexts`, `violationReports`).
+ * The violations a run reports are read as Start's public `onViolation`
+ * callback receives them (`server.violations`, `build.violations`; SPEC
+ * J6.5, J6.6), never parsed from the printed report: what is printed is
+ * checked only for the file and position it names (ruling 2026-10-22).
  */
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
@@ -23,9 +23,8 @@ import react from '@vitejs/plugin-react'
 import { expect, onTestFinished } from 'vitest'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import {
-  expectRelevantLocation,
+  expectDiagnostic,
   findDiagnostics,
-  parseLocation,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   workspacePackage,
@@ -36,24 +35,193 @@ import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import type { ImportProtectionOptions, ViolationInfo } from './public-types'
 import type { StartDevServerOptions } from '../dev-server'
+import type { StartBuild, StartBuildError } from '../build-harness'
 import type { PluginOption } from 'vite'
 
-export {
-  expectReportFrame,
-  expectViolationsAt,
-  locatedImporters,
-  relevantViolations,
-  reportedViolations,
-  violationLabel,
-  violationReports,
-  violationTexts,
-} from './violation-report'
-export type {
-  AppSources,
-  ExpectedViolation,
-  ReportedViolation,
-} from './violation-report'
 export type { ImportProtectionOptions, ViolationInfo } from './public-types'
+
+/**
+ * What recorded the violations of a run: a dev server, a build or a failed
+ * build (`violations`: what `onViolation` received; `root`: the app root).
+ */
+export interface Recorded {
+  violations: Array<ViolationInfo>
+  root: string
+}
+
+/** A violation `onViolation` received, with paths relative to the app root. */
+export interface Violation {
+  environment: 'client' | 'server'
+  /** The importer, with `:line:column` when the violation has a location. */
+  importer: string
+  specifier: string
+  resolved?: string
+  /** The import chain, from an entry to the importer (`file[:line:column]`). */
+  trace: Array<{ at: string; imports?: string }>
+}
+
+/** `file` relative to `root` when it is an absolute path under it. */
+function relative(root: string, file: string) {
+  const name = path.relative(root, file)
+  return !path.isAbsolute(file) || name.startsWith('..')
+    ? file
+    : name.split(path.sep).join('/')
+}
+
+/** `file:line:column`, or the file alone without a line. */
+const located = (root: string, file: string, line?: number, column?: number) =>
+  `${relative(root, file)}${line === undefined ? '' : `:${line}${column === undefined ? '' : `:${column}`}`}`
+
+/**
+ * An `onViolation` for Start's public `importProtection` option that records
+ * every violation Start reports (`violations`), and `importProtection` with
+ * it. The app's own `onViolation` (of `importProtection`) still decides: a
+ * violation it allows (`false`) is not reported, so not recorded.
+ */
+export function violationRecorder(
+  importProtection: ImportProtectionOptions = {},
+) {
+  const violations: Array<ViolationInfo> = []
+  const own = importProtection.onViolation
+  const onViolation = async (info: unknown) => {
+    const verdict = await own?.(info)
+    if (verdict !== false) {
+      violations.push(info as ViolationInfo)
+    }
+    return verdict
+  }
+  return {
+    violations,
+    onViolation,
+    importProtection: { ...importProtection, onViolation },
+  }
+}
+
+/** The violations of `recorded`, in order. */
+export function violationsOf(recorded: Recorded): Array<Violation> {
+  return recorded.violations.map((info) => ({
+    environment: info.envType,
+    // (the file of the location when it names one: an original source)
+    importer: located(
+      recorded.root,
+      info.importerLoc?.file ?? info.importer,
+      info.importerLoc?.line,
+      info.importerLoc?.column,
+    ),
+    specifier: info.specifier,
+    ...(info.resolved !== undefined && {
+      resolved: relative(recorded.root, info.resolved),
+    }),
+    trace: info.trace.map((step) => ({
+      at: located(recorded.root, step.file, step.line, step.column),
+      ...(step.specifier !== undefined && { imports: step.specifier }),
+    })),
+  }))
+}
+
+/** `environment` and `importer` of each violation of `recorded`, in order. */
+export function reportedViolations(
+  recorded: Recorded,
+): Array<{ environment: string; importer: string }> {
+  return violationsOf(recorded).map(({ environment, importer }) => ({
+    environment,
+    importer,
+  }))
+}
+
+/** `recorded` with only the violations of the environment type `environment`. */
+export function inEnvironment(
+  recorded: Recorded,
+  environment: 'client' | 'server',
+): Recorded {
+  return {
+    root: recorded.root,
+    violations: recorded.violations.filter(
+      (info) => info.envType === environment,
+    ),
+  }
+}
+
+/**
+ * A violation a test expects: its environment type, the importer's use of
+ * the denied import (`use`: `file:line:column`) and the other places it
+ * may be reported at instead (SPEC J6.5, V1R ip I01: any line of the
+ * import, another genuine use, a marker's origin), written out: `file:line`
+ * (any column), `file:line:column`, or `file` (no location).
+ */
+export interface ExpectedViolation {
+  environment: 'client' | 'server'
+  use: string
+  also?: Array<string>
+}
+
+/** `environment use`: how `expectViolationsAt` names an expected violation. */
+export const violationLabel = (expected: ExpectedViolation) =>
+  `${expected.environment} ${expected.use}`
+
+/**
+ * Whether `reported` (`file`, `file:line` or `file:line:column`) is the
+ * place `accepted` names: the same file, line and column, as far as
+ * `accepted` gives them, with no location for a bare file.
+ */
+export function isAt(reported: string, accepted: string) {
+  const [file, line, column] = accepted.split(':')
+  const [reportedFile, reportedLine, reportedColumn] = reported.split(':')
+  return (
+    reportedFile === file &&
+    (line === undefined
+      ? reportedLine === undefined
+      : reportedLine === line &&
+        (column === undefined || reportedColumn === column))
+  )
+}
+
+/**
+ * Each distinct violation of `recorded` (environment type and importer),
+ * named `violationLabel` of the expected violation it is at one of the
+ * places of, else `environment importer` as received.
+ */
+export function relevantViolations(
+  recorded: Recorded,
+  expected: Array<ExpectedViolation>,
+): Array<string> {
+  return distinct(
+    reportedViolations(recorded).map(({ environment, importer }) => {
+      const match = expected.find(
+        (violation) =>
+          violation.environment === environment &&
+          [violation.use, ...(violation.also ?? [])].some((place) =>
+            isAt(importer, place),
+          ),
+      )
+      return match ? violationLabel(match) : `${environment} ${importer}`
+    }),
+  )
+}
+
+/**
+ * Asserts that the distinct violations of `recorded` are exactly the
+ * `expected` ones, each at one of its places, in any order.
+ */
+export function expectViolationsAt(
+  recorded: Recorded,
+  expected: Array<ExpectedViolation>,
+) {
+  expect(relevantViolations(recorded, expected).sort()).toEqual(
+    expected.map(violationLabel).sort(),
+  )
+}
+
+/**
+ * `environment file` of each violation of `recorded` (the importer's file,
+ * without its location), in order: which importers are reported. Where
+ * they are is checked by `expectViolationsAt`.
+ */
+export function reportedImporters(recorded: Recorded): Array<string> {
+  return reportedViolations(recorded).map(
+    ({ environment, importer }) => `${environment} ${importer.split(':')[0]}`,
+  )
+}
 
 export interface ProtectedDevServerOptions {
   /** Serve actual dependencies and an HTTP origin for client consumers. */
@@ -81,8 +249,9 @@ export interface ProtectedDevServerOptions {
 
 export interface ProtectedDevServer extends DevServer {
   /**
-   * Every violation `onViolation` received, in order (the app's own
-   * `onViolation`, when it has one, still decides).
+   * Every violation Start reported through `onViolation`, in order (the
+   * app's own `onViolation`, when it has one, still decides: one it allows
+   * is not listed).
    */
   violations: Array<ViolationInfo>
 }
@@ -103,15 +272,7 @@ export async function startProtectedDevServer(
     config = {},
     bundledDev,
   } = options
-  const violations: Array<ViolationInfo> = []
-  const userOnViolation = importProtection.onViolation
-  const recording: ImportProtectionOptions = {
-    ...importProtection,
-    onViolation: (info) => {
-      violations.push(info as ViolationInfo)
-      return userOnViolation?.(info)
-    },
-  }
+  const recorder = violationRecorder(importProtection)
   const hasClientEntry = Object.keys(files).some((file) =>
     /^src\/client\.[cm]?[jt]sx?$/.test(file),
   )
@@ -129,13 +290,13 @@ export async function startProtectedDevServer(
     bundledDev,
     config,
     start: {
-      importProtection: recording,
+      importProtection: recorder.importProtection,
       router: { entry: path.posix.relative('src', router) },
     },
     // A React app's plugin: full-bundle dev needs its Refresh runtime.
     plugins: bundledDev ? [react(), ...plugins] : plugins,
   })
-  return Object.assign(server, { violations })
+  return Object.assign(server, { violations: recorder.violations })
 }
 
 /**
@@ -174,8 +335,9 @@ export async function startRscProtectedDevServer(
   files: Record<string, string>,
   importProtection: ImportProtectionOptions = {},
   options: { router?: string } = {},
-): Promise<DevServer> {
+): Promise<ProtectedDevServer> {
   const { router = 'src/entry.ts' } = options
+  const recorder = violationRecorder(importProtection)
   const reactStart = workspacePackage('@tanstack/react-start')
   const reactStartRsc = workspacePackage('@tanstack/react-start-rsc')
   const rscPluginRoot = path.dirname(
@@ -189,7 +351,7 @@ export async function startRscProtectedDevServer(
   const { default: rsc } = (await import(
     pathToFileURL(exportedFile(rscPluginRoot, '.')).href
   )) as { default: () => PluginOption }
-  return createDevServer({
+  const server = await createDevServer({
     dir: path.dirname(path.dirname(fileURLToPath(import.meta.url))),
     prefix: '.start-rsc-dev-server-',
     registerCleanup: onTestFinished,
@@ -211,13 +373,14 @@ export const Route = createRootRoute()
     plugins: [
       tanstackStart({
         rsc: { enabled: true },
-        importProtection,
+        importProtection: recorder.importProtection,
         router: { entry: path.posix.relative('src', router) },
       }),
       rsc(),
       react(),
     ],
   })
+  return Object.assign(server, { violations: recorder.violations })
 }
 
 /**
@@ -259,32 +422,48 @@ export { leak } from './leak'
 export const factoryTopLevelCall = `export const request = getRequest()\n`
 
 /**
- * Checks the report of a marker violation (a module marked server-only
- * imported by the client, or client-only imported by the server): it names
- * both the marked module and its importer, and reports the violation either
- * at the marker import (`marker`, `file:line` of the marked module's import
- * of the marker; any column of it, or the file without a location), at
- * the importer's use of the import (`use`, `file:line:column`) or at any
- * line of the importer's import of the marked module (in its original
- * `source`). Each location is fine (coordinator ruling on audit F ASK-1;
- * SPEC J6.5, V1R ip I01).
+ * Checks a marker violation (a module marked server-only imported by the
+ * client, or client-only imported by the server): it is reported either at
+ * the marker import (`marker`, `file:line` of the marked module's import of the
+ * marker; any column of it, or the file without a location), at the
+ * importer's use of the import (`use`, `file:line:column`) or at a line of
+ * the importer's import of the marked module (`imports`, `file:line`).
+ * Each location is fine (coordinator ruling on audit F ASK-1; SPEC J6.5,
+ * V1R ip I01).
  */
 export function expectMarkerViolation(
-  report: { importer: string; specifier: string; text: string },
-  locations: { marker: string; use: string; source: string },
+  violation: Violation,
+  locations: { marker: string; use: string; imports: Array<string> },
 ) {
-  const marker = parseLocation(locations.marker)
-  const use = parseLocation(locations.use)
-  expectRelevantLocation(report.importer, {
-    file: use.file,
-    source: locations.source,
-    uses: [{ line: use.line!, column: use.column }],
-    imports: [report.specifier],
-    others: [{ file: marker.file, lines: [marker.line!], unlocated: true }],
+  const markerFile = locations.marker.split(':')[0]!
+  expect(
+    [locations.use, ...locations.imports, locations.marker, markerFile].some(
+      (place) => isAt(violation.importer, place),
+    ),
+    `${violation.importer} is at ${locations.use}, ${locations.imports.join(', ')} or ${locations.marker}`,
+  ).toBe(true)
+}
+
+/**
+ * Asserts that a `severity` diagnostic the user sees (`diagnostics`: every
+ * channel) names the importer of `violation` and its position (SPEC §5.7:
+ * file and position; ruling 2026-10-22).
+ */
+export function expectPrinted(
+  diagnostics: Array<Diagnostic>,
+  root: string,
+  violation: { importer: string },
+  severity: 'warning' | 'error',
+) {
+  const [file, line, column] = violation.importer.split(':')
+  expectDiagnostic(diagnostics, {
+    severity,
+    file: file!,
+    root,
+    ...(line !== undefined && {
+      position: { line: Number(line), column: Number(column) },
+    }),
   })
-  for (const file of [marker.file, use.file]) {
-    expect(report.text).toContain(file)
-  }
 }
 
 /**
@@ -293,7 +472,7 @@ export function expectMarkerViolation(
  * naming one of `files` (relative to the app root, or absolute), from
  * `since` (a `server.diagnostics.length` mark) on: for checks that nothing
  * is reported about a module, whatever the report's wording or layout
- * (SPEC §5.7, J6.12), next to the report reader's check.
+ * (SPEC §5.7, J6.12), next to the `onViolation` check.
  */
 export function problemsNaming(
   server: Pick<DevServer, 'diagnostics' | 'root'>,
@@ -312,28 +491,6 @@ export function problemsNaming(
       ),
     ),
   ]
-}
-
-/**
- * What a failed dev load reported: the rejection and everything the server
- * reported on any channel since `since` (a `server.diagnostics.length`
- * mark). A compiler may print the report on the console and reject with a
- * short error (SPEC §5.7); the report reader reads both.
- */
-export function failureOutput(
-  error: Error,
-  server: Pick<DevServer, 'diagnostics' | 'root'>,
-  since: number,
-) {
-  return {
-    root: server.root,
-    diagnostics: [
-      { text: error.message },
-      ...server.diagnostics
-        .slice(since)
-        .filter(({ severity }) => severity !== 'info'),
-    ],
-  }
 }
 
 /** Each distinct value of `values`, in order. */
@@ -355,7 +512,14 @@ export function locationIn(
   return `${file}:${line}:${column + 1}`
 }
 
-/** The error a promise rejects with (fails when it resolves). */
+/**
+ * The error a promise rejects with (fails when it resolves): a build's
+ * `StartBuildError`, with what the build reported.
+ */
+export async function rejection(
+  promise: Promise<StartBuild>,
+): Promise<StartBuildError>
+export async function rejection(promise: Promise<unknown>): Promise<Error>
 export async function rejection(promise: Promise<unknown>): Promise<Error> {
   try {
     await promise
@@ -375,12 +539,8 @@ export function receivedViolations(
   root: string,
 ): Array<string> {
   return distinct(
-    violations.map((info) => {
-      const file = path.relative(root, info.importer).split(path.sep).join('/')
-      const location = info.importerLoc
-        ? `:${info.importerLoc.line}:${info.importerLoc.column}`
-        : ''
-      return `${info.envType} ${file}${location}`
-    }),
+    reportedViolations({ violations, root }).map(
+      ({ environment, importer }) => `${environment} ${importer}`,
+    ),
   )
 }

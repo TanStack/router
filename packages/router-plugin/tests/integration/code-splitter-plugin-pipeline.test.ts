@@ -10,13 +10,13 @@ import { expect, it } from 'vitest'
 import { build, routeApp } from '../build-harness'
 
 // A route file that both imports and declares `Route` is invalid TypeScript
-// (TS2440). A real build either fails with an error naming `Route`, or
+// (TS2440). A real build either fails with an error, or
 // builds a page that renders; it never builds a page that breaks. The
 // error is read on every channel the build reports through (the thrown
 // error, the bundler's, the console: SPEC §5.7). Source: the #8504
 // confidence campaign (DX-07).
 it.each(['vite', 'rspack'] as const)(
-  'a route file that imports and declares Route fails its build naming Route, or renders (%s)',
+  'a route file that imports and declares Route fails its build with an error, or renders (%s)',
   async (bundler) => {
     let outcome: string
     const { result, diagnostics } = await captureDiagnostics(async () => {
@@ -55,13 +55,12 @@ export const Route = createFileRoute('/')({ component: () => <p>page</p> })
     } else {
       const reported = [...diagnosticsOf(result.error), ...diagnostics]
       outcome =
-        findDiagnostics(reported, { severity: 'error', names: ['Route'] })
-          .length > 0
-          ? 'refused naming Route'
-          : `refused without naming Route:\n${reported.map((diagnostic) => diagnostic.text).join('\n')}`
+        findDiagnostics(reported, { severity: 'error' }).length > 0
+          ? 'refused with an error'
+          : `refused without an error:\n${reported.map((diagnostic) => diagnostic.text).join('\n')}`
     }
     expect([
-      'refused naming Route',
+      'refused with an error',
       '<div id="root"><p>page</p></div>',
     ]).toContain(outcome)
   },

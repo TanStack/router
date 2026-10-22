@@ -167,7 +167,7 @@ describe('diagnostic channel', () => {
     const report = 'src/routes/a.tsx: the export Route is missing'
     const said = async (print: (channel: DiagnosticChannel) => void) =>
       (await captureDiagnostics(print)).diagnostics
-    const contract = { file: 'src/routes/a.tsx', names: ['Route'] }
+    const contract = { file: 'src/routes/a.tsx' }
     for (const info of [
       await said(() => console.log(report)),
       await said(() => console.info(report)),

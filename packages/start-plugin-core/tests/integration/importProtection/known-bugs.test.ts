@@ -2,17 +2,17 @@
  * Known import-protection bugs. Each test asserts correct behaviour for a bug
  * on main and is marked .fails; remove .fails when the bug is fixed. A mock
  * is told by what it does (`mock-helpers.ts`, `describeValue`: `a safe
- * mock`), and a report by its sections (`violation-report.ts`).
+ * mock`), and a violation by what `onViolation` receives.
  */
 import { describe, expect, test } from 'vitest'
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { buildStart, startBundlers } from '../../build-harness'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import {
+  inEnvironment,
   rejection,
   reportedViolations,
 } from '../../importProtection/start-apps'
-import { inEnvironment } from '../../importProtection/violation-report'
 
 /**
  * Start's import protection options of a build that denies `files` to the

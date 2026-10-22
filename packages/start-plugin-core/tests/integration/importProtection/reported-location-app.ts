@@ -4,25 +4,23 @@
  * violation of an importer `src/a.tsx` of the denied `src/secret.server.ts`,
  * on each channel (the Vite dev server's warnings in mock mode; the errors
  * of an Rsbuild dev server and of Vite and Rsbuild builds in error mode),
- * read on every channel by the report reader (`violation-report.ts`).
+ * as `onViolation` receives it.
  */
 import path from 'node:path'
 import { expect } from 'vitest'
-import {
-  expectRelevantLocation as expectSharedRelevantLocation,
-  findDiagnostics,
-  parseLocation,
-} from '@tanstack/compiler-test-utils/diagnostics'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart } from '../../build-harness'
 import { startRsbuildDevServer } from '../../rsbuild-dev-server'
 import {
   distinct,
+  isAt,
   locationIn,
   reportedViolations,
   startProtectedDevServer,
-  violationReports,
+  violationRecorder,
 } from '../../importProtection/start-apps'
-import type { ReportOutput } from '../../importProtection/violation-report'
+import type { Recorded } from '../../importProtection/start-apps'
+import type { StartBuildError } from '../../build-harness'
 
 export const timeout = 60_000
 
@@ -54,20 +52,21 @@ export default function Secret() {
     'src/a.tsx': code,
     'src/entry.ts': `export * from './a'\n`,
   }
-  let output: ReportOutput
+  let output: Recorded
   if (channel === 'vite dev') {
     const server = await startProtectedDevServer(files)
     await server.load('/src/entry.ts')
     output = server
   } else if (channel === 'rsbuild dev') {
+    const recorder = violationRecorder({ behavior: 'error' })
     const server = await startRsbuildDevServer({
       files,
-      importProtection: { behavior: 'error' },
+      importProtection: recorder.importProtection,
       // Rsbuild's default source maps in development
       config: { output: { sourceMap: { js: 'cheap-module-source-map' } } },
     })
-    expectNoOtherErrors(server)
-    output = server
+    output = { root: server.root, violations: recorder.violations }
+    expectNoOtherErrors({ ...output, diagnostics: server.diagnostics })
   } else {
     const bundler = channel === 'vite build' ? 'vite' : 'rsbuild'
     // (a build without any violation succeeds)
@@ -78,7 +77,7 @@ export default function Secret() {
       sourcemap,
     }).then(
       (build) => build,
-      (error: unknown) => {
+      (error: StartBuildError) => {
         // (a build that fails for another reason fails the test)
         if (reportedViolations(error).length === 0) {
           throw error
@@ -91,28 +90,23 @@ export default function Secret() {
 }
 
 /**
- * Fails when `output` (every channel: a dev server's `diagnostics`) has an
- * error that is no violation report and is not the failure of a reported
- * importer: a compile that fails for another reason fails the test, whatever
- * the reports' wording (a failing compile may carry the report itself, or
- * only name the importer the report printed elsewhere explains; SPEC §5.7,
- * J6.12).
+ * Fails when `output` (a dev server's `diagnostics`, every channel) has an
+ * error that names none of the importers `onViolation` received: a compile
+ * that fails for another reason fails the test, whatever the reports'
+ * wording (SPEC §5.7, J6.12).
  */
-export function expectNoOtherErrors(output: {
-  root: string
-  diagnostics: Array<{ severity: string; text: string }>
-}) {
-  // (the file as the report names it, without a source-map URL scheme such
-  // as `webpack:/`: where the report is located is judged elsewhere, F2)
-  const reported = violationReports(output).map(({ importer }) =>
-    parseLocation(importer).file.replace(/^[a-z]+:\/+/, ''),
+export function expectNoOtherErrors(
+  output: Recorded & {
+    diagnostics: Array<{ severity: string; text: string }>
+  },
+) {
+  const reported = distinct(
+    reportedViolations(output).map(({ importer }) => importer.split(':')[0]!),
   )
   const others = findDiagnostics(output.diagnostics, {
     severity: 'error',
   }).filter(
     ({ text }) =>
-      violationReports({ root: output.root, diagnostics: [{ text }] })
-        .length === 0 &&
       !reported.some(
         (file) =>
           text.includes(path.join(output.root, file)) || text.includes(file),
@@ -130,30 +124,26 @@ export const channels: Array<Channel> = [
 ]
 
 /**
- * Fails unless one violation is reported, at a relevant place for the
- * violation of the module `file`, whose source is `code` (the shared
- * oracle `expectRelevantLocation`; SPEC J6.5; V1R ip I01): one of the
- * genuine surviving `uses` (`file:line:column`, or `file:line` for any
- * column), or any line of the original import of the denied module. Never
- * a type position, a use inside a removed boundary, an unrelated member
- * named like the import, compiled coordinates, nor no coordinates.
+ * Fails unless one violation is reported, at one of `places`
+ * (`file:line:column`, or `file:line` for any column; SPEC J6.5; V1R ip
+ * I01): the genuine surviving uses, or the line of the original import of
+ * the denied module, written out by the test. Never a type position, a use
+ * inside a removed boundary, an unrelated member named like the import,
+ * compiled coordinates, nor no coordinates.
  */
 export function expectRelevantLocation(
   reported: Array<string>,
-  code: string,
-  uses: Array<string>,
-  file = 'src/a.tsx',
+  places: Array<string>,
 ) {
   expect(reported).toHaveLength(1)
-  expectSharedRelevantLocation(reported[0]!, {
-    file,
-    source: code,
-    uses: uses.map((use) => {
-      const { line, column } = parseLocation(use)
-      return { line: line!, column }
-    }),
-    imports: ['./secret.server', './widget.client'],
-  })
+  // (the file without a URL scheme such as Rspack's `webpack:/`: how the
+  // report names the file is pinned in reported-location.test.ts, "the
+  // reported importer is a file of the app", F2)
+  const at = reported[0]!.replace(/^[a-z]+:\/+/, '')
+  expect(
+    places.some((place) => isAt(at, place)),
+    `${reported[0]} is one of ${places.join(', ')}`,
+  ).toBe(true)
 }
 
 /** `src/a.tsx:line:column` of the first `needle` on `line` of `code`. */

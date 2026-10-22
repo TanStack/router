@@ -11,24 +11,22 @@
  * mode (dev default; `behavior: 'mock'` in builds), Vite and Rsbuild, builds
  * and dev servers with Start's whole plugin.
  */
-import {
-  captureConsole,
-  findDiagnostics,
-} from '@tanstack/compiler-test-utils/diagnostics'
+import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
 import { afterAll, afterEach, describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import {
   describeValue,
   describeValuePrelude,
 } from '../../importProtection/mock-helpers'
+import { violationRecorder } from '../../importProtection/start-apps'
 import {
   runInClient,
   runViteClient,
   startBrowserStartDevServer as startDevServer,
   startBrowserRsbuildStartDevServer as startRsbuildStartDevServer,
 } from './client-pages'
-import { reportedImporters, runRsbuildSsr, ssrNodeOutput } from './v2-hosts'
-import type { ReportOutput } from '../../importProtection/violation-report'
+import { importersIn, runRsbuildSsr, ssrNodeOutput } from './v2-hosts'
+import type { Recorded } from '../../importProtection/start-apps'
 import type { StartBuild } from '../../build-harness'
 import type { ImportProtectionOptions } from '../../importProtection/public-types'
 
@@ -125,9 +123,9 @@ interface Read {
 function outcome(
   environment: 'client' | 'server',
   read: Read,
-  output: ReportOutput,
+  recorded: Recorded,
 ) {
-  const reported = reportedImporters(output, environment, app)
+  const reported = importersIn(recorded, environment)
   const isReported = (importer: string, marked?: string) =>
     reported.includes(importer) ||
     (marked !== undefined && reported.includes(marked))
@@ -226,7 +224,6 @@ export const getRouter = () => createRouter({ routeTree })
     async () => {
       const built = await build()
       const { result } = await built.client.run(readScript(usesOf.client))
-      // (what the build reported, on every channel)
       expect(outcome('client', result as Read, built)).toEqual(expected.client)
     },
     timeout,
@@ -237,7 +234,6 @@ export const getRouter = () => createRouter({ routeTree })
     async () => {
       const built = await build()
       const { result } = await built.ssr.run(readScript(usesOf.server))
-      // (what the build reported, on every channel)
       expect(outcome('server', result as Read, built)).toEqual(expected.server)
     },
     timeout,
@@ -254,12 +250,13 @@ describe('vite dev', () => {
   let started: ReturnType<typeof startDevServer> | undefined
   let dispose: (() => Promise<void>) | undefined
   afterAll(() => dispose?.())
+  const recorder = violationRecorder(importProtection)
 
   /** Runs the app from Start's router entry in `environment`. */
   async function run(environment: 'client' | 'server') {
     const server = await (started ??= startDevServer({
       browser: true,
-      start: { importProtection },
+      start: { importProtection: recorder.importProtection },
       files: app,
       registerCleanup: (cleanup) => {
         dispose = cleanup
@@ -289,7 +286,10 @@ describe('vite dev', () => {
             }
           })
     await server.idle()
-    return outcome(environment, result as Read, server.logs)
+    return outcome(environment, result as Read, {
+      root: server.root,
+      violations: recorder.violations,
+    })
   }
 
   test(
@@ -314,6 +314,7 @@ describe('rsbuild dev', () => {
   let started: ReturnType<typeof startRsbuildStartDevServer> | undefined
   let dispose: (() => Promise<void>) | undefined
   afterAll(() => dispose?.())
+  const recorder = violationRecorder(importProtection)
   const start = () =>
     (started ??= startRsbuildStartDevServer({
       compileTimeout,
@@ -321,7 +322,7 @@ describe('rsbuild dev', () => {
       hmr: false,
       config: ssrNodeOutput,
       files: app,
-      start: { importProtection },
+      start: { importProtection: recorder.importProtection },
       registerCleanup: (cleanup) => {
         dispose = cleanup
       },
@@ -334,11 +335,10 @@ describe('rsbuild dev', () => {
       const ran = await runInClient(server, readScript(usesOf.client))
       expect(ran).toEqual({ result: expect.anything() })
       expect(
-        outcome(
-          'client',
-          (ran as { result: Read }).result,
-          findDiagnostics(server.diagnostics, { severity: 'warning' }),
-        ),
+        outcome('client', (ran as { result: Read }).result, {
+          root: server.root,
+          violations: recorder.violations,
+        }),
       ).toEqual(expected.client)
     },
     timeout,
@@ -351,11 +351,10 @@ describe('rsbuild dev', () => {
       const ran = await runRsbuildSsr(server, readScript(usesOf.server))
       expect(ran).toEqual({ result: expect.anything() })
       expect(
-        outcome(
-          'server',
-          (ran as { result: Read }).result,
-          findDiagnostics(server.diagnostics, { severity: 'warning' }),
-        ),
+        outcome('server', (ran as { result: Read }).result, {
+          root: server.root,
+          violations: recorder.violations,
+        }),
       ).toEqual(expected.server)
     },
     timeout,

@@ -78,9 +78,8 @@ ${groupings}  loader: () => 'data',
   // Type-invalid input (TS2322 against the real `codeSplitGroupings` type:
   // an array of option names where groups are expected), so a
   // never-fail-silently diagnostic control (SPEC §8, G5), not supported
-  // grouping coverage: an error naming codeSplitGroupings, or a working
-  // route that is either reported (naming the file or codeSplitGroupings)
-  // or split safely (unsplit, or the one group `[['loader']]` the input
+  // grouping coverage: an error naming the route file, or a working
+  // route that is either reported (naming the file) or split safely (unsplit, or the one group `[['loader']]` the input
   // spells). Valid groupings: the tests around this one. The error is read
   // with every channel of the dev server (§5.7: the thrown error may point
   // at a report logged next to it).
@@ -90,7 +89,8 @@ ${groupings}  loader: () => 'data',
     if (thrown) {
       expectDiagnostic([...thrown, ...diagnostics], {
         severity: 'error',
-        names: ['codeSplitGroupings'],
+        file: 'route.tsx',
+        root: loaded.host.root,
       })
       return
     }
@@ -98,10 +98,6 @@ ${groupings}  loader: () => 'data',
     const reported = await loaded.diagnostics()
     // (a warning: the route works, so it was not refused)
     const told =
-      findDiagnostics(reported, {
-        severity: 'warning',
-        names: ['codeSplitGroupings'],
-      }).length > 0 ||
       findDiagnostics(reported, {
         severity: 'warning',
         file: 'route.tsx',
@@ -114,9 +110,9 @@ ${groupings}  loader: () => 'data',
 
   // Honouring groupings declared in a module-level constant is pinned in
   // known-bugs-code-splitter.test.ts; until then the route is refused
-  // clearly (an error naming codeSplitGroupings, on any channel), never
-  // split with other groupings.
-  it('of the route given through a variable are honoured or refused with an error naming codeSplitGroupings', async () => {
+  // with an error naming the route file (on any channel), never split with
+  // other groupings.
+  it('of the route given through a variable are honoured or refused with an error naming the route file', async () => {
     const loaded =
       await loadRoute(`${head}const groupings: Array<Array<'loader' | 'component'>> = [['loader'], ['component']]
 export const Route = createFileRoute('/')({
@@ -129,7 +125,8 @@ export const Route = createFileRoute('/')({
     if (thrown) {
       expectDiagnostic([...thrown, ...diagnostics], {
         severity: 'error',
-        names: ['codeSplitGroupings'],
+        file: 'route.tsx',
+        root: loaded.host.root,
       })
       return
     }

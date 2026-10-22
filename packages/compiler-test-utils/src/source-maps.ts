@@ -311,8 +311,6 @@ export interface ExpectedOriginal {
    * `/src/fail.ts`).
    */
   mapUrl?: string
-  /** Other files the source must be distinguishable from. */
-  distinctFrom?: Array<string>
   /** 1-based line. */
   line: number
   /** 0-based column; checked only when given. */

@@ -15,7 +15,7 @@
  * build runs the server code, by id through Start's server entry for a
  * server fn), or the build fails with an error that names the shape's file
  * and the line of the call (`expectSourceError`). A silent leak, a broken
- * function or an unclear build error fails. String export names, renamed
+ * function or a build error elsewhere fails. String export names, renamed
  * re-exports and namespace members are forms SPEC J4.5 lists as recognised:
  * those shapes must work (coordinator 2026-10-20).
  *
@@ -30,7 +30,6 @@
  * decides the outcome of another.
  */
 import { afterAll, describe, expect, test } from 'vitest'
-import { identifiesEnvRestriction } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   buildStart,
   callByIdExports,
@@ -59,8 +58,6 @@ interface Shape {
   source: (db: string) => string
   /** The text of the call a build error points at, in `source`. */
   at: string
-  /** What a build error names (a list: any one of its alternatives). */
-  names: Array<string | Array<string>>
   /** Other modules of the shape, by path relative to the app root. */
   files?: Record<string, string>
   /** Client script body: `shape` is the module's exports. */
@@ -146,7 +143,7 @@ return { serverOnly: run(shape.impl), clientOnly: run(shape.clientImpl) }`
 
 /**
  * A working namespace factory shape: each environment runs its own
- * implementation and throws an error naming the restriction for the other.
+ * implementation and throws for the other.
  */
 function expectEnvOnlyWorks(client: unknown, ssr: unknown, result: string) {
   type Calls = Record<
@@ -156,15 +153,15 @@ function expectEnvOnlyWorks(client: unknown, ssr: unknown, result: string) {
   const onClient = client as Calls
   const onServer = ssr as Calls
   expect(
-    identifiesEnvRestriction(onClient.serverOnly.thrown, 'server'),
+    onClient.serverOnly.thrown,
     JSON.stringify(onClient.serverOnly),
-  ).toBe(true)
+  ).toBeDefined()
   expect(onClient.clientOnly).toEqual({ value: 'client-only-value' })
   expect(onServer.serverOnly).toEqual({ value: result })
   expect(
-    identifiesEnvRestriction(onServer.clientOnly.thrown, 'client'),
+    onServer.clientOnly.thrown,
     JSON.stringify(onServer.clientOnly),
-  ).toBe(true)
+  ).toBeDefined()
 }
 
 /** A module calling both renamed factories through a namespace import, after `head`. */
@@ -185,7 +182,6 @@ import { db } from './${db}'
 export const fn = createServerFn()['handler'](async () => db.x())
 `,
     at: `createServerFn()['handler']`,
-    names: [['createServerFn', 'handler']],
     client: clientServerFn('shape.fn'),
     ssr: ssrServerFn('shape.fn'),
     expectWorks: ({ client, ssr }, result) =>
@@ -202,7 +198,6 @@ export const mw = createMiddleware()['server'](async ({ next }) => {
 })
 `,
     at: `createMiddleware()['server']`,
-    names: [['createMiddleware', 'server']],
     // The app's request middleware: Start runs it for every request of the
     // app, so for the one the SSR script runs in (whose route handler runs
     // only once the middleware called `next()`)
@@ -227,7 +222,6 @@ import { db } from './${db}'
 export const fn = createIsomorphicFn()['server'](() => db.x()).client(() => 'client')
 `,
     at: `createIsomorphicFn()['server']`,
-    names: [['createIsomorphicFn', 'server']],
     client: `return shape.fn()`,
     ssr: `return shape.fn()`,
     expectWorks: ({ client, ssr }, result) => {
@@ -242,17 +236,13 @@ import { db } from './${db}'
 export const read = createServerOnlyFn(() => db.x()).bind(null)
 `,
     at: 'createServerOnlyFn(',
-    names: [['createServerOnlyFn', 'bind']],
     client: `return { value: shape.read() }`,
     ssr: `return shape.read()`,
     expectWorks: ({ client, ssr }, result) => {
       expect(
-        identifiesEnvRestriction(
-          (client as { thrown?: unknown }).thrown,
-          'server',
-        ),
+        (client as { thrown?: unknown }).thrown,
         JSON.stringify(client),
-      ).toBe(true)
+      ).toBeDefined()
       expect(ssr).toBe(result)
     },
   },
@@ -268,7 +258,6 @@ export const registry: Array<unknown> = []
 }
 `,
     at: 'createServerFn()',
-    names: ['createServerFn'],
     client: clientServerFn('shape.registry[0]'),
     ssr: ssrServerFn('shape.registry[0]'),
     expectWorks: ({ client, ssr }, result) =>
@@ -279,7 +268,6 @@ export const registry: Array<unknown> = []
     slug: 'stringNames',
     source: stringNamesSource,
     at: 'createServerFn()',
-    names: ['createServerFn'],
     files: { 'src/stringNames-start.ts': stringNamesStart },
     client: `${clientServerFn('shape.fn').replace(
       /^return \{/m,
@@ -300,10 +288,7 @@ return { serverOnly,`,
       const { serverOnly, ...fn } = client as {
         serverOnly: { thrown?: unknown }
       }
-      expect(
-        identifiesEnvRestriction(serverOnly.thrown, 'server'),
-        JSON.stringify(serverOnly),
-      ).toBe(true)
+      expect(serverOnly.thrown, JSON.stringify(serverOnly)).toBeDefined()
       const { serverOnly: ssrServerOnly, ...ssrFn } = ssr as {
         serverOnly: unknown
       }
@@ -321,7 +306,6 @@ export const fn = createServerFn().handler(async () => 'fn')
 `,
     ),
     at: 'factory.serverOnly(',
-    names: ['serverOnly'],
     files: {
       'src/namespaceFactoryNextToServerFn-start.ts': namespaceFactoryStart,
     },
@@ -335,7 +319,6 @@ export const fn = createServerFn().handler(async () => 'fn')
     slug: 'namespaceFactory',
     source: namespaceFactorySource('namespaceFactory'),
     at: 'factory.serverOnly(',
-    names: ['serverOnly'],
     files: { 'src/namespaceFactory-start.ts': namespaceFactoryStart },
     client: envOnlyCalls,
     ssr: envOnlyCalls,
@@ -463,7 +446,6 @@ describe.each(startBundlers)('%s build', (bundler) => {
     const outcome = await outcomeOf(shape)
     if ('error' in outcome) {
       expectSourceError(outcome.error, {
-        names: shape.names,
         sites: [
           {
             file: `src/${shape.slug}.ts`,

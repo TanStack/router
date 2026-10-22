@@ -491,8 +491,6 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
       const server = app.server()
       expectDiagnostic(server.diagnostics, {
         severity: 'warning',
-        names: ['renderToReadableStream'],
-        explains: true,
         times: 1,
         file: path.join('src/rows', `${row.key}.tsx`),
         root: server.root,

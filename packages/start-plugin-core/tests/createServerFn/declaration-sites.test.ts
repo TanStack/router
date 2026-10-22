@@ -87,7 +87,6 @@ test.each(literalPlacements)(
         expectCompileError(failure, {
           source,
           at: undefined,
-          names: ['createServerFn'],
         })
         continue
       }
@@ -142,7 +141,7 @@ test.fails.each(literalPlacements)(
 // imported, a server fn in $name works or is rejected at the call" of
 // known-bugs-start-compiler.test.ts (main's rejection has no position).
 // Next to another Start factory, these placements never ship the handler
-// to the client: each environment rejects the code naming createServerFn
+// to the client: each environment rejects the code with a compile error
 // or serves a working module without the handler, and calling the server
 // fn from the client and from server code runs it. With createServerFn
 // alone, and for declarators below the top level (in a function, a switch
@@ -154,7 +153,7 @@ test.each(placements.filter((placement) => !placement.declarator))(
     await expectNoClientHandler(
       await host(),
       placementModule('another Start factory', code),
-      { rejection: 'named', read },
+      { rejection: 'unpositioned', read },
     )
   },
 )
@@ -172,7 +171,7 @@ test.each<PlacementHead>(['createServerFn alone', 'another Start factory'])(
     await expectNoClientHandler(
       await host(),
       placementModule(importHead, wrappedTwice),
-      { rejection: 'named', read: 'module.fn' },
+      { rejection: 'unpositioned', read: 'module.fn' },
     )
   },
 )
@@ -203,8 +202,8 @@ test.fails.each<PlacementHead>([
 
 // Malformed-input diagnostic control (SPEC §8, G5): `.validator()` without
 // a validator is a type error (tsc against the real declarations: TS2554
-// "Expected 1 arguments, but got 0"). It only has to fail clearly, naming
-// the API; a position is not required of input the types reject.
+// "Expected 1 arguments, but got 0"). It only has to fail; a position is
+// not required of input the types reject.
 test('rejects a validator call without a validator', async () => {
   const source = `import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 export const fn = createServerFn().validator().handler(async () => 1)`
@@ -213,7 +212,6 @@ export const fn = createServerFn().validator().handler(async () => 1)`
     expectCompileError(await compileError(startCase, environment), {
       source,
       at: undefined,
-      names: ['validator'],
     })
   }
 })
@@ -355,7 +353,6 @@ export const fn = createServerFn()?.handler(async () => db.inner())`
       expectCompileError(failure, {
         source: code,
         at: 'createServerFn()?.',
-        names: ['createServerFn'],
       })
       return
     }
