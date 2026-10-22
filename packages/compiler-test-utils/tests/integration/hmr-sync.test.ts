@@ -5,7 +5,10 @@
  * (the page shows it at once, without waiting), and an update nothing
  * accepts has reloaded the page (its load count tells), whether the page's
  * code imports the sync module or the page imports it on every load
- * (`hmrSyncInitScript`).
+ * (`hmrSyncInitScript`); and an update whose accept callback invalidates it
+ * (as a refresh runtime does when it cannot apply one) has had the reload
+ * that the page's `invalidate()` asked the server for, also when what the
+ * page sends reaches the server late.
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -91,5 +94,60 @@ test.for([
       text: 'text v2 other v2',
       loads: 2,
     })
+  },
+)
+
+test(
+  'once settled, an update whose accept callback invalidates it has reloaded the page, also when the page reaches the server late',
+  { timeout },
+  async () => {
+    const server = await createDevServer({
+      dir: testsDir,
+      prefix: '.hmr-sync-',
+      registerCleanup: onTestFinished,
+      browser: true,
+      files: {
+        'index.html': `<div id="app"></div><script type="module" src="/main.js"></script>`,
+        'hmr-sync.ts': hmrSyncModule,
+        // A module that accepts its own update, then gives up on it (Vite
+        // propagates the update to its importer, which accepts nothing: a
+        // full reload)
+        'main.js': `import './hmr-sync.ts'
+import { text } from './text.js'
+document.getElementById('app').textContent = text
+`,
+        'text.js': `export const text = 'text v1'
+import.meta.hot.accept(() => import.meta.hot.invalidate('cannot apply'))
+`,
+      },
+    })
+    const page = await openPage('about:blank', {
+      registerCleanup: onTestFinished,
+    })
+    // What the page sends over its HMR WebSocket reaches the server 400 ms
+    // late (a busy server or a slow link); what the server sends is not held
+    await page.page.context().routeWebSocket(/./, (ws) => {
+      const upstream = ws.connectToServer()
+      ws.onMessage((message) => {
+        setTimeout(() => upstream.send(message), 400)
+      })
+      upstream.onMessage((message) => ws.send(message))
+    })
+    await page.page.goto(server.url!)
+    const inFlight = trackRequests(page)
+    await page.waitForText('text v1')
+    await settlePage(server, page, inFlight)
+    const loads = page.loads()
+
+    await server.edit({
+      'text.js': `export const text = 'text v2'
+import.meta.hot.accept(() => import.meta.hot.invalidate('cannot apply'))
+`,
+    })
+    await settlePage(server, page, inFlight)
+    expect({
+      text: await page.text('#app'),
+      reloads: page.loads() - loads,
+    }).toEqual({ text: 'text v2', reloads: 1 })
   },
 )
