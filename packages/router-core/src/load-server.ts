@@ -900,6 +900,34 @@ type ServerLoadOptions = NonNullable<Parameters<AnyRouter['load']>[0]> & {
   _signal?: AbortSignal
 }
 
+/**
+ * Requests are normalized with `URLSearchParams`, which percent-encodes
+ * characters that are legal in a query (`tags=1,2` -> `tags=1%2C2`), while the
+ * canonical href is rebuilt from `stringifySearch`. Percent-encoding alone does
+ * not change which resource is requested, so two hrefs that differ only in it
+ * must not be treated as different.
+ */
+function isSameHref(a: string, b: string) {
+  if (a === b) {
+    return true
+  }
+  return withEncodedSearch(a) === withEncodedSearch(b)
+}
+
+function withEncodedSearch(href: string) {
+  const searchStart = href.indexOf('?')
+  if (searchStart === -1) {
+    return href
+  }
+  const hashStart = href.indexOf('#', searchStart)
+  const search = href.slice(
+    searchStart,
+    hashStart === -1 ? undefined : hashStart,
+  )
+  const hash = hashStart === -1 ? '' : href.slice(hashStart)
+  return `${href.slice(0, searchStart)}?${new URLSearchParams(search).toString()}${hash}`
+}
+
 export async function loadServerRoute(
   router: AnyRouter,
   opts?: ServerLoadOptions,
@@ -920,7 +948,7 @@ export async function loadServerRoute(
       state: true,
       _includeValidateSearch: true,
     })
-    if (next.publicHref !== canonical.publicHref) {
+    if (!isSameHref(next.publicHref, canonical.publicHref)) {
       const href = canonical.publicHref || '/'
       throw redirect({ href })
     }

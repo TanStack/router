@@ -128,3 +128,40 @@ describe.each([false, true])('SSR URL encoding (rewrite: %s)', (rewrite) => {
     },
   )
 })
+
+describe('SSR search canonicalization', () => {
+  function setupSearchRouter(stringifySearch: (search: any) => string) {
+    const rootRoute = new BaseRootRoute()
+    const testRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/test',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([testRoute]),
+      isServer: true,
+      // With a rewrite, `publicHref` is the history href, so the request's
+      // percent-encoded search is compared against the stringified one.
+      rewrite: { input: ({ url }) => url, output: ({ url }) => url },
+      parseSearch: (searchStr) => {
+        const tags = new URLSearchParams(searchStr).get('tags')
+        return { tags: tags ? tags.split(',') : [] }
+      },
+      stringifySearch,
+    })
+    return router
+  }
+
+  test('does not redirect a request that only differs in search encoding', async () => {
+    const router = setupSearchRouter((search) =>
+      search.tags.length ? `?tags=${search.tags.join(',')}` : '',
+    )
+
+    // Browsers send the comma literally, the request is normalized to `%2C`
+    // and `stringifySearch` canonicalizes it back to a bare comma.
+    const response = await loadServerResponse(router, '/test?tags=1,2')
+
+    expect(response.headers.get('Location')).toBeNull()
+    expect(response.status).toBe(200)
+    expect(router.state.location.search).toEqual({ tags: ['1', '2'] })
+  })
+})
