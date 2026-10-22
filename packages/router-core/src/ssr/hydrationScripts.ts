@@ -178,7 +178,7 @@ class HydrationScriptsOwner implements HydrationScriptOutput {
   private opening: string | undefined
 
   constructor(
-    private readonly nonce: string | undefined,
+    private readonly nonceSource: HydrationScriptsNonce,
     initialSources?: ReadonlyArray<string>,
   ) {
     // ServerSsr exposes this method as a bare callback, so keep this single
@@ -197,6 +197,14 @@ class HydrationScriptsOwner implements HydrationScriptOutput {
 
   get state() {
     return this.outputState
+  }
+
+  // Read on use: an app may set `ssr.nonce` after the SSR utilities are
+  // attached, e.g. in the `createStartHandler` callback.
+  private get nonce() {
+    return typeof this.nonceSource === 'function'
+      ? this.nonceSource()
+      : this.nonceSource
   }
 
   get error() {
@@ -680,9 +688,12 @@ class HydrationScriptsOwner implements HydrationScriptOutput {
   }
 }
 
+/** A nonce, or a getter that reads it when the first script is framed. */
+type HydrationScriptsNonce = string | undefined | (() => string | undefined)
+
 /** Create the hydration-script owner for one server request. */
 export function createHydrationScripts(
-  nonce: string | undefined,
+  nonce: HydrationScriptsNonce,
   initialSources?: ReadonlyArray<string>,
 ): HydrationScripts {
   return new HydrationScriptsOwner(nonce, initialSources)
