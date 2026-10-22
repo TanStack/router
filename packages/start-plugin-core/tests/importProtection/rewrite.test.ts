@@ -184,6 +184,28 @@ describe('rewriteDeniedImports', () => {
     expect(result).toBeUndefined()
   })
 
+  // Source: TanStack/router#7341. In a `.ts` module, `<T>value` is a type
+  // assertion and `<T>(value: T) => value` a generic arrow function, not JSX.
+  test('rewrites a .ts module with angle-bracket type assertions', async () => {
+    const mockModule = `data:text/javascript,${encodeURIComponent(
+      `export default new Proxy({}, { get: (_, key) => typeof key === 'string' ? 'mock:' + key : undefined })`,
+    )}`
+    const rewritten = rewriteDeniedImports(
+      `import { secret } from './secret.server'
+const identity = <T>(value: T) => value
+export const seen = <string>identity(<unknown>secret)
+`,
+      '/test/module.ts',
+      new Set(['./secret.server']),
+      () => mockModule,
+    )
+    const { code } = await transformWithOxc(rewritten!.code, 'module.ts')
+    const module = await import(
+      /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(code)}`
+    )
+    expect(module.seen).toBe('mock:secret')
+  })
+
   test('rewritten modules evaluate with mock values for every specifier form', async () => {
     const mockModule = `data:text/javascript,${encodeURIComponent(
       `export default new Proxy({}, { get: (_, key) => typeof key === 'string' ? 'mock:' + key : undefined })`,
