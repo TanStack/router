@@ -1279,11 +1279,17 @@ export async function expectValidModules(
     : route
   const source = routeSources.get(modules)
   // What the route file reads free at run time: its code with TypeScript
-  // erased (a `declare` binding has no runtime value)
+  // erased (a `declare` binding has no runtime value), read in its language
+  // (JSX is allowed in a `.js` route file)
+  const sourceLang = /\.[cm]?ts$/.test(source?.filename ?? '')
+    ? 'ts'
+    : /\.tsx$/.test(source?.filename ?? '')
+      ? 'tsx'
+      : 'jsx'
   const sourceReads = source
     ? readNames(
         (
-          await transformWithOxc(source.code, source.filename, {
+          await transformWithOxc(source.code, `route.${sourceLang}`, {
             jsx: 'preserve',
             typescript: { onlyRemoveTypeImports: true },
           })
