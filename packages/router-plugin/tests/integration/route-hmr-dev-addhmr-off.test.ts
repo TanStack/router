@@ -24,6 +24,7 @@ import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
 import { entryFile, head, loadRoute, probeFile } from '../route-app'
 import { openRouteHmrPage } from '../route-hmr-page'
+import { openWebpackHmrPage } from '../webpack-hmr-page'
 import type { TargetFramework } from '../route-app'
 
 const timeout = 60_000
@@ -262,3 +263,57 @@ function Page() {
   },
   timeout,
 )
+
+// The webpack entry with `addHmr: false` (webpack-dev-server with `hot: true`,
+// as the webpack quickstart example runs it; no React Refresh): no route
+// module accepts the edit, so webpack's HMR client reloads the page to show
+// it. The control below: with route HMR the same edit applies in place. The
+// edit changes the loader only: without a refresh runtime, route HMR keeps
+// the old component (pinned in known-bugs-route-hmr-removals.test.ts "rsbuild
+// without React Refresh"), so a component edit would not tell the two apart.
+// Source: plugin-options.test.ts "with addHmr: false, a development build
+// with the HMR plugin has no route HMR code" (which looked for the hot API's
+// accept call by a local name in a webpack development build).
+describe('a webpack dev server', () => {
+  const route = (version: string) =>
+    `import { createElement } from 'react'
+import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({
+  loader: () => 'data ${version}',
+  component: Page,
+})
+function Page() {
+  const data = Route.useLoaderData()
+  return createElement('p', null, 'page ', data)
+}
+`
+
+  it(
+    'with addHmr: false applies no route HMR to an edit',
+    async () => {
+      const app = await openWebpackHmrPage({
+        pluginOptions: { codeSplittingOptions: { addHmr: false } },
+        files: { 'routes/index.ts': route('v1') },
+        ready: 'page data v1',
+      })
+      expect(
+        await app.edit({ 'routes/index.ts': route('v2') }, 'page data v2'),
+      ).toEqual({ reloaded: true, errors: [] })
+    },
+    timeout,
+  )
+
+  it(
+    'with route HMR applies the same edit in place',
+    async () => {
+      const app = await openWebpackHmrPage({
+        files: { 'routes/index.ts': route('v1') },
+        ready: 'page data v1',
+      })
+      expect(
+        await app.edit({ 'routes/index.ts': route('v2') }, 'page data v2'),
+      ).toEqual({ reloaded: false, errors: [] })
+    },
+    timeout,
+  )
+})

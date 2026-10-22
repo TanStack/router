@@ -158,6 +158,7 @@
     "publint": "catalog:",
     "rimraf": "catalog:",
     "webpack": "^5.104.1",
+    "webpack-dev-server": "^5.2.4",
     "@babel/preset-typescript": "^7.28.5",
     "@rolldown/plugin-babel": "^0.2.0",
     "@tanstack/solid-router": "workspace:*",
