@@ -111,19 +111,6 @@ function isManifestJsAsset(file: string): boolean {
 }
 
 /**
- * Get all JS file names from a chunk.
- */
-function getChunkJsFiles(chunk: RspackCompilationChunk): Array<string> {
-  const jsFiles: Array<string> = []
-  for (const file of chunk.files) {
-    if (isManifestJsAsset(file)) {
-      jsFiles.push(file)
-    }
-  }
-  return jsFiles
-}
-
-/**
  * Compute dynamicImports for a chunk by traversing its chunk groups'
  * childrenIterable (async/dynamic import edges).
  *
@@ -138,12 +125,10 @@ function computeDynamicImports(chunk: RspackCompilationChunk): Array<string> {
 
   for (const group of chunk.groupsIterable) {
     for (const childGroup of group.childrenIterable) {
-      for (const childChunk of childGroup.chunks) {
-        for (const file of childChunk.files) {
-          if (isManifestJsAsset(file) && !seen.has(file)) {
-            seen.add(file)
-            dynamicImportFiles.push(file)
-          }
+      for (const file of childGroup.getFiles()) {
+        if (isManifestJsAsset(file) && !seen.has(file)) {
+          seen.add(file)
+          dynamicImportFiles.push(file)
         }
       }
     }
@@ -172,12 +157,10 @@ function computeAsyncChunkImports(
   seen.add(currentFile)
 
   for (const group of chunk.groupsIterable) {
-    for (const siblingChunk of group.chunks) {
-      for (const file of siblingChunk.files) {
-        if (isManifestJsAsset(file) && !seen.has(file)) {
-          seen.add(file)
-          imports.push(file)
-        }
+    for (const file of group.getFiles()) {
+      if (isManifestJsAsset(file) && !seen.has(file)) {
+        seen.add(file)
+        imports.push(file)
       }
     }
   }
@@ -221,6 +204,8 @@ export function normalizeRspackClientBuild(
     const modules = compilation.chunkGraph.getChunkModules(chunk)
     const routeFilePaths = getRouteFilePathsFromModules(modules)
     const hydrationIds = getHydrationIdsFromModules(modules)
+    const chunkFiles = chunk.files
+    const jsFiles: Array<string> = []
     const cssFiles: Array<string> = []
     const seenCssFiles = new Set<string>()
 
@@ -231,7 +216,10 @@ export function normalizeRspackClientBuild(
       }
     }
 
-    for (const mainFile of chunk.files) {
+    for (const mainFile of chunkFiles) {
+      if (isManifestJsAsset(mainFile)) {
+        jsFiles.push(mainFile)
+      }
       if (mainFile.endsWith('.css') && !seenCssFiles.has(mainFile)) {
         seenCssFiles.add(mainFile)
         cssFiles.push(mainFile)
@@ -251,11 +239,12 @@ export function normalizeRspackClientBuild(
       }
     }
 
-    // The entry chunk is the one named 'index' in the 'index' entrypoint
-    const isEntryChunk = chunk.name === 'index' && entryChunkSet.has(chunk)
+    if (jsFiles.length === 0) {
+      continue
+    }
 
-    const jsFiles = getChunkJsFiles(chunk)
-    if (jsFiles.length === 0) continue
+    // The entry chunk is the one named 'index' in the 'index' entrypoint
+    const isEntryChunk = entryChunkSet.has(chunk) && chunk.name === 'index'
 
     // Compute dynamicImports from chunk group children
     const dynamicImports = computeDynamicImports(chunk)
