@@ -148,11 +148,11 @@ Caveats:
     `.vite/deps_temp_*`). The last measurement (633a4c0917, beetle, load up to 55) saw single #34 rows in 4 of 9
     unpatched runs and in 66 of its 145 runs (86 rows), also in files re-run alone (the clean tree alone failed
     6 times); locally, 5 of 11 start-plugin-core integration runs at load below 4. A file that fails only on #34 can
-    fail again alone: re-run it more than once. The removed apps also leave directories behind
-    (`tests/.start-dev-server-*` holding `node_modules/.vite`, `tests/integration/.dev-transform-*` holding `.vite`),
-    after passing runs too: about 1,900 per tree after 50 runs. They are gitignored, but `test:eslint` of
-    start-plugin-core lints the pre-bundled files left in `.dev-transform-*/.vite/deps_temp_*` and fails (130 parsing
-    errors after the 11 local runs of this measurement). Held by the #34 ruling: no workaround.
+    fail again alone: re-run it more than once. Held by the #34 ruling: no workaround. What Vite writes into a removed
+    app no longer stays in the packages: since the pass F-J the apps live in the run's directory in the system's
+    temporary directory (`src/app-directory.ts`, `src/run-directory.ts`), removed when the run ends. (Before, they were
+    hidden directories of the packages' `tests/`, and the removed apps left about 1,900 directories per tree after 50
+    runs, which made start-plugin-core's `test:eslint` fail on the pre-bundled files left in them.)
   - Re-run a file that failed only on these alone (more than once for #34) before reading it as a compiler failure.
   - Not a flake of the tests, and no longer a row: at an extreme load (80 to 110 on beetle) V-G1 saw the Vite row
     `known-bugs-start-compiler` "SSR: a server fn that only a middleware .server() of another module calls > is

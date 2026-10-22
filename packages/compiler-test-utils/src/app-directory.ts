@@ -6,8 +6,8 @@
  *
  * An app stands in for an app created in a directory of the repository
  * (`dir`, e.g. a package's `tests/`), where the harnesses created them
- * before. The apps of `dir` share a directory, above which nothing of the
- * repository is, but what an app in `dir` reads above itself:
+ * before. The apps of `dir` share a directory that gives them what an app in
+ * `dir` reads above itself, and nothing else of the repository:
  * - its bare imports resolve as from `dir`: each `node_modules` directory
  *   above `dir` is linked at the same depth above the app. Node, Vite,
  *   Rspack, webpack and esbuild resolve through the links to the same real
