@@ -4,19 +4,23 @@
  * by a quiet period or by counting HMR messages.
  *
  * The app's client code includes `hmrSyncModule` (Vite's public client HMR
- * API, `import.meta.hot.on`): it records Vite's `vite:beforeFullReload`
- * event, which Vite's client fires before it reloads the page, and the
- * token of the last `harness:sync` custom event it received. `settlePage`
- * sends that event over the dev server's HMR channel (`hot.send`) until the
- * page holds its token: one WebSocket delivers in order, so by then the
- * page has received every update and full reload the server sent before it.
+ * API, `import.meta.hot.on`), or the page imports it on every load
+ * (`hmrSyncInitScript`, `openPage`'s `initScript`): it records Vite's
+ * `vite:beforeFullReload` event, which Vite's client fires before it
+ * reloads the page, and the token of the last `harness:sync` custom event
+ * it received. `settlePage` sends that event over the dev server's HMR
+ * channel (`hot.send`) until the page holds its token: one WebSocket
+ * delivers in order, and Vite's client handles one message after the other
+ * (an update once its modules are fetched and its accept callbacks ran), so
+ * by then the page has received and handled every update and full reload
+ * the server sent before it.
  * A page that announced a full reload is waited for until its new document
  * holds the token; a page with requests in flight (an update's modules, a
  * reload's document) is not settled yet. One overall bound.
  */
-import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
-import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
-import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
+import { waitForOutcome } from './outcome'
+import type { BrowserPage } from './browser'
+import type { DevServer } from './dev-server'
 
 /**
  * `src/hmr-sync.ts`: imported by a module the app's client code loads (on
@@ -32,6 +36,13 @@ export const hmrSyncModule = `if (import.meta.hot && typeof window !== 'undefine
   })
 }
 `
+
+/**
+ * `initScript` of a page (`openPage`) that imports `hmrSyncModule`, served
+ * by the dev server at `url`, before the page's own code, on every load.
+ */
+export const hmrSyncInitScript = (url: string) =>
+  `import(${JSON.stringify(url)}).catch(() => {})`
 
 /** The page's requests in flight, from now on. */
 export function trackRequests(browser: BrowserPage) {

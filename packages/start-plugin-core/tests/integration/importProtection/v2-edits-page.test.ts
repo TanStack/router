@@ -14,7 +14,11 @@ import { afterAll, describe, expect, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { startDevServer } from '../../dev-server'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
-import { hmrSyncModule, settlePage, trackRequests } from '../hmr-sync'
+import {
+  hmrSyncModule,
+  settlePage,
+  trackRequests,
+} from '@tanstack/compiler-test-utils/hmr-sync'
 import {
   appSources,
   pageApp,

@@ -71,10 +71,10 @@ Counts at hand-over (passed / expected-fail pins; the final passes F-F and F-G2 
 
 | Package                         | `test:unit` | `test:integration` | `test:implementation` | `test:noncompiler` |
 | ------------------------------- | ----------- | ------------------ | --------------------- | ------------------ |
-| `@tanstack/compiler-test-utils` | 330 / 0     | 168 / 0            | –                     | –                  |
+| `@tanstack/compiler-test-utils` | 330 / 0     | 170 / 0            | –                     | –                  |
 | `@tanstack/router-generator`    | 239 / 30    | 67 / 3             | 114 / 2               | –                  |
 | `@tanstack/router-plugin`       | 107 / 20    | 674 / 355          | 104 / 1               | –                  |
-| `@tanstack/start-plugin-core`   | 389 / 144   | 1199 / 288         | 609 / 9               | 121 / 0            |
+| `@tanstack/start-plugin-core`   | 389 / 143   | 1199 / 288         | 609 / 9               | 121 / 0            |
 | `@tanstack/react-start-rsc`     | no files    | 108 / 13           | –                     | 49 / 0             |
 
 The measurements above (restructures, V4, stability, budgets) ran at 45f58967ea. The final pass F-F (October 2026,
@@ -86,8 +86,10 @@ router-plugin `test:implementation` −1 (the control of a deleted path filter),
 (controls of the content-based suggestion reader). The final pass F-G2 (after F-F, validated the same way) changed:
 router-plugin `test:integration` +1 (the webpack `addHmr: false` build cell replaced by a webpack dev server row and
 its control), start-plugin-core `test:integration` +1 (a control of the unused-chunk pins of
-`known-bugs-hydrate.test.ts`), start-plugin-core `test:implementation` +1 (a control of the safe-mock probe). No pin
-was added or removed.
+`known-bugs-hydrate.test.ts`), start-plugin-core `test:implementation` +1 (a control of the safe-mock probe), ctu
+`test:integration` +2 (controls of `hmr-sync.ts`), start-plugin-core `test:unit` −1 expected-fail row (the fast-tier
+copy of the computed-member request middleware pin; its build twin in `integration/start-build-call-shapes.test.ts`
+pins the same input and outcomes through a real request). No pin site was added or removed.
 
 The `test:unit` counts include the pending-rulings lane: 4 passing rows and 3 pins in start-plugin-core, 1 row in
 router-plugin.
@@ -113,10 +115,6 @@ Caveats:
     built framework package, so react-start's config plugin (dedupe, externals, dependency optimisation) is absent;
     the Rsbuild builds of router-plugin and react-start-rsc configure SWC by hand instead of `@rsbuild/plugin-react`.
     `start-host.ts` (the fast tier and the page tests) already uses `tanstackStart()`. RULES-AUDIT §3 item 6.
-  - One fast-tier pin still calls a middleware through its option object with a hand-written `next`:
-    start-plugin-core `known-bugs-start-compiler.test.ts` "a request middleware server implementation called through a
-    computed member" (its SSR check; the pin is red on the client leak before it). Its slow-tier twin in
-    `integration/start-build-call-shapes.test.ts` runs the middleware as the app's request middleware.
 - **The adversarial evidence is not independent of the tests.** Round 2's escapes are caught by rows written for
   them, and the attackers of rounds 1 and 2 wrote against earlier versions of the suite. After a major change of the
   compilers or of these tests, run a new round with test-aware attackers and re-check correct-but-different
@@ -167,8 +165,8 @@ chunk layout, printed code or AST shapes.
   `window` or `import.meta.hot`).
 - **Edits** are written to disk like a user's, reported by the real watcher, and settle on their outcome within one
   bound (`outcome.ts` `waitForOutcome`), never on counts of compiles or updates or on a quiet period. Whether a
-  page reloaded is told by the page (its loads, after it took in everything the server sent:
-  start-plugin-core `integration/hmr-sync.ts`), not by counting HMR messages.
+  page reloaded, or got an update in place, is told by the page once it handled everything the server sent
+  (`hmr-sync.ts` `settlePage`), not by a time bound or by counting HMR messages.
 - **Laziness and provenance.** Which modules a compiler emitted is told by provenance (the plugin's own `load` and
   `transform` hooks observed in that build), never by id, path or the helper that builds a lazy value.
 - **Dead code (G8)** is decided on a real production build: a dev module that reads a name it never declares fails

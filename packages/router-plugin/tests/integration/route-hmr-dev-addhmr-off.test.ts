@@ -21,7 +21,12 @@
  */
 import { describe, expect, it, onTestFinished } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
-import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
+import {
+  hmrSyncInitScript,
+  hmrSyncModule,
+  settlePage,
+  trackRequests,
+} from '@tanstack/compiler-test-utils/hmr-sync'
 import { entryFile, head, loadRoute, probeFile } from '../route-app'
 import { openRouteHmrPage } from '../route-hmr-page'
 import { openWebpackHmrPage } from '../webpack-hmr-page'
@@ -116,23 +121,30 @@ function RootComponent() {
  * Loads the route app with `addHmr`, opens a page of its dev server with a
  * live router over the generated route tree (every route option's module
  * loaded), edits the route file to add an option (`staticData`), and
- * returns, once the edit's outcome showed within the bound, whether the
- * page reloaded and whether the live router's route got the new option in
- * place.
+ * returns, once the page took in and handled everything the dev server sent
+ * for the edit (`settlePage`: the update applied, or the reload done),
+ * whether the page reloaded and whether the live router's route got the new
+ * option in place. No time bound decides the outcome: a slow update is
+ * waited for.
  */
 async function editWhileLoaded(
   route: string,
-  options: { targetFramework?: TargetFramework; hmr: boolean; bound?: number },
+  options: { targetFramework?: TargetFramework; hmr: boolean },
 ) {
   const app = await loadRoute(route, {
     targetFramework: options.targetFramework,
     hmr: options.hmr,
     fresh: true,
+    files: { 'hmr-sync.ts': hmrSyncModule },
   })
   const page = await openPage(
     new URL('/__plugin-host__/page.html', app.host.dev.url).href,
-    { registerCleanup: onTestFinished },
+    {
+      registerCleanup: onTestFinished,
+      initScript: hmrSyncInitScript('/hmr-sync.ts'),
+    },
   )
+  const inFlight = trackRequests(page)
   await page.page.evaluate(`(async () => {
   const probe = await import('/${probeFile}')
   const entry = await import('/${entryFile}')
@@ -149,55 +161,40 @@ async function editWhileLoaded(
 })()`)
   const edited = route.replace('({', '({ staticData: { edited: true },')
   expect(edited).not.toBe(route)
+  // The page imported the sync module (it holds a first token)
+  await settlePage(app.host.dev, page, inFlight)
   const consoleBefore = page.console.length
   await app.host.edit({ 'route.tsx': edited })
+  await settlePage(app.host.dev, page, inFlight)
   const editedInPlace = () =>
     page.page.evaluate<boolean>(
       `Object.values(window.__router?.routesById ?? {}).some((route) => route.options.staticData?.edited === true)`,
     )
-  let shown = true
-  try {
-    await waitForOutcome({
-      // A reload, the edit in the live route, or Vite's client reporting
-      // the update applied (after every accept callback ran: e.g. the
-      // framework's own refresh of the split component)
-      applied: async () =>
-        page.loads() > 1 ||
-        (await editedInPlace()) ||
-        page.console
-          .slice(consoleBefore)
-          .some((line) => line.includes('[vite] hot updated')),
-      timeout: options.bound ?? 10_000,
-      describe: () => `the page loaded ${page.loads()} time(s)`,
-    })
-  } catch {
-    shown = false
-  }
-  // Every module of the update fetched (its accept callbacks run once it
-  // is): what the page shows is the edit's whole outcome
-  await page.page.waitForLoadState('networkidle').catch(() => {})
   const reloaded = page.loads() > 1
-  return {
-    shown,
-    reloaded,
-    inPlace: !reloaded && (await editedInPlace()),
-    page,
-    app,
-  }
+  const inPlace = !reloaded && (await editedInPlace())
+  // Shown: a reload, the edit in the live route, or Vite's client reporting
+  // the update applied (e.g. by the framework's own refresh of the split
+  // component)
+  const shown =
+    reloaded ||
+    inPlace ||
+    page.console
+      .slice(consoleBefore)
+      .some((line) => line.includes('[vite] hot updated'))
+  return { shown, reloaded, inPlace, page, app }
 }
 
 describe('a dev server with addHmr: false', () => {
   it.each(routes)(
     'applies no route HMR to an edit ($name)',
     async ({ route, targetFramework }) => {
-      const { inPlace, page, app } = await editWhileLoaded(route, {
+      const { shown, inPlace, page, app } = await editWhileLoaded(route, {
         targetFramework,
         hmr: false,
-        // Long enough for the edit to show (reload or in place)
-        bound: 3000,
       })
       // Reloaded, or updated by the framework's own refresh: the live route
       // never gets the edited options in place
+      expect(shown, 'the edit showed (a reload or a refresh)').toBe(true)
       expect(
         inPlace,
         [
