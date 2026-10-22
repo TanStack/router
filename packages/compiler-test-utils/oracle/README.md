@@ -102,7 +102,15 @@ Caveats:
     its handler". It currently fails these three rows in most start-plugin-core integration runs on a developer
     machine. In the 145 runs of this measurement on beetle it failed one or two of them in 13 runs.
   - #34 (Vite's optimizer writes its cache after `close()`): an `ENOTEMPTY` on cleanup fails all 33 rows of
-    `integration/importProtection/mock-shapes.test.ts` in a run. It hit 3 of 145 runs.
+    `integration/importProtection/mock-shapes.test.ts` in a run. It hit 3 of 145 runs. Since F-G1 the Vite dev
+    servers of start-plugin-core's harnesses are real React Start apps, which pre-bundle React when they start
+    (`@tanstack/react-start`'s and `@vitejs/plugin-react`'s `optimizeDeps.include`), so an app closed while that
+    runs also fails single rows with an `ENOTEMPTY` of `node_modules/.vite/deps_temp_*` (seen:
+    `known-bugs-start-compiler-dev` "top-level call of a project function", `importProtection/dev`,
+    `importProtection/rule-outcomes`, `importProtection/exemptions`, `importProtection/known-bugs-dev`,
+    `importProtection/v2-alias`, `importProtection/v2-type-only`, `known-bugs-dev-server`): one or two rows in
+    every start-plugin-core integration run at a load of 15 to 25 on beetle (0 at F-F's commit under the same load),
+    one row in 3 runs on an idle beetle. Held by the #34 ruling: no workaround.
   - Re-run a file that failed only on these alone before reading it as a compiler failure.
 - **Known gaps of the final audit (F-F), not fixed:**
   - start-plugin-core's `compilerTransforms` option of its harnesses (one implementation-lane file,
