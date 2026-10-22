@@ -252,12 +252,14 @@ chunk layout, printed code or AST shapes.
 ## Diagnostics
 
 Every channel is read together (`diagnostic-channel.ts`): console, process streams, Vite's logger, Rsbuild's
-logger, and bundler compilations (warnings and errors), in dev and in builds. Diagnostics are judged by content
-(`diagnostics.ts`): the file named (absolute or project-relative, §5.7), the original position where required, the
-API or option, and an actionable cause (`explains`: no wording lists; a generic internal error does not explain).
-Wording and channel are free. Severity is not: where SPEC says "warn", a diagnostic must be at least a warning (an
-info or log line does not count), and where it says the build fails, it must fail (RULINGS "diagnostic severity").
-"Nothing reported" (`expectNoProblems`) reads every channel.
+logger, and bundler compilations (warnings and errors), in dev and in builds. A diagnostic is checked only for the
+file it names (absolute or project-relative, §5.7) and the position (`line:column`, or the line) where required
+(`diagnostics.ts`; RULINGS "diagnostics: file and position only"): never its wording, the API or option it names,
+the cause it gives or its code frame. Severity is checked: where SPEC says "warn", a diagnostic must be at least a
+warning (an info or log line does not count), and where it says the build fails, it must fail (RULINGS "diagnostic
+severity"). "Nothing reported" (`expectNoProblems`) reads every channel. Import-protection violations are read from
+Start's public `onViolation` callback, never parsed from the printed report (RULINGS "import-protection reports
+through `onViolation`").
 
 ## Lanes
 
