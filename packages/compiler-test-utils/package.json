@@ -70,6 +70,7 @@
     "webpack": "^5.104.1"
   },
   "devDependencies": {
-    "@types/node": "catalog:"
+    "@types/node": "catalog:",
+    "yuku": "^0.22.1"
   }
 }
