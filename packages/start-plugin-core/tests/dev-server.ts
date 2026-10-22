@@ -22,11 +22,8 @@ import { onTestFinished } from 'vitest'
 import { startRuntimeLinks } from './build-harness'
 import { inProbeRequest, requestFiles } from './request-probe'
 import { startPlugins } from './start-plugins'
-import { coreStartPlugins } from './outside-compiler-corpus/core-start-plugin'
-import type {
-  StartCompilerImportTransform,
-  TanStackStartViteInputConfig,
-} from '../src/vite'
+import type { CoreStartPlugins } from './start-plugins'
+import type { TanStackStartViteInputConfig } from '../src/vite'
 import type { PluginOption } from 'vite'
 import type {
   DevServer,
@@ -56,11 +53,12 @@ export interface StartDevServerOptions extends Omit<
    */
   start?: TanStackStartViteInputConfig
   /**
-   * Implementation tests only: external import transforms of the Start
-   * compiler, which no public option takes (see
+   * Implementation tests only: Start's plugins from the core factory with
+   * external import transforms of the Start compiler, which no public
+   * option takes, instead of `tanstackStart()` (`coreStartPlugins` of
    * `outside-compiler-corpus/core-start-plugin.ts`).
    */
-  compilerTransforms?: Array<StartCompilerImportTransform>
+  corePlugins?: CoreStartPlugins
   /**
    * The Start framework package of the app (default `react`): Start's
    * plugin is that package's `tanstackStart()`, and `solid` links the built
@@ -185,15 +183,15 @@ export const Route = createRootRoute()
 export function startPlugin(
   root: string,
   start: TanStackStartViteInputConfig,
-  compilerTransforms: Array<StartCompilerImportTransform> | undefined,
+  corePlugins: CoreStartPlugins | undefined,
   framework: 'react' | 'solid' = 'react',
 ) {
   const entries = {
     client: path.join(root, 'harness/client-entry.ts'),
     server: path.join(root, 'harness/server-entry.ts'),
   }
-  return compilerTransforms
-    ? coreStartPlugins(framework, start, entries, compilerTransforms)
+  return corePlugins
+    ? corePlugins.vite(framework, start, entries)
     : startPlugins(framework, root, start, entries)
 }
 
@@ -218,7 +216,7 @@ export function startDevServer(
     files,
     plugins = [],
     start = {},
-    compilerTransforms,
+    corePlugins,
     framework = 'react',
     ...devServerOptions
   } = options
@@ -244,7 +242,7 @@ export function startDevServer(
       const appPlugins =
         typeof plugins === 'function' ? plugins({ root }) : plugins
       return [
-        startPlugin(root, start, compilerTransforms, framework),
+        startPlugin(root, start, corePlugins, framework),
         // A React app's own Vite plugin, as in every React Start app,
         // unless the test gives it
         ...(framework === 'react' && !hasReactPlugin(appPlugins)

@@ -77,11 +77,8 @@ import react from '@vitejs/plugin-react'
 import { pluginReact } from '@rsbuild/plugin-react'
 import { onTestFinished } from 'vitest'
 import { inProbeRequest, requestFiles } from './request-probe'
-import {
-  coreStartPlugins,
-  coreStartRsbuildPlugin,
-} from './outside-compiler-corpus/core-start-plugin'
 import { startPlugins, startRsbuildPlugin } from './start-plugins'
+import type { CoreStartPlugins } from './start-plugins'
 import type {
   BuildMode,
   BuildResult,
@@ -93,10 +90,7 @@ import type {
   ChannelDiagnostic,
   DiagnosticChannel,
 } from '@tanstack/compiler-test-utils/diagnostic-channel'
-import type {
-  StartCompilerImportTransform,
-  TanStackStartInputConfig,
-} from '../src'
+import type { TanStackStartInputConfig } from '../src'
 import type { RsbuildConfig, RsbuildPlugin } from '@rsbuild/core'
 import type { InlineConfig, Plugin } from 'vite'
 
@@ -267,14 +261,14 @@ export interface StartBuildOptions {
   /** Start's plugin options (`tanstackStart(options)`). */
   start?: TanStackStartInputConfig
   /**
-   * Implementation tests only (outside the corpus): external import
-   * transforms of the Start compiler. No public option takes them (a
-   * framework package passes its own, e.g. React's RSC CSS transforms with
-   * `rsc: { enabled: true }`), so with them Start's plugin is the core
-   * factory with the options the framework package passes
-   * (`outside-compiler-corpus/core-start-plugin.ts`).
+   * Implementation tests only (outside the corpus): Start's plugins from the
+   * core factory with external import transforms of the Start compiler,
+   * which no public option takes (a framework package passes its own, e.g.
+   * React's RSC CSS transforms with `rsc: { enabled: true }`), instead of
+   * `tanstackStart()` (`coreStartPlugins` of
+   * `outside-compiler-corpus/core-start-plugin.ts`).
    */
-  compilerTransforms?: Array<StartCompilerImportTransform>
+  corePlugins?: CoreStartPlugins
   /**
    * Registers the removal of the app (default: when the current test
    * finishes). A build shared by several tests keeps the cleanup and runs
@@ -478,7 +472,7 @@ export async function buildStart(
     minify: options.minify ?? mode === 'production',
     sourcemap: options.sourcemap ?? false,
     start: options.start ?? {},
-    compilerTransforms: options.compilerTransforms,
+    corePlugins: options.corePlugins,
     rsbuildConfig: options.rsbuildConfig,
     viteConfig: options.viteConfig,
     watchEdits: options.watchEdits,
@@ -632,7 +626,7 @@ interface BuildTarget {
   minify: boolean
   sourcemap: boolean
   start: TanStackStartInputConfig
-  compilerTransforms: Array<StartCompilerImportTransform> | undefined
+  corePlugins: CoreStartPlugins | undefined
   rsbuildConfig: RsbuildConfig | undefined
   viteConfig?: InlineConfig
   watchEdits?: Record<string, string | null>
@@ -765,12 +759,11 @@ async function buildWithVite(
             ssr: environmentBuild('ssr'),
           },
           plugins: [
-            target.compilerTransforms
-              ? coreStartPlugins(
+            target.corePlugins
+              ? target.corePlugins.vite(
                   target.framework,
                   target.start,
                   harnessEntries(target.root),
-                  target.compilerTransforms,
                 )
               : startPlugins(
                   target.framework,
@@ -938,12 +931,11 @@ async function buildWithRsbuild(
             !hasRsbuildPlugin(target.rsbuildConfig?.plugins, 'rsbuild:react')
               ? [pluginReact()]
               : []),
-            target.compilerTransforms
-              ? coreStartRsbuildPlugin(
+            target.corePlugins
+              ? target.corePlugins.rsbuild(
                   target.framework,
                   target.start,
                   harnessEntries(target.root),
-                  target.compilerTransforms,
                 )
               : startRsbuildPlugin(
                   target.framework,

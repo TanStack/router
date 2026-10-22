@@ -3,8 +3,9 @@
  * on a real app.
  *
  * `startProtectedDevServer` is a Vite dev server with Start's whole public
- * Vite plugin (`startDevServer`: `tanStackStartVite` of the built package),
- * configured through Start's public options only: `importProtection`, and
+ * Vite plugin (`startDevServer`: `tanstackStart()` of the built framework
+ * package), configured through Start's public options only:
+ * `importProtection`, and
  * the app's router entry (`router.entry`, default `src/entry.ts` for these
  * fixtures), the module every client module of a Start app is reached from.
  * The start entry `src/start.ts` is Start's default.

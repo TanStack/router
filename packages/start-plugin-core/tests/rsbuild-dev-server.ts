@@ -22,11 +22,8 @@ import { pluginReact } from '@rsbuild/plugin-react'
 import { onTestFinished } from 'vitest'
 import { startRuntimeLinks } from './build-harness'
 import { startRsbuildPluginFactory, withHarnessEntries } from './start-plugins'
-import { coreStartRsbuildPlugin } from './outside-compiler-corpus/core-start-plugin'
-import type {
-  StartCompilerImportTransform,
-  TanStackStartInputConfig,
-} from '../src'
+import type { CoreStartPlugins } from './start-plugins'
+import type { TanStackStartInputConfig } from '../src'
 import type { TanStackStartRsbuildInputConfig } from '../src/rsbuild'
 import type { RsbuildPlugin } from '@rsbuild/core'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
@@ -159,11 +156,12 @@ function recordClientEntry(entry: ClientEntry): RsbuildPlugin {
 export async function startRsbuildStartDevServer(
   options: Omit<RsbuildDevServerOptions, 'dir' | 'plugins'> & {
     /**
-     * Implementation tests only: external import transforms of the Start
-     * compiler, which no public option takes (see
+     * Implementation tests only: Start's plugins from the core factory with
+     * external import transforms of the Start compiler, which no public
+     * option takes, instead of `tanstackStart()` (`coreStartPlugins` of
      * `outside-compiler-corpus/core-start-plugin.ts`).
      */
-    compilerTransforms?: Array<StartCompilerImportTransform>
+    corePlugins?: CoreStartPlugins
     /** The app's Start options (`tanStackStart(options)`). */
     start?: TanStackStartRsbuildInputConfig
     /** The Start framework package of the app (default `react`). */
@@ -172,7 +170,7 @@ export async function startRsbuildStartDevServer(
 ): Promise<RsbuildDevServer> {
   const {
     files,
-    compilerTransforms,
+    corePlugins,
     start,
     framework = 'react',
     ...devServerOptions
@@ -215,13 +213,8 @@ export const Route = createRootRoute()
         ...(framework === 'react' && !hasPluginReact(devServerOptions.config)
           ? [pluginReact()]
           : []),
-        compilerTransforms
-          ? coreStartRsbuildPlugin(
-              framework,
-              start ?? {},
-              entries,
-              compilerTransforms,
-            )
+        corePlugins
+          ? corePlugins.rsbuild(framework, start ?? {}, entries)
           : tanstackStart(withHarnessEntries(root, start ?? {}, entries)),
         recordClientEntry(entry),
       ]

@@ -21,6 +21,7 @@ import { describe, expect, test } from 'vitest'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../../build-harness'
 import { warnMeTransform as warningTransform } from '../../compiler-transforms-seam'
+import { coreStartPlugins } from '../../outside-compiler-corpus/core-start-plugin'
 import { startDevServer } from '../../dev-server'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 
@@ -67,7 +68,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
         bundler,
         files,
         entry: 'src/entry.ts',
-        compilerTransforms: [warningTransform],
+        corePlugins: coreStartPlugins([warningTransform]),
       })
       const { client, ssr } = build
       // Every channel of the build, each report once (the console is
@@ -94,7 +95,7 @@ describe("dev servers with Start's plugin", () => {
     async () => {
       const server = await startDevServer({
         start: {},
-        compilerTransforms: [warningTransform],
+        corePlugins: coreStartPlugins([warningTransform]),
         files,
       })
       // The browser and the server load the app
@@ -118,7 +119,7 @@ describe("dev servers with Start's plugin", () => {
     'Rsbuild dev: a compiler warning reaches the user once, naming the module',
     async () => {
       const server = await startRsbuildStartDevServer({
-        compilerTransforms: [warningTransform],
+        corePlugins: coreStartPlugins([warningTransform]),
         files,
       })
       // Every compile's warnings (none is lost to a later compile)
