@@ -230,9 +230,8 @@ return {
   // Not run on Vite: there, whether `serverOnlyFn` is in the production
   // resolver is the #7213 race (below): the SSR build reaches its module
   // and the resolver in parallel, and finds it first by about 12 ms on an
-  // idle machine. With Start's server entry in the SSR build, no app input
-  // orders the two. The #7213 pins below pin that mechanism
-  // deterministically, and the pin below asserts this call too.
+  // idle machine. The row after it asserts this call on both bundlers in an
+  // order the app fixes, and the pin below asserts it too.
   if (bundler !== 'vite') {
     test(
       'SSR: a server fn only server code references is callable from SSR code',
@@ -244,6 +243,30 @@ return {
       timeout,
     )
   }
+  // The app's server entry (Start's documented `server.entry`, here the
+  // harness's) defines the server fn: the SSR build finds it when it
+  // compiles that entry, before it reaches any module the entry imports,
+  // Start's server fn resolver included, so on Vite too the order is fixed.
+  // (SPEC J4.2: a server fn only server code calls works for those callers;
+  // J4.6: a server fn declared at module top level works everywhere.)
+  test(
+    'SSR: a server fn the server entry defines and only server code references is callable from SSR code',
+    async () => {
+      const { ssr } = await buildStart({
+        bundler,
+        files: {
+          'entry.ts': `export {}\n`,
+          'harness/server-entry.ts': `${head}export const serverOnlyFn = createServerFn().handler(async () => 'server-only fn')
+;(globalThis as any).__tssBuildHarnessEntry = { serverOnlyFn }
+export { default } from '@tanstack/react-start/server-entry'
+`,
+        },
+      })
+      const { result } = await ssr.run(`return await entry.serverOnlyFn()`)
+      expect(result).toBe('server-only fn')
+    },
+    timeout,
+  )
 
   // Bug: with SSR as the provider, the production resolver lists every
   // server fn the builds found and never checks the caller's origin
@@ -284,9 +307,10 @@ return {
   // Impact: in production, calling it throws "Server function info not
   // found" (works in dev), from SSR code and over HTTP alike.
   // Source: issue #7213; SPEC J4.2 ("in any module processing order", G4).
-  // When SSR code imports the server fn, or its caller, the SSR build
-  // reaches the module that calls it and the resolver in parallel: then
-  // whether it is in the resolver is a race (see the controls above).
+  // When SSR code imports the server fn, or its caller, from another module,
+  // the SSR build reaches the module that calls it and the resolver in
+  // parallel: then whether it is in the resolver is a race (see the
+  // controls above).
   // Not run on Vite: the middleware caller (the one #7213 quotes) when SSR
   // code imports the server fn that uses the middleware. The SSR build then
   // reaches the middleware's module and the resolver in parallel, and
