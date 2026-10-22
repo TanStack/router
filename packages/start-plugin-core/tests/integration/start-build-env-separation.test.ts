@@ -250,6 +250,27 @@ export const isomorphic = createIsomorphicFn()
   .client(() => 'MARK_ISOMORPHIC_CLIENT')
 export const serverOnly = createServerOnlyFn(() => serverOnlyDep())
 `,
+      // Server fns whose handlers return what the middleware put into
+      // their context (the request middleware of src/start.ts runs first,
+      // then the server fn's own) and the data its validator gave: a call
+      // over HTTP runs Start's own middleware chain.
+      'src/middleware-fns.ts': `import { createServerFn } from '@tanstack/react-start'
+import { serverMiddleware } from './builder-middleware'
+import { fnMiddleware } from './middleware'
+type Context = { marker?: string }
+export const viaFnMiddleware = createServerFn()
+  .middleware([fnMiddleware])
+  .handler(async ({ context, data }) => ({
+    marker: (context as Context).marker,
+    data,
+  }))
+export const viaBuilderMiddleware = createServerFn()
+  .middleware([serverMiddleware])
+  .handler(async ({ context }) => (context as Context).marker)
+export const viaStartMiddleware = createServerFn().handler(
+  async ({ context }) => (context as unknown as Context).marker,
+)
+`,
       'src/start.ts': `import { createMiddleware, createStart } from '@tanstack/react-start'
 import { startMiddleware } from './deps/startMiddleware'
 const marker = createMiddleware().server(({ next }) =>
@@ -268,7 +289,7 @@ import { routeSsr } from '../deps/routeSsr'
 import { routeServerFn } from '../deps/routeServerFn'
 const getData = createServerFn().handler(async () => routeServerFn())
 export const Route = createFileRoute('/')({
-  server: { handlers: { GET: () => routeHandler() } },
+  server: { handlers: { GET: () => new Response(routeHandler()) } },
   headers: () => ({ 'x-marker': routeHeaders() }),
   ssr: () => routeSsr() === 'MARK_ROUTE_SSR',
   loader: () => getData(),
@@ -278,7 +299,7 @@ export const Route = createFileRoute('/')({
       'src/routes/api.ts': `import { createFileRoute } from '@tanstack/react-router'
 import { serverRouteHandler } from '../deps/serverRouteHandler'
 export const Route = createFileRoute('/api')({
-  server: { handlers: { GET: () => serverRouteHandler() } },
+  server: { handlers: { GET: () => new Response(serverRouteHandler()) } },
 })
 `,
       'src/router.ts': `import { createRouter } from '@tanstack/react-router'
@@ -290,6 +311,11 @@ export { setTheme, validatedFn } from './builders'
 export { isoClientVar, isoServerVar } from './iso-builders'
 export { serverMiddleware, validatedMiddleware } from './builder-middleware'
 export { fnMiddleware } from './middleware'
+export {
+  viaBuilderMiddleware,
+  viaFnMiddleware,
+  viaStartMiddleware,
+} from './middleware-fns'
 export { startInstance } from './start'
 export { getRouter } from './router'
 `,
@@ -299,12 +325,17 @@ export { getRouter } from './router'
 ${callByIdExports}`,
     }
 
-    /** SSR script prelude: `route(id)` is the route with that id. */
-    const routes = `const route = (id) =>
+    /**
+     * SSR script prelude: `route(id)` is the route with that id; `get(path)`
+     * is the text of Start's server entry's response to a GET request for
+     * `path`; `callById` (`callByIdPrelude`) calls a server fn over HTTP.
+     */
+    const routes = `${callByIdPrelude}const route = (id) =>
   Object.values(entry.getRouter().routeTree.children).find(
     (candidate) => candidate.options.id === id,
   )
-const next = (options) => options
+const get = async (path) =>
+  (await entry.startServerEntry.fetch(new Request(new URL(path, 'http://localhost')))).text()
 `
 
     // One build for every row.
@@ -350,13 +381,13 @@ const next = (options) => options
       {
         construct: 'a function middleware .server()',
         marker: 'MARK_MIDDLEWARE_SERVER',
-        run: `return entry.fnMiddleware.options.server({ next }).context.marker`,
+        run: `return (await callById(serverFnId(entry.viaFnMiddleware))).marker`,
         expected: 'MARK_MIDDLEWARE_SERVER',
       },
       {
         construct: 'a function middleware validator',
         marker: 'MARK_MIDDLEWARE_VALIDATOR',
-        run: `return entry.fnMiddleware.options.validator({})`,
+        run: `return (await callById(serverFnId(entry.viaFnMiddleware))).data`,
         expected: 'MARK_MIDDLEWARE_VALIDATOR',
       },
       {
@@ -374,7 +405,7 @@ const next = (options) => options
       {
         construct: 'route server.handlers',
         marker: 'MARK_ROUTE_HANDLER',
-        run: `return route('/').options.server.handlers.GET()`,
+        run: `return await get('/')`,
         expected: 'MARK_ROUTE_HANDLER',
       },
       {
@@ -398,19 +429,19 @@ const next = (options) => options
       {
         construct: 'a server route',
         marker: 'MARK_SERVER_ROUTE',
-        run: `return route('/api').options.server.handlers.GET()`,
+        run: `return await get('/api')`,
         expected: 'MARK_SERVER_ROUTE',
       },
       {
         construct: 'a request middleware of src/start.ts',
         marker: 'MARK_START_MIDDLEWARE',
-        run: `return entry.startInstance.getOptions().requestMiddleware[0].options.server({ next }).context.marker`,
+        run: `return await callById(serverFnId(entry.viaStartMiddleware))`,
         expected: 'MARK_START_MIDDLEWARE',
       },
       {
         construct: 'a function middleware .server() on a builder variable',
         marker: 'MARK_BUILDER_MIDDLEWARE_SERVER',
-        run: `return entry.serverMiddleware.options.server({ next }).context.marker`,
+        run: `return await callById(serverFnId(entry.viaBuilderMiddleware))`,
         expected: 'MARK_BUILDER_MIDDLEWARE_SERVER',
       },
     ])(

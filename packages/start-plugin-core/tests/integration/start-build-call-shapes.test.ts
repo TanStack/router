@@ -203,14 +203,20 @@ export const mw = createMiddleware()['server'](async ({ next }) => {
 `,
     at: `createMiddleware()['server']`,
     names: [['createMiddleware', 'server']],
+    // The app's request middleware: Start runs it for every request of the
+    // app, so for the one the SSR script runs in (whose route handler runs
+    // only once the middleware called `next()`)
+    files: {
+      'src/start.ts': `import { createStart } from '@tanstack/react-start'
+import { mw } from './computedMiddleware'
+export const startInstance = createStart(() => ({ requestMiddleware: [mw] }))
+`,
+    },
     client: `return typeof shape.mw`,
-    ssr: `return {
-  next: await shape.mw.options.server({ next: () => 'next' }),
-  called: globalThis.MARK_COMPUTEDMIDDLEWARE_DB_CALLED ?? false,
-}`,
+    ssr: `return { called: globalThis.MARK_COMPUTEDMIDDLEWARE_DB_CALLED ?? false }`,
     expectWorks: ({ client, ssr }) => {
       expect(client).toBe('object')
-      expect(ssr).toEqual({ next: 'next', called: true })
+      expect(ssr).toEqual({ called: true })
     },
   },
   {
