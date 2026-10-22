@@ -8,10 +8,16 @@
  * only `packageJson: null` makes it inherit this package's
  * (`"sideEffects": false`).
  *
- * Each framework builds with its own JSX compiler, the way its apps do:
- * React with the bundler's TypeScript/JSX transform, Solid with
- * `vite-plugin-solid` (Vite) or `babel-preset-solid` (webpack, Rspack), Vue
- * with the automatic JSX runtime of `vue`.
+ * Each framework builds with its own JSX compiler, the way its apps do. On
+ * Vite, the framework's Vite plugin (`@vitejs/plugin-react`,
+ * `vite-plugin-solid`, `@vitejs/plugin-vue-jsx`) unless the test gives it.
+ * On webpack and Rspack, which have no framework plugins, the loader an app
+ * configures: React with the bundler's TypeScript/JSX transform (SWC or the
+ * harness's loader, `@tanstack/compiler-test-utils/build-harness`), Solid
+ * with `babel-preset-solid`, Vue with Vue's Babel JSX plugin
+ * (`@vue/babel-plugin-jsx`, the one `@vitejs/plugin-vue-jsx` runs), both
+ * through `babel-loader`. Rsbuild apps (`buildWithRsbuild`) add
+ * `@rsbuild/plugin-react`.
  */
 import { writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
@@ -31,6 +37,7 @@ import {
   withBuildEnvironment,
 } from '@tanstack/compiler-test-utils/build-harness'
 import { mergeRsbuildConfig } from '@rsbuild/core'
+import { pluginReact } from '@rsbuild/plugin-react'
 import { inject } from 'vitest'
 import { onTestFinished } from '@tanstack/compiler-test-utils/test-scope'
 import type {
@@ -170,7 +177,9 @@ export function routeApp(
  * routes and the entry (see `routeApp`). `routerPlugins` creates the router
  * plugins from the harness's plugin options instead of the bundler's
  * `tanstackRouter` (e.g. other entry points); `extraPlugins` creates more
- * plugins of the bundler, after the router plugins and the framework's.
+ * plugins of the bundler, after the router plugins and the framework's. A
+ * framework plugin of Vite that `routerPlugins` or `extraPlugins` already
+ * give (by its name) is not added again.
  */
 export async function build(
   options: Omit<BundleOptions, 'dir'> & {
@@ -219,10 +228,18 @@ export async function build(
             ...pluginOptions.codeSplittingOptions,
           },
         }
+        const router = createRouterPlugins?.(config) ?? [tanstackRouter(config)]
+        const extra = extraPlugins?.(app) ?? []
+        const given = pluginNames([...router, ...extra])
         const all = [
-          ...(createRouterPlugins?.(config) ?? [tanstackRouter(config)]),
-          ...frameworkBuild.plugins(app),
-          ...(extraPlugins?.(app) ?? []),
+          ...router,
+          ...frameworkBuild
+            .plugins(app)
+            .filter(
+              (plugin) =>
+                !pluginNames([plugin]).some((name) => given.includes(name)),
+            ),
+          ...extra,
         ]
         if (all.length === 1) {
           return all[0]
@@ -254,6 +271,45 @@ const routerPlugins: Record<Bundler, () => Promise<unknown>> = {
   esbuild: async () => (await import('../src/esbuild')).tanstackRouter,
 }
 
+/** The names of plugins (nested arrays of Vite plugins included). */
+function pluginNames(plugins: Array<unknown>): Array<string> {
+  return plugins
+    .flat(Infinity as 1)
+    .flatMap((plugin) =>
+      plugin && typeof plugin === 'object' && 'name' in plugin
+        ? [String(plugin.name)]
+        : [],
+    )
+}
+
+/**
+ * A rule of webpack or Rspack compiling the app's TypeScript and JSX with
+ * Babel (`babel-loader`): the TypeScript preset, then the framework's JSX
+ * `presets` or `plugins`.
+ */
+function babelRule(babel: {
+  presets?: Array<unknown>
+  plugins?: Array<unknown>
+}) {
+  return {
+    test: /\.(?:[cm]?tsx?|jsx)$/,
+    exclude: /node_modules/,
+    loader: require.resolve('babel-loader'),
+    options: {
+      babelrc: false,
+      configFile: false,
+      presets: [
+        [
+          require.resolve('@babel/preset-typescript'),
+          { isTSX: true, allExtensions: true },
+        ],
+        ...(babel.presets ?? []),
+      ],
+      plugins: babel.plugins ?? [],
+    },
+  }
+}
+
 interface FrameworkBuild {
   /** Bundle options of the framework (JSX compilation). */
   target: Pick<BundleOptions, 'jsxImportSource' | 'sourceRules' | 'conditions'>
@@ -265,9 +321,39 @@ const frameworkBuilds: Record<
   Framework,
   (options: { bundler: Bundler; env?: BuildEnv }) => Promise<FrameworkBuild>
 > = {
-  react: () => Promise.resolve({ target: {}, plugins: () => [] }),
-  vue: () =>
-    Promise.resolve({ target: { jsxImportSource: 'vue' }, plugins: () => [] }),
+  react: async ({ bundler }) => {
+    if (bundler === 'vite') {
+      const { default: react } = await import('@vitejs/plugin-react')
+      return { target: {}, plugins: () => [react()] }
+    }
+    return { target: {}, plugins: () => [] }
+  },
+  vue: async ({ bundler }) => {
+    if (bundler === 'vite') {
+      const { default: vueJsx } = await import('@vitejs/plugin-vue-jsx')
+      return { target: {}, plugins: () => [vueJsx()] }
+    }
+    if (bundler === 'esbuild') {
+      throw new Error('The build harness has no Vue JSX for esbuild')
+    }
+    // Vue's Babel JSX plugin, the one `@vitejs/plugin-vue-jsx` (and
+    // `@rsbuild/plugin-vue-jsx`) run, through `babel-loader`, as Vue's docs
+    // configure a webpack app
+    return {
+      target: {
+        sourceRules: [
+          babelRule({
+            plugins: [
+              createRequire(require.resolve('@vitejs/plugin-vue-jsx')).resolve(
+                '@vue/babel-plugin-jsx',
+              ),
+            ],
+          }),
+        ],
+      },
+      plugins: () => [],
+    }
+  },
   solid: async ({ bundler, env = 'ssr' }) => {
     if (bundler === 'vite') {
       const { default: solid } = await import('vite-plugin-solid')
@@ -284,25 +370,14 @@ const frameworkBuilds: Record<
       target: {
         conditions: ['solid'],
         sourceRules: [
-          {
-            test: /\.(?:[cm]?tsx?|jsx)$/,
-            exclude: /node_modules/,
-            loader: require.resolve('babel-loader'),
-            options: {
-              babelrc: false,
-              configFile: false,
-              presets: [
-                [
-                  require.resolve('@babel/preset-typescript'),
-                  { isTSX: true, allExtensions: true },
-                ],
-                [
-                  require.resolve('babel-preset-solid'),
-                  { generate: env === 'ssr' ? 'ssr' : 'dom', hydratable: true },
-                ],
+          babelRule({
+            presets: [
+              [
+                require.resolve('babel-preset-solid'),
+                { generate: env === 'ssr' ? 'ssr' : 'dom', hydratable: true },
               ],
-            },
-          },
+            ],
+          }),
         ],
       },
       plugins: () => [],
@@ -315,13 +390,13 @@ const rsbuildEntryGlobal = '__routerBuildHarnessEntry'
 
 /**
  * Builds a React app for the client in production with Rsbuild, the way an
- * Rsbuild app adds the router plugin (`tools.rspack.plugins`), with
- * Rsbuild's defaults (TypeScript and JSX detection, chunk splitting,
- * minifier). Only differences: React's automatic JSX runtime is configured
- * as `pluginReact()` configures it (the plugin is not installed here), no
- * HTML page is emitted, and the output is ES modules (`output.module`) so
- * that `run()` can load it in Node; what is split, and where, does not
- * depend on that. `files` holds the routes and `entry.ts` (see `routeApp`).
+ * Rsbuild app adds the router plugin (`tools.rspack.plugins`) next to
+ * `pluginReact()` (unless `rsbuildConfig.plugins` has it), with Rsbuild's
+ * defaults (TypeScript and JSX detection, chunk splitting, minifier). Only
+ * differences: no HTML page is emitted, and the output is ES modules
+ * (`output.module`) so that `run()` can load it in Node; what is split, and
+ * where, does not depend on that. `files` holds the routes and `entry.ts`
+ * (see `routeApp`).
  */
 export async function buildWithRsbuild(
   options: Pick<AppOptions, 'files' | 'packageJson' | 'sideEffects'> & {
@@ -407,9 +482,6 @@ export async function buildWithRsbuild(
               output: { module: true },
               tools: {
                 htmlPlugin: false,
-                swc: {
-                  jsc: { transform: { react: { runtime: 'automatic' } } },
-                },
                 rspack: {
                   plugins: [
                     recordParsedModules(parsed),
@@ -430,7 +502,14 @@ export async function buildWithRsbuild(
                   ],
                 },
               },
-              plugins: [outputPlugin],
+              plugins: [
+                ...(pluginNames(options.rsbuildConfig?.plugins ?? []).includes(
+                  'rsbuild:react',
+                )
+                  ? []
+                  : [pluginReact()]),
+                outputPlugin,
+              ],
             },
             options.rsbuildConfig ?? {},
           ),

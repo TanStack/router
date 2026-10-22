@@ -1,17 +1,20 @@
 /**
  * Real-build harness for Start goal tests whose outcome the bundler decides
  * (e.g. "server code never reaches the client bundle"). Builds an app the
- * way `vite build` or `rsbuild build` builds a React Start app: through
- * Start's own Vite or Rsbuild plugin, the BUILT public entries of this
- * package (`@tanstack/start-plugin-core/vite`, `/rsbuild`, with the options
- * `@tanstack/react-start` passes; the `test:integration` target builds the
- * package first), so its environments (client, then SSR, which is the server
- * fn provider), the Start compiler, import protection, the router generator
- * and code splitter, and the generated server fn resolver are Start's, and
- * Rspack loads Start's loaders from the package as in an installed app. The
- * output of each environment is described and run with the shared build
- * harness (`@tanstack/compiler-test-utils/build-harness`). The temporary
- * apps live in this directory.
+ * way `vite build` or `rsbuild build` builds a Start app: with the plugins
+ * its `vite.config.ts` or `rsbuild.config.ts` lists, `tanstackStart()` of
+ * the built framework package (`@tanstack/react-start/plugin/vite` or
+ * `/plugin/rsbuild`, `@tanstack/solid-start` for a Solid app; see
+ * `start-plugins.ts`) and the framework's own plugin (`@vitejs/plugin-react`,
+ * `@rsbuild/plugin-react`; a Solid app's comes from the test). The
+ * `test:integration` target builds the packages first. So the framework
+ * package's configuration, Start's environments (client, then SSR, which is
+ * the server fn provider), the Start compiler, import protection, the
+ * router generator and code splitter, and the generated server fn resolver
+ * are Start's, and Rspack loads Start's loaders from the package as in an
+ * installed app. The output of each environment is described and run with
+ * the shared build harness (`@tanstack/compiler-test-utils/build-harness`).
+ * The temporary apps live in this directory.
  *
  * `@tanstack/react-start` is the real package (`startRuntimeLinks`), and
  * `@tanstack/react-router` the real one too (a dependency of this package,
@@ -24,13 +27,16 @@
  * (`outside-compiler-corpus/build-harness.test.ts`): a client script
  * observes the requests a server fn call sends (`requestsOfPrelude`). An SSR
  * script calls a server fn by id through Start's own server entry and client
- * RPC (`callByIdPrelude`). The app's entries are the harness's: the client
- * and server entries Start builds import the app's documented router entry
- * (`src/router.ts`, the harness's real router unless the app has one; the
- * client entry only the app's own), its start entry (`src/start.ts` when the
- * app has one) and the test's entry module, whose exports `run()` gives the
- * script as `entry`. Vite builds run in the app's
- * directory, as `vite build` does.
+ * RPC (`callByIdPrelude`). The app's entries are the harness's unless the app
+ * has its own (`src/client.*`, `src/server.*`), given to Start through its
+ * documented options (`client.entry`, `server.entry`): the client entry
+ * imports the app's documented router entry (`src/router.ts`, the harness's
+ * real router unless the app has one; the client entry only the app's own),
+ * its start entry (`src/start.ts` when the app has one; otherwise Start uses
+ * the framework package's default) and the test's entry module, whose
+ * exports `run()` gives the script as `entry`; the server entry is Start's
+ * own (`@tanstack/<framework>-start/server-entry`). Vite builds run in the
+ * app's directory, as `vite build` does.
  *
  * Everything a build reports, on every channel (the bundler's warnings and
  * errors, Vite's logger, `console.*` and the process streams; SPEC §5.7),
@@ -68,10 +74,14 @@ import {
   trackCompiles,
 } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import react from '@vitejs/plugin-react'
+import { pluginReact } from '@rsbuild/plugin-react'
 import { onTestFinished } from 'vitest'
-import { tanStackStartVite } from '@tanstack/start-plugin-core/vite'
-import { tanStackStartRsbuild } from '@tanstack/start-plugin-core/rsbuild'
 import { inProbeRequest, requestFiles } from './request-probe'
+import {
+  coreStartPlugins,
+  coreStartRsbuildPlugin,
+} from './outside-compiler-corpus/core-start-plugin'
+import { startPlugins, startRsbuildPlugin } from './start-plugins'
 import type {
   BuildMode,
   BuildResult,
@@ -222,7 +232,7 @@ export interface StartBuildOptions {
   bundler?: StartBundler
   /**
    * The Start framework package of the app (default `react`): Start's
-   * plugin gets the options that package passes, and `solid` links the
+   * plugin is that package's `tanstackStart()`, and `solid` links the
    * built `@tanstack/solid-start` and `@tanstack/solid-router` too (the
    * dependencies of a Solid Start app). The app's JSX plugin (e.g.
    * `vite-plugin-solid`) comes from `viteConfig`.
@@ -257,8 +267,12 @@ export interface StartBuildOptions {
   /** Start's plugin options (`tanstackStart(options)`). */
   start?: TanStackStartInputConfig
   /**
-   * External import transforms of the Start compiler, which a framework
-   * package passes to Start's plugin (e.g. React's RSC CSS transform).
+   * Implementation tests only (outside the corpus): external import
+   * transforms of the Start compiler. No public option takes them (a
+   * framework package passes its own, e.g. React's RSC CSS transforms with
+   * `rsc: { enabled: true }`), so with them Start's plugin is the core
+   * factory with the options the framework package passes
+   * (`outside-compiler-corpus/core-start-plugin.ts`).
    */
   compilerTransforms?: Array<StartCompilerImportTransform>
   /**
@@ -335,15 +349,13 @@ const routerPackages = {
 
 /**
  * The client entry of the app: imports the app's documented entries that
- * Start's default client entry imports (the router entry `src/router.ts`
- * when the app has one of its own, and the start entry: `src/start.ts`
- * when the app has one; Start's defaults, as no test moves them), and the
- * test's entry module.
+ * Start's default client entry imports, when the app has them (the router
+ * entry `src/router.ts` and the start entry `src/start.ts`; Start's
+ * defaults, as no test moves them), and the test's entry module.
  */
-const clientEntry = (testEntry: string, start: string, router: boolean) =>
-  `import * as start from ${JSON.stringify(start)}
-${router ? `import * as router from '../src/router'\n` : ''}import * as entry from ${JSON.stringify(`../${testEntry}`)}
-globalThis.__tssBuildHarnessApp = { start${router ? ', router' : ''} }
+const clientEntry = (testEntry: string, start: boolean, router: boolean) =>
+  `${start ? `import * as start from '../src/start'\n` : ''}${router ? `import * as router from '../src/router'\n` : ''}import * as entry from ${JSON.stringify(`../${testEntry}`)}
+globalThis.__tssBuildHarnessApp = { ${[start && 'start', router && 'router'].filter(Boolean).join(', ')} }
 globalThis.${entryGlobal} = entry
 `
 
@@ -395,17 +407,17 @@ export async function renderPath(
 
 /**
  * The files the harness adds to every app, unless the app has them: the
- * entries, a start entry, the render helper, and what a request of the app
- * needs (`requestFiles`: a real router over the generated route tree, its
- * root route and the probe route; the router only when the app has no
- * router entry of its own).
+ * entries, the render helper, and what a request of the app needs
+ * (`requestFiles`: a real router over the generated route tree, its root
+ * route and the probe route; the router only when the app has no router
+ * entry of its own).
  */
 const harnessFiles = (
   entries: { client: string; ssr: string },
   files: Record<string, string>,
   framework: 'react' | 'solid',
 ) => {
-  const start = 'src/start.ts' in files ? '../src/start' : './start'
+  const ownStart = 'src/start.ts' in files
   const ownRouter = Object.keys(files).some((file) =>
     /^src\/router\.[cm]?[jt]sx?$/.test(file),
   )
@@ -413,30 +425,19 @@ const harnessFiles = (
     routerPackages[framework],
   )
   return {
-    'harness/client-entry.ts': clientEntry(entries.client, start, ownRouter),
+    'harness/client-entry.ts': clientEntry(entries.client, ownStart, ownRouter),
     'harness/server-entry.ts': serverEntry(entries.ssr, framework),
-    'harness/start.ts': `export const startInstance = undefined\n`,
     'harness/render.ts': renderFile,
     ...(!ownRouter && { 'src/router.ts': router }),
     ...routes,
   }
 }
 
-/** The core options `@tanstack/react-start` passes to Start's plugin. */
-function reactStartCoreOptions(target: BuildTarget) {
-  const { root } = target
-  return {
-    framework: target.framework,
-    defaultEntryPaths: {
-      client: path.join(root, 'harness/client-entry.ts'),
-      server: path.join(root, 'harness/server-entry.ts'),
-      start: path.join(root, 'harness/start.ts'),
-    },
-    providerEnvironmentName: 'ssr',
-    ssrIsProvider: true,
-    compilerTransforms: target.compilerTransforms,
-  } as const
-}
+/** The harness's entries of an app (used where the app has none). */
+const harnessEntries = (root: string) => ({
+  client: path.join(root, 'harness/client-entry.ts'),
+  server: path.join(root, 'harness/server-entry.ts'),
+})
 
 /**
  * Builds the app with Start's plugin of `bundler` (client, then SSR) and
@@ -764,13 +765,19 @@ async function buildWithVite(
             ssr: environmentBuild('ssr'),
           },
           plugins: [
-            tanStackStartVite(
-              {
-                ...reactStartCoreOptions(target),
-                ssrResolverStrategy: { type: 'default' },
-              },
-              target.start,
-            ),
+            target.compilerTransforms
+              ? coreStartPlugins(
+                  target.framework,
+                  target.start,
+                  harnessEntries(target.root),
+                  target.compilerTransforms,
+                )
+              : startPlugins(
+                  target.framework,
+                  target.root,
+                  target.start,
+                  harnessEntries(target.root),
+                ),
             // A React app's own Vite plugin, as in every React Start app,
             // unless the test configures it
             ...(target.framework === 'react' &&
@@ -815,6 +822,22 @@ function hasReactPlugin(plugins: InlineConfig['plugins']): boolean {
         typeof plugin === 'object' &&
         'name' in plugin &&
         String(plugin.name).startsWith('vite:react'),
+    )
+}
+
+/** Whether a test's Rsbuild plugins include the plugin named `name`. */
+function hasRsbuildPlugin(
+  plugins: RsbuildConfig['plugins'],
+  name: string,
+): boolean {
+  return (plugins ?? [])
+    .flat(Infinity as 1)
+    .some(
+      (plugin) =>
+        !!plugin &&
+        typeof plugin === 'object' &&
+        'name' in plugin &&
+        plugin.name === name,
     )
 }
 
@@ -908,22 +931,26 @@ async function buildWithRsbuild(
             sourceMap: target.sourcemap ? { js: 'source-map' } : false,
             cleanDistPath: true,
           },
-          // React's JSX runtime, as `pluginReact()` of a React Start app
-          // configures it.
-          tools: {
-            swc: {
-              jsc: {
-                transform: {
-                  react: {
-                    runtime: 'automatic',
-                    development: target.mode === 'development',
-                  },
-                },
-              },
-            },
-          },
           plugins: [
-            tanStackStartRsbuild(reactStartCoreOptions(target), target.start),
+            // A React app's own Rsbuild plugin, as in every React Start app,
+            // unless the test configures it
+            ...(target.framework === 'react' &&
+            !hasRsbuildPlugin(target.rsbuildConfig?.plugins, 'rsbuild:react')
+              ? [pluginReact()]
+              : []),
+            target.compilerTransforms
+              ? coreStartRsbuildPlugin(
+                  target.framework,
+                  target.start,
+                  harnessEntries(target.root),
+                  target.compilerTransforms,
+                )
+              : startRsbuildPlugin(
+                  target.framework,
+                  target.root,
+                  target.start,
+                  harnessEntries(target.root),
+                ),
             outputPlugin,
           ],
         },

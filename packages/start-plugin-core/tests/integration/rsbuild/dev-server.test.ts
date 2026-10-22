@@ -168,8 +168,7 @@ function Page() {
   // handler) and the next call from the page runs the new handler, without
   // a full reload; the client's hot update carries the edited client code
   // and never the handler. (What the edited component shows is route HMR's
-  // business, router-plugin's page tests with React Refresh; this app has
-  // no `@rsbuild/plugin-react`.)
+  // business, router-plugin's page tests with React Refresh.)
   // Source: audit E2 missing coverage #4 (the Rsbuild hot-update path never
   // ran in tests); FIX-PLAN S12 (A13).
   test(
@@ -182,15 +181,6 @@ function Page() {
           tools: {
             // Start serves the pages, not an HTML template
             htmlPlugin: false,
-            // React's JSX runtime, as `pluginReact()` of a React Start app
-            // configures it
-            swc: {
-              jsc: {
-                transform: {
-                  react: { runtime: 'automatic', development: true },
-                },
-              },
-            },
           },
         },
         files: {

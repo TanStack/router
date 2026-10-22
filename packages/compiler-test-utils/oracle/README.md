@@ -89,7 +89,9 @@ its control), start-plugin-core `test:integration` +1 (a control of the unused-c
 `known-bugs-hydrate.test.ts`), start-plugin-core `test:implementation` +1 (a control of the safe-mock probe), ctu
 `test:integration` +3 (controls of `hmr-sync.ts`, one of them for an update the page invalidates), start-plugin-core `test:unit` −1 expected-fail row (the fast-tier
 copy of the computed-member request middleware pin; its build twin in `integration/start-build-call-shapes.test.ts`
-pins the same input and outcomes through a real request). No pin site was added or removed.
+pins the same input and outcomes through a real request). No pin site was added or removed. The pass F-G1 (after F-F) builds the apps of the start-plugin-core,
+router-plugin and react-start-rsc harnesses with the plugins a real app configures ("How tests reach the
+compilers"); no count or pin changed, and a sample of V4 reds is still caught; R1–R11 and V4 were not re-measured.
 
 The `test:unit` counts include the pending-rulings lane: 4 passing rows and 3 pins in start-plugin-core, 1 row in
 router-plugin.
@@ -106,15 +108,21 @@ Caveats:
     its handler". It currently fails these three rows in most start-plugin-core integration runs on a developer
     machine. In the 145 runs of this measurement on beetle it failed one or two of them in 13 runs.
   - #34 (Vite's optimizer writes its cache after `close()`): an `ENOTEMPTY` on cleanup fails all 33 rows of
-    `integration/importProtection/mock-shapes.test.ts` in a run. It hit 3 of 145 runs.
+    `integration/importProtection/mock-shapes.test.ts` in a run. It hit 3 of 145 runs. Since F-G1 the Vite dev
+    servers of start-plugin-core's harnesses are real React Start apps, which pre-bundle React when they start
+    (`@tanstack/react-start`'s and `@vitejs/plugin-react`'s `optimizeDeps.include`), so an app closed while that
+    runs also fails single rows with an `ENOTEMPTY` of `node_modules/.vite/deps_temp_*` (seen:
+    `known-bugs-start-compiler-dev` "top-level call of a project function", `importProtection/dev`,
+    `importProtection/rule-outcomes`, `importProtection/exemptions`, `importProtection/known-bugs-dev`,
+    `importProtection/v2-alias`, `importProtection/v2-type-only`, `known-bugs-dev-server`): one or two rows in
+    every start-plugin-core integration run at a load of 15 to 25 on beetle (0 at F-F's commit under the same load),
+    one row in 3 runs on an idle beetle. Held by the #34 ruling: no workaround.
   - Re-run a file that failed only on these alone before reading it as a compiler failure.
 - **Known gaps of the final audit (F-F), not fixed:**
-  - start-plugin-core's build and dev harnesses (`tests/build-harness.ts`, `tests/dev-server.ts`,
-    `tests/rsbuild-dev-server.ts`) call Start's public plugin factory (`tanStackStartVite`/`tanStackStartRsbuild` of
-    `@tanstack/start-plugin-core`) with the core options `@tanstack/react-start` passes, not `tanstackStart()` of the
-    built framework package, so react-start's config plugin (dedupe, externals, dependency optimisation) is absent;
-    the Rsbuild builds of router-plugin and react-start-rsc configure SWC by hand instead of `@rsbuild/plugin-react`.
-    `start-host.ts` (the fast tier and the page tests) already uses `tanstackStart()`. RULES-AUDIT §3 item 6.
+  - start-plugin-core's `compilerTransforms` option of its harnesses (one implementation-lane file,
+    `integration/outside-compiler-corpus/start-build-warnings.test.ts`) builds Start's plugin from the core factory
+    (`tests/outside-compiler-corpus/core-start-plugin.ts`): no public option takes external compiler transforms
+    (react-start passes its own RSC CSS transforms with `rsc: { enabled: true }`). No corpus test uses it.
   - Two fast-tier rows of start-plugin-core call a middleware's `.server()` on the server module with a stand-in
     `next` to read what it gives (`compiler.test.ts` "leaves unrelated SSR middleware chains as written",
     `start-compiler-factories.test.ts` `mw.options.server`; F-F D3), and the pin "a function middleware validator
@@ -154,7 +162,16 @@ chunk layout, printed code or AST shapes.
   (server code through the environment's module runner, client code in the browser) and runs `vite build` with the
   same plugins. `rsbuild-plugin-host.ts` does the same with Rsbuild's JavaScript API. Builds also run through
   Rspack and webpack (`build-harness.ts`), and router-plugin's webpack entry also runs on `webpack-dev-server`
-  with a browser page (`tests/webpack-hmr-page.ts`). The packages' own hosts build on these: router-plugin's `route-app.ts`
+  with a browser page (`tests/webpack-hmr-page.ts`).
+- **Apps are configured as an app's config file configures them.** Start apps get `tanstackStart()` of the built
+  framework package (`@tanstack/<framework>-start/plugin/vite` or `/plugin/rsbuild`; start-plugin-core
+  `tests/start-plugins.ts`), so the framework package's own options and configuration apply, and the framework's
+  own plugin (`@vitejs/plugin-react` or `@rsbuild/plugin-react` unless the test gives it, `vite-plugin-solid`,
+  `@vitejs/plugin-vue` with `@vitejs/plugin-vue-jsx`). A harness gives an app entries only through Start's
+  documented `client.entry`/`server.entry`, and only where the app has none of its own. router-plugin's Vite
+  builds add the framework's Vite plugin, its Rsbuild builds `@rsbuild/plugin-react`; plain webpack and Rspack
+  builds, which have no framework plugins, use the loaders an app configures (the bundler's TypeScript/JSX
+  transform for React, `babel-loader` with `babel-preset-solid` or Vue's `@vue/babel-plugin-jsx`). The packages' own hosts build on these: router-plugin's `route-app.ts`
   (a route file loaded as an app loads it, registered by the plugin's own generator) and start-plugin-core's
   `start-host.ts` (a Start app with a real router and a probe route). Hosts are shared within a test process and
   leased to one test at a time.

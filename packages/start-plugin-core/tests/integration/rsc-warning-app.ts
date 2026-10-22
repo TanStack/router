@@ -5,9 +5,9 @@
  * - Vite: `tanstackStart({ rsc: { enabled: true } })` of the built
  *   `@tanstack/react-start/plugin/vite`, Vite's RSC plugin
  *   (`@vitejs/plugin-rsc`) and `@vitejs/plugin-react`;
- * - Rsbuild: `tanstackStart({ rsc: { enabled: true } })` of the built
- *   `@tanstack/react-start/plugin/rsbuild` (React's JSX runtime configured
- *   as `@rsbuild/plugin-react` does), run in the app's directory as
+ * - Rsbuild: `@rsbuild/plugin-react` and
+ *   `tanstackStart({ rsc: { enabled: true } })` of the built
+ *   `@tanstack/react-start/plugin/rsbuild`, run in the app's directory as
  *   `rsbuild dev` is.
  * The packages an RSC app installs (`@tanstack/react-start`,
  * `@tanstack/react-start-rsc`, and from the latter's own dependencies
@@ -21,6 +21,7 @@ import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import react from '@vitejs/plugin-react'
+import { pluginReact } from '@rsbuild/plugin-react'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import {
@@ -163,16 +164,10 @@ export async function startRsbuildRscApp(
         tools: {
           // Start serves the pages, not an HTML template
           htmlPlugin: false,
-          swc: {
-            jsc: {
-              transform: {
-                react: { runtime: 'automatic', development: true },
-              },
-            },
-          },
         },
       },
       plugins: [
+        pluginReact(),
         {
           name: 'rsc-warning-app:working-directory',
           setup(api) {

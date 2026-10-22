@@ -182,8 +182,8 @@ import { chart } from './chart.client'`
 /**
  * What renders a module's `Page` with the framework's real renderers: on
  * the server to HTML (`html()`, in the SSR environment), and mounted in the
- * page (`mount()`, giving the container). The Vue app's JSX is Vue's own
- * automatic runtime (`jsxImportSource: 'vue'`, the host's tsconfig).
+ * page (`mount()`, giving the container). The Vue app's JSX is
+ * `@vitejs/plugin-vue-jsx`'s, as in a Vue Start app (the host's plugins).
  */
 const renderFiles: Record<Framework, Record<string, string>> = {
   react: {

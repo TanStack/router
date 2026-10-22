@@ -1,11 +1,13 @@
 /**
  * Rsbuild dev-server harness of the Start compiler: an Rsbuild dev server
- * with Start's whole Rsbuild plugin, the BUILT public entry of this package
- * (`tanStackStartRsbuild` of `@tanstack/start-plugin-core/rsbuild`, with the
- * options `@tanstack/react-start` passes: client and SSR environments, SSR
- * as the server fn provider), on a temporary app, through the shared Rsbuild
- * dev-server harness (`@tanstack/compiler-test-utils/rsbuild-dev-server`).
- * Rspack loads Start's loaders from the package, as in an installed app.
+ * with the plugins a Start app's `rsbuild.config.ts` lists, `tanstackStart()`
+ * of the built framework package (`@tanstack/react-start/plugin/rsbuild`, or
+ * `@tanstack/solid-start`'s; see `start-plugins.ts`: client and SSR
+ * environments, SSR as the server fn provider) and a React app's
+ * `@rsbuild/plugin-react` (unless the test gives it), on a temporary app,
+ * through the shared Rsbuild dev-server harness
+ * (`@tanstack/compiler-test-utils/rsbuild-dev-server`). Rspack loads Start's
+ * loaders from the package, as in an installed app.
  * `@tanstack/react-start` is the real package (`startRuntimeLinks` of the
  * build harness). `runInClient()` and `runRsbuildClient()` run the emitted
  * client code in a real browser page of the dev server (started with
@@ -16,9 +18,11 @@ import { fileURLToPath } from 'node:url'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
+import { pluginReact } from '@rsbuild/plugin-react'
 import { onTestFinished } from 'vitest'
-import { tanStackStartRsbuild } from '@tanstack/start-plugin-core/rsbuild'
 import { startRuntimeLinks } from './build-harness'
+import { startRsbuildPluginFactory, withHarnessEntries } from './start-plugins'
+import { coreStartRsbuildPlugin } from './outside-compiler-corpus/core-start-plugin'
 import type {
   StartCompilerImportTransform,
   TanStackStartInputConfig,
@@ -139,22 +143,25 @@ function recordClientEntry(entry: ClientEntry): RsbuildPlugin {
 
 /**
  * Starts an Rsbuild dev server with Start's whole Rsbuild plugin
- * (`tanStackStartRsbuild`, with the options `@tanstack/react-start` passes):
- * client and SSR environments, SSR as the server fn provider, and the
- * generated server fn resolver. Both entries import `src/entry.ts`; the
+ * (`tanstackStart()` of `@tanstack/react-start/plugin/rsbuild`) and
+ * `pluginReact()` (unless `config.plugins` has it): client and SSR
+ * environments, SSR as the server fn provider, and the generated server fn
+ * resolver. Both entries (given to Start as `client.entry` and
+ * `server.entry` unless the app has its own) import `src/entry.ts`; the
  * server entry is Start's default one (`@tanstack/react-start/server-entry`,
  * the app's HTTP handler, which reaches the server fns through Start's own
  * resolver). `src/router.ts` and `src/routes/__root.tsx` are stubs unless
- * the app has them. With `framework: 'solid'`, Start's plugin gets the
- * Solid framework and the built `@tanstack/solid-start` and
+ * the app has them. With `framework: 'solid'`, Start's plugin is
+ * `@tanstack/solid-start`'s and the built `@tanstack/solid-start` and
  * `@tanstack/solid-router` are linked (Solid's JSX plugins come from
  * `config`).
  */
-export function startRsbuildStartDevServer(
+export async function startRsbuildStartDevServer(
   options: Omit<RsbuildDevServerOptions, 'dir' | 'plugins'> & {
     /**
-     * External import transforms of the Start compiler, which a framework
-     * package passes to Start's plugin (e.g. React's RSC CSS transform).
+     * Implementation tests only: external import transforms of the Start
+     * compiler, which no public option takes (see
+     * `outside-compiler-corpus/core-start-plugin.ts`).
      */
     compilerTransforms?: Array<StartCompilerImportTransform>
     /** The app's Start options (`tanStackStart(options)`). */
@@ -171,6 +178,7 @@ export function startRsbuildStartDevServer(
     ...devServerOptions
   } = options
   const entry: ClientEntry = { files: [], module: false }
+  const tanstackStart = await startRsbuildPluginFactory(framework)
   return createRsbuildDevServer({
     dir: harnessDir,
     prefix: '.start-rsbuild-start-dev-server-',
@@ -190,31 +198,48 @@ export function startRsbuildStartDevServer(
       'harness/server-entry.ts': `import '../src/entry'
 export { default } from '@tanstack/${framework}-start/server-entry'
 `,
-      'harness/start.ts': `export const startInstance = undefined\n`,
       'src/router.ts': `export const getRouter = () => undefined\n`,
       'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute()
 `,
       ...files,
     },
-    plugins: ({ root }) => [
-      tanStackStartRsbuild(
-        {
-          framework,
-          defaultEntryPaths: {
-            client: path.join(root, 'harness/client-entry.ts'),
-            server: path.join(root, 'harness/server-entry.ts'),
-            start: path.join(root, 'harness/start.ts'),
-          },
-          providerEnvironmentName: 'ssr',
-          ssrIsProvider: true,
-          compilerTransforms,
-        },
-        start,
-      ),
-      recordClientEntry(entry),
-    ],
+    plugins: ({ root }) => {
+      const entries = {
+        client: path.join(root, 'harness/client-entry.ts'),
+        server: path.join(root, 'harness/server-entry.ts'),
+      }
+      return [
+        // A React app's own Rsbuild plugin, as in every React Start app,
+        // unless the test gives it
+        ...(framework === 'react' && !hasPluginReact(devServerOptions.config)
+          ? [pluginReact()]
+          : []),
+        compilerTransforms
+          ? coreStartRsbuildPlugin(
+              framework,
+              start ?? {},
+              entries,
+              compilerTransforms,
+            )
+          : tanstackStart(withHarnessEntries(root, start ?? {}, entries)),
+        recordClientEntry(entry),
+      ]
+    },
   }).then((server) => withClientEntry(server, entry))
+}
+
+/** Whether an app's Rsbuild configuration has `pluginReact()`. */
+function hasPluginReact(config: RsbuildDevServerOptions['config']): boolean {
+  return (config?.plugins ?? [])
+    .flat(Infinity as 1)
+    .some(
+      (plugin) =>
+        !!plugin &&
+        typeof plugin === 'object' &&
+        'name' in plugin &&
+        plugin.name === 'rsbuild:react',
+    )
 }
 
 /**

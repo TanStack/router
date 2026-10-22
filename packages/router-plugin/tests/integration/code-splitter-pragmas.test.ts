@@ -147,9 +147,9 @@ export const Route = createFileRoute('/')({ component: Page })
         app = await build({
           bundler: 'vite',
           env: 'ssr',
-          // The JSX plugin is given here, first; the harness's own Solid
-          // plugin would come after the router plugin.
-          ...(framework !== 'solid' && { framework }),
+          // The JSX plugin is given here, first; the harness adds no
+          // other plugin of the same name.
+          framework,
           pluginOptions: { target: framework },
           routerPlugins: (config) => [jsxPlugin, tanstackRouter(config)],
           files: routeApp(route(framework), { env: 'ssr', framework }),

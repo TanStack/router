@@ -21,6 +21,7 @@ import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import react from '@vitejs/plugin-react'
 import rsc from '@vitejs/plugin-rsc'
+import { pluginReact } from '@rsbuild/plugin-react'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
@@ -256,10 +257,10 @@ export interface RscRsbuildDevServerOptions extends Omit<
  * Starts an Rsbuild dev server on a React Start app with RSC enabled, of
  * `files` over `rscAppFiles`, with the built `@tanstack/react-start/plugin/
  * rsbuild` (Start's client and SSR environments, its default entries, the
- * RSC layer and `react-server-dom-rspack`). React's JSX runtime is
- * configured as `@rsbuild/plugin-react` does; a test of React Refresh adds
- * the plugin itself (`config.plugins`). With `browser`, Start's own dev middleware serves the pages
- * (SSR) and Rsbuild's HMR client runs in the page.
+ * RSC layer and `react-server-dom-rspack`) and `@rsbuild/plugin-react`, as
+ * an Rsbuild React app lists them (unless `config.plugins` has it, e.g.
+ * with other options). With `browser`, Start's own dev middleware serves
+ * the pages (SSR) and Rsbuild's HMR client runs in the page.
  */
 export async function startRscRsbuildDevServer(
   options: RscRsbuildDevServerOptions,
@@ -295,17 +296,21 @@ export async function startRscRsbuildDevServer(
         tools: {
           // Start serves the pages, not an HTML template
           htmlPlugin: false,
-          swc: {
-            jsc: {
-              transform: {
-                react: { runtime: 'automatic', development: true },
-              },
-            },
-          },
           ...config?.tools,
         },
       },
       plugins: [
+        ...((config?.plugins ?? [])
+          .flat(Infinity as 1)
+          .some(
+            (plugin) =>
+              !!plugin &&
+              typeof plugin === 'object' &&
+              'name' in plugin &&
+              plugin.name === 'rsbuild:react',
+          )
+          ? []
+          : [pluginReact()]),
         {
           name: 'rsc-app:working-directory',
           setup(api) {
