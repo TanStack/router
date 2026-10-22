@@ -124,11 +124,6 @@ Caveats:
     `tests/outside-compiler-corpus/core-start-plugin.ts`, given to the harnesses as `corePlugins`): no public option
     takes them (react-start passes its own RSC CSS transforms with `rsc: { enabled: true }`). The harnesses do not
     import that module, so no corpus test reaches the core factory.
-  - Two fast-tier rows of start-plugin-core call a middleware's `.server()` on the server module with a stand-in
-    `next` to read what it gives (`compiler.test.ts` "leaves unrelated SSR middleware chains as written",
-    `start-compiler-factories.test.ts` `mw.options.server`; F-F D3), and the pin "a function middleware validator
-    on a builder variable" of `integration/start-build-env-separation.test.ts` calls the validator directly. The
-    build and dev-server tiers run middleware through requests.
 - **The adversarial evidence is not independent of the tests.** Round 2's escapes are caught by rows written for
   them, and the attackers of rounds 1 and 2 wrote against earlier versions of the suite. After a major change of the
   compilers or of these tests, run a new round with test-aware attackers and re-check correct-but-different
@@ -177,10 +172,10 @@ chunk layout, printed code or AST shapes.
   `start-host.ts` (a Start app with a real router and a probe route). Hosts are shared within a test process and
   leased to one test at a time.
 - **Server code** runs inside real requests through Start's server entry, with a real router. Nothing builds
-  Start's request context by hand. In the build and dev-server tiers middleware runs for a server function called
-  over HTTP or as the app's request middleware, route handlers for a request of their path (for the fast-tier rows
-  that still call `.server()` with a stand-in `next`, see the known gaps). A server function is identified by its public `url` (the server function base,
-  then its id), never by Start's own metadata fields.
+  Start's request context by hand. Middleware runs for a server function called over HTTP or from server code inside
+  a real request, or as the app's request middleware, route handlers for a request of their path. Only rows held by
+  Q3 call a middleware's options with a stand-in `next`. A server function is identified by its public `url` (the
+  server function base, then its id), never by Start's own metadata fields.
 - **What a dev server serves** to a client is read through Vite's own module graph of the environment (static and
   lazy imports), never by parsing served code for imports.
 - **Client code runs in Chromium.** `browser.ts` runs scripts in bounded run pages (a fresh document per run) and
