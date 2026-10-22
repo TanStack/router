@@ -89,8 +89,10 @@ export function probeMock(value: unknown, secret?: string): MockProbe {
       any()()
       any().member
       any.member.deeper()
-      any.constructor.member()
-      any.__proto__.member()
+      // (Not `any.constructor.member()` or `any.__proto__.member()`: those
+      // are the object protocol every value has, not members a consumer
+      // reads of the denied binding; a mock may keep them, SPEC §5.18
+      // leaves its Proxy shape free.)
     }),
     construct: attempt(() => {
       new any()

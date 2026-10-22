@@ -197,16 +197,22 @@ export const greet = createServerFn().handler(() => db.x())
       }
       expect(await call()).toBe('before')
 
+      // What the server sent while it handled the edit (`edit()` settles on
+      // the watcher's report and Vite's handling of it, not on a quiet
+      // period). The server side has no page: a full reload of the server
+      // is the `full-reload` payload Vite sends its environment's module
+      // runner, so its absence is what J3.6 asks for (not a count of the
+      // updates the edit takes).
       const messages = describeHmr(
         await server.edit({
           'src/db.server.ts': `export const db = { x: () => 'after' }\n`,
         }),
       )
 
+      expect(await call()).toBe('after')
       expect(
         messages.filter((message) => message.includes('full-reload')),
       ).toEqual([])
-      expect(await call()).toBe('after')
     },
     timeout,
   )
@@ -235,13 +241,25 @@ export const mw = createMiddleware({ type: 'function' })
     async () => {
       const server = await startDevServer({
         start: {},
-        files: { 'src/mw.ts': middleware('MARK_SERVER_V1') },
+        files: {
+          ...startRequestFiles,
+          'src/mw.ts': middleware('MARK_SERVER_V1'),
+          // A server fn with the middleware: its handler reads what the
+          // middleware's `.server()` put into the context of the call
+          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+import { mw } from './mw'
+export const marker = createServerFn()
+  .middleware([mw])
+  .handler(async ({ context }) => context.marker)
+`,
+        },
       })
-      /** What `.server()` puts in the context on the server. */
+      /**
+       * What `.server()` puts in the context on the server, for a call over
+       * HTTP (Start's middleware chain runs it).
+       */
       const ssrMarker = async () =>
-        (await server.import('/src/mw.ts')).mw.options.server({
-          next: (options: unknown) => options,
-        }).context.marker
+        callServerFn(server, (await server.import('/src/fns.ts')).marker)
       expect(
         containing(await server.load('/src/mw.ts'), 'MARK_SERVER_V1'),
       ).toEqual([])

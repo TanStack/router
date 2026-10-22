@@ -41,6 +41,25 @@ describe('the safe-mock probe', () => {
     }
   })
 
+  // SPEC §5.18: the mock's Proxy shape is free, so it may keep the object
+  // protocol (`constructor`, the prototype) of its target.
+  test('accepts a recursive proxy that keeps the object protocol', () => {
+    const node = (): unknown =>
+      new Proxy(function () {}, {
+        get: (target, prop, receiver) =>
+          prop === 'constructor' || prop === '__proto__'
+            ? Reflect.get(target, prop, receiver)
+            : prop === Symbol.toPrimitive ||
+                prop === 'toString' ||
+                prop === 'toJSON'
+              ? () => 'mock'
+              : node(),
+        apply: () => node(),
+        construct: () => node() as object,
+      })
+    expectSafeMock(node(), 'MARK_SECRET')
+  })
+
   test.each([
     ['a function', () => 'x'],
     ['a string', 'x'],

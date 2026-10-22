@@ -15,12 +15,11 @@ import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 const timeout = 60_000
 
 describe('a dev server compiling an edited route out of order', () => {
-  const route = '/routes/page.tsx'
-
   /**
    * The page: it imports the route module from the dev server, like an app
    * (the browser requests the route module and what it imports, getting
-   * what the dev server compiled last), loads its `component` and, when the
+   * what the dev server compiled last), then (`renderRoute()`, at once
+   * unless the page's URL has `?later`) loads its `component` and, when the
    * route has one, its `errorComponent` (`preload()` of the real router's
    * lazy route component), renders each with React into the page, and
    * publishes their HTML.
@@ -38,6 +37,7 @@ import { flushSync } from 'react-dom'
 import { createRoot } from 'react-dom/client'
 import { Route } from './routes/page'
 
+async function renderRoute() {
 const rendered: Array<string> = []
 const errors: Array<string> = []
 const report = (error: unknown) => {
@@ -59,21 +59,20 @@ for (const option of ['component', 'errorComponent'] as const) {
   flushSync(() => root.render(createElement(component)))
   rendered.push(container.innerHTML)
 }
-// The app's modules the page requested: the route module and what it
-// loaded, statically or lazily (path and query)
-const requested = performance
-  .getEntriesByType('resource')
-  .map((entry) => new URL(entry.name))
-  .filter((url) => url.origin === location.origin)
-  .map((url) => url.pathname + url.search)
-;(window as any).__rendered = { rendered, errors, requested }
+;(window as any).__rendered = { rendered, errors }
+}
+;(window as any).__renderRoute = renderRoute
+;(window as any).__routeLoaded = true
+if (!location.search.includes('later')) {
+  await renderRoute()
+}
 `,
   }
 
   /**
-   * Opens the page and returns the HTML it rendered and the modules of the
-   * app it requested, or throws with what the page reported when it could
-   * not render (e.g. a module failing to link).
+   * Opens the page and returns the HTML it rendered, or throws with what
+   * the page reported when it could not render (e.g. a module failing to
+   * link).
    */
   async function renderInPage(server: DevServer) {
     const opened = await openPage(server.url!, {
@@ -89,7 +88,7 @@ const requested = performance
   /** What the page rendered, once it did (see `renderInPage`). */
   async function renderedBy(
     opened: BrowserPage,
-  ): Promise<{ rendered: Array<string>; requested: Array<string> }> {
+  ): Promise<{ rendered: Array<string> }> {
     const deadline = Date.now() + 15_000
     for (;;) {
       // (A page opened after an edit loads twice: Vite's server keeps the
@@ -98,15 +97,11 @@ const requested = performance
       const result = (await opened.page
         .evaluate(() => (window as any).__rendered)
         .catch(() => undefined)) as
-        | {
-            rendered: Array<string>
-            errors: Array<string>
-            requested: Array<string>
-          }
+        | { rendered: Array<string>; errors: Array<string> }
         | undefined
       const errors = [...opened.errors, ...(result?.errors ?? [])]
       if (result && errors.length === 0) {
-        return { rendered: result.rendered, requested: result.requested }
+        return { rendered: result.rendered }
       }
       if (errors.length > 0 || Date.now() > deadline) {
         throw new Error(
@@ -118,17 +113,21 @@ const requested = performance
   }
 
   /**
-   * Serves `before` as `routes/page.tsx`, loads the route's modules as a
-   * page does, edits the route to `after`, requests the modules the page had
-   * loaded again in the order `reorder` gives (a page re-requests the
-   * modules the edit invalidated; unbundled Vite dev fetches them in
-   * parallel, in no fixed order, and keeps each result until the next
-   * edit), then opens a page loading the route from the dev server as it
-   * is now (the current route module and whatever it imports) and renders
-   * its components there.
+   * Serves `before` as `routes/page.tsx` to a page whose dev server HMR
+   * client cannot connect (the WebSocket fails, as behind a proxy that
+   * drops it: the page gets no update of the edit), which imports the route
+   * module only. Edits the route to `after`. With `lazyFirst`, that page
+   * then loads the route's split options (`renderRoute()`: what a page
+   * does when it first renders the route, e.g. on navigation): the browser
+   * requests the split modules, and what they import, before anything
+   * requested the edited route module, and the dev server keeps each
+   * result until the next edit. Without it (the control), the page reloads
+   * first, which requests the route module before the rest. Then a fresh
+   * page loads the route from the dev server as it is now (the current
+   * route module and whatever it imports) and renders its components.
    */
   async function editOutOfOrder(
-    reorder: (urls: Array<string>) => Array<string>,
+    lazyFirst: boolean,
     before: string,
     after: string,
   ) {
@@ -147,31 +146,25 @@ const requested = performance
       },
       files: { ...page, 'routes/page.tsx': before },
     })
-    // A page loads the route first, then leaves (the edit's own update
-    // must not reach a page: the test orders the requests). The modules
-    // of the route it loaded, whatever the layout: one module or many, any
-    // URLs or paths (V1R hmr HMR-27, SPEC §5.3; also under `/@fs/` or
-    // `node_modules/`), are the ones the page requested from the route
-    // module on (the route module first). Requesting a dependency again is
-    // harmless: the edit did not invalidate it.
-    const { requested } = await renderInPage(server)
-    const urls = requested
-      .slice(requested.indexOf(route))
-      .filter((url) => url !== '/main.tsx')
-    expect(urls[0], 'the route module, which the page requested').toBe(route)
+    const stale = await openPage('about:blank', {
+      registerCleanup: onTestFinished,
+    })
+    await stale.page.context().routeWebSocket(/./, (ws) => ws.close())
+    await stale.page.goto(new URL('/?later', server.url).href)
+    await stale.page.waitForFunction(() => (window as any).__routeLoaded)
     await server.edit({ 'routes/page.tsx': after })
-    for (const url of reorder(urls)) {
-      // A module the edit removed from the graph may no longer compile, as
-      // a page's stale request fails; the page below loads the current
-      // graph from the route module, so a module it needs that fails still
-      // fails the test there.
-      await server.transform(url).catch(() => undefined)
+    if (!lazyFirst) {
+      await stale.page.reload()
+      await stale.page.waitForFunction(() => (window as any).__routeLoaded)
     }
+    // (What this page renders is the old route module's, and a stale
+    // module it asks for may fail as a stale request does: not judged)
+    await stale.page
+      .evaluate(() => (window as any).__renderRoute())
+      .catch(() => undefined)
+    await stale.close()
     return (await renderInPage(server)).rendered
   }
-
-  /** The route module after the other modules the page had loaded. */
-  const routeModuleLast = (urls: Array<string>) => [...urls.slice(1), route]
 
   /**
    * A route whose split `component` and `errorComponent` render the cards
@@ -187,7 +180,8 @@ ${cardB ? 'let renders = 0\nfunction CardB() { renders++; return <i>{"B" + rende
 })
 `
 
-  // Controls for the pins below (same harness): requested in import order.
+  // Controls for the pins below (same harness): the route module requested
+  // first after the edit.
   test.each([
     {
       name: 'removing a component two split options render',
@@ -204,9 +198,7 @@ ${cardB ? 'let renders = 0\nfunction CardB() { renders++; return <i>{"B" + rende
   ])(
     'a page loading the route module first renders the edited route after $name',
     async ({ before, after, expected }) => {
-      expect(await editOutOfOrder((urls) => urls, before, after)).toEqual(
-        expected,
-      )
+      expect(await editOutOfOrder(false, before, after)).toEqual(expected)
     },
     timeout,
   )
@@ -215,9 +207,13 @@ ${cardB ? 'let renders = 0\nfunction CardB() { renders++; return <i>{"B" + rende
   // shared module (`?tsr-shared=1`) and stores them by file; the shared and
   // split transforms read that stored set instead of deriving it from the
   // code they compile (router-code-splitter-plugin.ts `sharedBindingsMap`).
-  // After an edit, the browser requests the invalidated modules again in no
-  // fixed order (unbundled Vite dev fetches them in parallel), and Vite keeps
-  // each result until the next edit.
+  // After an edit, a page can request the split modules before the route
+  // module: here a page whose HMR client cannot connect (so no update
+  // re-imports the route module) renders the route for the first time after
+  // the edit, which loads its split options; Vite keeps each result until
+  // the next edit, so every later page gets them. (With a connected HMR
+  // client, the update re-imports the route module first: a real page with
+  // route HMR and React Refresh did not reach the state in 12 tries.)
   // Impact: a shared or split module requested before the route module
   // compiles the new source with the previous set: a removed binding is still
   // exported ("Export 'CardB' is not defined") and the page stays broken until
@@ -244,9 +240,7 @@ ${cardB ? 'let renders = 0\nfunction CardB() { renders++; return <i>{"B" + rende
   ])(
     'a page loading the modules of the route file before the route module renders the edited route after $name',
     async ({ before, after, expected }) => {
-      expect(await editOutOfOrder(routeModuleLast, before, after)).toEqual(
-        expected,
-      )
+      expect(await editOutOfOrder(true, before, after)).toEqual(expected)
     },
     timeout,
   )
@@ -262,7 +256,7 @@ ${cardB ? 'let renders = 0\nfunction CardB() { renders++; return <i>{"B" + rende
     async () => {
       expect(
         await editOutOfOrder(
-          routeModuleLast,
+          true,
           `${routeHead()}const prefix = 'a'
 const suffix = 'b'
 export function Card() { return <b>{prefix}{suffix}</b> }

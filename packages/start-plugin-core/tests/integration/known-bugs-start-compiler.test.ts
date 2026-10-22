@@ -482,17 +482,32 @@ export const isomorphic = createIsomorphicFn()
   .server(() => 'server')
   .client(() => 'client')
 `,
-          'src/entry.ts': `export { middleware, isomorphic } from './both'\n`,
+          // The app's request middleware: a server fn's handler reads what
+          // it put into the context of a request
+          'src/start.ts': `import { createStart } from '@tanstack/react-start'
+import { middleware } from './both'
+export const startInstance = createStart(() => ({ requestMiddleware: [middleware] }))
+`,
+          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+export const marker = createServerFn().handler(
+  async ({ context }) => (context as unknown as { marker?: string }).marker,
+)
+`,
+          'src/entry.ts': `export { isomorphic } from './both'
+export { marker } from './fns'
+`,
+          'src/ssr-entry.ts': `export * from './entry'
+${callByIdExports}`,
         },
-        entry: 'src/entry.ts',
+        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
       })
       expect(client.where('MARK_MIDDLEWARE_SERVER')).toBe('nowhere')
-      const { result } = await ssr.run(`return {
-  middleware: entry.middleware.options.server({ next: (options) => options }),
+      const { result } = await ssr.run(`${callByIdPrelude}return {
+  middleware: await callById(serverFnId(entry.marker)),
   isomorphic: entry.isomorphic(),
 }`)
       expect(result).toEqual({
-        middleware: { context: { marker: 'MARK_MIDDLEWARE_SERVER' } },
+        middleware: 'MARK_MIDDLEWARE_SERVER',
         isomorphic: 'server',
       })
     },
