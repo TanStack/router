@@ -1009,6 +1009,17 @@ export function compileCodeSplitVirtualRoute(
             originalIdentName = splitNode.name
           }
 
+          // A shared binding's declaration was removed above and is imported
+          // from the shared module, so export that import as-is
+          if (
+            originalIdentName &&
+            opts.sharedBindings?.has(originalIdentName)
+          ) {
+            splitMeta.localExporterIdent = originalIdentName
+            splitMeta.shouldRemoveNode = false
+            splitNode = undefined
+          }
+
           while (t.isIdentifier(splitNode)) {
             const binding = programPath.scope.getBinding(splitNode.name)
             splitNode = binding?.path.node
