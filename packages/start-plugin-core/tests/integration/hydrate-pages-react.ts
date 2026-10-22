@@ -437,11 +437,7 @@ const belowTheFold = `h('div', { children: [h('div', { key: 'above', style: { he
 const clickEveryCounter = `const counters = () => [...root.querySelectorAll('button[data-label]')].filter((button) => button.dataset.label !== 'switch')
 for (const label of counters().map((button) => button.dataset.label)) {
   const button = () => root.querySelector('button[data-label="' + label + '"]')
-  await waitFor(async () => {
-    button().click()
-    await settled(50)
-    return button().textContent === label + ':1'
-  })
+  await clickUntil(button, () => button().textContent === label + ':1')
 }
 return counters().map((button) => button.textContent)`
 
@@ -501,7 +497,7 @@ export function reactPageSuite(bundler: StartBundler) {
 
         test('inline text keeps its leading and trailing spaces after hydration', async () => {
           const page = await app.hydrate('edgeSpaces', {
-            script: `await waitFor(async () => { const button = root.querySelector('button'); button.click(); await settled(50); return button.textContent === 'ready:1' })
+            script: `await clickUntil(() => root.querySelector('button'), () => root.querySelector('button').textContent === 'ready:1')
   return root.querySelector('[data-spacing]').textContent`,
           })
           expect(page.result).toBe('A B C')
@@ -521,11 +517,7 @@ export function reactPageSuite(bundler: StartBundler) {
         test('a nested boundary in split children waits for its own gate', async () => {
           const page = await app.hydrate('nestedGates', {
             script: `const button = (label) => root.querySelector('button[data-label="' + label + '"]')
-await waitFor(async () => {
-  button('outer').click()
-  await settled(50)
-  return button('outer').textContent === 'outer:1'
-})
+await clickUntil(() => button('outer'), () => button('outer').textContent === 'outer:1')
 for (let i = 0; i < 3; i++) {
   button('inner').click()
   await settled(50)
@@ -579,10 +571,10 @@ return [button('outer').textContent, button('inner').textContent]`,
         test('switching between boundaries in exclusive branches after hydration', async () => {
           const page = await app.hydrate('switching', {
             script: `const button = (label) => root.querySelector('button[data-label="' + label + '"]')
-  await waitFor(async () => { button('last').click(); await settled(50); return button('last').textContent === 'last:1' })
+  await clickUntil(() => button('last'), () => button('last').textContent === 'last:1')
   button('switch').click()
   await waitFor(() => button('no'))
-  await waitFor(async () => { button('no').click(); await settled(50); return button('no').textContent === 'no:1' })
+  await clickUntil(() => button('no'), () => button('no').textContent === 'no:1')
   return { yes: Boolean(button('yes')), no: button('no').textContent, last: button('last').textContent }`,
           })
           expect(page.result).toEqual({
@@ -674,10 +666,12 @@ return [button('outer').textContent, button('inner').textContent]`,
           const page = await app.hydrate(name, {
             render,
             script: `const button = (label) => root.querySelector('button[data-label="' + label + '"]')
-  const prefetched = requested()
+  // What the prefetch requested before any interaction (a prefetch still
+  // loading is not in the resource timeline yet)
+  const prefetched = await waitFor(() => requested().length > 0 && requested()).catch(() => [])
   const click = async (label) => {
     const before = requested().length
-    await waitFor(async () => { button(label).click(); await settled(50); return button(label).textContent === label + ':1' })
+    await clickUntil(() => button(label), () => button(label).textContent === label + ':1')
     return requested().slice(before)
   }
   const other = await click('other')
@@ -700,7 +694,7 @@ return [button('outer').textContent, button('inner').textContent]`,
         const page = await app.hydrate('prefetchNone', {
           script: `const prefetched = requested().length
   const before = requested().length
-  await waitFor(async () => { root.querySelector('button[data-label="child"]').click(); await settled(50); return root.querySelector('button[data-label="child"]').textContent === 'child:1' })
+  await clickUntil(() => root.querySelector('button[data-label="child"]'), () => root.querySelector('button[data-label="child"]').textContent === 'child:1')
   return { prefetched, child: requested().length - before }`,
         })
         expect(page.result).toEqual({
@@ -717,9 +711,11 @@ return [button('outer').textContent, button('inner').textContent]`,
       test('a prefetch function preloads the children and updates the parent state', async () => {
         const page = await app.hydrate('prefetchState', {
           script: `await waitFor(() => root.querySelector('[data-status]').textContent === 'prefetched')
-  const prefetched = requested()
+  // What the prefetch requested before any interaction (a prefetch still
+  // loading is not in the resource timeline yet)
+  const prefetched = await waitFor(() => requested().length > 0 && requested()).catch(() => [])
   const button = root.querySelector('button[data-label="child"]')
-  await waitFor(async () => { root.querySelector('button[data-label="child"]').click(); await settled(50); return root.querySelector('button[data-label="child"]').textContent === 'child:1' })
+  await clickUntil(() => root.querySelector('button[data-label="child"]'), () => root.querySelector('button[data-label="child"]').textContent === 'child:1')
   return { prefetched: prefetched.length > 0, afterClick: requested().length - prefetched.length }`,
         })
         expect(page.result).toEqual({ prefetched: true, afterClick: 0 })
@@ -747,7 +743,7 @@ return [button('outer').textContent, button('inner').textContent]`,
     test('a function when is called on the client only, and its strategy hydrates the children', async () => {
       const page = await app.hydrate('whenFunction', {
         serverScript: 'globalThis.__whenCalls ?? []',
-        script: `await waitFor(async () => { root.querySelector('button').click(); await settled(50); return root.querySelector('button').textContent === 'dynamic:1' })
+        script: `await clickUntil(() => root.querySelector('button'), () => root.querySelector('button').textContent === 'dynamic:1')
   return globalThis.__whenCalls`,
       })
       expect(page.serverResult).toEqual([])
@@ -782,7 +778,7 @@ return [button('outer').textContent, button('inner').textContent]`,
   }`,
           script: `for (const label of ${JSON.stringify(labels)}) {
     const before = globalThis.__requests.length
-    await waitFor(async () => { root.querySelector('button[data-label="' + label + '"]').click(); await settled(50); return globalThis.__requests.length > before })
+    await clickUntil(() => root.querySelector('button[data-label="' + label + '"]'), () => globalThis.__requests.length > before)
   }
   return globalThis.__requests`,
         })
@@ -857,7 +853,7 @@ return [button('outer').textContent, button('inner').textContent]`,
             script: `await new Promise((resolve) => requestIdleCallback(resolve))
   root.firstElementChild.lastElementChild.scrollIntoView()
   await waitFor(() => root.querySelector('button'))
-  await waitFor(async () => { root.querySelector('button').click(); await settled(50); return root.querySelector('button').textContent === 'child:1' })`,
+  await clickUntil(() => root.querySelector('button'), () => root.querySelector('button').textContent === 'child:1')`,
           })
           const fallbackAt = page.snapshots.findIndex((html) =>
             html.includes('fallback-marker'),
@@ -894,7 +890,7 @@ return [button('outer').textContent, button('inner').textContent]`,
   await settled()
   const beforeFocus = button().textContent
   button().focus()
-  await waitFor(async () => { button().click(); await settled(50); return button().textContent === 'child:1' })
+  await clickUntil(() => button(), () => button().textContent === 'child:1')
   return beforeFocus`,
           })
           expect(page.result).toBe('child:0')
@@ -905,7 +901,7 @@ return [button('outer').textContent, button('inner').textContent]`,
 
         test('a click handler with a return statement in the children runs', async () => {
           const page = await app.hydrate('returns', {
-            script: `await waitFor(async () => { root.querySelector('ul').click(); await settled(50); return globalThis.__clicked })
+            script: `await clickUntil(() => root.querySelector('ul'), () => globalThis.__clicked)
   return globalThis.__clicked`,
           })
           expect(page.serverHtml).toContain('<li>A</li><li>B</li>iife')
@@ -947,7 +943,7 @@ button().click()
 await settled()
 const beforeFocus = button().textContent
 button().focus()
-await waitFor(async () => { button().click(); await settled(50); return button().textContent === 'child:1' })
+await clickUntil(() => button(), () => button().textContent === 'child:1')
 return beforeFocus`,
         })
         expect(page.serverHtml).toContain('child:0')

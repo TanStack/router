@@ -202,11 +202,7 @@ export function Page() {
 const clickEveryCounter = `const counters = () => [...root.querySelectorAll('button[data-label]')]
 for (const label of counters().map((button) => button.dataset.label)) {
   const button = () => root.querySelector('button[data-label="' + label + '"]')
-  await waitFor(async () => {
-    button().click()
-    await settled(50)
-    return button().textContent === label + ':1'
-  })
+  await clickUntil(button, () => button().textContent === label + ':1')
 }
 return counters().map((button) => button.textContent)`
 
@@ -338,7 +334,7 @@ export function solidPageSuite(bundler: StartBundler) {
   await settled()
   const beforeFocus = button().textContent
   button().focus()
-  await waitFor(async () => { button().click(); await settled(50); return button().textContent === 'child:1' })
+  await clickUntil(() => button(), () => button().textContent === 'child:1')
   return beforeFocus`,
         })
         expect(page.result).toBe('child:0')
@@ -351,10 +347,12 @@ export function solidPageSuite(bundler: StartBundler) {
       test('a prefetched boundary loads its own children before any interaction', async () => {
         const page = await app.hydrate('prefetch', {
           script: `const button = (label) => root.querySelector('button[data-label="' + label + '"]')
-  const prefetched = requested()
+  // What the prefetch requested before any interaction (a prefetch still
+  // loading is not in the resource timeline yet)
+  const prefetched = await waitFor(() => requested().length > 0 && requested()).catch(() => [])
   const click = async (label) => {
     const before = requested().length
-    await waitFor(async () => { button(label).click(); await settled(50); return button(label).textContent === label + ':1' })
+    await clickUntil(() => button(label), () => button(label).textContent === label + ':1')
     return requested().slice(before)
   }
   const other = await click('other')
@@ -385,7 +383,7 @@ export function solidPageSuite(bundler: StartBundler) {
         const page = await app.hydrate(name, {
           mode: 'mount',
           script: `await waitFor(() => root.querySelector('button'))
-  await waitFor(async () => { root.querySelector('button').click(); await settled(50); return root.querySelector('button').textContent === 'child:1' })`,
+  await clickUntil(() => root.querySelector('button'), () => root.querySelector('button').textContent === 'child:1')`,
         })
         const fallbackAt = page.snapshots.findIndex((html) =>
           html.includes('fallback-marker'),

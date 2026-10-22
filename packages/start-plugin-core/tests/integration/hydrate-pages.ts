@@ -83,6 +83,36 @@ const waitForSource = `async (condition, timeout = 5000) => {
   throw new Error('timed out waiting for ' + condition + ': ' + document.body.innerHTML)
 }`
 
+/**
+ * JavaScript of a page script: clicks `element()` until `done()` returns a
+ * truthy value (which it resolves to), at most `timeout` ms (default
+ * 10 000). After a click a deferred boundary took in (the page cancels it:
+ * the boundary's code loads, then it hydrates and redispatches the click,
+ * deferred-hydration.md), it waits for the page to change (the code loaded,
+ * the boundary hydrated) and settle before it clicks again: a click repeated
+ * while the code loads would be replayed with the first. Any other click
+ * that does not get `done()` (its boundary is not interactive yet) is
+ * repeated once the page settled.
+ */
+const clickUntilSource = `async (element, done, timeout = 10000) => {
+  const start = performance.now()
+  const left = () => Math.max(timeout - (performance.now() - start), 1)
+  const state = () => performance.getEntriesByType('resource').length + ':' + document.body.innerHTML
+  while (performance.now() - start < timeout) {
+    const before = state()
+    const click = new MouseEvent('click', { bubbles: true, cancelable: true, composed: true, view: window })
+    if (!element().dispatchEvent(click)) {
+      await waitFor(async () => (await done()) || state() !== before, left())
+    }
+    await settled(50)
+    const value = await done()
+    if (value) {
+      return value
+    }
+  }
+  throw new Error('timed out clicking until ' + done + ': ' + document.body.innerHTML)
+}`
+
 export interface Hydrated {
   /** The HTML the SSR build rendered (`''` when the page mounted). */
   serverHtml: string
@@ -120,9 +150,9 @@ export interface HydrateOptions {
   props?: Record<string, unknown>
   /**
    * Body of an async function run in the page once it hydrated and settled,
-   * with `root` (the hydrated element), `settled()`, `waitFor(condition)`
-   * and `requested()` (the scripts requested so far) in scope; its JSON
-   * result is returned.
+   * with `root` (the hydrated element), `settled()`, `waitFor(condition)`,
+   * `clickUntil(element, done)` and `requested()` (the scripts requested so
+   * far) in scope; its JSON result is returned.
    */
   script?: string
   /**
@@ -187,11 +217,7 @@ const picks = []
 // hydrate the boundary).
 const pick = async (name) => {
   const before = picked()
-  await waitFor(async () => {
-    root.querySelector('button[data-item="' + name + '"]').click()
-    await settled(50)
-    return picked() !== before
-  })
+  await clickUntil(() => root.querySelector('button[data-item="' + name + '"]'), () => picked() !== before)
   picks.push(picked())
 }
 await press('inc')
@@ -230,11 +256,7 @@ export const updatesExpected = {
  */
 export const loadedOnInteraction = `const beforeClick = requested().length
 const button = () => root.querySelector('button[data-label="child"]')
-await waitFor(async () => {
-  button().click()
-  await settled(50)
-  return button().textContent === 'child:1'
-})
+await clickUntil(button, () => button().textContent === 'child:1')
 return { beforeClick, loadedByClick: requested().length > beforeClick }`
 
 const exportName = (name: string) => `f_${name.replace(/\W/g, '_')}`
@@ -384,6 +406,7 @@ return { html, result: ${hydrateOptions.serverScript ?? 'null'} }`,
     const { result } = await build.client.run(`
 const settled = ${settledSource}
 const waitFor = ${waitForSource}
+const clickUntil = ${clickUntilSource}
 const root = document.getElementById('root')
 // What Solid's server puts in the document head (it records the events of
 // the page until it hydrates).
