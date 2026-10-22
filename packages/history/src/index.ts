@@ -388,6 +388,12 @@ export function createBrowserHistory(opts?: {
         '',
         href,
       )
+    } catch (error) {
+      history._ignoreSubscribers = false
+      // The browser stayed on its entry: re-read it so both cached locations
+      // (and so the next index and traversal direction) match it again.
+      onPushPop('REPLACE')
+      throw error
     } finally {
       // Stop ignoring subscriber updates
       history._ignoreSubscribers = false
