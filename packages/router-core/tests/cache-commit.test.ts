@@ -55,7 +55,10 @@ function setup(
         },
       },
     },
-    stores: { setMatches: publish },
+    stores: {
+      setMatches: publish,
+      location: { get: () => ({ href: '/' }) },
+    },
   } as unknown as AnyRouter
   return {
     router,

@@ -208,6 +208,7 @@ export type {
   FileBaseRouteOptions,
   BaseRouteOptions,
   UpdatableRouteOptions,
+  RouteLifecycleContext,
   LoaderStaleReloadMode,
   RouteLoaderFn,
   RouteLoaderEntry,

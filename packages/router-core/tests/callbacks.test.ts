@@ -79,6 +79,9 @@ describe('callbacks', () => {
       expect(onEnter).toHaveBeenNthCalledWith(
         1,
         expect.objectContaining({ id: '/foo/foo' }),
+        expect.objectContaining({
+          location: expect.objectContaining({ href: '/foo' }),
+        }),
       )
 
       // Entering bar
@@ -86,6 +89,9 @@ describe('callbacks', () => {
       expect(onEnter).toHaveBeenNthCalledWith(
         2,
         expect.objectContaining({ id: '/bar/bar' }),
+        expect.objectContaining({
+          location: expect.objectContaining({ href: '/bar' }),
+        }),
       )
     })
   })
@@ -101,6 +107,9 @@ describe('callbacks', () => {
       expect(onLeave).toHaveBeenNthCalledWith(
         1,
         expect.objectContaining({ id: '/foo/foo' }),
+        expect.objectContaining({
+          location: expect.objectContaining({ href: '/bar' }),
+        }),
       )
 
       // Leaving bar to foo
@@ -108,6 +117,9 @@ describe('callbacks', () => {
       expect(onLeave).toHaveBeenNthCalledWith(
         2,
         expect.objectContaining({ id: '/bar/bar' }),
+        expect.objectContaining({
+          location: expect.objectContaining({ href: '/foo' }),
+        }),
       )
     })
   })
@@ -123,6 +135,9 @@ describe('callbacks', () => {
       expect(onStay).toHaveBeenNthCalledWith(
         1,
         expect.objectContaining({ id: '/foo/foo', search: { foo: 'baz' } }),
+        expect.objectContaining({
+          location: expect.objectContaining({ href: '/foo?foo=baz' }),
+        }),
       )
 
       // Staying on foo
@@ -130,6 +145,9 @@ describe('callbacks', () => {
       expect(onStay).toHaveBeenNthCalledWith(
         2,
         expect.objectContaining({ id: '/foo/foo', search: { foo: 'quux' } }),
+        expect.objectContaining({
+          location: expect.objectContaining({ href: '/foo?foo=quux' }),
+        }),
       )
     })
 
