@@ -75,9 +75,13 @@ describe.each(startBundlers)('%s build', (bundler) => {
 
   test('the route renders and its handler answers on the server', async () => {
     if (failure) {
+      // A refusal names the route file and the option it cannot read, and
+      // explains what to do (SPEC J2.8, §5.7)
       expectDiagnostic(failure.diagnostics, {
         severity: 'error',
         file: 'src/routes/x.tsx',
+        names: [['server', 'handlers']],
+        explains: true,
       })
       return
     }
@@ -109,18 +113,24 @@ return {
     'the client build never ships the server handlers of imported route options silently',
     () => {
       if (failure) {
-        // A build that refuses the shape must name the route file (on any
-        // channel of the build).
+        // A build that refuses the shape must name the route file and the
+        // option, and explain (on any channel of the build; SPEC J2.8,
+        // §5.7).
         expectDiagnostic(failure.diagnostics, {
           severity: 'error',
           file: 'src/routes/x.tsx',
+          names: [['server', 'handlers']],
+          explains: true,
         })
         return
       }
-      // (every channel of the build)
+      // (every channel of the build; a warning that informs the user names
+      // the route file and the option, and explains)
       const reported = findDiagnostics(build!.diagnostics, {
         severity: 'warning',
         file: 'src/routes/x.tsx',
+        names: [['server', 'handlers']],
+        explains: true,
       })
       if (reported.length === 0) {
         expect(build!.client.where('MARK_HELPER_SECRET')).toBe('nowhere')

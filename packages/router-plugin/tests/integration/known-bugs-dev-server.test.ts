@@ -8,7 +8,7 @@
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { routeHead } from '../build-harness'
-import { isServedAppModule, routerDevServer } from '../dev-server'
+import { routerDevServer } from '../dev-server'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 
@@ -150,12 +150,13 @@ const requested = performance
     // A page loads the route first, then leaves (the edit's own update
     // must not reach a page: the test orders the requests). The modules
     // of the route it loaded, whatever the layout: one module or many, any
-    // URLs (V1R hmr HMR-27), are the ones the page requested from the route
-    // module on (the route module first).
+    // URLs or paths (V1R hmr HMR-27, SPEC §5.3; also under `/@fs/` or
+    // `node_modules/`), are the ones the page requested from the route
+    // module on (the route module first). Requesting a dependency again is
+    // harmless: the edit did not invalidate it.
     const { requested } = await renderInPage(server)
     const urls = requested
-      .filter(isServedAppModule)
-      .slice(requested.filter(isServedAppModule).indexOf(route))
+      .slice(requested.indexOf(route))
       .filter((url) => url !== '/main.tsx')
     expect(urls[0], 'the route module, which the page requested').toBe(route)
     await server.edit({ 'routes/page.tsx': after })

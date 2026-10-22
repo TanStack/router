@@ -97,15 +97,16 @@ describe.each(startBundlers)('%s build', (bundler) => {
         entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
         start: { serverFns: { generateFunctionId: () => undefined } },
       })
-      const id = (await client.run(`return entry.greet.serverFnMeta.id`)).result
-      expect(id).toEqual(expect.stringMatching(/./))
+      // (the client's server fn, by its public URL: base, then id)
+      const url = (await client.run(`return entry.greet.url`)).result
       expect(
         (
           await ssr.run(
-            `${callByIdPrelude}return await callById(${JSON.stringify(id)})`,
+            `${callByIdPrelude}const id = serverFnId(${JSON.stringify(url)})
+return { id, value: await callById(id) }`,
           )
         ).result,
-      ).toBe('MARK_HANDLER')
+      ).toEqual({ id: expect.stringMatching(/./), value: 'MARK_HANDLER' })
     },
     timeout,
   )
@@ -121,16 +122,17 @@ describe.each(startBundlers)('%s build', (bundler) => {
         entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
         start: { serverFns: { generateFunctionId: () => 'my-custom-id' } },
       })
-      expect(
-        (await client.run(`return entry.greet.serverFnMeta.id`)).result,
-      ).toBe('my-custom-id')
+      const url = (await client.run(`return entry.greet.url`)).result
       expect(
         (
           await ssr.run(
-            `${callByIdPrelude}return await callById('my-custom-id')`,
+            `${callByIdPrelude}return {
+  id: serverFnId(${JSON.stringify(url)}),
+  value: await callById('my-custom-id'),
+}`,
           )
         ).result,
-      ).toBe('MARK_HANDLER')
+      ).toEqual({ id: 'my-custom-id', value: 'MARK_HANDLER' })
     },
     timeout,
   )

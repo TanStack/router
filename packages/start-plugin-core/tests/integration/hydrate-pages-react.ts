@@ -791,8 +791,7 @@ return [button('outer').textContent, button('inner').textContent]`,
         const paths = page.result as Array<string>
         expect(paths.length).toBeGreaterThanOrEqual(labels.length)
         for (const path of new Set(paths)) {
-          const id = decodeURIComponent(path.split('/').at(-1)!)
-          expect(await app.callServerFn(id)).toBe('greet-handler-marker')
+          expect(await app.callServerFn(path)).toBe('greet-handler-marker')
         }
       })
     })

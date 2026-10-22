@@ -16,7 +16,7 @@ import {
   captureConsole,
   expectDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { isServedAppModule, routerDevServer } from '../dev-server'
+import { routerDevServer } from '../dev-server'
 import {
   compileRouteModules,
   componentModules,
@@ -543,50 +543,5 @@ export const Route = createFileRoute('/')({ component: () => 'page' })`,
     expect(await server.read('routes/__root.tsx')).toContain(
       '@tanstack/solid-router',
     )
-  }, 30_000)
-
-  // The served-module walks (integration/known-bugs-dev-server.test.ts,
-  // integration/dev-source-maps.test.ts) follow every module of the app and
-  // every module a plugin serves, whatever its URL (V1R split S03), and no
-  // dependency.
-  it('isServedAppModule tells the modules of the app and of plugins from dependencies, whatever their URLs', async () => {
-    const supportId = '\0router:support'
-    const server = await routerDevServer({
-      plugins: [
-        {
-          name: 'test:virtual-support',
-          enforce: 'pre',
-          resolveId: (id) =>
-            id === 'virtual:test-support' ? supportId : undefined,
-          load: (id) =>
-            id === supportId ? `export const label = 'support'\n` : undefined,
-        },
-      ],
-      files: {
-        'lib/helper.ts': `export const helper = 'helper'\n`,
-        'routes/index.tsx': `${head}import { label } from 'virtual:test-support'
-import { helper } from '../lib/helper'
-export const Route = createFileRoute('/')({
-  beforeLoad: () => ({ label, helper }),
-  component: () => <p>page</p>,
-})`,
-      },
-    })
-    const imported = importRequests(
-      await server.transform('/routes/index.tsx'),
-      '/routes/index.tsx',
-    ).map(({ specifier }) => specifier)
-    const followed = imported.filter(isServedAppModule)
-    // The support module, the other app module, the route's split chunk
-    expect(followed.length).toBeGreaterThanOrEqual(3)
-    expect(followed.some((url) => url.includes('router:support'))).toBe(true)
-    expect(followed.some((url) => url.includes('/lib/helper'))).toBe(true)
-    // The router package and React are dependencies
-    expect(imported.filter((url) => !isServedAppModule(url)).length).toBe(
-      imported.length - followed.length,
-    )
-    expect(
-      followed.filter((url) => /react|@tanstack|vite\/client/.test(url)),
-    ).toEqual([])
   }, 30_000)
 })

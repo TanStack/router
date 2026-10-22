@@ -193,9 +193,10 @@ ${callByIdExports}`,
     })
     // (the handler's text, however the bundle quotes it)
     expect(client.where('server-only fn')).toBe('nowhere')
-    const clientFnId = (
-      await client.run(`return entry.clientFn.serverFnMeta.id`)
-    ).result
+    // (each server fn by its public URL: the server fn base, then its id;
+    // `serverFnId` throws outside `settle` for a value without one, so the
+    // pin cannot read a missing URL as a rejected call)
+    const clientFnUrl = (await client.run(`return entry.clientFn.url`)).result
     const { result } =
       await ssr.run(`${callByIdPrelude}const settle = async (run) => {
   try {
@@ -206,9 +207,11 @@ ${callByIdExports}`,
 }
 const overHttp = (id) =>
   settle(async () => callById(id))
+const clientFnId = serverFnId(${JSON.stringify(clientFnUrl)})
+const serverOnlyFnId = serverFnId(entry.serverOnlyFn)
 return {
-  clientFn: await overHttp(${JSON.stringify(clientFnId)}),
-  serverOnlyFnOverHttp: await overHttp(entry.serverOnlyFn.serverFnMeta.id),
+  clientFn: await overHttp(clientFnId),
+  serverOnlyFnOverHttp: await overHttp(serverOnlyFnId),
   serverOnlyFnFromSsr: await settle(() => entry.serverOnlyFn()),
 }`)
     return result
@@ -315,7 +318,7 @@ ${callByIdExports}`,
           })
           const { result } = await ssr.run(`${callByIdPrelude}return {
   fromSsr: await entry.outer(),
-  overHttp: await callById(entry.outer.serverFnMeta.id),
+  overHttp: await callById(serverFnId(entry.outer)),
 }`)
           expect(result).toEqual({
             fromSsr: 'outer:inner',

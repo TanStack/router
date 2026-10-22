@@ -185,18 +185,17 @@ function startAliasDevServer(
 
 /**
  * A third-party resolver may refuse safely with actionable composition
- * guidance (G11), on any channel of `output`.
+ * guidance (G11), on any channel of `output`: a diagnostic that names the
+ * resolver (the plugin, or Vite's own `resolve.tsconfigPaths`) and explains
+ * what to do in its own words (`explains`; wording free, §5.7).
  */
 function expectAliasFailure(output: unknown, thirdParty: boolean) {
-  const text = failureText(output)
   if (
     thirdParty &&
-    /(?:vite-tsconfig-paths|plugin[ -]order|resolve\.tsconfigPaths)/i.test(
-      text,
-    ) &&
-    /(?:move|place|reorder|before|after|enable|use|remove|configure)[^\n]*(?:vite-tsconfig-paths|plugin|resolve\.tsconfigPaths)|(?:vite-tsconfig-paths|plugin)[^\n]*(?:before|after|order)/i.test(
-      text,
-    )
+    findDiagnostics(failureText(output), {
+      names: [['vite-tsconfig-paths', 'tsconfigPaths']],
+      explains: true,
+    }).length > 0
   ) {
     return
   }

@@ -1980,7 +1980,11 @@ export const read = () => secret()
       {},
       { config: { server: { perEnvironmentStartEndDuringDev } } },
     )
-    await server.load('/src/entry.ts')
+    // The client loads the app as a page does at start: the modules it
+    // imports statically (`load()` would also load what they import
+    // lazily, `src/late.ts`, which the page requests only later)
+    await server.transform('/src/entry.ts')
+    await server.transform('/src/a.ts')
     await server.load('/src/entry.ts', { environment: 'ssr' })
     await server.load('/src/late.ts')
     return loggedViolations(server.logs)

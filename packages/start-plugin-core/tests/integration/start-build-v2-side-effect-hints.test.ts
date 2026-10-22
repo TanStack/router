@@ -218,25 +218,28 @@ export { rawText } from './text'
 ${callByIdExports}`,
 }
 
-/** The ids of the client's server fns, as a client script returns them. */
-const clientIds = `return {
-  viaHandler: entry.viaHandler.serverFnMeta.id,
-  viaValidator: entry.viaValidator.serverFnMeta.id,
-  viaMiddleware: entry.viaMiddleware.serverFnMeta.id,
-  countSecrets: entry.countSecrets.serverFnMeta.id,
-  readVault: entry.readVault.serverFnMeta.id,
-  viaStatic: entry.viaStatic.serverFnMeta.id,
-  viaDynamic: (await entry.viaDynamic()).serverFnMeta.id,
-  viaBarrel: entry.viaBarrel.serverFnMeta.id,
-  createPost: entry.createPost.serverFnMeta.id,
-  saveDraft: entry.saveDraft.serverFnMeta.id,
+/**
+ * The client's server fns, as a client script returns them: each by its
+ * public URL (the server fn base, then its id).
+ */
+const clientUrls = `return {
+  viaHandler: entry.viaHandler.url,
+  viaValidator: entry.viaValidator.url,
+  viaMiddleware: entry.viaMiddleware.url,
+  countSecrets: entry.countSecrets.url,
+  readVault: entry.readVault.url,
+  viaStatic: entry.viaStatic.url,
+  viaDynamic: (await entry.viaDynamic()).url,
+  viaBarrel: entry.viaBarrel.url,
+  createPost: entry.createPost.url,
+  saveDraft: entry.saveDraft.url,
 }`
 
 describe.each(startBundlers)('%s build', (bundler) => {
   // One build for every row; the runs are independent (browser pages and
   // Node processes).
   let build: StartBuild
-  let ids: Record<string, string>
+  let urls: Record<string, string>
   let dispose: (() => Promise<void>) | undefined
   beforeAll(async () => {
     build = await buildStart({
@@ -247,7 +250,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
         dispose = cleanup
       },
     })
-    ids = (await build.client.run(clientIds)).result as Record<string, string>
+    urls = (await build.client.run(clientUrls)).result as Record<string, string>
   }, timeout)
   afterAll(() => dispose?.())
 
@@ -268,7 +271,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
           expect(build.client.where(mark), mark).toBe('nowhere')
         }
         const { result } = await build.ssr.run(
-          `${callByIdPrelude}return await callById(${JSON.stringify(ids[name])}, 'input')`,
+          `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(urls[name])}), 'input')`,
         )
         expect(result).toEqual(
           tag === 'Validator' ? { input: 'input', marks } : marks,
@@ -323,7 +326,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
       ).toBeLessThanOrEqual(1)
       const ssr = (
         await build.ssr.run(`${callByIdPrelude}return {
-  byId: await callById(${JSON.stringify(ids.countSecrets)}),
+  byId: await callById(serverFnId(${JSON.stringify(urls.countSecrets)})),
   name: entry.registryName(),
   registries: globalThis.__registries,
 }`)
@@ -352,15 +355,15 @@ describe.each(startBundlers)('%s build', (bundler) => {
   test('a dynamic import inside a handler: no client chunk carries its target, the call by id returns its value (V2-07)', async () => {
     expect(build.client.where('MARK_VAULT_SECRET')).toBe('nowhere')
     const { result } = await build.ssr.run(
-      `${callByIdPrelude}return await callById(${JSON.stringify(ids.readVault)})`,
+      `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(urls.readVault)}))`,
     )
     expect(result).toBe('MARK_VAULT_SECRET')
   })
 
   // Source: FIX-PLAN V2-17 (server-functions.md "avoid dynamic imports").
   test('a server fn module consumed statically, dynamically and through a barrel: one id, no canary in the client, top-level code once per env (V2-17)', async () => {
-    expect(ids.viaDynamic).toBe(ids.viaStatic)
-    expect(ids.viaBarrel).toBe(ids.viaStatic)
+    expect(urls.viaDynamic).toBe(urls.viaStatic)
+    expect(urls.viaBarrel).toBe(urls.viaStatic)
     expect(
       build.client.where(/MARK_CANARY_HANDLER|MARK_CANARY_VALIDATOR/),
     ).toBe('nowhere')
@@ -370,8 +373,8 @@ return globalThis.__targetInits`)
     ).result
     expect(client).toEqual(['target'])
     const { result } = await build.ssr.run(`${callByIdPrelude}return {
-  byId: await callById(${JSON.stringify(ids.viaStatic)}, 'in'),
-  rejected: await callById(${JSON.stringify(ids.viaStatic)}, 'MARK_CANARY_VALIDATOR').then(
+  byId: await callById(serverFnId(${JSON.stringify(urls.viaStatic)}), 'in'),
+  rejected: await callById(serverFnId(${JSON.stringify(urls.viaStatic)}), 'MARK_CANARY_VALIDATOR').then(
     () => 'resolved',
     (error) => error.message,
   ),
@@ -402,13 +405,13 @@ return globalThis.__targetInits`)
       invalid: 'MARK_INVALID_POST',
     })
     const { result } = await build.ssr
-      .run(`${callByIdPrelude}const call = (id, data) =>
-  callById(id, data).then((value) => ({ value }), (error) => ({ error: error.message }))
+      .run(`${callByIdPrelude}const call = (url, data) =>
+  callById(serverFnId(url), data).then((value) => ({ value }), (error) => ({ error: error.message }))
 return {
-  post: await call(${JSON.stringify(ids.createPost)}, { title: 'hello' }),
-  invalidPost: await call(${JSON.stringify(ids.createPost)}, { nope: true }),
-  draft: await call(${JSON.stringify(ids.saveDraft)}, { body: 'draft' }),
-  invalidDraft: await call(${JSON.stringify(ids.saveDraft)}, {}),
+  post: await call(${JSON.stringify(urls.createPost)}, { title: 'hello' }),
+  invalidPost: await call(${JSON.stringify(urls.createPost)}, { nope: true }),
+  draft: await call(${JSON.stringify(urls.saveDraft)}, { body: 'draft' }),
+  invalidDraft: await call(${JSON.stringify(urls.saveDraft)}, {}),
 }`)
     expect(result).toEqual({
       post: { value: { saved: { title: 'hello' } } },

@@ -68,7 +68,8 @@
           {
             "projects": [
               "@tanstack/react-start",
-              "@tanstack/solid-start"
+              "@tanstack/solid-start",
+              "@tanstack/vue-start"
             ],
             "target": "build"
           }

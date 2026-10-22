@@ -558,6 +558,19 @@ describe('suggestedDirections', () => {
       text: 'Keep this import in a client-only module',
       directions: ['client'],
     },
+    // Any wording that names the environment (J6.12, §5.7)
+    { text: 'Only import this from server code', directions: ['server'] },
+    {
+      text: 'This import belongs in client code only',
+      directions: ['client'],
+    },
+    // Both environments and no API of either: no direction
+    {
+      text: 'Do not import it from client code, only from server code',
+      directions: [],
+    },
+    // Not actionable: no explanation in its own words
+    { text: 'server', directions: [] },
     // Whole names only.
     { text: 'myCreateServerFnHelper', directions: [] },
   ])('$text: $directions', ({ text, directions }) => {

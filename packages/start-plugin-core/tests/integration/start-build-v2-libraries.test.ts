@@ -130,7 +130,7 @@ const report = `const report = {}
 for (const [name, lib] of Object.entries(entry.libraries)) {
   report[name] = {
     where: lib.where(),
-    id: lib.fn.serverFnMeta.id,
+    url: lib.fn.url,
     sameShared: lib.sharedToken() === entry.appToken(),
     inits: globalThis['__inits_' + name.toUpperCase()],
   }
@@ -184,7 +184,7 @@ return report`)
 report.byId = {}
 report.called = {}
 for (const [name, lib] of Object.entries(entry.libraries)) {
-  report.byId[name] = await callById(lib.fn.serverFnMeta.id)
+  report.byId[name] = await callById(serverFnId(lib.fn))
   report.called[name] = await lib.fn()
 }
 return report`)
@@ -192,13 +192,13 @@ return report`)
       for (const [name, tag] of Object.entries(tags)) {
         expect(clientRun[name], `client ${name}`).toEqual({
           where: `MARK_${tag}_CLIENT`,
-          id: expect.any(String),
+          url: expect.any(String),
           sameShared: true,
           inits: 1,
         })
         expect(ssrRun[name], `ssr ${name}`).toEqual({
           where: `MARK_${tag}_SERVER`,
-          id: clientRun[name].id,
+          url: clientRun[name].url,
           sameShared: true,
           // (The SSR caller and provider instances of a server fn module
           // are the known-bugs pin "SSR: a server fn module is initialised

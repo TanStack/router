@@ -630,10 +630,9 @@ export function Page() {
     const client = await renderClient(started, source)
     expectRenderedThroughChunks(client)
     const parent = await servedWithMap(started, client.case.url())
+    // The case's split code, whatever its URLs (SPEC §5.3)
     const chunks = await Promise.all(
-      client.lazyUrls
-        .filter((url) => url.startsWith(`/${client.case.dir}/`))
-        .map((url) => servedWithMap(started, url)),
+      client.chunks.map((url) => servedWithMap(started, url)),
     )
     /** Asserts every occurrence of `marker` in `output` maps to the source's. */
     const expectMarkersMapped = (

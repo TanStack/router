@@ -103,8 +103,9 @@ export function expectCompileError(
  * Asserts that `error` (a build error, any shape `diagnosticsOf` reads)
  * reports one of `sites`: a diagnostic names the site's file and the line
  * of `at` in its `source`, and names `names` (a list: any one of its
- * alternatives) in its own words. For a mistake the fix may report at
- * either end (a library or its caller).
+ * alternatives) in its own words, with an actionable cause (`explains`).
+ * For a mistake the fix may report at either end (a library or its
+ * caller).
  */
 export function expectSourceError(
   error: unknown,
@@ -128,7 +129,7 @@ export function expectSourceError(
             ...diagnostic,
             text: withoutQuotedSource(diagnostic.text, sources),
           },
-          { names: expected.names },
+          { names: expected.names, explains: true },
         ).length === 0,
     ),
   )

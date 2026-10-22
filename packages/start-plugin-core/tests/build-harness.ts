@@ -154,8 +154,26 @@ export { createClientRpc } from '@tanstack/react-start/client-rpc'
  * same origin does (the browser adds `Sec-Fetch-Site`, which Start's CSRF
  * middleware checks), and gives the decoded result or throws the decoded
  * error, like the client's server fn.
+ *
+ * `serverFnId(fn)` is the id of a server fn (or of its URL) as its public
+ * `url` carries it: the server fn base (`createClientRpc(id).url` is the
+ * base, then the id), then the id. It throws for a value without such a URL,
+ * outside any `try` of the script: a server fn object is identified by
+ * `url` alone (SPEC J4.1), never by Start's own metadata fields (§5.19).
  */
-export const callByIdPrelude = `const callById = async (id, data) => {
+export const callByIdPrelude = `const serverFnBase = entry.createClientRpc('').url
+const serverFnId = (fnOrUrl) => {
+  const url = typeof fnOrUrl === 'string' ? fnOrUrl : fnOrUrl?.url
+  if (
+    typeof url !== 'string' ||
+    !url.startsWith(serverFnBase) ||
+    url.length === serverFnBase.length
+  ) {
+    throw new Error('not a server fn URL: ' + String(url))
+  }
+  return url.slice(serverFnBase.length)
+}
+const callById = async (id, data) => {
   const fetch = (url, init) => {
     const headers = new Headers(init.headers)
     headers.set('sec-fetch-site', 'same-origin')

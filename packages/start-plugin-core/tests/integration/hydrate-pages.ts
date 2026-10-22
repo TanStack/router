@@ -156,11 +156,12 @@ export interface HydrationApp {
     options?: HydrateOptions,
   ) => Promise<{ html: string; result: unknown }>
   /**
-   * Sends the request of a client call of server fn `id` to Start's server
-   * entry of the SSR build (`callByIdPrelude`) and gives the result, or the
-   * error message (React apps).
+   * Sends the request of a client call of the server fn of `url` (a server
+   * fn URL a page requested) to Start's server entry of the SSR build
+   * (`callByIdPrelude`) and gives the result, or the error message (React
+   * apps).
    */
-  callServerFn: (id: string, data?: unknown) => Promise<unknown>
+  callServerFn: (url: string, data?: unknown) => Promise<unknown>
 }
 
 /**
@@ -427,10 +428,15 @@ return { html: root.innerHTML, snapshots, recoverableErrors, consoleErrors, requ
       ...(result as Omit<Hydrated, 'serverHtml' | 'serverResult'>),
     }
   }
-  const callServerFn = async (id: string, data?: unknown) => {
+  /**
+   * Calls the server fn a page requested at `url` (its server fn URL: the
+   * server fn base, then its id) the way the page does.
+   */
+  const callServerFn = async (url: string, data?: unknown) => {
     const { result } = await build.ssr.run(`${callByIdPrelude}
+const id = decodeURIComponent(serverFnId(${JSON.stringify(url)}))
 try {
-  return await callById(${JSON.stringify(id)}, ${JSON.stringify(data ?? null)})
+  return await callById(id, ${JSON.stringify(data ?? null)})
 } catch (error) {
   return error instanceof Error ? error.message : String(error)
 }`)

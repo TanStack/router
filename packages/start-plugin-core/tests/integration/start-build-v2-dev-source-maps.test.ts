@@ -22,11 +22,7 @@ import {
   positionAt,
   tokenOffsets,
 } from '@tanstack/compiler-test-utils/source-maps'
-import {
-  callServerFnById,
-  startDevServer,
-  startRequestFiles,
-} from '../dev-server'
+import { callServerFn, startDevServer, startRequestFiles } from '../dev-server'
 import {
   reportedErrors,
   startRsbuildStartDevServer,
@@ -115,9 +111,9 @@ describe('vite dev server', () => {
       // and whatever module the resolver runs the handler from. Every module
       // the SSR environment served is checked.
       const { getSecret } = await server.import('/src/fail.ts')
-      await expect(
-        callServerFnById(server, getSecret.serverFnMeta.id),
-      ).rejects.toThrow(/MARK_HANDLER_THROW/)
+      await expect(callServerFn(server, getSecret)).rejects.toThrow(
+        /MARK_HANDLER_THROW/,
+      )
       const ssr = server.vite.environments.ssr
       const modules = [...ssr.moduleGraph.idToModuleMap.values()]
       const checked: Array<string> = []

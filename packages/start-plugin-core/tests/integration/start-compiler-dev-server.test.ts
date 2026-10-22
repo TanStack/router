@@ -10,7 +10,7 @@ import { describe, expect, test } from 'vitest'
 import { describeHmr } from '@tanstack/compiler-test-utils/dev-server'
 import { requestsOfPrelude } from '../build-harness'
 import {
-  callServerFnById,
+  callServerFn,
   inDevRequest,
   startDevServer,
   startRequestFiles,
@@ -92,7 +92,7 @@ export const later = createServerFn().handler(() => 'MARK_LATER')
       /** Calls the server fn `name` of `url` the way a page does: by id. */
       const callById = async (url: string, name: string) => {
         const fn = (await server.import(url))[name]
-        return callServerFnById(server, fn.serverFnMeta.id)
+        return callServerFn(server, fn)
       }
       expect(await callById('/src/first.ts', 'first')).toBe('MARK_FIRST')
       expect(await callById('/src/later.ts', 'later')).toBe('MARK_LATER')
@@ -156,7 +156,7 @@ export const greet = createServerFn().handler(() => 'before')
        */
       const call = async () => {
         const { greet } = await server.import('/src/fns.ts')
-        return callServerFnById(server, greet.serverFnMeta.id)
+        return callServerFn(server, greet)
       }
       expect(await call()).toBe('before')
 
@@ -193,7 +193,7 @@ export const greet = createServerFn().handler(() => db.x())
       })
       const call = async () => {
         const { greet } = await server.import('/src/fns.ts')
-        return callServerFnById(server, greet.serverFnMeta.id)
+        return callServerFn(server, greet)
       }
       expect(await call()).toBe('before')
 
@@ -325,7 +325,7 @@ export const label = () => 'MARK_CLIENT_LABEL'
   /** Calls `fn` the way a page does: by its id. */
   async function callById(server: Awaited<ReturnType<typeof startDevServer>>) {
     const { fn } = await server.import('/src/fns.ts')
-    return callServerFnById(server, fn.serverFnMeta.id)
+    return callServerFn(server, fn)
   }
 
   test(

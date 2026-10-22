@@ -83,7 +83,7 @@ ${callByIdExports}`,
         await client.run(`const values = [entry.clientLabel(), entry.plainUsed()]
 return { values, tracked: ${tracked} }`)
       const ssrRun = await ssr.run(`${callByIdPrelude}const values = [
-  await callById(entry.fn.serverFnMeta.id),
+  await callById(serverFnId(entry.fn)),
   entry.plainUsed(),
 ]
 return { values, tracked: ${tracked} }`)
@@ -186,7 +186,7 @@ ${callByIdExports}`,
       expect(
         (
           await ssr.run(
-            `${callByIdPrelude}return await callById(entry.fn.serverFnMeta.id)`,
+            `${callByIdPrelude}return await callById(serverFnId(entry.fn))`,
           )
         ).result,
       ).toEqual([
@@ -266,7 +266,7 @@ ${callByIdExports}`,
       })
       const { result } = await ssr.run(`${callByIdPrelude}return {
   page: await entry.renderPath(entry.getRouter().routeTree, '/canvas'),
-  message: await callById(entry.getMessage.serverFnMeta.id),
+  message: await callById(serverFnId(entry.getMessage)),
 }`)
       expect(result).toEqual({
         page: expect.not.stringContaining('MARK_CANVAS'),

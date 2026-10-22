@@ -9,9 +9,7 @@
  * Its server-side helpers (`renderRoutePath`, `import` of the SSR
  * environment) judge server semantics. Client semantics of route module
  * exports (`expectExportedRouteOptions`, `expectSharedOverloads`) run in a
- * real page through `route-app.ts`. `isServedAppModule` tells the app's
- * modules among the requests of a page from dependencies and the tools'
- * own modules.
+ * real page through `route-app.ts`.
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -39,21 +37,6 @@ export const Route = createRootRoute({})
 }
 
 export const rootRoute = rootRouteOf('react')
-
-/**
- * Whether a URL a Vite dev server serves (an import specifier of a served
- * module) is a module of the app or one a plugin serves (`/@id/…`), whatever
- * its path or query (SPEC §5.3): not a dependency (pre-bundled in
- * `node_modules`, or a file outside the app root, `/@fs/…`), not Vite's
- * client or a refresh runtime.
- */
-export function isServedAppModule(url: string) {
-  return (
-    url.startsWith('/') &&
-    !/^\/@(?:vite|react-refresh|fs)\//.test(url) &&
-    !/\/node_modules\//.test(url)
-  )
-}
 
 export interface RouterDevServerOptions extends Omit<
   DevServerOptions,

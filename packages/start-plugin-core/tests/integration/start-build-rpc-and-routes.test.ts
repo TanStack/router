@@ -39,18 +39,15 @@ ${callByIdExports}`,
       const clientRpc = (
         await client.run(`${requestsOfPrelude}
 return {
-  id: entry.greet.serverFnMeta.id,
   url: entry.greet.url,
   requests: await requestsOf(entry.greet),
 }`)
       ).result as {
-        id: string
         url: string
         requests: Array<{ url: string; method: string }>
       }
       expect(clientRpc).toEqual({
-        id: expect.any(String),
-        url: `/_serverFn/${clientRpc.id}`,
+        url: expect.stringMatching(/^\/_serverFn\/./),
         requests: [{ url: clientRpc.url, method: 'GET' }],
       })
       const { result } = await ssr.run(`${callByIdPrelude}
@@ -61,9 +58,9 @@ const settle = async (run) => {
     return { rejected: true }
   }
 }
-const id = ${JSON.stringify(clientRpc.id)}
+const id = serverFnId(${JSON.stringify(clientRpc.url)})
 return {
-  sameId: entry.greet.serverFnMeta.id === id,
+  sameId: serverFnId(entry.greet) === id,
   called: await settle(() => entry.greet()),
   byId: await settle(() => callById(id)),
   unknown: await settle(() => callById('unknown-id')),
