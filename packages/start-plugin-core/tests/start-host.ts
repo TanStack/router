@@ -42,7 +42,7 @@
 import { realpathSync } from 'node:fs'
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
@@ -56,8 +56,6 @@ import {
   workspacePackage,
   workspacePackageLinks,
 } from '@tanstack/compiler-test-utils/workspace-packages'
-import { startPackages, startPluginFactory } from './start-plugins'
-import type { StartFramework, StartPluginOptions } from './start-plugins'
 import {
   inProbeRequest,
   probeRoute,
@@ -65,6 +63,8 @@ import {
   rootRouteFile,
   routerFile,
 } from './request-probe'
+import { startPackages, startPluginFactory } from './start-plugins'
+import type { StartFramework, StartPluginOptions } from './start-plugins'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import type {
