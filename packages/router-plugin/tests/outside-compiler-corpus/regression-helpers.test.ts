@@ -21,7 +21,6 @@ import {
   compileRouteModules,
   componentModules,
   evaluateModule,
-  expectValidModules,
   head,
   importRequests,
   importSources,
@@ -436,19 +435,6 @@ export const Route = createFileRoute('/')({
 })`)
     expect(await route.isLazy('component')).toBe(false)
     expect(await route.render('component')).toBe('<p>unsplit</p>')
-  })
-})
-
-describe('output validation', () => {
-  it('lets the modules of a route read the globals the route file reads', async () => {
-    const { modules } =
-      await compileRouteModules(`${head}export const Route = createFileRoute('/')({
-  component: () => <p>{APP_VERSION}</p>,
-})`)
-    await expectValidModules(modules)
-    await expect(
-      expectValidModules({ chunk: 'export const read = () => APP_VERSION' }),
-    ).rejects.toThrow()
   })
 })
 

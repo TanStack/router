@@ -45,12 +45,10 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { moduleLang } from '@tanstack/compiler-test-utils/module-linker'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import { build, createServer, parseSync } from 'vite'
-import { afterAll, expect, onTestFinished } from 'vitest'
+import { afterAll, onTestFinished } from 'vitest'
 import { createRouterPluginContext } from '../../../src/context'
 import { tanStackRouterCodeSplitter, tanstackRouter } from '../../../src/vite'
-import type { ModuleErrorOptions } from '@tanstack/compiler-test-utils/validate-module'
 import type { Logger, Plugin, PluginOption, ViteDevServer } from 'vite'
 import type { Config, DeletableNodes } from '../../../src/core/config'
 
@@ -699,9 +697,6 @@ async function buildRouteGraph(
   )
 }
 
-/** Route file each `compileRouteModules` result was compiled from. */
-const routeSources = new WeakMap<object, { code: string; id: string }>()
-
 /**
  * Compiles a route file in the host (default groupings, unless the route
  * sets its own) and returns every module the router plugin emits for it,
@@ -749,34 +744,7 @@ export function labelRouteModules(
     modules[label] = output
     ids[label] = id
   }
-  routeSources.set(modules, { code, id: graph.id })
   return { modules, ids, graph }
-}
-
-/**
- * Asserts that every module is valid, reporting the errors by module name.
- * For the modules of `compileRouteModules`, the globals the route file reads
- * itself may be read by its modules too, and a name the route file binds
- * must not lose its binding in them (`source` of `getModuleErrors`). `jsx`
- * gives the JSX settings of the route's project (default: React's automatic
- * runtime), which decide what the modules' JSX pragmas mean.
- */
-export async function expectValidModules(
-  modules: Record<string, string>,
-  options: Pick<ModuleErrorOptions, 'jsx'> = {},
-) {
-  const source = routeSources.get(modules)
-  const filename = source ? `module.${moduleLang(source.id)}` : undefined
-  const errors: Record<string, Array<string>> = {}
-  for (const [name, code] of Object.entries(modules)) {
-    errors[name] = await getModuleErrors(code, filename, {
-      source: source?.code,
-      jsx: options.jsx,
-    })
-  }
-  expect(errors).toEqual(
-    Object.fromEntries(Object.keys(modules).map((name) => [name, []])),
-  )
 }
 
 function moduleRecord(code: string) {

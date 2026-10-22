@@ -22,10 +22,6 @@ import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
 import { parseSync } from 'vite'
 import { expect } from 'vitest'
 import {
-  getModuleErrors,
-  keptDynamicImports,
-} from '@tanstack/compiler-test-utils/validate-module'
-import {
   StartCompiler,
   detectKindsInCode,
   getLookupKindsForEnv,
@@ -37,6 +33,7 @@ import {
   createSsrRpc,
   startClientCore,
 } from '../../start-runtime'
+import { getModuleErrors, keptDynamicImports } from './validate-module'
 import type {
   ModuleGraphOptions,
   ModuleStub,

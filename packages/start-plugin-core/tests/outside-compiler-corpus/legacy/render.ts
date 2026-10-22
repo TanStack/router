@@ -32,13 +32,13 @@ import { fileURLToPath } from 'node:url'
 import { expect } from 'vitest'
 import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
 import { workspacePackage } from '@tanstack/compiler-test-utils/workspace-packages'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import { createHydrateCompilerPlugin } from '../../../src/hydrate-when-transform'
 import {
   createCompilerVirtualModuleIdPattern,
   loadCompilerVirtualModule,
 } from '../../../src/start-compiler/host'
 import { moduleRequests } from '../../imports'
+import { getModuleErrors } from './validate-module'
 import {
   createStartCompiler,
   createTestModuleGraph,

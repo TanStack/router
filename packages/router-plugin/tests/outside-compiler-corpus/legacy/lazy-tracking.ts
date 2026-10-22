@@ -68,7 +68,6 @@ import {
 import { transformWithOxc } from 'vite'
 import { createRouteGraphCompiler, labelRouteModules } from './plugin-host'
 import type { ModuleStub } from '@tanstack/compiler-test-utils/module-linker'
-import type { ProjectJsx } from '@tanstack/compiler-test-utils/validate-module'
 import type { CompileOptions, RouteGraph, TargetFramework } from './plugin-host'
 
 /**
@@ -180,7 +179,12 @@ export type LoadRouteOptions = CompileOptions & {
    * `{ runtime: 'classic' }` for a project whose tsconfig selects the classic
    * runtime, where a lone `@jsx` pragma applies.
    */
-  jsx?: ProjectJsx
+  jsx?: {
+    runtime?: 'automatic' | 'classic'
+    importSource?: string
+    pragma?: string
+    pragmaFrag?: string
+  }
 }
 
 /**

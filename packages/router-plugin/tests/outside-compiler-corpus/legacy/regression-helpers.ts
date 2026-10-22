@@ -27,7 +27,6 @@ import type { Stubs } from './lazy-tracking'
 export {
   importRequests,
   compileRouteModules,
-  expectValidModules,
   importSources,
   importedNames,
   routeFile,
@@ -43,8 +42,6 @@ export {
   createRouteLoader,
   renderComponent,
 } from './lazy-tracking'
-
-export { declaredNames } from '@tanstack/compiler-test-utils/validate-module'
 
 export const head = `import { createFileRoute } from '@tanstack/react-router'\n`
 

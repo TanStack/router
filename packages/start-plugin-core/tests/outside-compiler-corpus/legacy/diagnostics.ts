@@ -7,7 +7,6 @@
  * Re-exported by `regression-helpers.ts`.
  */
 import { expect } from 'vitest'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import {
   diagnosticPosition,
   diagnosticProse,
@@ -17,6 +16,7 @@ import {
   mismatches,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
+import { getModuleErrors } from './validate-module'
 import {
   Thrown,
   callReportedServerFns,
