@@ -8,8 +8,8 @@
 import react from '@vitejs/plugin-react'
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
-import { describeHmr } from '@tanstack/compiler-test-utils/dev-server'
 import { startDevServer, startServerEntryFiles } from '../dev-server'
+import { hmrSyncModule, settlePage, trackRequests } from './hmr-sync'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 
 const timeout = 30_000
@@ -27,7 +27,7 @@ const component = `component: () => 'MARK_API_PAGE'`
  * `StartClient`), its default server entry (the HTTP handler), the real
  * router over the generated route tree, and a root route that renders the
  * document with a link to `/api`, a hydration marker and a not-found
- * component.
+ * component. The router module loads `src/hmr-sync.ts` (`settlePage`).
  */
 const pageAppFiles = {
   ...startServerEntryFiles,
@@ -38,8 +38,10 @@ hydrateRoot(document, createElement(StartClient))
 `,
   'src/router.ts': `import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
+import './hmr-sync'
 export const getRouter = () => createRouter({ routeTree })
 `,
+  'src/hmr-sync.ts': hmrSyncModule,
   'src/routes/__root.tsx': `import { HeadContent, Link, Outlet, Scripts, createRootRoute, useHydrated } from '@tanstack/react-router'
 export const Route = createRootRoute({
   component: Root,
@@ -98,22 +100,6 @@ async function apiAnswers(server: DevServer, expected: string) {
   }
 }
 
-/** Waits until the dev server sent no HMR message for a while. */
-async function quiet(server: DevServer) {
-  let count = server.hmr.length
-  let since = Date.now()
-  for (;;) {
-    await new Promise((resolve) => setTimeout(resolve, 25))
-    if (server.hmr.length !== count) {
-      count = server.hmr.length
-      since = Date.now()
-    } else if (Date.now() - since >= 300) {
-      await server.idle()
-      return
-    }
-  }
-}
-
 describe('Vite dev: a route switching between page and server-only', () => {
   // The client's route tree follows each change of a route between a
   // server-only route and a page: after each edit, the page navigates to
@@ -135,51 +121,44 @@ describe('Vite dev: a route switching between page and server-only', () => {
       const browser = await openPage(new URL('/page', server.url).href, {
         registerCleanup: onTestFinished,
       })
+      const inFlight = trackRequests(browser)
       await browser.waitForText('MARK_PAGE', { selector: '#app' })
       await browser.waitForText('hydrated', {
         selector: '[data-testid=hydrated]',
       })
+      /** Waits until the page took in what the server sent (a reload too). */
+      const settled = () => settlePage(server, browser, inFlight)
       /** Navigates to `/api` through its link and waits for `expected`. */
       const visitApi = async (expected: string) => {
         await browser.page.locator('[data-testid=to-api]').click()
         await browser.waitForText(expected, { selector: '#app' })
       }
-      const clientReloads = () =>
-        server.hmr.filter(
-          (message) =>
-            message.environment === 'client' && message.type === 'full-reload',
-        ).length
-
       // Server-only: the page shows not found
       await visitApi('MARK_NOT_FOUND')
       await browser.page.locator('[data-testid=to-page]').click()
       await browser.waitForText('MARK_PAGE', { selector: '#app' })
-      await quiet(server)
+      await settled()
 
       // An edit of a server-only route that keeps it server-only changes
-      // nothing for the page
+      // nothing for the page: no reload
       const loads = browser.loads()
-      const reloads = clientReloads()
-      await server.write({ 'src/routes/api.tsx': api(handlers('y')) })
+      await server.edit({ 'src/routes/api.tsx': api(handlers('y')) })
       await apiAnswers(server, 'y')
-      await quiet(server)
-      expect({ loads: browser.loads(), reloads: clientReloads() }).toEqual({
-        loads,
-        reloads,
-      })
+      await settled()
+      expect(browser.loads()).toBe(loads)
 
       // Server-only -> page (`edit`: the watcher reported every file the edit
       // and the router generator wrote, and the server handled them)
       await server.edit({
         'src/routes/api.tsx': api(`${handlers('y')}, ${component}`),
       })
-      await quiet(server)
+      await settled()
       await visitApi('MARK_API_PAGE')
 
       // Page with handlers -> page without handlers
-      await server.write({ 'src/routes/api.tsx': api(component) })
+      await server.edit({ 'src/routes/api.tsx': api(component) })
       await apiAnswers(server, 'MARK_API_PAGE')
-      await quiet(server)
+      await settled()
       await browser.page.locator('[data-testid=to-page]').click()
       await browser.waitForText('MARK_PAGE', { selector: '#app' })
       await visitApi('MARK_API_PAGE')
@@ -190,7 +169,7 @@ describe('Vite dev: a route switching between page and server-only', () => {
       await browser.waitForText('MARK_PAGE', { selector: '#app' })
       await server.edit({ 'src/routes/api.tsx': api(handlers('z')) })
       await apiAnswers(server, 'z')
-      await quiet(server)
+      await settled()
       await visitApi('MARK_NOT_FOUND')
       expect(browser.errors).toEqual([])
     },
@@ -212,7 +191,7 @@ describe('Vite dev: a route switching between page and server-only', () => {
       await server.edit({
         'src/routes/api.tsx': api(`${handlers('x')}, ${component}`),
       })
-      await quiet(server)
+      await server.idle()
       const browser = await openPage(new URL('/page', server.url).href, {
         registerCleanup: onTestFinished,
       })
@@ -285,61 +264,47 @@ createRoot(document.getElementById('app')!).render(<RouterProvider router={getRo
 `,
           'src/router.ts': `import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
+import './hmr-sync'
 export const getRouter = () => createRouter({ routeTree })
 `,
+          'src/hmr-sync.ts': hmrSyncModule,
           'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute()
 `,
           'src/routes/index.tsx': page('loader v1', 'Page v1'),
         },
       })
-      const fullReloads = () =>
-        server.hmr.filter(
-          (message) =>
-            message.environment === 'client' && message.type === 'full-reload',
-        )
-      /** Waits until the dev server sent no HMR message for a while. */
-      const quiet = async () => {
-        let count = server.hmr.length
-        let since = Date.now()
-        for (;;) {
-          await new Promise((resolve) => setTimeout(resolve, 25))
-          if (server.hmr.length !== count) {
-            count = server.hmr.length
-            since = Date.now()
-          } else if (Date.now() - since >= 300) {
-            await server.idle()
-            return
-          }
-        }
-      }
       const browser = await openPage(server.url!, {
         registerCleanup: onTestFinished,
       })
+      const inFlight = trackRequests(browser)
+      /** Waits until the page took in what the server sent (a reload too). */
+      const settled = () => settlePage(server, browser, inFlight)
       const shows = (text: string) =>
         browser.waitForText(text, { selector: '#app' })
       await shows('Page v1 loader v1 count 0')
-      await quiet()
+      await settled()
       await browser.page.locator('#app button').click()
       await browser.page.locator('#app button').click()
       await shows('Page v1 loader v1 count 2')
 
       // Route options outside the split component change
-      await server.write({
+      await server.edit({
         'src/routes/index.tsx': page('loader v2', 'Page v1'),
       })
+      await settled()
       await shows('Page v1 loader v2 count 2')
-      await quiet()
 
       // The split component changes
-      await server.write({
+      await server.edit({
         'src/routes/index.tsx': page('loader v2', 'Page v2'),
       })
+      await settled()
       await shows('Page v2 loader v2 count 2')
-      await quiet()
 
+      // No full reload: the page kept its first document (and the
+      // component its state, above)
       expect(browser.loads()).toBe(1)
-      expect(describeHmr(fullReloads())).toEqual([])
       expect(browser.errors).toEqual([])
     },
     timeout,

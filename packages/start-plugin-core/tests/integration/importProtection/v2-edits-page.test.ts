@@ -14,6 +14,7 @@ import { afterAll, describe, expect, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { startDevServer } from '../../dev-server'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
+import { hmrSyncModule, settlePage, trackRequests } from '../hmr-sync'
 import {
   appSources,
   pageApp,
@@ -45,10 +46,11 @@ interface StepOutcome {
   text: string
   /** `window.liveSecret()`, described, when the step uses it. */
   live?: string
-  /** Page loads so far (1: no full reload). */
+  /**
+   * Page loads so far (1: no full reload), once the page took in what the
+   * server sent it for the step (`settlePage`).
+   */
   loads: number
-  /** Full reloads the server sent to the client since the step's edit. */
-  fullReloads: number
   /** Whether a module the client loads contains the secret. */
   servedSecret: boolean
   /** The importers reported for the client since the step's edit. */
@@ -75,25 +77,32 @@ const run = () =>
       browser: true,
       config,
       plugins: [react()],
-      files: pageApp,
+      // The router module loads `src/hmr-sync.ts` (`settlePage`)
+      files: {
+        ...pageApp,
+        'src/router.ts': `${pageApp['src/router.ts']}import './hmr-sync'\n`,
+        'src/hmr-sync.ts': hmrSyncModule,
+      },
       registerCleanup,
     })
     const browser = await openPage(new URL('/', server.url).href, {
       registerCleanup,
     })
+    const inFlight = trackRequests(browser)
     const result: Array<StepOutcome> = []
     for (const { step, live } of pageSteps) {
-      let since = { logs: 0, hmr: 0 }
+      let since = { logs: 0 }
       if (step > 1) {
         await server.edit({ 'src/secret.server.ts': null })
         await server.edit({ 'src/secret.server.ts': secretServerModule })
         await server.idle()
-        since = { logs: server.logs.length, hmr: server.hmr.length }
+        since = { logs: server.logs.length }
         await server.edit({ 'src/widget.tsx': pageWidget(step, live) })
       }
       await browser.waitForText(`step-${step}`, {
         selector: '[data-testid=widget]',
       })
+      await settlePage(server, browser, inFlight)
       const served = await server.load('/src/widget.tsx')
       await server.idle()
       result.push({
@@ -105,13 +114,6 @@ return describeValue(window.liveSecret(), 'MARK_SECRET')
 })()`),
         }),
         loads: browser.loads(),
-        fullReloads: server.hmr
-          .slice(since.hmr)
-          .filter(
-            (message) =>
-              message.environment === 'client' &&
-              message.type === 'full-reload',
-          ).length,
         servedSecret: Object.values(served).some((code) =>
           code.includes('MARK_SECRET'),
         ),
@@ -131,17 +133,15 @@ describe.each(pageSteps)('step $step (live use: $live)', ({ step, live }) => {
   test(
     'the page shows the edit without a full reload, and never the secret',
     async () => {
-      const { text, loads, fullReloads } = await outcome()
+      const { text, loads } = await outcome()
       expect({
         clientBranch: text.includes('MARK_CLIENT_BRANCH'),
         secret: text.includes('MARK_SECRET'),
         loads,
-        fullReloads,
       }).toEqual({
         clientBranch: true,
         secret: false,
         loads: 1,
-        fullReloads: 0,
       })
     },
     timeout,
