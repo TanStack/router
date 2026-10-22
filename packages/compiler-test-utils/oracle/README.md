@@ -117,6 +117,12 @@ depends on that race. The validation V-I (after F-I) added start-plugin-core `te
 control, on both bundlers, of a server fn the app's server entry defines, called from SSR code (caveats below).
 Without it, a Vite compiler whose resolver drops every server fn the client build did not find passed every
 acceptance tier.
+The pass F-J (after V-I) made the tests hermetic: no test writes into the repository. The harnesses create their apps
+in the system's temporary directory, standing in for the package directory they were created in before (same
+dependencies through linked `node_modules`, same `tsconfig.json`; `src/app-directory.ts`), and router-generator runs
+its fixtures on copies (only the route tree of the `nested` fixture is still written in place, for the `types` project
+Q2 holds). No count, pin or outcome changed: every tier and lane gave the counts above, test by test, apart from #34
+rows that passed alone.
 
 The `test:unit` counts include the pending-rulings lane: 4 passing rows and 3 pins in start-plugin-core, 1 row in
 router-plugin.
