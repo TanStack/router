@@ -611,6 +611,11 @@ export interface ClientRender {
   /** `lazy` as the page requested it (paths with their query). */
   lazyUrls: Array<string>
   /**
+   * What the import of the module requested, before hydration, as the page
+   * requested it (paths with their query; modules of any kind).
+   */
+  importedUrls: Array<string>
+  /**
    * The case's own code among `lazyUrls`: the modules the page requested
    * once hydration started whose served code's source map names a file of
    * the case directory (or, served with an empty map, that the case
@@ -784,6 +789,7 @@ export async function renderClient(
     consoleErrors: Array<string>
     uncaught: Array<string>
     loaded: Array<string>
+    importedUrls: Array<string>
     lazy: Array<string>
     lazyUrls: Array<string>
     serverOuter: string
@@ -809,7 +815,8 @@ const glue = await import('/src/harness/render.client.tsx')
 const setup = ${target.setup === false ? '{}' : `await import(${caseUrl(target.setup ?? 'setup.ts')})`}
 const beforeImport = performance.getEntriesByType('resource').length
 const m = await import(${caseUrl(file)})
-const loaded = caseNames(requested(beforeImport)).filter((name) => name.startsWith('./'))
+const importedUrls = requested(beforeImport)
+const loaded = caseNames(importedUrls).filter((name) => name.startsWith('./'))
 await (async () => {
 ${options.beforeRender ?? ''}
 })()
@@ -865,6 +872,7 @@ ${options.script ?? 'return null'}
     consoleErrors,
     uncaught,
     loaded,
+    importedUrls,
     lazy: caseNames(lazyUrls),
     lazyUrls,
     result: result === undefined ? null : result,
@@ -907,6 +915,7 @@ ${options.script ?? 'return null'}
       (message) => !hydrationMessage.test(message),
     ),
     loaded: run.result.loaded,
+    importedUrls: run.result.importedUrls,
     lazy: run.result.lazy,
     lazyUrls: run.result.lazyUrls,
     chunks,
@@ -928,7 +937,7 @@ ${options.script ?? 'return null'}
  * package, the runtime or Vite's client. Observation only: the dev
  * server's served maps and module graph.
  */
-async function caseCode(
+export async function caseCode(
   hosts: HydrateHost,
   dir: string,
   file: string,

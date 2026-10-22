@@ -17,6 +17,7 @@ import {
 } from '@tanstack/compiler-test-utils/source-maps'
 import { compileError, expectCompileError } from '../../regression-helpers'
 import {
+  caseCode,
   expectHydratedCleanly,
   expectRenderedThroughChunks,
   expectRendersLikeSource,
@@ -24,7 +25,6 @@ import {
   servedWithMap,
   useHydrateHost,
 } from '../../render'
-import { moduleRequests } from '../../imports'
 import type { ClientRender } from '../../render'
 import type { SourceMapInput } from '@tanstack/compiler-test-utils/source-maps'
 
@@ -82,22 +82,34 @@ function expectRejection(
 }
 
 /**
- * Every module the client parent can import on demand (the decoded targets
- * of its dynamic `import()`s, as the dev server serves it) is requested
- * while the page hydrates with every gate open (every boundary of the
- * fixtures renders): no split code ships that the page never loads. How
- * many modules the split takes, and their ids, are free (SPEC N13).
+ * Every module of the case's own code that the page can load from the
+ * client module (Vite's client module graph from it, static and lazy
+ * imports: `load()`, up to packages and Vite's client; the case's code by
+ * provenance among them, `caseCode`) is
+ * requested while the page imports the module and hydrates it with every
+ * gate open (every boundary of the fixtures renders): no split code ships
+ * that the page never loads. How many modules the split takes, their ids
+ * and how the client imports them are free (SPEC N13).
  */
 async function expectNoUnusedChunks(client: ClientRender) {
-  const served = await client.case.served()
-  const requested = new Set([
-    ...client.lazyUrls,
-    ...client.loaded.map((name) => name),
-  ])
-  const unloaded = moduleRequests(served).dynamic.filter(
-    (url) =>
-      !requested.has(url) && !client.lazyUrls.some((lazy) => lazy === url),
+  const host = await hosts()
+  // Packages (installed, linked from outside the app: served under
+  // `/@fs/`, or named by their bare id in the graph) and Vite's client are
+  // not the case's code; the dev server serves them as they are
+  const reachable = Object.keys(
+    await host.start.host.dev.load(client.case.url(), {
+      skip: /^[^/]|(^|\/)node_modules\/|^\/@fs\/|^\/@vite\/|^\/@react-refresh/,
+    }),
   )
+  const own = await caseCode(host, client.case.dir, 'module.tsx', reachable)
+  const normalized = (url: string) => {
+    const parsed = new URL(url, 'http://localhost')
+    return decodeURIComponent(parsed.pathname + parsed.search)
+  }
+  const requested = new Set(
+    [...client.importedUrls, ...client.lazyUrls].map(normalized),
+  )
+  const unloaded = own.filter((url) => !requested.has(normalized(url)))
   expect(unloaded, 'split code the page never loaded').toEqual([])
 }
 
@@ -229,6 +241,22 @@ export function Local() {
   // named import (DECISIONS 2026-10-18) is pinned on real hydration:
   // integration/hydrate-pages-react.ts and hydrate-pages-solid.test.ts "a
   // namespace-imported Start.Hydrate loads its children when it hydrates".
+
+  // Control of the pins below (the same check): a boundary with JSX
+  // children loads every split module it ships once it hydrates.
+  test('client: children passed as JSX children render without unused chunks', async () => {
+    const { client } = await expectRendersLikeSource(
+      await hosts(),
+      `${head}import { Chart } from './chart'
+export function Page() {
+  return <Hydrate when={load()}><Chart /></Hydrate>
+}`,
+      { files: { './chart': `export const Chart = () => 'chart'` } },
+    )
+    expect(client.html).toContain('chart')
+    expect(client.chunks.length).toBeGreaterThan(0)
+    await expectNoUnusedChunks(client)
+  })
 
   // Bug: the boundary's children are only read from JSX children, never from
   // a `children` prop or spread.
