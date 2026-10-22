@@ -54,6 +54,7 @@ import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 import { currentTest } from '@tanstack/compiler-test-utils/test-scope'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import { tanstackRouter } from '../src/vite'
+import type { ShippedModule } from '@tanstack/compiler-test-utils/validate-module'
 import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import type { PageRun } from '@tanstack/compiler-test-utils/browser'
 import type { PluginHost } from '@tanstack/compiler-test-utils/plugin-host'
@@ -1093,6 +1094,39 @@ await trigger(${JSON.stringify(option)})
 probe.assertNoFailedRequests()
 return (await compiled()).filter((request) => !before.has(request))`)
 
+  /**
+   * The production client build of the app as it is now (`vite build` of the
+   * host, source maps on), as `getModuleErrors` reads it (`build`). Its
+   * input is the generated route tree, with its export kept, as an app's
+   * router reads it: each route's `Route` and what its options load, not
+   * the route file's other exports. Its output goes under `node_modules/`,
+   * which the dev server's watcher ignores.
+   */
+  const shipped = async (): Promise<ShippedModule> => {
+    await writeRoute(state, owner, files)
+    const outDir = path.join(state.host.root, 'node_modules/.route-app-build')
+    const built = await state.host.build({
+      config: {
+        build: {
+          outDir,
+          emptyOutDir: true,
+          sourcemap: true,
+          rollupOptions: {
+            input: path.join(state.host.root, 'routeTree.gen.ts'),
+            preserveEntrySignatures: 'exports-only',
+          },
+        },
+      },
+    })
+    const client = built.environments.client
+    if (!client) {
+      throw new Error('the production build has no client environment')
+    }
+    // A free name counts wherever the build still reads it: code a
+    // compiler generates without mappings (§5.14) maps to no file
+    return { chunks: client.chunks, outDir: client.outDir }
+  }
+
   const route: RouteApp = {
     host: state.host,
     url,
@@ -1177,7 +1211,18 @@ return Promise.all(found.map(async (module) => ({ ...module, code: await served(
         modules[label] = module.code
         ids[label] = module.request
       }
-      routeSources.set(modules, { code, filename })
+      routeSources.set(modules, {
+        code,
+        filename,
+        // Route HMR code runs in dev, on an update, and the production
+        // build drops it: a route compiled with HMR keeps the check of the
+        // module alone
+        shipped:
+          options.hmr ||
+          options.pluginOptions?.codeSplittingOptions?.addHmr === true
+            ? undefined
+            : shipped,
+      })
       return { modules, ids }
     },
     transform: async (request = url) => {
@@ -1196,8 +1241,18 @@ function isRouteApp(value: unknown): value is RouteApp {
   return typeof (value as RouteApp).run === 'function'
 }
 
-/** Route file each `modules()` result was compiled from. */
-const routeSources = new WeakMap<object, { code: string; filename: string }>()
+/**
+ * Route file each `modules()` result was compiled from, and the production
+ * build of its app (`shipped`).
+ */
+const routeSources = new WeakMap<
+  object,
+  {
+    code: string
+    filename: string
+    shipped: (() => Promise<ShippedModule>) | undefined
+  }
+>()
 
 /**
  * Asserts that every module the compilers emitted for the route is a valid
@@ -1205,6 +1260,18 @@ const routeSources = new WeakMap<object, { code: string; filename: string }>()
  * it parses, binds what it reads, and reads no name the route file bound
  * that the module lost (`source` of `getModuleErrors`). The globals the
  * framework's refresh runtime installs in the page are known.
+ *
+ * A free name (one the module reads but never declares or imports, or a
+ * lost binding) is decided on the real production build (G8: code the
+ * bundler deletes from the production build may dangle; §5.9): a module
+ * with one is checked again against a `vite build` of the same app, and the
+ * name counts only if the build's client chunks still read it free
+ * (`build` of `getModuleErrors`, without a module: anywhere in the chunks,
+ * since generated code may map to no file). The check of the module alone runs
+ * first, and the build only when it finds a free name, so a correct
+ * compiler costs no build. Parse and binding errors need no build. A route
+ * compiled with route HMR (`hmr: true`) keeps the check of the module
+ * alone: its HMR code runs in dev on an update, and production drops it.
  */
 export async function expectValidModules(
   route: RouteApp | RouteModules['modules'],
@@ -1214,14 +1281,28 @@ export async function expectValidModules(
     : route
   const source = routeSources.get(modules)
   const errors: Record<string, Array<string>> = {}
-  for (const [name, code] of Object.entries(modules)) {
+  const check = (code: string, build?: ShippedModule) =>
     // Served code is JavaScript; read with the route file's language, as
     // the `source` comparison needs
-    errors[name] = await getModuleErrors(code, 'module.tsx', {
+    getModuleErrors(code, 'module.tsx', {
       env: 'client',
       source: source?.code,
       globals: refreshGlobals,
+      ...(build && { build }),
     })
+  for (const [name, code] of Object.entries(modules)) {
+    errors[name] = await check(code)
+  }
+  if (
+    source?.shipped &&
+    Object.values(errors).some((found) => found.length > 0)
+  ) {
+    const build = await source.shipped()
+    for (const [name, code] of Object.entries(modules)) {
+      if (errors[name]!.length > 0) {
+        errors[name] = await check(code, build)
+      }
+    }
   }
   expect(errors).toEqual(
     Object.fromEntries(Object.keys(modules).map((name) => [name, []])),

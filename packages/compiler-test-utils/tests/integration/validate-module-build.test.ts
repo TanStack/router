@@ -66,3 +66,30 @@ test(
   },
   timeout,
 )
+
+test(
+  'without the module named, a dangling read counts wherever the build still ships it, also in code without mappings',
+  async () => {
+    const dropped = await build(
+      `import { used } from './mod'\nexport const read = () => used()\n`,
+    )
+    expect(
+      await getModuleErrors(module, 'mod.ts', {
+        build: { chunks: dropped.chunks, outDir: dropped.outDir },
+      }),
+    ).toEqual([])
+    const shipped = await build(
+      `import { used, unused } from './mod'\nexport const read = () => [used(), unused]\n`,
+    )
+    // (the chunks without their maps: no code maps to the module)
+    expect(
+      await getModuleErrors(module, 'mod.ts', {
+        build: {
+          chunks: shipped.chunks.map(({ code }) => ({ code })),
+          outDir: shipped.outDir,
+        },
+      }),
+    ).toEqual(['`danglingName` is referenced but never declared or imported'])
+  },
+  timeout,
+)
