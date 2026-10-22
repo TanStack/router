@@ -152,15 +152,6 @@ createRoot(document.getElementById('app')!).render(<RouterProvider router={getRo
           tools: {
             // Start serves the pages, not an HTML template
             htmlPlugin: false,
-            // React's JSX runtime, as `pluginReact()` of a React Start app
-            // configures it
-            swc: {
-              jsc: {
-                transform: {
-                  react: { runtime: 'automatic', development: true },
-                },
-              },
-            },
           },
         },
         files: {

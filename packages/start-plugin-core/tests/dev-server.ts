@@ -1,24 +1,28 @@
 /**
- * Dev-server harness of the Start compiler: a Vite dev server with Start's
- * whole Vite plugin, the BUILT public entry of this package
- * (`tanStackStartVite` of `@tanstack/start-plugin-core/vite`, with the
- * options `@tanstack/react-start` passes: client and SSR environments, SSR
- * as the server fn provider), on a temporary app, through the shared
- * dev-server harness (`@tanstack/compiler-test-utils/dev-server`). Its dev
- * server hooks, Start compiler, import protection, router generator, route
- * tree client plugin and start manifest all run, as in an app.
- * `@tanstack/react-start` is the real package (`startRuntimeLinks`), and
- * `@tanstack/react-router` the real one too (a dependency of this package).
- * The temporary apps live in this directory.
+ * Dev-server harness of the Start compiler: a Vite dev server with the
+ * plugins a Start app's `vite.config.ts` lists, `tanstackStart()` of the
+ * built framework package (`@tanstack/react-start/plugin/vite`, or
+ * `@tanstack/solid-start`'s; see `start-plugins.ts`: client and SSR
+ * environments, SSR as the server fn provider) and the app's other plugins
+ * (a React app's `@vitejs/plugin-react` unless the test gives it), on a
+ * temporary app, through the shared dev-server harness
+ * (`@tanstack/compiler-test-utils/dev-server`). The framework package's
+ * configuration, Start's dev server hooks, Start compiler, import
+ * protection, router generator, route tree client plugin and start manifest
+ * all run, as in an app. `@tanstack/react-start` is the real package
+ * (`startRuntimeLinks`), and `@tanstack/react-router` the real one too (a
+ * dependency of this package). The temporary apps live in this directory.
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
+import react from '@vitejs/plugin-react'
 import { onTestFinished } from 'vitest'
-import { tanStackStartVite } from '@tanstack/start-plugin-core/vite'
 import { startRuntimeLinks } from './build-harness'
 import { inProbeRequest, requestFiles } from './request-probe'
+import { startPlugins } from './start-plugins'
+import { coreStartPlugins } from './outside-compiler-corpus/core-start-plugin'
 import type {
   StartCompilerImportTransform,
   TanStackStartViteInputConfig,
@@ -36,27 +40,30 @@ export interface StartDevServerOptions extends Omit<
   'dir' | 'plugins'
 > {
   /**
-   * Other plugins of the app (e.g. a framework's JSX plugin), after Start's,
-   * or a function of the app root returning them.
+   * Other plugins of the app (e.g. a Solid app's JSX plugin), after Start's,
+   * or a function of the app root returning them. A React app gets
+   * `@vitejs/plugin-react` unless these include it.
    */
   plugins?:
     | Array<PluginOption>
     | ((app: { root: string }) => Array<PluginOption>)
   /**
    * The app's Start plugin options (`tanstackStart(options)`; default
-   * `{}`). The app's client and server entries are empty, and
+   * `{}`). The app's client and server entries are the harness's empty
+   * ones (`client.entry`, `server.entry`) unless the app has its own, and
    * `src/router.ts` and `src/routes/__root.tsx` are stubs unless the app has
    * them (`startPluginFiles`).
    */
   start?: TanStackStartViteInputConfig
   /**
-   * External import transforms of the Start compiler, which a framework
-   * package passes to Start's plugin (e.g. React's RSC CSS transform).
+   * Implementation tests only: external import transforms of the Start
+   * compiler, which no public option takes (see
+   * `outside-compiler-corpus/core-start-plugin.ts`).
    */
   compilerTransforms?: Array<StartCompilerImportTransform>
   /**
    * The Start framework package of the app (default `react`): Start's
-   * plugin gets its framework, and `solid` links the built
+   * plugin is that package's `tanstackStart()`, and `solid` links the built
    * `@tanstack/solid-start` and `@tanstack/solid-router` (a Solid app's
    * dependencies; its JSX plugin, `vite-plugin-solid`, comes from
    * `plugins`).
@@ -164,7 +171,6 @@ export async function callServerFn(
 export const startPluginFiles = {
   'harness/client-entry.ts': `export {}\n`,
   'harness/server-entry.ts': `export {}\n`,
-  'harness/start.ts': `export const startInstance = undefined\n`,
   'src/router.ts': `export const getRouter = () => undefined\n`,
   'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute()
@@ -172,8 +178,9 @@ export const Route = createRootRoute()
 }
 
 /**
- * Start's Vite plugin with the core options `@tanstack/react-start` passes
- * (or `@tanstack/solid-start`, with `framework: 'solid'`).
+ * Start's Vite plugins of an app at `root`: `tanstackStart(start)` of the
+ * framework package, with the harness's entries (`harness/client-entry.ts`,
+ * `harness/server-entry.ts`) where the app has none.
  */
 export function startPlugin(
   root: string,
@@ -181,21 +188,26 @@ export function startPlugin(
   compilerTransforms: Array<StartCompilerImportTransform> | undefined,
   framework: 'react' | 'solid' = 'react',
 ) {
-  return tanStackStartVite(
-    {
-      framework,
-      defaultEntryPaths: {
-        client: path.join(root, 'harness/client-entry.ts'),
-        server: path.join(root, 'harness/server-entry.ts'),
-        start: path.join(root, 'harness/start.ts'),
-      },
-      providerEnvironmentName: 'ssr',
-      ssrIsProvider: true,
-      ssrResolverStrategy: { type: 'default' },
-      compilerTransforms,
-    },
-    start,
-  )
+  const entries = {
+    client: path.join(root, 'harness/client-entry.ts'),
+    server: path.join(root, 'harness/server-entry.ts'),
+  }
+  return compilerTransforms
+    ? coreStartPlugins(framework, start, entries, compilerTransforms)
+    : startPlugins(framework, root, start, entries)
+}
+
+/** Whether an app's Vite plugins include `@vitejs/plugin-react`. */
+function hasReactPlugin(plugins: Array<PluginOption>): boolean {
+  return plugins
+    .flat(Infinity as 1)
+    .some(
+      (plugin) =>
+        !!plugin &&
+        typeof plugin === 'object' &&
+        'name' in plugin &&
+        String(plugin.name).startsWith('vite:react'),
+    )
 }
 
 /** Starts a Vite dev server with Start's plugin on an app of `files`. */
@@ -228,17 +240,18 @@ export function startDevServer(
         ])),
       ...devServerOptions.symlinks,
     },
-    plugins: ({ root }) => [
-      startPlugin(root, start, compilerTransforms, framework),
-      ...(typeof plugins === 'function' ? plugins({ root }) : plugins),
-      {
-        name: 'start-dev-server-harness',
-        // Start's SSR RPC (`createSsrRpc`) imports the resolver virtual
-        // module
-        config: () => ({
-          ssr: { noExternal: [`@tanstack/${framework}-start`] },
-        }),
-      },
-    ],
+    plugins: ({ root }) => {
+      const appPlugins =
+        typeof plugins === 'function' ? plugins({ root }) : plugins
+      return [
+        startPlugin(root, start, compilerTransforms, framework),
+        // A React app's own Vite plugin, as in every React Start app,
+        // unless the test gives it
+        ...(framework === 'react' && !hasReactPlugin(appPlugins)
+          ? [react()]
+          : []),
+        ...appPlugins,
+      ]
+    },
   })
 }

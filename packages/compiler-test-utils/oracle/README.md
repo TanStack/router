@@ -83,7 +83,9 @@ helpers (below); its changes were validated locally (every tier and lane above, 
 re-measured against R1–R11 and V4. Count changes against 45f58967ea: ctu `test:unit` −3 (the controls of the deleted
 Node stand-in `evaluateServed`), ctu `test:integration` +1 (a control of the build-decided dangling-name check),
 router-plugin `test:implementation` −1 (the control of a deleted path filter), start-plugin-core `test:unit` +4
-(controls of the content-based suggestion reader).
+(controls of the content-based suggestion reader). The pass F-G1 (after F-F) builds the apps of the start-plugin-core,
+router-plugin and react-start-rsc harnesses with the plugins a real app configures ("How tests reach the
+compilers"); no count or pin changed, and a sample of V4 reds is still caught; R1–R11 and V4 were not re-measured.
 
 The `test:unit` counts include the pending-rulings lane: 4 passing rows and 3 pins in start-plugin-core, 1 row in
 router-plugin.
@@ -103,12 +105,10 @@ Caveats:
     `integration/importProtection/mock-shapes.test.ts` in a run. It hit 3 of 145 runs.
   - Re-run a file that failed only on these alone before reading it as a compiler failure.
 - **Known gaps of the final audit (F-F), not fixed:**
-  - start-plugin-core's build and dev harnesses (`tests/build-harness.ts`, `tests/dev-server.ts`,
-    `tests/rsbuild-dev-server.ts`) call Start's public plugin factory (`tanStackStartVite`/`tanStackStartRsbuild` of
-    `@tanstack/start-plugin-core`) with the core options `@tanstack/react-start` passes, not `tanstackStart()` of the
-    built framework package, so react-start's config plugin (dedupe, externals, dependency optimisation) is absent;
-    the Rsbuild builds of router-plugin and react-start-rsc configure SWC by hand instead of `@rsbuild/plugin-react`.
-    `start-host.ts` (the fast tier and the page tests) already uses `tanstackStart()`. RULES-AUDIT §3 item 6.
+  - start-plugin-core's `compilerTransforms` option of its harnesses (one implementation-lane file,
+    `integration/outside-compiler-corpus/start-build-warnings.test.ts`) builds Start's plugin from the core factory
+    (`tests/outside-compiler-corpus/core-start-plugin.ts`): no public option takes external compiler transforms
+    (react-start passes its own RSC CSS transforms with `rsc: { enabled: true }`). No corpus test uses it.
   - router-plugin `integration/plugin-options.test.ts`: the webpack entry's `addHmr: false` cell reads the
     development build for `hot.accept(` (today's local name); the suite has no webpack dev server. The Rspack cell is
     decided by behaviour on an Rsbuild dev page.
@@ -149,7 +149,16 @@ chunk layout, printed code or AST shapes.
 - **Hosts.** `compiler-test-utils/src/plugin-host.ts` hosts the public Vite plugins in a real Vite dev server
   (server code through the environment's module runner, client code in the browser) and runs `vite build` with the
   same plugins. `rsbuild-plugin-host.ts` does the same with Rsbuild's JavaScript API. Builds also run through
-  Rspack and webpack (`build-harness.ts`). The packages' own hosts build on these: router-plugin's `route-app.ts`
+  Rspack and webpack (`build-harness.ts`).
+- **Apps are configured as an app's config file configures them.** Start apps get `tanstackStart()` of the built
+  framework package (`@tanstack/<framework>-start/plugin/vite` or `/plugin/rsbuild`; start-plugin-core
+  `tests/start-plugins.ts`), so the framework package's own options and configuration apply, and the framework's
+  own plugin (`@vitejs/plugin-react` or `@rsbuild/plugin-react` unless the test gives it, `vite-plugin-solid`,
+  `@vitejs/plugin-vue` with `@vitejs/plugin-vue-jsx`). A harness gives an app entries only through Start's
+  documented `client.entry`/`server.entry`, and only where the app has none of its own. router-plugin's Vite
+  builds add the framework's Vite plugin, its Rsbuild builds `@rsbuild/plugin-react`; plain webpack and Rspack
+  builds, which have no framework plugins, use the loaders an app configures (the bundler's TypeScript/JSX
+  transform for React, `babel-loader` with `babel-preset-solid` or Vue's `@vue/babel-plugin-jsx`). The packages' own hosts build on these: router-plugin's `route-app.ts`
   (a route file loaded as an app loads it, registered by the plugin's own generator) and start-plugin-core's
   `start-host.ts` (a Start app with a real router and a probe route). Hosts are shared within a test process and
   leased to one test at a time.

@@ -2,8 +2,9 @@
  * The public Start host of the fast tier (SYNTHESIS recipe P2): a Start app
  * on disk, served by a real Vite dev server running the plugins a user
  * configures, `tanstackStart()` of the built `@tanstack/<framework>-start`
- * package (its `plugin/vite` export) and the framework's own Vite plugin
- * (`@vitejs/plugin-react`, `vite-plugin-solid`), through the public plugin
+ * package (its `plugin/vite` export, `start-plugins.ts`) and the framework's own Vite plugin
+ * (`@vitejs/plugin-react`, `vite-plugin-solid`, `@vitejs/plugin-vue` and
+ * `@vitejs/plugin-vue-jsx`), through the public plugin
  * host of `@tanstack/compiler-test-utils/plugin-host`. Nothing of the
  * compiler is named: no class, module id, query, virtual module, report or
  * emitted helper. Everything a test reads is what the app gives a user:
@@ -44,8 +45,8 @@ import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import react from '@vitejs/plugin-react'
 import vue from '@vitejs/plugin-vue'
+import vueJsx from '@vitejs/plugin-vue-jsx'
 import solid from 'vite-plugin-solid'
-import { resolveModulePath } from 'exsolve'
 import { mergeConfig, preview as vitePreview } from 'vite'
 import { afterAll, beforeAll, expect } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
@@ -55,6 +56,8 @@ import {
   workspacePackage,
   workspacePackageLinks,
 } from '@tanstack/compiler-test-utils/workspace-packages'
+import { startPackages, startPluginFactory } from './start-plugins'
+import type { StartFramework, StartPluginOptions } from './start-plugins'
 import {
   inProbeRequest,
   probeRoute,
@@ -70,14 +73,8 @@ import type {
 } from '@tanstack/compiler-test-utils/plugin-host'
 import type { InlineConfig, Plugin, PluginOption, PreviewServer } from 'vite'
 
-/** The Start framework packages a host can serve. */
-export type StartFramework = 'react' | 'solid' | 'vue'
-
-/**
- * The options of `tanstackStart()` (`TanStackStartViteInputConfig`, the
- * documented Start plugin options), as a test passes them.
- */
-export type StartPluginOptions = Record<string, unknown>
+export { startPluginFactory }
+export type { StartFramework, StartPluginOptions } from './start-plugins'
 
 export interface StartHostOptions {
   /** Default `react`. */
@@ -117,45 +114,10 @@ export interface StartHostOptions {
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 
-const startPackages: Record<StartFramework, string> = {
-  react: '@tanstack/react-start',
-  solid: '@tanstack/solid-start',
-  vue: '@tanstack/vue-start',
-}
 const routerPackages: Record<StartFramework, string> = {
   react: '@tanstack/react-router',
   solid: '@tanstack/solid-router',
   vue: '@tanstack/vue-router',
-}
-
-type StartPluginFactory = (options?: StartPluginOptions) => Array<PluginOption>
-
-const factories = new Map<StartFramework, Promise<StartPluginFactory>>()
-
-/**
- * `tanstackStart` of the built `@tanstack/<framework>-start/plugin/vite`,
- * resolved through the package's `exports` as an app's `vite.config.ts`
- * resolves it.
- */
-export function startPluginFactory(
-  framework: StartFramework,
-): Promise<StartPluginFactory> {
-  let factory = factories.get(framework)
-  if (!factory) {
-    const pkg = startPackages[framework]
-    factory = import(
-      pathToFileURL(
-        resolveModulePath(`${pkg}/plugin/vite`, {
-          from: `${workspacePackage(pkg)}/`,
-          conditions: ['import', 'node', 'default'],
-        }),
-      ).href
-    ).then(
-      (module: { tanstackStart: StartPluginFactory }) => module.tanstackStart,
-    )
-    factories.set(framework, factory)
-  }
-  return factory
 }
 
 /** The framework's own Vite plugin, as a user configures it. */
@@ -169,9 +131,11 @@ function frameworkPlugins(
   if (framework === 'solid') {
     return [solid({ ssr: true })]
   }
-  // Single-file components (`.vue`); the app's JSX is Vue's own runtime
-  // (`appTsconfig`)
-  return [vue()]
+  // Single-file components (`.vue`) and Vue's JSX, as a Vue Start app
+  // configures them. Babel's TypeScript transform of `.tsx` files keeps
+  // value imports nothing reads, as the app's `verbatimModuleSyntax` does
+  // for Vite's (`appTsconfig`), through the plugin's documented option.
+  return [vue(), vueJsx({ tsPluginOptions: { onlyRemoveTypeImports: true } })]
 }
 
 /**
@@ -216,10 +180,11 @@ const appTsconfig = (framework: StartFramework) =>
         target: 'ES2022',
         module: 'ESNext',
         moduleResolution: 'Bundler',
-        jsx: 'react-jsx',
-        // A Vue app's JSX builds Vue's virtual nodes (Vue's own automatic
-        // JSX runtime, `vue/jsx-runtime`)
-        ...(framework === 'vue' ? { jsxImportSource: 'vue' } : {}),
+        // A Vue app's JSX is `@vitejs/plugin-vue-jsx`'s (the tsconfig of a
+        // Vue Start app)
+        ...(framework === 'vue'
+          ? { jsx: 'preserve', jsxImportSource: 'vue' }
+          : { jsx: 'react-jsx' }),
         strict: true,
         verbatimModuleSyntax: true,
       },
