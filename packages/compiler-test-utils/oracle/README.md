@@ -154,8 +154,11 @@ Caveats:
     `.vite/deps_temp_*`). The last measurement (633a4c0917, beetle, load up to 55) saw single #34 rows in 4 of 9
     unpatched runs and in 66 of its 145 runs (86 rows), also in files re-run alone (the clean tree alone failed
     6 times); locally, 5 of 11 start-plugin-core integration runs at load below 4. A file that fails only on #34 can
-    fail again alone: re-run it more than once. Held by the #34 ruling: no workaround. What Vite writes into a removed
-    app no longer stays in the packages: since the pass F-J the apps live in the run's directory in the system's
+    fail again alone: re-run it more than once. The same race can also fail the optimizer's own write into the removed
+    app (`Error during dependency optimization`, rolldown "Failed to write file ... No such file or directory" under
+    `node_modules/.vite/deps_temp_*`): Vitest reports it as an unhandled rejection and the tier fails with no failing
+    row (seen once, in a local start-plugin-core integration run during F-J). Held by the #34 ruling: no workaround. What
+    Vite writes into a removed app no longer stays in the packages: since the pass F-J the apps live in the run's directory in the system's
     temporary directory (`src/app-directory.ts`, `src/run-directory.ts`), removed when the run ends. (Before, they were
     hidden directories of the packages' `tests/`, and the removed apps left about 1,900 directories per tree after 50
     runs, which made start-plugin-core's `test:eslint` fail on the pre-bundled files left in them.)

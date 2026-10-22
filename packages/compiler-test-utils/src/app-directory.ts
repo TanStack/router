@@ -6,12 +6,15 @@
  *
  * An app stands in for an app created in a directory of the repository
  * (`dir`, e.g. a package's `tests/`), where the harnesses created them
- * before. The apps of `dir` share a directory that gives them what an app in
- * `dir` reads above itself, and nothing else of the repository:
+ * before. The apps of `dir` share a directory that mirrors the path of `dir`
+ * from the outermost `node_modules` above it (the repository's root): an app
+ * is as deep below the mirrored root as it was below the repository's, and
+ * gets what an app in `dir` reads above itself, nothing else of the
+ * repository:
  * - its bare imports resolve as from `dir`: each `node_modules` directory
- *   above `dir` is linked at the same depth above the app. Node, Vite,
- *   Rspack, webpack and esbuild resolve through the links to the same real
- *   paths, so an app gets the packages it got in `dir`, each once;
+ *   above `dir` is linked at its mirrored place. Node, Vite, Rspack, webpack
+ *   and esbuild resolve through the links to the same real paths, so an app
+ *   gets the packages it got in `dir`, each once;
  * - its TypeScript files compile with the compiler options of `dir` (the
  *   nearest `tsconfig.json` above `dir`, which Vite, Oxc and esbuild read for
  *   class fields, JSX and decorators), unless the app has a `tsconfig.json`
@@ -75,31 +78,37 @@ function standIn(dir: string): StandIn {
       })
     }
     /** The directories above `dir` (itself included) with `node_modules`. */
-    const levels = ancestors(resolved)
-      .filter((level) => existsSync(path.join(level, 'node_modules')))
-      .reverse()
+    const levels = ancestors(resolved).filter((level) =>
+      existsSync(path.join(level, 'node_modules')),
+    )
+    const top = levels.at(-1) ?? resolved
     const base = mkdtempSync(
       path.join(
         process.env[runDirectoryVariable] ?? realpathSync(os.tmpdir()),
         'apps-',
       ),
     )
-    let apps = base
-    for (const [index, level] of levels.entries()) {
-      if (index > 0) {
-        apps = path.join(apps, path.basename(level))
-        mkdirSync(apps)
-      }
+    /** The place of a directory of the repository in the mirror. */
+    const mirrored = (directory: string) => {
+      const relative = path.relative(top, directory)
+      return relative === '..' || relative.startsWith(`..${path.sep}`)
+        ? base
+        : path.join(base, relative)
+    }
+    const apps = mirrored(resolved)
+    mkdirSync(apps, { recursive: true })
+    for (const level of levels) {
+      mkdirSync(mirrored(level), { recursive: true })
       symlinkSync(
         path.join(level, 'node_modules'),
-        path.join(apps, 'node_modules'),
+        path.join(mirrored(level), 'node_modules'),
         'junction',
       )
     }
     const tsconfig = nearest(resolved, 'tsconfig.json')
     if (tsconfig) {
       writeFileSync(
-        path.join(apps, 'tsconfig.json'),
+        path.join(mirrored(path.dirname(tsconfig)), 'tsconfig.json'),
         `${JSON.stringify({ extends: tsconfig, include: ['**/*'] }, null, 2)}\n`,
       )
     }
@@ -109,7 +118,7 @@ function standIn(dir: string): StandIn {
         readFileSync(packageJson, 'utf8'),
       ) as Record<string, unknown>
       writeFileSync(
-        path.join(apps, 'package.json'),
+        path.join(mirrored(path.dirname(packageJson)), 'package.json'),
         `${JSON.stringify({ private: true, type, sideEffects }, null, 2)}\n`,
       )
     }
