@@ -77,6 +77,10 @@ function escapeAttribute(value: string) {
   return value.replace(/[&"'<>]/g, (char) => `&#${char.charCodeAt(0)};`)
 }
 
+function createScriptOpening(nonce: string | undefined) {
+  return nonce ? `<script nonce="${escapeAttribute(nonce)}">` : '<script>'
+}
+
 function createInitialTags(
   sources: ReadonlyArray<string>,
   nonce: string | undefined,
@@ -458,9 +462,7 @@ class HydrationScriptsOwner implements HydrationScriptOutput {
   }
 
   private pullReady() {
-    const scriptOpening = (this.opening ??= this.nonce
-      ? `<script nonce="${escapeAttribute(this.nonce)}">`
-      : '<script>')
+    const scriptOpening = (this.opening ??= createScriptOpening(this.nonce))
     let codeUnits = scriptOpening.length + DYNAMIC_CLOSE_SOURCE.length
     let batchLength = 0
     for (
