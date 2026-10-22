@@ -370,22 +370,28 @@ export function createBrowserHistory(opts?: {
       return
     }
 
+    const [href, state, isPush] = next
+
+    // Clear the queued action before the native call: if it throws (e.g. a
+    // third-party wrapper or the browser refusing the update), later actions
+    // must still be able to schedule their own flush.
+    next = undefined
+    rollbackLocation = undefined
+
     // We need to ignore any updates to the subscribers while we update the browser history
     history._ignoreSubscribers = true
 
-    // Update the browser history
-    ;(next[2 /* is push */] ? win.history.pushState : win.history.replaceState)(
-      next[1 /* state */],
-      '',
-      next[0 /* href */],
-    )
-
-    // Stop ignoring subscriber updates
-    history._ignoreSubscribers = false
-
-    // Clear the queued action after it reaches browser history.
-    next = undefined
-    rollbackLocation = undefined
+    try {
+      // Update the browser history
+      ;(isPush ? win.history.pushState : win.history.replaceState)(
+        state,
+        '',
+        href,
+      )
+    } finally {
+      // Stop ignoring subscriber updates
+      history._ignoreSubscribers = false
+    }
   }
 
   // This function queues up a call to update the browser history
