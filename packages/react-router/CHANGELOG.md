@@ -1,5 +1,16 @@
 # @tanstack/react-router
 
+## 1.170.46
+
+### Patch Changes
+
+- [#8670](https://github.com/TanStack/router/pull/8670) [`32a3360`](https://github.com/TanStack/router/commit/32a3360cba0e0f884b3215813a48c63467f5a53c) - Reference agent skills in other packages by their `intent load` identifier (`@tanstack/<package>#<skill>`) instead of relative file links that break once packages are installed.
+
+- [#8671](https://github.com/TanStack/router/pull/8671) [`689a7c5`](https://github.com/TanStack/router/commit/689a7c5419de68bce0aaaef72b9a36f115ea1398) - Publish the `@tanstack/react-router` agent skills (`react-router`, `compositions/router-query`, `lifecycle/migrate-from-react-router`), which were missing from the package's `files` list.
+
+- Updated dependencies [[`32a3360`](https://github.com/TanStack/router/commit/32a3360cba0e0f884b3215813a48c63467f5a53c)]:
+  - @tanstack/router-core@1.171.39
+
 ## 1.170.45
 
 ### Patch Changes
