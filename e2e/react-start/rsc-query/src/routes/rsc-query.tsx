@@ -16,7 +16,10 @@ export const Route = createFileRoute('/rsc-query')({
   loader: async ({ context }) => {
     // Prefetch the product RSC via React Query during SSR
     // This data will be reused on the client without refetching
-    await context.queryClient.ensureQueryData(productQueryOptions('WBH-2024'))
+    await context.queryClient.query({
+      ...productQueryOptions('WBH-2024'),
+      staleTime: 'static',
+    })
   },
   component: ProductPage,
 })

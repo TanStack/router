@@ -42,22 +42,22 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             Home
           </Link>{' '}
           <Link
-            to="/loader-fetchQuery/$type"
+            to="/loader-query/$type"
             params={{ type: 'sync' }}
             activeProps={{
               className: 'font-bold',
             }}
           >
-            fetchQuery (sync)
+            query (sync)
           </Link>{' '}
           <Link
-            to="/loader-fetchQuery/$type"
+            to="/loader-query/$type"
             params={{ type: 'async' }}
             activeProps={{
               className: 'font-bold',
             }}
           >
-            fetchQuery (async)
+            query (async)
           </Link>{' '}
           <Link
             to="/useQuery"

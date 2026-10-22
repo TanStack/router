@@ -5,12 +5,13 @@ export const Route = createRootRouteWithContext<{
   queryClient: QueryClient
 }>()({
   beforeLoad: async ({ context }) => {
-    await context.queryClient.ensureQueryData({
+    await context.queryClient.query({
       queryKey: ['issue-7457-root'],
       queryFn: async () => {
         await new Promise((resolve) => setTimeout(resolve, 1_500))
         return true
       },
+      staleTime: 'static',
     })
   },
   component: RootComponent,
