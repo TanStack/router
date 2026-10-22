@@ -194,14 +194,14 @@ function Script({
       const typeAttr =
         typeof attrs?.type === 'string' ? attrs.type : 'text/javascript'
       const nonceAttr =
-        typeof attrs?.nonce === 'string' ? attrs.nonce : undefined
+        typeof attrs?.nonce === 'string' ? attrs.nonce || undefined : undefined
       for (const el of document.scripts) {
         if (el.hasAttribute('src')) {
           continue
         }
 
         const sType = el.getAttribute('type') ?? 'text/javascript'
-        const sNonce = el.getAttribute('nonce') ?? undefined
+        const sNonce = el.nonce || undefined
         if (
           el.textContent === children &&
           sType === typeAttr &&
