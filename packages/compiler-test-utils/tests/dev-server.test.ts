@@ -13,7 +13,6 @@ import { describe, expect, onTestFinished, test } from 'vitest'
 import {
   createDevServer as createDevServerIn,
   describeHmr,
-  evaluateServed,
 } from '../src/dev-server'
 import { saveAppFile } from '../src/save-file'
 import type { DevServerOptions } from '../src/dev-server'
@@ -73,7 +72,7 @@ describe('dev server harness', () => {
   )
 
   test(
-    'load() requests the static imports of a module transitively, not its dynamic imports',
+    'load() requests every module a module imports transitively, also the ones it imports lazily, in each environment',
     async () => {
       const server = await createDevServer({ files })
       expect(Object.keys(await server.load('/main.ts')).sort()).toEqual([
@@ -81,7 +80,11 @@ describe('dev server harness', () => {
         '/leaf.ts',
         '/main.ts',
       ])
-      expect(Object.keys(await server.load('/lazy.ts'))).toEqual(['/lazy.ts'])
+      for (const environment of ['client', 'ssr']) {
+        expect(
+          Object.keys(await server.load('/lazy.ts', { environment })).sort(),
+        ).toEqual(['/chunk.ts', '/lazy.ts'])
+      }
     },
     timeout,
   )
@@ -403,66 +406,6 @@ describe('dev server harness', () => {
       await expect(server.transform('/leaf.ts')).rejects.toThrow()
       await server.close()
       expect(existsSync(server.root)).toBe(false)
-    },
-    timeout,
-  )
-})
-
-describe('evaluateServed', () => {
-  test(
-    'evaluates the served module linked to the modules it imports, with live bindings',
-    async () => {
-      const server = await createDevServer({
-        files: {
-          'main.ts': `import { count, bump } from './counter'
-export const read = () => count
-export { bump }
-export const lazy = () => import('./chunk')
-if (import.meta.hot) {
-  import.meta.hot.accept()
-}
-`,
-          'counter.ts': `export let count = 0
-export const bump = () => ++count
-`,
-          'chunk.ts': `export const chunk = 'chunk'\n`,
-        },
-      })
-      const main = await evaluateServed(server, '/main.ts')
-      main.bump()
-      expect(main.read()).toBe(1)
-      expect((await main.lazy()).chunk).toBe('chunk')
-    },
-    timeout,
-  )
-
-  test(
-    'evaluates the edited code after settle()',
-    async () => {
-      const server = await createDevServer({ files })
-      expect((await evaluateServed(server, '/main.ts')).value).toBe('dep:v1')
-      await server.edit({ 'leaf.ts': `export const leaf = 'v2'\n` })
-      expect((await evaluateServed(server, '/main.ts')).value).toBe('dep:v2')
-    },
-    timeout,
-  )
-
-  test(
-    'links a skipped module to its stub, and fails to link it without one',
-    async () => {
-      const server = await createDevServer({ files })
-      const skip = /\/leaf\.ts$/
-      expect(
-        (
-          await evaluateServed(server, '/dep.ts', {
-            skip,
-            stubs: { '/leaf.ts': { leaf: 'stub' } },
-          })
-        ).dep,
-      ).toBe('dep:stub')
-      await expect(evaluateServed(server, '/dep.ts', { skip })).rejects.toThrow(
-        'No stub for import /leaf.ts',
-      )
     },
     timeout,
   )

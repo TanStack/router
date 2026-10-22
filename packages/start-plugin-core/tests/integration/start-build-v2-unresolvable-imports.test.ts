@@ -104,13 +104,12 @@ describe.each(startBundlers)('%s build', (bundler) => {
       expect(clientRun.requests).toEqual([
         { url: clientRun.url, method: 'GET' },
       ])
-      const id = (await client.run(`return entry.readConfig.serverFnMeta.id`))
-        .result
+      const url = (await client.run(`return entry.readConfig.url`)).result
       const { result } =
         await ssr.run(`${callByIdPrelude}const { readConfig } = await entry.platform()
 return {
   ssr: await readConfig(),
-  byId: await callById(${JSON.stringify(id)}),
+  byId: await callById(serverFnId(${JSON.stringify(url)})),
   externalRequests: [...entry.workerRequests],
 }`)
       const expected = ['MARK_ENV_SECRET', 'MARK_FS_OK']

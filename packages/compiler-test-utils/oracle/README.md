@@ -67,15 +67,23 @@ tools, and judges client code in a real browser. What was measured at the end of
 
   Edit to result for one fast-tier file is about 5 s. Several tiers are over their target and under their hard limit.
 
-Counts at hand-over (45f58967ea; passed / expected-fail pins):
+Counts at hand-over (passed / expected-fail pins; the final pass F-F changed four cells, see below):
 
 | Package                         | `test:unit` | `test:integration` | `test:implementation` | `test:noncompiler` |
 | ------------------------------- | ----------- | ------------------ | --------------------- | ------------------ |
-| `@tanstack/compiler-test-utils` | 333 / 0     | 167 / 0            | –                     | –                  |
+| `@tanstack/compiler-test-utils` | 330 / 0     | 168 / 0            | –                     | –                  |
 | `@tanstack/router-generator`    | 239 / 30    | 67 / 3             | 114 / 2               | –                  |
-| `@tanstack/router-plugin`       | 107 / 20    | 673 / 355          | 105 / 1               | –                  |
-| `@tanstack/start-plugin-core`   | 385 / 144   | 1198 / 288         | 608 / 9               | 121 / 0            |
+| `@tanstack/router-plugin`       | 107 / 20    | 673 / 355          | 104 / 1               | –                  |
+| `@tanstack/start-plugin-core`   | 389 / 144   | 1198 / 288         | 608 / 9               | 121 / 0            |
 | `@tanstack/react-start-rsc`     | no files    | 108 / 13           | –                     | 49 / 0             |
+
+The measurements above (restructures, V4, stability, budgets) ran at 45f58967ea. The final pass F-F (October 2026,
+after them) re-audited "no re-implementation; client semantics in a browser" file by file and changed tests and
+helpers (below); its changes were validated locally (every tier and lane above, the strict import gate), not
+re-measured against R1–R11 and V4. Count changes against 45f58967ea: ctu `test:unit` −3 (the controls of the deleted
+Node stand-in `evaluateServed`), ctu `test:integration` +1 (a control of the build-decided dangling-name check),
+router-plugin `test:implementation` −1 (the control of a deleted path filter), start-plugin-core `test:unit` +4
+(controls of the content-based suggestion reader).
 
 The `test:unit` counts include the pending-rulings lane: 4 passing rows and 3 pins in start-plugin-core, 1 row in
 router-plugin.
@@ -94,6 +102,20 @@ Caveats:
   - #34 (Vite's optimizer writes its cache after `close()`): an `ENOTEMPTY` on cleanup fails all 33 rows of
     `integration/importProtection/mock-shapes.test.ts` in a run. It hit 3 of 145 runs.
   - Re-run a file that failed only on these alone before reading it as a compiler failure.
+- **Known gaps of the final audit (F-F), not fixed:**
+  - start-plugin-core's build and dev harnesses (`tests/build-harness.ts`, `tests/dev-server.ts`,
+    `tests/rsbuild-dev-server.ts`) call Start's public plugin factory (`tanStackStartVite`/`tanStackStartRsbuild` of
+    `@tanstack/start-plugin-core`) with the core options `@tanstack/react-start` passes, not `tanstackStart()` of the
+    built framework package, so react-start's config plugin (dedupe, externals, dependency optimisation) is absent;
+    the Rsbuild builds of router-plugin and react-start-rsc configure SWC by hand instead of `@rsbuild/plugin-react`.
+    `start-host.ts` (the fast tier and the page tests) already uses `tanstackStart()`. RULES-AUDIT §3 item 6.
+  - router-plugin `integration/plugin-options.test.ts`: the webpack entry's `addHmr: false` cell reads the
+    development build for `hot.accept(` (today's local name); the suite has no webpack dev server. The Rspack cell is
+    decided by behaviour on an Rsbuild dev page.
+  - A few server-side rows call middleware and route handlers through their option objects with a hand-written
+    `next` instead of a request (start-plugin-core `start-build-env-separation`, `start-compiler-dev-server`,
+    `start-build-call-shapes`, `known-bugs-start-compiler`), and `start-router-dev-server` settles some edits on 300 ms
+    without HMR messages.
 - **The adversarial evidence is not independent of the tests.** Round 2's escapes are caught by rows written for
   them, and the attackers of rounds 1 and 2 wrote against earlier versions of the suite. After a major change of the
   compilers or of these tests, run a new round with test-aware attackers and re-check correct-but-different
@@ -132,7 +154,10 @@ chunk layout, printed code or AST shapes.
   `start-host.ts` (a Start app with a real router and a probe route). Hosts are shared within a test process and
   leased to one test at a time.
 - **Server code** runs inside real requests through Start's server entry, with a real router. Nothing builds
-  Start's request context by hand.
+  Start's request context by hand. A server function is identified by its public `url` (the server function base,
+  then its id), never by Start's own metadata fields.
+- **What a dev server serves** to a client is read through Vite's own module graph of the environment (static and
+  lazy imports), never by parsing served code for imports.
 - **Client code runs in Chromium.** `browser.ts` runs scripts in bounded run pages (a fresh document per run) and
   opens pages of the app for the page tests, with the real Vite client, the framework's refresh runtime, real ES
   module linking and the real framework renderer. Nothing judges client semantics in Node (no jsdom, no fake
@@ -141,6 +166,11 @@ chunk layout, printed code or AST shapes.
   bound (`outcome.ts` `waitForOutcome`), never on counts of compiles or updates.
 - **Laziness and provenance.** Which modules a compiler emitted is told by provenance (the plugin's own `load` and
   `transform` hooks observed in that build), never by id, path or the helper that builds a lazy value.
+- **Dead code (G8)** is decided on a real production build: a dev module that reads a name it never declares fails
+  if the production build of the same app still reads it, or if that build fails the build harness's own
+  dangling-name check (it may spell the name otherwise). Routes compiled with route HMR, and two direct
+  module-alone checks (router-plugin `integration/pages/code-splitter-imports-exports.test.ts` and
+  `router-plugin-context.test.ts`), still judge the dev module alone, which is stricter than G8.
 
 ## Diagnostics
 
@@ -222,13 +252,15 @@ The legacy helpers that only Q6 and Q7 reach (`start-plugin-core/tests/outside-c
   runner applies one, builds through Nx, runs every acceptance tier, re-runs each failing file alone with and
   without the patch, and reports per test: `fail`, `fail-load`, `pin-flip`, with an attribution to the helper that
   threw. Expected pin flips (a variant that fixes a pinned bug) are listed separately. The runner and the patches
-  are in the repair's working notes, not in the repository
-  (`validation/REPAIR/variant-runner/README.md`, `validation/COUPLING/variants/`):
-  `bash local.sh <commit> <outdir> [R1 R2 ...]` runs them on one local tree. Patches are diffs of
+  are in the repair's working notes, not in the repository (`validation/REPAIR/variant-runner/`: its README, and the
+  patch set of the last measurement in `patches/`; notes on each restructure in `validation/COUPLING/variants/`):
+  `VRUN_VARIANTS=$PWD/patches bash local.sh <commit> <outdir> [R1 R2 ...]` runs them on one local tree
+  (`VRUN_EXTRA_LANES=1` also records the implementation and noncompiler lanes, never counted). Patches are diffs of
   `packages/*/src`; a new compiler needs new restructures of its own.
 - **Adversarial compilers.** Reviewers wrote wrong compilers ("red", each with the clause it breaks) and correct
   but different ones ("green") as product patches, and ran the corpus against each: every red must fail some
-  acceptance test for its stated reason, every green must pass. After a major compiler change, run another round:
+  acceptance test for its stated reason, every green must pass. The same runner runs them (`V4-<set>-<NN>` rows of
+  its `variants.tsv`, `v4-table.mjs` for the verdict table). After a major compiler change, run another round:
   an attacker who may read the tests writes wrong compilers that pass the corpus, and each escape gets a row.
   Re-check correct-but-different variants too, so the new rows do not pin one implementation.
 

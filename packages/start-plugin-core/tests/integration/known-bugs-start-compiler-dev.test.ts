@@ -13,7 +13,7 @@ import { createServer, isRunnableDevEnvironment } from 'vite'
 import { describe, expect, test, vi } from 'vitest'
 import { linkStartRuntime } from '../build-harness'
 import {
-  callServerFnById,
+  callServerFn,
   startPlugin,
   startPluginFiles,
   startRequestFiles,
@@ -247,7 +247,7 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
   /**
    * In a temporary project with `src/fns.ts` = a `greet` server fn, reads the
    * id of `greet` through a first dev server, then calls the id the way a
-   * page does (`callServerFnById`: Start's server entry handles it) on a dev
+   * page does (`callServerFn`: Start's server entry handles it) on a dev
    * server started with `fresh` (a new server, which has compiled nothing)
    * or on the same server. Returns the result or the error message.
    */
@@ -288,10 +288,7 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
       // here), which Vitest's console forwarding does not survive.
       const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
       try {
-        return await callServerFnById(
-          { import: (id) => importSsr(ssr, id) },
-          greet.serverFnMeta.id,
-        )
+        return await callServerFn({ import: (id) => importSsr(ssr, id) }, greet)
       } catch (error) {
         return `throws: ${(error as Error).message}`
       } finally {

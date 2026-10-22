@@ -106,17 +106,20 @@ export async function inDevRequest<T>(
 }
 
 /**
- * Calls the server fn `id` of a dev server whose app has
- * `startRequestFiles` the way a page of the same origin does: Start's
- * client RPC sends its GET request to the app's server entry (its `fetch`,
- * which Start's dev server middleware calls in the SSR environment; the
- * browser adds `Sec-Fetch-Site`, which Start's CSRF middleware checks).
- * Gives the decoded result or throws the decoded error, like the client's
- * server fn.
+ * Calls the server fn `fn` (a server fn the SSR environment evaluated, or
+ * its URL) of a dev server whose app has `startRequestFiles` the way a page
+ * of the same origin does: Start's client RPC sends its GET request to the
+ * app's server entry (its `fetch`, which Start's dev server middleware
+ * calls in the SSR environment; the browser adds `Sec-Fetch-Site`, which
+ * Start's CSRF middleware checks). The server fn is identified by its
+ * public `url` (SPEC J4.1: the server fn base, then its id), never by
+ * Start's own metadata fields (§5.19); a value without such a URL throws
+ * before any request. Gives the decoded result or throws the decoded
+ * error, like the client's server fn.
  */
-export async function callServerFnById(
+export async function callServerFn(
   server: Pick<DevServer, 'import'>,
-  id: string,
+  fn: { url?: unknown } | string | undefined,
   data?: unknown,
 ): Promise<unknown> {
   const { createClientRpc } = await server.import(
@@ -134,10 +137,23 @@ export async function callServerFnById(
   // Start's client RPC imported through the SSR environment reads Start's
   // options from the request context (`getStartOptions`): the call runs
   // inside a real request of the app (`inDevRequest`), as server code that
-  // calls a server fn by id does.
-  const reply = (await inDevRequest(server, () =>
-    createClientRpc(id)({ data, method: 'GET', fetch }),
-  )) as { result: unknown } | { error: unknown }
+  // calls a server fn does.
+  const reply = (await inDevRequest(server, () => {
+    const base = createClientRpc('').url as string
+    const url = typeof fn === 'string' ? fn : fn?.url
+    if (
+      typeof url !== 'string' ||
+      !url.startsWith(base) ||
+      url.length === base.length
+    ) {
+      throw new Error(`not a server fn URL: ${String(url)}`)
+    }
+    return createClientRpc(url.slice(base.length))({
+      data,
+      method: 'GET',
+      fetch,
+    })
+  })) as { result: unknown } | { error: unknown }
   if ('error' in reply) {
     throw reply.error
   }

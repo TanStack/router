@@ -1,6 +1,8 @@
 /**
  * Judges a failed build's diagnostic by its content (SPEC G5, §5.7): it
- * names the API at one of the user's sources, on a line of the call. Pure:
+ * names the API at one of the user's sources, on a line of the call, and
+ * explains an actionable cause in its own words (`explains`: a generic
+ * internal error such as "unexpected node type" does not). Pure:
  * only the shared diagnostics reader, no module of the implementation (the
  * fast tier's `expectSourceError` of `../regression-helpers` loads the
  * compiler; this one reads what a real build reported).
@@ -33,7 +35,8 @@ function diagnosticsOfFailure(error: unknown): Array<Diagnostic> {
 /**
  * Fails unless one diagnostic of `error` reports, at one of `sites` (its
  * file, and the line of `at` in its `source`), the `names` (each name, or
- * one of each list), outside the source it quotes.
+ * one of each list), outside the source it quotes, with an actionable
+ * cause in its own words (`explains`).
  */
 export function expectSourceError(
   error: unknown,
@@ -54,7 +57,7 @@ export function expectSourceError(
         }).length === 0 &&
         mismatches(
           { ...diagnostic, text: diagnosticProse(diagnostic.text, sources) },
-          { names: expected.names },
+          { names: expected.names, explains: true },
         ).length === 0,
     ),
   )

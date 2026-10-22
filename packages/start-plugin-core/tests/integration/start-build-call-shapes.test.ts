@@ -90,26 +90,28 @@ export const db = {
 `
 
 /**
- * Client script of a server fn `fn`: its id and the requests calling it
- * sends (none reach a server in a client run).
+ * Client script of a server fn `fn`: its public URL (the server fn base,
+ * then its id) and the requests calling it sends (none reach a server in a
+ * client run).
  */
 const clientServerFn = (fn: string) => `const fn = ${fn}
-return { id: fn?.serverFnMeta?.id ?? null, url: fn?.url ?? null, requests: await requestsOf(fn) }`
+return { url: fn?.url ?? null, requests: await requestsOf(fn) }`
 
-/** SSR script of a server fn `fn`: called in place and by the client's id. */
+/**
+ * SSR script of a server fn `fn`: called in place and by the id of the
+ * client's URL.
+ */
 const ssrServerFn = (fn: string) => `return {
   called: await ${fn}(),
-  byId: client && client.id ? await callById(client.id) : null,
+  byId: client && client.url ? await callById(serverFnId(client.url)) : null,
 }`
 
 /** A working server fn: the client calls the server, the SSR build runs it. */
 function expectServerFnWorks(client: unknown, ssr: unknown, result: string) {
-  const { id, url, requests } = client as {
-    id: unknown
+  const { url, requests } = client as {
     url: unknown
     requests: unknown
   }
-  expect(id, 'client server fn id').toEqual(expect.any(String))
   expect(url, 'client server fn url').toMatch(/^\/_serverFn\/./)
   expect(requests, 'requests of a client call').toEqual([
     { url, method: 'GET' },

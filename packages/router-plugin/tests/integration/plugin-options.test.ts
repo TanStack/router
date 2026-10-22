@@ -144,8 +144,12 @@ describe('plugin.vite.environmentName', () => {
 // `plugin.hmr.style` says (src/rspack.ts, src/webpack.ts): an edit with
 // `plugin.hmr.style: 'vite'` on Rsbuild hot-updates the page
 // (integration/route-hmr-browser-plugin.test.ts). With `addHmr: false`, a
-// development build has no route HMR code at all.
-describe.each(['rspack', 'webpack'] as const)('%s entry', (bundler) => {
+// development build has no route HMR code at all: for the Rspack entry,
+// decided by behaviour on an Rsbuild dev server
+// (route-hmr-dev-addhmr-off.test.ts); the webpack entry has no dev server
+// host in this suite, so its development build is read here (F-F: the
+// accept call's receiver is today's local name `hot`, a known limit).
+describe.each(['webpack'] as const)('%s entry', (bundler) => {
   test(
     'with addHmr: false, a development build with the HMR plugin has no route HMR code',
     async () => {

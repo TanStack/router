@@ -8,7 +8,6 @@
  */
 import { parseSync, transformWithOxc } from 'vite'
 import { describe, expect, it } from 'vitest'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import { expectValidModules, head, loadRoute } from './route-app'
 import type { Plugin } from 'vite'
 
@@ -623,16 +622,7 @@ export const Route = createFileRoute('/')({
     )
     // Every module as the browser receives it is valid (read as
     // TypeScript, as the source's angle brackets are not JSX)
-    const { modules } = await route.modules()
-    for (const [name, code] of Object.entries(modules)) {
-      expect(
-        await getModuleErrors(code, 'module.ts', {
-          env: 'client',
-          globals: ['$RefreshReg$', '$RefreshSig$'],
-        }),
-        name,
-      ).toEqual([])
-    }
+    await expectValidModules(route)
     expect(
       await route.run(`return [options.loader(), await render('component')]`),
     ).toEqual([1, 'page'])

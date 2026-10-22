@@ -61,8 +61,14 @@ export interface ShippedModule {
   }>
   /** Where the maps' relative sources are relative to (the output directory). */
   outDir: string
-  /** The module's file (absolute path), as the maps name it. */
-  module: string
+  /**
+   * The module's file (absolute path), as the maps name it: a free name
+   * counts when the chunks read it in code that maps to this file.
+   * Without it, a free name counts when any chunk still reads it free:
+   * for code a compiler generates without mappings (§5.14), which no map
+   * attributes to the module.
+   */
+  module?: string
 }
 
 /** Where a module runs: the globals it may read (`known-globals.ts`). */
@@ -208,6 +214,12 @@ function globalsOf(env: ModuleEnv = 'universal'): ReadonlySet<string> {
 async function freeNamesShipped(build: ShippedModule): Promise<Set<string>> {
   const names = new Set<string>()
   for (const chunk of build.chunks) {
+    if (build.module === undefined) {
+      for (const name of unboundReads(chunk.code).keys()) {
+        names.add(name)
+      }
+      continue
+    }
     if (!chunk.map) {
       continue
     }

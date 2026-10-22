@@ -122,17 +122,16 @@ describe.each(startBundlers)('%s build', (bundler) => {
       ).toEqual(['log'])
       expect(page.serverFnRequests).toHaveLength(1)
       expect(page.errors).toEqual([])
-      const { id, url } = await page.page.evaluate(() => {
-        const fn = (globalThis as any).__app.whoAmI
-        return { id: fn.serverFnMeta.id, url: fn.url }
-      })
+      const url = await page.page.evaluate(
+        () => (globalThis as any).__app.whoAmI.url as string,
+      )
       expect(requests).toEqual([{ url, method: 'GET' }])
       const { result } =
         await ssr.run(`${callByIdPrelude}const response = await entry.startServerEntry.fetch(
   new Request('http://localhost/'),
 )
 return {
-  byId: await callById(${JSON.stringify(id)}),
+  byId: await callById(serverFnId(${JSON.stringify(url)})),
   page: { status: response.status, html: await response.text() },
 }`)
       const { byId, page: renderedPage } = result as {

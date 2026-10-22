@@ -52,8 +52,13 @@ import { parseSync } from 'vite'
 import { expect } from 'vitest'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 import { currentTest } from '@tanstack/compiler-test-utils/test-scope'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
+import { DanglingNameError } from '@tanstack/compiler-test-utils/build-harness'
+import {
+  freeIdentifiers,
+  getModuleErrors,
+} from '@tanstack/compiler-test-utils/validate-module'
 import { tanstackRouter } from '../src/vite'
+import type { ShippedModule } from '@tanstack/compiler-test-utils/validate-module'
 import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import type { PageRun } from '@tanstack/compiler-test-utils/browser'
 import type { PluginHost } from '@tanstack/compiler-test-utils/plugin-host'
@@ -1093,6 +1098,52 @@ await trigger(${JSON.stringify(option)})
 probe.assertNoFailedRequests()
 return (await compiled()).filter((request) => !before.has(request))`)
 
+  /**
+   * The production client build of the app as it is now (`vite build` of the
+   * host, source maps on), as `getModuleErrors` reads it (`build`). Its
+   * input is the generated route tree, with its export kept, as an app's
+   * router reads it: each route's `Route` and what its options load, not
+   * the route file's other exports. Its output goes under `node_modules/`,
+   * which the dev server's watcher ignores. `dangling`: the names the build's
+   * own dangling-name check (the production client check of every build the
+   * harness describes) finds in the modules the compilers produced: the
+   * build may read a dangling name the dev server's modules spell
+   * otherwise.
+   */
+  const shipped = async (): Promise<ShippedBuild> => {
+    await writeRoute(state, owner, files)
+    const outDir = path.join(state.host.root, 'node_modules/.route-app-build')
+    const built = await state.host.build({
+      config: {
+        build: {
+          outDir,
+          emptyOutDir: true,
+          sourcemap: true,
+          rollupOptions: {
+            input: path.join(state.host.root, 'routeTree.gen.ts'),
+            preserveEntrySignatures: 'exports-only',
+          },
+        },
+      },
+    })
+    const client = built.environments.client
+    if (!client) {
+      throw new Error('the production build has no client environment')
+    }
+    let dangling: Array<string> = []
+    try {
+      await built.describe('client')
+    } catch (error) {
+      if (!(error instanceof DanglingNameError)) {
+        throw error
+      }
+      dangling = [...new Set(Object.values(error.names).flat())]
+    }
+    // A free name counts wherever the build still reads it: code a
+    // compiler generates without mappings (§5.14) maps to no file
+    return { build: { chunks: client.chunks, outDir: client.outDir }, dangling }
+  }
+
   const route: RouteApp = {
     host: state.host,
     url,
@@ -1177,7 +1228,18 @@ return Promise.all(found.map(async (module) => ({ ...module, code: await served(
         modules[label] = module.code
         ids[label] = module.request
       }
-      routeSources.set(modules, { code, filename })
+      routeSources.set(modules, {
+        code,
+        filename,
+        // Route HMR code runs in dev, on an update, and the production
+        // build drops it: a route compiled with HMR keeps the check of the
+        // module alone
+        shipped:
+          options.hmr ||
+          options.pluginOptions?.codeSplittingOptions?.addHmr === true
+            ? undefined
+            : shipped,
+      })
       return { modules, ids }
     },
     transform: async (request = url) => {
@@ -1196,8 +1258,25 @@ function isRouteApp(value: unknown): value is RouteApp {
   return typeof (value as RouteApp).run === 'function'
 }
 
-/** Route file each `modules()` result was compiled from. */
-const routeSources = new WeakMap<object, { code: string; filename: string }>()
+/**
+ * Route file each `modules()` result was compiled from, and the production
+ * build of its app (`shipped`).
+ */
+const routeSources = new WeakMap<
+  object,
+  {
+    code: string
+    filename: string
+    shipped: (() => Promise<ShippedBuild>) | undefined
+  }
+>()
+
+/** The production build of a route app (`shipped` of `routeSources`). */
+interface ShippedBuild {
+  build: ShippedModule
+  /** The free names its own dangling-name check found. */
+  dangling: Array<string>
+}
 
 /**
  * Asserts that every module the compilers emitted for the route is a valid
@@ -1205,6 +1284,21 @@ const routeSources = new WeakMap<object, { code: string; filename: string }>()
  * it parses, binds what it reads, and reads no name the route file bound
  * that the module lost (`source` of `getModuleErrors`). The globals the
  * framework's refresh runtime installs in the page are known.
+ *
+ * A free name (one the module reads but never declares or imports, or a
+ * lost binding) is decided on the real production build (G8: code the
+ * bundler deletes from the production build may dangle; §5.9): a module
+ * with one is checked again against a `vite build` of the same app, and the
+ * name counts only if the build's client chunks still read it free
+ * (`build` of `getModuleErrors`, without a module: anywhere in the chunks,
+ * since generated code may map to no file), and the build itself must pass
+ * the build harness's dangling-name check, except for names the route file
+ * itself reads free (a production module may spell a dangling name
+ * otherwise than the dev server's). The check of the module alone runs
+ * first, and the build only when it finds a free name, so a correct
+ * compiler costs no build. Parse and binding errors need no build. A route
+ * compiled with route HMR (`hmr: true`) keeps the check of the module
+ * alone: its HMR code runs in dev on an update, and production drops it.
  */
 export async function expectValidModules(
   route: RouteApp | RouteModules['modules'],
@@ -1214,14 +1308,40 @@ export async function expectValidModules(
     : route
   const source = routeSources.get(modules)
   const errors: Record<string, Array<string>> = {}
-  for (const [name, code] of Object.entries(modules)) {
-    // Served code is JavaScript; read with the route file's language, as
-    // the `source` comparison needs
-    errors[name] = await getModuleErrors(code, 'module.tsx', {
+  // Served code is JavaScript; read with the route file's language, as
+  // the `source` comparison needs (in a `.ts` file, `<T>value` is a type
+  // assertion, not JSX)
+  const filename =
+    source && /\.[cm]?ts$/.test(source.filename) ? 'module.ts' : 'module.tsx'
+  const check = (code: string, build?: ShippedModule) =>
+    getModuleErrors(code, filename, {
       env: 'client',
       source: source?.code,
       globals: refreshGlobals,
+      ...(build && { build }),
     })
+  for (const [name, code] of Object.entries(modules)) {
+    errors[name] = await check(code)
+  }
+  if (
+    source?.shipped &&
+    Object.values(errors).some((found) => found.length > 0)
+  ) {
+    const { build, dangling } = await source.shipped()
+    for (const [name, code] of Object.entries(modules)) {
+      if (errors[name]!.length > 0) {
+        errors[name] = await check(code, build)
+      }
+    }
+    const sourceReads = await freeIdentifiers(source.code, filename, {
+      env: 'client',
+    })
+    const shippedErrors = dangling
+      .filter((name) => !sourceReads.has(name))
+      .map((name) => `\`${name}\` is read free by the production build`)
+    if (shippedErrors.length > 0) {
+      errors['production build'] = shippedErrors
+    }
   }
   expect(errors).toEqual(
     Object.fromEntries(Object.keys(modules).map((name) => [name, []])),

@@ -34,9 +34,13 @@ test('collects ordered static and dynamic CSS from a completed bundled graph', a
     experimental: { bundledDev: true },
     build: { rolldownOptions: { experimental: { devMode: { lazy: false } } } },
     optimizeDeps: { noDiscovery: true },
-    // Vite's default port: the server binds the next free port itself
-    // (`port: 0` makes Vite 8 probe a port and bind it after, which another
-    // process can take meanwhile).
+    // On 127.0.0.1, as every harness server (FINAL-PASS #56, #58):
+    // `localhost` may resolve to `::1` first, and under load Node's
+    // happy-eyeballs fallback can time out before reaching an IPv4-only
+    // server. Vite's default port: the server binds the next free port
+    // itself (`port: 0` makes Vite 8 probe a port and bind it after, which
+    // another process can take meanwhile).
+    server: { host: '127.0.0.1' },
     plugins: [
       {
         name: 'capture-completed-styles',
@@ -57,7 +61,7 @@ test('collects ordered static and dynamic CSS from a completed bundled graph', a
     if (!address || typeof address === 'string') {
       throw new Error('Expected the dev server to listen on a TCP port')
     }
-    await fetch(`http://localhost:${address.port}/`)
+    await fetch(`http://127.0.0.1:${address.port}/`)
     await completed.promise
     const css = collectBundledDevStyles(snapshot, [path.join(root, 'entry.js')])
     expect(css).toContain('/* /root.css */')

@@ -88,14 +88,12 @@ test(
     }).toEqual({ handler: 'nowhere', page: 'lazy' })
     const clientRun = (
       await client.run(`${requestsOfPrelude}return {
-  id: entry.getUser.serverFnMeta.id,
   url: entry.getUser.url,
   requests: await requestsOf(entry.getUser),
   badge: entry.renderToString(entry.createElement(entry.Badge, { name: 'Ada' })),
   page: await entry.renderPath(entry.getRouter().routeTree, '/'),
 }`)
     ).result as {
-      id: string
       url: string
       requests: Array<unknown>
       badge: string
@@ -107,7 +105,7 @@ test(
       'MARK_JSX_PAGE <span class="badge">Ada</span>',
     )
     const { result } = await ssr.run(`${callByIdPrelude}return {
-  byId: await callById(${JSON.stringify(clientRun.id)}),
+  byId: await callById(serverFnId(${JSON.stringify(clientRun.url)})),
   page: await entry.renderPath(entry.getRouter().routeTree, '/'),
 }`)
     expect(result).toEqual({
@@ -128,15 +126,15 @@ test(
     const clientRun = (
       await client.run(`${requestsOfPrelude}const requests = await requestsOf(entry.whoAmI)
 return {
-  id: entry.whoAmI.serverFnMeta.id,
+  url: entry.whoAmI.url,
   requests: requests.length,
   clientCalls: globalThis.__clientCalls,
 }`)
-    ).result as { id: string; requests: number; clientCalls: Array<string> }
+    ).result as { url: string; requests: number; clientCalls: Array<string> }
     expect(clientRun.requests).toBe(1)
     expect(clientRun.clientCalls).toEqual(['auth'])
     const { result } = await ssr.run(`${callByIdPrelude}return {
-  byId: await callById(${JSON.stringify(clientRun.id)}),
+  byId: await callById(serverFnId(${JSON.stringify(clientRun.url)})),
   ssr: await entry.whoAmI(),
 }`)
     expect(result).toEqual({ byId: 'MARK_AUDIT_USER', ssr: 'MARK_AUDIT_USER' })

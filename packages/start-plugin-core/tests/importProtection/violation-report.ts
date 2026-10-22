@@ -624,29 +624,46 @@ export function violationTexts(output: ReportOutput): Array<string> {
 
 /**
  * The directions a report's suggestions give (`server`: keep the code on
- * the server; `client`: keep it on the client). Reads only its suggestions
- * (the prose list items): source excerpts and chain steps do not constitute
- * a remedy. An actionable direction may name a public API or describe
- * moving/keeping the import in the appropriate environment; J6.12 leaves
- * the wording free.
+ * the server; `client`: keep it on the client), by content (J6.12 keeps
+ * the per-direction actionable suggestion and leaves its wording free).
+ * Reads only its suggestions (the prose list items): source excerpts and
+ * chain steps do not constitute a remedy. A suggestion gives a direction
+ * when it names that direction's public API (`createServerFn`,
+ * `createServerOnlyFn`; `createClientOnlyFn`, `ClientOnly`), or, naming no
+ * such API, explains in its own words (`explains`) with that environment
+ * named, and not the other one (`a server-only module`); a suggestion
+ * naming both environments and no API of either gives none.
  */
 export function suggestedDirections(text: string): Array<'server' | 'client'> {
-  const remedy = violationReports(text)
-    .flatMap(({ suggestions }) => suggestions)
-    .join('\n')
-  const directions = {
+  const suggestions = violationReports(text).flatMap(
+    ({ suggestions: items }) => items,
+  )
+  const apis = {
     server: ['createServerFn', 'createServerOnlyFn'],
     client: ['createClientOnlyFn', 'ClientOnly'],
   } as const
-  return (['server', 'client'] as const).filter(
-    (direction) =>
-      directions[direction].some(
-        (name) => findDiagnostics(remedy, { names: [name] }).length > 0,
-      ) ||
-      new RegExp(
-        `\\b(?:move|keep|run|render|isolate|put|relocate)\\b(?:(?!\\b(?:client|server)\\b)[^\\n])*\\b${direction}(?:-only| side|-side)?\\b`,
-        'i',
-      ).test(remedy),
+  const namesApiOf = (item: string, direction: 'server' | 'client') =>
+    apis[direction].some(
+      (name) => findDiagnostics(item, { names: [name] }).length > 0,
+    )
+  // The environment named, in an explanation in the item's own words
+  const explainsEnvironment = (item: string, direction: 'server' | 'client') =>
+    findDiagnostics(item, { names: [direction], explains: true }).length > 0
+  const directionsOf = (item: string) => {
+    const byApi = (['server', 'client'] as const).filter((direction) =>
+      namesApiOf(item, direction),
+    )
+    if (byApi.length > 0) {
+      return byApi
+    }
+    const byEnvironment = (['server', 'client'] as const).filter(
+      (direction) => explainsEnvironment(item, direction),
+    )
+    return byEnvironment.length === 1 ? byEnvironment : []
+  }
+  const given = new Set(suggestions.flatMap(directionsOf))
+  return (['server', 'client'] as const).filter((direction) =>
+    given.has(direction),
   )
 }
 

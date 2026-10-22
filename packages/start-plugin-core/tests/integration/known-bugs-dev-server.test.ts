@@ -9,7 +9,7 @@
 import { diagnosticProse } from '@tanstack/compiler-test-utils/diagnostics'
 import { describe, expect, test } from 'vitest'
 import {
-  callServerFnById,
+  callServerFn,
   inDevRequest,
   startDevServer,
   startRequestFiles,
@@ -149,8 +149,9 @@ describe('editing a server fn factory (SSR)', () => {
    * Like `editFactory` above, in the SSR environment: `src/a.tsx` runs in SSR
    * while `fn` is a plain function, then `src/b.ts` becomes a
    * `createServerFn()` builder. Returns what `fn` is in SSR afterwards: its
-   * server fn id, what calling it returns, and what a page's call of that
-   * id returns (`callServerFnById`: Start's server entry handles it).
+   * server fn URL (its id), what calling it returns, and what a page's
+   * call of that id returns (`callServerFn`: Start's server entry handles
+   * it).
    */
   async function editFactorySsr(importFrom: string) {
     const server = await startDevServer({
@@ -167,7 +168,8 @@ export const fn = base.handler(async () => db.x())
       },
     })
     const before = (await server.import('/src/a.tsx')).fn
-    expect(before.serverFnMeta).toBeUndefined()
+    // (not a server fn: no server fn URL)
+    expect(before.url).toBeUndefined()
     await server.edit({
       'src/b.ts': `import { createServerFn } from '@tanstack/react-start'
 export const base = createServerFn()
@@ -182,15 +184,18 @@ export const base = createServerFn()
       }
     }
     return {
-      id: typeof fn.serverFnMeta?.id,
+      url: typeof fn.url,
       called: await settle(() => inDevRequest(server, () => fn())),
-      byId: await settle(() => callServerFnById(server, fn.serverFnMeta?.id)),
+      byId: await settle(() => callServerFn(server, fn)),
     }
   }
 
-  /** `fn` is a server fn in SSR: it has an id, and runs its handler both ways. */
+  /**
+   * `fn` is a server fn in SSR: it has a server fn URL (its id), and runs
+   * its handler both ways.
+   */
   const serverFn = {
-    id: 'string',
+    url: 'string',
     called: 'MARK_DB_SECRET',
     byId: 'MARK_DB_SECRET',
   }
@@ -268,7 +273,7 @@ export const fn = createServerFn().handler(async () => request)
       functionId: await inClient(
         server,
         '/src/a.ts',
-        'return typeof entry.fn.serverFnMeta?.id',
+        'return typeof entry.fn.url',
       ),
     }
   }

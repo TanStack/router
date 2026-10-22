@@ -12,11 +12,18 @@
  * that stays open across the edit (`openPage`), with the real Vite client.
  * Source: the add-hmr `@false` snapshots (every fixture compiled with
  * `addHmr: false`). Production bundles: build-production*.test.ts.
+ *
+ * The router plugin's Rspack entry on an Rsbuild dev server (webpack's hot
+ * API, `route-hmr-page.ts`): the same outcome, decided the same way (the
+ * page reloads instead of applying the edit in place); its control is the
+ * Rsbuild row of route-hmr-browser-plugin.test.ts (with route HMR the edit
+ * applies in place).
  */
 import { describe, expect, it, onTestFinished } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
 import { entryFile, head, loadRoute, probeFile } from '../route-app'
+import { openRouteHmrPage } from '../route-hmr-page'
 import type { TargetFramework } from '../route-app'
 
 const timeout = 60_000
@@ -218,6 +225,40 @@ it(
       reloaded: false,
       inPlace: true,
     })
+  },
+  timeout,
+)
+
+// The Rspack entry with `addHmr: false` (an Rsbuild dev server with the
+// framework's React Refresh): no route module accepts the edit, so the page
+// reloads to show it; with route HMR it applies in place (control:
+// route-hmr-browser-plugin.test.ts "plugin.hmr.style: vite (rsbuild)").
+// Source: plugin-options.test.ts "with addHmr: false, a development build
+// with the HMR plugin has no route HMR code" (which looked for the hot API's
+// accept call by a local name in the build).
+it(
+  'an Rsbuild dev server with addHmr: false applies no route HMR to an edit',
+  async () => {
+    const route = (version: string) =>
+      `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({
+  loader: () => 'data ${version}',
+  component: Page,
+})
+function Page() {
+  const data = Route.useLoaderData()
+  return <p>page ${version} {data}</p>
+}
+`
+    const app = await openRouteHmrPage({
+      bundler: 'rsbuild',
+      pluginOptions: { codeSplittingOptions: { addHmr: false } },
+      files: { 'routes/index.tsx': route('v1') },
+      ready: 'page v1 data v1',
+    })
+    expect(
+      await app.edit({ 'routes/index.tsx': route('v2') }, 'page v2 data v2'),
+    ).toEqual({ reloaded: true, errors: [] })
   },
   timeout,
 )

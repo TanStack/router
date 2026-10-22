@@ -7,34 +7,10 @@
  * build must work on its own; emitted files, chunk names and bytes are free
  * to differ (`@tanstack/compiler-test-utils/determinism`).
  */
-import { expect, test, vi } from 'vitest'
+import { expect, test } from 'vitest'
 import { expectRelocatable } from '@tanstack/compiler-test-utils/determinism'
 import { build, head, routeApp } from '../build-harness'
-import type * as NodeUrl from 'node:url'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
-
-// Node's file URL helpers follow the host platform. For Windows paths
-// (drive letter first) they behave here as they do on Windows; other paths
-// are unaffected.
-vi.mock('node:url', async (importOriginal) => {
-  const url = await importOriginal<typeof NodeUrl>()
-  const windowsPath = /^[A-Za-z]:[\\/]/
-  return {
-    ...url,
-    pathToFileURL: (file: string, options?: { windows?: boolean }) =>
-      url.pathToFileURL(file, {
-        ...options,
-        windows: options?.windows ?? windowsPath.test(file),
-      }),
-    fileURLToPath: (href: string | URL, options?: { windows?: boolean }) =>
-      url.fileURLToPath(href, {
-        ...options,
-        windows:
-          options?.windows ??
-          /^\/[A-Za-z]:\//.test(new URL(String(href)).pathname),
-      }),
-  }
-})
 
 const appFiles = routeApp(
   `${head}import { format } from '../format'

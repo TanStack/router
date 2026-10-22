@@ -95,20 +95,27 @@ const entry = { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' }
  * caller gives it, and what an HTTP call of each client id runs.
  */
 async function observe(build: StartBuild) {
-  const ids = (
+  // (each server fn by its public URL: the server fn base, then its id)
+  const urls = (
     await build.client.run(
-      `return { a: entry.greetA.serverFnMeta.id, b: entry.greetB.serverFnMeta.id }`,
+      `return { a: entry.greetA.url, b: entry.greetB.url }`,
     )
   ).result as { a: string; b: string }
   const { result } = await build.ssr.run(`${callByIdPrelude}
+const ids = {
+  a: serverFnId(${JSON.stringify(urls.a)}),
+  b: serverFnId(${JSON.stringify(urls.b)}),
+}
 return {
-  ssrIds: { a: entry.greetA.serverFnMeta.id, b: entry.greetB.serverFnMeta.id },
-  results: {
-    a: await callById(${JSON.stringify(ids.a)}),
-    b: await callById(${JSON.stringify(ids.b)}),
-  },
+  ids,
+  ssrIds: { a: serverFnId(entry.greetA), b: serverFnId(entry.greetB) },
+  results: { a: await callById(ids.a), b: await callById(ids.b) },
 }`)
-  return { ids, ...(result as { ssrIds: unknown; results: unknown }) }
+  return result as {
+    ids: { a: string; b: string }
+    ssrIds: unknown
+    results: unknown
+  }
 }
 
 /** Each build's own agreement: ids are set, SSR agrees, each runs its handler. */

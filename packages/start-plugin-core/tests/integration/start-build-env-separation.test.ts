@@ -123,11 +123,10 @@ ${callByIdExports}`,
         entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
       })
       expect(client.where('MARK_LIB_HANDLER')).toBe('nowhere')
-      const id = (await client.run(`return entry.libFn.serverFnMeta.id`)).result
-      expect(id).toEqual(expect.any(String))
+      const url = (await client.run(`return entry.libFn.url`)).result
       const { result } = await ssr.run(`${callByIdPrelude}return {
   called: await entry.libFn(),
-  byId: await callById(${JSON.stringify(id)}),
+  byId: await callById(serverFnId(${JSON.stringify(url)})),
 }`)
       expect(result).toEqual({
         called: 'MARK_LIB_HANDLER',
@@ -544,14 +543,12 @@ ${callByIdExports}`,
           // This test's own hook: the tests of the block run concurrently.
           registerCleanup: onTestFinished,
         })
-        const ids = (
-          await client.run(
-            `return [entry.fn.serverFnMeta.id, entry.fromBase.serverFnMeta.id]`,
-          )
+        const urls = (
+          await client.run(`return [entry.fn.url, entry.fromBase.url]`)
         ).result
         const { result } = await ssr.run(`${callByIdPrelude}const results = []
-for (const id of ${JSON.stringify(ids)}) {
-  results.push(await callById(id))
+for (const url of ${JSON.stringify(urls)}) {
+  results.push(await callById(serverFnId(url)))
 }
 return results`)
         expect(result).toEqual(['MARK_HANDLER_DEP', 'MARK_BASE_HANDLER_DEP'])
@@ -651,14 +648,12 @@ ${callByIdExports}`,
       })
       expect(ssrBuilds).toBe(2)
       expect(client.where('MARK_HANDLER')).toBe('nowhere')
-      const ids = (
-        await client.run(
-          `return [entry.direct.serverFnMeta.id, entry.greet.serverFnMeta.id]`,
-        )
+      const urls = (
+        await client.run(`return [entry.direct.url, entry.greet.url]`)
       ).result
       const { result } = await ssr.run(`${callByIdPrelude}const results = []
-for (const id of ${JSON.stringify(ids)}) {
-  results.push(await callById(id))
+for (const url of ${JSON.stringify(urls)}) {
+  results.push(await callById(serverFnId(url)))
 }
 return { byId: results, direct: await entry.greet() }`)
       expect(result).toEqual({
@@ -699,14 +694,12 @@ ${callByIdExports}`,
         entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
       })
       expect(client.where(/MARK_GREET|MARK_FROM_BASE/)).toBe('nowhere')
-      const ids = (
-        await client.run(
-          `return [entry.greet.serverFnMeta.id, entry.fromBase.serverFnMeta.id]`,
-        )
+      const urls = (
+        await client.run(`return [entry.greet.url, entry.fromBase.url]`)
       ).result
       const { result } = await ssr.run(`${callByIdPrelude}const results = []
-for (const id of ${JSON.stringify(ids)}) {
-  results.push(await callById(id))
+for (const url of ${JSON.stringify(urls)}) {
+  results.push(await callById(serverFnId(url)))
 }
 return results`)
       expect(result).toEqual(['MARK_GREET', 'MARK_FROM_BASE'])
