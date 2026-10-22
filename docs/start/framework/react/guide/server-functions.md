@@ -94,7 +94,7 @@ function PostList() {
 ```
 
 > [!NOTE]
-> If you use the `@tanstack/react-router-ssr-query` integration package, wrapping query or mutation functions with `useServerFn` is not required. See the [integration guide](/router/latest/docs/integrations/query#redirect-handling) for more details.
+> If you use TanStack Query with the `@tanstack/react-router-ssr-query` integration package, wrapping server functions called in `queryFn` or `mutationFn` with `useServerFn` is not required. See the [Query integration guide](/router/latest/docs/integrations/query#redirect-handling) for more details.
 
 ## File Organization
 
