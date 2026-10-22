@@ -83,15 +83,22 @@ after the final passes F-F, F-G1, F-G2 and F-G3; the start-plugin-core part agai
   and under their hard limit.
 
 Counts at d07614d3b3 (passed / expected-fail pins; at 633a4c0917, where the measurements above ran, start-plugin-core
-`test:integration` was 1199 / 288):
+`test:integration` was 1199 / 288), with the implementation and noncompiler lanes as of the main-tests cleanup (below;
+the acceptance tiers did not change):
 
 | Package                         | `test:unit` | `test:integration` | `test:implementation` | `test:noncompiler` |
 | ------------------------------- | ----------- | ------------------ | --------------------- | ------------------ |
 | `@tanstack/compiler-test-utils` | 330 / 0     | 171 / 0            | –                     | –                  |
-| `@tanstack/router-generator`    | 239 / 30    | 67 / 3             | 114 / 2               | –                  |
-| `@tanstack/router-plugin`       | 107 / 20    | 674 / 355          | 104 / 1               | –                  |
-| `@tanstack/start-plugin-core`   | 389 / 143   | 1204 / 292         | 609 / 9               | 121 / 0            |
-| `@tanstack/react-start-rsc`     | no files    | 108 / 13           | –                     | 49 / 0             |
+| `@tanstack/router-generator`    | 239 / 30    | 67 / 3             | 63 / 2                | –                  |
+| `@tanstack/router-plugin`       | 107 / 20    | 674 / 355          | 87 / 1                | –                  |
+| `@tanstack/start-plugin-core`   | 389 / 143   | 1204 / 292         | 191 / 9               | 147 / 0            |
+| `@tanstack/react-start-rsc`     | no files    | 108 / 13           | –                     | 57 / 0             |
+
+The main-tests cleanup (after F-I) put main's tests of features that are not compilers back at main's paths with
+main's content (noncompiler lane: start-plugin-core 121 → 147, the whole of main's Rsbuild normalized-client-build
+test and main's versions of the others; react-start-rsc 49 → 57, main's runtime and type tests) and deleted main's
+tests of compiler internals that had been moved into the implementation lane (router-generator 114 → 63,
+router-plugin 104 → 87, start-plugin-core 609 → 191). No acceptance file, row or pin changed.
 
 The previous measurement (F-E-b) ran at 45f58967ea; the passes below came after it and are covered by the
 measurement above (F-H), the F-I pass by the start-plugin-core part of it. The final pass F-F (October 2026) re-audited "no re-implementation; client semantics in a browser" file by file and changed tests and
@@ -261,17 +268,26 @@ info or log line does not count), and where it says the build fails, it must fai
 
 ## Lanes
 
-| Lane            | Where                                                                           | Targets                                                                    | Decides acceptance |
-| --------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ------------------ |
-| Corpus          | `tests/**`, outside `outside-compiler-corpus/`                                  | `test:unit`, `test:integration`                                            | yes                |
-| Pending rulings | `start-plugin-core/tests/pending-rulings/`, and the Q5 control in router-plugin | `test:unit`, `test:integration` (held in the corpus as they are)           | yes, until ruled   |
-| Implementation  | `tests/**/outside-compiler-corpus/`                                             | `test:implementation` (router-generator, router-plugin, start-plugin-core) | no                 |
-| Noncompiler     | `tests/outside-compiler-corpus/noncompiler/`                                    | `test:noncompiler` (start-plugin-core, react-start-rsc)                    | no                 |
+| Lane            | Where                                                                                                           | Targets                                                                    | Decides acceptance |
+| --------------- | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ------------------ |
+| Corpus          | `tests/**`, outside `outside-compiler-corpus/` and the noncompiler list                                         | `test:unit`, `test:integration`                                            | yes                |
+| Pending rulings | `start-plugin-core/tests/pending-rulings/`, and the Q5 control in router-plugin                                 | `test:unit`, `test:integration` (held in the corpus as they are)           | yes, until ruled   |
+| Implementation  | `tests/**/outside-compiler-corpus/`                                                                             | `test:implementation` (router-generator, router-plugin, start-plugin-core) | no                 |
+| Noncompiler     | main's own tests at main's paths, listed in `tests/noncompiler-tests.json` (start-plugin-core, react-start-rsc) | `test:noncompiler`                                                         | no                 |
+
+The corpus (acceptance) is the compilers' test suite. Main's own tests split in two:
+
+- **Tests of features that are not compilers** (start-plugin-core: Start manifest, sitemap, prerender, CSRF config,
+  schema, entry planning, post-build, output directory, watch-ignored, `createVirtualModule`, dev styles, utils;
+  react-start-rsc: the RSC runtime components, streams, `createRscProxy` and the type tests) are untouched: main's
+  paths, main's content. The noncompiler lane runs them; the corpus projects and the import gate leave them out.
+- **Tests of today's compiler internals** (internal functions called directly, exact output text or snapshots,
+  internal classes) are deleted: the corpus covers their behaviour through public entry points.
 
 Implementation tests check choices of today's implementation (printed bytes, log policy, internal entry points,
 performance counters); a correct new compiler may fail them: delete or rewrite them with the implementation they
-describe. Noncompiler tests cover runtime and build plumbing. CI runs every lane. Harness controls (this package's
-tests, and the packages' tests of their own helpers) check the oracle itself.
+describe. CI runs every lane. Harness controls (this package's tests, and the packages' tests of their own helpers)
+check the oracle itself.
 
 ## The import gate
 
