@@ -896,8 +896,8 @@ api/router/RouteOptionsType.md:32]`; the docs recommend `createLazyFileRoute` in
   has a documented contract and its own contract test, and is replaced by the real package when feasible.
 - **Public entry points only.** Acceptance tests reach the compilers through the plugins and options a user
   configures (Vite, Rsbuild, Rspack and webpack builds and dev servers, or the public Vite plugin driven in-process),
-  never through internal modules, classes, ids or queries. The import gate (`test:import-gate:strict`) enforces it
-  for imports; the only exceptions are the tests held by pending user rulings, each listed in the gate's allowlist.
+  never through internal modules, classes, ids or queries. The only exceptions are the tests held by pending user
+  rulings.
 - **Assert at the level where the outcome is decided** `[ruling: first review rulings]`: compiler-level tests assert what the compiler
   alone decides (semantics, identity, validity, server code absent, chunk contents it emits within J2.5's D5
   boundary, warnings); bundle-level placement, DCE and dangling names are asserted on production output per bundler

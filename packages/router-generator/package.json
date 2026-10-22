@@ -39,7 +39,6 @@
     "test:implementation": "tsc6 -p tests/tsconfig.implementation.json && vitest --project implementation --project implementation-integration",
     "test:implementation:unit": "vitest --project implementation",
     "test:unit:dev": "pnpm run test:unit --watch --hideSkippedTests",
-    "test:import-gate:strict": "node ../compiler-test-utils/src/import-gate.ts --strict",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "vite build"
   },

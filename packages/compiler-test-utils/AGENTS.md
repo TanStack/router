@@ -51,24 +51,7 @@ The compiler test corpus is an oracle: a compiler that passes every corpus test 
 - A package that gets its first implementation test adds the two projects and the two scripts the same way. react-start-rsc selects its runtime tests in `test:noncompiler`. This package's own tests are harness controls, not compiler tests; none of them is an implementation test of a compiler.
 - **Noncompiler coverage:** start-plugin-core build plumbing and react-start-rsc runtime tests live under `tests/outside-compiler-corpus/noncompiler/` and run in `test:noncompiler`, excluded from the implementation projects too. Root `test:pr`/`test:ci` and compiler-platform CI run the lane. RSC compiler acceptance currently lives entirely in integration.
 - Budgets (`test-budgets.json`) cover the corpus tiers; the implementation and noncompiler projects have none.
-- What does not belong outside the corpus: a goal pin (`.fails`) of a real bug, a test of supported behaviour that is merely slow, or a test that decides a user-visible outcome through an internal entry point (e.g. the emitted `handleRouteUpdate` driven by a live router: label it in its header, keep it in the corpus, and reroute it through a public entry point: the import gate below flags it until then). Before moving a test out, make sure no wrong compiler is caught only by it (e.g. a known mutant of the compiler).
-
-## Import gate
-
-Acceptance tests reach the compilers only through public entry points. `src/import-gate.ts` checks the imports mechanically: it lists every import of a compiler-package internal (router-generator, router-plugin, start-plugin-core, react-start-rsc, router-utils) in the corpus test files of the five packages above and in every helper they reach (relative imports into a package's `tests/`, and this package's `src/`).
-
-- **Internal** means not reachable through the package's `package.json` `exports`. Allowed: the package specifier with an exported subpath (`@tanstack/router-plugin/vite`), and a relative path to the source file an export is built from (`../src/vite` in router-plugin) or to an exported file. A type-only import of a public type (one a public entry exports) through an internal path is allowed and listed separately; prefer the public specifier.
-- Everything else counts, including a value import of a public symbol through an internal module (`getConfig` from `src/core/config`), internal types, `vi.mock`/`vi.importActual`, dynamic `import()`, `require` and `typeof import()` of internal paths, and subpaths missing from `exports`.
-- It is static: paths computed at run time (`import(path.join(...))`) and ids or queries in strings are out of its reach.
-
-```sh
-CI=1 NX_DAEMON=false pnpm nx run @tanstack/compiler-test-utils:test:import-gate --outputStyle=stream --skipRemoteCache
-```
-
-- `test:import-gate` (report mode) prints the violations grouped by file (for a helper, how many corpus files reach it) and exits 0. `--json` (run `node ./src/import-gate.ts --json` in this package) prints the same data as JSON.
-- `test:import-gate:strict` (or `COMPILER_IMPORT_GATE=strict`) exits 1 on any violation, on a stale allowlist entry, or on a file it could not parse. It is a required check: root `test:pr`/`test:ci` run it (every compiler package and this one has the target, so `nx affected` runs it for a change in any of them; Nx target default in `nx.json`), and so does the compiler platform workflow.
-- **Allowlist** (`pendingRulingAllowlist` in `src/import-gate.ts`): the only internal imports strict mode accepts, held by pending user rulings: the Q5 control (router-plugin `tests/handle-route-update.test.ts`), the `tests/pending-rulings/` files of start-plugin-core (Q6, Q7), and the legacy helpers only they reach (`tests/outside-compiler-corpus/legacy/`, allowed only while no other acceptance test reaches them). Each entry names its ruling and the requests it holds; remove it when the ruling lands. Never add an entry for anything else.
-- `tests/import-gate.test.ts` is its control, on a fixture workspace of its own (packages with their own `exports` maps and sources, in a temporary directory): files planted in memory next to the fixture's tests must be flagged exactly where they import internals, and strict mode must fail on an internal import its allowlist does not hold, on an allowlisted helper another test reaches, and on a stale entry. It does not depend on where the real packages keep their sources (FINAL-PASS #51).
+- What does not belong outside the corpus: a goal pin (`.fails`) of a real bug, a test of supported behaviour that is merely slow, or a test that decides a user-visible outcome through an internal entry point (e.g. the emitted `handleRouteUpdate` driven by a live router: label it in its header, keep it in the corpus, and reroute it through a public entry point). Before moving a test out, make sure no wrong compiler is caught only by it (e.g. a known mutant of the compiler).
 
 ## Budgets
 

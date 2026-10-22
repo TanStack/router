@@ -3,8 +3,7 @@
  * :75/:145 internal-package-graph rows. Keep them until ruled"): moved
  * unchanged from createServerFn/createServerFn.test.ts:293. It drives the
  * internal `StartCompiler` with a hand-built `@tanstack/start-client-core`
- * graph and an empty lookup configuration; import-gate violations here are
- * expected until Q6 is ruled.
+ * graph and an empty lookup configuration, held by Q6 until it is ruled.
  */
 import { describe, expect, test } from 'vitest'
 import { StartCompiler } from '../../src/start-compiler/compiler'
