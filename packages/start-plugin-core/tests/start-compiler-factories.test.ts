@@ -643,19 +643,30 @@ export const mw = createMiddleware().server(async ({ next }) =>
       {
         'chart.client.ts': `export const chart = { draw: () => 'drawn' }\n`,
         'db.server.ts': `export const db = { x: () => 'x' }\n`,
+        // The middleware's user: a server fn whose handler gives what the
+        // middleware put into its context.
+        'uses-mw.ts': `import { createServerFn } from '@tanstack/react-start'
+import { mw } from './module'
+export const value = createServerFn()
+  .middleware([mw])
+  .handler(async ({ context }) => context.value)
+`,
       },
     )
     await expectClientFree(served)
     expect(await inPage(served, 'return module.iso()')).toBe('drawn')
     await expectSsrFree(served)
     const ssr = await served.ssr()
+    // The middleware runs in Start's middleware chain: for a call of the
+    // server fn from the client (over HTTP) and from server code (inside a
+    // real request).
     expect([
       ssr.iso(),
       ssr.serverOnly(),
-      await ssr.mw.options.server({
-        next: (options: unknown) => options,
+      await callServerFnThroughCallers(served, 'module.value', undefined, {
+        file: 'uses-mw.ts',
       }),
-    ]).toEqual(['x', 'x', { context: { value: 'x' } }])
+    ]).toEqual(['x', 'x', 'x'])
   })
 
   // Source: babel-dead-code-elimination "variable" > "within for...in";

@@ -255,7 +255,7 @@ export const serverOnly = createServerOnlyFn(() => serverOnlyDep())
       // then the server fn's own) and the data its validator gave: a call
       // over HTTP runs Start's own middleware chain.
       'src/middleware-fns.ts': `import { createServerFn } from '@tanstack/react-start'
-import { serverMiddleware } from './builder-middleware'
+import { serverMiddleware, validatedMiddleware } from './builder-middleware'
 import { fnMiddleware } from './middleware'
 type Context = { marker?: string }
 export const viaFnMiddleware = createServerFn()
@@ -267,6 +267,9 @@ export const viaFnMiddleware = createServerFn()
 export const viaBuilderMiddleware = createServerFn()
   .middleware([serverMiddleware])
   .handler(async ({ context }) => (context as Context).marker)
+export const viaBuilderValidator = createServerFn()
+  .middleware([validatedMiddleware])
+  .handler(async ({ data }) => data)
 export const viaStartMiddleware = createServerFn().handler(
   async ({ context }) => (context as unknown as Context).marker,
 )
@@ -313,6 +316,7 @@ export { serverMiddleware, validatedMiddleware } from './builder-middleware'
 export { fnMiddleware } from './middleware'
 export {
   viaBuilderMiddleware,
+  viaBuilderValidator,
   viaFnMiddleware,
   viaStartMiddleware,
 } from './middleware-fns'
@@ -478,7 +482,7 @@ const get = async (path) =>
       {
         construct: 'a function middleware validator on a builder variable',
         marker: 'MARK_BUILDER_MIDDLEWARE_VALIDATOR',
-        run: `return entry.validatedMiddleware.options.validator({})`,
+        run: `return await callById(serverFnId(entry.viaBuilderValidator))`,
         expected: 'MARK_BUILDER_MIDDLEWARE_VALIDATOR',
       },
       {

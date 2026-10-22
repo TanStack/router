@@ -12,6 +12,7 @@
 import { describe, expect, test } from 'vitest'
 import {
   callFromClient,
+  callServerFnThroughCallers,
   clientOnlyError,
   fromPage,
   inPage,
@@ -446,15 +447,21 @@ test('leaves unrelated SSR middleware chains as written when a server function f
       'auth-wrapper.ts': `import { createMiddleware, createServerFn } from '@tanstack/react-start';
 const middleware = createMiddleware({ type: 'function' }).server(({ next }) => next({ context: { role: 'admin' } }));
 export const factory = createServerFn().middleware([middleware]);`,
+      // The factory's user: a server fn of another module, whose handler
+      // gives what the factory's middleware put into its context.
+      'uses-factory.ts': `import { factory } from './auth-wrapper';
+export const role = factory.handler(async ({ context }) => context.role);`,
     },
     { file: 'auth-wrapper.ts' },
   )
-  // The server keeps the middleware chain as written.
-  const { factory } = await served.ssr('auth-wrapper.ts')
-  const [middleware] = factory.options.middleware
+  // The server keeps the middleware chain as written: Start runs it for a
+  // call of the factory's server fn, from the client (over HTTP) and from
+  // server code (inside a real request).
   expect(
-    middleware.options.server({ next: (result: unknown) => result }),
-  ).toEqual({ context: { role: 'admin' } })
+    await callServerFnThroughCallers(served, 'module.role', undefined, {
+      file: 'uses-factory.ts',
+    }),
+  ).toBe('admin')
 })
 
 test.each([
