@@ -365,34 +365,13 @@ export function normalizeRspackClientBuild(
     )
     const routeFilePaths = getRouteFilePathsFromModules(modules)
     const hydrationIds = getHydrationIdsFromModules(modules)
-    const chunkFiles = chunk.files
-    const jsFiles: Array<string> = []
-    const cssFiles: Array<string> = []
-    const seenCssFiles = new Set<string>()
-
-    for (const auxFile of chunk.auxiliaryFiles) {
-      if (auxFile.endsWith('.css') && !seenCssFiles.has(auxFile)) {
-        seenCssFiles.add(auxFile)
-        cssFiles.push(auxFile)
-      }
-    }
-
-    for (const mainFile of chunkFiles) {
-      if (isManifestJsAsset(mainFile)) {
-        jsFiles.push(mainFile)
-      }
-      if (mainFile.endsWith('.css') && !seenCssFiles.has(mainFile)) {
-        seenCssFiles.add(mainFile)
-        cssFiles.push(mainFile)
-      }
-    }
-
-    if (jsFiles.length === 0) {
-      continue
-    }
+    const cssFiles = getChunkCssFiles(chunk)
 
     // The entry chunk is the one named 'index' in the 'index' entrypoint
-    const isEntryChunk = entryChunkSet.has(chunk) && chunk.name === 'index'
+    const isEntryChunk = chunk.name === 'index' && entryChunkSet.has(chunk)
+
+    const jsFiles = getChunkJsFiles(chunk)
+    if (jsFiles.length === 0) continue
 
     // Compute dynamicImports from chunk group children
     const dynamicImports = computeDynamicImports(chunk)

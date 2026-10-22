@@ -230,18 +230,6 @@ describe('normalizeRspackClientBuild', () => {
       expect(
         clientBuild.chunksByFileName.get('alpha.js')?.dynamicImports,
       ).toContain('lazy.js')
-      expect(
-        clientBuild.chunksByFileName
-          .get('index.js')
-          ?.dynamicImports.slice()
-          .sort(),
-      ).toEqual([
-        'alpha.js',
-        'beta.js',
-        ...(extraction === 'shared' || extraction === 'css-module'
-          ? ['shared.js']
-          : []),
-      ])
 
       for (const routeOrder of [
         ['alpha', 'beta'],

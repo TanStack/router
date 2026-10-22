@@ -2,4 +2,4 @@
 '@tanstack/start-plugin-core': patch
 ---
 
-Reduce Rspack API calls during client build normalization by reading chunk group files in bulk, collecting JS and CSS files in one pass, and skipping unnecessary chunk name reads.
+Reduce Rspack API calls when collecting client dynamic imports by reading chunk group files in bulk.
