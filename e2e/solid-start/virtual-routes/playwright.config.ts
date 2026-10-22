@@ -1,12 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
-import {
-  getDummyServerPort,
-  getTestServerPort,
-} from '@tanstack/router-e2e-utils'
-import packageJson from './package.json' with { type: 'json' }
+import { appServerReady } from '@tanstack/router-e2e-utils'
 
-const PORT = await getTestServerPort(packageJson.name)
-const EXTERNAL_PORT = await getDummyServerPort(packageJson.name)
+const PORT = Number(process.env.E2E_APP_PORT ?? 0)
 const baseURL = `http://localhost:${PORT}`
 
 /**
@@ -18,19 +13,19 @@ export default defineConfig({
 
   reporter: [['line']],
 
-  globalSetup: './tests/setup/global.setup.ts',
-  globalTeardown: './tests/setup/global.teardown.ts',
-
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL,
   },
 
   webServer: {
-    command: `VITE_NODE_ENV="test" VITE_EXTERNAL_PORT=${EXTERNAL_PORT} pnpm build && VITE_NODE_ENV="test" VITE_EXTERNAL_PORT=${EXTERNAL_PORT} VITE_SERVER_PORT=${PORT} PORT=${PORT} pnpm start`,
-    url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    command: `pnpm build && PORT=${PORT} pnpm start`,
+    wait: appServerReady,
+    reuseExistingServer: false,
     stdout: 'pipe',
+    env: {
+      NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=@tanstack/router-e2e-utils/mock-api`,
+    },
   },
 
   projects: [

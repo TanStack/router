@@ -1,37 +1,12 @@
-import { runInNewContext } from 'node:vm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute } from '../src'
+import { BaseRootRoute, BaseRoute, notFound } from '../src'
 import { hydrate } from '../src/ssr/client'
-import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
-import { createTestRouter } from './routerTestUtils'
-import type { AnyRouter } from '../src'
+import { createTestRouter, dehydrateToBootstrap } from './routerTestUtils'
 import type { TsrSsrGlobal } from '../src/ssr/types'
 import type { ServerManifest } from '../src/manifest'
 
 const testManifest: ServerManifest = { routes: {} }
-
-async function dehydrateToBootstrap(router: AnyRouter): Promise<TsrSsrGlobal> {
-  attachRouterServerSsrUtils({ router, manifest: testManifest })
-  try {
-    await router.load()
-    await router.serverSsr!.dehydrate()
-
-    const script = router.serverSsr!.takeBufferedScripts()
-    expect(script?.children).toBeTruthy()
-
-    const context: Record<string, any> = {
-      document: { currentScript: { remove() {} } },
-    }
-    context.self = context
-    runInNewContext(script!.children!, context)
-
-    expect(context.$_TSR).toBeDefined()
-    return context.$_TSR
-  } finally {
-    router.serverSsr?.cleanup()
-  }
-}
 
 // This terminal-prefix case is an internal hydration protocol invariant, not
 // an issue #7635 reproduction. The user-visible same-route navigation
@@ -76,7 +51,7 @@ describe('hydrated terminal error prefix', () => {
       isServer: true,
     })
 
-    const bootstrap = await dehydrateToBootstrap(serverRouter)
+    const bootstrap = await dehydrateToBootstrap(serverRouter, testManifest)
 
     expect(serverBeforeLoad).toHaveBeenCalledTimes(1)
     expect(serverChildLoader).not.toHaveBeenCalled()
@@ -172,4 +147,60 @@ describe('hydrated terminal error prefix', () => {
     )
     expect(committedApp?.meta).toEqual([{ title: 'App error title' }])
   })
+  it.each(['error', 'notFound'] as const)(
+    'preserves hydrated %s lifecycle membership through invalidation',
+    async (fallback) => {
+      let failed = true
+      const childEnter = vi.fn()
+      const childStay = vi.fn()
+      const childLeave = vi.fn()
+      const setup = (isServer: boolean) => {
+        const rootRoute = new BaseRootRoute({})
+        const appRoute = new BaseRoute({
+          getParentRoute: () => rootRoute,
+          path: '/app',
+          errorComponent: () => null,
+          notFoundComponent: () => null,
+          beforeLoad: () => {
+            if (failed) {
+              throw fallback === 'error' ? new Error('unavailable') : notFound()
+            }
+          },
+        })
+        const childRoute = new BaseRoute({
+          getParentRoute: () => appRoute,
+          path: 'child',
+          onEnter: childEnter,
+          onStay: childStay,
+          onLeave: childLeave,
+        })
+        return createTestRouter({
+          routeTree: rootRoute.addChildren([
+            appRoute.addChildren([childRoute]),
+          ]),
+          history: createMemoryHistory({ initialEntries: ['/app/child'] }),
+          isServer,
+        })
+      }
+      const server = setup(true)
+      const client = setup(false)
+      try {
+        mockWindow.$_TSR = await dehydrateToBootstrap(server, testManifest)
+        await hydrate(client)
+        expect(client.state.matches).toHaveLength(3)
+        await client.invalidate()
+        expect(childEnter).not.toHaveBeenCalled()
+        expect(childStay).not.toHaveBeenCalled()
+        expect(childLeave).not.toHaveBeenCalled()
+        failed = false
+        await client.invalidate()
+        expect(childEnter).toHaveBeenCalledOnce()
+        expect(childStay).not.toHaveBeenCalled()
+        expect(childLeave).not.toHaveBeenCalled()
+      } finally {
+        server.history.destroy()
+        client.history.destroy()
+      }
+    },
+  )
 })

@@ -1,16 +1,17 @@
-import { Hydrate } from '@tanstack/react-start';
-import { load, media, visible } from '@tanstack/react-start/hydration';
+import { Hydrate } from '@tanstack/react-start'
+import { load, media, visible } from '@tanstack/react-start/hydration'
 function Summary() {
-  return <section>Summary</section>;
+  return <section>Summary</section>
 }
 function Comments() {
-  return <section>Comments</section>;
+  return <section>Comments</section>
 }
 function Footer() {
-  return <footer>Footer</footer>;
+  return <footer>Footer</footer>
 }
 export function Page() {
-  return <>
+  return (
+    <>
       <Hydrate when={load()} h="0_21aa371e0f">
         <Summary />
       </Hydrate>
@@ -20,5 +21,6 @@ export function Page() {
       <Hydrate when={media('(min-width: 800px)')} h="2_21aa371e0f">
         <Footer />
       </Hydrate>
-    </>;
+    </>
+  )
 }

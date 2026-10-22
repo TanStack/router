@@ -59,16 +59,10 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/app'
-    | '/app/compras'
-    | '/app/compras/ordenes'
-    | '/app/compras/divisiones'
+    '/app' | '/app/compras' | '/app/compras/ordenes' | '/app/compras/divisiones'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/app'
-    | '/app/compras'
-    | '/app/compras/ordenes'
-    | '/app/compras/divisiones'
+    '/app' | '/app/compras' | '/app/compras/ordenes' | '/app/compras/divisiones'
   id:
     | '__root__'
     | '/app'

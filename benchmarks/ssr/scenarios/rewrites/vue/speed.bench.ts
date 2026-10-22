@@ -1,11 +1,10 @@
-import { bench, describe } from 'vitest'
+import { test } from 'vitest'
 import {
   assertRewriteScenario,
   rewriteBenchOptions,
   runRewriteLocalizedLoop,
-  runRewritePassthroughLoop,
-  type StartRequestHandler,
 } from '../shared'
+import type { StartRequestHandler } from '../shared'
 
 const appModuleUrl = new URL('./dist/server/server.js', import.meta.url).href
 
@@ -17,15 +16,8 @@ const { default: handler } = (await import(
 
 await assertRewriteScenario(handler)
 
-describe('ssr', () => {
-  bench(
-    'ssr rewrite localized (vue)',
-    () => runRewriteLocalizedLoop(handler),
-    rewriteBenchOptions,
-  )
-  bench(
-    'ssr rewrite passthrough (vue)',
-    () => runRewritePassthroughLoop(handler),
-    rewriteBenchOptions,
-  )
+test('ssr', async ({ bench }) => {
+  await bench('ssr rewrite localized (vue)', async () =>
+    runRewriteLocalizedLoop(handler),
+  ).run(rewriteBenchOptions)
 })

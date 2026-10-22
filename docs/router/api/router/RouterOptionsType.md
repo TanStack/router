@@ -141,7 +141,7 @@ The `RouterOptions` type accepts an object with the following properties and met
 
 ### `defaultOnCatch` property
 
-- Type: `(error: Error, errorInfo: ErrorInfo) => void`
+- Type: `(error: unknown, errorInfo: ErrorInfo) => void`
 - Optional
 - The default `onCatch` handler for errors caught by the Router ErrorBoundary
 
@@ -222,6 +222,13 @@ const router = createRouter({
 - Optional
 - Defaults to `/`
 - The basepath for the entire router. This is useful for mounting a router instance at a subpath.
+
+### `origin` property
+
+- Type: `string`
+- Optional
+- The origin used to resolve URLs. Defaults to the browser origin, or `http://localhost` on the server and in browsers with an opaque origin.
+- Pass a normalized origin, such as `https://example.com` or `http://localhost:3000`, without a path or trailing slash. The router uses this value as provided; if you have a full URL, normalize it with `new URL(url).origin` before passing it to the router.
 
 ### `rewrite` property
 
@@ -368,9 +375,10 @@ const router = createRouter({
 
 ### `pathParamsAllowedCharacters` property
 
-- Type: `Array<';' | ':' | '@' | '&' | '=' | '+' | '$' | ','>`
+- Type: `ReadonlyArray<';' | ':' | '@' | '&' | '=' | '+' | '$' | ','>`
 - Optional
 - Configures which URI characters are allowed in path params that would ordinarily be escaped by encodeURIComponent.
+- Read only when the router is created. To change these characters, create a new router instance. Router option updates and provider props do not change this setting.
 
 ### `defaultStructuralSharing` property
 

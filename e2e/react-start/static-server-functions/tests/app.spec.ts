@@ -59,5 +59,32 @@ test.describe('Static Server Functions with Nitro', () => {
       await expect(page.getByTestId('post-2')).toHaveText('Second Post')
       await expect(page.getByTestId('post-3')).toHaveText('Third Post')
     })
+
+    test('should decode a cached RawStream during client navigation', async ({
+      page,
+    }) => {
+      await page.goto('/')
+      // Nitro snapshots public assets before Start prerenders (see #6787).
+      // Serve the generated file as a static host would to isolate decoding.
+      await page.route('**/__tsr/staticServerFnCache/*.json', (route) =>
+        route.fulfill({
+          path: join(
+            process.cwd(),
+            '.output',
+            'public',
+            new URL(route.request().url()).pathname,
+          ),
+        }),
+      )
+      const cacheResponse = page.waitForResponse((response) =>
+        response.url().includes('/__tsr/staticServerFnCache/'),
+      )
+      await page.getByTestId('link-raw-stream').click()
+      const response = await cacheResponse
+      expect(response.status(), response.url()).toBe(200)
+      await expect(page.getByTestId('raw-stream')).toHaveText(
+        'Static cache stream',
+      )
+    })
   })
 })

@@ -1,14 +1,16 @@
 import { describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
+import { isServer as serverEnvironment } from '@tanstack/router-core/isServer'
+import * as pathUtils from '../src/path'
 import {
   BaseRootRoute,
   BaseRoute,
   retainSearchParams,
   stripSearchParams,
 } from '../src'
-import type { SearchMiddleware } from '../src'
 import { _getUserHistoryState } from '../src/router'
 import { createTestRouter } from './routerTestUtils'
+import type { SearchMiddleware } from '../src'
 
 test('_getUserHistoryState removes volatile router bookkeeping but keeps mask payloads', () => {
   expect(
@@ -23,6 +25,37 @@ test('_getUserHistoryState removes volatile router bookkeeping but keeps mask pa
     } as any),
   ).toEqual({ user: 'state', __tempLocation: {}, __tempKey: 'temp-key' })
 })
+
+test.each([false, true])(
+  'interpolates matches from raw params when router.isServer is %s',
+  (isServer) => {
+    expect(serverEnvironment).toBeUndefined()
+    const rootRoute = new BaseRootRoute({})
+    const route = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/items/$id',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([route]),
+      history: createMemoryHistory({ initialEntries: ['/items/one'] }),
+      isServer,
+    })
+    const interpolate = vi.spyOn(pathUtils, 'interpolatePath')
+    try {
+      const matches = router.matchRoutes('/items/one', {})
+      expect(matches.at(-1)?.pathname).toBe('/items/one')
+      const call = interpolate.mock.calls.find(
+        ([path]) => path === '/items/$id',
+      )
+      expect(call).toHaveLength(5)
+      expect(call?.[1]).toBe(route._interpolation)
+      expect(call?.[2]).toEqual({ id: 'one' })
+      expect(matches.at(-1)?._strictParams).toEqual({ id: 'one' })
+    } finally {
+      interpolate.mockRestore()
+    }
+  },
+)
 
 describe('buildLocation - params function receives parsed params', () => {
   test('prev params should contain parsed params from route params.parse', async () => {
@@ -234,6 +267,45 @@ describe('buildLocation - params function receives parsed params', () => {
 })
 
 describe('buildLocation - search params', () => {
+  test('collects updated middleware options from the whole route branch', () => {
+    const rootRoute = new BaseRootRoute({
+      search: {
+        middlewares: [({ search, next }) => next({ ...search, root: true })],
+      },
+    })
+    const route = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      search: {
+        middlewares: [
+          ({ search, next }) => ({ ...next(search), value: 'initial' }),
+        ],
+      },
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([route]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+    const buildSearch = () =>
+      router.buildLocation({ to: '/', search: true }).search
+
+    expect(buildSearch()).toEqual({ root: true, value: 'initial' })
+
+    route.update({
+      search: {
+        middlewares: [
+          ({ search, next }) => ({ ...next(search), value: 'updated' }),
+        ],
+      },
+    })
+    expect(buildSearch()).toEqual({ root: true, value: 'updated' })
+
+    route.update({ search: { middlewares: [] } })
+    expect(buildSearch()).toEqual({ root: true })
+    rootRoute.update({ search: { middlewares: [] } })
+    expect(buildSearch()).toEqual({})
+  })
+
   test('only applies route validation when requested', async () => {
     const events: Array<string> = []
     const validateSearch = vi.fn((search: Record<string, unknown>) => {
@@ -1227,40 +1299,6 @@ describe('buildLocation - state', () => {
     expect(location.state).not.toBe(emptyState)
   })
 
-  test('explicit state structurally shares unchanged nested values', async () => {
-    const rootRoute = new BaseRootRoute({})
-    const postsRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/posts',
-    })
-    const history = createMemoryHistory({ initialEntries: ['/posts'] })
-    history.replace('/posts', {
-      user: { id: 1, name: 'Test' },
-      count: 1,
-    })
-    const router = createTestRouter({
-      routeTree: rootRoute.addChildren([postsRoute]),
-      history,
-    })
-    await router.load()
-
-    const currentState = router.state.location.state as any
-    const location = router.buildLocation({
-      to: '/posts',
-      state: {
-        user: { id: 1, name: 'Test' },
-        count: 2,
-      } as any,
-    })
-
-    expect(location.state).toEqual({
-      user: { id: 1, name: 'Test' },
-      count: 2,
-    })
-    expect((location.state as any).user).toBe(currentState.user)
-    expect(location.state).not.toBe(currentState)
-  })
-
   test('state can contain complex nested objects', async () => {
     const rootRoute = new BaseRootRoute({})
     const postsRoute = new BaseRoute({
@@ -1289,6 +1327,160 @@ describe('buildLocation - state', () => {
     })
 
     expect(location.state).toEqual(complexState)
+  })
+})
+
+describe('buildLocation - no structural sharing with the current location', () => {
+  function createPostsRouter(
+    history = createMemoryHistory({ initialEntries: ['/posts'] }),
+  ) {
+    const rootRoute = new BaseRootRoute({})
+    const postsRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+    })
+    return createTestRouter({
+      routeTree: rootRoute.addChildren([postsRoute]),
+      history,
+    })
+  }
+
+  test('explicit state is returned as-is and equal nested values are shared only after navigation', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/posts'] })
+    history.replace('/posts', {
+      user: { id: 1, name: 'Test' },
+      count: 1,
+    })
+    const router = createPostsRouter(history)
+    await router.load()
+
+    const previousState = router.state.location.state as any
+    const nextState = {
+      user: { id: 1, name: 'Test' },
+      count: 2,
+    }
+    const location = router.buildLocation({
+      to: '/posts',
+      state: nextState as any,
+    })
+
+    // The built location carries the caller's object untouched.
+    expect(location.state).toBe(nextState)
+    expect((location.state as any).user).not.toBe(previousState.user)
+
+    await router.navigate({ to: '/posts', state: nextState as any })
+
+    // parseLocation still stabilizes the committed state against the
+    // previous one, which is what location selectors rely on.
+    const committedState = router.state.location.state as any
+    expect(committedState).toMatchObject({
+      user: { id: 1, name: 'Test' },
+      count: 2,
+    })
+    expect(committedState).not.toBe(previousState)
+    expect(committedState.user).toBe(previousState.user)
+    expect(nextState.user).not.toBe(previousState.user)
+  })
+
+  test('explicit search is returned as-is and equal nested values are shared only after navigation', async () => {
+    const router = createPostsRouter()
+    await router.load()
+
+    await router.navigate({
+      to: '/posts',
+      search: { page: 1, filter: { tags: ['a'] } } as any,
+    })
+    const previousSearch = router.state.location.search as any
+    expect(previousSearch).toEqual({ page: 1, filter: { tags: ['a'] } })
+
+    const nextSearch = { page: 2, filter: { tags: ['a'] } }
+    const location = router.buildLocation({
+      to: '/posts',
+      search: nextSearch as any,
+    })
+
+    expect(location.search).toBe(nextSearch)
+    expect((location.search as any).filter).not.toBe(previousSearch.filter)
+
+    await router.navigate({ to: '/posts', search: nextSearch as any })
+
+    const committedSearch = router.state.location.search as any
+    expect(committedSearch).toEqual({ page: 2, filter: { tags: ['a'] } })
+    expect(committedSearch).not.toBe(previousSearch)
+    expect(committedSearch.filter).toBe(previousSearch.filter)
+    expect(nextSearch.filter).not.toBe(previousSearch.filter)
+  })
+
+  test('navigate does not mutate a caller-supplied state object', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/posts'] })
+    const router = createPostsRouter(history)
+    await router.load()
+
+    const state = { user: { id: 1 } }
+    await router.navigate({
+      to: '/posts',
+      state: state as any,
+      hashScrollIntoView: true,
+    })
+
+    expect(state).toEqual({ user: { id: 1 } })
+    expect(Object.keys(state)).toEqual(['user'])
+    const committedState = router.state.location.state as any
+    expect(committedState).not.toBe(state)
+    expect(committedState.user).toBe(state.user)
+    expect(committedState.__hashScrollIntoViewOptions).toBe(true)
+    expect(committedState.__TSR_key).toBeTypeOf('string')
+    expect(committedState.key).toBe(committedState.__TSR_key)
+
+    // A frozen state (for example produced by an immutable store) commits
+    // without any write hitting it: in strict mode such a write would throw.
+    const frozenState = Object.freeze({ user: Object.freeze({ id: 2 }) })
+    await router.navigate({ to: '/posts', state: frozenState as any })
+
+    expect(router.state.location.state).toMatchObject({ user: { id: 2 } })
+    expect(router.state.location.state).not.toBe(frozenState)
+    expect(history.length).toBe(3)
+  })
+
+  test('an equal search in a different key order serializes in the requested order', async () => {
+    const router = createPostsRouter(
+      createMemoryHistory({ initialEntries: ['/posts?a=1&b=2'] }),
+    )
+    await router.load()
+
+    expect(router.state.location.href).toBe('/posts?a=1&b=2')
+
+    const location = router.buildLocation({
+      to: '/posts',
+      search: { b: 2, a: 1 } as any,
+    })
+
+    expect(location.search).toEqual({ a: 1, b: 2 })
+    expect(Object.keys(location.search)).toEqual(['b', 'a'])
+    expect(location.searchStr).toBe('?b=2&a=1')
+    expect(location.href).toBe('/posts?b=2&a=1')
+  })
+
+  test('navigating to an equal search in a different key order pushes a new history entry', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/posts?a=1&b=2'] })
+    const router = createPostsRouter(history)
+    await router.load()
+
+    expect(history.length).toBe(1)
+
+    // Same contents and order: nothing to commit.
+    await router.navigate({ to: '/posts', search: { a: 1, b: 2 } as any })
+
+    expect(history.length).toBe(1)
+    expect(router.state.location.href).toBe('/posts?a=1&b=2')
+
+    // Same contents, different order: the URL changes, so history grows.
+    await router.navigate({ to: '/posts', search: { b: 2, a: 1 } as any })
+
+    expect(history.length).toBe(2)
+    expect(history.location.href).toBe('/posts?b=2&a=1')
+    expect(router.state.location.href).toBe('/posts?b=2&a=1')
+    expect(router.state.location.search).toEqual({ a: 1, b: 2 })
   })
 })
 
@@ -1653,6 +1845,127 @@ describe('buildLocation - basepath', () => {
 })
 
 describe('buildLocation - params edge cases', () => {
+  test.each([false, true])(
+    'keeps cached raw params intact across mutating lightweight parsers (throws: %s)',
+    (throws) => {
+      const root = new BaseRootRoute({})
+      const parse = vi.fn((params: Record<string, string>) => {
+        expect(params.id).toBe('original')
+        params.id = 'parsed'
+        if (throws) {
+          throw new Error('parse failed')
+        }
+        return { id: params.id }
+      })
+      const item = new BaseRoute({
+        getParentRoute: () => root,
+        path: '/items/$id',
+      })
+      const history = createMemoryHistory({
+        initialEntries: ['/items/original'],
+      })
+      const router = createTestRouter({
+        routeTree: root.addChildren([item]),
+        history,
+      })
+      // Isolate live lightweight parsing from the matcher's captured route gate.
+      item.options.params = { parse }
+      const update = vi.fn((params: Record<string, unknown>) => {
+        expect(params.id).toBe('parsed')
+        return { id: 'target' }
+      })
+      try {
+        for (let repeat = 0; repeat < 2; repeat++) {
+          const location = router.buildLocation({
+            to: '/items/$id',
+            _fromLocation: { ...router.latestLocation },
+            params: update,
+          })
+          expect(location.pathname).toBe('/items/target')
+          expect(router.getMatchedRoutes('/items/original')[1]).toEqual({
+            id: 'original',
+          })
+        }
+        expect(parse).toHaveBeenCalledTimes(2)
+        expect(parse.mock.calls[0]![0]).not.toBe(parse.mock.calls[1]![0])
+        expect(update).toHaveBeenCalledTimes(2)
+      } finally {
+        history.destroy()
+      }
+    },
+  )
+
+  test('isolates mutating params updaters while preserving inherit and clear modes', () => {
+    const rootRoute = new BaseRootRoute({})
+    const userRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/users/{-$userId}',
+    })
+    const history = createMemoryHistory({ initialEntries: ['/users/123'] })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([userRoute]),
+      history,
+    })
+    const updater = vi.fn((params: { userId?: string }) => {
+      expect(Object.getPrototypeOf(params)).toBeNull()
+      expect(params).toEqual({ userId: '123' })
+      params.userId = '456'
+      return params
+    })
+
+    try {
+      for (let i = 0; i < 2; i++) {
+        expect(
+          router.buildLocation({
+            to: '/users/{-$userId}',
+            params: updater,
+          }).pathname,
+        ).toBe('/users/456')
+      }
+      expect(updater).toHaveBeenCalledTimes(2)
+      expect(updater.mock.calls[0]![0]).not.toBe(updater.mock.calls[1]![0])
+      expect(router.buildLocation({ to: '/users/{-$userId}' }).pathname).toBe(
+        '/users/123',
+      )
+      expect(
+        router.buildLocation({ to: '/users/{-$userId}', params: true })
+          .pathname,
+      ).toBe('/users/123')
+      expect(
+        router.buildLocation({ to: '/users/{-$userId}', params: false })
+          .pathname,
+      ).toBe('/users')
+    } finally {
+      history.destroy()
+    }
+  })
+
+  test('copies static param getters once without mutating inherited params', () => {
+    const rootRoute = new BaseRootRoute({})
+    const userRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/users/$userId',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([userRoute]),
+      history: createMemoryHistory({ initialEntries: ['/users/123'] }),
+    })
+    const getUserId = vi.fn(() => '456')
+    const params = {
+      get userId() {
+        return getUserId()
+      },
+    }
+
+    expect(
+      router.buildLocation({ to: '/users/$userId', params }).pathname,
+    ).toBe('/users/456')
+    expect(getUserId).toHaveBeenCalledOnce()
+    expect(
+      router.buildLocation({ to: '/users/$userId', params: true }).pathname,
+    ).toBe('/users/123')
+  })
+
   test('params: true should preserve current params', async () => {
     const rootRoute = new BaseRootRoute({})
     const userRoute = new BaseRoute({

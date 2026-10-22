@@ -104,6 +104,9 @@ resource ownership, and a promise settling is not permission to publish.
 - `src/ssr/handlerCallback.ts`, `src/ssr/ssr-server.ts`, and
   `src/ssr/transformStreamWithRouter.ts` transfer stream ownership and
   coordinate serialization, injection, abort, and cleanup.
+  `src/ssr/hydrationScripts.ts` owns the request-local hydration script queue
+  and framing; `src/ssr/htmlBoundaryScanner.ts` owns the byte matchers.
+  See `src/ssr/STREAMING.md` for the transport contract.
 - Framework `Transitioner` and `Matches` implementations acknowledge exact
   publications and render only through the selected boundary. Framework
   `RouterClient` and render-to-stream implementations complete hydration and
@@ -338,6 +341,11 @@ uses the active preload entry as its additional authority.
 ## `beforeLoad`: execution and hydration
 
 `beforeLoad` context is not a cache.
+
+Client `beforeLoad` only installs a cancellable wait for Promise results.
+Synchronous context still crosses an `await` before the cancellation check:
+a hook can queue a replacement navigation before its loader is planned.
+Promise detection assumes ordinary Promise behavior.
 
 A completed client preload never stores reusable `beforeLoad` output. When its
 loader data enters the route cache, the merged context is discarded; the

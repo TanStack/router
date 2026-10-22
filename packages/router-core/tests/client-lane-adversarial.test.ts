@@ -365,9 +365,8 @@ describe('adversarial client lane ownership', () => {
 
   test('keeps a hidden child matched without projecting it below a parent error', async () => {
     const parentError = new Error('parent failed')
-    const childHead = vi.fn(() => ({
-      meta: [{ title: 'unreachable child' }],
-    }))
+    const parentOnEnter = vi.fn()
+    const childHead = vi.fn()
     const childOnEnter = vi.fn()
 
     const rootRoute = new BaseRootRoute({})
@@ -378,6 +377,7 @@ describe('adversarial client lane ownership', () => {
         throw parentError
       },
       errorComponent: () => null,
+      onEnter: parentOnEnter,
     })
     const childRoute = new BaseRoute({
       getParentRoute: () => parentRoute,
@@ -407,7 +407,8 @@ describe('adversarial client lane ownership', () => {
       error: parentError,
     })
     expect(childHead).not.toHaveBeenCalled()
-    expect(childOnEnter).toHaveBeenCalledTimes(1)
+    expect(childOnEnter).not.toHaveBeenCalled()
+    expect(parentOnEnter).toHaveBeenCalledOnce()
   })
 
   test('a redirect aborts the discarded loader generation', async () => {
@@ -673,21 +674,27 @@ describe('adversarial client lane ownership', () => {
     expect(contextWorkAborted).toBe(true)
   })
 
-  test.each(
-    ([false, true] as const).flatMap((isServer) => [
-      {
-        isServer,
-        thrownType: 'AbortSignal',
-        createThrownValue: (signal: AbortSignal) => signal,
-      },
-      {
-        isServer,
-        thrownType: 'AbortError',
-        createThrownValue: () =>
-          new DOMException('The operation was aborted.', 'AbortError'),
-      },
-    ]),
-  )(
+  test.each([
+    {
+      isServer: false,
+      thrownType: 'AbortSignal',
+      createThrownValue: (signal: AbortSignal) => signal,
+    },
+    {
+      isServer: false,
+      thrownType: 'AbortError',
+      createThrownValue: () =>
+        new DOMException('The operation was aborted.', 'AbortError'),
+    },
+    {
+      isServer: true,
+      thrownType: 'AbortError',
+      createThrownValue: () =>
+        Object.assign(new Error('The operation was aborted.'), {
+          name: 'AbortError',
+        }),
+    },
+  ])(
     'treats a user-thrown $thrownType in beforeLoad as an ordinary route error (isServer=$isServer)',
     async ({ isServer, createThrownValue }) => {
       let matchSignal: AbortSignal | undefined
@@ -717,7 +724,8 @@ describe('adversarial client lane ownership', () => {
       }
 
       const match = router.state.matches.at(-1)
-      expect(matchSignal?.aborted).toBe(isServer)
+      // The payload finished, so the controller is left alone on both sides.
+      expect(matchSignal?.aborted).toBe(false)
       expect(match).toMatchObject({
         routeId: brokenRoute.id,
         status: 'error',

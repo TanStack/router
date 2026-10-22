@@ -1,5 +1,17 @@
 # @tanstack/router-utils
 
+## 1.162.4
+
+### Patch Changes
+
+- [#8709](https://github.com/TanStack/router/pull/8709) [`923d98b`](https://github.com/TanStack/router/commit/923d98b18b6cd90b6219591e20e86115dc61048e) - Bump `diff` dependency to `^9.0.0`.
+
+## 1.162.3
+
+### Patch Changes
+
+- [#8300](https://github.com/TanStack/router/pull/8300) [`49bcd4d`](https://github.com/TanStack/router/commit/49bcd4db743dba4a783d5533a42a0f97a5721292) - Refresh compatible build and runtime dependencies.
+
 ## 1.162.2
 
 ### Patch Changes

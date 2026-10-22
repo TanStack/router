@@ -18,3 +18,6 @@ node_modules
 **/src/routeTree.gen.ts
 packages/router-plugin/tests/**/test-files/**
 .nx/self-healing
+
+# Preserve the pinned upstream URL fixtures byte for byte.
+packages/router-core/tests/fixtures/wpt-url/urltestdata*.json

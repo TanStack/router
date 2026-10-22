@@ -38,38 +38,41 @@ const invoicesRoute = createRoute({
   component: () => <Outlet />,
 })
 
-const InvoicesIndex = () => {
-  const matches = useMatches<DefaultRouter>()
+const InvoicesIndex = Vue.defineComponent({
+  setup() {
+    const matches = useMatches<DefaultRouter>()
+    return () => {
+      const loaderDataMatches = matches.value.filter((match: any) =>
+        isMatch(match, 'loaderData.0.id'),
+      )
 
-  const loaderDataMatches = matches.value.filter((match: any) =>
-    isMatch(match, 'loaderData.0.id'),
-  )
+      const contextMatches = matches.value.filter((match: any) =>
+        isMatch(match, 'context.permissions'),
+      )
 
-  const contextMatches = matches.value.filter((match: any) =>
-    isMatch(match, 'context.permissions'),
-  )
+      const incorrectMatches = matches.value.filter((match: any) =>
+        isMatch(match, 'loaderData.6.id'),
+      )
 
-  const incorrectMatches = matches.value.filter((match: any) =>
-    isMatch(match, 'loaderData.6.id'),
-  )
-
-  return (
-    <div>
-      <section>
-        Loader Matches -{' '}
-        {loaderDataMatches.map((match: any) => match.fullPath).join(',')}
-      </section>
-      <section>
-        Context Matches -{' '}
-        {contextMatches.map((match: any) => match.fullPath).join(',')}
-      </section>
-      <section>
-        Incorrect Matches -{' '}
-        {incorrectMatches.map((match: any) => match.fullPath).join(',')}
-      </section>
-    </div>
-  )
-}
+      return (
+        <div>
+          <section>
+            Loader Matches -{' '}
+            {loaderDataMatches.map((match: any) => match.fullPath).join(',')}
+          </section>
+          <section>
+            Context Matches -{' '}
+            {contextMatches.map((match: any) => match.fullPath).join(',')}
+          </section>
+          <section>
+            Incorrect Matches -{' '}
+            {incorrectMatches.map((match: any) => match.fullPath).join(',')}
+          </section>
+        </div>
+      )
+    }
+  },
+})
 
 const invoicesIndexRoute = createRoute({
   getParentRoute: () => invoicesRoute,
@@ -396,35 +399,37 @@ describe('matching on different param types', () => {
     async ({ name, path, params, matchParams, nav }) => {
       const rootRoute = createRootRoute()
 
+      const RouteComponent = Vue.defineComponent({
+        setup() {
+          const routeParams = Route.useParams()
+
+          const matchRoute = useMatchRoute()
+
+          const matchRouteMatch = matchRoute({
+            to: path,
+          })
+          return () => (
+            <div>
+              <h1 data-testid="heading">{name}</h1>
+              <div>
+                Params{' '}
+                <span data-testid="params">
+                  {JSON.stringify(routeParams.value)}
+                </span>
+                Matches{' '}
+                <span data-testid="matches">
+                  {JSON.stringify(matchRouteMatch.value)}
+                </span>
+              </div>
+            </div>
+          )
+        },
+      })
       const Route = createRoute({
         getParentRoute: () => rootRoute,
         path,
         component: RouteComponent,
       })
-
-      function RouteComponent() {
-        const routeParams = Route.useParams()
-        const matchRoute = useMatchRoute()
-        const matchRouteMatch = matchRoute({
-          to: path,
-        })
-
-        return (
-          <div>
-            <h1 data-testid="heading">{name}</h1>
-            <div>
-              Params{' '}
-              <span data-testid="params">
-                {JSON.stringify(routeParams.value)}
-              </span>
-              Matches{' '}
-              <span data-testid="matches">
-                {JSON.stringify(matchRouteMatch.value)}
-              </span>
-            </div>
-          </div>
-        )
-      }
 
       const router = createRouter({
         routeTree: rootRoute.addChildren([Route]),

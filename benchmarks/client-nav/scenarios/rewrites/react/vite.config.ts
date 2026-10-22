@@ -3,6 +3,7 @@ import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import codspeedPlugin from '@codspeed/vitest-plugin'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
+import { cpuSimulationExecArgv } from '../../../../cpu-simulation'
 
 const rootDir = fileURLToPath(new URL('.', import.meta.url))
 
@@ -32,6 +33,7 @@ export default defineConfig({
     },
   },
   test: {
+    execArgv: cpuSimulationExecArgv(),
     name: '@benchmarks/client-nav rewrites (react)',
     watch: false,
     environment: 'jsdom',

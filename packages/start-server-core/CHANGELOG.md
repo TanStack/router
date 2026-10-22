@@ -1,5 +1,184 @@
 # @tanstack/start-server-core
 
+## 1.169.44
+
+### Patch Changes
+
+- [#8212](https://github.com/TanStack/router/pull/8212) [`18154b1`](https://github.com/TanStack/router/commit/18154b1c45454a70aa77e9d6d27c8a6e0733d031) - Render generated script preloads (`modulepreload`, or `preload as="script"` for IIFE output) with `fetchPriority="low"` and forward it into static Early Hints, so they no longer compete with render-blocking stylesheets, fonts and images.
+
+- Updated dependencies [[`18154b1`](https://github.com/TanStack/router/commit/18154b1c45454a70aa77e9d6d27c8a6e0733d031)]:
+  - @tanstack/router-core@1.171.38
+  - @tanstack/start-client-core@1.170.38
+  - @tanstack/start-storage-context@1.167.40
+
+## 1.169.43
+
+### Patch Changes
+
+- [#8710](https://github.com/TanStack/router/pull/8710) [`71d9694`](https://github.com/TanStack/router/commit/71d9694da6346fbece2cda4ecde92b0b12a7ee08) - Update `fetchdts` to `^0.2.0`. The typed request and response header helpers keep the same header names and value types.
+
+## 1.169.42
+
+### Patch Changes
+
+- [#8451](https://github.com/TanStack/router/pull/8451) [`740b0ce`](https://github.com/TanStack/router/commit/740b0ce17737d1f7398740136acdbeabe80df7d8) - Skip request middleware bookkeeping when no request middleware is configured, and stop copying serialization adapters when the router adds none.
+
+  Server route handlers and route middleware now receive the router's decoded pathname, the same one used for route matching. Characters that would change how the path is read, such as `%2F`, `%3F`, and `%23`, stay encoded.
+
+- [#8441](https://github.com/TanStack/router/pull/8441) [`d6ba115`](https://github.com/TanStack/router/commit/d6ba115d5751c75e20943f0062577cf17b446d82) - Reuse the parsed request location during SSR instead of repeating input rewrites. Match server routes against the app router's parsed pathname while preserving encoded pathnames for server handlers and middleware.
+
+- Updated dependencies [[`740b0ce`](https://github.com/TanStack/router/commit/740b0ce17737d1f7398740136acdbeabe80df7d8), [`d6ba115`](https://github.com/TanStack/router/commit/d6ba115d5751c75e20943f0062577cf17b446d82)]:
+  - @tanstack/start-storage-context@1.167.39
+  - @tanstack/router-core@1.171.37
+  - @tanstack/start-client-core@1.170.37
+
+## 1.169.41
+
+### Patch Changes
+
+- [#7588](https://github.com/TanStack/router/pull/7588) [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5) - Return 400 Bad Request for malformed percent-encoded request pathnames before running server entry callbacks. Preserve valid encoded paths and query handling.
+
+- [#7588](https://github.com/TanStack/router/pull/7588) [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5) - Reduce request middleware overhead, reuse loaded entries and transport header requirements, and avoid unnecessary URL normalization for server functions. Preserve response helper writes made during body cancellation and SSR cleanup.
+
+  Avoid allocating absent middleware headers and reply context, and construct RPC redirects with their final response state. Preserve middleware accessor evaluation and the documented undefined value for absent `sendContext`.
+
+  Reduce synchronous server-function response overhead while preserving cancellation cleanup and middleware response mutations.
+
+- [#7588](https://github.com/TanStack/router/pull/7588) [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5) - Keep streaming a page when request middleware returns a response that reads the page body, such as a copy made through a wrapped global `Response`, a copy in Bun, or a body piped through a transform. Start now disposes a replaced page stream only when nothing reads it. `transferResponseBodyOwnership` is removed: return the derived response directly.
+
+- [#7588](https://github.com/TanStack/router/pull/7588) [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5) - Let request middleware read the body of a `HEAD` response, and strip it when the response leaves the pipeline. Start no longer applies `Content-Encoding`, `Content-Length`, or other framing headers set through response helpers to error bodies and serialized server-function replies that it builds itself. A response that middleware assigns to `result.response` is now disposed when the middleware returns another response.
+
+- [#7588](https://github.com/TanStack/router/pull/7588) [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5) - Remove the built-in `useSession` API. Applications choose a session library, such as iron-session, and save or destroy sessions explicitly before returning or redirecting. Connect a cookie adapter through `getCookie` and `setCookie`, or append serialized cookies with `appendResponseHeader('set-cookie', cookie)`. Existing session cookies require a deliberate migration or signing in again with a new cookie name.
+
+  `createServerEntry` keeps the complete callback, including custom error handling, inside the request context and converts errors that escape it. The built-in entry still converts errors automatically. Raw `createStartHandler` handlers now rethrow the original error. For custom reporting, catch inside `createServerEntry`, then rethrow for default conversion or return `handleStartError(error)` to preserve response-helper status, headers, and cookies. Return an explicit `Response` when choosing a custom error payload.
+
+  Response helpers now apply consistently across server routes, SSR, server functions, redirects, errors, and middleware response replacements. Helper setters override returned values; cookie helpers preserve independent cookies and replace matching cookie identities. Use `appendResponseHeader('set-cookie', cookie)` when adding a serialized cookie without replacing other cookies. Changed responses receive copied headers and reuse the body stream, so applications should inspect the response returned by Start rather than relying on mutation of the original response.
+
+- Updated dependencies [[`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5), [`550f478`](https://github.com/TanStack/router/commit/550f47881070c0558a87e1acce7f38fbc85b9549), [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5)]:
+  - @tanstack/router-core@1.171.36
+  - @tanstack/start-storage-context@1.167.38
+  - @tanstack/start-client-core@1.170.36
+
+## 1.169.40
+
+### Patch Changes
+
+- Updated dependencies [[`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb), [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb), [`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`663282b`](https://github.com/TanStack/router/commit/663282b0ebbc494aee3595ed95867ee29d01938e)]:
+  - @tanstack/history@1.162.5
+  - @tanstack/router-core@1.171.35
+  - @tanstack/start-client-core@1.170.35
+  - @tanstack/start-storage-context@1.167.37
+
+## 1.169.39
+
+### Patch Changes
+
+- [#8573](https://github.com/TanStack/router/pull/8573) [`d521abd`](https://github.com/TanStack/router/commit/d521abd71c69f1ff010bb3def4d417cb5fa058cb) - Align server function request and response handling.
+
+- Updated dependencies [[`d521abd`](https://github.com/TanStack/router/commit/d521abd71c69f1ff010bb3def4d417cb5fa058cb)]:
+  - @tanstack/router-core@1.171.34
+  - @tanstack/start-client-core@1.170.34
+  - @tanstack/start-storage-context@1.167.36
+
+## 1.169.38
+
+### Patch Changes
+
+- [#8297](https://github.com/TanStack/router/pull/8297) [`488d046`](https://github.com/TanStack/router/commit/488d046a907d330429e2c807ef95326dad87480f) - Update `seroval` and `seroval-plugins` from 1.6.2 to 1.6.7. This picks up the typed array length guard, the `maxBase64Length` and `compactArrayBufferViews` options, and the `isStream` export.
+
+- [#8434](https://github.com/TanStack/router/pull/8434) [`e81845f`](https://github.com/TanStack/router/commit/e81845ff1e4fc66d4e4a87f086be65906f7adb94) - Apply route path parameter parsers, including parent-route parsers, before invoking server route handlers so runtime parameters agree with their inferred types.
+
+- Updated dependencies [[`488d046`](https://github.com/TanStack/router/commit/488d046a907d330429e2c807ef95326dad87480f), [`0c1b5e3`](https://github.com/TanStack/router/commit/0c1b5e38de71b7e81bbf1fd81c73ee0cd68ffe47), [`3cdd1af`](https://github.com/TanStack/router/commit/3cdd1af04b3e2d6f777797ee7bddf285318dd9d2), [`76a7c0b`](https://github.com/TanStack/router/commit/76a7c0bfadb42d5f7fe7b9e1748acc7333178c91)]:
+  - @tanstack/router-core@1.171.33
+  - @tanstack/start-client-core@1.170.33
+  - @tanstack/start-storage-context@1.167.35
+
+## 1.169.37
+
+### Patch Changes
+
+- Updated dependencies [[`cecae54`](https://github.com/TanStack/router/commit/cecae5440b8edaea77c5448fe3d74bbd20fe10a4), [`0103578`](https://github.com/TanStack/router/commit/01035782e53af9b929c784b94ddd64b95efb89c7), [`ce10dcd`](https://github.com/TanStack/router/commit/ce10dcd4d9d3d23738744e453205aad5c6dbd716), [`84936cc`](https://github.com/TanStack/router/commit/84936cc04530bba11059c57b293a794922bbc5aa), [`bbd2336`](https://github.com/TanStack/router/commit/bbd2336b8446de3f7dd85070895e7cf43980183e)]:
+  - @tanstack/router-core@1.171.32
+  - @tanstack/start-client-core@1.170.32
+  - @tanstack/start-storage-context@1.167.34
+
+## 1.169.36
+
+### Patch Changes
+
+- [#8204](https://github.com/TanStack/router/pull/8204) [`cbbfbe3`](https://github.com/TanStack/router/commit/cbbfbe37ab1dbe328c343cb437c5660769cc9f26) - Stream large deferred SSR hydration payloads through a backpressure-aware router transport, fail known setup errors before response creation, and close cancelled or expired transforms safely.
+
+  Start now cancels discarded middleware and HEAD response bodies, including plain streams and derived branches.
+
+  Server-function raw streams share one ordered response. Arbitrary or sequential consumption can require potentially unbounded buffering of unread data on the client. Cancelling one raw stream discards it locally, while aborting the whole call cancels the response and server work. Consume streams concurrently, cancel unused streams promptly, or use separate calls when independent backpressure is required. A raw stream that exceeds its unread-byte limit now fails alone; sibling streams and the JSON result keep flowing.
+
+  The JSON wire shape of a `RawStream` server-function argument changed. Clients and servers must run matching versions for requests that pass a `RawStream`.
+
+  The frame-protocol constants (`FRAME_TYPE_*`, `MAX_FRAME_PAYLOAD_SIZE`, `MAX_FRAMED_STREAMS`) moved from the `@tanstack/start-client-core` root to the `@tanstack/start-client-core/client-rpc` subpath.
+
+  Router requests whose `Accept` header allows neither `text/html` nor `*/*` now receive `406 Not Acceptable` instead of `500`.
+
+  Framework adapters share the body `<Scripts>` composition (`getSsrBodyScriptParts`, `composeSsrBodyScripts`) and the eager HTML response wrapper (`renderSsrHtmlResponse`) from `@tanstack/router-core`.
+
+  Solid SSR now emits one document type and renders late lazy errors through route boundaries. A Solid `<Await>` without a `fallback` no longer holds the streamed shell; it renders inside the nearest `<Suspense>` boundary like React and Vue, and now renders falsy resolved values.
+
+  Static server functions decode cached `RawStream` values with the client deserializer plugins.
+
+  SSR Query integrations now keep request cleanup and stream ownership aligned with the router lifecycle.
+
+- Updated dependencies [[`bc80866`](https://github.com/TanStack/router/commit/bc80866f6d6eb3e6f152ee3682eb783c96403e83), [`e561fa1`](https://github.com/TanStack/router/commit/e561fa1d7118e3d29267cc3b6ce1130d6581f387), [`cbbfbe3`](https://github.com/TanStack/router/commit/cbbfbe37ab1dbe328c343cb437c5660769cc9f26), [`a1c8d1a`](https://github.com/TanStack/router/commit/a1c8d1aa759c227eae9601a030321ac4c53c24bd), [`cbbfbe3`](https://github.com/TanStack/router/commit/cbbfbe37ab1dbe328c343cb437c5660769cc9f26), [`a0b2ad9`](https://github.com/TanStack/router/commit/a0b2ad99aee64af08d16b0e4ff26b3ba42a99f0a), [`1ca361b`](https://github.com/TanStack/router/commit/1ca361ba52a627d2f76ab33323bd83d1d0aa65a3)]:
+  - @tanstack/router-core@1.171.31
+  - @tanstack/start-client-core@1.170.31
+  - @tanstack/start-storage-context@1.167.33
+
+## 1.169.35
+
+### Patch Changes
+
+- [#8354](https://github.com/TanStack/router/pull/8354) [`9872d2a`](https://github.com/TanStack/router/commit/9872d2ac39fc05f4ef6566c0b421f71ceb115244) - Use lightweight request history for SSR and make server navigation a no-op. Use redirect() to issue HTTP redirects. Server hrefs use the same normalization as browser history to handle protocol-relative URLs and control characters.
+
+- Updated dependencies [[`d76a332`](https://github.com/TanStack/router/commit/d76a33284bc0668f7af4c972a6d32bd0f42b22a6), [`b747fb8`](https://github.com/TanStack/router/commit/b747fb8891b3347b1ffdfe0fa81e7d15049cb776), [`6cfb1e8`](https://github.com/TanStack/router/commit/6cfb1e8b564be282584765352250bf61747895ed), [`700a714`](https://github.com/TanStack/router/commit/700a714c5fb64199b4edfaa3273d230c9894e274), [`700a714`](https://github.com/TanStack/router/commit/700a714c5fb64199b4edfaa3273d230c9894e274), [`8fff7fa`](https://github.com/TanStack/router/commit/8fff7fa1f2e6f061916b0bf5e0ec486b2e732f94), [`f021f6d`](https://github.com/TanStack/router/commit/f021f6d1c6dce6c9b54d70766f1d636d8fd9e184), [`ae68535`](https://github.com/TanStack/router/commit/ae68535929043607d4ee9438f8ae401f3a064862), [`7e349c3`](https://github.com/TanStack/router/commit/7e349c3071ef7a346698d320fc0989998ad55734), [`873c830`](https://github.com/TanStack/router/commit/873c830ccb2610a864ee697250e10fcc99772ffa), [`7e349c3`](https://github.com/TanStack/router/commit/7e349c3071ef7a346698d320fc0989998ad55734), [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef), [`e9396c9`](https://github.com/TanStack/router/commit/e9396c928945d1dd6fd3f3bd8052143794f688b5), [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef), [`f151ab0`](https://github.com/TanStack/router/commit/f151ab018eede64ae849b77e68f3cdf31cb95cc5), [`bc57fa3`](https://github.com/TanStack/router/commit/bc57fa3f12450cf34c731450947c7c8f1ea05e58), [`9872d2a`](https://github.com/TanStack/router/commit/9872d2ac39fc05f4ef6566c0b421f71ceb115244), [`d76a332`](https://github.com/TanStack/router/commit/d76a33284bc0668f7af4c972a6d32bd0f42b22a6), [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef), [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef), [`7e349c3`](https://github.com/TanStack/router/commit/7e349c3071ef7a346698d320fc0989998ad55734), [`9448caa`](https://github.com/TanStack/router/commit/9448caa03a89076b9770631c356c0cc502802c09), [`e9396c9`](https://github.com/TanStack/router/commit/e9396c928945d1dd6fd3f3bd8052143794f688b5), [`700a714`](https://github.com/TanStack/router/commit/700a714c5fb64199b4edfaa3273d230c9894e274), [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef), [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef)]:
+  - @tanstack/router-core@1.171.30
+  - @tanstack/history@1.162.4
+  - @tanstack/start-client-core@1.170.30
+  - @tanstack/start-storage-context@1.167.32
+
+## 1.169.34
+
+### Patch Changes
+
+- [#8340](https://github.com/TanStack/router/pull/8340) [`d914b08`](https://github.com/TanStack/router/commit/d914b085bb4bf29ec18a531201e377c10681b661) - Fix `setResponseHeaders` to iterate `Headers` entries, replace existing values, and preserve separate `Set-Cookie` values.
+
+## 1.169.33
+
+### Patch Changes
+
+- [#8308](https://github.com/TanStack/router/pull/8308) [`9c1871c`](https://github.com/TanStack/router/commit/9c1871ccc88bc1157186b8b460941a304ec740b8) - Validate navigation and redirect destinations, keep ambiguous relative URLs on the current origin, and constrain prerender requests and output paths. Prevent redirect headers from appearing in serialized server function response bodies.
+
+  Preserve native form HTTP redirects, route error handling and masks for document redirects, and per-navigation destinations for shared loader redirects. Avoid redundant origin parsing and reduce link styling and server-rendering work. Configured origins must already be normalized.
+
+  Keep blocked-link inactive props consistent during React hydration, honor explicit redirect Location headers before checking route options, and refresh Vue link state when destinations become internal. Reuse the protocol-relative URL check while parsing redirect schemes once.
+
+  Reduce React link bundle size by sharing pathname comparisons, state-prop selection, and element creation.
+
+  Share normalized pathname comparisons in Solid and Vue links to reduce bundle size.
+
+- Updated dependencies [[`f9836f1`](https://github.com/TanStack/router/commit/f9836f16f0e25b0a8495f5e01e3f303b1cbc8725), [`9c1871c`](https://github.com/TanStack/router/commit/9c1871ccc88bc1157186b8b460941a304ec740b8), [`9871c06`](https://github.com/TanStack/router/commit/9871c0625806001d6bf373524821a00303438a91), [`0654c0a`](https://github.com/TanStack/router/commit/0654c0a1a427db24d9af13c1d6ad1217a588c0c9)]:
+  - @tanstack/router-core@1.171.29
+  - @tanstack/history@1.162.3
+  - @tanstack/start-client-core@1.170.29
+  - @tanstack/start-storage-context@1.167.31
+
+## 1.169.32
+
+### Patch Changes
+
+- Updated dependencies [[`edf0e16`](https://github.com/TanStack/router/commit/edf0e16ebfe82ec6e8f68f403a1fda8de9e28889), [`2f20c00`](https://github.com/TanStack/router/commit/2f20c00224c5ba63467551914e0c37012588c4c2), [`28a5e45`](https://github.com/TanStack/router/commit/28a5e4504e4ea5cb1480667a4bea2588a53e110f), [`08eff50`](https://github.com/TanStack/router/commit/08eff50c447a154a3373909009e9e4375cea17ce), [`216c0c4`](https://github.com/TanStack/router/commit/216c0c48036fd1a33163b70dcabfed2b893808b0), [`2f91503`](https://github.com/TanStack/router/commit/2f9150309bc472f4a75cbe98adcdb50c76b12c7a), [`f0b5eda`](https://github.com/TanStack/router/commit/f0b5eda544606686a8a8d675a686ca1366428b96), [`50eafca`](https://github.com/TanStack/router/commit/50eafcaebbbedb6fde3b2816de7a0ace8cde4832), [`0497cae`](https://github.com/TanStack/router/commit/0497caeef3ff7e1c1c6080eca38bca24e7ec320b), [`ee28348`](https://github.com/TanStack/router/commit/ee283480dfa51150a2e0b096a6eff94a89ff8b3f), [`9035abc`](https://github.com/TanStack/router/commit/9035abc41163d83409ef582f7743a3c7be57dd93), [`c18e690`](https://github.com/TanStack/router/commit/c18e69081475a7c98f9d40bd0fe6da78ccb84598)]:
+  - @tanstack/router-core@1.171.28
+  - @tanstack/history@1.162.2
+  - @tanstack/start-client-core@1.170.28
+  - @tanstack/start-storage-context@1.167.30
+
 ## 1.169.31
 
 ### Patch Changes

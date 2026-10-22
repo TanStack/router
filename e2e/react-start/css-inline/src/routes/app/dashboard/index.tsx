@@ -3,6 +3,9 @@ import { NestedPanel } from '~/components/NestedPanel'
 import styles from '~/styles/dashboard-index.module.css'
 
 export const Route = createFileRoute('/app/dashboard/')({
+  head: () => ({
+    meta: [{ title: 'Inline CSS dashboard' }],
+  }),
   component: DashboardIndex,
 })
 

@@ -110,6 +110,11 @@ export interface NormalizedOutputDirectories {
 export interface NormalizedClientChunk {
   fileName: string
   isEntry: boolean
+  /**
+   * Chunks this chunk imports statically. Rolldown and Rsbuild report direct
+   * imports only, so consumers must walk the graph to reach transitive chunks
+   * instead of treating the list as complete.
+   */
   imports: Array<string>
   dynamicImports: Array<string>
   css: Array<string>
@@ -120,8 +125,6 @@ export interface NormalizedClientChunk {
 export interface NormalizedClientBuild {
   entryChunkFileName: string
   chunksByFileName: ReadonlyMap<string, NormalizedClientChunk>
-  chunkFileNamesByRouteFilePath: ReadonlyMap<string, ReadonlyArray<string>>
-  cssFilesBySourcePath: ReadonlyMap<string, ReadonlyArray<string>>
   cssContentByFileName?: ReadonlyMap<string, string>
 }
 

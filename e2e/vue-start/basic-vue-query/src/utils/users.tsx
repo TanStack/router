@@ -1,4 +1,6 @@
 import { queryOptions } from '@tanstack/vue-query'
+import { createIsomorphicFn } from '@tanstack/vue-start'
+import { getRequestUrl } from '@tanstack/vue-start/server'
 import axios from 'redaxios'
 
 export type User = {
@@ -7,17 +9,16 @@ export type User = {
   email: string
 }
 
-const PORT =
-  import.meta.env.VITE_SERVER_PORT || process.env.VITE_SERVER_PORT || 3000
-
-export const DEPLOY_URL = `http://localhost:${PORT}`
+const getOrigin = createIsomorphicFn()
+  .server(() => getRequestUrl().origin)
+  .client(() => window.location.origin)
 
 export const usersQueryOptions = () =>
   queryOptions({
     queryKey: ['users'],
     queryFn: () =>
       axios
-        .get<Array<User>>(DEPLOY_URL + '/api/users')
+        .get<Array<User>>(getOrigin() + '/api/users')
         .then((r) => r.data)
         .catch(() => {
           throw new Error('Failed to fetch users')
@@ -29,7 +30,7 @@ export const userQueryOptions = (id: string) =>
     queryKey: ['users', id],
     queryFn: () =>
       axios
-        .get<User>(DEPLOY_URL + '/api/users/' + id)
+        .get<User>(getOrigin() + '/api/users/' + id)
         .then((r) => r.data)
         .catch(() => {
           throw new Error('Failed to fetch user')
