@@ -1,3 +1,3 @@
 import { createFileRoute } from '@tanstack/react-router'
 // @ts-nocheck
-export const Route = createFileRoute("/blog_/stats")()
+export const Route = createFileRoute('/blog_/stats')()
