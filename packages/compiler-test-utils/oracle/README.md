@@ -116,8 +116,16 @@ Caveats:
     `importProtection/rule-outcomes`, `importProtection/exemptions`, `importProtection/known-bugs-dev`,
     `importProtection/v2-alias`, `importProtection/v2-type-only`, `known-bugs-dev-server`): one or two rows in
     every start-plugin-core integration run at a load of 15 to 25 on beetle (0 at F-F's commit under the same load),
-    one row in 3 runs on an idle beetle. Held by the #34 ruling: no workaround.
+    one row in 3 runs on an idle beetle. V-G1 measured less (beetle, three trees in parallel): 1 row in 6 runs at a
+    load of 20 to 35, 4 rows in 15 runs at 30 to 110, and 2 of 6 filtered local runs (`-t`) whose dev servers close
+    right after they start; every one with the #34 signature (`ENOTEMPTY` removing `node_modules/.vite` or
+    `.vite/deps_temp_*`). Held by the #34 ruling: no workaround.
   - Re-run a file that failed only on these alone before reading it as a compiler failure.
+  - Not a flake of the tests: at an extreme load (80 to 110 on beetle) V-G1 saw `known-bugs-start-compiler` "SSR: a
+    server fn that only a middleware .server() of another module calls > is callable, the app files written
+    reversed" fail once in 15 runs with "Server function info not found". That is today's compiler losing the #7213
+    race (Vite generates the server fn resolver before it has found that server fn; KNOWN-BUGS says Vite finds it
+    first, which holds only on timing). Not seen in 20 runs of that file at a load of about 50.
 - **Known gaps of the final audit (F-F), not fixed:**
   - One implementation-lane file of start-plugin-core, `integration/outside-compiler-corpus/start-build-warnings.test.ts`,
     builds Start's plugin from the core factory with external compiler transforms (`coreStartPlugins` of
