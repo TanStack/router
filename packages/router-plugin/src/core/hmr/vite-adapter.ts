@@ -22,6 +22,10 @@ export function createViteHmrStatement(
   const routeIdFallback =
     typeof opts.routeId === 'string' ? JSON.stringify(opts.routeId) : 'Route.id'
 
+  // The router holds the `Route` this module exported first, so only that
+  // route may be patched. Matching by id alone would also patch a route from
+  // another module, e.g. a Module Federation remote whose `__root__` or `/`
+  // shares an id with the host's.
   return [
     template.statement(
       `
@@ -29,15 +33,15 @@ if (import.meta.hot) {
   const hot = import.meta.hot
   const hotData = hot.data ??= {}
   const handleRouteUpdate = ${handleRouteUpdateCode}
+  hotData['tsr-route'] ??= Route
+  const isOwnRoute = (routeId) =>
+    typeof window !== 'undefined' &&
+    window.__TSR_ROUTER__?.routesById?.[routeId] === hotData['tsr-route']
   const initialRouteId = ${routeIdFallback} ?? hotData['tsr-route-id']
   if (initialRouteId) {
     hotData['tsr-route-id'] = initialRouteId
   }
-  const existingRoute =
-    typeof window !== 'undefined' && initialRouteId
-      ? window.__TSR_ROUTER__?.routesById?.[initialRouteId]
-      : undefined
-  if (initialRouteId && existingRoute && existingRoute !== Route) {
+  if (initialRouteId && hotData['tsr-route'] !== Route && isOwnRoute(initialRouteId)) {
     handleRouteUpdate(initialRouteId, Route)
     hotData['tsr-route-update-handled'] = Route
   }
@@ -51,7 +55,9 @@ if (import.meta.hot) {
         delete hotData['tsr-route-update-handled']
         return
       }
-      handleRouteUpdate(routeId, newModule.Route)
+      if (isOwnRoute(routeId)) {
+        handleRouteUpdate(routeId, newModule.Route)
+      }
     }
     })
 }
