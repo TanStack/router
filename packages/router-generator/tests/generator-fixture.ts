@@ -1,9 +1,9 @@
 /**
  * Shared test helper: the generator fixtures (tests/generator/<name>), each
  * an app with its own configuration, shared by generator.test.ts (routes)
- * and integration/fixture-types-*.test.ts (types). A fixture runs in its own
- * directory or in a copy (`copyFixture`); the expected routes are in
- * generator-fixtures.ts.
+ * and integration/fixture-types-*.test.ts (types). A fixture runs in a copy
+ * (`copyFixture`): the generator and `prepareFixture` write into the
+ * fixture's directory. The expected routes are in generator-fixtures.ts.
  */
 import { existsSync } from 'node:fs'
 import fs from 'node:fs/promises'
@@ -71,6 +71,22 @@ export const customTemplates = {
     '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
     'function RouteComponent() { return "Hello %%tsrPath%%!" };\n',
   ].join(''),
+}
+
+/**
+ * The `types` project of `test:unit` type-checks the route tree of the
+ * `nested` fixture next to its routes (`generator/nested/tests.test-d.ts`,
+ * held as it is by the pending ruling Q2): the tree generated in a copy of
+ * the fixture is written there (`routeTree.gen.ts`, ignored by git). The
+ * only file a run of these tests writes into this package.
+ */
+export async function keepTreeForTypeTests(name: string, config: Config) {
+  if (name === 'nested') {
+    await fs.copyFile(
+      config.generatedRouteTree,
+      join(fixtureDir(name), 'routeTree.gen.ts'),
+    )
+  }
 }
 
 /**
@@ -213,7 +229,7 @@ export function fixtureConfig(name: string, dir = fixtureDir(name)): Config {
  * earlier runs (gitignored, possibly by an older version of this helper)
  * are removed first: a leftover file would be a route of the fixture.
  */
-export async function prepareFixture(name: string, dir = fixtureDir(name)) {
+export async function prepareFixture(name: string, dir: string) {
   const before: Record<string, string> = {}
   if (name === 'file-modification') {
     const routePath = (file: string) => join(dir, 'routes', '(test)', file)

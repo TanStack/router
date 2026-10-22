@@ -33,7 +33,7 @@ import type { PluginOption } from 'vite'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
-/** The temporary apps live in `tests/`, like the other harnesses'. */
+/** The temporary apps stand in for apps in `tests/`, like the other harnesses'. */
 const appsDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
 
 /**

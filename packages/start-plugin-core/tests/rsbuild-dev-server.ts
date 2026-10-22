@@ -11,7 +11,8 @@
  * `@tanstack/react-start` is the real package (`startRuntimeLinks` of the
  * build harness). `runInClient()` and `runRsbuildClient()` run the emitted
  * client code in a real browser page of the dev server (started with
- * `clientPage`). The temporary apps live in this directory.
+ * `clientPage`). The temporary apps stand in for apps in this directory
+ * (`@tanstack/compiler-test-utils/app-directory`).
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'

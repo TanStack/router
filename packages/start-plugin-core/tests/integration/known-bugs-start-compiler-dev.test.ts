@@ -6,11 +6,12 @@
  * Known Start compiler bugs. Each test asserts correct behaviour for a bug on
  * main and is marked .fails; remove .fails when the bug is fixed.
  */
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { createServer, isRunnableDevEnvironment } from 'vite'
 import { describe, expect, test, vi } from 'vitest'
+import { createAppDirectory } from '@tanstack/compiler-test-utils/app-directory'
 import { linkStartRuntime } from '../build-harness'
 import {
   callServerFn,
@@ -81,8 +82,8 @@ describe('Vite dev server', () => {
     code: string,
     files: Record<string, string> = {},
   ) {
-    // Keep the temporary project inside the package so dependencies resolve.
-    const root = await mkdtemp(path.join(__dirname, '.dev-transform-'))
+    // A temporary project whose dependencies resolve as from this directory
+    const root = await createAppDirectory(__dirname, '.dev-transform-')
     let server: Awaited<ReturnType<typeof createServer>> | undefined
     let lastActivity = performance.now()
     const active = () => {
@@ -252,7 +253,7 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
    * or on the same server. Returns the result or the error message.
    */
   async function callServerFnId(fresh: boolean) {
-    const root = await mkdtemp(path.join(__dirname, '.dev-server-fn-'))
+    const root = await createAppDirectory(__dirname, '.dev-server-fn-')
     const servers: Array<Awaited<ReturnType<typeof createServer>>> = []
     try {
       for (const [file, code] of Object.entries({

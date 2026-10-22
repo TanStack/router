@@ -2,6 +2,14 @@ import { configDefaults, defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/vite-config'
 import packageJson from './package.json'
 
+// Under Vitest: no file cache of jiti, which loads the route configuration
+// files of the apps for the generator (virtual route configs). Its cache is
+// the `node_modules/.cache` of the working directory: this package's. No
+// outcome change.
+if (process.env.VITEST) {
+  process.env.JITI_FS_CACHE ??= 'false'
+}
+
 /**
  * Implementation tests: outside the compiler test corpus (see
  * packages/compiler-test-utils/AGENTS.md, "Corpus and implementation tests").

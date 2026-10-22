@@ -25,7 +25,8 @@
  * `dev.client.logLevel` are `silent`).
  *
  * Plugin-agnostic: the caller supplies the Rsbuild plugins and the directory
- * the apps live in (where their imports resolve).
+ * the apps stand in for (where their imports resolve: see
+ * `./app-directory`).
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { mkdir, readFile, readdir, rename, rm, utimes } from 'node:fs/promises'
@@ -211,8 +212,8 @@ export interface RsbuildDevServer {
 }
 
 /**
- * Writes an app to a temporary directory in `options.dir` and starts an
- * Rsbuild dev server on it, without listening on a port; resolves after the
+ * Writes an app (`createApp`: it stands in for `options.dir`) and starts
+ * an Rsbuild dev server on it, without listening on a port; resolves after the
  * first compile. `close()`, which `registerCleanup` also receives, stops the
  * server and removes the directory.
  */

@@ -15,8 +15,8 @@ import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
 import { expect, onTestFinished, test, vi } from 'vitest'
 import { rootRouteOf } from '../dev-server'
 
-// The temporary apps live in the tests directory, so their imports resolve
-// to this package's dependencies.
+// The temporary apps stand in for apps in the tests directory, so their
+// imports resolve to this package's dependencies.
 const harnessDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
 const timeout = 30_000
 

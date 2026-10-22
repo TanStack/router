@@ -25,7 +25,8 @@
  *
  * The dev server runs in middleware mode (no port) unless `client` is set:
  * then it listens, as `vite dev` does, for the page. The app's bare
- * imports resolve from `dir`, as for every harness of this package.
+ * imports resolve as from `dir` (`./app-directory`), as for every harness
+ * of this package.
  *
  * The Rsbuild counterpart is `./rsbuild-plugin-host`.
  */
@@ -290,7 +291,7 @@ function outputRecorder(outputs: Record<string, HostBuildEnvironment>): Plugin {
 }
 
 /**
- * Writes an app (`files`, in `dir`) and hosts `plugins` on it: starts the
+ * Writes an app (`files`, standing in for `dir`) and hosts `plugins` on it: starts the
  * dev server (unless `serve: false`) and resolves once it watches the app.
  * `close()`, which `registerCleanup` also receives, closes it and removes
  * the app.

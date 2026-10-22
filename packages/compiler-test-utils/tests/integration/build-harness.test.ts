@@ -5,7 +5,7 @@
  * side-effect hints reach the bundler.
  */
 import { existsSync } from 'node:fs'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, onTestFinished, test } from 'vitest'
@@ -16,6 +16,7 @@ import {
   describeBuild,
   originalFrameOf,
 } from '../../src/build-harness'
+import { createAppDirectory } from '../../src/app-directory'
 import { findDiagnostics } from '../../src/diagnostics'
 import { unboundNames } from '../../src/validate-module'
 import type {
@@ -668,7 +669,7 @@ export function read() {
      * test.
      */
     async function dependency(files: Record<string, string>) {
-      const directory = await mkdtemp(path.join(testsDir, '.dependency-'))
+      const directory = await createAppDirectory(testsDir, '.dependency-')
       onTestFinished(() => rm(directory, { recursive: true, force: true }))
       await writeFile(
         path.join(directory, 'package.json'),
@@ -889,7 +890,7 @@ export const used = () => flag
 describe('dangling names in Vite production client builds', () => {
   /** A dependency linked into the app, as in the webpack/Rspack block. */
   async function dependency(files: Record<string, string>) {
-    const directory = await mkdtemp(path.join(testsDir, '.dependency-'))
+    const directory = await createAppDirectory(testsDir, '.dependency-')
     onTestFinished(() => rm(directory, { recursive: true, force: true }))
     await writeFile(
       path.join(directory, 'package.json'),

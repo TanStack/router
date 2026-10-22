@@ -45,7 +45,7 @@ import type { PluginOption } from 'vite'
 const timeout = 60_000
 const compileTimeout = timeout
 
-/** The directory the apps live in (where their imports resolve). */
+/** The directory the apps stand in for (where their imports resolve). */
 const testsDir = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '../..',

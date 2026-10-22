@@ -1,6 +1,7 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { createAppDirectory } from '@tanstack/compiler-test-utils/app-directory'
 import { runNodeProgram } from '@tanstack/compiler-test-utils/run-node'
 import { build } from 'vite'
 import { expect, it } from 'vitest'
@@ -42,8 +43,8 @@ async function assertRuntimeContracts({
   groupings: CodeSplitGroupings
   syntax?: 'named-default'
 }) {
-  // Keep the temporary app inside the package so real runtime imports resolve.
-  const root = await mkdtemp(path.join(__dirname, '.runtime-contract-'))
+  // A temporary app whose real runtime imports resolve as from this directory
+  const root = await createAppDirectory(__dirname, '.runtime-contract-')
   try {
     await mkdir(path.join(root, 'routes'))
     let source = await readFile(fixture, 'utf8')

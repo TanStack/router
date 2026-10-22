@@ -1,8 +1,9 @@
 /**
  * Real-build harness of the router plugin: builds an app with the router
  * plugin of a bundler through the shared build harness
- * (`@tanstack/compiler-test-utils/build-harness`). The temporary apps live in
- * this directory, so their imports resolve to this package's dependencies.
+ * (`@tanstack/compiler-test-utils/build-harness`). The temporary apps stand
+ * in for apps in this directory (`@tanstack/compiler-test-utils/
+ * app-directory`), so their imports resolve to this package's dependencies.
  * Each app has its own package.json, without a `sideEffects` field unless
  * the test sets one (`sideEffects`), so its modules count as side-effectful;
  * only `packageJson: null` makes it inherit this package's
@@ -38,7 +39,6 @@ import {
 } from '@tanstack/compiler-test-utils/build-harness'
 import { mergeRsbuildConfig } from '@rsbuild/core'
 import { pluginReact } from '@rsbuild/plugin-react'
-import { inject } from 'vitest'
 import { onTestFinished } from '@tanstack/compiler-test-utils/test-scope'
 import type {
   App,
@@ -210,8 +210,6 @@ export async function build(
         const config: RouterPluginOptions = {
           target: framework,
           autoCodeSplitting: true,
-          // This run's directory (tests/generator-tmp-dir.ts)
-          tmpDir: inject('generatorTmpDir'),
           ...pluginOptions,
           // The webpack, Rspack and esbuild adapters resolve these against
           // the working directory
@@ -488,7 +486,6 @@ export async function buildWithRsbuild(
                     tanstackRouter({
                       target: 'react',
                       autoCodeSplitting: true,
-                      tmpDir: inject('generatorTmpDir'),
                       ...pluginOptions,
                       routesDirectory: path.resolve(
                         app.root,

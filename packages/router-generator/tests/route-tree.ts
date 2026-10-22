@@ -161,6 +161,10 @@ async function withModule<T>(
   const server = await createServer({
     root,
     configFile: false,
+    // The app's own: Vite's default, the `node_modules/.vite` of an app
+    // without a package.json, is this package's (the app links its
+    // `node_modules`)
+    cacheDir: path.join(root, '.vite'),
     envDir: false,
     appType: 'custom',
     customLogger: channel.viteLogger(),
