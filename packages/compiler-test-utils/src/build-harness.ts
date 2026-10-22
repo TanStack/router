@@ -1240,7 +1240,8 @@ export async function describeBuild(
  * `process` or `Buffer`) (user ruling "Dead-code references, widened",
  * 2026-10-17: a dangling name that survives into a production client bundle
  * is a bug; one in code the bundler deletes is fine). Free names are Yuku's
- * unresolved references (`free-names.ts`): `typeof x` alone reads nothing.
+ * unresolved references (`free-names.ts`): a name the module probes with
+ * `typeof` is not free.
  * esbuild is not checked: it is no supported production bundler of the
  * ruling.
  *

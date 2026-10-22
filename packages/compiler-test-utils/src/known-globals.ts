@@ -32,10 +32,8 @@ const frameworkNames = [
 ]
 
 /**
- * The globals browser code can count on: the language's, the browser's (a
- * window's or a worker's: code shared with workers reads the worker globals,
- * e.g. `@vitejs/plugin-react`'s refresh code checks `self instanceof
- * WorkerGlobalScope`) and the framework globals. No Node.js-only global (`process`, `Buffer`,
+ * The globals browser code can count on: the language's, the browser's and
+ * the framework globals. No Node.js-only global (`process`, `Buffer`,
  * `global`, `setImmediate`...): production client builds of Vite, Rspack and
  * webpack replace `process.env.NODE_ENV` (and webpack and Rspack `global`),
  * so a read of a Node-only global that survives in a client chunk throws in
@@ -45,7 +43,6 @@ export const clientGlobals: ReadonlySet<string> = new Set([
   ...Object.keys(globals.builtin),
   ...languageNames,
   ...Object.keys(globals.browser),
-  ...Object.keys(globals.worker),
   ...frameworkNames,
 ])
 

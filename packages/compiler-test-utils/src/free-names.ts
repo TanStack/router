@@ -2,8 +2,9 @@
  * The names a module reads free, from Yuku's semantic model: its references
  * that resolve to no binding of the module. Globals count: the caller takes
  * away the globals of where the module runs (`known-globals.ts`). A name in
- * a type position is no read, nor is the operand of `typeof`, which never
- * throws.
+ * a type position is no read. A name the module probes with `typeof`
+ * anywhere is not free: the module reads it knowing it may not exist (e.g.
+ * `typeof process !== 'undefined' && process.env` in client code).
  */
 import { parse } from 'yuku'
 import type { Scope } from 'yuku'
@@ -27,6 +28,8 @@ export function readNames(code: string, path = 'module.js'): ModuleNames {
   })
   const free = new Set<string>()
   const bound = new Set<string>()
+  /** Names the module probes with `typeof`: it reads them knowing they may not exist. */
+  const probed = new Set<string>()
   for (const reference of file.references) {
     if (reference.inTypePosition) {
       continue
@@ -36,13 +39,15 @@ export function readNames(code: string, path = 'module.js'): ModuleNames {
       continue
     }
     const parent = file.parentOf(reference.node)
-    if (
-      (parent?.type !== 'UnaryExpression' || parent.operator !== 'typeof') &&
+    if (parent?.type === 'UnaryExpression' && parent.operator === 'typeof') {
+      probed.add(reference.name)
+    } else if (
       !(reference.name === 'arguments' && inArgumentsScope(reference.scope))
     ) {
       free.add(reference.name)
     }
   }
+  probed.forEach((name) => free.delete(name))
   return {
     errors: file.diagnostics
       .filter((diagnostic) => diagnostic.severity === 'error')
