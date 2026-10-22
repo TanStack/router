@@ -27,60 +27,76 @@ generated names or module layout. SPEC §5 lists what a correct compiler may do 
 ## Status
 
 The suite was repaired (October 2026) so that it reaches the compilers only through public entry points, runs real
-tools, and judges client code in a real browser. What was measured at the end of the repair:
+tools, and judges client code in a real browser. What was measured at the end of the repair (F-H, at 633a4c0917,
+after the final passes F-F, F-G1, F-G2 and F-G3; the start-plugin-core part again at d07614d3b3, after F-I):
 
 - **Restructured compilers pass.** Eleven behaviour-preserving restructures of today's compilers (R1–R11: moved
   modules, renamed ids and generated names, another printer, reworded diagnostics, another AST seam, other report
   channels, another server-function provider architecture, other chunk layouts, other trace order, other loader
   paths) were each run against the whole acceptance suite, with every failing file re-run alone with and without the
-  restructure. At 45f58967ea:
+  restructure. At 633a4c0917:
   - R1 and R3–R11: no acceptance test fails.
   - R2 (moved internal modules) fails the 7 rows that pending rulings hold on internal imports (Q5:
     `handle-route-update.test.ts` ×1; Q6: `pending-rulings/createMiddleware.test.ts` ×2, `createServerFn.test.ts`
     ×1; Q7: `pending-rulings/known-bugs-start-compiler.test.ts` ×3). Nothing else fails under R2.
   - Expected pin flips, where the restructure fixes the pinned bug: R3 ×6 (user names that collide with today's
     generated names), R8 ×6 (SSR runs server functions in place), R9 ×3 (entry re-export of shared bindings).
-  - One #42 failure under R3 passed alone (a flake, below).
+  - 7 rows failed once and passed alone: all #34 (below).
+  - At d07614d3b3 the start-plugin-core acceptance tiers ran again under R1–R11: the same result, and R8 also flips
+    the 4 Vite pins F-I added for #7213 (it fixes that race). One R9 row failed with #34 and passed alone.
 - **Wrong compilers are caught, correct ones pass.** The adversarial variants of rounds 1 and 2 (written by
-  reviewers as product patches) were re-run at 45f58967ea against `test:unit` + `test:integration` (the
+  reviewers as product patches) were re-run at 633a4c0917 against `test:unit` + `test:integration` (the
   pending-rulings, implementation and noncompiler lanes recorded, never counted):
   - all 90 red (wrong) variants are caught, each by acceptance tests that fail again when their file runs alone;
     none is caught only by a non-acceptance lane;
   - all 34 valid green (correct but different) variants pass; green-sol/20 flips its two expected pins (it fixes
-    that bug), and green-sol/01 is ruled not a valid green.
-  - Every red caught before the repair's last waves is still caught; two now only through rerouted public-entry
-    tests, because the internal-entry tests that caught them moved to the implementation lane.
+    that bug), and green-sol/01 is ruled not a valid green. Two greens (green-sol/09, /13) failed only #34 rows, in the
+    suite and alone; three more alone runs each passed apart from one more #34 hit.
+  - Every red caught in the previous measurement (45f58967ea) is still caught, 84 through the same rows. One,
+    red-astra-r2/15 (the import-protection mock inherits `Object.prototype`), is now caught by its own row only
+    (`importProtection/rule-outcomes.test.ts` "inherited member names of a mocked import remain safe to consume",
+    Vite and Rsbuild): the shared safe-mock probe no longer calls `constructor`/`__proto__` members (SPEC §5.18), so
+    the 179 other rows that caught it before pass.
+  - The five reds caught by rows of start-plugin-core's unit-tier `known-bugs-start-compiler.test.ts`, re-run on
+    start-plugin-core at d07614d3b3: still caught.
 - **No internal imports.** The strict import gate passes in CI. The only internal imports left are held by pending
   user rulings, through the gate's allowlist (below).
-- **Stable.** The unpatched suite ran 9 times (3 rounds of 3 trees in parallel, 4 workers each, 1-minute load up to
-  55): all 15 tiers and lanes gave identical counts, except one #42 failure in one start-plugin-core integration run.
-- **Fast.** On a quiet machine (load below 4 at the start) at 4 workers every tier passes its hard budget in strict
-  mode, and no slow-tier file takes over 15 s:
+- **Stable.** The unpatched suite ran 9 times at 633a4c0917 (3 rounds of 3 trees in parallel, 4 workers each,
+  1-minute load up to 55 on 32 cores): all 15 tiers and lanes gave identical counts, except one #34 row in 4 of the 9
+  start-plugin-core integration runs. No #42 failure. At d07614d3b3, start-plugin-core ran 3 more times: identical
+  counts apart from one #34 row in 2 runs.
+- **Fast, with little margin.** On a quiet machine (load below 4 at the start) at 4 workers every tier passed its
+  hard budget in strict mode in its quiet valid runs, and no slow-tier file took over 15 s:
 
   | Package                         | `test:unit` (target / hard) | `test:integration` (target / hard) | slowest slow-tier file |
   | ------------------------------- | --------------------------- | ---------------------------------- | ---------------------- |
-  | `@tanstack/compiler-test-utils` | 3.0 s (2.5 / 4)             | 8.0 s (9 / 15)                     | 8.0 s                  |
+  | `@tanstack/compiler-test-utils` | 3.0 s (2.5 / 4)             | 8.1 s (9 / 15)                     | 8.1 s                  |
   | `@tanstack/router-generator`    | 3.8 s (3 / 5)               | 6.6 s (8 / 12)                     | 6.5 s                  |
-  | `@tanstack/router-plugin`       | 8.0 s (7.5 / 10)            | 73.7 s (60 / 80)                   | 11.6 s                 |
-  | `@tanstack/start-plugin-core`   | 6.4 s (5.5 / 8)             | 83.3 s (65 / 90)                   | 12.8 s                 |
-  | `@tanstack/react-start-rsc`     | no test files               | 13.0 s (13 / 20)                   | 6.3 s                  |
+  | `@tanstack/router-plugin`       | 9.0 s (7.5 / 10)            | 74.9–77.2 s (60 / 80)              | 12.0 s                 |
+  | `@tanstack/start-plugin-core`   | 6.5 s (5.5 / 8)             | 85.0–88.1 s (65 / 90)              | 14.3 s                 |
+  | `@tanstack/react-start-rsc`     | no test files               | 13.0 s (13 / 20)                   | 6.1 s                  |
 
-  Edit to result for one fast-tier file is about 5 s. Several tiers are over their target and under their hard limit.
+  The two slow tiers are 2 to 5 s under their hard limits (45f58967ea: 73.7 s and 83.3 s): load from other work on
+  the machine pushed both over in some runs (82.3 s, 97.6 s), and start-plugin-core runs with a #34 failure took up
+  to 97 s (not measurements). On an idle 32-core machine every tier is well within (router-plugin 57 s,
+  start-plugin-core 66 s). Edit to result for one fast-tier file is about 5 s. Several tiers are over their target
+  and under their hard limit.
 
-Counts at hand-over (passed / expected-fail pins; the final passes F-F and F-G2 changed some cells, see below):
+Counts at d07614d3b3 (passed / expected-fail pins; at 633a4c0917, where the measurements above ran, start-plugin-core
+`test:integration` was 1199 / 288):
 
 | Package                         | `test:unit` | `test:integration` | `test:implementation` | `test:noncompiler` |
 | ------------------------------- | ----------- | ------------------ | --------------------- | ------------------ |
 | `@tanstack/compiler-test-utils` | 330 / 0     | 171 / 0            | –                     | –                  |
 | `@tanstack/router-generator`    | 239 / 30    | 67 / 3             | 114 / 2               | –                  |
 | `@tanstack/router-plugin`       | 107 / 20    | 674 / 355          | 104 / 1               | –                  |
-| `@tanstack/start-plugin-core`   | 389 / 143   | 1199 / 288         | 609 / 9               | 121 / 0            |
+| `@tanstack/start-plugin-core`   | 389 / 143   | 1204 / 292         | 609 / 9               | 121 / 0            |
 | `@tanstack/react-start-rsc`     | no files    | 108 / 13           | –                     | 49 / 0             |
 
-The measurements above (restructures, V4, stability, budgets) ran at 45f58967ea. The final pass F-F (October 2026,
-after them) re-audited "no re-implementation; client semantics in a browser" file by file and changed tests and
-helpers (below); its changes were validated locally (every tier and lane above, the strict import gate), not
-re-measured against R1–R11 and V4. Count changes against 45f58967ea: ctu `test:unit` −3 (the controls of the deleted
+The previous measurement (F-E-b) ran at 45f58967ea; the passes below came after it and are covered by the
+measurement above (F-H), the F-I pass by the start-plugin-core part of it. The final pass F-F (October 2026) re-audited "no re-implementation; client semantics in a browser" file by file and changed tests and
+helpers (below); its changes were validated locally (every tier and lane above, the strict import gate). Count changes against
+45f58967ea: ctu `test:unit` −3 (the controls of the deleted
 Node stand-in `evaluateServed`), ctu `test:integration` +1 (a control of the build-decided dangling-name check),
 router-plugin `test:implementation` −1 (the control of a deleted path filter), start-plugin-core `test:unit` +4
 (controls of the content-based suggestion reader). The final pass F-G2 (after F-F, validated the same way) changed:
@@ -91,7 +107,7 @@ its control), start-plugin-core `test:integration` +1 (a control of the unused-c
 copy of the computed-member request middleware pin; its build twin in `integration/start-build-call-shapes.test.ts`
 pins the same input and outcomes through a real request). No pin site was added or removed. The pass F-G1 (after F-F) builds the apps of the start-plugin-core,
 router-plugin and react-start-rsc harnesses with the plugins a real app configures ("How tests reach the
-compilers"); no count or pin changed, and a sample of V4 reds is still caught; R1–R11 and V4 were not re-measured.
+compilers"); no count or pin changed.
 The pass F-I (after V-G1) made the #7213 rows of start-plugin-core `integration/known-bugs-start-compiler.test.ts`
 deterministic (caveats below): start-plugin-core `test:integration` +3 passed and +4 expected-fail rows (the Vite
 cells of the middleware caller where SSR code imports the server fn removed; a pin site added: the caller only client
@@ -114,10 +130,11 @@ Caveats:
   - #42 (Vite's stale pre-bundled dependency): it fails up to three start-plugin-core integration rows,
     `known-bugs-start-compiler-dev` "top-level call of a project function" and "top-level member call of a
     pre-bundled dependency", and `start-compiler-dev-server` "a module importing a factory that stops being one keeps
-    its handler". It currently fails these three rows in most start-plugin-core integration runs on a developer
-    machine. In the 145 runs of this measurement on beetle it failed one or two of them in 13 runs.
+    its handler". In the 145 runs of the previous measurement (45f58967ea) on beetle it failed one or two of them in
+    13 runs; in the 145 runs of the last one (633a4c0917, after F-G1) and in 11 local start-plugin-core integration
+    runs it did not occur.
   - #34 (Vite's optimizer writes its cache after `close()`): an `ENOTEMPTY` on cleanup fails all 33 rows of
-    `integration/importProtection/mock-shapes.test.ts` in a run. It hit 3 of 145 runs. Since F-G1 the Vite dev
+    `integration/importProtection/mock-shapes.test.ts` in a run. It hit 3 of 145 runs at 45f58967ea. Since F-G1 the Vite dev
     servers of start-plugin-core's harnesses are real React Start apps, which pre-bundle React when they start
     (`@tanstack/react-start`'s and `@vitejs/plugin-react`'s `optimizeDeps.include`), so an app closed while that
     runs also fails single rows with an `ENOTEMPTY` of `node_modules/.vite/deps_temp_*` (seen:
@@ -128,8 +145,15 @@ Caveats:
     one row in 3 runs on an idle beetle. V-G1 measured less (beetle, three trees in parallel): 1 row in 6 runs at a
     load of 20 to 35, 4 rows in 15 runs at 30 to 110, and 2 of 6 filtered local runs (`-t`) whose dev servers close
     right after they start; every one with the #34 signature (`ENOTEMPTY` removing `node_modules/.vite` or
-    `.vite/deps_temp_*`). Held by the #34 ruling: no workaround.
-  - Re-run a file that failed only on these alone before reading it as a compiler failure.
+    `.vite/deps_temp_*`). The last measurement (633a4c0917, beetle, load up to 55) saw single #34 rows in 4 of 9
+    unpatched runs and in 66 of its 145 runs (86 rows), also in files re-run alone (the clean tree alone failed
+    6 times); locally, 5 of 11 start-plugin-core integration runs at load below 4. A file that fails only on #34 can
+    fail again alone: re-run it more than once. The removed apps also leave directories behind
+    (`tests/.start-dev-server-*` holding `node_modules/.vite`, `tests/integration/.dev-transform-*` holding `.vite`),
+    after passing runs too: about 1,900 per tree after 50 runs. They are gitignored, but `test:eslint` of
+    start-plugin-core lints the pre-bundled files left in `.dev-transform-*/.vite/deps_temp_*` and fails (130 parsing
+    errors after the 11 local runs of this measurement). Held by the #34 ruling: no workaround.
+  - Re-run a file that failed only on these alone (more than once for #34) before reading it as a compiler failure.
   - Not a flake of the tests, and no longer a row: at an extreme load (80 to 110 on beetle) V-G1 saw the Vite row
     `known-bugs-start-compiler` "SSR: a server fn that only a middleware .server() of another module calls > is
     callable, the app files written reversed" fail once in 15 runs with "Server function info not found". That was
