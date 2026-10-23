@@ -13,7 +13,7 @@
  * `regression-helpers.ts`.
  *
  * API (`loadRoute(code, options)` / `createRouteLoader(options)(code)`):
- * - `modules`, `ids`, `graph`: the compiled modules (`compileRouteModules`).
+ * - `modules`, `ids`, `graph`: the compiled modules (`createRouteGraphCompiler`).
  * - `exports`, `Route`, `options`: the route module's exports, the real
  *   route it creates, the route's options.
  * - `evaluated`: compiled modules evaluated so far (load observer);
@@ -69,61 +69,27 @@ import { transformWithOxc } from 'vite'
 import { createRouteGraphCompiler, labelRouteModules } from './plugin-host'
 import type { ModuleStub } from '@tanstack/compiler-test-utils/module-linker'
 import type { ProjectJsx } from '@tanstack/compiler-test-utils/validate-module'
-import type { CompileOptions, RouteGraph, TargetFramework } from './plugin-host'
+import type { CompileOptions, RouteGraph } from './plugin-host'
 
 /**
  * Modules provided by the test, by import specifier: their exports, or the
  * source of a JSON module (`.json` specifiers).
  */
-export type Stubs = Record<string, ModuleStub>
-
-/** The exports of an object stub; a source stub has none to merge. */
-export function stubExports(stub: ModuleStub | undefined) {
-  return typeof stub === 'object' ? stub : undefined
-}
+type Stubs = Record<string, ModuleStub>
 
 /**
  * The router plugin's own directory: the real packages compiled modules
  * import (`react`, `react-dom`, the router packages, Solid, Vue) resolve
  * from its dependencies.
  */
-export const packagesDirectory = path.join(import.meta.dirname, '../../..')
-
-/** A graph that only links packages: the instances every route graph gets. */
-const packageGraph = createModuleGraph({ packages: packagesDirectory })
-
-/**
- * Server-renders a component of a compiled module with the real `framework`
- * (default React), the instance compiled modules get.
- */
-export function renderComponent(
-  component: unknown,
-  props: Record<string, unknown> = {},
-  framework: TargetFramework = 'react',
-) {
-  return renderToHtml(packageGraph, framework, component, props)
-}
-
-/**
- * Compiles a route file, evaluates its route module like `loadRoute` (every
- * import the route file makes that no package provides is stubbed by
- * identity functions, unless `stubs` gives it) and returns the code of each
- * module loading its `component` option evaluates (`loadedBy`).
- */
-export async function componentModules(
-  code: string,
-  options: LoadRouteOptions = {},
-) {
-  const route = await loadRoute(code, { stubUnknownImports: true, ...options })
-  return route.loadedBy('component')
-}
+const packagesDirectory = path.join(import.meta.dirname, '../../..')
 
 /**
  * Compiles a module with the React Refresh transform `@vitejs/plugin-react`
  * uses, erasing TypeScript like the linker's default transform (see
  * `verbatimModuleSyntax` of `createModuleGraph`).
  */
-export async function transformWithReactRefresh(
+async function transformWithReactRefresh(
   code: string,
   id: string,
   verbatimModuleSyntax = true,
@@ -141,7 +107,7 @@ export async function transformWithReactRefresh(
  * them: `$RefreshReg$(type, name)` for each component the transform
  * registers.
  */
-export function refreshScope(registered: Map<unknown, string>) {
+function refreshScope(registered: Map<unknown, string>) {
   return {
     $RefreshReg$: (type: unknown, name: string) => {
       registered.set(type, name)
@@ -150,7 +116,7 @@ export function refreshScope(registered: Map<unknown, string>) {
   }
 }
 
-export type LoadRouteOptions = CompileOptions & {
+type LoadRouteOptions = CompileOptions & {
   /**
    * The route file's other imports, by specifier. The router package and
    * the framework are the real packages; do not stub them.
@@ -201,7 +167,7 @@ function projectJsxTransform(options: LoadRouteOptions) {
 }
 
 /** Import specifier of the route file in the modules `importFromRoute` adds. */
-export const routeSpecifier = '#route'
+const routeSpecifier = '#route'
 
 /** A module stub whose exports are identity functions. */
 const identityStub = (_: string, names: Set<string>) =>
@@ -232,7 +198,7 @@ function triggerOption(value: any, option: string) {
 }
 
 /**
- * Compiles a route file like `compileRouteModules`, then evaluates it the
+ * Compiles a route file (`createRouteGraphCompiler`), then evaluates it the
  * way an app does: the route module (and what it imports statically) first,
  * and each lazy module only when the router loads a route option. Imports
  * of the emitted modules link to each other; `stubs` provide other imports;
@@ -248,21 +214,9 @@ export async function loadRoute(code: string, options: LoadRouteOptions = {}) {
  * `loadRoute`, every version compiled by the same code-splitter plugin
  * instance, as a dev server compiles each edit of a route file.
  */
-export function createRouteLoader(options: LoadRouteOptions = {}) {
+function createRouteLoader(options: LoadRouteOptions = {}) {
   const compile = createRouteGraphCompiler(options)
   return async (code: string) => linkRoute(code, await compile(code), options)
-}
-
-/**
- * Loads modules given as a compiled route graph, like `loadRoute` loads the
- * code splitter's output: for controls of the harness on fixed graphs, of
- * any shape a correct compiler may emit.
- */
-export function loadRouteGraph(
-  graph: RouteGraph,
-  options: LoadRouteOptions = {},
-) {
-  return linkRoute(graph.modules.get(graph.id)!, graph, options)
 }
 
 async function linkRoute(

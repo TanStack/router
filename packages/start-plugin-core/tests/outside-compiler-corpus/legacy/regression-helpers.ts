@@ -3,28 +3,20 @@
  * used before it was rerouted through the public Start plugin
  * (`tests/start-host.ts`, `tests/regression-helpers.ts`). It drives the
  * internal `StartCompiler`, the provider query and the server-fn report,
- * so only implementation tests (`outside-compiler-corpus/`) and tests
- * pending a ruling may use it.
+ * so only implementation tests (`outside-compiler-corpus/`) may use it.
  *
- * Shared harness of the Start compiler behaviour suites: compile a module
- * into its client, SSR caller and server-function provider outputs, split
- * `<Hydrate>` children into chunks, and evaluate compiled modules (linked as
- * real ES modules, `@tanstack/compiler-test-utils/module-linker`) against a
- * Start's runtime (`./start-runtime`) and the real packages (React, the
- * routers). Import inspection (`imports.ts`), diagnostics
- * (`diagnostics.ts`), source maps (`source-maps.ts`) and the `<Hydrate>`
- * chunk rendering (`render.ts`) live in their own modules and are
- * re-exported here.
+ * Compiles a module into its client, SSR caller and server-function
+ * provider outputs, and evaluates compiled modules (linked as real ES
+ * modules, `@tanstack/compiler-test-utils/module-linker`) against Start's
+ * runtime (`../../start-runtime`) and the real packages (React, the
+ * routers).
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
+import { identifiesEnvRestriction } from '@tanstack/compiler-test-utils/diagnostics'
 import { parseSync } from 'vite'
 import { expect } from 'vitest'
-import {
-  getModuleErrors,
-  keptDynamicImports,
-} from '@tanstack/compiler-test-utils/validate-module'
 import {
   StartCompiler,
   detectKindsInCode,
@@ -37,6 +29,7 @@ import {
   createSsrRpc,
   startClientCore,
 } from '../../start-runtime'
+import type { Environment } from '@tanstack/compiler-test-utils/diagnostics'
 import type {
   ModuleGraphOptions,
   ModuleStub,
@@ -50,37 +43,8 @@ import type {
 } from '../../../src/types'
 
 export { importSources } from '../../imports'
-export {
-  expectCompileError,
-  expectSourceError,
-  serverOnlyModule,
-  expectOutputsFreeOfHandler,
-  expectNoClientHandler,
-  throwsError,
-} from './diagnostics'
-export type { MisplacementOptions, OutputResult } from './diagnostics'
-export {
-  getChunkIds,
-  loadChunk,
-  compileHydrate,
-  compileFirstChunk,
-  renderGraph,
-  renderSource,
-  renderServer,
-  loadClient,
-  renderClient,
-  expectRenderedThroughChunks,
-  expectClientRendersLikeServer,
-  expectRendersLikeSource,
-  startPackage,
-  withoutHydrationIds,
-} from './render'
-export type { Render, RenderOptions, ClientOptions } from './render'
-
-export type { ModuleStub } from '@tanstack/compiler-test-utils/module-linker'
 
 export type Output = 'client' | 'ssr' | 'provider'
-export const outputs: Array<Output> = ['client', 'ssr', 'provider']
 export const moduleId = '/test/src/module.tsx'
 
 /** The framework a module is compiled for: its `@tanstack/<framework>-*` packages. */
@@ -195,38 +159,6 @@ export async function compileCode(
 }
 
 /**
- * Compiles the client, SSR caller and provider outputs, checks that each is
- * a valid module and returns them with the server functions the client
- * compilation reported.
- */
-export async function compileAll(
-  code: string,
-  options: Omit<StartCompilerOptions, 'env'> & { id?: string } = {},
-) {
-  const compiled = {} as Record<Output, string>
-  const errors = {} as Record<Output, Array<string>>
-  let serverFns: Record<string, ServerFn> = {}
-  const file = (options.id ?? moduleId).replace(/^.*\//, '')
-  for (const output of outputs) {
-    const result = await compileFor(output, code, options)
-    expect(result.code, output).not.toBeNull()
-    compiled[output] = result.code!
-    errors[output] = await getModuleErrors(result.code!, file)
-    if (output === 'client') {
-      serverFns = result.serverFns
-    }
-  }
-  expect(errors).toEqual({ client: [], ssr: [], provider: [] })
-  return {
-    ...compiled,
-    serverFns,
-    id: options.id,
-    framework: options.framework,
-    files: options.files,
-  }
-}
-
-/**
  * The modules of the SSR bundle compiled from one source module: the SSR
  * caller, under the module's id, and the server-function provider, under the
  * id with `?tss-serverfn-split`. The provider may import the SSR caller (or
@@ -249,32 +181,6 @@ export interface ServerOutputs {
   /** Project modules by absolute id, linked as they are (uncompiled). */
   files?: Record<string, string>
 }
-
-/**
- * Compiles `code` into the modules of the SSR bundle (`ServerOutputs`): the
- * SSR caller (the source itself when the compiler leaves it untouched) and
- * the provider, and returns them with the server functions the SSR caller
- * reported.
- */
-export async function compileServer(
-  code: string,
-  options: Omit<StartCompilerOptions, 'env'> & { id?: string } = {},
-) {
-  const ssr = await compileFor('ssr', code, options)
-  const provider = await compileFor('provider', code, options)
-  expect(provider.code, 'provider').not.toBeNull()
-  return {
-    ssr: ssr.code ?? code,
-    provider: provider.code!,
-    id: options.id,
-    framework: options.framework,
-    serverFns: ssr.serverFns,
-    files: options.files,
-  }
-}
-
-// Start's real runtime, for tests that link a project module to it.
-export { startClientCore } from '../../start-runtime'
 
 // The `compilerTransforms` test transform lives in the seam module.
 export { renderThingTransform } from '../../compiler-transforms-seam'
@@ -316,7 +222,7 @@ function unlinkedClientRpc(functionId: string) {
 
 /**
  * The Start packages of a framework, in `env`: Start's real runtime
- * (`./start-runtime`) for `@tanstack/<framework>-start` and its
+ * (`../../start-runtime`) for `@tanstack/<framework>-start` and its
  * `/server-rpc` entry. The RPCs of callers are the only stand-ins: a client
  * RPC is Start's own without its fetch (`unlinkedClientRpc`); an SSR RPC
  * resolves the provider's handler by id, which only an SSR bundle can do
@@ -420,65 +326,6 @@ export async function renderToHtml(node: unknown) {
   const graph = createTestModuleGraph({})
   const { renderToStaticMarkup } = await graph.importPackage('react-dom/server')
   return renderToStaticMarkup(node) as string
-}
-
-/**
- * The modules evaluating the compiled module `code` (as `env`, default
- * `client`) loads: every module it, and the project modules and stubs it
- * links, request when they link and evaluate, plus the targets of the
- * dynamic `import()`s of `code` in code a real production bundler keeps
- * (`keptDynamicImports`: an `import()` in a function nothing calls, which
- * the bundler deletes, is a syntactic candidate, no load). Imports that are
- * neither `stubs`, `files` nor real packages link to empty stubs, so a
- * forbidden module the compiler left behind is observed, not a link error.
- * Type-only syntax (`import type`, erased with the TypeScript) is no load;
- * an `import { type X }` declaration still loads its module
- * (`verbatimModuleSyntax`, see the module linker). Compare with
- * `expectNotLoaded` (`@tanstack/compiler-test-utils/importers`).
- */
-export async function moduleLoads(
-  code: string,
-  options: {
-    stubs?: Record<string, ModuleStub>
-    files?: Record<string, string>
-    framework?: Framework
-    env?: RuntimeEnv
-    /**
-     * `false`: TypeScript is erased like in a project without
-     * `verbatimModuleSyntax` (imports nothing reads go too).
-     */
-    verbatimModuleSyntax?: boolean
-    /** Id of the module (default `/test/src/module.tsx`). */
-    id?: string
-  } = {},
-) {
-  const id = options.id ?? moduleId
-  const graph = createTestModuleGraph({
-    modules: { ...options.files, [id]: code },
-    stubs: options.stubs,
-    framework: options.framework,
-    env: options.env,
-    verbatimModuleSyntax: options.verbatimModuleSyntax,
-    fallbackStub: (_specifier, names) =>
-      Object.fromEntries([...names].map((name) => [name, undefined])),
-  })
-  // Linking requests every static import; what evaluating does is not the
-  // question here (a leaked server module may well throw). A module that
-  // does not parse or link never evaluates: that fails.
-  await graph.import(id).catch((error: unknown) => {
-    if (!graph.evaluated.includes(id)) {
-      throw error
-    }
-  })
-  // A dynamic import loads when its code runs, which no test runs here:
-  // each one a real production bundler keeps is a load; one in code the
-  // bundler deletes (an uncalled function) never loads.
-  return [
-    ...new Set([
-      ...graph.requested,
-      ...(await keptDynamicImports(code, { filename: id })),
-    ]),
-  ]
 }
 
 function isServerOutputs(value: object): value is ServerOutputs {
@@ -634,102 +481,6 @@ export async function callReportedServerFns(
   return results
 }
 
-/**
- * Calls a server fn the way the app does, from where `read` finds it in the
- * evaluated callers (e.g. `(module) => module.api.read`): the client gives an
- * RPC by an id the callers reported, and the handler the report names (the
- * provider module and export, in the SSR bundle) carries that id in its
- * metadata; in an SSR bundle of its own, calling the server fn from the SSR
- * caller returns what the handler returns, whether the SSR caller calls it
- * by id or runs it in place (`.handler(extractedFn, serverFn)`, like the
- * provider). Project modules (`compiled.files`) are linked
- * as they are. Returns what the handler returns.
- */
-export async function callServerFnThroughCallers(
-  compiled: Awaited<ReturnType<typeof compileAll>>,
-  read: (module: Record<string, any>) => unknown,
-  stubs: Record<string, ModuleStub> = {},
-) {
-  const id = compiled.id ?? moduleId
-  const client = read(
-    await createTestModuleGraph({
-      modules: { ...compiled.files, [id]: compiled.client },
-      stubs,
-      framework: compiled.framework,
-    }).import(id),
-  )
-  const functionId = callerRpcId(client)!
-  expect(functionId, 'client RPC id').toEqual(expect.any(String))
-  const reported = compiled.serverFns[functionId]
-  expect(reported, 'reported server fn').toBeDefined()
-  const handler = (
-    await createServerGraph(compiled, stubs).import(reported!.extractedFilename)
-  )[reported!.functionName] as ProviderHandler
-  expect(handler.serverFnMeta?.id, 'provider handler id').toBe(functionId)
-  const result = serverFnResult(await handler({ data: undefined }))
-  const ssr = read(await createServerGraph(compiled, stubs).ssr())
-  expect(ssr, 'ssr').toBeTypeOf('function')
-  expect(await (ssr as ProviderHandler)({ data: undefined }), 'ssr').toEqual(
-    result,
-  )
-  return result
-}
-
-/**
- * Calls a server fn from the client, through Start's real client runtime:
- * the server fn `read` finds in the evaluated client caller runs its
- * client middleware, then its RPC reaches the handler the callers reported
- * for that id, in the SSR bundle (`createServerGraph`), with the data,
- * context and method the client sends, like Start's server-fn handler does
- * (without the HTTP round trip and its serialization). Returns what the
- * call returns.
- */
-export async function callFromClient(
-  compiled: Awaited<ReturnType<typeof compileAll>>,
-  read: (module: Record<string, any>) => unknown,
-  data?: unknown,
-  stubs: Record<string, ModuleStub> = {},
-) {
-  const id = compiled.id ?? moduleId
-  const server = createServerGraph(compiled, stubs)
-  const clientRpc = (functionId: string) =>
-    Object.assign(
-      async (payload: {
-        data?: unknown
-        context?: unknown
-        method?: string
-      }) => {
-        const reported = compiled.serverFns[functionId]
-        if (!reported) {
-          throw new Error(`no server fn reported for ${functionId}`)
-        }
-        const handler = (await server.import(reported.extractedFilename))[
-          reported.functionName
-        ] as ProviderHandler
-        return handler({
-          data: payload.data,
-          context: payload.context,
-          method: payload.method,
-        })
-      },
-      createClientRpc(functionId),
-    )
-  const client = read(
-    await createTestModuleGraph({
-      modules: { ...compiled.files, [id]: compiled.client },
-      stubs: {
-        [`@tanstack/${compiled.framework ?? 'react'}-start/client-rpc`]: {
-          createClientRpc: clientRpc,
-        },
-        ...stubs,
-      },
-      framework: compiled.framework,
-    }).import(id),
-  )
-  expect(callerRpcId(client), 'client RPC id').toEqual(expect.any(String))
-  return (client as (opts: { data?: unknown }) => Promise<unknown>)({ data })
-}
-
 /** The directives of a module's directive prologue, in order. */
 export function directivePrologue(code: string) {
   const { program } = parseSync('module.tsx', code, { sourceType: 'module' })
@@ -775,4 +526,22 @@ export async function settleAsync(run: () => unknown) {
   } catch (error) {
     return new Thrown(error)
   }
+}
+
+/**
+ * What `settle` gives for a `createServerOnlyFn` called outside the server
+ * (J4.10): it threw an error restricting the call to the server, whatever
+ * its prose (`identifiesEnvRestriction`). An asymmetric matcher: compare
+ * with `toEqual`.
+ */
+export const serverOnlyError = thrownEnvRestriction('server')
+/** `serverOnlyError` for a `createClientOnlyFn` called outside the client. */
+export const clientOnlyError = thrownEnvRestriction('client')
+
+function thrownEnvRestriction(env: Environment) {
+  return expect.toSatisfy(
+    (value: unknown) =>
+      value instanceof Thrown && identifiesEnvRestriction(value.error, env),
+    `a call that throws an error restricting it to the ${env}`,
+  )
 }

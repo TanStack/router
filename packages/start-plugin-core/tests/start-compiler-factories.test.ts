@@ -910,6 +910,20 @@ export const iso = F.createIsomorphicFn().server(() => db.w()).client(() => 'cli
       serverFns: 1,
     })),
     {
+      name: 'a namespace import of a module re-exporting createMiddleware',
+      output: 'client',
+      files: {
+        'middleware.ts': `export { createMiddleware } from '@tanstack/react-start'`,
+      },
+      code: `import * as M from './middleware'
+import { db } from './db.server'
+export const logged = M.createMiddleware({ type: 'function' }).server(async ({ next }) => {
+  db.log()
+  return next()
+})`,
+      serverFns: 0,
+    },
+    {
       name: 'renamed re-exports next to a type-only re-export',
       output: 'client',
       files: {
