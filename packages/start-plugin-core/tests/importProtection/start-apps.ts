@@ -12,8 +12,10 @@
  *
  * The violations a run reports are read as Start's public `onViolation`
  * callback receives them (`server.violations`, `build.violations`; SPEC
- * J6.5, J6.6), never parsed from the printed report: what is printed is
- * checked only for the file and position it names (ruling 2026-10-22).
+ * J6.5, J6.6), never parsed from the printed report. That each is printed
+ * (a warning or an error the user sees) is checked by `expectViolationsAt`
+ * and `expectPrinted`, only for the file and position it names (ruling
+ * 2026-10-22).
  */
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
@@ -47,6 +49,8 @@ export type { ImportProtectionOptions, ViolationInfo } from './public-types'
 export interface Recorded {
   violations: Array<ViolationInfo>
   root: string
+  /** What the run printed, on every channel (a dev server's or a build's). */
+  diagnostics?: Array<Diagnostic>
 }
 
 /** A violation `onViolation` received, with paths relative to the app root. */
@@ -201,7 +205,10 @@ export function relevantViolations(
 
 /**
  * Asserts that the distinct violations of `recorded` are exactly the
- * `expected` ones, each at one of its places, in any order.
+ * `expected` ones, each at one of its places, in any order; and, when
+ * `recorded` has what the run printed, that each is printed as a warning or
+ * an error naming its importer and position (SPEC J6.3: every violation is
+ * reported).
  */
 export function expectViolationsAt(
   recorded: Recorded,
@@ -210,6 +217,14 @@ export function expectViolationsAt(
   expect(relevantViolations(recorded, expected).sort()).toEqual(
     expected.map(violationLabel).sort(),
   )
+  if (recorded.diagnostics) {
+    for (const violation of violationsOf(recorded)) {
+      expectPrinted(recorded.diagnostics, recorded.root, violation, [
+        'warning',
+        'error',
+      ])
+    }
+  }
 }
 
 /**
@@ -453,7 +468,7 @@ export function expectPrinted(
   diagnostics: Array<Diagnostic>,
   root: string,
   violation: { importer: string },
-  severity: 'warning' | 'error',
+  severity: 'warning' | 'error' | Array<'warning' | 'error'>,
 ) {
   const [file, line, column] = violation.importer.split(':')
   expectDiagnostic(diagnostics, {

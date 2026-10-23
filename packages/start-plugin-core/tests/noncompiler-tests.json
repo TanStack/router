@@ -7,6 +7,7 @@
   "prerender-vite.test.ts",
   "rsbuild/normalized-client-build.test.ts",
   "rsbuild/output-directory.test.ts",
+  "rsbuild/plugin.test.ts",
   "rsbuild/post-build.test.ts",
   "rsbuild/watch-ignored.test.ts",
   "schema.test.ts",

@@ -30,6 +30,9 @@ export const repaint = createIsomorphicFn()
 
 /** What `render()` and `repaint()` give in an environment of the build. */
 const run = `const settle = (fn) => {
+  if (typeof fn !== 'function') {
+    return fn
+  }
   try {
     return fn()
   } catch (error) {

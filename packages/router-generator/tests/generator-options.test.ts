@@ -5,7 +5,6 @@
  */
 import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { parseSync } from 'vite'
 import { afterEach, describe, expect, test, vi } from 'vitest'
@@ -14,6 +13,7 @@ import {
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { captureDiagnostics } from '@tanstack/compiler-test-utils/diagnostic-channel'
+import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import { Generator, getConfig } from '../src'
 import { recordInputs } from './consumer-inputs'
 import { expectOnlyOwnedEdits } from './owned-edits'
@@ -37,7 +37,9 @@ afterEach(async () => {
  * relative to the app root) and returns its root.
  */
 async function createApp(files: Record<string, string>) {
-  const root = await mkdtemp(path.join(tmpdir(), 'tsr-generator-options-'))
+  const root = await mkdtemp(
+    path.join(runDirectory(), 'tsr-generator-options-'),
+  )
   roots.push(root)
   for (const [file, content] of Object.entries(files)) {
     await mkdir(path.dirname(path.join(root, file)), { recursive: true })

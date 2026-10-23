@@ -55,11 +55,9 @@ async function expectServerFree(served: StartCase) {
   expectNotLoaded(await served.serverLoads(), ['./chart.client'])
 }
 
-/** What calling `call` (a page expression) in the page gives (`settle`). */
-async function settleInPage(served: StartCase, call: string) {
-  return fromPage(
-    await inPage<PageSettled>(served, `return settle(() => ${call})`),
-  )
+/** What calling the function `fn` (a page expression) in the page gives (`settle`). */
+async function settleInPage(served: StartCase, fn: string) {
+  return fromPage(await inPage<PageSettled>(served, `return settle(${fn})`))
 }
 
 /** How the factory `name` of `pkg` is imported and its call written. */
@@ -157,7 +155,7 @@ const constructs: Array<Construct> = [
       `export const fn = ${wrap(`${callee}(() => db.x())`)}`,
     check: async (served) => {
       await expectClientFree(served)
-      expect(await settleInPage(served, 'module.fn()')).toEqual(throwsError)
+      expect(await settleInPage(served, 'module.fn')).toEqual(throwsError)
       expect((await served.ssr()).fn()).toBe('x')
     },
   },
@@ -169,7 +167,7 @@ const constructs: Array<Construct> = [
       await expectServerFree(served)
       expect(await inPage(served, 'return module.fn()')).toBe('chart')
       const ssr = await served.ssr()
-      expect(settle(() => ssr.fn())).toEqual(throwsError)
+      expect(settle(ssr.fn)).toEqual(throwsError)
     },
   },
 ]
@@ -283,9 +281,7 @@ import { db } from './db.server'
 export const impl = factory.serverOnly(() => db.x())`,
         check: async (served) => {
           expectNotLoaded(await served.loads(), ['./db.server'])
-          expect(await settleInPage(served, 'module.impl()')).toEqual(
-            throwsError,
-          )
+          expect(await settleInPage(served, 'module.impl')).toEqual(throwsError)
           expect((await served.ssr()).impl()).toBe('server-only-value')
         },
       },
@@ -297,7 +293,7 @@ export const impl = factory.clientOnly(() => chart())`,
         check: async (served) => {
           expectNotLoaded(await served.serverLoads(), ['./chart.client'])
           const ssr = await served.ssr()
-          expect(settle(() => ssr.impl())).toEqual(throwsError)
+          expect(settle(ssr.impl)).toEqual(throwsError)
           expect(await inPage(served, 'return module.impl()')).toBe(
             'client-only-value',
           )

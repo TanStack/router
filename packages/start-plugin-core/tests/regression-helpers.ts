@@ -69,8 +69,15 @@ export class Thrown {
   constructor(readonly error: unknown) {}
 }
 
-/** The value of `run`, or `Thrown` with the error it throws. */
-export function settle(run: () => unknown) {
+/**
+ * What calling `run` gives: its value, or `Thrown` with the error it
+ * throws. A `run` that is no function is given back as it is, never a
+ * `Thrown`: "calling it throws" needs a function (J4.10).
+ */
+export function settle(run: unknown) {
+  if (typeof run !== 'function') {
+    return run
+  }
   try {
     return run()
   } catch (error) {
@@ -111,15 +118,17 @@ export function fromPage(settled: PageSettled): unknown {
 }
 
 /**
- * An environment's refusal to serve a module: the error it threw, and what
- * the app reported on every channel meanwhile (a compiler may give its
- * explanation on the console or the dev server's logger and hand the
- * bundler a short error, SPEC §5.7, N15). `expectCompileError` reads both.
+ * An environment's refusal to serve a module (`file`, its absolute path):
+ * the error it threw, and what the app reported on every channel meanwhile
+ * (a compiler may give its explanation on the console or the dev server's
+ * logger and hand the bundler a short error, SPEC §5.7, N15).
+ * `expectCompileError` reads both.
  */
 export class CompileFailure extends Error {
   constructor(
     readonly error: unknown,
     readonly reported: Array<ChannelDiagnostic>,
+    readonly file: string,
   ) {
     super(error instanceof Error ? error.message : String(error), {
       cause: error,
@@ -150,6 +159,7 @@ export async function compileError(
         .diagnostics()
         .slice(mark)
         .filter((diagnostic) => diagnostic.severity !== 'info'),
+      startCase.file(file),
     )
   }
 }

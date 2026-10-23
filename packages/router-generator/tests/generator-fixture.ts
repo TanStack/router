@@ -7,7 +7,6 @@
  */
 import { existsSync } from 'node:fs'
 import fs from 'node:fs/promises'
-import os from 'node:os'
 import path, { join } from 'node:path'
 import { onTestFinished } from 'vitest'
 import {
@@ -17,6 +16,7 @@ import {
   rootRoute,
   route,
 } from '@tanstack/virtual-file-routes'
+import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import { getConfig } from '../src'
 import { recordInputs } from './consumer-inputs'
 import { fixtureRoutes } from './generator-fixtures'
@@ -41,7 +41,9 @@ export function fixtureDir(name: string) {
  * the copy is removed when the test finishes. Returns the copy.
  */
 export async function copyFixture(name: string) {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), `tsr-fixture-${name}-`))
+  const dir = await fs.mkdtemp(
+    path.join(runDirectory(), `tsr-fixture-${name}-`),
+  )
   onTestFinished(() => fs.rm(dir, { recursive: true, force: true }))
   await fs.cp(fixtureDir(name), dir, {
     recursive: true,

@@ -94,16 +94,13 @@ export { serverValue as exposed }`,
   )
   expect(
     fromPage(
-      await inPage<PageSettled>(
-        startCase,
-        'return settle(() => module.exposed())',
-      ),
+      await inPage<PageSettled>(startCase, 'return settle(module.exposed)'),
     ),
   ).toEqual(throwsError)
   // The server build runs the server implementation; the client-only fn
   // throws.
   const ssr = await startCase.ssr()
-  expect([settle(() => ssr.clientValue()), ssr.exposed()]).toEqual([
+  expect([settle(ssr.clientValue), ssr.exposed()]).toEqual([
     throwsError,
     'MARK_QUERY:1',
   ])

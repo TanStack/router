@@ -26,11 +26,12 @@ import type { StartHost } from './start-host'
 
 /**
  * Asserts that `error` is a compile error about the user's module `source`
- * (SPEC G5) that, unless `at` is `undefined`, reports the line of `at` (the
- * first occurrence of that text in `source`, or a 1-based line), and its
- * column with `column`: the error the environment threw or one the app
- * reported meanwhile on any channel (a `CompileFailure` of `compileError`
- * carries both).
+ * (SPEC G5) that names the module's file (a `CompileFailure` of
+ * `compileError` knows it) and, unless `at` is `undefined`, reports the
+ * line of `at` (the first occurrence of that text in `source`, or a
+ * 1-based line), and its column with `column`, after naming the file: the
+ * error the environment threw or one the app reported meanwhile on any
+ * channel (a `CompileFailure` carries both).
  */
 export function expectCompileError(
   error: unknown,
@@ -54,7 +55,10 @@ export function expectCompileError(
         : expected.column
           ? diagnosticPosition(expected.source, expected.at)
           : { line: diagnosticPosition(expected.source, expected.at).line }
-  expectDiagnostic(candidates, { ...(position && { position }) })
+  expectDiagnostic(candidates, {
+    ...(error instanceof CompileFailure && { file: error.file }),
+    ...(position && { position }),
+  })
 }
 
 /**
@@ -171,9 +175,10 @@ export async function expectNoClientHandler(
 
 /**
  * What `settle` gives for a `createServerOnlyFn` called outside the server,
- * or a `createClientOnlyFn` called outside the client (J4.10): the call
- * threw (ruling 2026-10-22: the error's wording is not checked). An
- * asymmetric matcher: compare with `toEqual`.
+ * or a `createClientOnlyFn` called outside the client (J4.10): it is a
+ * function (`settle` gives back what is no function), and calling it threw
+ * (ruling 2026-10-22: the error's wording is not checked). An asymmetric
+ * matcher: compare with `toEqual`.
  */
 export const throwsError = expect.toSatisfy(
   (value: unknown) => value instanceof Thrown,

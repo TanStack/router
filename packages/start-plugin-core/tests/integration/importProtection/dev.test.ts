@@ -8,7 +8,10 @@
  */
 import path from 'node:path'
 import mdx from '@mdx-js/rollup'
-import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  captureConsole,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { startDevServer } from '../../dev-server'
 import {
@@ -22,9 +25,9 @@ import {
 } from '../../importProtection/mock-helpers'
 import {
   distinct,
+  expectPrinted,
   expectViolationsAt,
   factoryTopLevelCall,
-  isAt,
   locationIn,
   problemsNaming,
   receivedViolations,
@@ -90,6 +93,19 @@ function loggedViolations(recorded: Recorded) {
   )
 }
 
+/**
+ * The warnings the dev server printed (on any channel) that name `file`
+ * (relative to the app root), from `since` (a `server.diagnostics.length`
+ * mark) on: what `log` governs (SPEC J6.5).
+ */
+function warningsNaming(server: ProtectedDevServer, file: string, since = 0) {
+  return findDiagnostics(server.diagnostics.slice(since), {
+    severity: 'warning',
+    file,
+    root: server.root,
+  })
+}
+
 /** The violations of `recorded`, one per environment type and importer. */
 function distinctReports(recorded: Recorded): Array<Violation> {
   const seen = new Set<string>()
@@ -142,12 +158,6 @@ const deniedFileViolation: ExpectedViolation = {
   use: deniedFileUse,
   also: ['src/a.ts:1'],
 }
-
-/** Whether `importer` is where `deniedFileApp`'s violation may be reported. */
-const atDeniedFileViolation = (importer: string) =>
-  [deniedFileViolation.use, ...deniedFileViolation.also!].some((place) =>
-    isAt(importer, place),
-  )
 
 describe('a client import of a denied file', () => {
   // Source: oracle-gaps M2 (the warning channel of dev violations).
@@ -440,14 +450,15 @@ test(
 
 describe('log', () => {
   /**
-   * The violations logged when the client loads the app, and those logged
-   * when it loads it again after an edit of `src/a.ts` that keeps the denied
-   * import.
+   * How many warnings naming the importer `src/a.ts` are printed when the
+   * client loads the app, and when it loads it again after an edit of
+   * `src/a.ts` that keeps the denied import.
    */
   async function logsAroundAnEdit(log: 'once' | 'always') {
     const server = await startProtectedDevServer(deniedFileApp, { log })
     await server.load('/src/entry.ts')
-    const first = reportedViolations(server)
+    const first = warningsNaming(server, 'src/a.ts').length
+    const mark = server.diagnostics.length
     await server.edit({
       'src/a.ts': `import { secret } from './secret.server'
 export const read = () => secret()
@@ -457,7 +468,7 @@ export const other = 1
     await server.load('/src/entry.ts')
     return {
       first,
-      afterEdit: reportedViolations(server).slice(first.length),
+      afterEdit: warningsNaming(server, 'src/a.ts', mark).length,
     }
   }
 
@@ -466,8 +477,8 @@ export const other = 1
     "'once' does not log a violation again after an edit",
     async () => {
       const { first, afterEdit } = await logsAroundAnEdit('once')
-      expect(first).not.toEqual([])
-      expect(afterEdit).toEqual([])
+      expect(first).toBeGreaterThan(0)
+      expect(afterEdit).toBe(0)
     },
     timeout,
   )
@@ -485,17 +496,16 @@ export const other = 1
     "'always' logs a violation again after an edit",
     async () => {
       const { first, afterEdit } = await logsAroundAnEdit('always')
-      expect(first).not.toEqual([])
-      expect(
-        distinct(afterEdit.map((v) => v.importer)).map(atDeniedFileViolation),
-      ).toEqual([true])
+      expect(first).toBeGreaterThan(0)
+      expect(afterEdit).toBeGreaterThan(0)
     },
     timeout,
   )
 
   /**
-   * The violations logged when the client loads the app, and those logged
-   * when it loads it again after an edit of `tsconfig.json`, which changes
+   * How many warnings naming the importer `src/a.ts` are printed when the
+   * client loads the app, and when it loads it again after an edit of
+   * `tsconfig.json`, which changes
    * no module: Vite invalidates every module for it (as when it
    * re-optimizes dependencies), so the client's next load transforms them
    * again. Whether Vite also tells the page to reload is Vite's business
@@ -508,12 +518,13 @@ export const other = 1
       { log },
     )
     await server.load('/src/entry.ts')
-    const first = reportedViolations(server)
+    const first = warningsNaming(server, 'src/a.ts').length
+    const mark = server.diagnostics.length
     await server.edit({ 'tsconfig.json': `{ "compilerOptions": {} }\n` })
     await server.load('/src/entry.ts')
     return {
       first,
-      afterReload: reportedViolations(server).slice(first.length),
+      afterReload: warningsNaming(server, 'src/a.ts', mark).length,
     }
   }
 
@@ -523,8 +534,8 @@ export const other = 1
     "'once' does not log a violation again when the dev server reloads every module",
     async () => {
       const { first, afterReload } = await logsAroundAReload('once')
-      expect(first).not.toEqual([])
-      expect(afterReload).toEqual([])
+      expect(first).toBeGreaterThan(0)
+      expect(afterReload).toBe(0)
     },
     timeout,
   )
@@ -534,10 +545,8 @@ export const other = 1
     "'always' logs a violation again when the dev server reloads every module",
     async () => {
       const { first, afterReload } = await logsAroundAReload('always')
-      expect(first).not.toEqual([])
-      expect(
-        distinct(afterReload.map((v) => v.importer)).map(atDeniedFileViolation),
-      ).toEqual([true])
+      expect(first).toBeGreaterThan(0)
+      expect(afterReload).toBeGreaterThan(0)
     },
     timeout,
   )
@@ -558,10 +567,10 @@ export { b } from './b'
         { log: 'always' },
       )
       await server.load('/src/entry.ts')
-      const first = reportedViolations(server)
-      expect(first).not.toEqual([])
+      const first = warningsNaming(server, 'src/a.ts').length
+      expect(first).toBeGreaterThan(0)
       await server.load('/src/c.ts')
-      expect(reportedViolations(server)).toEqual(first)
+      expect(warningsNaming(server, 'src/a.ts')).toHaveLength(first)
     },
     timeout,
   )
@@ -581,7 +590,7 @@ export { b } from './b'
     async () => {
       const server = await startProtectedDevServer(deniedFileApp)
       await server.load('/src/entry.ts')
-      expect(reportedViolations(server)).toHaveLength(1)
+      expect(warningsNaming(server, 'src/a.ts')).toHaveLength(1)
     },
     timeout,
   )
@@ -604,7 +613,7 @@ export { b } from './b'
         log: 'always',
       })
       await server.load('/src/entry.ts')
-      expect(reportedViolations(server)).toHaveLength(1)
+      expect(warningsNaming(server, 'src/a.ts')).toHaveLength(1)
     },
     timeout,
   )
@@ -631,14 +640,10 @@ export const request = () => getRequest()
     async () => {
       const server = await startProtectedDevServer(deniedSpecifierApp)
       await server.load('/src/entry.ts')
-      const reports = loggedViolations(server)
-      expect(reports).toHaveLength(2)
-      expect(reports).toEqual(
-        expect.arrayContaining([
-          originalLocation('client src/a.ts:3:27', 1),
-          originalLocation('client src/a.ts:4:30', 2),
-        ]),
-      )
+      expectViolationsAt(server, [
+        { environment: 'client', use: 'src/a.ts:3:27', also: ['src/a.ts:1'] },
+        { environment: 'client', use: 'src/a.ts:4:30', also: ['src/a.ts:2'] },
+      ])
     },
     timeout,
   )
@@ -795,6 +800,9 @@ export const leak = () => secret()
       expect(importers).toContainEqual(
         originalLocation(locationIn('src/leak.ts', leak, 2, 'secret()'), 1),
       )
+      for (const violation of violationsOf(server)) {
+        expectPrinted(server.diagnostics, server.root, violation, 'warning')
+      }
     },
     timeout,
   )
@@ -1698,7 +1706,7 @@ export const startInstance = { leak }
    * `serverFnFactoryApp` without the leak, whose server fn factory module
    * re-exports `request` of `src/other.ts`, which calls the denied
    * `getRequest()` at the top level. The client loads the app. Returns the
-   * reports logged and the use in `src/other.ts`.
+   * reports, the warnings printed naming `src/other.ts` and the use in it.
    */
   async function reExportedByAFactory(preTransformRequests?: boolean) {
     const other = `import { getRequest } from '@tanstack/react-start/server'
@@ -1719,6 +1727,7 @@ ${factoryTopLevelCall}`
     expect(Object.keys(client)).toContain('/src/other.ts')
     return {
       reports: violationsOf(server),
+      printed: warningsNaming(server, 'src/other.ts'),
       use: locationIn('src/other.ts', other, 2, 'getRequest()'),
     }
   }
@@ -1728,8 +1737,8 @@ ${factoryTopLevelCall}`
   test(
     'a denied import of a module a server fn factory module re-exports is logged, with a trace to the use',
     async () => {
-      const { reports, use } = await reExportedByAFactory()
-      expect(reports).toHaveLength(1)
+      const { reports, printed, use } = await reExportedByAFactory()
+      expect(printed).toHaveLength(1)
       expect(reports[0]!.trace.map(({ at }) => at)).toEqual([
         expect.stringMatching(/^src\/entry\.ts\b/),
         expect.stringMatching(/^src\/usage\.ts\b/),

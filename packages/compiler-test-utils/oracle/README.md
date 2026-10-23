@@ -81,6 +81,12 @@ beetle with 3 trees × 4 workers, and locally for the budgets):
     - **red-fable/20** (a mixed type/value import treated as type-only) is caught by one row instead of two
       (`v2-type-only.test.ts` "rsbuild dev").
     - red-astra-r2/15 is still caught by its own row only.
+  - After S-A and S-B, REVIEW-S (at f16aae85ac) found wrong compilers no row caught: a Start that prints no
+    import-protection warning in Vite dev, a wrong-environment `createServerOnlyFn`/`createClientOnlyFn` replaced by
+    no function, an unguarded `Buffer` read in a client chunk that also probes `typeof Buffer`, an Rsbuild RSC setup
+    that `structuredClone`s rule functions, a compile error located in another module. F-L fixed the tests: each of
+    these patches is now caught, and a Start that only calls `onViolation` more often (same printed output) passes
+    the `log` rows. The 90 reds and 34 greens above were measured at f16aae85ac, before F-L.
 - **No internal imports.** The only internal import left in acceptance tests is the Q5 row, held by its pending
   ruling.
 - **Tests write nothing into the repository.** After a full unpatched run of a tree, `git status --porcelain
@@ -109,7 +115,8 @@ beetle with 3 trees × 4 workers, and locally for the budgets):
   60 GB machine to 0 GB available, so the measurement runner lets at most two run at a time.
 
 Counts on the integrated branch, measured at f16aae85ac (the S-A and S-B simplifications, the Q6/Q7 rulings,
-NOL-delete, the main-tests clean-up, F-J, and the clean-up after them; see below). Passed / expected-fail pins, the
+NOL-delete, the main-tests clean-up, F-J, and the clean-up after them; see below; F-L re-ran every tier and lane
+locally with the same counts apart from its restored noncompiler test). Passed / expected-fail pins, the
 same in all 9 unpatched runs apart from #34 rows:
 
 | Package                         | `test:unit` | `test:integration` | `test:noncompiler` |
@@ -117,7 +124,7 @@ same in all 9 unpatched runs apart from #34 rows:
 | `@tanstack/compiler-test-utils` | 77 / 0      | 131 / 0            | –                  |
 | `@tanstack/router-generator`    | 239 / 30    | 67 / 3             | –                  |
 | `@tanstack/router-plugin`       | 107 / 20    | 674 / 349          | –                  |
-| `@tanstack/start-plugin-core`   | 270 / 132   | 1202 / 293         | 147 / 0            |
+| `@tanstack/start-plugin-core`   | 270 / 132   | 1202 / 293         | 148 / 0            |
 | `@tanstack/react-start-rsc`     | no files    | 108 / 13           | 57 / 0             |
 
 How the counts moved from d07614d3b3 (ctu 330 / 0 and 171 / 0; router-plugin `test:integration` 674 / 355;
@@ -133,6 +140,8 @@ start-plugin-core 389 / 143 and 1204 / 292; noncompiler 121 / 0 and 49 / 0):
   through real apps: Vite and Rsbuild builds, Rsbuild dev).
 - **main-tests**: main's tests of features that are not compilers back at main's paths with main's content
   (noncompiler: start-plugin-core 121 → 147, react-start-rsc 49 → 57); main's tests of compiler internals deleted.
+- **F-L** (the REVIEW-S findings): start-plugin-core `test:noncompiler` +1 (main's `rsbuild/plugin.test.ts`, #7482,
+  restored); no other count changed.
 - **NOL-delete** and the clean-up after the merge: the implementation lane is gone (below); no acceptance row
   changed, apart from start-plugin-core `test:unit` −2 pins (the F1 caret pin, which read the code frame: RULINGS
   "code-frame column (F1)") and ctu `test:unit` −34 (the controls of the deleted Node stand-ins `module-linker`,
@@ -305,7 +314,11 @@ chunk layout, printed code or AST shapes.
 - **Dead code (G8)** is decided on a real production build: a dev module that reads a name it never declares fails
   if the production build of the same app still reads it, or if that build fails the build harness's own
   dangling-name check (it may spell the name otherwise). A module's free names come from Yuku's semantic model
-  (`free-names.ts`), minus the environment's globals and names the module checks with `typeof`. Routes compiled
+  (`free-names.ts`), minus the environment's globals and names the module checks with `typeof`. In a production
+  build the chunk's free reads are attributed to the modules that read them (`build-harness.ts` `nameCounts`):
+  each module decides for itself whether its read is guarded, so another module's `typeof` does not excuse an
+  unguarded read, and a module whose rendered code in a Vite build lost the name is no reader. A chunk Yuku cannot
+  parse fails the check. Routes compiled
   with route HMR, and modules checked without their app (router-plugin `router-plugin-context.test.ts`), have no
   production build to decide: their free names count as they are, which is stricter than G8.
 - **Nothing dev-only in production (G7)**: router-plugin builds each production app twice, with the defaults and
@@ -320,9 +333,13 @@ file it names (absolute or project-relative, §5.7) and the position (`line:colu
 (`diagnostics.ts`; RULINGS "diagnostics: file and position only"): never its wording, the API or option it names,
 the cause it gives or its code frame. Severity is checked: where SPEC says "warn", a diagnostic must be at least a
 warning (an info or log line does not count), and where it says the build fails, it must fail (RULINGS "diagnostic
-severity"). "Nothing reported" (`expectNoProblems`) reads every channel. Import-protection violations are read from
-Start's public `onViolation` callback, never parsed from the printed report (RULINGS "import-protection reports
-through `onViolation`").
+severity"). With a file, a `line:column` or `:line` counts only after the text names the file (a code frame's
+highlighted line counts anywhere); a Start compile error must name the module (`expectCompileError`). "Nothing
+reported" (`expectNoProblems`) reads every channel. Import-protection violations are read from Start's public
+`onViolation` callback, never parsed from the printed report (RULINGS "import-protection reports through
+`onViolation`"); that each one is printed, as a warning or an error naming its importer's file and position, is
+checked by `expectViolationsAt` (dev servers and builds) and `expectPrinted`, and the `log` rows count the printed
+warnings that name the importer, not `onViolation` calls.
 
 ## Lanes
 
@@ -335,7 +352,8 @@ through `onViolation`").
 The corpus (acceptance) is the compilers' test suite. Main's own tests split in two:
 
 - **Tests of features that are not compilers** (start-plugin-core: Start manifest, sitemap, prerender, CSRF config,
-  schema, entry planning, post-build, output directory, watch-ignored, `createVirtualModule`, dev styles, utils;
+  schema, entry planning, post-build, output directory, watch-ignored, `createVirtualModule`, dev styles, utils, the
+  Rsbuild RSC rule cloning of #7482;
   react-start-rsc: the RSC runtime components, streams, `createRscProxy` and the type tests) are untouched: main's
   paths, main's content. The noncompiler lane runs them; the corpus projects leave them out.
 - **Tests of today's compiler internals** (internal functions called directly, exact output text or snapshots,

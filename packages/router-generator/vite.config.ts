@@ -16,6 +16,7 @@ const config = defineConfig({
     dir: './tests',
     watch: false,
     reporters: ['default', '@tanstack/compiler-test-utils/budget-reporter'],
+    globalSetup: ['@tanstack/compiler-test-utils/run-directory'],
     // Test files share a worker's modules (the router packages, Vite): every
     // test works in its own temporary app and restores its spies and env
     // stubs, and the route tree helpers share Vite servers only where they

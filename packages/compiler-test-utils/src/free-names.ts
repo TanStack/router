@@ -4,7 +4,9 @@
  * away the globals of where the module runs (`known-globals.ts`). A name in
  * a type position is no read. A name the module probes with `typeof`
  * anywhere is not free: the module reads it knowing it may not exist (e.g.
- * `typeof process !== 'undefined' && process.env` in client code).
+ * `typeof process !== 'undefined' && process.env` in client code). The
+ * rule is the module's: code of several modules (a chunk) is read with
+ * `keepProbed`, and each module decides for itself.
  */
 import { parse } from 'yuku'
 import type { Scope } from 'yuku'
@@ -16,10 +18,20 @@ export interface ModuleNames {
   free: Set<string>
   /** Names of which some read resolves to a binding of the module. */
   bound: Set<string>
+  /** Names the module probes with `typeof` (not in `free`, without `keepProbed`). */
+  probed: Set<string>
 }
 
-/** Reads `code` as the language `path` implies (default JavaScript). */
-export function readNames(code: string, path = 'module.js'): ModuleNames {
+/**
+ * Reads `code` as the language `path` implies (default JavaScript). With
+ * `keepProbed`, `free` keeps the names read outside `typeof` that are also
+ * probed with it.
+ */
+export function readNames(
+  code: string,
+  path = 'module.js',
+  options: { keepProbed?: boolean } = {},
+): ModuleNames {
   const file = parse(code, {
     path,
     semantic: true,
@@ -47,13 +59,16 @@ export function readNames(code: string, path = 'module.js'): ModuleNames {
       free.add(reference.name)
     }
   }
-  probed.forEach((name) => free.delete(name))
+  if (!options.keepProbed) {
+    probed.forEach((name) => free.delete(name))
+  }
   return {
     errors: file.diagnostics
       .filter((diagnostic) => diagnostic.severity === 'error')
       .map((diagnostic) => diagnostic.message),
     free,
     bound,
+    probed,
   }
 }
 
