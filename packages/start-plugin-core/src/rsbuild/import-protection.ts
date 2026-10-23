@@ -43,6 +43,7 @@ import {
   isFileExcluded,
   normalizeFilePath,
 } from '../import-protection/utils'
+import { getRebuiltModulesAndImporters } from './rebuilt-modules'
 import type {
   ImportProtectionBehavior,
   ImportProtectionOptions,
@@ -1342,6 +1343,8 @@ export function registerImportProtection(
   const perf = isPerfEnabled() ? createPerfCollector() : undefined
   const extensionlessResolver = new ExtensionlessAbsoluteIdResolver()
   const envStates = new Map<string, EnvRuntimeState>()
+  // `incremental` marks a compilation that directly follows a clean scan.
+  const scanStateByEnv = new Map<string, 'clean' | 'incremental'>()
   const shouldCheckImporterCache = new Map<string, boolean>()
   const config: PluginConfig = {
     enabled: true,
@@ -1480,6 +1483,7 @@ export function registerImportProtection(
     extensionlessResolver.clear()
     shouldCheckImporterCache.clear()
     envStates.clear()
+    scanStateByEnv.clear()
     if (perf) {
       perf.time('onBeforeBuild', startedAt)
     }
@@ -1547,6 +1551,11 @@ export function registerImportProtection(
         compiler.hooks.thisCompilation.tap(
           'TanStackStartImportProtectionVirtualModulesReady',
           () => {
+            if (scanStateByEnv.get(envName) === 'clean') {
+              scanStateByEnv.set(envName, 'incremental')
+            } else {
+              scanStateByEnv.delete(envName)
+            }
             shared.readyVmPlugins[envName] = true
             flushPendingWrites(shared, envName)
           },
@@ -1577,6 +1586,47 @@ export function registerImportProtection(
         const envType = getImportProtectionEnvType(config, envName)
         const envState = getOrCreateEnvState(envStates, envName)
         const matchers = getRulesForEnvironment(config, envName)
+
+        // Removing a file can re-resolve imports in modules that are not rebuilt.
+        const canScanIncrementally =
+          scanStateByEnv.get(envName) === 'incremental' &&
+          api.context.action === 'dev' &&
+          !context.compiler.removedFiles?.size
+        scanStateByEnv.delete(envName)
+        if (canScanIncrementally) {
+          const incrementalStartedAt = perf ? performance.now() : 0
+          const incrementalScanner = createCompilationViolationScanner({
+            config,
+            envType,
+            matchers,
+            shouldCheckImporter,
+          })
+          forEachEntryModule({
+            compilation: context.compilation,
+            visitModule: incrementalScanner.visitEntry,
+          })
+          const changedModules = getRebuiltModulesAndImporters(
+            context.compilation,
+          )
+          forEachModules({
+            compilation: context.compilation,
+            modules: changedModules,
+            visitNode: incrementalScanner.visitNode,
+          })
+          const incrementalCandidates = incrementalScanner.finish()
+          if (perf) {
+            perf.time('processAssets.incremental', incrementalStartedAt)
+            perf.count(
+              'processAssets.incremental.modules',
+              changedModules.length,
+            )
+          }
+          if (incrementalCandidates.length === 0) {
+            scanStateByEnv.set(envName, 'clean')
+            return
+          }
+        }
+
         const allModules = Array.from(context.compilation.modules)
         perf?.count('processAssets.modules.total', allModules.length)
 
@@ -1620,6 +1670,7 @@ export function registerImportProtection(
         }
 
         if (candidates.length === 0) {
+          scanStateByEnv.set(envName, 'clean')
           return
         }
 

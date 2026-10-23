@@ -129,6 +129,12 @@ When violations exist, the adapter replays the snapshot to build `ImportGraph`;
 it does not query outgoing connections again. A clean compilation avoids entry
 traversal, graph indexes, and module-source loading.
 
+In development, a compilation that directly follows a clean scan of the same
+environment first scans only `compilation.builtModules`, their direct importers
+(a rebuilt dependency can gain a marker without its importer changing), and
+entry modules. Any candidate, a removed file, or a skipped compilation falls
+back to the full scan, so violations are always reported from complete data.
+
 Diagnostic enrichment is lazy. The transform-result provider reads
 `module.originalSource().sourceAndMap()` when available. It gets original code
 from sourcemap `sourcesContent`, then falls back to
