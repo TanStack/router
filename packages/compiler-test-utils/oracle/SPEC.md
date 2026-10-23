@@ -253,7 +253,8 @@ rsc, srcDirectory, … })` `[type: start-plugin-core/src/schema.ts]`. Which clau
   bundle is a bug. Validators approximate "deleted by the bundler" with real bundler tree-shaking, never a narrower
   hand-rolled rule. The check runs on the artifact actually emitted under its effective settings (an unminified
   build is checked unminified, not through a separately minified copy), and a name that is a real global of the
-  target environment (`window`, `name`, `status`, …) is not dangling, nor is a name the module checks with `typeof`.
+  target environment (`window`, `name`, `status`, …) is not dangling, nor is a name the module checks with `typeof`
+  (in that module: another module's check does not excuse an unguarded read).
   (A compiler that drops a local whose name is also such a global is not detected by this check.) The check covers exactly the modules the compilers under test produced
   or changed: user and route modules after our transforms, split chunks, virtual and support modules, and any
   dependency module one of our plugins transformed. Inside that scope every free name counts, unless the module's

@@ -25,6 +25,7 @@ import {
 } from '../../importProtection/mock-helpers'
 import {
   distinct,
+  expectPrinted,
   expectViolationsAt,
   factoryTopLevelCall,
   locationIn,
@@ -799,6 +800,9 @@ export const leak = () => secret()
       expect(importers).toContainEqual(
         originalLocation(locationIn('src/leak.ts', leak, 2, 'secret()'), 1),
       )
+      for (const violation of violationsOf(server)) {
+        expectPrinted(server.diagnostics, server.root, violation, 'warning')
+      }
     },
     timeout,
   )

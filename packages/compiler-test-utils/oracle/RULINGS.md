@@ -109,8 +109,9 @@ or option named" half of D14. Clauses: G5, J2.8, J2.19, J4.10, J6.5, J6.12, §5.
 2026-10-22, user: "read the callback, delete the parser". Which violations import protection reports, where (the
 importer's file and location) and with which chain are read from Start's public `onViolation` callback
 (`tanstackStart({ importProtection: { onViolation } })`, guide/import-protection.md), never parsed from the
-printed report. The printed report is checked only for the file and position it names (above). Clauses: J6.5,
-J6.6, J6.12.
+printed report. The printed report is checked only for the file and position it names (above): each violation
+`onViolation` received is printed, as a warning or an error naming its importer, and `log` is judged on the printed
+warnings. Clauses: J6.3, J6.5, J6.6, J6.12.
 
 ### no import gate
 
