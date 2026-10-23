@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { promisify } from 'node:util'
 import { rspack } from '@rsbuild/core'
@@ -9,7 +9,11 @@ import {
   registerClientBuildCapture,
 } from '../../src/rsbuild/normalized-client-build'
 import { buildStartManifest } from '../../src/start-manifest-plugin/manifestBuilder'
-import type { RsbuildPluginAPI, Rspack } from '@rsbuild/core'
+import type {
+  ModifyRspackConfigFn,
+  RsbuildPluginAPI,
+  Rspack,
+} from '@rsbuild/core'
 import type { GetConfigFn, NormalizedClientBuild } from '../../src/types'
 
 async function buildClientFixture(
@@ -580,7 +584,11 @@ describe('normalizeRspackClientBuild', () => {
         startConfig: { server: { build: { inlineCss: { enabled } } } },
       })
       const { getClientBuild } = registerClientBuildCapture(
-        { context: { action }, processAssets } as unknown as RsbuildPluginAPI,
+        {
+          context: { action },
+          processAssets,
+          modifyRspackConfig: vi.fn(),
+        } as unknown as RsbuildPluginAPI,
         getConfig as unknown as GetConfigFn,
       )
 
@@ -640,4 +648,166 @@ describe('normalizeRspackClientBuild', () => {
     expect(manifest.routes['/posts']?.css).toEqual(['/assets/posts.css'])
     expect(manifest.routes['/posts']?.preloads).toEqual(['/assets/posts.js'])
   })
+})
+
+describe('registerClientBuildCapture development rebuilds', () => {
+  test.each([false, true])(
+    'reuses the client build only when a rebuild cannot change it (hot=%s)',
+    async (hot) => {
+      const directory = await mkdtemp(join(tmpdir(), 'tss-rsbuild-dev-'))
+      const write = (name: string, source: string) =>
+        writeFile(join(directory, name), source)
+      await write(
+        'index.js',
+        `globalThis.routes = [() => import(/* webpackChunkName: "alpha" */ './alpha.js?tsr-split=component'), () => import(/* webpackChunkName: "beta" */ './beta.js?tsr-split=component')]`,
+      )
+      const alpha = (imports: string, body = `'alpha'`) =>
+        `${imports}\nimport { leaf } from './leaf.js'\nexport const render = () => ${body} + leaf()`
+      await write('alpha.js', alpha(''))
+      await write(
+        'beta.js',
+        `import { leaf } from './leaf.js'\nexport const render = () => leaf()`,
+      )
+      await write('leaf.js', `export const leaf = () => 'leaf'`)
+      await write('alpha.css', '.alpha { color: red; }')
+      await write('hydrated.js', `export const hydrated = () => 'hydrated'`)
+      await write('lazy.js', `export const lazy = 'lazy'`)
+
+      const processAssets = vi.fn<RsbuildPluginAPI['processAssets']>()
+      const modifyRspackConfig =
+        vi.fn<(handler: ModifyRspackConfigFn) => void>()
+      const { getClientBuild } = registerClientBuildCapture(
+        {
+          context: { action: 'dev' },
+          processAssets,
+          modifyRspackConfig,
+        } as unknown as RsbuildPluginAPI,
+        (() => ({}) as ReturnType<GetConfigFn>) as GetConfigFn,
+      )
+      const [, capture] = processAssets.mock.calls[0]!
+      const builds: Array<{
+        captured: NormalizedClientBuild
+        fresh: NormalizedClientBuild
+      }> = []
+      const config: Rspack.Configuration = {
+        context: directory,
+        mode: 'development',
+        devtool: false,
+        entry: { index: './index.js' },
+        output: { path: join(directory, 'dist') },
+        module: { rules: [{ test: /\.css$/, type: 'css' }] },
+        plugins: [
+          ...(hot ? [new rspack.HotModuleReplacementPlugin()] : []),
+          {
+            apply(compiler: Rspack.Compiler) {
+              compiler.hooks.thisCompilation.tap('Capture', (compilation) => {
+                compilation.hooks.processAssets.tap(
+                  {
+                    name: 'Capture',
+                    stage: rspack.Compilation.PROCESS_ASSETS_STAGE_REPORT,
+                  },
+                  () => {
+                    capture({ compilation, compiler } as Parameters<
+                      typeof capture
+                    >[0])
+                    builds.push({
+                      captured: getClientBuild()!,
+                      fresh: normalizeRspackClientBuild(compilation),
+                    })
+                  },
+                )
+              })
+            },
+          },
+        ],
+      }
+      const [configure] = modifyRspackConfig.mock.calls[0]!
+      await configure(
+        config as Parameters<typeof configure>[0],
+        { environment: { name: 'client' } } as Parameters<typeof configure>[1],
+      )
+
+      const compiler = rspack(config)
+      let onCompiled: (() => void) | undefined
+      const compiled = () =>
+        new Promise<void>((resolve) => {
+          onCompiled = resolve
+        })
+      const firstCompile = compiled()
+      const watching = compiler.watch({ aggregateTimeout: 50 }, (error) => {
+        expect(error).toBeNull()
+        onCompiled?.()
+      })
+      const rebuild = async (name: string, source: string) => {
+        const next = compiled()
+        await write(name, source)
+        await next
+        const previous = builds.at(-2)!.captured
+        const { captured, fresh } = builds.at(-1)!
+        expect(captured).toEqual(fresh)
+        return captured === previous
+      }
+
+      try {
+        await firstCompile
+        expect(builds[0]!.captured).toEqual(builds[0]!.fresh)
+
+        expect(await rebuild('alpha.js', alpha('', `'edited'`))).toBe(true)
+        expect(
+          await rebuild('leaf.js', `export const leaf = () => 'edited'`),
+        ).toBe(true)
+        // leaf.js is in both route chunks with the same runtime.
+        expect(
+          await rebuild(
+            'leaf.js',
+            `import { hydrated } from './hydrated.js?tss-hydrate=leaf'\nexport const leaf = () => hydrated()`,
+          ),
+        ).toBe(false)
+        expect(
+          builds.at(-1)!.captured.chunksByFileName.get('beta.js'),
+        ).toMatchObject({ hydrationIds: ['leaf'] })
+        expect(
+          await rebuild(
+            'leaf.js',
+            `import { hydrated } from './hydrated.js?tss-hydrate=leaf'\nexport const leaf = () => 'edited ' + hydrated()`,
+          ),
+        ).toBe(true)
+        expect(await rebuild('alpha.js', alpha(`import './alpha.css'`))).toBe(
+          false,
+        )
+        expect(
+          await rebuild(
+            'alpha.js',
+            alpha(
+              `import './alpha.css'\nimport { hydrated } from './hydrated.js?tss-hydrate=one'\nglobalThis.hydrated = hydrated`,
+            ),
+          ),
+        ).toBe(false)
+        expect(
+          await rebuild(
+            'alpha.js',
+            alpha(
+              `import './alpha.css'\nimport { hydrated } from './hydrated.js?tss-hydrate=two'\nglobalThis.hydrated = hydrated`,
+            ),
+          ),
+        ).toBe(false)
+        const { hydrationIds } = builds
+          .at(-1)!
+          .captured.chunksByFileName.get('alpha.js')!
+        expect(hydrationIds).toContain('two')
+        expect(hydrationIds).not.toContain('one')
+        expect(
+          await rebuild(
+            'alpha.js',
+            alpha(
+              `import './alpha.css'\nimport { hydrated } from './hydrated.js?tss-hydrate=two'\nglobalThis.hydrated = hydrated\nglobalThis.lazy = () => import('./lazy.js')`,
+            ),
+          ),
+        ).toBe(false)
+      } finally {
+        await promisify(watching.close.bind(watching))()
+        await rm(directory, { recursive: true, force: true })
+      }
+    },
+  )
 })
