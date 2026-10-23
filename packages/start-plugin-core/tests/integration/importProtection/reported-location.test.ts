@@ -10,6 +10,7 @@
  * and the code frame of a report: reported-location-trace.test.ts.
  */
 import { describe, expect, test } from 'vitest'
+import { locationParts } from '../../importProtection/start-apps'
 import {
   at,
   channels,
@@ -329,7 +330,7 @@ describe('the reported importer is a file of the app, whatever source maps it ha
     options: { sourcemap?: boolean } = {},
   ) =>
     (await reportedLocations(channel, jsx, options)).map(
-      (importer) => importer.split(':')[0],
+      (importer) => locationParts(importer).file,
     )
 
   // (the location itself is pinned above, "a JSX element")

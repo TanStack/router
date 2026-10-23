@@ -6,12 +6,15 @@
  * of an Rsbuild dev server and of Vite and Rsbuild builds in error mode),
  * as `onViolation` receives it.
  */
-import path from 'node:path'
 import { expect } from 'vitest'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  findDiagnostics,
+  mentionsFile,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart } from '../../build-harness'
 import { startRsbuildDevServer } from '../../rsbuild-dev-server'
 import {
+  appFileOf,
   distinct,
   isAt,
   locationIn,
@@ -91,9 +94,9 @@ export default function Secret() {
 
 /**
  * Fails when `output` (a dev server's `diagnostics`, every channel) has an
- * error that names none of the importers `onViolation` received: a compile
- * that fails for another reason fails the test, whatever the reports'
- * wording (SPEC §5.7, J6.12).
+ * error that names none of the importers' files `onViolation` received
+ * (`appFileOf`): a compile that fails for another reason fails the test,
+ * whatever the reports' wording (SPEC §5.7, J6.12).
  */
 export function expectNoOtherErrors(
   output: Recorded & {
@@ -101,16 +104,13 @@ export function expectNoOtherErrors(
   },
 ) {
   const reported = distinct(
-    reportedViolations(output).map(({ importer }) => importer.split(':')[0]!),
+    reportedViolations(output).map(({ importer }) => appFileOf(importer)),
   )
   const others = findDiagnostics(output.diagnostics, {
     severity: 'error',
   }).filter(
     ({ text }) =>
-      !reported.some(
-        (file) =>
-          text.includes(path.join(output.root, file)) || text.includes(file),
-      ),
+      !reported.some((file) => mentionsFile(text, file, { root: output.root })),
   )
   expect(others.map(({ text }) => text)).toEqual([])
 }
@@ -136,9 +136,7 @@ export function expectRelevantLocation(
   places: Array<string>,
 ) {
   expect(reported).toHaveLength(1)
-  // (the file without a URL scheme such as Rspack's `webpack:/`: how the
-  // report names the file is pinned in reported-location.test.ts, "the
-  // reported importer is a file of the app", F2)
+  // (the file without a URL scheme: `appFileOf`)
   const at = reported[0]!.replace(/^[a-z]+:\/+/, '')
   expect(
     places.some((place) => isAt(at, place)),

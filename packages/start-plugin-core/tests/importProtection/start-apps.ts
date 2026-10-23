@@ -164,13 +164,45 @@ export const violationLabel = (expected: ExpectedViolation) =>
   `${expected.environment} ${expected.use}`
 
 /**
+ * The file, line and column of a location (`file`, `file:line` or
+ * `file:line:column`): only a trailing `:line` or `:line:column` is the
+ * position, so a file named with a colon (Rspack's `webpack:/src/a.tsx`,
+ * the F2 pin) keeps its whole name.
+ */
+export function locationParts(location: string): {
+  file: string
+  line?: string
+  column?: string
+} {
+  const [, file, line, column] = /^(.*?)(?::(\d+))?(?::(\d+))?$/.exec(location)!
+  return {
+    file: file!,
+    ...(line !== undefined && { line }),
+    ...(column !== undefined && { column }),
+  }
+}
+
+/**
+ * The file of the app a location names: its file (`locationParts`) without
+ * a URL scheme such as Rspack's `webpack:/` (how the report names the file
+ * is pinned in reported-location.test.ts, "the reported importer is a file
+ * of the app", F2).
+ */
+export const appFileOf = (location: string) =>
+  locationParts(location).file.replace(/^[a-z]+:\/+/, '')
+
+/**
  * Whether `reported` (`file`, `file:line` or `file:line:column`) is the
  * place `accepted` names: the same file, line and column, as far as
  * `accepted` gives them, with no location for a bare file.
  */
 export function isAt(reported: string, accepted: string) {
-  const [file, line, column] = accepted.split(':')
-  const [reportedFile, reportedLine, reportedColumn] = reported.split(':')
+  const { file, line, column } = locationParts(accepted)
+  const {
+    file: reportedFile,
+    line: reportedLine,
+    column: reportedColumn,
+  } = locationParts(reported)
   return (
     reportedFile === file &&
     (line === undefined
@@ -234,7 +266,8 @@ export function expectViolationsAt(
  */
 export function reportedImporters(recorded: Recorded): Array<string> {
   return reportedViolations(recorded).map(
-    ({ environment, importer }) => `${environment} ${importer.split(':')[0]}`,
+    ({ environment, importer }) =>
+      `${environment} ${locationParts(importer).file}`,
   )
 }
 
@@ -450,7 +483,7 @@ export function expectMarkerViolation(
   violation: Violation,
   locations: { marker: string; use: string; imports: Array<string> },
 ) {
-  const markerFile = locations.marker.split(':')[0]!
+  const markerFile = locationParts(locations.marker).file
   expect(
     [locations.use, ...locations.imports, locations.marker, markerFile].some(
       (place) => isAt(violation.importer, place),
@@ -470,10 +503,10 @@ export function expectPrinted(
   violation: { importer: string },
   severity: 'warning' | 'error' | Array<'warning' | 'error'>,
 ) {
-  const [file, line, column] = violation.importer.split(':')
+  const { file, line, column } = locationParts(violation.importer)
   expectDiagnostic(diagnostics, {
     severity,
-    file: file!,
+    file,
     root,
     ...(line !== undefined && {
       position: { line: Number(line), column: Number(column) },

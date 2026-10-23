@@ -7,7 +7,7 @@
  * escape.
  */
 import { expect } from 'vitest'
-import { isAt } from './start-apps'
+import { isAt, locationParts } from './start-apps'
 
 /** `[environment, location]` of `client file:line:column`. */
 function splitEnvironment(value: string) {
@@ -34,7 +34,7 @@ export function originalLocation(
   } = {},
 ) {
   const [environment, location] = splitEnvironment(use)
-  const file = location.split(':')[0]!
+  const { file } = locationParts(location)
   const places = [
     location,
     ...([] as Array<number>)
