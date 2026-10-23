@@ -188,6 +188,83 @@ describe('route boundary component preloads', () => {
     expect(router.state.matches[1]?.error).toBe(routeError)
   })
 
+  test('a child loader error waits for the ancestor errorComponent chunk that renders it', async () => {
+    const errorComponentGate = createControlledPromise<void>()
+    const routeError = new Error('child loader failed')
+    const errorComponentPreload = vi.fn(() => errorComponentGate)
+    pendingGates.push(errorComponentGate)
+
+    const ErrorBoundary = Object.assign(() => null, {
+      preload: errorComponentPreload,
+    })
+
+    const rootRoute = new BaseRootRoute({})
+    const parentRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      errorComponent: ErrorBoundary as any,
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      loader: () => {
+        throw routeError
+      },
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
+      history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
+    })
+
+    let settled = false
+    const loading = router.load().then(() => {
+      settled = true
+    })
+    pendingLoads.push(loading)
+
+    await vi.waitFor(() => expect(errorComponentPreload).toHaveBeenCalledOnce())
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(settled).toBe(false)
+
+    errorComponentGate.resolve()
+    await loading
+
+    expect(
+      router.state.matches.find((match) => match.routeId === childRoute.id),
+    ).toMatchObject({ status: 'error', error: routeError })
+  })
+
+  test('a child loader error skips ancestor chunks when the child has a default error component', async () => {
+    const errorComponentPreload = vi.fn(() => Promise.resolve())
+    const ErrorBoundary = Object.assign(() => null, {
+      preload: errorComponentPreload,
+    })
+
+    const rootRoute = new BaseRootRoute({})
+    const parentRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      errorComponent: ErrorBoundary as any,
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      loader: () => {
+        throw new Error('child loader failed')
+      },
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
+      history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
+      // Framework adapters declare this option on RouterOptions.
+      ...({ defaultErrorComponent: () => null } as {}),
+    })
+
+    await router.load()
+
+    expect(errorComponentPreload).not.toHaveBeenCalled()
+  })
+
   test('global notFound does not wait for component chunks below its boundary', async () => {
     const hiddenComponentGate = createControlledPromise<void>()
     const componentError = new Error('hidden component chunk failed')

@@ -1133,6 +1133,31 @@ function materializeRedirect(
   return outcome
 }
 
+/**
+ * An errored match without its own error component renders through the
+ * nearest ancestor error boundary, so that boundary's chunk must be ready
+ * before the lane commits.
+ */
+function loadAncestorErrorComponent(
+  router: AnyRouter,
+  matches: Array<WorkMatch>,
+  index: number,
+): Promise<void> | undefined {
+  const hasErrorComponent = (route: AnyRoute) =>
+    route.options.errorComponent ??
+    (router.options as any).defaultErrorComponent
+  if (hasErrorComponent(getRoute(router, matches[index]!))) {
+    return undefined
+  }
+  for (let ancestor = index - 1; ancestor >= 0; ancestor--) {
+    const route = getRoute(router, matches[ancestor]!)
+    if (hasErrorComponent(route)) {
+      return loadRouteChunk(route, 'errorComponent')
+    }
+  }
+  return undefined
+}
+
 async function reduceLane(
   router: AnyRouter,
   lane: ContextualizedLane,
@@ -1233,12 +1258,18 @@ async function reduceLane(
     try {
       await waitFor<unknown>(
         outcome
-          ? Promise.resolve().then(() =>
-              loadRouteChunk(
-                route,
-                kind === ERROR ? 'errorComponent' : 'notFoundComponent',
-              ),
-            )
+          ? Promise.resolve()
+              .then(() =>
+                loadRouteChunk(
+                  route,
+                  kind === ERROR ? 'errorComponent' : 'notFoundComponent',
+                ),
+              )
+              .then(() =>
+                kind === ERROR
+                  ? loadAncestorErrorComponent(router, matches, boundary)
+                  : undefined,
+              )
           : Promise.all([
               loadRouteChunk(route),
               loadRouteChunk(route, 'notFoundComponent'),
