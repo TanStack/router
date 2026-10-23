@@ -1136,6 +1136,58 @@ describe('re-export chain resolution', () => {
     expect(result).toBeNull()
   })
 
+  test('keeps re-exports apart when they share an imported name', async () => {
+    // Two modules each re-export a different factory under the same name.
+    // A barrel re-exports both under distinct aliases, so the aliases must
+    // resolve to their own sources instead of collapsing onto one of them.
+    const virtualModules: Record<string, string> = {
+      './server': `
+        export { createServerOnlyFn as wrap } from '@tanstack/start-fn-stubs'
+      `,
+      './client': `
+        export { createClientOnlyFn as wrap } from '@tanstack/start-fn-stubs'
+      `,
+      './barrel': `
+        export { wrap as allowed } from './server'
+        export { wrap as denied } from './client'
+      `,
+    }
+
+    const compiler: StartCompiler = new StartCompiler({
+      env: 'server',
+      envName: 'ssr',
+      root: '/test',
+      framework: 'react' as const,
+      providerEnvName: 'ssr',
+      lookupKinds: new Set(['ServerOnlyFn', 'ClientOnlyFn']),
+      lookupConfigurations: [],
+      getKnownServerFns: () => ({}),
+      loadModule: async (id) => {
+        const code = virtualModules[id]
+        if (code) {
+          compiler.ingestModule({ code, id })
+        }
+      },
+      resolveId: async (id) => {
+        return virtualModules[id] ? id : null
+      },
+    })
+
+    const result = await compiler.compile({
+      id: 'distinct-alias-test.ts',
+      code: `
+        import { allowed, denied } from './barrel'
+        export const a = allowed(() => 'server-value')
+        export const b = denied(() => 'client-value')
+      `,
+    })
+
+    expect(result).not.toBeNull()
+    expect(result!.code).toContain('server-value')
+    expect(result!.code).toContain('throw new Error')
+    expect(result!.code).not.toContain('client-value')
+  })
+
   test('ingestModule populates module metadata for later resolution', async () => {
     const compiler: StartCompiler = new StartCompiler({
       env: 'server',
