@@ -1298,17 +1298,24 @@ async function checkDanglingNames(
     }
     return original
   }
+  /** What each source reads, by source: one read per source per build. */
+  const reads = new Map<string, ModuleNames | undefined>()
   const scope: ScopeEvidence = {
     root: evidence.root,
     parsedModules: evidence.parsedModules,
     originalOf,
     readsOf: (source) => {
-      try {
-        return readNames(source)
-      } catch {
-        // A source the parser rejects gives no evidence
-        return undefined
+      if (!reads.has(source)) {
+        let read: ModuleNames | undefined
+        try {
+          read = readNames(source)
+        } catch {
+          // A source the parser rejects gives no evidence
+          read = undefined
+        }
+        reads.set(source, read)
       }
+      return reads.get(source)
     },
   }
   const dangling: Record<string, Array<string>> = {}
