@@ -152,6 +152,11 @@ package, 15 s per slow-tier file, edit to result for one fast-tier file); CI tim
 budget is fixed, not re-budgeted: one shared host per worker, bounded browser pages, and browser-heavy files moved
 to the slow tier's `integration-pages` project. No Nx target splits or sharding to meet a number. Clause: §8.
 
+Memory against speed (#57, 2026-10-23): start-plugin-core's integration workers keep modules across test files
+(`isolate: false`, about 4.4 GB per worker at peak), which keeps the tier within its 90 s limit (about 93 s without).
+Accepted for now ("ok for now, though when we get to the end, we'll have to have a look at memory and speed."), to be
+revisited at the end of the oracle work.
+
 ### D4: no compile-speed benchmark
 
 No compiler benchmark or performance test is part of the oracle for now. Clause: §1.2.
@@ -481,6 +486,31 @@ these apps without Start too (Rolldown's parser in Vite's builds and dependency 
 Rsbuild's builds, the strict code Rsbuild's dev server runs them in), so they carry no compiler requirement and
 have no pin. Clauses: J4.16, G1, §8.
 
+### Q3: no stub of removed server parts (2026-10-23)
+
+On the client, the parts of a middleware the compiler removes leave nothing behind: `.options.server` (and
+`.options.validator`) is absent, not a safe empty or throwing stub. The user: "we want the client to ship as little
+code as possible. While a stub would be harmless on correctness, it would not be harmless on bytes." So the property
+checks of the client middleware rows stay as they are (`createMiddleware/createMiddleware.test.ts`,
+`compiler.test.ts`, `start-compiler-v2-inputs.test.ts`, `start-compiler-factories.test.ts`,
+`known-bugs-start-compiler.test.ts`, `integration/pages/start-compiler-import-forms.test.ts`). Clauses: J4.8,
+§5.19.
+
+### Q4: `export *` of a denied module (2026-10-23)
+
+"Like all import protection: we either handle it properly, or we crash the build (and warn in dev)." A name a client
+module re-exports with `export *` from a denied module (a denied file or a denied specifier) is, in mock mode:
+
+- in a build: a complete safe mock (the importer gets usable safe bindings, and the denied module's value is not in
+  the bundle), or the build fails;
+- in dev: a complete safe mock, or a warning naming the `export *` (its file and position, "diagnostics: file and
+  position only");
+- never the denied module's value, and never an importer that fails to load.
+
+Rows: `start-plugin-core/tests/integration/known-bugs-dev-server.test.ts` (dev, pinned on both forms: the importer
+fails to load) and `integration/importProtection/build-mock.test.ts` (both builds; pinned on Rsbuild for a denied
+specifier, whose build succeeds with the name `undefined`). Clauses: J6.8, G5.
+
 ### code-frame column (F1)
 
 Start's code frame passes a 0-based column to Babel's 1-based frame, so the caret is one column left of the call.
@@ -534,6 +564,25 @@ Vite's `BundledDev.listen()` leaves the `waitForInitialBuildFinish()` rejection 
 `bundledDev` server during its initial build can log "Failed to get bundle state". Before `close()`, the harness
 waits for Vite's initial-build bookkeeping to finish; it reads one Vite internal because there is no public API
 (vitejs/vite#22991). Remove the wait once Vite handles the rejection. Where: `compiler-test-utils/src/dev-server.ts`.
+
+### Vite's dependency optimizer: close wait (2026-10-23)
+
+Vite 8.3.4's optimizer keeps writing into an app after `close()` resolved (KNOWN-BUGS, upstream: final-pass #34):
+removing the app then fails with `ENOTEMPTY` on `node_modules/.vite/deps_temp_*`, or the optimizer's write into the
+removed app is an unhandled rejection. The user accepted the recommendation ("ok"): before `close()`, the Vite dev
+harnesses wait until each environment's optimizer has initialized and scanned (`depsOptimizer.initState`,
+`scanProcessing`) and no `deps*_temp_*` directory is left in the server's cache directory, which Vite creates before
+a run writes and renames or removes once the run is committed or cancelled. A run Vite has not started by then never
+starts. An upstream report is drafted, not filed. Remove the wait once Vite awaits its optimizer's work on close.
+Where: `closeViteServer` in `compiler-test-utils/src/dev-server.ts`, used by its dev server harness and by the raw
+Vite servers of start-plugin-core `integration/known-bugs-start-compiler-dev.test.ts` and
+`integration/hydrate-build-dev.test.ts`.
+
+### Vite's stale pre-bundled dependency: closed (2026-10-23)
+
+#42 (KNOWN-BUGS, upstream) did not reproduce in about 350 runs since the harness apps moved to `tanstackStart()`
+(2026-10-22). The user accepted closing it ("ok"): no workaround, no pending ruling; reopen it if its signature is
+seen again.
 
 ### Rsbuild dev-server edits
 

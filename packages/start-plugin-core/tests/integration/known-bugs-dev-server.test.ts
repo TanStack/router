@@ -7,6 +7,7 @@
  * server (`runViteClient`).
  */
 import { describe, expect, test } from 'vitest'
+import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   callServerFn,
   inDevRequest,
@@ -14,11 +15,13 @@ import {
   startRequestFiles,
 } from '../dev-server'
 import { probeMockPrelude } from '../importProtection/mock-helpers'
+import { starReexportApps } from '../importProtection/start-apps'
 import {
   runViteClient,
   startBrowserStartDevServer,
 } from './importProtection/client-pages'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
+import type { ImportProtectionOptions } from '../importProtection/start-apps'
 
 const timeout = 30_000
 
@@ -390,18 +393,22 @@ export const read = () => secret() + '!'
 
   /**
    * Starts a dev server with import protection on an app of `files` and a
-   * denied file `src/request.server.ts`, and runs `script` in a real page
-   * that loaded `src/c.ts` (`entry`; `probeMockPrelude` defines
-   * `isSafeMock`). Returns what the script returns (or why the page could
-   * not load `src/c.ts`), and the server.
+   * denied file `src/request.server.ts` (more with `protection`), and runs
+   * `script` in a real page that loaded `src/c.ts` (`entry`;
+   * `probeMockPrelude` defines `isSafeMock`). Returns what the script
+   * returns (or why the page could not load `src/c.ts`), and the server.
    */
-  async function inClientOf(files: Record<string, string>, script: string) {
+  async function inClientOf(
+    files: Record<string, string>,
+    script: string,
+    protection: ImportProtectionOptions = {},
+  ) {
     const server = await startBrowserStartDevServer({
       files: {
         'src/request.server.ts': `export const getRequest = () => ({ url: '/' })\n`,
         ...files,
       },
-      start: importProtection('c.ts'),
+      start: { ...importProtection('c.ts'), importProtection: protection },
     })
     return {
       result: await inClient(
@@ -451,31 +458,46 @@ export const values = [getRequest, getHeader, server.setCookie]
     timeout,
   )
 
+  // Ruling Q4 (RULINGS "Q4: `export *` of a denied module"; SPEC J6.8): in
+  // dev, a name a client module re-exports with `export *` from a denied
+  // module is a safe mock, or the server warns at the `export *`
+  // (`src/b.ts`, line 1); either way the importer loads, and nothing the
+  // client gets holds the denied module's value.
   // Bug: in dev, a client module's `export * from` a denied module re-exports
   // nothing: the mock edge of a denied specifier exports only the names its
   // importer uses, and `export *` uses none; a denied file's `export *` is
   // removed from the importer.
   // Impact: a client module importing a name that another module re-exports
   // with `export *` from a denied module fails to load (missing export), so
-  // the page does not hydrate. (A warning about the `export *` was a valid
-  // fix too; the usual "Import denied" warning already names `src/b.ts` at
-  // line 1, and a warning is checked only by its file and position since
-  // the ruling of 2026-10-22, so the pin asks for the mock.)
+  // the page does not hydrate.
   // Source: gap IP12 (gaps/start-env.md); the rewrite of the same form
   // (Rsbuild) also only removes the `export *`
   // (today's `rewriteDeniedImports`).
-  test.fails.each(deniedModules)(
-    'client: a name re-exported with `export *` from $name is a mock',
-    async ({ denied }) => {
-      const reexport = `export * from '${denied}'\n`
-      const { result } = await inClientOf(
-        {
-          'src/b.ts': reexport,
-          'src/c.ts': `import { getRequest } from './b'\nexport const v = getRequest\n`,
-        },
-        'return isSafeMock(entry.v)',
+  test.fails.each(starReexportApps)(
+    'client: a name re-exported with `export *` from $name is a mock, or the server warns at the `export *`',
+    async ({ files, importProtection: protection }) => {
+      const { result, server } = await inClientOf(
+        files,
+        `const secretIn = []
+for (const { name } of performance.getEntriesByType('resource')) {
+  if ((await (await fetch(name)).text()).includes('MARK_SECRET')) {
+    secretIn.push(new URL(name).pathname)
+  }
+}
+return { mock: isSafeMock(entry.v), secretIn }`,
+        protection,
       )
-      expect(result).toBe(true)
+      // The importer loads (or the reason it did not), and nothing the page
+      // loaded holds the denied module's value
+      const run = result as { mock: boolean; secretIn: Array<string> }
+      expect(typeof result === 'string' ? result : run.secretIn).toEqual([])
+      if (!run.mock) {
+        expectDiagnostic(server.diagnostics, {
+          file: 'src/b.ts',
+          root: server.root,
+          position: { line: 1 },
+        })
+      }
     },
     timeout,
   )

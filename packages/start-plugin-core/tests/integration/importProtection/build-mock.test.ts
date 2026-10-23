@@ -10,7 +10,7 @@ import {
   diagnosticsOf,
   expectDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { buildStart, startBundlers } from '../../build-harness'
+import { StartBuildError, buildStart, startBundlers } from '../../build-harness'
 import {
   describeValuePrelude,
   mockAccessDiagnostics,
@@ -21,6 +21,7 @@ import {
   inEnvironment,
   locationIn,
   reportedViolations,
+  starReexportApps,
 } from '../../importProtection/start-apps'
 import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 
@@ -336,6 +337,65 @@ return entry.read().map((value) => describeValue(value, 'MARK_SECRET'))`)
         read: ['a safe mock', 'MARK_SAFE', 'MARK_FINE', 'a safe mock'],
       })
     },
+    timeout,
+  )
+
+  // Ruling Q4 (RULINGS "Q4: `export *` of a denied module"; SPEC J6.8): in a
+  // mock-mode build, a name a client module re-exports with `export *` from
+  // a denied module is a safe mock and the denied module's value is not in
+  // the bundle, or the build fails.
+  async function expectStarReexportMockedOrBuildFails({
+    files,
+    importProtection,
+  }: (typeof starReexportApps)[number]) {
+    const built = await buildStart({
+      bundler,
+      files,
+      entry: 'src/c.ts',
+      start: {
+        importProtection: {
+          ...importProtection,
+          behavior: 'mock',
+          mockAccess: 'off',
+        },
+      },
+    }).catch((error: unknown) => {
+      if (error instanceof StartBuildError) {
+        return 'the build fails' as const
+      }
+      throw error
+    })
+    if (built === 'the build fails') {
+      return
+    }
+    expect({
+      secret: built.client.where('MARK_SECRET'),
+      v: (
+        await built.client.run(`${describeValuePrelude}
+return describeValue(entry.v, 'MARK_SECRET')`)
+      ).result,
+    }).toEqual({ secret: 'nowhere', v: 'a safe mock' })
+  }
+  const starApp = (name: string) =>
+    starReexportApps.find((app) => app.name === name)!
+  test(
+    'a name re-exported with `export *` from a denied file is a safe mock, or the build fails',
+    () => expectStarReexportMockedOrBuildFails(starApp('a denied file')),
+    timeout,
+  )
+  // Bug (Rsbuild): the import-protection loader removes an `export * from` a
+  // denied specifier from the importer (today's `rewriteDeniedImports`), and
+  // the build of the module importing a name of it succeeds without that
+  // name. (Vite's build fails on the missing export, which the ruling
+  // accepts.)
+  // Impact: a mock-mode Rsbuild build ships a client in which a name
+  // re-exported with `export *` from a denied package is `undefined`: using
+  // it throws instead of reaching a mock.
+  // Source: ruling Q4 (2026-10-23), the build row of the dev pin in
+  // known-bugs-dev-server.test.ts.
+  ;(bundler === 'rsbuild' ? test.fails : test)(
+    'a name re-exported with `export *` from a denied specifier is a safe mock, or the build fails',
+    () => expectStarReexportMockedOrBuildFails(starApp('a denied specifier')),
     timeout,
   )
 

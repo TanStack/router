@@ -13,7 +13,7 @@ Each entry's "Cause" names the product source its comment blames, when it does. 
 implementation, so a rewrite may have no such file. Most root causes are shared by several pins; the bug text then
 says "same root cause as above".
 
-Counts: 363 pin sites in 100 test files (a table test counts once here; Vitest counts each row).
+Counts: 364 pin sites in 100 test files (a table test counts once here; Vitest counts each row).
 
 ## Pins by compiler job
 
@@ -574,7 +574,7 @@ Counts: 363 pin sites in 100 test files (a table test counts once here; Vitest c
 
 ### J6 Import protection (start-plugin-core)
 
-67 pins.
+68 pins.
 
 #### `start-plugin-core/tests/integration/importProtection/build-markers.test.ts`
 
@@ -588,6 +588,7 @@ Counts: 363 pin sites in 100 test files (a table test counts once here; Vitest c
 
 - **with mockAccess $mockAccess, using the mock of $denied is reported as an $severity naming the import.** A mock-mode production build serves self-contained mocks that never report their use, whatever `mockAccess` says ("mock mode always logs"). Cause: `start-plugin-core/src/import-protection/virtualModules.ts`.
 - **%s is mocked, with a warning.** In a build, a violation of a marker (server-only in the client, client-only in the server) only replaces the marker import itself with a mock (`handleViolation` in vite/import-protection-plugin/plugin.ts returns a mock edge for the marker specifier); the marked module keeps its code, and its importers import it. Cause: `start-plugin-core/src/vite/import-protection-plugin/plugin.ts`.
+- **a name re-exported with `export \*` from a denied specifier is a safe mock, or the build fails** (Rsbuild). The import-protection loader removes an `export * from` a denied specifier from the importer, and the build of the module importing one of its names succeeds without it: the name is `undefined` (ruling Q4: a safe mock, or the build fails). Vite's build fails on the missing export. Cause: `start-plugin-core/src/import-protection/rewrite.ts` (`rewriteDeniedImports`).
 
 #### `start-plugin-core/tests/integration/importProtection/build-options.test.ts`
 
@@ -687,7 +688,7 @@ Counts: 363 pin sites in 100 test files (a table test counts once here; Vitest c
 
 - **client: a server fn module calling a function of a denied specifier at the top level loads.** When the Start compiler resolves an import of the module it is compiling (here the callee of a top-level call next to a server fn), import protection handles a denied specifier before the module's transform result exists, and falls back to `getModuleInfo(importer).code`, which Vite's dev server does not support: reading it throws (vite/import-protection-plugin/plugin.ts `resolveExportsForDeniedSpecifier`). Cause: `start-plugin-core/src/vite/import-protection-plugin/plugin.ts`.
 - **client: the importer of a module whose server-only marker was removed loads the module.** Import protection replaces a client import of a module it knows is server-only-marked with a mock when it resolves the import.
-- **client: a name re-exported with `export \*` from $name is a mock.** In dev, a client module's `export * from` a denied module re-exports nothing: the mock edge of a denied specifier exports only the names its importer uses, and `export *` uses none; a denied file's `export *` is removed from the importer.
+- **client: a name re-exported with `export \*` from $name is a mock, or the server warns at the `export \*`.** In dev, a client module's `export * from` a denied module re-exports nothing: the mock edge of a denied specifier exports only the names its importer uses, and `export *` uses none; a denied file's `export *` is removed from the importer. The importer of the name fails to load (ruling Q4: a safe mock, or a warning at the `export *`, never a crash or the denied module's value).
 
 #### `start-plugin-core/tests/integration/rsbuild/import-protection.test.ts`
 
@@ -743,19 +744,27 @@ Nothing here was filed upstream; the proposals are in the working notes (FOLLOWU
   its initial build logs "Failed to get bundle state". There is no public API to await it (vitejs/vite#22991).
   - Authorized workaround: before `close()`, the harness waits for Vite's initial-build bookkeeping, reading one
     Vite internal. Remove it once Vite handles the rejection. Where: `compiler-test-utils/src/dev-server.ts`.
-- **Vite's dependency optimizer writes its cache after `close()` resolved (final-pass #34).** `runOptimizeDeps().cancel()`
-  cleans up without awaiting the Rolldown build, which keeps writing `node_modules/.vite/deps_temp_*` after the
-  server closed. An app removal then fails with `ENOTEMPTY`, or leaves the directory behind.
-  - Pending a user ruling; no workaround. The app removal in `compiler-test-utils/src/build-harness.ts` does not
-    retry, so the failure stays visible. Browser dev servers are git-ignored as `packages/*/tests/**/.start-*`.
+- **Vite's dependency optimizer writes its cache after `close()` resolved (final-pass #34).** Vite 8.3.4's
+  `depsOptimizer.close()` does not await all of the optimizer's work: `runOptimizeDeps().cancel()` only sets a flag the
+  Rolldown build reads before it writes, the run a scan starts while `close()` awaits that scan is never cancelled, and
+  a commit removes the previous cache directory without awaiting it. Each keeps writing or removing
+  `node_modules/.vite/deps_temp_*` after the server closed: removing the app then fails with `ENOTEMPTY`, or the build
+  fails to write into the removed app ("Error during dependency optimization", rolldown "Failed to write file", an
+  unhandled rejection).
+  - Authorized wait (ruling 2026-10-23): before `close()`, the Vite dev harnesses wait until each environment's
+    optimizer has initialized and scanned and no `deps*_temp_*` directory is left in the cache directory
+    (`closeViteServer` in `compiler-test-utils/src/dev-server.ts`; RULINGS "Vite's dependency optimizer: close
+    wait"). Remove it once Vite awaits its optimizer's work on close. Upstream report drafted, not filed.
 - **Vite keeps a stale pre-bundled dependency (final-pass #42).** Vite 8.3.4 computes an optimized dependency's
   `fileHash` from the chunk's imports only. When a late-discovered dependency makes Rolldown export a shared module
   from an existing chunk (`react_jsx-runtime.js` gains `export { … as t }`), the hash and the browser URL stay the
   same, no reload is sent, and the page fails with "does not provide an export named 't'".
-  - Pending a user ruling (pre-bundle with discovery off in the affected apps, as
-    `start-plugin-core/tests/start-host.ts` and `router-plugin/tests/dev-page.ts` already do, or wait for Vite).
-    Seen as a flake of `start-plugin-core/tests/integration/known-bugs-start-compiler-dev.test.ts` (the client-pages
-    dev server) and `start-compiler-dev-server.test.ts` under load.
+  - Not reproduced since 2026-10-22 (0 hits in about 350 runs since the harness apps moved to `tanstackStart()`,
+    whose framework plugins pre-bundle React when the server starts); closed by the ruling of 2026-10-23, no
+    workaround. Reopen if seen. Signature: a page error `The requested module '/node_modules/.vite/deps/<chunk>.js?v=…'
+does not provide an export named '<one letter>'`, first seen in
+    `start-plugin-core/tests/integration/known-bugs-start-compiler-dev.test.ts` (the client-pages dev server) and
+    `start-compiler-dev-server.test.ts` under load.
 - **The React Refresh wrapper appends its footer without a line break.** `@vitejs/plugin-react` 6.0.1 uses Rolldown's
   `viteReactRefreshWrapperPlugin` (Vite 8.3.4), which appends `import * as RefreshRuntime …` right after the
   module's code. A module that ends in a line comment loses the footer's first line, and the next hot update throws
