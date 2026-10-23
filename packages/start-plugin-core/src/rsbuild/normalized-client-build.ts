@@ -597,9 +597,9 @@ function getChunkGraphFingerprint(compilation: RspackCompilation): string {
 
 /**
  * Reads, per module, the identifiers of its active static imports for each
- * runtime it is emitted in; identifiers carry the queries that hold route
- * metadata. Dependency modules are not rebuilt in development, so their
- * signatures are neither recorded nor reusable.
+ * runtime it is emitted in, and of its dynamic imports; identifiers carry the
+ * queries that hold route metadata. Dependency modules are not rebuilt in
+ * development, so their signatures are neither recorded nor reusable.
  */
 function createEdgeSignatureReader(compilation: RspackCompilation) {
   const identifiers = new Map<RspackModule, string>()
@@ -651,6 +651,19 @@ function createEdgeSignatureReader(compilation: RspackCompilation) {
             connection.getActiveState(entry.runtime) !== false
           ) {
             parts.push(getIdentifier(importedModule))
+          }
+        }
+      }
+
+      // A new dynamic import target can keep the chunk's name and module count.
+      const blocks = [...module.blocks]
+      for (const block of blocks) {
+        blocks.push(...block.blocks)
+        for (const dependency of block.dependencies) {
+          const importedModule =
+            compilation.moduleGraph.getConnection(dependency)?.module
+          if (importedModule) {
+            parts.push(`async:${getIdentifier(importedModule)}`)
           }
         }
       }

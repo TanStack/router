@@ -657,16 +657,23 @@ describe('registerClientBuildCapture development rebuilds', () => {
       const directory = await mkdtemp(join(tmpdir(), 'tss-rsbuild-dev-'))
       const write = (name: string, source: string) =>
         writeFile(join(directory, name), source)
-      await write(
-        'index.js',
-        `globalThis.routes = [() => import(/* webpackChunkName: "alpha" */ './alpha.js?tsr-split=component'), () => import(/* webpackChunkName: "beta" */ './beta.js?tsr-split=component')]`,
-      )
+      const index = (beta: string, extra = '') =>
+        `globalThis.routes = [() => import(/* webpackChunkName: "alpha" */ './alpha.js?tsr-split=component'), () => import(/* webpackChunkName: "beta" */ './${beta}.js?tsr-split=component')]${extra}`
+      await write('index.js', index('beta'))
       const alpha = (imports: string, body = `'alpha'`) =>
         `${imports}\nimport { leaf } from './leaf.js'\nexport const render = () => ${body} + leaf()`
       await write('alpha.js', alpha(''))
       await write(
         'beta.js',
         `import { leaf } from './leaf.js'\nexport const render = () => leaf()`,
+      )
+      await write(
+        'gamma.js',
+        `import { leaf } from './leaf.js'\nexport const render = () => leaf()`,
+      )
+      await write(
+        'other.js',
+        `export { render } from './gamma.js?tsr-split=component'`,
       )
       await write('leaf.js', `export const leaf = () => 'leaf'`)
       await write('alpha.css', '.alpha { color: red; }')
@@ -804,6 +811,14 @@ describe('registerClientBuildCapture development rebuilds', () => {
             ),
           ),
         ).toBe(false)
+
+        const other = `\nglobalThis.other = () => import(/* webpackChunkName: "other" */ './other.js')`
+        expect(await rebuild('index.js', index('beta', other))).toBe(false)
+        // gamma.js is already built, and the beta chunk keeps its name and size.
+        expect(await rebuild('index.js', index('gamma', other))).toBe(false)
+        expect(
+          builds.at(-1)!.captured.chunksByFileName.get('beta.js'),
+        ).toMatchObject({ routeFilePaths: [join(directory, 'gamma.js')] })
       } finally {
         await promisify(watching.close.bind(watching))()
         await rm(directory, { recursive: true, force: true })
