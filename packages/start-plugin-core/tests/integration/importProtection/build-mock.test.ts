@@ -2,11 +2,14 @@
  * Import protection in a real Start build (Vite and Rsbuild), continued
  * from build.test.ts (three files with build-markers.test.ts, to keep each
  * within the per-file time budget): mock mode. A mock is told by what it does (`mock-helpers.ts`,
- * `describeValue`: `a safe mock`), and a report by its sections
- * (`violation-report.ts`).
+ * `describeValue`: `a safe mock`), and a violation by what `onViolation`
+ * receives.
  */
 import { describe, expect, test } from 'vitest'
-import { diagnosticsOf } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  diagnosticsOf,
+  expectDiagnostic,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../../build-harness'
 import {
   describeValuePrelude,
@@ -15,10 +18,10 @@ import {
 import {
   distinct,
   expectViolationsAt,
+  inEnvironment,
   locationIn,
   reportedViolations,
 } from '../../importProtection/start-apps'
-import { inEnvironment } from '../../importProtection/violation-report'
 import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 
 const timeout = 60_000
@@ -371,15 +374,22 @@ export const getRouter = () => ({ routeTree })
         start: { importProtection: { behavior: 'mock' } },
       })
       expect(build.client.where('MARK_SECRET')).toBe('nowhere')
-      const reports = inEnvironment(build, 'client')
-      expect(reportedViolations(reports)).toHaveLength(1)
+      // One warning printed, naming the route file
+      expectDiagnostic(build.diagnostics, {
+        severity: 'warning',
+        file: 'src/routes/index.tsx',
+        root: build.root,
+        times: 1,
+      })
       // At either use or at the import (SPEC J6.5)
-      expectViolationsAt(reports, [
+      expectViolationsAt(inEnvironment(build, 'client'), [
         {
           environment: 'client',
           use: locationIn('src/routes/index.tsx', route, 4, 'secret()'),
-          otherUses: [locationIn('src/routes/index.tsx', route, 5, 'secret()')],
-          source: route,
+          also: [
+            locationIn('src/routes/index.tsx', route, 5, 'secret()'),
+            'src/routes/index.tsx:2',
+          ],
         },
       ])
     },

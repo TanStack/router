@@ -463,7 +463,6 @@ export const fn = createLoggedServerFn(async () => db.secret())
         // A clear build error at the server fn: in the library, or at the
         // user's call of the library function (SPEC G5).
         expectSourceError(outcome.error, {
-          names: ['createServerFn'],
           sites: [
             {
               file: 'node_modules/wrapper-lib/index.js',

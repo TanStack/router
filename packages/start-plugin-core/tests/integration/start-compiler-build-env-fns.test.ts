@@ -12,12 +12,11 @@
  */
 import { afterAll, expect, test } from 'vitest'
 import {
-  clientOnlyError,
   createStartHost,
   fromPage,
   inPage,
-  serverOnlyError,
   settle,
+  throwsError,
 } from '../regression-helpers'
 import type { PageSettled, StartHost } from '../regression-helpers'
 
@@ -100,12 +99,12 @@ export { serverValue as exposed }`,
         'return settle(() => module.exposed())',
       ),
     ),
-  ).toEqual(serverOnlyError)
+  ).toEqual(throwsError)
   // The server build runs the server implementation; the client-only fn
   // throws.
   const ssr = await startCase.ssr()
   expect([settle(() => ssr.clientValue()), ssr.exposed()]).toEqual([
-    clientOnlyError,
+    throwsError,
     'MARK_QUERY:1',
   ])
 }, 60_000)

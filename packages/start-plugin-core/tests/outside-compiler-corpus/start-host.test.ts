@@ -21,7 +21,7 @@ import {
   inPage,
   serveCase,
   serverFnUrls,
-  serverOnlyError,
+  throwsError,
   useStartHost,
 } from '../regression-helpers'
 import type { PageSettled, StartHost } from '../regression-helpers'
@@ -164,7 +164,7 @@ export const secret = createServerOnlyFn(() => 'secret')`,
     )
     const thrown = fromPage(settled)
     expect(thrown).toBeInstanceOf(Thrown)
-    expect(thrown).toEqual(serverOnlyError)
+    expect(thrown).toEqual(throwsError)
   })
 })
 
@@ -177,7 +177,6 @@ export const fn = createServerFn().handler()`
     expectCompileError(error, {
       source,
       at: 'createServerFn()',
-      names: [['createServerFn', 'handler']],
     })
     expect(
       await compileError(

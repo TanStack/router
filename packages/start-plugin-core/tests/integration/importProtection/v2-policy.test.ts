@@ -9,16 +9,16 @@
  * entry `src/server.ts`. Rsbuild dev, and the `Promise<false>` row on Vite
  * dev (its sync twin is pinned in dev.test.ts).
  */
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { afterAll, afterEach, describe, expect, test } from 'vitest'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
+import { violationRecorder } from '../../importProtection/start-apps'
 import {
   runInClient,
   runViteClient,
   startBrowserStartDevServer as startDevServer,
   startBrowserRsbuildStartDevServer as startRsbuildStartDevServer,
 } from './client-pages'
-import { reportedImporters, runRsbuildSsr, ssrNodeOutput } from './v2-hosts'
+import { importersIn, runRsbuildSsr, ssrNodeOutput } from './v2-hosts'
 import type {
   ImportProtectionOptions,
   ViolationInfo,
@@ -98,6 +98,7 @@ describe('rsbuild dev', () => {
   let started: ReturnType<typeof startRsbuildStartDevServer> | undefined
   let dispose: (() => Promise<void>) | undefined
   afterAll(() => dispose?.())
+  const recorder = violationRecorder(importProtection)
   const start = () =>
     (started ??= startRsbuildStartDevServer({
       compileTimeout,
@@ -105,7 +106,7 @@ describe('rsbuild dev', () => {
       hmr: false,
       config: ssrNodeOutput,
       files: app,
-      start: { importProtection },
+      start: { importProtection: recorder.importProtection },
       registerCleanup: (cleanup) => {
         dispose = cleanup
       },
@@ -118,10 +119,9 @@ describe('rsbuild dev', () => {
     expect(ran).toEqual({ result: expect.anything() })
     return {
       value: (ran as { result: Record<string, string> }).result[name],
-      reported: reportedImporters(
-        findDiagnostics(server.diagnostics, { severity: 'warning' }),
+      reported: importersIn(
+        { root: server.root, violations: recorder.violations },
         'client',
-        app,
       ).includes(importer),
     }
   }
@@ -186,10 +186,9 @@ describe('rsbuild dev', () => {
       const ran = await runRsbuildSsr(server, readScript)
       expect({
         ran,
-        reported: reportedImporters(
-          findDiagnostics(server.diagnostics, { severity: 'warning' }),
+        reported: importersIn(
+          { root: server.root, violations: recorder.violations },
           'server',
-          app,
         ),
       }).toEqual({
         ran: { result: { handler: 'a safe mock' } },
@@ -223,12 +222,13 @@ export const getRouter = () => undefined
   let started: ReturnType<typeof startDevServer> | undefined
   let dispose: (() => Promise<void>) | undefined
   afterAll(() => dispose?.())
+  const recorder = violationRecorder(importProtection)
 
   /** What the client gets, and the importers reported for the client. */
   async function outcome() {
     const server = await (started ??= startDevServer({
       browser: true,
-      start: { importProtection },
+      start: { importProtection: recorder.importProtection },
       files: viteApp,
       registerCleanup: (cleanup) => {
         dispose = cleanup
@@ -242,7 +242,10 @@ export const getRouter = () => undefined
     await server.idle()
     return {
       value,
-      reported: reportedImporters(server.logs, 'client', viteApp),
+      reported: importersIn(
+        { root: server.root, violations: recorder.violations },
+        'client',
+      ),
     }
   }
 

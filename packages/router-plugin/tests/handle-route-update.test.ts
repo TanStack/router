@@ -14,7 +14,7 @@
  * integration/route-hmr-browser-metadata.test.ts:45 for head and scripts)
  * decide their concepts through real edits. This control reaches the
  * emitted update function through `getHandleRouteUpdateCode`, an internal
- * entry point (the import gate flags it until the ruling).
+ * entry point (held by pending ruling Q5).
  */
 
 import {

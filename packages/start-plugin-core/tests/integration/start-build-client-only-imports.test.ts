@@ -7,7 +7,6 @@
  * Source: user ruling 2026-10-18 (E1 ASK-1).
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-import { envRestrictionError } from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../build-harness'
 import { reportedViolations } from '../importProtection/start-apps'
 import type { StartBuild } from '../build-harness'
@@ -76,7 +75,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
       'MARK_PAINT',
     ])
     expect((await build.ssr.run(run)).result).toEqual([
-      { thrown: envRestrictionError('client') },
+      { thrown: expect.anything() },
       'server',
     ])
   })

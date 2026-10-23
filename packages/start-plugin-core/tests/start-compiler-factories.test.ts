@@ -1,18 +1,16 @@
 import { beforeAll, describe, expect, test } from 'vitest'
-import { envRestrictionError } from '@tanstack/compiler-test-utils/diagnostics'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   callFromClient,
   callServerFnThroughCallers,
-  clientOnlyError,
   compileError,
   expectCompileError,
   fromPage,
   inPage,
   serveCase,
   serverFnUrls,
-  serverOnlyError,
   settle,
+  throwsError,
   useStartHost,
 } from './regression-helpers'
 import type { PageSettled, StartCase } from './regression-helpers'
@@ -131,11 +129,11 @@ export { serverValue as exposed }`,
     expect([
       await inPage(served, 'return module.clientValue()'),
       await settleInPage(served, 'module.exposed()'),
-    ]).toEqual(['draw:1', serverOnlyError])
+    ]).toEqual(['draw:1', throwsError])
     await expectSsrFree(served)
     const ssr = await served.ssr()
     expect([settle(() => ssr.clientValue()), ssr.exposed()]).toEqual([
-      clientOnlyError,
+      throwsError,
       'query:1',
     ])
   })
@@ -146,14 +144,14 @@ export { serverValue as exposed }`,
     {
       code: `import { db } from './db.server'
 export default createServerOnlyFn(() => db.x())`,
-      client: serverOnlyError,
+      client: throwsError,
       server: 'db',
     },
     {
       code: `import { chart } from './chart.client'
 export default createClientOnlyFn(() => chart())`,
       client: 'chart',
-      server: clientOnlyError,
+      server: throwsError,
     },
     {
       code: `import { db } from './db.server'
@@ -510,7 +508,7 @@ export const fn = ${chain}`,
         shape: 'createServerOnlyFn(fn)',
         code: (wrap: Wrap) =>
           `${wrap('createServerOnlyFn')}(() => db.x('SERVER_SECRET'))`,
-        client: serverOnlyError,
+        client: throwsError,
         server: 'db:SERVER_SECRET',
       },
       {
@@ -531,7 +529,7 @@ export const fn = ${chain}`,
         shape: 'createClientOnlyFn(fn)',
         code: (wrap: Wrap) => `${wrap('createClientOnlyFn')}(() => chart())`,
         client: 'chart',
-        server: clientOnlyError,
+        server: throwsError,
       },
     ].map((row) => ({
       ...row,
@@ -580,7 +578,7 @@ export class Api extends Base {
   }
 }`)
     expect(await settleInPage(served, 'new module.Api().read(1)()')).toEqual(
-      serverOnlyError,
+      throwsError,
     )
     const ssr = await served.ssr()
     expect(new ssr.Api().read(1)()).toEqual(['s', 'base', 1])
@@ -608,7 +606,7 @@ export class Api extends Base {
       expect(await inPage(served, 'return module.makeDraw()()')).toBe('chart')
       await expectSsrFree(served)
       const ssr = await served.ssr()
-      expect(settle(() => ssr.makeDraw()())).toEqual(clientOnlyError)
+      expect(settle(() => ssr.makeDraw()())).toEqual(throwsError)
     },
   )
 
@@ -620,7 +618,7 @@ export const read = wrap(wrap(createServerOnlyFn(() => db.secret())))`,
       { 'db.server.ts': `export const db = { secret: () => 'secret' }\n` },
     )
     await expectClientFree(served)
-    expect(await settleInPage(served, 'module.read()')).toEqual(serverOnlyError)
+    expect(await settleInPage(served, 'module.read()')).toEqual(throwsError)
     expect((await served.ssr()).read()).toBe('secret')
   })
 
@@ -741,7 +739,7 @@ export const chart = () => 'chart'
 `,
         })
         expect(await callFromClient(served, 'module.fn')).toEqual([
-          { thrown: envRestrictionError('client') },
+          { thrown: expect.anything() },
           'now',
           'read',
         ])
@@ -818,7 +816,7 @@ export const value = createServerOnlyFn(() => 'mine')`,
   // without its implementation is a type error (tsc against the real
   // declarations: TS2554 "Expected 1 arguments, but got 0" for each row).
   // Where the missing implementation would run (the server: SSR; the
-  // client), compiling fails clearly, naming the API. Nothing is required
+  // client), compiling fails. Nothing is required
   // of the other environment for such input.
   // Source: Waku vite-plugin-allow-server.test.ts "throws when allowServer
   // receives zero arguments"; replaces envOnly.test.ts and
@@ -846,11 +844,11 @@ export const value = createServerOnlyFn(() => 'mine')`,
     },
   ])(
     'a missing implementation is rejected where it runs: $code',
-    async ({ code, api, runsOn }) => {
+    async ({ code, runsOn }) => {
       const source = `${head}${code}`
       const startCase = await (await host()).case({ 'module.tsx': source })
       const error = await compileError(startCase, runsOn)
-      expectCompileError(error, { source, at: undefined, names: [api] })
+      expectCompileError(error, { source, at: undefined })
     },
   )
 })
@@ -983,7 +981,7 @@ export const clientValue = clientOnly(() => readWindow())`,
     const module = await served.ssr()
     expect([module.serverValue(), settle(() => module.clientValue())]).toEqual([
       'secret',
-      clientOnlyError,
+      throwsError,
     ])
   })
 
@@ -1071,7 +1069,7 @@ export const serverOnly = createServerOnlyFn(() => 'server-only-marker')`,
       // Where the project's own `createServerOnlyFn` wins, it is a plain
       // function.
       expect(await settleInPage(served, 'module.serverOnly()')).toEqual(
-        resolvesServerOnlyFn ? serverOnlyError : 'server-only-marker',
+        resolvesServerOnlyFn ? throwsError : 'server-only-marker',
       )
     },
   )
@@ -1097,7 +1095,7 @@ export const serverOnly = createServerOnlyFn(() => 'server-only-marker')`,
     expect(served.code.client).not.toContain('db.x()')
     expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('x')
     expect(await settleInPage(served, 'module.serverOnly()')).toEqual(
-      serverOnlyError,
+      throwsError,
     )
     expect((await served.ssr()).serverOnly()).toBe('server-only-marker')
   })

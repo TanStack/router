@@ -6,22 +6,15 @@
  * are checked on real reports: the chain from an entry and its depth
  * (`integration/importProtection/reported-location.test.ts`,
  * `build-options.test.ts` "maxTraceDepth"), the rule and the direction of
- * the suggestions (`integration/importProtection/build.test.ts`, default
- * rules), the sections (`importProtection/violation-report.ts`). Reports
- * are read by their sections and through the diagnostic oracle, never by
- * their sentences (SPEC J6.12).
+ * the rule (`integration/importProtection/build.test.ts`, default rules).
+ * The formatter's output is checked for today's text.
  */
 import { describe, expect, test } from 'vitest'
-import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   ImportGraph,
   buildTrace,
   formatViolation,
 } from '../../../src/import-protection/trace'
-import {
-  suggestedDirections,
-  violationReports,
-} from '../../importProtection/violation-report'
 import type { ViolationInfo } from '../../../src/import-protection/trace'
 
 describe('ImportGraph', () => {
@@ -201,21 +194,15 @@ describe('formatViolation', () => {
 
     const formatted = formatViolation(info, '/project')
 
-    // (the report's sections, read by the adapter the app tests use)
-    expect(violationReports(formatted)).toEqual([
-      expect.objectContaining({
-        environment: 'client',
-        importer: 'src/routes/index.tsx',
-        specifier: '@tanstack/react-start/server',
-        trace: [
-          { at: 'src/main.tsx' },
-          { at: 'src/routes/index.tsx', imports: './routes/index' },
-        ],
-      }),
-    ])
+    expect(formatted).toContain('client environment')
+    expect(formatted).toContain('Importer: src/routes/index.tsx')
+    expect(formatted).toContain('"@tanstack/react-start/server"')
+    expect(formatted).toMatch(
+      /src\/routes\/index\.tsx \(import "\.\/routes\/index"\)/,
+    )
     // (today's formatter tags the first step, the entry)
     expect(formatted).toMatch(/src\/main\.tsx \(entry\)/)
-    expect(suggestedDirections(formatted)).toEqual(['server'])
+    expect(formatted).toContain('createServerFn')
   })
 
   test('formats file violation correctly', () => {
@@ -234,12 +221,9 @@ describe('formatViolation', () => {
     const formatted = formatViolation(info, '/project')
 
     // The rule and the resolved file, by name; a server-side fix.
-    expectDiagnostic(formatted, {
-      names: ['**/*.server.*'],
-      file: 'src/secret.server.ts',
-      root: '/project',
-    })
-    expect(suggestedDirections(formatted)).toEqual(['server'])
+    expect(formatted).toContain('**/*.server.*')
+    expect(formatted).toContain('src/secret.server.ts')
+    expect(formatted).toContain('createServerFn')
   })
 
   test('formats marker violation correctly', () => {
@@ -255,10 +239,8 @@ describe('formatViolation', () => {
 
     const formatted = formatViolation(info, '/project')
 
-    expectDiagnostic(formatted, {
-      names: ['@tanstack/react-start/server-only'],
-    })
-    expect(suggestedDirections(formatted)).toEqual(['server'])
+    expect(formatted).toContain('@tanstack/react-start/server-only')
+    expect(formatted).toContain('createServerFn')
   })
 
   test('client-in-server violation includes client-only suggestions', () => {
@@ -276,8 +258,8 @@ describe('formatViolation', () => {
 
     const formatted = formatViolation(info, '/project')
 
-    expectDiagnostic(formatted, { names: ['**/*.client.*'] })
-    expect(suggestedDirections(formatted)).toEqual(['client'])
+    expect(formatted).toContain('**/*.client.*')
+    expect(formatted).toContain('createClientOnlyFn')
   })
 
   test('env is printed with env type suffix', () => {
@@ -293,9 +275,7 @@ describe('formatViolation', () => {
     }
 
     const formatted = formatViolation(info, '/project')
-    expect(violationReports(formatted)).toEqual([
-      expect.objectContaining({ environment: 'server' }),
-    ])
+    expect(formatted).toContain('server environment')
   })
 
   test('client-in-server violation with JSX suggests ClientOnly', () => {
@@ -324,7 +304,7 @@ describe('formatViolation', () => {
 
     const formatted = formatViolation(info, '/project')
 
-    expect(suggestedDirections(formatted)).toEqual(['client'])
+    expect(formatted).toContain('createClientOnlyFn')
   })
 
   test('specifier violation in client env gets server-in-client suggestions', () => {
@@ -341,7 +321,7 @@ describe('formatViolation', () => {
 
     const formatted = formatViolation(info, '/project')
 
-    expect(suggestedDirections(formatted)).toEqual(['server'])
+    expect(formatted).toContain('createServerFn')
   })
 
   test('marker violation in server env gets client-in-server suggestions', () => {
@@ -357,10 +337,8 @@ describe('formatViolation', () => {
 
     const formatted = formatViolation(info, '/project')
 
-    expectDiagnostic(formatted, {
-      names: ['@tanstack/react-start/client-only'],
-    })
-    expect(suggestedDirections(formatted)).toEqual(['client'])
+    expect(formatted).toContain('@tanstack/react-start/client-only')
+    expect(formatted).toContain('createClientOnlyFn')
   })
 
   test('leaves non-absolute specifiers unchanged', () => {
@@ -382,11 +360,7 @@ describe('formatViolation', () => {
 
     const formatted = formatViolation(info, '/project')
 
-    expect(violationReports(formatted)).toEqual([
-      expect.objectContaining({
-        specifier: '@tanstack/react-start/server',
-        trace: [expect.objectContaining({ imports: './secret.server' })],
-      }),
-    ])
+    expect(formatted).toContain('"@tanstack/react-start/server"')
+    expect(formatted).toContain('(import "./secret.server")')
   })
 })

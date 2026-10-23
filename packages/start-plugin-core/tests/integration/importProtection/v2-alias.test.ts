@@ -28,10 +28,10 @@ import { probeMockPrelude, safeMock } from '../../importProtection/mock-helpers'
 import {
   locationIn,
   rejection,
-  violationReports,
+  violationRecorder,
+  violationsOf,
 } from '../../importProtection/start-apps'
 import { originalLocation } from '../../importProtection/original-location'
-import { failureOf, failureText } from './channels'
 import {
   clientFixturePlugin,
   runInClient,
@@ -39,7 +39,7 @@ import {
   startBrowserRsbuildStartDevServer as startRsbuildStartDevServer,
 } from './client-pages'
 import type { ImportProtectionOptions } from '../../importProtection/public-types'
-import type { ReportOutput } from '../../importProtection/violation-report'
+import type { Recorded } from '../../importProtection/start-apps'
 import type { PluginOption } from 'vite'
 
 const timeout = 60_000
@@ -101,8 +101,8 @@ const expectedReport = {
   ),
 }
 
-const reportsOf = (output: ReportOutput) =>
-  violationReports(output).map(({ environment, specifier, importer }) => ({
+const reportsOf = (recorded: Recorded) =>
+  violationsOf(recorded).map(({ environment, specifier, importer }) => ({
     environment,
     specifier,
     importer,
@@ -164,11 +164,12 @@ export default { plugins: [tsconfigPaths()] }
  * passes it) and the alias resolver of `alias`, in the order the app lists
  * them.
  */
-function startAliasDevServer(
+async function startAliasDevServer(
   alias: (typeof viteAliases)[number],
   importProtection: ImportProtectionOptions,
 ) {
-  return createDevServer({
+  const recorder = violationRecorder(importProtection)
+  const server = await createDevServer({
     dir: testsDir,
     prefix: '.start-dev-server-',
     registerCleanup: onTestFinished,
@@ -178,28 +179,28 @@ function startAliasDevServer(
     config: alias.devConfig,
     plugins: ({ root }) => [
       clientFixturePlugin,
-      ...alias.devPlugins(startPlugin(root, { importProtection }, undefined)),
+      ...alias.devPlugins(
+        startPlugin(
+          root,
+          { importProtection: recorder.importProtection },
+          undefined,
+        ),
+      ),
     ],
   })
+  return Object.assign(server, { violations: recorder.violations })
 }
 
 /**
- * A third-party resolver may refuse safely with actionable composition
- * guidance (G11), on any channel of `output`: a diagnostic that names the
- * resolver (the plugin, or Vite's own `resolve.tsconfigPaths`) and explains
- * what to do in its own words (`explains`; wording free, §5.7).
+ * The violation reported is `expectedReport` (in dev with behavior "error",
+ * each time the import resolves).
  */
-function expectAliasFailure(output: unknown, thirdParty: boolean) {
-  if (
-    thirdParty &&
-    findDiagnostics(failureText(output), {
-      names: [['vite-tsconfig-paths', 'tsconfigPaths']],
-      explains: true,
-    }).length > 0
-  ) {
-    return
+function expectAliasFailure(recorded: Recorded) {
+  const reports = reportsOf(recorded)
+  expect(reports).not.toEqual([])
+  for (const report of reports) {
+    expect(report).toEqual(expectedReport)
   }
-  expect(reportsOf(output)).toEqual([expectedReport])
 }
 
 // Bug (the `.fails` rows): with vite-tsconfig-paths, in either order, the
@@ -227,7 +228,7 @@ describe.each(viteAliases)('vite: $alias', (alias) => {
           viteConfig: alias.viteConfig,
         }),
       )
-      expectAliasFailure(error, alias.reportPinned)
+      expectAliasFailure(error)
     },
     timeout,
   )
@@ -253,10 +254,8 @@ return { probe: probeMock(entry.widget(), 'MARK_SECRET'), loaded: globalThis.sec
       const server = await startAliasDevServer(alias, {
         behavior: { dev: 'error' },
       })
-      const { reported } = await failureOf(server, () =>
-        server.load('/src/entry.ts'),
-      )
-      expectAliasFailure(reported, alias.reportPinned)
+      await rejection(server.load('/src/entry.ts'))
+      expectAliasFailure(server)
     },
     timeout,
   )
@@ -281,11 +280,13 @@ describe('rsbuild: tsconfig paths', () => {
   test(
     'dev: the importer gets a safe mock, and the denied file never runs',
     async () => {
+      const recorder = violationRecorder()
       const server = await startRsbuildStartDevServer({
         compileTimeout,
         browser: true,
         hmr: false,
         files: aliasApp,
+        start: { importProtection: recorder.importProtection },
       })
       // Nothing fails, on any channel
       expect(
@@ -303,9 +304,9 @@ return {
         ),
       )
       expect(result).toEqual({ result: { probe: safeMock, loaded: null } })
-      expect(
-        reportsOf(findDiagnostics(server.diagnostics, { severity: 'warning' })),
-      ).toEqual([expectedReport])
+      expect(reportsOf({ root: server.root, ...recorder })).toEqual([
+        expectedReport,
+      ])
     },
     timeout,
   )
@@ -313,16 +314,17 @@ return {
   test(
     'dev with behavior error: the compile fails, reporting the aliased specifier at its original line',
     async () => {
+      const recorder = violationRecorder({ behavior: { dev: 'error' } })
       const server = await startRsbuildStartDevServer({
         compileTimeout,
         browser: true,
         hmr: false,
         files: aliasApp,
-        start: { importProtection: { behavior: { dev: 'error' } } },
+        start: { importProtection: recorder.importProtection },
       })
-      expect(
-        reportsOf(findDiagnostics(server.diagnostics, { severity: 'error' })),
-      ).toEqual([expectedReport])
+      expect(reportsOf({ root: server.root, ...recorder })).toEqual([
+        expectedReport,
+      ])
     },
     timeout,
   )

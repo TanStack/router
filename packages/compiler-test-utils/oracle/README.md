@@ -8,7 +8,7 @@ replace or rewrite a compiler (for example to move off Babel).
 - [RULINGS.md](./RULINGS.md): the maintainers' decisions behind the spec, and the authorized test workarounds.
 - [KNOWN-BUGS.md](./KNOWN-BUGS.md): the bugs of today's compilers, pinned as `.fails` tests, and the upstream
   issues.
-- [../AGENTS.md](../AGENTS.md): how to run a slice, the helpers, the lanes, the import gate and the budgets.
+- [../AGENTS.md](../AGENTS.md): how to run a slice, the helpers, the lanes and the budgets.
 
 ## The goal
 
@@ -59,8 +59,8 @@ after the final passes F-F, F-G1, F-G2 and F-G3; the start-plugin-core part agai
     the 179 other rows that caught it before pass.
   - The five reds caught by rows of start-plugin-core's unit-tier `known-bugs-start-compiler.test.ts`, re-run on
     start-plugin-core at d07614d3b3: still caught.
-- **No internal imports.** The strict import gate passes in CI. The only internal imports left are held by pending
-  user rulings, through the gate's allowlist (below).
+- **No internal imports.** The only internal imports left in acceptance tests are held by pending user rulings
+  (below).
 - **Stable.** The unpatched suite ran 9 times at 633a4c0917 (3 rounds of 3 trees in parallel, 4 workers each,
   1-minute load up to 55 on 32 cores): all 15 tiers and lanes gave identical counts, except one #34 row in 4 of the 9
   start-plugin-core integration runs. No #42 failure. At d07614d3b3, start-plugin-core ran 3 more times: identical
@@ -82,20 +82,22 @@ after the final passes F-F, F-G1, F-G2 and F-G3; the start-plugin-core part agai
   start-plugin-core 66 s). Edit to result for one fast-tier file is about 5 s. Several tiers are over their target
   and under their hard limit.
 
-Counts at d07614d3b3 (passed / expected-fail pins; at 633a4c0917, where the measurements above ran, start-plugin-core
-`test:integration` was 1199 / 288):
+Counts after the S-A simplification (2026-10-22, on beetle: import gate, violation-report reader and diagnostic
+word-list controls deleted, pins that only asked for message content deleted; RULINGS "diagnostics: file and
+position only"). Passed / expected-fail pins; before S-A, at d07614d3b3, compiler-test-utils `test:unit` was 330 / 0,
+router-plugin `test:integration` 674 / 355, start-plugin-core 389 / 143, 1204 / 292 and 609 / 9:
 
 | Package                         | `test:unit` | `test:integration` | `test:implementation` | `test:noncompiler` |
 | ------------------------------- | ----------- | ------------------ | --------------------- | ------------------ |
-| `@tanstack/compiler-test-utils` | 330 / 0     | 171 / 0            | –                     | –                  |
+| `@tanstack/compiler-test-utils` | 183 / 0     | 171 / 0            | –                     | –                  |
 | `@tanstack/router-generator`    | 239 / 30    | 67 / 3             | 114 / 2               | –                  |
-| `@tanstack/router-plugin`       | 107 / 20    | 674 / 355          | 104 / 1               | –                  |
-| `@tanstack/start-plugin-core`   | 389 / 143   | 1204 / 292         | 609 / 9               | 121 / 0            |
+| `@tanstack/router-plugin`       | 107 / 20    | 674 / 349          | 104 / 1               | –                  |
+| `@tanstack/start-plugin-core`   | 271 / 137   | 1202 / 290         | 579 / 9               | 121 / 0            |
 | `@tanstack/react-start-rsc`     | no files    | 108 / 13           | –                     | 49 / 0             |
 
 The previous measurement (F-E-b) ran at 45f58967ea; the passes below came after it and are covered by the
 measurement above (F-H), the F-I pass by the start-plugin-core part of it. The final pass F-F (October 2026) re-audited "no re-implementation; client semantics in a browser" file by file and changed tests and
-helpers (below); its changes were validated locally (every tier and lane above, the strict import gate). Count changes against
+helpers (below); its changes were validated locally (every tier and lane above, the strict import gate, since deleted). Count changes against
 45f58967ea: ctu `test:unit` −3 (the controls of the deleted
 Node stand-in `evaluateServed`), ctu `test:integration` +1 (a control of the build-decided dangling-name check),
 router-plugin `test:implementation` −1 (the control of a deleted path filter), start-plugin-core `test:unit` +4
@@ -252,12 +254,14 @@ chunk layout, printed code or AST shapes.
 ## Diagnostics
 
 Every channel is read together (`diagnostic-channel.ts`): console, process streams, Vite's logger, Rsbuild's
-logger, and bundler compilations (warnings and errors), in dev and in builds. Diagnostics are judged by content
-(`diagnostics.ts`): the file named (absolute or project-relative, §5.7), the original position where required, the
-API or option, and an actionable cause (`explains`: no wording lists; a generic internal error does not explain).
-Wording and channel are free. Severity is not: where SPEC says "warn", a diagnostic must be at least a warning (an
-info or log line does not count), and where it says the build fails, it must fail (RULINGS "diagnostic severity").
-"Nothing reported" (`expectNoProblems`) reads every channel.
+logger, and bundler compilations (warnings and errors), in dev and in builds. A diagnostic is checked only for the
+file it names (absolute or project-relative, §5.7) and the position (`line:column`, or the line) where required
+(`diagnostics.ts`; RULINGS "diagnostics: file and position only"): never its wording, the API or option it names,
+the cause it gives or its code frame. Severity is checked: where SPEC says "warn", a diagnostic must be at least a
+warning (an info or log line does not count), and where it says the build fails, it must fail (RULINGS "diagnostic
+severity"). "Nothing reported" (`expectNoProblems`) reads every channel. Import-protection violations are read from
+Start's public `onViolation` callback, never parsed from the printed report (RULINGS "import-protection reports
+through `onViolation`").
 
 ## Lanes
 
@@ -272,15 +276,6 @@ Implementation tests check choices of today's implementation (printed bytes, log
 performance counters); a correct new compiler may fail them: delete or rewrite them with the implementation they
 describe. Noncompiler tests cover runtime and build plumbing. CI runs every lane. Harness controls (this package's
 tests, and the packages' tests of their own helpers) check the oracle itself.
-
-## The import gate
-
-`test:import-gate:strict` (`compiler-test-utils/src/import-gate.ts`) fails if an acceptance test or a helper it
-reaches imports a compiler internal: anything not reachable through the package's `exports` (also `vi.mock`,
-dynamic `import()`, `require` and `typeof import()`). It runs in root `test:pr`/`test:ci` and in the compiler
-platform workflow. Its only exceptions are the imports of the tests held by pending rulings, listed one by one in
-`pendingRulingAllowlist` with their ruling; a stale entry fails too. Paths computed at run time are out of a static
-gate's reach. Details in [../AGENTS.md](../AGENTS.md#import-gate).
 
 ## Pins (`.fails`)
 
@@ -302,23 +297,23 @@ generates and are the structure-free checks.
 
 These tests are kept exactly as they are until the user rules; do not reroute or delete them before that.
 
-| Ruling | What it holds                                                                                                                                                                               |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Q1     | router-generator `concurrent-write` and fault tests that inject an `fs` into the generator                                                                                                  |
-| Q2     | the `FileRouteTypes` check in `router-generator/tests/generator/nested/tests.test-d.ts`                                                                                                     |
-| Q3     | the client middleware `.options.server` property-shape assertions (start-plugin-core)                                                                                                       |
-| Q4     | the success criterion of the star re-export mocking rows (import protection)                                                                                                                |
-| Q5     | router-plugin `tests/handle-route-update.test.ts`: the absent-live-route updater control, which calls the emitted update function directly (import-gate allowlist)                          |
-| Q6     | `start-plugin-core/tests/pending-rulings/createServerFn.test.ts`, `createMiddleware.test.ts`: rows that drive the internal compiler with a hand-built package graph (import-gate allowlist) |
-| Q7     | `start-plugin-core/tests/pending-rulings/known-bugs-start-compiler.test.ts`: the CommonJS pin (import-gate allowlist)                                                                       |
-| Q8     | the RouterPluginContext / multi-plugin question (`router-plugin/tests/integration/pages/router-plugin-context.test.ts`)                                                                     |
-| Q9     | the immediate `tsr.config.json` reload pin                                                                                                                                                  |
-| Q10    | the owned-import numeric cap in `router-generator/tests/owned-edits.ts`                                                                                                                     |
-| NEW-1  | the decorator-after-`export` pin (`router-plugin/tests/integration/pages/known-bugs-code-splitter-bindings.test.ts`)                                                                        |
-| NEW-2  | whether redundant parentheses around component-defining expressions are free; they break React Fast Refresh registration under SWC/Rsbuild (SPEC §5.5 records the open question)            |
-| #42    | the stale pre-bundled dependency flake of Vite (KNOWN-BUGS, upstream): pre-bundle with discovery off in the affected apps, or wait for Vite                                                 |
-| #34    | Vite's optimizer writing its cache after `close()` (KNOWN-BUGS, upstream): no workaround until ruled                                                                                        |
-| #57    | start-plugin-core integration memory: workers keep modules across files (about 4.4 GB each) to stay within the tier's time budget                                                           |
+| Ruling | What it holds                                                                                                                                                                    |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Q1     | router-generator `concurrent-write` and fault tests that inject an `fs` into the generator                                                                                       |
+| Q2     | the `FileRouteTypes` check in `router-generator/tests/generator/nested/tests.test-d.ts`                                                                                          |
+| Q3     | the client middleware `.options.server` property-shape assertions (start-plugin-core)                                                                                            |
+| Q4     | the success criterion of the star re-export mocking rows (import protection)                                                                                                     |
+| Q5     | router-plugin `tests/handle-route-update.test.ts`: the absent-live-route updater control, which calls the emitted update function directly                                       |
+| Q6     | `start-plugin-core/tests/pending-rulings/createServerFn.test.ts`, `createMiddleware.test.ts`: rows that drive the internal compiler with a hand-built package graph              |
+| Q7     | `start-plugin-core/tests/pending-rulings/known-bugs-start-compiler.test.ts`: the CommonJS pin                                                                                    |
+| Q8     | the RouterPluginContext / multi-plugin question (`router-plugin/tests/integration/pages/router-plugin-context.test.ts`)                                                          |
+| Q9     | the immediate `tsr.config.json` reload pin                                                                                                                                       |
+| Q10    | the owned-import numeric cap in `router-generator/tests/owned-edits.ts`                                                                                                          |
+| NEW-1  | the decorator-after-`export` pin (`router-plugin/tests/integration/pages/known-bugs-code-splitter-bindings.test.ts`)                                                             |
+| NEW-2  | whether redundant parentheses around component-defining expressions are free; they break React Fast Refresh registration under SWC/Rsbuild (SPEC §5.5 records the open question) |
+| #42    | the stale pre-bundled dependency flake of Vite (KNOWN-BUGS, upstream): pre-bundle with discovery off in the affected apps, or wait for Vite                                      |
+| #34    | Vite's optimizer writing its cache after `close()` (KNOWN-BUGS, upstream): no workaround until ruled                                                                             |
+| #57    | start-plugin-core integration memory: workers keep modules across files (about 4.4 GB each) to stay within the tier's time budget                                                |
 
 The legacy helpers that only Q6 and Q7 reach (`start-plugin-core/tests/outside-compiler-corpus/legacy/`, and
 `tests/start-runtime.ts`) go away with those tests.

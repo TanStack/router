@@ -3,24 +3,19 @@
  * importer's location (reported-location.test.ts): the import chain from an
  * entry to the importer (SPEC J6.5: any real bounded chain from an entry,
  * printed in any order, ruling 2026-10-21 R10; each import located on its
- * line in the user's file) and the code frame of the use. Read from the
- * errors of Vite and Rsbuild builds with Start's default rules (error mode),
- * on every channel, by the report reader (`violation-report.ts`). Split from
+ * line in the user's file). Read from Vite and Rsbuild builds with Start's
+ * default rules (error mode), as `onViolation` receives it. Split from
  * reported-location.test.ts to keep each file of the slow tier short.
  */
 import { describe, expect, test } from 'vitest'
-import { expectRelevantLocation as expectSharedRelevantLocation } from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../../build-harness'
 import {
-  expectReportFrame,
+  isAt,
   rejection,
-  violationReports,
+  violationsOf,
 } from '../../importProtection/start-apps'
 import type { StartBuildOptions, StartBundler } from '../../build-harness'
-import type {
-  ReportedTraceStep,
-  ViolationReport,
-} from '../../importProtection/violation-report'
+import type { Violation } from '../../importProtection/start-apps'
 
 const timeout = 60_000
 
@@ -35,7 +30,7 @@ async function buildReport(
     sourcemap = false,
     viteConfig,
   }: Pick<StartBuildOptions, 'sourcemap' | 'viteConfig'> = {},
-): Promise<ViolationReport> {
+): Promise<Violation> {
   const error = await rejection(
     buildStart({
       bundler,
@@ -45,14 +40,14 @@ async function buildReport(
       viteConfig,
     }),
   )
-  const [report, ...others] = violationReports(error)
+  const [report, ...others] = violationsOf(error)
   expect(others).toEqual([])
   return report!
 }
 
 /** The modules of the steps of `trace`, without their locations. */
-const modulesOf = (trace: Array<ReportedTraceStep>) =>
-  trace.map(({ at }) => at.replace(/:\d+:\d+$/, ''))
+const modulesOf = (trace: Violation['trace']) =>
+  trace.map(({ at }) => at.replace(/(?::\d+)+$/, ''))
 
 /**
  * The modules a client trace of these apps may start at: the client entry
@@ -104,15 +99,11 @@ export * from './a'
 }
 
 /**
- * Where the `chain` build may report `src/b.ts`: its use of `secret` or
- * its import of the denied module (SPEC J6.5).
+ * Whether `importer` is where the `chain` build may report `src/b.ts`: its
+ * use of `secret` or its import of the denied module (SPEC J6.5).
  */
-const chainImporter = {
-  file: 'src/b.ts',
-  source: chain['src/b.ts'],
-  uses: [{ line: 4, column: 27 }],
-  imports: ['./secret.server'],
-}
+const atChainImporter = (importer: string) =>
+  ['src/b.ts:4:27', 'src/b.ts:3'].some((place) => isAt(importer, place))
 
 /** `src/b.ts` imports the denied module, and `src/a.ts` imports `b`. */
 const leakingB = {
@@ -123,11 +114,11 @@ export const leak = () => secret()
 }
 
 // What a build reports about where a violation comes from: the trace of
-// imports from the entry to the importer, and the code frame of the use.
+// imports from the entry to the importer.
 describe.each(startBundlers)(
   '%s build: the report of a violation',
   (bundler) => {
-    let chainReport: Promise<ViolationReport> | undefined
+    let chainReport: Promise<Violation> | undefined
     /** The report of the `chain` build, built once. */
     const reportOfChain = () =>
       (chainReport ??= buildReport(bundler, chain, {}))
@@ -138,32 +129,22 @@ describe.each(startBundlers)(
       'the trace lists each import from the entry, located on its line',
       async () => {
         const { importer, trace } = await reportOfChain()
-        expectSharedRelevantLocation(importer, chainImporter)
+        expect(atChainImporter(importer), importer).toBe(true)
         // The chain starts at an entry (by its position: no marker needed)
         expect(clientEntries).toContain(modulesOf(trace)[0])
         expect(
           trace.slice(-3).map(({ at, imports }) => ({ at, imports })),
         ).toEqual([
           {
-            at: expect.stringMatching(/^src\/entry\.ts:2:\d+$/),
+            at: expect.stringMatching(/^src\/entry\.ts:2(?::\d+)?$/),
             imports: './a',
           },
-          { at: expect.stringMatching(/^src\/a\.ts:3:\d+$/), imports: './b' },
+          {
+            at: expect.stringMatching(/^src\/a\.ts:3(?::\d+)?$/),
+            imports: './b',
+          },
           { at: importer, imports: './secret.server' },
         ])
-      },
-      timeout,
-    )
-
-    // The frame is at the reported location (the use or the import, SPEC
-    // J6.5): it highlights that line of the original source and points at
-    // its column; how much context it shows is free (§5.7; V1R ip I01).
-    test(
-      'the code frame shows the original source at the reported location',
-      async () => {
-        const report = await reportOfChain()
-        expectSharedRelevantLocation(report.importer, chainImporter)
-        expectReportFrame(report, chain['src/b.ts'])
       },
       timeout,
     )

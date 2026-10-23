@@ -53,16 +53,10 @@ export { importSources } from '../../imports'
 export {
   expectCompileError,
   expectSourceError,
-  withoutQuotedSource,
-  placementCauses,
-  callShapeCauses,
-  missingHandler,
-  captureCauses,
   serverOnlyModule,
   expectOutputsFreeOfHandler,
   expectNoClientHandler,
-  serverOnlyError,
-  clientOnlyError,
+  throwsError,
 } from './diagnostics'
 export type { MisplacementOptions, OutputResult } from './diagnostics'
 export {
@@ -755,7 +749,7 @@ export function directivePrologue(code: string) {
 
 /**
  * What `settle` gives for a call that throws: the thrown value itself, so
- * oracles (`serverOnlyError`, `clientOnlyError`) read the real error, and a
+ * oracles (`throwsError`) read the real error, and a
  * value the call returns is never mistaken for a throw.
  */
 export class Thrown {

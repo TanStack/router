@@ -16,12 +16,11 @@ import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   callFromClient,
   callOnServer,
-  clientOnlyError,
   fromPage,
   inPage,
   serveCase,
-  serverOnlyError,
   settle,
+  throwsError,
   useStartHosts,
 } from '../../regression-helpers'
 import type {
@@ -158,7 +157,7 @@ const constructs: Array<Construct> = [
       `export const fn = ${wrap(`${callee}(() => db.x())`)}`,
     check: async (served) => {
       await expectClientFree(served)
-      expect(await settleInPage(served, 'module.fn()')).toEqual(serverOnlyError)
+      expect(await settleInPage(served, 'module.fn()')).toEqual(throwsError)
       expect((await served.ssr()).fn()).toBe('x')
     },
   },
@@ -170,7 +169,7 @@ const constructs: Array<Construct> = [
       await expectServerFree(served)
       expect(await inPage(served, 'return module.fn()')).toBe('chart')
       const ssr = await served.ssr()
-      expect(settle(() => ssr.fn())).toEqual(clientOnlyError)
+      expect(settle(() => ssr.fn())).toEqual(throwsError)
     },
   },
 ]
@@ -285,7 +284,7 @@ export const impl = factory.serverOnly(() => db.x())`,
         check: async (served) => {
           expectNotLoaded(await served.loads(), ['./db.server'])
           expect(await settleInPage(served, 'module.impl()')).toEqual(
-            serverOnlyError,
+            throwsError,
           )
           expect((await served.ssr()).impl()).toBe('server-only-value')
         },
@@ -298,7 +297,7 @@ export const impl = factory.clientOnly(() => chart())`,
         check: async (served) => {
           expectNotLoaded(await served.serverLoads(), ['./chart.client'])
           const ssr = await served.ssr()
-          expect(settle(() => ssr.impl())).toEqual(clientOnlyError)
+          expect(settle(() => ssr.impl())).toEqual(throwsError)
           expect(await inPage(served, 'return module.impl()')).toBe(
             'client-only-value',
           )

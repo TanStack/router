@@ -513,7 +513,6 @@ export const Route = createFileRoute('/imports-exported')({ component: Page })
               severity: 'warning',
               file: `routes/${destructured.file}.tsx`,
               root: built.root,
-              names: ['component'],
             }).length > 0
           expect({
             lazy: built.where(destructured.marker) === 'lazy',

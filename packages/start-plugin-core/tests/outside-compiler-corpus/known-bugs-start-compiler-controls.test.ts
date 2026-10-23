@@ -22,9 +22,9 @@ import {
   expectOutputsFreeOfHandler,
   moduleLoads,
   outputs,
-  serverOnlyError,
   serverOnlyModule,
   settle,
+  throwsError,
 } from './legacy/regression-helpers'
 import type {
   ModuleStub,
@@ -71,7 +71,7 @@ async function expectServerOnlyRead(code: string) {
   const { read } = await evaluateModule(client, {
     [serverOnly]: { db: { secret: () => 'secret' } },
   })
-  expect(settle(() => read())).toEqual(serverOnlyError)
+  expect(settle(() => read())).toEqual(throwsError)
 }
 
 describe('harness controls', () => {
@@ -162,7 +162,7 @@ export const fn = createServerFn().handler(async () => db.inner())`
             error: new Error('createServerFn cannot be used here'),
           },
         }),
-      ).rejects.toThrow('line 3')
+      ).rejects.toThrow('does not report 3')
     })
   })
 

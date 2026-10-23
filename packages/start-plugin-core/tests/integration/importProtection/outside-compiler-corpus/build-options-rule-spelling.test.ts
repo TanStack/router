@@ -3,15 +3,11 @@
  * protection spells a RegExp rule in its report (`String(regex)`,
  * `/^db-lib$/`). SPEC J6.12 and coupling N16 leave the spelling free; the
  * corpus test "a RegExp pattern is reported as the rule that matched"
- * (`../build-options.test.ts`) decides that the report names the rule (its
- * source, in any form). Split from that test (S6, B-mixed).
+ * (`../build-options.test.ts`) decides that `onViolation` gets the rule. Split from that test (S6, B-mixed).
  */
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../../build-harness'
-import {
-  rejection,
-  violationReports,
-} from '../../../importProtection/start-apps'
+import { rejection } from '../../../importProtection/start-apps'
 
 const timeout = 60_000
 
@@ -39,11 +35,10 @@ export const read = () => secret()
           },
         }),
       )
-      const reports = violationReports(error)
-      expect(reports).not.toEqual([])
-      for (const report of reports) {
-        expect(report.text).toContain('/^db-lib$/')
-      }
+      // (what the failed build printed, on every channel)
+      expect(error.diagnostics.map(({ text }) => text).join('\n')).toContain(
+        '/^db-lib$/',
+      )
     },
     timeout,
   )

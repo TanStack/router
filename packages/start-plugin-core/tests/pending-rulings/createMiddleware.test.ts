@@ -3,8 +3,8 @@
  * createMiddleware :75/:145 internal-package-graph rows; keep them until
  * ruled"). Moved unchanged from createMiddleware/createMiddleware.test.ts
  * :75 and :145 (workstream B2): they compile hand-written Start package
- * sources through the internal `StartCompiler` (the legacy harness), so the
- * import-gate violations of this file are expected until Q6 is ruled.
+ * sources through the internal `StartCompiler` (the legacy harness), held
+ * by Q6 until it is ruled.
  */
 import { describe, expect, test } from 'vitest'
 import { StartCompiler } from '../../src/start-compiler/compiler'

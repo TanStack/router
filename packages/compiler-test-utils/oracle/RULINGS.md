@@ -92,12 +92,30 @@ test asks for less, and read the severity of every channel, in dev and in builds
 allows no refusal asks for `'warning'`; an option that asks for a warning explicitly (`mockAccess: 'warn'`) is
 checked at that severity. Clauses: G5, §5.7.
 
-### explaining a diagnostic
+### diagnostics: file and position only
 
-A diagnostic "explains" a problem when it names its actionable cause: the category (placement, an unsupported
-shape, an environment restriction) plus guidance or the API involved. A generic internal error ("unexpected node
-type", an engine `TypeError`) does not, even if it names the file. The shared matcher is `explains` of
-`compiler-test-utils/src/diagnostics.ts`, which judges content, not wording (no word lists). Clauses: G5, §5.7.
+2026-10-22, user: "We should just test the minimum ('file + position' could be enough). Testing more than that,
+once the error message is actually implemented, will be equivalent to testing '1 = 1'." An English word list to
+judge a message "seems like an incredibly bad idea". A diagnostic is checked only for: being reported (as an error
+or a warning, at the severity the spec gives where a test needs it), on a channel the user sees, naming the file
+(absolute or project-relative) and the position (`line:column`, or the line). The build fails / does not fail and
+a warning is / is not emitted stay outcomes. Nothing else of the message is checked: no API or option names, no
+cause or guidance, no environment phrase, no code-frame layout. The environment-misuse runtime error (J4.10) is
+checked by the call throwing. This replaces the former "explaining a diagnostic" ruling (`explains`) and the "API
+or option named" half of D14. Clauses: G5, J2.8, J2.19, J4.10, J6.5, J6.12, §5.7.
+
+### import-protection reports through `onViolation`
+
+2026-10-22, user: "read the callback, delete the parser". Which violations import protection reports, where (the
+importer's file and location) and with which chain are read from Start's public `onViolation` callback
+(`tanstackStart({ importProtection: { onViolation } })`, guide/import-protection.md), never parsed from the
+printed report. The printed report is checked only for the file and position it names (above). Clauses: J6.5,
+J6.6, J6.12.
+
+### no import gate
+
+2026-10-22, user: "delete it". The static import gate (`test:import-gate:strict`) is deleted, with no
+replacement; acceptance tests keep reaching the compilers through public entry points by review. Clause: §8.
 
 ### restructured compilers
 
@@ -130,14 +148,14 @@ No compiler benchmark or performance test is part of the oracle for now. Clause:
 
 ### D14: warning wording
 
-Warning and error wording is free, as long as the file (and the option or API where it applies) is named and the
-user can act. Clauses: G5, J2.19, §5.7.
+Warning and error wording is free. Since 2026-10-22 ("diagnostics: file and position only") a test checks only
+the file and the position a diagnostic names. Clauses: G5, J2.19, §5.7.
 
 ### file names in diagnostics
 
 File names may be absolute or project-relative, if unambiguous. A bare basename that is only a suffix of the
-project-relative path (`other.ts` for `src/other.ts`) does not name the file. The shared diagnostics oracle
-(`mentionsFile`) follows this rule. Clause: §5.7.
+project-relative path (`other.ts` for `src/other.ts`) does not name the file. The shared diagnostics check
+(`mentionsFile`) follows this rule: the absolute path, or the project-relative path as a whole path. Clause: §5.7.
 
 ### user-added environments
 

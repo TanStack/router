@@ -13,7 +13,7 @@ Each entry's "Cause" names the product source its comment blames, when it does. 
 implementation, so a rewrite may have no such file. Most root causes are shared by several pins; the bug text then
 says "same root cause as above".
 
-Counts: 368 pin sites in 102 test files (a table test counts once here; Vitest counts each row).
+Counts: 362 pin sites in 102 test files (a table test counts once here; Vitest counts each row).
 
 Pins in `start-plugin-core/tests/pending-rulings/` are held by pending user rulings (README, "Pending user rulings") and reach the compiler through its internals until the ruling lands.
 
@@ -103,7 +103,7 @@ Pins in `start-plugin-core/tests/pending-rulings/` are held by pending user ruli
 
 ### J2 Route code splitting (router-plugin, router-utils)
 
-106 pins.
+103 pins.
 
 #### `router-plugin/tests/code-splitter-imported-options.test.ts`
 
@@ -122,7 +122,7 @@ Pins in `start-plugin-core/tests/pending-rulings/` are held by pending user ruli
 
 #### `router-plugin/tests/integration/build-harness.test.ts`
 
-- **router plugin with esbuild loads a split component lazily and renders it, or refuses naming esbuild and the option (%s).** The esbuild adapter never runs the route generator in a build (its generator only initialises in `esbuild.config`; generation happens in `watchChange`), so the code splitter knows no route files and splits nothing.
+- **router plugin with esbuild loads a split component lazily and renders it, or refuses the build (%s).** The esbuild adapter never runs the route generator in a build (its generator only initialises in `esbuild.config`; generation happens in `watchChange`), so the code splitter knows no route files and splits nothing.
 
 #### `router-plugin/tests/integration/build-source-maps.test.ts`
 
@@ -187,7 +187,6 @@ Pins in `start-plugin-core/tests/pending-rulings/` are held by pending user ruli
 
 #### `router-plugin/tests/integration/pages/code-splitter-imports-exports.test.ts`
 
-- **are reported once, naming the file and the option, when not code-split: $name.** The warning names the file and the exported binding ("These exports from … will not be code-split: - Page"), never the route option it leaves unsplit.
 - **reads an ambient var merged with an interface from the environment in a shared declaration, with verbatimModuleSyntax.** The route module and the split chunk import the ambient var from the shared module (the interface of the same name stays in them and counts as a read of the shared binding), and the shared module has no runtime binding to export. Cause: `router-plugin/src/core/code-splitter/compilers.ts`.
 
 #### `router-plugin/tests/integration/pages/code-splitter-module-state-bindings.test.ts`
@@ -208,14 +207,12 @@ Pins in `start-plugin-core/tests/pending-rulings/` are held by pending user ruli
 - **a split component renders through $name.** Same root cause as above, for a chunk with only fragments (the @jsxFrag factory too) and a pragma written with two spaces.
 - **a factory the route module creates and the loader reads is created once for the split component ($name).** The shared-binding analysis does not count the JSX of a split option as a read of the classic JSX factory it compiles to, so a factory that the route module creates and the loader reads is not shared with the split component: the chunk drops it (same root cause as the pin above), and keeping it in the chunk without sharing it creates it again there.
 - **an exported component ($name) that is the only split candidate is split or reported as not code-split.** The "will not be code-split" warning is only reported when the code splitter changes the route module.
-- **a dev server reports an exported component it leaves unsplit once per file, naming the file and the option.** The warning names the file and the exported binding (`Page`), not the route option (same bug as code-splitter-imports-exports.test.ts "are reported once, naming the file and the option, when not code-split").
 - **an exported function that reads Route is the one the split component calls.** The entry's `useTitle` and the one the split component calls are two functions: a binding that reads `Route` is never shared (`removeBindingsDependingOnRoute`), so the chunk declares a copy of the exported function.
 - **a split component reads the route the route module exports through export { Route }.** A split component that reads a `Route` declared with `const` and exported later (`export { Route }`) gets a chunk that creates the route again instead of importing it from the route module.
 - **a split option renders the default-exported component other modules import.** A route whose component is a default-exported function (which stays in the route module) that another split option renders cannot be compiled: the code splitter throws "Duplicate declaration \"Bar\"".
 - **a split component renders the exported component of another option that reads Route ($name).** The code splitter deletes the exported declaration of an option's component from every chunk, so a split component that renders the exported component of another option, which reads `Route`, renders an undeclared binding ("NotFound is not defined").
 - **a default-exported function the loader and the split component call works on one state.** A default-exported function declaration that the loader and a split component both call cannot be compiled: Babel throws "Duplicate declaration" for it.
 - **a split loader exported through an export list keeps working.** A split loader that the route file also exports through an export list (`export { load }`) loses its declaration in the route module: "Export 'load' is not defined".
-- **an exported errorComponent named by the option is split, or reported naming the file and the option.** When it leaves the exported component unsplit, the compiler's warning names the file and the export (`PostErrorComponent`), never the route option (J2.8: file and option).
 - **an exported errorComponent written as `%s` is the instance its importers get.** An exported component named by a split option is only recognised as an export when the option is a bare identifier. Cause: `router-plugin/src/core/code-splitter/compilers.ts`.
 - **a decorator after `export` compiles.** The code splitter rejects an ES decorator after `export` (`export @dec class`, valid since TypeScript 5.0): "Decorators must be placed before the export keyword".
 - **a class with a parameter decorator that the split component uses compiles into parseable modules.** The code splitter cannot parse a constructor parameter decorator (TypeScript `experimentalDecorators`, as dependency injection libraries use them) and fails the build.
@@ -363,7 +360,7 @@ Pins in `start-plugin-core/tests/pending-rulings/` are held by pending user ruli
 
 ### J4 Start environment separation (start-plugin-core start-compiler; RSC provider in react-start-rsc)
 
-83 pins.
+81 pins.
 
 #### `start-plugin-core/tests/createServerFn/caller-dead-code.test.ts`
 
@@ -374,8 +371,6 @@ Pins in `start-plugin-core/tests/pending-rulings/` are held by pending user ruli
 
 #### `start-plugin-core/tests/createServerFn/createServerFn.test.ts`
 
-- **reports the location of a diagnostic with %s line endings.** The code frame's caret, Start's only spelling of the column, is drawn one column left of the call, so the reported column is wrong; the line is right.
-- **reports the location of a diagnostic deep in the module.** The code frame's caret, Start's only spelling of the column, is drawn one column left of the call, so the reported column is wrong; the line is right.
 - **a server fn whose factory a virtual module serves by its exact id compiles in dev.** In dev, the compiler looks up a module a server fn's factory comes from under a derived id (the module's id with a query flag of its own added), which the environment then loads: a user plugin serving a virtual module by its exact id, as Vite documents it, does not know that id, so the module that defines the server fn fails to compile ("Failed to load url virtual:...?server-fn-module-lookup").
 - **a handler called with ${name} is extracted.** A module is only compiled when its text matches `createServerFn` or `.handler(`, so with the builder imported from another module, a comment between the dot and `handler` hides the server fn. Cause: `start-plugin-core/src/start-compiler/compiler.ts`.
 
@@ -478,7 +473,7 @@ Pins in `start-plugin-core/tests/pending-rulings/` are held by pending user ruli
 - **a createServerOnlyFn local alias called in a top-level block works in each environment, or is rejected at the call.** Env-only factories nested in other code are found by the factory's exported name (`isNestedDirectCallCandidate`), so a local alias of createServerOnlyFn called in a top-level block is neither compiled nor rejected.
 - **a createServerFn in $name does not ship its handler to the client.** With createServerFn the only factory imported, only top-level variable declarations are visited, so a server fn elsewhere is neither extracted nor rejected; with another factory imported, a nested declarator is extracted but its provider exports an undeclared handler.
 - **with another Start factory imported, a server fn in $name works or is rejected at the call.** Next to another Start factory, a server fn that is not assigned to a variable (an object property, a class field, a default export, an assignment, a call argument, a JSX attribute, a conditional, a destructuring) is rejected with a plain `Error` ("createServerFn must be assigned to a variable!") that carries no position: the user is told the file (by the bundler) but not where in it. Cause: `start-plugin-core/src/start-compiler/handleCreateServerFn.ts`.
-- **with %s imported, a nested server fn whose handler reads a local of its function is supported or rejected naming the capture.** Same cause as above; a server fn nested in a function whose handler reads a local of that function (here `id`) cannot run on its own on the server, and is neither supported nor rejected.
+- **with %s imported, a nested server fn whose handler reads a local of its function is supported or rejected at the capture.** Same cause as above; a server fn nested in a function whose handler reads a local of that function (here `id`) cannot run on its own on the server, and is neither supported nor rejected.
 - **distinct re-export aliases of two factories keep their own kind.** The export a re-export forwards is looked up by its local name (`wrap`) only, so two re-exports of different modules' `wrap` under distinct names resolve to the same factory.
 - **%s: parameters and locals shadowing the factories are left alone next to a compiled factory call.** Same lookup-by-local-name bug as the row above, for parameters and locals shadowing the factories next to a compiled factory call.
 - **a user binding named %s does not collide with generated code.** Generated imports and handler names are not made unique against user bindings, so a user binding named like one of them collides with it.
@@ -528,7 +523,7 @@ Pins in `start-plugin-core/tests/pending-rulings/` are held by pending user ruli
 
 ### J5 Deferred hydration `<Hydrate>` (start-plugin-core)
 
-38 pins.
+37 pins.
 
 #### `start-plugin-core/tests/integration/hydrate-build-cases.ts`
 
@@ -547,8 +542,7 @@ Pins in `start-plugin-core/tests/pending-rulings/` are held by pending user ruli
 
 #### `start-plugin-core/tests/integration/pages/hydrate-boundary-forms.test.ts`
 
-- **client: a hook called through a namespace is rejected with the fix.** Hook calls are only detected when the callee is a bare identifier, so `React.useId()` in the children moves into the split code instead of being rejected (SPEC J5.5).
-- **client: children reading $name are rejected with the fix.** The rejection of `this` and `super` captures names no fix: the docs' "Wrap the UI in a function component or use split={false}" is missing from the error (function children and hook calls name theirs).
+- **client: a hook called through a namespace is rejected at the boundary.** Hook calls are only detected when the callee is a bare identifier, so `React.useId()` in the children moves into the split code instead of being rejected (SPEC J5.5).
 
 #### `start-plugin-core/tests/integration/pages/hydrate-split-modules.test.ts`
 
@@ -585,7 +579,7 @@ Pins in `start-plugin-core/tests/pending-rulings/` are held by pending user ruli
 - **client: the split children read a local enum.** A TypeScript enum declared in the component is not passed to the chunk.
 - **client: split children reading the component's arguments render its props.** Split children reading the component's `arguments` are moved into the chunk component unchanged, where `arguments` are the chunk's own props (`this` and `super` are rejected instead).
 - **client: split children may use the own `this` of $name.** A `this` owned by a function, class or method in the children is rejected, on the client and the server.
-- **client: await in split children is rejected clearly or renders.** Split children containing `await` (async server components) are moved as is into the synchronous chunk component the client compile emits, while the server renders them inline.
+- **client: await in split children is rejected at the boundary or renders.** Split children containing `await` (async server components) are moved as is into the synchronous chunk component the client compile emits, while the server renders them inline.
 - **client: the split text of a text-only boundary maps to its line and column.** A boundary whose only child is text is split into code whose text is a new string the compiler creates without the text's position, and nothing else in that code comes from the user's file: the dev server serves it with an empty source map (no mappings, no sources).
 
 #### `start-plugin-core/tests/start-compiler-jsx-pragma.test.ts`
@@ -707,7 +701,7 @@ Pins in `start-plugin-core/tests/pending-rulings/` are held by pending user ruli
 
 - **client: a server fn module calling a function of a denied specifier at the top level loads.** When the Start compiler resolves an import of the module it is compiling (here the callee of a top-level call next to a server fn), import protection handles a denied specifier before the module's transform result exists, and falls back to `getModuleInfo(importer).code`, which Vite's dev server does not support: reading it throws (vite/import-protection-plugin/plugin.ts `resolveExportsForDeniedSpecifier`). Cause: `start-plugin-core/src/vite/import-protection-plugin/plugin.ts`.
 - **client: the importer of a module whose server-only marker was removed loads the module.** Import protection replaces a client import of a module it knows is server-only-marked with a mock when it resolves the import.
-- **client: a name re-exported with `export \*` from $name is a mock, or the server warns about the `export \*`.** In dev, a client module's `export * from` a denied module re-exports nothing: the mock edge of a denied specifier exports only the names its importer uses, and `export *` uses none; a denied file's `export *` is removed from the importer.
+- **client: a name re-exported with `export \*` from $name is a mock.** In dev, a client module's `export * from` a denied module re-exports nothing: the mock edge of a denied specifier exports only the names its importer uses, and `export *` uses none; a denied file's `export *` is removed from the importer.
 
 #### `start-plugin-core/tests/integration/rsbuild/import-protection.test.ts`
 
@@ -720,7 +714,7 @@ Pins in `start-plugin-core/tests/pending-rulings/` are held by pending user ruli
 
 #### `react-start-rsc/tests/integration/rsc-css-diagnostics.test.ts`
 
-- **%s dev explains the CSS limitation once per source file.** Identifier and spread stream arguments silently miss CSS delivery: the real RSC integration skips them without a warning (J7.3, D8). Cause: `react-start-rsc/src/plugin/rscCssTransform.ts`.
+- **%s dev warns about the CSS limitation once per source file, naming it.** Identifier and spread stream arguments silently miss CSS delivery: the real RSC integration skips them without a warning (J7.3, D8). Cause: `react-start-rsc/src/plugin/rscCssTransform.ts`.
 
 #### `react-start-rsc/tests/integration/rsc-css-rsbuild-root.test.ts`
 

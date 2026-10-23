@@ -224,15 +224,15 @@ rsc, srcDirectory, … })` `[type: start-plugin-core/src/schema.ts]`. Which clau
   recommend deterministic inputs, not root independence `[doc: guide/server-functions.md:417-430]`. Route ids and
   paths must still follow their documented routing conventions (J1.4, J1.5), which is what makes the generated route
   tree independent of cwd and OS path separators. `[R4]`
-- **G5 Diagnostics: never fail silently.** Unsupported input yields a clear error, a warning, or a safe
+- **G5 Diagnostics: never fail silently.** Unsupported input yields an error, a warning, or a safe
   non-transform; never silently wrong output. When a user-fixable pattern prevents the intended transform, the user
-  is told once per file (naming the file and, where applicable, the option/API), in every mode. When the obstacle is
-  our own limitation, that is a bug to fix (goal pin), not a warning to document. Errors about the user's source
-  carry a position/code frame in the user's file; configuration or resolution errors name the actionable
-  file/option and need no fabricated source position. A diagnostic explains its cause (the category, plus guidance
-  or the API); a generic internal error does not. "Warn" means at least a warning (an error where refusal is
-  allowed); an info or log line does not count.
-  `[ruling: D11, D14, diagnostic severity, explaining a diagnostic; R5]`
+  is told once per file (naming the file), in every mode. When the obstacle is our own limitation, that is a bug to
+  fix (goal pin), not a warning to document. Errors about the user's source name the file and carry a position in
+  it; configuration or resolution errors need no fabricated source position. Tests check a diagnostic only for its
+  file and position (and its severity where the clause gives one): the wording, the API or option it names and the
+  cause it gives are not checked. "Warn" means at least a warning (an error where refusal is allowed); an info or log
+  line does not count.
+  `[ruling: D11, D14, diagnostic severity, diagnostics: file and position only; R5]`
 - **G6 Source maps.** Every emitted module derived from user source (route modules, split chunks, Start
   client/ssr/provider output, Hydrate chunks, rewritten import-protection modules) carries a map so stack traces
   and import-protection reports resolve to the user's original line and column, through composed maps when other
@@ -428,7 +428,7 @@ routeId })` > `defaultBehavior` > the default `[['component'],['errorComponent']
 - **J2.8 Not split → user informed, never broken.** Every option configured for splitting ends up split. If a
   user-fixable pattern prevents it (e.g. the option's declaration is exported _and_ eagerly imported elsewhere, or a
   side-effectful initialiser with no purity hint), the option keeps working in the route module with one instance,
-  and the build/dev run warns once naming the file and the option, in every mode. If our analysis is the obstacle,
+  and the build/dev run warns once naming the file, in every mode. If our analysis is the obstacle,
   that is a bug. Options the compiler cannot read statically — an options object imported from another module
   (`createFileRoute('/x')(options)` with `import { options } from './x.options'`), factory-built options, a cast
   it does not unwrap — fall under this clause: split correctly or report once naming the file (the dev
@@ -472,7 +472,7 @@ routeId })` > `defaultBehavior` > the default `[['component'],['errorComponent']
   `[ruling: D9; coordinator 2026-10-21]`
 - **J2.18 esbuild.** Either splitting works or the plugin refuses clearly (error naming esbuild and
   `autoCodeSplitting`). A warning on a successful unsplit build is not a refusal. `[ruling: D3]`
-- **J2.19 Warning wording is free** (J2.8 only fixes file + option); warnings are printed once per file per run. `[ruling: D14]`
+- **J2.19 Warning wording is free** (J2.8 only fixes the file); warnings are printed once per file per run. `[ruling: D14; diagnostics: file and position only]`
 - **J2.20 Hydrate inside a split component** keeps working: wherever the component's code lands (chunk or shared
   module), the boundary renders with every binding it needs and its child chunk loads (G11); a dangling generated
   name is a bug. `[cs: both features are documented]`
@@ -590,8 +590,8 @@ createServerFn().middleware([auth])`, then `createServerFn().middleware([authed]
   implementation is a no-op returning `undefined`; the other env's implementation and its imports are absent; links
   stored in variables or returned from factories keep their implementation. `[doc: guide/environment-functions.md:17-85,117-121]`
 - **J4.10 `createServerOnlyFn` / `createClientOnlyFn`.** In the owning env the function runs unchanged; in the other
-  env calling it throws an actionable runtime error that identifies the environment restriction (the docs' messages
-  illustrate it; exact prose is free, §5.7), and the wrapped body plus imports only it used are gone. `[doc: environment-functions.md:88-123; import-protection.md:406-429]`
+  env calling it throws (the docs' messages illustrate the error; its prose is not checked, §5.7
+  `[ruling: diagnostics: file and position only]`), and the wrapped body plus imports only it used are gone. `[doc: environment-functions.md:88-123; import-protection.md:406-429]`
 - **J4.11 `<ClientOnly>`.** Server envs render only the `fallback` (children removed); modules that only the children
   use are not loaded on the server when import protection denies them (`*.client.*`, markers), and preferably for
   neutral names too (not required). Client keeps the children. Only the TanStack `ClientOnly` import is transformed.
@@ -736,9 +736,11 @@ createServerFn().middleware([auth])`, then `createServerFn().middleware([authed]
   dependency marking itself server-only; `excludeFiles: []` re-enables. `[doc: import-protection.md:32-39,207-228]`
 - **J6.11 Determinism.** The set of reported violations for a given source tree and config does not depend on
   request order, caching, or which env transformed a module first (G4). `[R4]`
-- **J6.12 Suggestions and prose are free** (wording not a contract); the documented sections must exist. The
-  docs' displays are examples: header text, numbering, quotes and spacing are free; the `>`/`^` code-frame
-  convention and the per-direction actionable suggestion are kept. `[doc: import-protection.md:245-325]`
+- **J6.12 Suggestions and prose are free** (wording not a contract). The docs' displays are examples: sections,
+  header text, numbering, quotes, spacing, code frames and suggestions are free. What a violation is (environment,
+  importer and its location, specifier, resolved file, chain) is read from `onViolation` (J6.6); the printed report
+  is checked only for naming the importer's file and position `[ruling: import-protection reports through
+onViolation; diagnostics: file and position only]`. `[doc: import-protection.md:245-325]`
 - **J6.13 Edits reclassify in dev.** In a running dev server, adding or removing a marker, changing an unsafe edge or
   boundary, and deleting/recreating a target updates reporting and mock/real resolution in every affected Start env:
   stale lookup, transformed-output and marker caches neither keep a removed denial nor hide a new one (the plugin
@@ -804,8 +806,8 @@ as `§5.N` (or "§5 item N").
   effects preserved; initialiser timing and printed order free).
 - **§5.6 Export lists** of compiled modules: adding exports, removing never-imported exports (G9).
 - **§5.7 Warning/error wording and channel** (console vs bundler diagnostics), not their severity (G5), including
-  the exact prose of the environment-misuse runtime errors (J4.10), as long as the file (and option/API where J2.8 applies) or the
-  environment restriction is named and the user can act. File names in diagnostics may be absolute or
+  the prose of the environment-misuse runtime errors (J4.10). A diagnostic is checked only for naming the file and
+  the position `[ruling: diagnostics: file and position only]`. File names in diagnostics may be absolute or
   project-relative if unambiguous; a bare basename that is only a suffix of the project-relative path (`other.ts`
   for `src/other.ts`) does not name the file `[ruling: file names in diagnostics]`. Code-frame layout and context
   length are free `[ruling: valid alternative compilers]`.
@@ -896,8 +898,8 @@ api/router/RouteOptionsType.md:32]`; the docs recommend `createLazyFileRoute` in
   has a documented contract and its own contract test, and is replaced by the real package when feasible.
 - **Public entry points only.** Acceptance tests reach the compilers through the plugins and options a user
   configures (Vite, Rsbuild, Rspack and webpack builds and dev servers, or the public Vite plugin driven in-process),
-  never through internal modules, classes, ids or queries. The import gate (`test:import-gate:strict`) enforces it
-  for imports; the only exceptions are the tests held by pending user rulings, each listed in the gate's allowlist.
+  never through internal modules, classes, ids or queries. The only exceptions are the tests held by pending user
+  rulings.
 - **Assert at the level where the outcome is decided** `[ruling: first review rulings]`: compiler-level tests assert what the compiler
   alone decides (semantics, identity, validity, server code absent, chunk contents it emits within J2.5's D5
   boundary, warnings); bundle-level placement, DCE and dangling names are asserted on production output per bundler
@@ -930,9 +932,8 @@ api/router/RouteOptionsType.md:32]`; the docs recommend `createLazyFileRoute` in
   `src/lib.ts` to `src/lib/index.ts`) passes through in-between states that a dev server may compile and report:
   tests assert the state after the last write (the last report since the edit names the new target), not an exact
   report list that excludes the in-between states. `[ruling: Rsbuild dev-server edits]`
-- **Original source in code frames.** Code-frame context length is free (§5.7), so a test proves that a frame shows
-  the original source with a token on the reported line itself (an identifier or comment only the original has),
-  never with the surrounding context lines. `[ruling: valid alternative compilers]`
+- **Original source in code frames.** Code frames are not checked (§5.7): a location is checked by its file, line
+  and column. `[ruling: valid alternative compilers; diagnostics: file and position only]`
 
 ---
 

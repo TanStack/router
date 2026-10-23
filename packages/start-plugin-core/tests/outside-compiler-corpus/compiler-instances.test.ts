@@ -22,12 +22,11 @@ import { getLookupConfigurationsForEnv } from '../../src/start-compiler/config'
 import {
   callProvider,
   callerRpcId,
-  clientOnlyError,
   createStartCompiler,
   evaluateModule,
-  serverOnlyError,
   settle,
   settleAsync,
+  throwsError,
 } from './legacy/regression-helpers'
 
 /** A Start factory left uncompiled: calling it fails the test. */
@@ -76,7 +75,7 @@ export const fn = createIsomorphicFn()
 export const fn = createServerOnlyFn(() => 'server only value')`,
       '/test/src/file4.ts',
     )
-    expect(settle(file4.fn)).toEqual(serverOnlyError)
+    expect(settle(file4.fn)).toEqual(throwsError)
 
     // File 5: Mix of ServerFn and IsomorphicFn
     const file5 = await evaluate(
@@ -136,7 +135,7 @@ export const myFn = createServerOnlyFn(() => 'server-only-value')`
       `export { createClientOnlyFn as createServerOnlyFn } from '@tanstack/start-fn-stubs'`
     compiler.invalidateModule('/test/src/factory-inner.ts')
 
-    expect(await run()).toEqual(clientOnlyError)
+    expect(await run()).toEqual(throwsError)
   })
 
   // The source module only mentions createServerFn: the factory module
@@ -179,7 +178,7 @@ export const serverFn = createServerFn().handler(async () => {
       `export { createClientOnlyFn as createServerFnHmrFactory } from '@tanstack/start-fn-stubs'`
     compiler.invalidateModule('/test/src/factory.ts')
 
-    expect(await callServerFn()).toEqual(clientOnlyError)
+    expect(await callServerFn()).toEqual(throwsError)
   })
 })
 

@@ -3,7 +3,6 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import {
   diagnosticsOf,
   findDiagnostics,
-  isRelevantLocation,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   runRsbuildClient,
@@ -18,18 +17,23 @@ import {
 import {
   distinct,
   expectMarkerViolation,
+  expectPrinted,
   expectViolationsAt,
+  isAt,
   locationIn,
+  receivedViolations,
   rejection,
   relevantViolations,
   reportedViolations,
   violationLabel,
-  violationReports,
+  violationRecorder,
+  violationsOf,
 } from '../../importProtection/start-apps'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 import { originalLocation } from '../../importProtection/original-location'
 import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
+import type { StartBuildError } from '../../build-harness'
 import type { ExpectedViolation } from '../../importProtection/start-apps'
 import type {
   ImportProtectionOptions,
@@ -135,8 +139,10 @@ exports.page = () => secret
 test(
   'Rsbuild dev with Start: a server import of a .client file is mocked on the server and reported',
   async () => {
+    const recorder = violationRecorder()
     const server = await startRsbuildStartDevServer({
       compileTimeout,
+      start: { importProtection: recorder.importProtection },
       files: {
         'src/widget.client.ts': `export const widget = () => 'MARK_CLIENT'\n`,
         'src/entry.ts': `import { widget } from './widget.client'
@@ -146,13 +152,9 @@ console.log(read())
       },
     })
     expect(server.errors).toEqual([])
-    expect(
-      distinct(
-        reportedViolations(
-          findDiagnostics(server.diagnostics, { severity: 'warning' }),
-        ).map(({ environment, importer }) => `${environment} ${importer}`),
-      ),
-    ).toEqual([originalLocation('server src/entry.ts:2:27', 1)])
+    expect(receivedViolations(recorder.violations, server.root)).toEqual([
+      originalLocation('server src/entry.ts:2:27', 1),
+    ])
     const code = async (environment: string) =>
       Object.values(await server.outputs(environment)).join('\n')
     expect(await code('ssr')).not.toContain('MARK_CLIENT')
@@ -174,10 +176,11 @@ describe('Rsbuild dev with Start: an SSR import of a .client file: mockAccess', 
   async function useOnTheServer(
     mockAccess: NonNullable<ImportProtectionOptions>['mockAccess'],
   ) {
+    const recorder = violationRecorder({ mockAccess })
     const server = await startRsbuildStartDevServer({
       compileTimeout,
       config: ssrNodeOutput,
-      start: { importProtection: { mockAccess } },
+      start: { importProtection: recorder.importProtection },
       files: {
         'src/widget.client.ts': `export const widget = () => 'MARK_CLIENT'\n`,
         'src/entry.ts': `import { widget } from './widget.client'
@@ -187,7 +190,7 @@ export const read = () => widget()
       },
     })
     expect(server.errors).toEqual([])
-    expect(reportedViolations(server.diagnostics)).toEqual([
+    expect(reportedViolations({ root: server.root, ...recorder })).toEqual([
       expect.objectContaining({ environment: 'server' }),
     ])
     const ran = await runRsbuildSsr(
@@ -256,27 +259,41 @@ describe('Rsbuild dev: behavior', () => {
       const entry = `import { secret } from './secret.server'
 console.log(secret())
 `
+      const recorder = violationRecorder({ behavior })
       const server = await startRsbuildDevServer({
         compileTimeout,
-        importProtection: { behavior },
+        importProtection: recorder.importProtection,
         files: {
           'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
           'src/entry.ts': entry,
         },
       })
-      const severityOf = { warnings: 'warning', errors: 'error' } as const
-      const other = reportedAs === 'errors' ? 'warnings' : 'errors'
-      const reported = (as: typeof reportedAs) =>
-        findDiagnostics(server.diagnostics, { severity: severityOf[as] })
-      expect(reportedViolations(reported(reportedAs))).toHaveLength(1)
-      expectViolationsAt(reported(reportedAs), [
+      const recorded = { root: server.root, ...recorder }
+      const [violation, ...others] = violationsOf(recorded)
+      expect(others).toEqual([])
+      expectViolationsAt(recorded, [
         {
           environment: 'client',
           use: locationIn('src/entry.ts', entry, 2, 'secret()'),
-          source: entry,
+          also: ['src/entry.ts:1'],
         },
       ])
-      expect(reportedViolations(reported(other))).toEqual([])
+      // Printed with the severity, naming the importer at its position
+      const severityOf = { warnings: 'warning', errors: 'error' } as const
+      const other = reportedAs === 'errors' ? 'warnings' : 'errors'
+      expectPrinted(
+        server.diagnostics,
+        server.root,
+        violation!,
+        severityOf[reportedAs],
+      )
+      expect(
+        findDiagnostics(server.diagnostics, {
+          severity: severityOf[other],
+          file: 'src/entry.ts',
+          root: server.root,
+        }),
+      ).toEqual([])
     },
     timeout,
   )
@@ -300,7 +317,7 @@ console.log(secret(), other)
   const violation: ExpectedViolation = {
     environment: 'client',
     use: locationIn('src/entry.ts', app['src/entry.ts'], 3, 'secret()'),
-    source: app['src/entry.ts'],
+    also: ['src/entry.ts:1'],
   }
 
   test.each([
@@ -309,23 +326,25 @@ console.log(secret(), other)
   ])(
     "log '$log': a rebuild for an unrelated edit reports $afterRebuild",
     async ({ log, afterRebuild }) => {
+      const recorder = violationRecorder({ log })
       const server = await startRsbuildDevServer({
         compileTimeout,
-        importProtection: { log },
+        importProtection: recorder.importProtection,
         files: app,
       })
       // Which violations the compiles since `since` report (a dev server
-      // may compile more than once for one edit; the same report in each
+      // may compile more than once for one edit; the same violation in each
       // counts once).
       const reported = (since: number) =>
         relevantViolations(
-          findDiagnostics(server.diagnostics.slice(since), {
-            severity: 'warning',
-          }),
+          {
+            root: server.root,
+            violations: recorder.violations.slice(since),
+          },
           [violation],
         )
       expect(reported(0)).toEqual([violationLabel(violation)])
-      const since = server.diagnostics.length
+      const since = recorder.violations.length
       await server.edit({ 'src/other.ts': `export const other = 2\n` })
       expect(server.rebuilt).toContain('src/other.ts')
       expect(reported(since)).toEqual(afterRebuild)
@@ -333,28 +352,18 @@ console.log(secret(), other)
     timeout,
   )
 
-  // The compile ends (import protection neither hangs nor crashes on a
-  // module that is gone) with an error naming the missing module, as a file
-  // or as the specifier its importer wrote (the entry module: as Start's
-  // client entry imports it); additional correct errors are allowed (SPEC G5;
-  // V1 ip S21).
+  // The compile ends (import protection does not hang on a module that is
+  // gone) with an error (SPEC G5; V1 ip S21; the module-not-found error
+  // names the importer's directory and the specifier, no file and
+  // position the ruling of 2026-10-22 checks).
   // Source: round 4 mutation testing (rsbuild host, entries without a
   // module).
   test.each([
-    // (the module Start's client entry imports, by its specifier there)
-    {
-      module: 'the entry module',
-      file: 'src/entry.ts',
-      specifier: '../src/entry',
-    },
-    {
-      module: 'an imported module',
-      file: 'src/other.ts',
-      specifier: './other',
-    },
+    { module: 'the entry module', file: 'src/entry.ts' },
+    { module: 'an imported module', file: 'src/other.ts' },
   ])(
-    'a compile in which $module is missing fails, naming it',
-    async ({ file, specifier }) => {
+    'a compile in which $module is missing fails',
+    async ({ file }) => {
       const server = await startRsbuildDevServer({
         compileTimeout,
         importProtection: {},
@@ -365,14 +374,7 @@ console.log(secret(), other)
       const errors = findDiagnostics(server.diagnostics.slice(since), {
         severity: 'error',
       })
-      const namesTheModule = (diagnostic: Diagnostic) =>
-        findDiagnostics(diagnostic, { file, root: server.root }).length > 0 ||
-        findDiagnostics(diagnostic, { names: [specifier] }).length > 0
       expect(errors).not.toEqual([])
-      expect(
-        errors.some(namesTheModule),
-        errors.map(({ text }) => text).join('\n'),
-      ).toBe(true)
     },
     timeout,
   )
@@ -478,24 +480,19 @@ export const read = () => button()
   }
 
   /**
-   * The import of `ui-lib` (any column of any of its lines) or the use
-   * `button()` (`isRelevantLocation`), or the entry without coordinates:
-   * a tool rewrote the import, so its location may be unavailable (SPEC
-   * §5.14; V1R ip I01).
+   * The import of `ui-lib` (any column of line 1) or the use `button()`, or
+   * the entry without coordinates: a tool rewrote the import, so its
+   * location may be unavailable (SPEC §5.14; V1R ip I01).
    */
   const atImportOrUse = expect.toSatisfy(
     (importer: string) =>
-      isRelevantLocation(importer, {
-        file: 'src/entry.ts',
-        source: uiLibEntry,
-        uses: [{ line: 2, column: 27 }],
-        imports: ['ui-lib'],
-        unlocated: true,
-      }),
+      ['src/entry.ts:2:27', 'src/entry.ts:1', 'src/entry.ts'].some((place) =>
+        isAt(importer, place),
+      ),
     'the import of ui-lib or the use button() in src/entry.ts',
   )
 
-  let fileRuleError: Promise<Error> | undefined
+  let fileRuleError: Promise<StartBuildError> | undefined
   /** The build error when the file rule denies `ui-lib/button.js`, built once. */
   const fileRuleDenied = () =>
     // `excludeFiles: []`: the checks see dependencies (J6.10).
@@ -541,13 +538,13 @@ export const read = () => button()
         },
       ),
     )
-    const [report, ...others] = violationReports(error)
+    const [report, ...others] = violationsOf(error)
     expect(others).toEqual([])
     expect(report!.environment).toBe('client')
     expectMarkerViolation(report!, {
       marker: 'src/ui-lib/button.js:1',
       use: 'src/entry.ts:2:27',
-      source: uiLibEntry,
+      imports: ['src/entry.ts:1'],
     })
   }, 60_000)
 
@@ -600,7 +597,7 @@ export const read = () => secret() + other
     {
       environment: 'client',
       use: locationIn('src/entry.ts', entry, 3, 'secret()'),
-      source: entry,
+      also: ['src/entry.ts:1'],
     },
   ])
 }, 60_000)

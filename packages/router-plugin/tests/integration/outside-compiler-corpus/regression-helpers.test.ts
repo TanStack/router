@@ -246,7 +246,7 @@ export const Route = createFileRoute('/')({ component: () => <p>page</p> })
         })
         const warnings = app.warnings()
         expect(
-          findDiagnostics(warnings, { names: ['MARK_SYNTHETIC_WARNING'] })
+          warnings.filter(({ text }) => text.includes('MARK_SYNTHETIC_WARNING'))
             .length,
           'the synthetic warning is captured',
         ).toBeGreaterThan(0)

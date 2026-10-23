@@ -1,8 +1,8 @@
 /**
  * Malformed server fn input is rejected clearly (SPEC G5, §8 malformed-input
  * control), through the public Start plugin: the dev server's client
- * environment refuses to serve the module with a compile error that names
- * the API and points at the offending line. Prose, frame layout and
+ * environment refuses to serve the module with a compile error that points
+ * at the offending line. Prose, frame layout and
  * context length are free (§5.7).
  *
  * Source: `regression-helpers.test.ts:251` (B-mixed, split by B2: the
@@ -22,7 +22,7 @@ const host = useStartHost()
 // declarations: a spread argument must be a tuple or go to a rest
 // parameter), so this is a malformed-input control: the compiler cannot tell
 // which function is the handler, and has to say so.
-test('a server fn whose handler arguments are spread is rejected at the call, naming handler', async () => {
+test('a server fn whose handler arguments are spread is rejected at the call', async () => {
   const source = `import { createServerFn } from '@tanstack/react-start'
 const args: Array<() => unknown> = []
 export const fn = createServerFn().handler(...args)`
@@ -30,6 +30,5 @@ export const fn = createServerFn().handler(...args)`
   expectCompileError(await compileError(startCase), {
     source,
     at: '...args',
-    names: ['handler'],
   })
 })

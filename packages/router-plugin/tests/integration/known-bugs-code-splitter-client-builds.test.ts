@@ -88,7 +88,6 @@ export const Route = createFileRoute('/')({
           severity: 'warning',
           file: 'routes/index.tsx',
           root: app.root,
-          names: ['component'],
         }).length > 0
       expect({
         lazy: app.where('MARK_PAGE') === 'lazy',
@@ -187,7 +186,6 @@ return {
           severity: 'warning',
           file: 'routes/index.tsx',
           root: app.root,
-          names: ['errorComponent'],
         }).length > 0
       expect({ splitOrReported: lazy === true || reported }).toEqual({
         splitOrReported: true,

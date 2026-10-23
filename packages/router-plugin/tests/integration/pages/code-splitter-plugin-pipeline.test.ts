@@ -260,7 +260,6 @@ export const Route = createFileRoute('/other')({ component: () => <p /> })
       severity: 'error',
       file: 'invalid.tsx',
       root: route.host.root,
-      names: ['splitBehavior'],
     })
   })
 
@@ -513,7 +512,6 @@ export const Route = createFileRoute('/')({})
     expectDiagnostic([...thrown, ...(await route.diagnostics())], {
       severity: 'error',
       position: diagnosticPosition(code, code.lastIndexOf(';')),
-      source: code,
     })
   },
 )

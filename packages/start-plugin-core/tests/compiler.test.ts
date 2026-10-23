@@ -13,13 +13,12 @@ import { describe, expect, test } from 'vitest'
 import {
   callFromClient,
   callServerFnThroughCallers,
-  clientOnlyError,
   fromPage,
   inPage,
   serveCase,
   serverFnUrls,
-  serverOnlyError,
   settle,
+  throwsError,
   useStartHost,
 } from './regression-helpers'
 import { shapeOf } from './page-values'
@@ -143,7 +142,7 @@ export const fn = createServerOnlyFn(() => 'server only value')`,
           file: 'file4.ts',
         }),
       ),
-    ).toEqual(serverOnlyError)
+    ).toEqual(throwsError)
 
     // File 5: Mix of ServerFn and IsomorphicFn
     const file5 = await serveCase(
@@ -270,9 +269,7 @@ export const personServerFn = createServerFn({ method: 'GET' })
 export const myFn = createServerOnlyFn(() => 'server-only-value')`,
     })
     expect(served.code.client).not.toContain('server-only-value')
-    expect(await settledInPage(served, 'module.myFn()')).toEqual(
-      serverOnlyError,
-    )
+    expect(await settledInPage(served, 'module.myFn()')).toEqual(throwsError)
   })
 
   test('aliased factory is still detected as a candidate', async () => {
@@ -285,9 +282,7 @@ const createSO = createServerOnlyFn
 export const myFn = createSO(() => 'aliased-server-only')`,
     })
     expect(served.code.client).not.toContain('aliased-server-only')
-    expect(await settledInPage(served, 'module.myFn()')).toEqual(
-      serverOnlyError,
-    )
+    expect(await settledInPage(served, 'module.myFn()')).toEqual(throwsError)
   })
 })
 
@@ -326,7 +321,7 @@ describe('re-export chain resolution', () => {
     {
       env: 'server',
       fn: 'createClientOnlyFn',
-      value: clientOnlyError,
+      value: throwsError,
       absent: 'client only initialization',
     },
   ]
@@ -533,7 +528,7 @@ test.each<{
   {
     expression: `(Start).createServerOnlyFn(() => 'private-server-body')`,
     script: 'return settle(() => module.fn())',
-    expected: serverOnlyError,
+    expected: throwsError,
   },
   {
     expression: `(Start).createIsomorphicFn().server(() => 'private-server-body').client(() => 'client-value')`,

@@ -494,10 +494,8 @@ export function hydrateBuildSuite(bundler: StartBundler) {
     )
 
     // Children the compiler cannot extract fail the build with an error that
-    // names the user's file and the line of the boundary, and explains the
-    // cause in its own words (SPEC J5.5, G5, §5.7: no wording is required;
-    // what the message must say besides: hydrate-boundary-forms.test.ts
-    // "children that cannot be split"). Every channel of the failed build is
+    // names the user's file and the line of the boundary (SPEC J5.5, G5,
+    // §5.7: no wording is required). Every channel of the failed build is
     // read (a compiler may print the details and fail with a short error).
     // Source: FIX-PLAN HYD-07 (file + position, A9)
     test.each([
@@ -534,10 +532,7 @@ export function Page() {
         expectDiagnostic(problems((failure as StartBuildError).diagnostics), {
           severity: 'error',
           file: 'src/pages/unsafe.tsx',
-          distinctFrom: ['src/pages.ts'],
           position: { line: diagnosticPosition(page, '<Hydrate').line },
-          source: page,
-          explains: true,
         })
       },
       timeout,

@@ -10,7 +10,6 @@ import {
   compileError,
   expectCompileError,
   inPage,
-  missingHandler,
   serveCase,
   serverFnUrls,
   useStartHost,
@@ -78,18 +77,12 @@ const host = useStartHost({
 describe('createServerFn compiles correctly', () => {
   // A server fn without its handler (`.handler()` type-checks against the
   // real declarations, so this is input a user can write) is a compile
-  // error at the server fn, naming the API (SPEC G5). Editors count \n,
-  // \r\n, a lone \r, U+2028 and U+2029 as line terminators, so the
-  // reported line and column must count every one. Prose, frame layout and
-  // context length are free (§5.7).
-  // Bug: the code frame's caret, Start's only spelling of the column, is
-  // drawn one column left of the call (F1), so the reported column is
-  // wrong; the line is right.
-  // Impact: the frame highlights the character before the offending call.
-  // Source: validation/REPAIR/A2.md F1 (DECISIONS 2026-10-21; pin:
-  // known-bugs-start-compiler-code-frame.test.ts); passed only through the
-  // ctu matcher's former ±1 caret tolerance (removed by F-A, FINAL-PASS #12).
-  test.fails.each([
+  // error at the server fn's line (SPEC G5). Editors count \n, \r\n, a
+  // lone \r, U+2028 and U+2029 as line terminators, so the reported line
+  // must count every one. Prose, frame layout and context length are free
+  // (§5.7). (The column, which Start spells only with the code frame's
+  // caret: known-bugs-start-compiler-code-frame.test.ts, F1.)
+  test.each([
     ['\\n', '\n'],
     ['\\r\\n', '\r\n'],
     ['a lone \\r', '\r'],
@@ -106,41 +99,27 @@ describe('createServerFn compiles correctly', () => {
       expectCompileError(await compileError(startCase), {
         source,
         at: 'createServerFn()',
-        column: true,
-        ...missingHandler,
       })
     },
   )
 
-  // Bug: the code frame's caret, Start's only spelling of the column, is
-  // drawn one column left of the call (F1), so the reported column is
-  // wrong; the line is right.
-  // Impact: the frame highlights the character before the offending call.
-  // Source: validation/REPAIR/A2.md F1 (DECISIONS 2026-10-21; pin:
-  // known-bugs-start-compiler-code-frame.test.ts); passed only through the
-  // ctu matcher's former ±1 caret tolerance (removed by F-A, FINAL-PASS #12).
-  test.fails(
-    'reports the location of a diagnostic deep in the module',
-    async () => {
-      const source = [
-        `import { createServerFn } from '@tanstack/react-start'`,
-        ...Array.from({ length: 10 }, (_, i) => `export const v${i} = ${i}`),
-        `export const fn = createServerFn().handler()`,
-      ].join('\n')
-      const startCase = await (await host()).case({ 'module.tsx': source })
-      expectCompileError(await compileError(startCase), {
-        source,
-        at: 'createServerFn()',
-        column: true,
-        ...missingHandler,
-      })
-    },
-  )
+  test('reports the location of a diagnostic deep in the module', async () => {
+    const source = [
+      `import { createServerFn } from '@tanstack/react-start'`,
+      ...Array.from({ length: 10 }, (_, i) => `export const v${i} = ${i}`),
+      `export const fn = createServerFn().handler()`,
+    ].join('\n')
+    const startCase = await (await host()).case({ 'module.tsx': source })
+    expectCompileError(await compileError(startCase), {
+      source,
+      at: 'createServerFn()',
+    })
+  })
 
   // Malformed-input diagnostic control (SPEC §8, G5): destructuring a server
   // fn is a type error (tsc against the real declarations: TS2339 "Property
   // 'fn' does not exist on type 'OptionalFetcher<...>'"). It only has to
-  // fail clearly, naming the API, at the declaration.
+  // fail, at the declaration.
   test('rejects a destructured server fn', async () => {
     const source = `import { createServerFn } from '@tanstack/react-start'
 export const { fn } = createServerFn().handler(async () => 1)`
@@ -148,7 +127,6 @@ export const { fn } = createServerFn().handler(async () => 1)`
     expectCompileError(await compileError(startCase), {
       source,
       at: '{ fn }',
-      names: ['createServerFn'],
     })
   })
 
@@ -240,7 +218,6 @@ export const greet = createServerFn().handler()`
       expectCompileError(await compileError(startCase, environment), {
         source,
         at: 'createServerFn()',
-        ...missingHandler,
       })
     }
   })

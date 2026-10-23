@@ -91,6 +91,7 @@ import type {
   DiagnosticChannel,
 } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import type { TanStackStartInputConfig } from '../src'
+import type { ViolationInfo } from './importProtection/public-types'
 import type { RsbuildConfig, RsbuildPlugin } from '@rsbuild/core'
 import type { InlineConfig, Plugin } from 'vite'
 
@@ -322,6 +323,12 @@ export interface StartBuild {
    */
   diagnostics: Array<ChannelDiagnostic>
   /**
+   * Every import-protection violation the build reported through Start's
+   * public `onViolation` callback, in order (the app's own `onViolation`,
+   * when it has one, still decides: one it allows is not listed).
+   */
+  violations: Array<ViolationInfo>
+  /**
    * Builds the same app again, in the same directory with the same options
    * and a new plugin instance, after writing `edits` (app files by path;
    * `null` deletes one). The output directories are reused: read what this
@@ -465,13 +472,31 @@ export async function buildStart(
     },
   })
   const mode = options.mode ?? 'production'
+  const violations: Array<ViolationInfo> = []
+  const start = options.start ?? {}
+  const userOnViolation = start.importProtection?.onViolation
   const target: BuildTarget = {
     root: app.root,
     framework: options.framework ?? 'react',
     mode,
     minify: options.minify ?? mode === 'production',
     sourcemap: options.sourcemap ?? false,
-    start: options.start ?? {},
+    // Records what Start's public `onViolation` receives
+    start: {
+      ...start,
+      importProtection: {
+        ...start.importProtection,
+        onViolation: async (info) => {
+          const verdict = await userOnViolation?.(info)
+          // (`false` allows the import: Start reports nothing)
+          if (verdict !== false) {
+            violations.push(info as ViolationInfo)
+          }
+          return verdict
+        },
+      },
+    },
+    violations,
     corePlugins: options.corePlugins,
     rsbuildConfig: options.rsbuildConfig,
     viteConfig: options.viteConfig,
@@ -504,6 +529,7 @@ async function buildAt(
     warnings.client.length = 0
     warnings.ssr.length = 0
     consoleMessages.length = 0
+    target.violations.length = 0
     // The build's own channel (`withBuildEnvironment`): its async scope
     // and its app root (output a bundler prints from native callbacks)
     let channel: Channel | undefined
@@ -534,7 +560,12 @@ async function buildAt(
                 source: 'thrown',
               },
             ]
-        throw new StartBuildError(error, app.root, [...reported, ...thrown])
+        throw new StartBuildError(
+          error,
+          app.root,
+          [...reported, ...thrown],
+          [...target.violations],
+        )
       }
       throw error
     } finally {
@@ -576,6 +607,7 @@ async function buildAt(
     },
     root: app.root,
     diagnostics,
+    violations: [...target.violations],
     rebuild: async (edits = {}) => {
       for (const [file, content] of Object.entries(edits)) {
         const absolute = path.join(app.root, file)
@@ -603,6 +635,8 @@ export class StartBuildError extends BuildError {
     /** App root on disk. */
     readonly root: string,
     readonly diagnostics: Array<ChannelDiagnostic>,
+    /** What Start's `onViolation` received (`StartBuild.violations`). */
+    readonly violations: Array<ViolationInfo>,
   ) {
     super(error.bundler, error.errors, error.warnings)
     this.name = 'StartBuildError'
@@ -626,6 +660,8 @@ interface BuildTarget {
   minify: boolean
   sourcemap: boolean
   start: TanStackStartInputConfig
+  /** What `start`'s `onViolation` received during the current build. */
+  violations: Array<ViolationInfo>
   corePlugins: CoreStartPlugins | undefined
   rsbuildConfig: RsbuildConfig | undefined
   viteConfig?: InlineConfig
@@ -957,6 +993,8 @@ async function buildWithRsbuild(
         warnings.client.length = 0
         warnings.ssr.length = 0
         describedFrom.set(channel, channel.mark())
+        // (the violations the rebuild reports)
+        target.violations.length = 0
         await compiles.edit(target.root, target.watchEdits, watchTimeout)
       } finally {
         await watching.close()

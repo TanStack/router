@@ -44,41 +44,12 @@ import { idle } from '@tanstack/react-start/hydration'
 `
 
 /**
- * Clear compile errors that a fix may reject split children with: the
- * names the error gives in its own words, without the code frame quoting
- * the source (`expectCompileError`); either of `await` and `async` for
- * `await` in the children.
+ * Asserts that `error` is a compile error about `source` at the line of its
+ * boundary (`expectCompileError`; the fixtures read the value on that line
+ * too, so the boundary and the read are both there).
  */
-const rejections = {
-  arguments: [['Hydrate', 'arguments']],
-  await: [
-    ['Hydrate', 'await'],
-    ['Hydrate', 'async'],
-  ],
-  Route: [['Hydrate', 'Route']],
-}
-
-/**
- * Asserts that `error` is a compile error about `source` that names every
- * name of one of `alternatives` (`expectCompileError`; position free, as
- * the fix may report the boundary or the read).
- */
-function expectRejection(
-  error: unknown,
-  source: string,
-  alternatives: Array<Array<string>>,
-) {
-  expect(error, 'a compile error').toBeInstanceOf(Error)
-  const failures: Array<unknown> = []
-  for (const names of alternatives) {
-    try {
-      expectCompileError(error, { source, at: undefined, names })
-      return
-    } catch (failure) {
-      failures.push(failure)
-    }
-  }
-  throw failures[0]
+function expectRejection(error: unknown, source: string) {
+  expectCompileError(error, { source, at: '<Hydrate' })
 }
 
 /**
@@ -706,7 +677,7 @@ export function Icons({ ids }) {
       })
       const failure = await compileError(startCase, 'client')
       if (failure !== undefined) {
-        expectRejection(failure, code, rejections.arguments)
+        expectRejection(failure, code)
         return
       }
       const { client } = await expectRendersLikeSource(await hosts(), code, {
@@ -760,7 +731,7 @@ export function Icons({ ids }) {
   // a valid fix (React client components cannot be async), and so is valid
   // output that renders the awaited value.
   test.fails(
-    'client: await in split children is rejected clearly or renders',
+    'client: await in split children is rejected at the boundary or renders',
     async () => {
       const code = `${head}import { loadData } from './data'
 export async function Page() {
@@ -774,7 +745,7 @@ export async function Page() {
       })
       const failure = await compileError(startCase, 'client')
       if (failure !== undefined) {
-        expectRejection(failure, code, rejections.await)
+        expectRejection(failure, code)
         return
       }
       // Every emitted module is valid, and the client renders like the

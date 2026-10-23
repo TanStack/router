@@ -4,8 +4,8 @@
  * `behavior: 'error'`, Rsbuild dev, and the app-level twins of the mock
  * pins. Each test asserts correct behaviour for a bug on main and is marked
  * .fails; remove .fails when the bug is fixed. A mock is told by what it
- * does (`mock-helpers.ts`, `describeValue`: `a safe mock`), and a report by
- * its sections (`violation-report.ts`).
+ * does (`mock-helpers.ts`, `describeValue`: `a safe mock`), and a violation
+ * by what `onViolation` receives.
  */
 import { createRequire } from 'node:module'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
@@ -13,14 +13,16 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import {
+  distinct,
   factoryTopLevelCall,
-  locatedImporters,
+  rejection,
+  reportedImporters,
   reportedViolations,
   serverFnFactoryApp,
   startProtectedDevServer,
+  violationRecorder,
 } from '../../importProtection/start-apps'
 import { originalLocation } from '../../importProtection/original-location'
-import { failureOf } from './channels'
 import {
   runRsbuildClient,
   runViteClient,
@@ -54,18 +56,21 @@ describe('Vite dev, behavior "error"', () => {
   }
 
   /**
-   * The violations loading the app's modules reports, at relevant original
-   * places of their importers (`locatedImporters`), or `'loaded'`. (Not
-   * the modules of `@tanstack/react-start/server`, which imports Start's
-   * entries, which only Start's whole plugin provides.)
+   * The importers of the violations loading the app's modules reports
+   * (`onViolation`), or `'loaded'`. (Not the modules of
+   * `@tanstack/react-start/server`, which imports Start's entries, which
+   * only Start's whole plugin provides.)
    */
   async function loadOutcome(files: Record<string, string>) {
     const server = await startProtectedDevServer(files, { behavior: 'error' })
-    // (what a failed load reported, on every channel)
-    const failure = await failureOf(server, () =>
+    const failed = await rejection(
       server.load('/src/entry.ts', { skip: /^\/@(vite|fs)\// }),
-    ).catch(() => undefined)
-    return failure ? locatedImporters(failure.reported, files) : 'loaded'
+    ).then(
+      () => true,
+      () => false,
+    )
+    // (each time the import resolves, with behavior "error")
+    return failed ? distinct(reportedImporters(server)) : 'loaded'
   }
 
   // Control for the pin below (same harness): a top-level call of a denied
@@ -207,12 +212,13 @@ describe('Rsbuild dev', () => {
   ])(
     'a module of a custom type importing $name is reported, and its real code does not run',
     async ({ files }) => {
+      const recorder = violationRecorder({
+        behavior: 'error',
+        client: { specifiers: ['db-lib'] },
+      })
       const server = await startBrowserRsbuildDevServer({
         compileTimeout,
-        importProtection: {
-          behavior: 'error',
-          client: { specifiers: ['db-lib'] },
-        },
+        importProtection: recorder.importProtection,
         config: pageModules,
         files: {
           ...files,
@@ -221,10 +227,10 @@ describe('Rsbuild dev', () => {
       })
       const messages = await runRsbuildClient(server)
       expect({
-        reported: locatedImporters(
-          findDiagnostics(server.diagnostics, { severity: 'error' }),
-          files,
-        ),
+        reported: reportedImporters({
+          root: server.root,
+          violations: recorder.violations,
+        }),
         ranRealCode: messages.some((message) => message.includes('MARK_')),
       }).toEqual({ reported: ['client src/home.page'], ranRealCode: false })
     },
@@ -283,12 +289,13 @@ export const page = () => secret()
   ])(
     'an .mdx page importing $name is reported in its source, and its real code does not run',
     async ({ files }) => {
+      const recorder = violationRecorder({
+        behavior: 'error',
+        client: { specifiers: ['db-lib'] },
+      })
       const server = await startBrowserRsbuildDevServer({
         compileTimeout,
-        importProtection: {
-          behavior: 'error',
-          client: { specifiers: ['db-lib'] },
-        },
+        importProtection: recorder.importProtection,
         config: mdxModules,
         files: {
           ...files,
@@ -297,9 +304,10 @@ export const page = () => secret()
       })
       const messages = await runRsbuildClient(server)
       expect({
-        reported: reportedViolations(
-          findDiagnostics(server.diagnostics, { severity: 'error' }),
-        ).map(({ environment, importer }) => `${environment} ${importer}`),
+        reported: reportedViolations({
+          root: server.root,
+          violations: recorder.violations,
+        }).map(({ environment, importer }) => `${environment} ${importer}`),
         ranRealCode: messages.some((message) => message.includes('MARK_')),
       }).toEqual({
         reported: [originalLocation('client src/home.mdx:4:27', 3)],

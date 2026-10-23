@@ -9,7 +9,7 @@
  * per environment: `src/cases/leaky.ts`, `src/cases/server-leaky.ts`), and
  * the server keeps a handler's use (the handler runs with the real module).
  * Read on dev servers with Start's whole public plugin (mock mode), Vite
- * and Rsbuild, from what each reports (`locatedImporters`). Each case is a
+ * and Rsbuild, from what each reports through `onViolation`. Each case is a
  * module of its own under `src/cases/`.
  *
  * Replaces the internal control that compiled each case with today's
@@ -24,7 +24,11 @@ import {
   startRequestFiles,
 } from '../../dev-server'
 import { startRsbuildDevServer } from '../../rsbuild-dev-server'
-import { locatedImporters } from '../../importProtection/start-apps'
+import {
+  distinct,
+  reportedImporters,
+  violationRecorder,
+} from '../../importProtection/start-apps'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 
 const timeout = 30_000
@@ -126,11 +130,15 @@ const importProtection = {
   mockAccess: 'off' as const,
 }
 
+/** `importProtection`, recording what Start reports (`violations`). */
+const recording = () => violationRecorder(importProtection)
+
 describe('vite dev', () => {
   const cleanups: Array<() => Promise<void>> = []
   afterAll(async () => {
     await Promise.all(cleanups.map((cleanup) => cleanup()))
   })
+  const recorded = recording()
   let started: Promise<DevServer> | undefined
   /**
    * The dev server (router entry `src/entry.ts`), started once for the
@@ -147,7 +155,10 @@ describe('vite dev', () => {
           'src/entry.ts': `${files['src/entry.ts']}\nexport { getRouter } from './router'\n`,
         },
         registerCleanup: (cleanup) => cleanups.push(cleanup),
-        start: { router: { entry: 'entry.ts' }, importProtection },
+        start: {
+          router: { entry: 'entry.ts' },
+          importProtection: recorded.importProtection,
+        },
       })
       await server.load('/src/entry.ts')
       await server.import('/src/entry.ts', 'ssr')
@@ -157,10 +168,11 @@ describe('vite dev', () => {
   test(
     'the client reports only the use it keeps, not the uses inside the boundaries it drops',
     async () => {
-      const located = locatedImporters((await loaded()).logs, files)
-      expect([
-        ...new Set(located.filter((entry) => entry.startsWith('client '))),
-      ]).toEqual(['client src/cases/leaky.ts'])
+      const { root } = await loaded()
+      const reported = distinct(reportedImporters({ root, ...recorded }))
+      expect(reported.filter((entry) => entry.startsWith('client '))).toEqual([
+        'client src/cases/leaky.ts',
+      ])
     },
     timeout,
   )
@@ -168,10 +180,11 @@ describe('vite dev', () => {
   test(
     'the server reports only the use it keeps, not the uses inside the boundaries it drops',
     async () => {
-      const located = locatedImporters((await loaded()).logs, files)
-      expect([
-        ...new Set(located.filter((entry) => entry.startsWith('server '))),
-      ]).toEqual(['server src/cases/server-leaky.ts'])
+      const { root } = await loaded()
+      const reported = distinct(reportedImporters({ root, ...recorded }))
+      expect(reported.filter((entry) => entry.startsWith('server '))).toEqual([
+        'server src/cases/server-leaky.ts',
+      ])
     },
     timeout,
   )
@@ -194,8 +207,14 @@ describe('rsbuild dev', () => {
   test(
     'each environment reports only the use it keeps',
     async () => {
-      const server = await startRsbuildDevServer({ files, importProtection })
-      expect([...new Set(locatedImporters(server, files))].sort()).toEqual([
+      const recorded = recording()
+      const server = await startRsbuildDevServer({
+        files,
+        importProtection: recorded.importProtection,
+      })
+      expect(
+        distinct(reportedImporters({ root: server.root, ...recorded })).sort(),
+      ).toEqual([
         'client src/cases/leaky.ts',
         'server src/cases/server-leaky.ts',
       ])

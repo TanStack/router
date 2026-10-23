@@ -92,8 +92,7 @@ export interface HarnessEntries {
  * transforms of the Start compiler, which no public option takes). A
  * harness given these uses them instead of `tanstackStart()`. The harnesses
  * never import the core factory themselves: only a test that imports
- * `coreStartPlugins` reaches it (none of the corpus does; the import gate
- * lists the helpers the corpus reaches).
+ * `coreStartPlugins` reaches it (none of the corpus does).
  */
 export interface CoreStartPlugins {
   vite: (

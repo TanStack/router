@@ -26,18 +26,16 @@ import type { RouteApp, RouteAppOptions } from '../../route-app'
 
 /**
  * Whether the dev server reported (a warning on any channel: the route
- * loaded, so nothing was refused) that the option `option` (default
- * `component`) of the route file is left unsplit, naming the file and the
- * option (J2.8; naming the binding too is fine, the wording is free). Read
+ * loaded, so nothing was refused) something about the route file, naming
+ * it (J2.8: an option left unsplit is reported; the wording is free). Read
  * once the page loaded the route.
  */
-async function reportsNotSplit(route: RouteApp, option = 'component') {
+async function reportsNotSplit(route: RouteApp) {
   return (
     findDiagnostics(await route.diagnostics(), {
       severity: 'warning',
       file: route.url.slice(1),
       root: route.host.root,
-      names: [option],
     }).length > 0
   )
 }
@@ -800,7 +798,6 @@ export const Route = createFileRoute('/')(
             severity: 'error',
             file: 'route.tsx',
             root: route.host.root,
-            names: ['server'],
           },
         )
         return

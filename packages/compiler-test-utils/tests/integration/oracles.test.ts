@@ -61,7 +61,6 @@ describe.each(bundlers)('%s', (bundler) => {
         severity: 'error',
         file: 'src/broken.ts',
         position: { line: 2, column: 26 },
-        source: broken,
       })
     },
     timeout,

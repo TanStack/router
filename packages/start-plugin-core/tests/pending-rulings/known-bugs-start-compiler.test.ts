@@ -4,8 +4,7 @@
  * dependency through a supported plugin is not established). Moved
  * unchanged from known-bugs-start-compiler.test.ts:1652-1705 (workstream
  * B2). It compiles through the internal `StartCompiler` (the legacy
- * harness), so the import-gate violations of this file are expected until
- * Q7 is ruled.
+ * harness), held by Q7 until it is ruled.
  */
 import { describe, expect, test } from 'vitest'
 import { createStartCompiler } from '../outside-compiler-corpus/legacy/regression-helpers'

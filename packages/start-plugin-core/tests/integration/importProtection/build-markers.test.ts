@@ -3,8 +3,8 @@
  * from build.test.ts and build-mock.test.ts (three files, to keep each
  * within the per-file time budget): an `onViolation` that returns false,
  * and the server-only marker. A mock is told by what it does
- * (`mock-helpers.ts`, `describeValue`: `a safe mock`), and a report by its
- * sections (`violation-report.ts`).
+ * (`mock-helpers.ts`, `describeValue`: `a safe mock`), and a violation by
+ * what `onViolation` receives.
  */
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
@@ -18,8 +18,9 @@ import {
   expectViolationsAt,
   locationIn,
   rejection,
+  reportedImporters,
   reportedViolations,
-  violationReports,
+  violationsOf,
 } from '../../importProtection/start-apps'
 import type { TanStackStartInputConfig } from '../../../src'
 import type { ViolationInfo } from '../../importProtection/public-types'
@@ -215,7 +216,11 @@ describe.each(startBundlers)('%s build, server-only marker', (bundler) => {
           start: { importProtection: { ignoreImporters: ['**/ignored.ts'] } },
         }),
       )
-      expect(reportedViolations(error)).toHaveLength(1)
+      // (the exempt importer is never reported; with behavior "error",
+      // `onViolation` may get the other violation more than once)
+      const importers = reportedImporters(error)
+      expect(importers).not.toEqual([])
+      expect(importers).not.toContain('client src/ignored.ts')
     },
     timeout,
   )
@@ -418,12 +423,12 @@ export const getRouter = () => ({ routeTree })
           entry: 'src/entry.ts',
         }),
       )
-      const [report, ...others] = violationReports(error)
+      const [report, ...others] = violationsOf(error)
       expect(others).toEqual([])
       expectMarkerViolation(report!, {
         marker: 'src/marked.ts:1',
         use: locationIn('src/routes/index.tsx', splitRoute, 4, 'secret()'),
-        source: splitRoute,
+        imports: ['src/routes/index.tsx:2'],
       })
     },
     timeout,
@@ -448,7 +453,7 @@ console.log('client')
       // At the client entry's marker import, line 1 (any column)
       expect(reportedViolations(error)).toHaveLength(1)
       expectViolationsAt(error, [
-        { environment: 'client', use: 'src/client.ts:1', source: client },
+        { environment: 'client', use: 'src/client.ts:1' },
       ])
     },
     timeout,

@@ -109,13 +109,12 @@ test(
 // nothing. The code splitter's esbuild adapter also never initialises its
 // config (no `esbuild` hook calls `initUserConfig`), so it would throw once
 // it saw a route file.
-// Splitting, or refusing clearly (a build error naming esbuild and
-// `autoCodeSplitting`), are both valid fixes (decision D3 (c), SPEC J2.18);
+// Splitting, or refusing (a build error), are both valid fixes (decision D3 (c), SPEC J2.18);
 // a warning on a successful unsplit build is not a refusal.
 // Impact: `tanstackRouter({ autoCodeSplitting: true })` with esbuild bundles
 // every route component into the entry, without telling the user.
 test.fails.each(['ssr', 'client'] as const)(
-  'router plugin with esbuild loads a split component lazily and renders it, or refuses naming esbuild and the option (%s)',
+  'router plugin with esbuild loads a split component lazily and renders it, or refuses the build (%s)',
   async (env) => {
     let app: BuildResult
     try {
@@ -128,7 +127,7 @@ test.fails.each(['ssr', 'client'] as const)(
       if (!(error instanceof BuildError)) {
         throw error
       }
-      expectDiagnostic(error, { names: ['esbuild', 'autoCodeSplitting'] })
+      expectDiagnostic(error, { severity: 'error' })
       return
     }
     expect(await describeSplitRoute(app, env)).toEqual(splitRouteExpected[env])

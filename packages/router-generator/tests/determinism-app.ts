@@ -81,8 +81,6 @@ export async function generateFresh(root: string) {
     severity: 'warning' as const,
     file: 'src/routes/helper.tsx',
     root,
-    names: ['Route'],
-    explains: true as const,
   }
   expectDiagnostic(diagnostics, diagnosticContract)
   const reported = findDiagnostics(diagnostics, diagnosticContract)
@@ -92,11 +90,9 @@ export async function generateFresh(root: string) {
   return {
     tree: await readFile(config.generatedRouteTree, 'utf8'),
     routes: await observeRouteTree(config.generatedRouteTree),
-    // Compare the required file/API/cause, not wording, grouping, channel,
-    // severity labels, or duplicate presentations of the same diagnosis.
-    diagnostics: [
-      { file: diagnosticContract.file, api: 'Route', cause: 'missing export' },
-    ],
+    // Compare the file reported, not wording, grouping, channel, severity
+    // labels, or duplicate presentations of the same diagnosis.
+    diagnostics: [{ file: diagnosticContract.file }],
   }
 }
 

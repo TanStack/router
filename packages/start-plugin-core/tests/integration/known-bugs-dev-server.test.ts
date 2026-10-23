@@ -6,7 +6,6 @@
  * public Vite plugin; client code runs in a real browser page of the dev
  * server (`runViteClient`).
  */
-import { diagnosticProse } from '@tanstack/compiler-test-utils/diagnostics'
 import { describe, expect, test } from 'vitest'
 import {
   callServerFn,
@@ -452,46 +451,31 @@ export const values = [getRequest, getHeader, server.setCookie]
     timeout,
   )
 
-  /**
-   * Whether the dev server warned, on any channel, about the `export *` of
-   * `source` (`src/b.ts`): a warning or error whose own words (its prose,
-   * without the lines quoting the source, `diagnosticProse`) speak of that
-   * star re-export, whatever the wording (SPEC J6.12, §5.7).
-   */
-  const warnsAboutStarReexport = (server: DevServer, source: string) =>
-    server.diagnostics.some(
-      ({ severity, text }) =>
-        severity !== 'info' &&
-        /\bexport\s*\*|\bre-?export(?:s|ed|ing)?\b|\bstar export/i.test(
-          diagnosticProse(text, source),
-        ),
-    )
-
   // Bug: in dev, a client module's `export * from` a denied module re-exports
   // nothing: the mock edge of a denied specifier exports only the names its
   // importer uses, and `export *` uses none; a denied file's `export *` is
   // removed from the importer.
   // Impact: a client module importing a name that another module re-exports
   // with `export *` from a denied module fails to load (missing export), so
-  // the page does not hydrate. The only warning is the usual "Import denied"
-  // one, which does not say that the re-exported names are not mocked.
+  // the page does not hydrate. (A warning about the `export *` was a valid
+  // fix too; the usual "Import denied" warning already names `src/b.ts` at
+  // line 1, and a warning is checked only by its file and position since
+  // the ruling of 2026-10-22, so the pin asks for the mock.)
   // Source: gap IP12 (gaps/start-env.md); the rewrite of the same form
   // (Rsbuild) also only removes the `export *`
   // (outside-compiler-corpus/importProtection/rewrite.test.ts).
   test.fails.each(deniedModules)(
-    'client: a name re-exported with `export *` from $name is a mock, or the server warns about the `export *`',
+    'client: a name re-exported with `export *` from $name is a mock',
     async ({ denied }) => {
       const reexport = `export * from '${denied}'\n`
-      const { result, server } = await inClientOf(
+      const { result } = await inClientOf(
         {
           'src/b.ts': reexport,
           'src/c.ts': `import { getRequest } from './b'\nexport const v = getRequest\n`,
         },
         'return isSafeMock(entry.v)',
       )
-      expect(result === true || warnsAboutStarReexport(server, reexport)).toBe(
-        true,
-      )
+      expect(result).toBe(true)
     },
     timeout,
   )

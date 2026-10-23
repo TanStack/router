@@ -7,10 +7,7 @@
  * generator.test.ts).
  */
 import { describe, expect, test } from 'vitest'
-import {
-  captureConsole,
-  findDiagnostics,
-} from '@tanstack/compiler-test-utils/diagnostics'
+import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
 import { createApp, fileRoute, generate, rootRoute } from '../app'
 
 /** An app with a root route and a route file for each of `files`. */
@@ -45,11 +42,13 @@ describe('param name warnings', () => {
     const warnings = diagnostics.filter(
       (diagnostic) => diagnostic.severity === 'warning',
     )
+    const naming = (name: string) =>
+      warnings.filter(({ text }) => text.includes(`"${name}"`))
     for (const name of ['123', 'user-name', 'user-id']) {
-      expect(findDiagnostics(warnings, { names: [name] }), name).toHaveLength(1)
+      expect(naming(name), name).toHaveLength(1)
     }
     for (const name of ['validParam', 'locale', 'postId']) {
-      expect(findDiagnostics(warnings, { names: [name] }), name).toEqual([])
+      expect(naming(name), name).toEqual([])
     }
   })
 })

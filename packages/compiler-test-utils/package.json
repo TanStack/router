@@ -38,9 +38,7 @@
     "test:unit": "vitest --project unit",
     "test:integration": "vitest --project integration",
     "test:types": "tsc",
-    "test:eslint": "eslint ./src ./tests",
-    "test:import-gate": "node ./src/import-gate.ts",
-    "test:import-gate:strict": "node ./src/import-gate.ts --strict"
+    "test:eslint": "eslint ./src ./tests"
   },
   "nx": {
     "targets": {

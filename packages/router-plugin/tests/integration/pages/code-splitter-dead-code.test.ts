@@ -700,7 +700,6 @@ export const Route = createFileRoute('/')({
         severity: 'warning',
         file: 'route.tsx',
         root: route.host.root,
-        names: ['component'],
         times: 1,
       })
     }

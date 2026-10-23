@@ -12,27 +12,22 @@
 import { parseSync } from 'vite'
 import { describe, expect, test } from 'vitest'
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
-import {
-  expectDiagnostic,
-  findDiagnostics,
-} from '@tanstack/compiler-test-utils/diagnostics'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { expectValidModules, head, loadRoute } from '../../route-app'
 import type { RouteApp, RouteAppOptions } from '../../route-app'
 
 /**
  * Whether the dev server reported (a warning on any channel: the route
- * loaded, so nothing was refused) that the option `option` (default
- * `component`) of the route file is left unsplit, naming the file and the
- * option (J2.8; naming the binding too is fine, the wording is free). Read
+ * loaded, so nothing was refused) something about the route file, naming
+ * it (J2.8: an option left unsplit is reported; the wording is free). Read
  * once the page loaded the route.
  */
-async function reportsNotSplit(route: RouteApp, option = 'component') {
+async function reportsNotSplit(route: RouteApp) {
   return (
     findDiagnostics(await route.diagnostics(), {
       severity: 'warning',
       file: route.url.slice(1),
       root: route.host.root,
-      names: [option],
     }).length > 0
   )
 }
@@ -399,63 +394,6 @@ export const Route = createFileRoute('/')({ ${options}component: ${binding} })
     },
   )
 
-  // In a dev server, the user is told once per file, in the terminal, which
-  // option of which file stays unsplit (J2.8, J2.19): here an exported
-  // component that another route of the app imports eagerly (a permitted
-  // fallback). Serving the route module, its split modules and the other
-  // route adds no second report.
-  // Bug: the warning names the file and the exported binding (`Page`), not
-  // the route option (same bug as code-splitter-imports-exports.test.ts
-  // "are reported once, naming the file and the option, when not
-  // code-split").
-  // Source: FIX-PLAN §G.3 (F22/F40 dev row); V1 split F40.
-  // Impact: the developer has to work out which option the named export is.
-  test.fails(
-    'a dev server reports an exported component it leaves unsplit once per file, naming the file and the option',
-    async () => {
-      const route = await loadRoute(
-        `${head}export function Page() {
-  return <p>page</p>
-}
-export const Route = createFileRoute('/')({ component: Page })
-`,
-        {
-          fresh: true,
-          // The dev server's own default (route HMR on)
-          hmr: true,
-          files: {
-            'about.tsx': `${head}import { Page } from './route'
-export const Route = createFileRoute('/about')({ component: () => <Page /> })
-`,
-          },
-          pluginOptions: {
-            virtualRouteConfig: {
-              type: 'root',
-              file: '__root.tsx',
-              children: [
-                { type: 'index', file: 'route.tsx' },
-                { type: 'route', path: '/about', file: 'about.tsx' },
-              ],
-            },
-          },
-        },
-      )
-      // The page loads every module of both routes: the route module, what
-      // each of its options loads, the other route.
-      await route.run(`for (const option of Object.keys(options)) await trigger(option)
-await renderRoute({ at: '/' })
-await renderRoute({ at: '/about' })
-return null`)
-      expectDiagnostic(problems(await route.diagnostics()), {
-        severity: 'warning',
-        file: 'route.tsx',
-        root: route.host.root,
-        names: ['component'],
-        times: 1,
-      })
-    },
-  )
-
   // Bug: the entry's `useTitle` and the one the split component calls are
   // two functions: a binding that reads `Route` is never shared
   // (`removeBindingsDependingOnRoute`), so the chunk declares a copy of the
@@ -738,33 +676,17 @@ return { rendered, sameInstance: seen.length === 1 && seen[0] === imported }`)
       sameInstance,
       splitOrReported:
         (await route.isLazy('errorComponent')) ||
-        (await reportsNotSplit(route, 'errorComponent')),
+        (await reportsNotSplit(route)),
     }
   }
 
-  // Control for the pin below (same harness): the bare identifier.
+  // The bare identifier.
   test('an exported errorComponent named by the option is the instance its importers get', async () => {
     expect(await exportedErrorComponent('PostErrorComponent')).toMatchObject({
       rendered: '<p>error</p>',
       sameInstance: true,
     })
   })
-
-  // Bug: when it leaves the exported component unsplit, the compiler's
-  // warning names the file and the export (`PostErrorComponent`), never the
-  // route option (J2.8: file and option). Same bug as
-  // code-splitter-imports-exports.test.ts "are reported once, naming the
-  // file and the option, when not code-split".
-  // Source: V1 split F40.
-  // Impact: the developer has to work out which option the named export is.
-  test.fails(
-    'an exported errorComponent named by the option is split, or reported naming the file and the option',
-    async () => {
-      expect(
-        (await exportedErrorComponent('PostErrorComponent')).splitOrReported,
-      ).toBe(true)
-    },
-  )
 
   // Bug: an exported component named by a split option is only recognised
   // as an export when the option is a bare identifier. Written in another

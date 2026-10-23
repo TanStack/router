@@ -16,13 +16,14 @@ import {
 import { afterAll, afterEach, describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
+import { violationRecorder } from '../../importProtection/start-apps'
 import {
   runInClient,
   runViteClient,
   startBrowserStartDevServer as startDevServer,
   startBrowserRsbuildStartDevServer as startRsbuildStartDevServer,
 } from './client-pages'
-import { reportedImporters } from './v2-hosts'
+import { importersIn } from './v2-hosts'
 import type { StartBuild } from '../../build-harness'
 
 const timeout = 60_000
@@ -124,8 +125,7 @@ describe.each(startBundlers)('%s build (mock mode)', (bundler) => {
       )
       expect({
         ...(result as Omit<Outcome, 'reported'>),
-        // (what the build reported, on every channel)
-        reported: reportedImporters(build, 'client', app),
+        reported: importersIn(build, 'client'),
       }).toEqual(expected)
     },
     timeout,
@@ -136,9 +136,10 @@ describe('vite dev', () => {
   test(
     'type-only forms are neither reported nor loaded; the mixed import is reported and mocked',
     async () => {
+      const recorder = violationRecorder()
       const server = await startDevServer({
         browser: true,
-        start: {},
+        start: { importProtection: recorder.importProtection },
         files: app,
       })
       const { result } = await runViteClient(
@@ -149,7 +150,7 @@ describe('vite dev', () => {
       await server.idle()
       expect({
         ...(result as Omit<Outcome, 'reported'>),
-        reported: reportedImporters(server.logs, 'client', app),
+        reported: importersIn({ root: server.root, ...recorder }, 'client'),
       }).toEqual(expected)
     },
     timeout,
@@ -160,11 +161,13 @@ describe('rsbuild dev', () => {
   test(
     'type-only forms are neither reported nor loaded; the mixed import is reported and mocked',
     async () => {
+      const recorder = violationRecorder()
       const server = await startRsbuildStartDevServer({
         compileTimeout,
         browser: true,
         hmr: false,
         files: app,
+        start: { importProtection: recorder.importProtection },
       })
       // Nothing fails, on any channel
       expect(
@@ -175,11 +178,7 @@ describe('rsbuild dev', () => {
       )
       expect({
         ...(result as { result: Omit<Outcome, 'reported'> }).result,
-        reported: reportedImporters(
-          findDiagnostics(server.diagnostics, { severity: 'warning' }),
-          'client',
-          app,
-        ),
+        reported: importersIn({ root: server.root, ...recorder }, 'client'),
       }).toEqual(expected)
     },
     timeout,
@@ -237,7 +236,7 @@ describe.each(startBundlers)(
         )
         expect({
           typesLoaded: result,
-          reported: reportedImporters(build, 'client', verbatimApp),
+          reported: importersIn(build, 'client'),
         }).toEqual(handlerOnly)
       },
       timeout,
@@ -249,9 +248,10 @@ describe('vite dev, verbatimModuleSyntax', () => {
   test(
     'a mixed import whose value only a server fn handler uses is neither reported nor loaded',
     async () => {
+      const recorder = violationRecorder()
       const server = await startDevServer({
         browser: true,
-        start: {},
+        start: { importProtection: recorder.importProtection },
         files: verbatimApp,
       })
       const { result: typesLoaded } = await runViteClient(
@@ -262,7 +262,7 @@ describe('vite dev, verbatimModuleSyntax', () => {
       await server.idle()
       expect({
         typesLoaded,
-        reported: reportedImporters(server.logs, 'client', verbatimApp),
+        reported: importersIn({ root: server.root, ...recorder }, 'client'),
       }).toEqual(handlerOnly)
     },
     timeout,

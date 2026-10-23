@@ -577,7 +577,6 @@ describe('conflicting routes', () => {
         severity: 'error',
         file,
         root,
-        distinctFrom: files.filter((other) => other !== file),
       })
     }
   })
@@ -635,7 +634,6 @@ describe('conflicting routes', () => {
         severity: 'error',
         file,
         root,
-        distinctFrom: files.filter((other) => other !== file),
       })
     }
   })

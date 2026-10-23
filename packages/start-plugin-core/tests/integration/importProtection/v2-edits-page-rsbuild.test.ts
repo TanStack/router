@@ -15,12 +15,13 @@ import { afterAll, describe, expect, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
+import { violationRecorder } from '../../importProtection/start-apps'
 import {
-  appSources,
+  importersIn,
   pageApp,
   pageSteps,
   pageWidget,
-  reportedImporters,
+  recordedSince,
   secretServerModule,
   settledAcrossTurn,
 } from './v2-hosts'
@@ -56,6 +57,7 @@ const registerCleanup = (cleanup: () => Promise<void>) => {
 let outcomes: Promise<Array<StepOutcome>> | undefined
 const run = () =>
   (outcomes ??= (async () => {
+    const recorder = violationRecorder({ log: 'always' })
     const server = await startRsbuildStartDevServer({
       compileTimeout,
       hmr: true,
@@ -64,7 +66,7 @@ const run = () =>
       config: { tools: { htmlPlugin: false }, plugins: [pluginReact()] },
       // `log: 'always'`: each compile reports what it finds, so a stale
       // violation shows in the compile of the step that removed it.
-      start: { importProtection: { log: 'always' } },
+      start: { importProtection: recorder.importProtection },
       files: pageApp,
       registerCleanup,
     })
@@ -84,14 +86,13 @@ const run = () =>
         await settledAcrossTurn(server)
         await server.edit({ 'src/secret.server.ts': secretServerModule })
         await settledAcrossTurn(server)
-        since = server.diagnostics.length
+        since = recorder.violations.length
         await server.edit({ 'src/widget.tsx': pageWidget(step, live) })
       }
       await browser.waitForText(`step-${step}`, {
         selector: '[data-testid=widget]',
       })
       await settledAcrossTurn(server)
-      const diagnostics = server.diagnostics.slice(since)
       const client = [
         ...Object.values(await server.outputs('client')),
         ...Object.values(await server.hotUpdates('client')),
@@ -107,10 +108,9 @@ return describeValue(window.liveSecret(), 'MARK_SECRET')
         loads: browser.loads(),
         servedSecret: client.some((code) => code.includes('MARK_SECRET')),
         // Every compile in this state, excluding target-missing intermediates.
-        reported: reportedImporters(
-          diagnostics,
+        reported: importersIn(
+          recordedSince({ root: server.root, ...recorder }, since),
           'client',
-          appSources(server.root),
         ),
       })
     }

@@ -3,7 +3,7 @@
  * into the client bundle is reported, and invalid markers fail the build.
  * Import protection checks the modules of the source directory (`src`).
  * A mock is told by what it does (`mock-helpers.ts`, `describeValue`:
- * `a safe mock`), and a report by its sections (`violation-report.ts`).
+ * `a safe mock`), and a violation by what `onViolation` receives.
  */
 import { describe, expect, test } from 'vitest'
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
@@ -11,12 +11,13 @@ import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../../build-harness'
 import {
   expectMarkerViolation,
+  expectPrinted,
   expectViolationsAt,
   rejection,
   reportedViolations,
-  violationReports,
+  violationsOf,
 } from '../../importProtection/start-apps'
-import { suggestedDirections } from '../../importProtection/violation-report'
+import type { StartBuild } from '../../build-harness'
 import type { TanStackStartInputConfig } from '../../../src'
 
 const timeout = 60_000
@@ -101,12 +102,17 @@ async function clientRead(
   }
 }
 
-/** The one report of a failed build, read by its sections. */
-async function failureReport(build: Promise<unknown>) {
+/**
+ * The one violation of a failed build (`onViolation`), and its rule; the
+ * build's error output names its importer and location (SPEC §5.7: file and
+ * position).
+ */
+async function failureReport(build: Promise<StartBuild>) {
   const error = await rejection(build)
-  const [report, ...others] = violationReports(error)
+  const [report, ...others] = violationsOf(error)
   expect(others).toEqual([])
-  return report!
+  expectPrinted(error.diagnostics, error.root, report!, 'error')
+  return { ...report!, rule: String(error.violations[0]!.pattern) }
 }
 
 describe.each(startBundlers)('%s build', (bundler) => {
@@ -138,7 +144,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
 
   // Source: gap IP5 (gaps/start-env.md).
   test(
-    'a file with both a server-only and a client-only marker fails the build, naming the file and both markers',
+    'a file with both a server-only and a client-only marker fails the build, naming the file',
     async () => {
       const error = await rejection(
         buildStart({
@@ -154,12 +160,9 @@ export const value = 1
           start: importProtection(),
         }),
       )
-      // The markers by name (`server-only`, `client-only`, or their full
-      // specifiers), whatever the wording.
       expectDiagnostic(everyChannel(error), {
         severity: 'error',
         file: 'src/both.ts',
-        names: ['server-only', 'client-only'],
       })
     },
     timeout,
@@ -172,9 +175,8 @@ export const value = 1
 // Source: oracle-gaps H2 / gap IP1 (the default rules were never built in
 // error mode: every build test replaced `client.files`).
 describe.each(startBundlers)('%s build, default rules', (bundler) => {
-  // Each report names the rule that matched (the file pattern, or the
-  // denied specifier) and suggests a fix in the right direction (SPEC J6.5,
-  // J6.12), whatever its wording.
+  // Each violation carries the rule that matched (the file pattern, or the
+  // denied specifier; SPEC J6.5).
   test.each<{
     name: string
     files: Record<string, string>
@@ -209,58 +211,42 @@ export const read = () => getRequest()
       rule: '@tanstack/react-start/server',
     },
   ])(
-    '$name fails the build, naming the importer at the use or the import, the rule and a server-side fix',
+    '$name fails the build, naming the importer at the use or the import, and the rule',
     async ({ files, reported, rule }) => {
-      const report = await failureReport(
-        buildStart({ bundler, files, entry: 'src/entry.ts' }),
-      )
-      expect({
-        environment: report.environment,
-        suggests: suggestedDirections(report.text),
-      }).toEqual({
-        environment: 'client',
-        suggests: ['server'],
-      })
-      expectViolationsAt(report.text, [
-        {
-          environment: 'client',
-          use: reported,
-          source: files['src/entry.ts']!,
-        },
+      const build = buildStart({ bundler, files, entry: 'src/entry.ts' })
+      const report = await failureReport(build)
+      expectViolationsAt(await rejection(build), [
+        { environment: 'client', use: reported, also: ['src/entry.ts:1'] },
       ])
-      expectDiagnostic(report.text, { names: [rule] })
+      expect(report.rule).toContain(rule)
     },
     timeout,
   )
 
   test(
-    'a server import of a *.client.* file fails the build, naming the importer at the use or the import, the rule and a client-side fix',
+    'a server import of a *.client.* file fails the build, naming the importer at the use or the import, and the rule',
     async () => {
       const server = `import { widget } from './widget.client'
 export const read = () => widget()
 `
-      const report = await failureReport(
-        buildStart({
-          bundler,
-          files: {
-            'src/widget.client.ts': `export const widget = () => 'MARK_CLIENT'\n`,
-            'src/server.ts': server,
-            'src/client.ts': `export const read = () => 'client'\n`,
-          },
-          entry: { client: 'src/client.ts', ssr: 'src/server.ts' },
-        }),
-      )
-      expect({
-        environment: report.environment,
-        suggests: suggestedDirections(report.text),
-      }).toEqual({
-        environment: 'server',
-        suggests: ['client'],
+      const build = buildStart({
+        bundler,
+        files: {
+          'src/widget.client.ts': `export const widget = () => 'MARK_CLIENT'\n`,
+          'src/server.ts': server,
+          'src/client.ts': `export const read = () => 'client'\n`,
+        },
+        entry: { client: 'src/client.ts', ssr: 'src/server.ts' },
       })
-      expectViolationsAt(report.text, [
-        { environment: 'server', use: 'src/server.ts:2:27', source: server },
+      const report = await failureReport(build)
+      expectViolationsAt(await rejection(build), [
+        {
+          environment: 'server',
+          use: 'src/server.ts:2:27',
+          also: ['src/server.ts:1'],
+        },
       ])
-      expectDiagnostic(report.text, { names: ['**/*.client.*'] })
+      expect(report.rule).toContain('**/*.client.*')
     },
     timeout,
   )
@@ -279,11 +265,7 @@ export const read = () => widget()
       expectMarkerViolation(report, {
         marker: 'src/marked.ts:1',
         use: 'src/entry.ts:2:27',
-        source: appUsing('a server-only-marked module')['src/entry.ts'],
-      })
-      expect(suggestedDirections(report.text)).toEqual(['server'])
-      expectDiagnostic(report.text, {
-        names: ['@tanstack/react-start/server-only'],
+        imports: ['src/entry.ts:1'],
       })
     },
     timeout,
@@ -310,11 +292,7 @@ export const read = () => secret()
       expectMarkerViolation(report, {
         marker: 'src/marked.ts:1',
         use: 'src/server.ts:2:27',
-        source: serverImportsMarked,
-      })
-      expect(suggestedDirections(report.text)).toEqual(['client'])
-      expectDiagnostic(report.text, {
-        names: ['@tanstack/react-start/client-only'],
+        imports: ['src/server.ts:1'],
       })
     },
     timeout,

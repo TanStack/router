@@ -1,19 +1,14 @@
 /**
  * Glue of the V2 import-protection tests (`v2-*.test.ts`) that run an app on
- * a real host: what a dev server or build reports, read through the
- * violation report adapter (`violation-report.ts`), and the Rsbuild dev
- * server's SSR output run in Node.
+ * a real host: what a dev server or build reports through `onViolation`,
+ * and the Rsbuild dev server's SSR output run in Node.
  */
-import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { runNodeProgram } from '@tanstack/compiler-test-utils/run-node'
 import { startServerEntryFiles } from '../../dev-server'
-import { locatedImporters } from '../../importProtection/start-apps'
-import type {
-  AppSources,
-  ReportOutput,
-} from '../../importProtection/violation-report'
+import { reportedImporters } from '../../importProtection/start-apps'
+import type { Recorded } from '../../importProtection/start-apps'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
 // ---------------------------------------------------------------------------
@@ -90,39 +85,27 @@ export const pageSteps = [
 
 /**
  * The importers of the violations reported for `environment` (`client` or
- * `server`) in `output` (text, log entries, or an Rsbuild dev server's
- * `diagnostics`), each once, sorted: the importer's file when the report is
- * at a relevant original place of it in `sources` (`locatedImporters`),
- * else the report's location as it is (compiled coordinates never pass).
+ * `server`) in `recorded` (what `onViolation` received), each once, sorted.
  */
-export function reportedImporters(
-  output: ReportOutput,
+export function importersIn(
+  recorded: Recorded,
   environment: 'client' | 'server',
-  sources: AppSources,
 ): Array<string> {
   const prefix = `${environment} `
   return [
     ...new Set(
-      locatedImporters(output, sources)
-        .filter((located) => located.startsWith(prefix))
-        .map((located) => located.slice(prefix.length)),
+      reportedImporters(recorded)
+        .filter((reported) => reported.startsWith(prefix))
+        .map((reported) => reported.slice(prefix.length)),
     ),
   ].sort()
 }
 
-/**
- * The current sources of the app at `root`: each file read when asked (so
- * after the edits so far), `undefined` when it does not exist.
- */
-export function appSources(root: string): AppSources {
-  return (file) => {
-    try {
-      return readFileSync(path.join(root, file), 'utf8')
-    } catch {
-      return undefined
-    }
-  }
-}
+/** What `recorded` received from the `since`th violation on. */
+export const recordedSince = (recorded: Recorded, since: number): Recorded => ({
+  root: recorded.root,
+  violations: recorded.violations.slice(since),
+})
 
 /**
  * `settle()` on both sides of a turn of the event loop. Rspack's
