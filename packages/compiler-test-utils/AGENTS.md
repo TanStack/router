@@ -9,11 +9,12 @@ Shared by the compiler test suites (router-plugin, start-plugin-core, router-gen
 - One file or one test name, through Nx (dependencies come from Nx's cache; the target reruns when a file changed). Paths are relative to the package:
 
   ```sh
-  CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-plugin:test:unit --outputStyle=stream --skipRemoteCache -- --maxWorkers=4 tests/code-splitter-scope.test.ts -t "unlike computed keys"
+  CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-plugin:test:unit --outputStyle=stream --skipRemoteCache -- tests/code-splitter-scope.test.ts -t "unlike computed keys"
   ```
 
   Edit to result for one fast-tier file is about 5 s in router-plugin and start-plugin-core (about 8 s for the first one in a session). A file path is a substring filter: `tests/compiler.test.ts` also runs `tests/known-bugs-start-compiler.test.ts`.
 
+- Each package's `vite.config.ts` caps a Vitest run at 4 workers (`maxWorkers: 4`): Nx runs several tiers at once, and each worker runs real bundlers, dev servers and its own browser. `--maxWorkers=<n>` after `--` overrides it.
 - Never put `|` inside a `-t` filter: Nx passes the arguments through a shell, so it becomes a pipe and orphans Vitest workers. Run one command per filter.
 - Leave out `--skip-nx-cache` while iterating: it rebuilds every dependency. Use it for final validation, on whole tiers.
 - Do not run Vitest directly: it can test a stale `dist` of a dependency.
@@ -51,13 +52,13 @@ The compiler test corpus is an oracle: a compiler that passes every corpus test 
 
 ## Budgets
 
-`test-budgets.json`: per package, a target and a hard limit for each tier at `--maxWorkers=4`; 15 s for any slow-tier file (`integration` and `integration-*` projects); 10 s from edit to result for one fast-tier file, Nx included. `src/budget-reporter.ts` prints the comparison after every run and never fails it (times move with the machine's load). Other worker counts (CI, one worker) are reported only.
+`test-budgets.json`: per package, a target and a hard limit for each tier at 4 workers (the configs' default); 15 s for any slow-tier file (`integration` and `integration-*` projects); 10 s from edit to result for one fast-tier file, Nx included. `src/budget-reporter.ts` prints the comparison after every run and never fails it (times move with the machine's load). Other worker counts (CI, one worker) are reported only.
 
 To enforce the budgets, run a whole tier in strict mode on a quiet machine (1-minute load below 4, no other test runs). It fails over a hard limit or the per-file limit:
 
 ```sh
 until awk '{exit !($1<4)}' /proc/loadavg && [ "$(pgrep -fc '[v]itest --project integration')" -eq 0 ]; do sleep 20; done
-COMPILER_TEST_BUDGETS=strict CI=1 NX_DAEMON=false pnpm nx run <project>:test:integration --outputStyle=stream --skipRemoteCache --skip-nx-cache -- --maxWorkers=4
+COMPILER_TEST_BUDGETS=strict CI=1 NX_DAEMON=false pnpm nx run <project>:test:integration --outputStyle=stream --skipRemoteCache --skip-nx-cache
 ```
 
 Keep `--skip-nx-cache` there: a replay from Nx's cache is not a measurement.
