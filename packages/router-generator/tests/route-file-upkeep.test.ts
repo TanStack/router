@@ -6,11 +6,10 @@
  * wrote it. Read back from disk and evaluated.
  *
  * What the generator may change is checked by `expectOnlyOwnedEdits`
- * (owned-edits.ts): the id argument, the constructor callee and the router
- * package imports, whose other bindings stay. An unused import of the other
- * route constructor may be removed or kept (coordinator ruling on audit D
- * ASK-1; SPEC J1.2), and the printing of an edited import (quotes,
- * semicolons, line) is free.
+ * (owned-edits.ts): the id argument, the constructor callee and the import
+ * statements, as long as every other binding they hold stays (ruling Q10).
+ * An unused import of the other route constructor may be removed or kept
+ * (coordinator ruling on audit D ASK-1; SPEC J1.2).
  */
 import path from 'node:path'
 import { afterEach, describe, expect, test, vi } from 'vitest'

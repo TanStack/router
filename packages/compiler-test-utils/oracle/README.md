@@ -241,8 +241,6 @@ with and without it, test by test, apart from #34 rows that passed alone.
 
 Caveats:
 
-- **Pending user rulings hold some rows** (table below). They count toward acceptance as they are until ruled, and a
-  correct compiler may fail some of them: they (Q10) keep an assertion or input whose fate the ruling decides.
 - **Chromium can run out of shared memory in the temporary directory (FINAL-PASS #40, open).** A full router-plugin
   `test:integration` run at 4 workers holds up to about 2.2 GB of Chromium shared memory, in files in `TMPDIR`
   (Playwright starts Chromium with `--disable-dev-shm-usage`). Chromium keeps 2 MB per module script that a 304
@@ -369,11 +367,10 @@ warnings that name the importer, not `onViolation` calls.
 
 ## Lanes
 
-| Lane            | Where                                                                                                           | Targets                                                          | Decides acceptance |
-| --------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------ |
-| Corpus          | `tests/**`, except the noncompiler list                                                                         | `test:unit`, `test:integration`                                  | yes                |
-| Pending rulings | the rows the pending rulings hold (table below)                                                                 | `test:unit`, `test:integration` (held in the corpus as they are) | yes, until ruled   |
-| Noncompiler     | main's own tests at main's paths, listed in `tests/noncompiler-tests.json` (start-plugin-core, react-start-rsc) | `test:noncompiler`                                               | no                 |
+| Lane        | Where                                                                                                           | Targets                         | Decides acceptance |
+| ----------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------- | ------------------ |
+| Corpus      | `tests/**`, except the noncompiler list                                                                         | `test:unit`, `test:integration` | yes                |
+| Noncompiler | main's own tests at main's paths, listed in `tests/noncompiler-tests.json` (start-plugin-core, react-start-rsc) | `test:noncompiler`              | no                 |
 
 The corpus (acceptance) is the compilers' test suite. Main's own tests split in two:
 
@@ -406,9 +403,10 @@ A few pins use names a user chose that collide with today's generated names; a c
 flips them (RULINGS "restructured compilers"). The adaptive pins next to them read the names a compiler actually
 generates and are the structure-free checks.
 
-## Pending user rulings
+## User rulings on held tests
 
-These tests are kept exactly as they are until the user rules; do not reroute or delete them before that.
+No ruling is pending (2026-10-23; Q10, the owned-import cap in `router-generator/tests/owned-edits.ts`, is ruled:
+RULINGS "Q10"). These rows held tests until the user ruled:
 
 | Ruling | What it holds                                                                                                                                                 |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -416,7 +414,6 @@ These tests are kept exactly as they are until the user rules; do not reroute or
 | Q4     | ruled 2026-10-23 (RULINGS "Q4"): a star re-export of a denied module is a safe mock, or the build fails (dev: warns); never a secret or crash                 |
 | Q6     | ruled 2026-10-22 (RULINGS "Q6"): the rows driving the internal compiler with a hand-built package graph are deleted; real-app tests cover what they meant     |
 | Q7     | ruled 2026-10-22 (RULINGS "Q7"): reachable; the CommonJS pin is now a real-app pin in `start-plugin-core/tests/integration/known-bugs-start-compiler.test.ts` |
-| Q10    | the owned-import numeric cap in `router-generator/tests/owned-edits.ts`                                                                                       |
 | #34    | ruled 2026-10-23 (RULINGS "Vite's dependency optimizer: close wait"): the Vite dev harnesses wait for the optimizer before `close()`                          |
 
 Accepted for now, to revisit at the end (2026-10-23): start-plugin-core integration memory (#57). Its workers keep

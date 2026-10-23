@@ -389,6 +389,17 @@ A real bug: `export @dec class` is valid TypeScript (5.0 and later). The pin sta
 (router-plugin `integration/pages/known-bugs-code-splitter-bindings.test.ts`, "a decorator after `export`
 compiles"). Clauses: §2.1, G1.
 
+### Q10: other import statements (2026-10-23)
+
+Asked whether the generator, when it adds a missing route constructor import, may touch other import statements, the
+user: "I don't think we should specify that. Let it." The oracle does not constrain the import statements: the
+generator may write a new import or edit, merge, split, reorder or reprint any of them, router package or not, and
+no cap limits how many change. What stays checked is the outcome: the route file still evaluates with the real
+router, its `Route` has the right constructor and id, everything outside the import statements keeps its bytes, and
+the imports still bind what the user's code uses (each binding with its imported and local name, source module,
+type/value meaning and import attributes; side-effect imports stay). `router-generator/tests/owned-edits.ts`
+(`expectOnlyOwnedEdits`). Clauses: J1.1, J1.2.
+
 ## Start (J4–J7)
 
 ### D2: `generateFunctionId` input

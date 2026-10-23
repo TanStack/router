@@ -316,10 +316,13 @@ rsc, srcDirectory, … })` `[type: start-plugin-core/src/schema.ts]`. Which clau
   a template literal), replacing it with the correct literal (J1.2 still holds elsewhere) and an actionable
   diagnostic naming the file are both acceptable; tests accept either outcome `[ruling: valid alternative compilers]`. `[doc: api/router/createFileRouteFunction.md:15-22; createLazyFileRouteFunction.md:15]`
 - **J1.2** Nothing else in the file changes: other statements, comments, formatting, line endings and the file's
-  encoding are byte-preserved outside the edited literal/import. Newly scaffolded files follow `quoteStyle` and
-  `semicolons`. Within the edited argument the quote character is free; an edited import keeps its other
-  bindings, aliases and type/value meaning; keeping or removing a factory import the edit made unused (e.g.
-  `createFileRoute` after a switch to `createLazyFileRoute`) are both allowed. Filesystem metadata (mode, owner)
+  encoding are byte-preserved outside the edited literal and the import statements. Newly scaffolded files follow
+  `quoteStyle` and `semicolons`. Within the edited argument the quote character is free. How the generator adds,
+  moves or drops the factory's binding is free: it may write a new import or edit, merge, split, reorder or reprint
+  any import statement `[ruling: Q10]`, as long as every other binding keeps its imported and local name, source
+  module, type/value meaning and import attributes, and every side-effect import stays; keeping or removing a
+  factory import the edit made unused (e.g. `createFileRoute` after a switch to `createLazyFileRoute`) are both
+  allowed. Filesystem metadata (mode, owner)
   is outside this clause (§1.2). `[doc: api/file-based-routing.md:171-187]`
 - **J1.3** An empty route file is scaffolded from the default template or `customScaffolding.{routeTemplate,
 lazyRouteTemplate}`; `.lazy.tsx`/`.lazy.ts` files get the lazy template (a `.lazy.vue` piece is an SFC, not a
