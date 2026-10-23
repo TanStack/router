@@ -338,9 +338,8 @@ export const fn = createServerFn().handler(async () => 'fn')`,
     // SSR.
     // Source: start-compiler/compiler.ts `KindDetectionPatterns` and
     // `detectKindsInCode` (used by vite/start-compiler-plugin/plugin.ts and
-    // rsbuild/start-compiler-host.ts). Outcome twin of the printed-code
-    // implementation test outside-compiler-corpus/
-    // compiler-member-call-receivers.test.ts (from #8758).
+    // rsbuild/start-compiler-host.ts). Outcome twin of main's printed-code
+    // test of #8758 (compiler.test.ts).
     test.fails.each(calls)(
       '$name alone in its module: the other environment neither loads nor runs the implementation',
       async (call) => {

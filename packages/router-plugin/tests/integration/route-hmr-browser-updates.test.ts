@@ -7,9 +7,9 @@
  * router it creates (`window.__app.router`, assigned in its `main.tsx`);
  * the tests read the page and that router through public router APIs.
  *
- * These rows decide the concepts the updater-entry controls in
- * outside-compiler-corpus/handle-route-update.test.ts check with explicit
- * inputs: matching and resolving next to an edited parent or pathless
+ * These rows decide the concepts main's updater-entry controls
+ * (handle-route-update.test.ts, deleted) checked with explicit inputs:
+ * matching and resolving next to an edited parent or pathless
  * layout, params parsing, the generated route state of the hot `Route`
  * export, the lazy options the route tree gave a route (V4 red-astra/08),
  * removed loaders and callbacks, loader races with an older refresh or an

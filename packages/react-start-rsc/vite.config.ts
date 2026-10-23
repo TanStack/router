@@ -5,6 +5,10 @@ import { tanstackViteConfig } from '@tanstack/vite-config'
 import react from '@vitejs/plugin-react'
 import { copyFilesPlugin } from '@tanstack/router-utils'
 import packageJson from './package.json'
+// Main's runtime tests (RSC components, streams, the proxy, and the types of
+// the public API), at main's paths and unchanged: `test:noncompiler` runs
+// them; the compiler projects leave them out. Paths relative to `tests/`.
+import noncompilerTests from './tests/noncompiler-tests.json' with { type: 'json' }
 
 // Under Vitest: Node's compile cache for the test workers. No outcome
 // change; less time compiling the bundlers and the built apps again.
@@ -44,7 +48,7 @@ const config = defineConfig({
           exclude: [
             ...configDefaults.exclude,
             'tests/integration/**',
-            '**/outside-compiler-corpus/**',
+            ...noncompilerTests.map((file) => `tests/${file}`),
           ],
           environment: 'jsdom',
           setupFiles: ['./tests/setup.ts'],
@@ -54,9 +58,8 @@ const config = defineConfig({
         extends: true,
         test: {
           name: 'noncompiler',
-          include: [
-            'tests/outside-compiler-corpus/noncompiler/**/*.test.ts?(x)',
-          ],
+          dir: './tests',
+          include: noncompilerTests,
           environment: 'jsdom',
           setupFiles: ['./tests/setup.ts'],
         },
@@ -69,7 +72,6 @@ const config = defineConfig({
         test: {
           name: 'integration',
           include: ['tests/integration/**/*.test.ts?(x)'],
-          exclude: [...configDefaults.exclude, '**/outside-compiler-corpus/**'],
           environment: 'node',
           // The dev servers and their module runners run in the test
           // process, and `vite dev` runs with `development`: Vitest's `test`

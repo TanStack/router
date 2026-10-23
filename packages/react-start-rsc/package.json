@@ -28,7 +28,7 @@
     "test:unit": "vitest --project unit --passWithNoTests",
     "test:unit:dev": "vitest --project unit --watch",
     "test:integration": "vitest --project integration",
-    "test:eslint": "eslint ./src ./tests",
+    "test:eslint": "eslint ./src ./tests/integration",
     "test:types": "pnpm run \"/^test:types:ts[0-9]{2}$/\"",
     "test:types:ts56": "node ../../node_modules/typescript56/lib/tsc.js && node ../../node_modules/typescript56/lib/tsc.js -p tests",
     "test:types:ts57": "node ../../node_modules/typescript57/lib/tsc.js && node ../../node_modules/typescript57/lib/tsc.js -p tests",

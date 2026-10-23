@@ -463,7 +463,7 @@ export const values = [getRequest, getHeader, server.setCookie]
   // the ruling of 2026-10-22, so the pin asks for the mock.)
   // Source: gap IP12 (gaps/start-env.md); the rewrite of the same form
   // (Rsbuild) also only removes the `export *`
-  // (outside-compiler-corpus/importProtection/rewrite.test.ts).
+  // (today's `rewriteDeniedImports`).
   test.fails.each(deniedModules)(
     'client: a name re-exported with `export *` from $name is a mock',
     async ({ denied }) => {
