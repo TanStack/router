@@ -1,3 +1,4 @@
+import { hash } from 'node:crypto'
 import { tsrSplit } from '@tanstack/router-plugin'
 import { tssHydrate } from '../hydration-constants'
 import { getCssAssetSource } from '../start-manifest-plugin/inlineCss'
@@ -552,6 +553,7 @@ export function registerClientBuildCapture(
 interface DevClientBuildSnapshot {
   clientBuild: NormalizedClientBuild
   chunkGraph: string
+  // Digests: identifiers include loader chains hundreds of characters long.
   edgesByModule: Map<string, string>
 }
 
@@ -617,7 +619,9 @@ function createEdgeSignatureReader(compilation: RspackCompilation) {
   }
 
   return {
-    getIdentifier,
+    getKey(module: RspackModule) {
+      return hash('sha1', getIdentifier(module), 'base64')
+    },
     isDependency(module: RspackModule) {
       const identifier = getIdentifier(module)
       return dependencyPathRegex.test(
@@ -668,7 +672,7 @@ function createEdgeSignatureReader(compilation: RspackCompilation) {
         }
       }
 
-      return parts.join('\n')
+      return hash('sha1', parts.join('\n'), 'base64')
     },
   }
 }
@@ -680,7 +684,7 @@ function getModuleEdgeSignatures(
   const signatures = new Map<string, string>()
   for (const module of compilation.modules) {
     if (!reader.isDependency(module)) {
-      signatures.set(reader.getIdentifier(module), reader.getSignature(module))
+      signatures.set(reader.getKey(module), reader.getSignature(module))
     }
   }
   return signatures
@@ -701,10 +705,10 @@ function updateRebuiltEdgeSignatures(
       changed = true
       continue
     }
-    const identifier = reader.getIdentifier(module)
+    const key = reader.getKey(module)
     const signature = reader.getSignature(module)
-    if (edgesByModule.get(identifier) !== signature) {
-      edgesByModule.set(identifier, signature)
+    if (edgesByModule.get(key) !== signature) {
+      edgesByModule.set(key, signature)
       changed = true
     }
   }
