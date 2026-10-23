@@ -82,15 +82,17 @@ after the final passes F-F, F-G1, F-G2 and F-G3; the start-plugin-core part agai
   start-plugin-core 66 s). Edit to result for one fast-tier file is about 5 s. Several tiers are over their target
   and under their hard limit.
 
-Counts at d07614d3b3 (passed / expected-fail pins; at 633a4c0917, where the measurements above ran, start-plugin-core
-`test:integration` was 1199 / 288):
+Counts after the S-A simplification (2026-10-22, on beetle: import gate, violation-report reader and diagnostic
+word-list controls deleted, pins that only asked for message content deleted; RULINGS "diagnostics: file and
+position only"). Passed / expected-fail pins; before S-A, at d07614d3b3, compiler-test-utils `test:unit` was 330 / 0,
+router-plugin `test:integration` 674 / 355, start-plugin-core 389 / 143, 1204 / 292 and 609 / 9:
 
 | Package                         | `test:unit` | `test:integration` | `test:implementation` | `test:noncompiler` |
 | ------------------------------- | ----------- | ------------------ | --------------------- | ------------------ |
-| `@tanstack/compiler-test-utils` | 330 / 0     | 171 / 0            | –                     | –                  |
+| `@tanstack/compiler-test-utils` | 183 / 0     | 171 / 0            | –                     | –                  |
 | `@tanstack/router-generator`    | 239 / 30    | 67 / 3             | 114 / 2               | –                  |
-| `@tanstack/router-plugin`       | 107 / 20    | 674 / 355          | 104 / 1               | –                  |
-| `@tanstack/start-plugin-core`   | 389 / 143   | 1204 / 292         | 609 / 9               | 121 / 0            |
+| `@tanstack/router-plugin`       | 107 / 20    | 674 / 349          | 104 / 1               | –                  |
+| `@tanstack/start-plugin-core`   | 271 / 137   | 1202 / 290         | 579 / 9               | 121 / 0            |
 | `@tanstack/react-start-rsc`     | no files    | 108 / 13           | –                     | 49 / 0             |
 
 The previous measurement (F-E-b) ran at 45f58967ea; the passes below came after it and are covered by the
