@@ -27,7 +27,7 @@ It builds and caches `ImportAnalysis` on `TransformResult.analysis`.
 
 `ImportAnalysis` contains:
 
-- parsed AST
+- optional parsed AST (dropped after analysis to save dev memory)
 - line index
 - import sources in source order
 - import specifier literal locations
