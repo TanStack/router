@@ -167,6 +167,7 @@ rsc, srcDirectory, … })` `[type: start-plugin-core/src/schema.ts]`. Which clau
 | Two `createFileRoute` calls in one module                                                                                                                                  | unsupported; must never fail silently (J2.11)                                                                                                                                                       | `[ruling: one route per file]`                                              |
 | A route created inside a function in the same file (`function make() { return createFileRoute(...) }`, R-09)                                                               | unsupported but user-fixable: correct split OR unsplit + warning naming the file; silent wrong output always fails                                                                                  | `[ruling: R-09]`                                                            |
 | Compiling Start output a second time (plugin registered twice, dependency shipping Start-compiled output)                                                                  | unsupported; even an internal error is fine                                                                                                                                                         | `[ruling: recompiling Start output]`                                        |
+| The router plugin registered more than once in one app (two `tanstackRouter()`, each with its own routes)                                                                  | unsupported; no test                                                                                                                                                                                | `[ruling: Q8]`                                                              |
 | Import protection in environments the user adds outside Start                                                                                                              | undefined behaviour; no test either way; lean "left alone" if ever forced                                                                                                                           | `[ruling: user-added environments]`                                         |
 | `renderToReadableStream(x, options)` and plain-data models `{ card: <Card /> }` (TS errors under default types)                                                            | must not break: call works, options/model reach the runtime unchanged; CSS injection and warnings neither required nor forbidden (a later ruling may add CSS support)                               | `[ruling: RSC undocumented inputs]`                                         |
 | `createFileRoute('/')(makeOptions(...))` (factory-built options)                                                                                                           | supported for build; in dev a full reload on every edit is acceptable, the edit must take effect                                                                                                    | `[ruling: route options from a function call]`                              |
@@ -352,7 +353,8 @@ lazyRouteTemplate}`; `.lazy.tsx`/`.lazy.ts` files get the lazy template (a `.laz
   leads to a bounded number of regenerations and never to a regeneration or reload loop, and closing the dev
   server or watch session that owns the generator stops its watching. Edits of the file named by
   `virtualRouteConfig` (path form), of `__virtual.ts` files and of route files under `physical()` mounts are
-  delivered edits like route-directory files (modules the virtual config itself imports: OQ17c). How unchanged
+  delivered edits like route-directory files (modules the virtual config itself imports: OQ17c). An edit of
+  `tsr.config.json` may take effect only at the next route file event `[ruling: Q9]`. How unchanged
   writes are suppressed is mechanism. `[doc: installation/with-router-cli.md "whenever a file is added, removed, or changed"; doc: routing/virtual-file-routes.md; router-generator/AGENTS.md:3 "avoid watcher loops"]`
 - **J1.11** Withdrawn: the option it described was removed from the product (#8737). The id stays unused.
 - **J1.12** Honour `disableLogging` for the route-generation logging it controls; otherwise those logs may appear in
@@ -362,7 +364,9 @@ lazyRouteTemplate}`; `.lazy.tsx`/`.lazy.ts` files get the lazy template (a `.laz
   but valid param names are required. `[doc: api/file-based-routing.md:228-232; R5]`
 - **J1.13 Types describe the runtime tree.** With types enabled, the generated type linkages (route ids, full paths,
   parent/child relations, params) agree with the runtime tree the same file emits, including virtual anchors and
-  pathless layouts under directories; with `disableTypes` the documented JavaScript tree is emitted. `[doc: routing/file-based-routing.md:15 (type-safety promise)]`
+  pathless layouts under directories; with `disableTypes` the documented JavaScript tree is emitted. The tree
+  carries file route types router-core infers (`InferFileRouteTypes<typeof routeTree>` is not `never`, with the
+  tree's full paths, `to` and ids); the names of the generated file's own types are free (§5.1) `[ruling: Q2]`. `[doc: routing/file-based-routing.md:15 (type-safety promise)]`
 - **J1.14 Pathless layout under a lazy-only route (PIN-A).** When a route exists only as a lazy file
   (`posts.lazy.tsx`, no `posts.tsx`) and a pathless layout with children sits under its directory
   (`posts/_layout.tsx`), the lazy-only route's virtual anchor is the layout's parent: `_layout` nests under `/posts`
@@ -525,6 +529,10 @@ wiring plugin.ts:180]`
   semantics, used by the rspack/webpack entries) satisfy J3.1–J3.4. `[type: HmrOptions]`
 - **J3.10 Route tree edits in dev** (new route file, route kind change) reach the client tree and the page (reload
   allowed, J1.10).
+- **J3.11 An update the router on the page does not have.** With a second router created after the app's (the
+  route HMR code finds that one), an edit of a route file leaves the app working: the edit's component shows, the
+  app's router still navigates, no error. Whether the edit also reaches the app's router is not required.
+  `[ruling: Q5]`
 
 ### J4 Start environment separation (start-compiler)
 
@@ -796,9 +804,10 @@ as `§5.N` (or "§5 item N").
   neither made eager nor loaded together when only one is needed, and no chunk carries unrelated code (J2.5).
 - **§5.4 SSR handler placement** in place or extracted, when SSR and the provider share an environment (P2, J4.3); the
   forwarding mechanism for a separate provider.
-- **§5.5 Statement/import order, printing** (quotes, semicolons, parentheses beyond necessity — pending user ruling
-  NEW-2: whether redundant parentheses around component-defining expressions are free; they break React Fast
-  Refresh registration under SWC/Rsbuild — whitespace, comment placement except license comments the splitter
+- **§5.5 Statement/import order, printing** (quotes, semicolons, parentheses beyond necessity — free only where they
+  change no outcome: parentheses around a component-defining expression that stop React Fast Refresh from
+  registering the component (SWC under Rsbuild does not register `const Page = (() => …)`) fail by the outcome, the
+  edited component losing its state (J3.2) `[ruling: NEW-2]` — whitespace, comment placement except license comments the splitter
   moves code away from, which stay in the source module, G12 — license-comment placement is free for the Start compiler and the import-protection rewrite — and pragma
   semantics, J2.16; the
   order among directives of one prologue, as long as each still precedes executable code), dropping
@@ -830,6 +839,8 @@ as `§5.N` (or "§5 item N").
   mock runtime lives, as long as it is safe and leaks nothing.
 - **§5.19 Extra fields on runtime objects** the compiler emits or decorates (e.g. additional server-function metadata
   next to the id), as long as the public contract holds.
+- **§5.20 Shared plugin state**: whether the router plugin instances one integration composes (Start's client and SSR
+  code splitters) share a context or state is free `[ruling: Q8]`.
 
 ---
 
@@ -898,8 +909,8 @@ api/router/RouteOptionsType.md:32]`; the docs recommend `createLazyFileRoute` in
   has a documented contract and its own contract test, and is replaced by the real package when feasible.
 - **Public entry points only.** Acceptance tests reach the compilers through the plugins and options a user
   configures (Vite, Rsbuild, Rspack and webpack builds and dev servers, or the public Vite plugin driven in-process),
-  never through internal modules, classes, ids or queries. The only exceptions are the tests held by pending user
-  rulings.
+  never through internal modules, classes, ids or queries. No exception remains (the last one, an updater test
+  driving the emitted route HMR function, was deleted `[ruling: Q5]`).
 - **Assert at the level where the outcome is decided** `[ruling: first review rulings]`: compiler-level tests assert what the compiler
   alone decides (semantics, identity, validity, server code absent, chunk contents it emits within J2.5's D5
   boundary, warnings); bundle-level placement, DCE and dangling names are asserted on production output per bundler
@@ -953,3 +964,7 @@ api/router/RouteOptionsType.md:32]`; the docs recommend `createLazyFileRoute` in
 - J3.4 webpack stale hot-data id: intent stated, reachable scenario (virtual-route config edit) not yet shown.
 - J1.10 equal-mtime double save: plausible with format-on-save, not reproduced with a real editor; a `utimes`-forced
   generator test would be deterministic but pins an unproven path.
+- J1.6/J1.10 within one run: a save that lands between the generator's read of a route file and its rename over it
+  is kept, and a reader sees only complete contents, also when a write or rename fails. No deterministic reproduction
+  through real files and a public API; the tests that injected an `fs` into the generator were deleted `[ruling: Q1]`.
+  J1.16's rename beside the destination is pinned with a real second filesystem.

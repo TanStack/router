@@ -13,17 +13,13 @@ Each entry's "Cause" names the product source its comment blames, when it does. 
 implementation, so a rewrite may have no such file. Most root causes are shared by several pins; the bug text then
 says "same root cause as above".
 
-Counts: 364 pin sites in 101 test files (a table test counts once here; Vitest counts each row).
+Counts: 363 pin sites in 100 test files (a table test counts once here; Vitest counts each row).
 
 ## Pins by compiler job
 
 ### J1 Route file upkeep and route generation (router-generator, generator wiring in router-plugin)
 
-31 pins.
-
-#### `router-generator/tests/concurrent-write.test.ts`
-
-- **with tmpDir on another filesystem, the route file and the route tree are replaced atomically.** With `tmpDir` on another filesystem than the app (e.g. the app on a disk and TSR_TMP_DIR on a tmpfs), every publication fails: renaming the temporary file onto the route file or the route tree fails with EXDEV, and the run fails. Cause: `router-generator/src/generator.ts`.
+30 pins.
 
 #### `router-generator/tests/deny-route-group-config.test.ts`
 
@@ -41,6 +37,7 @@ Counts: 364 pin sites in 101 test files (a table test counts once here; Vitest c
 
 - **an empty .ts route file is scaffolded, and the other routes still generate.** An empty .ts route file is scaffolded with the route template, which renders JSX; the generator then parses the scaffolded file as plain TypeScript (no JSX) and the run fails with "Error transforming route file". Cause: `router-generator/src/generator.ts`.
 - **importRoutesUsingAbsolutePaths imports the lazy route files by absolute paths too.** With importRoutesUsingAbsolutePaths, the route tree still imports lazy route files (and lazy components) by paths relative to itself; only the eager route file imports are absolute. Cause: `router-generator/src/generator.ts`, `router-generator/src/utils.ts`.
+- **with tmpDir on another filesystem, the route file and the route tree are replaced atomically.** With `tmpDir` on another filesystem than the app (e.g. the app on a disk and TSR_TMP_DIR on a tmpfs), every publication fails: renaming the temporary file onto the route file or the route tree fails with EXDEV, and the run fails. A host without a second writable filesystem (`/dev/shm`) skips the pin. Cause: `router-generator/src/generator.ts`.
 
 #### `router-generator/tests/integration/fixture-types-physical.test.ts`
 
@@ -95,10 +92,6 @@ Counts: 364 pin sites in 101 test files (a table test counts once here; Vitest c
 
 - **an edit of the virtual route config file changes the live routes.** An edit of the file `virtualRouteConfig` names never reaches the live routes. Cause: `router-generator/src/filesystem/virtual/loadConfigFile.ts`.
 - **an edit of a \_\_virtual.ts file changes the live routes.** An edit of a `__virtual.ts` subtree config never reaches the live routes: the file is in no bundle and the generator's own watcher reports only created files; the config would also come from jiti's cache (see the Vite pin). Cause: `router-generator/src/filesystem/virtual/loadConfigFile.ts`.
-
-#### `router-plugin/tests/known-bugs-dev-server.test.ts`
-
-- **a tsr.config.json edit generates the route tree with the new configuration.** On a `tsr.config.json` edit, the generator plugin re-creates the generator with the new configuration and returns without running it (router-generator-plugin.ts `generate`). Cause: `router-plugin/src/core/router-generator-plugin.ts`.
 
 ### J2 Route code splitting (router-plugin, router-utils)
 
