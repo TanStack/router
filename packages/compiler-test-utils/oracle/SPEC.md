@@ -585,7 +585,9 @@ createServerFn().middleware([auth])`, then `createServerFn().middleware([authed]
   Middleware built in factories/functions or via `createStart` follows the same rule, and so does global middleware
   listed in `createStart(() => ({ requestMiddleware, functionMiddleware }))` in `src/start.ts`: that module is part
   of the client bundle, the listed middlewares' `.server()`/`.validator()` code is absent there, and a global
-  function middleware's `.client()` runs on every client call. `[doc: guide/middleware.md:415-503,808-815]`
+  function middleware's `.client()` runs on every client call. No stub of a removed part ships: on the client a
+  middleware's `.options.server` (and `.options.validator`) is absent, not an empty or throwing stand-in.
+  `[doc: guide/middleware.md:415-503,808-815; ruling: Q3]`
 - **J4.9 `createIsomorphicFn`.** Client keeps only `.client()`, server keeps only `.server()`; a missing
   implementation is a no-op returning `undefined`; the other env's implementation and its imports are absent; links
   stored in variables or returned from factories keep their implementation. `[doc: guide/environment-functions.md:17-85,117-121]`
@@ -729,7 +731,11 @@ createServerFn().middleware([auth])`, then `createServerFn().middleware([authed]
   no real value of the denied module (including inlined enum members) reaches the bundle. A mock is identified by
   safe behaviour through real consumers — named, default and namespace imports (also `ns[key]`), deep member reads,
   calls and construction do not throw, no denied initializer effect runs, no secret value appears — never by a
-  label string or a fixed primitive-conversion result (§5 item 18). `[doc: import-protection.md:90-92; cs: a mock that leaks is not a mock]`
+  label string or a fixed primitive-conversion result (§5 item 18). A name re-exported with `export *` from a
+  denied module (a denied file or a denied specifier) is a complete safe mock; otherwise the build fails, and in
+  dev the server warns at the `export *` (its file and position). Either way the denied module's value never
+  reaches the client, and the importer of the name never fails to load in dev.
+  `[doc: import-protection.md:90-92; cs: a mock that leaks is not a mock; ruling: Q4]`
 - **J6.9 Every entry counts.** Edges reachable from any entry of the env (router entry, start entry, client entry,
   custom `src/server.ts`) are reported. `[doc: import-protection.md:10 "checks every import"]`
 - **J6.10 Dependencies.** Files under `node_modules` skip file-pattern and marker checks by default, including a
@@ -829,7 +835,8 @@ as `§5.N` (or "§5 item N").
 - **§5.18 Mock representation** (J6.8): the mock's label, its primitive-conversion result, Proxy shape and where the
   mock runtime lives, as long as it is safe and leaks nothing.
 - **§5.19 Extra fields on runtime objects** the compiler emits or decorates (e.g. additional server-function metadata
-  next to the id), as long as the public contract holds.
+  next to the id), as long as the public contract holds. A stub where the compiler removed a part (a client
+  middleware's `.options.server`) is not such a field (J4.8, ruling Q3).
 
 ---
 

@@ -216,41 +216,16 @@ Caveats:
 
 - **Pending user rulings hold some rows** (table below). They count toward acceptance as they are until ruled, and a
   correct compiler may fail some of them: the Q5 row imports compiler internals (R2 fails it), and the others
-  (Q1–Q4, Q8–Q10, NEW-1, NEW-2) keep an assertion or input whose fate the ruling decides.
-- **Two upstream flakes can fail rows no compiler change explains.**
-  - #42 (Vite's stale pre-bundled dependency): it fails up to three start-plugin-core integration rows,
-    `known-bugs-start-compiler-dev` "top-level call of a project function" and "top-level member call of a
-    pre-bundled dependency", and `start-compiler-dev-server` "a module importing a factory that stops being one keeps
-    its handler". In the 145 runs of the previous measurement (45f58967ea) on beetle it failed one or two of them in
-    13 runs; it did not occur in the 145 runs at 633a4c0917 (after F-G1), in 11 local start-plugin-core integration runs, or in
-    the 145 runs of the last measurement (f16aae85ac).
-  - #34 (Vite's optimizer writes its cache after `close()`): an `ENOTEMPTY` on cleanup fails all 33 rows of
-    `integration/importProtection/mock-shapes.test.ts` in a run. It hit 3 of 145 runs at 45f58967ea. Since F-G1 the Vite dev
-    servers of start-plugin-core's harnesses are real React Start apps, which pre-bundle React when they start
-    (`@tanstack/react-start`'s and `@vitejs/plugin-react`'s `optimizeDeps.include`), so an app closed while that
-    runs also fails single rows with an `ENOTEMPTY` of `node_modules/.vite/deps_temp_*` (seen:
-    `known-bugs-start-compiler-dev` "top-level call of a project function", `importProtection/dev`,
-    `importProtection/rule-outcomes`, `importProtection/exemptions`, `importProtection/known-bugs-dev`,
-    `importProtection/v2-alias`, `importProtection/v2-type-only`, `known-bugs-dev-server`): one or two rows in
-    every start-plugin-core integration run at a load of 15 to 25 on beetle (0 at F-F's commit under the same load),
-    one row in 3 runs on an idle beetle. V-G1 measured less (beetle, three trees in parallel): 1 row in 6 runs at a
-    load of 20 to 35, 4 rows in 15 runs at 30 to 110, and 2 of 6 filtered local runs (`-t`) whose dev servers close
-    right after they start; every one with the #34 signature (`ENOTEMPTY` removing `node_modules/.vite` or
-    `.vite/deps_temp_*`). The last measurement (633a4c0917, beetle, load up to 55) saw single #34 rows in 4 of 9
-    unpatched runs and in 66 of its 145 runs (86 rows), also in files re-run alone (the clean tree alone failed
-    6 times); locally, 5 of 11 start-plugin-core integration runs at load below 4. The last measurement (f16aae85ac, beetle, 3
-    trees × 4 workers) saw one or two #34 rows in 6 of 9 unpatched runs (9 rows) and in 62 of its 144 patched and
-    unpatched jobs (82 rows); some were an `ENOTEMPTY` on the app directory itself (`.start-dev-server-*`), the
-    same race. A file that fails only on #34 can
-    fail again alone: re-run it more than once. The same race can also fail the optimizer's own write into the removed
-    app (`Error during dependency optimization`, rolldown "Failed to write file ... No such file or directory" under
-    `node_modules/.vite/deps_temp_*`): Vitest reports it as an unhandled rejection and the tier fails with no failing
-    row (seen once, in a local start-plugin-core integration run during F-J). Held by the #34 ruling: no workaround. What
-    Vite writes into a removed app no longer stays in the packages: since the pass F-J the apps live in the run's directory in the system's
-    temporary directory (`src/app-directory.ts`, `src/run-directory.ts`), removed when the run ends. (Before, they were
-    hidden directories of the packages' `tests/`, and the removed apps left about 1,900 directories per tree after 50
-    runs, which made start-plugin-core's `test:eslint` fail on the pre-bundled files left in them.)
-  - Re-run a file that failed only on these alone (more than once for #34) before reading it as a compiler failure.
+  (Q1, Q2, Q8–Q10, NEW-1, NEW-2) keep an assertion or input whose fate the ruling decides.
+- **Two upstream flakes are closed** (rulings of 2026-10-23).
+  - #34 (Vite's optimizer writes into the app after `close()`): it failed one or two start-plugin-core integration
+    rows in about half of the runs, with an `ENOTEMPTY` on `node_modules/.vite/deps_temp_*` (or on the app directory)
+    when the app was removed, or with an unhandled "Error during dependency optimization" (rolldown "Failed to write
+    file") from a write into the removed app. The Vite dev harnesses now wait for the optimizer before `close()`
+    (RULINGS "Vite's dependency optimizer: close wait"); 5 local start-plugin-core integration runs had no #34
+    failure. If that `ENOTEMPTY` or rejection is seen again, it is this race, not a compiler failure: report it.
+  - #42 (Vite's stale pre-bundled dependency): not reproduced since 2026-10-22, closed with no workaround (RULINGS
+    "Vite's stale pre-bundled dependency: closed"). Its signature is in KNOWN-BUGS; reopen it if seen.
   - Not a flake of the tests, and no longer a row: at an extreme load (80 to 110 on beetle) V-G1 saw the Vite row
     `known-bugs-start-compiler` "SSR: a server fn that only a middleware .server() of another module calls > is
     callable, the app files written reversed" fail once in 15 runs with "Server function info not found". That was
@@ -318,8 +293,8 @@ chunk layout, printed code or AST shapes.
   leased to one test at a time.
 - **Server code** runs inside real requests through Start's server entry, with a real router. Nothing builds
   Start's request context by hand. Middleware runs for a server function called over HTTP or from server code inside
-  a real request, or as the app's request middleware, route handlers for a request of their path. Only rows held by
-  Q3 call a middleware's options with a stand-in `next`. A server function is identified by its public `url` (the
+  a real request, or as the app's request middleware, route handlers for a request of their path. Only the client
+  middleware rows of ruling Q3 call a middleware's client options with a stand-in `next`, to read what the client kept. A server function is identified by its public `url` (the
   server function base, then its id), never by Start's own metadata fields.
 - **What a dev server serves** to a client is read through Vite's own module graph of the environment (static and
   lazy imports), never by parsing served code for imports.
@@ -411,8 +386,8 @@ These tests are kept exactly as they are until the user rules; do not reroute or
 | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Q1     | router-generator `concurrent-write` and fault tests that inject an `fs` into the generator                                                                                       |
 | Q2     | the `FileRouteTypes` check in `router-generator/tests/generator/nested/tests.test-d.ts`                                                                                          |
-| Q3     | the client middleware `.options.server` property-shape assertions (start-plugin-core)                                                                                            |
-| Q4     | the success criterion of the star re-export mocking rows (import protection)                                                                                                     |
+| Q3     | ruled 2026-10-23 (RULINGS "Q3"): no stub ships; the client middleware `.options.server` absence checks stay as they are                                                          |
+| Q4     | ruled 2026-10-23 (RULINGS "Q4"): a star re-export of a denied module is a safe mock, or the build fails (dev: warns); never a secret or crash                                    |
 | Q5     | router-plugin `tests/handle-route-update.test.ts`: the absent-live-route updater control, which calls the emitted update function directly                                       |
 | Q6     | ruled 2026-10-22 (RULINGS "Q6"): the rows driving the internal compiler with a hand-built package graph are deleted; real-app tests cover what they meant                        |
 | Q7     | ruled 2026-10-22 (RULINGS "Q7"): reachable; the CommonJS pin is now a real-app pin in `start-plugin-core/tests/integration/known-bugs-start-compiler.test.ts`                    |
@@ -421,9 +396,10 @@ These tests are kept exactly as they are until the user rules; do not reroute or
 | Q10    | the owned-import numeric cap in `router-generator/tests/owned-edits.ts`                                                                                                          |
 | NEW-1  | the decorator-after-`export` pin (`router-plugin/tests/integration/pages/known-bugs-code-splitter-bindings.test.ts`)                                                             |
 | NEW-2  | whether redundant parentheses around component-defining expressions are free; they break React Fast Refresh registration under SWC/Rsbuild (SPEC §5.5 records the open question) |
-| #42    | the stale pre-bundled dependency flake of Vite (KNOWN-BUGS, upstream): pre-bundle with discovery off in the affected apps, or wait for Vite                                      |
-| #34    | Vite's optimizer writing its cache after `close()` (KNOWN-BUGS, upstream): no workaround until ruled                                                                             |
-| #57    | start-plugin-core integration memory: workers keep modules across files (about 4.4 GB each) to stay within the tier's time budget                                                |
+| #34    | ruled 2026-10-23 (RULINGS "Vite's dependency optimizer: close wait"): the Vite dev harnesses wait for the optimizer before `close()`                                             |
+
+Accepted for now, to revisit at the end (2026-10-23): start-plugin-core integration memory (#57). Its workers keep
+modules across files (about 4.4 GB each) to stay within the tier's time budget (RULINGS "test budgets").
 
 The legacy helpers (start-plugin-core `tests/outside-compiler-corpus/legacy/` with `tests/start-runtime.ts`,
 router-plugin's `tests/outside-compiler-corpus/legacy/`) and the Node stand-ins of this package (`module-linker`,
