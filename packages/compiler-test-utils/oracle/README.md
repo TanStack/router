@@ -410,7 +410,7 @@ RULINGS "Q10"). These rows held tests until the user ruled:
 
 | Ruling | What it holds                                                                                                                                                 |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Q3     | ruled 2026-10-23 (RULINGS "Q3"): no stub ships; the client middleware `.options.server` absence checks stay as they are                                       |
+| Q3     | ruled 2026-10-23 (RULINGS "Q3"): no stub ships; the client middleware `.options.server` absence checks stay as they are (other fields free: 2026-10-24)       |
 | Q4     | ruled 2026-10-23 (RULINGS "Q4"): a star re-export of a denied module is a safe mock, or the build fails (dev: warns); never a secret or crash                 |
 | Q6     | ruled 2026-10-22 (RULINGS "Q6"): the rows driving the internal compiler with a hand-built package graph are deleted; real-app tests cover what they meant     |
 | Q7     | ruled 2026-10-22 (RULINGS "Q7"): reachable; the CommonJS pin is now a real-app pin in `start-plugin-core/tests/integration/known-bugs-start-compiler.test.ts` |
