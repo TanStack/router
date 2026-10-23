@@ -278,9 +278,10 @@ describe('directives', () => {
       const startCase = await (await host()).case({ 'module.tsx': code })
       // Each directive still leads the module the client environment
       // serves, read from the parsed module (their order within the
-      // prologue is free, SPEC §5.5).
-      expect(directivePrologue(await startCase.served()).sort()).toEqual(
-        [...directives].sort(),
+      // prologue is free, SPEC §5.5; G12 keeps each user directive, it does
+      // not forbid another).
+      expect(directivePrologue(await startCase.served())).toEqual(
+        expect.arrayContaining(directives),
       )
       expect(await callFromClient(startCase, 'module.fn')).toBe(1)
     },

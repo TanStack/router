@@ -13,6 +13,7 @@ import {
   throwsError,
   useStartHost,
 } from './regression-helpers'
+import { clientMiddleware, clientMiddlewareOf } from './page-values'
 import type { PageSettled, StartCase } from './regression-helpers'
 
 /**
@@ -189,11 +190,8 @@ export default createMiddleware().server(async ({ next }) => {
     await expectClientFree(served)
     // The middleware records no server implementation.
     expect(
-      await inPage(
-        served,
-        `return Object.fromEntries(Object.entries(module.default.options).filter(([, value]) => value !== undefined).map(([key, value]) => [key, typeof value === 'function' ? '<function>' : value]))`,
-      ),
-    ).toEqual({ type: 'request' })
+      await inPage(served, `return ${clientMiddlewareOf('module.default')}`),
+    ).toEqual(clientMiddleware('request'))
   })
 
   describe('a middleware chain with a wrapped link', () => {

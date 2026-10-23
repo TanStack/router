@@ -168,7 +168,8 @@ describe('Vite dev server', () => {
    * The client got `fn` as an RPC carrying its id, without the handler body
    * (`MARK_HANDLER`): the first request of a fresh dev server finishes
    * (`transformClientModule`) without the handler, and a real page of a dev
-   * server of the same app runs `fn` as an RPC (its URL carries its id).
+   * server of the same app runs `fn` as an RPC (its public `url`; the dev id
+   * is implementation-specific, J4.4).
    */
   async function expectClientRpc(
     code: string,
@@ -190,13 +191,9 @@ describe('Vite dev server', () => {
     const { result: rpc } = await runViteClient(
       server,
       '/src/fn.ts',
-      `return { id: entry.fn.serverFnMeta?.id, url: entry.fn.url }`,
+      `return { url: entry.fn.url }`,
     )
-    const { id } = rpc as { id: unknown }
-    expect(rpc).toEqual({
-      id: expect.any(String),
-      url: expect.stringMatching(new RegExp(`${String(id)}$`)),
-    })
+    expect(rpc).toEqual({ url: expect.any(String) })
   }
 
   // Control for the pin below (same harness).

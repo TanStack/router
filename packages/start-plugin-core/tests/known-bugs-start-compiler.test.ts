@@ -39,7 +39,12 @@ import {
   useStartHost,
 } from './regression-helpers'
 import { bindingNames } from './binding-names'
-import { runOnServerModule, shapeOf } from './page-values'
+import {
+  clientMiddleware,
+  clientMiddlewareOf,
+  runOnServerModule,
+  shapeOf,
+} from './page-values'
 import {
   capturingPlacement,
   placementHeads,
@@ -237,7 +242,10 @@ export const logged = mw.server(async ({ next }) => { db.log(); return next() })
         'mw.ts': `import { createMiddleware } from '@tanstack/react-start'
 export const mw = createMiddleware({ type: 'function' })`,
       },
-      { expression: 'module.logged.options', expected: { type: 'function' } },
+      {
+        expression: clientMiddlewareOf('module.logged'),
+        expected: clientMiddleware('function'),
+      },
     )
   })
 
@@ -265,8 +273,8 @@ export const mw = createMiddleware({ type: 'function' })`,
 import { db } from './db.server'
 export const logged = mw.server(async ({ next }) => { db.log(); return next() })`,
       check: {
-        expression: 'module.logged.options',
-        expected: { type: 'function' },
+        expression: clientMiddlewareOf('module.logged'),
+        expected: clientMiddleware('function'),
       },
     },
     {
@@ -284,8 +292,8 @@ export const logged = createFooMiddleware({ type: 'function' }).server(async ({ 
   return next()
 })`,
       check: {
-        expression: 'module.logged.options',
-        expected: { type: 'function' },
+        expression: clientMiddlewareOf('module.logged'),
+        expected: clientMiddleware('function'),
       },
     },
     {

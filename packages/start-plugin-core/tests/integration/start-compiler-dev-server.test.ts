@@ -52,13 +52,13 @@ export const fn = base.handler(async () => db.x())
         containing(await server.load('/src/a.tsx'), 'MARK_DB_SECRET'),
       ).toEqual([])
       // A server fn: the client calls the server, at the server fn's URL
+      // (its public `url`; the dev id is implementation-specific, J4.4)
       const rpc = (await inClient(`${requestsOfPrelude}
 return {
   url: entry.fn.url,
-  id: entry.fn.serverFnMeta.id,
   requests: await requestsOf(entry.fn),
-}`)) as { url: string; id: string; requests: Array<unknown> }
-      expect(rpc.url.endsWith(rpc.id)).toBe(true)
+}`)) as { url: string; requests: Array<unknown> }
+      expect(rpc.url).toEqual(expect.any(String))
       expect(rpc.requests).toEqual([{ url: rpc.url, method: 'GET' }])
 
       await server.edit({ 'src/b.ts': plain })

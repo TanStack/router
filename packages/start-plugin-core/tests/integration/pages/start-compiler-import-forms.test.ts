@@ -23,6 +23,7 @@ import {
   throwsError,
   useStartHosts,
 } from '../../regression-helpers'
+import { clientMiddleware, clientMiddlewareOf } from '../../page-values'
 import type {
   Framework,
   PageSettled,
@@ -130,11 +131,8 @@ const constructs: Array<Construct> = [
       await expectClientFree(served)
       // The client drops `.server()`; the server keeps it.
       expect(
-        await inPage(
-          served,
-          `return Object.fromEntries(Object.entries(module.mw.options).filter(([, value]) => value !== undefined).map(([key, value]) => [key, typeof value === 'function' ? '<function>' : value]))`,
-        ),
-      ).toEqual({ type: 'function' })
+        await inPage(served, `return ${clientMiddlewareOf('module.mw')}`),
+      ).toEqual(clientMiddleware('function'))
       expect((await served.ssr()).mw.options.server).toBeTypeOf('function')
     },
   },
