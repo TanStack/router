@@ -276,12 +276,17 @@ Preserve the original file's effective JSX runtime decision: a pragma the transf
 must not become effective in a chunk. A warning plus leaving the file unsplit also passes. Tests assert the
 rendered outcome only. Clause: J2.16.
 
-### parentheses around components (pending: NEW-2)
+### NEW-2: parentheses around components (2026-10-23)
 
-Not ruled. Pending user ruling NEW-2: whether redundant parentheses around component-defining expressions are free;
-they break React Fast Refresh registration under SWC/Rsbuild (`const Page = (() => …)` is not registered, so its
-hot updates fail). Found by the repair's printing restructure (R4). Until the ruling, the spec records the open
-question and no test decides it. Clauses: §5.5, J3.2.
+Ruled by the user: redundant parentheses around a component-defining expression are not free if they break React
+Fast Refresh; they are judged by the outcome. SWC's refresh transform (Rsbuild) does not register
+`const Page = (() => …)`, so a compiler that prints such parentheses in a route chunk loses the component's state on
+the next edit. No test reads the printed parentheses: the route-HMR rows of a real page on Rsbuild and Vite edit a
+split route component and require its state kept (router-plugin `integration/route-hmr-browser.test.ts`, "%s: a
+React app" > "with autoCodeSplitting: %s" > "shows an edited route component in place with its state, …", the
+"an arrow function component" route). A printer that wraps function initialisers in parentheses fails the Rsbuild
+rows (split and unsplit) and passes the Vite ones. Found by the repair's printing restructure (R4). Clauses: §5.5,
+J3.2.
 
 ### R-14: license comments
 
@@ -321,6 +326,63 @@ product option was added for this. Clause: J3.7.
 
 Rsbuild must prune server-only routes from the client route tree like Vite does (a `.fails` parity pin on
 Rsbuild). Clause: J2.15.
+
+### Q1: no fake filesystem in the generator tests (2026-10-23)
+
+The user agrees: the router-generator tests that inject an `fs` into the generator (`concurrent-write.test.ts`: an
+editor save landing between the generator's read and its write, a reader during the publications, a disk-full write
+and a failing rename) are deleted. Their save-safety behaviour has no replacement: real files cannot put a save or a
+reader into that window deterministically through a public API (the generator's own steps between the read and the
+rename are not observable from outside; a watcher of `tmpDir` or a timed save races them), so SPEC §9 lists it as not
+checked. The K-19 pin keeps its real-file part: `tmpDir` on another filesystem (shared memory, `/dev/shm`) than the
+app, and the route file and the route tree are replaced by a rename (a new inode); a host without such a second
+filesystem skips it (`router-generator/tests/generator-options.test.ts`, "tmpDir"). Clauses: J1.6, J1.10, J1.16.
+
+### Q2: file route types through router-core (2026-10-23)
+
+The user notes that the generated `FileRouteTypes` type is used internally: router-core reads
+`routeTree['types']['fileRouteTypes']` through its exported `InferFileRouteTypes` (with a fallback when it is
+`never`). The contract is that the generated tree carries file route types router-core can infer, not the generated
+file's local interface name (§5.1). The `nested` type tests check `InferFileRouteTypes<typeof routeTree>`: not
+`never`, and its full paths, `to` and ids. They run on a copy of the fixture where the tree is generated
+(`router-generator/tests/integration/fixture-types-nested.test.ts`), so no test writes into the package anymore.
+Clauses: J1.13, §5.1.
+
+### Q5: an update the router on the page does not have (2026-10-23)
+
+The user: "you decide". Decided: a hot update reaches a route the router on the page does not have when the page
+has a second router created after the app's (router-core assigns `window.__TSR_ROUTER__` to the last router created;
+Vite's route HMR code updates that one). Deleting a route file does not reach it: the route tree changes, and the page
+reloads with the new tree (tried: delete then re-create, visited or not). The private-updater test
+(`router-plugin/tests/handle-route-update.test.ts`, jsdom) is deleted; a real page row replaces it: Vite and Rsbuild,
+an app that creates a second, code-based router after its own, an edit of a route component shows in place, the app
+still navigates, no error (`router-plugin/tests/integration/route-hmr-browser-updates.test.ts`, "an edit while the
+page has a second router created after the app's keeps the app working"). Whether such an edit also reaches the
+app's router is not required. Clauses: J3.11, §8.
+
+### Q8: one router plugin per app (2026-10-23)
+
+The user: "we do not support registering multiple times the plugin. Sharing context is an optimization the
+implementer might or might not decide to do, so we should probably not assert it." Deleted: router-plugin
+`integration/pages/router-plugin-context.test.ts` "keeps two router plugins of one dev server to their own route
+files" and `plugin-options.test.ts` "two code splitters scoped to the client and SSR environments of one dev server
+…" (a hand-built Start composition sharing `createRouterPluginContext()`). The rest of that file, one router plugin
+per dev server, is `integration/pages/code-splitter-edits.test.ts`. Start's client and SSR splitting through the
+public Start plugin stays covered by start-plugin-core (`integration/start-router-dev-server.test.ts`,
+`integration/hydrate-dev.test.ts`, `integration/start-build-options.test.ts` "router.codeSplittingOptions: the
+client and SSR builds load the route loader and component $name"). Clauses: §2.2, §5.20.
+
+### Q9: `tsr.config.json` edits (2026-10-23)
+
+The user: "it's ok to not expect a change in config file to act immediately." The pin "a tsr.config.json edit
+generates the route tree with the new configuration" is deleted; the row where the next route file edit generates
+the route tree with the new configuration stays (router-plugin `known-bugs-dev-server.test.ts`). Clause: J1.10.
+
+### NEW-1: a decorator after `export` (2026-10-23)
+
+A real bug: `export @dec class` is valid TypeScript (5.0 and later). The pin stays as it is
+(router-plugin `integration/pages/known-bugs-code-splitter-bindings.test.ts`, "a decorator after `export`
+compiles"). Clauses: §2.1, G1.
 
 ## Start (J4–J7)
 

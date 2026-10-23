@@ -25,7 +25,6 @@ import {
   customTemplates,
   fixtureConfig,
   fixtureNames,
-  keepTreeForTypeTests,
   prepareFixture,
 } from './generator-fixture'
 import { crlfRoutes, generateCrlf } from './crlf-app'
@@ -239,7 +238,6 @@ describe('generator fixtures', async () => {
         return
       }
       await generator.run()
-      await keepTreeForTypeTests(name, config)
 
       expect(fixtureRoutes[name], 'the routes of the fixture').toBeDefined()
       await expectFixtureRoutes(config.generatedRouteTree, fixtureRoutes[name]!)

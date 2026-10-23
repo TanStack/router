@@ -102,7 +102,7 @@ describe('router config file', () => {
    * points it to `pages/`, with `edits`. Returns the route the route tree
    * matches at `/about` afterwards (none before: `/about` is in `pages/`).
    */
-  async function moveRoutesDirectory(edits: Record<string, string> = {}) {
+  async function moveRoutesDirectory(edits: Record<string, string>) {
     const server = await routerDevServer({
       pluginOptions: null,
       files: {
@@ -118,8 +118,9 @@ describe('router config file', () => {
     return matchedRoute(server, '/about')
   }
 
-  // Control for the pin below (same harness): the next route file edit
-  // generates the route tree with the new configuration.
+  // The next route file edit generates the route tree with the new
+  // configuration. (Whether the `tsr.config.json` edit itself regenerates
+  // it is free: ruling Q9.)
   test(
     'a route file edit after a tsr.config.json edit generates the route tree with the new configuration',
     async () => {
@@ -128,21 +129,6 @@ describe('router config file', () => {
           'pages/about.tsx': route('/about') + '\n',
         }),
       ).toBe('/about')
-    },
-    timeout,
-  )
-
-  // Bug: on a `tsr.config.json` edit, the generator plugin re-creates the
-  // generator with the new configuration and returns without running it
-  // (router-generator-plugin.ts `generate`).
-  // Impact: a configuration change (routes directory, generated route tree,
-  // route file options) is applied to the route tree only on the next route
-  // file event, or never if none comes before a restart.
-  // Source: gap DV3 (gaps/dev-hmr.md).
-  test.fails(
-    'a tsr.config.json edit generates the route tree with the new configuration',
-    async () => {
-      expect(await moveRoutesDirectory()).toBe('/about')
     },
     timeout,
   )

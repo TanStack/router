@@ -25,29 +25,11 @@ const config = defineConfig({
     projects: [
       {
         // Fast tier (`test:unit`): generator runs, route trees loaded by the
-        // real router in a Vite server in middleware mode, small type checks.
+        // real router in a Vite server in middleware mode, type checks.
         extends: true,
         test: {
           name: 'unit',
           exclude: [...configDefaults.exclude, 'integration/**'],
-        },
-      },
-      {
-        // Fast tier, after `unit` (`test:unit`): the type tests of the
-        // route trees the `unit` run generated (tests/generator/**/*.test-d.ts).
-        // One Vitest run selects both projects (so command-line options such
-        // as `--maxWorkers` reach both): Vitest runs type tests in a group of
-        // their own, after the groups of the runtime tests.
-        extends: true,
-        test: {
-          name: 'types',
-          include: [],
-          typecheck: {
-            enabled: true,
-            only: true,
-            include: ['generator/nested/tests.test-d.ts'],
-            tsconfig: './tests/tsconfig.acceptance.json',
-          },
         },
       },
       {

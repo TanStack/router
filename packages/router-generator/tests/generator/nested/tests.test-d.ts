@@ -13,7 +13,7 @@ import {
 import { expectTypeOf, test } from 'vitest'
 import { routeTree } from './routeTree.gen'
 import type { FileRoutesByPath, MakeRouteMatch } from '@tanstack/react-router'
-import type { FileRouteTypes } from './routeTree.gen'
+import type { InferFileRouteTypes } from '@tanstack/router-core'
 
 // Read for its type only (`typeof`)
 // eslint-disable-next-line unused-imports/no-unused-vars
@@ -44,6 +44,63 @@ const preserveTrailingSlashRouter = createRouter({
   trailingSlash: 'preserve',
 })
 
+// The file route types router-core reads from the route tree (the types of
+// `fullPath`, `to` and `id` it derives when they are not `never`). The full
+// paths have no empty string (issue #4892).
+type NestedFileRouteTypes = InferFileRouteTypes<typeof routeTree>
+
+test('router-core infers the file route types of the route tree', () => {
+  expectTypeOf<NestedFileRouteTypes>().not.toBeNever()
+  expectTypeOf<NestedFileRouteTypes['fullPaths']>().toEqualTypeOf<
+    | '/'
+    | '/blog'
+    | '/posts'
+    | '/blog/$blogId'
+    | '/settings'
+    | '/blog/$slug'
+    | '/blog/stats'
+    | '/blog/'
+    | '/posts/'
+    | '/blog/$blogId/$slug'
+    | '/blog/$blogId/edit'
+    | '/posts/$postId/deep'
+    | '/posts/$postId/'
+    | '/blog/$blogId/$slug/bar'
+  >()
+  expectTypeOf<NestedFileRouteTypes['to']>().toEqualTypeOf<
+    | '/'
+    | '/blog/$blogId'
+    | '/settings'
+    | '/blog/$slug'
+    | '/blog/stats'
+    | '/blog'
+    | '/posts'
+    | '/blog/$blogId/$slug'
+    | '/blog/$blogId/edit'
+    | '/posts/$postId/deep'
+    | '/posts/$postId'
+    | '/blog/$blogId/$slug/bar'
+  >()
+  expectTypeOf<NestedFileRouteTypes['id']>().toEqualTypeOf<
+    | '__root__'
+    | '/'
+    | '/blog'
+    | '/posts'
+    | '/_pathlessLayout'
+    | '/blog_/$blogId'
+    | '/_pathlessLayout/settings'
+    | '/blog/$slug'
+    | '/blog_/stats'
+    | '/blog/'
+    | '/posts/'
+    | '/blog_/$blogId/$slug'
+    | '/blog_/$blogId_/edit'
+    | '/posts/$postId/deep'
+    | '/posts/$postId/'
+    | '/blog_/$blogId/$slug_/bar'
+  >()
+})
+
 test('when navigating to the root', () => {
   // Issue #4892: Pathless layout routes should have fullPath: '/' not ''
   expectTypeOf<FileRoutesByPath['/']['fullPath']>().toEqualTypeOf<'/'>()
@@ -57,8 +114,6 @@ test('when navigating to the root', () => {
   expectTypeOf<
     FileRoutesByPath['/blog/']['fullPath']
   >().toEqualTypeOf<'/blog/'>()
-  // Verify empty string is not in fullPaths union
-  expectTypeOf<''>().not.toMatchTypeOf<FileRouteTypes['fullPaths']>()
   // Verify pathless layout's fullPath is '/' (not '')
   expectTypeOf<
     FileRoutesByPath['/_pathlessLayout']['fullPath']

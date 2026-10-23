@@ -54,7 +54,7 @@ fixes touched; every lane locally):
   architecture, other chunk layouts, other trace order, and other loader paths. Every failing file was re-run alone
   with and without the restructure.
   - R1, R3–R6 and R8–R11: no acceptance test fails.
-  - R2 (moved internal modules) fails only the Q5 row (`handle-route-update.test.ts`, held by its pending ruling).
+  - R2 (moved internal modules) fails only the Q5 row (`handle-route-update.test.ts`, since deleted: RULINGS "Q5").
   - R7 (every compiler diagnostic on the console, a short error to the bundler) failed one row at FINAL-2:
     start-plugin-core `integration/importProtection/reported-location.test.ts` "rsbuild dev: a re-export". Its
     helper `expectNoOtherErrors` took everything before the first colon of the importer as its file, so Rsbuild's
@@ -107,11 +107,12 @@ fixes touched; every lane locally):
       18 are caught, by the same rows as before, except red-fable-r2/18 (99 rows instead of 100: "'always' logs a
       violation again when the dev server reloads every module" now counts printed warnings and passes) and
       red-fable/25, whose second row had failed only on #34.
-- **No internal imports.** The only internal import left in acceptance tests is the Q5 row, held by its pending
-  ruling.
+- **No internal imports.** No acceptance test imports compiler internals: the last ones, the Q5 row and router-plugin's
+  hand-built Start composition (`createRouterPluginContext`, Q8), were deleted (RULINGS "Q5", "Q8", 2026-10-23).
 - **Tests write nothing into the repository.** After a full unpatched run of a tree, `git status --porcelain
 --ignored` and the packages' `node_modules` dot entries are the same as before.
-  - The only file a run writes is the Q2 route tree of router-generator's `nested` fixture.
+  - Since the Q2 ruling (2026-10-23) no file at all: the `nested` type tests run on a copy of the fixture (checked
+    around uncached router-generator `test:unit` and `test:integration` and router-plugin `test:unit` runs).
   - Outside the repository, a run can leave Chromium's `.org.chromium.Chromium.*` directories in the system
     temporary directory. At FINAL-2 it could also leave its run directory `tanstack-compiler-tests-*` with an empty
     `generator/` (13 of 20 runs on beetle). The cause: each test process removed its apps when it exited, while
@@ -144,14 +145,21 @@ unpatched beetle runs and the local run of every lane apart from #34 rows. Passe
 | Package                         | `test:unit` | `test:integration` | `test:noncompiler` |
 | ------------------------------- | ----------- | ------------------ | ------------------ |
 | `@tanstack/compiler-test-utils` | 77 / 0      | 131 / 0            | –                  |
-| `@tanstack/router-generator`    | 240 / 31    | 67 / 3             | –                  |
-| `@tanstack/router-plugin`       | 107 / 20    | 674 / 349          | –                  |
+| `@tanstack/router-generator`    | 218 / 31    | 68 / 3             | –                  |
+| `@tanstack/router-plugin`       | 105 / 19    | 675 / 349          | –                  |
 | `@tanstack/start-plugin-core`   | 270 / 132   | 1202 / 293         | 148 / 0            |
 | `@tanstack/react-start-rsc`     | no files    | 108 / 13           | 57 / 0             |
 
 How the counts moved from d07614d3b3 (ctu 330 / 0 and 171 / 0; router-plugin `test:integration` 674 / 355;
 start-plugin-core 389 / 143 and 1204 / 292; noncompiler 121 / 0 and 49 / 0):
 
+- **Rulings of 2026-10-23, router side** (RULINGS "Q1", "Q2", "Q5", "Q8", "Q9"; the router-generator and
+  router-plugin rows above are after them, local runs): router-generator `test:unit` −22 passed (Q1: the 10 rows of
+  `concurrent-write.test.ts`; Q2: the 12 type tests of the `types` project, now one row of `test:integration`, +1),
+  the K-19 pin moved to `generator-options.test.ts`; router-plugin `test:unit` −2 passed (Q5: the updater row; Q8:
+  the two code splitters sharing a context) and −1 pin (Q9: the immediate `tsr.config.json` reload),
+  `test:integration` +1 passed (Q5: the second-router row on Vite and Rsbuild, +2; Q8: two router plugins in one dev
+  server, −1).
 - **S-A** (import gate, violation-report reader and diagnostic word-list controls deleted, pins that only asked for
   message content deleted; RULINGS "diagnostics: file and position only"): ctu `test:unit` −147 (import gate 9,
   diagnostics controls 138); router-plugin `test:integration` −6 pins; start-plugin-core `test:unit` −118 passed,
@@ -206,17 +214,15 @@ acceptance tier.
 The pass F-J (after V-I) made the tests hermetic: no test writes into the repository. The harnesses create their apps
 in the system's temporary directory, standing in for the package directory they were created in before (same
 dependencies through linked `node_modules`, same `tsconfig.json`; `src/app-directory.ts`), and router-generator runs
-its fixtures on copies (only the route tree of the `nested` fixture is still written in place, for the `types` project
-Q2 holds). No count, pin or outcome changed: on the baseline of that pass every tier and lane gave the same counts
+its fixtures on copies (only the route tree of the `nested` fixture was still written in place, for the `types` project,
+until the Q2 ruling). No count, pin or outcome changed: on the baseline of that pass every tier and lane gave the same counts
 with and without it, test by test, apart from #34 rows that passed alone.
-
-The `test:unit` counts include the pending-rulings lane: 1 row in router-plugin (Q5).
 
 Caveats:
 
 - **Pending user rulings hold some rows** (table below). They count toward acceptance as they are until ruled, and a
-  correct compiler may fail some of them: the Q5 row imports compiler internals (R2 fails it), and the others
-  (Q1–Q4, Q8–Q10, NEW-1, NEW-2) keep an assertion or input whose fate the ruling decides.
+  correct compiler may fail some of them: they (Q3, Q4, Q10) keep an assertion or input whose fate the ruling
+  decides.
 - **Two upstream flakes can fail rows no compiler change explains.**
   - #42 (Vite's stale pre-bundled dependency): it fails up to three start-plugin-core integration rows,
     `known-bugs-start-compiler-dev` "top-level call of a project function" and "top-level member call of a
@@ -342,7 +348,7 @@ chunk layout, printed code or AST shapes.
   each module decides for itself whether its read is guarded, so another module's `typeof` does not excuse an
   unguarded read, and a module whose rendered code in a Vite build lost the name is no reader. A chunk Yuku cannot
   parse fails the check. Routes compiled
-  with route HMR, and modules checked without their app (router-plugin `router-plugin-context.test.ts`), have no
+  with route HMR, and modules checked without their app (router-plugin `code-splitter-edits.test.ts`), have no
   production build to decide: their free names count as they are, which is stricter than G8.
 - **Nothing dev-only in production (G7)**: router-plugin builds each production app twice, with the defaults and
   with `addHmr: false` (`NODE_ENV=production`), and the chunks must be equal; the production page must render.
@@ -369,7 +375,7 @@ warnings that name the importer, not `onViolation` calls.
 | Lane            | Where                                                                                                           | Targets                                                          | Decides acceptance |
 | --------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------ |
 | Corpus          | `tests/**`, except the noncompiler list                                                                         | `test:unit`, `test:integration`                                  | yes                |
-| Pending rulings | the Q5 control in router-plugin                                                                                 | `test:unit`, `test:integration` (held in the corpus as they are) | yes, until ruled   |
+| Pending rulings | the rows the pending rulings hold (table below)                                                                 | `test:unit`, `test:integration` (held in the corpus as they are) | yes, until ruled   |
 | Noncompiler     | main's own tests at main's paths, listed in `tests/noncompiler-tests.json` (start-plugin-core, react-start-rsc) | `test:noncompiler`                                               | no                 |
 
 The corpus (acceptance) is the compilers' test suite. Main's own tests split in two:
@@ -407,23 +413,16 @@ generates and are the structure-free checks.
 
 These tests are kept exactly as they are until the user rules; do not reroute or delete them before that.
 
-| Ruling | What it holds                                                                                                                                                                    |
-| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Q1     | router-generator `concurrent-write` and fault tests that inject an `fs` into the generator                                                                                       |
-| Q2     | the `FileRouteTypes` check in `router-generator/tests/generator/nested/tests.test-d.ts`                                                                                          |
-| Q3     | the client middleware `.options.server` property-shape assertions (start-plugin-core)                                                                                            |
-| Q4     | the success criterion of the star re-export mocking rows (import protection)                                                                                                     |
-| Q5     | router-plugin `tests/handle-route-update.test.ts`: the absent-live-route updater control, which calls the emitted update function directly                                       |
-| Q6     | ruled 2026-10-22 (RULINGS "Q6"): the rows driving the internal compiler with a hand-built package graph are deleted; real-app tests cover what they meant                        |
-| Q7     | ruled 2026-10-22 (RULINGS "Q7"): reachable; the CommonJS pin is now a real-app pin in `start-plugin-core/tests/integration/known-bugs-start-compiler.test.ts`                    |
-| Q8     | the RouterPluginContext / multi-plugin question (`router-plugin/tests/integration/pages/router-plugin-context.test.ts`)                                                          |
-| Q9     | the immediate `tsr.config.json` reload pin                                                                                                                                       |
-| Q10    | the owned-import numeric cap in `router-generator/tests/owned-edits.ts`                                                                                                          |
-| NEW-1  | the decorator-after-`export` pin (`router-plugin/tests/integration/pages/known-bugs-code-splitter-bindings.test.ts`)                                                             |
-| NEW-2  | whether redundant parentheses around component-defining expressions are free; they break React Fast Refresh registration under SWC/Rsbuild (SPEC §5.5 records the open question) |
-| #42    | the stale pre-bundled dependency flake of Vite (KNOWN-BUGS, upstream): pre-bundle with discovery off in the affected apps, or wait for Vite                                      |
-| #34    | Vite's optimizer writing its cache after `close()` (KNOWN-BUGS, upstream): no workaround until ruled                                                                             |
-| #57    | start-plugin-core integration memory: workers keep modules across files (about 4.4 GB each) to stay within the tier's time budget                                                |
+| Ruling | What it holds                                                                                                                                                 |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Q3     | the client middleware `.options.server` property-shape assertions (start-plugin-core)                                                                         |
+| Q4     | the success criterion of the star re-export mocking rows (import protection)                                                                                  |
+| Q6     | ruled 2026-10-22 (RULINGS "Q6"): the rows driving the internal compiler with a hand-built package graph are deleted; real-app tests cover what they meant     |
+| Q7     | ruled 2026-10-22 (RULINGS "Q7"): reachable; the CommonJS pin is now a real-app pin in `start-plugin-core/tests/integration/known-bugs-start-compiler.test.ts` |
+| Q10    | the owned-import numeric cap in `router-generator/tests/owned-edits.ts`                                                                                       |
+| #42    | the stale pre-bundled dependency flake of Vite (KNOWN-BUGS, upstream): pre-bundle with discovery off in the affected apps, or wait for Vite                   |
+| #34    | Vite's optimizer writing its cache after `close()` (KNOWN-BUGS, upstream): no workaround until ruled                                                          |
+| #57    | start-plugin-core integration memory: workers keep modules across files (about 4.4 GB each) to stay within the tier's time budget                             |
 
 The legacy helpers (start-plugin-core `tests/outside-compiler-corpus/legacy/` with `tests/start-runtime.ts`,
 router-plugin's `tests/outside-compiler-corpus/legacy/`) and the Node stand-ins of this package (`module-linker`,
