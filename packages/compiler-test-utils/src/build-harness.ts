@@ -21,6 +21,7 @@ import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { createAppDirectory } from './app-directory'
 import { openDiagnosticChannel } from './diagnostic-channel'
+import { runDirectoryVariable } from './run-directory'
 import { runNodeProgram } from './run-node'
 import { savingDirectory } from './save-file'
 import type { AddressInfo } from 'node:net'
@@ -293,15 +294,18 @@ const ssrExternal = /^(react|react-dom)(\/.*)?$/
 /**
  * The apps of this process not disposed of yet. A host kept for the whole
  * test process (shared by the test files of a worker) is never disposed of
- * by a test: its directory is removed when the process exits.
+ * by a test: its directory is removed when the process exits, or with a run
+ * directory by the run's teardown (its one owner: `./app-directory`).
  */
 const liveApps = new Set<string>()
-process.once('exit', () => {
-  for (const root of liveApps) {
-    rmSync(root, { recursive: true, force: true })
-    rmSync(savingDirectory(root), { recursive: true, force: true })
-  }
-})
+if (process.env[runDirectoryVariable] === undefined) {
+  process.once('exit', () => {
+    for (const root of liveApps) {
+      rmSync(root, { recursive: true, force: true })
+      rmSync(savingDirectory(root), { recursive: true, force: true })
+    }
+  })
+}
 
 /**
  * Writes an app to a temporary directory that stands in for `options.dir`

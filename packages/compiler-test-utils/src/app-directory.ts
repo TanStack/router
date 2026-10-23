@@ -31,10 +31,9 @@
  * of the nearest `package.json`, which is then the shared directory's, in
  * the linked `node_modules`.
  *
- * The shared directories are in this run's directory (`./run-directory`,
- * removed when the run ends), or without it in the system's temporary
- * directory; either way they are removed when their test process exits
- * normally.
+ * The shared directories are in this run's directory (`./run-directory`),
+ * which the run removes when it ends; or without it in the system's
+ * temporary directory, removed when their test process exits normally.
  */
 import {
   existsSync,
@@ -54,7 +53,7 @@ import { runDirectoryVariable } from './run-directory'
 interface StandIn {
   /** The directory the apps stand in for. */
   dir: string
-  /** The shared directory, removed when the process exits. */
+  /** The shared directory (removed with the run, or when the process exits). */
   base: string
   /** Where the apps are created. */
   apps: string
@@ -69,7 +68,15 @@ function standIn(dir: string): StandIn {
   const resolved = path.resolve(dir)
   let found = registry.get(resolved)
   if (!found) {
-    if (registry.size === 0) {
+    // Without a run directory, this process removes the shared directories
+    // when it exits. With one, the run's teardown removes them with the run
+    // directory: one owner, since removing a tree while another process
+    // removes part of it can leave the rest behind (`fs.rmSync` returns
+    // early when an entry vanishes under it).
+    if (
+      registry.size === 0 &&
+      process.env[runDirectoryVariable] === undefined
+    ) {
       process.once('exit', () => {
         for (const { base } of registry.values()) {
           // (removes the links, not what they point to)
