@@ -27,74 +27,98 @@ generated names or module layout. SPEC §5 lists what a correct compiler may do 
 ## Status
 
 The suite was repaired (October 2026) so that it reaches the compilers only through public entry points, runs real
-tools, and judges client code in a real browser. What was measured at the end of the repair (F-H, at 633a4c0917,
-after the final passes F-F, F-G1, F-G2 and F-G3; the start-plugin-core part again at d07614d3b3, after F-I):
+tools, and judges client code in a real browser. Then it was simplified: the import gate was deleted; diagnostics are
+checked by file and position only; import protection is read through `onViolation`; free names come from Yuku; and
+the test apps live in temporary directories. What was measured on the integrated branch (FINAL-2, at f16aae85ac, on
+beetle with 3 trees × 4 workers, and locally for the budgets):
 
-- **Restructured compilers pass.** Eleven behaviour-preserving restructures of today's compilers (R1–R11: moved
-  modules, renamed ids and generated names, another printer, reworded diagnostics, another AST seam, other report
-  channels, another server-function provider architecture, other chunk layouts, other trace order, other loader
-  paths) were each run against the whole acceptance suite, with every failing file re-run alone with and without the
-  restructure. At 633a4c0917:
-  - R1 and R3–R11: no acceptance test fails.
-  - R2 (moved internal modules) fails the 7 rows that pending rulings hold on internal imports (Q5:
-    `handle-route-update.test.ts` ×1; Q6: `pending-rulings/createMiddleware.test.ts` ×2, `createServerFn.test.ts`
-    ×1; Q7: `pending-rulings/known-bugs-start-compiler.test.ts` ×3). Nothing else fails under R2. (Q6 and Q7 have
-    since been ruled and those files are gone: "Pending user rulings" below.)
+- **Today's compilers pass every acceptance test.** The unpatched suite ran 9 times (3 rounds of 3 trees in
+  parallel, 1-minute load up to about 60 on 32 cores).
+  - Every tier and lane gave the counts below in every run, except start-plugin-core `test:integration`. That tier
+    had one or two #34 rows in 6 of the 9 runs (9 rows), each of which passed alone.
+  - No #42 failure, and no other failure.
+  - One exception, outside beetle: router-plugin `integration/generator-watch-mode.test.ts` "webpack: a created route
+    file is scaffolded …" fails intermittently on a machine whose system temporary directory is tmpfs. The webpack
+    watch session never picks up the created route file within 20 s.
+    - Seen: 3 of 6 local router-plugin `test:integration` runs, and 4 of 15 runs of the file alone.
+    - Not seen with `TMPDIR` on disk (0 of 10 runs alone) or in any beetle run.
+    - Since F-J the watched app lives in the system temporary directory. With `/tmp` on tmpfs, set `TMPDIR` to a
+      directory on disk.
+- **Restructured compilers pass, with one coupling.** Eleven behaviour-preserving restructures of today's compilers
+  (R1–R11) were run against the whole acceptance suite. They cover: moved modules, renamed ids and generated names,
+  another printer, reworded diagnostics, another AST seam, other report channels, another server-function provider
+  architecture, other chunk layouts, other trace order, and other loader paths. Every failing file was re-run alone
+  with and without the restructure.
+  - R1, R3–R6 and R8–R11: no acceptance test fails.
+  - R2 (moved internal modules) fails only the Q5 row (`handle-route-update.test.ts`, held by its pending ruling).
+  - **R7 (every compiler diagnostic on the console, a short error to the bundler) fails one row:** start-plugin-core
+    `integration/importProtection/reported-location.test.ts` "rsbuild dev: a re-export".
+    - Its helper `expectNoOtherErrors` (`reported-location-app.ts`) accepts a bundler error only if the error
+      contains the importer that `onViolation` reported.
+    - For Rsbuild dev that importer is `webpack:/src/a.tsx:2:1` (the F2 pin), and the helper keeps only `webpack` as
+      the file name.
+    - So the row passes today only because the full report happens to contain "webpack". **The row depends on the
+      error's wording.** It is not fixed yet.
   - Expected pin flips, where the restructure fixes the pinned bug: R3 ×6 (user names that collide with today's
-    generated names), R8 ×6 (SSR runs server functions in place), R9 ×3 (entry re-export of shared bindings).
-  - 7 rows failed once and passed alone: all #34 (below).
-  - At d07614d3b3 the start-plugin-core acceptance tiers ran again under R1–R11: the same result, and R8 also flips
-    the 4 Vite pins F-I added for #7213 (it fixes that race). One R9 row failed with #34 and passed alone.
-- **Wrong compilers are caught, correct ones pass.** The adversarial variants of rounds 1 and 2 (written by
-  reviewers as product patches) were re-run at 633a4c0917 against `test:unit` + `test:integration` (the
-  pending-rulings, implementation and noncompiler lanes recorded, never counted):
-  - all 90 red (wrong) variants are caught, each by acceptance tests that fail again when their file runs alone;
-    none is caught only by a non-acceptance lane;
-  - all 34 valid green (correct but different) variants pass; green-sol/20 flips its two expected pins (it fixes
-    that bug), and green-sol/01 is ruled not a valid green. Two greens (green-sol/09, /13) failed only #34 rows, in the
-    suite and alone; three more alone runs each passed apart from one more #34 hit.
-  - Every red caught in the previous measurement (45f58967ea) is still caught, 84 through the same rows. One,
-    red-astra-r2/15 (the import-protection mock inherits `Object.prototype`), is now caught by its own row only
-    (`importProtection/rule-outcomes.test.ts` "inherited member names of a mocked import remain safe to consume",
-    Vite and Rsbuild): the shared safe-mock probe no longer calls `constructor`/`__proto__` members (SPEC §5.18), so
-    the 179 other rows that caught it before pass.
-  - The five reds caught by rows of start-plugin-core's unit-tier `known-bugs-start-compiler.test.ts`, re-run on
-    start-plugin-core at d07614d3b3: still caught.
-- **No internal imports.** The only internal imports left in acceptance tests are held by pending user rulings
-  (below).
-- **Stable.** The unpatched suite ran 9 times at 633a4c0917 (3 rounds of 3 trees in parallel, 4 workers each,
-  1-minute load up to 55 on 32 cores): all 15 tiers and lanes gave identical counts, except one #34 row in 4 of the 9
-  start-plugin-core integration runs. No #42 failure. At d07614d3b3, start-plugin-core ran 3 more times: identical
-  counts apart from one #34 row in 2 runs.
-- **Fast, with little margin.** On a quiet machine (load below 4 at the start) at 4 workers every tier passed its
-  hard budget in strict mode in its quiet valid runs, and no slow-tier file took over 15 s:
+    generated names), R8 ×10 (SSR runs server functions in place, #7213), R9 ×3 (entry re-export of shared bindings).
+  - 4 rows failed once and passed alone, plus 1 that the clean tree also failed alone: all #34.
+  - The noncompiler lane (never counted) fails 43 rows under R1: main's own manifest and Rsbuild client-build tests
+    build module ids with the `tsr-split` query.
+- **Wrong compilers are caught, correct ones pass.** The adversarial variants of rounds 1 and 2 (product patches
+  written by reviewers) were run against `test:unit` + `test:integration`; the noncompiler lane was recorded, never
+  counted.
+  - **All 90 red (wrong) variants are caught**, each by acceptance tests that fail again when their file runs alone
+    and pass alone without the variant. None is caught only by a non-acceptance lane.
+  - **All 34 valid green (correct but different) variants pass.**
+    - green-sol/20 flips its two expected pins (it fixes that bug).
+    - green-sol/01 is ruled not a valid green.
+    - green-sol-r2/10 failed only a #34 row; it passed 3 of 3 alone runs with the patch.
+  - Every red caught in the previous measurement (633a4c0917) is still caught.
+    - 68 reds are caught by the same rows, 5 by more rows, and 17 by fewer or other rows. Most of the rows they lost
+      were #34 failures (not catches) or were renamed.
+    - **red-fable-r2/18** (violation columns reported zero-based) is caught by 100 rows instead of 171. The 53 rows
+      that now pass read the importer's file only, through `onViolation`; before, they parsed the printed report.
+    - **red-fable/20** (a mixed type/value import treated as type-only) is caught by one row instead of two
+      (`v2-type-only.test.ts` "rsbuild dev").
+    - red-astra-r2/15 is still caught by its own row only.
+- **No internal imports.** The only internal import left in acceptance tests is the Q5 row, held by its pending
+  ruling.
+- **Tests write nothing into the repository.** After a full unpatched run of a tree, `git status --porcelain
+--ignored` and the packages' `node_modules` dot entries are the same as before.
+  - The only file a run writes is the Q2 route tree of router-generator's `nested` fixture.
+  - Outside the repository, a run can leave things in the system temporary directory:
+    - an empty run directory `tanstack-compiler-tests-*/generator/`, which the route generator writes after
+      router-plugin's run removed the directory (13 of 20 runs on beetle);
+    - Chromium's `.org.chromium.Chromium.*` directories.
+- **Fast, with little margin.** On a quiet machine (load below 4 at the start, no other test run) at 4 workers,
+  every tier passed its hard budget in strict mode in its valid runs. No slow-tier file took over 15 s:
 
   | Package                         | `test:unit` (target / hard) | `test:integration` (target / hard) | slowest slow-tier file |
   | ------------------------------- | --------------------------- | ---------------------------------- | ---------------------- |
-  | `@tanstack/compiler-test-utils` | 3.0 s (2.5 / 4)             | 8.1 s (9 / 15)                     | 8.1 s                  |
-  | `@tanstack/router-generator`    | 3.8 s (3 / 5)               | 6.6 s (8 / 12)                     | 6.5 s                  |
-  | `@tanstack/router-plugin`       | 9.0 s (7.5 / 10)            | 74.9–77.2 s (60 / 80)              | 12.0 s                 |
-  | `@tanstack/start-plugin-core`   | 6.5 s (5.5 / 8)             | 85.0–88.1 s (65 / 90)              | 14.3 s                 |
-  | `@tanstack/react-start-rsc`     | no test files               | 13.0 s (13 / 20)                   | 6.1 s                  |
+  | `@tanstack/compiler-test-utils` | 2.7 s (2.5 / 4)             | 7.7 s (9 / 15)                     | 6.7 s                  |
+  | `@tanstack/router-generator`    | 3.7 s (3 / 5)               | 6.6 s (8 / 12)                     | 6.5 s                  |
+  | `@tanstack/router-plugin`       | 8.3 s (7.5 / 10)            | 70.3–70.9 s (60 / 80)              | 12.0 s                 |
+  | `@tanstack/start-plugin-core`   | 5.8–5.9 s (5.5 / 8)         | 84.8–85.0 s (65 / 90)              | 14.6 s                 |
+  | `@tanstack/react-start-rsc`     | no test files               | 12.9 s (13 / 20)                   | 6.1 s                  |
 
-  The two slow tiers are 2 to 5 s under their hard limits (45f58967ea: 73.7 s and 83.3 s): load from other work on
-  the machine pushed both over in some runs (82.3 s, 97.6 s), and start-plugin-core runs with a #34 failure took up
-  to 97 s (not measurements). On an idle 32-core machine every tier is well within (router-plugin 57 s,
-  start-plugin-core 66 s). Edit to result for one fast-tier file is about 5 s. Several tiers are over their target
-  and under their hard limit.
+  start-plugin-core `test:integration` is about 5 s under its hard limit. Another agent's test runs on the same
+  machine pushed it over twice (91.0 s, 93.3 s). Runs with a #34 failure, and the router-plugin runs that hit the
+  watch row above, are not measurements. Several tiers are over their target and under their hard limit.
 
-Counts on the integrated branch (2026-10-23: the S-A and S-B simplifications, the Q6/Q7 rulings, NOL-delete, the
-main-tests cleanup and the clean-up after them, below). Passed / expected-fail pins; "(S-A)" and "(main-tests)" mark counts
-taken on those branches and not re-run after the merge (no file of those tiers changed since, except the three Q7
-pins Q6/Q7 added to start-plugin-core `test:integration`):
+- **Memory.** start-plugin-core `test:integration` uses about 4.4 GB per worker (#57). Three such runs at once took a
+  60 GB machine to 0 GB available, so the measurement runner lets at most two run at a time.
 
-| Package                         | `test:unit` | `test:integration`         | `test:noncompiler`   |
-| ------------------------------- | ----------- | -------------------------- | -------------------- |
-| `@tanstack/compiler-test-utils` | 77 / 0      | 131 / 0                    | –                    |
-| `@tanstack/router-generator`    | 239 / 30    | 67 / 3                     | –                    |
-| `@tanstack/router-plugin`       | 107 / 20    | 674 / 349 (S-A)            | –                    |
-| `@tanstack/start-plugin-core`   | 270 / 132   | 1202 / 293 (S-A + Q7 pins) | 147 / 0 (main-tests) |
-| `@tanstack/react-start-rsc`     | no files    | 108 / 13                   | 57 / 0 (main-tests)  |
+Counts on the integrated branch, measured at f16aae85ac (the S-A and S-B simplifications, the Q6/Q7 rulings,
+NOL-delete, the main-tests clean-up, F-J, and the clean-up after them; see below). Passed / expected-fail pins, the
+same in all 9 unpatched runs apart from #34 rows:
+
+| Package                         | `test:unit` | `test:integration` | `test:noncompiler` |
+| ------------------------------- | ----------- | ------------------ | ------------------ |
+| `@tanstack/compiler-test-utils` | 77 / 0      | 131 / 0            | –                  |
+| `@tanstack/router-generator`    | 239 / 30    | 67 / 3             | –                  |
+| `@tanstack/router-plugin`       | 107 / 20    | 674 / 349          | –                  |
+| `@tanstack/start-plugin-core`   | 270 / 132   | 1202 / 293         | 147 / 0            |
+| `@tanstack/react-start-rsc`     | no files    | 108 / 13           | 57 / 0             |
 
 How the counts moved from d07614d3b3 (ctu 330 / 0 and 171 / 0; router-plugin `test:integration` 674 / 355;
 start-plugin-core 389 / 143 and 1204 / 292; noncompiler 121 / 0 and 49 / 0):
@@ -119,8 +143,8 @@ start-plugin-core 389 / 143 and 1204 / 292; noncompiler 121 / 0 and 49 / 0):
   `test:integration` −40 (the build harness's 32 dangling-name rows, validate-module-build 2, added-code 6). No
   acceptance row of the compiler packages changed.
 
-The previous measurement (F-E-b) ran at 45f58967ea; the passes below came after it and are covered by the
-measurement above (F-H), the F-I pass by the start-plugin-core part of it. The final pass F-F (October 2026) re-audited "no re-implementation; client semantics in a browser" file by file and changed tests and
+The measurement F-E-b ran at 45f58967ea. The passes below came after it and are covered by F-H (633a4c0917; the F-I
+pass by F-H's start-plugin-core part) and by the measurement above (FINAL-2, f16aae85ac). The final pass F-F (October 2026) re-audited "no re-implementation; client semantics in a browser" file by file and changed tests and
 helpers (below); its changes were validated locally (every tier and lane above, the strict import gate, since deleted). Count changes against
 45f58967ea: ctu `test:unit` −3 (the controls of the deleted
 Node stand-in `evaluateServed`), ctu `test:integration` +1 (a control of the build-decided dangling-name check),
@@ -165,8 +189,8 @@ Caveats:
     `known-bugs-start-compiler-dev` "top-level call of a project function" and "top-level member call of a
     pre-bundled dependency", and `start-compiler-dev-server` "a module importing a factory that stops being one keeps
     its handler". In the 145 runs of the previous measurement (45f58967ea) on beetle it failed one or two of them in
-    13 runs; in the 145 runs of the last one (633a4c0917, after F-G1) and in 11 local start-plugin-core integration
-    runs it did not occur.
+    13 runs; it did not occur in the 145 runs at 633a4c0917 (after F-G1), in 11 local start-plugin-core integration runs, or in
+    the 145 runs of the last measurement (f16aae85ac).
   - #34 (Vite's optimizer writes its cache after `close()`): an `ENOTEMPTY` on cleanup fails all 33 rows of
     `integration/importProtection/mock-shapes.test.ts` in a run. It hit 3 of 145 runs at 45f58967ea. Since F-G1 the Vite dev
     servers of start-plugin-core's harnesses are real React Start apps, which pre-bundle React when they start
@@ -181,13 +205,17 @@ Caveats:
     right after they start; every one with the #34 signature (`ENOTEMPTY` removing `node_modules/.vite` or
     `.vite/deps_temp_*`). The last measurement (633a4c0917, beetle, load up to 55) saw single #34 rows in 4 of 9
     unpatched runs and in 66 of its 145 runs (86 rows), also in files re-run alone (the clean tree alone failed
-    6 times); locally, 5 of 11 start-plugin-core integration runs at load below 4. A file that fails only on #34 can
+    6 times); locally, 5 of 11 start-plugin-core integration runs at load below 4. The last measurement (f16aae85ac, beetle, 3
+    trees × 4 workers) saw one or two #34 rows in 6 of 9 unpatched runs (9 rows) and in 62 of its 144 patched and
+    unpatched jobs (82 rows); some were an `ENOTEMPTY` on the app directory itself (`.start-dev-server-*`), the
+    same race. A file that fails only on #34 can
     fail again alone: re-run it more than once. The same race can also fail the optimizer's own write into the removed
     app (`Error during dependency optimization`, rolldown "Failed to write file ... No such file or directory" under
     `node_modules/.vite/deps_temp_*`): Vitest reports it as an unhandled rejection and the tier fails with no failing
     row (seen once, in a local start-plugin-core integration run during F-J). Held by the #34 ruling: no workaround. What
     Vite writes into a removed app no longer stays in the packages: since the pass F-J the apps live in the run's directory in the system's
-    temporary directory (`src/app-directory.ts`, `src/run-directory.ts`), removed when the run ends. (Before, they were
+    temporary directory (`src/app-directory.ts`, `src/run-directory.ts`), removed when the run ends (an empty
+    `generator/` written after the end can leave the run directory behind there, outside the repository). (Before, they were
     hidden directories of the packages' `tests/`, and the removed apps left about 1,900 directories per tree after 50
     runs, which made start-plugin-core's `test:eslint` fail on the pre-bundled files left in them.)
   - Re-run a file that failed only on these alone (more than once for #34) before reading it as a compiler failure.
