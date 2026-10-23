@@ -64,6 +64,10 @@ function getChunkMetadataFromModules(modules: Array<RspackModule>): {
 
     const params = new URLSearchParams(query)
     if (hasRouteMetadata && params.has(tsrSplit)) {
+      // rspack reports module paths using the OS separator, while the generated route
+      // tree records every route `filePath` with POSIX separators. Normalize before the
+      // path becomes a manifest key, otherwise no route matches its chunk on Windows and
+      // every route loses its stylesheets and preloads.
       const routeFilePath = toPosixPath(
         mod.nameForCondition() ?? resourcePart.slice(0, queryIndex),
       )
