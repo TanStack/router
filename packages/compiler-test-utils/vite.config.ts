@@ -19,6 +19,7 @@ export default defineConfig({
     dir: './tests',
     watch: false,
     reporters: ['default', '@tanstack/compiler-test-utils/budget-reporter'],
+    globalSetup: ['./src/run-directory.ts'],
     projects: [
       {
         // Fast tier (`test:unit`): in process; a Vite dev server in

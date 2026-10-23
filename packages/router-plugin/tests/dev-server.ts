@@ -3,8 +3,10 @@
  * router plugin (React, file-based routes in `routes/`, the route tree in
  * `routeTree.gen.ts`, code splitting on) on a temporary app, through the
  * shared dev-server harness (`@tanstack/compiler-test-utils/dev-server`). The
- * temporary apps live in this directory, so their imports resolve to this
- * package's dependencies: the real router packages, React, Solid and Vue.
+ * temporary apps stand in for apps in this directory
+ * (`@tanstack/compiler-test-utils/app-directory`), so their imports resolve
+ * to this package's dependencies: the real router packages, React, Solid and
+ * Vue.
  *
  * Its server-side helpers (`renderRoutePath`, `import` of the SSR
  * environment) judge server semantics. Client semantics of route module

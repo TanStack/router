@@ -21,10 +21,11 @@ import {
 import { Generator } from '../src'
 import {
   conflictingFiles,
+  copyFixture,
   customTemplates,
   fixtureConfig,
-  fixtureDir,
   fixtureNames,
+  keepTreeForTypeTests,
   prepareFixture,
 } from './generator-fixture'
 import { crlfRoutes, generateCrlf } from './crlf-app'
@@ -216,22 +217,29 @@ describe('generator fixtures', async () => {
   it.each(await fixtureNames())(
     'the "%s" fixture gets its routes',
     async (name) => {
-      const config = fixtureConfig(name)
-      const before = await prepareFixture(name)
-      const generator = new Generator({ config, root: fixtureDir(name) })
-      const conflicting = conflictingFiles(name)
+      // A copy: the generator may edit the fixture's route files
+      const dir = await copyFixture(name)
+      // (temporary files on the copy's filesystem)
+      const config = {
+        ...fixtureConfig(name, dir),
+        tmpDir: path.join(dir, 'tmp'),
+      }
+      const before = await prepareFixture(name, dir)
+      const generator = new Generator({ config, root: dir })
+      const conflicting = conflictingFiles(name, dir)
       if (conflicting) {
         const error = await captureThrow(() => generator.run())
         for (const file of conflicting) {
           expectDiagnostic(error, {
             severity: 'error',
-            root: fixtureDir(name),
+            root: dir,
             file,
           })
         }
         return
       }
       await generator.run()
+      await keepTreeForTypeTests(name, config)
 
       expect(fixtureRoutes[name], 'the routes of the fixture').toBeDefined()
       await expectFixtureRoutes(config.generatedRouteTree, fixtureRoutes[name]!)

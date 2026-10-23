@@ -11,7 +11,8 @@
  * protection, router generator, route tree client plugin and start manifest
  * all run, as in an app. `@tanstack/react-start` is the real package
  * (`startRuntimeLinks`), and `@tanstack/react-router` the real one too (a
- * dependency of this package). The temporary apps live in this directory.
+ * dependency of this package). The temporary apps stand in for apps in this
+ * directory (`@tanstack/compiler-test-utils/app-directory`).
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'

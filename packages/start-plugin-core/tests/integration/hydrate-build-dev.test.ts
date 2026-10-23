@@ -2,6 +2,7 @@ import { writeFile } from 'node:fs/promises'
 import react from '@vitejs/plugin-react'
 import { createServer } from 'vite'
 import { describe, expect, onTestFinished, test } from 'vitest'
+import { servedDirectories } from '@tanstack/compiler-test-utils/app-directory'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import {
   clientEntryFiles,
@@ -107,7 +108,11 @@ createRoot(document.getElementById('root')!).render(<Page />)
         root: server.root,
         configFile: false,
         logLevel: 'error',
-        server: { host: '127.0.0.1', port: 0 },
+        server: {
+          host: '127.0.0.1',
+          port: 0,
+          fs: { allow: await servedDirectories(server.root) },
+        },
         optimizeDeps,
         plugins: [startPlugin(server.root, {}), clientFixturePlugin, react()],
       })

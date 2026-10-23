@@ -37,6 +37,7 @@ const config = defineConfig({
     name: packageJson.name,
     watch: false,
     reporters: ['default', '@tanstack/compiler-test-utils/budget-reporter'],
+    globalSetup: ['@tanstack/compiler-test-utils/run-directory'],
     projects: [
       {
         // Fast compiler acceptance tier; real apps run in integration.

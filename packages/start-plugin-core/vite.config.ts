@@ -31,6 +31,7 @@ const config = defineConfig({
     dir: './tests',
     watch: false,
     reporters: ['default', '@tanstack/compiler-test-utils/budget-reporter'],
+    globalSetup: ['@tanstack/compiler-test-utils/run-directory'],
     setupFiles: ['@tanstack/compiler-test-utils/test-scope-setup'],
     projects: [
       {

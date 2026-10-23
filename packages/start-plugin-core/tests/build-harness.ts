@@ -14,7 +14,8 @@
  * are Start's, and Rspack loads Start's loaders from the package as in an
  * installed app. The output of each environment is described and run with
  * the shared build harness (`@tanstack/compiler-test-utils/build-harness`).
- * The temporary apps live in this directory.
+ * The temporary apps stand in for apps in this directory
+ * (`@tanstack/compiler-test-utils/app-directory`).
  *
  * `@tanstack/react-start` is the real package (`startRuntimeLinks`), and
  * `@tanstack/react-router` the real one too (a dependency of this package,

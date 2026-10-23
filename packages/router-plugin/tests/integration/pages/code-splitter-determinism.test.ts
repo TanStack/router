@@ -7,9 +7,8 @@
  * builds the same app in two directories. Windows module ids are platform
  * evidence for a Windows run (N24).
  */
-import { mkdirSync, rmSync } from 'node:fs'
 import path from 'node:path'
-import { afterAll, describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { expectRelocatable } from '@tanstack/compiler-test-utils/determinism'
 import { head, loadRoute } from '../../route-app'
 
@@ -28,13 +27,14 @@ export const Route = createFileRoute('/')({
 })
 `
 
-/** Directory of the other project roots of this file, removed after it. */
+/** Directory of the other project roots of this file. */
 const rootsDir = path.join(import.meta.dirname, '.relocation-roots')
-afterAll(() => {
-  rmSync(rootsDir, { recursive: true, force: true })
-})
 
-/** Project roots the same route file is served from (directories the app is created in). */
+/**
+ * Project roots the same route file is served from (directories the app
+ * stands in for: `@tanstack/compiler-test-utils/app-directory` creates it at
+ * the same path below a temporary directory).
+ */
 const roots: Record<string, string> = {
   reference: import.meta.dirname,
   'another root': path.join(rootsDir, 'srv/apps/project/src'),
@@ -52,7 +52,6 @@ const roots: Record<string, string> = {
  */
 async function serveUnder(name: string) {
   const dir = roots[name]!
-  mkdirSync(dir, { recursive: true })
   const loaded = await loadRoute(route, {
     dir,
     fresh: true,

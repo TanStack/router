@@ -10,7 +10,8 @@
  * Start's own dev server middleware (SSR), Vite's HMR client and React
  * Refresh; Vite's own watcher reports the test's file edits (`write()`).
  *
- * The temporary apps live in this directory: their bare imports (`react`,
+ * The temporary apps stand in for apps in this directory
+ * (`@tanstack/compiler-test-utils/app-directory`): their bare imports (`react`,
  * `@tanstack/react-router`, `@vitejs/plugin-rsc`, ...) resolve to this
  * package's dependencies, as in an installed app. `@tanstack/react-start`
  * is not one of them (it depends on this package), so the built workspace

@@ -5,12 +5,13 @@
  * (the corpus) and the file-watcher control outside the corpus run. Waits
  * are on the compiler's own build events.
  */
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
+import { createAppDirectory } from '@tanstack/compiler-test-utils/app-directory'
 import { onTestFinished } from '@tanstack/compiler-test-utils/test-scope'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
@@ -73,7 +74,7 @@ export interface WatchSession {
 export async function startWatchSession(
   bundler: WatchBundler,
 ): Promise<WatchSession> {
-  const root = await mkdtemp(path.join(harnessDir, '.generator-watch-'))
+  const root = await createAppDirectory(harnessDir, '.generator-watch-')
   let close: () => Promise<unknown> = () => Promise.resolve()
   onTestFinished(async () => {
     await close()

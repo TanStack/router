@@ -41,7 +41,7 @@ const config = defineConfig({
     dir: './tests',
     watch: false,
     reporters: ['default', '@tanstack/compiler-test-utils/budget-reporter'],
-    globalSetup: ['./tests/generator-tmp-dir.ts'],
+    globalSetup: ['@tanstack/compiler-test-utils/run-directory'],
     setupFiles: ['@tanstack/compiler-test-utils/test-scope-setup'],
     projects: [
       {

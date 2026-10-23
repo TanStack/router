@@ -10,21 +10,16 @@
  * imported nor a browser global (`DanglingNameError`).
  *
  * Plugin-agnostic: the caller supplies the plugin of each build, and the
- * directory its apps live in (where their imports resolve).
+ * directory its apps stand in for (where their imports resolve: see
+ * `./app-directory`).
  */
 import { readFileSync, rmSync } from 'node:fs'
-import {
-  mkdir,
-  mkdtemp,
-  readFile,
-  rm,
-  symlink,
-  writeFile,
-} from 'node:fs/promises'
+import { mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { SourceMap as NodeSourceMap } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { createAppDirectory } from './app-directory'
 import { openDiagnosticChannel } from './diagnostic-channel'
 import { runNodeProgram } from './run-node'
 import { savingDirectory } from './save-file'
@@ -82,9 +77,10 @@ export interface SourceMap {
 
 export interface AppOptions {
   /**
-   * Directory the temporary app is created in: the app's bare imports
-   * resolve from there (e.g. to the workspace packages of the package that
-   * owns it).
+   * Directory the temporary app stands in for: the app's bare imports
+   * resolve as from there (e.g. to the workspace packages of the package
+   * that owns it). The app itself is created in the system's temporary
+   * directory (`./app-directory`).
    */
   dir: string
   /** App files by path relative to the app root. */
@@ -92,7 +88,7 @@ export interface AppOptions {
   /**
    * The app's `package.json`. The default declares no `sideEffects`, so the
    * app's own modules count as side-effectful. `null` writes none: the app
-   * then inherits the nearest package.json above `dir`.
+   * then has no package.json (none above it either).
    */
   packageJson?: Record<string, unknown> | null
   /** Shorthand for `packageJson.sideEffects`. */
@@ -308,13 +304,15 @@ process.once('exit', () => {
 })
 
 /**
- * Writes an app to a temporary directory in `options.dir`, so that its
- * imports resolve from there. The directory is removed by `dispose()`, which
- * `registerCleanup` also receives.
+ * Writes an app to a temporary directory that stands in for `options.dir`
+ * (`./app-directory`), so that its imports resolve as from there. The
+ * directory is removed by `dispose()`, which `registerCleanup` also
+ * receives.
  */
 export async function createApp(options: AppOptions): Promise<App> {
-  const root = await mkdtemp(
-    path.join(options.dir, options.prefix ?? '.build-harness-'),
+  const root = await createAppDirectory(
+    options.dir,
+    options.prefix ?? '.build-harness-',
   )
   liveApps.add(root)
   const dispose = async () => {

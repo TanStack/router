@@ -41,7 +41,7 @@
  * there), and for the dev engine's output.
  *
  * Plugin-agnostic: the caller supplies the plugins and the directory the apps
- * live in (where their imports resolve).
+ * stand in for (where their imports resolve: see `./app-directory`).
  */
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { readFileSync, statSync } from 'node:fs'
@@ -57,6 +57,7 @@ import {
 } from 'node:fs/promises'
 import path from 'node:path'
 import { createServer, isRunnableDevEnvironment, mergeConfig } from 'vite'
+import { servedDirectories } from './app-directory'
 import { createApp } from './build-harness'
 import { scopeMethods } from './console-hook'
 import { openDiagnosticChannel } from './diagnostic-channel'
@@ -288,7 +289,7 @@ interface ReportedEvent {
 }
 
 /**
- * Writes an app to a temporary directory in `options.dir` and starts a Vite
+ * Writes an app (`createApp`: it stands in for `options.dir`) and starts a Vite
  * dev server on it with its file watcher, and resolves once the watcher
  * watches the app. `close()`, which `registerCleanup` also receives, closes
  * the server and removes the directory.
@@ -661,14 +662,17 @@ async function startServer(
           appType: browser ? 'spa' : 'custom',
           clearScreen: false,
           customLogger: logger,
+          // The app's own dependency cache: never the `node_modules/.vite`
+          // of the packages its imports resolve to (`./app-directory`)
+          cacheDir: path.join(root, 'node_modules/.vite'),
           // Dependencies are served as they are, so that a first request
           // never waits for the dependency optimizer or triggers a reload.
           // A browser page needs them pre-bundled (CommonJS dependencies).
-          ...(browser
-            ? { cacheDir: path.join(root, 'node_modules/.vite') }
-            : { optimizeDeps: { noDiscovery: true, include: [] } }),
+          ...(!browser && { optimizeDeps: { noDiscovery: true, include: [] } }),
           server: {
             middlewareMode: !listen,
+            // What Vite serves for an app in `dir` (`./app-directory`)
+            fs: { allow: await servedDirectories(root) },
             // One address, as the harness's other servers (Rsbuild, static,
             // preview): Vite's default `localhost` names `::1` and
             // `127.0.0.1` while the server listens on only the first. A

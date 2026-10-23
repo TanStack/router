@@ -5,6 +5,7 @@
   "description": "Test infrastructure shared by the compiler test suites: a public in-process plugin host (Vite, Rsbuild) driving the plugins a user configures, a real-build harness, dev-server harnesses (Vite, Rsbuild), a real browser page, one merged diagnostic channel, and the free names of a module (Yuku)",
   "type": "module",
   "exports": {
+    "./app-directory": "./src/app-directory.ts",
     "./browser": "./src/browser.ts",
     "./budget-reporter": "./src/budget-reporter.ts",
     "./build-harness": "./src/build-harness.ts",
@@ -21,6 +22,7 @@
     "./plugin-host": "./src/plugin-host.ts",
     "./rsbuild-dev-server": "./src/rsbuild-dev-server.ts",
     "./rsbuild-plugin-host": "./src/rsbuild-plugin-host.ts",
+    "./run-directory": "./src/run-directory.ts",
     "./run-node": "./src/run-node.ts",
     "./source-maps": "./src/source-maps.ts",
     "./strict-runner": "./src/strict-runner.ts",
