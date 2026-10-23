@@ -71,11 +71,16 @@ describe('Vite dev server', () => {
   }
 
   /**
-   * Starts a Vite dev server (middleware mode, empty dependency cache) on a
-   * temporary project with Start's whole Vite plugin, Start's real runtime
-   * (`linkStartRuntime`), `src/fn.ts` = `code` and `files` (in `src`), and
-   * requests the client transform of `src/fn.ts`, as the first request of
-   * the server. Returns `'hang'` when the transform stops making progress
+   * Creates a Vite dev server (empty dependency cache) on a temporary project
+   * with Start's whole Vite plugin, Start's real runtime (`linkStartRuntime`),
+   * `src/fn.ts` = `code` and `files` (in `src`), requests the client
+   * transform of `src/fn.ts`, and starts the server (`listen()`) once Vite
+   * loads that module. The transform is then in flight when Vite's dependency
+   * optimizer starts, so it is part of the optimizer's first crawl of static
+   * imports (the optimizer's first run waits for it), whatever the timing. A
+   * request made after the server started joins that crawl only when it
+   * reaches Vite within 50 ms of the optimizer's start, which a loaded machine
+   * can miss. Returns `'hang'` when the transform stops making progress
    * before it finishes (`settledOrHung`); otherwise the code it served.
    */
   async function transformClientModule(
@@ -90,6 +95,10 @@ describe('Vite dev server', () => {
       lastActivity = performance.now()
       return null
     }
+    const fnFile = path.join(root, 'src/fn.ts')
+    let fnLoading!: () => void
+    // Vite calls the load hooks of a module once it tracks its request
+    const fnLoaded = new Promise<void>((resolve) => (fnLoading = resolve))
     try {
       for (const [file, content] of Object.entries({
         ...startPluginFiles,
@@ -110,20 +119,30 @@ describe('Vite dev server', () => {
         logLevel: 'silent',
         cacheDir: path.join(root, '.vite'),
         appType: 'custom',
-        server: { middlewareMode: true, hmr: false, ws: false, watch: null },
+        // One address, as the harness's other servers (FINAL-PASS #56)
+        server: { host: '127.0.0.1', hmr: false, ws: false, watch: null },
         plugins: [
           {
             name: 'record-activity',
             enforce: 'pre',
             resolveId: active,
-            load: active,
+            load(id) {
+              if (id === fnFile) {
+                fnLoading()
+              }
+              return active()
+            },
             transform: active,
           },
           startPlugin(root, {}),
         ],
       })
+      // A server that is not listening yet has not started its dependency
+      // optimizer (Vite starts it in `listen()`)
       const transformed =
         server.environments.client.transformRequest('/src/fn.ts')
+      await Promise.race([fnLoaded, transformed.catch(() => {})])
+      await server.listen()
       if ((await settledOrHung(transformed, () => lastActivity)) === 'hang') {
         transformed.catch(() => {})
         return 'hang' as const
@@ -206,9 +225,10 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
   // Source: the pin of the `z.object()` row above, before #8758.
   // Impact: with an empty dependency cache, such a module (an `object()`
   // schema from `import { object } from 'zod'` next to a server fn) never
-  // finishes transforming when it is requested as the dev server starts
-  // (`server.warmup`, the first request of a middleware-mode server, or
-  // `transformRequest()`), and the page hangs.
+  // finishes transforming when its transform is part of Vite's first crawl of
+  // static imports: requested before the server listens, or within about
+  // 50 ms of the dependency optimizer's start (`server.warmup`, the first
+  // request of a middleware-mode server), and the page hangs.
   test.fails(
     'transforms a client module with a server fn and a top-level call of a pre-bundled dependency',
     async () => {

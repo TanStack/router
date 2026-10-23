@@ -96,8 +96,12 @@ fixes touched; every lane locally):
     - the 34 valid greens pass, apart from #34 rows that passed alone and green-sol/20's two expected pin flips;
       **one exception**: in green-sol/17's run the pin `known-bugs-start-compiler-dev.test.ts` "transforms a client
       module with a server fn and a top-level call of a pre-bundled dependency" (a dev-server deadlock) passed once,
-      at a load of about 22, and failed again alone. That pin can flip under load (first seen in about 210 suite
-      runs); not investigated yet;
+      at a load of about 22, and failed again alone (first flip in about 210 suite runs). F-N: the order of the
+      test's requests decided it, not the compiler. Vite's dependency optimizer ends its first crawl of static
+      imports when no request is in flight 50 ms after it starts; the test's first request came after
+      `createServer()` had started the optimizer, and a loaded machine can delay it past those 50 ms, so the
+      transform was not in the crawl and did not deadlock. The test now requests the module before the server
+      listens (Vite starts the optimizer in `listen()`), so the transform is always in the crawl;
     - 18 reds: the 14 whose catching rows are in files F-L or F-M changed, red-astra/12 and red-fable-r2/13 (caught
       by the dangling-name check, which F-L changed), red-fable/20 and red-astra-r2/15 (each caught by one row). All
       18 are caught, by the same rows as before, except red-fable-r2/18 (99 rows instead of 100: "'always' logs a
