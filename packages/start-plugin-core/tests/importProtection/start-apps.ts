@@ -60,7 +60,10 @@ export interface Violation {
   importer: string
   specifier: string
   resolved?: string
-  /** The import chain, from an entry to the importer (`file[:line:column]`). */
+  /**
+   * The import chain, from an entry to the importer (`file[:line:column]`),
+   * whichever direction `onViolation` listed it in (`traceFromEntry`).
+   */
   trace: Array<{ at: string; imports?: string }>
 }
 
@@ -101,7 +104,25 @@ export function violationRecorder(
   }
 }
 
-/** The violations of `recorded`, in order. */
+/**
+ * The steps of `info.trace` from the entry to the importer. A trace may be
+ * listed entry first or entry last (SPEC J6.5, ruling "restructured
+ * compilers", R10): one whose first step is the importer, and whose last
+ * step is not, is listed entry last.
+ */
+export function traceFromEntry(info: ViolationInfo): ViolationInfo['trace'] {
+  const isImporter = (step: ViolationInfo['trace'][number] | undefined) =>
+    step !== undefined &&
+    step.file.split('?')[0] === info.importer.split('?')[0]
+  return isImporter(info.trace[0]) && !isImporter(info.trace.at(-1))
+    ? [...info.trace].reverse()
+    : info.trace
+}
+
+/**
+ * The violations of `recorded`, in order (each trace from the entry to the
+ * importer, `traceFromEntry`).
+ */
 export function violationsOf(recorded: Recorded): Array<Violation> {
   return recorded.violations.map((info) => ({
     environment: info.envType,
@@ -116,7 +137,7 @@ export function violationsOf(recorded: Recorded): Array<Violation> {
     ...(info.resolved !== undefined && {
       resolved: relative(recorded.root, info.resolved),
     }),
-    trace: info.trace.map((step) => ({
+    trace: traceFromEntry(info).map((step) => ({
       at: located(recorded.root, step.file, step.line, step.column),
       ...(step.specifier !== undefined && { imports: step.specifier }),
     })),
