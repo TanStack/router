@@ -1877,7 +1877,7 @@ type HydrationOwner = {
 }
 
 type CreateHydrationOwner = (
-  nonce: string | undefined,
+  getNonce: () => string | undefined,
   initialSources: ReadonlyArray<string>,
 ) => HydrationOwner
 
@@ -1966,7 +1966,7 @@ function measureHydrationOwner(
       maxMemory(peak, delta(memory(), baseline!))
     }
   }
-  const owner = createHydrationOwner(undefined, [])
+  const owner = createHydrationOwner(() => undefined, [])
   owner.takeInitialHydrationScriptTags()
   const output = owner.claimOutput()
   owner.liftBarrier()

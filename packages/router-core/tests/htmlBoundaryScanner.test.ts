@@ -23,7 +23,7 @@ const HYDRATION_SCRIPT_BOUNDARY_SUFFIX = decoder.decode(
   HYDRATION_SCRIPT_BOUNDARY_BYTES,
 )
 const HYDRATION_SCRIPT_BOUNDARY_SOURCE = createHydrationScripts(
-  undefined,
+  () => undefined,
   [],
 ).takeInitialHydrationScriptTags()!.boundary.children!
 

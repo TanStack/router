@@ -478,7 +478,7 @@ describe('serverSsr.cleanup', () => {
   })
 
   test('the final hydration tag cleans adjacent parts before adapter scripts', () => {
-    const hydrationScripts = createHydrationScripts(undefined, ['void 0'])
+    const hydrationScripts = createHydrationScripts(() => undefined, ['void 0'])
     const scripts = hydrationScripts.takeInitialHydrationScriptTags()!
     const cleanupTag = scripts.before.at(-1)!
     const nodes: Array<any> = []
@@ -521,7 +521,10 @@ describe('serverSsr.cleanup', () => {
       'throw new Error("runtime failure")',
       'const = "syntax failure"',
     ]) {
-      const hydrationScripts = createHydrationScripts(undefined, [brokenSource])
+      const hydrationScripts = createHydrationScripts(
+        () => undefined,
+        [brokenSource],
+      )
       const scripts = hydrationScripts.takeInitialHydrationScriptTags()!
       const nodes: Array<{ remove: () => void }> = []
       const part = {
@@ -544,7 +547,7 @@ describe('serverSsr.cleanup', () => {
   })
 
   test('the boundary removes only itself when there are no initial parts', () => {
-    const hydrationScripts = createHydrationScripts(undefined, [])
+    const hydrationScripts = createHydrationScripts(() => undefined, [])
     const scripts = hydrationScripts.takeInitialHydrationScriptTags()!
     const nodes: Array<{ remove: () => void }> = []
     const boundary = {

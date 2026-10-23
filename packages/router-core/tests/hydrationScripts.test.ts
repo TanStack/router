@@ -11,7 +11,7 @@ const decoder = new TextDecoder()
 const encoder = new TextEncoder()
 
 function getBoundarySource() {
-  const scripts = createHydrationScripts(undefined, [])
+  const scripts = createHydrationScripts(() => undefined, [])
   const source = scripts.takeInitialHydrationScriptTags()!.boundary.children!
   scripts.cleanup()
   return source
@@ -20,7 +20,7 @@ function getBoundarySource() {
 const HYDRATION_SCRIPT_BOUNDARY_SOURCE = getBoundarySource()
 
 function createReadyOutput(nonce?: string) {
-  const scripts = createHydrationScripts(nonce, ['boot()'])
+  const scripts = createHydrationScripts(() => nonce, ['boot()'])
   const initial = scripts.takeInitialHydrationScriptTags()!
   const output = scripts.claimOutput()
   scripts.liftBarrier()
@@ -52,7 +52,10 @@ async function flushMicrotasks() {
 
 describe('hydration script ownership', () => {
   test('takes initial sources before the output is claimed', () => {
-    const scripts = createHydrationScripts(undefined, ['first()', 'second()'])
+    const scripts = createHydrationScripts(
+      () => undefined,
+      ['first()', 'second()'],
+    )
     const initial = scripts.takeInitialHydrationScriptTags()!
 
     expect(initial.before[0]).toMatchObject({
@@ -68,7 +71,7 @@ describe('hydration script ownership', () => {
   })
 
   test('supports taking initial tags through the ServerSsr callback', () => {
-    const scripts = createHydrationScripts(undefined, ['boot()'])
+    const scripts = createHydrationScripts(() => undefined, ['boot()'])
     const takeInitialHydrationScriptTags =
       scripts.takeInitialHydrationScriptTags
 
@@ -79,7 +82,7 @@ describe('hydration script ownership', () => {
   })
 
   test('notifies the subscriber and pulls late records', () => {
-    const scripts = createHydrationScripts(undefined, [])
+    const scripts = createHydrationScripts(() => undefined, [])
     scripts.takeInitialHydrationScriptTags()
     const output = scripts.claimOutput()
     const onChange = vi.fn()
@@ -95,7 +98,7 @@ describe('hydration script ownership', () => {
   })
 
   test('skipInitialTake releases initial sources as late records', () => {
-    const scripts = createHydrationScripts(undefined, ['boot()'])
+    const scripts = createHydrationScripts(() => undefined, ['boot()'])
     const output = scripts.claimOutput()
     scripts.pushSource('late()')
     scripts.liftBarrier()
@@ -112,7 +115,7 @@ describe('hydration script ownership', () => {
   })
 
   test('empty initial output keeps only the stream boundary', () => {
-    const scripts = createHydrationScripts(undefined, [])
+    const scripts = createHydrationScripts(() => undefined, [])
     const initial = scripts.takeInitialHydrationScriptTags()!
 
     expect(initial.before).toEqual([])
@@ -126,7 +129,7 @@ describe('hydration script ownership', () => {
 
   test('does not append cleanup to a large initial source', () => {
     const source = 'x'.repeat(20 * 1024)
-    const scripts = createHydrationScripts(undefined, [source])
+    const scripts = createHydrationScripts(() => undefined, [source])
     const initial = scripts.takeInitialHydrationScriptTags()!
 
     expect(initial.before).toHaveLength(2)
@@ -144,7 +147,7 @@ describe('hydration script ownership', () => {
   })
 
   test('does not move pending initial sources into an early claimant', () => {
-    const scripts = createHydrationScripts(undefined, ['boot()'])
+    const scripts = createHydrationScripts(() => undefined, ['boot()'])
     const output = scripts.claimOutput()
 
     scripts.pushSource('beforeScripts()')
@@ -161,7 +164,7 @@ describe('hydration script ownership', () => {
 
   test('releases initial source accounting when tags take ownership', () => {
     const sources = Array.from({ length: 4_096 }, (_, index) => `${index}`)
-    const scripts = createHydrationScripts(undefined, sources)
+    const scripts = createHydrationScripts(() => undefined, sources)
     expect(scripts.takeInitialHydrationScriptTags()).toBeDefined()
     const output = scripts.claimOutput()
     scripts.liftBarrier()
@@ -176,7 +179,7 @@ describe('hydration script ownership', () => {
   })
 
   test('transfers buffered sources in order only after the barrier lifts', async () => {
-    const scripts = createHydrationScripts(undefined, ['boot()'])
+    const scripts = createHydrationScripts(() => undefined, ['boot()'])
     scripts.takeInitialHydrationScriptTags()
     const output = scripts.claimOutput()
 
@@ -218,6 +221,64 @@ describe('hydration script ownership', () => {
       '<script nonce="a&#38;&#34;&#39;&#60;&#62;">first();second();document.currentScript.remove()</script>',
     )
     scripts.cleanup()
+  })
+
+  test('warns when the nonce changes after the initial tags are taken', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      let nonce = 'first'
+      const scripts = createHydrationScripts(() => nonce, ['boot()'])
+      const initial = scripts.takeInitialHydrationScriptTags()!
+      expect(initial.boundary.attrs?.nonce).toBe('first')
+      nonce = 'second'
+      const output = scripts.claimOutput()
+      scripts.liftBarrier()
+      scripts.pushSource('late()')
+      await flushMicrotasks()
+      expect(decodeChunks(drainChunks(output))).toContain(
+        '<script nonce="second">',
+      )
+      expect(warn).toHaveBeenCalledTimes(1)
+      expect(warn.mock.calls[0]![0]).toContain('ssr.nonce changed')
+      scripts.cleanup()
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
+  test('does not warn when no initial tags were rendered', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const scripts = createHydrationScripts(() => 'abc', ['boot()'])
+      const output = scripts.claimOutput()
+      scripts.liftBarrier()
+      scripts.skipInitialTake()
+      scripts.pushSource('late()')
+      await flushMicrotasks()
+      expect(decodeChunks(drainChunks(output))).toContain(
+        '<script nonce="abc">',
+      )
+      expect(warn).not.toHaveBeenCalled()
+      scripts.cleanup()
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
+  test('does not warn when the nonce is unchanged', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const { scripts, output } = createReadyOutput('same')
+      scripts.pushSource('late()')
+      await flushMicrotasks()
+      expect(decodeChunks(drainChunks(output))).toContain(
+        '<script nonce="same">',
+      )
+      expect(warn).not.toHaveBeenCalled()
+      scripts.cleanup()
+    } finally {
+      warn.mockRestore()
+    }
   })
 
   test.each([
@@ -514,7 +575,7 @@ describe('disabled hydration', () => {
   test('makes the fast path reservable without a take or a boundary', () => {
     vi.useFakeTimers()
     try {
-      const scripts = createHydrationScripts(undefined)
+      const scripts = createHydrationScripts(() => undefined)
       scripts.disableHydration()
 
       expect(scripts.isInitialTaken()).toBe(true)
@@ -534,14 +595,14 @@ describe('disabled hydration', () => {
   })
 
   test('is safe after cleanup', () => {
-    const scripts = createHydrationScripts(undefined)
+    const scripts = createHydrationScripts(() => undefined)
     scripts.disableHydration()
     scripts.cleanup()
     expect(() => scripts.disableHydration()).not.toThrow()
   })
 
   test('rejects disabling after the initial take', () => {
-    const scripts = createHydrationScripts(undefined, ['boot()'])
+    const scripts = createHydrationScripts(() => undefined, ['boot()'])
     scripts.takeInitialHydrationScriptTags()
     expect(() => scripts.disableHydration()).toThrow(
       'hydration output is already committed',
@@ -550,7 +611,7 @@ describe('disabled hydration', () => {
   })
 
   test('rejects disabling after the output channel was claimed', () => {
-    const scripts = createHydrationScripts(undefined, ['boot()'])
+    const scripts = createHydrationScripts(() => undefined, ['boot()'])
     scripts.claimOutput()
     expect(() => scripts.disableHydration()).toThrow(
       'hydration output is already committed',
@@ -605,7 +666,7 @@ describe('hydration script completion and failure', () => {
   })
 
   test('applies the source-part guard before the initial take', () => {
-    const scripts = createHydrationScripts(undefined, [])
+    const scripts = createHydrationScripts(() => undefined, [])
 
     try {
       for (let index = 0; index <= 4_096; index++) {
@@ -623,7 +684,7 @@ describe('hydration script completion and failure', () => {
 
   test('applies the source-part guard to constructor sources', () => {
     const sources = Array.from({ length: 4_097 }, (_, index) => `${index}`)
-    const scripts = createHydrationScripts(undefined, sources)
+    const scripts = createHydrationScripts(() => undefined, sources)
 
     try {
       const output = scripts.claimOutput()
@@ -651,7 +712,7 @@ describe('hydration script completion and failure', () => {
   })
 
   test('applies the regular backlog guard before the initial take', () => {
-    const scripts = createHydrationScripts(undefined, [])
+    const scripts = createHydrationScripts(() => undefined, [])
     const source = 'x'.repeat(1024 * 1024)
 
     try {
@@ -719,7 +780,7 @@ describe('hydration script completion and failure', () => {
   })
 
   test('rejects a second consumer', () => {
-    const scripts = createHydrationScripts(undefined, ['boot()'])
+    const scripts = createHydrationScripts(() => undefined, ['boot()'])
     scripts.claimOutput()
     expect(() => scripts.claimOutput()).toThrow(
       'SSR hydration script output already has a consumer',
@@ -728,7 +789,7 @@ describe('hydration script completion and failure', () => {
   })
 
   test('rejects an output claim after the fast path owns the consumer', () => {
-    const scripts = createHydrationScripts(undefined)
+    const scripts = createHydrationScripts(() => undefined)
     scripts.disableHydration()
     expect(scripts.reserveFastPath()).toBe(true)
     expect(() => scripts.claimOutput()).toThrow(

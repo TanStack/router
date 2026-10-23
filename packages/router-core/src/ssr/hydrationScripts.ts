@@ -77,6 +77,10 @@ function escapeAttribute(value: string) {
   return value.replace(/[&"'<>]/g, (char) => `&#${char.charCodeAt(0)};`)
 }
 
+function createScriptOpening(nonce: string | undefined) {
+  return nonce ? `<script nonce="${escapeAttribute(nonce)}">` : '<script>'
+}
+
 function createInitialTags(
   sources: ReadonlyArray<string>,
   nonce: string | undefined,
@@ -176,9 +180,12 @@ class HydrationScriptsOwner implements HydrationScriptOutput {
   private outputError: unknown
   private timeout: ReturnType<typeof setTimeout> | undefined
   private opening: string | undefined
+  // Set only when initial tags were rendered, not by skipInitialTake().
+  private initialTagsRendered = false
+  private initialNonce: string | undefined
 
   constructor(
-    private readonly nonce: string | undefined,
+    private readonly getNonce: () => string | undefined,
     initialSources?: ReadonlyArray<string>,
   ) {
     // ServerSsr exposes this method as a bare callback, so keep this single
@@ -197,6 +204,28 @@ class HydrationScriptsOwner implements HydrationScriptOutput {
 
   get state() {
     return this.outputState
+  }
+
+  // Read on use: an app may set `ssr.nonce` after the SSR utilities are
+  // attached, e.g. in the `createStartHandler` callback.
+  private get nonce() {
+    return this.getNonce()
+  }
+
+  // The streamed opening is cached on first use, after the initial tags read
+  // the nonce. A CSP header allows one nonce, so warn when they disagree.
+  private createOpening() {
+    const nonce = this.nonce
+    if (
+      process.env.NODE_ENV !== 'production' &&
+      this.initialTagsRendered &&
+      nonce !== this.initialNonce
+    ) {
+      console.warn(
+        `Warning: router.options.ssr.nonce changed after the initial hydration scripts were rendered (${JSON.stringify(this.initialNonce)} -> ${JSON.stringify(nonce)}). Set the nonce before <Scripts> renders so every script carries the same value.`,
+      )
+    }
+    return createScriptOpening(nonce)
   }
 
   get error() {
@@ -450,9 +479,7 @@ class HydrationScriptsOwner implements HydrationScriptOutput {
   }
 
   private pullReady() {
-    const scriptOpening = (this.opening ??= this.nonce
-      ? `<script nonce="${escapeAttribute(this.nonce)}">`
-      : '<script>')
+    const scriptOpening = (this.opening ??= this.createOpening())
     let codeUnits = scriptOpening.length + DYNAMIC_CLOSE_SOURCE.length
     let batchLength = 0
     for (
@@ -556,8 +583,10 @@ class HydrationScriptsOwner implements HydrationScriptOutput {
     // cleared prefix. Once tags are composed, the same empty array can become
     // the dynamic queue without allocating a replacement.
     const sources = this.queuedSources as Array<string>
-    const tags = createInitialTags(sources, this.nonce)
+    this.initialNonce = this.nonce
+    const tags = createInitialTags(sources, this.initialNonce)
     this.initialTaken = true
+    this.initialTagsRendered = true
     this.releaseAccounting(sources)
     sources.length = 0
     this.queuedSourceHead = 0
@@ -680,10 +709,14 @@ class HydrationScriptsOwner implements HydrationScriptOutput {
   }
 }
 
-/** Create the hydration-script owner for one server request. */
+/**
+ * Create the hydration-script owner for one server request. `getNonce` is
+ * read when the initial tags are taken and when the first streamed script
+ * is framed, so the nonce must be final before `<Scripts>` renders.
+ */
 export function createHydrationScripts(
-  nonce: string | undefined,
+  getNonce: () => string | undefined,
   initialSources?: ReadonlyArray<string>,
 ): HydrationScripts {
-  return new HydrationScriptsOwner(nonce, initialSources)
+  return new HydrationScriptsOwner(getNonce, initialSources)
 }

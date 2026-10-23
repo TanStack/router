@@ -31,7 +31,7 @@ Seroval produces complete hydration sources.
 
 The hydration state owns these tasks:
 
-- It stores the request nonce.
+- It reads the request nonce from the router options when it takes the initial tags and when it frames the first streamed script, which caches the opening tag for the rest of the response. A nonce set after attachment still applies, but it must be final before `<Scripts>` renders; development builds warn when the streamed nonce differs from the initial one.
 - It creates the initial tags and the boundary.
 - It frames late records.
 - It keeps sources in FIFO order.
