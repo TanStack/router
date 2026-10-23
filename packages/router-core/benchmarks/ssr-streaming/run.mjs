@@ -319,6 +319,19 @@ const transformExportNames = {
     : 'transformReadableStreamWithRouter',
 }
 
+// Older revisions take the nonce as a string; newer ones take a getter. The
+// worker always passes a getter, so wrap factories that still expect a string.
+function hydrationOwnerFactorySource(sourceRoot, importName, name) {
+  const ownerSource = existsSync(join(sourceRoot, 'ssr/hydrationScripts.ts'))
+    ? readFileSync(join(sourceRoot, 'ssr/hydrationScripts.ts'), 'utf8')
+    : ''
+  const takesNonceGetter =
+    /export function createHydrationScripts\(\s*getNonce:/.test(ownerSource)
+  return takesNonceGetter
+    ? `const ${name} = ${importName}\n`
+    : `const ${name} = (getNonce, initialSources) => ${importName}(getNonce(), initialSources)\n`
+}
+
 // The worktree transform imports protocol constants from hydrationScripts.
 // Its producer is not used by this benchmark worker, so the Vite-only script
 // string can stay empty in the benchmark bundle.
@@ -344,7 +357,12 @@ async function bundle(implementation) {
     entry,
     suite === 'owner' || suite === 'owner-soak'
       ? `import { runHydrationOwner, runHydrationOwnerSoak } from ${JSON.stringify(resolve(here, 'worker.ts'))}\n` +
-          `import { createHydrationScripts } from ${JSON.stringify(join(sourceRoot, 'ssr/hydrationScripts.ts'))}\n` +
+          `import { createHydrationScripts as createHydrationScriptsImplementation } from ${JSON.stringify(join(sourceRoot, 'ssr/hydrationScripts.ts'))}\n` +
+          hydrationOwnerFactorySource(
+            sourceRoot,
+            'createHydrationScriptsImplementation',
+            'createHydrationScripts',
+          ) +
           `const values = Object.fromEntries(process.argv.slice(2).map((value) => value.replace(/^--/, '').split('=', 2)))\n` +
           `${suite === 'owner-soak' ? 'runHydrationOwnerSoak' : 'runHydrationOwner'}(createHydrationScripts, ${JSON.stringify(implementation)}, values.scenario)\n`
       : `import { run, runProbe } from ${JSON.stringify(resolve(here, 'worker.ts'))}\n` +
@@ -374,8 +392,18 @@ async function bundleWarmComparison() {
     entry,
     suite === 'owner-warm'
       ? `import { runWarmHydrationOwnerComparison } from ${JSON.stringify(resolve(here, 'worker.ts'))}\n` +
-          `import { createHydrationScripts as origin } from ${JSON.stringify(join(originSourceRoot, 'ssr/hydrationScripts.ts'))}\n` +
-          `import { createHydrationScripts as worktree } from ${JSON.stringify(join(candidateSourceRoot, 'ssr/hydrationScripts.ts'))}\n` +
+          `import { createHydrationScripts as originImplementation } from ${JSON.stringify(join(originSourceRoot, 'ssr/hydrationScripts.ts'))}\n` +
+          `import { createHydrationScripts as worktreeImplementation } from ${JSON.stringify(join(candidateSourceRoot, 'ssr/hydrationScripts.ts'))}\n` +
+          hydrationOwnerFactorySource(
+            originSourceRoot,
+            'originImplementation',
+            'origin',
+          ) +
+          hydrationOwnerFactorySource(
+            candidateSourceRoot,
+            'worktreeImplementation',
+            'worktree',
+          ) +
           `const values = Object.fromEntries(process.argv.slice(2).map((value) => value.replace(/^--/, '').split('=', 2)))\n` +
           `const result = runWarmHydrationOwnerComparison({ origin, worktree }, values.scenarios.split(','), Number(values.warmups), Number(values.iterations), Number(values.batchRequests))\n` +
           `process.stdout.write(JSON.stringify(result) + '\\n')\n`
