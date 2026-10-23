@@ -5,9 +5,7 @@
  * builds from the tree (route-tree.ts) nor, for the listing order, the
  * generation's warnings and errors. Only incidental order varies here (ctu `expectDeterministic`);
  * what is compared is what the tree means (`routeTreeSemantics`): how the
- * tree is printed and how siblings are sorted is free. (The current
- * generator's byte-identical output is an implementation control:
- * `outside-compiler-corpus/route-tree-bytes.test.ts`.)
+ * tree is printed and how siblings are sorted is free.
  *
  * (The listing order is varied at the filesystem boundary: writing the files
  * in another order does not change it on tmpfs, which lists by name, nor on

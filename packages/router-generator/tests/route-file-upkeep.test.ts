@@ -444,8 +444,7 @@ describe('stale imports of the other constructor', () => {
       ].join('\r\n'),
     },
     {
-      // (BOM-free: SPEC §2.1 selects BOM-free UTF-8 sources; a BOM is
-      // characterised in tests/outside-compiler-corpus/bom.test.ts)
+      // (BOM-free: SPEC §2.1 selects BOM-free UTF-8 sources.)
       name: 'astral characters before them and in the route call',
       source: [
         '// 😀',

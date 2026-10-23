@@ -180,11 +180,7 @@ async function startAliasDevServer(
     plugins: ({ root }) => [
       clientFixturePlugin,
       ...alias.devPlugins(
-        startPlugin(
-          root,
-          { importProtection: recorder.importProtection },
-          undefined,
-        ),
+        startPlugin(root, { importProtection: recorder.importProtection }),
       ),
     ],
   })

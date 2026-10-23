@@ -1,6 +1,5 @@
 /**
- * The app of the route tree determinism tests (`determinism.test.ts` and
- * the byte control `outside-compiler-corpus/route-tree-bytes.test.ts`): its
+ * The app of the route tree determinism tests (`determinism.test.ts`): its
  * route files, a fresh generation at a root, and listing orders of the
  * filesystem.
  */

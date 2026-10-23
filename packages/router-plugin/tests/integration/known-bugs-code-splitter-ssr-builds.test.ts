@@ -404,6 +404,5 @@ PostsPage.title = 'Posts'
 })
 
 // `this` in split callbacks (a split loader called as a method of its
-// chunk's namespace by router-core's `lazyFn`): a runtime cause, kept as a
-// runtime regression outside the compiler corpus,
-// outside-compiler-corpus/lazy-fn-this.test.ts.
+// chunk's namespace by router-core's `lazyFn`): a runtime cause (#8688),
+// not pinned in the compiler corpus.

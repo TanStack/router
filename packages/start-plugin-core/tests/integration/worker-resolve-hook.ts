@@ -1,8 +1,7 @@
 /**
  * The resolve hook an SSR entry registers to provide `cloudflare:workers` the
  * way the worker runtime would (start-build-v2-unresolvable-imports.test.ts):
- * the one stand-in of a platform module, checked against real workerd in
- * `outside-compiler-corpus/start-build-v2-unresolvable-imports.test.ts`.
+ * the one stand-in of a platform module.
  */
 /** String-binding contract for the resolve hook, checked against workerd below; what the worker runtime provides for `cloudflare:workers`. */
 export const workerEnvModule = `export const env = { SECRET: 'MARK_ENV_SECRET' }`

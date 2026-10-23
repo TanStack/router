@@ -246,8 +246,8 @@ describe.concurrent.each(['vite', 'rsbuild'] as const)(
   '%s: a React app',
   (bundler) => {
     // Sources: the former route-hmr.test.ts hot updates of split and unsplit
-    // routes (add-hmr snapshot fixtures), regression-helpers.test.ts React
-    // Refresh controls (body edit keeps state, added hook remounts).
+    // routes (add-hmr snapshot fixtures), the former regression-helpers.test.ts
+    // React Refresh controls (body edit keeps state, added hook remounts).
     describe.each([true, false])(
       'with autoCodeSplitting: %s',
       (autoCodeSplitting) => {

@@ -3,8 +3,7 @@
  * fn is Start's RPC on the client and runs on the server, directly and by
  * the id the client calls (SPEC J4.1, J4.4); the router generator and code
  * splitter run, so the route tree links a route whose component loads on
- * demand (J1.4, J2.2, J2.6). The harness itself is checked by its controls
- * (`outside-compiler-corpus/build-harness.test.ts`).
+ * demand (J1.4, J2.2, J2.6).
  */
 import { describe, expect, test } from 'vitest'
 import {

@@ -22,7 +22,6 @@ import { pluginReact } from '@rsbuild/plugin-react'
 import { onTestFinished } from 'vitest'
 import { startRuntimeLinks } from './build-harness'
 import { startRsbuildPluginFactory, withHarnessEntries } from './start-plugins'
-import type { CoreStartPlugins } from './start-plugins'
 import type { TanStackStartInputConfig } from '../src'
 import type { TanStackStartRsbuildInputConfig } from '../src/rsbuild'
 import type { RsbuildPlugin } from '@rsbuild/core'
@@ -155,26 +154,13 @@ function recordClientEntry(entry: ClientEntry): RsbuildPlugin {
  */
 export async function startRsbuildStartDevServer(
   options: Omit<RsbuildDevServerOptions, 'dir' | 'plugins'> & {
-    /**
-     * Implementation tests only: Start's plugins from the core factory with
-     * external import transforms of the Start compiler, which no public
-     * option takes, instead of `tanstackStart()` (`coreStartPlugins` of
-     * `outside-compiler-corpus/core-start-plugin.ts`).
-     */
-    corePlugins?: CoreStartPlugins
     /** The app's Start options (`tanStackStart(options)`). */
     start?: TanStackStartRsbuildInputConfig
     /** The Start framework package of the app (default `react`). */
     framework?: 'react' | 'solid'
   },
 ): Promise<RsbuildDevServer> {
-  const {
-    files,
-    corePlugins,
-    start,
-    framework = 'react',
-    ...devServerOptions
-  } = options
+  const { files, start, framework = 'react', ...devServerOptions } = options
   const entry: ClientEntry = { files: [], module: false }
   const tanstackStart = await startRsbuildPluginFactory(framework)
   return createRsbuildDevServer({
@@ -213,9 +199,7 @@ export const Route = createRootRoute()
         ...(framework === 'react' && !hasPluginReact(devServerOptions.config)
           ? [pluginReact()]
           : []),
-        corePlugins
-          ? corePlugins.rsbuild(framework, start ?? {}, entries)
-          : tanstackStart(withHarnessEntries(root, start ?? {}, entries)),
+        tanstackStart(withHarnessEntries(root, start ?? {}, entries)),
         recordClientEntry(entry),
       ]
     },

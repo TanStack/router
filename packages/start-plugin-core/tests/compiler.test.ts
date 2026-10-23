@@ -4,10 +4,8 @@
  * through the public Start host (`./start-host`).
  *
  * Implementation tests that drove the internal compiler (one compiler
- * instance, `invalidateModule`, throwing host hooks, a synthetic
- * `compilerTransforms` hook) are outside the corpus:
- * outside-compiler-corpus/compiler-instances.test.ts and
- * outside-compiler-corpus/compiler-transforms.test.ts.
+ * instance, `invalidateModule`, throwing host hooks) are outside the corpus:
+ * outside-compiler-corpus/compiler-instances.test.ts.
  */
 import { describe, expect, test } from 'vitest'
 import {

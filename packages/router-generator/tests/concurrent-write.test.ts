@@ -276,8 +276,7 @@ describe('a route file saved while the generator fixes it', () => {
   })
 
   // (Whether the generator removes the temporary file it prepared for the
-  // abandoned fix is filesystem policy, outside the compiler test corpus:
-  // tests/outside-compiler-corpus/abandoned-staging.test.ts.)
+  // abandoned fix is filesystem policy, outside the compiler test corpus.)
   it('keeps the save when the save makes the fix unnecessary', async () => {
     const { root, postsRoutePath, config } = await createApp(
       postsRouteSource.replace("'/posts'", "'/old'"),
@@ -350,7 +349,7 @@ describe('a route file saved while the generator fixes it', () => {
 })
 
 // (The mode and owner of rewritten route files: outside the compiler test
-// corpus, tests/outside-compiler-corpus/file-metadata.test.ts.)
+// corpus.)
 
 /**
  * The real filesystem as the generator's `fs` option, with a reader of

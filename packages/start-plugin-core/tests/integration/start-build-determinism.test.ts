@@ -138,9 +138,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
       const firstObservation = await observe(first)
       expectAgreement(firstObservation)
       // Built again, unchanged: the same ids and results. (Equal bytes and
-      // chunk names are not required, SPEC §8; the implementation control
-      // outside-compiler-corpus/start-build-determinism.test.ts checks
-      // today's.)
+      // chunk names are not required, SPEC §8.)
       const again = await first.rebuild()
       expect(await observe(again)).toEqual(firstObservation)
       // The entry imports the modules in the opposite order: same ids.

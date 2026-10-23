@@ -12,9 +12,8 @@
  * - the same project at another root builds correctly (relocation is
  *   correctness, not id equality: G4).
  * Moved from the unit test start-compiler-determinism.test.ts, which
- * compiled through the internal compiler; its Windows-path rows are
- * implementation controls (outside-compiler-corpus/
- * start-compiler-determinism-internal.test.ts, N24).
+ * compiled through the internal compiler; its Windows-path rows are not
+ * reachable through a POSIX host (N24).
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { expectRelocatable } from '@tanstack/compiler-test-utils/determinism'

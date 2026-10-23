@@ -319,9 +319,6 @@ describe('route HMR in a Vite dev server without automatic code splitting', () =
     `import { createFileRoute } from '@tanstack/${target}-router'
 export const Route = createFileRoute('/')({ loader: () => 'x' })`
 
-  // The route HMR plugin's debug output (opt-in, `TSR_VITE_DEBUG`) is not
-  // emitted code: outside-compiler-corpus/route-hmr-debug-output.test.ts.
-
   // An edit of a `.ts` route file, the environment name, `plugin.hmr.style`
   // alone, plugin options given as a function and a `tsr.config.json`
   // target, on a real page: integration/route-hmr-browser-plugin.test.ts

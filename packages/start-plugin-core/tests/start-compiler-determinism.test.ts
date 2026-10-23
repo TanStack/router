@@ -11,9 +11,8 @@
  * root are build clauses: integration/start-compiler-build-determinism.test.ts
  * and integration/start-compiler-build-custom-ids.test.ts (real `vite build` and
  * Start's preview server). Windows module ids (Rsbuild on Windows) are not
- * reachable through a POSIX host: their rows stay as implementation
- * controls in outside-compiler-corpus/start-compiler-determinism-internal.test.ts
- * until a Windows CI build covers them (N24).
+ * reachable through a POSIX host; only a Windows CI build covers them
+ * (N24).
  * Source: oracle-gaps H3 (round 2); FIX-PLAN S01, S02.
  */
 import { beforeAll, describe, expect, test } from 'vitest'

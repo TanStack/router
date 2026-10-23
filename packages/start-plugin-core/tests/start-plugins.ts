@@ -87,27 +87,6 @@ export interface HarnessEntries {
 }
 
 /**
- * Start's plugins built from the core factory, for implementation tests
- * only (`outside-compiler-corpus/core-start-plugin.ts`: external import
- * transforms of the Start compiler, which no public option takes). A
- * harness given these uses them instead of `tanstackStart()`. The harnesses
- * never import the core factory themselves: only a test that imports
- * `coreStartPlugins` reaches it (none of the corpus does).
- */
-export interface CoreStartPlugins {
-  vite: (
-    framework: 'react' | 'solid',
-    start: StartPluginOptions,
-    entries: Required<HarnessEntries>,
-  ) => Array<PluginOption>
-  rsbuild: (
-    framework: 'react' | 'solid',
-    start: StartPluginOptions,
-    entries: Required<HarnessEntries>,
-  ) => RsbuildPlugin
-}
-
-/**
  * The app's Start options with the harness's entries (`client.entry`,
  * `server.entry`, relative to the app's source directory) where neither the
  * test's options nor the app (a `<srcDirectory>/client.*` or `server.*`

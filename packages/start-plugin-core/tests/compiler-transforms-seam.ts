@@ -6,7 +6,7 @@
  * transform (today Babel's: `candidate.path.node`, `context.types`,
  * `context.parseExpression`). A compiler rewrite that changes that shape
  * adapts this file alone; every test uses these transforms through their
- * observable effect (the injected argument, the warning), never through the
+ * observable effect (the injected argument), never through the
  * AST.
  */
 import type { StartCompilerImportTransform } from '../src/types'
@@ -37,24 +37,6 @@ export const renderThingTransform: StartCompilerImportTransform = {
           ),
         ]),
       )
-    }
-  },
-}
-
-/**
- * A server transform of `warnMe()` calls from `warn-lib` that warns about
- * each call it cannot handle (one with an argument).
- */
-export const warnMeTransform: StartCompilerImportTransform = {
-  name: 'test-warning-transform',
-  environment: 'server',
-  imports: [{ libName: 'warn-lib', rootExport: 'warnMe' }],
-  detect: /\bwarnMe\b/,
-  transform: (candidates, context) => {
-    for (const candidate of candidates) {
-      if (candidate.path.node.arguments.length > 0) {
-        context.warn?.(`MARK_WARNING: cannot handle warnMe() in ${context.id}`)
-      }
     }
   },
 }

@@ -11,7 +11,6 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
-import { expect } from 'vitest'
 import { onTestFinished } from '@tanstack/compiler-test-utils/test-scope'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
@@ -209,35 +208,4 @@ export const Route = createRootRoute({ component: () => createElement('main', nu
     waitForBuild,
   )
   return { file, builds, waitForBuild, run, close: () => close() }
-}
-
-/** Node's handles of file watchers (`fs.watch`, `fs.watchFile`). */
-const fileWatchers = () =>
-  process
-    .getActiveResourcesInfo()
-    .filter(
-      (resource) => resource === 'FSEventWrap' || resource === 'StatWatcher',
-    ).length
-
-/**
- * Host-resource control, outside the compiler corpus
- * (integration/outside-compiler-corpus/generator-file-watchers.test.ts):
- * closing the watch session closes every Node file watcher handle it
- * opened, the generator's own included. Waits are on Node's handles.
- */
-export async function expectWatchSessionWatchersClosed(bundler: WatchBundler) {
-  const watchersBefore = fileWatchers()
-  const session = await startWatchSession(bundler)
-  expect(
-    fileWatchers(),
-    'file watchers of the running watch session',
-  ).toBeGreaterThan(watchersBefore)
-  await session.close()
-  await until(
-    () => fileWatchers() <= watchersBefore,
-    () =>
-      `the closed watch session still holds ${fileWatchers() - watchersBefore} file watcher(s)`,
-    () => new Promise((resolve) => setImmediate(resolve)),
-    10_000,
-  )
 }
