@@ -15425,7 +15425,7 @@ importers:
         specifier: workspace:*
         version: link:../start-server-core
       exsolve:
-        specifier: ^1.1.1
+        specifier: ^1.1.3
         version: 1.1.3
       lightningcss:
         specifier: ^1.33.0
