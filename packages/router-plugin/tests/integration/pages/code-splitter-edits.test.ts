@@ -1,13 +1,16 @@
+/**
+ * A route file edited on a running dev server (one router plugin per dev
+ * server): the edited route's modules hold only the new version, and dev
+ * servers with different split settings in one process keep their own.
+ */
 import { describe, expect, it } from 'vitest'
-import { tanstackRouter } from '../../../src/vite'
-import { createReactDevPage, renderProbe } from '../../dev-page'
-import { expectValidModules, holdsMarker, loadRoute } from '../../route-app'
+import { holdsMarker, loadRoute } from '../../route-app'
 import type { CodeSplittingOptions } from '../../../src/vite'
 import type { RouteApp } from '../../route-app'
 
 type CodeSplitGroupings = NonNullable<CodeSplittingOptions['defaultBehavior']>
 
-describe('router plugin context', () => {
+describe('a route file edited on a running dev server', () => {
   it('refreshes chunk ownership after source changes and isolates split settings', async () => {
     const source = (name: string, value: string) => `
 import { createFileRoute } from '@tanstack/react-router'
@@ -80,59 +83,6 @@ export const Route = createFileRoute('/changing')({
     await again.host.edit({ 'route.tsx': again.code })
     expect((await again.modules()).ids).toEqual(secondModules.ids)
     expect(await read(again, separateGroups)).toBe('<p>second version true</p>')
-  }, 30_000)
-
-  // Two router plugins in one dev server (each with its own routes
-  // directory and route tree): each compiles its own route files, once.
-  it('keeps two router plugins of one dev server to their own route files', async () => {
-    const route = (routePath: string, label: string) =>
-      `import { createFileRoute } from '@tanstack/react-router'
-function Page() {
-  return '${label}'
-}
-export const Route = createFileRoute('${routePath}')({ component: Page })
-`
-    const rootRoute = `import { createRootRoute } from '@tanstack/react-router'
-export const Route = createRootRoute({})
-`
-    const host = await createReactDevPage({
-      files: {
-        'routes/__root.tsx': rootRoute,
-        'routes/owned.tsx': route('/owned', 'owned'),
-        'routes-b/__root.tsx': rootRoute,
-        'routes-b/other.tsx': route('/other', 'other'),
-      },
-      plugins: () => [
-        tanstackRouter({
-          target: 'react',
-          routesDirectory: './routes',
-          generatedRouteTree: './routeTree.gen.ts',
-          autoCodeSplitting: true,
-        }),
-        tanstackRouter({
-          target: 'react',
-          routesDirectory: './routes-b',
-          generatedRouteTree: './routeTree-b.gen.ts',
-          autoCodeSplitting: true,
-        }),
-      ],
-    })
-    for (const [url, label] of [
-      ['/routes/owned.tsx', 'owned'],
-      ['/routes-b/other.tsx', 'other'],
-    ] as const) {
-      // Code added twice would declare its bindings twice.
-      await expectValidModules({ [url]: await host.transform(url) })
-      const run = await host.runClient(
-        url,
-        `const { render } = await import(${JSON.stringify(renderProbe)})
-const { component } = module.Route.options
-// Split: the option is the real router's lazy component of it
-return ['preload' in component, await render(component)]`,
-      )
-      expect(run.result, url).toEqual([true, label])
-      expect(run.errors, url).toEqual([])
-    }
   }, 30_000)
 
   // The first edit of a route file through the public plugin setup

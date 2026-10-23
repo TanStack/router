@@ -1,5 +1,4 @@
-/** Host-delivery outcomes supplement the explicit-input controls in
- * handle-route-update.test.ts: real route edits reach matching, context,
+/** Host-delivery outcomes: real route edits reach matching, context,
  * search parsing and the document head through the public router APIs.
  */
 import { describe, test } from 'vitest'

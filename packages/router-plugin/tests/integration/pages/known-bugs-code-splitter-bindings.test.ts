@@ -747,9 +747,9 @@ describe('TypeScript-only syntax', () => {
   // Bug: the code splitter rejects an ES decorator after `export` (`export
   // @dec class`, valid since TypeScript 5.0): "Decorators must be placed
   // before the export keyword".
-  // Pending ruling NEW-1 (decorator placement after `export`): the pin keeps
-  // its compile-level assertion, read without running the page (whether a
-  // browser runs the decorator syntax is not the compiler's).
+  // A real bug (ruling NEW-1): the syntax is valid TypeScript. The pin reads
+  // the compiled module without running the page (whether a browser runs
+  // the decorator syntax is not the compiler's).
   // Source: round-3 mutation testing (router-utils P6).
   // Impact: a route file with such a class cannot be built once code
   // splitting is on.
