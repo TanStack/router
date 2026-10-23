@@ -470,6 +470,44 @@ export { leak } from './leak'
 export const factoryTopLevelCall = `export const request = getRequest()\n`
 
 /**
+ * A client module re-exporting everything of a denied module (`src/b.ts`:
+ * `export * from`, line 1) and a module importing one of its names
+ * (`src/c.ts`, as `v`), with the import-protection options that deny it:
+ * a denied file, and a package denied by a specifier rule. The denied
+ * module's value carries `MARK_SECRET`. For the ruling Q4 rows (RULINGS
+ * "Q4: `export *` of a denied module").
+ */
+export const starReexportApps: Array<{
+  name: string
+  files: Record<string, string>
+  importProtection: ImportProtectionOptions
+}> = [
+  {
+    name: 'a denied file',
+    files: {
+      'src/secret.server.ts': `export const getRequest = () => 'MARK_SECRET'\n`,
+      'src/b.ts': `export * from './secret.server'\n`,
+      'src/c.ts': `import { getRequest } from './b'\nexport const v = getRequest\n`,
+    },
+    importProtection: {},
+  },
+  {
+    name: 'a denied specifier',
+    files: {
+      'node_modules/denied-sdk/package.json': JSON.stringify({
+        name: 'denied-sdk',
+        type: 'module',
+        exports: './index.js',
+      }),
+      'node_modules/denied-sdk/index.js': `export const getRequest = () => 'MARK_SECRET'\n`,
+      'src/b.ts': `export * from 'denied-sdk'\n`,
+      'src/c.ts': `import { getRequest } from './b'\nexport const v = getRequest\n`,
+    },
+    importProtection: { client: { specifiers: ['denied-sdk'] } },
+  },
+]
+
+/**
  * Checks a marker violation (a module marked server-only imported by the
  * client, or client-only imported by the server): it is reported either at
  * the marker import (`marker`, `file:line` of the marked module's import of the
