@@ -394,11 +394,11 @@ export function mentionsFile(
     return false
   }
   for (
-    let at = said.indexOf(relative);
+    let at: number = said.indexOf(relative);
     at !== -1;
     at = said.indexOf(relative, at + 1)
   ) {
-    const end = at + relative.length
+    const end: number = at + relative.length
     if (/[\w/-]/.test(said[end] ?? '')) {
       continue
     }
@@ -406,7 +406,7 @@ export function mentionsFile(
     while (start > 0 && /[\w.@$~+%#/-]/.test(said[start - 1]!)) {
       start--
     }
-    const whole = said
+    const whole: string = said
       .slice(start, end)
       .replace(/^.*(?:^|\/)\.{1,2}\//, '')
       .replace(/^\/+/, '')
