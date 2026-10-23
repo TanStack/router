@@ -1,0 +1,52 @@
+name: Bun Router
+
+on:
+  pull_request:
+    paths:
+      - 'packages/router-plugin/**'
+      - 'packages/router-generator/**'
+      - 'packages/router-utils/**'
+      - 'packages/virtual-file-routes/**'
+      - 'packages/router-core/**'
+      - 'packages/react-router/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'nx.json'
+      - 'tsconfig.json'
+      - 'scripts/nx/**'
+      - '.npmrc'
+      - '.nvmrc'
+      - '.github/workflows/bun.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CI: '1'
+  NX_DAEMON: 'false'
+  NX_NO_CLOUD: 'true'
+
+jobs:
+  router:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Setup Tools
+        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: '1.4.3'
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium --only-shell
+      - name: Test production builds and navigation
+        run: pnpm nx run @tanstack/router-plugin:test:e2e:bun --outputStyle=stream --skipRemoteCache

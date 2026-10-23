@@ -40,6 +40,11 @@ export function createRouterGeneratorPlugin(
     })
   }
 
+  const runGenerator = async (event?: GeneratorEvent) => {
+    await generator.run(event)
+    routerPluginContext.routesByFile = generator.getRoutesByFileMap()
+  }
+
   const generate = async (opts?: {
     file: string
     event: 'create' | 'update' | 'delete'
@@ -55,8 +60,7 @@ export function createRouterGeneratorPlugin(
     }
 
     try {
-      await generator.run(generatorEvent)
-      routerPluginContext.routesByFile = generator.getRoutesByFileMap()
+      await runGenerator(generatorEvent)
     } catch (e) {
       console.error(e)
     }
@@ -70,6 +74,13 @@ export function createRouterGeneratorPlugin(
         file: id,
         event,
       })
+    },
+    bun: {
+      setup(build) {
+        initConfigAndGenerator()
+        // Reject generation errors instead of bundling a stale route tree.
+        build.onStart(() => runGenerator())
+      },
     },
     vite: {
       async configResolved(config) {
