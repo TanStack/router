@@ -514,6 +514,44 @@ describe('transformReadableStreamWithRouter — real SSR scripts', () => {
     expect(html).not.toContain('<script>')
   })
 
+  test('uses an ssr nonce set in place on the existing ssr options', async () => {
+    const streamed = createDeferred<string>()
+    const router = createRealSsrRouter({ streamed: streamed.promise })
+    attachRouterServerSsrUtils({ router, manifest: undefined })
+    // Mutating the options object must work as well as replacing it.
+    router.options.ssr ??= {}
+    router.options.ssr.nonce = 'late'
+
+    await router.load()
+    await router.serverSsr!.dehydrate()
+
+    const initialScripts = router.serverSsr!.takeInitialHydrationScriptTags()!
+    expect(initialScripts.before.length).toBeGreaterThan(0)
+    for (const tag of [...initialScripts.before, initialScripts.boundary]) {
+      expect(tag.attrs?.nonce).toBe('late')
+    }
+
+    const upstream = makeManualUpstream()
+    const output = transformReadableStreamWithRouter(router, upstream.stream)
+    upstream.push(
+      `<html><body><main>app</main>${renderInitialScripts(initialScripts)}`,
+    )
+    streamed.resolve('done')
+    await flush(20)
+    upstream.push('</body></html>')
+    upstream.close()
+
+    const html = await readAll(output)
+    const streamEnd = html.lastIndexOf(`${GLOBAL_TSR}.e()`)
+    expect(streamEnd).toBeGreaterThan(-1)
+    expect(
+      html.lastIndexOf('<script nonce="late">', streamEnd),
+    ).toBeGreaterThan(
+      html.lastIndexOf(renderManagedScript(initialScripts.boundary)),
+    )
+    expect(html).not.toContain('<script>')
+  })
+
   test('fuses the final resolver and stream-end scripts', async () => {
     const streamed = createControlledStream<string>()
     const router = createRealSsrRouter({ streamed: streamed.stream })

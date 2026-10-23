@@ -541,6 +541,14 @@ export interface RouterOptions<
    */
   origin?: string
   ssr?: {
+    /**
+     * The CSP nonce added to the router's inline hydration scripts.
+     *
+     * It may be set after the router is created (for example in the
+     * `createStartHandler` callback), but it must be final before `<Scripts>`
+     * renders: the initial scripts read it then, and the first streamed
+     * script reuses the same opening tag for the rest of the response.
+     */
     nonce?: string
   }
 }
