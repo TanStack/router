@@ -32,7 +32,9 @@ checked by file and position only; import protection is read through `onViolatio
 the test apps live in temporary directories. What was measured on the integrated branch (FINAL-2, at f16aae85ac, on
 beetle with 3 trees × 4 workers, and locally for the budgets), and re-measured after the fixes F-L and F-M (at
 57addcc41e, on beetle the same way: 3 unpatched runs, R1–R11, the 34 valid greens, and 18 reds whose catching rows those
-fixes touched; every lane locally):
+fixes touched; every lane locally), and again after the rulings of 2026-10-23 (F-O, at c2161c4d14, the same way:
+3 unpatched runs, R1–R11, the 34 valid greens, and the 17 reds whose catching rows are in files the rulings changed;
+every lane locally):
 
 - **Today's compilers pass every acceptance test.** The unpatched suite ran 9 times (3 rounds of 3 trees in
   parallel, 1-minute load up to about 60 on 32 cores).
@@ -40,6 +42,10 @@ fixes touched; every lane locally):
     had one or two #34 rows in 6 of the 9 runs (9 rows), each of which passed alone.
   - No #42 failure, and no other failure.
   - At 57addcc41e: the 3 unpatched runs gave the counts below; one #34 row in one run, which passed alone.
+  - At c2161c4d14 (after the rulings): the 3 unpatched runs gave the counts below with no failing row, and no #34
+    signature in any of the 65 beetle jobs (the dev harnesses now wait for Vite's optimizer before `close()`, ruling
+    #34). Locally, one router-plugin `test:integration` run failed 9 rows with Chromium's
+    `net::ERR_INSUFFICIENT_RESOURCES` (caveats below); the re-run passed.
   - FINAL-2 saw one more failure, only locally: router-plugin `integration/generator-watch-mode.test.ts` "webpack: a
     created route file is scaffolded …" failed now and then (3 of 6 full runs, 4 of 15 alone, with `/tmp` on tmpfs).
     F-M found the cause in today's route generator, not in a tool or the file system: an event that reaches
@@ -64,7 +70,8 @@ fixes touched; every lane locally):
     still fails on an unrelated error.
   - At 57addcc41e: R1, R3–R11 no acceptance row; R2 only the Q5 row (and one #34 row, which passed 4 of 4 alone
     with R2).
-  - Expected pin flips, where the restructure fixes the pinned bug: R3 ×6 (user names that collide with today's
+  - At c2161c4d14: R1–R11 no acceptance row, R2 included (the Q5 row is deleted), and no flake.
+  - Expected pin flips, where the restructure fixes the pinned bug (the same at c2161c4d14): R3 ×6 (user names that collide with today's
     generated names), R8 ×10 (SSR runs server functions in place, #7213), R9 ×3 (entry re-export of shared bindings).
   - 4 rows failed once and passed alone, plus 1 that the clean tree also failed alone: all #34.
   - The noncompiler lane (never counted) fails 43 rows under R1: main's own manifest and Rsbuild client-build tests
@@ -107,12 +114,22 @@ fixes touched; every lane locally):
       18 are caught, by the same rows as before, except red-fable-r2/18 (99 rows instead of 100: "'always' logs a
       violation again when the dev server reloads every module" now counts printed warnings and passes) and
       red-fable/25, whose second row had failed only on #34.
+  - Re-run at c2161c4d14 (after the rulings):
+    - the 34 valid greens pass, apart from green-sol/20's two expected pin flips. One row failed once, in
+      green-sol-r2/08's run at a load of about 28, and passed alone with and without the patch: start-plugin-core
+      `integration/pages/hydrate-split-modules.test.ts` "client: the source maps of the chunk and the parent point at
+      the original code" ("the case code the page requested once it hydrated: expected [] to not deeply equal []").
+      Not #34; first seen in about 280 suite runs; not investigated (open);
+    - the 17 reds whose catching rows are in files the rulings changed are all caught, by the same rows as in
+      round 6, plus one more row for red-fable/11; red-fable/25 lost only its #34 row again.
 - **No internal imports.** No acceptance test imports compiler internals: the last ones, the Q5 row and router-plugin's
   hand-built Start composition (`createRouterPluginContext`, Q8), were deleted (RULINGS "Q5", "Q8", 2026-10-23).
 - **Tests write nothing into the repository.** After a full unpatched run of a tree, `git status --porcelain
 --ignored` and the packages' `node_modules` dot entries are the same as before.
-  - Since the Q2 ruling (2026-10-23) no file at all: the `nested` type tests run on a copy of the fixture (checked
-    around uncached router-generator `test:unit` and `test:integration` and router-plugin `test:unit` runs).
+  - Since the Q2 ruling (2026-10-23) no file at all: the `nested` type tests run on a copy of the fixture. At
+    c2161c4d14 every later beetle job of a tree and an uncached local run of every lane left `git status
+--porcelain --ignored` and the dot entries identical (the first job of a tree adds only Nx's `dist/` and
+    `.nx/` and the tools' caches).
   - Outside the repository, a run can leave Chromium's `.org.chromium.Chromium.*` directories in the system
     temporary directory. At FINAL-2 it could also leave its run directory `tanstack-compiler-tests-*` with an empty
     `generator/` (13 of 20 runs on beetle). The cause: each test process removed its apps when it exited, while
@@ -138,21 +155,25 @@ fixes touched; every lane locally):
 - **Memory.** start-plugin-core `test:integration` uses about 4.4 GB per worker (#57). Three such runs at once took a
   60 GB machine to 0 GB available, so the measurement runner lets at most two run at a time.
 
-Counts on the integrated branch, measured at 57addcc41e (the S-A and S-B simplifications, the Q6/Q7 rulings,
-NOL-delete, the main-tests clean-up, F-J, the clean-up after them, F-L and F-M; see below), the same in the 3
-unpatched beetle runs and the local run of every lane apart from #34 rows. Passed / expected-fail pins:
+Counts on the integrated branch, measured at c2161c4d14 (the S-A and S-B simplifications, the Q6/Q7 rulings,
+NOL-delete, the main-tests clean-up, F-J, the clean-up after them, F-L, F-M, F-N and the rulings of 2026-10-23; see
+below), the same in the 3 unpatched beetle runs and the local runs of every lane. Passed / expected-fail pins:
 
 | Package                         | `test:unit` | `test:integration` | `test:noncompiler` |
 | ------------------------------- | ----------- | ------------------ | ------------------ |
 | `@tanstack/compiler-test-utils` | 77 / 0      | 131 / 0            | –                  |
 | `@tanstack/router-generator`    | 218 / 31    | 68 / 3             | –                  |
 | `@tanstack/router-plugin`       | 105 / 19    | 675 / 349          | –                  |
-| `@tanstack/start-plugin-core`   | 270 / 132   | 1202 / 293         | 148 / 0            |
-| `@tanstack/react-start-rsc`     | no files    | 108 / 13           | 57 / 0             |
+| `@tanstack/start-plugin-core`   | 270 / 132   | 1205 / 294         | 148 / 0            |
+| `@tanstack/react-start-rsc`     | no files    | 108 / 14           | 57 / 0             |
 
 How the counts moved from d07614d3b3 (ctu 330 / 0 and 171 / 0; router-plugin `test:integration` 674 / 355;
 start-plugin-core 389 / 143 and 1204 / 292; noncompiler 121 / 0 and 49 / 0):
 
+- **Rulings of 2026-10-23, Start side** (RULINGS "Q3", "Q4"): start-plugin-core `test:integration` +3 passed and +1
+  pin (Q4: the `export *` of a denied file or specifier is a safe mock or a failed build, Vite and Rsbuild; the
+  Rsbuild specifier row is a pin); Q3 changed no row. Before them, react-start-rsc `test:integration` +1 pin (an
+  Rsbuild RSC CSS pin moved in from e2e, fb72ef4e73).
 - **Rulings of 2026-10-23, router side** (RULINGS "Q1", "Q2", "Q5", "Q8", "Q9"; the router-generator and
   router-plugin rows above are after them, local runs): router-generator `test:unit` −22 passed (Q1: the 10 rows of
   `concurrent-write.test.ts`; Q2: the 12 type tests of the `types` project, now one row of `test:integration`, +1),
@@ -222,15 +243,17 @@ Caveats:
 
 - **Pending user rulings hold some rows** (table below). They count toward acceptance as they are until ruled, and a
   correct compiler may fail some of them: they (Q10) keep an assertion or input whose fate the ruling decides.
-- **Two upstream flakes are closed** (rulings of 2026-10-23).
-  - #34 (Vite's optimizer writes into the app after `close()`): it failed one or two start-plugin-core integration
-    rows in about half of the runs, with an `ENOTEMPTY` on `node_modules/.vite/deps_temp_*` (or on the app directory)
-    when the app was removed, or with an unhandled "Error during dependency optimization" (rolldown "Failed to write
-    file") from a write into the removed app. The Vite dev harnesses now wait for the optimizer before `close()`
-    (RULINGS "Vite's dependency optimizer: close wait"); 5 local start-plugin-core integration runs had no #34
-    failure. If that `ENOTEMPTY` or rejection is seen again, it is this race, not a compiler failure: report it.
-  - #42 (Vite's stale pre-bundled dependency): not reproduced since 2026-10-22, closed with no workaround (RULINGS
-    "Vite's stale pre-bundled dependency: closed"). Its signature is in KNOWN-BUGS; reopen it if seen.
+- **Chromium can run out of shared memory in the temporary directory (FINAL-PASS #40, open).** A full router-plugin
+  `test:integration` run at 4 workers holds up to about 2.2 GB of Chromium shared memory, in files in `TMPDIR`
+  (Playwright starts Chromium with `--disable-dev-shm-usage`). Chromium keeps 2 MB per module script that a 304
+  revalidates (Vite answers app modules that way, and the run pages share one HTTP cache) and 256 KB per WebSocket
+  (Vite's HMR client) after the page left the document, until a garbage collection, and the run pages run hundreds
+  of short documents. Where `TMPDIR` is a tmpfs with little room (2.7 GB free locally, shared with other test runs),
+  Chromium fails module requests: page runs fail with `net::ERR_INSUFFICIENT_RESOURCES` or "Failed to fetch
+  dynamically imported module". That is not a compiler failure: re-run the file alone. Upstream draft and repro:
+  `validation/UPSTREAM/chromium-304-shm-until-gc.md`; a harness fix waits for the user (F-O).
+- **#42 (Vite's stale pre-bundled dependency)** is closed: not reproduced since 2026-10-22, no workaround (RULINGS
+  "Vite's stale pre-bundled dependency: closed"). Its signature is in KNOWN-BUGS; reopen it if seen.
   - Not a flake of the tests, and no longer a row: at an extreme load (80 to 110 on beetle) V-G1 saw the Vite row
     `known-bugs-start-compiler` "SSR: a server fn that only a middleware .server() of another module calls > is
     callable, the app files written reversed" fail once in 15 runs with "Server function info not found". That was
