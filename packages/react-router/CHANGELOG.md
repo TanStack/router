@@ -1,5 +1,68 @@
 # @tanstack/react-router
 
+## 1.170.46
+
+### Patch Changes
+
+- [#8670](https://github.com/TanStack/router/pull/8670) [`32a3360`](https://github.com/TanStack/router/commit/32a3360cba0e0f884b3215813a48c63467f5a53c) - Reference agent skills in other packages by their `intent load` identifier (`@tanstack/<package>#<skill>`) instead of relative file links that break once packages are installed.
+
+- [#8671](https://github.com/TanStack/router/pull/8671) [`689a7c5`](https://github.com/TanStack/router/commit/689a7c5419de68bce0aaaef72b9a36f115ea1398) - Publish the `@tanstack/react-router` agent skills (`react-router`, `compositions/router-query`, `lifecycle/migrate-from-react-router`), which were missing from the package's `files` list.
+
+- Updated dependencies [[`32a3360`](https://github.com/TanStack/router/commit/32a3360cba0e0f884b3215813a48c63467f5a53c)]:
+  - @tanstack/router-core@1.171.39
+
+## 1.170.45
+
+### Patch Changes
+
+- Updated dependencies [[`18154b1`](https://github.com/TanStack/router/commit/18154b1c45454a70aa77e9d6d27c8a6e0733d031)]:
+  - @tanstack/router-core@1.171.38
+
+## 1.170.44
+
+### Patch Changes
+
+- Updated dependencies [[`d6ba115`](https://github.com/TanStack/router/commit/d6ba115d5751c75e20943f0062577cf17b446d82)]:
+  - @tanstack/router-core@1.171.37
+
+## 1.170.43
+
+### Patch Changes
+
+- Updated dependencies [[`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5)]:
+  - @tanstack/router-core@1.171.36
+
+## 1.170.42
+
+### Patch Changes
+
+- [#8594](https://github.com/TanStack/router/pull/8594) [`2413cc0`](https://github.com/TanStack/router/commit/2413cc009826fba4f97b166a35a8a50a4a8fe4bb) - reduce component nesting per route match
+
+- [#8602](https://github.com/TanStack/router/pull/8602) [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb) - Links of a route that the pending navigation leaves skip deriving the destination location, and clicks and preloads follow the href a Link displays. `buildLocation` now builds `mask` and `routeMasks` locations from the same `_fromLocation` as the destination.
+
+- [#8602](https://github.com/TanStack/router/pull/8602) [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb) - Fixed Link destinations that resolve to a route mask are now reused across navigations instead of being rebuilt every time. A mounted Link now follows changes to its `href` and `reloadDocument` props, and React Links no longer each subscribe to a hydration flag.
+
+- [#8579](https://github.com/TanStack/router/pull/8579) [`d35aab4`](https://github.com/TanStack/router/commit/d35aab425b07b46e222a507c0f0239644669757b) - Cancel pending link preload timers when starting navigation to avoid redundant preloading while the destination is loading.
+
+- Updated dependencies [[`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb), [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb), [`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`663282b`](https://github.com/TanStack/router/commit/663282b0ebbc494aee3595ed95867ee29d01938e)]:
+  - @tanstack/history@1.162.5
+  - @tanstack/router-core@1.171.35
+
+## 1.170.41
+
+### Patch Changes
+
+- [#8529](https://github.com/TanStack/router/pull/8529) [`60b8ad1`](https://github.com/TanStack/router/commit/60b8ad1ad00812bf966a8eeee6be238c37ddad74) - Compose only enabled route boundaries instead of rendering inactive wrapper components.
+
+- [#8568](https://github.com/TanStack/router/pull/8568) [`614bc27`](https://github.com/TanStack/router/commit/614bc27034c8ec98747bf305ed41d4a619640949) - Update TanStack Store to 0.11.2 to prevent unrelated atom reads inside subscription observers from triggering extra notifications.
+
+- [#8530](https://github.com/TanStack/router/pull/8530) [`ff66a03`](https://github.com/TanStack/router/commit/ff66a03df4816f44a48a4a37189fc4021b1c8480) - Consolidate the root match context provider while preserving match context in the root shell.
+
+- [#8522](https://github.com/TanStack/router/pull/8522) [`863c8a7`](https://github.com/TanStack/router/commit/863c8a736b96746c56278a16c50554356f5523d1) - Reuse Link href classification and active/inactive results across location updates while preserving live history href formatting.
+
+- Updated dependencies [[`d521abd`](https://github.com/TanStack/router/commit/d521abd71c69f1ff010bb3def4d417cb5fa058cb)]:
+  - @tanstack/router-core@1.171.34
+
 ## 1.170.40
 
 ### Patch Changes

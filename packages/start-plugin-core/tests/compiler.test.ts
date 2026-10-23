@@ -512,6 +512,88 @@ describe('compiler handles external import transforms', () => {
 
     expect(result).toBeNull()
   })
+
+  // Source: @vitejs/plugin-rsc transform fixtures (per row)
+  test.each([
+    {
+      // hoist/function-hoist-block.js: block-level functions are block scoped
+      name: 'past a function declared in a nested block',
+      body: `{
+    function renderThing() {}
+  }
+  return renderThing(<Card />)`,
+      transformed: true,
+    },
+    {
+      // scope/param-default-var-hoisting.js
+      name: 'in a parameter default next to a var of the same name',
+      params: `element = renderThing(<Card />)`,
+      body: `var renderThing = null
+  return element`,
+      transformed: true,
+    },
+    {
+      // hoist/catch-binding-shadow.js
+      name: 'in a try block whose catch parameter shadows it',
+      body: `try {
+    return renderThing(<Card />)
+  } catch (renderThing) {
+    return renderThing
+  }`,
+      transformed: true,
+    },
+    {
+      // hoist/var-hoist-block.js
+      name: 'after a var in a nested block shadows it',
+      body: `if (Math.random() < 2) {
+    var renderThing = (element) => element
+  }
+  return renderThing(<Card />)`,
+      transformed: false,
+    },
+    {
+      // scope/fn-decl-hoisting.js
+      name: 'before a hoisted function declaration shadows it',
+      body: `return renderThing(<Card />)
+  function renderThing(element) {
+    return element
+  }`,
+      transformed: false,
+    },
+    {
+      // scope/catch-param.js
+      name: 'in a catch block whose parameter shadows it',
+      body: `try {
+    throw (element) => element
+  } catch (renderThing) {
+    return renderThing(<Card />)
+  }`,
+      transformed: false,
+    },
+  ])(
+    'runs external transforms on a call $name only if it reads the import',
+    async ({ params = '', body, transformed }) => {
+      const compiler = createExternalTransformCompiler()
+
+      // The top-level call keeps the module transformed in every row.
+      const result = await compiler.compile({
+        code: `
+        import { renderThing } from '@example/runtime'
+        export const transformed = renderThing(<Card />)
+        export function render(${params}) {
+          ${body}
+        }
+      `,
+        id: '/test/src/routes/card.tsx',
+      })
+
+      expect(result).not.toBeNull()
+      const renderStart = result!.code.indexOf('function render(')
+      expect(renderStart).toBeGreaterThanOrEqual(0)
+      const render = result!.code.slice(renderStart)
+      expect(render.includes('injected: loadThing()')).toBe(transformed)
+    },
+  )
 })
 
 describe('server function provider module directives', () => {
@@ -1376,6 +1458,129 @@ export const factory = createServerFn().middleware([middleware]);`
     }),
   ).resolves.toBeNull()
 })
+
+describe.each(['build', 'dev'] as const)(
+  'top-level member calls in %s mode',
+  (mode) => {
+    function createCompilerWithModules(
+      env: 'client' | 'server',
+      virtualModules: Record<string, string>,
+    ) {
+      const resolved: Array<string> = []
+      const loaded: Array<string> = []
+      const compiler: StartCompiler = new StartCompiler({
+        ...getDefaultTestOptions(env),
+        env,
+        mode,
+        devServerFnModuleSpecifierEncoder: ({ extractedFilename, root }) =>
+          `/@id${extractedFilename.slice(root.length)}`,
+        lookupKinds: getLookupKindsForEnv(env),
+        lookupConfigurations: getLookupConfigurationsForEnv(env, 'react'),
+        getKnownServerFns: () => ({}),
+        resolveId: async (id) => {
+          resolved.push(id)
+          return id in virtualModules ? id : null
+        },
+        loadModule: async (id) => {
+          loaded.push(id)
+          const code = virtualModules[id]
+          if (code) {
+            compiler.ingestModule({ code, id })
+          }
+        },
+      })
+      return { compiler, resolved, loaded }
+    }
+
+    describe.each(['fast', 'full'] as const)('%s traversal', (traversal) => {
+      // An isomorphic function requires full traversal; server functions alone
+      // use the compiler's fast path. Let normal code detection choose the path.
+      const traversalCode =
+        traversal === 'full'
+          ? `import { createIsomorphicFn } from '@tanstack/react-start'
+         export const iso = createIsomorphicFn().client(() => 'client').server(() => 'server')`
+          : ''
+
+      test.each(['client', 'ssr', 'provider'] as const)(
+        'does not resolve or load named-import receivers in %s output',
+        async (output) => {
+          const env = output === 'client' ? 'client' : 'server'
+          const { compiler, resolved, loaded } = createCompilerWithModules(
+            env,
+            {
+              zod: `export const z = { object: (shape) => shape, string: () => ({}) }`,
+              './api': `export const api = { users: () => [] }`,
+            },
+          )
+          const code = `
+      ${traversalCode}
+      import { createServerFn } from '@tanstack/react-start'
+      import { z } from 'zod'
+      import { api } from './api'
+
+      const Input = z.object({ id: z.string() })
+      const users = api.users()
+
+      export const getUser = createServerFn()
+        .validator(Input)
+        .handler(async ({ data }) => ({ id: data.id, users }))
+    `
+
+          const result = await compiler.compile({
+            id:
+              '/test/get-user.ts' +
+              (output === 'provider' ? '?tss-serverfn-split' : ''),
+            code,
+            detectedKinds: detectKindsInCode(code, env),
+          })
+
+          expect(result).not.toBeNull()
+          const rpc = {
+            client: 'createClientRpc',
+            ssr: 'createSsrRpc',
+            provider: 'createServerRpc',
+          }
+          expect(result!.code).toContain(rpc[output])
+          expect(resolved).toEqual([])
+          expect(loaded).toEqual([])
+        },
+      )
+
+      test.each(['client', 'server'] as const)(
+        'still compiles a renamed env-only factory called through a namespace import on %s',
+        async (env) => {
+          const { compiler } = createCompilerWithModules(env, {
+            './factory': `export { createServerOnlyFn as serverOnly } from '@tanstack/start-fn-stubs'`,
+          })
+          const code = `
+        ${traversalCode}
+        import { createServerFn } from '@tanstack/react-start'
+        import * as factory from './factory'
+
+        export const impl = factory.serverOnly(() => 'server-only-value')
+
+        export const fn = createServerFn().handler(async () => impl())
+      `
+
+          const result = await compiler.compile({
+            id: '/test/namespace-factory.ts',
+            code,
+            detectedKinds: detectKindsInCode(code, env),
+          })
+
+          expect(result).not.toBeNull()
+          if (env === 'server') {
+            expect(result!.code).toContain('server-only-value')
+            expect(result!.code).not.toContain('factory.serverOnly')
+          } else {
+            expect(result!.code).not.toContain('server-only-value')
+            expect(result!.code).toContain('throw new Error')
+          }
+        },
+      )
+    })
+  },
+)
 
 test.each([
   `(createServerOnlyFn)(() => 'server-value')`,

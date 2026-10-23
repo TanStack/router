@@ -1,6 +1,5 @@
 import * as React from 'react'
 import { createFileRoute, Outlet } from '@tanstack/react-router'
-
 export class Layout extends React.Component {
   render() {
     return (
@@ -10,7 +9,4 @@ export class Layout extends React.Component {
     )
   }
 }
-
-export const Route = createFileRoute('/_layout')({
-  component: Layout,
-})
+export const Route = createFileRoute('/_layout')({ component: Layout })
