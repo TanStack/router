@@ -5,7 +5,7 @@
  * (the corpus) and the file-watcher control outside the corpus run. Waits
  * are on the compiler's own build events.
  */
-import { mkdir, rm, writeFile } from 'node:fs/promises'
+import { mkdir, rm, utimes, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -68,8 +68,8 @@ export interface WatchSession {
 
 /**
  * Starts a watch session of the bundler's generator entry on an app with a
- * root route, and waits for its first build. The session closes and the app
- * is removed when the test ends.
+ * root route and its route tree, and waits for its first build. The session
+ * closes and the app is removed when the test ends.
  */
 export async function startWatchSession(
   bundler: WatchBundler,
@@ -127,23 +127,56 @@ export const Route = createRootRoute({ component: () => createElement('main', nu
     infrastructureLogging: { level: 'none' },
     stats: 'none',
   }
-  let compiler: any
-  if (bundler === 'webpack') {
-    const { default: webpack } = await import('webpack')
-    const { TanStackRouterGeneratorWebpack } = await import('../src/webpack')
-    compiler = webpack({
-      ...config,
-      plugins: [TanStackRouterGeneratorWebpack(pluginOptions)],
-    } as any)
-  } else {
+  const createCompiler = async (): Promise<any> => {
+    if (bundler === 'webpack') {
+      const { default: webpack } = await import('webpack')
+      const { TanStackRouterGeneratorWebpack } = await import('../src/webpack')
+      return webpack({
+        ...config,
+        plugins: [TanStackRouterGeneratorWebpack(pluginOptions)],
+      } as any)
+    }
     const { rspack } = await import('@rsbuild/core')
     const { TanStackRouterGeneratorRspack } = await import('../src/rspack')
-    compiler = rspack({
+    return rspack({
       ...config,
       plugins: [TanStackRouterGeneratorRspack(pluginOptions)],
     } as any)
   }
 
+  // The app as a developer starts watching it: with its route tree, from a
+  // build (`compiler.run`), and no file changed in the last minute. The
+  // session's first build then changes no file, and nothing is new to the
+  // bundler's watcher (webpack rebuilds for files changed up to 2 s before
+  // it started watching), so no rebuild is pending when the test creates a
+  // route file. (A route file created while a rebuild runs the generator
+  // for the unchanged route tree is dropped: router-generator
+  // generator-dev.test.ts "events that arrive together", a pinned bug.)
+  const build = await createCompiler()
+  await new Promise<void>((resolve, reject) => {
+    build.run((error: Error | null, stats: any) => {
+      build.close(() => {
+        if (error || stats?.hasErrors()) {
+          reject(error ?? new Error(String(stats.toString('errors-only'))))
+        } else {
+          resolve()
+        }
+      })
+    })
+  })
+
+  const minuteAgo = new Date(Date.now() - 60_000)
+  for (const name of [
+    'package.json',
+    'routes',
+    'routes/__root.js',
+    'main.js',
+    'routeTree.gen.js',
+  ]) {
+    await utimes(file(name), minuteAgo, minuteAgo)
+  }
+
+  const compiler = await createCompiler()
   const builds: Array<Build> = []
   let built = () => {}
   let nextBuild = new Promise<void>((resolve) => {
