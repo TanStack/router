@@ -246,6 +246,25 @@ describe('hydration script ownership', () => {
     }
   })
 
+  test('does not warn when no initial tags were rendered', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const scripts = createHydrationScripts(() => 'abc', ['boot()'])
+      const output = scripts.claimOutput()
+      scripts.liftBarrier()
+      scripts.skipInitialTake()
+      scripts.pushSource('late()')
+      await flushMicrotasks()
+      expect(decodeChunks(drainChunks(output))).toContain(
+        '<script nonce="abc">',
+      )
+      expect(warn).not.toHaveBeenCalled()
+      scripts.cleanup()
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
   test('does not warn when the nonce is unchanged', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     try {

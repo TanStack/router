@@ -180,6 +180,8 @@ class HydrationScriptsOwner implements HydrationScriptOutput {
   private outputError: unknown
   private timeout: ReturnType<typeof setTimeout> | undefined
   private opening: string | undefined
+  // Set only when initial tags were rendered, not by skipInitialTake().
+  private initialTagsRendered = false
   private initialNonce: string | undefined
 
   constructor(
@@ -216,7 +218,7 @@ class HydrationScriptsOwner implements HydrationScriptOutput {
     const nonce = this.nonce
     if (
       process.env.NODE_ENV !== 'production' &&
-      this.initialTaken &&
+      this.initialTagsRendered &&
       nonce !== this.initialNonce
     ) {
       console.warn(
@@ -584,6 +586,7 @@ class HydrationScriptsOwner implements HydrationScriptOutput {
     this.initialNonce = this.nonce
     const tags = createInitialTags(sources, this.initialNonce)
     this.initialTaken = true
+    this.initialTagsRendered = true
     this.releaseAccounting(sources)
     sources.length = 0
     this.queuedSourceHead = 0
