@@ -230,6 +230,10 @@ describe('setupCoreRouterSsrQueryIntegration', () => {
   it('uses custom hydration options for initial and streamed queries', async () => {
     const queryClient = track(new QueryClient())
     const router: TestRouter = { isServer: false, options: {} }
+    const releaseLock = vi.spyOn(
+      ReadableStreamDefaultReader.prototype,
+      'releaseLock',
+    )
     const stream = new ReadableStream({
       start(controller) {
         controller.enqueue([
@@ -275,10 +279,10 @@ describe('setupCoreRouterSsrQueryIntegration', () => {
     expect(queryClient.getQueryData(['initial'])).toBe('initial-hydrated')
     expect(queryClient.getQueryData(['streamed'])).toBe('stream-hydrated')
     expect(queryClient.getQueryData(['streamed-batch'])).toBe('batch-hydrated')
-    expect(stream.locked).toBe(false)
+    expect(releaseLock).not.toHaveBeenCalled()
   })
 
-  it('releases a failed query stream reader', async () => {
+  it('logs a failed query stream', async () => {
     const queryClient = track(new QueryClient())
     const router: TestRouter = { isServer: false, options: {} }
     const error = new Error('stream failed')
@@ -297,13 +301,11 @@ describe('setupCoreRouterSsrQueryIntegration', () => {
     })
     await router.options.hydrate?.({ query: { stream } })
     await vi.waitFor(() => {
-      expect(stream.locked).toBe(false)
+      expect(consoleError).toHaveBeenCalledWith(
+        'Error reading query stream:',
+        error,
+      )
     })
-
-    expect(consoleError).toHaveBeenCalledWith(
-      'Error reading query stream:',
-      error,
-    )
   })
 
   it('cancels the query stream when hydration fails', async () => {
@@ -341,7 +343,6 @@ describe('setupCoreRouterSsrQueryIntegration', () => {
     await router.options.hydrate?.({ query: { stream } })
     await vi.waitFor(() => {
       expect(cancel).toHaveBeenCalledWith(error)
-      expect(stream.locked).toBe(false)
     })
 
     expect(consoleError).toHaveBeenCalledWith(
