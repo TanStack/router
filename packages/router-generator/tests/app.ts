@@ -10,9 +10,9 @@ import {
   utimes,
   writeFile,
 } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { onTestFinished } from 'vitest'
+import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import { Generator, getConfig } from '../src'
 import { recordInputs } from './consumer-inputs'
 import type { Config } from '../src'
@@ -23,7 +23,7 @@ import type { Config } from '../src'
  * when the test finishes.
  */
 export async function createApp(files: Record<string, string>) {
-  const root = await mkdtemp(path.join(tmpdir(), 'tsr-app-'))
+  const root = await mkdtemp(path.join(runDirectory(), 'tsr-app-'))
   onTestFinished(() => rm(root, { recursive: true, force: true }))
   for (const [file, content] of Object.entries(files)) {
     await mkdir(path.dirname(path.join(root, file)), { recursive: true })

@@ -5,12 +5,12 @@
  * A public Vite transform hook observes requests for fixture-owned files only.
  */
 import { mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { createServer, createServerModuleRunner, parseSync } from 'vite'
 import { makeRunnerStrict } from '@tanstack/compiler-test-utils/strict-runner'
 import { openDiagnosticChannel } from '@tanstack/compiler-test-utils/diagnostic-channel'
+import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import { inputsOf, recordInputs } from './consumer-inputs'
 import type { PluginOption } from 'vite'
 import type { createClientConsumer as CreateClientConsumer } from './consumer-client'
@@ -206,7 +206,7 @@ async function withModule<T>(
 }
 
 export async function evaluateModule(code: string, fileName = 'route.tsx') {
-  const root = await mkdtemp(path.join(tmpdir(), 'tsr-module-'))
+  const root = await mkdtemp(path.join(runDirectory(), 'tsr-module-'))
   try {
     const file = path.join(root, fileName)
     await writeFile(file, code)

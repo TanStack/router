@@ -22,6 +22,14 @@ import path from 'node:path'
 /** The environment variable that names this run's directory. */
 export const runDirectoryVariable = 'TANSTACK_COMPILER_TESTS_RUN_DIR'
 
+/**
+ * Where a test puts its temporary directories: this run's directory, or
+ * without this setup the system's temporary directory.
+ */
+export function runDirectory(): string {
+  return process.env[runDirectoryVariable] ?? os.tmpdir()
+}
+
 export default function setup() {
   const dir = mkdtempSync(
     path.join(realpathSync(os.tmpdir()), 'tanstack-compiler-tests-'),

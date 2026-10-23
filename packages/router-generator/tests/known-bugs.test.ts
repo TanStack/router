@@ -3,12 +3,12 @@
  * main and is marked .fails; remove .fails when the bug is fixed.
  */
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { parseSync } from 'vite'
 import { describe, expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { captureDiagnostics } from '@tanstack/compiler-test-utils/diagnostic-channel'
+import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import { Generator, getConfig } from '../src'
 import { recordDirectoryInputs } from './consumer-inputs'
 import { routeIdOf } from './route-id'
@@ -24,7 +24,7 @@ async function generateMovedRoute(
   source: string,
   otherFiles: Record<string, string> = {},
 ) {
-  const root = await mkdtemp(path.join(tmpdir(), 'tsr-known-bugs-'))
+  const root = await mkdtemp(path.join(runDirectory(), 'tsr-known-bugs-'))
   try {
     await mkdir(path.join(root, 'routes'))
     await writeFile(

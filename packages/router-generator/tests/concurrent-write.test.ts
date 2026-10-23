@@ -9,6 +9,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it, onTestFinished } from 'vitest'
 
+import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import { Generator, getConfig } from '../src'
 import { recordDirectoryInputs, recordInputs } from './consumer-inputs'
 import { expectOnlyOwnedEdits } from './owned-edits'
@@ -71,7 +72,7 @@ function toSeconds(mtimeMs: bigint) {
  * configuration of a generator for it.
  */
 async function createApp(postsSource: string) {
-  tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tsr-generator-race-'))
+  tempDir = await fs.mkdtemp(path.join(runDirectory(), 'tsr-generator-race-'))
   const routesDirectory = path.join(tempDir, 'routes')
   const postsRoutePath = path.join(routesDirectory, 'posts.tsx')
   await fs.mkdir(routesDirectory)
@@ -94,7 +95,9 @@ describe('generator with concurrent in-place saves', () => {
   it.each(['route file read', "generator's next file operation"] as const)(
     'does not scaffold over a route file whose in-place save completes during the %s',
     async (completeSaveDuring) => {
-      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tsr-generator-race-'))
+      tempDir = await fs.mkdtemp(
+        path.join(runDirectory(), 'tsr-generator-race-'),
+      )
       const routesDirectory = path.join(tempDir, 'routes')
       const postsRoutePath = path.join(routesDirectory, 'posts.tsx')
       await fs.mkdir(routesDirectory)

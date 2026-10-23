@@ -1,7 +1,7 @@
 /** Shared real generation workload: semantic acceptance and byte control. */
 import fs from 'node:fs/promises'
-import os from 'node:os'
 import path, { join } from 'node:path'
+import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import { Generator, getConfig } from '../src'
 import { recordDirectoryInputs } from './consumer-inputs'
 import { observeRouteTree } from './route-tree'
@@ -24,7 +24,7 @@ export const Route = createFileRoute('/posts/$postId')({
 
 /** Runs the generator twice on the routes with `newline` line endings. */
 export async function generateCrlf(newline: string) {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'tsr-crlf-'))
+  const root = await fs.mkdtemp(path.join(runDirectory(), 'tsr-crlf-'))
   try {
     await fs.mkdir(join(root, 'routes'))
     for (const [file, code] of Object.entries(crlfRoutes)) {
