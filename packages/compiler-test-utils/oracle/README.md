@@ -83,14 +83,14 @@ after the final passes F-F, F-G1, F-G2 and F-G3; the start-plugin-core part agai
   start-plugin-core 66 s). Edit to result for one fast-tier file is about 5 s. Several tiers are over their target
   and under their hard limit.
 
-Counts on the integrated branch (2026-10-23: the S-A simplification, the Q6/Q7 rulings, NOL-delete, the main-tests
-cleanup and the clean-up after them, below). Passed / expected-fail pins; "(S-A)" and "(main-tests)" mark counts
+Counts on the integrated branch (2026-10-23: the S-A and S-B simplifications, the Q6/Q7 rulings, NOL-delete, the
+main-tests cleanup and the clean-up after them, below). Passed / expected-fail pins; "(S-A)" and "(main-tests)" mark counts
 taken on those branches and not re-run after the merge (no file of those tiers changed since, except the three Q7
 pins Q6/Q7 added to start-plugin-core `test:integration`):
 
 | Package                         | `test:unit` | `test:integration`         | `test:noncompiler`   |
 | ------------------------------- | ----------- | -------------------------- | -------------------- |
-| `@tanstack/compiler-test-utils` | 149 / 0     | 171 / 0                    | –                    |
+| `@tanstack/compiler-test-utils` | 77 / 0      | 131 / 0                    | –                    |
 | `@tanstack/router-generator`    | 239 / 30    | 67 / 3                     | –                    |
 | `@tanstack/router-plugin`       | 107 / 20    | 674 / 349 (S-A)            | –                    |
 | `@tanstack/start-plugin-core`   | 270 / 132   | 1202 / 293 (S-A + Q7 pins) | 147 / 0 (main-tests) |
@@ -113,6 +113,11 @@ start-plugin-core 389 / 143 and 1204 / 292; noncompiler 121 / 0 and 49 / 0):
   changed, apart from start-plugin-core `test:unit` −2 pins (the F1 caret pin, which read the code frame: RULINGS
   "code-frame column (F1)") and ctu `test:unit` −34 (the controls of the deleted Node stand-ins `module-linker`,
   `lazy-probe` and `importBindings`, and of a determinism projection that ran through `module-linker`).
+- **S-B** (free names from Yuku's semantic model in `free-names.ts`, replacing the hand scope analysers
+  `validate-module.ts`/`source-attribution.ts`; router-plugin's production bundle compared with its `addHmr: false`
+  control build, replacing `added-code.ts`): ctu `test:unit` −72 (validate-module 68, added-code 4), ctu
+  `test:integration` −40 (the build harness's 32 dangling-name rows, validate-module-build 2, added-code 6). No
+  acceptance row of the compiler packages changed.
 
 The previous measurement (F-E-b) ran at 45f58967ea; the passes below came after it and are covered by the
 measurement above (F-H), the F-I pass by the start-plugin-core part of it. The final pass F-F (October 2026) re-audited "no re-implementation; client semantics in a browser" file by file and changed tests and
