@@ -15,12 +15,6 @@ if (process.env.VITEST) {
 }
 
 /**
- * Implementation tests: outside the compiler test corpus (see
- * packages/compiler-test-utils/AGENTS.md, "Corpus and implementation tests").
- */
-const implementationTests = '**/outside-compiler-corpus/**'
-
-/**
  * The projects whose tests check route apps in pages of a real browser
  * (`tests/route-app.ts`): the tests of a file run concurrently, each on dev
  * servers it holds alone (a test leases a host of the test process; a
@@ -57,11 +51,7 @@ const config = defineConfig({
         test: {
           ...pagesProject.test,
           name: 'unit',
-          exclude: [
-            ...configDefaults.exclude,
-            'integration/**',
-            implementationTests,
-          ],
+          exclude: [...configDefaults.exclude, 'integration/**'],
           typecheck: { enabled: true },
         },
       },
@@ -76,11 +66,7 @@ const config = defineConfig({
           // started with (see `test-scope-setup`)
           isolate: false,
           include: ['integration/**/*.test.ts'],
-          exclude: [
-            ...configDefaults.exclude,
-            implementationTests,
-            'integration/pages/**',
-          ],
+          exclude: [...configDefaults.exclude, 'integration/pages/**'],
           testTimeout: 30_000,
           hookTimeout: 30_000,
         },
@@ -94,30 +80,6 @@ const config = defineConfig({
           ...pagesProject.test,
           name: 'integration-pages',
           include: ['integration/pages/**/*.test.ts'],
-          exclude: [...configDefaults.exclude, implementationTests],
-          hookTimeout: 30_000,
-        },
-      },
-      {
-        // Implementation tests (`test:implementation`, both tiers): files
-        // under an `outside-compiler-corpus/` directory. They pin choices of
-        // today's implementation that a correct compiler may make
-        // differently, so the corpus targets above leave them out (see
-        // packages/compiler-test-utils/AGENTS.md).
-        extends: true,
-        test: {
-          name: 'implementation',
-          include: ['**/outside-compiler-corpus/**/*.test.ts'],
-          exclude: [...configDefaults.exclude, 'integration/**'],
-          typecheck: { enabled: true },
-        },
-      },
-      {
-        extends: true,
-        test: {
-          name: 'implementation-integration',
-          include: ['integration/**/outside-compiler-corpus/**/*.test.ts'],
-          testTimeout: 30_000,
           hookTimeout: 30_000,
         },
       },

@@ -113,8 +113,7 @@ export interface ServedStartBuild {
 }
 
 /**
- * Node's own `import()`, outside Vitest's module runner (the shared
- * helper of `@tanstack/compiler-test-utils/module-linker`): a built server
+ * Node's own `import()`, outside Vitest's module runner: a built server
  * bundle loads its chunks itself (Rspack's by `file:` URL), which the
  * runner would try to resolve.
  */

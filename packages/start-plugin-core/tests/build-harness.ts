@@ -50,7 +50,6 @@ import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import {
   linkWorkspacePackages,
-  workspacePackage,
   workspacePackageLinks,
 } from '@tanstack/compiler-test-utils/workspace-packages'
 import {
@@ -92,13 +91,6 @@ import type { TanStackStartInputConfig } from '../src'
 import type { ViolationInfo } from './importProtection/public-types'
 import type { RsbuildConfig, RsbuildPlugin } from '@rsbuild/core'
 import type { InlineConfig, Plugin } from 'vite'
-
-/**
- * The workspace's built `@tanstack/react-start` package, which apps link
- * (`startRuntimeLinks`): the `test:integration` target depends on its
- * `build` target, as this package cannot depend on it.
- */
-export const reactStartPackage = workspacePackage('@tanstack/react-start')
 
 /**
  * Links (`AppOptions.symlinks`) that give an app Start's real runtime:

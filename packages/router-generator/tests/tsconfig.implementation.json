@@ -1,5 +1,0 @@
-{
-  "extends": "../tsconfig.legacy.json",
-  "include": ["./outside-compiler-corpus/**/*.ts"],
-  "exclude": ["./**/node_modules/**"]
-}

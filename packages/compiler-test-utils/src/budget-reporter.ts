@@ -10,9 +10,8 @@
  *   (Nx adds its own startup), against the edit-to-result hard limit.
  *
  * The tier is the Vitest project: `integration` (and `integration-*`, e.g.
- * `integration-pages`) is the slow tier, the
- * implementation/noncompiler projects (outside the corpus) have no
- * budget, any other project is the fast tier. Runs at another worker count (CI, one worker) are
+ * `integration-pages`) is the slow tier, the noncompiler project (outside
+ * the corpus) has no budget, any other project is the fast tier. Runs at another worker count (CI, one worker) are
  * reported only.
  *
  * By default the reporter never fails a run: wall-clock times move with the
@@ -82,7 +81,7 @@ function moduleSeconds(testModule: TestModule) {
 const tierOf = (projectName: string): Tier | undefined =>
   projectName === 'integration' || projectName.startsWith('integration-')
     ? 'integration'
-    : projectName.startsWith('implementation') || projectName === 'noncompiler'
+    : projectName === 'noncompiler'
       ? undefined
       : 'unit'
 

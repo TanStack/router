@@ -12,7 +12,6 @@ import {
   reorderings,
   withoutRoot,
 } from '../src/determinism'
-import { createModuleGraph } from '../src/module-linker'
 
 describe('reorderings', () => {
   test('give the order, the reverse and an interleaving', () => {
@@ -55,64 +54,6 @@ describe('expectDeterministic', () => {
   test('fails when one variant observes something else', async () => {
     await expect(
       expectDeterministic(reorderings(['b', 'a']), ({ items }) => items[0]),
-    ).rejects.toThrow()
-  })
-})
-
-describe('a semantic projection', () => {
-  // Three outputs of one module, as a compiler might emit them: the second
-  // only renames private bindings and prints differently, the third
-  // computes another value and breaks the shared identity.
-  const outputs = [
-    `const shared = { n: 1 }
-export const loader = () => shared.n + 1
-export const read = () => shared`,
-    `const _shared$1 = {n:1};
-const _load = () => _shared$1.n + 1;
-export { _load as loader };
-export const read = () => _shared$1;`,
-    `export const loader = () => 3
-export const read = () => ({ n: 1 })`,
-  ]
-  /** What the module does when it runs: its loader's value, shared identity. */
-  const run = async (code: string) => {
-    const exports = await createModuleGraph({
-      modules: { '/output.ts': code },
-    }).import('/output.ts')
-    return {
-      code,
-      data: exports.loader(),
-      sharedIdentity: exports.read() === exports.read(),
-    }
-  }
-  const project = ({
-    data,
-    sharedIdentity,
-  }: Awaited<ReturnType<typeof run>>) => ({
-    data,
-    sharedIdentity,
-  })
-
-  test('ignores private names and printing, and returns the full observations', async () => {
-    const observations = await expectDeterministic(outputs.slice(0, 2), run, {
-      project,
-    })
-    expect(observations.map(({ code }) => code)).toEqual(outputs.slice(0, 2))
-  })
-
-  test('detects another value or a broken shared identity', async () => {
-    await expect(
-      expectDeterministic([outputs[0]!, outputs[2]!], run, { project }),
-    ).rejects.toThrow()
-    await expect(
-      expectRelocatable(
-        ['/a', '/b'],
-        (root) => run(outputs[root === '/a' ? 0 : 2]!),
-        {
-          check: () => {},
-          portable: project,
-        },
-      ),
     ).rejects.toThrow()
   })
 })

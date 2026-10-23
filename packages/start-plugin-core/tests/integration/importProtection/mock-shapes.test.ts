@@ -14,9 +14,9 @@
  * `src/cases/` whose `values()` gives what it read from the denied module;
  * one app holds every case, so each channel builds or serves it once.
  *
- * Replaces the internal controls that evaluated today's generated mock
- * modules in process (`outside-compiler-corpus/importProtection/
- * analysis.exports.test.ts`, `rewrite.test.ts`). The names today's mocks miss
+ * Replaces main's internal tests that evaluated today's generated mock
+ * modules in process (`importProtection/analysis.exports.test.ts`,
+ * `rewrite.test.ts`, deleted). The names today's mocks miss
  * (reserved words, namespace re-exports, enums, a member read before the
  * import, computed keys) are pinned in `known-bugs.test.ts` ("app-level
  * twins of the mock pins"); `export *` and `export * as ns` of a denied

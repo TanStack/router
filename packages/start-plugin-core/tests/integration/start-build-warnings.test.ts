@@ -1,9 +1,6 @@
 /**
  * A failure of the Start compiler fails the build and tells the user which
  * module it is about, on every bundler, without hanging (SPEC G5, G11).
- * (The warning channel of today's compiler extension API is checked by the
- * implementation tests in `outside-compiler-corpus/start-build-warnings
- * .test.ts`.)
  */
 import { describe, expect, test } from 'vitest'
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'

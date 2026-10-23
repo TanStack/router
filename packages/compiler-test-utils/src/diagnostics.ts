@@ -432,10 +432,6 @@ function realOf(file: string) {
   }
 }
 
-function escape(text: string) {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
 /**
  * Whether `text` reports `position`: `line:column` (the column 1-based or
  * 0-based, as tools differ); without a column, `file:line`, `line:column`

@@ -76,8 +76,7 @@ describe('createServerFn compiles correctly', () => {
   // error at the server fn's line (SPEC G5). Editors count \n, \r\n, a
   // lone \r, U+2028 and U+2029 as line terminators, so the reported line
   // must count every one. Prose, frame layout and context length are free
-  // (§5.7). (The column, which Start spells only with the code frame's
-  // caret: known-bugs-start-compiler-code-frame.test.ts, F1.)
+  // (§5.7).
   test.each([
     ['\\n', '\n'],
     ['\\r\\n', '\r\n'],

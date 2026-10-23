@@ -26,14 +26,6 @@ import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 
 const timeout = 60_000
 
-/**
- * Start's import protection options of a build that fails on a violation,
- * denying `files` to the client.
- */
-function importProtection(files: Array<string> = []) {
-  return { importProtection: { behavior: 'error', client: { files } } } as const
-}
-
 /** A server-only module (denied to the client by `importedAs`). */
 const deniedModules = {
   'a denied file': {

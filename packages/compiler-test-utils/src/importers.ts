@@ -9,21 +9,16 @@
  * - `importerSource(specifier, names)`: the source of a module that
  *   imports `names` from `specifier` (named, `default`, or names that are
  *   not identifiers) and exports them as live getters on `bindings`. Write
- *   it into a real app (a build entry, a dev-server module) or add it to a
- *   module graph.
- * - `importBindings(graph, specifier, names, options?)`: adds such a module
- *   to a `createModuleGraph` graph, evaluates it and returns its live
- *   `bindings`: compare them (`toBe`) with what the module uses, call them.
+ *   it into a real app (a build entry, a dev-server module).
  * - `loadMarker(name)`: a statement that records `name` when the module it
  *   is in evaluates; put it in a stub or a fixture file. `loadedModules()`
  *   and `resetLoadedModules()` read and clear the records of this realm;
  *   `loadedModulesExpression` reads them in another realm (a child Node
  *   run, a browser page).
  * - `expectNotLoaded(loaded, forbidden)`: asserts no forbidden module is
- *   in a list of loaded modules (`loadedModules()`, `graph.evaluated`).
+ *   in a list of loaded modules (`loadedModules()`, a page's records).
  */
 import { expect } from 'vitest'
-import type { ModuleGraph } from './module-linker'
 
 const identifier = /^[A-Za-z_$][\w$]*$/
 
@@ -49,26 +44,6 @@ export const bindings = {
 ${getters.join('\n')}
 }
 `
-}
-
-let importers = 0
-
-/**
- * Adds a module importing `names` from `specifier` to `graph` (as
- * `options.id`, by default a fresh `/importer-<n>.ts`), evaluates it and
- * returns its live bindings. `specifier` resolves as the graph resolves
- * imports of a module at `options.id`.
- */
-export async function importBindings(
-  graph: ModuleGraph,
-  specifier: string,
-  names: Array<string>,
-  options: { id?: string } = {},
-): Promise<Record<string, any>> {
-  const id = options.id ?? `/importer-${++importers}.ts`
-  graph.add(id, importerSource(specifier, names))
-  const { bindings } = await graph.import(id)
-  return bindings as Record<string, any>
 }
 
 const loadedKey = 'tanstack.compiler-test-utils.loaded'
@@ -104,7 +79,7 @@ export function resetLoadedModules() {
 
 /**
  * Asserts that none of `forbidden` is in `loaded` (names recorded by
- * `loadMarker`, or module ids such as `graph.evaluated`).
+ * `loadMarker`, or module ids).
  */
 export function expectNotLoaded(
   loaded: ReadonlyArray<string>,

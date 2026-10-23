@@ -16,9 +16,7 @@
  * thenable that resolves to itself.
  *
  * Pure: only the probe and the readers of the runtime diagnostics, no module
- * of the implementation (the evaluators of the generated mock modules are in
- * `outside-compiler-corpus/importProtection/mock-modules.ts`, used only by
- * implementation tests).
+ * of the implementation.
  */
 import { expect } from 'vitest'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'

@@ -1407,32 +1407,3 @@ export function holdsMarker(code: string, marker: string) {
 }
 
 export const head = `import { createFileRoute } from '@tanstack/react-router'\n`
-
-/**
- * The warnings and errors a page run logged (`PageRun.console`, `type: text`)
- * as diagnostics of the `page` channel: what a developer reads in the
- * browser's console (e.g. a warning a served module prints when it loads).
- * Merge them with `route.diagnostics()` to read every channel.
- */
-export function pageDiagnostics(
-  console: Array<string>,
-): Array<ChannelDiagnostic> {
-  const severities: Record<string, 'warning' | 'error'> = {
-    warning: 'warning',
-    error: 'error',
-  }
-  return console.flatMap((line) => {
-    const separator = line.indexOf(': ')
-    const severity = severities[line.slice(0, separator)]
-    return severity
-      ? [
-          {
-            severity,
-            text: line.slice(separator + 2),
-            raw: line,
-            source: 'page' as const,
-          },
-        ]
-      : []
-  })
-}
