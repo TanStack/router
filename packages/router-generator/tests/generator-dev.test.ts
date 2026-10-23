@@ -360,6 +360,55 @@ describe('route tree file events', () => {
   )
 })
 
+describe('events that arrive together', () => {
+  // A bundler's watcher reports the unchanged route tree (webpack rebuilds
+  // once after the first build, which wrote it) while the generator's own
+  // file watcher reports a created route file: both events reach `run()`
+  // before either run ends.
+  const createdWith = async (together: boolean) => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/index.tsx': fileRoute('/'),
+    })
+    const { config, generator } = await startGenerator(root)
+    const about = await save(root, 'src/routes/about.tsx', fileRoute('/about'))
+    const update = { type: 'update', path: config.generatedRouteTree } as const
+    const create = { type: 'create', path: about } as const
+    if (together) {
+      await Promise.all([generator.run(update), generator.run(create)])
+    } else {
+      await generator.run(update)
+      await generator.run(create)
+    }
+    return routesOf(config.generatedRouteTree)
+  }
+  const withAbout = {
+    __root__: 'routes/__root.tsx',
+    '/': 'routes/index.tsx',
+    '/about': 'routes/about.tsx',
+  }
+
+  test('a route created after an update event that changed nothing joins the route tree (control)', async () => {
+    expect(await createdWith(false)).toEqual(withAbout)
+  })
+
+  // Bug: an event that arrives while a run checks events that changed
+  // nothing is dropped: that run ends without looking at the events queued
+  // meanwhile, so the created route is not added.
+  // Source: src/generator.ts `run()` (the early `break` when every event of
+  // the batch is an unchanged update skips the `while` check of the queue).
+  // Impact: in webpack's watch mode, a route file created just after the
+  // first build (when webpack rebuilds for the route tree the generator
+  // wrote) is neither scaffolded nor routed until another route file
+  // changes (router-plugin generator-watch-mode.test.ts hit it now and then).
+  test.fails(
+    'a route created while an update event that changed nothing is checked joins the route tree',
+    async () => {
+      expect(await createdWith(true)).toEqual(withAbout)
+    },
+  )
+})
+
 describe('first runs', () => {
   test('a routes directory without a root route fails with the root route file to add', async () => {
     const root = await createApp({

@@ -13,13 +13,13 @@ Each entry's "Cause" names the product source its comment blames, when it does. 
 implementation, so a rewrite may have no such file. Most root causes are shared by several pins; the bug text then
 says "same root cause as above".
 
-Counts: 362 pin sites in 100 test files (a table test counts once here; Vitest counts each row).
+Counts: 363 pin sites in 100 test files (a table test counts once here; Vitest counts each row).
 
 ## Pins by compiler job
 
 ### J1 Route file upkeep and route generation (router-generator, generator wiring in router-plugin)
 
-30 pins.
+31 pins.
 
 #### `router-generator/tests/concurrent-write.test.ts`
 
@@ -35,6 +35,7 @@ Counts: 362 pin sites in 100 test files (a table test counts once here; Vitest c
 - **a deleted route tree is written again on its delete event.** A deleted route tree file is not written again: neither on its delete event, nor on the next route change, whose run fails with ENOENT. Cause: `router-generator/src/generator.ts`.
 - **after the route tree is deleted, adding a route writes the route tree.** Same as the row above: a deleted route tree file is not written again, and the next route change fails with ENOENT. Cause: `router-generator/src/generator.ts`.
 - **editing the virtualRouteConfig file updates the route tree.** Edits to the file `virtualRouteConfig` points to are ignored by a running generator: its update event is dropped (the absolute event path is compared with the configured relative path), and the config module is loaded from jiti's cache anyway. Cause: `router-generator/src/generator.ts`, `router-generator/src/filesystem/virtual/loadConfigFile.ts`.
+- **a route created while an update event that changed nothing is checked joins the route tree.** An event that arrives while a run checks events that changed nothing is dropped: that run ends without looking at the events queued meanwhile, so the created route is not added. In webpack's watch mode, a route file created just after the first build (when webpack rebuilds for the route tree the generator wrote) is neither scaffolded nor routed until another route file changes. Cause: `router-generator/src/generator.ts`.
 
 #### `router-generator/tests/generator-options.test.ts`
 
