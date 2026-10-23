@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import { tanstackRouter } from '../../../src/vite'
 import { createReactDevPage, renderProbe } from '../../dev-page'
-import { holdsMarker, loadRoute } from '../../route-app'
+import { expectValidModules, holdsMarker, loadRoute } from '../../route-app'
 import type { CodeSplittingOptions } from '../../../src/vite'
 import type { RouteApp } from '../../route-app'
 
@@ -123,12 +122,7 @@ export const Route = createRootRoute({})
       ['/routes-b/other.tsx', 'other'],
     ] as const) {
       // Code added twice would declare its bindings twice.
-      expect(
-        await getModuleErrors(await host.transform(url), 'module.tsx', {
-          env: 'client',
-        }),
-        url,
-      ).toEqual([])
+      await expectValidModules({ [url]: await host.transform(url) })
       const run = await host.runClient(
         url,
         `const { render } = await import(${JSON.stringify(renderProbe)})

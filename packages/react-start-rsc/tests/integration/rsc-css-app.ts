@@ -35,8 +35,6 @@ export const CARD_BACKGROUND = 'rgb(254, 243, 199)'
 export const BADGE_BACKGROUND = 'rgb(224, 242, 254)'
 /** `src/global.css` colour (`.plain`). */
 export const GLOBAL_COLOR = 'rgb(1, 2, 3)'
-/** A background no stylesheet set. */
-export const NO_BACKGROUND = 'rgba(0, 0, 0, 0)'
 
 /**
  * How the page consumes what the row's server function returns:

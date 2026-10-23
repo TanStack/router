@@ -13954,6 +13954,9 @@ importers:
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
+      yuku:
+        specifier: ^0.22.1
+        version: 0.22.1
 
   packages/eslint-plugin-router:
     dependencies:
@@ -30003,6 +30006,10 @@ packages:
 
   youch@4.1.0-beta.10:
     resolution: {integrity: sha512-rLfVLB4FgQneDr0dv1oddCVZmKjcJ6yX6mS4pU82Mq/Dt9a3cLZQ62pDBL4AUO+uVrCvtWz3ZFUL2HFAFJ/BXQ==}
+
+  yuku@0.22.1:
+    resolution: {integrity: sha512-aY9bJiNKR46RyulhwZxh1L6DlXuRWEub9uXjvrjhP/AKQFC5DwGdri4mJaQH9Jmv+ijnsduWoBTXtEfKy2aehw==}
+    engines: {node: '>=16.4.0'}
 
   zeptomatch@2.0.2:
     resolution: {integrity: sha512-H33jtSKf8Ijtb5BW6wua3G5DhnFjbFML36eFu+VdOoVY4HD9e7ggjqdM6639B+L87rjnR6Y+XeRzBXZdy52B/g==}
@@ -46649,6 +46656,8 @@ snapshots:
       '@speed-highlight/core': 1.2.14
       cookie: 1.1.1
       youch-core: 0.3.3
+
+  yuku@0.22.1: {}
 
   zeptomatch@2.0.2:
     dependencies:

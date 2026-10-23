@@ -32,6 +32,7 @@ import type { AddressInfo } from 'node:net'
 import type { BrowserPage } from './browser'
 import type { ChannelDiagnostic, DiagnosticChannel } from './diagnostic-channel'
 import type { DiagnosticSource, Severity } from './diagnostics'
+import type { ModuleNames } from './free-names'
 import type { Rspack } from '@rsbuild/core'
 
 export type Bundler = 'vite' | 'rspack' | 'webpack' | 'esbuild'
@@ -1238,8 +1239,9 @@ export async function describeBuild(
  * (`clientGlobals` of `known-globals.ts`: no Node-only global such as
  * `process` or `Buffer`) (user ruling "Dead-code references, widened",
  * 2026-10-17: a dangling name that survives into a production client bundle
- * is a bug; one in code the bundler deletes is fine). A read that a `typeof`
- * check of the name guards is allowed (see `unboundNames`).
+ * is a bug; one in code the bundler deletes is fine). Free names are Yuku's
+ * unresolved references (`free-names.ts`): a name the module probes with
+ * `typeof` is not free.
  * esbuild is not checked: it is no supported production bundler of the
  * ruling.
  *
@@ -1277,8 +1279,8 @@ async function checkDanglingNames(
   chunks: Array<Chunk>,
   evidence: ModuleEvidence,
 ) {
-  const [{ unboundReads, nameReads }, { clientGlobals }] = await Promise.all([
-    import('./validate-module'),
+  const [{ readNames }, { clientGlobals }] = await Promise.all([
+    import('./free-names'),
     import('./known-globals'),
   ])
   /** The original source on disk of each module, by resource (`undefined`: no file). */
@@ -1297,7 +1299,7 @@ async function checkDanglingNames(
     originalOf,
     readsOf: (source) => {
       try {
-        return nameReads(source)
+        return readNames(source)
       } catch {
         // A source the parser rejects gives no evidence
         return undefined
@@ -1309,7 +1311,7 @@ async function checkDanglingNames(
   const decided = new Map<string, Promise<boolean>>()
   for (const chunk of chunks) {
     const names: Array<string> = []
-    for (const name of unboundReads(chunk.code).keys()) {
+    for (const name of readNames(chunk.code).free) {
       if (clientGlobals.has(name)) {
         continue
       }
@@ -1351,7 +1353,7 @@ async function nameCounts(name: string, scope: ScopeEvidence) {
       continue
     }
     const reads = scope.readsOf(code)
-    if (!reads || reads.unbound.has(name)) {
+    if (!reads || reads.free.has(name)) {
       readers.push(resource)
     }
     if (reads?.bound.has(name)) {
@@ -1379,13 +1381,7 @@ interface ModuleEvidence {
 
 interface ScopeEvidence extends ModuleEvidence {
   originalOf: (resource: string) => Promise<string | undefined>
-  readsOf: (source: string) => NameReads | undefined
-}
-
-/** What a module reads (`nameReads` of `validate-module.ts`). */
-interface NameReads {
-  bound: Set<string>
-  unbound: Map<string, Array<number>>
+  readsOf: (source: string) => ModuleNames | undefined
 }
 
 /**
@@ -1423,8 +1419,7 @@ async function countsAsDangling(
   }
   // Free after the transforms, and not already free in the original
   return (
-    after.unbound.has(name) &&
-    !(before.unbound.has(name) && !before.bound.has(name))
+    after.free.has(name) && !(before.free.has(name) && !before.bound.has(name))
   )
 }
 

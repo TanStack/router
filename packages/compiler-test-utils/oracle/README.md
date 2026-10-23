@@ -262,9 +262,13 @@ chunk layout, printed code or AST shapes.
   `transform` hooks observed in that build), never by id, path or the helper that builds a lazy value.
 - **Dead code (G8)** is decided on a real production build: a dev module that reads a name it never declares fails
   if the production build of the same app still reads it, or if that build fails the build harness's own
-  dangling-name check (it may spell the name otherwise). Routes compiled with route HMR, and two direct
-  module-alone checks (router-plugin `integration/pages/code-splitter-imports-exports.test.ts` and
-  `router-plugin-context.test.ts`), still judge the dev module alone, which is stricter than G8.
+  dangling-name check (it may spell the name otherwise). A module's free names come from Yuku's semantic model
+  (`free-names.ts`), minus the environment's globals and names the module checks with `typeof`. Routes compiled
+  with route HMR, and modules checked without their app (router-plugin `router-plugin-context.test.ts`), have no
+  production build to decide: their free names count as they are, which is stricter than G8.
+- **Nothing dev-only in production (G7)**: router-plugin builds each production app twice, with the defaults and
+  with `addHmr: false` (`NODE_ENV=production`), and the chunks must be equal; the production page must render.
+  Start has no HMR-off build (J3.7): its dev-support check is a browser trap (`global-trap.ts`).
 
 ## Diagnostics
 

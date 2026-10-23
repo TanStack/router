@@ -28,11 +28,6 @@ import type { RsbuildConfig } from '@rsbuild/core'
 /** The Start framework packages a page app can be built with. */
 export type PageFramework = 'react' | 'solid'
 
-export interface PageFixture {
-  /** The fixture module (`src/fixtures/<name>.tsx`). */
-  code: string
-}
-
 /**
  * JavaScript of a page script: waits until the page requested no new
  * resource and changed no markup for `quiet` ms (default 150), and stays so

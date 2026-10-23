@@ -1,14 +1,13 @@
 /**
  * Names code may read without declaring or importing them: the globals the
- * environments it runs in define. Shared by the validator of generated
- * modules (`validate-module.ts`) and the check of production client chunks
- * (`build-harness.ts`).
+ * environments it runs in define (the `globals` package). Taken away from a
+ * module's free names (`free-names.ts`), e.g. by the check of production
+ * client chunks (`build-harness.ts`).
  *
  * Every global of the target counts, generic browser names (`name`,
  * `status`, `event`, `top`...) included: reading one is valid code. A
- * compiler bug that drops a local binding with such a name is found from
- * binding evidence instead (the `source` option of `getModuleErrors`), or
- * by running the output.
+ * compiler bug that drops a local binding with such a name is found by
+ * running the output.
  */
 import globals from 'globals'
 
@@ -38,36 +37,11 @@ const frameworkNames = [
  * `global`, `setImmediate`...): production client builds of Vite, Rspack and
  * webpack replace `process.env.NODE_ENV` (and webpack and Rspack `global`),
  * so a read of a Node-only global that survives in a client chunk throws in
- * a browser, unless a `typeof` check guards it (see `unboundNames`).
+ * a browser.
  */
 export const clientGlobals: ReadonlySet<string> = new Set([
   ...Object.keys(globals.builtin),
   ...languageNames,
   ...Object.keys(globals.browser),
   ...frameworkNames,
-])
-
-/**
- * The globals server code can count on: the language's and those of
- * Node.js as an ES module sees them (no CommonJS wrapper variables such as
- * `require` or `__dirname`), without the browser's (`window`, `document`:
- * a read of one that survives in server code throws in Node.js, unless a
- * `typeof` check guards it).
- */
-export const serverGlobals: ReadonlySet<string> = new Set([
-  ...Object.keys(globals.builtin),
-  ...languageNames,
-  ...Object.keys(globals.nodeBuiltin),
-  ...frameworkNames,
-])
-
-/**
- * The globals of code that may run on the client or the server
- * (`universal`): the client globals and the server globals. A module known
- * to run on one side reads only that side's (`clientGlobals`,
- * `serverGlobals`): this union admits `process` in a client module.
- */
-export const knownGlobals: ReadonlySet<string> = new Set([
-  ...clientGlobals,
-  ...Object.keys(globals.nodeBuiltin),
 ])

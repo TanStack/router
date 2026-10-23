@@ -12,7 +12,7 @@
  * compiler's business). Start offers no way to turn route HMR off (its
  * client code splitting forces `addHmr: true`), so no build without it can
  * be compared with these, as router-plugin's production-bundle.ts does with
- * `addedCode`; the dev controls show the route file does get route HMR
+ * its control build; the dev controls show the route file does get route HMR
  * where it belongs.
  */
 import react from '@vitejs/plugin-react'

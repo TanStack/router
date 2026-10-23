@@ -10,8 +10,6 @@
  */
 import { parse as parseWithBabel } from '@babel/core'
 import { describe, expect, it } from 'vitest'
-
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import {
   expectValidModules,
   head,
@@ -1119,15 +1117,6 @@ export const Route = createFileRoute('/')({
 `)
     const modules = await servedGraph(route)
     expect(Object.keys(modules).length).toBeGreaterThan(0)
-    for (const [url, code] of Object.entries(modules)) {
-      expect(
-        await getModuleErrors(code, 'module.tsx', {
-          env: 'client',
-          source: route.code,
-          globals: ['$RefreshReg$', '$RefreshSig$'],
-        }),
-        url,
-      ).toEqual([])
-    }
+    await expectValidModules(modules)
   })
 })
