@@ -530,6 +530,44 @@ export function ensureMockEdgeModule(opts: {
   )
 }
 
+/**
+ * Persistent cache restores importers without rerunning the loader that writes
+ * their mocks, so recreate a mock from its file name when it is requested.
+ */
+function restoreVirtualMockModule(
+  shared: SharedState,
+  envName: string,
+  request: string,
+): void {
+  if (!request.includes(IMPORT_PROTECTION_VIRTUAL_DIR)) {
+    return
+  }
+
+  const directory = `${getVirtualModulePath(shared.root, envName, '')}/`
+  const filePath = normalizePath(request)
+  if (!filePath.startsWith(directory)) {
+    return
+  }
+
+  const filename = filePath.slice(directory.length)
+  if (filename === MOCK_SILENT_FILE) {
+    ensureSilentMockModule(shared, envName)
+    return
+  }
+
+  const match = /^(mock-edge-|mock-runtime-)([\w-]+)\.mjs$/.exec(filename)
+  if (match) {
+    tryWriteVirtualModule(
+      shared,
+      envName,
+      filePath,
+      match[1] === MOCK_EDGE_FILE_PREFIX
+        ? loadMockEdgeModule(match[2]!).code
+        : loadMockRuntimeModule(match[2]!).code,
+    )
+  }
+}
+
 function getMockEdgePayloadFromFile(
   filePath: string,
 ): MockEdgePayload | undefined {
@@ -1549,6 +1587,17 @@ export function registerImportProtection(
           () => {
             shared.readyVmPlugins[envName] = true
             flushPendingWrites(shared, envName)
+          },
+        )
+        compiler.hooks.normalModuleFactory.tap(
+          'TanStackStartImportProtectionVirtualModulesRestore',
+          (normalModuleFactory) => {
+            normalModuleFactory.hooks.beforeResolve.tap(
+              'TanStackStartImportProtectionVirtualModulesRestore',
+              (resolveData) => {
+                restoreVirtualMockModule(shared, envName, resolveData.request)
+              },
+            )
           },
         )
       },
