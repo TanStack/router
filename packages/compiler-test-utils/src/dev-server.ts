@@ -44,7 +44,7 @@
  * stand in for (where their imports resolve: see `./app-directory`).
  */
 import { AsyncLocalStorage } from 'node:async_hooks'
-import { readFileSync, statSync } from 'node:fs'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
 import {
   lstat,
   mkdir,
@@ -777,7 +777,7 @@ async function startServer(
         }
       } finally {
         try {
-          await vite.close()
+          await closeViteServer(vite, eventTimeout)
         } finally {
           channel.close()
         }
@@ -1285,4 +1285,66 @@ export function describeHmr(messages: Array<HmrMessage>): Array<string> {
   return messages.map((message) =>
     `${message.environment}: ${message.type} ${message.paths.join(', ')}`.trimEnd(),
   )
+}
+
+/**
+ * Closes a Vite dev server once its dependency optimizer has nothing in
+ * flight, so that nothing writes into the app after `close()` resolved
+ * (authorized wait, FINAL-PASS #34; RULINGS "Vite's dependency optimizer:
+ * close wait").
+ *
+ * Vite 8.3.4's optimizer does not await all of its own work on close: a
+ * cancelled run's Rolldown build keeps writing its `deps_temp_*` directory
+ * (`runOptimizeDeps().cancel()` only sets a flag the build reads before it
+ * writes), the run a scan starts as `close()` awaits that scan is never
+ * cancelled, and a commit removes the previous cache directory (renamed
+ * `deps_temp_*`) without awaiting it. Removing the app then fails (`ENOTEMPTY`), or the build fails
+ * to write into the removed app (an unhandled "Error during dependency
+ * optimization"). So before `close()` this waits, per environment, for the
+ * optimizer's initialization and scan (`depsOptimizer.initState`,
+ * `scanProcessing`: Vite's own state, public in its types) and until no
+ * `deps*_temp_*` directory is left in the cache directory: Vite creates one
+ * before each run starts writing and renames or removes it once the run is
+ * committed or cancelled, and the previous cache directory it removes after
+ * a commit carries that name too. A run Vite has not started by then never
+ * starts: `close()` clears its timer. Remove the wait once Vite awaits its
+ * optimizer's work on close (draft: validation/UPSTREAM/vite-optimizer-after-close.md).
+ */
+export async function closeViteServer(
+  server: ViteDevServer,
+  timeout = 20_000,
+): Promise<void> {
+  const deadline = Date.now() + timeout
+  const cacheDir = server.config.cacheDir
+  const busy = async () => {
+    const optimizers = Object.values(server.environments).flatMap(
+      (environment) =>
+        environment.depsOptimizer ? [environment.depsOptimizer] : [],
+    )
+    await Promise.all(optimizers.map((optimizer) => optimizer.scanProcessing))
+    if (
+      optimizers.some((optimizer) => optimizer.initState === 'initializing')
+    ) {
+      return 'initializing'
+    }
+    let entries: Array<string> = []
+    try {
+      entries = readdirSync(cacheDir)
+    } catch {
+      // No cache directory: nothing was optimized
+    }
+    return entries.find((name) => /^deps.*_temp_/.test(name))
+  }
+  try {
+    for (let pending = await busy(); pending; pending = await busy()) {
+      if (Date.now() > deadline) {
+        throw new Error(
+          `Vite's dependency optimizer was still busy (${pending} in ${cacheDir}) ${timeout} ms after the dev server was asked to close`,
+        )
+      }
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    }
+  } finally {
+    await server.close()
+  }
 }

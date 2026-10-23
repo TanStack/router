@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import { createServer } from 'vite'
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { servedDirectories } from '@tanstack/compiler-test-utils/app-directory'
+import { closeViteServer } from '@tanstack/compiler-test-utils/dev-server'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import {
   clientEntryFiles,
@@ -116,7 +117,7 @@ createRoot(document.getElementById('root')!).render(<Page />)
         optimizeDeps,
         plugins: [startPlugin(server.root, {}), clientFixturePlugin, react()],
       })
-      onTestFinished(() => restarted.close())
+      onTestFinished(() => closeViteServer(restarted))
       await restarted.listen()
       const restartedUrl = new URL(
         '/__ip-fixture.html',

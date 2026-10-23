@@ -12,6 +12,7 @@ import { performance } from 'node:perf_hooks'
 import { createServer, isRunnableDevEnvironment } from 'vite'
 import { describe, expect, test, vi } from 'vitest'
 import { createAppDirectory } from '@tanstack/compiler-test-utils/app-directory'
+import { closeViteServer } from '@tanstack/compiler-test-utils/dev-server'
 import { linkStartRuntime } from '../build-harness'
 import {
   callServerFn,
@@ -99,6 +100,7 @@ describe('Vite dev server', () => {
     let fnLoading!: () => void
     // Vite calls the load hooks of a module once it tracks its request
     const fnLoaded = new Promise<void>((resolve) => (fnLoading = resolve))
+    let hung = false
     try {
       for (const [file, content] of Object.entries({
         ...startPluginFiles,
@@ -144,15 +146,20 @@ describe('Vite dev server', () => {
       await Promise.race([fnLoaded, transformed.catch(() => {})])
       await server.listen()
       if ((await settledOrHung(transformed, () => lastActivity)) === 'hang') {
+        hung = true
         transformed.catch(() => {})
         return 'hang' as const
       }
       return { code: (await transformed)!.code }
     } finally {
-      await Promise.race([
-        server?.close(),
-        new Promise((resolve) => setTimeout(resolve, 3_000)),
-      ])
+      // A hung server's optimizer waits for the hung transform: it writes
+      // nothing more, and `close()` may wait for that transform
+      await (hung
+        ? Promise.race([
+            server?.close(),
+            new Promise((resolve) => setTimeout(resolve, 3_000)),
+          ])
+        : server && closeViteServer(server))
       await rm(root, { recursive: true, force: true })
     }
   }
