@@ -145,6 +145,84 @@ function makeWindowsCompilation(readCss: () => string | Uint8Array) {
 }
 
 describe('normalizeRspackClientBuild', () => {
+  test.each([
+    {
+      query: 'tsr-split=component&tss-hydrate=first&tss-hydrate=second',
+      route: true,
+      hydrationIds: ['first'],
+    },
+    {
+      query: 'tsr-split=component&tss-hydrate=&tss-hydrate=second',
+      route: true,
+      hydrationIds: [],
+    },
+    {
+      query: 'tsr-split=component&tss-hydrate=one+two%2Bthree',
+      route: true,
+      hydrationIds: ['one two+three'],
+    },
+    {
+      query: '%74sr-split=component&tss-hydrate=first',
+      route: false,
+      hydrationIds: ['first'],
+    },
+    {
+      query: 'tsr-split=component&%74ss-hydrate=first',
+      route: true,
+      hydrationIds: [],
+    },
+    {
+      query: 'not-tsr-split=component&not-tss-hydrate=first',
+      route: false,
+      hydrationIds: [],
+    },
+  ])(
+    'preserves literal query filtering and first values for $query',
+    async ({ query, route, hydrationIds }) => {
+      const { clientBuild, directory } = await buildClientFixture({
+        'index.js': `globalThis.route = () => import(/* webpackChunkName: "alpha" */ './alpha.js?${query}')`,
+        'alpha.js': `export const render = () => globalThis.render()`,
+      })
+      const chunk = clientBuild.chunksByFileName.get('alpha.js')!
+      expect(chunk.routeFilePaths).toEqual(
+        route ? [join(directory, 'alpha.js')] : [],
+      )
+      expect(chunk.hydrationIds).toEqual(hydrationIds)
+    },
+  )
+
+  test.each([false, true])(
+    'preserves route and hydration metadata with concatenateModules=%s',
+    async (concatenateModules) => {
+      const { clientBuild, directory } = await buildClientFixture(
+        {
+          'index.js': `globalThis.route = () => import(/* webpackChunkName: "alpha" */ './alpha.js?tsr-split=component&tss-hydrate=route%2Falpha')`,
+          'alpha.js': `
+            import { first } from './first.js?tss-hydrate=shared';
+            import { second } from './second.js?tss-hydrate=shared';
+            import { empty } from './empty.js?tss-hydrate=';
+            import { lookalike } from './lookalike.js?not-tsr-split=component&not-tss-hydrate=ignored';
+            export const render = () => first() + second() + empty() + lookalike();
+          `,
+          'first.js': `export const first = () => globalThis.first`,
+          'second.js': `export const second = () => globalThis.second`,
+          'empty.js': `export const empty = () => globalThis.empty`,
+          'lookalike.js': `export const lookalike = () => globalThis.lookalike`,
+        },
+        { optimization: { concatenateModules } },
+      )
+
+      const chunk = clientBuild.chunksByFileName.get('alpha.js')!
+      expect(chunk.routeFilePaths).toEqual([join(directory, 'alpha.js')])
+      expect(chunk.hydrationIds).toEqual(
+        expect.arrayContaining(['route/alpha', 'shared']),
+      )
+      expect(chunk.hydrationIds.filter((id) => id === 'shared')).toHaveLength(1)
+      expect(chunk.hydrationIds).not.toContain('')
+      expect(chunk.hydrationIds).not.toContain('ignored')
+    },
+  )
+
   test.each(
     ['shared', 'none', 'css-module', 'css-only'].flatMap((extraction) =>
       [false, true].flatMap((concatenateModules) =>
