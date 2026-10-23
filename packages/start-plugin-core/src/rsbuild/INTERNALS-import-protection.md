@@ -102,6 +102,11 @@ The important forms are:
 Writes may happen before the `VirtualModulesPlugin` instance is ready, so the
 adapter queues them and flushes during compilation setup.
 
+Persistent cache restores importers without rerunning the loader that writes
+their mocks. A `beforeResolve` hook therefore regenerates any requested mock in
+the environment's virtual directory from its file name, which fully encodes its
+contents.
+
 ## Reporting Phase
 
 `processAssets({ stage: 'report' })` is the authoritative reporting step.
