@@ -62,6 +62,7 @@ import {
   describeBuild,
   parsedModules,
   recordParsedModules,
+  recordViteModules,
   statsDiagnostics,
   statsMessages,
   statsOptions,
@@ -656,7 +657,7 @@ type Outputs = Record<
     chunks: Array<EmittedChunk>
     /** Whether the chunks are ES modules (Rsbuild's `output.module`). */
     esModules?: boolean
-    /** Rsbuild production client: `describeBuild`'s `parsedModules`. */
+    /** Production client: `describeBuild`'s `parsedModules`. */
     parsedModules?: ParsedModules
   }
 >
@@ -686,6 +687,8 @@ async function buildWithVite(
   const { createBuilder, mergeConfig } = await import('vite')
   const outputs: Partial<Outputs> = {}
   const errors: Array<string> = []
+  /** The evidence of the client's dangling-name check (`describeBuild`). */
+  const clientParsedModules = parsedModules()
   /** Records what each environment emitted. */
   const outputPlugin: Plugin = {
     name: 'start-build-harness:outputs',
@@ -694,6 +697,7 @@ async function buildWithVite(
       outputs[env] = {
         outDir: path.resolve(target.root, this.environment.config.build.outDir),
         chunks: chunksOfBundle(Object.values(bundle)),
+        ...(env === 'client' && { parsedModules: clientParsedModules }),
       }
     },
   }
@@ -789,6 +793,13 @@ async function buildWithVite(
               : []),
             outputPlugin,
             appOnwarnPlugin,
+            ...(target.mode === 'production'
+              ? [
+                  recordViteModules(clientParsedModules, {
+                    environment: 'client',
+                  }),
+                ]
+              : []),
           ],
         },
         target.viteConfig ?? {},

@@ -1238,8 +1238,9 @@ export async function describeBuild(
  * `process` or `Buffer`) (user ruling "Dead-code references, widened",
  * 2026-10-17: a dangling name that survives into a production client bundle
  * is a bug; one in code the bundler deletes is fine). Free names are Yuku's
- * unresolved references (`free-names.ts`): a name the module probes with
- * `typeof` is not free.
+ * unresolved references (`free-names.ts`): a name a module probes with
+ * `typeof` is not free in that module, which each module decides (below),
+ * not the chunk. A chunk Yuku cannot read (a parse error) fails the check.
  * esbuild is not checked: it is no supported production bundler of the
  * ruling.
  *
@@ -1268,7 +1269,9 @@ export async function describeBuild(
  * A name no module reads free is the bundler's when a module binds it (it
  * dropped a binding the transforms left in place, e.g. Rspack 2.2.7 and
  * the import bindings the kept unused code of a concatenated module reads:
- * out of scope); when no module binds it either, code outside the modules
+ * out of scope), and a module's own guarded read when a module probes it
+ * with `typeof` (e.g. seroval's `typeof Buffer`); when no module binds or
+ * probes it either, code outside the modules
  * (a bundle-level hook) introduced it, and it counts. Nothing is excepted
  * per package or by name. Without evidence, every free read counts.
  */
@@ -1309,7 +1312,11 @@ async function checkDanglingNames(
   const decided = new Map<string, Promise<boolean>>()
   for (const chunk of chunks) {
     const names: Array<string> = []
-    for (const name of readNames(chunk.code).free) {
+    const read = readNames(chunk.code, undefined, { keepProbed: true })
+    if (read.errors.length > 0) {
+      throw new Error(`${chunk.fileName} does not parse: ${read.errors[0]}`)
+    }
+    for (const name of read.free) {
       if (clientGlobals.has(name)) {
         continue
       }
@@ -1347,19 +1354,26 @@ async function nameCounts(name: string, scope: ScopeEvidence) {
   for (const resource of parsed.modules) {
     const code =
       parsed.transformed.get(resource) ?? (await scope.originalOf(resource))
-    if (code === undefined || !code.includes(name)) {
+    if (
+      code === undefined ||
+      !code.includes(name) ||
+      // (the bundler deleted the module's reads of it)
+      (parsed.rendered && !parsed.rendered.get(resource)?.includes(name))
+    ) {
       continue
     }
     const reads = scope.readsOf(code)
     if (!reads || reads.free.has(name)) {
       readers.push(resource)
     }
-    if (reads?.bound.has(name)) {
+    // (a module that probes the name with `typeof` reads it knowingly)
+    if (reads?.bound.has(name) || reads?.probed.has(name)) {
       bound = true
     }
   }
   if (readers.length === 0) {
-    // The bundler dropped a binding, or a bundle-level hook added the read
+    // The bundler dropped a binding, a bundle-level hook added the read,
+    // or the modules that read it probe it
     return !bound
   }
   for (const resource of readers) {
@@ -1438,6 +1452,12 @@ export interface ParsedModules {
    * code of the others is their file.)
    */
   transformed: Map<string, string>
+  /**
+   * Vite (Rolldown): the code each module has in the output, by module id
+   * (`OutputChunk.modules`: what tree-shaking kept). A module whose rendered
+   * code lost a name kept none of its reads of it.
+   */
+  rendered?: Map<string, string>
 }
 
 interface RecordedModule {
@@ -1561,6 +1581,20 @@ export function recordViteModules(
         recordModule(parsed, id, code)
         return null
       },
+    },
+    generateBundle(
+      _options: unknown,
+      bundle: Record<
+        string,
+        { type: string; modules?: Record<string, { code: string | null }> }
+      >,
+    ) {
+      parsed.rendered ??= new Map()
+      for (const output of Object.values(bundle)) {
+        for (const [id, module] of Object.entries(output.modules ?? {})) {
+          parsed.rendered.set(id, module.code ?? '')
+        }
+      }
     },
   }
 }
