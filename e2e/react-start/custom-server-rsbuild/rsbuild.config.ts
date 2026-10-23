@@ -7,7 +7,7 @@ import { tanstackStart } from '@tanstack/react-start/plugin/rsbuild'
 // non-default client chunk layout. The combination that matters for the
 // repro is:
 //
-//   - `client.output: 'iife'` — emit the client entry as a self-executing
+//   - `client.output.module: false` — emit the client entry as a self-executing
 //     script. The manifest uses plain script tags and classic script preloads;
 //     setting IIFE here exercises that non-module asset path.
 //
@@ -18,23 +18,19 @@ import { tanstackStart } from '@tanstack/react-start/plugin/rsbuild'
 //     the regression this fixture covers.
 //
 //   - `client.distPath.root` + `distPath.js: ''` — flat layout, JS at the
-//     dist root. Matches the path `express-server.ts` serves via
-//     `express.static('dist/client')`.
+//     dist root mounted by `express-server.ts`.
 //
 //   - `performance.buildCache: true` — exercise the rspack persistent
 //     cache, including warm-restart paths.
 //
-//   - `output.assetPrefix: '/static/'` — force manifest URLs through an
-//     explicit prefix.
+//   - `output.assetPrefix: '/static/'` — force manifest URLs through the
+//     explicit prefix mounted by `express-server.ts`.
 export default defineConfig({
   plugins: [
     pluginReact(),
     tanstackStart({
       rsbuild: {
         installDevServerMiddleware: false,
-        client: {
-          output: 'iife',
-        },
       },
     }),
   ],
@@ -47,9 +43,11 @@ export default defineConfig({
   environments: {
     client: {
       output: {
+        module: false,
         distPath: {
           root: path.resolve(__dirname, 'dist/client'),
           js: '',
+          css: '',
         },
       },
       tools: {
