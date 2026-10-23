@@ -2,10 +2,11 @@
  * The runtime side of dev mocks on a Vite dev server with Start's whole
  * public plugin (SPEC J6.3, J6.8): in the browser, a client import of a
  * denied file or of a denied specifier gets a safe mock whatever
- * `mockAccess` says, and each use of the mock (a call, a conversion to a
- * string, `toString()`, `new`, a property write) is reported in the
- * browser console with the severity `mockAccess` gives (`error`, `warn`),
- * naming the denied import; `mockAccess: 'off'` reports nothing. What is
+ * `mockAccess` says, a call of the mock is reported in the browser console
+ * with the severity `mockAccess` gives (`error`, `warn`), naming the denied
+ * import, and with `mockAccess: 'off'` no use of it is reported or has a side
+ * effect. Which other uses of a mock are reported (a conversion to a string,
+ * `toString()`, `new`, a property write) is free (ruling "mock access diagnostics"). What is
  * reported is read through the shared diagnostic oracle: the severity and
  * the denied import, never the prose (J6.12). (The Rsbuild twin:
  * `integration/rsbuild/import-protection.test.ts`, "Rsbuild dev:
@@ -60,7 +61,7 @@ const deniedImports = [
   { name: 'query', specifier: 'db-lib' },
 ] as const
 
-/** The uses of a mock that are reported, as page scripts on `value`. */
+/** Uses of a mock a page may make, as page scripts on `value`. */
 const uses: Record<string, string> = {
   'a call': `value()`,
   'a conversion to a string': `String(value)`,
@@ -143,7 +144,7 @@ describe.each(deniedImports)('a client import of $specifier', (denied) => {
     { mockAccess: 'error', severity: 'error' },
     { mockAccess: 'warn', severity: 'warning' },
   ] as const)(
-    'mockAccess $mockAccess: a use in the client is reported as an $severity naming the import',
+    'mockAccess $mockAccess: a call in the client is reported as an $severity naming the import',
     async ({ mockAccess, severity }) => {
       const { logged } = await inPage(mockAccess, denied.name, `value()`)
       expect([...new Set(logged.map((entry) => entry.severity))]).toEqual([
@@ -155,25 +156,6 @@ describe.each(deniedImports)('a client import of $specifier', (denied) => {
         ...('file' in denied && {
           file: denied.file,
           root: (await serverOf(mockAccess)).root,
-        }),
-      })
-    },
-    timeout,
-  )
-
-  test.each(Object.keys(uses))(
-    '%s is reported as a use',
-    async (use) => {
-      const { logged } = await inPage('error', denied.name, uses[use]!)
-      expect([...new Set(logged.map((entry) => entry.severity))]).toEqual([
-        'error',
-      ])
-      expectMockAccess(logged, {
-        severity: 'error',
-        specifier: denied.specifier,
-        ...('file' in denied && {
-          file: denied.file,
-          root: (await serverOf('error')).root,
         }),
       })
     },

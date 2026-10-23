@@ -121,7 +121,10 @@ export const cleanup = ['__formatCalls']`,
   })
 
   // Source: #8504 hydrate-split-modules.test.ts
-  test("client: the directives stay in the prologue of the parent module, and 'use client' in the split chunk", async () => {
+  // Whether the client-only split chunk repeats 'use client' is free: the
+  // directive has no effect in a chunk only the client loads (ruling
+  // "Hydrate chunk directives").
+  test('client: the directives stay in the prologue of the parent module', async () => {
     const client = await renderClient(
       await hosts(),
       `'use client'
@@ -133,24 +136,11 @@ export function Page() {
       { files: { './chart': `export const Chart = () => <p>chart</p>` } },
     )
     expectHydratedCleanly(client)
-    const started = await hosts()
     // Both directives stay in the prologue (before any statement); their
     // order is free (SPEC §5.5).
     expect(sourceDirectives(await client.case.served())).toEqual(
       expect.arrayContaining(['use client', 'use strict']),
     )
-    // The split code the page loaded for the children (modules other than
-    // the children's own imports).
-    const split = client.lazyUrls.filter(
-      (url) => url.startsWith('/') && !url.includes('/chart.tsx'),
-    )
-    expect(split).not.toEqual([])
-    const directives = await Promise.all(
-      split.map(async (url) =>
-        sourceDirectives(await started.start.host.transform(url, 'client')),
-      ),
-    )
-    expect(directives.some((found) => found.includes('use client'))).toBe(true)
   })
 
   test('client: the split shorthand splits the children', async () => {
