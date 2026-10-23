@@ -81,7 +81,8 @@ export interface DiagnosticExpectation {
    * The position the diagnostic must report, in the original source:
    * 1-based line and, when given, column (`line:column`, with a 1-based or
    * 0-based column); without a column, `file:line`, `line:column` or a code
-   * frame's highlighted line.
+   * frame's highlighted line. With `file`, a `line:column` or `:line` must
+   * come after the text names the file (a code frame's line anywhere).
    */
   position?: { line: number; column?: number }
   /** How many diagnostics must match (default: at least one). */
@@ -266,15 +267,17 @@ export function mismatches(
       `severity ${diagnostic.severity}, expected ${severities.join(' or ')}`,
     )
   }
-  if (
-    expected.file !== undefined &&
-    !mentionsFile(diagnostic.text, expected.file, expected)
-  ) {
+  /** The text from where it names the file on (all of it without `file`). */
+  const named =
+    expected.file === undefined
+      ? diagnostic.text
+      : fileMention(diagnostic.text, expected.file, expected)
+  if (named === undefined) {
     reasons.push(`does not name ${expected.file}`)
   }
   if (
     expected.position !== undefined &&
-    !reportsPosition(diagnostic.text, expected.position)
+    !reportsPosition(diagnostic.text, named ?? '', expected.position)
   ) {
     const { line, column } = expected.position
     reasons.push(
@@ -372,6 +375,18 @@ export function mentionsFile(
   file: string,
   options: { root?: string } = {},
 ) {
+  return fileMention(text, file, options) !== undefined
+}
+
+/**
+ * The text (ANSI colours removed, `\\` as `/`) from its first naming of
+ * `file` on (`mentionsFile`), or `undefined` when it does not name it.
+ */
+function fileMention(
+  text: string,
+  file: string,
+  options: { root?: string },
+): string | undefined {
   const posix = (value: string) => value.replaceAll('\\', '/')
   const said = posix(stripVTControlCharacters(text))
   const absolute = path.isAbsolute(file)
@@ -385,13 +400,12 @@ export function mentionsFile(
       : undefined
     : posix(path.normalize(file))
   const spellings = absolute === undefined ? [] : [absolute, realOf(absolute)]
-  if (
-    spellings.some((spelling) => spelling && said.includes(posix(spelling)))
-  ) {
-    return true
-  }
+  /** Where the text names the file. */
+  const starts = spellings
+    .map((spelling) => (spelling ? said.indexOf(posix(spelling)) : -1))
+    .filter((index) => index !== -1)
   if (relative === undefined) {
-    return false
+    return starts.length > 0 ? said.slice(Math.min(...starts)) : undefined
   }
   for (
     let at: number = said.indexOf(relative);
@@ -418,10 +432,11 @@ export function mentionsFile(
             (spelling) => spelling && posix(spelling).endsWith(`/${whole}`),
           )))
     ) {
-      return true
+      starts.push(start)
+      break
     }
   }
-  return false
+  return starts.length > 0 ? said.slice(Math.min(...starts)) : undefined
 }
 
 function realOf(file: string) {
@@ -434,19 +449,25 @@ function realOf(file: string) {
 
 /**
  * Whether `text` reports `position`: `line:column` (the column 1-based or
- * 0-based, as tools differ); without a column, `file:line`, `line:column`
- * or a code frame's highlighted line (`> line |`, maybe inside a tool's
- * box).
+ * 0-based, as tools differ) in `named` (the text from where it names the
+ * file on); without a column, also `:line` there, or a code frame's
+ * highlighted line (`> line |`, maybe inside a tool's box) anywhere in
+ * `text`.
  */
 function reportsPosition(
   text: string,
+  named: string,
   { line, column }: { line: number; column?: number },
 ) {
-  const pattern =
-    column === undefined
-      ? `(?<!\\d):${line}(?!\\d)|(?<![\\d:])${line}:\\d|^[^\\w\\n]*>\\s*${line}\\s*\\|`
-      : `(?<!\\d)${line}:(?:${column}|${column - 1})(?!\\d)`
-  return new RegExp(pattern, 'm').test(text)
+  if (column !== undefined) {
+    return new RegExp(
+      `(?<!\\d)${line}:(?:${column}|${column - 1})(?!\\d)`,
+    ).test(named)
+  }
+  return (
+    new RegExp(`(?<!\\d):${line}(?!\\d)|(?<![\\d:])${line}:\\d`).test(named) ||
+    new RegExp(`^[^\\w\\n]*>\\s*${line}\\s*\\|`, 'm').test(text)
+  )
 }
 
 /** Line terminators of JavaScript (and of editors). */
