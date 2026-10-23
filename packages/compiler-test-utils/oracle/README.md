@@ -83,23 +83,36 @@ after the final passes F-F, F-G1, F-G2 and F-G3; the start-plugin-core part agai
   start-plugin-core 66 s). Edit to result for one fast-tier file is about 5 s. Several tiers are over their target
   and under their hard limit.
 
-Counts at d07614d3b3 (passed / expected-fail pins; at 633a4c0917, where the measurements above ran, start-plugin-core
-`test:integration` was 1199 / 288), with the implementation and noncompiler lanes as of the main-tests cleanup (below;
-the acceptance tiers did not change):
+Counts on the integrated branch (2026-10-23: the S-A simplification, the Q6/Q7 rulings, NOL-delete, the main-tests
+cleanup and the clean-up after them, below). Passed / expected-fail pins; "(S-A)" and "(main-tests)" mark counts
+taken on those branches and not re-run after the merge (no file of those tiers changed since, except the three Q7
+pins Q6/Q7 added to start-plugin-core `test:integration`):
 
-| Package                         | `test:unit` | `test:integration` | `test:implementation` | `test:noncompiler` |
-| ------------------------------- | ----------- | ------------------ | --------------------- | ------------------ |
-| `@tanstack/compiler-test-utils` | 330 / 0     | 171 / 0            | –                     | –                  |
-| `@tanstack/router-generator`    | 239 / 30    | 67 / 3             | 63 / 2                | –                  |
-| `@tanstack/router-plugin`       | 107 / 20    | 674 / 355          | 87 / 1                | –                  |
-| `@tanstack/start-plugin-core`   | 389 / 143   | 1204 / 292         | 191 / 9               | 147 / 0            |
-| `@tanstack/react-start-rsc`     | no files    | 108 / 13           | –                     | 57 / 0             |
+| Package                         | `test:unit` | `test:integration`         | `test:noncompiler`   |
+| ------------------------------- | ----------- | -------------------------- | -------------------- |
+| `@tanstack/compiler-test-utils` | 149 / 0     | 171 / 0                    | –                    |
+| `@tanstack/router-generator`    | 239 / 30    | 67 / 3                     | –                    |
+| `@tanstack/router-plugin`       | 107 / 20    | 674 / 349 (S-A)            | –                    |
+| `@tanstack/start-plugin-core`   | 270 / 132   | 1202 / 293 (S-A + Q7 pins) | 147 / 0 (main-tests) |
+| `@tanstack/react-start-rsc`     | no files    | 108 / 13                   | 57 / 0 (main-tests)  |
 
-The main-tests cleanup (after F-I) put main's tests of features that are not compilers back at main's paths with
-main's content (noncompiler lane: start-plugin-core 121 → 147, the whole of main's Rsbuild normalized-client-build
-test and main's versions of the others; react-start-rsc 49 → 57, main's runtime and type tests) and deleted main's
-tests of compiler internals that had been moved into the implementation lane (router-generator 114 → 63,
-router-plugin 104 → 87, start-plugin-core 609 → 191). No acceptance file, row or pin changed.
+How the counts moved from d07614d3b3 (ctu 330 / 0 and 171 / 0; router-plugin `test:integration` 674 / 355;
+start-plugin-core 389 / 143 and 1204 / 292; noncompiler 121 / 0 and 49 / 0):
+
+- **S-A** (import gate, violation-report reader and diagnostic word-list controls deleted, pins that only asked for
+  message content deleted; RULINGS "diagnostics: file and position only"): ctu `test:unit` −147 (import gate 9,
+  diagnostics controls 138); router-plugin `test:integration` −6 pins; start-plugin-core `test:unit` −118 passed,
+  −6 pins (124 reader controls; 6 F1 column pins now check the line and pass), `test:integration` −2 passed, −2 pins.
+- **Q6/Q7** (RULINGS "Q6", "Q7"): start-plugin-core `test:unit` −1 passed (3 Q6 rows on a hand-built Start package
+  deleted, 2 real-app rows added: Start's own `createCsrfMiddleware`, a `createMiddleware` read through a namespace of
+  a re-exporting module) and −3 pins (the in-process CommonJS pin), `test:integration` +3 pins (the CommonJS pin
+  through real apps: Vite and Rsbuild builds, Rsbuild dev).
+- **main-tests**: main's tests of features that are not compilers back at main's paths with main's content
+  (noncompiler: start-plugin-core 121 → 147, react-start-rsc 49 → 57); main's tests of compiler internals deleted.
+- **NOL-delete** and the clean-up after the merge: the implementation lane is gone (below); no acceptance row
+  changed, apart from start-plugin-core `test:unit` −2 pins (the F1 caret pin, which read the code frame: RULINGS
+  "code-frame column (F1)") and ctu `test:unit` −34 (the controls of the deleted Node stand-ins `module-linker`,
+  `lazy-probe` and `importBindings`, and of a determinism projection that ran through `module-linker`).
 
 The previous measurement (F-E-b) ran at 45f58967ea; the passes below came after it and are covered by the
 measurement above (F-H), the F-I pass by the start-plugin-core part of it. The final pass F-F (October 2026) re-audited "no re-implementation; client semantics in a browser" file by file and changed tests and
@@ -117,8 +130,8 @@ pins the same input and outcomes through a real request). No pin site was added 
 router-plugin and react-start-rsc harnesses with the plugins a real app configures ("How tests reach the
 compilers"); no count or pin changed. NOL-delete (2026-10-22, after F-H) deleted the branch's own implementation-lane
 files: tests of test helpers, of today's compiler internals and of non-compiler behaviour, and router-plugin's
-legacy harness (53 files). Implementation lane, before → after: router-generator 114 / 2 → 51 / 0, router-plugin
-104 / 1 → 17 / 0, start-plugin-core 609 / 9 → 468 / 0; every acceptance tier and noncompiler lane kept its count.
+legacy harness (53 files); with main-tests and the Q6/Q7 legacy clean-up, nothing was left in the implementation
+lane, so its targets went too. Every acceptance tier and noncompiler lane kept its count.
 The pass F-I (after V-G1) made the #7213 rows of start-plugin-core `integration/known-bugs-start-compiler.test.ts`
 deterministic (caveats below): start-plugin-core `test:integration` +3 passed and +4 expected-fail rows (the Vite
 cells of the middleware caller where SSR code imports the server fn removed; a pin site added: the caller only client
@@ -128,12 +141,6 @@ depends on that race. The validation V-I (after F-I) added start-plugin-core `te
 control, on both bundlers, of a server fn the app's server entry defines, called from SSR code (caveats below).
 Without it, a Vite compiler whose resolver drops every server fn the client build did not find passed every
 acceptance tier.
-The rulings Q6 and Q7 (2026-10-22, RULINGS) changed: start-plugin-core `test:unit` −1 passed (the 3 Q6 rows on a
-hand-built Start package deleted; 2 real-app rows added: Start's own `createCsrfMiddleware` in the client and on the
-server, a `createMiddleware` read through a namespace of a re-exporting module) and −3 expected-fail rows (the
-in-process CommonJS pin); start-plugin-core `test:integration` +3 expected-fail rows (the CommonJS pin through real
-apps: Vite and Rsbuild builds, Rsbuild dev); start-plugin-core `test:implementation` −72 and router-plugin
-`test:implementation` −21 (the tests of the legacy harness's own helpers, deleted with the pending-rulings files).
 
 The `test:unit` counts include the pending-rulings lane: 1 row in router-plugin (Q5).
 
@@ -273,12 +280,11 @@ through `onViolation`").
 
 ## Lanes
 
-| Lane            | Where                                                                                                           | Targets                                                                    | Decides acceptance |
-| --------------- | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ------------------ |
-| Corpus          | `tests/**`, outside `outside-compiler-corpus/` and the noncompiler list                                         | `test:unit`, `test:integration`                                            | yes                |
-| Pending rulings | the Q5 control in router-plugin                                 | `test:unit`, `test:integration` (held in the corpus as they are)           | yes, until ruled   |
-| Implementation  | `tests/**/outside-compiler-corpus/`                                                                             | `test:implementation` (router-generator, router-plugin, start-plugin-core) | no                 |
-| Noncompiler     | main's own tests at main's paths, listed in `tests/noncompiler-tests.json` (start-plugin-core, react-start-rsc) | `test:noncompiler`                                                         | no                 |
+| Lane            | Where                                                                                                           | Targets                                                          | Decides acceptance |
+| --------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------ |
+| Corpus          | `tests/**`, except the noncompiler list                                                                         | `test:unit`, `test:integration`                                  | yes                |
+| Pending rulings | the Q5 control in router-plugin                                                                                 | `test:unit`, `test:integration` (held in the corpus as they are) | yes, until ruled   |
+| Noncompiler     | main's own tests at main's paths, listed in `tests/noncompiler-tests.json` (start-plugin-core, react-start-rsc) | `test:noncompiler`                                               | no                 |
 
 The corpus (acceptance) is the compilers' test suite. Main's own tests split in two:
 
@@ -289,11 +295,10 @@ The corpus (acceptance) is the compilers' test suite. Main's own tests split in 
 - **Tests of today's compiler internals** (internal functions called directly, exact output text or snapshots,
   internal classes) are deleted: the corpus covers their behaviour through public entry points.
 
-Implementation tests check choices of today's implementation (printed bytes, log policy, internal entry points,
-performance counters); a correct new compiler may fail them: delete or rewrite them with the implementation they
-describe. CI runs every lane. Harness controls (this package's tests, and the packages' tests of their own helpers)
-check the oracle itself.
-
+There is no implementation lane (RULINGS "oracle tests only"): tests of test helpers, of today's compiler internals
+and the branch's own tests of non-compiler behaviour were deleted (NOL-delete, main-tests, 2026-10-22); the bugs
+only they pinned are recorded outside the repository, not in KNOWN-BUGS. CI runs both lanes. This package's own
+tests are controls of the shared harness.
 
 ## Pins (`.fails`)
 
@@ -321,7 +326,7 @@ These tests are kept exactly as they are until the user rules; do not reroute or
 | Q2     | the `FileRouteTypes` check in `router-generator/tests/generator/nested/tests.test-d.ts`                                                                                          |
 | Q3     | the client middleware `.options.server` property-shape assertions (start-plugin-core)                                                                                            |
 | Q4     | the success criterion of the star re-export mocking rows (import protection)                                                                                                     |
-| Q5     | router-plugin `tests/handle-route-update.test.ts`: the absent-live-route updater control, which calls the emitted update function directly                                         |
+| Q5     | router-plugin `tests/handle-route-update.test.ts`: the absent-live-route updater control, which calls the emitted update function directly                                       |
 | Q6     | ruled 2026-10-22 (RULINGS "Q6"): the rows driving the internal compiler with a hand-built package graph are deleted; real-app tests cover what they meant                        |
 | Q7     | ruled 2026-10-22 (RULINGS "Q7"): reachable; the CommonJS pin is now a real-app pin in `start-plugin-core/tests/integration/known-bugs-start-compiler.test.ts`                    |
 | Q8     | the RouterPluginContext / multi-plugin question (`router-plugin/tests/integration/pages/router-plugin-context.test.ts`)                                                          |
@@ -333,9 +338,9 @@ These tests are kept exactly as they are until the user rules; do not reroute or
 | #34    | Vite's optimizer writing its cache after `close()` (KNOWN-BUGS, upstream): no workaround until ruled                                                                             |
 | #57    | start-plugin-core integration memory: workers keep modules across files (about 4.4 GB each) to stay within the tier's time budget                                                |
 
-The legacy helpers (`start-plugin-core/tests/outside-compiler-corpus/legacy/` with `tests/start-runtime.ts`, and
-router-plugin's `tests/outside-compiler-corpus/legacy/`) now serve implementation tests only; they go away with
-them.
+The legacy helpers (start-plugin-core `tests/outside-compiler-corpus/legacy/` with `tests/start-runtime.ts`,
+router-plugin's `tests/outside-compiler-corpus/legacy/`) and the Node stand-ins of this package (`module-linker`,
+`render`, `lazy-probe`) are deleted: nothing used them once Q6 and Q7 were ruled.
 
 ## Re-running the measurements
 
@@ -346,7 +351,8 @@ them.
   are in the repair's working notes, not in the repository (`validation/REPAIR/variant-runner/`: its README, and the
   patch set of the last measurement in `patches/`; notes on each restructure in `validation/COUPLING/variants/`):
   `VRUN_VARIANTS=$PWD/patches bash local.sh <commit> <outdir> [R1 R2 ...]` runs them on one local tree
-  (`VRUN_EXTRA_LANES=1` also records the implementation and noncompiler lanes, never counted). Patches are diffs of
+  (`VRUN_EXTRA_LANES=1` also records the noncompiler lane, never counted; the implementation lane it used to
+  record is gone). Patches are diffs of
   `packages/*/src`; a new compiler needs new restructures of its own.
 - **Adversarial compilers.** Reviewers wrote wrong compilers ("red", each with the clause it breaks) and correct
   but different ones ("green") as product patches, and ran the corpus against each: every red must fail some

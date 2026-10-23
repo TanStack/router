@@ -117,6 +117,15 @@ J6.6, J6.12.
 2026-10-22, user: "delete it". The static import gate (`test:import-gate:strict`) is deleted, with no
 replacement; acceptance tests keep reaching the compilers through public entry points by review. Clause: §8.
 
+### oracle tests only (2026-10-22)
+
+The suite holds acceptance tests only: real tools, observable outcomes, public entry points. Tests of test helpers,
+tests of today's compiler internals and the branch's own tests of non-compiler behaviour are deleted, not kept in a
+separate lane; there is no `test:implementation` target. Main's tests of features that are not compilers stay at
+main's paths with main's content (`test:noncompiler`, listed in each package's `tests/noncompiler-tests.json`);
+main's tests of compiler internals are deleted. Bugs pinned only by deleted tests are recorded outside the
+repository, not in KNOWN-BUGS. Clause: §8.
+
 ### restructured compilers
 
 A correct compiler built differently from today's must pass every acceptance test. The repair measured this with
@@ -379,9 +388,8 @@ pins (`start-plugin-core/tests/integration/start-compiler-build-export-cache.tes
 
 Server-side checks (server functions, middleware, SSR) run through Start's server entry with a real request and a
 real router: each build and dev harness app has a probe route. A hand-built request context re-implements Start
-and is not allowed. The only remaining one (`start-plugin-core/tests/start-runtime.ts`) serves the legacy helpers
-(`tests/outside-compiler-corpus/legacy/`), which only implementation tests use since Q6 and Q7 were ruled; delete
-it with them. Clause: §8.
+and is not allowed; none remains (the last one, `start-plugin-core/tests/start-runtime.ts`, went with the legacy
+helpers once Q6 and Q7 were ruled). Clause: §8.
 
 ### Q6: no hand-built Start package graphs (2026-10-22)
 
@@ -413,9 +421,9 @@ have no pin. Clauses: J4.16, G1, §8.
 ### code-frame column (F1)
 
 Start's code frame passes a 0-based column to Babel's 1-based frame, so the caret is one column left of the call.
-That is a product bug in a compiler diagnostic (G5 position), pinned in
-`start-plugin-core/tests/known-bugs-start-compiler-code-frame.test.ts` and the createServerFn location rows. The
-shared matcher has no ±1 caret tolerance. Clauses: G5, §5.7.
+That is a product bug in a compiler diagnostic, but a code frame is printed message text, which is not tested
+("diagnostics: file and position only"): its caret pin is deleted, and the position is checked through the
+structured location (file and line) only. Unpinned. Clauses: G5, §5.7.
 
 ### outside compiler scope (repair findings)
 

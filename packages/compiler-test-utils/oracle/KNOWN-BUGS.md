@@ -13,7 +13,7 @@ Each entry's "Cause" names the product source its comment blames, when it does. 
 implementation, so a rewrite may have no such file. Most root causes are shared by several pins; the bug text then
 says "same root cause as above".
 
-Counts: 363 pin sites in 101 test files (a table test counts once here; Vitest counts each row).
+Counts: 362 pin sites in 100 test files (a table test counts once here; Vitest counts each row).
 
 ## Pins by compiler job
 
@@ -358,7 +358,7 @@ Counts: 363 pin sites in 101 test files (a table test counts once here; Vitest c
 
 ### J4 Start environment separation (start-plugin-core start-compiler; RSC provider in react-start-rsc)
 
-82 pins.
+81 pins.
 
 #### `start-plugin-core/tests/createServerFn/caller-dead-code.test.ts`
 
@@ -455,10 +455,6 @@ Counts: 363 pin sites in 101 test files (a table test counts once here; Vitest c
 #### `start-plugin-core/tests/integration/start-rsc-warnings.test.ts`
 
 - **renderToReadableStream with a variable or a spread warns once per file, naming the module.** The transform (react-start-rsc src/plugin/rscCssTransform.ts, `renderToReadableStream` branch) skips an argument that is not top-level JSX (`isTopLevelJsx`) with `continue`, and reports nothing; on Rsbuild, Start's compiler host would drop a warning of a transform too (rsbuild/start-compiler-host.ts `warnTransformContext` calls the transform context's `emitWarning`, which Rsbuild's `api.transform` context does not have). Cause: `react-start-rsc/src/plugin/rscCssTransform.ts`, `start-plugin-core/src/rsbuild/start-compiler-host.ts`.
-
-#### `start-plugin-core/tests/known-bugs-start-compiler-code-frame.test.ts`
-
-- **$name.** The caret is drawn one column left of the call.
 
 #### `start-plugin-core/tests/known-bugs-start-compiler.test.ts`
 
