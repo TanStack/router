@@ -4,10 +4,19 @@
  * `getConfig` (and `tsr.config.json`) like the bundler plugins and the CLI do.
  */
 import { existsSync } from 'node:fs'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import {
+  access,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from 'node:fs/promises'
+import os from 'node:os'
 import path from 'node:path'
 import { parseSync } from 'vite'
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, onTestFinished, test, vi } from 'vitest'
 import {
   expectDiagnostic,
   findDiagnostics,
@@ -956,4 +965,99 @@ export const Route = createFileRoute('/')({})
       '/': 'routes/index.tsx',
     })
   })
+})
+
+/**
+ * A writable directory on another filesystem than the system's temporary
+ * directory, which holds the apps of these tests (shared memory, if the host
+ * has it there).
+ */
+async function directoryOnAnotherDevice() {
+  const { dev } = await stat(os.tmpdir())
+  const candidate = '/dev/shm'
+  const found = await stat(candidate).catch(() => undefined)
+  if (
+    !found?.isDirectory() ||
+    found.dev === dev ||
+    (await access(candidate).then(
+      () => false,
+      () => true,
+    ))
+  ) {
+    return undefined
+  }
+  return candidate
+}
+
+const otherDevice = await directoryOnAnotherDevice()
+
+describe('tmpDir', () => {
+  // Bug (K-19): with `tmpDir` on another filesystem than the app (e.g. the
+  // app on a disk and TSR_TMP_DIR on a tmpfs), every publication fails:
+  // renaming the temporary file onto the route file or the route tree fails
+  // with EXDEV, and the run fails. The atomic fallback is to write the
+  // temporary file beside the destination and rename it there (SPEC J1.16);
+  // a copy over the destination is not atomic (the destination file must be
+  // replaced, not rewritten in place). Real filesystems only (ruling Q1): a
+  // host without a second writable filesystem skips the pin.
+  // Source: src/generator.ts `safeFileWrite` renames from
+  // `getTempFileName`'s file in `config.tmpDir`.
+  // Impact: route generation fails until tmpDir is moved to the app's
+  // filesystem (api/file-based-routing.md `tmpDir` names no such limit).
+  test
+    .skipIf(!otherDevice)
+    .fails(
+      'with tmpDir on another filesystem, the route file and the route tree are replaced atomically',
+      async () => {
+        const tmpDir = await mkdtemp(
+          path.join(otherDevice!, 'tsr-generator-tmp-'),
+        )
+        onTestFinished(() => rm(tmpDir, { recursive: true, force: true }))
+        const postsRoute = (id: string) =>
+          `import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('${id}')({
+  component: () => 'posts',
+})
+`
+        // A first run, with tmpDir on the app's filesystem; the next one
+        // rewrites the route file (a wrong id) and the route tree (a new route)
+        const root = await createApp({
+          'src/routes/__root.tsx': rootRoute(),
+          'src/routes/posts.tsx': postsRoute('/posts'),
+        })
+        const config = await generate(root)
+        await writeFile(
+          path.join(root, 'src/routes/posts.tsx'),
+          postsRoute('/old'),
+        )
+        await writeFile(
+          path.join(root, 'src/routes/about.tsx'),
+          postsRoute('/about'),
+        )
+        recordInputs(root, { 'src/routes/about.tsx': postsRoute('/about') })
+        const files = [
+          path.join(root, 'src/routes/posts.tsx'),
+          config.generatedRouteTree,
+        ]
+        const inodes = await Promise.all(
+          files.map(async (file) => (await stat(file)).ino),
+        )
+
+        await generate(root, { tmpDir })
+
+        expect(await routeIdOf(await read(root, 'src/routes/posts.tsx'))).toBe(
+          '/posts',
+        )
+        expect(await routesOf(config.generatedRouteTree)).toEqual({
+          __root__: 'routes/__root.tsx',
+          '/about': 'routes/about.tsx',
+          '/posts': 'routes/posts.tsx',
+        })
+        // Replaced by a rename, not rewritten in place or copied over
+        for (const [index, file] of files.entries()) {
+          expect((await stat(file)).ino, file).not.toBe(inodes[index])
+        }
+      },
+    )
 })

@@ -76,22 +76,6 @@ export const customTemplates = {
 }
 
 /**
- * The `types` project of `test:unit` type-checks the route tree of the
- * `nested` fixture next to its routes (`generator/nested/tests.test-d.ts`,
- * held as it is by the pending ruling Q2): the tree generated in a copy of
- * the fixture is written there (`routeTree.gen.ts`, ignored by git). The
- * only file a run of these tests writes into this package.
- */
-export async function keepTreeForTypeTests(name: string, config: Config) {
-  if (name === 'nested') {
-    await fs.copyFile(
-      config.generatedRouteTree,
-      join(fixtureDir(name), 'routeTree.gen.ts'),
-    )
-  }
-}
-
-/**
  * The configuration of the fixture `name` in `dir`: its `tsr.config.json`
  * if it has one, its `routes` directory and `routeTree.gen.ts`, and the
  * options the fixture is about.
