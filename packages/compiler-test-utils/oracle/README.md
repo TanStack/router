@@ -30,35 +30,40 @@ The suite was repaired (October 2026) so that it reaches the compilers only thro
 tools, and judges client code in a real browser. Then it was simplified: the import gate was deleted; diagnostics are
 checked by file and position only; import protection is read through `onViolation`; free names come from Yuku; and
 the test apps live in temporary directories. What was measured on the integrated branch (FINAL-2, at f16aae85ac, on
-beetle with 3 trees × 4 workers, and locally for the budgets):
+beetle with 3 trees × 4 workers, and locally for the budgets), and re-measured after the fixes F-L and F-M (at
+57addcc41e, on beetle the same way: 3 unpatched runs, R1–R11, the 34 valid greens, and 18 reds whose catching rows those
+fixes touched; every lane locally):
 
 - **Today's compilers pass every acceptance test.** The unpatched suite ran 9 times (3 rounds of 3 trees in
   parallel, 1-minute load up to about 60 on 32 cores).
   - Every tier and lane gave the counts below in every run, except start-plugin-core `test:integration`. That tier
     had one or two #34 rows in 6 of the 9 runs (9 rows), each of which passed alone.
   - No #42 failure, and no other failure.
-  - One exception, outside beetle: router-plugin `integration/generator-watch-mode.test.ts` "webpack: a created route
-    file is scaffolded …" fails intermittently on a machine whose system temporary directory is tmpfs. The webpack
-    watch session never picks up the created route file within 20 s.
-    - Seen: 3 of 6 local router-plugin `test:integration` runs, and 4 of 15 runs of the file alone.
-    - Not seen with `TMPDIR` on disk (0 of 10 runs alone) or in any beetle run.
-    - Since F-J the watched app lives in the system temporary directory. With `/tmp` on tmpfs, set `TMPDIR` to a
-      directory on disk.
-- **Restructured compilers pass, with one coupling.** Eleven behaviour-preserving restructures of today's compilers
+  - At 57addcc41e: the 3 unpatched runs gave the counts below; one #34 row in one run, which passed alone.
+  - FINAL-2 saw one more failure, only locally: router-plugin `integration/generator-watch-mode.test.ts` "webpack: a
+    created route file is scaffolded …" failed now and then (3 of 6 full runs, 4 of 15 alone, with `/tmp` on tmpfs).
+    F-M found the cause in today's route generator, not in a tool or the file system: an event that reaches
+    `Generator.run()` while a run checks events that changed nothing is dropped. Webpack rebuilt right after the
+    session's first build (for the route tree that build wrote), and a route file created at that moment was lost.
+    That bug is now pinned deterministically (router-generator `generator-dev.test.ts` "events that arrive
+    together"), and the watch session starts on an app with its route tree and no recent change, so nothing is
+    pending when the test creates the file: 20 of 20 alone runs passed on tmpfs.
+- **Restructured compilers pass.** Eleven behaviour-preserving restructures of today's compilers
   (R1–R11) were run against the whole acceptance suite. They cover: moved modules, renamed ids and generated names,
   another printer, reworded diagnostics, another AST seam, other report channels, another server-function provider
   architecture, other chunk layouts, other trace order, and other loader paths. Every failing file was re-run alone
   with and without the restructure.
   - R1, R3–R6 and R8–R11: no acceptance test fails.
   - R2 (moved internal modules) fails only the Q5 row (`handle-route-update.test.ts`, held by its pending ruling).
-  - **R7 (every compiler diagnostic on the console, a short error to the bundler) fails one row:** start-plugin-core
-    `integration/importProtection/reported-location.test.ts` "rsbuild dev: a re-export".
-    - Its helper `expectNoOtherErrors` (`reported-location-app.ts`) accepts a bundler error only if the error
-      contains the importer that `onViolation` reported.
-    - For Rsbuild dev that importer is `webpack:/src/a.tsx:2:1` (the F2 pin), and the helper keeps only `webpack` as
-      the file name.
-    - So the row passes today only because the full report happens to contain "webpack". **The row depends on the
-      error's wording.** It is not fixed yet.
+  - R7 (every compiler diagnostic on the console, a short error to the bundler) failed one row at FINAL-2:
+    start-plugin-core `integration/importProtection/reported-location.test.ts` "rsbuild dev: a re-export". Its
+    helper `expectNoOtherErrors` took everything before the first colon of the importer as its file, so Rsbuild's
+    `webpack:/src/a.tsx:2:1` (the F2 pin) gave `webpack`, and the row passed only because the full report contained
+    that word. F-M fixed it: a location is split at a trailing `:line(:column)` only (`locationParts`), and an error
+    counts as "about the violation" when it names the importer's file (`mentionsFile`). The row passes under R7 and
+    still fails on an unrelated error.
+  - At 57addcc41e: R1, R3–R11 no acceptance row; R2 only the Q5 row (and one #34 row, which passed 4 of 4 alone
+    with R2).
   - Expected pin flips, where the restructure fixes the pinned bug: R3 ×6 (user names that collide with today's
     generated names), R8 ×10 (SSR runs server functions in place, #7213), R9 ×3 (entry re-export of shared bindings).
   - 4 rows failed once and passed alone, plus 1 that the clean tree also failed alone: all #34.
@@ -87,15 +92,29 @@ beetle with 3 trees × 4 workers, and locally for the budgets):
     that `structuredClone`s rule functions, a compile error located in another module. F-L fixed the tests: each of
     these patches is now caught, and a Start that only calls `onViolation` more often (same printed output) passes
     the `log` rows. The 90 reds and 34 greens above were measured at f16aae85ac, before F-L.
+  - Re-run at 57addcc41e (after F-L, which tightened checks, and F-M):
+    - the 34 valid greens pass, apart from #34 rows that passed alone and green-sol/20's two expected pin flips;
+      **one exception**: in green-sol/17's run the pin `known-bugs-start-compiler-dev.test.ts` "transforms a client
+      module with a server fn and a top-level call of a pre-bundled dependency" (a dev-server deadlock) passed once,
+      at a load of about 22, and failed again alone. That pin can flip under load (first seen in about 210 suite
+      runs); not investigated yet;
+    - 18 reds: the 14 whose catching rows are in files F-L or F-M changed, red-astra/12 and red-fable-r2/13 (caught
+      by the dangling-name check, which F-L changed), red-fable/20 and red-astra-r2/15 (each caught by one row). All
+      18 are caught, by the same rows as before, except red-fable-r2/18 (99 rows instead of 100: "'always' logs a
+      violation again when the dev server reloads every module" now counts printed warnings and passes) and
+      red-fable/25, whose second row had failed only on #34.
 - **No internal imports.** The only internal import left in acceptance tests is the Q5 row, held by its pending
   ruling.
 - **Tests write nothing into the repository.** After a full unpatched run of a tree, `git status --porcelain
 --ignored` and the packages' `node_modules` dot entries are the same as before.
   - The only file a run writes is the Q2 route tree of router-generator's `nested` fixture.
-  - Outside the repository, a run can leave things in the system temporary directory:
-    - an empty run directory `tanstack-compiler-tests-*/generator/`, which the route generator writes after
-      router-plugin's run removed the directory (13 of 20 runs on beetle);
-    - Chromium's `.org.chromium.Chromium.*` directories.
+  - Outside the repository, a run can leave Chromium's `.org.chromium.Chromium.*` directories in the system
+    temporary directory. At FINAL-2 it could also leave its run directory `tanstack-compiler-tests-*` with an empty
+    `generator/` (13 of 20 runs on beetle). The cause: each test process removed its apps when it exited, while
+    Vitest's global teardown removed the whole run directory, and Node's `fs.rmSync` (Node 24 and 26, not 22)
+    returns without an error and leaves the rest behind when another process removes part of the tree meanwhile
+    (an upstream Node bug). Since F-M the run's teardown alone removes the run directory: no run directory was
+    left in 66 beetle jobs and 5 local router-plugin runs.
 - **Fast, with little margin.** On a quiet machine (load below 4 at the start, no other test run) at 4 workers,
   every tier passed its hard budget in strict mode in its valid runs. No slow-tier file took over 15 s:
 
@@ -114,15 +133,14 @@ beetle with 3 trees × 4 workers, and locally for the budgets):
 - **Memory.** start-plugin-core `test:integration` uses about 4.4 GB per worker (#57). Three such runs at once took a
   60 GB machine to 0 GB available, so the measurement runner lets at most two run at a time.
 
-Counts on the integrated branch, measured at f16aae85ac (the S-A and S-B simplifications, the Q6/Q7 rulings,
-NOL-delete, the main-tests clean-up, F-J, and the clean-up after them; see below; F-L re-ran every tier and lane
-locally with the same counts apart from its restored noncompiler test). Passed / expected-fail pins, the
-same in all 9 unpatched runs apart from #34 rows:
+Counts on the integrated branch, measured at 57addcc41e (the S-A and S-B simplifications, the Q6/Q7 rulings,
+NOL-delete, the main-tests clean-up, F-J, the clean-up after them, F-L and F-M; see below), the same in the 3
+unpatched beetle runs and the local run of every lane apart from #34 rows. Passed / expected-fail pins:
 
 | Package                         | `test:unit` | `test:integration` | `test:noncompiler` |
 | ------------------------------- | ----------- | ------------------ | ------------------ |
 | `@tanstack/compiler-test-utils` | 77 / 0      | 131 / 0            | –                  |
-| `@tanstack/router-generator`    | 239 / 30    | 67 / 3             | –                  |
+| `@tanstack/router-generator`    | 240 / 31    | 67 / 3             | –                  |
 | `@tanstack/router-plugin`       | 107 / 20    | 674 / 349          | –                  |
 | `@tanstack/start-plugin-core`   | 270 / 132   | 1202 / 293         | 148 / 0            |
 | `@tanstack/react-start-rsc`     | no files    | 108 / 13           | 57 / 0             |
@@ -142,6 +160,8 @@ start-plugin-core 389 / 143 and 1204 / 292; noncompiler 121 / 0 and 49 / 0):
   (noncompiler: start-plugin-core 121 → 147, react-start-rsc 49 → 57); main's tests of compiler internals deleted.
 - **F-L** (the REVIEW-S findings): start-plugin-core `test:noncompiler` +1 (main's `rsbuild/plugin.test.ts`, #7482,
   restored); no other count changed.
+- **F-M** (the FINAL-2 findings): router-generator `test:unit` +1 passed, +1 pin (the dropped generator event, and
+  its control).
 - **NOL-delete** and the clean-up after the merge: the implementation lane is gone (below); no acceptance row
   changed, apart from start-plugin-core `test:unit` −2 pins (the F1 caret pin, which read the code frame: RULINGS
   "code-frame column (F1)") and ctu `test:unit` −34 (the controls of the deleted Node stand-ins `module-linker`,
@@ -223,8 +243,7 @@ Caveats:
     `node_modules/.vite/deps_temp_*`): Vitest reports it as an unhandled rejection and the tier fails with no failing
     row (seen once, in a local start-plugin-core integration run during F-J). Held by the #34 ruling: no workaround. What
     Vite writes into a removed app no longer stays in the packages: since the pass F-J the apps live in the run's directory in the system's
-    temporary directory (`src/app-directory.ts`, `src/run-directory.ts`), removed when the run ends (an empty
-    `generator/` written after the end can leave the run directory behind there, outside the repository). (Before, they were
+    temporary directory (`src/app-directory.ts`, `src/run-directory.ts`), removed when the run ends. (Before, they were
     hidden directories of the packages' `tests/`, and the removed apps left about 1,900 directories per tree after 50
     runs, which made start-plugin-core's `test:eslint` fail on the pre-bundled files left in them.)
   - Re-run a file that failed only on these alone (more than once for #34) before reading it as a compiler failure.
