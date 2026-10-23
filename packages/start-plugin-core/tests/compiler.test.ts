@@ -66,14 +66,15 @@ const host = useStartHost({
   },
 })
 
-/** What `settle` gave in the page, as the test reads it. */
+/**
+ * What `settle` gave in the page for the function `fn` (a page
+ * expression), as the test reads it.
+ */
 async function settledInPage(
   served: Awaited<ReturnType<typeof serveCase>>,
-  expression: string,
+  fn: string,
 ) {
-  return fromPage(
-    await inPage<PageSettled>(served, `return settle(() => ${expression})`),
-  )
+  return fromPage(await inPage<PageSettled>(served, `return settle(${fn})`))
 }
 
 describe('several modules of one app, of different kinds, compile correctly', () => {
@@ -136,7 +137,7 @@ export const fn = createServerOnlyFn(() => 'server only value')`,
     )
     expect(
       fromPage(
-        await inPage<PageSettled>(file4, 'return settle(() => module.fn())', {
+        await inPage<PageSettled>(file4, 'return settle(module.fn)', {
           file: 'file4.ts',
         }),
       ),
@@ -267,7 +268,7 @@ export const personServerFn = createServerFn({ method: 'GET' })
 export const myFn = createServerOnlyFn(() => 'server-only-value')`,
     })
     expect(served.code.client).not.toContain('server-only-value')
-    expect(await settledInPage(served, 'module.myFn()')).toEqual(throwsError)
+    expect(await settledInPage(served, 'module.myFn')).toEqual(throwsError)
   })
 
   test('aliased factory is still detected as a candidate', async () => {
@@ -280,7 +281,7 @@ const createSO = createServerOnlyFn
 export const myFn = createSO(() => 'aliased-server-only')`,
     })
     expect(served.code.client).not.toContain('aliased-server-only')
-    expect(await settledInPage(served, 'module.myFn()')).toEqual(throwsError)
+    expect(await settledInPage(served, 'module.myFn')).toEqual(throwsError)
   })
 })
 
@@ -341,9 +342,7 @@ describe('re-export chain resolution', () => {
         expect(library).not.toContain(absent)
       }
       if (env === 'client') {
-        expect(await settledInPage(served, `module.${exported}()`)).toEqual(
-          value,
-        )
+        expect(await settledInPage(served, `module.${exported}`)).toEqual(value)
       } else {
         const ssr = await served.ssr()
         expect(settle(ssr[exported] as () => unknown)).toEqual(value)
@@ -525,7 +524,7 @@ test.each<{
 }>([
   {
     expression: `(Start).createServerOnlyFn(() => 'private-server-body')`,
-    script: 'return settle(() => module.fn())',
+    script: 'return settle(module.fn)',
     expected: throwsError,
   },
   {

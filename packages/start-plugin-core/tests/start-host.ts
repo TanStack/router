@@ -371,14 +371,18 @@ function frameworkLinks(framework: StartFramework): Record<string, string> {
 
 /**
  * Helpers every client script of a case has in scope:
- * - `settle(run)`: `{ value }` (what `run` returns or resolves to), or
- *   `{ thrown: { name, message } }` (what it throws or rejects with), JSON
- *   for the test (`fromPage` turns `thrown` back into a `Thrown`);
+ * - `settle(run)`: `{ value }` (what `run` returns or resolves to; `run`
+ *   itself when it is no function), or `{ thrown: { name, message } }`
+ *   (what it throws or rejects with), JSON for the test (`fromPage` turns
+ *   `thrown` back into a `Thrown`);
  * - `serverFnUrls(namespace)`: the distinct `url`s of the server fns (the
  *   functions with a string `url`, Start's public fetcher property) among
  *   the values of an object, e.g. a module namespace.
  */
 export const pagePrelude = `const settle = async (run) => {
+  if (typeof run !== 'function') {
+    return { value: run }
+  }
   try {
     return { value: await run() }
   } catch (error) {

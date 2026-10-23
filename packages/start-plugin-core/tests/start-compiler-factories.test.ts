@@ -66,18 +66,20 @@ async function expectSsrFree(served: StartCase, file?: string) {
 }
 
 /**
- * What a page expression gives (its value, or a `Thrown` of what it
- * threw). Only plain data and Start's promises are kept: code the compiler
+ * What calling the function `fn` (a page expression) gives in the page (its
+ * value, or a `Thrown` of what it threw; `fn` itself when it is no
+ * function, like `settle`). Only plain data and Start's promises are kept: code the compiler
  * wrongly left on the client may return a mock import protection put in
  * place of a server module, whose value must not be awaited (a mock is
  * thenable forever); it is reported by its type.
  */
-async function settleInPage(served: StartCase, call: string, file?: string) {
+async function settleInPage(served: StartCase, fn: string, file?: string) {
   return fromPage(
     await inPage<PageSettled>(
       served,
       `try {
-  let value = ${call}
+  const fn = ${fn}
+  let value = typeof fn === 'function' ? fn() : fn
   if (value instanceof Promise) {
     value = await value
   }
@@ -128,11 +130,11 @@ export { serverValue as exposed }`,
     await expectClientFree(served)
     expect([
       await inPage(served, 'return module.clientValue()'),
-      await settleInPage(served, 'module.exposed()'),
+      await settleInPage(served, 'module.exposed'),
     ]).toEqual(['draw:1', throwsError])
     await expectSsrFree(served)
     const ssr = await served.ssr()
-    expect([settle(() => ssr.clientValue()), ssr.exposed()]).toEqual([
+    expect([settle(ssr.clientValue), ssr.exposed()]).toEqual([
       throwsError,
       'query:1',
     ])
@@ -167,9 +169,9 @@ export default createIsomorphicFn().server(() => db.x()).client(() => chart())`,
     })
     await expectClientFree(served)
     await expectSsrFree(served)
-    expect(await settleInPage(served, 'module.default()')).toEqual(client)
+    expect(await settleInPage(served, 'module.default')).toEqual(client)
     const ssr = await served.ssr()
-    expect(settle(() => ssr.default())).toEqual(server)
+    expect(settle(ssr.default)).toEqual(server)
   })
 
   // Source: Waku vite-plugin-allow-server.test.ts "handles default allowServer
@@ -425,8 +427,8 @@ return links`
     const served = await serve(code)
     const ssr = await served.ssr()
     return {
-      client: await settleInPage(served, `module.${name}()`),
-      ssr: settle(() => ssr[name]()),
+      client: await settleInPage(served, `module.${name}`),
+      ssr: settle(ssr[name]),
     }
   }
 
@@ -555,9 +557,9 @@ export const fn = ${chain}`,
       await expectClientFree(served)
       expect(served.code.client).not.toContain('SERVER_SECRET')
       await expectSsrFree(served)
-      expect(await settleInPage(served, 'module.fn()')).toEqual(client)
+      expect(await settleInPage(served, 'module.fn')).toEqual(client)
       const ssr = await served.ssr()
-      expect(settle(() => ssr.fn())).toEqual(server)
+      expect(settle(ssr.fn)).toEqual(server)
     },
   )
 
@@ -577,7 +579,7 @@ export class Api extends Base {
     return createServerOnlyFn(() => [this.#secret, super.name(), arguments.length])
   }
 }`)
-    expect(await settleInPage(served, 'new module.Api().read(1)()')).toEqual(
+    expect(await settleInPage(served, 'new module.Api().read(1)')).toEqual(
       throwsError,
     )
     const ssr = await served.ssr()
@@ -606,7 +608,7 @@ export class Api extends Base {
       expect(await inPage(served, 'return module.makeDraw()()')).toBe('chart')
       await expectSsrFree(served)
       const ssr = await served.ssr()
-      expect(settle(() => ssr.makeDraw()())).toEqual(throwsError)
+      expect(settle(ssr.makeDraw())).toEqual(throwsError)
     },
   )
 
@@ -618,7 +620,7 @@ export const read = wrap(wrap(createServerOnlyFn(() => db.secret())))`,
       { 'db.server.ts': `export const db = { secret: () => 'secret' }\n` },
     )
     await expectClientFree(served)
-    expect(await settleInPage(served, 'module.read()')).toEqual(throwsError)
+    expect(await settleInPage(served, 'module.read')).toEqual(throwsError)
     expect((await served.ssr()).read()).toBe('secret')
   })
 
@@ -993,7 +995,7 @@ export const clientValue = clientOnly(() => readWindow())`,
       },
     )
     const module = await served.ssr()
-    expect([module.serverValue(), settle(() => module.clientValue())]).toEqual([
+    expect([module.serverValue(), settle(module.clientValue)]).toEqual([
       'secret',
       throwsError,
     ])
@@ -1082,7 +1084,7 @@ export const serverOnly = createServerOnlyFn(() => 'server-only-marker')`,
       expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('x')
       // Where the project's own `createServerOnlyFn` wins, it is a plain
       // function.
-      expect(await settleInPage(served, 'module.serverOnly()')).toEqual(
+      expect(await settleInPage(served, 'module.serverOnly')).toEqual(
         resolvesServerOnlyFn ? throwsError : 'server-only-marker',
       )
     },
@@ -1108,9 +1110,7 @@ export const serverOnly = createServerOnlyFn(() => 'server-only-marker')`,
     await expectClientFree(served)
     expect(served.code.client).not.toContain('db.x()')
     expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('x')
-    expect(await settleInPage(served, 'module.serverOnly()')).toEqual(
-      throwsError,
-    )
+    expect(await settleInPage(served, 'module.serverOnly')).toEqual(throwsError)
     expect((await served.ssr()).serverOnly()).toBe('server-only-marker')
   })
 

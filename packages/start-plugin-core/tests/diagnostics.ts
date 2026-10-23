@@ -171,9 +171,10 @@ export async function expectNoClientHandler(
 
 /**
  * What `settle` gives for a `createServerOnlyFn` called outside the server,
- * or a `createClientOnlyFn` called outside the client (J4.10): the call
- * threw (ruling 2026-10-22: the error's wording is not checked). An
- * asymmetric matcher: compare with `toEqual`.
+ * or a `createClientOnlyFn` called outside the client (J4.10): it is a
+ * function (`settle` gives back what is no function), and calling it threw
+ * (ruling 2026-10-22: the error's wording is not checked). An asymmetric
+ * matcher: compare with `toEqual`.
  */
 export const throwsError = expect.toSatisfy(
   (value: unknown) => value instanceof Thrown,

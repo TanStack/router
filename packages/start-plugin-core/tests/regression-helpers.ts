@@ -69,8 +69,15 @@ export class Thrown {
   constructor(readonly error: unknown) {}
 }
 
-/** The value of `run`, or `Thrown` with the error it throws. */
-export function settle(run: () => unknown) {
+/**
+ * What calling `run` gives: its value, or `Thrown` with the error it
+ * throws. A `run` that is no function is given back as it is, never a
+ * `Thrown`: "calling it throws" needs a function (J4.10).
+ */
+export function settle(run: unknown) {
+  if (typeof run !== 'function') {
+    return run
+  }
   try {
     return run()
   } catch (error) {
