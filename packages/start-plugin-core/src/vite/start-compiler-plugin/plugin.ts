@@ -65,22 +65,20 @@ type ViteModuleLoadOptions = {
   error: (message: string) => never
 }
 
-async function loadViteModuleFromEnvironment(
+export async function loadViteModuleFromEnvironment(
   environment: Environment,
   id: string,
   opts: ViteModuleLoadOptions,
 ): Promise<string | undefined> {
-  if (
-    environment.mode === 'build' ||
-    (environment.mode === 'dev' &&
-      environment.config.experimental.bundledDev &&
-      environment.name === VITE_ENVIRONMENT_NAMES.client)
-  ) {
-    // Bundled dev must load through its current driver; transformRequest starts
-    // a separate client container and can reset the compiler mid-transform.
-    const loaded = await opts.load({
-      id: environment.mode === 'dev' ? (opts.devId ?? id) : id,
-    })
+  const isBundled =
+    Boolean((environment as any).config?.isBundled) ||
+    Boolean(environment.config?.experimental?.bundledDev)
+
+  if (environment.mode === 'build' || isBundled) {
+    // Bundled environments (build mode or Vite bundledDev) must load through
+    // their plugin driver rather than calling transformRequest, which fails on
+    // arbitrary dependencies (e.g. server-function validators like Zod).
+    const loaded = await opts.load({ id })
     return loaded?.code ?? ''
   }
 
