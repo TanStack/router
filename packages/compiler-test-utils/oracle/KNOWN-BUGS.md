@@ -13,7 +13,7 @@ Each entry's "Cause" names the product source its comment blames, when it does. 
 implementation, so a rewrite may have no such file. Most root causes are shared by several pins; the bug text then
 says "same root cause as above".
 
-Counts: 363 pin sites in 100 test files (a table test counts once here; Vitest counts each row).
+Counts: 364 pin sites in 101 test files (a table test counts once here; Vitest counts each row).
 
 ## Pins by compiler job
 
@@ -703,7 +703,7 @@ Counts: 363 pin sites in 100 test files (a table test counts once here; Vitest c
 
 ### J7 RSC CSS injection (react-start-rsc)
 
-7 pins.
+8 pins.
 
 #### `react-start-rsc/tests/integration/rsc-css-diagnostics.test.ts`
 
@@ -712,6 +712,10 @@ Counts: 363 pin sites in 100 test files (a table test counts once here; Vitest c
 #### `react-start-rsc/tests/integration/rsc-css-rsbuild-root.test.ts`
 
 - **Rsbuild: the app compiles when the process does not run in the app directory.** Start's Rsbuild plugin writes its virtual modules (serialization adapters, RSC decode) under `<process.cwd()>/node_modules/.virtual` (rsbuild/virtual-modules.ts `virtualPath`, with `resolvedStartConfig.root` still empty at setup), where the app's `@tanstack/react-start` does not resolve when the process runs elsewhere (`rsbuild dev --root <app>` from a monorepo root). Cause: `start-plugin-core/src/rsbuild/virtual-modules.ts`.
+
+#### `react-start-rsc/tests/integration/rsc-css-rsbuild.test.ts`
+
+- **a render call in a helper module styles the server component.** On Rsbuild, the RSC CSS transform only rewrites server function provider modules (`serverFnProviderOnly: true`), so a render call in a helper module that a server function calls gets no CSS: the server component renders unstyled, while Vite styles it. Cause: `react-start/src/plugin/rsbuild.ts`, `react-start-rsc/src/plugin/rscCssTransform.ts`.
 
 #### `react-start-rsc/tests/integration/rsc-css.test.ts`
 

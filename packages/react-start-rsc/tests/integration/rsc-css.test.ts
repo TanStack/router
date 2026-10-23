@@ -68,7 +68,7 @@ const rows = {
     consumer: 'flight',
   },
   // A render call in a helper module the server function calls, with a
-  // global stylesheet (the e2e `rsc-css-helper` shape).
+  // global stylesheet.
   globalCss: {
     key: 'global-css',
     imports: `import { renderPlain } from '../plain'\n`,

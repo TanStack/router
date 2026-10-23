@@ -3,9 +3,9 @@
  * Start app with RSC enabled on an Rsbuild dev server (`rsc-app.ts`, Start's
  * RSC layer with `react-server-dom-rspack`), whose server functions render
  * server components with the RSC helpers, and a real page that shows what
- * the browser makes of the Flight payload. The Vite counterpart, with the
- * whole matrix, is rsc-css.test.ts; the e2e app pins the helper-module case
- * (e2e/react-start/rsc/tests/rsc-css-helper.spec.ts).
+ * the browser makes of the Flight payload, including a render call in a
+ * helper module the server function calls. The Vite counterpart, with the
+ * whole matrix, is rsc-css.test.ts.
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import {
@@ -15,7 +15,14 @@ import {
   waitForHydration,
   waitForStyle,
 } from './rsc-app'
-import { CARD_BACKGROUND, appFiles, rows, show } from './rsc-css-rsbuild-app'
+import {
+  CARD_BACKGROUND,
+  HELPER_CARD_BACKGROUND,
+  appFiles,
+  helperRow,
+  rows,
+  show,
+} from './rsc-css-rsbuild-app'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
 describe('RSC CSS through the real transport (Rsbuild dev)', () => {
@@ -71,6 +78,37 @@ describe('RSC CSS through the real transport (Rsbuild dev)', () => {
       expect(
         await computedStyle(page, '[data-testid=card]', 'background-color'),
       ).toBe(CARD_BACKGROUND)
+      expect(page.errors).toEqual([])
+    },
+  )
+
+  // Bug: on Rsbuild, the RSC CSS transform only rewrites server function
+  // provider modules (`serverFnProviderOnly: true`, react-start
+  // src/plugin/rsbuild.ts; react-start-rsc src/plugin/rscCssTransform.ts), so
+  // a render call in a helper module that a server function calls gets no CSS.
+  // Impact: the server component renders unstyled; Vite styles it
+  // (rsc-css.test.ts, "two render helpers in one module each carry their
+  // component CSS").
+  // Source: SPEC J7.1, J7.2 (CSS is delivered wherever the render executes).
+  test.fails(
+    'a render call in a helper module styles the server component',
+    async () => {
+      expect(server.errors).toEqual([])
+      const page = await show(server, helperRow.path, helperRow.marker)
+      await waitForStyle(
+        page,
+        '[data-testid=helper-card]',
+        'background-color',
+        HELPER_CARD_BACKGROUND,
+        5_000,
+      )
+      expect(
+        await computedStyle(
+          page,
+          '[data-testid=helper-card]',
+          'background-color',
+        ),
+      ).toBe(HELPER_CARD_BACKGROUND)
       expect(page.errors).toEqual([])
     },
   )

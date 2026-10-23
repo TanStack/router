@@ -4,6 +4,8 @@ import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 
 /** `card.module.css` background. */
 export const CARD_BACKGROUND = 'rgb(254, 243, 199)'
+/** `helperCard.module.css` background. */
+export const HELPER_CARD_BACKGROUND = 'rgb(224, 242, 254)'
 
 /**
  * A route whose server function renders a local server component with a
@@ -82,6 +84,41 @@ import { useEffect, useState } from 'react'`,
   },
 ]
 
+/**
+ * A route whose server function calls a helper module that renders a local
+ * server component with its own CSS module through `renderServerComponent`.
+ */
+export const helperRow = {
+  path: '/helper',
+  marker: 'MARK_HELPER',
+  files: {
+    'src/helperCard.module.css': `.card { background: #e0f2fe; }\n`,
+    'src/renderHelperCard.tsx': `import { renderServerComponent } from '@tanstack/react-start/rsc'
+import styles from './helperCard.module.css'
+function HelperCard() {
+  return <div className={styles.card} data-testid="helper-card">MARK_HELPER</div>
+}
+export function renderHelperCard() {
+  return renderServerComponent(<HelperCard />)
+}
+`,
+    'src/routes/helper.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
+import { renderHelperCard } from '../renderHelperCard'
+export const render = createServerFn().handler(async () => {
+  return renderHelperCard()
+})
+export const Route = createFileRoute('/helper')({
+  loader: () => render(),
+  component: Page,
+})
+function Page() {
+  return <main>{Route.useLoaderData()}</main>
+}
+`,
+  },
+}
+
 export const appFiles = {
   'src/routes/control.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { render as flight } from './flight'
@@ -96,15 +133,17 @@ function Control() {
   ...Object.fromEntries(
     rows.map((row) => [`src/routes${row.path}.tsx`, row.file]),
   ),
+  ...helperRow.files,
 }
 
-/** Opens `path` and waits for the server component and hydration. */
+/** Opens `path` and waits for the server component (`marker`) and hydration. */
 export async function show(
   server: RsbuildDevServer,
   path: string,
+  marker = 'MARK_CARD',
 ): Promise<BrowserPage> {
   const page = await openRscPage(server, path)
-  await page.waitForText('MARK_CARD')
+  await page.waitForText(marker)
   await waitForHydration(page)
   return page
 }
