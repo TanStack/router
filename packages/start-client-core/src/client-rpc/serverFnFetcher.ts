@@ -6,6 +6,7 @@ import {
 } from '@tanstack/router-core'
 import { createRawStreamDeserializePlugin } from '@tanstack/router-core/ssr/client'
 import { fromCrossJSON, toJSONAsync } from 'seroval'
+import { deploymentMetadata } from '#tanstack-start-deployment-metadata'
 import { getDefaultSerovalPlugins } from '../getDefaultSerovalPlugins'
 import {
   TSS_CONTENT_TYPE_FRAMED,
@@ -133,6 +134,17 @@ export async function serverFnFetcher(
   // Arrange the headers
   const headers = new Headers(first.headers)
   headers.set('x-tsr-serverFn', 'true')
+
+  if (deploymentMetadata) {
+    const carrier = deploymentMetadata.carriers[0]!
+    if (carrier.type === 'header') {
+      headers.set(carrier.name, deploymentMetadata.value)
+    }
+
+    if (carrier.type === 'query') {
+      url += `${url.includes('?') ? '&' : '?'}${encodeURIComponent(carrier.name)}=${encodeURIComponent(deploymentMetadata.value)}`
+    }
+  }
 
   if (!isFormData) {
     headers.set(

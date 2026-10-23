@@ -318,7 +318,7 @@ export function tanStackStartRsbuild(
 
       // ---------------------------------------------------------------
       // 3. Virtual modules — manifest, server fn resolver, adapters,
-      //    RSC runtime, RSC HMR
+      //    deployment metadata, RSC runtime, RSC HMR
       // ---------------------------------------------------------------
       const virtualModuleState = registerVirtualModules(api, {
         root: resolvedStartConfig.root || process.cwd(),
