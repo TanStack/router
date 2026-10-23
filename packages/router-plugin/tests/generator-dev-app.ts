@@ -662,6 +662,9 @@ export async function expectRouteFile(
   expect(actual.rest).toBe(createFileRouteCall(expected).rest)
 }
 
+/** Whether each loaded script holds each text `scriptHolds` was asked for. */
+const scriptMarkers = new WeakMap<object, Map<string, boolean>>()
+
 /**
  * Whether a script the page loaded holds the user's string `text`: a
  * decoded string value of its code (`holdsMarker`), whatever its quoting,
@@ -673,7 +676,18 @@ export function scriptHolds(
   script: { url: string; code: string },
   text: string,
 ) {
-  return holdsMarker(script.code, text)
+  // (a loaded script, as `scripts()` returns it again, is read once per text)
+  let found = scriptMarkers.get(script)
+  if (!found) {
+    found = new Map()
+    scriptMarkers.set(script, found)
+  }
+  let holds = found.get(text)
+  if (holds === undefined) {
+    holds = holdsMarker(script.code, text)
+    found.set(text, holds)
+  }
+  return holds
 }
 
 /**
