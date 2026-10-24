@@ -229,27 +229,32 @@ export const init = (value: number) => {
 
   /**
    * Loads, with HMR, a route whose `page` component (declared by
-   * `declaration`) is both the `component` and the `notFoundComponent`,
-   * which the default groupings split into two chunks, so the code splitter
-   * shares `page` between them. Renders the component, then the not-found
-   * component. `page` counts its renders in a module-level `let` initialized
-   * by `init` from `./state`. Returns both renders and how many times `init`
+   * `declaration`) the code splitter shares: by default it is both the
+   * `component` and the `notFoundComponent`, which the default groupings
+   * split into two chunks; with `sharedWith: 'loader'` it is the split
+   * `component` and the loader, which stays in the route module, reads it.
+   * Renders the component, then the not-found component (or the component
+   * again). `page` counts its renders in a module-level `let` initialized by
+   * `init` from `./state`. Returns both renders and how many times `init`
    * ran.
    */
-  async function renderSharedComponent(declaration: string) {
+  async function renderSharedComponent(
+    declaration: string,
+    sharedWith: 'notFoundComponent' | 'loader' = 'notFoundComponent',
+  ) {
     const route = await loadRoute(
       `${head}import { init } from './state'
 let renders = init(0)
 ${declaration}
 export const Route = createFileRoute('/')({
   component: page,
-  notFoundComponent: page,
+  ${sharedWith === 'loader' ? 'loader: () => page.name' : 'notFoundComponent: page'},
 })`,
       { hmr: true, files: state },
     )
     return route.run(`return [
   await render('component'),
-  await render('notFoundComponent'),
+  await render(${JSON.stringify(sharedWith === 'loader' ? 'component' : 'notFoundComponent')}),
   (await app('state.ts')).inits,
 ]`)
   }
@@ -281,6 +286,38 @@ export const Route = createFileRoute('/')({
     },
   )
 
+  // SPEC J2.4, G1: the same, for a lowercase component that the split
+  // `component` and the loader (kept in the route module) share.
+  test('a lowercase arrow component shared with the loader renders with the module state it shares', async () => {
+    expect(
+      await renderSharedComponent(
+        `const page = () => {
+  renders++
+  return <p>{renders}</p>
+}`,
+        'loader',
+      ),
+    ).toEqual(['<p>1</p>', '<p>2</p>', 1])
+  })
+
+  // Bug: same root cause as the pin above, for a lowercase component that
+  // the split `component` and the loader share.
+  // Impact: in development, the route's component chunk fails to load.
+  test.fails(
+    'a lowercase function component shared with the loader renders with the module state it shares',
+    async () => {
+      expect(
+        await renderSharedComponent(
+          `function page() {
+  renders++
+  return <p>{renders}</p>
+}`,
+          'loader',
+        ),
+      ).toEqual(['<p>1</p>', '<p>2</p>', 1])
+    },
+  )
+
   // Bug: same root cause as the pin above, for a lowercase component that
   // the split `component` and the unsplit `pendingComponent` share.
   // Impact: in development, the route's component chunk fails to load
@@ -306,6 +343,76 @@ export const Route = createFileRoute('/')({ component: page, pendingComponent: p
       ).toEqual(['<p>hi</p>', '<p>hi</p>'])
     },
   )
+
+  /**
+   * `./helpers`: `makeHelpers` returns a loader helper and a component,
+   * `make` returns a component; both count their calls.
+   */
+  const helpers = {
+    'helpers.tsx': `export let calls = 0
+export const makeHelpers = () => {
+  calls++
+  return { read: () => 'MARK_READ', render: () => <p>rendered</p> }
+}
+export const make = () => {
+  calls++
+  return () => <p>made</p>
+}
+`,
+  }
+
+  // SPEC G1, J2.4: with React HMR, an unsplit component option
+  // (`pendingComponent` under the default groupings) given as a lowercase
+  // binding that a split option also reads: the modules parse, the route
+  // works, and the binding's initializer runs once.
+  // Bug: here the binding comes from a destructuring. React HMR renames the unsplit option's binding after the code
+  // splitter chose what the route module and its chunks share, so the route
+  // module keeps the renamed declaration and also imports the shared names:
+  // a destructuring then declares `read` twice ("Duplicate declaration").
+  // Impact: in development, the route module does not compile (#8455).
+  test.fails(
+    'a destructured binding that the loader, the split component and the unsplit pendingComponent share works and is created once',
+    async () => {
+      const route = await loadRoute(
+        `${head}import { makeHelpers } from './helpers'
+const { read, render } = makeHelpers()
+export const Route = createFileRoute('/')({
+  loader: () => read(),
+  component: () => render(),
+  pendingComponent: render,
+})`,
+        { hmr: true, files: helpers },
+      )
+      await expectValidModules(route)
+      expect(
+        await route.run(`return [
+  await (await load('loader'))(),
+  await render('component'),
+  await render('pendingComponent'),
+  (await app('helpers.tsx')).calls,
+]`),
+      ).toEqual(['MARK_READ', '<p>rendered</p>', '<p>rendered</p>', 1])
+    },
+  )
+
+  // SPEC G1, J2.4: the same with a plain `const` that holds the component
+  // the split `component` and the unsplit `pendingComponent` share.
+  test('a lowercase component created by a call that the split component and the unsplit pendingComponent share is created once', async () => {
+    const route = await loadRoute(
+      `${head}import { make } from './helpers'
+const page = make()
+export const Route = createFileRoute('/')({ component: page, pendingComponent: page })`,
+      { hmr: true, files: helpers },
+    )
+    await expectValidModules(route)
+    expect(
+      await route.run(`return [
+  await render('component'),
+  await render('pendingComponent'),
+  (await app('helpers.tsx')).calls,
+]`),
+    ).toEqual(['<p>made</p>', '<p>made</p>', 1])
+  })
 
   // Bug: with React HMR, the code splitter moves a component exported by an
   // export list (`export { page }`) into its chunk and leaves the export list
