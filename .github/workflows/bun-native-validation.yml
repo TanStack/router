@@ -131,6 +131,8 @@ jobs:
         id: native_regressions
         continue-on-error: true
         run: python3 .github/native-bun-validation/artifact-tests.py
+      - name: Record native module path identity
+        run: .native-artifact/binary/bun .github/native-bun-validation/path-identity-probe.ts > .native-browser-proof/path-identity.json
       - name: Install Router dependencies
         run: pnpm install --frozen-lockfile --filter . --filter 'tanstack-router-e2e-react-bun-basic-file-based...'
       - name: Checkout actual unplugin PR source
