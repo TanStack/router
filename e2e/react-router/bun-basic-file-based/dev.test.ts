@@ -543,7 +543,7 @@ test('repairs a syntax error in an active route without restarting the server', 
 for (const virtualConfigHelperDepth of [0, 1, 2] as const) {
   test.describe(`string virtual configuration with ${virtualConfigHelperDepth} helper imports`, () => {
     test.use({ virtualConfigFile: true, virtualConfigHelperDepth })
-    test('updates existing browser navigation after an in-place config edit', async ({
+    test('updates existing browser navigation after config edits and atomic replacement', async ({
       page,
       request,
       native,
@@ -557,23 +557,49 @@ for (const virtualConfigHelperDepth of [0, 1, 2] as const) {
       await expect(page.getByRole('heading')).toHaveText('HOME_NATIVE_DEV')
       const token = await documentToken(page)
 
-      await native.save(native.virtualConfigPath, virtualConfigSource('after'))
-      await expect
-        .poll(async () => {
-          const tree = await native.tree()
-          return (
-            tree.includes('/virtual-after') && !tree.includes('/virtual-before')
+      for (const [included, atomic] of [
+        ['after', false],
+        ['before', false],
+        ['after', true],
+      ] as const) {
+        if (atomic) {
+          await native.save(
+            `${native.virtualConfigPath}.next`,
+            virtualConfigSource(included),
           )
-        })
-        .toBe(true)
-      await page
-        .getByRole('link', { name: 'Virtual after', exact: true })
-        .click()
-      await expect(page.getByRole('heading')).toHaveText('VIRTUAL_AFTER')
-      await page
-        .getByRole('link', { name: 'Virtual before', exact: true })
-        .click()
-      await expect(page.getByRole('heading')).toHaveText('NOT_FOUND')
+          await native.rename(
+            `${native.virtualConfigPath}.next`,
+            native.virtualConfigPath,
+          )
+        } else {
+          await native.save(
+            native.virtualConfigPath,
+            virtualConfigSource(included),
+          )
+        }
+        const excluded = included === 'after' ? 'before' : 'after'
+        await expect
+          .poll(async () => {
+            const tree = await native.tree()
+            return (
+              tree.includes(`/virtual-${included}`) &&
+              !tree.includes(`/virtual-${excluded}`)
+            )
+          })
+          .toBe(true)
+        await page
+          .getByRole('link', { name: `Virtual ${included}`, exact: true })
+          .click()
+        await expect(page.getByRole('heading')).toHaveText(
+          `VIRTUAL_${included.toUpperCase()}`,
+        )
+        await page
+          .getByRole('link', { name: `Virtual ${excluded}`, exact: true })
+          .click()
+        await expect(page.getByRole('heading')).toHaveText('NOT_FOUND')
+        await page.getByRole('link', { name: 'Home', exact: true }).click()
+        await expect(page.getByRole('heading')).toHaveText('HOME_NATIVE_DEV')
+      }
       native.assertAlive()
       expect(
         await (
