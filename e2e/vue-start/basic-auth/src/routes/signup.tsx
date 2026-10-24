@@ -5,7 +5,7 @@ import { defineComponent } from 'vue'
 import { hashPassword, prismaClient } from '~/utils/prisma'
 import { useMutation } from '~/hooks/useMutation'
 import { Auth } from '~/components/Auth'
-import { useAppSession } from '~/utils/session'
+import { getAppSession } from '~/utils/session'
 
 export const signupFn = createServerFn({
   method: 'POST',
@@ -25,7 +25,7 @@ export const signupFn = createServerFn({
     const password = await hashPassword(payload.password)
 
     // Create a session
-    const session = await useAppSession()
+    const session = await getAppSession()
 
     if (found) {
       if (found.password !== password) {
@@ -37,9 +37,8 @@ export const signupFn = createServerFn({
       }
 
       // Store the user's email in the session
-      await session.update({
-        userEmail: found.email,
-      })
+      session.userEmail = found.email
+      await session.save()
 
       // Redirect to the prev page stored in the "redirect" search param
       throw redirect({
@@ -56,9 +55,8 @@ export const signupFn = createServerFn({
     })
 
     // Store the user's email in the session
-    await session.update({
-      userEmail: user.email,
-    })
+    session.userEmail = user.email
+    await session.save()
 
     // Redirect to the prev page stored in the "redirect" search param
     throw redirect({
