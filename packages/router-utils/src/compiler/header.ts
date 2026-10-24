@@ -143,8 +143,16 @@ export function analyzeHeader(file: SourceFile): Header {
   ) {
     directiveCount++
   }
+  // Header comments lead the first statement after the directive prologue (a
+  // pragma may follow `'use client'`; the JSX transforms read it there too).
   const firstStart =
-    body.length > 0 ? body[0]!.start : hashbang ? hashbang.end : 0
+    body.length > directiveCount
+      ? body[directiveCount]!.start
+      : body.length > 0
+        ? body[body.length - 1]!.end
+        : hashbang
+          ? hashbang.end
+          : 0
   const leading = file.comments.filter(
     (c) => c.end <= firstStart && (!hashbang || c.start >= hashbang.end),
   )
@@ -156,7 +164,7 @@ export function analyzeHeader(file: SourceFile): Header {
   // Comments directly attached to the first statement (no blank line between
   // them and it) belong to the statement, unless they are pragmas/license.
   let attachedFrom = leading.length
-  if (body.length > 0 && directiveCount === 0) {
+  if (body.length > directiveCount) {
     let next = firstStart
     for (let i = leading.length - 1; i >= 0; i--) {
       const c = leading[i]!

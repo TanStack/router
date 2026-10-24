@@ -54,6 +54,8 @@ export interface Chain {
   wrapped: Node
   /** The parent of `wrapped`. */
   parent: Node | null
+  /** The chain ends at a computed member (an unsupported use): left to the runtime, an error where it may leak. */
+  unsupported: boolean
 }
 
 export interface EnvOnlyCall {
@@ -201,6 +203,7 @@ export function startAnalysisOf(
   /** Climbs from a reference node with a known value. */
   const climb = (start: Node, startValue: AbstractValue) => {
     const links: Array<ChainLink> = []
+    let unsupported = false
     let node: Node = start
     let value = startValue
     let head: Node = start
@@ -268,9 +271,12 @@ export function startAnalysisOf(
       if (p.type === 'MemberExpression' && p.object === outer) {
         const member = p
         if (member.computed) {
-          if (isLeakProne(table, value) && !seenUnsupported.has(member)) {
-            seenUnsupported.add(member)
-            result.unsupported.push({ node: member, value })
+          if (isLeakProne(table, value)) {
+            unsupported = true
+            if (!seenUnsupported.has(member)) {
+              seenUnsupported.add(member)
+              result.unsupported.push({ node: member, value })
+            }
           }
           break
         }
@@ -326,6 +332,22 @@ export function startAnalysisOf(
         }
         break
       }
+      if (p.type === 'CallExpression' && p.callee !== outer) {
+        // an argument of a user helper returning that parameter (`wrap(x)`): the value flows through
+        const idx = (p.arguments as ReadonlyArray<Node>).indexOf(outer)
+        if (idx !== -1) {
+          const fnValue = values.valueOf(p.callee)
+          if (
+            fnValue.t === 'function' &&
+            fnValue.returns.t === 'param' &&
+            fnValue.returns.index === idx
+          ) {
+            node = p
+            continue
+          }
+        }
+        break
+      }
       if (
         p.type === 'JSXMemberExpression' &&
         p.object === outer &&
@@ -377,16 +399,33 @@ export function startAnalysisOf(
       terminalValue: value,
       wrapped: outer,
       parent: p,
+      unsupported,
     })
   }
 
+  /** Whether a namespace of a project module has a member with a Start value (phase A). */
+  const namespaceHasStartMember = (specifier: string): boolean => {
+    if (!prefetch) {
+      return false
+    }
+    const prefix = `${specifier}\u0000`
+    for (const [k, v] of prefetch.values) {
+      if (k.startsWith(prefix) && isStartValue(table, v)) {
+        return true
+      }
+    }
+    return false
+  }
   // seeds: imports with Start values, module-level bindings with Start values
   for (const b of file.bindings) {
     if (b.scope !== file.rootScope) {
       continue
     }
     const v = values.valueOfBinding(b.id)
-    if (!isStartValue(table, v)) {
+    if (
+      !isStartValue(table, v) &&
+      !(v.t === 'namespace' && namespaceHasStartMember(v.specifier))
+    ) {
       continue
     }
     result.startBindings.add(b.id as SymbolId)

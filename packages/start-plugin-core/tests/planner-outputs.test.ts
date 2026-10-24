@@ -204,6 +204,121 @@ export const authed = () => createServerFn({ method: 'GET' })
     expect(out.code).not.toContain('db.server')
   })
 
+  test('a namespace import of a module re-exporting the factories', async () => {
+    const out = (await compile(
+      {
+        '/app/module.tsx': `import * as F from './factories'
+import { db } from './db.server'
+export const fn = F.createServerFn().handler(async () => db.x())
+export const iso = F.createIsomorphicFn().server(() => db.w()).client(() => 'client')
+`,
+        '/app/factories.ts': `export { createServerFn, createIsomorphicFn } from '@tanstack/react-start'\n`,
+        '/app/db.server.ts': `export const db = { x: () => 'x', w: () => 'w' }\n`,
+      },
+      'client',
+    ))!
+    expect(out.code).toContain('F.createServerFn().handler(tsrClientRpc(')
+    expect(out.code).toContain("export const iso = () => 'client'")
+    expect(out.code).not.toContain('db.server')
+  })
+
+  test('a default-exported builder imported as default', async () => {
+    const out = (await compile(
+      {
+        '/app/module.tsx': `import mw from './mw'
+import authed from './builders'
+import { db } from './db.server'
+export const logged = mw.server(async ({ next }) => { db.log(); return next() })
+export const fn = authed.handler(async () => db.x())
+`,
+        '/app/mw.ts': `import { createMiddleware } from '@tanstack/react-start'
+export default createMiddleware({ type: 'function' })
+`,
+        '/app/builders.ts': `import { createServerFn } from '@tanstack/react-start'
+const authed = createServerFn({ method: 'POST' })
+export default authed
+`,
+        '/app/db.server.ts': `export const db = { x: () => 'x', log: () => {} }\n`,
+      },
+      'client',
+    ))!
+    expect(out.code).toContain('export const logged = mw\n')
+    expect(out.code).toContain('authed.handler(tsrClientRpc(')
+    expect(out.code).not.toContain('db.server')
+  })
+
+  test('an import alias cycle settles', async () => {
+    const out = await compile(
+      {
+        '/app/module.tsx': `import { createServerOnlyFn } from './factory-a'
+export const myFn = createServerOnlyFn(() => 'server-only-value')
+`,
+        '/app/factory-a.ts': `import { createServerOnlyFn } from './factory-b'\nexport { createServerOnlyFn }\n`,
+        '/app/factory-b.ts': `import { createServerOnlyFn } from './factory-a'\nexport { createServerOnlyFn }\n`,
+      },
+      'client',
+    )
+    expect(out?.code ?? '').toContain('server-only-value')
+  })
+
+  test('a builder passing through an identity helper', async () => {
+    const files = {
+      '/app/module.tsx': `${head}import { schema } from './schema'
+function applyStep<T>(builder: T) {
+  return builder
+}
+export const fn = applyStep(
+  createServerFn({ method: 'POST' }).validator(schema),
+).handler(async ({ data }) => data)
+const wrap = <T,>(x: T) => x
+export const wrapped = wrap(wrap(createServerFn().handler(async () => 'w')))
+`,
+      '/app/schema.ts': `export const schema = (d: unknown) => d\n`,
+    }
+    const client = (await compile(files, 'client'))!
+    expect(client.code).toContain(
+      "applyStep(\n  createServerFn({ method: 'POST' }),\n).handler(tsrClientRpc(",
+    )
+    expect(client.code).toContain(
+      'wrap(wrap(createServerFn().handler(tsrClientRpc(',
+    )
+    expect(client.code).not.toContain('schema')
+    const ssr = (await compile(files, 'ssr'))!
+    expect(ssr.code).toContain('.handler(tsrRpc$fn, async ({ data }) => data)')
+    expect(ssr.code).toContain(
+      'wrap(wrap(createServerFn().handler(tsrRpc$wrapped, async',
+    )
+  })
+
+  test('a computed member on a builder is an error on the client', async () => {
+    const files = {
+      '/app/module.tsx': `import { createIsomorphicFn } from '@tanstack/react-start'
+export const fn = createIsomorphicFn()['server'](() => 'x').client(() => 'client')
+`,
+    }
+    const client = (await compile(files, 'client'))!
+    expect(client.diagnostics.map((d) => d.severity)).toEqual(['error'])
+    const ssr = (await compile(files, 'ssr'))!
+    expect(ssr.diagnostics).toEqual([])
+    expect(ssr.code).toContain(
+      "createIsomorphicFn()['server'](() => 'x').client(() => 'client')",
+    )
+  })
+
+  test('a nested server fn capturing a local is refused in every env', async () => {
+    const files = {
+      '/app/module.tsx': `${head}export function make(id: string) {
+  const inner = createServerFn().handler(async () => id)
+  return inner
+}
+`,
+    }
+    for (const env of ['client', 'ssr'] as const) {
+      const out = (await compile(files, env))!
+      expect(out.diagnostics.map((d) => d.severity)).toEqual(['error'])
+    }
+  })
+
   test('a nested server fn is hoisted on the server and stubbed in place on the client', async () => {
     const files2 = {
       '/app/module.tsx': `${head}import { db } from './db.server'
@@ -350,7 +465,8 @@ import { useId } from 'react'
 export function useField() {
   const serverId = useId()
   const describe = createIsomorphicFn().server(() => serverId).client(() => 'client')
-  return describe()
+  const inputId = useId()
+  return [describe(), inputId]
 }
 `,
       },

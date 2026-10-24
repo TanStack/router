@@ -85,13 +85,14 @@ export async function prefetchStartValues(
     name: string,
   ): Promise<AbstractValue> => {
     const key = importKey(canonicalId, name)
+    if (active.has(key)) {
+      // a cycle: the result is unknown here and never memoised (R18)
+      return Promise.resolve(UNKNOWN)
+    }
     let p = memo.get(key)
     if (!p) {
+      active.add(key)
       p = (async () => {
-        if (active.has(key)) {
-          return UNKNOWN
-        }
-        active.add(key)
         try {
           if (isKnownSpecifier(table, canonicalId)) {
             return recognizeImport(table, canonicalId, name)

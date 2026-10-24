@@ -251,7 +251,7 @@ export const mw = createMiddleware({ type: 'function' })`,
   // Impact: the `.server()` implementation (the server-only implementation,
   // which the uncompiled factory returns as is) and its server-only imports
   // ship to the client.
-  test.fails.each<{
+  test.each<{
     name: string
     files: Record<string, string>
     code: string
@@ -342,7 +342,7 @@ export const fn = authed.handler(async () => db.x())`,
   // name.
   // Impact: the module is left untransformed and ships its handler and
   // server-only imports to the client.
-  test.fails(
+  test(
     'client builds compile a builder read from a namespace import',
     async () => {
       await expectServerFnThroughRpc(
@@ -360,7 +360,7 @@ export const fn = F.authed.handler(async () => db.x())`,
   // (`export * as Start from '@tanstack/react-start'`) is not resolved.
   // Impact: `Start.createServerFn()` modules are left untransformed and ship
   // their handler and server-only imports to the client.
-  test.fails(
+  test(
     'client builds compile factories of a re-exported Start namespace',
     async () => {
       await expectServerFnThroughRpc(
@@ -382,7 +382,7 @@ export const fn = Start.createServerFn().handler(async () => db.x())`,
   // (a rejection is no fix).
   // Impact: the module is left untransformed and ships its handler and
   // server-only imports to the client, without an RPC.
-  test.fails.each<{
+  test.each<{
     name: string
     code: string
     files: Record<string, string>
@@ -421,7 +421,7 @@ export const fn = authed().handler(async () => db.x())`,
   // Source: fuzzing (builders passed through user helpers).
   // Impact: the validator, the handler and what they import ship to the
   // client, and the client runs the handler instead of calling the server.
-  test.fails(
+  test(
     'client builds compile a server fn whose builder passes through a helper function',
     async () => {
       const served = await serveCase(await host(), {
@@ -448,7 +448,7 @@ export const fn = applyStep(
   // Source: fuzzing (builders passed through user helpers).
   // Impact: the module throws when it loads ("withBuilder(...).client is not
   // a function"), on the client and on the server.
-  test.fails(
+  test(
     'each output keeps its implementation of an isomorphic fn whose chain passes through a helper function',
     async () => {
       const startCase = await newCase({
@@ -472,7 +472,7 @@ export const getEnv = withBuilder(
   // local alias is only compiled as a top-level variable initializer.
   // Impact: the implementation and its server-only imports ship to the
   // client, where calling the server-only fn runs it instead of throwing.
-  test.fails.each([
+  test.each([
     {
       name: 'a renamed import in a function body',
       code: `import { createServerOnlyFn as serverOnly } from '@tanstack/react-start'
@@ -623,7 +623,7 @@ export const db = {
   // integration/start-build-call-shapes.test.ts runs it as the app's request
   // middleware in a real request (same input, same outcomes), which this
   // file's shared host has no start entry for.
-  test.fails.each<CallShape>([
+  test.each<CallShape>([
     {
       name: 'a server fn handler called through a computed member',
       code: `${head}import { db } from './db.server'
@@ -671,7 +671,7 @@ export const read = createServerOnlyFn(() => db.secret()).bind(null)`,
   // Fix-agnostic: compiled per its contract (the client throws the
   // server-only error and loads nothing server-only, SSR runs it) or
   // rejected with a clear compile error at the call.
-  test.fails(
+  test(
     'a createServerOnlyFn local alias called in a top-level block works in each environment, or is rejected at the call',
     async () => {
       await expectWorksOrRejectedAtCall({
@@ -712,7 +712,7 @@ export let read: () => unknown
       rows: placements.filter((placement) => placement.declarator),
     },
   ])('with $importHead imported', ({ importHead, rows }) => {
-    test.fails.each(rows)(
+    test.each(rows)(
       'a createServerFn in $name does not ship its handler to the client',
       async ({ code, read }) => {
         await expectNoClientHandler(
@@ -738,7 +738,7 @@ export let read: () => unknown
   // position): declaration-sites.test.ts "next to another Start factory, ...".
   // (A declarator below the top level, e.g. in a top-level block, is
   // extracted instead: pinned above.)
-  test.fails.each(
+  test.each(
     placements.filter(
       (placement) => !placement.nested && !placement.declarator,
     ),
@@ -762,7 +762,7 @@ export let read: () => unknown
   // Impact: its handler and server-only imports ship to the client
   // (createServerFn alone), or the server fails to serve the module
   // (another factory).
-  test.fails.each(Object.keys(placementHeads) as Array<PlacementHead>)(
+  test.each(Object.keys(placementHeads) as Array<PlacementHead>)(
     'with %s imported, a nested server fn whose handler reads a local of its function is supported or rejected at the capture',
     async (importHead) => {
       const code = placementModule(importHead, capturingPlacement.code)
@@ -814,7 +814,7 @@ export let read: () => unknown
   // server.
   // Source: #8504 compiler.test.ts "resolves distinct re-export aliases
   // without conflating their source bindings" (red on main).
-  test.fails(
+  test(
     'distinct re-export aliases of two factories keep their own kind',
     async () => {
       const startCase = await newCase({
@@ -870,7 +870,7 @@ return {
   // and locals shadowing the factories are left alone next to a compiled
   // factory call" (red on main). (The provider row of the internal harness
   // has no public counterpart: the server is the SSR row.)
-  test.fails.each(['client', 'ssr'] as const)(
+  test.each(['client', 'ssr'] as const)(
     '%s: parameters and locals shadowing the factories are left alone next to a compiled factory call',
     async (environment) => {
       const startCase = await newCase({
@@ -925,7 +925,7 @@ describe('server function handlers', () => {
   // Bug: generated imports and handler names are not made unique against
   // user bindings, so a user binding named like one of them collides with it.
   // Impact: the module fails to build.
-  test.fails.each(['createClientRpc', 'createSsrRpc', 'createServerRpc'])(
+  test.each(['createClientRpc', 'createSsrRpc', 'createServerRpc'])(
     'a user binding named %s does not collide with generated code',
     async (binding) => {
       const { results } = await callServerFns({
@@ -941,7 +941,7 @@ export const fn = createServerFn().handler(async () => 'from the server')`,
   // `opts => fn.__executeServer(opts)`, whose `opts` parameter shadows a
   // server fn named `opts`.
   // Impact: every call of a server fn named `opts` fails on the server.
-  test.fails('a server fn named opts runs on the server', async () => {
+  test('a server fn named opts runs on the server', async () => {
     const { results } = await callServerFns({
       'module.tsx': `${head}export const opts = createServerFn().handler(async () => 'from the server')`,
     })
@@ -993,7 +993,7 @@ export const fn = createServerFn().handler(async () => 'from the server')`,
   // that keeps them apart from user bindings passes).
   // Impact: a user binding or a server fn named like generated code breaks
   // the module or its server calls.
-  test.fails(
+  test(
     'no name the compiler introduces collides with a user binding or a server fn of that name',
     async () => {
       const names = await introducedNames()
@@ -1041,7 +1041,7 @@ export const fn = createServerFn().handler(async () => 'from the server')`,
   // what the handler returns (how the call reaches it is free), or the
   // module is reported: a compile error, or in dev a warning, naming the
   // file.
-  test.fails.each(['client', 'ssr'] as const)(
+  test.each(['client', 'ssr'] as const)(
     '%s: a server fn whose handler is a createServerOnlyFn call returns the handler result, or is reported',
     async (environment) => {
       const code = `import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
@@ -1106,7 +1106,7 @@ describe('dev edits', () => {
   // invalidated and recompiled itself); reproduced through a real Vite dev
   // edit. Unbundled client edits of a server fn factory are
   // covered by integration/start-compiler-dev-server.test.ts.
-  test.fails(
+  test(
     'a dev edit of a module a re-export chain ends in recompiles its importers',
     async () => {
       const started = await editHost()
@@ -1206,7 +1206,7 @@ export async function hydrate(html: string) {
   // Observed: the server's HTML of a component using the hook hydrates in
   // the page without a mismatch (formerly: the hook's `useId` calls counted
   // through a stubbed React).
-  test.fails.each([
+  test.each([
     {
       output: 'client' as const,
       code: `import { createIsomorphicFn } from '@tanstack/react-start'
@@ -1253,7 +1253,7 @@ export const Card = () => <div />`
   // router-plugin/tests/known-bugs-code-splitter.test.ts.
   // Impact: the module's components throw "h is not defined" or render
   // through another JSX factory than the one the module selects.
-  test.fails(
+  test(
     'client: the factory of a classic JSX pragma stays imported',
     async () => {
       const startCase = await newCase({
@@ -1314,7 +1314,7 @@ export const render = () => renderToString(createElement(Hero))
   // count the JSX as a read of `React`); fuzzing (an unmodified file of a
   // real app, a charts hero background).
   // Impact: the server render throws "React is not defined".
-  test.fails(
+  test(
     'ssr: a module with a classic JSX runtime pragma keeps its React import',
     async () => {
       expect(await renderHero(classicRuntimeModule(''))).toContain('<div>')
@@ -1327,7 +1327,7 @@ export const render = () => renderToString(createElement(Hero))
   // TypeScript transform can then no longer erase. The code splitter has the
   // same bug (pin in router-plugin/tests/known-bugs-code-splitter.test.ts).
   // Impact: the module fails to load ("Export 'Settings' is not defined").
-  test.fails.each([
+  test.each([
     `import type { Settings } from './settings'`,
     `import { type Settings } from './settings'`,
   ])(
@@ -1407,7 +1407,7 @@ export const fn = createServerFn().handler(async () => find())`,
   // Impact: the client (always in dev; in builds, the server module's
   // top-level code, see the Vite build pin) loads the server-only module.
   // Source: review; #8504 caller-dead-code.test.ts:563 covers server fns.
-  test.fails.each([
+  test.each([
     {
       name: 'a class used by a server fn handler',
       code: `import { createServerFn } from '@tanstack/react-start'
@@ -1551,7 +1551,7 @@ export const fn = createServerFn().handler(async () => describeDb())`)
   // the client loads the server-only module and its top-level code ships
   // (see the Vite build pin).
   // Source: review.
-  test.fails(
+  test(
     'client: a server-only import last mentioned by a type alias is not loaded with verbatimModuleSyntax',
     async () => {
       const { loads } =
@@ -1601,7 +1601,7 @@ export const setTheme = createServerFn({ method: 'POST' })
   // Impact: the schema and its library (or server-only modules) ship to the
   // client, which never runs them (see the build pin in
   // start-build-env-separation.test.ts).
-  test.fails(
+  test(
     'client: a validator schema that a type alias reads with typeof is not loaded',
     async () => {
       const startCase = await erasedCase(
@@ -1640,7 +1640,7 @@ export const draw = createClientOnlyFn(() => chart.draw())`
   // Impact: the server loads the client-only module and runs the
   // initializer (e.g. `window.matchMedia(...)`), which can throw during
   // SSR.
-  test.fails(
+  test(
     'ssr: a declaration a client-only fn reads and a type alias reads with typeof is not loaded',
     async () => {
       const startCase = await erasedCase(

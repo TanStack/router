@@ -129,6 +129,46 @@ describe('symbolic value terms (§2.9.2)', () => {
   })
 })
 
+describe('export resolution', () => {
+  it('resolves two names through two star exports concurrently without a false cycle', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/start.ts': `export * from './a'\nexport * from './b'\n`,
+        '/app/a.ts': `export { createServerFn } from 'toy-start'\n`,
+        '/app/b.ts': `export { createServerOnlyFn } from 'toy-start'\n`,
+      },
+      recognizer: TABLE,
+    })
+    const seen: Record<string, unknown> = {}
+    const planner: Planner = {
+      name: 'toy-two-stars',
+      tier: 1,
+      gate: () => true,
+      async prefetch(_t0, ctx) {
+        const target = (await ctx.resolve('./start'))!
+        const [a, b] = await Promise.all([
+          ctx.resolver.resolve(target, 'createServerFn'),
+          ctx.resolver.resolve(target, 'createServerOnlyFn'),
+        ])
+        seen.a = a
+        seen.b = b
+      },
+      plan() {},
+    }
+    await host.compile('/app/start.ts', [planner], {
+      code: `import { createServerFn, createServerOnlyFn } from './start'\nexport const x = [createServerFn, createServerOnlyFn]\n`,
+    })
+    expect(seen.a).toMatchObject({
+      k: 'found',
+      value: { t: 'factory', kind: 'serverFn' },
+    })
+    expect(seen.b).toMatchObject({
+      k: 'found',
+      value: { t: 'factory', kind: 'serverOnly' },
+    })
+  })
+})
+
 describe('known specifiers and planner withdrawal', () => {
   it('serves a synthetic summary for a known package specifier without resolving it', async () => {
     const host = new MemoryHost({

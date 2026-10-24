@@ -112,7 +112,7 @@ test.each(handlerRows)(
 // (imaimai17468/tanstack-start-handler-call-expression-repro; red on main)
 // The outcome (SPEC J4.1, J4.2, G5): the handler runs, or the module is
 // reported: a compile error, or in dev a warning, naming the file.
-test.fails(
+test(
   'the handler can be a createIsomorphicFn call, or the module is reported',
   async () => {
     const code = `${head}import { createIsomorphicFn } from '@tanstack/react-start'

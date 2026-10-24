@@ -39,6 +39,7 @@ import {
 } from '../server-fns/resolver'
 import { createVirtualModule } from './createVirtualModule'
 import { createInterimHydrate } from './hydrate-interim'
+import { MissingHydrateSourceError } from '../hydrate-when-transform'
 import type { InterimHydrateEnv } from './hydrate-interim'
 import type { GenerateFunctionId } from '../server-fns/ids'
 import type { ServerFnEntry } from '../server-fns/registry'
@@ -78,8 +79,6 @@ export interface StartCompilerPluginOptions {
   /** The Vite environment name of the server function provider. */
   providerEnvName: string
   rsc?: StartRscCompilerOptions | undefined
-  /** Package names of the discovered Start libraries (compiled like app code; their summaries are read). */
-  libraryPackages?: () => ReadonlyArray<string>
 }
 
 const PROVIDER_QUERY = 'tss-serverfn-split'
@@ -149,22 +148,11 @@ export function startCompilerPlugin(
     Promise<Awaited<ReturnType<typeof invalidate>>>
   >()
 
-  const isOpaque = (canonicalId: string): boolean => {
-    const p = identify(canonicalId).path.replace(/\\/g, '/')
-    const at = p.lastIndexOf('/node_modules/')
-    if (at === -1) {
-      return false
-    }
-    const rest = p.slice(at + '/node_modules/'.length)
-    if (rest.startsWith('.vite/')) {
-      return true
-    }
-    const parts = rest.split('/')
-    const pkg = parts[0]!.startsWith('@')
-      ? `${parts[0]}/${parts[1]}`
-      : parts[0]!
-    return !(opts.libraryPackages?.() ?? []).includes(pkg)
-  }
+  /** Pre-bundled dependencies are opaque (a discovered Start library is never pre-bundled); everything else resolved is read. */
+  const isOpaque = (canonicalId: string): boolean =>
+    identify(canonicalId)
+      .path.replace(/\\/g, '/')
+      .includes('/node_modules/.vite/')
 
   const envInfoOf = (
     environment: Environment,
@@ -650,10 +638,7 @@ export function startCompilerPlugin(
         try {
           return tryLoad()
         } catch (error) {
-          if (
-            (error as { name?: string })?.constructor?.name !==
-            'MissingHydrateSourceError'
-          ) {
+          if (!(error instanceof MissingHydrateSourceError)) {
             throw error
           }
         }

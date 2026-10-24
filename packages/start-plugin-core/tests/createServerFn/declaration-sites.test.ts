@@ -109,7 +109,7 @@ test.each(literalPlacements)(
 // Bug: dependency-free nested handlers remain in successful client output.
 // The rows: the four public make/pick usages below.
 // Impact: client calls execute the server handler locally instead of using RPC.
-test.fails.each(literalPlacements)(
+test.each(literalPlacements)(
   'a server fn declared in $name never ships its nested handler to the client',
   async ({ code, hasTop, read }) => {
     // Keep the original literal-returning input, as well as a distinct
@@ -187,7 +187,7 @@ test.each<PlacementHead>(['createServerFn alone', 'another Start factory'])(
 // Impact: the build fails for a module whose server fn the user can only
 // write unwrapped.
 // Source: declaration-sites "wrapped in two calls".
-test.fails.each<PlacementHead>([
+test.each<PlacementHead>([
   'createServerFn alone',
   'another Start factory',
 ])(
@@ -229,7 +229,7 @@ export const fn = createServerFn().validator().handler(async () => 1)`
 describe.each<PlacementHead>(['createServerFn alone', 'another Start factory'])(
   'with %s imported',
   (importHead) => {
-    test.fails.each(
+    test.each(
       placements.filter(
         (placement) =>
           placement.nested &&
@@ -254,7 +254,7 @@ describe.each<PlacementHead>(['createServerFn alone', 'another Start factory'])(
 // known-bugs-start-compiler.test.ts).
 // Source: SolidStart compile.spec.ts "keeps client and server ids aligned
 // around nested server functions"; #8504 declaration-sites.test.ts
-test.fails.each<PlacementHead>([
+test.each<PlacementHead>([
   'createServerFn alone',
   'another Start factory',
 ])(
@@ -281,7 +281,7 @@ test.fails.each<PlacementHead>([
 // Today they are left untransformed, rejected or extracted into an invalid
 // server module (pins in known-bugs-start-compiler.test.ts, placement "a
 // function body").
-test.fails.each<PlacementHead>([
+test.each<PlacementHead>([
   'createServerFn alone',
   'another Start factory',
 ])(
@@ -340,7 +340,7 @@ export const fn = createServerFn({ method: 'GET' })${handler}`,
 // handler on the server) or rejecting it with a clear error at the call,
 // naming createServerFn, both pass.
 // Source: #8504 declaration-sites.test.ts (red on main)
-test.fails(
+test(
   'a server fn created through an optional call chain compiles like a plain chain or is rejected',
   async () => {
     const code = `${head}import { db } from './db.server'

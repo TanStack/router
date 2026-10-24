@@ -384,7 +384,7 @@ function planStartEnv(
   // ---- derived provider output (RSC: a 'use client' module compiled by the separate provider env)
   let providerOut: OutputId | null = null
   const serverFnChains = analysis.chains.filter(
-    (c) => c.terminalValue.t === 'serverFn',
+    (c) => c.terminalValue.t === 'serverFn' && !c.unsupported,
   )
   if (
     role === 'provider' &&
@@ -462,6 +462,9 @@ function planStartEnv(
 
   // ---- 1. link stripping on the client (serverFn validators, middleware server/validator)
   for (const chain of analysis.chains) {
+    if (chain.unsupported) {
+      continue
+    }
     for (const link of chain.links) {
       const recv = link.receiver
       if (recv.t !== 'builder') {
@@ -553,7 +556,7 @@ function planStartEnv(
   for (const chain of analysis.chains) {
     const v = chain.terminalValue
     const isIso = v.t === 'isoFn' || (v.t === 'builder' && v.kind === 'isoFn')
-    if (!isIso) {
+    if (!isIso || chain.unsupported) {
       continue
     }
     const X = chain.terminal
@@ -667,6 +670,15 @@ function planStartEnv(
   // ---- 2b. server fn rewrites
   for (const site of sites) {
     const key = { rootRel, stableKey: site.stableKey }
+    // a nested server fn is checked for hoistability in every env (J4.6: every env refuses
+    // at the capture, or every env supports it); the hoist itself happens on the provider
+    let hoisted: ReturnType<typeof hoist> = null
+    if (site.nested) {
+      hoisted = hoist(ctx, analysis, site, providerOut ?? 'auto', by)
+      if (!hoisted) {
+        continue
+      }
+    }
     const id =
       config.idMode === 'dev'
         ? devFunctionId(key)
@@ -728,13 +740,9 @@ function planStartEnv(
       fnSym = site.topLevelSym!
       anchor = { k: 'before-unit', unit: site.topLevelUnit!.id }
     } else {
-      const hoisted = hoist(ctx, analysis, site, home, by)
-      if (!hoisted) {
-        continue
-      }
-      fnSym = hoisted.sym
-      anchor = hoisted.anchor
-      commitHoist = hoisted.commit
+      fnSym = hoisted!.sym
+      anchor = hoisted!.anchor
+      commitHoist = hoisted!.commit
     }
     rewrites.add({
       range: { start: h.start, end: h.start },
@@ -789,6 +797,28 @@ function planStartEnv(
 
   // ---- 7. function-local declarators only removed code read
   cleanOrphanedLocals(ctx, envScope, by)
+
+  // ---- 8. `assert` import attributes keep working (G12): the keyword browsers dropped becomes `with`
+  for (const imp of ma.imports) {
+    if (!imp.attributesRange) {
+      continue
+    }
+    const between = ma.source.code.slice(
+      imp.specifierRange.end,
+      imp.attributesRange.start,
+    )
+    const m = /\bassert\b/.exec(between)
+    if (m) {
+      const start = imp.specifierRange.end + m.index
+      rewrites.add({
+        range: { start, end: start + 'assert'.length },
+        body: [text('with')],
+        scope: 'all-outputs',
+        by,
+        reason: 'import attributes keyword',
+      })
+    }
+  }
 
   ctx.setFacts(START_ENV, facts)
 }
@@ -1118,7 +1148,11 @@ function cleanOrphanedLocals(
             changed = false
             continue
           }
-          if (pure || moduleLevel) {
+          if (
+            pure ||
+            moduleLevel ||
+            initReadsOnlyOrphanedImports(ctx, parent.init!, live)
+          ) {
             rewrites.add({
               range: {
                 start: statement.start,
@@ -1140,7 +1174,11 @@ function cleanOrphanedLocals(
           }
           continue
         }
-        if (!pure && !moduleLevel) {
+        if (
+          !pure &&
+          !moduleLevel &&
+          !initReadsOnlyOrphanedImports(ctx, parent.init!, live)
+        ) {
           handled.delete(b.id)
           changed = false
           continue
@@ -1192,6 +1230,37 @@ function cleanOrphanedLocals(
       break
     }
   }
+}
+
+/**
+ * Whether an impure initialiser is server-only code the removal documents
+ * (J4.12): it reads at least one import, and every import it reads has no
+ * other live reference (the import leaves with it). Otherwise its effects
+ * are kept as a statement (a hook call next to a removed implementation).
+ */
+function initReadsOnlyOrphanedImports(
+  ctx: PlanContext,
+  init: Node,
+  live: ReturnType<PlanContext['liveness']>,
+): boolean {
+  const { t1, symbols } = ctx
+  const range = rangeOf(init)
+  let imports = 0
+  for (const r of t1.refs.refsIn(range)) {
+    if (!symbols.isImport(r.sym)) {
+      continue
+    }
+    imports++
+    const others = t1.refs
+      .valueRefsOf(r.sym)
+      .filter(
+        (o) => !(o.range.start >= range.start && o.range.end <= range.end),
+      )
+    if (others.some((o) => live.live(o))) {
+      return false
+    }
+  }
+  return imports > 0
 }
 
 /**

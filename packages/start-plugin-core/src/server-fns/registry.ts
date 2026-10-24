@@ -67,10 +67,10 @@ export class ServerFnRegistry {
     }
   }
 
-  /** Forgets the entries of a defining module (a deleted file). */
-  forget(definingCanonicalId: string): void {
+  /** Forgets the entries defined by a file (a deleted file; by path, every query variant). */
+  forget(path: string): void {
     for (const [id, e] of this.byId) {
-      if (e.definingCanonicalId === definingCanonicalId) {
+      if (e.definingCanonicalId.split('?')[0] === path) {
         this.byId.delete(id)
       }
     }

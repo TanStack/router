@@ -390,7 +390,7 @@ export const fn = createServerFn().handler(async () => new Repository().read())`
 // Source: typescript-eslint type-assertion/increment/as-increment.js,
 // type-assertion/increment/non-null-increment.js, type-assertion/satisfies.js;
 // #8504 start-compiler-preserves-user-code.test.ts (red on main)
-test.fails('keeps the parentheses of asserted update operands', async () => {
+test('keeps the parentheses of asserted update operands', async () => {
   const served = await serveCase(await host(), {
     'module.tsx': `import { createServerFn } from '@tanstack/react-start'
 export const fn = createServerFn().handler(async () => 1)
@@ -416,7 +416,7 @@ export function bump() {
 // in router-plugin/tests/known-bugs-code-splitter.test.ts).
 // Impact: the module fails to parse, so the build fails.
 // Source: fuzzing.
-test.fails(
+test(
   'keeps the parentheses of an asserted conditional test',
   async () => {
     const served = await serveCase(await host(), {

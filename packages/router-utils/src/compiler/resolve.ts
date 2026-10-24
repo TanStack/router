@@ -32,8 +32,6 @@ export class ResolutionBatch {
 }
 
 export class ExportResolver {
-  private readonly active: Array<string> = []
-
   constructor(
     private readonly deps: ResolverDeps,
     readonly batch: ResolutionBatch = new ResolutionBatch(),
@@ -44,7 +42,13 @@ export class ExportResolver {
     name: string,
     conditions: ReadonlyArray<string> = [],
   ): Promise<ResolveOutcome> {
-    const { outcome } = await this.walk(canonicalId, name, conditions.join(','))
+    // one active stack per top-level resolution: concurrent resolutions never see each other's path as a cycle
+    const { outcome } = await this.walk(
+      canonicalId,
+      name,
+      conditions.join(','),
+      [],
+    )
     return outcome
   }
 
@@ -52,20 +56,21 @@ export class ExportResolver {
     canonicalId: string,
     name: string,
     cond: string,
+    active: Array<string>,
   ): Promise<{ outcome: ResolveOutcome; tainted: boolean }> {
     const key = `${canonicalId}\u0000${name}\u0000${cond}`
     const hit = this.batch.memo.get(key)
     if (hit) {
       return { outcome: hit, tainted: false }
     }
-    if (this.active.includes(canonicalId)) {
+    if (active.includes(canonicalId)) {
       return { outcome: { k: 'cycleUnknown' }, tainted: true }
     }
     const summary = await this.deps.summaryOf(canonicalId)
     if (!summary) {
       return { outcome: { k: 'absent' }, tainted: false }
     }
-    this.active.push(canonicalId)
+    active.push(canonicalId)
     try {
       let tainted = false
       const fact = summary.exports[name]
@@ -105,7 +110,7 @@ export class ExportResolver {
           this.batch.memo.set(key, outcome)
           return { outcome, tainted: false }
         }
-        const r = await this.walk(target, fact.fromName, cond)
+        const r = await this.walk(target, fact.fromName, cond, active)
         if (!r.tainted) {
           this.batch.memo.set(key, r.outcome)
         }
@@ -121,7 +126,7 @@ export class ExportResolver {
         if (target === null) {
           continue
         }
-        const r = await this.walk(target, name, cond)
+        const r = await this.walk(target, name, cond, active)
         tainted ||= r.tainted
         if (r.outcome.k === 'found') {
           if (
@@ -145,7 +150,7 @@ export class ExportResolver {
       }
       return { outcome, tainted }
     } finally {
-      this.active.pop()
+      active.pop()
     }
   }
 }

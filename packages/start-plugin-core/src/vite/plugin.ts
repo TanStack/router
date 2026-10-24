@@ -60,8 +60,6 @@ export function tanStackStartVite(
   // When the router basepath and vite base are misaligned during dev,
   // we install a URL rewrite middleware instead of erroring.
   let needsDevBaseRewrite = false
-  /** The Start libraries discovery selected (compiled like app code). */
-  let libraryPackages: Array<string> = []
 
   const environments: Array<{
     name: string
@@ -160,7 +158,6 @@ export function tanStackStartVite(
           },
         })
 
-        libraryPackages = crawlFrameworkPkgsResult.optimizeDeps.exclude
         const viteConfigPlan = createViteConfigPlan({
           viteConfig,
           command,
@@ -225,7 +222,6 @@ export function tanStackStartVite(
         normalizedStartPluginOpts.serverFns?.generateFunctionId,
       rsc: corePluginOpts.rsc,
       providerEnvName: serverFnProviderEnv,
-      libraryPackages: () => libraryPackages,
     }),
     importProtectionPlugin({
       getConfig,
