@@ -25,7 +25,7 @@
   ],
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
-    "test:eslint": "eslint ./src",
+    "test:eslint": "eslint ./src ./tests",
     "test:types": "pnpm run \"/^test:types:ts[0-9]{2}$/\"",
     "test:types:ts56": "node ../../node_modules/typescript56/lib/tsc.js",
     "test:types:ts57": "node ../../node_modules/typescript57/lib/tsc.js",
@@ -34,7 +34,8 @@
     "test:types:ts60": "tsc6",
     "test:types:ts70": "tsc",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
-    "build": "vite build"
+    "build": "vite build",
+    "test:unit": "vitest"
   },
   "type": "module",
   "types": "dist/esm/index.d.ts",
@@ -49,6 +50,16 @@
       "require": {
         "types": "./dist/cjs/index.d.cts",
         "default": "./dist/cjs/index.cjs"
+      }
+    },
+    "./compiler": {
+      "import": {
+        "types": "./dist/esm/compiler/index.d.ts",
+        "default": "./dist/esm/compiler/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/compiler/index.d.cts",
+        "default": "./dist/cjs/compiler/index.cjs"
       }
     },
     "./package.json": "./package.json"
@@ -69,15 +80,18 @@
     "babel-dead-code-elimination": "^1.0.12",
     "diff": "^9.0.0",
     "pathe": "catalog:",
-    "tinyglobby": "catalog:"
+    "tinyglobby": "catalog:",
+    "yuku": "0.23.0"
   },
   "devDependencies": {
-    "@types/babel__generator": "^7.27.0",
-    "vite": "*",
-    "@types/node": ">=20",
-    "@tanstack/vite-config": "catalog:",
     "@arethetypeswrong/cli": "catalog:",
+    "@jridgewell/trace-mapping": "^0.3.31",
+    "@tanstack/vite-config": "catalog:",
+    "@types/babel__generator": "^7.27.0",
+    "@types/node": ">=20",
     "publint": "catalog:",
-    "rimraf": "catalog:"
+    "rimraf": "catalog:",
+    "vite": "*",
+    "vitest": "catalog:"
   }
 }
