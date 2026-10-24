@@ -4,9 +4,9 @@
  * environments, served by Start's preview server) in a real page: which
  * entry of a dependency each environment runs (SPEC J4.3, J4.16, J4.12),
  * env-only fns a server fn handler calls (J4.10), and the CSS of server
- * components rendered with each RSC
- * helper (SPEC J7.2, J7.3). The dev counterparts are rsc-start-dev.test.ts
- * and rsc-css-matrix.test.ts.
+ * components rendered with each RSC helper, in a server fn's module or in a
+ * helper module it calls (SPEC J7.2, J7.3). The dev counterparts are
+ * rsc-start-dev.test.ts and rsc-css-matrix.test.ts.
  */
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
@@ -18,6 +18,7 @@ import {
   startRscPreviewServer,
   waitForHydration,
 } from './rsc-app'
+import { HELPER_CARD_BACKGROUND, helperRow } from './rsc-css-rsbuild-app'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { RscPreviewServer } from './rsc-app'
 
@@ -62,6 +63,9 @@ const CARD_BACKGROUND = 'rgb(254, 243, 199)'
 
 const files = {
   ...envMarkerPackage,
+  // A server fn that calls a helper module rendering a server component
+  // with its own CSS module (rsc-css-rsbuild-app.ts)
+  ...helperRow.files,
   'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
 import { where } from 'env-marker'
 export const greet = createServerFn().handler(() => where())
@@ -396,6 +400,23 @@ describe('Vite production build with RSC', () => {
       expect(page.errors).toEqual([])
     },
   )
+
+  // SPEC J7.1, J7.2: the CSS is delivered wherever the render runs, here in
+  // a helper module the server fn calls (the dev twin: rsc-css.test.ts).
+  test('a render call in a helper module styles the server component', async () => {
+    const page = await open(helperRow.path)
+    const selector = '[data-testid=helper-card]'
+    await page.page.locator(selector).waitFor()
+    await waitForHydration(page)
+    expect(
+      await settledValue(
+        page,
+        () => computedStyle(page, selector, 'background-color'),
+        (value) => value === HELPER_CARD_BACKGROUND,
+      ),
+    ).toBe(HELPER_CARD_BACKGROUND)
+    expect(page.errors).toEqual([])
+  })
 
   test.each(['renderable', 'composite', 'flight'])(
     'the %s row styles its server component',

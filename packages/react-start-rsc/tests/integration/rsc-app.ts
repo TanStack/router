@@ -18,6 +18,7 @@
  * package is linked (`workspacePackageLinks`); the `test:integration` Nx
  * target depends on its `build`.
  */
+import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import react from '@vitejs/plugin-react'
@@ -47,9 +48,22 @@ import type {
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 
-/** Resolve the installed public export with Node, independent of dist layout. */
+/**
+ * Node's own `import()`, outside Vitest's module runner (as
+ * start-plugin-core's `start-compose-app.ts` uses it): a plugin loaded with
+ * it imports the built server bundle as Node does.
+ */
+const nativeImport = createRequire(import.meta.url)(
+  '../../../compiler-test-utils/src/native-import.cjs',
+) as (specifier: string) => Promise<Record<string, any>>
+
+/**
+ * Resolve the installed public export with Node, independent of dist
+ * layout; with `native`, loaded by Node itself (`nativeImport`).
+ */
 async function tanstackStartPlugin(
   bundler: 'vite' | 'rsbuild',
+  native = false,
 ): Promise<(options?: Record<string, unknown>) => unknown> {
   const app = await createApp({
     dir: harnessDir,
@@ -60,10 +74,9 @@ async function tanstackStartPlugin(
     symlinks: workspacePackageLinks(['@tanstack/react-start']),
   })
   try {
+    const url = pathToFileURL(path.join(app.root, 'plugin.mjs')).href
     return (
-      await import(
-        /* @vite-ignore */ pathToFileURL(path.join(app.root, 'plugin.mjs')).href
-      )
+      native ? await nativeImport(url) : await import(/* @vite-ignore */ url)
     ).tanstackStart
   } finally {
     await app.dispose()
@@ -239,6 +252,122 @@ export async function startRscPreviewServer(options: {
     throw new Error('the preview server does not listen')
   }
   return { root: app.root, url, messages }
+}
+
+/** What `startRscRsbuildPreviewServer` uses of Rsbuild's JavaScript API. */
+interface RsbuildApi {
+  createRsbuild: (options: {
+    cwd: string
+    rsbuildConfig: Record<string, unknown>
+  }) => Promise<{
+    build: () => Promise<{ close: () => Promise<void> }>
+    preview: (options?: { getPortSilently?: boolean }) => Promise<{
+      urls: Array<string>
+      server: { close: () => Promise<void> }
+    }>
+  }>
+}
+
+/**
+ * Rsbuild's JavaScript API: the copy the shared Rsbuild harness runs
+ * (a dependency of `@tanstack/compiler-test-utils`, which this package's
+ * tests do not declare themselves).
+ */
+async function rsbuildApi(): Promise<RsbuildApi> {
+  const harness = createRequire(import.meta.url).resolve(
+    '@tanstack/compiler-test-utils/rsbuild-dev-server',
+  )
+  const rsbuild = createRequire(harness).resolve('@rsbuild/core')
+  return (await import(
+    /* @vite-ignore */ pathToFileURL(rsbuild).href
+  )) as RsbuildApi
+}
+
+/**
+ * Builds a React Start app with RSC enabled, of `files` over `rscAppFiles`,
+ * for production as `rsbuild build` does in the app's directory (the
+ * built `@tanstack/react-start/plugin/rsbuild` and `@rsbuild/plugin-react`,
+ * as for `startRscRsbuildDevServer`), and serves the build as `rsbuild
+ * preview` does (Start's own middleware runs the built server entry). The
+ * test process runs with `NODE_ENV=production` until the cleanup, as for
+ * `startRscPreviewServer`. `errors`: what the build reported as errors.
+ */
+export async function startRscRsbuildPreviewServer(options: {
+  files: Record<string, string>
+  start?: Record<string, unknown>
+  registerCleanup?: (cleanup: () => Promise<void>) => void
+}): Promise<RscPreviewServer & { errors: Array<string> }> {
+  const registerCleanup = options.registerCleanup ?? onTestFinished
+  // Loaded by Node: Start's preview middleware imports the built server
+  // bundle, which Node runs, not Vitest's module runner
+  const tanstackStart = await tanstackStartPlugin('rsbuild', true)
+  const { createRsbuild } = await rsbuildApi()
+  const app = await createApp({
+    dir: harnessDir,
+    prefix: '.rsc-rsbuild-preview-server-',
+    registerCleanup,
+    files: { ...rscAppFiles, ...options.files },
+    symlinks: workspacePackageLinks([
+      '@tanstack/react-start',
+      '@tanstack/react-start-rsc',
+    ]),
+  })
+  const reported: Array<ChannelDiagnostic> = []
+  const cwd = process.cwd()
+  const nodeEnv = process.env.NODE_ENV
+  // In the app's directory, as `rsbuild build` and `rsbuild preview` run
+  process.chdir(app.root)
+  try {
+    // The app's `rsbuild.config.ts`, for `rsbuild build` and then for
+    // `rsbuild preview` (each command configures the app anew)
+    const rsbuild = () =>
+      createRsbuild({
+        cwd: app.root,
+        rsbuildConfig: {
+          logLevel: 'silent',
+          plugins: [
+            pluginReact(),
+            tanstackStart({
+              ...options.start,
+              rsc: { enabled: true },
+            }) as never,
+          ],
+          // Start serves the pages, not an HTML template
+          tools: { htmlPlugin: false },
+          server: { host: '127.0.0.1' },
+          // Absolute: Start's preview middleware imports the server build
+          // from the output directory, which it resolves against the
+          // process's working directory when the first request comes
+          output: { distPath: { root: path.join(app.root, 'dist') } },
+        },
+      })
+    await withBuildEnvironment('production', reported, async () => {
+      const built = await (await rsbuild()).build()
+      await built.close()
+    })
+    process.env.NODE_ENV = 'production'
+    const { server, urls } = await (
+      await rsbuild()
+    ).preview({ getPortSilently: true })
+    registerCleanup(async () => {
+      await server.close()
+      process.env.NODE_ENV = nodeEnv
+    })
+    const url = urls[0]
+    if (!url) {
+      throw new Error('the preview server does not listen')
+    }
+    return {
+      root: app.root,
+      url,
+      messages: reported.map(({ text }) => text),
+      errors: reported
+        .filter(({ severity }) => severity === 'error')
+        .map(({ text }) => text),
+    }
+  } finally {
+    process.chdir(cwd)
+  }
 }
 
 export interface RscRsbuildDevServerOptions extends Omit<

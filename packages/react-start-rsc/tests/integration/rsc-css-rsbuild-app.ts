@@ -138,7 +138,7 @@ function Control() {
 
 /** Opens `path` and waits for the server component (`marker`) and hydration. */
 export async function show(
-  server: RsbuildDevServer,
+  server: Pick<RsbuildDevServer, 'url'>,
   path: string,
   marker = 'MARK_CARD',
 ): Promise<BrowserPage> {
