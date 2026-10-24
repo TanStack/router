@@ -416,19 +416,16 @@ export function bump() {
 // in router-plugin/tests/known-bugs-code-splitter.test.ts).
 // Impact: the module fails to parse, so the build fails.
 // Source: fuzzing.
-test(
-  'keeps the parentheses of an asserted conditional test',
-  async () => {
-    const served = await serveCase(await host(), {
-      'module.tsx': `import { createServerFn } from '@tanstack/react-start'
+test('keeps the parentheses of an asserted conditional test', async () => {
+  const served = await serveCase(await host(), {
+    'module.tsx': `import { createServerFn } from '@tanstack/react-start'
 export const fn = createServerFn().handler(async () => 1)
 export function pick(flag: unknown, x: number, y: number) {
   return ((flag) as any) ? -x : y
 }`,
-    })
-    expect(await inPage(served, 'return module.pick(true, 1, 2)')).toBe(-1)
-  },
-)
+  })
+  expect(await inPage(served, 'return module.pick(true, 1, 2)')).toBe(-1)
+})
 
 // Parenthesized JSX keeps working.
 test('client: keeps parenthesized JSX working', async () => {

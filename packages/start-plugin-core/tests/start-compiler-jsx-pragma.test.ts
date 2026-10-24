@@ -208,23 +208,20 @@ export function Card() {
 }`
   // The module on the client, the module on the server, and the server fn's
   // handler (the element it returns, called from server code in a request).
-  test.each(['client', 'ssr', 'handler'] as const)(
-    '%s',
-    async (where) => {
-      const served = await serveCase(await host(), { 'module.tsx': code })
-      const pragma =
-        where === 'client'
-          ? await clientPragma(served, 'Card')
-          : where === 'ssr'
-            ? await serverPragma(served, 'Card')
-            : ((
-                (await callOnServer(served, 'module.getGreeting')) as {
-                  props?: Record<string, unknown>
-                }
-              ).props?.['data-pragma'] ?? null)
-      expect(pragma).toBe('pragma-jsx')
-    },
-  )
+  test.each(['client', 'ssr', 'handler'] as const)('%s', async (where) => {
+    const served = await serveCase(await host(), { 'module.tsx': code })
+    const pragma =
+      where === 'client'
+        ? await clientPragma(served, 'Card')
+        : where === 'ssr'
+          ? await serverPragma(served, 'Card')
+          : ((
+              (await callOnServer(served, 'module.getGreeting')) as {
+                props?: Record<string, unknown>
+              }
+            ).props?.['data-pragma'] ?? null)
+    expect(pragma).toBe('pragma-jsx')
+  })
 })
 
 test('client: a pragma after a directive stays ahead of inserted server function imports', async () => {

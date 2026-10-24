@@ -679,24 +679,21 @@ describe('declarations only the handler needs', () => {
   // Impact: the client loads the server-only module.
   // Source: React Compiler fixture context-variable-as-jsx-element-tag.js;
   // #8504 caller-dead-code.test.ts (red on main)
-  test(
-    'callers drop a handler-only function that declares a local of its own name',
-    async () => {
-      const served = await serveCase(await host(), {
-        'module.tsx': `${head}import { readSecret } from './server-only'
+  test('callers drop a handler-only function that declares a local of its own name', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `${head}import { readSecret } from './server-only'
 function session() {
   const session = readSecret()
   return session.id
 }
 export const getReport = createServerFn().handler(async () => session())`,
-        'server-only.ts': `export const readSecret = () => ({ id: 'report' })\n`,
-      })
-      expectNotLoaded(await served.loads(), ['./server-only'])
-      expect(await callServerFnThroughCallers(served, 'module.getReport')).toBe(
-        'report',
-      )
-    },
-  )
+      'server-only.ts': `export const readSecret = () => ({ id: 'report' })\n`,
+    })
+    expectNotLoaded(await served.loads(), ['./server-only'])
+    expect(await callServerFnThroughCallers(served, 'module.getReport')).toBe(
+      'report',
+    )
+  })
 
   // Whether the client keeps code that reads no server code (`loop`,
   // `unusedA`, `unusedB`) is left open.

@@ -187,10 +187,7 @@ test.each<PlacementHead>(['createServerFn alone', 'another Start factory'])(
 // Impact: the build fails for a module whose server fn the user can only
 // write unwrapped.
 // Source: declaration-sites "wrapped in two calls".
-test.each<PlacementHead>([
-  'createServerFn alone',
-  'another Start factory',
-])(
+test.each<PlacementHead>(['createServerFn alone', 'another Start factory'])(
   'with %s imported, a server fn wrapped in two calls works like an unwrapped one',
   async (importHead) => {
     const served = await serveCase(await host(), {
@@ -254,10 +251,7 @@ describe.each<PlacementHead>(['createServerFn alone', 'another Start factory'])(
 // known-bugs-start-compiler.test.ts).
 // Source: SolidStart compile.spec.ts "keeps client and server ids aligned
 // around nested server functions"; #8504 declaration-sites.test.ts
-test.each<PlacementHead>([
-  'createServerFn alone',
-  'another Start factory',
-])(
+test.each<PlacementHead>(['createServerFn alone', 'another Start factory'])(
   'with %s imported, supports a server fn in the handler of another server fn',
   async (importHead) => {
     const placement = placements.find(
@@ -281,10 +275,7 @@ test.each<PlacementHead>([
 // Today they are left untransformed, rejected or extracted into an invalid
 // server module (pins in known-bugs-start-compiler.test.ts, placement "a
 // function body").
-test.each<PlacementHead>([
-  'createServerFn alone',
-  'another Start factory',
-])(
+test.each<PlacementHead>(['createServerFn alone', 'another Start factory'])(
   'with %s imported, supports server fns of the same name in two functions',
   async (importHead) => {
     const served = await serveCase(await host(), {
@@ -340,34 +331,31 @@ export const fn = createServerFn({ method: 'GET' })${handler}`,
 // handler on the server) or rejecting it with a clear error at the call,
 // naming createServerFn, both pass.
 // Source: #8504 declaration-sites.test.ts (red on main)
-test(
-  'a server fn created through an optional call chain compiles like a plain chain or is rejected',
-  async () => {
-    const code = `${head}import { db } from './db.server'
+test('a server fn created through an optional call chain compiles like a plain chain or is rejected', async () => {
+  const code = `${head}import { db } from './db.server'
 export const fn = createServerFn()?.handler(async () => db.inner() ?? 'MARK_INNER_HANDLER')`
-    const startCase = await (
-      await host()
-    ).case({
-      'module.tsx': code,
-      ...dbFiles,
+  const startCase = await (
+    await host()
+  ).case({
+    'module.tsx': code,
+    ...dbFiles,
+  })
+  const failure = await compileError(startCase)
+  if (failure !== undefined) {
+    expectCompileError(failure, {
+      source: code,
+      at: 'createServerFn()?.',
     })
-    const failure = await compileError(startCase)
-    if (failure !== undefined) {
-      expectCompileError(failure, {
-        source: code,
-        at: 'createServerFn()?.',
-      })
-      return
-    }
-    const served = await serveCase(await host(), {
-      'module.tsx': code,
-      ...dbFiles,
-    })
-    expectNotLoaded(await served.loads(), ['./db.server'])
-    expect(served.code.client).not.toContain('MARK_INNER_HANDLER')
-    expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('inner')
-  },
-)
+    return
+  }
+  const served = await serveCase(await host(), {
+    'module.tsx': code,
+    ...dbFiles,
+  })
+  expectNotLoaded(await served.loads(), ['./db.server'])
+  expect(served.code.client).not.toContain('MARK_INNER_HANDLER')
+  expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('inner')
+})
 
 // Moved: "a .ts module in a directory whose name contains # compiles as
 // TypeScript" is in integration/start-compiler-build-ids.test.ts: Vite's dev

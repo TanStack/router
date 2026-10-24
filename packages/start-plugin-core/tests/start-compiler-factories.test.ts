@@ -407,21 +407,18 @@ return links`
     // an identifier), start-compiler/handleCreateMiddleware.ts:21-32;
     // fuzzing.
     // Impact: the validator and its server-only imports ship to the client.
-    test(
-      'the client strips a validator link of a builder stored in a variable',
-      async () => {
-        const { served, client, ssr } = await runLinks(
-          builderVariableModule(validatorLink, serverLink),
-        )
-        await expectClientFree(served, serverModules, file)
-        expect(served.code.client).not.toMatch(/SERVER_SECRET|VALIDATOR_SECRET/)
-        expect(client).toEqual({})
-        expect(ssr).toEqual({
-          validator: 'data:VALIDATOR_SECRET',
-          server: serverResult,
-        })
-      },
-    )
+    test('the client strips a validator link of a builder stored in a variable', async () => {
+      const { served, client, ssr } = await runLinks(
+        builderVariableModule(validatorLink, serverLink),
+      )
+      await expectClientFree(served, serverModules, file)
+      expect(served.code.client).not.toMatch(/SERVER_SECRET|VALIDATOR_SECRET/)
+      expect(client).toEqual({})
+      expect(ssr).toEqual({
+        validator: 'data:VALIDATOR_SECRET',
+        server: serverResult,
+      })
+    })
   })
 
   /**
@@ -730,34 +727,31 @@ function settle(run: () => unknown) {
   // functions nested in a server function are compiled too); #8504
   // start-compiler-factories.test.ts "the provider compiles env-specific
   // functions inside a server fn handler" (red on main).
-  test(
-    'the server compiles env-specific functions inside a server fn handler',
-    async () => {
-      const loadedKey = '__startHostChartClientLoaded'
-      const global = globalThis as Record<string, unknown>
-      delete global[loadedKey]
-      try {
-        const served = await serve(envFnsInHandler, {
-          'db.server.ts': `export const db = { now: () => 'now', read: () => 'read' }\n`,
-          // Records being loaded in the realm that loads it (the server's
-          // is this process).
-          'chart.client.ts': `;(globalThis as any).${loadedKey} = true
+  test('the server compiles env-specific functions inside a server fn handler', async () => {
+    const loadedKey = '__startHostChartClientLoaded'
+    const global = globalThis as Record<string, unknown>
+    delete global[loadedKey]
+    try {
+      const served = await serve(envFnsInHandler, {
+        'db.server.ts': `export const db = { now: () => 'now', read: () => 'read' }\n`,
+        // Records being loaded in the realm that loads it (the server's
+        // is this process).
+        'chart.client.ts': `;(globalThis as any).${loadedKey} = true
 export const chart = () => 'chart'
 `,
-        })
-        expect(await callFromClient(served, 'module.fn')).toEqual([
-          { thrown: expect.anything() },
-          'now',
-          'read',
-        ])
-        expect(global[loadedKey], 'the server loaded chart.client').toBe(
-          undefined,
-        )
-      } finally {
-        delete global[loadedKey]
-      }
-    },
-  )
+      })
+      expect(await callFromClient(served, 'module.fn')).toEqual([
+        { thrown: expect.anything() },
+        'now',
+        'read',
+      ])
+      expect(global[loadedKey], 'the server loaded chart.client').toBe(
+        undefined,
+      )
+    } finally {
+      delete global[loadedKey]
+    }
+  })
 
   // Source: Waku vite-plugin-allow-server.test.ts "skips files without a use
   // client directive even if the string exists", "does not require
@@ -990,48 +984,44 @@ export const serverOnly = createServerOnlyFn(() => 'server-only-marker')`,
     // behaviour of an edited factory.
     // Reproduced through a Vite dev server and the public Start plugin;
     // served code read for the diagnosis only.
-    test(
-      'dev: editing a factory module recompiles its importers against the new code',
-      async () => {
-        const started = await editHost()
-        const dir = 'src/edits/factory'
-        await started.edit({
-          [`${dir}/b.ts`]: `import { createServerFn } from '@tanstack/react-start'
+    test('dev: editing a factory module recompiles its importers against the new code', async () => {
+      const started = await editHost()
+      const dir = 'src/edits/factory'
+      await started.edit({
+        [`${dir}/b.ts`]: `import { createServerFn } from '@tanstack/react-start'
 export const base = createServerFn()`,
-          [`${dir}/c.ts`]: `export * from './b'`,
-          // (`./db`, not `./db.server`: after the edit the handler is user
-          // code the client runs, and import protection would deny a `.server`
-          // module there.)
-          [`${dir}/db.ts`]: `export const db = { x: () => 'x' }\n`,
-          [`${dir}/a.tsx`]: `import { base } from './c'
+        [`${dir}/c.ts`]: `export * from './b'`,
+        // (`./db`, not `./db.server`: after the edit the handler is user
+        // code the client runs, and import protection would deny a `.server`
+        // module there.)
+        [`${dir}/db.ts`]: `export const db = { x: () => 'x' }\n`,
+        [`${dir}/a.tsx`]: `import { base } from './c'
 import { db } from './db'
 export const fn = base.handler(async () => db.x())`,
-        })
-        // Before: a server fn (Start's fetcher), calling the server.
-        expect(
-          await inEditPage(
-            `/${dir}/a.tsx`,
-            'return { url: typeof module.fn.url, result: await module.fn() }',
-          ),
-        ).toEqual({ url: 'string', result: 'x' })
-        // `base` is no server fn builder anymore: the handler is user code.
-        await started.edit({
-          [`${dir}/b.ts`]: `export const base = { handler: (fn: unknown) => fn }`,
-        })
-        await (await started.page()).page.reload()
-        expect(
-          await inEditPage(
-            `/${dir}/a.tsx`,
-            `try {
+      })
+      // Before: a server fn (Start's fetcher), calling the server.
+      expect(
+        await inEditPage(
+          `/${dir}/a.tsx`,
+          'return { url: typeof module.fn.url, result: await module.fn() }',
+        ),
+      ).toEqual({ url: 'string', result: 'x' })
+      // `base` is no server fn builder anymore: the handler is user code.
+      await started.edit({
+        [`${dir}/b.ts`]: `export const base = { handler: (fn: unknown) => fn }`,
+      })
+      await (await started.page()).page.reload()
+      expect(
+        await inEditPage(
+          `/${dir}/a.tsx`,
+          `try {
   return { url: typeof module.fn.url, result: await module.fn() }
 } catch (error) {
   return { url: typeof module.fn.url, threw: String(error && error.message) }
 }`,
-          ),
-        ).toEqual({ url: 'undefined', result: 'x' })
-      },
-      30_000,
-    )
+        ),
+      ).toEqual({ url: 'undefined', result: 'x' })
+    }, 30_000)
 
     test('dev: a server fn imported through an export * of the Start package compiles after an unrelated edit', async () => {
       const started = await editHost()
