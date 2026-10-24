@@ -12,7 +12,6 @@ import {
   diagnosticPosition,
   diagnosticsOf,
   expectDiagnostic,
-  findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
@@ -59,30 +58,6 @@ export function expectCompileError(
     ...(error instanceof CompileFailure && { file: error.file }),
     ...(position && { position }),
   })
-}
-
-/**
- * Asserts that `error` (a build error, any shape `diagnosticsOf` reads)
- * reports one of `sites`: a diagnostic names the site's file and the line
- * of `at` in its `source`. For a mistake the fix may report at either end
- * (a library or its caller).
- */
-export function expectSourceError(
-  error: unknown,
-  expected: { sites: Array<{ file: string; source: string; at: string }> },
-) {
-  const diagnostics = diagnosticsOf(error)
-  const reported = expected.sites.some(
-    (site) =>
-      findDiagnostics(diagnostics, {
-        file: site.file,
-        position: { line: diagnosticPosition(site.source, site.at).line },
-      }).length > 0,
-  )
-  expect(
-    reported,
-    `a diagnostic at ${expected.sites.map((site) => `${site.file} (${site.at})`).join(' or ')}:\n${diagnostics.map((diagnostic) => diagnostic.text).join('\n---\n')}`,
-  ).toBe(true)
 }
 
 /** Server-only module the server fns of the misplacement tests read. */

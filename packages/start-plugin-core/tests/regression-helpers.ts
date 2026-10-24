@@ -28,34 +28,19 @@ import { expect } from 'vitest'
 import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import type { ClientRun, StartCase, StartHost } from './start-host'
 
-export {
-  casesDir,
-  createStartHost,
-  expectNoPageErrors,
-  pagePrelude,
-  startPluginFactory,
-  useStartHost,
-  useStartHosts,
-} from './start-host'
+export { createStartHost, useStartHost, useStartHosts } from './start-host'
 export type {
-  ClientRun,
   StartCase,
   StartFramework as Framework,
-  StartFramework,
   StartHost,
-  StartHostBuild,
-  StartHostOptions,
   StartPreview,
-  StartPluginOptions,
 } from './start-host'
 export {
   expectCompileError,
   expectNoClientHandler,
-  expectSourceError,
   serverOnlyModule,
   throwsError,
 } from './diagnostics'
-export type { MisplacementOptions } from './diagnostics'
 
 /** The case file a test's module is written to, by default. */
 export const moduleFile = 'module.tsx'

@@ -2,9 +2,7 @@
  * Judges a failed build's diagnostic (SPEC G5, §5.7; ruling 2026-10-22: file
  * and position only): it names one of the user's sources and a line of the
  * call. Pure: only the shared diagnostics reader, no module of the
- * implementation (the fast tier's `expectSourceError` of
- * `../regression-helpers` loads the compiler; this one reads what a real
- * build reported).
+ * implementation.
  *
  * Every channel is read: pass the `StartBuildError` of `buildStart` (its
  * `diagnostics` hold the bundler's errors and what the build printed, so a

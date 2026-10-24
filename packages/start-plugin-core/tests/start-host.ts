@@ -48,7 +48,7 @@ import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import solid from 'vite-plugin-solid'
 import { mergeConfig, preview as vitePreview } from 'vite'
-import { afterAll, beforeAll, expect } from 'vitest'
+import { afterAll, beforeAll } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { globalTrapSource } from '@tanstack/compiler-test-utils/global-trap'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
@@ -73,7 +73,6 @@ import type {
 } from '@tanstack/compiler-test-utils/plugin-host'
 import type { InlineConfig, Plugin, PluginOption, PreviewServer } from 'vite'
 
-export { startPluginFactory }
 export type { StartFramework, StartPluginOptions } from './start-plugins'
 
 export interface StartHostOptions {
@@ -83,14 +82,9 @@ export interface StartHostOptions {
   start?: StartPluginOptions
   /**
    * The app's other Vite plugins, after Start's and the framework's (e.g. a
-   * user plugin serving virtual modules), or a function of the app.
+   * user plugin serving virtual modules).
    */
-  plugins?:
-    | Array<PluginOption>
-    | ((app: {
-        root: string
-        command: 'serve' | 'build'
-      }) => Array<PluginOption>)
+  plugins?: Array<PluginOption>
   /** Vite configuration merged over the host's (a `vite.config` of the app). */
   config?: InlineConfig
   /** Other app files by path relative to the app root. */
@@ -606,7 +600,7 @@ export async function createStartHost(
       ...(serve ? [] : [absoluteOutDir(app.root, () => outDirName)]),
       startFactory(startOptions),
       ...frameworkPlugins(framework, options),
-      ...(typeof userPlugins === 'function' ? userPlugins(app) : userPlugins),
+      ...userPlugins,
     ],
     config: {
       ...options.config,
@@ -1111,9 +1105,7 @@ try {
               absoluteOutDir(root, () => outDirName),
               startFactory(startOptions),
               ...frameworkPlugins(framework, options),
-              ...(typeof userPlugins === 'function'
-                ? userPlugins({ root, command: 'build' })
-                : userPlugins),
+              ...userPlugins,
             ],
             preview: { port: 0, host: '127.0.0.1' },
           } satisfies InlineConfig,
@@ -1287,12 +1279,4 @@ export function useStartHosts(
     }
     return host
   }
-}
-
-/** A build of a host app (`StartHost.build`). */
-export type StartHostBuild = HostBuild
-
-/** Asserts a client run reported no page error. */
-export function expectNoPageErrors(run: Pick<ClientRun, 'errors'>) {
-  expect(run.errors, 'page errors').toEqual([])
 }
