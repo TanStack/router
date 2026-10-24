@@ -6,11 +6,11 @@ import {
   isStartCompilerPluginEnabledForEnv,
 } from './compiler'
 import type { BuiltInLookupKind, LookupConfig } from './compiler'
+import type { CompileStartFrameworkOptions } from '../types'
 import type {
-  CompileStartFrameworkOptions,
   StartCompilerImportTransform,
   StartCompilerPlugin,
-} from '../types'
+} from './babel-types'
 
 export function getTransformCodeFilterForEnv(
   env: 'client' | 'server',

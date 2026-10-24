@@ -24,13 +24,13 @@ import type {
   ServerFn,
 } from './types'
 import type { ModuleInfoBinding } from '@tanstack/router-utils'
+import type { CompileStartFrameworkOptions } from '../types'
 import type {
-  CompileStartFrameworkOptions,
   StartCompilerEnvironment,
   StartCompilerImportTransform,
   StartCompilerPlugin,
   StartCompilerTransformResult,
-} from '../types'
+} from './babel-types'
 
 type Binding = ModuleInfoBinding & {
   resolvedKind?: Kind

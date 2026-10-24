@@ -1,6 +1,6 @@
 import type * as babel from '@babel/core'
 import type * as t from '@babel/types'
-import type { StartCompilerTransformContext } from '../types'
+import type { StartCompilerTransformContext } from './babel-types'
 
 /**
  * Context passed to all plugin handlers during compilation.

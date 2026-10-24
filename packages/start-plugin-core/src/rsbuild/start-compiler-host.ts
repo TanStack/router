@@ -22,12 +22,12 @@ import type {
   ServerFnBuildInfo,
   ServerFnBuildInfoLoaderContext,
 } from './start-compiler-metadata'
+import type { CompileStartFrameworkOptions } from '../types'
 import type {
-  CompileStartFrameworkOptions,
   StartCompilerImportTransform,
   StartCompilerPlugin,
   StartCompilerTransformResult,
-} from '../types'
+} from '../start-compiler/babel-types'
 import type {
   DevServerFnModuleSpecifierEncoder,
   GenerateFunctionIdFnOptional,

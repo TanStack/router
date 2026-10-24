@@ -20,6 +20,7 @@ import {
   resolveRsbuildOutputDirectory,
 } from './planning'
 import { registerStartCompilerTransforms } from './start-compiler-host'
+import { createRscCssCompilerTransforms } from './rsc-css-babel'
 import { registerImportProtection } from './import-protection'
 import {
   START_MANIFEST_PLACEHOLDER,
@@ -176,7 +177,7 @@ export function tanStackStartRsbuild(
           serverFnProviderEnv,
           environmentOverrides: corePluginOpts.rsbuild?.environments,
           scriptFormat,
-          rsc: rscOpts,
+          rsc: rscEnabled,
           dev: isDev,
         })
         const serverFnBase = createServerFnBasePath({
@@ -301,9 +302,16 @@ export function tanStackStartRsbuild(
         environments: startCompilerEnvironments,
         providerEnvName: serverFnProviderEnv,
         generateFunctionId: startPluginOpts.serverFns?.generateFunctionId,
-        compilerTransforms: corePluginOpts.compilerTransforms,
-        serverFnProviderModuleDirectives:
-          corePluginOpts.serverFnProviderModuleDirectives,
+        // INTERIM: the Babel RSC CSS transforms of the previous compiler, built from the RSC options
+        compilerTransforms: rscOpts
+          ? createRscCssCompilerTransforms({
+              loadCssExpression: rscOpts.loadCssExpression,
+              serverFnProviderOnly: true,
+            })
+          : undefined,
+        serverFnProviderModuleDirectives: rscOpts?.providerDirective
+          ? [rscOpts.providerDirective]
+          : undefined,
         serverFnsById,
         onServerFnsByIdChange: () => {
           updateServerFnResolver?.()

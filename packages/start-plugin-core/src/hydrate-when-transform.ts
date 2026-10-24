@@ -20,11 +20,11 @@ import {
 } from '@tanstack/router-utils'
 import { tssHydrate } from './hydration-constants'
 import { cleanId, codeFrameError } from './start-compiler/utils'
+import type { CompileStartFrameworkOptions } from './types'
 import type {
-  CompileStartFrameworkOptions,
   StartCompilerPlugin,
   StartCompilerTransformResult,
-} from './types'
+} from './start-compiler/babel-types'
 
 export class MissingHydrateSourceError extends Error {
   constructor(id: string) {

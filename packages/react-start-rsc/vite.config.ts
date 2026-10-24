@@ -102,7 +102,6 @@ export default mergeConfig(
       './src/index.rsc.ts',
       './src/serialization.client.ts',
       './src/serialization.server.ts',
-      './src/plugin/rscCssTransform.ts',
       './src/plugin/vite.ts',
       './src/entry/rsc.tsx',
       './src/rsbuild/ssr-decode.ts',
