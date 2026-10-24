@@ -21,14 +21,18 @@ title = "HMR applies a large update before the following small update"
 # Use Bun's CI runner and its existing startup budget; do not override a test timeout.
 command = [
     "node", "scripts/runner.node.ts", "--exec-path", str(binary),
-    "--retries", "0", "--junit", "--junit-temp-dir", prefix,
+    "--retries", "0", "--vendor", "false", "--junit", "--junit-temp-dir", prefix,
     "--results-json", str(proof / "native-chrome-runner.json"),
-    "test/js/bun/webview/webview-chrome.test.ts",
+    "js/bun/webview/webview-chrome.test.ts",
 ]
-result = subprocess.run(command, cwd=source, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+result = subprocess.run(command, cwd=source, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                        env={**os.environ, "PATH": str(binary.parent) + os.pathsep + os.environ["PATH"]})
 (proof / "native-chrome.log").write_text(result.stdout)
 print(result.stdout, end="")
-reports = [path for folder in Path(tempfile.gettempdir()).glob(prefix + "*") for path in folder.glob("*.xml")]
+reports = [path for base in {Path(tempfile.gettempdir()), Path("/tmp")}
+           for folder in base.glob(prefix + "*") for path in folder.glob("*.xml")]
+reports = [path for path in {path.resolve() for path in reports}
+           if any(case.attrib.get("name", "") == title for case in ET.parse(path).findall(".//testcase"))]
 assert len(reports) == 1, f"Expected the CI runner's JUnit report: {reports}"
 shutil.copyfile(reports[0], report)
 all_cases = ET.parse(report).findall(".//testcase")

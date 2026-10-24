@@ -42,7 +42,7 @@ for name, digest, allowed_paths in [
      "a9a19adad05b39a99efbe48d80cf06334cd0d53e93aa58a2f2cfb02bd7e5f487",
      {"test/bundler/bun-build-api.test.ts"}),
     ("canonical-watcher-test.patch.gz",
-     "b16e88c921073f6fa1b6e4f714906453ec3f861f6724028cf9dc99453a4fc00b",
+     "fd2796c31cf5d50270040db55dce53be19528dfed86c56b32ab5b9dc987dc73e",
      {"test/bake/dev/hot.test.ts"}),
 ]:
     patch = (root / ".github/native-bun-validation" / name).read_bytes()
@@ -57,9 +57,13 @@ for name, digest, allowed_paths in [
         original_contents = original_test.read_bytes()
         needle = b'const text = readFileSync(trace, "utf8").slice(offset);'
         assert original_contents.count(needle) == 1
-        original_test.write_bytes(original_contents.replace(
+        diagnostic = original_contents.replace(
             needle, needle + b'\n            console.error("NATIVE_PATH_IDENTITY " + JSON.stringify({ expected: filename, trace: text }));',
-        ))
+        )
+        timer = b'() => ready.reject(new Error("Watcher control event deadline exceeded")),'
+        assert diagnostic.count(timer) == 1
+        diagnostic = diagnostic.replace(timer, b'() => { console.error("NATIVE_TRACE_AT_TIMEOUT " + JSON.stringify({ trace: readFileSync(trace, "utf8") })); ready.reject(new Error("Watcher control event deadline exceeded")); },')
+        original_test.write_bytes(diagnostic)
         try:
             before = subprocess.run([
                 str(binary), "test", "test/bake/dev/hot.test.ts", "-t",
@@ -69,15 +73,15 @@ for name, digest, allowed_paths in [
             (proof / "native-watcher-path-before.log").write_text(before.stdout)
             identities = [json.loads(line.split("NATIVE_PATH_IDENTITY ", 1)[1])
                           for line in before.stdout.splitlines() if "NATIVE_PATH_IDENTITY " in line]
-            aliases = []
-            for identity in identities:
-                for line in identity["trace"].rsplit("\n", 1)[0].splitlines() if "\n" in identity["trace"] else []:
-                    for filename in json.loads(line)["files"]:
-                        if os.path.realpath(identity["expected"]) == filename and os.path.normpath(identity["expected"]) != filename:
-                            aliases.append({"fixturePath": identity["expected"], "nativePath": filename})
-            assert before.returncode != 0 and aliases, "Reproduce a mismatched alias in the original test oracle"
+            final_traces = [json.loads(line.split("NATIVE_TRACE_AT_TIMEOUT ", 1)[1])["trace"]
+                            for line in before.stdout.splitlines() if "NATIVE_TRACE_AT_TIMEOUT " in line]
+            expected_file = identities[-1]["expected"]
+            native_events = [json.loads(line) for trace in final_traces for line in trace.splitlines()]
+            assert before.returncode != 0 and any(expected_file in event["files"] for event in native_events), \
+                "The native event must exist even though the test observer did not wake"
             (proof / "native-watcher-path-before.json").write_text(json.dumps({
-                "failedBefore": True, "samePhysicalFile": aliases,
+                "failedBefore": True, "expectedFile": expected_file,
+                "nativeEventPresentAtTimeout": True, "events": native_events,
             }, indent=2) + "\n")
         finally:
             original_test.write_bytes(original_contents)
