@@ -162,7 +162,10 @@ export async function prerender({
             prerenderOptions.outputPath || page.path
           ).split(/[?#]/)[0]!
 
-          const contentType = res.headers.get('content-type') || ''
+          // Media types are case-insensitive (RFC 9110), so 'TEXT/HTML' is HTML.
+          const contentType = (
+            res.headers.get('content-type') || ''
+          ).toLowerCase()
           const isImplicitHTML =
             !cleanPagePath.endsWith('.html') && contentType.includes('html')
 
@@ -190,7 +193,13 @@ export async function prerender({
             routerBasePath,
           )
 
-          const html = await res.text()
+          // Server routes can answer with binary payloads (images, PDFs, …); text()
+          // decodes those as UTF-8 and writes back different bytes.
+          const isHTMLResponse = contentType.includes('html')
+          const body = isHTMLResponse
+            ? await res.text()
+            : Buffer.from(await res.arrayBuffer())
+
           const resolvedOutputDir = path.resolve(outputDir)
           const filepath = path.resolve(outputDir, filename.replace(/^\/+/, ''))
           const outputPrefix = resolvedOutputDir.endsWith(path.sep)
@@ -209,9 +218,12 @@ export async function prerender({
             recursive: true,
           })
 
-          await fsp.writeFile(filepath, html)
+          await fsp.writeFile(filepath, body)
 
           prerendered.add(page.path)
+
+          // Binary responses have no markup to hand to onSuccess or to crawl.
+          const html = typeof body === 'string' ? body : ''
 
           const newPage = await prerenderOptions.onSuccess?.({ page, html })
 
