@@ -36,6 +36,10 @@ export function summarize(results) {
       ),
       runs: entry.runs,
       flaggedRuns: entry.runs.filter((r) => r.flagged).length,
+      maxOthersBusyDuring: Math.max(
+        0,
+        ...entry.runs.map((r) => r.othersBusyDuring ?? 0),
+      ),
     }
   }
   return { ...results, scenarios }
@@ -89,14 +93,14 @@ export function writeMarkdown(summary, file) {
   }
   lines.push('')
   lines.push(
-    '| scenario | metric | median ms | p90 | min | max | cv | n | flagged |',
+    '| scenario | metric | median ms | p90 | min | max | cv | n | flagged | max others busy (cores) |',
   )
-  lines.push('|---|---|---:|---:|---:|---:|---:|---:|---:|')
+  lines.push('|---|---|---:|---:|---:|---:|---:|---:|---:|---:|')
   for (const [name, entry] of Object.entries(summary.scenarios)) {
     for (const key of primaryMetrics(name, entry.metrics)) {
       const s = entry.metrics[key]
       lines.push(
-        `| ${name} | ${key} | ${fmt(s.median)} | ${fmt(s.p90)} | ${fmt(s.min)} | ${fmt(s.max)} | ${(s.cv * 100).toFixed(1)}% | ${s.n} | ${entry.flaggedRuns || ''} |`,
+        `| ${name} | ${key} | ${fmt(s.median)} | ${fmt(s.p90)} | ${fmt(s.min)} | ${fmt(s.max)} | ${(s.cv * 100).toFixed(1)}% | ${s.n} | ${entry.flaggedRuns || ''} | ${entry.maxOthersBusyDuring ?? ''} |`,
       )
     }
     const reloads = entry.metrics.fullReloads ?? entry.metrics.reloads

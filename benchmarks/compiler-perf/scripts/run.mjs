@@ -106,6 +106,68 @@ async function busyCores(ms = 2000) {
   return total ? ((total - (b.idle - a.idle)) / total) * os.cpus().length : 0
 }
 
+/** CPU jiffies of this process and all its descendants (dev servers, builds, Chromium). */
+function ownTreeJiffies() {
+  const parents = new Map()
+  const times = new Map()
+  for (const entry of fs.readdirSync('/proc')) {
+    if (!/^\d+$/.test(entry)) {
+      continue
+    }
+    try {
+      const stat = fs.readFileSync(`/proc/${entry}/stat`, 'utf8')
+      // Fields after the parenthesised command: state ppid ... utime(14) stime(15) cutime(16) cstime(17)
+      const fields = stat.slice(stat.lastIndexOf(')') + 2).split(' ')
+      parents.set(Number(entry), Number(fields[1]))
+      times.set(
+        Number(entry),
+        Number(fields[11]) +
+          Number(fields[12]) +
+          Number(fields[13]) +
+          Number(fields[14]),
+      )
+    } catch {}
+  }
+  let total = 0
+  for (const [pid, t] of times) {
+    for (let p = pid; p > 1; p = parents.get(p) ?? 0) {
+      if (p === process.pid) {
+        total += t
+        break
+      }
+    }
+  }
+  return total
+}
+
+/**
+ * Measures how many cores other processes kept busy while a run executed:
+ * system-wide busy time minus the harness's own process tree. Exited
+ * children count through cutime/cstime once reaped.
+ */
+function startCpuWatch() {
+  if (!fs.existsSync('/proc/stat')) {
+    return () => ({})
+  }
+  const sys0 = readCpuTimes()
+  const own0 = ownTreeJiffies()
+  const t0 = now()
+  return () => {
+    const sys1 = readCpuTimes()
+    const own1 = ownTreeJiffies()
+    const elapsedS = (now() - t0) / 1000
+    // /proc/stat sums all CPUs; both counters use USER_HZ (100/s).
+    const sysBusy = sys1.total - sys0.total - (sys1.idle - sys0.idle)
+    const others =
+      Math.max(0, sysBusy - (own1 - own0)) / 100 / Math.max(elapsedS, 0.01)
+    const ours = (own1 - own0) / 100 / Math.max(elapsedS, 0.01)
+    return {
+      othersBusyDuring: Math.round(others * 100) / 100,
+      ownCoresDuring: Math.round(ours * 100) / 100,
+    }
+  }
+}
+
 async function waitForQuiet(sampleMs = 2000) {
   const t0 = Date.now()
   let busy = await busyCores(sampleMs)
@@ -425,7 +487,16 @@ async function repeat(name, fn, { runs = RUNS, warmup = WARMUP } = {}) {
     log(
       `${name} ${measured ? `run ${i - warmup + 1}/${runs}` : `warmup ${i + 1}/${warmup}`} (others busy ${quiet.busyCores} cores, load1 ${quiet.load1})`,
     )
+    const stopWatch = startCpuWatch()
     const metrics = await fn(i)
+    const during = stopWatch()
+    Object.assign(quiet, during)
+    if (during.othersBusyDuring > MAX_BUSY) {
+      quiet.flagged = true
+      log(
+        `  flagged: other processes used ${during.othersBusyDuring} cores during the run`,
+      )
+    }
     log(
       `  ${Object.entries(metrics)
         .map(([k, v]) => `${k}=${typeof v === 'number' ? v.toFixed(0) : v}`)
@@ -609,6 +680,7 @@ async function hmrScenario(variant) {
           throw new Error(`${probe.file} does not contain ${current}`)
         }
         let hitAt
+        const stopWatch = startCpuWatch()
         if (probe.poll) {
           const savedAt = now()
           fs.writeFileSync(file, source.replace(current, next))
@@ -656,6 +728,12 @@ async function hmrScenario(variant) {
         }
         current = next
         const fullReloads = loads() - loadsBefore
+        // Let the update settle (late invalidations, re-fetches) before the next edit.
+        await sleep(400)
+        Object.assign(quiet, stopWatch())
+        if (quiet.othersBusyDuring > MAX_BUSY) {
+          quiet.flagged = true
+        }
         if (i >= HMR_WARMUP) {
           addSample(
             `${variant}/hmr/${kind}`,
@@ -666,8 +744,6 @@ async function hmrScenario(variant) {
         log(
           `${variant}/hmr/${kind} ${i < HMR_WARMUP ? 'warmup' : 'iter'} ${i + 1}: ${hitAt.toFixed(1)}ms${fullReloads ? ` (${fullReloads} full reloads)` : ''}`,
         )
-        // Let the update settle (late invalidations, re-fetches) before the next edit.
-        await sleep(400)
       }
       saveResults()
       fs.writeFileSync(file, originals.get(probe.file))

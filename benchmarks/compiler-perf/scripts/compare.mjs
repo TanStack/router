@@ -52,6 +52,13 @@ for (const [name, v] of Object.entries(cand.meta.versions ?? {})) {
 if (base.meta.cpu !== cand.meta.cpu) {
   warnings.push(`different machines (${base.meta.cpu} vs ${cand.meta.cpu})`)
 }
+for (const [name, entry] of Object.entries(cand.scenarios)) {
+  const flagged =
+    (entry.flaggedRuns ?? 0) + (base.scenarios[name]?.flaggedRuns ?? 0)
+  if (flagged) {
+    warnings.push(`${name}: ${flagged} runs flagged for machine load`)
+  }
+}
 for (const w of warnings) {
   lines.push(`- **warning:** ${w}`)
 }
