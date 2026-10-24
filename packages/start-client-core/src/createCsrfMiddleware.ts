@@ -1,4 +1,5 @@
 import { createIsomorphicFn } from '@tanstack/start-fn-stubs'
+import { isPromise } from '@tanstack/router-core'
 import { createMiddleware } from './createMiddleware'
 import type {
   RequestMiddlewareAfterServer,
@@ -78,18 +79,42 @@ type CreateCsrfMiddleware = <TRegister, TMiddlewares>(
 ) => RequestMiddlewareAfterServer<{}, undefined, undefined>
 
 const innerCreateCsrfMiddleware: CreateCsrfMiddleware = (opts = {}) => {
-  const middleware = createMiddleware().server(async (ctx) => {
+  const continueRequest = (
+    result: boolean | undefined,
+    ctx: RequestServerOptions<any, any>,
+  ) => {
+    return isValidationResultAllowed(result, opts)
+      ? ctx.next()
+      : getFailureResponse(opts, ctx)
+  }
+
+  const validateRequest = (ctx: RequestServerOptions<any, any>) => {
+    const result = validateCsrfRequest(opts, ctx)
+    if (isPromise(result)) {
+      return result.then((result) => continueRequest(result, ctx))
+    }
+    return continueRequest(result, ctx)
+  }
+
+  // Synchronous checks can pass through next() without another promise chain.
+  const middleware = createMiddleware().server((ctx) => {
     const csrfCtx = ctx as RequestServerOptions<any, any>
-
-    if (opts.filter && !(await opts.filter(csrfCtx))) {
-      return ctx.next()
+    try {
+      if (opts.filter) {
+        const shouldValidate = opts.filter(csrfCtx)
+        if (isPromise(shouldValidate)) {
+          return shouldValidate.then((shouldValidate) =>
+            shouldValidate ? validateRequest(csrfCtx) : ctx.next(),
+          )
+        }
+        if (!shouldValidate) {
+          return ctx.next()
+        }
+      }
+      return validateRequest(csrfCtx)
+    } catch (error) {
+      return Promise.reject(error)
     }
-
-    if (await isCsrfRequestAllowed(opts, csrfCtx)) {
-      return ctx.next()
-    }
-
-    return getFailureResponse(opts, csrfCtx)
   })
 
   if (process.env.NODE_ENV !== 'production') {
@@ -106,7 +131,13 @@ export async function isCsrfRequestAllowed<TRegister, TMiddlewares>(
   opts: CsrfMiddlewareOptions<TRegister, TMiddlewares>,
   ctx: RequestServerOptions<TRegister, TMiddlewares>,
 ): Promise<boolean> {
-  const result = await getCsrfRequestValidationResult(opts, ctx)
+  return isValidationResultAllowed(await validateCsrfRequest(opts, ctx), opts)
+}
+
+function isValidationResultAllowed<TRegister, TMiddlewares>(
+  result: boolean | undefined,
+  opts: CsrfMiddlewareOptions<TRegister, TMiddlewares>,
+): boolean {
   return (
     result === true ||
     (result === undefined && opts.allowRequestsWithoutOriginCheck === true)
@@ -117,6 +148,13 @@ export async function getCsrfRequestValidationResult<TRegister, TMiddlewares>(
   opts: CsrfMiddlewareOptions<TRegister, TMiddlewares>,
   ctx: RequestServerOptions<TRegister, TMiddlewares>,
 ): Promise<boolean | undefined> {
+  return validateCsrfRequest(opts, ctx)
+}
+
+function validateCsrfRequest<TRegister, TMiddlewares>(
+  opts: CsrfMiddlewareOptions<TRegister, TMiddlewares>,
+  ctx: RequestServerOptions<TRegister, TMiddlewares>,
+): boolean | undefined | Promise<boolean> {
   const fetchSite = ctx.request.headers.get('Sec-Fetch-Site')
   if (fetchSite !== null) {
     return matchValue(opts.secFetchSite ?? 'same-origin', fetchSite, ctx)
@@ -150,11 +188,11 @@ export async function getCsrfRequestValidationResult<TRegister, TMiddlewares>(
   return isRefererSameOrigin(referer, new URL(ctx.request.url).origin)
 }
 
-async function matchValue<TValue extends string, TRegister, TMiddlewares>(
+function matchValue<TValue extends string, TRegister, TMiddlewares>(
   matcher: CsrfMatcher<TValue, TRegister, TMiddlewares>,
   value: string,
   ctx: RequestServerOptions<TRegister, TMiddlewares>,
-): Promise<boolean> {
+): boolean | Promise<boolean> {
   if (typeof matcher === 'function') {
     return matcher(value, ctx)
   }
@@ -176,17 +214,23 @@ function getOriginFromUrl(url: string): string | undefined {
 }
 
 function isRefererSameOrigin(referer: string, requestOrigin: string): boolean {
-  if (referer === requestOrigin) return true
-  if (!referer.startsWith(requestOrigin)) return false
-  if (referer.length === requestOrigin.length) return true
+  if (referer === requestOrigin) {
+    return true
+  }
+  if (!referer.startsWith(requestOrigin)) {
+    return false
+  }
+  if (referer.length === requestOrigin.length) {
+    return true
+  }
   const code = referer.charCodeAt(requestOrigin.length)
   return code === 47 /* '/' */ || code === 63 /* '?' */ || code === 35 /* '#' */
 }
 
-async function getFailureResponse<TRegister, TMiddlewares>(
+function getFailureResponse<TRegister, TMiddlewares>(
   opts: CsrfMiddlewareOptions<TRegister, TMiddlewares>,
   ctx: RequestServerOptions<TRegister, TMiddlewares>,
-): Promise<Response> {
+): Response | Promise<Response> {
   if (typeof opts.failureResponse === 'function') {
     return opts.failureResponse(ctx)
   }

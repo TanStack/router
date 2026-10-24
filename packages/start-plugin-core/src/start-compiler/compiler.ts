@@ -426,6 +426,31 @@ function isTopLevelDirectCallCandidate(
   )
 }
 
+/**
+ * Whether the call is `receiver.method()` with a receiver that is not a
+ * namespace import, e.g. `z.object()` with `import { z } from 'zod'`.
+ *
+ * Resolution gives such a call the kind of the receiver itself, which only
+ * yields a direct-call candidate when the receiver is a factory and the code
+ * calls one of its properties (`createServerOnlyFn.bind()`). Skipping these
+ * calls saves loading the receiver's module (all of zod, here) only to learn
+ * that `z` is not a Start factory.
+ */
+function isMemberCallOnNonNamespaceReceiver(
+  node: t.CallExpression,
+  bindings: Map<string, Binding>,
+): boolean {
+  if (
+    !t.isMemberExpression(node.callee) ||
+    !t.isIdentifier(node.callee.object)
+  ) {
+    return false
+  }
+
+  const binding = bindings.get(node.callee.object.name)
+  return !(binding?.type === 'import' && binding.importedName === '*')
+}
+
 function isDirectCallCandidateForKind(
   kind: Exclude<LookupKind, 'ClientOnlyJSX'>,
   externalLookupSetup?: Map<ExternalLookupKind, DirectCallSetup>,
@@ -1212,7 +1237,13 @@ export class StartCompiler {
                     }
                   }
 
-                  if (isTopLevelDirectCallCandidate(path)) {
+                  if (
+                    isTopLevelDirectCallCandidate(path) &&
+                    !isMemberCallOnNonNamespaceReceiver(
+                      node,
+                      moduleInfo.bindings,
+                    )
+                  ) {
                     candidatePaths.push({ path })
                   }
                 },
@@ -1259,7 +1290,11 @@ export class StartCompiler {
               }
             }
 
-            if (checkDirectCalls && isTopLevelDirectCallCandidate(path)) {
+            if (
+              checkDirectCalls &&
+              isTopLevelDirectCallCandidate(path) &&
+              !isMemberCallOnNonNamespaceReceiver(node, moduleInfo.bindings)
+            ) {
               candidatePaths.push({ path })
               return
             }
@@ -1384,8 +1419,6 @@ export class StartCompiler {
         const methodChain: MethodChainPaths = {
           middleware: null,
           validator: null,
-          // TODO remove upon stable
-          inputValidator: null,
           handler: null,
           server: null,
           client: null,

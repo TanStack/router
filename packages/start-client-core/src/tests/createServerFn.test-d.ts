@@ -21,8 +21,6 @@ test('createServerFn without middleware', () => {
   expectTypeOf(createServerFn()).toHaveProperty('handler')
   expectTypeOf(createServerFn()).toHaveProperty('middleware')
   expectTypeOf(createServerFn()).toHaveProperty('validator')
-  // TODO remove upon stable
-  expectTypeOf(createServerFn()).toHaveProperty('inputValidator')
 
   expectTypeOf(createServerFn({ id: 'get-user' })).toHaveProperty('handler')
 

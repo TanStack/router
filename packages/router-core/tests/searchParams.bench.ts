@@ -1,4 +1,4 @@
-import { bench, describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { defaultStringifySearch } from '../src'
 
 const iterations = 1_000
@@ -112,56 +112,88 @@ function stringifyBatch(search: Record<string, unknown>) {
 }
 
 describe('default search serialization', () => {
-  bench('empty object', () => {
-    stringifyBatch({})
+  test('empty object', async ({ bench }) => {
+    await bench('empty object', () => {
+      stringifyBatch({})
+    }).run()
   })
 
-  bench('only undefined values', () => {
-    stringifyBatch({ first: undefined, second: undefined })
+  test('only undefined values', async ({ bench }) => {
+    await bench('only undefined values', () => {
+      stringifyBatch({ first: undefined, second: undefined })
+    }).run()
   })
 
-  bench('ordinary string values', () => {
-    stringifyBatch(ordinaryStrings)
+  test('ordinary string values', async ({ bench }) => {
+    await bench('ordinary string values', () => {
+      stringifyBatch(ordinaryStrings)
+    }).run()
   })
 
-  bench('ordinary strings outside JSON-literal initials', () => {
-    stringifyBatch(nonLiteralInitialStrings)
+  test('ordinary strings outside JSON-literal initials', async ({ bench }) => {
+    await bench('ordinary strings outside JSON-literal initials', () => {
+      stringifyBatch(nonLiteralInitialStrings)
+    }).run()
   })
 
-  bench('ordinary strings with JSON-literal initials', () => {
-    stringifyBatch(jsonInitialStrings)
+  test('ordinary strings with JSON-literal initials', async ({ bench }) => {
+    await bench('ordinary strings with JSON-literal initials', () => {
+      stringifyBatch(jsonInitialStrings)
+    }).run()
   })
 
-  bench('empty string values', () => {
-    stringifyBatch(emptyStrings)
+  test('empty string values', async ({ bench }) => {
+    await bench('empty string values', () => {
+      stringifyBatch(emptyStrings)
+    }).run()
   })
 
-  bench('ordinary strings with non-JSON punctuation starts', () => {
-    stringifyBatch(punctuationStrings)
+  test('ordinary strings with non-JSON punctuation starts', async ({
+    bench,
+  }) => {
+    await bench('ordinary strings with non-JSON punctuation starts', () => {
+      stringifyBatch(punctuationStrings)
+    }).run()
   })
 
-  bench('ordinary f/n/t words outside JSON-literal prefixes', () => {
-    stringifyBatch(nonLiteralPrefixStrings)
+  test('ordinary f/n/t words outside JSON-literal prefixes', async ({
+    bench,
+  }) => {
+    await bench('ordinary f/n/t words outside JSON-literal prefixes', () => {
+      stringifyBatch(nonLiteralPrefixStrings)
+    }).run()
   })
 
-  bench('application words with JSON-literal prefixes', () => {
-    stringifyBatch(jsonLiteralPrefixStrings)
+  test('application words with JSON-literal prefixes', async ({ bench }) => {
+    await bench('application words with JSON-literal prefixes', () => {
+      stringifyBatch(jsonLiteralPrefixStrings)
+    }).run()
   })
 
-  bench('application words with complete JSON-literal prefixes', () => {
-    stringifyBatch(jsonLiteralWordStrings)
+  test('application words with complete JSON-literal prefixes', async ({
+    bench,
+  }) => {
+    await bench('application words with complete JSON-literal prefixes', () => {
+      stringifyBatch(jsonLiteralWordStrings)
+    }).run()
   })
 
-  bench('JSON-literal prefixes followed by punctuation', () => {
-    stringifyBatch(jsonLiteralBoundaryStrings)
+  test('JSON-literal prefixes followed by punctuation', async ({ bench }) => {
+    await bench('JSON-literal prefixes followed by punctuation', () => {
+      stringifyBatch(jsonLiteralBoundaryStrings)
+    }).run()
   })
 
-  bench('JSON-compatible string values', () => {
-    stringifyBatch(jsonStrings)
+  test('JSON-compatible string values', async ({ bench }) => {
+    await bench('JSON-compatible string values', () => {
+      stringifyBatch(jsonStrings)
+    }).run()
   })
 
-  bench('mixed application values', () => {
-    stringifyBatch(mixedValues)
+  test('mixed application values', async ({ bench }) => {
+    await bench('mixed application values', () => {
+      stringifyBatch(mixedValues)
+    }).run()
   })
 })
 

@@ -7,12 +7,7 @@ import {
 } from '@tanstack/router-utils'
 import path from 'pathe'
 import { cleanId, codeFrameError, stripMethodCall } from './utils'
-import type {
-  CompilationContext,
-  MethodCallInfo,
-  RewriteCandidate,
-  ServerFn,
-} from './types'
+import type { CompilationContext, RewriteCandidate, ServerFn } from './types'
 import type { CompileStartFrameworkOptions } from '../types'
 
 const TSS_SERVERFN_SPLIT_PARAM = 'tss-serverfn-split'
@@ -50,21 +45,6 @@ const clientRpcTemplate = babel.template.expression(
 const ssrRpcManifestTemplate = babel.template.expression(
   `createSsrRpc(%%functionId%%)`,
 )
-
-// TODO remove upon stable
-function warnInputValidatorDeprecation(
-  context: CompilationContext,
-  inputValidator: MethodCallInfo,
-): void {
-  const loc = inputValidator.callPath.node.loc?.start
-  const location = loc
-    ? `${context.id}:${loc.line}:${loc.column + 1} `
-    : `${context.id} `
-
-  context.warn?.(
-    `${location}createServerFn().inputValidator() is deprecated. Use createServerFn().validator() instead.`,
-  )
-}
 
 // ============================================================================
 // Runtime code cache (cached per framework to avoid repeated AST generation)
@@ -471,7 +451,7 @@ export function handleCreateServerFn(
 
   for (const candidate of candidates) {
     const { path: candidatePath, methodChain } = candidate
-    const { validator, inputValidator, handler } = methodChain
+    const { validator, handler } = methodChain
 
     const candidateVariableDeclarator = getVariableDeclaratorForExpressionPath(
       candidatePath as babel.NodePath<t.Expression>,
@@ -537,32 +517,19 @@ export function handleCreateServerFn(
     const canonicalExtractedFilename =
       knownFn?.extractedFilename ?? extractedFilename
 
-    // TODO remove upon stable
-    if (inputValidator) {
-      warnInputValidatorDeprecation(context, inputValidator)
-    }
-
     // Handle validators - remove on client
-    for (const [methodName, methodCall] of [
-      ['validator', validator],
-      // TODO remove upon stable
-      ['inputValidator', inputValidator],
-    ] as const) {
-      if (!methodCall) {
-        continue
-      }
-
-      const innerInputExpression = methodCall.callPath.node.arguments[0]
+    if (validator) {
+      const innerInputExpression = validator.callPath.node.arguments[0]
 
       if (!innerInputExpression) {
         throw new Error(
-          `createServerFn().${methodName}() must be called with a validator!`,
+          'createServerFn().validator() must be called with a validator!',
         )
       }
 
       // If we're on the client, remove the validator call expression
       if (context.env === 'client') {
-        stripMethodCall(methodCall.callPath)
+        stripMethodCall(validator.callPath)
       }
     }
 
