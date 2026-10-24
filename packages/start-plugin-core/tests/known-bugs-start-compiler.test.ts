@@ -342,37 +342,31 @@ export const fn = authed.handler(async () => db.x())`,
   // name.
   // Impact: the module is left untransformed and ships its handler and
   // server-only imports to the client.
-  test(
-    'client builds compile a builder read from a namespace import',
-    async () => {
-      await expectServerFnThroughRpc(
-        await newCase({
-          'module.tsx': `import * as F from './fns'
+  test('client builds compile a builder read from a namespace import', async () => {
+    await expectServerFnThroughRpc(
+      await newCase({
+        'module.tsx': `import * as F from './fns'
 import { db } from './db.server'
 export const fn = F.authed.handler(async () => db.x())`,
-          'fns.ts': `${head}export const authed = createServerFn({ method: 'POST' })`,
-        }),
-      )
-    },
-  )
+        'fns.ts': `${head}export const authed = createServerFn({ method: 'POST' })`,
+      }),
+    )
+  })
 
   // Bug: a namespace of the Start package re-exported by a project module
   // (`export * as Start from '@tanstack/react-start'`) is not resolved.
   // Impact: `Start.createServerFn()` modules are left untransformed and ship
   // their handler and server-only imports to the client.
-  test(
-    'client builds compile factories of a re-exported Start namespace',
-    async () => {
-      await expectServerFnThroughRpc(
-        await newCase({
-          'module.tsx': `import { Start } from './start'
+  test('client builds compile factories of a re-exported Start namespace', async () => {
+    await expectServerFnThroughRpc(
+      await newCase({
+        'module.tsx': `import { Start } from './start'
 import { db } from './db.server'
 export const fn = Start.createServerFn().handler(async () => db.x())`,
-          'start.ts': `export * as Start from '@tanstack/react-start'`,
-        }),
-      )
-    },
-  )
+        'start.ts': `export * as Start from '@tanstack/react-start'`,
+      }),
+    )
+  })
 
   // Bug: the builder of a `.handler()` chain is resolved through identifiers
   // and member expressions only, so a builder returned by a function call
@@ -421,23 +415,20 @@ export const fn = authed().handler(async () => db.x())`,
   // Source: fuzzing (builders passed through user helpers).
   // Impact: the validator, the handler and what they import ship to the
   // client, and the client runs the handler instead of calling the server.
-  test(
-    'client builds compile a server fn whose builder passes through a helper function',
-    async () => {
-      const served = await serveCase(await host(), {
-        'module.tsx': `${head}import { schema } from './schema'
+  test('client builds compile a server fn whose builder passes through a helper function', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `${head}import { schema } from './schema'
 function applyStep<T>(builder: T) {
   return builder
 }
 export const fn = applyStep(
   createServerFn({ method: 'POST' }).validator(schema),
 ).handler(async ({ data }) => data)`,
-        'schema.ts': `export const schema = (data: string) => \`\${data}!\`\n`,
-      })
-      expectNotLoaded(await served.loads(), ['./schema'])
-      expect(await callFromClient(served, 'module.fn', 'data')).toBe('data!')
-    },
-  )
+      'schema.ts': `export const schema = (data: string) => \`\${data}!\`\n`,
+    })
+    expectNotLoaded(await served.loads(), ['./schema'])
+    expect(await callFromClient(served, 'module.fn', 'data')).toBe('data!')
+  })
 
   // Bug: same family, for an isomorphic fn whose chain passes through a
   // helper function (`withBuilder(createIsomorphicFn().server(f)).client(g)`):
@@ -448,24 +439,21 @@ export const fn = applyStep(
   // Source: fuzzing (builders passed through user helpers).
   // Impact: the module throws when it loads ("withBuilder(...).client is not
   // a function"), on the client and on the server.
-  test(
-    'each output keeps its implementation of an isomorphic fn whose chain passes through a helper function',
-    async () => {
-      const startCase = await newCase({
-        'module.tsx': `import { createIsomorphicFn } from '@tanstack/react-start'
+  test('each output keeps its implementation of an isomorphic fn whose chain passes through a helper function', async () => {
+    const startCase = await newCase({
+      'module.tsx': `import { createIsomorphicFn } from '@tanstack/react-start'
 function withBuilder<T>(builder: T) {
   return builder
 }
 export const getEnv = withBuilder(
   createIsomorphicFn().server(() => 'server'),
 ).client(() => 'client')`,
-      })
-      expect({
-        client: await clientValue(startCase, 'module.getEnv()'),
-        ssr: settle((await startCase.ssr()).getEnv),
-      }).toEqual({ client: 'client', ssr: 'server' })
-    },
-  )
+    })
+    expect({
+      client: await clientValue(startCase, 'module.getEnv()'),
+      ssr: settle((await startCase.ssr()).getEnv),
+    }).toEqual({ client: 'client', ssr: 'server' })
+  })
 
   // Bug: env-only factories nested in other code are found by the factory's
   // exported name (`isNestedDirectCallCandidate`), so a renamed import or a
@@ -671,12 +659,10 @@ export const read = createServerOnlyFn(() => db.secret()).bind(null)`,
   // Fix-agnostic: compiled per its contract (the client throws the
   // server-only error and loads nothing server-only, SSR runs it) or
   // rejected with a clear compile error at the call.
-  test(
-    'a createServerOnlyFn local alias called in a top-level block works in each environment, or is rejected at the call',
-    async () => {
-      await expectWorksOrRejectedAtCall({
-        name: 'a local alias in a top-level block',
-        code: `import { createServerOnlyFn } from '@tanstack/react-start'
+  test('a createServerOnlyFn local alias called in a top-level block works in each environment, or is rejected at the call', async () => {
+    await expectWorksOrRejectedAtCall({
+      name: 'a local alias in a top-level block',
+      code: `import { createServerOnlyFn } from '@tanstack/react-start'
 import { db } from './db.server'
 const so = createServerOnlyFn
 export let read: () => unknown
@@ -684,13 +670,12 @@ export let read: () => unknown
   const fn = so(() => db.secret())
   read = () => fn()
 }`,
-        at: 'so(() =>',
-        body: 'db.secret()',
-        client: { expression: 'module.read()', expected: throwsError },
-        ssr: (module) => expect(module.read()).toBe('secret'),
-      })
-    },
-  )
+      at: 'so(() =>',
+      body: 'db.secret()',
+      client: { expression: 'module.read()', expected: throwsError },
+      ssr: (module) => expect(module.read()).toBe('secret'),
+    })
+  })
 
   // Bug: when createServerFn is the only factory imported, the compiler only
   // visits top-level variable declarations, so a server fn anywhere else is
@@ -814,35 +799,32 @@ export let read: () => unknown
   // server.
   // Source: #8504 compiler.test.ts "resolves distinct re-export aliases
   // without conflating their source bindings" (red on main).
-  test(
-    'distinct re-export aliases of two factories keep their own kind',
-    async () => {
-      const startCase = await newCase({
-        'barrel.ts': `export { wrap as allowed } from './server'
+  test('distinct re-export aliases of two factories keep their own kind', async () => {
+    const startCase = await newCase({
+      'barrel.ts': `export { wrap as allowed } from './server'
 export { wrap as denied } from './client'`,
-        'server.ts': `export { createServerOnlyFn as wrap } from '@tanstack/react-start'`,
-        'client.ts': `export { createClientOnlyFn as wrap } from '@tanstack/react-start'`,
-        // The direct createServerOnlyFn call makes the module a candidate of
-        // the compiler's text detection.
-        'module.tsx': `import { createServerOnlyFn } from '@tanstack/react-start'
+      'server.ts': `export { createServerOnlyFn as wrap } from '@tanstack/react-start'`,
+      'client.ts': `export { createClientOnlyFn as wrap } from '@tanstack/react-start'`,
+      // The direct createServerOnlyFn call makes the module a candidate of
+      // the compiler's text detection.
+      'module.tsx': `import { createServerOnlyFn } from '@tanstack/react-start'
 import { allowed, denied } from './barrel'
 export const a = allowed(() => 'server-value')
 export const b = denied(() => 'client-value')
 export const c = createServerOnlyFn(() => 'direct')`,
-      })
-      const ssr = await startCase.ssr()
-      expect({
-        client: [
-          await clientValue(startCase, 'module.a()'),
-          await clientValue(startCase, 'module.b()'),
-        ],
-        ssr: [settle(ssr.a), settle(ssr.b)],
-      }).toEqual({
-        client: [throwsError, 'client-value'],
-        ssr: ['server-value', throwsError],
-      })
-    },
-  )
+    })
+    const ssr = await startCase.ssr()
+    expect({
+      client: [
+        await clientValue(startCase, 'module.a()'),
+        await clientValue(startCase, 'module.b()'),
+      ],
+      ssr: [settle(ssr.a), settle(ssr.b)],
+    }).toEqual({
+      client: [throwsError, 'client-value'],
+      ssr: ['server-value', throwsError],
+    })
+  })
 
   /**
    * Calls the exports of the shadowing module below with the stand-ins of
@@ -979,12 +961,16 @@ export const fn = createServerFn().handler(async () => 'from the server')`,
         ...ssrNames(plain.code.ssr),
       ].map(shape),
     )
+    // Vite's own SSR wrapper names (`__vite_ssr_import_meta__` for a module
+    // using `import.meta`) are Vite's, whatever compiles the module
     return [
       ...new Set([
         ...bindingNames(probe.code.client),
         ...ssrNames(probe.code.ssr),
       ]),
-    ].filter((name) => !known.has(shape(name)))
+    ].filter(
+      (name) => !known.has(shape(name)) && !/^__vite_ssr_\w+__$/.test(name),
+    )
   }
 
   // Bug: the same as the two pins above, for whatever names the compiler
@@ -993,43 +979,37 @@ export const fn = createServerFn().handler(async () => 'from the server')`,
   // that keeps them apart from user bindings passes).
   // Impact: a user binding or a server fn named like generated code breaks
   // the module or its server calls.
-  test(
-    'no name the compiler introduces collides with a user binding or a server fn of that name',
-    async () => {
-      const names = await introducedNames()
-      expect(names.length, 'names the compiler introduced').toBeGreaterThan(0)
-      const failures: Array<string> = []
-      for (const name of names) {
-        for (const [kind, code] of [
-          [
-            'a user binding',
-            `${head}const ${name} = (value: unknown) => value
+  test('no name the compiler introduces collides with a user binding or a server fn of that name', async () => {
+    const names = await introducedNames()
+    expect(names.length, 'names the compiler introduced').toBeGreaterThan(0)
+    const failures: Array<string> = []
+    for (const name of names) {
+      for (const [kind, code] of [
+        [
+          'a user binding',
+          `${head}const ${name} = (value: unknown) => value
 export const used = ${name}('user')
 export const fn = createServerFn().handler(async () => 'from the server')`,
-          ],
-          [
-            'a server fn',
-            `${head}export const ${name} = createServerFn().handler(async () => 'from the server')`,
-          ],
-        ] as const) {
-          try {
-            const { results } = await callServerFns({ 'module.tsx': code })
-            if (
-              JSON.stringify(results) !== JSON.stringify(['from the server'])
-            ) {
-              failures.push(`${kind} named ${name}: ${JSON.stringify(results)}`)
-            }
-          } catch (error) {
-            failures.push(
-              `${kind} named ${name}: ${String((error as Error).message).split('\n')[0]}`,
-            )
+        ],
+        [
+          'a server fn',
+          `${head}export const ${name} = createServerFn().handler(async () => 'from the server')`,
+        ],
+      ] as const) {
+        try {
+          const { results } = await callServerFns({ 'module.tsx': code })
+          if (JSON.stringify(results) !== JSON.stringify(['from the server'])) {
+            failures.push(`${kind} named ${name}: ${JSON.stringify(results)}`)
           }
+        } catch (error) {
+          failures.push(
+            `${kind} named ${name}: ${String((error as Error).message).split('\n')[0]}`,
+          )
         }
       }
-      expect(failures).toEqual([])
-    },
-    30_000,
-  )
+    }
+    expect(failures).toEqual([])
+  }, 30_000)
 
   // Bug: when the handler passed to `.handler()` is a `createServerOnlyFn()`
   // call, the inner call is compiled first and the caller is never rewritten
@@ -1106,23 +1086,19 @@ describe('dev edits', () => {
   // invalidated and recompiled itself); reproduced through a real Vite dev
   // edit. Unbundled client edits of a server fn factory are
   // covered by integration/start-compiler-dev-server.test.ts.
-  test(
-    'a dev edit of a module a re-export chain ends in recompiles its importers',
-    async () => {
-      const started = await editHost()
-      const dir = editDirs.reexportChain
-      const before = await started.host.importServer(`/${dir}/module.tsx`)
-      expect(settle(before.myFn)).toBe('server-only-value')
+  test('a dev edit of a module a re-export chain ends in recompiles its importers', async () => {
+    const started = await editHost()
+    const dir = editDirs.reexportChain
+    const before = await started.host.importServer(`/${dir}/module.tsx`)
+    expect(settle(before.myFn)).toBe('server-only-value')
 
-      const after = await editAndImport(
-        started,
-        dir,
-        factoryEdits.reexportChain.edit,
-      )
-      expect(settle(after.myFn)).toEqual(throwsError)
-    },
-    30_000,
-  )
+    const after = await editAndImport(
+      started,
+      dir,
+      factoryEdits.reexportChain.edit,
+    )
+    expect(settle(after.myFn)).toEqual(throwsError)
+  }, 30_000)
 
   // Control for the pin above (same harness, and the concept of
   // compiler.test.ts "recompiles aliased env-only calls in a provider whose
@@ -1253,16 +1229,13 @@ export const Card = () => <div />`
   // router-plugin/tests/known-bugs-code-splitter.test.ts.
   // Impact: the module's components throw "h is not defined" or render
   // through another JSX factory than the one the module selects.
-  test(
-    'client: the factory of a classic JSX pragma stays imported',
-    async () => {
-      const startCase = await newCase({
-        'module.tsx': pragmaModule,
-        'jsx.ts': jsxFile,
-      })
-      expect(await clientValue(startCase, 'module.Card()')).toBe('h(div)')
-    },
-  )
+  test('client: the factory of a classic JSX pragma stays imported', async () => {
+    const startCase = await newCase({
+      'module.tsx': pragmaModule,
+      'jsx.ts': jsxFile,
+    })
+    expect(await clientValue(startCase, 'module.Card()')).toBe('h(div)')
+  })
 
   /**
    * A module with a classic JSX runtime pragma whose `Hero` renders `Chart`
@@ -1314,12 +1287,9 @@ export const render = () => renderToString(createElement(Hero))
   // count the JSX as a read of `React`); fuzzing (an unmodified file of a
   // real app, a charts hero background).
   // Impact: the server render throws "React is not defined".
-  test(
-    'ssr: a module with a classic JSX runtime pragma keeps its React import',
-    async () => {
-      expect(await renderHero(classicRuntimeModule(''))).toContain('<div>')
-    },
-  )
+  test('ssr: a module with a classic JSX runtime pragma keeps its React import', async () => {
+    expect(await renderHero(classicRuntimeModule(''))).toContain('<div>')
+  })
 
   // Bug: a type-only import re-exported without `type` (`export { Settings }`,
   // which TypeScript accepts unless verbatimModuleSyntax is on) loses its
@@ -1551,16 +1521,12 @@ export const fn = createServerFn().handler(async () => describeDb())`)
   // the client loads the server-only module and its top-level code ships
   // (see the Vite build pin).
   // Source: review.
-  test(
-    'client: a server-only import last mentioned by a type alias is not loaded with verbatimModuleSyntax',
-    async () => {
-      const { loads } =
-        await verbatimLoads(`${head}import { auth } from './auth'
+  test('client: a server-only import last mentioned by a type alias is not loaded with verbatimModuleSyntax', async () => {
+    const { loads } = await verbatimLoads(`${head}import { auth } from './auth'
 type Session = typeof auth.session
 export const fn = createServerFn().handler(async () => auth.get() as Session)`)
-      expectNotLoaded(loads, ['./auth'])
-    },
-  )
+    expectNotLoaded(loads, ['./auth'])
+  })
 
   /** A server fn whose validator is a module-level schema. */
   const schemaModule = (typeAlias: string) => `${head}import { z } from 'zod'
@@ -1601,15 +1567,12 @@ export const setTheme = createServerFn({ method: 'POST' })
   // Impact: the schema and its library (or server-only modules) ship to the
   // client, which never runs them (see the build pin in
   // start-build-env-separation.test.ts).
-  test(
-    'client: a validator schema that a type alias reads with typeof is not loaded',
-    async () => {
-      const startCase = await erasedCase(
-        schemaModule('type Theme = z.infer<typeof themeValidator>'),
-      )
-      expectNotLoaded(await startCase.loads(), ['zod'])
-    },
-  )
+  test('client: a validator schema that a type alias reads with typeof is not loaded', async () => {
+    const startCase = await erasedCase(
+      schemaModule('type Theme = z.infer<typeof themeValidator>'),
+    )
+    expectNotLoaded(await startCase.loads(), ['zod'])
+  })
 
   /**
    * A client-only fn whose implementation reads a module-level chart that a
@@ -1640,13 +1603,10 @@ export const draw = createClientOnlyFn(() => chart.draw())`
   // Impact: the server loads the client-only module and runs the
   // initializer (e.g. `window.matchMedia(...)`), which can throw during
   // SSR.
-  test(
-    'ssr: a declaration a client-only fn reads and a type alias reads with typeof is not loaded',
-    async () => {
-      const startCase = await erasedCase(
-        clientOnlyChartModule('type Chart = typeof chart'),
-      )
-      expectNotLoaded(await startCase.serverLoads(), ['./chart.client'])
-    },
-  )
+  test('ssr: a declaration a client-only fn reads and a type alias reads with typeof is not loaded', async () => {
+    const startCase = await erasedCase(
+      clientOnlyChartModule('type Chart = typeof chart'),
+    )
+    expectNotLoaded(await startCase.serverLoads(), ['./chart.client'])
+  })
 })
