@@ -114,7 +114,6 @@ export function registerRouterPlugins(
     {
       test: (resource) =>
         api.context.action === 'build' &&
-        opts.getConfig().startConfig.router.enableRouteGeneration !== false &&
         generatedRouteTreePath !== null &&
         (normalizePath(resource) === generatedRouteTreePath ||
           routerPluginContext.routesByFile.has(normalizePath(resource))),

@@ -100,9 +100,7 @@ export function tanStackStartRouter(
     enforce: 'pre',
     applyToEnvironment: (env) =>
       env.name === VITE_ENVIRONMENT_NAMES.client ||
-      (isBuild &&
-        getConfig().startConfig.router.enableRouteGeneration !== false &&
-        serverRouteEnvironmentNames.has(env.name)),
+      (isBuild && serverRouteEnvironmentNames.has(env.name)),
     configureServer(server) {
       clientEnvironment = server.environments[VITE_ENVIRONMENT_NAMES.client]
     },
