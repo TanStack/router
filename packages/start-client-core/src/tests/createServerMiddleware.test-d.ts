@@ -11,8 +11,6 @@ test('createServeMiddleware removes middleware after middleware,', () => {
   expectTypeOf(middleware).toHaveProperty('middleware')
   expectTypeOf(middleware).toHaveProperty('server')
   expectTypeOf(middleware).toHaveProperty('validator')
-  // TODO remove upon stable
-  expectTypeOf(middleware).toHaveProperty('inputValidator')
 
   const middlewareAfterMiddleware = middleware.middleware([])
 

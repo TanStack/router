@@ -1,5 +1,70 @@
 # @tanstack/start-static-server-functions
 
+## 1.167.44
+
+### Patch Changes
+
+- Updated dependencies [[`32a3360`](https://github.com/TanStack/router/commit/32a3360cba0e0f884b3215813a48c63467f5a53c)]:
+  - @tanstack/react-start@1.169.4
+  - @tanstack/solid-start@1.169.4
+  - @tanstack/start-client-core@1.170.39
+
+## 1.167.43
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-client-core@1.170.38
+  - @tanstack/react-start@1.169.3
+  - @tanstack/solid-start@1.169.3
+
+## 1.167.42
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/react-start@1.169.1
+  - @tanstack/solid-start@1.169.1
+  - @tanstack/start-client-core@1.170.37
+
+## 1.167.41
+
+### Patch Changes
+
+- Updated dependencies [[`550f478`](https://github.com/TanStack/router/commit/550f47881070c0558a87e1acce7f38fbc85b9549), [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5), [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5), [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5), [`f243c61`](https://github.com/TanStack/router/commit/f243c61e95dae64fe04da4499c0c4ec44f26abae), [`f243c61`](https://github.com/TanStack/router/commit/f243c61e95dae64fe04da4499c0c4ec44f26abae)]:
+  - @tanstack/start-client-core@1.170.36
+  - @tanstack/react-start@1.169.0
+  - @tanstack/solid-start@1.169.0
+
+## 1.167.40
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-client-core@1.170.35
+  - @tanstack/react-start@1.168.61
+  - @tanstack/solid-start@1.168.58
+
+## 1.167.39
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/react-start@1.168.60
+  - @tanstack/solid-start@1.168.57
+  - @tanstack/start-client-core@1.170.34
+
+## 1.167.38
+
+### Patch Changes
+
+- [#8297](https://github.com/TanStack/router/pull/8297) [`488d046`](https://github.com/TanStack/router/commit/488d046a907d330429e2c807ef95326dad87480f) - Update `seroval` and `seroval-plugins` from 1.6.2 to 1.6.7. This picks up the typed array length guard, the `maxBase64Length` and `compactArrayBufferViews` options, and the `isStream` export.
+
+- Updated dependencies [[`488d046`](https://github.com/TanStack/router/commit/488d046a907d330429e2c807ef95326dad87480f), [`76a7c0b`](https://github.com/TanStack/router/commit/76a7c0bfadb42d5f7fe7b9e1748acc7333178c91)]:
+  - @tanstack/start-client-core@1.170.33
+  - @tanstack/react-start@1.168.59
+  - @tanstack/solid-start@1.168.56
+
 ## 1.167.37
 
 ### Patch Changes

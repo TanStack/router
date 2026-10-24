@@ -131,7 +131,7 @@ const pageSitemapOptionsSchema = z.object({
     .optional(),
 })
 
-const pageBaseSchema = z.object({
+export const pageBaseSchema = z.object({
   path: z.string(),
   sitemap: pageSitemapOptionsSchema.optional(),
   fromCrawl: z.boolean().optional(),
@@ -302,6 +302,7 @@ export const tanstackStartOptionsSchema = tanstackStartOptionsObjectSchema
   .optional()
   .prefault({})
 
+export type PageBase = z.infer<typeof pageBaseSchema>
 export type Page = z.infer<typeof pageSchema>
 
 type TanStackStartOptionsInput = NonNullable<
