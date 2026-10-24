@@ -22,7 +22,10 @@
  */
 import { createHash } from 'node:crypto'
 import { relative } from 'node:path'
-import { isPureExpression, siblingSpecifier } from '@tanstack/router-utils/compiler'
+import {
+  isPureExpression,
+  siblingSpecifier,
+} from '@tanstack/router-utils/compiler'
 import type {
   ClassifiedRef,
   Diagnostic,
@@ -133,7 +136,8 @@ function gate(t0: ModuleAnalysis, ctx: GateContext): boolean {
         !imp.typeOnly &&
         packages[imp.specifier] !== undefined &&
         imp.specifiers.some(
-          (s) => !s.typeOnly && (s.imported === 'Hydrate' || s.imported === '*'),
+          (s) =>
+            !s.typeOnly && (s.imported === 'Hydrate' || s.imported === '*'),
         ),
     ) && t0.source.code.includes('Hydrate')
   )
@@ -183,7 +187,10 @@ interface Extracted {
   setterSyms: Set<SymbolId>
 }
 
-function findBoundaries(ctx: PlanContext, cfg: ResolvedConfig): Array<Boundary> {
+function findBoundaries(
+  ctx: PlanContext,
+  cfg: ResolvedConfig,
+): Array<Boundary> {
   const { analysis, t1 } = ctx
   const found = new Map<
     number,
@@ -283,14 +290,18 @@ function isLiteralSplitFalse(opening: JSXOpeningElement): boolean {
   return false
 }
 
-/** Before `>` (or the `/` of `/>`) of the opening tag. */
+/** After the last attribute (or the tag name) of the opening tag, before `>` or `/>`. */
 function insertPoint(code: string, opening: JSXOpeningElement): number {
-  let i = opening.end - 1
+  let i = opening.end - 1 // `>`
   if (opening.selfClosing) {
     i--
     while (i > opening.start && /\s/.test(code[i]!)) {
       i--
     }
+    // `/`
+  }
+  while (i > opening.start && /\s/.test(code[i - 1]!)) {
+    i--
   }
   return i
 }
@@ -445,15 +456,7 @@ function plan(ctx: PlanContext): void {
       if (b.split && b.children) {
         prefix(ctx, b, null)
         if (cfg.rejectEverywhere && live(b)) {
-          // nested boundaries the client extracts are validated on their own
-          const region = b.children.range
-          const skip = boundaries
-            .filter(
-              (o) =>
-                o !== b && o.split && o.children && within(o.element, region),
-            )
-            .map((o) => o.children!.range)
-          validate(ctx, b, skip)
+          validate(ctx, b, nestedRegions(boundaries, b))
         }
       }
       facts.boundaries.push({ id: b.id, chunk: null })
@@ -478,7 +481,10 @@ function plan(ctx: PlanContext): void {
   const planned = new Map<Boundary, { sym: SymbolId; chunk: string }>()
   for (const b of [...boundaries].reverse()) {
     const n = names.get(b)
-    const result = n && live(b) ? extract(ctx, b, n, extracted, shared) : null
+    const result =
+      n && live(b)
+        ? extract(ctx, b, n, nestedRegions(boundaries, b), extracted, shared)
+        : null
     if (result) {
       planned.set(b, result)
     }
@@ -490,11 +496,32 @@ function plan(ctx: PlanContext): void {
       addLazyConst(ctx, b, names.get(b)!, p.sym, p.chunk, cfg)
     }
     if (names.has(b)) {
-      prefix(ctx, b, p && mayHaveProp(ctx, b.opening, 'prefetch') ? p.sym : null)
+      prefix(
+        ctx,
+        b,
+        p && mayHaveProp(ctx, b.opening, 'prefetch') ? p.sym : null,
+      )
     }
     facts.boundaries.push({ id: b.id, chunk: p?.chunk ?? null })
   }
   ctx.setFacts(HYDRATE_PLANNER, facts)
+}
+
+/**
+ * The children regions of the boundaries nested in `b` that the client
+ * extracts: they render as placeholders in `b`'s chunk and are validated on
+ * their own.
+ */
+function nestedRegions(
+  boundaries: ReadonlyArray<Boundary>,
+  b: Boundary,
+): Array<Range> {
+  const region = b.children!.range
+  return boundaries
+    .filter(
+      (o) => o !== b && o.split && o.children && within(o.element, region),
+    )
+    .map((o) => o.children!.range)
 }
 
 /** Names and symbols shared by every boundary of the file (allocated on first use). */
@@ -610,7 +637,9 @@ function validate(
   }
   const solid = b.framework === 'solid'
   const refAt = (start: number): ClassifiedRef | undefined =>
-    t1.refs.refsIn({ start, end: start + 1 }).find((r) => r.range.start === start)
+    t1.refs
+      .refsIn({ start, end: start + 1 })
+      .find((r) => r.range.start === start)
 
   /** `fn`: inside a function of the children; `self`: `this`/`arguments` are owned inside. */
   const visit = (node: Node, fn: boolean, self: boolean): void => {
@@ -703,7 +732,10 @@ function validate(
               .scopeOf(node)
               .lookup(node.name.name.name, 'value')
             scan.directives.push({
-              nameRange: { start: node.name.name.start, end: node.name.name.end },
+              nameRange: {
+                start: node.name.name.start,
+                end: node.name.name.end,
+              },
               sym: binding ? ctx.symbols.ofBinding(binding) : null,
             })
           } else if (
@@ -828,6 +860,7 @@ function extract(
   ctx: PlanContext,
   b: Boundary,
   { comp }: BoundaryNames,
+  nested: ReadonlyArray<Range>,
   extracted: Array<Extracted>,
   shared: SharedNames,
 ): { sym: SymbolId; chunk: string } | null {
@@ -840,7 +873,7 @@ function extract(
     (e) => !nestedAll.some((o) => o !== e && within(e.b.element, o.region)),
   )
   const skip = direct.map((e) => e.region)
-  const scan = validate(ctx, b, skip)
+  const scan = validate(ctx, b, nested)
   if (!scan.ok) {
     return null
   }
@@ -1191,7 +1224,10 @@ function stripFallback(ctx: PlanContext, b: Boundary): Array<Range> {
 }
 
 /** The object literal a spread passes: inline, or a single-use unexported `const`. */
-function spreadObject(ctx: PlanContext, argument: Node): ObjectExpression | null {
+function spreadObject(
+  ctx: PlanContext,
+  argument: Node,
+): ObjectExpression | null {
   const arg = unwrap(argument)
   if (arg.type === 'ObjectExpression') {
     return arg
@@ -1211,7 +1247,8 @@ function spreadObject(ctx: PlanContext, argument: Node): ObjectExpression | null
     return null
   }
   const binding = symbols.binding(ref.sym)
-  const decl = binding?.declarations.length === 1 ? binding.declarations[0]! : null
+  const decl =
+    binding?.declarations.length === 1 ? binding.declarations[0]! : null
   const declarator = decl ? t1.parentOf(decl) : null
   if (
     !declarator ||
