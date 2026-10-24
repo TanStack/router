@@ -1,3 +1,5 @@
+export { memoryBenchHooks } from '../turn'
+
 export const memoryBenchOptions = {
   iterations: 1,
   warmupIterations: 1,

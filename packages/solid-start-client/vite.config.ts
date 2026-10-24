@@ -11,7 +11,7 @@ const config = defineConfig({
     name: packageJson.name,
     watch: false,
     environment: 'jsdom',
-    setupFiles: ['./src/tests/setupTests.tsx'],
+    setupFiles: ['./src/tests/jest-dom.setup.ts'],
   },
 })
 

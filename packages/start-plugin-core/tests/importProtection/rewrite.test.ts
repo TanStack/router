@@ -1,3 +1,4 @@
+import { transformWithOxc } from 'vite'
 import { describe, expect, test } from 'vitest'
 import { rewriteDeniedImports } from '../../src/import-protection/rewrite'
 
@@ -181,5 +182,34 @@ describe('rewriteDeniedImports', () => {
       new Set(['./secret.server']),
     )
     expect(result).toBeUndefined()
+  })
+
+  test('rewritten modules evaluate with mock values for every specifier form', async () => {
+    const mockModule = `data:text/javascript,${encodeURIComponent(
+      `export default new Proxy({}, { get: (_, key) => typeof key === 'string' ? 'mock:' + key : undefined })`,
+    )}`
+    const rewritten = rewriteDeniedImports(
+      `import 'denied'
+import def, { type T, value, "kebab-name" as kebab } from 'denied' with { type: 'json' }
+import * as ns from 'denied'
+export { type U, reexported, reexported as "string export", "a-b" as ab } from 'denied'
+export { default as renamedDefault } from 'denied'
+export const seen: T = [def === ns, value, kebab] as unknown as T
+`,
+      '/test/module.ts',
+      new Set(['denied']),
+      () => mockModule,
+    )
+    const { code } = await transformWithOxc(rewritten!.code, 'module.ts')
+    const module = await import(
+      /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(code)}`
+    )
+    expect({ ...module }).toEqual({
+      seen: [true, 'mock:value', 'mock:kebab-name'],
+      reexported: 'mock:reexported',
+      'string export': 'mock:reexported',
+      ab: 'mock:a-b',
+      renamedDefault: 'mock:default',
+    })
   })
 })
