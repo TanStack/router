@@ -16,8 +16,18 @@ import type { RecognizerTable } from './values'
 export interface TargetFacts {
   exists: boolean
   marker: 'server-only' | 'client-only' | 'conflict' | null
+  /** Own export names (`default` included); `export *` targets are in `stars`. */
   exportNames: Array<string>
+  /** Specifiers of `export * from` (not followed: consumers resolve them). */
+  stars: Array<string>
+  /** Specifiers the module evaluates when it is evaluated (non-type imports and re-exports). */
+  imports: Array<string>
+  /** An ES module (false: CommonJS, script or unparseable — exports unknown). */
+  esm: boolean
+  /** Own top-level effects or a bare import (transitive classification is the consumer's, R36). */
   effectful: boolean
+  /** Its own statements have effects, module loading (`imports`) aside. */
+  codeEffects: boolean
   effectProvenance: 'own' | 'import' | 'package' | null
   digest: string
 }
@@ -52,7 +62,11 @@ const MISSING_TARGET: Omit<TargetFacts, 'digest'> = {
   exists: false,
   marker: null,
   exportNames: [],
+  stars: [],
+  imports: [],
+  esm: false,
   effectful: true,
+  codeEffects: true,
   effectProvenance: null,
 }
 
@@ -67,6 +81,11 @@ export class RawFactsCache {
   >()
 
   constructor(private readonly opts: RawFactsOptions) {}
+
+  /** The marker specifiers every analysis of this session uses (transform and raw reads agree). */
+  get markerSpecifiers(): RawFactsOptions['markerSpecifiers'] {
+    return this.opts.markerSpecifiers
+  }
 
   /** The known (possibly stale-marked) revision, without reading. */
   peekRevision(
@@ -187,7 +206,11 @@ export class RawFactsCache {
         exists: true,
         marker: null,
         exportNames: [],
+        stars: [],
+        imports: [],
+        esm: false,
         effectful: true,
+        codeEffects: true,
         effectProvenance: 'own' as const,
       }
       return {
@@ -219,11 +242,31 @@ export class RawFactsCache {
     )
     const exportNames = Object.keys(summary.exports).sort()
     const own = analysis.ownEffects
+    const imports: Array<string> = []
+    const evaluates = (spec: string) => {
+      if (!imports.includes(spec)) {
+        imports.push(spec)
+      }
+    }
+    for (const i of analysis.imports) {
+      if (!i.typeOnly && (i.bare || i.specifiers.some((s) => !s.typeOnly))) {
+        evaluates(i.specifier)
+      }
+    }
+    for (const r of analysis.reexports) {
+      if (!r.typeOnly) {
+        evaluates(r.specifier)
+      }
+    }
     const tf: Omit<TargetFacts, 'digest'> = {
       exists: true,
       marker: analysis.markers,
       exportNames,
+      stars: [...summary.stars],
+      imports,
+      esm: analysis.sourceType === 'module',
       effectful: own || analysis.imports.some((i) => i.bare && !i.typeOnly),
+      codeEffects: analysis.codeEffects,
       effectProvenance: own
         ? 'own'
         : analysis.imports.some((i) => i.bare && !i.typeOnly)

@@ -30,6 +30,7 @@ import type {
   CompileOutput,
   CompilerCaches,
   HostServices,
+  InputSourceMap,
   Planner,
   PolicyContext,
   PrefetchContext,
@@ -266,6 +267,7 @@ async function runAttempt(
   }
   const t0 = new ModuleAnalysis(parsed.file, parsed.source, {
     path: identity.path,
+    markerSpecifiers: host.rawFacts.markerSpecifiers,
   })
   const cjs = t0.sourceType !== 'module' || isCommonJsPath(identity.path)
   const gateCtx = (p: Planner) => ({
@@ -393,6 +395,16 @@ async function runAttempt(
   }
 
   // ---- C: per-output edge policy (async) ----------------------------------------
+  let inputMap: InputSourceMap | null | undefined
+  const readInputMap = (): InputSourceMap | null => {
+    if (inputMap === undefined) {
+      inputMap =
+        typeof input.inputMap === 'function'
+          ? input.inputMap()
+          : (input.inputMap ?? null)
+    }
+    return inputMap
+  }
   for (const output of Object.keys(emitPlan.outputs) as Array<OutputId>) {
     const recipe = emitPlan.outputs[output]!
     const importerId = recipe.derivedId ?? identity.canonicalId
@@ -405,6 +417,8 @@ async function runAttempt(
         env,
         config: input.config.perPlanner[p.name],
         host,
+        code: input.code,
+        inputMap: readInputMap,
         ledger,
         resolve: (spec, importer) => resolveFrom(spec, importer ?? importerId),
         targetFacts: targetFactsOf,
@@ -483,9 +497,9 @@ function tier0Plan(
     const form = imp.bare ? 'bare' : 'static'
     const k = edgeKey(imp.specifier, form)
     mark(imp.specifierRange, k)
-    const names = imp.specifiers
-      .filter((s) => !s.typeOnly)
-      .map((s) => s.imported)
+    // binding edge iff a specifier is used as a value (an import whose
+    // bindings are unused, or only used as types, is an evaluation edge)
+    const names = t0.importEdgeNames(imp)
     edges.env!.push({
       output: 'env',
       importerId: identity.canonicalId,

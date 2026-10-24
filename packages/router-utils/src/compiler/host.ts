@@ -26,12 +26,24 @@ export interface CompileConfig {
   perPlanner: Record<string, unknown>
 }
 
+/** A source map another plugin produced for the input text (any number of sources). */
+export interface InputSourceMap {
+  version: number | string
+  sources: Array<string | null>
+  mappings: string
+  names?: Array<string>
+  sourceRoot?: string
+  sourcesContent?: Array<string | null>
+  file?: string
+}
+
 export interface CompileInput {
   /** Host id as received (env or derived). */
   id: string
   /** The text the bundler hands us for THIS id. */
   code: string
-  inputMap?: RawSourceMap | null
+  /** The map of `code` to the original source (or a getter, read only when needed). */
+  inputMap?: InputSourceMap | null | (() => InputSourceMap | null)
   env: EnvInfo
   planners: ReadonlyArray<Planner>
   config: CompileConfig
@@ -100,6 +112,10 @@ export interface PolicyContext {
   env: EnvInfo
   config: unknown
   host: HostServices
+  /** The input text of this compile (the plan's offsets index it). */
+  code: string
+  /** The input text's map to the original source (read lazily; null when none). */
+  inputMap: () => InputSourceMap | null
   ledger: DependencyLedger
   resolve: (
     specifier: string,
