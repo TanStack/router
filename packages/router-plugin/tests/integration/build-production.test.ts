@@ -7,13 +7,36 @@
  */
 import { describe, test } from 'vitest'
 import { frameworks } from '../build-harness'
-import { expectProductionClientBundle, timeout } from '../production-bundle'
+import {
+  expectProductionClientBundle,
+  routeShapes,
+  timeout,
+} from '../production-bundle'
 
 describe.each(['vite', 'rspack'] as const)('%s', (bundler) => {
   test.each(frameworks)(
     'a production %s client bundle has no dev-only code',
     async (framework) => {
       await expectProductionClientBundle(bundler, framework, true)
+    },
+    timeout,
+  )
+
+  // Routes whose route HMR compile differs from the plain route's (SPEC
+  // J3.7, G7)
+  test.each(
+    routeShapes.filter(({ name }) =>
+      [
+        'a route with lowercase components',
+        'a root route',
+        'a root route with context',
+        'an explicitly undefined component',
+      ].includes(name),
+    ),
+  )(
+    'a production client bundle of $name has no dev-only code',
+    async ({ route }) => {
+      await expectProductionClientBundle(bundler, 'react', true, route)
     },
     timeout,
   )

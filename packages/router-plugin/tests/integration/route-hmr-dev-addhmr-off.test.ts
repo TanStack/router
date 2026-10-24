@@ -11,7 +11,8 @@
  * framework's plugin in a real Vite dev server), with a page of its own
  * that stays open across the edit (`openPage`), with the real Vite client.
  * Source: the add-hmr `@false` snapshots (every fixture compiled with
- * `addHmr: false`). Production bundles: build-production*.test.ts.
+ * `addHmr: false`). Production bundles of these routes:
+ * build-production*.test.ts.
  *
  * The router plugin's Rspack entry on an Rsbuild dev server (webpack's hot
  * API, `route-hmr-page.ts`): the same outcome, decided the same way (the
@@ -27,95 +28,15 @@ import {
   settlePage,
   trackRequests,
 } from '@tanstack/compiler-test-utils/hmr-sync'
-import { entryFile, head, loadRoute, probeFile } from '../route-app'
+import { entryFile, loadRoute, probeFile } from '../route-app'
+import { routeShapes } from '../production-bundle'
 import { openRouteHmrPage } from '../route-hmr-page'
 import { openWebpackHmrPage } from '../webpack-hmr-page'
 import type { TargetFramework } from '../route-app'
 
 const timeout = 60_000
 
-const fileRoute = (
-  options: string,
-  declarations = '',
-  framework: TargetFramework = 'react',
-) => `import { createFileRoute } from '@tanstack/${framework}-router'
-${declarations}
-export const Route = createFileRoute('/')({
-  loader: () => 'data',
-  ${options}
-})`
-
-const posts = `function PostsComponent() {
-  return <div>posts</div>
-}
-function PostsErrorComponent() {
-  return <div>Error loading posts</div>
-}`
-
-const routes: Array<{
-  name: string
-  route: string
-  targetFramework?: TargetFramework
-}> = [
-  {
-    name: 'a split route',
-    route: fileRoute('component: PostsComponent,', posts),
-  },
-  {
-    name: 'a route with two split components',
-    route: fileRoute(
-      'component: PostsComponent,\n  errorComponent: PostsErrorComponent,',
-      posts,
-    ),
-  },
-  {
-    name: 'a route with lowercase components',
-    route: `${head}export const Route = createFileRoute('/')({
-  pendingComponent: pendingComponent,
-  errorComponent: errorComponent,
-  component: component,
-})
-function pendingComponent() {
-  return <div>Pending</div>
-}
-function errorComponent() {
-  return <div>Error</div>
-}
-function component() {
-  return <div>Hello</div>
-}`,
-  },
-  {
-    name: 'a root route',
-    route: `import { createRootRoute } from '@tanstack/react-router'
-export const Route = createRootRoute({
-  shellComponent: ({ children }) => <html>{children}</html>,
-  component: () => <div>root</div>,
-})`,
-  },
-  {
-    name: 'a root route with context',
-    route: `import { createRootRouteWithContext } from '@tanstack/react-router'
-interface MyRouterContext {
-  auth: boolean
-}
-export const Route = createRootRouteWithContext<MyRouterContext>()({
-  component: RootComponent,
-})
-function RootComponent() {
-  return <div>Hello</div>
-}`,
-  },
-  {
-    name: 'an explicitly undefined component',
-    route: `${head}export const Route = createFileRoute('/')({ component: undefined })`,
-  },
-  {
-    name: 'a Solid route',
-    route: fileRoute('component: PostsComponent,', posts, 'solid'),
-    targetFramework: 'solid',
-  },
-]
+const routes = routeShapes
 
 /**
  * Loads the route app with `addHmr`, opens a page of its dev server with a
