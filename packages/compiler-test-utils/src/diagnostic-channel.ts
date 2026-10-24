@@ -104,13 +104,6 @@ export interface DiagnosticChannel {
   close: () => void
 }
 
-export interface DiagnosticChannelOptions {
-  /** Records `console.*` (default `true`). */
-  console?: boolean
-  /** Records direct writes to `process.stdout`/`stderr` (default `true`). */
-  streams?: boolean
-}
-
 const consoleSeverities: Record<ConsoleMethod, Severity> = {
   error: 'error',
   warn: 'warning',
@@ -182,9 +175,7 @@ function quotedOf(item: unknown) {
 }
 
 /** Opens a channel for run()/scope() work, recording until close(). */
-export function openDiagnosticChannel(
-  options: DiagnosticChannelOptions = {},
-): DiagnosticChannel {
+export function openDiagnosticChannel(): DiagnosticChannel {
   const diagnostics: Array<ChannelDiagnostic> = []
   const listeners: Array<(diagnostic: ChannelDiagnostic) => void> = []
   let closed = false
@@ -197,20 +188,11 @@ export function openDiagnosticChannel(
       listener(diagnostic)
     }
   }
-  const recordsConsole = options.console ?? true
-  const recordsStreams = options.streams ?? true
-  const stop =
-    recordsConsole || recordsStreams
-      ? listen({
-          console: recordsConsole,
-          streams: recordsStreams,
-          receive: (entry) => push(printedDiagnostic(entry)),
-        })
-      : Object.assign(() => {}, {
-          run: <T>(run: () => T) => run(),
-          enter: () => {},
-          claim: () => {},
-        })
+  const stop = listen({
+    console: true,
+    streams: true,
+    receive: (entry) => push(printedDiagnostic(entry)),
+  })
   /** The messages of the compilation reports recorded (`quotedOf`). */
   const compiled: Array<string> = []
   /**
@@ -338,9 +320,8 @@ export function openDiagnosticChannel(
  */
 export async function captureDiagnostics<T>(
   run: (channel: DiagnosticChannel) => T | Promise<T>,
-  options: DiagnosticChannelOptions = {},
 ): Promise<{ result: T; diagnostics: Array<ChannelDiagnostic> }> {
-  const channel = openDiagnosticChannel(options)
+  const channel = openDiagnosticChannel()
   try {
     const result = await channel.run(() => run(channel))
     return { result, diagnostics: [...channel.diagnostics] }

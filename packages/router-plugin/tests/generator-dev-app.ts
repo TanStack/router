@@ -208,7 +208,7 @@ export async function generatorDevApp(
    * stderr carries no severity: it counts as a warning, a report, not as an
    * error), merged (`openDiagnosticChannel`).
    */
-  const channel = openDiagnosticChannel({ console: true, streams: true })
+  const channel = openDiagnosticChannel()
   onTestFinished(() => channel.close())
   const printed = () => channel.diagnostics
   const logs = () =>

@@ -270,7 +270,7 @@ function processOutput(
   root: () => string | undefined,
   registerCleanup: (cleanup: () => Promise<void>) => void,
 ) {
-  const channel = openDiagnosticChannel({ console: true, streams: true })
+  const channel = openDiagnosticChannel()
   const scoped: Array<ChannelDiagnostic> = []
   const unscoped: Array<{ diagnostic: ChannelDiagnostic; alone: boolean }> = []
   openApps.add(id)
