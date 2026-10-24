@@ -13,7 +13,7 @@ Each entry's "Cause" names the product source its comment blames, when it does. 
 implementation, so a rewrite may have no such file. Most root causes are shared by several pins; the bug text then
 says "same root cause as above".
 
-Counts: 364 pin sites in 100 test files (a table test counts once here; Vitest counts each row).
+Counts: 363 pin sites in 100 test files (a table test counts once here; Vitest counts each row).
 
 ## Pins by compiler job
 
@@ -302,7 +302,7 @@ Counts: 364 pin sites in 100 test files (a table test counts once here; Vitest c
 
 ### J3 Route HMR (router-plugin)
 
-25 pins.
+24 pins.
 
 #### `router-plugin/tests/integration/build-production-webpack-unsplit.test.ts`
 
@@ -310,7 +310,6 @@ Counts: 364 pin sites in 100 test files (a table test counts once here; Vitest c
 
 #### `router-plugin/tests/integration/build-production.test.ts`
 
-- **a production react client bundle without code splitting has no dev-only code (vite).** Same root cause as the pins below, on Vite: the route HMR plugin has no `apply: 'serve'` and follows `NODE_ENV` at plugin creation. Cause: `router-plugin/src/core/router-composed-plugin.ts`, `router-plugin/src/core/router-hmr-plugin.ts`.
 - **a production %s client bundle without code splitting has no dev-only code.** With automatic code splitting off, the composed router plugin adds the route HMR plugin unless `NODE_ENV` is `production` when the plugin is created, instead of following the bundler's mode. Cause: `router-plugin/src/core/router-composed-plugin.ts`.
 
 #### `router-plugin/tests/integration/known-bugs-route-hmr-components.test.ts`

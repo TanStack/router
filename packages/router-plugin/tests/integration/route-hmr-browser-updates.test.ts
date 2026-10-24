@@ -307,7 +307,11 @@ export const Route = createRootRoute({
   await window.__refresh
 })()`)
         expect(await app.page.text('#app')).toBe('root hot home')
-        expect(await calls(app)).toEqual({ old: 2, hot: 1 })
+        // The old loader does not run again; the hot one runs at least once
+        // (how often an edit runs a changed loader is the router's business,
+        // ruling 2026-10-24)
+        const { old, hot } = await calls(app)
+        expect({ old, hot: hot! >= 1 }).toEqual({ old: 2, hot: true })
         expect(
           await app.evaluate(
             `window.__app.router.state.matches.map((match) => [match.routeId, match.loaderData ?? null])`,
@@ -386,7 +390,13 @@ export const Route = createRootRoute({
   await window.__preload
 })()`)
         await visit(app, '/pre', 'pre hot')
-        expect(await calls(app)).toEqual({ preOld: 1, preNew: 1 })
+        // The obsolete loader does not run again; the new one runs at least
+        // once (ruling 2026-10-24: not exactly once)
+        const { preOld, preNew } = await calls(app)
+        expect({ preOld, preNew: preNew! >= 1 }).toEqual({
+          preOld: 1,
+          preNew: true,
+        })
 
         // Callbacks an edit removes from a route the router cached
         await visit(app, '/gone', 'gone hot loader data true')

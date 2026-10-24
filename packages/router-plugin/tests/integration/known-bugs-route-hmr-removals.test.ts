@@ -8,7 +8,7 @@
  * See known-bugs-route-hmr.test.ts for how the pins observe the page.
  */
 import { describe, test } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
+import { isAppError, openRouteHmrPage } from '../route-hmr-page'
 import { editRoute, inPlace } from '../route-hmr-edit'
 import type { TestContext } from 'vitest'
 import type { RouteHmrPageOptions } from '../route-hmr-page'
@@ -70,7 +70,9 @@ export const Route = createFileRoute('/')({
     )
     return {
       reloaded: result.reloaded,
-      errors: result.errors.filter((error) => !error.includes('loader failed')),
+      errors: result.errors.filter(
+        (error) => !isAppError(error, 'loader failed'),
+      ),
     }
   }
 
@@ -180,16 +182,11 @@ export { MyRoute as Route }
           onTestFinished,
           files: { 'routes/index.tsx': aliasedRoute('v1') },
           ready: 'page data v1',
-          // Rsbuild: the page never renders
-          readyTimeout: 4_000,
         })
         expect(
           await app.edit(
             { 'routes/index.tsx': aliasedRoute('v2') },
             'page data v2',
-            // Vite: the update's callback throws, so the client never
-            // reports it applied
-            { timeout: 4_000 },
           ),
         ).toEqual(inPlace)
       },
@@ -257,7 +254,6 @@ export const Route = createFileRoute('/')({
         pluginOptions: { autoCodeSplitting: false },
         files: { 'routes/index.tsx': errorBoundaryRoute(true) },
         ready: 'fallback shown',
-        readyTimeout: 4_000,
       })
     },
   )

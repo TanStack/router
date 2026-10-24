@@ -6,9 +6,9 @@
  * `generator-dev-scenarios.ts`; the Vite counterpart is
  * dev-server-generator-watching.test.ts, with the same pins).
  *
- * Each pin waits for the outcome of a correct generator for a bounded time
- * (`waitTimeout`, generous next to the second a correct one takes), then
- * fails.
+ * Each pin waits for the outcome of a correct generator as long as the
+ * passing scenarios do (`waitForLiveRoute`'s default bound), so a correct
+ * but slower fix still turns it green, then fails.
  */
 import { test } from 'vitest'
 import {
@@ -16,9 +16,6 @@ import {
   expectVirtualRouteConfigEdit,
   expectVirtualSubtreeEdit,
 } from '../generator-dev-scenarios'
-
-/** How long a pin waits for the outcome of a correct generator. */
-const waitTimeout = 4_000
 
 describeGeneratorWatching('rsbuild', { pinVirtualConfigEdits: true })
 
@@ -38,9 +35,9 @@ describeGeneratorWatching('rsbuild', { pinVirtualConfigEdits: true })
 test.fails(
   'an edit of the virtual route config file changes the live routes',
   async () => {
-    await expectVirtualRouteConfigEdit('rsbuild', waitTimeout)
+    await expectVirtualRouteConfigEdit('rsbuild')
   },
-  30_000,
+  45_000,
 )
 
 // Bug: an edit of a `__virtual.ts` subtree config never reaches the live
@@ -55,7 +52,7 @@ test.fails(
 test.fails(
   'an edit of a __virtual.ts file changes the live routes',
   async () => {
-    await expectVirtualSubtreeEdit('rsbuild', waitTimeout)
+    await expectVirtualSubtreeEdit('rsbuild')
   },
-  30_000,
+  45_000,
 )

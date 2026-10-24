@@ -80,12 +80,15 @@ export const Route = createRootRoute({})
 export const rootRoute = rootRouteOf('react')
 
 /**
- * SSR entry: re-exports the index route module next to
- * `render(component)`, which preloads a component and renders it to a string.
+ * SSR entry: re-exports the index route's `Route` (what an app's route tree
+ * imports of a route module, so the route module's other exports do not
+ * ship for it) next to `render(component)`, which preloads a component and
+ * renders it to a string. A test that needs another export of a route
+ * module re-exports it by name.
  */
 export const ssrRenderEntry = `import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
-export * from './routes/index'
+export { Route } from './routes/index'
 export async function render(component: any) {
   await component.preload?.()
   return renderToString(createElement(component))
@@ -93,14 +96,14 @@ export async function render(component: any) {
 `
 
 /**
- * Client entry: re-exports the index route module next to
- * `mount(component)`, which preloads a component and renders it into
- * `#root` synchronously.
+ * Client entry: re-exports the index route's `Route` (as the SSR entry)
+ * next to `mount(component)`, which preloads a component and renders it
+ * into `#root` synchronously.
  */
 export const clientMountEntry = `import { createElement } from 'react'
 import { flushSync } from 'react-dom'
 import { createRoot } from 'react-dom/client'
-export * from './routes/index'
+export { Route } from './routes/index'
 export async function mount(component: any) {
   await component.preload?.()
   const root = createRoot(document.getElementById('root')!)
@@ -114,7 +117,7 @@ const entries: Record<Framework, Record<BuildEnv, string>> = {
   solid: {
     ssr: `import { createComponent } from 'solid-js'
 import { renderToString } from 'solid-js/web'
-export * from './routes/index'
+export { Route } from './routes/index'
 export async function render(component: any) {
   await component.preload?.()
   return renderToString(() => createComponent(component, {}))
@@ -122,7 +125,7 @@ export async function render(component: any) {
 `,
     client: `import { createComponent } from 'solid-js'
 import { render } from 'solid-js/web'
-export * from './routes/index'
+export { Route } from './routes/index'
 export async function mount(component: any) {
   await component.preload?.()
   render(() => createComponent(component, {}), document.getElementById('root')!)
@@ -132,14 +135,14 @@ export async function mount(component: any) {
   vue: {
     ssr: `import { createSSRApp, h } from 'vue'
 import { renderToString } from 'vue/server-renderer'
-export * from './routes/index'
+export { Route } from './routes/index'
 export async function render(component: any) {
   await component.preload?.()
   return renderToString(createSSRApp({ render: () => h(component) }))
 }
 `,
     client: `import { createApp, h } from 'vue'
-export * from './routes/index'
+export { Route } from './routes/index'
 export async function mount(component: any) {
   await component.preload?.()
   createApp({ render: () => h(component) }).mount('#root')

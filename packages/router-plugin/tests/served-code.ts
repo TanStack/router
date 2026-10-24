@@ -17,6 +17,16 @@ export function servedImports(code: string): Array<string> {
   for (const statement of module.staticImports) {
     requests.push(statement.moduleRequest.value)
   }
+  for (const statement of module.dynamicImports) {
+    const request = code.slice(
+      statement.moduleRequest.start,
+      statement.moduleRequest.end,
+    )
+    const literal = /^(['"`])([^'"`\\$]*)\1$/.exec(request)
+    if (literal) {
+      requests.push(literal[2]!)
+    }
+  }
   for (const statement of module.staticExports) {
     for (const entry of statement.entries) {
       if (entry.moduleRequest) {
@@ -55,39 +65,94 @@ function walk(node: unknown, visit: (node: Node, parent?: Node) => void) {
 }
 
 /**
- * Whether a served module reads the binding `name` that it imports from
- * `request` (an unused import specifier is free, SPEC §5.9; reading it
- * would carry the code that reads it).
+ * Whether a served module reads the binding `name` (any binding when
+ * `name` is left out) that it imports from `request` (its path, or a
+ * pattern of its request), by a named or default import, or as a member of
+ * a namespace import (a namespace read whole reads every binding), or
+ * re-exports it. An unused import specifier is free (SPEC §5.9: the
+ * bundler drops it); reading it would carry the code that reads it.
  */
-export function readsImport(code: string, request: string, name: string) {
+export function readsImport(
+  code: string,
+  request: string | RegExp,
+  name?: string,
+) {
   const { program } = parseSync('module.js', code, { sourceType: 'module' })
+  const from = (source: Node | null | undefined) =>
+    source !== null &&
+    source !== undefined &&
+    (typeof request === 'string'
+      ? String(source.value).split('?')[0] === request
+      : request.test(String(source.value)))
+  const exported = (node: Node) => (node.name ?? node.value) as string
   const locals = new Set<string>()
+  const namespaces = new Set<string>()
+  let reExports = false
   for (const statement of program.body as Array<Node>) {
-    if (
-      statement.type === 'ImportDeclaration' &&
-      String(statement.source.value).split('?')[0] === request
-    ) {
+    if (statement.type === 'ImportDeclaration' && from(statement.source)) {
       for (const specifier of statement.specifiers as Array<Node>) {
-        if (
-          specifier.type === 'ImportSpecifier' &&
-          (specifier.imported.name ?? specifier.imported.value) === name
+        if (specifier.importKind === 'type') {
+          continue
+        }
+        if (specifier.type === 'ImportNamespaceSpecifier') {
+          namespaces.add(specifier.local.name)
+        } else if (
+          name === undefined ||
+          (specifier.type === 'ImportDefaultSpecifier'
+            ? name === 'default'
+            : exported(specifier.imported) === name)
         ) {
           locals.add(specifier.local.name)
         }
       }
+    } else if (
+      (statement.type === 'ExportAllDeclaration' ||
+        statement.type === 'ExportNamedDeclaration') &&
+      from(statement.source)
+    ) {
+      reExports ||=
+        statement.type === 'ExportAllDeclaration' ||
+        (statement.specifiers as Array<Node>).some(
+          (specifier) =>
+            name === undefined || exported(specifier.local) === name,
+        )
     }
   }
   let reads = 0
   walk(program, (node, parent) => {
     if (
-      node.type === 'Identifier' &&
-      locals.has(node.name) &&
-      parent?.type !== 'ImportSpecifier'
+      node.type !== 'Identifier' ||
+      parent?.type === 'ImportSpecifier' ||
+      parent?.type === 'ImportDefaultSpecifier' ||
+      parent?.type === 'ImportNamespaceSpecifier' ||
+      // A property name, not a read of the binding
+      (parent?.type === 'MemberExpression' &&
+        parent.property === node &&
+        !parent.computed) ||
+      (parent?.type === 'Property' &&
+        parent.key === node &&
+        !parent.computed &&
+        !parent.shorthand)
     ) {
+      return
+    }
+    if (locals.has(node.name)) {
       reads++
+    } else if (namespaces.has(node.name)) {
+      const member =
+        parent?.type === 'MemberExpression' && parent.object === node
+          ? parent.computed
+            ? parent.property.type === 'Literal'
+              ? String(parent.property.value)
+              : undefined
+            : parent.property.name
+          : undefined
+      if (name === undefined || member === undefined || member === name) {
+        reads++
+      }
     }
   })
-  return reads > 0
+  return reExports || reads > 0
 }
 
 const functionTypes = new Set([

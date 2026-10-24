@@ -130,10 +130,7 @@ export const Route = createFileRoute('/')({ component: Page })
         'routes/__root.tsx': rootRoute,
         'routes/index.tsx': route('v1'),
         // Like the route tree, the entry imports only `Route`.
-        'entry.ts': clientMountEntry.replace(
-          "export * from './routes/index'",
-          "export { Route } from './routes/index'",
-        ),
+        'entry.ts': clientMountEntry,
       },
       rebuildAfter: { 'routes/index.tsx': route('v2') },
     })

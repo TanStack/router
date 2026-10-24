@@ -6,8 +6,11 @@
  */
 import { BuildError } from '@tanstack/compiler-test-utils/build-harness'
 import { describe, expect, test } from 'vitest'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
-import { build, head, routeApp } from '../build-harness'
+import {
+  findDiagnostics,
+  mentionsFile,
+} from '@tanstack/compiler-test-utils/diagnostics'
+import { build, clientMountEntry, head, routeApp } from '../build-harness'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
 
 /**
@@ -134,10 +137,14 @@ export const Route = createFileRoute('/')({
       })
       return app.where('MARK_SERVER_SECRET')
     } catch (error) {
-      // A refusal names the route file
+      // A refusal names the route file (the symlink or the file it links to)
       if (
         error instanceof BuildError &&
-        error.errors.join('\n').includes('index.tsx')
+        error.errors.some(
+          (text) =>
+            mentionsFile(text, 'routes/index.tsx') ||
+            mentionsFile(text, 'linked/index.tsx'),
+        )
       ) {
         return 'refused'
       }
@@ -181,11 +188,12 @@ describe('production builds', () => {
   /**
    * A production client build, with `NODE_ENV` as given (`null`: unset), of
    * a route whose exported component the app's entry imports eagerly
-   * (`export * from './routes/index'`): a pattern the compiler may leave
+   * (`export { Page } from './routes/index'`): a pattern the compiler may leave
    * unsplit, telling the user at build time (J2.8). Mounts the route in the
    * browser; returns whether the component was split, whether the build
-   * warned naming the route file, and whether the page logged a diagnostic
-   * naming the route file (a development warning shipped in the bundle).
+   * warned naming the route file, and whether the page logged anything (a
+   * production bundle of this app logs nothing: a development warning
+   * shipped in the bundle, whatever it names).
    */
   async function productionWarnings(bundler: Bundler, nodeEnv?: null) {
     const app = await build({
@@ -201,7 +209,12 @@ export const Route = createFileRoute('/')({
   errorComponent: () => <p>error</p>,
 })
 `,
-        { env: 'client' },
+        {
+          env: 'client',
+          files: {
+            'entry.ts': `${clientMountEntry}export { Page } from './routes/index'\n`,
+          },
+        },
       ),
     })
     const run = await app.run(
@@ -217,7 +230,7 @@ export const Route = createFileRoute('/')({
           ...namingRoute,
           severity: 'warning',
         }).length > 0,
-      loggedInPage: findDiagnostics(run.logs, namingRoute).length > 0,
+      loggedInPage: run.logs.length > 0,
     }
   }
 

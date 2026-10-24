@@ -96,7 +96,10 @@ function bindingsOf(code: string, fileName: string) {
 /**
  * `code` with the spans the generator owns replaced by markers, and without
  * the lines that held nothing but import statements (the import statements
- * are compared by what they bind).
+ * are compared by what they bind). Blank lines next to those lines, or at
+ * the start of the file, go too: a generator that deletes exactly an import
+ * statement leaves its line break and the blanks around it (J1.2 pins the
+ * bytes outside the import statements, not the blank lines between them).
  */
 function unownedText(code: string, fileName: string) {
   const spans: Array<[number, number, string]> = importsOf(code, fileName).map(
@@ -115,13 +118,25 @@ function unownedText(code: string, fileName: string) {
     last = end
   }
   text += code.slice(last)
-  return text
-    .split(/(?<=\n)/)
-    .filter(
-      (line) =>
-        !(line.includes(owned) && line.replaceAll(owned, '').trim() === ''),
-    )
-    .join('')
+  const lines = text.split(/(?<=\n|\r(?!\n))/)
+  const blank = (line: string) => line.replaceAll(owned, '').trim() === ''
+  let kept = ''
+  for (let index = 0; index < lines.length; ) {
+    if (!blank(lines[index]!)) {
+      kept += lines[index++]
+      continue
+    }
+    // A run of blank lines and lines holding import statements only
+    const start = index
+    while (index < lines.length && blank(lines[index]!)) {
+      index++
+    }
+    const run = lines.slice(start, index)
+    if (start > 0 && !run.some((line) => line.includes(owned))) {
+      kept += run.join('')
+    }
+  }
+  return kept
 }
 
 /**

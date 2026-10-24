@@ -11,6 +11,7 @@
  * plugin), and the dev server's SSR module runner (`route-app.ts`).
  */
 import { SourceMap } from 'node:module'
+import { parseSync } from 'vite'
 import { describe, expect, it, test } from 'vitest'
 import { renderRoutePath, routerDevServer } from '../../dev-server'
 import { expectValidModules, head, loadRoute } from '../../route-app'
@@ -308,13 +309,42 @@ export const Route = createFileRoute('/')({ 'component': Page, 'errorComponent':
 // dev-only code: integration/build-production.test.ts and
 // build-production-webpack.test.ts (decided on the bundle, SPEC G7).
 
+/** Where the string literal `value` starts in `code` (an independent parse). */
+function markerOffset(code: string, value: string) {
+  let found: number | undefined
+  const visit = (node: unknown) => {
+    if (found !== undefined || !node || typeof node !== 'object') {
+      return
+    }
+    if (Array.isArray(node)) {
+      node.forEach(visit)
+      return
+    }
+    const current = node as Record<string, any>
+    if (current.type === 'Literal' && current.value === value) {
+      found = current.start
+      return
+    }
+    Object.values(current).forEach(visit)
+  }
+  visit(parseSync('module.js', code, { sourceType: 'module' }).program)
+  expect(
+    found,
+    `the served module holds ${JSON.stringify(value)}`,
+  ).toBeDefined()
+  return found!
+}
+
 // The route HMR plugin that `tanstackRouter` adds in development when
 // automatic code splitting is off, in a Vite dev server.
 describe('route HMR in a Vite dev server without automatic code splitting', () => {
   const timeout = 30_000
-  // Vite's SSR transform serves `import.meta` as `__vite_ssr_import_meta__`
+  // Vite's SSR transform serves `import.meta` as `__vite_ssr_import_meta__`;
+  // the hot API read as a member, whatever its spelling
   const hasRouteHmr = (code: string) =>
-    /(?:import\.meta|__vite_ssr_import_meta__)\.hot\b/.test(code)
+    /(?:import\.meta|__vite_ssr_import_meta__)\s*(?:\.\s*hot\b|\[\s*(['"`])hot\1\s*\])/.test(
+      code,
+    )
   const loaderRoute = (target: TargetFramework = 'react') =>
     `import { createFileRoute } from '@tanstack/${target}-router'
 export const Route = createFileRoute('/')({ loader: () => 'x' })`
@@ -349,6 +379,13 @@ export const Route = createFileRoute('/')({ loader: () => 'x' })`
       for (const [url, code] of Object.entries(served)) {
         expect(hasRouteHmr(code), url).toBe(false)
       }
+      // The environment the option names gets route HMR code the check
+      // above recognises (otherwise that check would prove nothing)
+      const client = await server.load('/routes/index.tsx', {
+        environment: 'client',
+        skip: /^\/@(?:vite|react-refresh)\b|^[^./]/,
+      })
+      expect(Object.values(client).some(hasRouteHmr)).toBe(true)
     },
     timeout,
   )
@@ -380,7 +417,10 @@ export const Route = createFileRoute('/')({
           '/routes/index.tsx',
         )
       const code = result!.code
-      const before = code.slice(0, code.indexOf('throw new Error'))
+      // Where the served module holds the user's marker (its own string
+      // literal: the code around it, a helper the compiler adds before it
+      // included, is free)
+      const before = code.slice(0, markerOffset(code, 'MARK_THROW '))
       const line = before.split('\n').length - 1
       const column = before.length - before.lastIndexOf('\n') - 1
       const entry = new SourceMap(result!.map as any).findEntry(
@@ -388,7 +428,7 @@ export const Route = createFileRoute('/')({
         column,
       ) as { originalLine: number }
       expect(entry.originalLine + 1).toBe(
-        route.slice(0, route.indexOf('throw new Error')).split('\n').length,
+        route.slice(0, route.indexOf("'MARK_THROW '")).split('\n').length,
       )
     },
     timeout,

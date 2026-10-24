@@ -33,8 +33,8 @@ const packageFiles = (name: string, source: string) => ({
  * The code of every module of the route as the dev server serves it,
  * following the dev server's own module graph from the route module (the
  * modules it imports, statically or lazily, that are files of the app or
- * derived from them), without running them: for code the browser cannot
- * run yet.
+ * derived from them, or virtual modules), without running them: for code
+ * the browser cannot run yet.
  */
 async function servedGraph(route: RouteApp) {
   const graph = route.host.dev.vite.environments.client.moduleGraph
@@ -49,8 +49,10 @@ async function servedGraph(route: RouteApp) {
     const node = await graph.getModuleByUrl(url)
     for (const imported of node?.importedModules ?? []) {
       if (
-        imported.file?.startsWith(route.host.root) &&
-        !imported.file.includes('/node_modules/')
+        // A virtual module (a plugin's id: a compiler's support module)
+        imported.id?.startsWith('\0') ||
+        (imported.file?.startsWith(route.host.root) &&
+          !imported.file.includes('/node_modules/'))
       ) {
         queue.push(imported.url)
       }
@@ -273,7 +275,7 @@ export const Route = createFileRoute('/')({
 `,
       { files: { 'data.json': '{ "title": "from json" }' } },
     )
-    expect(await route.requested()).not.toContain('/data.json?import')
+    expect(await route.requested()).not.toContain('/data.json')
     expect(await route.run(`return render('component')`)).toBe(
       '<p>from json</p>',
     )

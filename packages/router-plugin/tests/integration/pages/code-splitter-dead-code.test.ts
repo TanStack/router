@@ -5,10 +5,10 @@
  * real Vite dev server with the public router plugin (`route-app.ts`); the
  * route's other modules are files of the app, which record what runs. D5
  * absence checks read the modules the page loads: a user marker (a decoded
- * string of the user's code) or an import of a binding (type-only imports
- * left out), never declared names or printed text.
+ * string of the user's code), never declared names, import specifiers or
+ * printed text; what an unused import leaves is judged in a production
+ * build of the app, after tree-shaking (ruling 2026-10-24).
  */
-import { parseSync } from 'vite'
 import { describe, expect, it } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import {
@@ -16,6 +16,7 @@ import {
   head,
   holdsMarker,
   loadRoute,
+  uncaughtErrors,
 } from '../../route-app'
 import type { RouteAppOptions } from '../../route-app'
 
@@ -25,32 +26,6 @@ import type { RouteAppOptions } from '../../route-app'
  * so the removal runs on a different program.
  */
 const hmrModes = [{ hmr: false }, { hmr: true }]
-
-/**
- * Value bindings a served module imports from a module whose request
- * matches `source` (type-only specifiers left out): an independent parse of
- * the module as the page receives it, for D5 checks that a binding only a
- * split option reads is no longer imported by what loads with the route.
- */
-function importedNamesFrom(code: string, source: RegExp) {
-  return parseSync('module.js', code, {
-    sourceType: 'module',
-  })
-    .module.staticImports.filter((statement) =>
-      source.test(statement.moduleRequest.value),
-    )
-    .flatMap((statement) =>
-      statement.entries
-        .filter((entry) => !entry.isType)
-        .map((entry) =>
-          entry.importName.kind === 'Default'
-            ? 'default'
-            : entry.importName.kind === 'NamespaceObject'
-              ? '*'
-              : entry.importName.name!,
-        ),
-    )
-}
 
 /** A package of the app (`node_modules/<name>`), ES module `source`. */
 function appPackage(name: string, source: string) {
@@ -156,7 +131,7 @@ export const Route = createFileRoute('/')({ component: () => <div /> })
           await route.runPage(`await new Promise((resolve) => setTimeout(resolve))
 return { calls: [...(await app('calls.ts')).calls], html: await render('component') }`)
         expect(run.result).toEqual({ calls: expected, html: '<div></div>' })
-        expect(run.errors).toEqual([])
+        expect(uncaughtErrors(run)).toEqual([])
         await expectValidModules(route)
       },
     )
@@ -290,7 +265,7 @@ export const Route = createFileRoute('/')({
   it('stops importing what only the split component reads from a module with an unused specifier', async () => {
     const route = await loadRoute(
       `${head}import { used, preUnused } from 'bar'
-const b = function apples() { return used }
+const b = function apples() { return 'MARK_APPLES ' + used }
 export const Route = createFileRoute('/')({
   loader: () => 'data',
   component: () => <p>{b()}</p>,
@@ -306,15 +281,14 @@ export const Route = createFileRoute('/')({
         ),
       },
     )
-    // What loads with the route no longer imports `used` (whether it keeps
-    // loading `bar` is free).
-    expect(
-      (await route.eagerModules()).flatMap((code) =>
-        importedNamesFrom(code, /\/node_modules\/bar\//),
-      ),
-    ).not.toContain('used')
     await expectValidModules(route)
-    expect(await route.run(`return render('component')`)).toBe('<p>used</p>')
+    expect(await route.run(`return render('component')`)).toBe(
+      '<p>MARK_APPLES used</p>',
+    )
+    // What loads with the route in a production build no longer holds the
+    // code that reads `used` (whether it keeps loading `bar`, or an import
+    // specifier tree-shaking drops, is free: ruling 2026-10-24).
+    expect((await route.production()).locate('MARK_APPLES').eager).toEqual([])
   })
 
   // That `track` runs once too is pinned in known-bugs-code-splitter.test.ts
@@ -653,7 +627,7 @@ import { keptLib } from 'kept-lib'
 import { sharedLib } from 'shared-lib'
 const sharedUtil = (value?: unknown) => sharedLib(value)
 const removedUtil = () => sharedUtil(removedLib())
-const keptUtil = () => sharedUtil(keptLib())
+const keptUtil = () => sharedUtil(keptLib('MARK_KEPT_UTIL'))
 const Page = (() => {
   const message = removedUtil()
   return () => <div>{String(message)}</div>
@@ -681,8 +655,9 @@ export const Route = createFileRoute('/')({
     await expectValidModules(route)
     if (await route.isLazy('component')) {
       // Nothing that loads with the route requests what only the component
-      // reads, nothing the component loads imports what only the loader
-      // reads.
+      // reads; in a production build, nothing the component loads holds the
+      // code only the loader runs (an import specifier tree-shaking drops
+      // is free: ruling 2026-10-24).
       expect(
         await route.run(
           `return performance.getEntriesByType('resource').map((entry) => new URL(entry.name).pathname)`,
@@ -690,11 +665,9 @@ export const Route = createFileRoute('/')({
       ).not.toContainEqual(
         expect.stringContaining('/node_modules/removed-lib/'),
       )
-      expect(
-        (await route.loadedBy('component')).flatMap((code) =>
-          importedNamesFrom(code, /\/node_modules\/kept-lib\//),
-        ),
-      ).toEqual([])
+      expect((await route.production()).locate('MARK_KEPT_UTIL').lazy).toEqual(
+        [],
+      )
     } else {
       expectDiagnostic(await route.diagnostics(), {
         severity: 'warning',
@@ -745,15 +718,9 @@ export const Route = createFileRoute('/')({
       // What loads with the route holds nothing of the component, what the
       // component loads nothing of the loader; each holds its own.
       const eager = await route.eagerModules()
-      expect(
-        eager.flatMap((code) => importedNamesFrom(code, /^\/messages\.ts/)),
-      ).not.toContain('chunkMessage')
       expect(eager.filter((code) => holdsMarker(code, 'MARK_PAGE'))).toEqual([])
       expect(eager.some((code) => holdsMarker(code, 'MARK_MAIN'))).toBe(true)
       const component = await route.loadedBy('component')
-      expect(
-        component.flatMap((code) => importedNamesFrom(code, /^\/messages\.ts/)),
-      ).not.toContain('mainMessage')
       expect(
         component.filter((code) => holdsMarker(code, 'MARK_MAIN')),
       ).toEqual([])
@@ -764,6 +731,13 @@ export const Route = createFileRoute('/')({
       expect(
         await route.run(`return [options.loader(), await render('component')]`),
       ).toEqual(['MARK_MAIN main', '<div title="MARK_PAGE">chunk</div>'])
+      // In a production build too, after tree-shaking (what each module
+      // imports from './messages' is free: ruling 2026-10-24)
+      const built = await route.production()
+      expect({
+        page: built.locate('MARK_PAGE').eager,
+        main: built.locate('MARK_MAIN').lazy,
+      }).toEqual({ page: [], main: [] })
     },
   )
 

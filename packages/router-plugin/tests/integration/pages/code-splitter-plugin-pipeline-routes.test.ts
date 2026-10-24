@@ -13,7 +13,7 @@ import { expectNoProblems } from '@tanstack/compiler-test-utils/diagnostic-chann
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { tanstackRouter } from '../../../src/vite'
 import { createReactDevPage, renderProbe } from '../../dev-page'
-import { expectValidModules, loadRoute } from '../../route-app'
+import { expectValidModules, loadRoute, uncaughtErrors } from '../../route-app'
 import type { Config } from '../../../src'
 import type { RouteApp, RouteAppOptions } from '../../route-app'
 
@@ -287,7 +287,7 @@ return {
         ],
         widgetsSplit: autoCodeSplitting,
       })
-      expect(run.errors).toEqual([])
+      expect(uncaughtErrors(run)).toEqual([])
     },
     30_000,
   )

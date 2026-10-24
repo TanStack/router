@@ -123,6 +123,11 @@ import { createRoot } from 'react-dom/client'
 import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 export { routeTree }
+/** The routes as a router sees them (their public \`id\`). */
+export const router = createRouter({
+  routeTree,
+  history: createMemoryHistory(),
+})
 export async function renderAt(path: string, text: string) {
   const router = createRouter({
     routeTree,
@@ -180,11 +185,11 @@ const orderOf = (id: string) =>
  * component with its loader's data through the real router.
  */
 const observe = `const loaded = () => [...${loadedModulesExpression}]
-const all = (route) => Object.values(route.children ?? {}).flatMap((child) => [child, ...all(child)])
 const options = ${JSON.stringify(options)}
 const result = {}
-for (const route of all(app.routeTree)) {
-  const id = route.options.id
+for (const route of Object.values(app.router.routesById)) {
+  if (route.isRoot) continue
+  const id = route.id
   const order = id.endsWith('-reverse') ? [...options].reverse() : options
   const lazy = {}
   const loadsWith = {}

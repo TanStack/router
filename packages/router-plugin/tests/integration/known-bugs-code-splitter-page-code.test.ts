@@ -361,12 +361,13 @@ ${component}`,
   const mountEntry = `import { createElement } from 'react'
 import { flushSync } from 'react-dom'
 import { createRoot } from 'react-dom/client'
+import { createMemoryHistory, createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 export { routeTree }
+// The routes as a router sees them (their public \`fullPath\`)
+const router = createRouter({ routeTree, history: createMemoryHistory() })
 async function mountInto(path: string, element: HTMLElement) {
-  const route = (routeTree.children as Array<any>).find(
-    (child) => child.options.path === path,
-  )
+  const route = (router.routesByPath as Record<string, any>)[path]
   await route.options.component.preload?.()
   const root = createRoot(element)
   flushSync(() => root.render(createElement(route.options.component)))

@@ -9,11 +9,11 @@
  * server and run in a real browser page (`./route-app`); what the user is
  * told is read from the dev server's merged diagnostic channel.
  */
-import { parseSync } from 'vite'
 import { describe, expect, test } from 'vitest'
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { expectValidModules, head, loadRoute } from '../../route-app'
+import { servedImports } from '../../served-code'
 import type { RouteApp, RouteAppOptions } from '../../route-app'
 
 /**
@@ -723,26 +723,6 @@ return { rendered, sameInstance: seen.length === 1 && seen[0] === imported }`)
   )
 })
 
-/**
- * The runtime imports (requests, after the dev server's TypeScript
- * transform: no type-only import is left) of a module as the dev server
- * serves it.
- */
-function runtimeImports(code: string) {
-  const { module } = parseSync('module.js', code, { sourceType: 'module' })
-  return [
-    ...module.staticImports.map((entry) => entry.moduleRequest.value),
-    ...module.staticExports.flatMap((entry) =>
-      entry.entries.flatMap((item) =>
-        item.moduleRequest ? [item.moduleRequest.value] : [],
-      ),
-    ),
-    // By path: the dev server adds the time of a module's last hot update
-    // (`?t=…`) to its imports once a file of that path was edited in the
-    // app (an earlier route the host served had one)
-  ].map((request) => request.split('?')[0]!)
-}
-
 describe('TypeScript-only syntax', () => {
   // Bug: the code splitter rejects an ES decorator after `export` (`export
   // @dec class`, valid since TypeScript 5.0): "Decorators must be placed
@@ -911,7 +891,7 @@ const loaded = (await compiled()).filter((request) => !before.has(request))
 return Promise.all(loaded.map(served))`)
       expect(loaded.length).toBeGreaterThan(0)
       expect(
-        loaded.filter((chunk) => runtimeImports(chunk).includes(`/${file}`)),
+        loaded.filter((chunk) => servedImports(chunk).includes(`/${file}`)),
       ).toEqual([])
     },
   )

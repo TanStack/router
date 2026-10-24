@@ -100,3 +100,28 @@ test("the environment's own runner is the strict one (a plugin importing through
     SyntaxError,
   )
 })
+
+test('a virtual module an app module imports (a compiler support module) gets the check too', async () => {
+  const dev = await createDevServer({
+    dir: testsDir,
+    registerCleanup: onTestFinished,
+    files: {
+      ...files,
+      'src/uses-support.ts': `export { read } from 'virtual:support'\n`,
+    },
+    plugins: [
+      {
+        name: 'support',
+        resolveId: (id) =>
+          id === 'virtual:support' ? '\0virtual:support' : undefined,
+        load: (id) =>
+          id === '\0virtual:support'
+            ? `import { absent } from '/src/a.ts'\nexport const read = () => absent\n`
+            : undefined,
+      },
+    ],
+  })
+  await expect(dev.import('/src/uses-support.ts')).rejects.toThrow(
+    /does not provide an export named 'absent'/,
+  )
+})
