@@ -1,4 +1,4 @@
-import { createStream } from 'seroval'
+import { createLiveStream, createStream } from 'seroval'
 
 // Web-only primitives shared by the JSON and SSR RawStream plugins. This
 // module is part of the client bundle: it must not reference `Buffer`, and
@@ -44,20 +44,27 @@ export function decodeText(value: string) {
   return value[0] === 't' ? textEncoder.encode(data) : fromBase64(data)
 }
 
+interface EncodedSink {
+  next: (value: string) => unknown
+  return: (value: undefined) => unknown
+  throw: (error: unknown) => unknown
+}
+
 /**
- * Pump a byte stream into a Seroval stream, one encoded chunk per read.
- * Returns the Seroval stream and a `stop` function that cancels the reader
- * without signalling the Seroval stream; the abort signal and read failures
- * stop the pump and throw through the Seroval stream.
+ * Pump a byte stream into `sink`, one encoded chunk per read. Each sink call
+ * is awaited before the next read, so a sink that settles on acceptance
+ * applies backpressure to the source. Returns a `stop` function that cancels
+ * the reader without signalling the sink; the abort signal and read failures
+ * stop the pump and throw through the sink.
  */
-export function pumpEncodedStream(
+function pumpEncoded(
   readable: ReadableStream<Uint8Array>,
   encode: (value: Uint8Array) => string,
+  sink: EncodedSink,
   signal?: AbortSignal,
 ) {
   signal?.throwIfAborted()
 
-  const stream = createStream<string | undefined>()
   const reader = readable.getReader()
   let active = true
 
@@ -74,11 +81,12 @@ export function pumpEncodedStream(
     release()
     return true
   }
-  const abort = () => {
-    if (stop(signal!.reason)) {
-      stream.throw(signal!.reason)
+  const fail = (error: unknown) => {
+    if (stop(error)) {
+      sink.throw(error)
     }
   }
+  const abort = () => fail(signal!.reason)
 
   signal?.addEventListener('abort', abort)
   ;(async () => {
@@ -90,18 +98,52 @@ export function pumpEncodedStream(
         }
         if (done) {
           release()
-          stream.return(undefined)
+          await sink.return(undefined)
           return
         }
-        stream.next(encode(value))
+        await sink.next(encode(value))
       }
     } catch (error) {
-      if (stop(error)) {
-        stream.throw(error)
-      }
+      fail(error)
     }
   })()
 
+  return stop
+}
+
+/**
+ * Pump a byte stream into a replay Seroval stream for the async JSON
+ * serializers, which collect every chunk before they produce output.
+ */
+export function pumpEncodedStream(
+  readable: ReadableStream<Uint8Array>,
+  encode: (value: Uint8Array) => string,
+  signal?: AbortSignal,
+) {
+  const stream = createStream<string | undefined>()
+  return [stream, pumpEncoded(readable, encode, stream, signal)] as const
+}
+
+/**
+ * Pump a byte stream into a live Seroval stream for the streaming
+ * serializers. The next chunk is read only after the record for the previous
+ * one was accepted, so peak memory scales with one chunk instead of the whole
+ * stream. Disposing the serialization cancels the live stream, which stops the
+ * pump and forwards the dispose reason to the source.
+ */
+export function pumpEncodedLiveStream(
+  readable: ReadableStream<Uint8Array>,
+  encode: (value: Uint8Array) => string,
+) {
+  const { stream, producer } = createLiveStream<string | undefined>({
+    onCancel: (reason) => stop(reason),
+  })
+  const stop = pumpEncoded(readable, encode, {
+    next: (value) => producer.write(value),
+    return: (value) => producer.close(value),
+    // A cancelled live stream rejects the throw; nothing is left to notify.
+    throw: (error) => producer.fail(error).catch(() => {}),
+  })
   return [stream, stop] as const
 }
 

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   createStream,
   crossSerializeStream,
+  getCrossReferenceHeader,
   toCrossJSONAsync,
   toCrossJSONStream,
   fromCrossJSON,
@@ -575,5 +576,177 @@ describe('RawStream', () => {
         expect(unsubscribe).not.toHaveBeenCalled()
       },
     )
+  })
+
+  describe('SSR live stream', () => {
+    const scopeId = 'raw-stream-ssr'
+
+    /** Evaluates hydration sources the way inline scripts run in a browser. */
+    function createBrowserScope() {
+      const self: { $R?: Record<string, Array<any>> } = {}
+      new Function('self', getCrossReferenceHeader(scopeId))(self)
+      return {
+        run: (source: string) =>
+          new Function('self', '$R', `return ${source}`)(self, self.$R),
+        refs: self.$R![scopeId]!,
+      }
+    }
+
+    function serializeToBrowser(rawStream: RawStream) {
+      const scope = createBrowserScope()
+      return new Promise<{
+        output: ReadableStream<Uint8Array>
+        refs: Array<any>
+      }>((resolve, reject) => {
+        let output: ReadableStream<Uint8Array> | undefined
+        crossSerializeStream(rawStream, {
+          refs: new Map(),
+          plugins: [RawStreamSSRPlugin],
+          scopeId,
+          onSerialize(source, initial) {
+            const value = scope.run(source)
+            if (initial) {
+              output = value
+            }
+          },
+          onError: reject,
+          onDone() {
+            resolve({ output: output!, refs: scope.refs })
+          },
+        })
+      })
+    }
+
+    async function readAll(stream: ReadableStream<Uint8Array>) {
+      const reader = stream.getReader()
+      const chunks: Array<Array<number>> = []
+      for (;;) {
+        const next = await reader.read()
+        if (next.done) {
+          return chunks
+        }
+        chunks.push(Array.from(next.value))
+      }
+    }
+
+    it.each(['binary', 'text'] as const)(
+      'rebuilds a %s-hinted stream from the emitted hydration scripts',
+      async (hint) => {
+        const expected = [
+          Uint8Array.of(0x41, 0x42),
+          Uint8Array.of(0xe2, 0x28),
+          new Uint8Array(),
+        ]
+        const source = new ReadableStream<Uint8Array>({
+          start(controller) {
+            for (const chunk of expected) {
+              controller.enqueue(chunk)
+            }
+            controller.close()
+          },
+        })
+
+        const { output, refs } = await serializeToBrowser(
+          new RawStream(source, { hint }),
+        )
+
+        expect(await readAll(output)).toEqual(
+          expected.map((chunk) => Array.from(chunk)),
+        )
+        expect(source.locked).toBe(false)
+        // The browser receives a live Seroval stream: the factory is its only
+        // subscriber, so nothing is kept for replay.
+        const live = refs.find((ref) => ref?.__SEROVAL_STREAM__)
+        expect(() => live.on({ next() {}, throw() {}, return() {} })).toThrow(
+          'Stream consumed',
+        )
+      },
+    )
+
+    it('fails the rebuilt stream when the source read fails', async () => {
+      const source = new ReadableStream<Uint8Array>({
+        pull() {
+          throw new Error('source failed')
+        },
+      })
+
+      const { output } = await serializeToBrowser(new RawStream(source))
+
+      await expect(output.getReader().read()).rejects.toMatchObject({
+        message: 'source failed',
+      })
+      expect(source.locked).toBe(false)
+    })
+
+    it('reads the source only as fast as serialized records are accepted', async () => {
+      const chunkCount = 8
+      let pulls = 0
+      const source = new ReadableStream<Uint8Array>({
+        pull(controller) {
+          if (pulls++ < chunkCount) {
+            controller.enqueue(Uint8Array.of(pulls))
+          } else {
+            controller.close()
+          }
+        },
+      })
+      let acceptFirst!: () => void
+      const firstAccepted = new Promise<void>((resolve) => {
+        acceptFirst = resolve
+      })
+      let records = 0
+
+      const done = new Promise<void>((resolve, reject) => {
+        crossSerializeStream(new RawStream(source), {
+          refs: new Map(),
+          plugins: [RawStreamSSRPlugin],
+          scopeId,
+          onSerialize(_, initial) {
+            if (initial) {
+              return undefined
+            }
+            records++
+            return records === 1 ? firstAccepted : undefined
+          },
+          onError: reject,
+          onDone: resolve,
+        })
+      })
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      // The first chunk is still being accepted: the source has only refilled
+      // its own one-chunk queue.
+      expect(records).toBe(1)
+      expect(pulls).toBe(2)
+
+      acceptFirst()
+      await done
+
+      expect(records).toBe(chunkCount + 1)
+      expect(pulls).toBe(chunkCount + 1)
+      expect(source.locked).toBe(false)
+    })
+
+    it('forwards the dispose reason to the source', () => {
+      const cancel = vi.fn()
+      const source = new ReadableStream<Uint8Array>({
+        pull: () => new Promise(() => {}),
+        cancel,
+      })
+      const dispose = crossSerializeStream(new RawStream(source), {
+        refs: new Map(),
+        plugins: [RawStreamSSRPlugin],
+        scopeId,
+        onSerialize() {},
+      })
+
+      const reason = new Error('client went away')
+      dispose(reason)
+
+      expect(cancel).toHaveBeenCalledTimes(1)
+      expect(cancel).toHaveBeenCalledWith(reason)
+      expect(source.locked).toBe(false)
+    })
   })
 })

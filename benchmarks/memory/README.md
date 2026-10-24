@@ -134,15 +134,16 @@ benchmark-specific V8 settings; compare identical harness versions.
 
 ### Server
 
-| Scenario                | Shape | Exercises                                                 |
-| ----------------------- | ----- | --------------------------------------------------------- |
-| `request-churn`         | churn | cross-request retention in document SSR (unique URLs)     |
-| `server-fn-churn`       | churn | retention in the server-function RPC path                 |
-| `error-paths`           | churn | redirect/notFound/error/unmatched paths pinning contexts  |
-| `aborted-requests`      | churn | dangling streams/listeners after mid-stream client aborts |
-| `peak-large-page`       | peak  | per-request peak scaling with page size                   |
-| `streaming-peak`        | peak  | streaming buffering O(document) instead of O(chunk)       |
-| `serialization-payload` | peak  | double-buffering / string-copy blowups in dehydration     |
+| Scenario                | Shape | Exercises                                                    |
+| ----------------------- | ----- | ------------------------------------------------------------ |
+| `request-churn`         | churn | cross-request retention in document SSR (unique URLs)        |
+| `server-fn-churn`       | churn | retention in the server-function RPC path                    |
+| `error-paths`           | churn | redirect/notFound/error/unmatched paths pinning contexts     |
+| `aborted-requests`      | churn | dangling streams/listeners after mid-stream client aborts    |
+| `peak-large-page`       | peak  | per-request peak scaling with page size                      |
+| `streaming-peak`        | peak  | streaming buffering O(document) instead of O(chunk)          |
+| `serialization-payload` | peak  | double-buffering / string-copy blowups in dehydration        |
+| `raw-stream-peak`       | peak  | a large `RawStream` in loader data retained whole during SSR |
 
 ### Client
 
