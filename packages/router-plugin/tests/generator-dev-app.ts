@@ -136,7 +136,12 @@ export interface GeneratorDevApp {
   routes: () => Promise<Array<LiveRoute>>
   /** Each script the page loaded since the last `visit()`. */
   scripts: () => Promise<Array<{ url: string; code: string }>>
-  /** Errors of the dev server (Vite's logged errors, Rsbuild's compile errors). */
+  /**
+   * Errors of the dev server in the state after the last edit settled
+   * (SPEC §8: the state after the last write; not the states an edit passes
+   * through): Vite's errors logged since the last `settle()` ended, the
+   * last compile's errors on Rsbuild.
+   */
   errors: () => Array<string>
   /** Closes the dev server (and the page), like stopping `vite`/`rsbuild dev`. */
   close: () => Promise<void>
@@ -467,6 +472,8 @@ async function viteApp(
       react(),
     ],
   })
+  // Where the state after the last settled edit begins in Vite's log
+  let settled = 0
   return {
     root: server.root,
     url: server.url!,
@@ -474,9 +481,11 @@ async function viteApp(
     rename: server.rename,
     settle: async () => {
       await server.settle()
+      settled = server.logs.length
     },
     errors: () =>
       server.logs
+        .slice(settled)
         .filter((log) => log.startsWith('error:'))
         .map((log) => log.slice('error: '.length)),
     close: server.close,
@@ -572,9 +581,18 @@ async function rsbuildApp(
   }
 }
 
+/** A marker that occurs in no source (where an import statement was). */
+const owned = '\u0000'
+
 /**
- * The path a route file's `createFileRoute(path)` call names (parsed), and
- * the file's code with that string literal left out. The call is found by
+ * The path a route file's `createFileRoute(path)` call names (parsed), the
+ * file's code outside its import statements with that string literal left
+ * out (`rest`), and what the import statements bind (`imports`): the
+ * generator may write, edit, merge, reorder or reprint import statements
+ * (ruling Q10), so they are compared by their bindings, and the lines
+ * holding only import statements go, with the blank lines next to them or
+ * at the start of the file (where a removed import leaves its line break
+ * and blanks). The call is found by
  * its binding, not its spelling: a local the file imports as
  * `createFileRoute` (an alias included) or a member of a namespace import
  * (`router.createFileRoute`); in a file that imports no such binding, a
@@ -583,15 +601,36 @@ async function rsbuildApp(
 export function createFileRouteCall(code: string): {
   path: string | undefined
   rest: string
+  imports: Array<string>
 } {
   const { program } = parseSync('route.tsx', code, { sourceType: 'module' })
   const locals = new Set<string>()
   const namespaces = new Set<string>()
+  const imports = new Set<string>()
+  const spans: Array<[number, number, string]> = []
   for (const statement of program.body as Array<any>) {
     if (statement.type !== 'ImportDeclaration') {
       continue
     }
+    spans.push([statement.start, statement.end, owned])
+    const source = statement.source.value
+    if ((statement.specifiers ?? []).length === 0) {
+      imports.add(`import ${source}`)
+    }
     for (const specifier of statement.specifiers ?? []) {
+      const type =
+        statement.importKind === 'type' || specifier.importKind === 'type'
+          ? 'type '
+          : ''
+      const imported =
+        specifier.type === 'ImportNamespaceSpecifier'
+          ? '*'
+          : specifier.type === 'ImportDefaultSpecifier'
+            ? 'default'
+            : (specifier.imported?.name ?? specifier.imported?.value)
+      imports.add(
+        `${type}${imported} as ${specifier.local.name} from ${source}`,
+      )
       if (
         specifier.type === 'ImportSpecifier' &&
         (specifier.imported?.name ?? specifier.imported?.value) ===
@@ -638,18 +677,43 @@ export function createFileRouteCall(code: string): {
     }
   }
   visit(program)
-  return found
-    ? {
-        path: found.value,
-        rest: code.slice(0, found.start) + code.slice(found.end),
-      }
-    : { path: undefined, rest: code }
+  if (found) {
+    spans.push([found.start, found.end, ''])
+  }
+  spans.sort((a, b) => a[0] - b[0])
+  let text = ''
+  let last = 0
+  for (const [start, end, marker] of spans) {
+    text += code.slice(last, start) + marker
+    last = end
+  }
+  text += code.slice(last)
+  const lines = text.split(/(?<=\n|\r(?!\n))/)
+  const blank = (line: string) => line.replaceAll(owned, '').trim() === ''
+  let rest = ''
+  for (let index = 0; index < lines.length; ) {
+    if (!blank(lines[index]!)) {
+      rest += lines[index++]
+      continue
+    }
+    // A run of blank lines and lines holding import statements only
+    const start = index
+    while (index < lines.length && blank(lines[index]!)) {
+      index++
+    }
+    const run = lines.slice(start, index)
+    if (start > 0 && !run.some((line) => line.includes(owned))) {
+      rest += run.join('')
+    }
+  }
+  return { path: found?.value, rest, imports: [...imports].sort() }
 }
 
 /**
  * Asserts that the route file at `relative` names `routePath` in its
  * `createFileRoute()` call and is otherwise `expected` (the route file as
- * written, whatever path it named).
+ * written, whatever path it named): the same code outside the import
+ * statements, and imports binding the same names (`createFileRouteCall`).
  */
 export async function expectRouteFile(
   app: GeneratorDevApp,
@@ -659,7 +723,9 @@ export async function expectRouteFile(
 ) {
   const actual = createFileRouteCall(await app.read(relative))
   expect(actual.path, `the path ${relative} names`).toBe(routePath)
-  expect(actual.rest).toBe(createFileRouteCall(expected).rest)
+  const written = createFileRouteCall(expected)
+  expect(actual.rest).toBe(written.rest)
+  expect(actual.imports).toEqual(written.imports)
 }
 
 /** Whether each loaded script holds each text `scriptHolds` was asked for. */

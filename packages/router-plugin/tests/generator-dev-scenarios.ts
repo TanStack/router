@@ -687,8 +687,9 @@ export async function expectVirtualSubtreeEdit(
  * route file created afterwards is neither scaffolded nor added to the route
  * tree. A route file the running generator sees first shows its watching
  * was live. Nothing reacting cannot be awaited: the observation is bounded
- * by `quietFor` (a running generator scaffolds an empty route file within a
- * few hundred milliseconds of its creation, in these harnesses).
+ * by `quietFor`, at least three times as long as the running generator
+ * took to scaffold that first file (a few hundred milliseconds in these
+ * harnesses), so a generator that is slower here is watched longer.
  */
 export async function expectGeneratorStopsWithServer(
   bundler: Bundler,
@@ -696,14 +697,18 @@ export async function expectGeneratorStopsWithServer(
 ) {
   const app = await generatorDevApp({ bundler, files: index })
   // (a route file the running generator sees: its watching is live)
+  const started = Date.now()
   await app.edit({ 'routes/posts.tsx': '' })
+  const reaction = Date.now() - started
   expect(createFileRouteCall(await app.read('routes/posts.tsx')).path).toBe(
     '/posts',
   )
   const tree = await app.read('routeTree.gen.ts')
   await app.stop()
   await writeFile(path.join(app.root, 'routes/later.tsx'), '')
-  await new Promise((resolve) => setTimeout(resolve, quietFor))
+  await new Promise((resolve) =>
+    setTimeout(resolve, Math.max(quietFor, 3 * reaction)),
+  )
   expect(
     await app.read('routes/later.tsx'),
     'a route file created after the dev server closed',
