@@ -88,17 +88,17 @@ export const Route = createFileRoute('/')({
   // Source: router-plugin src/core/code-splitter (the virtual split module
   // of an option the route file no longer has); NEW (hmr-real).
   // Goal (any fix): the edit applies in place, and the page logs no error.
-  test.fails(
-    'vite: an edit that removes a split option the page loaded applies in place without errors',
-    async ({ expect, onTestFinished }: TestContext) => {
-      expect(
-        await removeErrorComponent(
-          { pluginOptions: { autoCodeSplitting: true } },
-          onTestFinished,
-        ),
-      ).toEqual(inPlace)
-    },
-  )
+  test('vite: an edit that removes a split option the page loaded applies in place without errors', async ({
+    expect,
+    onTestFinished,
+  }: TestContext) => {
+    expect(
+      await removeErrorComponent(
+        { pluginOptions: { autoCodeSplitting: true } },
+        onTestFinished,
+      ),
+    ).toEqual(inPlace)
+  })
 
   // Controls for the pin above: the same removal applies in place where the
   // option was not split (Vite), and on Rsbuild (its hot update replaces the
@@ -134,7 +134,7 @@ export const Route = createFileRoute('/')({
   // edit reloads the page.
   // Goal: a hot update rendering the new component (mounted anew, without a
   // refresh runtime), without a full reload.
-  test.fails.for([true, false])(
+  test.for([true, false])(
     'rsbuild without React Refresh: an edit of the route component shows in place (autoCodeSplitting: %s)',
     async (
       autoCodeSplitting: boolean,
@@ -174,23 +174,23 @@ export { MyRoute as Route }
   // Vite apps throw on the first hot update of the route, which never shows.
   // Control: the ordinary `export const Route` of every other test here.
   describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
-    test.fails(
-      'a route exported under another local name is hot-updated in place',
-      async ({ expect, onTestFinished }: TestContext) => {
-        const app = await openRouteHmrPage({
-          bundler,
-          onTestFinished,
-          files: { 'routes/index.tsx': aliasedRoute('v1') },
-          ready: 'page data v1',
-        })
-        expect(
-          await app.edit(
-            { 'routes/index.tsx': aliasedRoute('v2') },
-            'page data v2',
-          ),
-        ).toEqual(inPlace)
-      },
-    )
+    test('a route exported under another local name is hot-updated in place', async ({
+      expect,
+      onTestFinished,
+    }: TestContext) => {
+      const app = await openRouteHmrPage({
+        bundler,
+        onTestFinished,
+        files: { 'routes/index.tsx': aliasedRoute('v1') },
+        ready: 'page data v1',
+      })
+      expect(
+        await app.edit(
+          { 'routes/index.tsx': aliasedRoute('v2') },
+          'page data v2',
+        ),
+      ).toEqual(inPlace)
+    })
   })
 
   /**
@@ -246,15 +246,14 @@ export const Route = createFileRoute('/')({
   // (ReferenceError: errorFallback is not defined).
   // Fix: rename before hoisting (or insert hoisted declarations immediately),
   // or rename through the analyzer's binding references.
-  test.fails(
-    'vite: an inline pending component hoisted before a renamed lowercase component renders it',
-    async ({ onTestFinished }: TestContext) => {
-      await openRouteHmrPage({
-        onTestFinished,
-        pluginOptions: { autoCodeSplitting: false },
-        files: { 'routes/index.tsx': errorBoundaryRoute(true) },
-        ready: 'fallback shown',
-      })
-    },
-  )
+  test('vite: an inline pending component hoisted before a renamed lowercase component renders it', async ({
+    onTestFinished,
+  }: TestContext) => {
+    await openRouteHmrPage({
+      onTestFinished,
+      pluginOptions: { autoCodeSplitting: false },
+      files: { 'routes/index.tsx': errorBoundaryRoute(true) },
+      ready: 'fallback shown',
+    })
+  })
 })

@@ -20,7 +20,7 @@ describe('webpack', () => {
   // build-production.test.ts.)
   // Impact: webpack/Rspack production bundles built from a shell without
   // `NODE_ENV` ship the route HMR code of every route.
-  test.fails.each(frameworks)(
+  test.each(frameworks)(
     'a production %s client bundle without code splitting has no dev-only code',
     async (framework) => {
       await expectProductionClientBundle('webpack', framework, false)

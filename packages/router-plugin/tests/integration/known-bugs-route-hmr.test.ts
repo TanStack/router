@@ -81,7 +81,7 @@ function Page() {
   // the page rendered.
   // SPEC J3.2: Solid/Vue split components keep their identity across hot
   // updates, as React's do.
-  test.fails.for(
+  test.for(
     (['vite', 'rsbuild'] as const).flatMap((bundler) =>
       (['solid', 'vue'] as const).map((target) => ({ bundler, target })),
     ),
@@ -120,23 +120,23 @@ function Page() {
   // Impact: every edit of a Vue route file reloads the page in Vite dev (and
   // of a split Solid route: the pin above).
   // Any boundary (the route module or an importer that accepts it) passes.
-  test.fails(
-    'vite: an edit of an unsplit Vue route shows in place',
-    async ({ expect, onTestFinished }: TestContext) => {
-      expect(
-        await editRoute(
-          {
-            target: 'vue',
-            pluginOptions: { autoCodeSplitting: false },
-            file: 'routes/index.tsx',
-            route: frameworkRoute('vue'),
-            shows: (version) => `page ${version} data ${version}`,
-          },
-          onTestFinished,
-        ),
-      ).toEqual(inPlace)
-    },
-  )
+  test('vite: an edit of an unsplit Vue route shows in place', async ({
+    expect,
+    onTestFinished,
+  }: TestContext) => {
+    expect(
+      await editRoute(
+        {
+          target: 'vue',
+          pluginOptions: { autoCodeSplitting: false },
+          file: 'routes/index.tsx',
+          route: frameworkRoute('vue'),
+          shows: (version) => `page ${version} data ${version}`,
+        },
+        onTestFinished,
+      ),
+    ).toEqual(inPlace)
+  })
 
   // Bug: on Rsbuild, an edit of an unsplit Solid route file (the route HMR
   // plugin alone) shows its new loader data but keeps rendering the old
@@ -156,24 +156,24 @@ function Page() {
   // `hot.data` as the previous run). Found in review; cause located by a
   // probe (reading `hot.data` without assigning it passes this pin;
   // reverted).
-  test.fails(
-    'rsbuild: an edit of an unsplit Solid route shows its new component in place',
-    async ({ expect, onTestFinished }: TestContext) => {
-      expect(
-        await editRoute(
-          {
-            bundler: 'rsbuild',
-            target: 'solid',
-            pluginOptions: { autoCodeSplitting: false },
-            file: 'routes/index.tsx',
-            route: frameworkRoute('solid'),
-            shows: (version) => `page ${version} data ${version}`,
-          },
-          onTestFinished,
-        ),
-      ).toEqual(inPlace)
-    },
-  )
+  test('rsbuild: an edit of an unsplit Solid route shows its new component in place', async ({
+    expect,
+    onTestFinished,
+  }: TestContext) => {
+    expect(
+      await editRoute(
+        {
+          bundler: 'rsbuild',
+          target: 'solid',
+          pluginOptions: { autoCodeSplitting: false },
+          file: 'routes/index.tsx',
+          route: frameworkRoute('solid'),
+          shows: (version) => `page ${version} data ${version}`,
+        },
+        onTestFinished,
+      ),
+    ).toEqual(inPlace)
+  })
 
   // Bug: the same on an edit of a Solid root route, whose module always
   // holds its component and the route HMR code (root routes are never
@@ -182,7 +182,7 @@ function Page() {
   // (route-hmr-browser-frameworks.test.ts). SPEC J3.5.
   // Impact: edits of a Solid app's root component (its layout) do not show
   // until a reload on Rsbuild.
-  test.fails.for([true, false])(
+  test.for([true, false])(
     'rsbuild: an edit of a Solid root route shows its new component in place (autoCodeSplitting: %s)',
     async (autoCodeSplitting, { expect, onTestFinished }: TestContext) => {
       expect(
@@ -274,7 +274,7 @@ export const Route = createRootRoute({
   // Source: round-3 mutation testing (route HMR side finding).
   // Impact: every edit of a React `.ts` route file reloads the page in Vite
   // dev.
-  test.fails.for([true, false])(
+  test.for([true, false])(
     'vite: an edit of a React .ts route module shows its new loader data in place (autoCodeSplitting: %s)',
     async (
       autoCodeSplitting: boolean,
@@ -306,7 +306,7 @@ export const Route = createFileRoute('/')({ loader: () => 'data ${version}' })
   // reload.)
   // Impact: every edit of a route file reloads the page in a Vite React app
   // without the React plugin.
-  test.fails.for([true, false])(
+  test.for([true, false])(
     'vite: an edit of a route component in an app without @vitejs/plugin-react shows in place (autoCodeSplitting: %s)',
     async (
       autoCodeSplitting: boolean,
@@ -342,7 +342,7 @@ export const Route = createFileRoute('/')({ loader: () => 'data ${version}' })
   // Goal: a hot update rendering the new component (React mounts it anew),
   // without a full reload or errors.
   describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
-    test.fails.for([true, false])(
+    test.for([true, false])(
       'renaming the route component shows the renamed component in place (autoCodeSplitting: %s)',
       async (
         autoCodeSplitting: boolean,
