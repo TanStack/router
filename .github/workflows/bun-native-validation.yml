@@ -120,6 +120,17 @@ jobs:
         with:
           node-version: '26.10.0'
           package-manager-cache: false
+      - name: Checkout matching native regression sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: RentnerKev/bun
+          ref: dca7d25e95cca39316c659a377dba6803805549f
+          path: .native-test-source
+          persist-credentials: false
+      - name: Execute verified native artifact regressions
+        id: native_regressions
+        continue-on-error: true
+        run: python3 .github/native-bun-validation/artifact-tests.py
       - name: Install Router dependencies
         run: pnpm install --frozen-lockfile --filter . --filter 'tanstack-router-e2e-react-bun-basic-file-based...'
       - name: Checkout actual unplugin PR source
@@ -195,6 +206,16 @@ jobs:
             echo 'Installed Jiti also passed the helper cases.'
           fi
           "$BUN_EXECUTABLE" --preload ./packages/router-generator/.cache/helper-import-preload.mjs .github/native-bun-validation/combined-generator.mjs > .native-browser-proof/configuration-candidate.json
+      - name: Imported helper edits in the running native browser
+        id: configuration_browser
+        continue-on-error: true
+        env:
+          ROUTER_REPOSITORY_ROOT: ${{ github.workspace }}
+          UNPLUGIN_CANDIDATE_ENTRY: ${{ github.workspace }}/.native-unplugin/dist/index.mjs
+          JITI_CANDIDATE_ENTRY: ${{ github.workspace }}/.native-jiti/lib/jiti.mjs
+          BUN_PLUGIN_PRELOAD: ${{ github.workspace }}/.github/native-bun-validation/helper-browser-preload.mjs
+          HELPER_BROWSER_OUTPUT: ${{ github.workspace }}/.native-browser-proof/configuration-browser.json
+        run: node .github/native-bun-validation/helper-browser.mjs
       - name: Upload all browser results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -213,5 +234,7 @@ jobs:
           PRODUCTION: ${{ steps.production.outcome }}
           DEVELOPMENT: ${{ steps.development.outcome }}
           CONFIGURATION: ${{ steps.configuration.outcome }}
+          CONFIGURATION_BROWSER: ${{ steps.configuration_browser.outcome }}
+          NATIVE_REGRESSIONS: ${{ steps.native_regressions.outcome }}
         run: |
-          [[ "$PRODUCTION" == success && "$DEVELOPMENT" == success && "$CONFIGURATION" == success ]]
+          [[ "$PRODUCTION" == success && "$DEVELOPMENT" == success && "$CONFIGURATION" == success && "$CONFIGURATION_BROWSER" == success && "$NATIVE_REGRESSIONS" == success ]]
