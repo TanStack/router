@@ -3,11 +3,12 @@
  * route files, a fresh generation at a root, and listing orders of the
  * filesystem.
  */
+import fs from 'node:fs'
 import fsp, { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { syncBuiltinESMExports } from 'node:module'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { onTestFinished, vi } from 'vitest'
+import { expect, onTestFinished, vi } from 'vitest'
 import {
   expectDiagnostic,
   findDiagnostics,
@@ -118,29 +119,58 @@ export function routeTreeSemantics({
 
 /**
  * Runs `run` while the filesystem lists directories in another order:
- * `fs.promises.readdir` returns the real entries, permuted by `order` (any
- * order is a valid listing; filesystems differ: tmpfs lists by name, ext4 by
- * hash).
+ * `fs.promises.readdir`, `fs.readdir` and `fs.readdirSync` return the real
+ * entries, permuted by `order` (any order is a valid listing; filesystems
+ * differ: tmpfs lists by name, ext4 by hash). Fails when `run` listed no
+ * directory through them: the order would not have varied anything.
  */
 export async function withListingOrder<T>(
   order: <TEntry>(entries: Array<TEntry>) => Array<TEntry>,
   run: () => Promise<T>,
 ) {
+  let listings = 0
+  const permuted = <TEntry>(entries: Array<TEntry>) => {
+    listings++
+    return order(entries)
+  }
   const readdir = fsp.readdir
-  const listed = async (...args: Array<any>) =>
-    order(
-      await (readdir as (...args: Array<any>) => Promise<Array<any>>)(...args),
-    )
-  const spy = vi
-    .spyOn(fsp, 'readdir')
-    .mockImplementation(listed as unknown as typeof readdir)
+  const readdirCallback = fs.readdir
+  const readdirSync = fs.readdirSync
+  const spies = [
+    vi
+      .spyOn(fsp, 'readdir')
+      .mockImplementation((async (...args: Array<any>) =>
+        permuted(
+          await (readdir as (...args: Array<any>) => Promise<Array<any>>)(
+            ...args,
+          ),
+        )) as unknown as typeof readdir),
+    vi.spyOn(fs, 'readdir').mockImplementation(((...args: Array<any>) => {
+      const done = args.pop() as (error: unknown, entries?: Array<any>) => void
+      ;(readdirCallback as (...args: Array<any>) => void)(
+        ...args,
+        (error: unknown, entries?: Array<any>) =>
+          done(error, entries && permuted(entries)),
+      )
+    }) as unknown as typeof readdirCallback),
+    vi
+      .spyOn(fs, 'readdirSync')
+      .mockImplementation(((...args: Array<any>) =>
+        permuted(
+          (readdirSync as (...args: Array<any>) => Array<any>)(...args),
+        )) as unknown as typeof readdirSync),
+  ]
   // (`import * as fsp from 'node:fs/promises'` sees the change only once
   // the module's ES exports are synced with its object)
   syncBuiltinESMExports()
   try {
-    return await run()
+    const result = await run()
+    expect(listings, 'directories the generation listed').toBeGreaterThan(0)
+    return result
   } finally {
-    spy.mockRestore()
+    for (const spy of spies) {
+      spy.mockRestore()
+    }
     syncBuiltinESMExports()
   }
 }
