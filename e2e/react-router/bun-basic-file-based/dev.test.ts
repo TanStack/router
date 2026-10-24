@@ -15,6 +15,7 @@ const test = base.extend<{
   generatedExtension: string
   virtualMount: boolean
   virtualConfigFile: boolean
+  initialVirtualConfig: string | undefined
   virtualConfigHelperDepth: 0 | 1 | 2
   autoCodeSplitting: boolean
   projectAlias: boolean
@@ -22,6 +23,7 @@ const test = base.extend<{
   generatedExtension: ['ts', { option: true }],
   virtualMount: [false, { option: true }],
   virtualConfigFile: [false, { option: true }],
+  initialVirtualConfig: [undefined, { option: true }],
   virtualConfigHelperDepth: [0, { option: true }],
   autoCodeSplitting: [true, { option: true }],
   projectAlias: [false, { option: true }],
@@ -30,6 +32,7 @@ const test = base.extend<{
       generatedExtension,
       virtualMount,
       virtualConfigFile,
+      initialVirtualConfig,
       virtualConfigHelperDepth,
       autoCodeSplitting,
       projectAlias,
@@ -41,6 +44,7 @@ const test = base.extend<{
       generatedExtension,
       virtualMount,
       virtualConfigFile,
+      initialVirtualConfig,
       virtualConfigHelperDepth,
       autoCodeSplitting,
       projectAlias,
@@ -600,6 +604,35 @@ test('repairs a syntax error in an active route without restarting the server', 
     contentType: 'application/json',
   })
 })
+
+for (const [failure, source] of [
+  ['syntax', 'export default {'],
+  ['schema', "export default { type: 'root', file: 42 }"],
+] as const) {
+  test.describe(`initial virtual configuration ${failure} error`, () => {
+    test.use({ virtualConfigFile: true, initialVirtualConfig: source })
+    test('recovers on a new request without restarting Bun', async ({
+      page,
+      request,
+      native,
+    }) => {
+      expect((await request.get(native.url)).status()).toBe(500)
+      await native.save('virtual-routes.ts', virtualConfigSource('after'))
+      await page.goto(native.url)
+      await expect(page.getByRole('heading')).toHaveText('HOME_NATIVE_DEV')
+      await page
+        .getByRole('link', { name: 'Virtual after', exact: true })
+        .click()
+      await expect(page.getByRole('heading')).toHaveText('VIRTUAL_AFTER')
+      native.assertAlive()
+      expect(
+        await (
+          await request.get(new URL('/__native-info', native.url).href)
+        ).json(),
+      ).toEqual({ pid: native.pid })
+    })
+  })
+}
 
 for (const virtualConfigHelperDepth of [0, 1, 2] as const) {
   test.describe(`string virtual configuration with ${virtualConfigHelperDepth} helper imports`, () => {

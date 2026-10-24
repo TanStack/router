@@ -55,6 +55,7 @@ export async function startDevFixture({
   generatedExtension = 'ts',
   virtualMount = false,
   virtualConfigFile = false,
+  initialVirtualConfig,
   virtualConfigHelperDepth = 0,
   autoCodeSplitting = true,
   projectAlias = false,
@@ -62,6 +63,7 @@ export async function startDevFixture({
   generatedExtension?: string
   virtualMount?: boolean
   virtualConfigFile?: boolean
+  initialVirtualConfig?: string
   virtualConfigHelperDepth?: 0 | 1 | 2
   autoCodeSplitting?: boolean
   projectAlias?: boolean
@@ -138,7 +140,7 @@ export async function startDevFixture({
         virtualConfigHelperDepth
           ? `config/helper${virtualConfigHelperDepth}.ts`
           : 'virtual-routes.ts',
-        virtualConfigSource('before'),
+        initialVirtualConfig ?? virtualConfigSource('before'),
       )
       await save(
         'virtual-pages/before.tsx',

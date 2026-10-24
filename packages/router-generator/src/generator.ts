@@ -309,8 +309,12 @@ export class Generator {
     files: Array<string>
     directories: Array<string>
   } {
+    const files = new Set(this.configFilePaths)
+    if (typeof this.config.virtualRouteConfig === 'string') {
+      files.add(path.resolve(this.root, this.config.virtualRouteConfig))
+    }
     return {
-      files: [...this.configFilePaths],
+      files: [...files],
       directories: [
         ...new Set(
           [

@@ -1,6 +1,6 @@
 import {
-  mkdtemp,
   mkdir,
+  mkdtemp,
   readFile,
   rename,
   rm,
@@ -53,6 +53,7 @@ export const Route = createRootRoute({})\n`,
         ),
       })
       await expect(generator.run()).rejects.toThrow()
+      expect(generator.getWatchDependencies().files).toEqual([configFile])
       await writeFile(
         configFile,
         "export default { type: 'root', file: '__root.tsx' }\n",
@@ -61,6 +62,7 @@ export const Route = createRootRoute({})\n`,
       expect(await readFile(generatedRouteTree, 'utf8')).toContain(
         "import { Route as rootRouteImport } from './routes/__root'",
       )
+      expect(generator.getWatchDependencies().files).toEqual([configFile])
     } finally {
       await rm(root, { recursive: true, force: true })
     }
