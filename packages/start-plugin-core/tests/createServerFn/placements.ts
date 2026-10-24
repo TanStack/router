@@ -3,7 +3,9 @@
  * declarator, shared by the loosened placement tests
  * (declaration-sites.test.ts), their goal pins and the bug pins
  * (known-bugs-start-compiler.test.ts). Each handler reads the server-only
- * module (`serverOnlyModule`, `db.inner()`); `read` is where the server fn
+ * module (`serverOnlyModule`, `db.inner()`; where a test checks that the
+ * client holds no handler code, the handler also holds the marker
+ * `MARK_INNER_HANDLER`, a fallback it never returns); `read` is where the server fn
  * the placement creates is, as a JavaScript expression with the module
  * namespace as `module` (read in a page and on the server, e.g. by
  * `expectNoClientHandler` and `callServerFnThroughCallers`).
@@ -127,7 +129,7 @@ fn = createServerFn().handler(async () => db.inner())`,
     // declaration-sites.test.ts
     name: 'the handler of another server fn',
     code: `export const outer = createServerFn().handler(async () => {
-  const inner = createServerFn().handler(async () => db.inner())
+  const inner = createServerFn().handler(async () => db.inner() ?? 'MARK_INNER_HANDLER')
   return await inner()
 })`,
     read: 'module.outer',
@@ -186,7 +188,7 @@ register(createServerFn().handler(async () => db.inner()))`,
 export const capturingPlacement: Placement = {
   name: 'a function body, with a handler reading a local of the function',
   code: `export function make(id: string) {
-  const inner = createServerFn().handler(async () => db.inner(id))
+  const inner = createServerFn().handler(async () => db.inner(id) ?? 'MARK_INNER_HANDLER')
   return inner
 }`,
   nested: true,

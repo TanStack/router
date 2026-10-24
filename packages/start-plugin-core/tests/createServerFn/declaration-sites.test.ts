@@ -158,9 +158,12 @@ test.each(placements.filter((placement) => !placement.declarator))(
   },
 )
 
-/** A top-level server fn wrapped in two calls of a user helper. */
+/**
+ * A top-level server fn wrapped in two calls of a user helper. Its handler
+ * holds the marker `MARK_INNER_HANDLER` (a fallback it never returns).
+ */
 const wrappedTwice = `const wrap = <T,>(fn: T) => fn
-export const fn = wrap(wrap(createServerFn().handler(async () => db.inner())))`
+export const fn = wrap(wrap(createServerFn().handler(async () => db.inner() ?? 'MARK_INNER_HANDLER')))`
 
 // Loosened regression of the goal below: wrapped in user helper calls,
 // a top-level server fn never ships its handler to the client, whatever
@@ -195,7 +198,7 @@ test.fails.each<PlacementHead>([
       ...dbFiles,
     })
     expectNotLoaded(await served.loads(), ['./db.server'])
-    expect(served.code.client).not.toContain('db.inner()')
+    expect(served.code.client).not.toContain('MARK_INNER_HANDLER')
     expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('inner')
   },
 )
@@ -265,7 +268,7 @@ test.fails.each<PlacementHead>([
       ...dbFiles,
     })
     expectNotLoaded(await served.loads(), ['./db.server'])
-    expect(served.code.client, 'client').not.toContain('db.inner()')
+    expect(served.code.client, 'client').not.toContain('MARK_INNER_HANDLER')
     // The outer handler returns what the inner server fn returns.
     expect(await callServerFnThroughCallers(served, placement.read!)).toBe(
       'inner',
@@ -341,7 +344,7 @@ test.fails(
   'a server fn created through an optional call chain compiles like a plain chain or is rejected',
   async () => {
     const code = `${head}import { db } from './db.server'
-export const fn = createServerFn()?.handler(async () => db.inner())`
+export const fn = createServerFn()?.handler(async () => db.inner() ?? 'MARK_INNER_HANDLER')`
     const startCase = await (
       await host()
     ).case({
@@ -361,7 +364,7 @@ export const fn = createServerFn()?.handler(async () => db.inner())`
       ...dbFiles,
     })
     expectNotLoaded(await served.loads(), ['./db.server'])
-    expect(served.code.client).not.toContain('db.inner()')
+    expect(served.code.client).not.toContain('MARK_INNER_HANDLER')
     expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('inner')
   },
 )

@@ -924,7 +924,7 @@ describe('factories resolved through project modules', () => {
     const served = await serve(
       `import { 'create server fn' as createServerFn, 'server only' as createServerOnlyFn } from './start'
 import { db } from './db.server'
-export const fn = createServerFn().handler(async () => db.x())
+export const fn = createServerFn().handler(async () => db.x() ?? 'MARK_FN_HANDLER')
 export const serverOnly = createServerOnlyFn(() => 'server-only-marker')`,
       {
         'start.ts': `export { createServerFn as 'create server fn', createServerOnlyFn as 'server only' } from '@tanstack/react-start'`,
@@ -932,7 +932,7 @@ export const serverOnly = createServerOnlyFn(() => 'server-only-marker')`,
       },
     )
     await expectClientFree(served)
-    expect(served.code.client).not.toContain('db.x()')
+    expect(served.code.client).not.toContain('MARK_FN_HANDLER')
     expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('x')
     expect(await settleInPage(served, 'module.serverOnly')).toEqual(throwsError)
     expect((await served.ssr()).serverOnly()).toBe('server-only-marker')

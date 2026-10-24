@@ -787,7 +787,7 @@ export let read: () => unknown
         }
         if (environment === 'client') {
           expectNotLoaded(await startCase.loads(), [serverOnly])
-          expect(await startCase.served()).not.toContain('db.inner(')
+          expect(await startCase.served()).not.toContain('MARK_INNER_HANDLER')
           expect(
             await inPage(
               startCase,

@@ -50,7 +50,7 @@ const where = createIsomorphicFn().server(() => 'server').client(() => 'client')
 export const auth = createMiddleware({ type: 'function' })
   .validator((data: { n: number }) => ({ n: data.n + 1 }))
   .client(({ next }) => next({ sendContext: { from: where() } }))
-  .server(({ next, context }) => next({ context: { user: db.user(context.from) } }))
+  .server(({ next, context }) => next({ context: { user: db.user(context.from) ?? 'MARK_MIDDLEWARE_SERVER' } }))
 export const getUser = createServerFn({ method: 'POST' })
   .middleware([auth])
   .handler(async ({ data, context, method, serverFnMeta }) => ({
@@ -70,7 +70,7 @@ export const env = () => where()`
       'module.tsx': code,
       ...files,
     })
-    expect(served.code.client).not.toContain('db.user')
+    expect(served.code.client).not.toContain('MARK_MIDDLEWARE_SERVER')
     const expected = (from: string) => ({
       n: 2,
       user: `user-from-${from}`,
@@ -113,7 +113,7 @@ import { db } from './db.server'
 const where = createIsomorphicFn().server(() => 'server').client(() => 'client')
 export const auth = createMiddleware({ type: 'function' })
   .client(({ next }) => next({ sendContext: { from: where() } }))
-  .server(({ next, context }) => next({ context: { user: db.user(context.from) } }))
+  .server(({ next, context }) => next({ context: { user: db.user(context.from) ?? 'MARK_MIDDLEWARE_SERVER' } }))
 export const submit = createServerFn({ method: 'POST' })
   .middleware([auth])
   .validator((data: FormData) => ({ n: Number(data.get('n')) + 1 }))
@@ -128,7 +128,7 @@ export const submit = createServerFn({ method: 'POST' })
   )`,
       ...files,
     })
-    expect(served.code.client).not.toContain('db.user')
+    expect(served.code.client).not.toContain('MARK_MIDDLEWARE_SERVER')
     expect(
       await inPage(
         served,
