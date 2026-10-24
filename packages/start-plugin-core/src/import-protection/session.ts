@@ -13,7 +13,6 @@ import { importEdgesPlanner } from '../planners/edges'
 import { resolveImportProtectionConfig } from './config'
 import {
   allowedModuleCode,
-  edgeModuleName,
   mockModuleCode,
   mockRuntimeCode,
   viteEdgeModuleIds,
@@ -614,10 +613,5 @@ export class ImportProtectionEnv {
       })
     }
     return out
-  }
-
-  /** @internal the module name of an edge module key (tests, diagnostics). */
-  moduleName(key: string): string {
-    return edgeModuleName({ env: this.name, kind: 'edge', key })
   }
 }

@@ -7,7 +7,7 @@ import { identify } from '@tanstack/router-utils/compiler'
 import { patternOf, rulesFor } from './rules'
 import type { EdgeModuleContent } from './edge-modules'
 import type { ImportProtectionConfig } from './config'
-import type { EnvType, RuleRef, ViolationType } from './rules'
+import type { EnvType, RuleRef } from './rules'
 import type { OriginalLocation } from './locate'
 import type { TraceStep, ViolationInfo } from './trace'
 
@@ -54,10 +54,6 @@ export function violationsOf(output: {
 /** `log: 'once'` dedupes by this key: the logical edge's provenance (env, importer, raw specifier, target). */
 export function dedupeKey(v: EdgeViolation): string {
   return [v.env, v.importer, v.specifier, v.resolved ?? ''].join('\u0000')
-}
-
-export function violationType(rule: RuleRef): ViolationType {
-  return rule.type
 }
 
 /**

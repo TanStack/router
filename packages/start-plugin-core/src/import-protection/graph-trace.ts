@@ -169,3 +169,34 @@ export function buildTrace(
   const keep = Math.max(1, maxDepth + 1)
   return steps.length > keep ? steps.slice(steps.length - keep) : steps
 }
+
+/** A Vite dev environment's module graph (structural: `environment.moduleGraph`). */
+export interface ViteModuleGraphLike {
+  getModuleById: (
+    id: string,
+  ) => { importers: Iterable<{ id: string | null }> } | undefined
+}
+
+/**
+ * The dev server's graph of an environment for traces and report readiness
+ * (`ImportProtectionEnv.graph`). `entries`: the environment's resolved entry
+ * ids (router entry, start entry, client/server entry); a module nothing
+ * imports is a root too.
+ */
+export function viteDevGraphView(
+  moduleGraph: ViteModuleGraphLike,
+  isEntry: (id: string) => boolean,
+): ImportGraphView {
+  return {
+    importers(id) {
+      const out: Array<string> = []
+      for (const m of moduleGraph.getModuleById(id)?.importers ?? []) {
+        if (m.id !== null) {
+          out.push(m.id)
+        }
+      }
+      return out
+    },
+    isEntry,
+  }
+}

@@ -8,6 +8,7 @@ import { describe, expect, test } from 'vitest'
 import { viteEdgeModuleIds } from '../../src/import-protection/edge-modules'
 import { violationsOf } from '../../src/import-protection/violations'
 import { MemoryApp, ROOT } from './memory-host'
+import type { Planner } from '@tanstack/router-utils/compiler'
 import type { ViolationInfo } from '../../src/import-protection/trace'
 import type { ImportProtectionOptions } from '../../src/schema'
 
@@ -339,6 +340,30 @@ describe('build decisions', () => {
   })
 })
 
+describe('Rspack persistent cache', () => {
+  test("a module's buildInfo record restores its edge modules in a fresh session", async () => {
+    const files = {
+      'src/secret.server.ts': SECRET,
+      'src/a.ts': `import { secret } from './secret.server'\nexport const read = () => secret()\n`,
+    }
+    const first = app(files, {}, 'build')
+    const { out } = await first.compile('src/a.ts', 'client')
+    const record = first.ip.env('client').buildInfo(out!)
+    expect(record?.key).toBe('tanstack.start.ip')
+    const json = JSON.parse(JSON.stringify(record!.value)) as unknown
+    // a later build restores the module without running the loader
+    const second = app(files, {}, 'build')
+    const env = second.ip.env('client', 'client')
+    env.replay(`${ROOT}/src/a.ts`, json)
+    const specifier = edgeImports(out!.code)[0]!
+    expect(second.ip.load(specifier)?.code).toContain('__mk(m, "secret")')
+    expect(env.witness()(`\0${specifier}`)).toEqual({
+      key: specifier.split('/edge.')[1],
+      effectful: false,
+    })
+  })
+})
+
 describe('mock contents', () => {
   test('names: the target export names through export *, every name the importer reads, a default', async () => {
     const a = app({
@@ -411,6 +436,80 @@ export const all = () => [p, c, k, k2]
 })
 
 describe('forwarded glue and markers', () => {
+  /**
+   * A toy tier-1 planner that removes the user's `import { secret } from
+   * './secret.server'` and emits glue standing in for it (an effectful
+   * generated unit importing `secret` through a `spec` fragment with
+   * forwarded provenance), like an isomorphic-impl import (R32).
+   */
+  const forwardingPlanner = (): Planner => ({
+    name: 'toy-forward',
+    tier: 1,
+    gate: (t0) => t0.imports.some((i) => i.specifier === './secret.server'),
+    plan(ctx) {
+      const imp = ctx.analysis.imports.find(
+        (i) => i.specifier === './secret.server',
+      )!
+      ctx.rewrites.add({
+        range: imp.declRange,
+        body: [],
+        scope: 'all-outputs',
+        by: 'toy-forward',
+      })
+      const local = ctx.names.alloc('forwardedSecret')
+      ctx.rewrites.addGenerated({
+        body: [
+          { k: 'text', parts: ['console.log(', { sym: local.sym }, '())\n'] },
+        ],
+        declares: [],
+        effectful: true,
+        anchor: { k: 'end' },
+        home: 'auto',
+        by: 'toy-forward',
+        imports: [
+          {
+            names: [{ imported: 'secret', local: local.sym }],
+            spec: {
+              k: 'spec',
+              specifier: '/app/src/secret.server.ts',
+              edgeKey: ctx.edgeKey('./secret.server', 'static'),
+              provenance: {
+                origin: 'forwarded',
+                importerId: ctx.identity.canonicalId,
+                span: imp.specifierRange,
+                rawSpecifier: './secret.server',
+              },
+              names: ['secret'],
+            },
+          },
+        ],
+      })
+    },
+  })
+
+  test('glue standing in for a user import is judged as the user edge: raw specifier, user span, substituted', async () => {
+    const rec = recorder()
+    const a = app(
+      {
+        'src/secret.server.ts': SECRET,
+        'src/a.ts': `import { secret } from './secret.server'\nexport const x = 1\n`,
+      },
+      { onViolation: rec.onViolation },
+    )
+    const { out } = await a.compile('src/a.ts', 'client', {
+      planners: [forwardingPlanner()],
+    })
+    expect(edgeImports(out!.code)).toHaveLength(1)
+    expect(out!.code).not.toContain('/app/src/secret.server.ts')
+    expect(
+      rec.calls.map((c) => [
+        c.specifier,
+        c.importerLoc?.line,
+        c.importerLoc?.column,
+      ]),
+    ).toEqual([['./secret.server', 1, 24]])
+  })
+
   test('a module importing both markers is an error diagnostic in that module', async () => {
     const a = app({
       'src/both.ts': `import '@tanstack/react-start/server-only'\nimport '@tanstack/react-start/client-only'\nexport const v = 1\n`,
