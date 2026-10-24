@@ -1,14 +1,22 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import { postBuild } from '../src/post-build'
 import { prerender } from '../src/prerender'
 import { parseStartConfig } from '../src/schema'
-import type { TanStackStartOutputConfig } from '../src/schema'
+import type { StartPostBuildAdapter } from '../src/post-build'
 
 describe('post-build sitemap', () => {
+  beforeEach(() => {
+    globalThis.TSS_PRERENDER_ROUTE_TREE = async () => undefined
+  })
+
+  afterEach(() => {
+    delete globalThis.TSS_PRERENDER_ROUTE_TREE
+  })
+
   it('writes sitemap files before resolving, using pages discovered during prerendering', async () => {
     const publicDir = await mkdtemp(path.join(tmpdir(), 'tss-sitemap-'))
     const startConfig = parseStartConfig(
@@ -36,9 +44,12 @@ describe('post-build sitemap', () => {
         startConfig,
         adapter: {
           getClientOutputDirectory: () => publicDir,
-          async prerender(config) {
+          async prerender(config, options) {
             await Promise.resolve()
-            config.pages.push({ path: '/discovered' })
+            for (const page of config.pages) {
+              await options?.pageSink?.(page)
+            }
+            await options?.pageSink?.({ path: '/discovered' })
           },
         },
       })
@@ -116,14 +127,17 @@ describe('post-build sitemap', () => {
       { framework: 'react' },
       process.cwd(),
     )
-    const adapterPrerender = vi.fn(
-      async (config: TanStackStartOutputConfig) => {
+    const adapterPrerender = vi.fn<StartPostBuildAdapter['prerender']>(
+      async (config, options) => {
         expect(config.pages[0]?.prerender?.headers?.Authorization).toBe(
           'Bearer PAGE_SECRET',
         )
         expect(config.pages[1]?.prerender?.headers?.Authorization).toBe(
           'Bearer SPA_SECRET',
         )
+        for (const page of config.pages) {
+          await options?.pageSink?.(page)
+        }
       },
     )
 
@@ -236,9 +250,10 @@ describe('post-build sitemap', () => {
         startConfig,
         adapter: {
           getClientOutputDirectory: () => publicDir,
-          async prerender(config) {
+          async prerender(config, options) {
             await prerender({
               startConfig: config,
+              pageSink: options?.pageSink,
               handler: {
                 getClientOutputDirectory: () => publicDir,
                 async request() {
@@ -315,9 +330,10 @@ describe('post-build sitemap', () => {
         startConfig,
         adapter: {
           getClientOutputDirectory: () => publicDir,
-          async prerender(config) {
+          async prerender(config, options) {
             await prerender({
               startConfig: config,
+              pageSink: options?.pageSink,
               handler: {
                 getClientOutputDirectory: () => publicDir,
                 async request() {
