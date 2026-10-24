@@ -219,6 +219,24 @@ export const MatchInner = (): any => {
     return JSON.stringify(deps) ?? routeId()
   }
 
+  // Route HMR can replace the component of a live route: re-key once the
+  // refreshed match arrives so the new component renders.
+  const hotComponentKey =
+    process.env.NODE_ENV !== 'production'
+      ? (() => {
+          let component = route.options.component
+          let version = 0
+          return () => {
+            const key = componentKey()
+            if (route.options.component !== component) {
+              component = route.options.component
+              version++
+            }
+            return version ? `${key}\0${version}` : key
+          }
+        })()
+      : undefined
+
   const out = () => {
     const Comp = route.options.component ?? router.options.defaultComponent
     if (Comp) {
@@ -228,7 +246,14 @@ export const MatchInner = (): any => {
   }
 
   const keyedOut = () => (
-    <Solid.Show when={componentKey()} keyed>
+    <Solid.Show
+      when={
+        process.env.NODE_ENV !== 'production'
+          ? hotComponentKey!()
+          : componentKey()
+      }
+      keyed
+    >
       {(_key) => out()}
     </Solid.Show>
   )
