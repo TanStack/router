@@ -50,7 +50,11 @@ export const unpluginRouterComposedFactory: UnpluginFactory<
     createRouterGeneratorPlugin(options, routerPluginContext),
   )
   const routerCodeSplitter = getPlugin(
-    createRouterCodeSplitterPlugin(options, routerPluginContext),
+    createRouterCodeSplitterPlugin(
+      options,
+      routerPluginContext,
+      meta.framework,
+    ),
   )
 
   const result = [
@@ -97,12 +101,11 @@ export const unpluginRouterComposedFactory: UnpluginFactory<
   const isProduction = process.env.NODE_ENV === 'production'
 
   if (
-    meta.framework !== 'bun' &&
-    !isProduction &&
+    (meta.framework === 'bun' || !isProduction) &&
     !userConfig.autoCodeSplitting
   ) {
     const routerHmr = getPlugin(
-      createRouterHmrPlugin(options, routerPluginContext),
+      createRouterHmrPlugin(options, routerPluginContext, meta.framework),
     )
     result.push(...routerHmr)
   }

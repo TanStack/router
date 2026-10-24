@@ -1,4 +1,12 @@
-import { isAbsolute, join, normalize } from 'node:path'
+import { readFile, readdir } from 'node:fs/promises'
+import {
+  dirname,
+  extname,
+  isAbsolute,
+  join,
+  normalize,
+  resolve,
+} from 'node:path'
 import { Generator, resolveConfigPath } from '@tanstack/router-generator'
 import { getConfig } from './config'
 import { createRouterPluginContext } from './router-plugin-context'
@@ -80,6 +88,59 @@ export function createRouterGeneratorPlugin(
         initConfigAndGenerator()
         // Reject generation errors instead of bundling a stale route tree.
         build.onStart(() => runGenerator())
+        if (
+          'reactFastRefresh' in build.config &&
+          build.config.reactFastRefresh
+        ) {
+          const generatedRouteTree = resolve(
+            ROOT,
+            userConfig.generatedRouteTree,
+          )
+          const extension = extname(generatedRouteTree)
+          build.onLoad(
+            {
+              filter: new RegExp(
+                `^${generatedRouteTree.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
+              ),
+            },
+            async () => {
+              // Bun watches immediate directory entries. Include empty directories
+              // so a route added there also triggers generation before bundling.
+              const watchDirs = await Promise.all(
+                generator.getRoutesDirectoryPaths().map(async (directory) => {
+                  const entries = await readdir(directory, {
+                    recursive: true,
+                    withFileTypes: true,
+                  })
+                  return [
+                    directory,
+                    ...entries
+                      .filter((entry) => entry.isDirectory())
+                      .map((entry) => join(entry.parentPath, entry.name)),
+                  ]
+                }),
+              )
+              return {
+                contents: await readFile(generatedRouteTree, 'utf8'),
+                loader:
+                  build.config.loader?.[extension] ??
+                  (extension === '.tsx'
+                    ? 'tsx'
+                    : extension === '.jsx'
+                      ? 'jsx'
+                      : /\.[cm]?ts$/.test(extension)
+                        ? 'ts'
+                        : 'js'),
+                resolveDir: dirname(generatedRouteTree),
+                watchDirs: watchDirs.flat(),
+                watchFiles:
+                  typeof userConfig.virtualRouteConfig === 'string'
+                    ? [resolve(ROOT, userConfig.virtualRouteConfig)]
+                    : undefined,
+              }
+            },
+          )
+        }
       },
     },
     vite: {

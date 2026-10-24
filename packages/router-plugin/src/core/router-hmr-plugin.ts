@@ -5,7 +5,11 @@ import { createRouteHmrStatement } from './hmr'
 import { debug, normalizePath, routeFactoryCallCodeFilter } from './utils'
 import { getConfig } from './config'
 import { createRouterPluginContext } from './router-plugin-context'
-import type { UnpluginFactory } from 'unplugin'
+import type {
+  UnpluginContextMeta,
+  UnpluginFactory,
+  UnpluginOptions,
+} from 'unplugin'
 import type { Config } from './config'
 import type { RouterPluginContext } from './router-plugin-context'
 
@@ -18,6 +22,7 @@ import type { RouterPluginContext } from './router-plugin-context'
 export function createRouterHmrPlugin(
   options: Partial<Config | (() => Config)> | undefined = {},
   routerPluginContext: RouterPluginContext,
+  framework?: UnpluginContextMeta['framework'],
 ): ReturnType<UnpluginFactory<Partial<Config> | undefined>> {
   let ROOT: string = process.cwd()
 
@@ -27,9 +32,18 @@ export function createRouterHmrPlugin(
 
   let userConfig = resolveUserConfig()
 
-  return {
+  const plugin: UnpluginOptions = {
     name: 'tanstack-router:hmr',
     enforce: 'pre',
+    bun: {
+      setup(build) {
+        if (
+          !('reactFastRefresh' in build.config && build.config.reactFastRefresh)
+        ) {
+          plugin.transform = undefined
+        }
+      },
+    },
     transform: {
       filter: {
         // this is necessary for webpack / rspack to avoid matching .html files
@@ -53,6 +67,7 @@ export function createRouterHmrPlugin(
           const compilerPlugins = getFrameworkHmrCompilerPlugins({
             targetFramework: 'react',
             hmrStyle,
+            framework,
           })
           const compiled = compileCodeSplitReferenceRoute({
             code,
@@ -109,10 +124,15 @@ export function createRouterHmrPlugin(
       },
     },
   }
+  return plugin
 }
 
 export const unpluginRouterHmrFactory: UnpluginFactory<
   Partial<Config> | undefined
-> = (options = {}) => {
-  return createRouterHmrPlugin(options, createRouterPluginContext())
+> = (options = {}, meta) => {
+  return createRouterHmrPlugin(
+    options,
+    createRouterPluginContext(),
+    meta.framework,
+  )
 }

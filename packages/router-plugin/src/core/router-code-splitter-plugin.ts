@@ -30,6 +30,7 @@ import type { CodeSplitCompilerPlugin } from './code-splitter/plugins'
 import type { Config, HmrStyle } from './config'
 import type { RouterPluginContext } from './router-plugin-context'
 import type {
+  UnpluginContextMeta,
   UnpluginFactory,
   UnpluginOptions,
   TransformResult as UnpluginTransformResult,
@@ -85,6 +86,7 @@ function bunRouteModule(
                   ? 'ts'
                   : 'js'),
           resolveDir: dirname(filename!),
+          watchFiles: [filename!],
         }
       })
     },
@@ -137,6 +139,7 @@ const TRANSFORMATION_PLUGINS_BY_FRAMEWORK: Record<
 export function createRouterCodeSplitterPlugin(
   options: Partial<Config | (() => Config)> | undefined = {},
   routerPluginContext: RouterPluginContext,
+  framework?: UnpluginContextMeta['framework'],
 ): ReturnType<UnpluginFactory<Partial<Config | (() => Config)> | undefined>> {
   let ROOT: string = process.cwd()
   let userConfig: Config
@@ -161,6 +164,7 @@ export function createRouterCodeSplitterPlugin(
         ? (getFrameworkHmrCompilerPlugins({
             targetFramework: userConfig.target,
             hmrStyle,
+            framework,
           }) ?? [])
         : []),
       ...(userConfig.codeSplittingOptions?.compilerPlugins ?? []),
@@ -346,8 +350,10 @@ export function createRouterCodeSplitterPlugin(
       enforce: 'pre',
 
       bun: {
-        setup() {
-          isProduction = true
+        setup(build) {
+          isProduction = !(
+            'reactFastRefresh' in build.config && build.config.reactFastRefresh
+          )
           initUserConfig()
           sharedBindingsMap.clear()
         },
@@ -491,6 +497,10 @@ export function createRouterCodeSplitterPlugin(
 
 export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   Partial<Config | (() => Config)> | undefined
-> = (options = {}) => {
-  return createRouterCodeSplitterPlugin(options, createRouterPluginContext())
+> = (options = {}, meta) => {
+  return createRouterCodeSplitterPlugin(
+    options,
+    createRouterPluginContext(),
+    meta.framework,
+  )
 }

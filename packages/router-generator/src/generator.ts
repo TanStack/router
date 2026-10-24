@@ -304,6 +304,17 @@ export class Generator {
     )
   }
 
+  public getRoutesDirectoryPaths(): Array<string> {
+    return [
+      ...new Set(
+        [
+          ...(this.config.virtualRouteConfig ? [] : [this.routesDirectoryPath]),
+          ...this.physicalDirectories,
+        ].map((directory) => path.resolve(this.root, directory)),
+      ),
+    ]
+  }
+
   public async run(event?: GeneratorEvent): Promise<void> {
     if (
       event &&

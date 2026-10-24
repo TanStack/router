@@ -7,8 +7,7 @@ import * as React from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { fetchPosts } from '../posts'
 const TSRSplitComponent = (() => {
-  const hot = import.meta.hot
-  const hotData = hot ? (hot.data ??= {}) : undefined
+  const hotData = import.meta.hot ? (import.meta.hot.data ??= {}) : undefined
   return (
     hotData?.['tsr-split-component:component'] ??
     lazyRouteComponent($$splitComponentImporter, 'component')
@@ -19,8 +18,7 @@ if (import.meta.hot) {
     TSRSplitComponent
 }
 const TSRSplitErrorComponent = (() => {
-  const hot = import.meta.hot
-  const hotData = hot ? (hot.data ??= {}) : undefined
+  const hotData = import.meta.hot ? (import.meta.hot.data ??= {}) : undefined
   return (
     hotData?.['tsr-split-component:errorComponent'] ??
     lazyRouteComponent($$splitErrorComponentImporter, 'errorComponent')
@@ -54,8 +52,7 @@ export function TSRFastRefreshAnchor() {
   return null
 }
 if (import.meta.hot) {
-  const hot = import.meta.hot
-  const hotData = (hot.data ??= {})
+  const hotData = (import.meta.hot.data ??= {})
   const handleRouteUpdate = function handleRouteUpdate(routeId, newRoute) {
     const router = window.__TSR_ROUTER__
     const oldRoute = router.routesById[routeId]
@@ -116,7 +113,7 @@ if (import.meta.hot) {
     handleRouteUpdate(initialRouteId, Route)
     hotData['tsr-route-update-handled'] = Route
   }
-  hot.accept((newModule) => {
+  import.meta.hot.accept((newModule) => {
     if (Route && newModule && newModule.Route) {
       const routeId = hotData['tsr-route-id'] ?? Route.id
       if (routeId) {

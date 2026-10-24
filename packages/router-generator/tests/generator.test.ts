@@ -408,6 +408,32 @@ describe('generator works', async () => {
     })
   })
 
+  it.each([
+    { folder: 'only-root', directories: ['routes'] },
+    {
+      folder: 'virtual-physical-no-prefix',
+      directories: ['routes/merged'],
+    },
+  ])(
+    'returns isolated resolved directory roots for $folder',
+    async ({ folder, directories }) => {
+      const root = makeFolderDir(folder)
+      const config = setupConfig(folder)
+      const generator = new Generator({ config, root })
+
+      await generator.run()
+
+      const expected = directories.map((directory) =>
+        path.resolve(root, directory),
+      )
+      const snapshot = generator.getRoutesDirectoryPaths()
+      expect(snapshot).toEqual(expected)
+      snapshot[0] = path.resolve(root, 'changed')
+      snapshot.push(path.resolve(root, 'extra'))
+      expect(generator.getRoutesDirectoryPaths()).toEqual(expected)
+    },
+  )
+
   it.each(folderNames)(
     'should create directory for routeTree if it does not exist',
     async () => {

@@ -15,8 +15,7 @@ function createHotDataKey(exportName: string) {
 const buildStableSplitComponentStatements = template.statements(
   `
     const %%stableComponentIdent%% = (() => {
-      const hot = %%hotExpression%%
-      const hotData = hot ? (hot.data ??= {}) : undefined
+      const hotData = %%hotExpression%% ? ((%%hotExpression%%).data ??= {}) : undefined
       return hotData?.[%%hotDataKey%%] ?? %%lazyRouteComponentIdent%%(%%localImporterIdent%%, %%exporterIdent%%)
     })()
     if (%%hotExpression%%) {
