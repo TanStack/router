@@ -266,6 +266,8 @@ export class ModuleAnalysis {
   readonly dynamicEdges: ReadonlyArray<DynamicEdge>
   readonly markers: Marker
   readonly ownEffects: boolean
+  /** Whether the module's own statements have effects, module loading aside (bare imports and re-exports are followed by consumers, R36). */
+  readonly codeEffects: boolean
   readonly sourceType: 'module' | 'script' | 'commonjs'
   readonly hasImportOrExport: boolean
   readonly purity: PurityContext
@@ -292,6 +294,7 @@ export class ModuleAnalysis {
     const reexports: Array<ReexportEntry> = []
     let marker: Marker = null
     let ownEffects = false
+    let codeEffects = false
     const body = file.program.body
     for (let i = this.header.directiveCount; i < body.length; i++) {
       const stmt = body[i]!
@@ -482,8 +485,14 @@ export class ModuleAnalysis {
         default:
           break
       }
-      if (!ownEffects && statementHasEffects(this.purity, stmt)) {
+      // module loading counts as an own effect, not as an effect of its own code
+      const loads = loadsModule(stmt)
+      if (
+        (loads ? !ownEffects : !codeEffects) &&
+        statementHasEffects(this.purity, stmt)
+      ) {
         ownEffects = true
+        codeEffects ||= !loads
       }
     }
     const dynamicEdges: Array<DynamicEdge> = []
@@ -514,6 +523,7 @@ export class ModuleAnalysis {
     this.dynamicEdges = dynamicEdges
     this.markers = marker
     this.ownEffects = ownEffects
+    this.codeEffects = codeEffects
     this.sourceType =
       file.sourceType === 'commonjs' ? 'commonjs' : file.program.sourceType
     this.hasImportOrExport = imports.length > 0 || exportEntries.length > 0
@@ -856,6 +866,15 @@ export class ModuleAnalysis {
     this.tier1 = tier1
     return tier1
   }
+}
+
+/** An import or re-export statement (it evaluates another module). */
+function loadsModule(stmt: Node): boolean {
+  return (
+    stmt.type === 'ImportDeclaration' ||
+    stmt.type === 'ExportAllDeclaration' ||
+    (stmt.type === 'ExportNamedDeclaration' && stmt.source !== null)
+  )
 }
 
 export interface ImportUses {

@@ -165,6 +165,8 @@ describe('target facts (R36)', () => {
           export default own
         `),
         '/app/c.cjs': `module.exports = { a: 1 }\n`,
+        '/app/barrel.ts': `export * from './a'\nexport { b } from './b'\nimport './c'\nexport const d = 1\n`,
+        '/app/fx.ts': `export * from './a'\nglobalThis.x = 1\n`,
       },
     })
     const t = await host.rawFacts.get('/app/t.ts')
@@ -176,6 +178,14 @@ describe('target facts (R36)', () => {
       esm: true,
       effectful: true,
     })
+    // module loading is an own effect, not an effect of the module's own code
+    const barrel = await host.rawFacts.get('/app/barrel.ts')
+    expect(barrel.targetFacts).toMatchObject({
+      effectful: true,
+      codeEffects: false,
+    })
+    const fx = await host.rawFacts.get('/app/fx.ts')
+    expect(fx.targetFacts.codeEffects).toBe(true)
     const c = await host.rawFacts.get('/app/c.cjs')
     expect(c.targetFacts.esm).toBe(false)
     const missing = await host.rawFacts.get('/app/none.ts')

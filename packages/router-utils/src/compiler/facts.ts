@@ -26,6 +26,8 @@ export interface TargetFacts {
   esm: boolean
   /** Own top-level effects or a bare import (transitive classification is the consumer's, R36). */
   effectful: boolean
+  /** Its own statements have effects, module loading (`imports`) aside. */
+  codeEffects: boolean
   effectProvenance: 'own' | 'import' | 'package' | null
   digest: string
 }
@@ -64,6 +66,7 @@ const MISSING_TARGET: Omit<TargetFacts, 'digest'> = {
   imports: [],
   esm: false,
   effectful: true,
+  codeEffects: true,
   effectProvenance: null,
 }
 
@@ -207,6 +210,7 @@ export class RawFactsCache {
         imports: [],
         esm: false,
         effectful: true,
+        codeEffects: true,
         effectProvenance: 'own' as const,
       }
       return {
@@ -262,6 +266,7 @@ export class RawFactsCache {
       imports,
       esm: analysis.sourceType === 'module',
       effectful: own || analysis.imports.some((i) => i.bare && !i.typeOnly),
+      codeEffects: analysis.codeEffects,
       effectProvenance: own
         ? 'own'
         : analysis.imports.some((i) => i.bare && !i.typeOnly)
