@@ -43,10 +43,29 @@ type FileFacts =
   | { included: false }
   | { included: true; props: RouteProps | undefined }
 
+/** A file's modification time and size, to tell it unchanged without reading it. */
+interface FileStamp {
+  readonly mtimeMs: number
+  readonly size: number
+}
+
 interface FileState {
   /** The content last read (or written by the generator). */
   readonly content: string
+  readonly stamp?: FileStamp
   readonly facts: FileFacts
+}
+
+async function stampOf(file: string): Promise<FileStamp | null> {
+  try {
+    const { mtimeMs, size } = await fsp.stat(file)
+    return { mtimeMs, size }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return null
+    }
+    throw error
+  }
 }
 
 const pieceTypes: ReadonlyArray<FsRouteType> = [
@@ -117,6 +136,8 @@ export class Generator {
   private readonly style: CodeStyle
   private readonly routerPackage: string
   private readonly treeFile: string
+  /** The route tree file as event paths spell it. */
+  private readonly treeKey: string
   private readonly routesDirectory: string
   private readonly virtualConfigFile: string | undefined
   private readonly publisher: AtomicPublisher
@@ -148,6 +169,7 @@ export class Generator {
     this.style = styleOf(this.config)
     this.routerPackage = routerPackageOf(this.config.target)
     this.treeFile = path.resolve(this.root, this.config.generatedRouteTree)
+    this.treeKey = normalize(this.treeFile)
     this.routesDirectory = normalize(
       path.resolve(this.root, this.config.routesDirectory),
     )
@@ -233,7 +255,7 @@ export class Generator {
         ),
       ],
       files: [
-        normalize(this.treeFile),
+        this.treeKey,
         ...(this.virtualConfigFile ? [this.virtualConfigFile] : []),
       ],
     }
@@ -250,7 +272,7 @@ export class Generator {
   private isRelevant(file: string) {
     const normalized = normalize(file)
     if (
-      normalized === normalize(this.treeFile) ||
+      normalized === this.treeKey ||
       normalized === this.virtualConfigFile ||
       isVirtualConfigFile(path.basename(normalized)) ||
       this.files.has(normalized)
@@ -298,17 +320,19 @@ export class Generator {
   }
 
   private async processBatch(batch: Array<GeneratorEvent>) {
-    const treeKey = normalize(this.treeFile)
     let structural = !this.scan || this.stale
     let treeChanged = structural
     const changed = new Set<string>()
+    /** The files the batch's events name: read whatever their stamps say. */
+    const named = new Set<string>()
     for (const event of batch) {
       if (event.type === 'rerun') {
         structural = true
         treeChanged = true
         continue
       }
-      if (event.path === treeKey) {
+      named.add(event.path)
+      if (event.path === this.treeKey) {
         treeChanged = true
       } else if (
         event.type !== 'update' ||
@@ -345,20 +369,25 @@ export class Generator {
       const scan = await scanRoutes(this.config, this.root)
       this.scan = scan
       const nodes = filesOf(scan)
-      const keys = new Set(nodes.map((node) => normalize(node.fullPath)))
+      const keys = new Set(nodes.map((node) => node.fullPath))
       for (const key of [...this.files.keys()]) {
         if (!keys.has(key)) {
           this.files.delete(key)
         }
       }
       await Promise.all(
-        nodes.map((node) => this.updateFile(node, node === scan.rootRouteNode)),
+        nodes.map((node) =>
+          this.updateFile(node, {
+            isRoot: node === scan.rootRouteNode,
+            force: named.has(node.fullPath),
+          }),
+        ),
       )
       changes.routes = true
       this.realRoots = await this.realRootsOf(scan)
     } else {
       const byKey = new Map(
-        filesOf(this.scan!).map((node) => [normalize(node.fullPath), node]),
+        filesOf(this.scan!).map((node) => [node.fullPath, node]),
       )
       await Promise.all(
         [...changed].map(async (key) => {
@@ -367,7 +396,10 @@ export class Generator {
             return
           }
           const before = this.files.get(key)
-          await this.updateFile(node, node === this.scan!.rootRouteNode)
+          await this.updateFile(node, {
+            isRoot: node === this.scan!.rootRouteNode,
+            force: true,
+          })
           consider(key, before)
         }),
       )
@@ -397,7 +429,7 @@ export class Generator {
   private rebuildModel() {
     const scan = this.scan!
     const factsOf = (node: RouteNode) =>
-      this.files.get(normalize(node.fullPath))?.facts
+      this.files.get(node.fullPath)?.facts
     const model = buildTreeModel({
       scan,
       config: this.config,
@@ -423,8 +455,10 @@ export class Generator {
       content = await formatWithPrettier(content, this.style)
     }
     // Compared with the disk, not with what was written last: a deleted or
-    // edited tree is written again.
-    const onDisk = await readIfExists(this.treeFile)
+    // edited tree is written again (unchanged since published: no read).
+    const onDisk = (await this.treeOnDiskIsPublished())
+      ? this.published!.content
+      : await readIfExists(this.treeFile)
     if (onDisk !== content) {
       await this.publisher.write(this.treeFile, content)
     }
@@ -450,10 +484,24 @@ export class Generator {
    * parse keeps the facts of its last good content (its route stays), and
    * is reported with the position of the problem.
    */
-  private async updateFile(node: RouteNode, isRoot: boolean) {
-    const key = normalize(node.fullPath)
+  private async updateFile(
+    node: RouteNode,
+    { isRoot, force }: { isRoot: boolean; force: boolean },
+  ) {
+    const key = node.fullPath
     const file = node.fullPath
-    const content = await readIfExists(file)
+    const previous = this.files.get(key)
+    // (stamped before the read: a change after it shows in the next stamp)
+    const stamp = await stampOf(file)
+    if (
+      !force &&
+      stamp &&
+      previous?.stamp?.mtimeMs === stamp.mtimeMs &&
+      previous.stamp.size === stamp.size
+    ) {
+      return
+    }
+    const content = stamp ? await readIfExists(file) : null
     if (content === null) {
       if (isRoot) {
         throw new Error(`⚠️ expected root route to exist at ${file}`)
@@ -461,12 +509,19 @@ export class Generator {
       this.files.set(key, { content: '', facts: { included: false } })
       return
     }
-    const previous = this.files.get(key)
     if (previous && previous.content === content) {
+      this.files.set(key, { ...previous, stamp: stamp! })
       return
     }
     try {
-      this.files.set(key, await this.factsOf(node, isRoot, content, previous))
+      const state = await this.factsOf(node, isRoot, content, previous)
+      this.files.set(key, {
+        ...state,
+        // (rewritten by the generator: the stamp of what it wrote)
+        stamp:
+          (state.content === content ? stamp : await stampOf(file)) ??
+          undefined,
+      })
     } catch (error) {
       if (error instanceof ConcurrentEditError) {
         // Edited while we kept it up: handled again with its new content
@@ -607,7 +662,7 @@ export class Generator {
     const map: GetRoutesByFileMapResult = new Map()
     const scan = this.scan!
     for (const node of filesOf(scan)) {
-      const key = normalize(node.fullPath)
+      const key = node.fullPath
       if (!this.files.get(key)?.facts.included) {
         continue
       }

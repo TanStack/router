@@ -14,8 +14,17 @@ export function styleOf(config: {
   }
 }
 
+const needsEscape = {
+  "'": /['\\\n\r\u2028\u2029]/,
+  '"': /["\\\n\r\u2028\u2029]/,
+  '`': /[`$\\\n\r\u2028\u2029]/,
+}
+
 /** A string literal of `value` in quote `quote`, escaped as needed. */
 export function lit(value: string, quote: "'" | '"' | '`' = "'"): string {
+  if (!needsEscape[quote].test(value)) {
+    return quote + value + quote
+  }
   let out = quote
   for (const char of value) {
     switch (char) {
