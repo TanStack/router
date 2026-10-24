@@ -419,6 +419,8 @@ export class Generator {
       }
     }
 
+    // (until published: a failure here rebuilds on the next batch)
+    this.stale = true
     this.rebuildModel()
     await this.publishTree()
     this.routesByFile = this.computeRoutesByFile()
