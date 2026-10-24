@@ -33,7 +33,7 @@ for name, digest, allowed_paths in [
      "65c3d33ff88d44e9748498ad7a34bb3113be8fdd940a39aaad4de4b98b2aa062",
      {"test/bake/dev/plugins.test.ts", "test/bake/dev/client-plugin-cache.test.ts"}),
     ("hmr-script-order-test.patch.gz",
-     "b63245335607c7b9afaaddb7114d5f42a580d67b90119d3c5b0aecea0389d6bf",
+     "2d550b1127c34240788bf4a5ce5a5ca69c76ff0f83aca675373d2d2d04c854bc",
      {"test/js/bun/webview/webview-chrome.test.ts"}),
 ]:
     patch = (root / ".github/native-bun-validation" / name).read_bytes()
