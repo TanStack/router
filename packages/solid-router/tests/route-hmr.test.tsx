@@ -11,7 +11,7 @@ import {
   createRouter,
   lazyRouteComponent,
 } from '../src'
-import type { RouteHmrMeta } from '@tanstack/router-core'
+import type { AnyRoute, RouteHmrMeta } from '@tanstack/router-core'
 
 // Each test uses its own route id: route HMR remembers routes by id for the
 // lifetime of the page, as it does in a real dev session.
@@ -72,26 +72,31 @@ describe('route HMR (Solid)', () => {
       component: route.options.component,
     })
     expect(await screen.findByText('data v2')).toBeInTheDocument()
-    expect(router.routesById[path]).toBe(route)
+    expect((router.routesById as Record<string, AnyRoute>)[path]).toBe(route)
     expect(next.options).toBe(route.options)
   })
 
   test('the live lazy wrapper is kept and swaps to the re-imported component', async () => {
     const { router, evaluate, path } = setup(() => ({
       component: lazyRouteComponent(
-        async (): Promise<Module> => ({ component: makeComponent('v1') }),
+        (): Promise<Module> =>
+          Promise.resolve({ component: makeComponent('v1') }),
         'component',
       ),
     }))
-    const wrapper = router.routesById[path]!.options.component
+    const wrapper = (router.routesById as Record<string, AnyRoute>)[path]!
+      .options.component
     render(() => <RouterProvider router={router} />)
     fireEvent.click(await screen.findByRole('button', { name: 'v1 0' }))
 
     const importer = vi.fn(
-      async (): Promise<Module> => ({ component: makeComponent('v2') }),
+      (): Promise<Module> =>
+        Promise.resolve({ component: makeComponent('v2') }),
     )
     evaluate({ component: lazyRouteComponent(importer, 'component') })
-    expect(router.routesById[path]!.options.component).toBe(wrapper)
+    expect(
+      (router.routesById as Record<string, AnyRoute>)[path]!.options.component,
+    ).toBe(wrapper)
     expect(
       await screen.findByRole('button', { name: 'v2 0' }),
     ).toBeInTheDocument()
@@ -102,14 +107,16 @@ describe('route HMR (Solid)', () => {
     const Page = makeComponent('v1')
     const { router, evaluate } = setup(() => ({
       component: lazyRouteComponent(
-        async (): Promise<Module> => ({ component: Page }),
+        (): Promise<Module> => Promise.resolve({ component: Page }),
         'component',
       ),
     }))
     render(() => <RouterProvider router={router} />)
     fireEvent.click(await screen.findByRole('button', { name: 'v1 0' }))
 
-    const importer = vi.fn(async (): Promise<Module> => ({ component: Page }))
+    const importer = vi.fn(
+      (): Promise<Module> => Promise.resolve({ component: Page }),
+    )
     evaluate({ component: lazyRouteComponent(importer, 'component') })
     await importer.mock.results[0]!.value
     await Promise.resolve()
@@ -119,7 +126,8 @@ describe('route HMR (Solid)', () => {
   test('only the newest import decides what a hot-updated wrapper renders', async () => {
     const { router, evaluate } = setup(() => ({
       component: lazyRouteComponent(
-        async (): Promise<Module> => ({ component: makeComponent('v1') }),
+        (): Promise<Module> =>
+          Promise.resolve({ component: makeComponent('v1') }),
         'component',
       ),
     }))
@@ -188,7 +196,9 @@ describe('route HMR (Solid)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'v1 0' }))
 
     evaluate({ component: proxy('v2') }, { unsplit: { component: 'Page' } })
-    expect(router.routesById[path]!.options.component).toBe(first)
+    expect(
+      (router.routesById as Record<string, AnyRoute>)[path]!.options.component,
+    ).toBe(first)
     await router.load()
     // solid-refresh (absent here) patches the kept proxy in place.
     expect(screen.getByRole('button', { name: 'v1 1' })).toBeInTheDocument()
@@ -212,18 +222,26 @@ describe('route HMR (Solid)', () => {
     expect(window.__TSR_ROUTER__).toBe(other)
 
     expect(() => evaluate({ loader: () => 'v2' })).not.toThrow()
-    expect(router.routesById[path]!.options.loader).toBe(firstLoader)
-    expect(other.routesById[path]!.options.loader).toBeUndefined()
+    expect(
+      (router.routesById as Record<string, AnyRoute>)[path]!.options.loader,
+    ).toBe(firstLoader)
+    expect(
+      (other.routesById as Record<string, AnyRoute>)[path]!.options.loader,
+    ).toBeUndefined()
   })
 
   test('on the server the helper does nothing and wrappers have no hot slot', () => {
     const firstLoader = () => 'v1'
     const { router, evaluate, path } = setup(() => ({ loader: firstLoader }))
     vi.stubGlobal('window', undefined)
-    const wrapper = lazyRouteComponent(async () => ({ default: () => null }))
+    const wrapper = lazyRouteComponent(() =>
+      Promise.resolve({ default: () => null }),
+    )
     expect((wrapper as any).__tsrHot).toBeUndefined()
     evaluate({ loader: () => 'v2' })
     vi.unstubAllGlobals()
-    expect(router.routesById[path]!.options.loader).toBe(firstLoader)
+    expect(
+      (router.routesById as Record<string, AnyRoute>)[path]!.options.loader,
+    ).toBe(firstLoader)
   })
 })
