@@ -241,6 +241,8 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
       throw error
     }
 
+    // The reader is dropped, not released, once the stream ends. WebKit's
+    // releaseLock() can deadlock with a garbage collection and freeze the page.
     const reader = query.stream.getReader()
     void (async () => {
       try {
@@ -254,8 +256,6 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
       } catch (error) {
         console.error('Error reading query stream:', error)
         void reader.cancel(error).catch(() => {})
-      } finally {
-        reader.releaseLock()
       }
     })()
   }
