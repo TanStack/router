@@ -12,7 +12,7 @@ Add robust validation with custom error messages, complex types, and production-
 
 ```tsx
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { z } from 'zod'
+import * as z from 'zod'
 
 const productSearchSchema = z.object({
   query: z.string().min(1, 'Search query required'),
@@ -83,7 +83,7 @@ Most popular with excellent TypeScript integration. For Zod v3, use `@tanstack/z
 
 ```tsx
 import { zodValidator, fallback } from '@tanstack/zod-adapter'
-import { z } from 'zod'
+import * as z from 'zod'
 
 const searchSchema = z.object({
   query: z.string().min(1).max(100),
@@ -101,7 +101,7 @@ export const Route = createFileRoute('/search')({
 For Zod v4, the adapter is no longer necessary:
 
 ```tsx
-import { z } from 'zod'
+import * as z from 'zod'
 
 const searchSchema = z.object({
   query: z.string().min(1).max(100),
@@ -287,7 +287,7 @@ Handle validation errors through route error components:
 ```tsx
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
-import { z } from 'zod'
+import * as z from 'zod'
 
 const searchSchema = z.object({
   query: z.string().min(1, 'Search query is required'),

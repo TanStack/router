@@ -1,5 +1,5 @@
 import * as TanStackStart from '@tanstack/react-start'
-import { z } from 'zod'
+import * as z from 'zod'
 
 export const withUseServer = TanStackStart.createServerFn({
   method: 'GET',

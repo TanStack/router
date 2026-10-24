@@ -10,7 +10,7 @@ import {
   CompositeComponent,
   createCompositeComponent,
 } from '@tanstack/react-start/rsc'
-import { z } from 'zod'
+import * as z from 'zod'
 
 // Replace with your own server-only data layer
 declare const db: {

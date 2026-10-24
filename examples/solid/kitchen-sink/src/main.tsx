@@ -25,7 +25,7 @@ import {
   createSignal,
   on,
 } from 'solid-js'
-import { z } from 'zod'
+import * as z from 'zod'
 import {
   fetchInvoiceById,
   fetchInvoices,

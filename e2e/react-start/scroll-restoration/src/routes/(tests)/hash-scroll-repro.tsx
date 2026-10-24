@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
-import { z } from 'zod'
+import * as z from 'zod'
 import { sleep } from '~/utils/posts'
 
 export const Route = createFileRoute('/(tests)/hash-scroll-repro')({

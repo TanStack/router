@@ -2,7 +2,7 @@ import React from 'react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 
-import { z } from 'zod'
+import * as z from 'zod'
 import {
   RouterProvider,
   createBrowserHistory,

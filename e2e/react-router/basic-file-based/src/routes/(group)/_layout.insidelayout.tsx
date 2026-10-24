@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { getRouteApi, useSearch } from '@tanstack/react-router'
-import { z } from 'zod'
+import * as z from 'zod'
 
 const routeApi = getRouteApi('/(group)/_layout/insidelayout')
 

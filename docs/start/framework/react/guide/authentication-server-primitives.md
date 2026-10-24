@@ -107,7 +107,7 @@ export const getMyOrders = createServerFn({ method: 'GET' })
 ```ts
 // src/server/login.functions.ts
 import { createServerFn } from '@tanstack/react-start'
-import { z } from 'zod'
+import * as z from 'zod'
 import { setSessionCookie } from './session'
 
 export const login = createServerFn({ method: 'POST' })
@@ -220,7 +220,7 @@ The reset endpoint must NOT tell the caller whether a given email is registered.
 
 ```ts
 import { createServerFn } from '@tanstack/react-start'
-import { z } from 'zod'
+import * as z from 'zod'
 
 export const requestPasswordReset = createServerFn({ method: 'POST' })
   .validator(z.object({ email: z.string().email() }))
