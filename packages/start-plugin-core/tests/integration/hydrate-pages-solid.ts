@@ -45,8 +45,14 @@ import { Counter } from '../counter'
 /**
  * The parent-update page of `updatesScript` (see `hydrate-pages-react.ts`
  * `updatesPage`) in Solid: signals, a context holding an accessor, `<For>`.
+ * With `inRow`, the boundary is in a component of its own (`Row`), whose
+ * children read the values from its reactive `props`.
  */
-function updatesPage(split: string) {
+function updatesPage(split: string, inRow = false) {
+  const boundary = (values: string) =>
+    `<Hydrate when={interaction()} prefetch={async ({ preload }) => { await preload() }}${split}>
+            <Item ${values} />
+          </Hydrate>`
   return `import { Hydrate } from '@tanstack/solid-start'
 import { interaction } from '@tanstack/solid-start/hydration'
 import { For, createSignal, useContext } from 'solid-js'
@@ -55,7 +61,16 @@ function Item(props: { name: string; count: number; tag: string; onPick: () => v
   const theme = useContext(Theme)
   return <button data-item={props.name} onClick={() => props.onPick()}>{[props.name, props.count, theme(), props.tag].join('|')}</button>
 }
-export function Page() {
+${
+  inRow
+    ? `function Row(props: { name: string; count: number; tag: string; onPick: () => void }) {
+  return (
+    ${boundary('name={props.name} count={props.count} tag={props.tag} onPick={() => props.onPick()}')}
+  )
+}
+`
+    : ''
+}export function Page() {
   const [count, setCount] = createSignal(0)
   const [theme, setTheme] = createSignal('light')
   const [items, setItems] = createSignal(['a', 'b'])
@@ -69,9 +84,13 @@ export function Page() {
       <output>{picked()}</output>
       <For each={items()}>
         {(item) => (
-          <Hydrate when={interaction()} prefetch={async ({ preload }) => { await preload() }}${split}>
-            <Item name={item} count={count()} tag={ref()} onPick={() => setPicked(item + ':' + count() + ':' + theme())} />
-          </Hydrate>
+          ${
+            inRow
+              ? `<Row name={item} count={count()} tag={ref()} onPick={() => setPicked(item + ':' + count() + ':' + theme())} />`
+              : boundary(
+                  `name={item} count={count()} tag={ref()} onPick={() => setPicked(item + ':' + count() + ':' + theme())}`,
+                )
+          }
         )}
       </For>
     </Theme.Provider>
@@ -182,6 +201,8 @@ export function Page() {
   ),
   updates: updatesPage(''),
   updatesReference: updatesPage(' split={false}'),
+  updatesProps: updatesPage('', true),
+  updatesPropsReference: updatesPage(' split={false}', true),
   // A context declared in the page module itself.
   localContext: `import { Hydrate } from '@tanstack/solid-start'
 import { idle } from '@tanstack/solid-start/hydration'
@@ -409,6 +430,22 @@ export function solidPageSuite(bundler: StartBundler) {
         app.hydrate('updatesReference', { script: updatesScript }),
       ])
       expect(reference.result).toEqual(updatesExpected)
+      for (const page of [split, reference]) {
+        expect({
+          result: page.result,
+          consoleErrors: page.consoleErrors,
+        }).toEqual({ result: updatesExpected, consoleErrors: [] })
+      }
+      expect(split.requested).not.toEqual([])
+    })
+
+    // The same through the reactive `props` of the component holding the
+    // boundary (a Solid read of `props.count` must stay live, SPEC J5.8).
+    test('split children follow the props of their component through updates and a reorder, like unsplit ones', async () => {
+      const [split, reference] = await Promise.all([
+        app.hydrate('updatesProps', { script: updatesScript }),
+        app.hydrate('updatesPropsReference', { script: updatesScript }),
+      ])
       for (const page of [split, reference]) {
         expect({
           result: page.result,
