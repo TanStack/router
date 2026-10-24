@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { describe, test } from 'vitest'
 import {
   collectPrerenderParams,
   runPrerenderParams,
@@ -91,64 +91,52 @@ function runCollect(prerenderParams: () => unknown) {
   })
 }
 
+function defineBench(name: string, fn: () => unknown) {
+  test(name, async ({ bench }) => {
+    await bench(name, fn).run({ warmupIterations: 1 })
+  })
+}
+
 describe(`prerenderParams streaming (${paramsCount} entries)`, () => {
-  bench('prebuilt sync array', () => runStreaming(() => prebuiltArrayEntries), {
-    warmupIterations: 1,
-  })
-
-  bench('created sync array', () => runStreaming(() => createArrayEntries()), {
-    warmupIterations: 1,
-  })
-
-  bench(
-    'created async array',
-    () => runStreaming(async () => createArrayEntries()),
-    { warmupIterations: 1 },
+  defineBench('prebuilt sync array', () =>
+    runStreaming(() => prebuiltArrayEntries),
   )
 
-  bench('sync generator', () => runStreaming(() => syncGeneratorEntries()), {
-    warmupIterations: 1,
-  })
-
-  bench('async generator', () => runStreaming(() => asyncGeneratorEntries()), {
-    warmupIterations: 1,
-  })
-
-  bench(
-    'created async array from pages',
-    () => runStreaming(() => createPagedArrayEntries()),
-    { warmupIterations: 1 },
+  defineBench('created sync array', () =>
+    runStreaming(() => createArrayEntries()),
   )
 
-  bench(
-    'async generator from pages',
-    () => runStreaming(() => asyncGeneratorPagedEntries()),
-    { warmupIterations: 1 },
+  defineBench('created async array', () =>
+    runStreaming(async () => createArrayEntries()),
+  )
+
+  defineBench('sync generator', () =>
+    runStreaming(() => syncGeneratorEntries()),
+  )
+
+  defineBench('async generator', () =>
+    runStreaming(() => asyncGeneratorEntries()),
+  )
+
+  defineBench('created async array from pages', () =>
+    runStreaming(() => createPagedArrayEntries()),
+  )
+
+  defineBench('async generator from pages', () =>
+    runStreaming(() => asyncGeneratorPagedEntries()),
   )
 })
 
 describe(`prerenderParams collect (${paramsCount} entries)`, () => {
-  bench(
-    'prebuilt sync array',
-    async () => {
-      await runCollect(() => prebuiltArrayEntries)
-    },
-    { warmupIterations: 1 },
-  )
+  defineBench('prebuilt sync array', async () => {
+    await runCollect(() => prebuiltArrayEntries)
+  })
 
-  bench(
-    'sync generator',
-    async () => {
-      await runCollect(() => syncGeneratorEntries())
-    },
-    { warmupIterations: 1 },
-  )
+  defineBench('sync generator', async () => {
+    await runCollect(() => syncGeneratorEntries())
+  })
 
-  bench(
-    'async generator',
-    async () => {
-      await runCollect(() => asyncGeneratorEntries())
-    },
-    { warmupIterations: 1 },
-  )
+  defineBench('async generator', async () => {
+    await runCollect(() => asyncGeneratorEntries())
+  })
 })
