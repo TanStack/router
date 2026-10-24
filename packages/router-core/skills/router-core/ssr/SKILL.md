@@ -489,4 +489,4 @@ See [router-core/data-loading](../data-loading/SKILL.md) for loader fundamentals
 ## Cross-References
 
 - [router-core/data-loading](../data-loading/SKILL.md) — SSR changes where loaders execute
-- [compositions/router-query](../../../../react-router/skills/compositions/router-query/SKILL.md) — SSR dehydration/hydration with TanStack Query
+- `@tanstack/react-router#compositions/router-query` — SSR dehydration/hydration with TanStack Query

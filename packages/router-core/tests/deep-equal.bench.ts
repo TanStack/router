@@ -1,4 +1,4 @@
-import { bench, describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { deepEqual } from '../src/utils'
 
 // Workloads modeled on the router's callers: Link inline-option stabilization
@@ -79,104 +79,87 @@ for (let index = 0; index < linkOptions.length; index++) {
 describe('deepEqual', () => {
   const options = { time: 1000, warmupTime: 200 }
 
-  bench(
-    'equal flat search record (default)',
-    () => {
+  test('equal flat search record (default)', async ({ bench }) => {
+    await bench('equal flat search record (default)', () => {
       sink += +deepEqual(search, next(searchEqual))
-    },
-    options,
-  )
+    }).run(options)
+  })
 
-  bench(
-    'equal flat record with a shared child (default)',
-    () => {
+  test('equal flat record with a shared child (default)', async ({ bench }) => {
+    await bench('equal flat record with a shared child (default)', () => {
       sink += +deepEqual(search, shared)
-    },
-    options,
-  )
+    }).run(options)
+  })
 
-  bench(
-    'equal flat record (explicitUndefined)',
-    () => {
+  test('equal flat record (explicitUndefined)', async ({ bench }) => {
+    await bench('equal flat record (explicitUndefined)', () => {
       sink += +deepEqual(search, next(searchEqual), false, true)
-    },
-    options,
-  )
+    }).run(options)
+  })
 
-  bench(
-    'equal flat record (partial)',
-    () => {
+  test('equal flat record (partial)', async ({ bench }) => {
+    await bench('equal flat record (partial)', () => {
       sink += +deepEqual(search, next(searchEqual), true)
-    },
-    options,
-  )
+    }).run(options)
+  })
 
-  bench(
-    'late mismatch in a nested array (default)',
-    () => {
+  test('late mismatch in a nested array (default)', async ({ bench }) => {
+    await bench('late mismatch in a nested array (default)', () => {
       sink += +deepEqual(search, next(searchChangedLate))
-    },
-    options,
-  )
+    }).run(options)
+  })
 
-  bench(
-    'early mismatch (default)',
-    () => {
+  test('early mismatch (default)', async ({ bench }) => {
+    await bench('early mismatch (default)', () => {
       sink += +deepEqual(search, next(searchChangedEarly))
-    },
-    options,
-  )
+    }).run(options)
+  })
 
-  bench(
-    'equal nested record (default)',
-    () => {
+  test('equal nested record (default)', async ({ bench }) => {
+    await bench('equal nested record (default)', () => {
       sink += +deepEqual(nested, next(nestedEqual))
-    },
-    options,
-  )
+    }).run(options)
+  })
 
-  bench(
-    'equal array of 32 numbers',
-    () => {
+  test('equal array of 32 numbers', async ({ bench }) => {
+    await bench('equal array of 32 numbers', () => {
       sink += +deepEqual(numbers, next(numbersEqual))
-    },
-    options,
-  )
+    }).run(options)
+  })
 
-  bench(
-    'fresh equal flat record (explicitUndefined)',
-    () => {
+  test('fresh equal flat record (explicitUndefined)', async ({ bench }) => {
+    await bench('fresh equal flat record (explicitUndefined)', () => {
       sink += +deepEqual(
         search,
         { page: 1, sort: 'asc', filter: 'open', tags: search.tags },
         false,
         true,
       )
-    },
-    options,
-  )
+    }).run(options)
+  })
 
-  bench(
-    'fresh partial mismatch',
-    () => {
+  test('fresh partial mismatch', async ({ bench }) => {
+    await bench('fresh partial mismatch', () => {
       sink += +deepEqual(search, { page: 1, sort: 'desc' }, true)
-    },
-    options,
-  )
+    }).run(options)
+  })
 
-  bench(
-    'link option stabilization: 100 entries x 3 equal values',
-    () => {
-      for (let index = 0; index < linkOptions.length; index++) {
-        const previous = linkOptions[index]!
-        const incoming = linkOptionsEqual[index]!
-        for (let slot = 0; slot < 3; slot++) {
-          sink += +deepEqual(previous[slot], incoming[slot], false, true)
+  test('link option stabilization: 100 entries x 3 equal values', async ({
+    bench,
+  }) => {
+    await bench(
+      'link option stabilization: 100 entries x 3 equal values',
+      () => {
+        for (let index = 0; index < linkOptions.length; index++) {
+          const previous = linkOptions[index]!
+          const incoming = linkOptionsEqual[index]!
+          for (let slot = 0; slot < 3; slot++) {
+            sink += +deepEqual(previous[slot], incoming[slot], false, true)
+          }
         }
-      }
-    },
-    options,
-  )
+      },
+    ).run(options)
+  })
 })
 
 // Keep the results observable so the comparisons cannot be optimized away.

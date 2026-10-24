@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { test } from 'vitest'
 import {
   assertServerFnTransportScenario,
   runServerFnRawStreamRequestLoop,
@@ -16,10 +16,8 @@ const context = await setupServerFnTransportBench(handler)
 
 await assertServerFnTransportScenario(handler, context)
 
-describe('ssr', () => {
-  bench(
-    'ssr server-fn raw-stream (react)',
-    () => runServerFnRawStreamRequestLoop(handler, context),
-    serverFnTransportBenchOptions,
-  )
+test('ssr', async ({ bench }) => {
+  await bench('ssr server-fn raw-stream (react)', async () =>
+    runServerFnRawStreamRequestLoop(handler, context),
+  ).run(serverFnTransportBenchOptions)
 })
