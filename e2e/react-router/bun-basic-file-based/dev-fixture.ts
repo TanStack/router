@@ -57,12 +57,14 @@ export async function startDevFixture({
   virtualConfigFile = false,
   virtualConfigHelperDepth = 0,
   autoCodeSplitting = true,
+  projectAlias = false,
 }: {
   generatedExtension?: string
   virtualMount?: boolean
   virtualConfigFile?: boolean
   virtualConfigHelperDepth?: 0 | 1 | 2
   autoCodeSplitting?: boolean
+  projectAlias?: boolean
 } = {}) {
   const executable = process.env.BUN_EXECUTABLE
   const repo = process.env.ROUTER_REPOSITORY_ROOT
@@ -78,7 +80,8 @@ export async function startDevFixture({
   const requireProject = createRequire(
     fileURLToPath(new URL('./package.json', import.meta.url)),
   )
-  const directory = await mkdtemp(path.join(tmpdir(), 'router-bun-native-dev-'))
+  const container = await mkdtemp(path.join(tmpdir(), 'router-bun-native-dev-'))
+  const directory = projectAlias ? path.join(container, 'alias') : container
   const inlineMaps: Array<InlineMapEvent> = []
   let logs = ''
   let child: ReturnType<typeof spawn> | undefined
@@ -88,6 +91,15 @@ export async function startDevFixture({
     await writeFile(file(name), source)
   }
   try {
+    if (projectAlias) {
+      const source = path.join(container, 'source')
+      await mkdir(source)
+      await symlink(
+        source,
+        directory,
+        process.platform === 'win32' ? 'junction' : 'dir',
+      )
+    }
     for (const name of [
       '@tanstack/router-plugin',
       '@tanstack/react-router',
@@ -314,7 +326,7 @@ export default { name: 'observe-public-router-dev', setup(build) {
             await new Promise((resolve) => child!.once('exit', resolve))
           }
         }
-        await rm(directory, { recursive: true, force: true })
+        await rm(container, { recursive: true, force: true })
       },
     }
   } catch (error) {
@@ -322,7 +334,7 @@ export default { name: 'observe-public-router-dev', setup(build) {
     if (child && child.exitCode === null && child.signalCode === null) {
       await new Promise((resolve) => child!.once('exit', resolve))
     }
-    await rm(directory, { recursive: true, force: true })
+    await rm(container, { recursive: true, force: true })
     throw error
   }
 }

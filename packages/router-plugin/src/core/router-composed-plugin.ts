@@ -47,7 +47,7 @@ export const unpluginRouterComposedFactory: UnpluginFactory<
   }
 
   const routerGenerator = getPlugin(
-    createRouterGeneratorPlugin(options, routerPluginContext),
+    createRouterGeneratorPlugin(options, routerPluginContext, meta.framework),
   )
   const routerCodeSplitter = getPlugin(
     createRouterCodeSplitterPlugin(

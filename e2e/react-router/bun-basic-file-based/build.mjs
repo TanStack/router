@@ -1,10 +1,11 @@
-import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { cp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import tanstackRouter, {
   tanstackRouter as namedTanstackRouter,
 } from '@tanstack/router-plugin/bun'
 import { verifyBunRouteSourceMaps } from './source-maps.mjs'
+import { index, physical, rootRoute } from '@tanstack/virtual-file-routes'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const workspace = path.resolve(here, './.cache/bun-e2e')
@@ -34,9 +35,11 @@ const markers = [
 
 const supportsInputSourceMaps = await verifyBunRouteSourceMaps()
 
-async function build(name, plugin, beforePlugins = []) {
+async function build(name, plugin, beforePlugins = [], paths = {}) {
+  const entryFixture = paths.fixture ?? fixture
+  const treeFile = paths.generatedRouteTree ?? generatedRouteTree
   const result = await Bun.build({
-    entrypoints: [path.join(fixture, 'main.tsx')],
+    entrypoints: [path.join(entryFixture, 'main.tsx')],
     outdir: path.join(workspace, name),
     target: 'browser',
     format: 'esm',
@@ -60,12 +63,12 @@ async function build(name, plugin, beforePlugins = []) {
     })),
   )
   const routeSource = await readFile(
-    path.join(fixture, 'routes/about.tsx'),
+    path.join(entryFixture, 'routes/about.tsx'),
     'utf8',
   )
   return {
     name,
-    routeTree: await readFile(generatedRouteTree, 'utf8'),
+    routeTree: await readFile(treeFile, 'utf8'),
     routeSourceMaps: outputs
       .filter(
         ({ path, source }) =>
@@ -195,7 +198,74 @@ await rm(path.join(fixture, 'routes/details.tsx'))
 await rm(path.join(fixture, 'routes/details.lazy.tsx'))
 builds.push(await build('edited', reusedPlugin))
 
-const manifest = { builds, generationFailure, supportsInputSourceMaps }
+const aliasBuilds = []
+for (const name of [
+  'project-alias',
+  'routes-alias',
+  'tree-alias',
+  'mounted-alias',
+]) {
+  const directory = path.join(workspace, name)
+  const source = path.join(directory, 'source')
+  const alias = path.join(directory, 'alias')
+  await cp(path.join(here, 'fixture'), source, { recursive: true })
+  await symlink(
+    source,
+    alias,
+    process.platform === 'win32' ? 'junction' : 'dir',
+  )
+  const routesDirectory = path.join(
+    name === 'project-alias' || name === 'routes-alias' ? alias : source,
+    'routes',
+  )
+  const treeFile = path.join(
+    name === 'project-alias' || name === 'tree-alias' ? alias : source,
+    'routeTree.gen.ts',
+  )
+  let virtualRouteConfig
+  if (name === 'mounted-alias') {
+    const mounted = path.join(directory, 'mounted')
+    await mkdir(mounted)
+    await cp(
+      path.join(source, 'routes/about.tsx'),
+      path.join(mounted, 'about.tsx'),
+    )
+    await symlink(
+      mounted,
+      path.join(source, 'mounted-alias'),
+      process.platform === 'win32' ? 'junction' : 'dir',
+    )
+    virtualRouteConfig = rootRoute('__root.tsx', [
+      index('index.tsx'),
+      physical('../mounted-alias'),
+    ])
+  }
+  aliasBuilds.push(
+    await build(
+      name,
+      tanstackRouter({
+        ...options,
+        routesDirectory,
+        generatedRouteTree: treeFile,
+        tmpDir: path.join(directory, 'tmp'),
+        virtualRouteConfig,
+        codeSplittingOptions: { defaultBehavior: [['loader'], ['component']] },
+      }),
+      [],
+      {
+        fixture: name === 'project-alias' ? alias : source,
+        generatedRouteTree: treeFile,
+      },
+    ),
+  )
+}
+
+const manifest = {
+  builds,
+  aliasBuilds,
+  generationFailure,
+  supportsInputSourceMaps,
+}
 if (!process.argv.includes('--serve')) {
   console.log(JSON.stringify(manifest, null, 2))
 } else {

@@ -74,6 +74,33 @@ test('generates routes before production bundling and refreshes reused plugins',
   expect(manifest.generationFailure).toMatch(/conflicting configuration paths/i)
 })
 
+test('splits routes through project, route-directory, generated-tree and mounted aliases', async ({
+  request,
+}) => {
+  const manifest = (await (await request.get('/__builds')).json()) as {
+    aliasBuilds: Array<Build>
+  }
+  expect(manifest.aliasBuilds.map(({ name }) => name)).toEqual([
+    'project-alias',
+    'routes-alias',
+    'tree-alias',
+    'mounted-alias',
+  ])
+  for (const build of manifest.aliasBuilds) {
+    expect(build.routeTree).toContain('/about')
+    const entrypoint = build.outputs.find(({ kind }) => kind === 'entry-point')
+    expect(entrypoint).toBeDefined()
+    expect(entrypoint!.markers).toEqual([])
+    expect(
+      build.outputs.filter(({ markers }) =>
+        markers.includes('ABOUT_NATIVE_BUN'),
+      ),
+    ).toEqual([
+      expect.objectContaining({ kind: 'chunk', markers: ['ABOUT_NATIVE_BUN'] }),
+    ])
+  }
+})
+
 test('maps split route chunks to their authored source', async ({
   request,
 }) => {

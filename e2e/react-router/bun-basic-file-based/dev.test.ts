@@ -17,12 +17,14 @@ const test = base.extend<{
   virtualConfigFile: boolean
   virtualConfigHelperDepth: 0 | 1 | 2
   autoCodeSplitting: boolean
+  projectAlias: boolean
 }>({
   generatedExtension: ['ts', { option: true }],
   virtualMount: [false, { option: true }],
   virtualConfigFile: [false, { option: true }],
   virtualConfigHelperDepth: [0, { option: true }],
   autoCodeSplitting: [true, { option: true }],
+  projectAlias: [false, { option: true }],
   native: async (
     {
       generatedExtension,
@@ -30,6 +32,7 @@ const test = base.extend<{
       virtualConfigFile,
       virtualConfigHelperDepth,
       autoCodeSplitting,
+      projectAlias,
     },
     use,
     testInfo,
@@ -40,6 +43,7 @@ const test = base.extend<{
       virtualConfigFile,
       virtualConfigHelperDepth,
       autoCodeSplitting,
+      projectAlias,
     })
     try {
       await testInfo.attach('versions.json', {
@@ -116,6 +120,63 @@ const documentToken = (page: Page) =>
     }
     return (state.__bunDevDocumentToken ??= crypto.randomUUID())
   })
+
+test.describe('project directory alias', () => {
+  test.use({ projectAlias: true })
+  test('splits canonical route modules and watches the aliased generated tree', async ({
+    page,
+    request,
+    native,
+  }, testInfo) => {
+    await page.goto(native.url)
+    await expect(page.getByRole('heading')).toHaveText('HOME_NATIVE_DEV')
+    const initialToken = await documentToken(page)
+    await page.getByRole('link', { name: 'About', exact: true }).click()
+    await expect(page.getByRole('heading')).toHaveText('ABOUT_BEFORE')
+    expect(await documentToken(page)).toBe(initialToken)
+    const compiledRoute = () =>
+      native.inlineMaps.find(
+        ({ contents }) =>
+          contents.includes('AUTHORED_BEFORE') &&
+          contents.includes('sourceMappingURL=data:'),
+      )
+    await expect
+      .poll(compiledRoute, {
+        message: 'the canonical route receives the Router split transform',
+      })
+      .toBeDefined()
+    const compiled = compiledRoute()
+    expectAuthoredPosition(
+      inlinePosition(compiled!.contents, 'AUTHORED_BEFORE'),
+      aboutSource(),
+      'AUTHORED_BEFORE',
+    )
+    await native.save(
+      'routes/nested/empty/deep/added.tsx',
+      nestedSource('/nested/empty/deep/added', 'ALIASED_NESTED_ADDED'),
+    )
+    await expect.poll(() => native.tree()).toContain('/nested/empty/deep/added')
+    await page.getByRole('link', { name: 'Nested added', exact: true }).click()
+    await expect(page.getByRole('heading')).toHaveText('ALIASED_NESTED_ADDED')
+    const checkpointToken = await documentToken(page)
+    await page.getByRole('link', { name: 'Home', exact: true }).click()
+    await expect(page.getByRole('heading')).toHaveText('HOME_NATIVE_DEV')
+    expect(await documentToken(page)).toBe(checkpointToken)
+    native.assertAlive()
+    expect(
+      await (
+        await request.get(new URL('/__native-info', native.url).href)
+      ).json(),
+    ).toEqual({ pid: native.pid })
+    await testInfo.attach('project-alias.json', {
+      body: JSON.stringify({
+        sameProcess: true,
+        automaticDocumentReload: initialToken !== checkpointToken,
+      }),
+      contentType: 'application/json',
+    })
+  })
+})
 
 function inlinePosition(contents: string, marker: string) {
   const match = contents.match(

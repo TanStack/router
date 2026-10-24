@@ -1,5 +1,7 @@
-import { readFile, readdir } from 'node:fs/promises'
+import { realpathSync } from 'node:fs'
+import { readFile, readdir, realpath } from 'node:fs/promises'
 import {
+  basename,
   dirname,
   extname,
   isAbsolute,
@@ -10,10 +12,11 @@ import {
 import { Generator, resolveConfigPath } from '@tanstack/router-generator'
 import { getConfig } from './config'
 import { createRouterPluginContext } from './router-plugin-context'
+import { normalizePath } from './utils'
 
 import type { GeneratorEvent } from '@tanstack/router-generator'
 import type { FSWatcher } from 'chokidar'
-import type { UnpluginFactory } from 'unplugin'
+import type { UnpluginContextMeta, UnpluginFactory } from 'unplugin'
 import type { Config } from './config'
 import type { RouterPluginContext } from './router-plugin-context'
 
@@ -22,6 +25,7 @@ const PLUGIN_NAME = 'unplugin:router-generator'
 export function createRouterGeneratorPlugin(
   options: Partial<Config | (() => Config)> | undefined = {},
   routerPluginContext: RouterPluginContext,
+  framework?: UnpluginContextMeta['framework'],
 ): ReturnType<UnpluginFactory<Partial<Config | (() => Config)> | undefined>> {
   let ROOT: string = process.cwd()
   let userConfig: Config
@@ -50,7 +54,20 @@ export function createRouterGeneratorPlugin(
 
   const runGenerator = async (event?: GeneratorEvent) => {
     await generator.run(event)
-    routerPluginContext.routesByFile = generator.getRoutesByFileMap()
+    const routesByFile = generator.getRoutesByFileMap()
+    // Bun resolves symlinks before invoking its module hooks.
+    routerPluginContext.routesByFile =
+      framework === 'bun'
+        ? new Map(
+            await Promise.all(
+              Array.from(
+                routesByFile,
+                async ([file, route]) =>
+                  [normalizePath(await realpath(file)), route] as const,
+              ),
+            ),
+          )
+        : routesByFile
   }
 
   const generate = async (opts?: {
@@ -92,9 +109,13 @@ export function createRouterGeneratorPlugin(
           'reactFastRefresh' in build.config &&
           build.config.reactFastRefresh
         ) {
-          const generatedRouteTree = resolve(
+          const configuredRouteTree = resolve(
             ROOT,
             userConfig.generatedRouteTree,
+          )
+          const generatedRouteTree = join(
+            realpathSync.native(dirname(configuredRouteTree)),
+            basename(configuredRouteTree),
           )
           const extension = extname(generatedRouteTree)
           build.onLoad(
@@ -217,6 +238,10 @@ export function createRouterGeneratorPlugin(
 
 export const unpluginRouterGeneratorFactory: UnpluginFactory<
   Partial<Config | (() => Config)> | undefined
-> = (options = {}) => {
-  return createRouterGeneratorPlugin(options, createRouterPluginContext())
+> = (options = {}, meta) => {
+  return createRouterGeneratorPlugin(
+    options,
+    createRouterPluginContext(),
+    meta.framework,
+  )
 }
