@@ -38,9 +38,9 @@ const { values: args } = parseArgs({
     warmup: { type: 'string', default: '1' },
     'hmr-iterations': { type: 'string', default: '20' },
     'hmr-warmup': { type: 'string', default: '3' },
-    'max-busy': { type: 'string', default: '4' },
+    'max-busy': { type: 'string', default: '1.5' },
     'quiet-timeout': { type: 'string', default: '1800' },
-    retries: { type: 'string', default: '3' },
+    retries: { type: 'string', default: '5' },
     'skip-package-builds': { type: 'boolean', default: false },
     port: { type: 'string', default: '4810' },
     help: { type: 'boolean', default: false },
@@ -57,9 +57,9 @@ if (args.help) {
   --warmup <n>              discarded runs before measuring (default 1)
   --hmr-iterations <n>      measured edits per HMR kind (default 20)
   --hmr-warmup <n>          discarded edits per HMR kind (default 3)
-  --max-busy <cores>        wait until other processes use fewer cores (default 4)
+  --max-busy <cores>        wait until other processes use fewer cores (default 1.5)
   --quiet-timeout <s>       max wait for a quiet machine, then flag the run (default 1800)
-  --retries <n>             repeat runs flagged for load during the run (default 3 per scenario)
+  --retries <n>             repeat runs flagged for load during the run (default 5 per scenario)
   --skip-package-builds     do not run the Nx package builds first`)
   process.exit(0)
 }

@@ -47,17 +47,20 @@ Useful options (`--help` lists all):
 - `--scenarios build,dev-compile,dev-cold,dev-warm,hmr,rsbuild,profile`
 - `--runs 5 --warmup 1` (startup/build), `--hmr-iterations 20 --hmr-warmup 3`
 - `--skip-package-builds` when the packages are already built
-- `--max-busy 4`: before every run (and every HMR edit) the harness samples
-  `/proc/stat` and waits while other processes keep more than 4 cores busy
+- `--max-busy 1.5`: before every run (and every HMR edit) the harness samples
+  `/proc/stat` and waits while other processes keep more than 1.5 cores busy
   (up to `--quiet-timeout` seconds; runs that time out are recorded with
   `flagged: true`). Each run records `busyCores` and the 1-minute load.
   A pre-run sample is not enough (bursty neighbours slowed one series by
   ~10% while every pre-run sample was below 4), so each run also records
   `othersBusyDuring`: system-wide busy time during the run minus the
   harness's own process tree (dev server, build, Chromium). Runs above
-  `--max-busy` are flagged and repeated, up to `--retries` (default 3) per
+  `--max-busy` are flagged and repeated, up to `--retries` (default 5) per
   scenario and 3× that many HMR edits per kind; remaining flagged runs are
-  kept, counted in `summary.md` and reported by `compare.mjs`.
+  kept, counted in `summary.md` and reported by `compare.mjs`. The default
+  is strict on purpose: on a 32-core machine, 2–4 cores of unrelated load
+  slowed the browser startup scenarios by 5–15% (likely lower boost clocks),
+  far more than the number of busy cores suggests.
 
 Compare two runs:
 
