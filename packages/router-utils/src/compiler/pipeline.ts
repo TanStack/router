@@ -59,7 +59,10 @@ export async function compileModule(
   host: HostServices,
   caches: CompilerCaches,
 ): Promise<CompileOutput | null> {
-  const identity = identify(input.id)
+  const own = identify(input.id)
+  // R48: a non-JS id whose code reaches us as JS compiles with Tier 0 only
+  const tier0Only = own.lang === null
+  const identity = tier0Only && input.lang ? { ...own, lang: input.lang } : own
   if (identity.lang === null) {
     return null
   }
@@ -119,6 +122,7 @@ export async function compileModule(
     const promise = runAttempt(
       input,
       identity,
+      tier0Only,
       host,
       caches,
       cache,
@@ -249,6 +253,7 @@ function dependencyPaths(plan: EmitPlan): Array<string> {
 async function runAttempt(
   input: CompileInput,
   identity: SourceIdentity,
+  tier0Only: boolean,
   host: HostServices,
   caches: CompilerCaches,
   cache: PlanCache,
@@ -276,7 +281,7 @@ async function runAttempt(
     config: input.config.perPlanner[p.name],
   })
   let planners = input.planners.filter((p) => p.gate(t0, gateCtx(p)))
-  if (cjs) {
+  if (cjs || tier0Only) {
     planners = planners.filter((p) => p.tier === 0)
   }
   if (planners.length === 0) {
