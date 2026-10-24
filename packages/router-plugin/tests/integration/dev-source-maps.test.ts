@@ -3,7 +3,8 @@
  * the route module, in what the loader and the split component share, and
  * in the split component, executed in a real browser page served by Vite's
  * dev server and by Rsbuild's, resolves through the maps the dev server
- * serves to the user's file and line. The modules are those the throws run
+ * serves to the user's file and line; on Vite, the module's map names the
+ * route file itself as its source. The modules are those the throws run
  * in, named by the executed stack frames: their ids, how many there are and
  * which of them holds which code are free (SPEC §5.3). Maps are the ones the
  * page's modules point to (Vite's inline maps, Rsbuild's `sourceMappingURL`),
@@ -14,7 +15,14 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { pluginReact } from '@rsbuild/plugin-react'
 import react from '@vitejs/plugin-react'
-import { describe, expect, onTestFinished, test } from 'vitest'
+import {
+  afterAll,
+  beforeAll,
+  describe,
+  expect,
+  onTestFinished,
+  test,
+} from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
@@ -125,8 +133,9 @@ function expectThrowsMapToRouteFile(
   maps: Map<string, AnySourceMap | undefined>,
   root: string,
   mapUrl: (location: string) => string | undefined,
+  only: Array<string> = markers,
 ) {
-  for (const marker of markers) {
+  for (const marker of only) {
     const stack = stacks[marker]
     expect(stack, `the stack of ${marker}`).toBeDefined()
     const [top] = traceStack(stack!, (location) => maps.get(location))
@@ -143,65 +152,117 @@ function expectThrowsMapToRouteFile(
 }
 
 describe('vite dev server', () => {
-  test(
-    'the route module and every module derived from it map a throw to its line in the route file',
-    async () => {
-      const host = await createPluginHost({
-        dir: appsDir,
-        prefix: '.dev-source-maps-',
-        registerCleanup: onTestFinished,
-        files: {
-          'routes/__root.tsx': rootRoute,
-          'routes/index.tsx': route,
-          'probe.ts': probe,
+  const cleanups: Array<() => Promise<void>> = []
+  let throws: {
+    stacks: Record<string, string | undefined>
+    maps: Map<string, AnySourceMap | undefined>
+    root: string
+    origin: string
+  }
+  beforeAll(async () => {
+    const host = await createPluginHost({
+      dir: appsDir,
+      prefix: '.dev-source-maps-',
+      registerCleanup: (cleanup) => {
+        cleanups.push(cleanup)
+      },
+      files: {
+        'routes/__root.tsx': rootRoute,
+        'routes/index.tsx': route,
+        'probe.ts': probe,
+      },
+      client: true,
+      config: {
+        optimizeDeps: {
+          noDiscovery: true,
+          include: [
+            'react',
+            'react/jsx-runtime',
+            'react/jsx-dev-runtime',
+            'react-dom',
+            'react-dom/client',
+            '@tanstack/react-router',
+          ],
         },
-        client: true,
-        config: {
-          optimizeDeps: {
-            noDiscovery: true,
-            include: [
-              'react',
-              'react/jsx-runtime',
-              'react/jsx-dev-runtime',
-              'react-dom',
-              'react-dom/client',
-              '@tanstack/react-router',
-            ],
-          },
-        },
-        plugins: () => [
-          tanstackRouter({
-            target: 'react',
-            routesDirectory: './routes',
-            generatedRouteTree: './routeTree.gen.ts',
-            autoCodeSplitting: true,
-          }),
-          react(),
-        ],
-      })
-      const { result: stacks } = await host.runClient<
-        Record<string, string | undefined>
-      >('/probe.ts', 'return module.throws()')
-      // The map of every module a frame names, as the dev server serves it
-      // (Vite inlines it)
-      const maps = new Map<string, AnySourceMap | undefined>()
-      for (const location of new Set(
-        Object.values(stacks).flatMap((stack) => frameLocations(stack ?? '')),
-      )) {
-        const url = new URL(location)
-        if (url.origin !== new URL(host.dev.url!).origin) {
-          continue
-        }
-        const { body } = await host.dev.fetch(url.pathname + url.search)
-        maps.set(location, inlineSourceMap(body))
+      },
+      plugins: () => [
+        tanstackRouter({
+          target: 'react',
+          routesDirectory: './routes',
+          generatedRouteTree: './routeTree.gen.ts',
+          autoCodeSplitting: true,
+        }),
+        react(),
+      ],
+    })
+    const { result: stacks } = await host.runClient<
+      Record<string, string | undefined>
+    >('/probe.ts', 'return module.throws()')
+    // The map of every module a frame names, as the dev server serves it
+    // (Vite inlines it)
+    const maps = new Map<string, AnySourceMap | undefined>()
+    const origin = new URL(host.dev.url!).origin
+    for (const location of new Set(
+      Object.values(stacks).flatMap((stack) => frameLocations(stack ?? '')),
+    )) {
+      const url = new URL(location)
+      if (url.origin !== origin) {
+        continue
       }
-      // (a module's URL path is relative to the app root)
-      expectThrowsMapToRouteFile(stacks, maps, host.root, (location) =>
-        path.join(host.root, new URL(location).pathname),
-      )
+      const { body } = await host.dev.fetch(url.pathname + url.search)
+      maps.set(location, inlineSourceMap(body))
+    }
+    throws = { stacks, maps, root: host.root, origin }
+  }, timeout)
+  afterAll(async () => {
+    for (const cleanup of cleanups.reverse()) {
+      await cleanup()
+    }
+  })
+
+  // The module each throw runs in maps it to its line in the route file,
+  // and names the route file as its source, as the browser resolves it
+  // against the module's URL: a debugger binds a breakpoint set in the
+  // route file by that URL.
+  // Bug: the module of the split component and the module of what the
+  // loader and the split component share name the route file with the code
+  // splitter's query (`index.tsx?tsr-split=component`,
+  // `index.tsx?tsr-shared=1`): the code splitter generates their maps with
+  // the module id as the source file name.
+  // Source: #6667; src/core/router-code-splitter-plugin.ts (`filename: id`).
+  // Impact: in Vite dev, a debugger sees the split component and the shared
+  // code as other files than the route file.
+  const rows = [
+    { name: 'the loader', marker: 'MARK_LOADER_THROW', fails: false },
+    {
+      name: 'a function the loader and the split component share',
+      marker: 'MARK_SHARED_THROW',
+      fails: true,
     },
-    timeout,
-  )
+    { name: 'the split component', marker: 'MARK_PAGE_THROW ', fails: true },
+  ]
+  for (const { name, marker, fails } of rows) {
+    ;(fails ? test.fails : test)(
+      `a throw in ${name} maps to its line in the route file, which its module names as its source`,
+      () => {
+        const { stacks, maps, root, origin } = throws
+        // (a module's URL path is relative to the app root)
+        expectThrowsMapToRouteFile(
+          stacks,
+          maps,
+          root,
+          (location) => path.join(root, new URL(location).pathname),
+          [marker],
+        )
+        const [top] = traceStack(stacks[marker]!, (location) =>
+          maps.get(location),
+        )
+        expect(new URL(top!.original!.source, top!.location).href).toBe(
+          new URL('/routes/index.tsx', origin).href,
+        )
+      },
+    )
+  }
 })
 
 describe('rsbuild dev server', () => {

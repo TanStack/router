@@ -7,7 +7,7 @@ One entry per root cause: the bug, the SPEC clause, the pins (`file` and test na
 `$name`, `%s` and `${…}` are table-row placeholders), and what a fix must achieve. The test comment (`Bug:`,
 `Impact:`) has the details. "Cause" files name today's implementation; a rewrite may have no such file.
 
-Totals: 367 pin sites in 101 test files (a table test counts once; Vitest counts each row).
+Totals: 368 pin sites in 101 test files (a table test counts once; Vitest counts each row).
 
 Pins whose input picks a name today's compiler generates (S6) flip with a compiler that generates other names. The
 adaptive pins next to them, which read the names a compiler actually generates, are the real check.
@@ -170,7 +170,7 @@ user binding. 8 pins:
   J1.10, G5. `router-plugin/tests/integration/known-bugs-rsbuild-generator.test.ts`: "a created route file the
   generator cannot parse is reported, and fixing it adds the route".
 
-## J2 Route code splitting (103 pins: 87 below, 16 in S1, S3–S6)
+## J2 Route code splitting (104 pins: 88 below, 16 in S1, S3–S6)
 
 Router-plugin paths below are under `router-plugin/tests/`; `pages/` means `integration/pages/`.
 
@@ -324,6 +324,10 @@ Router-plugin paths below are under `router-plugin/tests/`; `pages/` means `inte
   decorator that the split component uses compiles into parseable modules".
 - **A namespace is copied into a chunk without its body.** SPEC G1. `pages/known-bugs-code-splitter-bindings.test.ts`:
   "a namespace the split component reads keeps its body".
+- **Vite dev: the maps of the split and shared modules name the route file with the splitter's query**
+  (`index.tsx?tsr-split=component`), so a debugger sees another file than the route file. SPEC G6.
+  `integration/dev-source-maps.test.ts`: "a throw in $name maps to its line in the route file, which its module names
+  as its source". Fix: every module derived from the route file names the route file itself as its source.
 - **Overload signatures of a shared function stay next to its import**, and the TypeScript transform drops the import.
   SPEC G1, J2.12. `pages/known-bugs-code-splitter-bindings.test.ts`: "an overloaded function the route module and a
   split loader share keeps working"; `known-bugs-dev-server.test.ts`: "keep exported overloads and their aliases that
