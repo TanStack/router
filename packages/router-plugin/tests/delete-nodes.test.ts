@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 import { compileCodeSplitReferenceRoute } from '../src/core/code-splitter/compilers'
 import { frameworks } from './constants'
+import { formatSnapshot } from './format-snapshot'
 import type { DeletableNodes } from '../src/core/config'
 
 function getFrameworkDir(framework: string) {
@@ -82,7 +83,9 @@ export const Route = createFileRoute('/')({
               targetFramework: framework,
             })
 
-            await expect(compileResult?.code || code).toMatchFileSnapshot(
+            await expect(
+              await formatSnapshot(compileResult?.code || code, filename),
+            ).toMatchFileSnapshot(
               path.join(dirs.snapshots, groupName, filename),
             )
           },

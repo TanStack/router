@@ -1205,6 +1205,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
         strategy: {
           type: 'mtime',
           expectedMtimeMs: updatedCacheEntry.mtimeMs,
+          expectedContent: existingRouteFile.fileContent,
         },
       })
       updatedCacheEntry.mtimeMs = stats.mtimeMs
@@ -1265,6 +1266,9 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       | {
           type: 'mtime'
           expectedMtimeMs: bigint
+          // An in-place save can truncate and rewrite a file within one mtime
+          // tick, so user-authored files also compare the content.
+          expectedContent?: string
         }
       | {
           type: 'new-file'
@@ -1274,13 +1278,8 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     await this.fs.writeFile(tmpPath, opts.newContent)
 
     if (opts.strategy.type === 'mtime') {
+      const { expectedMtimeMs, expectedContent } = opts.strategy
       const beforeStat = await this.fs.stat(opts.filePath)
-      if (beforeStat.mtimeMs !== opts.strategy.expectedMtimeMs) {
-        throw rerun({
-          msg: `File ${opts.filePath} was modified by another process during processing.`,
-          event: { type: 'update', path: opts.filePath },
-        })
-      }
       const newFileState = await this.fs.stat(tmpPath)
       if (newFileState.mode !== beforeStat.mode) {
         await this.fs.chmod(tmpPath, beforeStat.mode)
@@ -1305,6 +1304,25 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
             throw err
           }
         }
+      }
+      // Check right before the rename so that changes made while the
+      // temporary file was prepared are not overwritten.
+      let changed: boolean
+      if (expectedContent === undefined) {
+        const current = await this.fs.stat(opts.filePath)
+        changed = current.mtimeMs !== expectedMtimeMs
+      } else {
+        const current = await this.fs.readFile(opts.filePath)
+        changed =
+          current === 'file-not-existing' ||
+          current.stat.mtimeMs !== expectedMtimeMs ||
+          current.fileContent !== expectedContent
+      }
+      if (changed) {
+        throw rerun({
+          msg: `File ${opts.filePath} was modified by another process during processing.`,
+          event: { type: 'update', path: opts.filePath },
+        })
       }
     } else {
       if (await checkFileExists(opts.filePath)) {
@@ -1440,6 +1458,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
         strategy: {
           type: 'mtime',
           expectedMtimeMs: rootNodeFile.stat.mtimeMs,
+          expectedContent: rootNodeFile.fileContent,
         },
       })
       updatedCacheEntry.fileContent = rootRouteContent
