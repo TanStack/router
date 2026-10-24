@@ -1,5 +1,5 @@
 import { transformWithOxc } from 'vite'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import {
   compileRouteModules,
   componentChunk,
@@ -113,6 +113,17 @@ export const Route = createFileRoute('/')({ component: Page })
       expect(importedNames(code, 'react')).toEqual(['*'])
     },
   )
+
+  it('keeps the React import of a split chunk with inline JSX when only a top-level type reads React', async () => {
+    const chunk = componentChunk(`import * as React from 'react'
+${head}type Title = React.ReactNode
+export const Route = createFileRoute('/')({ component: () => <p>classic</p> })
+`)
+    const { code } = await transformWithOxc(chunk, 'module.tsx', {
+      jsx: { runtime: 'classic' },
+    })
+    expect(importedNames(code, 'react')).toEqual(['*'])
+  })
 })
 
 describe('exports of the route file', () => {
@@ -165,6 +176,43 @@ export default ${declaration}
     },
   )
 
+  it('stay exported through an export list when the route module imports shared bindings', async () => {
+    const { modules } =
+      compileRouteModules(`${head}import { createStore } from './store'
+const store = createStore()
+const Route = createFileRoute('/')({
+  loader: () => store.get(),
+  component: () => <p>{store.get()}</p>,
+})
+const title = 'title'
+export { Route, title }
+`)
+    expect(Object.keys(modules)).toContain('shared')
+    expect(exportedNames(modules.reference!)).toEqual(['Route', 'title'])
+    await expectValidModules(modules)
+  })
+
+  it("export only the file route's split option from the chunk when the module also creates a code-based route", async () => {
+    const { modules } =
+      compileRouteModules(`import { createFileRoute, createRoute } from '@tanstack/react-router'
+export const legacy = createRoute({
+  getParentRoute: () => null as any,
+  path: '/legacy',
+  component: () => <p>legacy</p>,
+})
+export const Route = createFileRoute('/')({
+  component: () => <p>file</p>,
+})
+`)
+    const chunk = modules['virtual component']!
+    expect(exportedNames(chunk)).toEqual(['component'])
+    const { component } = await evaluateModule(chunk, {
+      'route.tsx': { legacy: {} },
+      '@tanstack/react-router': { createRoute: () => ({}) },
+    })
+    expect(component!()).toBe('<p>file</p>')
+  })
+
   // Source: Next.js ssg/getStaticProps/issue-31855 and multi-declarator-export
   it('are imported by the chunk when declared in one statement', async () => {
     const { modules } = compileRouteModules(`${head}export const a = 1,
@@ -201,6 +249,29 @@ export const Route = createFileRoute('/')({
     expect(modules.reference).toMatch(/export \* from ['"]\.\/lib['"]/)
     expect(modules.reference).toMatch(/export \* as lib from ['"]\.\/lib['"]/)
     await expectValidModules(modules)
+  })
+
+  // The code splitter keeps an exported component in the route module, which
+  // the entry chunk loads, and tells the developer why.
+  it('are reported as not code-split when an exported component is a split option and another option is split', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    onTestFinished(() => warn.mockRestore())
+    const { modules } = compileRouteModules(`${head}export function Page() {
+  return <p>page</p>
+}
+export const Route = createFileRoute('/')({
+  component: Page,
+  errorComponent: () => <p>error</p>,
+})
+`)
+    expect(modules.reference).toContain('errorComponent: lazyRouteComponent(')
+    expect(modules.reference).not.toMatch(
+      /component: lazyRouteComponent\(\S+, ['"]component['"]\)/,
+    )
+    expect(warn).toHaveBeenCalledOnce()
+    expect(warn.mock.calls[0]![0]).toContain(
+      '[tanstack-router] These exports from "route.tsx" will not be code-split and will increase your bundle size:\n- Page\n',
+    )
   })
 })
 
@@ -287,6 +358,44 @@ export const Route = createFileRoute('/')({
     const chunk = await evaluateModule(modules['virtual component']!)
     expect(chunk.component!()).toBe('<p>LOUD|label:x</p>')
   })
+
+  it.each([
+    {
+      // Source: @babel/plugin-transform-typescript enum/const
+      name: 'a const enum',
+      setup: `const enum Direction { Up = 1, Down }`,
+      render: '[Direction.Up, Direction.Down].join()',
+      expected: '1,2',
+    },
+    {
+      // Sources: @babel/plugin-transform-typescript class/parameter-properties
+      // and @babel/generator typescript/class-abstract
+      name: 'an abstract class with parameter properties',
+      setup: `abstract class Base {
+  constructor(protected readonly label: string, public count = 2) {}
+  abstract render(): string
+}
+class Item extends Base {
+  declare extra: number
+  render() { return this.label + this.count }
+}`,
+      render: "new Item('item').render()",
+      expected: 'item2',
+    },
+  ])(
+    'gives the split component $name it uses',
+    async ({ setup, render, expected }) => {
+      const { modules } = compileRouteModules(`${head}${setup}
+export const Route = createFileRoute('/')({
+  loader: () => 'data',
+  component: () => <p>{${render}}</p>,
+})
+`)
+      await expectValidModules(modules)
+      const chunk = await evaluateModule(modules['virtual component']!)
+      expect(chunk.component!()).toBe(`<p>${expected}</p>`)
+    },
+  )
 
   // TypeScript lets a type and a value share a name; exporting both is valid.
   it.each([
