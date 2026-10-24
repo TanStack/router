@@ -36,17 +36,6 @@ export const createMiddleware: CreateMiddlewareFn<{}> = (options, __opts) => {
     type: 'request',
     ...(__opts || options),
   }
-  const setValidator = (validator: any) => {
-    return createMiddleware(
-      {},
-      Object.assign(resolvedOptions, {
-        validator,
-        // TODO remove upon stable
-        inputValidator: validator,
-      }),
-    )
-  }
-
   return {
     options: resolvedOptions,
     middleware: (middleware: any) => {
@@ -55,9 +44,9 @@ export const createMiddleware: CreateMiddlewareFn<{}> = (options, __opts) => {
         Object.assign(resolvedOptions, { middleware }),
       )
     },
-    validator: setValidator,
-    // TODO remove upon stable
-    inputValidator: setValidator,
+    validator: (validator: any) => {
+      return createMiddleware({}, Object.assign(resolvedOptions, { validator }))
+    },
     client: (client: any) => {
       return createMiddleware({}, Object.assign(resolvedOptions, { client }))
     },
@@ -178,9 +167,6 @@ export interface FunctionMiddlewareTypes<
     TClientSendContext
   >
   validator: TInputValidator
-  // TODO remove upon stable
-  /** @deprecated Use `validator` instead. */
-  inputValidator: TInputValidator
 }
 
 /**
@@ -390,9 +376,6 @@ export interface FunctionMiddlewareOptions<
 > {
   middleware?: TMiddlewares
   validator?: ConstrainValidator<TRegister, 'GET', TInputValidator>
-  // TODO remove upon stable
-  /** @deprecated Use `validator` instead. */
-  inputValidator?: ConstrainValidator<TRegister, 'GET', TInputValidator>
   client?: FunctionMiddlewareClientFn<
     TRegister,
     TMiddlewares,
@@ -682,11 +665,6 @@ export interface FunctionMiddlewareAfterClient<
 
 export interface FunctionMiddlewareValidator<TRegister, TMiddlewares> {
   validator: <TNewValidator>(
-    validator: ConstrainValidator<TRegister, 'GET', TNewValidator>,
-  ) => FunctionMiddlewareAfterValidator<TRegister, TMiddlewares, TNewValidator>
-  // TODO remove upon stable
-  /** @deprecated Use `validator` instead. */
-  inputValidator: <TNewValidator>(
     validator: ConstrainValidator<TRegister, 'GET', TNewValidator>,
   ) => FunctionMiddlewareAfterValidator<TRegister, TMiddlewares, TNewValidator>
 }

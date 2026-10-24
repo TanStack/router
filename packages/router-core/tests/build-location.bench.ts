@@ -1,4 +1,4 @@
-import { bench, describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute, retainSearchParams } from '../src'
 import { createTestRouter } from './routerTestUtils'
@@ -75,20 +75,23 @@ function defineCase(
     expect(router.buildLocation(dest as any).href).toBe(expectedHref(index))
   })
   let checksum = 0
-  bench(
-    name,
-    () => {
-      checksum = publication(router, dests)
-    },
-    {
+  test(name, async ({ bench }) => {
+    await bench(
+      name,
+      {
+        afterAll: () => {
+          expect(checksum).toBe(expected)
+        },
+      },
+      () => {
+        checksum = publication(router, dests)
+      },
+    ).run({
       time: 1000,
       warmupTime: 200,
       throws: true,
-      teardown: () => {
-        expect(checksum).toBe(expected)
-      },
-    },
-  )
+    })
+  })
 }
 
 describe(`buildLocation per publication (${LINKS} links)`, () => {

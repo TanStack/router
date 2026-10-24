@@ -1,96 +1,112 @@
-const $$splitComponentImporter = () => import('arrow-function.tsx?tsr-split=component');
-import { lazyRouteComponent } from '@tanstack/react-router';
-import * as React from 'react';
-import { createFileRoute } from '@tanstack/react-router';
-import { fetchPosts } from '../posts';
+const $$splitComponentImporter = () =>
+  import('arrow-function.tsx?tsr-split=component')
+import { lazyRouteComponent } from '@tanstack/react-router'
+import * as React from 'react'
+import { createFileRoute } from '@tanstack/react-router'
+import { fetchPosts } from '../posts'
 const TSRSplitComponent = (() => {
-  const hot = import.meta.webpackHot;
-  const hotData = hot ? hot.data ??= {} : undefined;
-  return hotData?.["tsr-split-component:component"] ?? lazyRouteComponent($$splitComponentImporter, "component");
-})();
+  const hot = import.meta.webpackHot
+  const hotData = hot ? (hot.data ??= {}) : undefined
+  return (
+    hotData?.['tsr-split-component:component'] ??
+    lazyRouteComponent($$splitComponentImporter, 'component')
+  )
+})()
 if (import.meta.webpackHot) {
-  (import.meta.webpackHot.data ??= {})["tsr-split-component:component"] = TSRSplitComponent;
+  ;(import.meta.webpackHot.data ??= {})['tsr-split-component:component'] =
+    TSRSplitComponent
 }
 export const Route = createFileRoute('/posts')({
   loader: fetchPosts,
-  component: TSRSplitComponent
-});
+  component: TSRSplitComponent,
+})
 if (import.meta.webpackHot) {
-  const hot = import.meta.webpackHot;
-  const hotData = hot.data ??= {};
-  const previousRoute = hotData['tsr-route'];
-  const routeId = hotData['tsr-route-id'] ?? Route.id ?? (Route.isRoot ? '__root__' : undefined);
+  const hot = import.meta.webpackHot
+  const hotData = (hot.data ??= {})
+  const previousRoute = hotData['tsr-route']
+  const routeId =
+    hotData['tsr-route-id'] ??
+    Route.id ??
+    (Route.isRoot ? '__root__' : undefined)
   if (routeId) {
-    hotData['tsr-route-id'] = routeId;
+    hotData['tsr-route-id'] = routeId
   }
   if (previousRoute && routeId && previousRoute !== Route) {
-    (function handleRouteUpdate(routeId, newRoute, previousRoute) {
-      const router = previousRoute._hmrRouter;
+    ;(function handleRouteUpdate(routeId, newRoute, previousRoute) {
+      const router = previousRoute._hmrRouter
       if (!router) {
-        return;
+        return
       }
-      ;
-      const oldRoute = router.routesById[routeId];
+      const oldRoute = router.routesById[routeId]
       if (!oldRoute) {
-        return;
+        return
       }
-      ;
-      const generatedRouteOptionKeys = new Set(["id", "path", "getParentRoute"]);
-      const generatedRouteOptions = {};
-      generatedRouteOptionKeys.forEach(key => {
+      const generatedRouteOptionKeys = new Set(['id', 'path', 'getParentRoute'])
+      const generatedRouteOptions = {}
+      generatedRouteOptionKeys.forEach((key) => {
         if (key in oldRoute.options) {
-          generatedRouteOptions[key] = oldRoute.options[key];
+          generatedRouteOptions[key] = oldRoute.options[key]
         }
-      });
-      const oldHasShellComponent = "shellComponent" in oldRoute.options;
-      const newHasShellComponent = "shellComponent" in newRoute.options;
-      const preserveComponentIdentity = oldHasShellComponent === newHasShellComponent;
-      const componentKeys = ["component", "shellComponent", "pendingComponent", "errorComponent", "notFoundComponent"];
+      })
+      const oldHasShellComponent = 'shellComponent' in oldRoute.options
+      const newHasShellComponent = 'shellComponent' in newRoute.options
+      const preserveComponentIdentity =
+        oldHasShellComponent === newHasShellComponent
+      const componentKeys = [
+        'component',
+        'shellComponent',
+        'pendingComponent',
+        'errorComponent',
+        'notFoundComponent',
+      ]
       if (preserveComponentIdentity) {
-        componentKeys.forEach(key => {
+        componentKeys.forEach((key) => {
           if (key in oldRoute.options && key in newRoute.options) {
-            newRoute.options[key] = oldRoute.options[key];
+            newRoute.options[key] = oldRoute.options[key]
           }
-        });
+        })
       }
-      ;
-      const nextOptions = {
-        ...newRoute.options,
-        ...generatedRouteOptions
-      };
-      oldRoute.options = nextOptions;
-      oldRoute.update(nextOptions);
-      router._replaceRouteChunk(oldRoute, newRoute.lazyFn);
-      router.setRoutes(router.buildRouteTree());
-      syncHotRouteExport(oldRoute);
-      router.resolvePathCache.clear();
-      void router._refreshRoute?.();
+      const nextOptions = { ...newRoute.options, ...generatedRouteOptions }
+      oldRoute.options = nextOptions
+      oldRoute.update(nextOptions)
+      router._replaceRouteChunk(oldRoute, newRoute.lazyFn)
+      router.setRoutes(router.buildRouteTree())
+      syncHotRouteExport(oldRoute)
+      router.resolvePathCache.clear()
+      void router._refreshRoute?.()
       function syncHotRouteExport(liveRoute) {
-        Object.defineProperty(newRoute, "_hmrRouter", {
+        Object.defineProperty(newRoute, '_hmrRouter', {
           value: router,
-          configurable: true
-        });
-        newRoute.options = liveRoute.options;
-        newRoute.parentRoute = liveRoute.parentRoute;
-        newRoute._path = liveRoute._path;
-        newRoute._id = liveRoute._id;
-        newRoute._fullPath = liveRoute._fullPath;
-        newRoute._to = liveRoute._to;
+          configurable: true,
+        })
+        newRoute.options = liveRoute.options
+        newRoute.parentRoute = liveRoute.parentRoute
+        newRoute._path = liveRoute._path
+        newRoute._id = liveRoute._id
+        newRoute._fullPath = liveRoute._fullPath
+        newRoute._to = liveRoute._to
       }
-    })(routeId, Route, previousRoute);
+    })(routeId, Route, previousRoute)
     try {
-      const tsrReactRefreshUtils = typeof __react_refresh_utils__ !== 'undefined' ? __react_refresh_utils__ : undefined;
-      const tsrEnqueueUpdate = tsrReactRefreshUtils && typeof tsrReactRefreshUtils.enqueueUpdate === 'function' ? tsrReactRefreshUtils.enqueueUpdate : undefined;
+      const tsrReactRefreshUtils =
+        typeof __react_refresh_utils__ !== 'undefined'
+          ? __react_refresh_utils__
+          : undefined
+      const tsrEnqueueUpdate =
+        tsrReactRefreshUtils &&
+        typeof tsrReactRefreshUtils.enqueueUpdate === 'function'
+          ? tsrReactRefreshUtils.enqueueUpdate
+          : undefined
       if (tsrEnqueueUpdate) {
-        tsrEnqueueUpdate(() => {});
+        tsrEnqueueUpdate(() => {})
       }
     } catch (_err) {}
   }
-  hot.dispose(data => {
-    data['tsr-route'] = Route;
+  hot.dispose((data) => {
+    data['tsr-route'] = Route
     if (routeId) {
-      data['tsr-route-id'] = routeId;
+      data['tsr-route-id'] = routeId
     }
-  });
-  hot.accept();
+  })
+  hot.accept()
 }

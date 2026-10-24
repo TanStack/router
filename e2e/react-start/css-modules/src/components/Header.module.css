@@ -1,0 +1,14 @@
+.header {
+  --repro-shared-header: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  height: 64px;
+  padding-inline: 16px;
+  background: #e4f2e9;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 24px;
+}

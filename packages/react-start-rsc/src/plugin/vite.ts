@@ -112,7 +112,7 @@ export function reactStartRscVitePlugin(): PluginOption {
                 ],
               },
               build: {
-                rollupOptions: {
+                rolldownOptions: {
                   input: {
                     index: rscEntryPath,
                   },
