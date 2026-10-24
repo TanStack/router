@@ -3,11 +3,20 @@
  * operation.
  */
 import { identify, planKeyString } from './identity'
-import { PlanCache, fingerprintCurrent, fingerprintPath } from './cache'
-import type { DependencyLedger, FingerprintSource } from './cache'
+import {
+  PlanCache,
+  UNRESOLVED_DEPENDENCY,
+  fingerprintCurrent,
+  fingerprintPath,
+} from './cache'
+import type {
+  DependencyFingerprint,
+  DependencyLedger,
+  FingerprintSource,
+} from './cache'
 import type { ModuleAnalysis } from './analysis'
 import type { Diagnostic, WarningLedger } from './diagnostics'
-import type { PlanKey, SourceIdentity } from './identity'
+import type { Lang, PlanKey, SourceIdentity } from './identity'
 import type {
   EdgeRecord,
   EmitPlan,
@@ -44,6 +53,12 @@ export interface CompileInput {
   code: string
   /** The map of `code` to the original source (or a getter, read only when needed). */
   inputMap?: InputSourceMap | null | (() => InputSourceMap | null)
+  /**
+   * Language of `code` when the id itself is not JS/TS but the bundler hands
+   * us JS (`.vue`, `.mdx`, custom module types; R48). Such ids run Tier 0
+   * planners only. Must be a function of the id. Ignored for JS/TS ids.
+   */
+  lang?: Lang
   env: EnvInfo
   planners: ReadonlyArray<Planner>
   config: CompileConfig
@@ -169,7 +184,9 @@ export interface InvalidateChange {
  * The ONE invalidation operation (R3). Evicts the plans of the changed file
  * in every env, bumps generations (published and in-flight), marks raw facts
  * stale and re-validates dependents' fingerprints; the host hard-invalidates
- * `evicted ∪ dependents` in the same operation.
+ * `evicted ∪ dependents` in the same operation. File `add`/`unlink` events
+ * also re-resolve every failed resolution of every env (R47): a plan whose
+ * unresolved specifier now resolves is a dependent.
  */
 export async function invalidate(
   caches: CompilerCaches,
@@ -192,10 +209,14 @@ export async function invalidate(
       m.clear()
     }
   }
-  const seen = new Set<string>()
-  for (const cache of caches.plans.values()) {
+  const revalidate = async (
+    cache: PlanCache,
+    indexKey: string,
+    relevant: (fp: DependencyFingerprint) => boolean,
+  ): Promise<void> => {
+    const seen = new Set<string>()
     const src = fingerprintSourceFor(caches, host, cache.env, '')
-    for (const entry of cache.dependents.get(change.path)) {
+    for (const entry of cache.dependents.get(indexKey)) {
       const ks = `${cache.env}|${planKeyString(entry.key)}`
       if (seen.has(ks)) {
         continue
@@ -209,9 +230,7 @@ export async function invalidate(
       if (!published) {
         continue
       }
-      const fps = published.plan.dependencies.filter(
-        (d) => fingerprintPath(d) === change.path,
-      )
+      const fps = published.plan.dependencies.filter(relevant)
       let stale = fps.length === 0 && change.kind === 'registry'
       for (const fp of fps) {
         if (
@@ -229,6 +248,21 @@ export async function invalidate(
         cache.delete(entry.key)
         cache.bump(entry.key)
       }
+    }
+  }
+  for (const cache of caches.plans.values()) {
+    await revalidate(
+      cache,
+      change.path,
+      (fp) => fingerprintPath(fp) === change.path,
+    )
+    if (change.kind === 'add' || change.kind === 'unlink') {
+      // R47: failed resolutions have no path; re-resolve them all (one host resolve per distinct entry)
+      await revalidate(
+        cache,
+        UNRESOLVED_DEPENDENCY,
+        (fp) => fp.kind === 'resolution' && fp.resolved === null,
+      )
     }
   }
   return { evicted, dependents }

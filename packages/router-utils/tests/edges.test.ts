@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { MemoryHost, dedent, toyEnvPlanner } from './helpers'
-import type { EdgeRecord, Planner, PolicyContext } from '../src/compiler'
+import { invalidate } from '../src/compiler'
+import { MemoryHost, dedent, envInfo, toyEnvPlanner } from './helpers'
+import type { EdgeRecord, Lang, Planner, PolicyContext } from '../src/compiler'
 
 /** A tier-0 policy planner that records every output's edges and its policy context. */
 function edgeRecorder(
@@ -213,5 +214,221 @@ describe('markers', () => {
     expect(marker).toBe('server-only')
     const raw = await host.rawFacts.get('/app/m.ts')
     expect(raw.targetFacts.marker).toBe('server-only')
+  })
+})
+
+/** A tier-0 policy that denies edges resolving to a `.server` file (J6 in miniature) and logs its verdicts. */
+function denyServer(verdicts: Array<string>): Planner {
+  return {
+    name: 'deny-server',
+    tier: 0,
+    gate: (t0) => t0.hasImportOrExport,
+    plan() {},
+    async policy(_plan, _output, edges, ctx) {
+      for (const e of edges) {
+        const target = await ctx.resolve(e.specifier)
+        if (target !== null) {
+          await ctx.targetFacts(target)
+        }
+        const verdict =
+          target === null
+            ? 'unresolved'
+            : target.includes('.server')
+              ? 'denied'
+              : 'allowed'
+        verdicts.push(`${ctx.identity.canonicalId} ${e.specifier} ${verdict}`)
+        if (verdict === 'denied') {
+          ctx.substitute(e.edgeKey, `mock:${e.specifier}`)
+        }
+      }
+    },
+  }
+}
+
+describe('unresolved resolutions (R47, J6.13)', () => {
+  const importer = `import { s } from './secret.server'\nexport const x = s\n`
+  const key = (canonicalId: string, env = 'client') => ({
+    env,
+    canonicalId,
+    configKey: 'cfg',
+  })
+
+  it('re-plans an importer when its denied target is deleted and recreated', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/a.ts': importer,
+        '/app/secret.server.ts': `export const s = 1\n`,
+      },
+    })
+    const verdicts: Array<string> = []
+    const planners = [denyServer(verdicts)]
+    const first = await host.compile('/app/a.ts', planners)
+    expect(first!.code).toContain(`from 'mock:./secret.server'`)
+
+    // a resolved target deleted: its path is a dependency of the importer
+    delete host.files['/app/secret.server.ts']
+    const removed = await invalidate(
+      host.caches,
+      { path: '/app/secret.server.ts', kind: 'unlink' },
+      host,
+    )
+    expect(removed.dependents).toEqual([key('/app/a.ts')])
+    const second = await host.compile('/app/a.ts', planners)
+    expect(second!.code).toContain(`from './secret.server'`)
+
+    // an unrelated add re-resolves the failed resolution, which still fails
+    host.write('/app/other.ts', `export {}\n`)
+    const unrelated = await invalidate(
+      host.caches,
+      { path: '/app/other.ts', kind: 'add' },
+      host,
+    )
+    expect(unrelated.dependents).toEqual([])
+    expect(
+      host.caches.plans.get('client')!.get(key('/app/a.ts')),
+    ).not.toBeNull()
+
+    // the target recreated: the failed resolution now resolves
+    host.write('/app/secret.server.ts', `export const s = 2\n`)
+    const added = await invalidate(
+      host.caches,
+      { path: '/app/secret.server.ts', kind: 'add' },
+      host,
+    )
+    expect(added.dependents).toEqual([key('/app/a.ts')])
+    const third = await host.compile('/app/a.ts', planners)
+    expect(third!.code).toContain(`from 'mock:./secret.server'`)
+    expect(verdicts).toEqual([
+      '/app/a.ts ./secret.server denied',
+      '/app/a.ts ./secret.server unresolved',
+      '/app/a.ts ./secret.server denied',
+    ])
+  })
+
+  it('re-resolves each failed resolution once per event, in every env', async () => {
+    const host = new MemoryHost({
+      files: { '/app/a.ts': importer, '/app/b.ts': importer },
+    })
+    const planners = [denyServer([])]
+    const server = envInfo({ name: 'ssr', type: 'server' })
+    for (const id of ['/app/a.ts', '/app/b.ts']) {
+      await host.compile(id, planners)
+      await host.compile(id, planners, { env: server })
+    }
+    host.write('/app/secret.server.ts', `export const s = 1\n`)
+    host.resolveCalls.length = 0
+    const r = await invalidate(
+      host.caches,
+      { path: '/app/secret.server.ts', kind: 'add' },
+      host,
+    )
+    expect(r.dependents).toEqual([
+      key('/app/a.ts'),
+      key('/app/b.ts'),
+      key('/app/a.ts', 'ssr'),
+      key('/app/b.ts', 'ssr'),
+    ])
+    expect(host.resolveCalls).toHaveLength(4)
+    // a plain change re-resolves nothing
+    host.resolveCalls.length = 0
+    await invalidate(
+      host.caches,
+      { path: '/app/other.ts', kind: 'change' },
+      host,
+    )
+    expect(host.resolveCalls).toEqual([])
+  })
+
+  it('re-resolves the failed resolutions of a plan that also depends on the added path', async () => {
+    // './x' always resolves to its path; './y' resolves once './x' exists (a redirecting resolver)
+    const host = new MemoryHost({
+      files: {
+        '/app/a.ts': `import { x } from './x'\nimport { y } from './y.server'\nexport const z = x + y\n`,
+        '/app/y.server.ts': `export const y = 1\n`,
+      },
+      resolve: (spec, _importer, files) =>
+        spec === './x'
+          ? '/app/x.ts'
+          : spec === './y.server' && '/app/x.ts' in files
+            ? '/app/y.server.ts'
+            : null,
+    })
+    // resolution fingerprints only: the path bucket of '/app/x.ts' stays current
+    const resolveOnly: Planner = {
+      ...edgeRecorder(),
+      async policy(_plan, _output, edges, ctx) {
+        for (const e of edges) {
+          await ctx.resolve(e.specifier)
+        }
+      },
+    }
+    await host.compile('/app/a.ts', [resolveOnly])
+    host.write('/app/x.ts', `export const x = 1\n`)
+    const r = await invalidate(
+      host.caches,
+      { path: '/app/x.ts', kind: 'add' },
+      host,
+    )
+    expect(r.dependents).toEqual([key('/app/a.ts')])
+  })
+
+  it('forgets the failed resolutions of an evicted plan', async () => {
+    const host = new MemoryHost({ files: { '/app/a.ts': importer } })
+    await host.compile('/app/a.ts', [denyServer([])])
+    host.write('/app/a.ts', `export const x = 1\n`)
+    await invalidate(host.caches, { path: '/app/a.ts', kind: 'change' }, host)
+    await host.compile('/app/a.ts', [denyServer([])])
+    host.write('/app/secret.server.ts', `export const s = 1\n`)
+    host.resolveCalls.length = 0
+    const r = await invalidate(
+      host.caches,
+      { path: '/app/secret.server.ts', kind: 'add' },
+      host,
+    )
+    expect(r.dependents).toEqual([])
+    expect(host.resolveCalls).toEqual([])
+  })
+})
+
+describe('language override (R48)', () => {
+  const vueJs = `import { s } from './secret.server'\nconst n: number = 1\nexport default { s, n }\n`
+
+  function tier1Probe(runs: Array<string>): Planner {
+    return {
+      name: 'tier1-probe',
+      tier: 1,
+      gate: () => true,
+      plan(ctx) {
+        runs.push(ctx.identity.canonicalId)
+      },
+    }
+  }
+
+  it('compiles a non-JS id with Tier 0 planners only', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/Comp.vue': vueJs,
+        '/app/secret.server.ts': `export const s = 1\n`,
+      },
+    })
+    const verdicts: Array<string> = []
+    const runs: Array<string> = []
+    const planners = [tier1Probe(runs), denyServer(verdicts)]
+    expect(await host.compile('/app/Comp.vue', planners)).toBeNull()
+    const out = await host.compile('/app/Comp.vue', planners, { lang: 'ts' })
+    expect(out!.code).toBe(
+      vueJs.replace(`'./secret.server'`, `'mock:./secret.server'`),
+    )
+    expect(verdicts).toEqual(['/app/Comp.vue ./secret.server denied'])
+    expect(runs).toEqual([])
+  })
+
+  it('ignores the override for a JS/TS id', async () => {
+    const host = new MemoryHost({ files: { '/app/m.ts': vueJs } })
+    const runs: Array<string> = []
+    const lang: Lang = 'js'
+    const out = await host.compile('/app/m.ts', [tier1Probe(runs)], { lang })
+    expect(out!.diagnostics).toEqual([])
+    expect(runs).toEqual(['/app/m.ts'])
   })
 })

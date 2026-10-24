@@ -51,6 +51,21 @@ export function fingerprintPath(fp: DependencyFingerprint): string | null {
   }
 }
 
+/**
+ * Dependents-index bucket of failed resolutions (R47). An unresolved
+ * resolution has no path to watch: file add/unlink events re-resolve every
+ * entry of this bucket instead (`invalidate`).
+ */
+export const UNRESOLVED_DEPENDENCY = '\u0000unresolved'
+
+/** The dependents-index key of a fingerprint: its path, or the unresolved bucket. */
+export function fingerprintIndexKey(fp: DependencyFingerprint): string | null {
+  if (fp.kind === 'resolution' && fp.resolved === null) {
+    return UNRESOLVED_DEPENDENCY
+  }
+  return fingerprintPath(fp)
+}
+
 /** The current values fingerprints are validated against. */
 export interface FingerprintSource {
   summaryDigest: (canonicalId: string) => Promise<string | null>
@@ -90,7 +105,7 @@ interface DependentEntry {
   inFlight: boolean
 }
 
-/** Reverse index: dependency path → plan keys (published or in flight). */
+/** Reverse index: dependency path (or the unresolved bucket) → plan keys (published or in flight). */
 export class DependentsIndex {
   private readonly byPath = new Map<string, Map<string, DependentEntry>>()
 
@@ -163,9 +178,9 @@ export class DependencyLedger {
     }
     this.ids.add(id)
     this.entries.push(fp)
-    const path = fingerprintPath(fp)
-    if (path !== null) {
-      this.index.add(path, this.key, true)
+    const indexKey = fingerprintIndexKey(fp)
+    if (indexKey !== null) {
+      this.index.add(indexKey, this.key, true)
     }
   }
 
