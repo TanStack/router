@@ -486,7 +486,6 @@ export const Route = createFileRoute('/imports-exported')({ component: Page })
 
       test.each([
         ...exported.filter((row) => row !== exportedImportedByRoute),
-        exportedSharedByOptions,
         ...unsplit,
       ])(
         '$name loads with its chunk',
@@ -495,10 +494,19 @@ export const Route = createFileRoute('/imports-exported')({ component: Page })
         },
         timeout,
       )
-      ;(sideEffects === false || bundler === 'vite' ? test : test.fails)(
-        `${exportedImportedByRoute.name} loads with its chunk`,
+      ;(sideEffects === false || bundler === 'vite' ? test : test.fails).each([
+        exportedImportedByRoute,
+      ])(
+        '$name loads with its chunk',
+        async (row) => {
+          expect(await outcome(row)).toEqual(lazyAndRendered)
+        },
+        timeout,
+      )
+      test(
+        `${exportedSharedByOptions.name} loads with its chunk`,
         async () => {
-          expect(await outcome(exportedImportedByRoute)).toEqual(
+          expect(await outcome(exportedSharedByOptions)).toEqual(
             lazyAndRendered,
           )
         },
