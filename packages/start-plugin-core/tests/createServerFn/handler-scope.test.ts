@@ -1,8 +1,11 @@
 import { expect, test } from 'vitest'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   callFromClient,
   callServerFnThroughCallers,
+  compileError,
+  expectCompileError,
   inPage,
   serveCase,
   useStartHost,
@@ -197,16 +200,39 @@ export const fn = createServerFn().handler(async () =>
 // its 'client' either).
 // Source: TanStack/router#8446; #8504 handler-scope.test.ts
 // (imaimai17468/tanstack-start-handler-call-expression-repro; red on main)
-test.fails('the handler can be a createIsomorphicFn call', async () => {
-  expect(
-    await callHandler(`import { createIsomorphicFn } from '@tanstack/react-start'
+// The outcome (SPEC J4.1, J4.2, G5): the handler runs, or the module is
+// reported: a compile error, or in dev a warning, naming the file.
+test.fails(
+  'the handler can be a createIsomorphicFn call, or the module is reported',
+  async () => {
+    const code = `${head}import { createIsomorphicFn } from '@tanstack/react-start'
+import { db } from './db.server'
 export const fn = createServerFn().handler(
   createIsomorphicFn()
     .server(async () => db.x())
     .client(() => 'client'),
-)`),
-  ).toBe('x')
-})
+)`
+    const startCase = await (
+      await host()
+    ).case({ 'module.tsx': code, ...handlerFiles })
+    const mark = startCase.diagnostics().length
+    for (const environment of ['client', 'ssr'] as const) {
+      const failure = await compileError(startCase, environment)
+      if (failure !== undefined) {
+        expectCompileError(failure, { source: code, at: undefined })
+        return
+      }
+    }
+    // What compiling the module reported (not what calling it logs)
+    const reported = findDiagnostics(startCase.diagnostics().slice(mark), {
+      file: startCase.file(),
+    })
+    if (reported.length === 0) {
+      expectNotLoaded(await startCase.loads(), handlerModules)
+      expect(await callServerFnThroughCallers(startCase, 'module.fn')).toBe('x')
+    }
+  },
+)
 
 // Source: TanStack/router#7341. In a `.ts` module, `<T>value` is a type
 // assertion and `<T>(value: T) => value` a generic arrow function, not JSX.

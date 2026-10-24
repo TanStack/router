@@ -19,6 +19,7 @@
  */
 
 import { describe, expect, test } from 'vitest'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   Thrown,
@@ -1043,18 +1044,33 @@ export const fn = createServerFn().handler(async () => 'from the server')`,
   // Impact: the server fn cannot be called: calling it from the client
   // throws the server-only error, and calling it from server code does not
   // run the handler.
-  // The outcome (SPEC J4.1, J4.2): a call from either side returns
-  // what the handler returns; how the call reaches it is free.
+  // The outcome (SPEC J4.1, J4.2, G5): a call from either side returns
+  // what the handler returns (how the call reaches it is free), or the
+  // module is reported: a compile error, or in dev a warning, naming the
+  // file.
   test.fails.each(['client', 'ssr'] as const)(
-    '%s: a server fn whose handler is a createServerOnlyFn call returns the handler result',
+    '%s: a server fn whose handler is a createServerOnlyFn call returns the handler result, or is reported',
     async (environment) => {
-      const startCase = await newCase({
-        'module.tsx': `import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
+      const code = `import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { db } from './db.server'
-export const fn = createServerFn().handler(createServerOnlyFn(async () => db.x()))`,
+export const fn = createServerFn().handler(createServerOnlyFn(async () => db.x()))`
+      const startCase = await newCase({ 'module.tsx': code })
+      const mark = startCase.diagnostics().length
+      for (const served of ['client', 'ssr'] as const) {
+        const failure = await compileError(startCase, served)
+        if (failure !== undefined) {
+          expectCompileError(failure, { source: code, at: undefined })
+          return
+        }
+      }
+      // What compiling the module reported (not what calling it logs)
+      const reported = findDiagnostics(startCase.diagnostics().slice(mark), {
+        file: startCase.file(),
       })
-      const call = environment === 'client' ? callFromClient : callOnServer
-      expect(await call(startCase, 'module.fn')).toBe('from the server')
+      if (reported.length === 0) {
+        const call = environment === 'client' ? callFromClient : callOnServer
+        expect(await call(startCase, 'module.fn')).toBe('from the server')
+      }
     },
   )
 

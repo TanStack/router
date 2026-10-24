@@ -454,9 +454,10 @@ Paths under `start-plugin-core/tests/` unless noted.
   another Start factory imported, a server fn in $name works or is rejected at the call"; "with %s imported, a nested
   server fn whose handler reads a local of its function is supported or rejected at the capture".
 - **A handler that is a `createIsomorphicFn()` or `createServerOnlyFn()` call is compiled first, and the caller never
-  becomes an RPC.** SPEC J4.1, J4.2. `createServerFn/handler-scope.test.ts`: "the handler can be a createIsomorphicFn
-  call"; `known-bugs-start-compiler.test.ts`: "%s: a server fn whose handler is a createServerOnlyFn call returns the
-  handler result".
+  becomes an RPC.** SPEC J4.1, J4.2, G5. `createServerFn/handler-scope.test.ts`: "the handler can be a
+  createIsomorphicFn call, or the module is reported"; `known-bugs-start-compiler.test.ts`: "%s: a server fn whose
+  handler is a createServerOnlyFn call returns the handler result, or is reported". Fix: the server fn works, or the
+  build fails with an error naming the file (in dev, an error or a warning naming the file).
 - **Dev edits of a factory module do not recompile its (transitive) importers.** SPEC J4.5, G10.
   `integration/known-bugs-dev-server.test.ts`: "client: a module importing an edited factory module through a
   re-export ($name) loads no server code"; "SSR: a module importing an edited factory module through a re-export
