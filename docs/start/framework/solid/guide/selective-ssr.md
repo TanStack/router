@@ -175,6 +175,8 @@ root { ssr: undefined }
 
 ## Fallback Rendering
 
+Production builds remove route components for statically known `ssr: false` and `ssr: 'data-only'` routes from the server bundle. For `ssr: false`, their loaders and `beforeLoad` implementations are also removed. Pending, error, and not-found components remain available to the server, and the client still receives the code it needs for hydration and navigation. Functional SSR options are evaluated at runtime and remain in the server bundle. Root-route code is retained because shell requests can execute it regardless of its configured SSR mode.
+
 For the first route with `ssr: false` or `ssr: 'data-only'`, the server will render the route's `pendingComponent` as a fallback. If `pendingComponent` isn't configured, the `defaultPendingComponent` will be rendered. If neither is configured, no fallback will be rendered.
 
 On the client during hydration, this fallback will be displayed for at least `minPendingMs` (or `defaultPendingMinMs` if not configured), even if the route doesn't have `beforeLoad` or `loader` defined.
