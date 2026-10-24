@@ -67,7 +67,7 @@ describe('clusters and the single-writer rule (A1)', () => {
       })
     `)
     const r = await split(code)
-    expect(r.main?.facts.planners['toy-split']).toEqual({
+    expect(r.main?.facts.planners['toy-split']).toMatchObject({
       notSplittable: 'component',
     })
     expect(r.env).toContain('component: () => { count++; return count }')
@@ -404,6 +404,35 @@ describe('extracted-export outputs (§3.5.3)', () => {
 })
 
 describe('route-module specifics (lane router)', () => {
+  it('drops `export { X }` of an inline type-only import with the import (route module)', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { type Settings } from './settings'
+      export { Settings }
+      export const Route = createFileRoute('/')({
+        component: () => 1,
+      })
+    `)
+    const r = await split(code)
+    expect(r.env).not.toContain('Settings')
+    expect(r.chunks.component).not.toContain('Settings')
+  })
+
+  it('keeps a pragma comment written after the imports non-leading in a chunk (J2.16)', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      /** @jsxImportSource @emotion/react */
+      function Page() {
+        return <div css={{ color: 'red' }}>styled</div>
+      }
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await split(code)
+    expect(r.chunks.component).toMatch(
+      /^export \{\}\n\/\*\* @jsxImportSource @emotion\/react \*\/\nfunction Page/,
+    )
+  })
+
   it('drops inline type specifiers of a route module from the env output (J2.5)', async () => {
     // `import { type Db }` survives verbatimModuleSyntax as `import './db'`;
     // `import type` is erased by TypeScript and may stay
@@ -681,6 +710,91 @@ describe('ordered evaluation and movable effects (R7, R29, R31)', () => {
     const r = await split(code)
     expect(r.env).not.toContain('make()')
     expect(r.chunks.component).toContain('const thing = /* @__PURE__ */ make()')
+  })
+
+  it('moves a component with its own top-level property write (R29 (b): a binding and its augmentations are one cluster)', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      function Page() { return Page.displayName }
+      Page.displayName = 'PageDisplay'
+      export const Route = createFileRoute('/')({
+        component: Page,
+      })
+    `)
+    const r = await split(code)
+    expect(r.env).not.toContain('displayName')
+    expect(r.env).not.toContain('function Page')
+    expect(r.chunks.component).toContain('function Page()')
+    expect(r.chunks.component).toContain("Page.displayName = 'PageDisplay'")
+  })
+
+  it('keeps an augmented component in the route module when the route module reads it eagerly', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { register } from './registry'
+      function Page() { return Page.displayName }
+      Page.displayName = 'PageDisplay'
+      register(Page)
+      export const Route = createFileRoute('/')({
+        component: Page,
+      })
+    `)
+    const r = await split(code)
+    expect(r.env).toContain("Page.displayName = 'PageDisplay'")
+    expect(r.env).toContain('register(Page)')
+    expect(r.chunks.component).toContain("import { Page } from './route.tsx'")
+    expect(r.chunks.component).not.toContain('displayName')
+  })
+
+  it('moves a destructured call result only one chunk needs (R29)', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { make } from './make'
+      const [Page] = make()
+      export const Route = createFileRoute('/')({
+        component: Page,
+      })
+    `)
+    const r = await split(code)
+    expect(r.env).not.toContain('make()')
+    expect(r.chunks.component).toContain('const [Page] = make()')
+  })
+
+  it('reports a value declared by an effect the route module keeps (env-declared) instead of importing it', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { make } from './make'
+      const [Page, Other] = make()
+      export const Route = createFileRoute('/')({
+        component: Page,
+        errorComponent: Other,
+      })
+    `)
+    const r = await split(code, { keys: ['component', 'errorComponent'] })
+    expect(r.main?.facts.planners['toy-split']).toMatchObject({
+      reasons: { component: 'env-declared', errorComponent: 'env-declared' },
+    })
+    expect(r.env).toContain('const [Page, Other] = make()')
+    expect(r.env).toContain('component: Page,')
+    expect(r.env).toContain('errorComponent: Other,')
+    expect(r.env).not.toContain('export { Page')
+  })
+
+  it('reports a split value that writes an exported binding (one cluster with it, kept by the export: env-declared)', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      export let count = 0
+      function Page() { count++; return count }
+      export const Route = createFileRoute('/')({
+        component: Page,
+      })
+    `)
+    const r = await split(code)
+    expect(r.main?.facts.planners['toy-split']).toMatchObject({
+      reasons: { component: 'env-declared' },
+    })
+    expect(r.env).toContain('component: Page,')
+    expect(r.env).toContain('function Page()')
   })
 })
 

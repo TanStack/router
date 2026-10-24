@@ -23,6 +23,17 @@ import type { Node, SourceFile } from 'yuku'
 import type { SymbolId, SymbolTable } from './symbols'
 import type { Frag } from './rewrite'
 
+/** Binding flags of declarations with a runtime value. */
+const VALUE_BINDING_FLAGS =
+  BindingFlags.FunctionScopedVariable |
+  BindingFlags.BlockScopedVariable |
+  BindingFlags.Function |
+  BindingFlags.Class |
+  BindingFlags.RegularEnum |
+  BindingFlags.ConstEnum |
+  BindingFlags.ValueModule |
+  BindingFlags.ValueImport
+
 export type UnitId = number
 export type RegionId = number
 
@@ -370,6 +381,14 @@ export function buildUnits(
     const b = file.bindingOf(nameNode)
     return b ? symbols.ofBinding(b) : null
   }
+  /** Whether a local name resolves to a binding without a runtime value. */
+  const isTypeOnlyBinding = (local: Node): boolean => {
+    if (local.type !== 'Identifier') {
+      return false
+    }
+    const b = file.referenceOf(local)?.binding ?? null
+    return b !== null && !b.has(VALUE_BINDING_FLAGS)
+  }
   const add = (
     item: TopLevelItem,
     u: Omit<Unit, 'id' | 'item' | 'region'>,
@@ -506,7 +525,9 @@ export function buildUnits(
           break
         }
         for (const spec of node.specifiers) {
-          if (spec.exportKind === 'type') {
+          // `export { type X }`, or `export { X }` of a binding with no value
+          // (a type-only import, an interface, a type alias): erased by TS
+          if (spec.exportKind === 'type' || isTypeOnlyBinding(spec.local)) {
             add(item, base(spec, 'type', { start: spec.start, end: spec.end }))
             continue
           }

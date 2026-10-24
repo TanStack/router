@@ -7,7 +7,7 @@
 import { deriveId } from './identity'
 import type { ClassifiedRef, Tier1 } from './analysis'
 import type { SymbolId } from './symbols'
-import type { Region, RegionId, UnitId } from './units'
+import type { Region, RegionId, Unit, UnitId } from './units'
 import type {
   Frag,
   GenUnitId,
@@ -21,6 +21,8 @@ export type RootRef =
   | { t: 'unit'; id: UnitId }
   | { t: 'region'; id: RegionId }
   | { t: 'gen'; id: GenUnitId }
+  /** A module binding a derived output's root reads as its value (J2.8 R-27: reported when its effects keep it in the env module). */
+  | { t: 'sym'; id: SymbolId }
 
 export type OutputKind =
   | 'env'
@@ -80,7 +82,12 @@ export type Home = OutputId | 'duplicate' | 'removed'
 
 export interface Fallback {
   region: RegionId
-  reason: 'shared-writer' | 'multi-writer' | 'ordered-effect' | 'hydrate-writer'
+  reason:
+    | 'shared-writer'
+    | 'multi-writer'
+    | 'ordered-effect'
+    | 'hydrate-writer'
+    | 'env-declared'
   cluster: ClusterId
 }
 
@@ -403,8 +410,14 @@ export function computePlacement(input: PlacementInput): Placement {
   const orderedEffectRegions = new Set<RegionId>()
   for (let round = 0; round < 8; round++) {
     let changed = false
-    // mutated roots: clusters with an eager live top-level write/augmentation
+    // mutated roots: clusters with an eager live top-level write/augmentation,
+    // and the position of their last mutation
     const mutated = new Set<number>()
+    const lastMutation = new Map<number, number>()
+    const mutate = (root: number, at: number) => {
+      mutated.add(root)
+      lastMutation.set(root, Math.max(lastMutation.get(root) ?? -1, at))
+    }
     for (const ref of refs.all) {
       if (
         ref.kind === 'write' &&
@@ -414,7 +427,7 @@ export function computePlacement(input: PlacementInput): Placement {
       ) {
         const d = declMember.get(ref.sym)
         if (d !== undefined) {
-          mutated.add(uf.find(d))
+          mutate(uf.find(d), ref.range.start)
         }
       }
     }
@@ -426,7 +439,7 @@ export function computePlacement(input: PlacementInput): Placement {
         for (const s of u.augments) {
           const d = declMember.get(s)
           if (d !== undefined) {
-            mutated.add(uf.find(d))
+            mutate(uf.find(d), u.range.start)
           }
         }
       }
@@ -455,7 +468,10 @@ export function computePlacement(input: PlacementInput): Placement {
       if (region.kind === 'unit') {
         uf.union(owner, d)
         changed = true
-      } else {
+      } else if ((lastMutation.get(uf.find(d)) ?? -1) > ref.range.start) {
+        // a relocated read (a claimed option value) must not move past a
+        // later mutation; one that follows every mutation reads the same
+        // state wherever it evaluates
         orderedEffectRegions.add(owner)
       }
     }
@@ -520,11 +536,40 @@ export function computePlacement(input: PlacementInput): Placement {
     }
     cl.effectful ||= g.effectful
   }
+  /**
+   * Whether an effect unit only augments bindings its own cluster declares
+   * (`Page.displayName = …` after `function Page`): the binding and its
+   * writers are one cluster (A1), moved or kept together (R29 (b)).
+   */
+  const ownAugmentation = (u: Unit, cl: Cluster): boolean => {
+    if (u.kind !== 'effect' || u.augments.length === 0) {
+      return false
+    }
+    // an effectful initialiser among the augmentations (A7: `init()` between
+    // two `plugins.push`) keeps the whole cluster an effect root
+    if (
+      cl.units.some(
+        (o) => units[o]!.kind === 'declaration' && units[o]!.effectful,
+      )
+    ) {
+      return false
+    }
+    return u.augments.every((s) =>
+      cl.units.some(
+        (o) =>
+          units[o]!.kind === 'declaration' && units[o]!.declares.includes(s),
+      ),
+    )
+  }
   for (const cl of clusters) {
     const kinds = new Set(cl.units.map((u) => units[u]!.kind))
     if (cl.units.length === 0) {
       cl.kind = cl.gens.length > 0 ? 'gen' : 'region'
-    } else if (kinds.has('effect')) {
+    } else if (
+      cl.units.some(
+        (u) => units[u]!.kind === 'effect' && !ownAugmentation(units[u]!, cl),
+      )
+    ) {
       cl.kind = 'effect'
     } else if (kinds.has('import-effect')) {
       cl.kind = 'import-effect'
@@ -756,6 +801,8 @@ export function computePlacement(input: PlacementInput): Placement {
         return clusterOfRegion.get(r.id)
       case 'gen':
         return clusterOfGen.get(r.id)
+      case 'sym':
+        return clusterOfSym.get(r.id)
     }
   }
   const unitSurvives = (u: UnitId): boolean => {
@@ -774,7 +821,11 @@ export function computePlacement(input: PlacementInput): Placement {
     }
     const c = clusterOfRegion.get(u.region)!
     if (u.kind === 'effect' || u.kind === 'import-effect') {
-      envRoots.add(c)
+      // an augmentation of its own declaration cluster is decided with the
+      // cluster (movable, else an effect root below)
+      if (!ownAugmentation(u, clusters[c]!)) {
+        envRoots.add(c)
+      }
     } else if (
       u.kind === 'export-specifier' ||
       u.kind === 'reexport' ||
@@ -937,6 +988,47 @@ export function computePlacement(input: PlacementInput): Placement {
       mutatedClusters.add(cl.id)
     }
   }
+  // Clusters mutated by surviving top-level code outside themselves: a live
+  // write or augmentation whose region belongs to another cluster (a claimed
+  // option value, a unit the clustering did not merge).
+  const externallyMutated = new Set<ClusterId>()
+  for (const ref of refs.all) {
+    if (
+      ref.kind !== 'write' ||
+      !ref.eager ||
+      !isLive(ref, 'env') ||
+      !symbols.isModuleLevel(ref.sym)
+    ) {
+      continue
+    }
+    const d = clusterOfSym.get(ref.sym)
+    if (d === undefined) {
+      continue
+    }
+    const owner = regions.innermostAt(ref.range.start, ref.range.end)
+    const claim = owner === null ? undefined : rewrites.claims.get(owner)
+    const oc =
+      owner === null
+        ? undefined
+        : claim
+          ? clusterOfGen.get(claim.owner)
+          : clusterOfRegion.get(owner)
+    if (oc !== d) {
+      externallyMutated.add(d)
+    }
+  }
+  for (const u of units) {
+    if (u.augments.length === 0 || !unitSurvives(u.id)) {
+      continue
+    }
+    const uc = clusterOfRegion.get(u.region)
+    for (const s of u.augments) {
+      const d = clusterOfSym.get(s)
+      if (d !== undefined && d !== uc) {
+        externallyMutated.add(d)
+      }
+    }
+  }
   let liveEnv = new Set<ClusterId>()
   for (let round = 0; round < 10; round++) {
     liveEnv = reach('env', envRoots)
@@ -984,11 +1076,24 @@ export function computePlacement(input: PlacementInput): Placement {
     if (needs.length !== 1) {
       return false
     }
-    // (b) no ordered-evaluation constraint: nothing mutates it, and it reads nothing mutated
-    if (mutatedClusters.has(cl.id)) {
+    // (b) no ordered-evaluation constraint: nothing outside the cluster
+    // mutates it (its own top-level augmentations, `X.p = …`, travel with
+    // it: a binding and its writers are one cluster), and it reads nothing
+    // mutated
+    if (externallyMutated.has(cl.id)) {
       return false
     }
-    if (cl.units.some((u) => units[u]!.kind !== 'declaration')) {
+    for (const u of cl.units) {
+      const unit = units[u]!
+      if (unit.kind === 'declaration') {
+        continue
+      }
+      if (
+        unit.augments.length > 0 &&
+        unit.augments.every((s) => cl.declares.has(s))
+      ) {
+        continue
+      }
       return false
     }
     for (const r of cl.regions) {
@@ -1262,6 +1367,46 @@ export function computePlacement(input: PlacementInput): Placement {
       })
     } else {
       home.set(c, g)
+    }
+  }
+
+  // ---- sym roots the env module keeps by their effects (J2.8 R-27) -------------
+  // A derived output whose root value is a binding declared by an effect the
+  // route module keeps (destructured from a call, written at the top level
+  // where the route module needs it) would only import it: the planner is
+  // told, keeps the option in place and reports it.
+  for (const [id, decl] of outputs) {
+    if (id === 'env') {
+      continue
+    }
+    for (const r of decl.roots) {
+      if (r.t !== 'sym') {
+        continue
+      }
+      const d = clusterOfSym.get(r.id)
+      if (d === undefined || home.get(d) !== 'env') {
+        continue
+      }
+      const declaring = t1.declaringUnits.get(r.id) ?? []
+      if (declaring.length === 0) {
+        continue
+      }
+      // R-27's two patterns: the declaration itself has effects (a call
+      // result, a destructuring) or travels with an exported binding (a
+      // writer of module state the route module exports)
+      const decl = units[declaring[0]!]!
+      if (
+        decl.kind === 'declaration' &&
+        !decl.effectful &&
+        !clusters[d]!.exported
+      ) {
+        continue
+      }
+      fallbacks.push({
+        region: units[declaring[0]!]!.region,
+        reason: 'env-declared',
+        cluster: d,
+      })
     }
   }
 

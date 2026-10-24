@@ -12,7 +12,7 @@ import { computePlacement } from './reach'
 import { RewriteSet } from './rewrite'
 import { specifierLiteral } from './strings'
 import { statementRecipe } from './units'
-import { isLineTerminator } from './header'
+import { isLineTerminator, pragmasOf } from './header'
 import type {
   Fallback,
   HeaderPolicy,
@@ -590,7 +590,13 @@ export class AnalysisPlan implements PlanContext {
           this.routeModule &&
           u.importIndex !== null &&
           !this.analysis.imports[u.importIndex]!.typeOnly
-        if (!inlineTypeSpecifier) {
+        // `export { X }` of a type-only binding goes with it: the route
+        // module no longer holds the import a TS transform erases it by
+        const typeOnlyExport =
+          this.routeModule &&
+          u.node.type === 'ExportSpecifier' &&
+          u.node.exportKind !== 'type'
+        if (!inlineTypeSpecifier && !typeOnlyExport) {
           set.add(uid)
         }
         continue
@@ -914,6 +920,7 @@ export class AnalysisPlan implements PlanContext {
         }
       }
     }
+    const afterPragmas = out.length
     for (const d of header.directives) {
       if (decl.header?.dropDirectives?.includes(d.value)) {
         continue
@@ -936,7 +943,12 @@ export class AnalysisPlan implements PlanContext {
     )
     renderer.renderFrags(glue, null, null, out)
     // pieces in order: generated units by anchor, items by position
-    type Piece = { pos: number; order: number; render: () => void }
+    type Piece = {
+      pos: number
+      order: number
+      item?: TopLevelItem
+      render: () => void
+    }
     const pieces: Array<Piece> = []
     for (const item of items) {
       const inc = this.includedUnitsOf(item, included, placement, true)
@@ -950,6 +962,7 @@ export class AnalysisPlan implements PlanContext {
       pieces.push({
         pos: item.range.start,
         order: 1,
+        item,
         render: () => {
           if (recipe === 'keep') {
             renderer.renderRange(
@@ -995,12 +1008,40 @@ export class AnalysisPlan implements PlanContext {
       })
     }
     pieces.sort((x, y) => x.pos - y.pos || x.order - y.order)
+    // leadingness (§3.8, J2.16): a pragma comment the source wrote after its
+    // first statement (ineffective for a transform that reads leading
+    // comments only) must not open this output; a token keeps it where the
+    // source had it
+    const first = pieces[0]
+    if (
+      out.length === afterPragmas &&
+      first?.item !== undefined &&
+      this.startsWithPragmaComment(first.item)
+    ) {
+      out.push({ k: 'text', text: 'export {}\n' })
+    }
     for (const p of pieces) {
       p.render()
     }
     const exportGlue = this.exportGlue(decl.id, placement, exportNameOf, null)
     renderer.renderFrags(exportGlue, null, null, out)
     return out
+  }
+
+  /** Whether the comments between an item's owned start and its statement carry a JSX pragma. */
+  private startsWithPragmaComment(item: TopLevelItem): boolean {
+    for (const c of this.analysis.file.comments) {
+      if (c.start < item.range.start) {
+        continue
+      }
+      if (c.end > item.nodeRange.start) {
+        break
+      }
+      if (pragmasOf(c).length > 0) {
+        return true
+      }
+    }
+    return false
   }
 
   /** Records this output's surviving source edges and isolates their specifier literals as segments. */
