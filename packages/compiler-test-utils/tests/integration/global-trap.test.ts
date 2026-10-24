@@ -1,7 +1,7 @@
 /**
  * Control tests of the global trap (global-trap.ts) in a real Chromium page:
- * every way page code touches a trapped global is recorded. FINAL-PASS #48:
- * the former traps (accessors alone) did not record own-property probes
+ * every way page code touches a trapped global is recorded. The former
+ * traps (accessors alone) did not record own-property probes
  * (`hasOwnProperty`, `Object.hasOwn`, ...); an `in` probe cannot be
  * recorded in a browser, so the code it guards is (it runs, as the
  * accessor makes the probe true).

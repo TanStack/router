@@ -166,10 +166,10 @@ describe('Vue piece files', () => {
     })
   })
 
-  // A `.lazy` route file is a piece of its route too, and may come first.
-  // Source: r5-gaps N4 (rg:414: the scan for the pieces the route tree needs
-  // `lazyRouteComponent` for stopped at the first route with any piece, so
-  // the tree called it without importing it).
+  // A `.lazy` route file is a piece of its route too, and may come first (a
+  // scan for the pieces the route tree needs `lazyRouteComponent` for that
+  // stopped at the first route with any piece made the tree call it without
+  // importing it).
   test('a route with a lazy route file next to a route with a component piece both get their lazy parts', async () => {
     const root = await createApp({
       'src/routes/__root.ts': rootRoute('vue'),
@@ -203,7 +203,7 @@ export const Route = createLazyFileRoute('/about')({
   // Impact: in a Vue app with directory routes, the layout's component
   // piece is a page at `/posts/route` instead of the `/posts` layout's
   // component.
-  // Source: mutation run R4 final re-audit (G2).
+  // Source: mutation testing.
   test.fails(
     'a component piece of a directory route (route.component.vue) is the component of the route',
     async () => {
@@ -234,9 +234,9 @@ export const Route = createLazyFileRoute('/about')({
   // component does not have, so loading the route fails.
   // Impact: a Vue app with a `.lazy.vue` route file fails when the route
   // loads (low: the documented Vue piece is `.component.vue`). A
-  // `.lazy.vue` file is the lazily loaded component of its route (ruling
-  // 2026-10-18, SPEC J1.17).
-  // Source: mutation run R4 final re-audit (G3).
+  // `.lazy.vue` file is the lazily loaded component of its route (SPEC
+  // J1.17).
+  // Source: mutation testing.
   test.fails(
     'a .lazy.vue route file is the lazily loaded component of the route',
     async () => {
@@ -318,7 +318,7 @@ describe('empty files', () => {
   // files; the other Vue pieces are left empty, the rows above).
   // Impact: creating an empty `about.lazy.vue` in a Vue app turns it into a
   // file that fails to compile (low).
-  // Source: mutation run R4 final re-audit (G3).
+  // Source: mutation testing.
   test.fails(
     'an empty .lazy.vue route file is not filled with TypeScript route code',
     async () => {

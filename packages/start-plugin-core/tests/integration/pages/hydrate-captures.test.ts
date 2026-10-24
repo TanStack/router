@@ -117,9 +117,8 @@ test.each<{
   },
   {
     // A let the component reassigns before it renders the boundary: the
-    // children read its latest value, not its initializer.
-    // Source: V4 red variant astra/14 (captures collected from constant
-    // bindings only)
+    // children read its latest value, not its initializer (a compiler that
+    // collects captures from constant bindings only fails here).
     name: 'through a let reassigned before the boundary',
     children: `{latest}`,
     expected: '<p>second</p>',
@@ -310,7 +309,7 @@ export function Page() {
    * Names a compiler could give what it generates (the helpers and props of
    * a lazy chunk component): always declared by the fixtures below, so they
    * check something even when the compiler introduces no name at all (SPEC
-   * §5.1; FIX-PLAN HYD-22).
+   * §5.1).
    */
   const fixedNames = [
     'lazy',
@@ -542,7 +541,7 @@ test('client: the children render a local component and read a local value', asy
   ).toContain('<b>n</b><span>n</span>')
 })
 
-// Source: V4 red-fable-r2/14. Function declarations below the JSX are
+// Function declarations below the JSX are
 // hoisted within this render, and can close over its current props.
 test('client: rows.map captures a local function declared below the JSX', async () => {
   expect(
@@ -558,7 +557,7 @@ test('client: rows.map captures a local function declared below the JSX', async 
   ).toContain('<ul><li>a!</li><li>b!</li></ul>')
 })
 
-// Source: V4 red-astra/24. The module object's computed key is the only
+// The module object's computed key is the only
 // reference to field; extracting its consumer must keep that dependency.
 test('client: a computed object key keeps a module dependency', async () => {
   expect(

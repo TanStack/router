@@ -65,7 +65,7 @@ async function expectHotUpdate(
  * Asserts that the app reported `file` (an error or a warning naming it)
  * since `since`, through any real channel (`app.diagnostics`: the
  * generator's console output, the dev server's logger or compile
- * diagnostics; SPEC G5, §5.7; V1R gen G13).
+ * diagnostics; SPEC G5, §5.7).
  */
 function expectReported(
   app: GeneratorDevApp,
@@ -82,7 +82,7 @@ function expectReported(
 /**
  * Asserts that the app reported no error since `since` (e.g. since the
  * edit fixing a broken file: a report of the broken file before it is
- * allowed, through any channel; V1R gen G13).
+ * allowed, through any channel).
  */
 function expectNoErrorsSince(app: GeneratorDevApp, since: DiagnosticsMark) {
   expect(
@@ -244,7 +244,7 @@ export function describeRouteFileUpkeep(
       timeout,
     )
 
-    // Source: gap DV5 (gaps/dev-hmr.md), issue #6775 (reload loop): the dev
+    // Source: #6775 (reload loop): the dev
     // server settles (a bounded number of regenerations) and the page
     // updates in place.
     test(
@@ -264,7 +264,7 @@ export function describeRouteFileUpkeep(
 
     // The route tree update that makes the app know a new route must not let
     // the new route be served unsplit, however soon the app navigates to it.
-    // Source: gaps DV1/DV17 (gaps/dev-hmr.md), suspected race.
+    // Source: review (a suspected race).
     test(
       'a route created while the page runs, navigated to as soon as the live router has it, loads its component on navigation',
       async () => {
@@ -322,8 +322,8 @@ export function describeCreatedRoutes(
     pinCreatedBrokenRouteFiles?: boolean
   } = {},
 ) {
-  // Source: gap DV17 (gaps/dev-hmr.md): a route created in dev joins HMR like
-  // the routes the server started with; gap GEN-14 (the root route too).
+  // A route created in dev joins HMR like the routes the server started
+  // with (the root route too).
   describe(`created routes in ${bundler} dev`, () => {
     test(
       'an edit of a created route the page shows is a hot update',
@@ -386,7 +386,7 @@ export function describeCreatedRoutes(
     )
   })
 
-  // Source: gap DV4 (gaps/dev-hmr.md): a route file the generator cannot
+  // A route file the generator cannot
   // handle is reported, the dev server keeps running, and fixing the file
   // brings the route back.
   describe(`route generator failures in ${bundler} dev`, () => {

@@ -94,7 +94,7 @@ export const useDep = () => [secret(), widget()]
  * Asserts that the reports of `environment` (`located`, from
  * `reportedImporters`) are exactly the `expected` violations, each reported
  * (at least once) at one of its relevant files: the importer, or for a
- * marker violation the marked module (audit F ASK-1).
+ * marker violation the marked module (SPEC J6.5).
  */
 function expectReported(
   located: Array<string>,
@@ -256,8 +256,7 @@ describe('excludeFiles: [] checks the files of a dependency', () => {
   // breaks.
   // Fix-agnostic: the import is reported at its place only, and the client
   // loads no code of the denied file.
-  // Source: final pass F-C (FINAL-PASS #33: the default `excludeFiles` had
-  // no reachable contrast).
+  // Source: review (the default `excludeFiles` had no reachable contrast).
   test.fails(
     'the client reports the dependency file it denies, and does not load it',
     async () => {
@@ -292,8 +291,8 @@ describe('excludeFiles: [] checks the files of a dependency', () => {
   // imports the file.
   // Fix-agnostic: the server reports the import at the importer, and the
   // app loads.
-  // Source: final pass F-C (FINAL-PASS #33: the server's default
-  // `excludeFiles` had no reachable contrast).
+  // Source: review (the server's default `excludeFiles` had no reachable
+  // contrast).
   test.fails(
     'the server reports the dependency file it denies',
     async () => {

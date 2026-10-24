@@ -188,7 +188,7 @@ describe('<ClientOnly> in a hydrated page', () => {
 // the children of a `<ClientOnly>` use is eliminated from the server build
 // (the build above reports no import-protection violation: by default a
 // violation fails a build) and its code is not in the server bundle.
-// Source: DECISIONS 2026-10-18 "Server-side *.client.* imports"
+// Source: SPEC J4.11, §5.12.
 test('a *.client.* module only ClientOnly children use is not in the server build', () => {
   expect(
     // (everything the build reported, on every channel)

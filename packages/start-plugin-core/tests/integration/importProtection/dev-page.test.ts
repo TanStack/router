@@ -5,7 +5,7 @@
  * real router and React), the server through HTTP requests. Every entry of
  * an environment counts (SPEC J6.9): the app's client entry, its server
  * entry, the router's split route modules. No test names a module id Start
- * generates (V1 ip S19).
+ * generates.
  */
 import react from '@vitejs/plugin-react'
 import { describe, expect, onTestFinished, test } from 'vitest'
@@ -150,8 +150,7 @@ return describeValue(window.leaked(), 'MARK_SECRET')
   // Impact: in dev (mock mode), a denied import reached from the app's
   // client entry (`src/client.tsx`) is mocked without any warning (the build
   // reports it).
-  // Source: found by mutation run R3c (looking for edges without transform
-  // data); through a real page since V1 ip S19.
+  // Source: mutation testing (looking for edges without transform data).
   test.fails(
     'a denied import of a module the client entry imports is logged',
     async () => {
@@ -220,8 +219,7 @@ export default { fetch: () => new Response(String(handler())) }
   // Impact: in dev (mock mode), a client-only import reached from the app's
   // custom server entry (`src/server.ts`) is mocked on the server without
   // any warning (the request returns the mock's value).
-  // Source: mutation run R4 final re-audit (M3); through a request since
-  // V1 ip S19.
+  // Source: mutation testing.
   test.fails(
     'a client-only import of a module the server entry imports is mocked on the server and logged',
     async () => {
@@ -256,10 +254,9 @@ export const Route = createFileRoute('/')({
 })
 `
 
-  // Source: mutation run R4 (spc:4529 and the cache of compiled split
-  // modules: the denied import, and the import of the module using the
-  // denied file, are only in the split module); rendered in a real page
-  // since V1 ip S19.
+  // Source: mutation testing (the cache of compiled split modules: the
+  // denied import, and the import of the module using the denied file, are
+  // only in the split module).
   test(
     'using a denied file, directly or through a module, renders with the mock, and the dev server logs a warning at each use or import',
     async () => {

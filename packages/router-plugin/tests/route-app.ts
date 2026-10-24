@@ -1,7 +1,7 @@
 /**
- * A route file loaded the way an app loads it (SYNTHESIS recipe P1;
- * RULES-AUDIT R3, R23–R25): the public composed `tanstackRouter` plugin and
- * the framework's own Vite plugin run in a real Vite dev server
+ * A route file loaded the way an app loads it (SPEC §8: real tools only):
+ * the public composed `tanstackRouter` plugin and the framework's own Vite
+ * plugin run in a real Vite dev server
  * (`@tanstack/compiler-test-utils/plugin-host`), on an app written to disk
  * (`__root.tsx`, the route file, the files the test gives). The router
  * plugin's own route generator registers the route (a virtual route config
@@ -34,7 +34,7 @@
  * plugin options, the route's file and id, the app's tsconfig), and leased
  * to one test at a time (`leaseHost`): a test holds the host it wrote a
  * route into until it ends, and a concurrent test of the same configuration
- * gets another host (FINAL-PASS #13, #19). Each `loadRoute` writes its files
+ * gets another host. Each `loadRoute` writes its files
  * to the app as a dev server sees an edit (`edit`: written to disk, reported
  * by Vite's watcher, settled on a bounded outcome), and removes the files of
  * the previous route of that host. A route whose host has moved on to
@@ -221,7 +221,7 @@ const emittedKey = (environment: string, id: string) => `${environment}\0${id}`
  * Every plugin of the option is observed, however Vite gets it: in nested
  * arrays, as a Promise (the option is returned with each Promise replaced
  * by one that resolves to the same, observed, plugins), or returned by a
- * plugin's `applyToEnvironment` for an environment (FINAL-PASS #49).
+ * plugin's `applyToEnvironment` for an environment.
  */
 function observeEmitted(
   option: PluginOption,
@@ -1006,7 +1006,7 @@ export interface RouteApp {
    * holding user code (each pair observed in a fresh document): no file of
    * the test, and no compiled module but one that only imports and
    * re-exports (`forwardsOnly`: a small forwarding module over the group's
-   * module is allowed, ruling 2026-10-24). Groups sorted, each sorted.
+   * module is allowed, SPEC J2.2). Groups sorted, each sorted.
    */
   groups: () => Promise<Array<Array<string>>>
   /**
@@ -1358,7 +1358,7 @@ const refreshGlobals = ['$RefreshReg$', '$RefreshSig$']
 /**
  * The decoded values of the string literals and template quasis of a module
  * (an independent parse: a user marker is found whatever its quoting or
- * escaping), for D5 checks that user code is absent from a module. The
+ * escaping), for SPEC J2.5 checks that user code is absent from a module. The
  * module specifiers of imports and exports are not values of the code (a
  * request's query may name an option). Throws on code that does not parse:
  * an absence check on it would prove nothing.

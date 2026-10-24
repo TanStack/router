@@ -134,8 +134,8 @@ exports.page = () => secret
 
 // With Start's whole Rsbuild plugin, import protection runs in the server
 // environment too: Start's default rules deny `*.client.*` files to it.
-// Source: audit F-H4 (the other Rsbuild dev tests run import protection on
-// the client environment only).
+// Source: review (the other Rsbuild dev tests run import protection on the
+// client environment only).
 test(
   'Rsbuild dev with Start: a server import of a .client file is mocked on the server and reported',
   async () => {
@@ -164,8 +164,8 @@ console.log(read())
 )
 
 // `mockAccess` applies wherever a mock is served, the server environments of
-// a dev server included (SPEC J6.3; user ruling 2026-10-19 "mock mode always
-// logs"): the SSR mock of a `.client` file reports its use in the server
+// a dev server included (SPEC J6.3: mock mode always
+// logs): the SSR mock of a `.client` file reports its use in the server
 // console as configured.
 describe('Rsbuild dev with Start: an SSR import of a .client file: mockAccess', () => {
   /**
@@ -244,7 +244,7 @@ return { read: describeValue(globalThis.read(), 'MARK_'), logged }`,
   )
 })
 
-// Source: round 4 mutation testing (rsbuild host, `behavior` in dev).
+// Source: mutation testing (Rsbuild host, `behavior` in dev).
 describe('Rsbuild dev: behavior', () => {
   test.each<{
     behavior: NonNullable<ImportProtectionOptions>['behavior']
@@ -310,7 +310,7 @@ console.log(secret(), other)
 `,
   }
 
-  // Source: mutation run R3 ip-rsbuild R3; a control of the harness running
+  // Source: mutation testing; a control of the harness running
   // an Rsbuild dev rebuild with import protection on (the warnings of each
   // compile).
   /** The violation: the use of `secret` in the entry (or its import). */
@@ -353,11 +353,10 @@ console.log(secret(), other)
   )
 
   // The compile ends (import protection does not hang on a module that is
-  // gone) with an error (SPEC G5; V1 ip S21; the module-not-found error
-  // names the importer's directory and the specifier, no file and
-  // position the ruling of 2026-10-22 checks).
-  // Source: round 4 mutation testing (rsbuild host, entries without a
-  // module).
+  // gone) with an error (SPEC G5; the module-not-found error names the
+  // importer's directory and the specifier, no file and position SPEC §5.7
+  // checks).
+  // Source: mutation testing (Rsbuild host, entries without a module).
   test.each([
     { module: 'the entry module', file: 'src/entry.ts' },
     { module: 'an imported module', file: 'src/other.ts' },
@@ -379,8 +378,7 @@ console.log(secret(), other)
     timeout,
   )
 
-  // Source: mutation run R3 ip-rsbuild R4 (the resolve cache of a previous
-  // compile).
+  // Source: mutation testing (the resolve cache of a previous compile).
   test(
     'a denied specifier that an edit makes resolve elsewhere is reported again, never with its old target',
     async () => {
@@ -412,8 +410,7 @@ console.log(secret(), other)
       })
       // The edit passes through states the dev server may compile and
       // report: `./lib` resolving nowhere (`undefined`) once `src/lib.ts` is
-      // gone and before `src/lib/index.ts` exists (DECISIONS 2026-10-20
-      // "Rsbuild first-edit harness fixes", C). The violation is reported
+      // gone and before `src/lib/index.ts` exists (SPEC §8). The violation is reported
       // again; every resolved path given since the edit is the new target,
       // never the old one, and a compiler that gave one before the edit
       // reports the new target last.
@@ -436,8 +433,8 @@ console.log(secret(), other)
 // file and marker rules apply to the module the rewritten import resolves
 // to (SPEC J6.1). The report names the importer at the original import or
 // at the use of its binding (J6.5).
-// Source: round 4 mutation testing (rsbuild host); V1 ip S06 (a rule on the
-// rewritten specifier `ui-lib/button` is no rule the user writes).
+// Source: mutation testing (Rsbuild host); review (a rule on the rewritten
+// specifier `ui-lib/button` is no rule the user writes).
 describe('Rsbuild build: an import source.transformImport rewrites', () => {
   /** The app's entry: it uses `button` of `ui-lib`. */
   const uiLibEntry = `import { button } from 'ui-lib'
@@ -487,7 +484,7 @@ export const read = () => button()
   /**
    * The import of `ui-lib` (any column of line 1) or the use `button()`, or
    * the entry without coordinates: a tool rewrote the import, so its
-   * location may be unavailable (SPEC §5.14; V1R ip I01).
+   * location may be unavailable (SPEC §5.14).
    */
   const atImportOrUse = expect.toSatisfy(
     (importer: string) =>
@@ -521,7 +518,7 @@ export const read = () => button()
   // 2:27): the location is only found in the rewritten code (through the
   // mock module's path), whose positions do not map back to the source.
   // Source: rsbuild/import-protection.ts resolveImporterLocation
-  // (transformedSources lookup); round 4 mutation testing.
+  // (transformedSources lookup); mutation testing.
   // Impact: low; the code frame's caret points at the wrong column.
   test.fails(
     'the file rule denies the module it resolves to: the importer is reported at the import or the use',
@@ -577,8 +574,7 @@ export const read = () => button()
 
 // `rsbuild build --watch`: each build reports the violations it bundles,
 // whatever an earlier build reported.
-// Source: round 4 mutation testing (rsbuild host, the state of a previous
-// build).
+// Source: mutation testing (Rsbuild host, the state of a previous build).
 test('Rsbuild build --watch: a rebuild for an unrelated edit fails on the violation again', async () => {
   const entry = `import { secret } from './secret.server'
 import { other } from './other'
@@ -607,7 +603,7 @@ export const read = () => secret() + other
   ])
 }, 60_000)
 
-// Source: mutation run R3 ip-rsbuild R7 and ip-misc P10.
+// Source: mutation testing.
 test(
   'Rsbuild dev: the client mock of each denied import reports its own use in the browser console',
   async () => {
@@ -662,7 +658,7 @@ function consoleDiagnostics(messages: Array<string>): Array<Diagnostic> {
   })
 }
 
-// Source: round 4 mutation testing (rsbuild host, `mockAccess`).
+// Source: mutation testing (Rsbuild host, `mockAccess`).
 describe('Rsbuild dev: mockAccess', () => {
   test.each<{
     mockAccess: NonNullable<ImportProtectionOptions>['mockAccess']

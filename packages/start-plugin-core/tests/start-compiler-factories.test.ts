@@ -17,7 +17,7 @@ import { clientMiddleware, clientMiddlewareOf } from './page-values'
 import type { PageSettled, StartCase } from './regression-helpers'
 
 /**
- * The host defaults of the B2 lead's branch (until it is merged): no import
+ * The host defaults these tests use: no import
  * protection (its dev mock would hide a leaked server import from the
  * client's loads) and an app tsconfig with `verbatimModuleSyntax` (without
  * it, Vite's TypeScript transform drops unreferenced imports after the
@@ -110,8 +110,8 @@ type Wrap = (expression: string) => string
 describe('environment-specific functions', () => {
   // Source: Waku vite-plugin-allow-server.test.ts "keeps only allowServer
   // dependencies and removes allowServer imports", "supports allowServer
-  // aliasing and export specifiers". Dev and build compile alike (audit E1
-  // missing coverage 4): the production build of the same module is in
+  // aliasing and export specifiers". Dev and build compile alike: the
+  // production build of the same module is in
   // integration/start-compiler-build-env-fns.test.ts.
   test('dev: each environment keeps the implementation of its environment and only its dependencies', async () => {
     const served = await serve(
@@ -307,8 +307,8 @@ return links`
         },
         {
           // The wrapped part ends in `.client()`; `.server()` follows it.
-          // Source: lost-cases-campaign W-2 (fuzz M4 link:2, a crash of the
-          // Yuku migration; main builds it).
+          // Source: fuzzing (a crash of the Yuku migration, #8504; main
+          // builds it).
           end: '.middleware().validator().client(), before .server()',
           chain: (wrap: Wrap) =>
             `${wrap(`createMiddleware({ type: 'function' }).middleware([])${validatorLink}${clientLink}`)}${serverLink}`,
@@ -398,7 +398,7 @@ return links`
     // validator (its `.server()` link is stripped, the control above).
     // Source: start-compiler/compiler.ts:1296-1330 (the chain walk stops at
     // an identifier), start-compiler/handleCreateMiddleware.ts:21-32;
-    // fuzzing (oracle mode, N4).
+    // fuzzing.
     // Impact: the validator and its server-only imports ship to the client.
     test.fails(
       'the client strips a validator link of a builder stored in a variable',
@@ -444,10 +444,10 @@ export const getEnv = createIsomorphicFn().server(() => 'server').client(() => '
   // implementation: each call is compiled on its own, the chain walk from
   // `base.client(...)` stops at the identifier, so the output of the stored
   // link's environment gets a no-op. Same chain walk as the `.validator()`
-  // pin of a builder stored in a variable above (fuzz N4).
+  // pin of a builder stored in a variable above.
   // Source: start-compiler/handleCreateIsomorphicFn.ts:17-25,
-  // start-compiler/compiler.ts:1296-1330; fuzzing (oracle mode, round 2,
-  // F3; Vite and Rsbuild builds return undefined too).
+  // start-compiler/compiler.ts:1296-1330; fuzzing (Vite and Rsbuild builds
+  // return undefined too).
   // Impact: the server (or client) call silently returns undefined instead
   // of running its implementation.
   test.fails.each([
@@ -625,7 +625,7 @@ export const read = wrap(wrap(createServerOnlyFn(() => db.secret())))`,
   // On the server, a middleware `.server()` next to an isomorphic fn stays a
   // middleware: it is not compiled as the isomorphic fn's `.server()`. On
   // Start's real runtime (an uncompiled factory is the real one's business,
-  // not a throwing stand-in: RULES-AUDIT D#13).
+  // not a throwing stand-in).
   test('isomorphic, server-only and middleware implementations in one module reach only their environment', async () => {
     const served = await serve(
       `${head}import { createMiddleware } from '@tanstack/react-start'
@@ -940,7 +940,7 @@ export const s = so(() => db.y())`,
     },
     {
       // Replaces createServerFn.test.ts "should use slow path for factory
-      // pattern" (N9).
+      // pattern".
       name: 'a server fn factory const-aliased in another module',
       output: 'client',
       files: {
@@ -977,7 +977,7 @@ export const fn = createFooServerFn().handler(async () => db.x())`,
   // Only createServerOnlyFn appears in the source text; on the server, the
   // client-only fn imported through an aliased re-export throws and the
   // server-only fn runs. (Which of its imports the SSR environment keeps is
-  // left open: neutral names, user ruling 2026-10-17.)
+  // left open for neutral file names: SPEC J4.11, §5.12.)
   test('ssr: an aliased re-export of createClientOnlyFn next to createServerOnlyFn', async () => {
     const served = await serve(
       `import { createServerOnlyFn } from '@tanstack/react-start'
@@ -1088,12 +1088,11 @@ export const serverOnly = createServerOnlyFn(() => 'server-only-marker')`,
     },
   )
 
-  // Source: @vitejs/plugin-rsc expand-export-all/string-export-name; corpus
-  // inputs U047/U048, restored with the unrecognised call shapes of the user
-  // ruling 2026-10-20. A string export name is a re-export form, which SPEC
-  // J4.5 lists among the recognised ones (coordinator 2026-10-20: supported,
-  // no rejection branch). Valid TypeScript: arbitrary module namespace
-  // names (tsc 7.0.2 accepts both modules against the real declarations).
+  // Source: @vitejs/plugin-rsc expand-export-all/string-export-name. A
+  // string export name is a re-export form, which SPEC J4.5 lists among the
+  // recognised ones (supported, no rejection branch). Valid TypeScript:
+  // arbitrary module namespace names (tsc 7.0.2 accepts both modules
+  // against the real declarations).
   test('builders re-exported under string export names are recognised', async () => {
     const served = await serve(
       `import { 'create server fn' as createServerFn, 'server only' as createServerOnlyFn } from './start'
@@ -1162,8 +1161,8 @@ export const serverOnly = createServerOnlyFn(() => 'server-only-marker')`,
     // Impact: until the dev server restarts, the page calls a server fn that
     // no longer exists (here: Start's RPC fails), or keeps the old client
     // behaviour of an edited factory.
-    // Source: this reroute (B2 fork C), Vite dev server through the public
-    // Start plugin; served code read for the diagnosis only.
+    // Reproduced through a Vite dev server and the public Start plugin;
+    // served code read for the diagnosis only.
     test.fails(
       'dev: editing a factory module recompiles its importers against the new code',
       async () => {
@@ -1233,7 +1232,7 @@ export const fn = createServerFn().handler(async () => 'secret-body')`
   })
 })
 
-// Source: V4 red-astra-r2/07; SPEC J4.10, G12. A normal function's
+// SPEC J4.10, G12. A normal function's
 // receiver comes from its caller, including through Function.prototype.call.
 test.each([
   ['server', 'createServerOnlyFn'],
@@ -1252,7 +1251,7 @@ export const read = ${factory}(function (this: { value: number }) { return this.
   },
 )
 
-// Source: V4 red-astra-r2/06; SPEC J4.9, G12. No await in the body:
+// SPEC J4.9, G12. No await in the body:
 // the async contract itself must survive selection of either implementation.
 test.each(['client', 'ssr'] as const)(
   '%s: an async isomorphic implementation returns a promise',

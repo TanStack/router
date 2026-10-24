@@ -2,8 +2,8 @@
  * Start's `importProtection` options, by their effect on a real Start build
  * (Vite and Rsbuild), as guide/import-protection.md documents them. Without
  * options, a build fails on a violation (build.test.ts).
- * Source: oracle-gaps parts/options.md, importProtection rows (options that
- * were parsed but never exercised for effect).
+ * Source: review (options that were parsed but never exercised for
+ * effect).
  */
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
@@ -238,8 +238,8 @@ export const read = () => getRequest()
       timeout,
     )
 
-    // Source: round 4 mutation testing (rsbuild host, the pattern of a
-    // specifier violation).
+    // Source: mutation testing (Rsbuild host, the pattern of a specifier
+    // violation).
     test(
       'a RegExp pattern is reported as the rule that matched',
       async () => {
@@ -351,7 +351,7 @@ export const secret = () => 'MARK_SECRET'
     // Impact: on Vite, a client import of a dependency that marks itself
     // server-only fails the build although the defaults exclude it (and
     // `excludeFiles` cannot exempt it).
-    // Source: audit F (replacement of rsbuild/import-protection.test.ts:16).
+    // Source: review (replaces a row of rsbuild/import-protection.test.ts).
     ;(bundler === 'vite' ? test.fails : test)(
       'by default, the server-only marker of a dependency is not checked',
       async () => {
@@ -367,8 +367,7 @@ export const secret = () => 'MARK_SECRET'
     // and Vite checks them.
     // Impact: on Rsbuild, a project cannot opt in to checking the
     // server-only markers of its dependencies.
-    // Source: audit F (build-options.test.ts ran this row on Vite only,
-    // awaiting a ruling; the docs decide).
+    // Source: review (this row ran on Vite only; the docs decide).
     ;(bundler === 'rsbuild' ? test.fails : test)(
       '[] checks the markers of dependencies: a server-only-marked dependency fails the build',
       async () => {
@@ -422,12 +421,12 @@ export const secret = () => 'MARK_SECRET'
           'src/entry.ts': userOf('./marked'),
         },
         use: 'src/entry.ts:2:27',
-        // Or at the marker import (audit F ASK-1).
+        // Or at the marker import (SPEC J6.5).
         others: ['src/marked.ts:2'],
         type: 'marker',
       },
-      // Source: round 4 mutation testing (rsbuild host, the type of a
-      // specifier violation).
+      // Source: mutation testing (Rsbuild host, the type of a specifier
+      // violation).
       {
         name: 'a denied specifier',
         files: {
@@ -465,8 +464,7 @@ export const read = () => getRequest()
       timeout,
     )
 
-    // Source: mutation run R4 (spc:5137, the `specifier` type of the
-    // table above).
+    // Source: mutation testing (the `specifier` type of the table above).
     test(
       'the callback gets a specifier violation for an import of a denied specifier',
       async () => {

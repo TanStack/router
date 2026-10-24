@@ -5,7 +5,6 @@
  * initialises once and both see one instance, on a fully cached rebuild and
  * on a rebuild after an edit of an unrelated file (SPEC G3, G4, J2.4; §9:
  * a regression test, not a pin).
- * Source: V2-28.
  */
 import { writeFile } from 'node:fs/promises'
 import path from 'node:path'

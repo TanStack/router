@@ -8,7 +8,6 @@
  * column inside the throw statement. Also with a map-producing transform
  * before Start (Oxc lowering the module's syntax, as a user plugin would):
  * the maps compose. Minified builds (the production default).
- * Source: FIX-PLAN V2-24 (start-fable SF-31).
  */
 import path from 'node:path'
 import { transformWithOxc } from 'vite'

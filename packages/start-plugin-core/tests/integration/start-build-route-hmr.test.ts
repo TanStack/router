@@ -201,7 +201,7 @@ function Root() {
 })
 
 describe.each(startBundlers)('%s production build', (bundler) => {
-  // Source: audit E2 missing coverage #1 (only router-plugin's
+  // Source: review (only router-plugin's
   // build-production.test.ts checked R7, without Start's forced `addHmr`).
   test(
     'the client and server outputs use no HMR API, and the page renders',

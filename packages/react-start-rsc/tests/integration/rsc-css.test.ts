@@ -27,7 +27,7 @@ import {
 import type { Row } from './rsc-css-app'
 
 const rows = {
-  // Source: V4 red-astra-r2/19: both calls in one helper module deliver CSS.
+  // Both calls in one helper module deliver CSS.
   helperA: {
     key: 'helper-a',
     imports: `import { renderA } from '../pair'\n`,
@@ -40,7 +40,7 @@ const rows = {
     body: 'return renderB()',
     consumer: 'renderable',
   },
-  // Source: V4 red-astra-r2/20: a .jsx provider is an equally supported input.
+  // A .jsx provider is an equally supported input.
   javascript: {
     key: 'javascript',
     imports: renderableImport,
@@ -48,7 +48,7 @@ const rows = {
     consumer: 'renderable',
     jsx: true,
   },
-  // A fragment root with children from two components (V4 red-astra/21).
+  // A fragment root with children from two components.
   fragmentRenderable: {
     key: 'fragment-renderable',
     imports: renderableImport,
@@ -342,7 +342,7 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
   const cardBackground = (row: Row) =>
     app.style(row, '[data-testid=card]', 'background-color', CARD_BACKGROUND)
 
-  // V4 red-astra/21: a JSX fragment root must get the CSS of every child,
+  // A JSX fragment root must get the CSS of every child,
   // like an element root.
   test.each([
     { name: 'renderServerComponent', row: rows.fragmentRenderable },
@@ -393,7 +393,7 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
   // as safe to wrap.
   // Impact: a stream of a conditionally chosen element has no CSS, so its
   // styles never arrive.
-  // Source: decision D8 (b).
+  // Source: SPEC J7.3.
   test.fails.each([
     { argument: 'flag ? <Card /> : <Badge />', row: rows.ternary },
     { argument: 'flag && <Card />', row: rows.logicalAnd },
@@ -437,7 +437,7 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
   )
 
   // Bug: the alternate JSX branch has no CSS, just like the consequent
-  // (decision D8 (b), H02).
+  // (SPEC J7.3).
   // Source: react-start-rsc src/plugin/rscCssTransform.ts:93: a conditional
   // argument is not top-level JSX (`isTopLevelJsx`, 116-119, unwraps only
   // parentheses and TS wrappers), so the transform skips the call and never
@@ -461,7 +461,7 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
   // type is `renderToReadableStream(node)`; `options` is typed only under
   // the react-server condition). It must not break: the options reach
   // React's renderer (its `onError` runs and its digest is in the stream).
-  // CSS is not required (user ruling 2026-10-18, loosening decision D8 (a)).
+  // CSS is not required (SPEC J7.3).
   test('renderToReadableStream(<JSX />, options) renders with the options', async () => {
     expect(JSON.parse(await app.text(rows.options))).toEqual({
       digest: 'MARK_DIGEST:MARK_BOOM',
@@ -471,8 +471,8 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
 
   // A plain-data model (`{ card: <Card /> }`) is undocumented too: it must
   // not break, and the model reaches the client. Neither CSS for its
-  // elements nor a warning is required, nor their absence (user rulings
-  // 2026-10-18).
+  // elements nor a warning is required, nor their absence (SPEC §2.2,
+  // J7.3).
   test('renderToReadableStream with a plain-data model streams the model', async () => {
     expect(await app.text(rows.plainModel)).toBe('MARK_MODELMARK_CARD')
   })
@@ -481,7 +481,7 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
   // cannot see the JSX of (a variable, a spread).
   // Impact: the stream has no CSS, so its styles never arrive, and nothing
   // tells the developer.
-  // Source: decision D8 (c): warn in dev only.
+  // Source: SPEC J7.3: warn in dev only.
   test.fails.each([
     { name: 'an identifier', row: rows.identifier },
     { name: 'a spread', row: rows.spread },

@@ -7,9 +7,9 @@
  *
  * What the generator may change is checked by `expectOnlyOwnedEdits`
  * (owned-edits.ts): the id argument, the constructor callee and the import
- * statements, as long as every other binding they hold stays (ruling Q10).
+ * statements, as long as every other binding they hold stays (SPEC J1.2).
  * An unused import of the other route constructor may be removed or kept
- * (coordinator ruling on audit D ASK-1; SPEC J1.2).
+ * (SPEC J1.2).
  */
 import path from 'node:path'
 import { afterEach, describe, expect, test, vi } from 'vitest'
@@ -154,8 +154,8 @@ export { Route }
 `,
     },
     {
-      // (one route per route file, DECISIONS 2026-10-18: the other call is
-      // an ordinary function call with a path-like string argument)
+      // (one route per route file, SPEC §2.2, J2.1: the other call is an
+      // ordinary function call with a path-like string argument)
       name: 'another call with a path argument before it',
       body: `const otherPath = encodeURI('/other')
 export const Route = createFileRoute('/old')({})
@@ -375,8 +375,8 @@ export const Route = createFileRoute('/old')({})
       uses: 'cfr',
     },
     {
-      // (both aliases of the same export stay bound; V4 round 2 escape
-      // astra-r2/02 dropped one)
+      // (both aliases of the same export stay bound; a generator that
+      // dropped one passed the other cases)
       name: 'two aliases of another router export',
       imports: `import { Link as Primary, Link as Secondary } from ${router}`,
       uses: 'Primary, Secondary',

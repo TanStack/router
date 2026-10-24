@@ -1,5 +1,5 @@
 /**
- * The edit rows of hydrate-dev.test.ts (FIX-PLAN V2-20, SPEC J5.2, G10) on
+ * The edit rows of hydrate-dev.test.ts (SPEC J5.2, G10) on
  * Start's Rsbuild dev server, seen from a real browser page: React Refresh
  * from `@rsbuild/plugin-react`, Solid's hot updates from
  * `@rsbuild/plugin-solid` (with `@rsbuild/plugin-babel`, configured like a
@@ -26,7 +26,6 @@ import { solidAppConfig } from './hydrate-pages'
 const timeout = 60_000
 
 describe('Rsbuild dev', () => {
-  // Source: FIX-PLAN V2-20 (Rsbuild, React)
   test(
     'React: a loaded child hot-updates in place, and a sibling opened later shows the edited version',
     async () => {
@@ -59,7 +58,6 @@ export const Route = createFileRoute('/')({ component: Widgets })
     timeout,
   )
 
-  // Source: FIX-PLAN V2-20 (Rsbuild, Solid)
   test(
     'Solid: a loaded child hot-updates in place, and a sibling opened later shows the edited version',
     async () => {

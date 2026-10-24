@@ -1,16 +1,15 @@
 /**
- * `<ClientOnly>` children importing a `*.client.*` module in a route
- * component, in a default-config Start build (FIX-PLAN V2-06; SPEC J4.11,
- * ruling "server-side `*.client.*` imports" 2026-10-18): the module is one
- * import protection denies on the server, and only the children use it, so
- * the server build must not load it: a default-config build reports no
- * import-protection violation, the server bundle holds none of its code,
- * Start's real server entry renders the fallback (the module reads `window`
- * at its top level, so loading it on the server would throw), and the page
- * renders the children once hydrated. The route component is split by
- * Start's code splitter, so the Start compiler, the splitter and import
- * protection all touch the module (G11). Built with Start's Vite and
- * Rsbuild plugins and served like a deployed app (start-compose-app.ts).
+ * `<ClientOnly>` children importing a `*.client.*` module in a route component,
+ * in a default-config Start build (SPEC J4.11, §5.12): the module is one import
+ * protection denies on the server, and only the children use it, so the server
+ * build must not load it: a default-config build reports no import-protection
+ * violation, the server bundle holds none of its code, Start's real server
+ * entry renders the fallback (the module reads `window` at its top level, so
+ * loading it on the server would throw), and the page renders the children once
+ * hydrated. The route component is split by Start's code splitter, so the Start
+ * compiler, the splitter and import protection all touch the module (G11).
+ * Built with Start's Vite and Rsbuild plugins and served like a deployed app
+ * (start-compose-app.ts).
  */
 import {
   afterAll,

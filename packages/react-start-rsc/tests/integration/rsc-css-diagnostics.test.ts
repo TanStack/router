@@ -26,7 +26,7 @@ export const Route = createFileRoute('/')({
 `,
 }
 
-// J7.3 / D8(c), G5: the real RSC integration currently skips identifier and
+// J7.3, G5: the real RSC integration currently skips identifier and
 // spread arguments silently. Two calls in one file require one warning naming the file.
 // G5 requires positions on errors, not on this warning; wording/channel are free.
 test.fails.each(['vite', 'rsbuild'] as const)(

@@ -1,5 +1,5 @@
 /**
- * The completion of an edit, by its outcome (SPEC G10, J3.6; coupling N21):
+ * The completion of an edit, by its outcome (SPEC G10, J3.6):
  * the edit is applied (what a user sees: the page shows it, the output holds
  * it), the hosts have nothing of it in flight, no problem ends it early, and
  * one overall timeout bounds the wait. Never by how a compiler gets there:

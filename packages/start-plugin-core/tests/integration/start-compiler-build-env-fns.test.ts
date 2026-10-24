@@ -3,7 +3,7 @@
  * J4.12): each environment keeps the implementation of its own environment
  * and only the modules that implementation reads, and the other one throws.
  * The production twin of the dev row of start-compiler-factories.test.ts
- * ("dev and build compile alike", audit E1 missing coverage 4), through the
+ * ("dev and build compile alike"), through the
  * public Start host in production mode (`createStartHost({ serve: false })`:
  * real `vite build`, Start's preview server, the hydrated production page).
  * Source: Waku vite-plugin-allow-server.test.ts "keeps only allowServer
@@ -21,7 +21,7 @@ import {
 import type { PageSettled, StartHost } from '../regression-helpers'
 
 /**
- * The host defaults of the B2 lead's branch (until it is merged): no import
+ * The host defaults these tests use: no import
  * protection and an app tsconfig with `verbatimModuleSyntax`.
  */
 const hostDefaults = {

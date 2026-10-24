@@ -14,7 +14,7 @@
  * app navigates to it). `settle()` waits for the dev server by its events
  * (the harnesses' own `settle()`), then for the page's outcome: neither the
  * dev server nor the page has work in flight (`waitForOutcome`), never on
- * how many hot updates or invalidations an edit takes (N21).
+ * how many hot updates or invalidations an edit takes.
  */
 import { existsSync } from 'node:fs'
 import path from 'node:path'
@@ -157,7 +157,7 @@ export interface GeneratorDevApp {
    * `log`/`info`/`debug` and stdout writes as `info`, stderr writes as
    * `warning`; e.g. the generator), and the dev server's own errors
    * and warnings (Vite's logger, Rsbuild's compile errors and warnings). A
-   * report may come through any of them (SPEC G5, §5.7; V1R gen G13).
+   * report may come through any of them (SPEC G5, §5.7).
    */
   diagnostics: (since?: DiagnosticsMark) => Array<Diagnostic>
 }
@@ -570,7 +570,7 @@ const owned = '\u0000'
  * file's code outside its import statements with that string literal left
  * out (`rest`), and what the import statements bind (`imports`): the
  * generator may write, edit, merge, reorder or reprint import statements
- * (ruling Q10), so they are compared by their bindings, and the lines
+ * (SPEC J1.2), so they are compared by their bindings, and the lines
  * holding only import statements go, with the blank lines next to them or
  * at the start of the file (where a removed import leaves its line break
  * and blanks). The call is found by

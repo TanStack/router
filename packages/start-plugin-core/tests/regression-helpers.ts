@@ -106,7 +106,7 @@ export function fromPage(settled: PageSettled): unknown {
  * An environment's refusal to serve a module (`file`, its absolute path):
  * the error it threw, and what the app reported on every channel meanwhile
  * (a compiler may give its explanation on the console or the dev server's
- * logger and hand the bundler a short error, SPEC §5.7, N15).
+ * logger and hand the bundler a short error, SPEC §5.7).
  * `expectCompileError` reads both.
  */
 export class CompileFailure extends Error {

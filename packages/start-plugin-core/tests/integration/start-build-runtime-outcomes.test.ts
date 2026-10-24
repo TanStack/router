@@ -1,4 +1,4 @@
-/** Observable Start runtime contracts targeted by V4 round-2 escapes. */
+/** Observable Start runtime contracts that mutation testing found unchecked. */
 import {
   afterAll,
   beforeAll,
@@ -22,7 +22,7 @@ const files = {
   ...pageEntries,
   'src/router.ts': routerFile,
   'src/routes/__root.tsx': rootDocument(),
-  // Source: V4 red-astra-r2/09; SPEC J4.2/J4.14. Importing the RPC
+  // SPEC J4.2/J4.14. Importing the RPC
   // provider must preserve a default-export expression's observable effect.
   'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
 let ready = false
@@ -45,7 +45,7 @@ export const release = createServerFn().handler(() => {
   'src/client-entry.ts': `export { readReady, slow, release } from './fns'
 export { getRouter } from './router'
 `,
-  // Source: V4 red-fable-r2/13; SPEC J4.1/G8. The same real Zod schema
+  // SPEC J4.1/G8. The same real Zod schema
   // validates server input and is consumed by a live browser component.
   'src/routes/index.tsx': `import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
@@ -117,7 +117,7 @@ describe.each(startBundlers)('%s build runtime outcomes', (bundler) => {
     const page = await openAppPage(served, '/', {
       registerCleanup: onTestFinished,
     })
-    // Source: V4 red-astra-r2/08; SPEC J4.1. Abort an actual in-flight
+    // SPEC J4.1. Abort an actual in-flight
     // browser HTTP call, after the request has left the page. No fake fetch.
     const request = page.page.waitForRequest((req) =>
       req.url().includes('/_serverFn/'),

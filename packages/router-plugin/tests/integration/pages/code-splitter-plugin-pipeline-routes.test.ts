@@ -293,7 +293,7 @@ return {
   )
 })
 
-// The most common root route (1,891 corpus files, V2-30): `createRootRoute()`
+// The most common root route (1,891 files of real apps): `createRootRoute()`
 // without options. Through the plugin it stays a valid module that
 // evaluates, and the real router renders its child through the default
 // `Outlet` (SPEC J2.1, J2.7).
@@ -387,7 +387,7 @@ export const Route = createFileRoute('/hmr')({
     },
   )
 
-  // Source: corpus-diff, tinloof/tanstack-wsr src/types.ts (an empty type
+  // Source: real apps: tinloof/tanstack-wsr src/types.ts (an empty type
   // import fixes TypeScript's "inferred type cannot be named" error); #8504
   // (a guard against a printer bug, yuku-toolchain/yuku#258).
   it.each(['solid', 'vue'] as const)(
@@ -412,13 +412,12 @@ export const Route = createFileRoute('/hmr')({
 })
 
 // A route the route file creates inside a function of the same file (a
-// helper, an IIFE) is unsupported but user-fixable (user ruling 2026-10-17,
-// decision D11): it is either split like a module-scope route (and
+// helper, an IIFE) is unsupported but user-fixable (SPEC J2.10,
+// J2.8): it is either split like a module-scope route (and
 // hot-updates in place), or left unsplit with a warning naming the file, in
 // production as in development. Either way it renders correctly; silent
 // wrong output, or unsplit without a warning, fails.
-// Sources: #8504 (code-splitter-plugin-pipeline.test.ts); the #8504
-// confidence campaign (route-factory cases 1-3 and 5, dev-hmr D1/D2).
+// Sources: #8504 (code-splitter-plugin-pipeline.test.ts); review of #8504.
 describe('a route created inside a function', () => {
   /**
    * Whether a warning on any channel names the route file (absolute or
@@ -517,8 +516,7 @@ export const Route = (() =>
   // component makes the chunk render the module-level one. Leaving such
   // options unsplit with a warning naming the file is a valid fix (the
   // pattern is unsupported but user-fixable); unsplit and silent is not.
-  // Source: the #8504 confidence campaign (route-factory cases 4, 5 with a
-  // split loader, 6, 6b and 6c; F-21).
+  // Source: review of #8504.
   // Impact: the route throws when it renders or loads, or silently renders
   // the wrong component.
   it.fails.each([
@@ -626,7 +624,7 @@ export const Route = createFileRoute('/made')({ component: () => <p>made</p> })
   })
 
   // A route the splitter does not split is reported, once per file
-  // (decision D11: the user can change the pattern), across the edits of
+  // (SPEC J2.8: the user can change the pattern), across the edits of
   // the files of one dev server.
   it.each(Object.entries(factoryRoutes).slice(0, 2))(
     'built in %s is split, or reported once per file across repeated transforms',

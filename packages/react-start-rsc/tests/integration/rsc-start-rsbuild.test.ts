@@ -1,13 +1,12 @@
 /**
  * Start with RSC on Rsbuild (`rsc-app.ts`: Start's Rsbuild plugin, its RSC
  * layer and `react-server-dom-rspack`): which entry of a dependency each
- * environment runs (SPEC J4.3, J4.16, V2-12 (c)), and an edit of a route
- * module that declares the server function its loader and page call (SPEC
- * J3.6, V2-13). The Vite counterparts are rsc-start-dev.test.ts and
- * rsc-start-hmr.test.ts.
+ * environment runs (SPEC J4.3, J4.16), and an edit of a route module that
+ * declares the server function its loader and page call (SPEC J3.6). The
+ * Vite counterparts are rsc-start-dev.test.ts and rsc-start-hmr.test.ts.
  *
- * A component edit keeping state (V2-13's other half, with React Refresh
- * from `@rsbuild/plugin-react`) is in rsc-start-hmr.test.ts.
+ * A component edit keeping state (the other half of J3.6, with React
+ * Refresh from `@rsbuild/plugin-react`) is in rsc-start-hmr.test.ts.
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import {
@@ -125,7 +124,6 @@ function Page() {
   // initialises the package once, whether SSR or the browser calls it; SSR's
   // own code gets `default`, the browser `browser`, and the client output
   // has no other environment's entry.
-  // Source: V2-12 (c).
   test('each environment runs its own entry of a dependency; the provider runs the handler', async () => {
     expect(server.errors).toEqual([])
     const page = await openRscPage(server, '/env')
@@ -146,7 +144,7 @@ function Page() {
     expect(page.errors).toEqual([])
   })
 
-  // J3.6, V2-13 (#7618 as quoted) on Rsbuild's RSC layer: after an edit of
+  // J3.6 (#7618) on Rsbuild's RSC layer: after an edit of
   // the handler of a route module's server fn, the page applies the hot
   // update (its loader runs the new handler) and the next call runs it,
   // without a full reload; the client's hot update never has the handler.

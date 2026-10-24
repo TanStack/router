@@ -12,11 +12,11 @@ const hosts = useHydrateHost()
 // (which renders its fallback whenever it renders on a server), the server
 // output renders what the uncompiled source renders there (a plain Vite
 // host, `render.ts`). Whether the SSR
-// output keeps the children's imports is left open (neutral names, user
-// ruling 2026-10-17). The client keeps the children: it renders them once
+// output keeps the children's imports is left open for neutral file names
+// (SPEC J4.11, §5.12). The client keeps the children: it renders them once
 // the page hydrated (integration/clientOnlyJSX.test.ts). Other components
 // named ClientOnly are left alone.
-// N4 (replaces the former snapshot fixtures of this directory).
+// Replaces the former snapshot fixtures of this directory.
 describe('<ClientOnly> children', () => {
   /**
    * The libraries the fixtures import (plain text components): the source

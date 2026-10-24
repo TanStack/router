@@ -183,7 +183,7 @@ export interface HydrationApp {
 }
 
 /**
- * Page script of the parent-update scenario (SPEC J5.8; FIX-PLAN V2-19),
+ * Page script of the parent-update scenario (SPEC J5.8),
  * for a page with two keyed boundaries (`a`, `b`, hydrating on
  * interaction) rendering a child `<button data-item=name>` that shows
  * `name|count|theme|tag` and, when clicked, puts `name:count:theme` in the

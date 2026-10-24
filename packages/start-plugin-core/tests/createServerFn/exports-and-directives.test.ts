@@ -245,11 +245,11 @@ export const fn = createServerFn().handler(async () => 'fn')`,
 })
 
 describe('directives', () => {
-  // Split (S4 B-mixed): a handler with a directive prologue is a working
-  // server fn. Where its directives end up on the server (they have no
-  // effect in a module, which is always strict, and outside RSC) is not
-  // observable, so the former check of the provider's printed function
-  // prologues is dropped (SPEC §5.4, §5.5).
+  // A handler with a directive prologue is a working server fn. Where its
+  // directives end up on the server (they have no effect in a module, which
+  // is always strict, and outside RSC) is not observable, so the former
+  // check of the provider's printed function prologues is dropped (SPEC
+  // §5.4, §5.5).
   // Source: Next.js server-actions fixtures server-graph/8
   test('handler directives stay in the provider', async () => {
     const served = await serveCase(await host(), {
@@ -305,7 +305,7 @@ describe('server function ids', () => {
   // the public `url` of the server fns the client and server code get.
   // Source: SolidStart compile.spec.ts "keeps ids of existing functions when a
   // function is added above them", "keeps production ids stable ..."
-  // (FIX-PLAN S04: their edit-stability is not required).
+  // (their edit-stability is not required).
   test('dev: ids are repeatable for unchanged input, and each version of a module runs its own handlers by id', async () => {
     const existing = `export const load = createServerFn().handler(async () => 'load')
 export const save = createServerFn().handler(async () => 'save')`
@@ -400,7 +400,7 @@ describe('module formats', () => {
   // either (SSR: "Parse failure: Unexpected JSX expression"; the client gets
   // the TypeScript as is), and its build fails the same way for any query
   // import of a `.cts` module (`./fn.cts?x`). Not a compiler outcome
-  // (coordinator 2026-10-21; FOLLOWUPS UPSTREAM "`.cts`").
+  // (Vite's own default).
   // Source: @vitejs/plugin-rsc cjs.test.ts (fixtures/cjs)
   for (const file of ['fn.mts']) {
     test(`${file} may use angle-bracket type assertions`, async () => {

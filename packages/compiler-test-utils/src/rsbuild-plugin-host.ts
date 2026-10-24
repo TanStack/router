@@ -1,5 +1,5 @@
 /**
- * The Rsbuild counterpart of `./plugin-host` (recipes P1/P2/P3): the
+ * The Rsbuild counterpart of `./plugin-host`: the
  * Rsbuild plugins a user configures, given as they are, on an app written
  * to disk, driven through Rsbuild's public JavaScript API in process:
  * - a dev server (`createRsbuild` + `createDevServer`, Rspack in watch

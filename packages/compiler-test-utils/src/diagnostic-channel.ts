@@ -1,5 +1,5 @@
 /**
- * One diagnostic channel (SPEC §5.7, G5; RULES-AUDIT R18; coupling N15–N17):
+ * One diagnostic channel (SPEC §5.7, G5):
  * everything a user would see reported while a piece of work runs, merged,
  * in order, whatever way a compiler or a tool reports it:
  * - `console.*` (`error`, `warn`; `log`, `info`, `debug` as `info`);
@@ -17,7 +17,7 @@
  * Vite's logger or the bundler's compilation. So an assertion that something
  * is reported reads every channel, and so does one that nothing is: "nothing
  * reported" is `expectNoProblems(channel.diagnostics)` (no `warning` and no
- * `error`; `info` is not a problem, N15).
+ * `error`; `info` is not a problem).
  *
  * Scoping: a channel records its `run()` work and async descendants until
  * `close()`, and what is printed outside any async scope (from a bundler's
@@ -340,7 +340,7 @@ export function problems<T extends Diagnostic>(diagnostics: Array<T>) {
 
 /**
  * Asserts that no channel reported a problem (a `warning` or an `error`):
- * the "nothing reported" check. `info` output is allowed (N15). The failure
+ * the "nothing reported" check. `info` output is allowed. The failure
  * lists every problem with its source.
  */
 export function expectNoProblems(

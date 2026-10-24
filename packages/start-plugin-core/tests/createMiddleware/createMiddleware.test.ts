@@ -53,7 +53,7 @@ export const logger = createMiddleware({ type: 'function' }).client(
 // chain itself) and drops its server part: `.server()`, `.validator()` (the
 // validator only runs on the server) and the code and imports only they
 // read.
-// Replaces the former snapshot fixtures of this directory (N3).
+// Replaces the former snapshot fixtures of this directory.
 describe('the client keeps the browser part of a middleware', () => {
   /** A case of `code` (and `files`), which every environment serves. */
   async function evaluateClient(
@@ -129,7 +129,7 @@ export const withWrapper = createMiddleware({ type: 'function' })
   })
 
   // Source: snapshot fixture createMiddlewareValidator.tsx, inline snapshot
-  // "should compile validator method" (gap MW2)
+  // "should compile validator method"
   test('the validator and its module leave the client', async () => {
     const served =
       await evaluateClient(`import { createMiddleware } from '@tanstack/react-start'
@@ -196,7 +196,7 @@ export const getUser = async () => ({ role: 'admin' })
     ])
   })
 
-  // Source: snapshot fixture createStart.tsx (gap MW5)
+  // Source: snapshot fixture createStart.tsx
   test('middleware of a createStart instance keeps .client() and drops .server()', async () => {
     const served = await evaluateClient(
       `import { createStart } from '@tanstack/react-start'

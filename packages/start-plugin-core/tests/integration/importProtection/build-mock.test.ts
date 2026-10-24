@@ -225,9 +225,9 @@ export const secret = () => 'MARK_SECRET'
   // Impact: in a production build with `behavior: { build: 'mock' }`, code
   // that runs on a mocked import does so without any console diagnostic;
   // the warning at build time is the only trace of it.
-  // Source: V1 ip S02 (the rows above demanded silence with the default);
-  // the server rows: user ruling 2026-10-19 "mock mode always logs" (client
-  // and server, dev and build).
+  // Source: review (the rows above demanded silence with the default); the
+  // server rows: SPEC J6.3 (mock mode always logs: client and server, dev
+  // and build).
   test.fails.each(
     (
       [
@@ -270,8 +270,7 @@ export const secret = () => 'MARK_SECRET'
   // Impact: a mock-mode Vite build ships the marked module's real code in
   // the bundle of the environment it is denied to, and runs it (only a
   // warning is logged).
-  // Source: found writing the H2 rows (oracle-gaps REPORT.md); client-only
-  // row: round 3 mutation testing (ip-misc P2).
+  // Source: review; client-only row: mutation testing.
   const markerMockTest = bundler === 'vite' ? test.fails : test
   markerMockTest.each(Object.keys(markedModules))(
     '%s is mocked, with a warning',
@@ -340,7 +339,7 @@ return entry.read().map((value) => describeValue(value, 'MARK_SECRET'))`)
     timeout,
   )
 
-  // Ruling Q4 (RULINGS "Q4: `export *` of a denied module"; SPEC J6.8): in a
+  // SPEC J6.8 (`export *` of a denied module): in a
   // mock-mode build, a name a client module re-exports with `export *` from
   // a denied module is a safe mock and the denied module's value is not in
   // the bundle, or the build fails.
@@ -386,12 +385,12 @@ return describeValue(entry.v, 'MARK_SECRET')`)
   // Bug (Rsbuild): the import-protection loader removes an `export * from` a
   // denied specifier from the importer (today's `rewriteDeniedImports`), and
   // the build of the module importing a name of it succeeds without that
-  // name. (Vite's build fails on the missing export, which the ruling
+  // name. (Vite's build fails on the missing export, which SPEC J6.8
   // accepts.)
   // Impact: a mock-mode Rsbuild build ships a client in which a name
   // re-exported with `export *` from a denied package is `undefined`: using
   // it throws instead of reaching a mock.
-  // Source: ruling Q4 (2026-10-23), the build row of the dev pin in
+  // Source: SPEC J6.8, the build row of the dev pin in
   // known-bugs-dev-server.test.ts.
   ;(bundler === 'rsbuild' ? test.fails : test)(
     'a name re-exported with `export *` from a denied specifier is a safe mock, or the build fails',
@@ -401,7 +400,7 @@ return describeValue(entry.v, 'MARK_SECRET')`)
 
   // The route module and its split component are two modules of the bundle
   // that import the denied file for the same import of the source.
-  // Source: mutation run R4 (spc:5296, 5299).
+  // Source: mutation testing.
   test(
     'a denied import of a route used by its loader and its split component is warned once',
     async () => {

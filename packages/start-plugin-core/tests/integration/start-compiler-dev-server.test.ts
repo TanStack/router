@@ -29,7 +29,7 @@ const plain = `export const base = { handler: (fn: () => unknown) => fn }\n`
 
 describe('Vite dev: editing a server fn factory', () => {
   // Mirrors rsbuild/dev-server.test.ts "every module importing a factory
-  // from ./b that stops being one keeps its handler" (N17).
+  // from ./b that stops being one keeps its handler".
   test(
     'client: a module importing a factory that stops being one keeps its handler',
     async () => {
@@ -73,7 +73,7 @@ return {
 describe('Vite dev: server fns by id', () => {
   // A dev server compiles modules on demand: the resolver must find server
   // fns of modules compiled after it first loaded.
-  // Source: mutation round 3 sc-hosts 3.
+  // Source: mutation testing.
   test(
     'SSR: a server fn of a module compiled after the resolver first loaded runs by id',
     async () => {
@@ -104,7 +104,7 @@ export const later = createServerFn().handler(() => 'MARK_LATER')
 describe('Vite dev: virtual modules of other plugins', () => {
   // Start's dev plugins load their own `\0` virtual modules; a virtual
   // module of a plugin placed after Start's must still load from its plugin.
-  // Source: mutation round 3 sc-hosts 10 (spc:5579).
+  // Source: mutation testing.
   test(
     'a virtual module of a plugin placed after the Start compiler loads',
     async () => {
@@ -137,7 +137,7 @@ describe('Vite dev: editing a server fn handler', () => {
   // Source: replaces server-fn-resolver-module.test.ts "imports on every call
   // by default" and "keeps the imported module when memoizeModules is set",
   // and the HMR half of exports-and-directives.test.ts "dev providers export
-  // the handler and accept HMR updates" (N16; gap DV24).
+  // the handler and accept HMR updates".
   test(
     'SSR: the server fn resolver runs the edited handler, without a restart',
     async () => {
@@ -175,8 +175,8 @@ export const greet = createServerFn().handler(() => 'after')
   // the page): the handler runs the new code. Which server state survives
   // is Vite's business.
   // Source: the HMR half of exports-and-directives.test.ts "dev providers
-  // export the handler and accept HMR updates" (N16); user ruling 2026-10-18
-  // (no full reload where feasible, no server-state requirement).
+  // export the handler and accept HMR updates"; SPEC G10 (no full reload
+  // where feasible, no server-state requirement).
   test(
     'SSR: an edit of a module only the handler reads does not fully reload, and the handler runs the new code',
     async () => {
@@ -234,8 +234,8 @@ export const mw = createMiddleware({ type: 'function' })
 `
 
   // With Start's whole Vite plugin (its environments and import
-  // protection, not the compiler plugin alone).
-  // Source: oracle-gaps H4 / DV31 (no dev edit of createMiddleware).
+  // protection, not the compiler plugin alone). No other test edits a
+  // createMiddleware in dev.
   test(
     'the client never gets the edited .server(), and SSR runs the new one',
     async () => {
@@ -285,7 +285,7 @@ export const where = createIsomorphicFn()
   .client(() => 'MARK_CLIENT_${version}')
 `
 
-  // Source: oracle-gaps H4 / DV32 (an isomorphic fn edit is never tested).
+  // No other test edits an isomorphic fn in dev.
   test(
     'each environment runs its edited branch, and the client never gets the server one',
     async () => {
@@ -372,7 +372,7 @@ export const label = () => 'MARK_CLIENT_LABEL'
   // In full-bundle dev, the client compiler loads the modules a top-level
   // call may come from through the bundler.
   // Source: issue #8407 ("cannot load the module info" of a server fn
-  // module's dependency in bundledDev), oracle-gaps H4 / DV29.
+  // module's dependency in bundledDev).
   test(
     'a server fn module with a top-level call of a dependency bundles for the client without its handler',
     async () => {
@@ -396,8 +396,7 @@ export const label = () => 'MARK_CLIENT_LABEL'
     timeout,
   )
 
-  // Source: issue #7535 (SSR does not reflect edits in bundledDev),
-  // oracle-gaps H4 / DV29.
+  // Source: issue #7535 (SSR does not reflect edits in bundledDev).
   test(
     'SSR runs an edited handler, called directly and by id',
     async () => {
@@ -457,7 +456,7 @@ export const fn = base.handler(async () => db.x())
   }
 
   // Source: issue #8062 (a hook of the Start compiler plugin threw on an
-  // edit in bundledDev; fix #8061 had no test), oracle-gaps H4 / DV29.
+  // edit in bundledDev; fix #8061 had no test).
   test(
     'a module whose factory becomes a server fn builder bundles again without errors',
     async () => {

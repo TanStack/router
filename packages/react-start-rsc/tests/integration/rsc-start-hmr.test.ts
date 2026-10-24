@@ -1,5 +1,5 @@
 /**
- * Edits with a separate server function provider (SPEC J3.6, V2-13): a
+ * Edits with a separate server function provider (SPEC J3.6): a
  * React Start app with RSC enabled on a Vite dev server, or on an Rsbuild
  * dev server with React Refresh from `@rsbuild/plugin-react` (`rsc-app.ts`),
  * a route module that also declares the server function its loader and page
@@ -27,8 +27,8 @@ describe('Vite dev: edits with a separate RSC provider (SPEC J3.6)', () => {
   // A route module that also declares a server function: editing the
   // handler makes the next call run the new code; editing the component
   // hot-updates the page, keeping its state, and the server fn still
-  // answers; no full reload either way (user ruling 2026-10-18).
-  // Source: SPEC J3.6, V2-13 (#7618 as quoted), start S12 on Vite.
+  // answers; no full reload either way (SPEC J3.6, G10).
+  // Source: #7618.
   test('a handler edit reaches the next call and a component edit hot-updates, without a full reload', async () => {
     const server = await startRscDevServer({
       browser: true,

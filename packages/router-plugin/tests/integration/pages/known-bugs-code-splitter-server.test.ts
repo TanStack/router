@@ -88,9 +88,9 @@ return [rendered, await renderComponent(${read})]`)
   // route module (`removeIdentifierLiteral`), even when other code there
   // still reads it. Only `export function`/`export const` declarations are
   // checked, so export lists, aliases and exports that use the binding lose
-  // it. Source: #8505 (`export { component as View }`), gap O7.
+  // it. Source: #8505 (`export { component as View }`).
   // A fix may also leave `Page` unsplit, but must then tell the user, in
-  // production builds too (decision D11): unsplit and silent is still this
+  // production builds too (SPEC J2.8, G5): unsplit and silent is still this
   // bug.
   // Impact: the route module throws when it loads ("Page is not defined",
   // "Export 'Page' is not defined"), so the route never renders.
@@ -122,7 +122,7 @@ return [rendered, await renderComponent(${read})]`)
       imported: 'View',
     },
     {
-      // Source: #8504 (lost case L4).
+      // Source: #8504.
       name: 'a default export by specifier',
       exports: 'export { Page as default }',
       imported: 'default',
@@ -209,7 +209,7 @@ return [loaded, rendered, { ...(await app('subscribe.ts')).runs }]`),
   )
 
   // Bug: same root cause as above, for an unsplit option that names the
-  // split component. Source: corpus-diff, bex-co/bex
+  // split component. Source: real apps: bex-co/bex
   // src/routes/databases.$databaseId.tsx (`component: Page,
   // pendingComponent: Page`); #8504 (code-splitter-route-options.test.ts),
   // where it passes.
@@ -238,8 +238,8 @@ function Page() {
   // split component (which reads `Route`, so it moves to its chunk) with
   // `typeof`. Reading an undeclared name with `typeof` does not throw, so
   // the route module loads and the option silently sees `'undefined'`.
-  // Source: fuzzing (oracle mode, round 2: `beforeLoad` and `loaderDeps`
-  // readers of components of the repository's e2e routes).
+  // Source: fuzzing (`beforeLoad` and `loaderDeps` readers of components of
+  // the repository's e2e routes).
   // Impact: code that checks the component (`typeof Page === 'function'`)
   // takes the wrong branch on every navigation, with no error.
   test.fails(
@@ -326,7 +326,7 @@ export const Route = createFileRoute('/posts')({
   // the pins above, which cover bindings declared in the route file.
   // Source: compilers.ts:571-593 (`removeIdentifierLiteral`), :1555-1593
   // (the binding is removed), :768-777 (the emptied import is dropped);
-  // fuzzing (oracle mode, N1).
+  // fuzzing.
   // Impact: the route throws "PostsPage is not defined" where the other code
   // runs (head() on every navigation, an importer's render).
   test.fails(
@@ -356,8 +356,8 @@ export const Route = createFileRoute('/posts')({
   )
 
   // Bug: same root cause as above, for an exported component that renders
-  // the imported split one, used by another module of the app (ruling P1:
-  // through a real importer, not the export list). Adapted from the
+  // the imported split one, used by another module of the app (SPEC G9,
+  // J2.4, J4.13: through a real importer, not the export list). Adapted from the
   // repository's
   // examples/solid/start-supabase-basic/src/routes/_authed/posts.$postId.tsx
   // (written for React here; the code splitter handles the import the same
@@ -450,7 +450,7 @@ export const Route = createFileRoute('/')({ component: Page })
   // Bug: a route option that names a class cannot be split: the virtual
   // compiler throws "Unexpected splitNode type ☝️: ClassDeclaration".
   // A class only the route option reads must be split like a function
-  // component (our limitation otherwise, decision D11). A fix may leave an
+  // component (our limitation otherwise, SPEC J2.8). A fix may leave an
   // exported class unsplit, but must then tell the user, in production
   // builds too.
   // JavaScript route files: the route types of React accept function
@@ -554,7 +554,7 @@ export const Route = createFileRoute('/')({ component: Page })
   // Bug: when the split component is imported (`import { Page } from
   // './Page'`), the code splitter also removes every bare import of that path
   // from the route module (`removableImportPaths`), including the user's own
-  // `import './Page'`. Source: gap O2.
+  // `import './Page'`.
   // Impact: what that module does when it loads (registrations, styles,
   // polyfills) is deferred until the component chunk loads.
   test.fails(
@@ -719,8 +719,8 @@ ${serverOptions}
 
   // Bug: `deleteNodes` only removes route options written as `key: value`
   // (`ObjectProperty`); a method (`ssr() {}`, `async ssr() {}`,
-  // `headers() {}`) is kept, with the imports it uses. Source: gap D11/S26
-  // (docs `selective-ssr.md` promise `ssr` is stripped).
+  // `headers() {}`) is kept, with the imports it uses. Source: docs
+  // (`selective-ssr.md` promise `ssr` is stripped).
   // Impact: Start's client bundle ships the route's `ssr`/`headers` code and
   // its server-only imports.
   test.fails.each([
@@ -743,7 +743,7 @@ export const Route = createFileRoute('/')({
   // route options (a spread, a computed key, options built by a call) are
   // kept, with their imports, and nothing reports it. Removing them is best
   // effort; refusing the route with an error naming the route file and the
-  // option is a valid fix too. Source: gap D11.
+  // option is a valid fix too (SPEC J2.8).
   // Impact: Start's client bundle silently ships server handlers and their
   // server-only imports.
   test.fails.each([
@@ -811,9 +811,8 @@ export const Route = createFileRoute('/')(
   // server-only options and their imports on the client. Unlike opaque
   // options above, these must be removed: the options are written in the
   // file, so refusing the route is not an option.
-  // Source: the #8504 confidence campaign (suspects SU-4/8; 4 corpus files
-  // in 3 repositories cast their options, `as never` or `as any`, when the
-  // handlers' types do not fit); V1 split F35.
+  // Source: review of #8504 (4 files in 3 repositories of real apps cast their
+  // options, `as never` or `as any`, when the handlers' types do not fit).
   // Impact: Start's client bundle ships server handlers and their
   // server-only imports (build-level canary in
   // integration/known-bugs-code-splitter-client-output.test.ts).
@@ -842,7 +841,7 @@ describe('look-alike route factories', () => {
   // another package (a namespace member call) is left alone
   // (code-splitter-plugin-pipeline.test.ts).
   // Source: found while replacing the spelling-only look-alike controls of
-  // code-splitter-plugin-pipeline.test.ts (V1R split S13, W4-split).
+  // code-splitter-plugin-pipeline.test.ts.
   // Impact: a route file whose own code uses a helper named
   // `createFileRoute` (a widget registry, a test fixture builder) fails to
   // load once code splitting is on.

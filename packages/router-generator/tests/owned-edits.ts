@@ -5,7 +5,7 @@
  * The generator owns the route id argument of the `Route` constructor call
  * and the constructor's callee (`createFileRoute` / `createLazyFileRoute`),
  * and it may add, move or drop the constructor's binding. How it does that
- * to the import statements is free (ruling Q10): it may write a new import
+ * to the import statements is free (SPEC J1.2): it may write a new import
  * or edit, merge, split, reorder or reprint any import statement. What the
  * imports bind is the user's: every binding keeps its imported name, local
  * name, source module, type/value meaning and import attributes, and every

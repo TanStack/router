@@ -6,11 +6,10 @@
  * component (or a support module or factory a compiler emits for it) is
  * dropped from the entry is each bundler's tree-shaking decision, with and
  * without `"sideEffects": false`: Vite/Rolldown, Rspack and webpack treat
- * annotated factories differently (FOLLOWUPS, annotation divergence), so
- * every cell is its own outcome (V1R split S17 restored the seven cells the
- * speed pass removed). Each cell is a small app of its own (the property
- * write breaks today's entry chunk, which would take the other cases of a
- * shared app down with it); the cells build concurrently.
+ * annotated factories differently, so every cell is its own outcome. Each
+ * cell is a small app of its own (the property write breaks today's entry
+ * chunk, which would take the other cases of a shared app down with it);
+ * the cells build concurrently.
  */
 import { describe, it } from 'vitest'
 import { build, buildWithRsbuild, head } from '../build-harness'
@@ -57,7 +56,7 @@ export async function mount(path: string) {
 // production client output, whose entry chunk reads the undeclared `Page`.
 // Keeping a copy of the component and its write in the route module as
 // well is no fix: the page code then loads with the entry chunk.
-// Source: the #8504 probe (memos/splitter.md B6).
+// Source: #8504.
 // Impact: the app's entry throws when it loads ("Page is not defined").
 describe.concurrent.each(['vite', 'rspack', 'webpack', 'rsbuild'] as const)(
   '%s',

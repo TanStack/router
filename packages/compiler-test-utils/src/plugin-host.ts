@@ -1,8 +1,7 @@
 /**
- * The public in-process plugin host (SYNTHESIS recipes P1/P2/P3; RULES-AUDIT
- * R3, R23–R25): the plugins a user configures, given as they are (the
- * public plugin array of a `vite.config.ts`), on an app written to disk,
- * driven through real Vite. Nothing of a compiler is assumed: no hook
+ * The public in-process plugin host: the plugins a user configures, given
+ * as they are (the public plugin array of a `vite.config.ts`), on an app
+ * written to disk, driven through real Vite. Nothing of a compiler is assumed: no hook
  * placement (no recorder before or after a plugin), no module id or query,
  * no route or module registration. What a test reads is what the host
  * hands a user:

@@ -185,8 +185,8 @@ export const issueServerFn = createIssueServerFn().handler(async () => 'issue-ha
 // module of the app (or of a plugin) provides.
 // Fix-agnostic: however the compiler learns the factory's provenance, the
 // module compiles and its server fn works.
-// Source: B2 repair (rerouting "keeps query-bearing virtual module
-// identities distinct" through the public plugin).
+// Source: the former test "keeps query-bearing virtual module identities
+// distinct", rerouted through the public plugin.
 test.fails(
   'a server fn whose factory a virtual module serves by its exact id compiles in dev',
   async () => {
@@ -219,10 +219,10 @@ export const greet = createServerFn().handler()`
 })
 
 // Builders, route files and formatting: replaces the factory and
-// isomorphic-fns snapshot fixtures (N5, N6) and the `.handler(` formatting
-// detection unit tests (N7).
+// isomorphic-fns snapshot fixtures and the `.handler(` formatting
+// detection unit tests.
 describe('server fns of builders, route files and reformatted code', () => {
-  // Source: snapshot fixture factory.tsx (N5)
+  // Source: snapshot fixture factory.tsx
   test('a server fn builder with middleware is callable as a factory', async () => {
     const served = await serveCase(await host(), {
       'module.tsx': `import { createServerFn, createMiddleware } from '@tanstack/react-start'
@@ -275,7 +275,7 @@ export const x = createFakeFn().handler(() => {
     ])
   })
 
-  // Source: snapshot fixture isomorphic-fns.tsx (N6; #8504
+  // Source: snapshot fixture isomorphic-fns.tsx (#8504
   // start-compiler-factories.test.ts "provider compiles env fns")
   test('a route file: the provider runs the server fns, each output runs its isomorphic branch', async () => {
     const code = `import { createFileRoute } from '@tanstack/react-router'
@@ -370,7 +370,7 @@ throw new Error('the click gave no results: ' + element.innerHTML)`,
   // Reformatted code (Vite/Babel may move the dot to its own line) and a
   // builder from another module (TanStack/router#7280 class).
   // Replaces compiler.test.ts "handles .handler with whitespace variations"
-  // and "handles whitespace between . and handler" (N7).
+  // and "handles whitespace between . and handler".
   describe.each<{
     where: string
     files: Record<string, string>
@@ -404,7 +404,7 @@ export const base = createServerFn()`,
       // builder imported from another module, a comment between the dot and
       // `handler` hides the server fn.
       // Impact: the handler and its server-only imports ship to the client.
-      // Source: N7 (TanStack/router#7280 class).
+      // Source: TanStack/router#7280 class.
       const run =
         where === 'another module' && name === 'a comment after the dot'
           ? test.fails

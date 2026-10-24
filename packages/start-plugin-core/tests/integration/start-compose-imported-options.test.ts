@@ -1,7 +1,7 @@
 /**
- * Route options imported from another module under Start (FIX-PLAN V2-10;
- * SPEC J2.8, J2.14, J4.12): `createFileRoute('/x')(options)` with `options`
- * from `x.options.tsx`, holding a component, a loader and server handlers
+ * Route options imported from another module under Start (SPEC J2.8,
+ * J2.14, J4.12): `createFileRoute('/x')(options)` with `options` from
+ * `x.options.tsx`, holding a component, a loader and server handlers
  * that read a server-only helper (a neutral file name, so only the route
  * option's removal keeps it out of the client). The route works on the
  * server; the client build never ships the handlers silently: they and the
@@ -103,9 +103,8 @@ return {
   // says nothing: Start's client build keeps `server.handlers` and ships
   // the helper they read.
   // Impact: server code in the client bundle, silently.
-  // Source: FIX-PLAN V2-10 (split-fable O3/gap 5; SPEC J2.8 "options the
-  // compiler cannot read statically ... never ships their ssr/server/headers
-  // silently").
+  // SPEC J2.8: "options the compiler cannot read statically ... never ships
+  // their ssr/server/headers silently".
   test.fails(
     'the client build never ships the server handlers of imported route options silently',
     () => {

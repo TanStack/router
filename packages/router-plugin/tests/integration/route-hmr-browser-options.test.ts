@@ -9,7 +9,7 @@
  * naming, registration, hook signatures) is free.
  *
  * Replaces the in-process registration and signature checks of
- * react-refresh-route-components.test.ts (V1 HMR-17), which read the names
+ * react-refresh-route-components.test.ts, which read the names
  * and hook signatures React Refresh's transform computed.
  *
  * Concurrent: each test has its own dev server and page, and mostly waits.
@@ -215,10 +215,10 @@ export const Route = createFileRoute('/')({ component: () => <p>index</p> })
 
   // An edit that adds component options before an inline component shows
   // in place. Whether the component keeps its state is free: adding sibling
-  // options next to an inline component may remount it (ruling 2026-10-24,
-  // SPEC J3.2). Source: the former react-refresh-route-components "names
-  // hoisted components after their option, so adding options keeps the
-  // family" (ReactFreshIntegration-test "preserves state ...").
+  // options next to an inline component may remount it (SPEC J3.2). Source:
+  // the former react-refresh-route-components "names hoisted components
+  // after their option, so adding options keeps the family"
+  // (ReactFreshIntegration-test "preserves state ...").
   test.for([false, true])(
     'an edit that adds component options before an inline component shows in place (autoCodeSplitting: %s)',
     async (

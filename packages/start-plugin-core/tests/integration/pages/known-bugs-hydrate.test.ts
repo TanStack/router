@@ -60,7 +60,7 @@ function expectRejection(error: unknown, source: string) {
  * requested while the page imports the module and hydrates it with every
  * gate open (every boundary of the fixtures renders): no split code ships
  * that the page never loads. How many modules the split takes, their ids
- * and how the client imports them are free (SPEC N13).
+ * and how the client imports them are free (SPEC §5.3).
  */
 async function expectNoUnusedChunks(client: ClientRender) {
   const host = await hosts()
@@ -206,7 +206,7 @@ export function Local() {
   )
 
   // The goal that a namespace-imported `<Start.Hydrate>` is split like a
-  // named import (DECISIONS 2026-10-18) is pinned on real hydration:
+  // named import (SPEC J5.1) is pinned on real hydration:
   // integration/hydrate-pages-react.ts and hydrate-pages-solid.test.ts "a
   // namespace-imported Start.Hydrate loads its children when it hydrates".
 
@@ -293,7 +293,7 @@ export const cleanup = ['__spreadWhen']`,
   // Bug: same root cause as above, for a `children` prop that holds another
   // boundary: the client does not compile the JSX of the prop, so the nested
   // boundary hydrates without the id the server renders it with.
-  // Source: fuzzing (oracle mode, round 2; mutants of the repository's
+  // Source: fuzzing (mutants of the repository's
   // e2e/react-start/deferred-hydration EnhancedNestedWidget.tsx).
   // Impact: the nested boundary hydrates without its id (a hydration
   // mismatch).
@@ -349,8 +349,8 @@ export const cleanup = ['__spreadWhen']`,
   // of the child as text (the server renders it).
   // Impact: the client renders other text than the server (a hydration
   // mismatch).
-  // Source: hydrate-when-transform.ts getMeaningfulChildren (round3
-  // mutation analysis, hydrate P1)
+  // Source: hydrate-when-transform.ts getMeaningfulChildren (mutation
+  // testing).
   test.fails(
     'client: spaces around a single child on one line render like on the server',
     async () => {
@@ -373,7 +373,7 @@ export const cleanup = ['__spreadWhen']`,
   // Impact: a boundary after such code hydrates with an id the server did
   // not render it with, or loads the chunk of the removed boundary and
   // renders its children instead of its own.
-  // Source: gap H9 (gaps/hydrate-rsc.md); start-compiler/compiler.ts
+  // Source: start-compiler/compiler.ts
   // (built-in handlers, `<ClientOnly>` removal and dead-code elimination run
   // before the AST plugins) vs hydrate-when-transform.ts
   // `loadHydrateVirtualModule`.
@@ -583,7 +583,7 @@ export function Icons({ ids }) {
   // `Icon` exists. The identifier visitor checks where a binding is declared,
   // the JSX tag visitor does not.
   // Source: hydrate-when-transform.ts:439-447 (JSXIdentifier, without the
-  // declared-inside check of :426-434); fuzzing (oracle mode, N5).
+  // declared-inside check of :426-434); fuzzing.
   // Impact: the parent throws "Icon is not defined" when it renders, so the
   // page fails on the client.
   test.fails(
@@ -804,8 +804,8 @@ describe('source maps of the split code', () => {
   // Bug: a boundary whose only child is text is split into code whose text
   // is a new string the compiler creates without the text's position, and
   // nothing else in that code comes from the user's file: the dev server
-  // serves it with an empty source map (no mappings, no sources). Found by
-  // F-C (final pass, finding 2).
+  // serves it with an empty source map (no mappings, no sources). Found in
+  // review.
   // Impact: the split code of such a boundary maps to nothing (SPEC G6):
   // devtools show it as generated code, not as the user's file, and its
   // component's frames in stacks resolve nowhere.

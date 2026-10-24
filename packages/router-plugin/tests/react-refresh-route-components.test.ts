@@ -109,9 +109,9 @@ export const Route = createFileRoute('/')({ component: page })`,
 // on a real page: integration/route-hmr-browser-names.test.ts and
 // integration/route-hmr-browser-options.test.ts (they replace the checks of
 // which names React Refresh's transform registered and of the hook
-// signatures it computed, V1 HMR-17). Split route components written inline
+// signatures it computed). Split route components written inline
 // in a memo / forwardRef call: route-hmr-browser.test.ts. A route file
-// creates one route (ruling 2026-10-18): no test of components of other
+// creates one route (SPEC §2.2, J2.1, J2.11): no test of components of other
 // routes a function of the file creates.
 
 // A route module stays a React Refresh boundary in Vite:

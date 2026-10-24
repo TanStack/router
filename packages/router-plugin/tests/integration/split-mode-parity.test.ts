@@ -1,5 +1,5 @@
 /**
- * Dev/build parity of the split decision (FIX-PLAN V2-16; SPEC G13, J2.13,
+ * Dev/build parity of the split decision (SPEC G13, J2.13,
  * J2.2, J2.3): for one app and one configuration, which route options are
  * lazy, which load together and which `deleteNodes` removed are the same in
  * a dev server and in a production build, on Vite and on Rsbuild, and are

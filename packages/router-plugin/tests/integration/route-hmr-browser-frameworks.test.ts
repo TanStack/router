@@ -6,7 +6,7 @@
  * router package to a real browser page, and the test edits its route files
  * on disk (`route-hmr-page.ts`). An edit of a route file shows its new
  * code: the new loader's data and the new component body. Whether without a
- * full reload, keeping the split component (decision D10): where it does,
+ * full reload, keeping the split component (SPEC J3.2): where it does,
  * required here; where it does not, pinned in known-bugs-route-hmr.test.ts.
  *
  * React apps: route-hmr-browser.test.ts.

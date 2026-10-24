@@ -44,8 +44,8 @@ createRoot(document.getElementById('root')!).render(<Page />)
   // at the same root (a new Vite dev server with the same plugins on the same
   // app directory).
   // Source: hydrate-when-transform.test.ts "invalidates cached Hydrate
-  // source for virtual module loads" (gaps H21 / DV42; the compiler half is
-  // in hydrate-boundary-forms.test.ts)
+  // source for virtual module loads" (the compiler half is in
+  // hydrate-boundary-forms.test.ts)
   test(
     'client: a chunk requested before its parent module renders the children, and an edit reaches it',
     async () => {

@@ -29,7 +29,7 @@ export function originalLocation(
      * import a tool rewrote), or where a pin checks that it is there.
      */
     unavailable?: boolean
-    /** Other accepted places (e.g. a marker's origin, audit F ASK-1). */
+    /** Other accepted places (e.g. a marker's origin, SPEC J6.5). */
     others?: Array<string>
   } = {},
 ) {

@@ -6,7 +6,7 @@
  * The build decides production by its own signal (the bundler's production
  * mode), with `NODE_ENV` unset, and the plugin's default for `addHmr`.
  *
- * The decision is by purpose, through paired real builds (N18): a build
+ * The decision is by purpose, through paired real builds: a build
  * with route HMR off (`addHmr: false`, `NODE_ENV=production` when the
  * plugin is created) is the control, which differs in the development
  * features only. The production bundle renders the route in a real browser

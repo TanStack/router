@@ -22,7 +22,8 @@ if (process.env.VITEST) {
  * of the process's bounded page pool (`@tanstack/compiler-test-utils/
  * browser`). A test process keeps its browser and its free hosts across
  * test files (`isolate: false`): a file starts only the hosts no earlier
- * file left free. Both are bounded (FINAL-PASS #40).
+ * file left free. Both are bounded (Chromium's shared memory limits how
+ * many pages can be open at once).
  */
 const pagesProject = {
   extends: true,
@@ -40,7 +41,7 @@ const config = defineConfig({
     name: packageJson.name,
     dir: './tests',
     watch: false,
-    // At most 4 test processes per Vitest run (PERF-STUDY 2026-10-23): each
+    // At most 4 test processes per Vitest run: each
     // runs real bundlers, dev servers and its own browser, and Nx runs several
     // packages' tiers at once. More workers add swap and load flakes, not
     // speed. `--maxWorkers` on the command line still overrides it.

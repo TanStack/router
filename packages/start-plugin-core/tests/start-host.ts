@@ -1,5 +1,5 @@
 /**
- * The public Start host of the fast tier (SYNTHESIS recipe P2): a Start app
+ * The public Start host of the fast tier: a Start app
  * on disk, served by a real Vite dev server running the plugins a user
  * configures, `tanstackStart()` of the built `@tanstack/<framework>-start`
  * package (its `plugin/vite` export, `start-plugins.ts`) and the framework's own Vite plugin
@@ -157,7 +157,7 @@ function absoluteOutDir(
  * transform honours: an import the compiler leaves in a module then stays
  * and loads, so a leak is observable; without it the TypeScript transform,
  * which runs after the compiler, would erase an import nothing reads and
- * hide what the compiler kept (B2 fork A finding). Without a file of its
+ * hide what the compiler kept. Without a file of its
  * own the app would inherit this package's tsconfig.
  *
  * The host also turns Start's import protection off unless the test

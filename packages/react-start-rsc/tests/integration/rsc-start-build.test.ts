@@ -2,8 +2,8 @@
  * A production build of a React Start app with RSC enabled on Vite
  * (`rsc-app.ts`: `buildApp()` of the `client`, `ssr` and `rsc`
  * environments, served by Start's preview server) in a real page: which
- * entry of a dependency each environment runs (SPEC J4.3, J4.16, J4.12,
- * V2-12 (c)), and the CSS of server components rendered with each RSC
+ * entry of a dependency each environment runs (SPEC J4.3, J4.16, J4.12),
+ * and the CSS of server components rendered with each RSC
  * helper (SPEC J7.2, J7.3). The dev counterparts are rsc-start-dev.test.ts
  * and rsc-css-matrix.test.ts.
  */
@@ -212,7 +212,6 @@ describe('Vite production build with RSC', () => {
   // and initialises the package once, whether SSR or the browser calls it;
   // SSR's own code gets `default`, the browser `browser`; no client file of
   // the build has another environment's entry.
-  // Source: V2-12 (c).
   test('each environment runs its own entry of a dependency; the provider runs the handler', async () => {
     const page = await open('/env')
     await page.waitForText('ssr MARK_DEFAULT provider MARK_REACT_SERVER:1', {

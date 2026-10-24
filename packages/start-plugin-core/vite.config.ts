@@ -6,8 +6,8 @@ import { tanstackViteConfig } from '@tanstack/vite-config'
 import packageJson from './package.json'
 // Main's tests of features that are not compilers (Start manifest, sitemap,
 // prerender, config schema, entries, build output, dev styles), at main's
-// paths and unchanged: `test:noncompiler` runs them; the corpus projects and
-// ESLint leave them out. Paths relative to `tests/`.
+// paths and unchanged: `test:noncompiler` runs them; the compiler test
+// projects and ESLint leave them out. Paths relative to `tests/`.
 import noncompilerTests from './tests/noncompiler-tests.json' with { type: 'json' }
 
 // Under Vitest: Node's compile cache for the test workers and the child
@@ -30,7 +30,7 @@ const config = defineConfig({
     name: packageJson.name,
     dir: './tests',
     watch: false,
-    // At most 4 test processes per Vitest run (PERF-STUDY 2026-10-23): each
+    // At most 4 test processes per Vitest run (measured): each
     // runs real bundlers, dev servers and its own browser, and Nx runs several
     // packages' tiers at once. More workers add swap and load flakes, not
     // speed. `--maxWorkers` on the command line still overrides it.

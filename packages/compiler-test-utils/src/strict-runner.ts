@@ -1,9 +1,9 @@
 /**
  * Vite's module runner (server code in a dev server's environment) with ES
- * module linking semantics for named imports (coupling N9; RULES-AUDIT §2.D
- * #4): a static import of a name the imported module does not export throws
- * a `SyntaxError`, as in Node.js, a browser and a production build
- * (Rolldown's `MISSING_EXPORT`), instead of reading `undefined`.
+ * module linking semantics for named imports: a static import of a name
+ * the imported module does not export throws a `SyntaxError`, as in
+ * Node.js, a browser and a production build (Rolldown's `MISSING_EXPORT`),
+ * instead of reading `undefined`.
  *
  * Vite's runner checks that only for externalized modules (Node.js
  * packages): an inlined module (any module of the app, or a virtual

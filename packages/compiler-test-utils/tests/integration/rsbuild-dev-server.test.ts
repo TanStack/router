@@ -230,7 +230,7 @@ test('settle() rejects at its bound while a plugin writes a file the compiles re
   )
 }, 30_000)
 
-// Coupling N21: a plugin may watch an original source itself and hand
+// A plugin may watch an original source itself and hand
 // Rspack a module built from it, so the source is in no compile's
 // dependencies. The edit's outcome is still awaited: the plugin's own
 // watcher invalidates the compiler, and the compile that follows the write
@@ -403,8 +403,8 @@ function watchedBy({ compiler, read }: Captured) {
 
 // Rspack attaches its watcher on the tick after the first compile, and
 // watchpack then scans the app's directories; a file deleted before that is
-// never reported (FOLLOWUPS "UPSTREAM (W3-harness2)"). The start resolves
-// only once the watcher knows every app file the compile read.
+// never reported (oracle/KNOWN-BUGS.md, "Upstream issues"). The start
+// resolves only once the watcher knows every app file the compile read.
 test('the start resolves once the watcher knows every app file the compile read', async () => {
   const compilers: Array<Captured> = []
   const server = await createRsbuildDevServer({
@@ -477,8 +477,7 @@ test('the start resolves with a compiler whose watcher ignores every file, while
 // written a moment before the first compile fall within the accuracy
 // watchpack allows for modification times (up to 2 s), so its first scan
 // would report them changed and Rspack would start a second compile by
-// itself, during a test's first edit (DECISIONS 2026-10-20 "Rsbuild
-// first-edit harness fixes").
+// itself, during a test's first edit.
 test("the app's initial files predate the first compile beyond the watcher's accuracy", async () => {
   let firstCompile: number | undefined
   const server = await createRsbuildDevServer({

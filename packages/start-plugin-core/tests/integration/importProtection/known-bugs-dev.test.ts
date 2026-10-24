@@ -94,7 +94,7 @@ describe('Vite dev, behavior "error"', () => {
   // without any error; in mock mode the same module is mocked and logged
   // (dev.test.ts "a server fn factory module that also calls a denied import
   // at the top level is logged").
-  // Source: mutation run R3, ip-vite B3 (REPORT §6 #4).
+  // Source: mutation testing.
   test.fails(
     'a server fn factory module calling a denied import at the top level fails to load',
     async () => {
@@ -114,7 +114,7 @@ describe('Vite dev, behavior "error"', () => {
   // Impact: in dev with behavior "error", any module a server fn factory
   // module imports gets the real denied module when it calls it at the top
   // level, without any error (the control above fails to load).
-  // Source: mutation run R4 (spc:5168, 5169).
+  // Source: mutation testing.
   test.fails(
     'a module a server fn factory module imports, calling a denied import at the top level, fails to load',
     async () => {
@@ -186,7 +186,7 @@ describe('Rsbuild dev', () => {
   // is neither reported nor mocked.
   // Impact: behavior "error" does not fail for denied imports of such
   // modules, and the real code of a denied specifier runs on the client.
-  // Source: mutation run R3, ip-rsbuild R2 (REPORT §6 #2); the JS/TS
+  // Source: mutation testing; the JS/TS
   // extensions are covered by rsbuild/import-protection.test.ts "is reported
   // when it is a .$extension file".
   test.fails.each<{ name: string; files: Record<string, string> }>([
@@ -254,7 +254,7 @@ describe('Rsbuild dev', () => {
     },
   }
 
-  // The same bug through the real `@mdx-js/loader` (V1 ip S23): the page is
+  // The same bug through the real `@mdx-js/loader`: the page is
   // compiled from MDX, with the loader's source map; a report names the page
   // at the import (line 3) or the use (4:27) in the .mdx
   // source (SPEC J6.5).
@@ -350,10 +350,9 @@ export const page = () => 'MARK_PAGE'
   // `processAssets` hook, rsbuild/import-protection.ts `reportViolation`)
   // fails the compile: Rspack gives up on it (`compiler.hooks.failed`, no
   // `done`) and Rsbuild logs the error, like a build fails with it.
-  // Source: mutation run R3, ip-rsbuild (REPORT §6 #23). This was a pin
-  // ("never reported") while the dev harness only waited for `done`; the
-  // harness now fails the compile wait with the error Rspack reports
-  // (mutation run R3c).
+  // Source: mutation testing. This was a pin ("never reported") while the
+  // dev harness only waited for `done`; the harness now fails the compile
+  // wait with the error Rspack reports.
   test(
     'an onViolation that throws ends the compile with its error',
     async () => {
@@ -389,7 +388,7 @@ export const page = () => 'MARK_PAGE'
  * `read()`, which returns what the app gets from its denied import, as an
  * array of values; each must be a safe mock (`a safe mock`) unless a row
  * expects a real value, and the app must load or build.
- * Source: audit F, missing coverage 1; V1 ip S13 (computed keys), S25.
+ * Source: review (missing coverage, computed keys).
  */
 describe('app-level twins of the mock pins', () => {
   afterEach(() => {
@@ -595,7 +594,7 @@ export const read = () => [Color.Red, Util.x]
    * (SWC) compile JSX before import protection rewrites the import. (A
    * former in-process pin, "a JSX pragma that leads a denied import stays in
    * effect", needed a JSX plugin that runs after the rewrite; none of the
-   * available real plugins does, so it was removed, V1 ip S12.)
+   * available real plugins does, so it was removed.)
    */
   const failsOn: Record<string, Array<string>> = {
     // Bug: the dev rewrite of the importer drops `export * as ns` (the

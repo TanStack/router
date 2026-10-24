@@ -163,7 +163,7 @@ export function hydrateBuildSuite(bundler: StartBundler) {
     // Source: hydrate-split-modules.test.ts "bindings only the split children
     // use leave the parent", "server: bindings only the stripped fallback uses
     // are removed"; hydrate-captures.test.ts "a destructured loop variable…,
-    // module helpers move" (placement); gaps "biggest gap 1".
+    // module helpers move" (placement).
     test.each([
       {
         name: 'a project module',
@@ -282,7 +282,6 @@ export function hydrateBuildSuite(bundler: StartBundler) {
     // and only its boundary's children are lazy. One page renders the three
     // routes (their boundaries render at the same time, so their identities
     // must not collide either).
-    // Source: gap H10 (round2/oracle-gaps)
     let routes: Promise<Hydrated> | undefined
     test.each([
       { name: 'in their own groupings', route: 'separateGroups' },
@@ -324,8 +323,7 @@ export function hydrateBuildSuite(bundler: StartBundler) {
     // router-plugin/tests/code-splitter-jsx.test.ts).
     // Control: the "in their own groupings" row above (same route shape,
     // without `head`).
-    // Source: fuzzing (oracle mode, round 2, F4: real Start builds, Vite and
-    // Rsbuild).
+    // Source: fuzzing (real Start builds, Vite and Rsbuild).
     // Impact: the route's component throws a ReferenceError when it
     // renders, so the page never renders.
     test.fails(
@@ -377,8 +375,7 @@ export function hydrateBuildSuite(bundler: StartBundler) {
     // that bundlers must keep (it is not marked pure), so the children of an
     // unused exported component still ship: the call stays in the eager
     // code, and its chunk is emitted.
-    // Source: hydrate-when-transform.ts:653-690 (the call at :676); fuzzing
-    // (oracle mode, round 2, F2).
+    // Source: hydrate-when-transform.ts:653-690 (the call at :676); fuzzing.
     // Impact: the code of components nothing renders loads in the client.
     test.fails(
       'an unused exported component with a boundary is not in the client',
@@ -393,7 +390,7 @@ export function hydrateBuildSuite(bundler: StartBundler) {
     // up in the lazy chunk when the bundler may drop its initializer from the
     // parent (a function, or a call marked pure).
     // Source: hydrate-when-transform.test.ts "unwraps exported declarations
-    // needed by extracted virtual modules" (N20).
+    // needed by extracted virtual modules".
     test.each([
       { name: 'a function', page: 'widgetFunction' },
       { name: 'a pure call', page: 'widgetPureCall' },
@@ -423,7 +420,7 @@ export function hydrateBuildSuite(bundler: StartBundler) {
     // an exported declaration the children use has one instance, initialized
     // once" (compiler level); this is its production-build row.
     // Source: hydrate-when-transform.test.ts "unwraps exported declarations
-    // needed by extracted virtual modules" (N20); V1 hydrate-rsc 24.
+    // needed by extracted virtual modules".
     // Impact: the initializer's side effects run twice, and the children use
     // another instance than the module exports (e.g. another store).
     test.fails(
@@ -451,7 +448,6 @@ export function hydrateBuildSuite(bundler: StartBundler) {
     // run from their lazy chunk on the client, maps through the chunk's
     // emitted source map to its line in the page. The column is left out:
     // minifiers map the throw to different tokens of the expression.
-    // Source: oracle-gaps M1 (round 2).
     test.each([
       { name: 'minified', minify: true },
       { name: 'unminified', minify: false },
@@ -497,7 +493,6 @@ export function hydrateBuildSuite(bundler: StartBundler) {
     // names the user's file and the line of the boundary (SPEC J5.5, G5,
     // §5.7: no wording is required). Every channel of the failed build is
     // read (a compiler may print the details and fail with a short error).
-    // Source: FIX-PLAN HYD-07 (file + position, A9)
     test.each([
       { name: 'a function child', children: '{() => <p>child</p>}' },
       { name: 'a hook call', children: '<p>{useThing()}</p>' },

@@ -134,7 +134,7 @@ return results`)
 })
 
 // An option value that is already lazy (`lazyRouteComponent(() =>
-// import(…))`, ruling OQ13): the code splitter may leave it in the route
+// import(…))`, SPEC §6 OQ13): the code splitter may leave it in the route
 // module or split it and chain its preload; either way, once the router has
 // preloaded the route, rendering it requests no new module and shows no
 // pending fallback (SPEC J2.6). One real Vite client build in Chromium:
@@ -216,8 +216,7 @@ export async function renderPreloaded() {
   // another lazy component: the router's preload loads the outer chunk only,
   // and the first render suspends (pending fallback) and requests the page
   // module. Leaving the value in the route module or chaining the inner
-  // preload both fix it (ruling OQ13).
-  // Source: SPEC §6 OQ13 (coordinator ruling 2026-10-18).
+  // preload both fix it (SPEC §6 OQ13).
   // Impact: apps that already wrap a route component in
   // lazyRouteComponent show their pending component, and wait for a
   // request, on every navigation the router had preloaded (intent

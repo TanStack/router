@@ -3,7 +3,7 @@
  * (`route-app.ts`: the public router plugin in a real Vite dev server, the
  * route run in a page of the test process's browser). What each module imports is
  * judged by what loads and works (requests, rendered output, the instances
- * other modules of the app import), and by D5 checks of user code absent
+ * other modules of the app import), and by J2.5 checks of user code absent
  * from a module (decoded user markers), never by the spelling of import
  * statements. The attribute of an import moved into a chunk is judged by a
  * bundler that honours it: integration/code-splitter-import-attributes.test.ts.
@@ -95,9 +95,9 @@ export const namespaced = 'namespaced'
       },
     )
     // Nothing that loads with the route module (the route module and the
-    // modules it imports statically, V1 split F30) holds what only the split
+    // modules it imports statically) holds what only the split
     // components read, and no split chunk holds what only the loader reads
-    // (D5: the user code, found by its markers).
+    // (SPEC J2.5: the user code, found by its markers).
     const eager = await route.eagerModules()
     for (const marker of [
       'MARK_COMPONENT',
@@ -262,7 +262,7 @@ export const Route = createFileRoute('/')({
   })
 
   // Import assertions (`assert { type: 'json' }`) are the deprecated form of
-  // import attributes (decision D9, J2.17). Here: the route keeps working
+  // import attributes (SPEC J2.17). Here: the route keeps working
   // and the JSON module moves with the component. That the attribute keeps
   // its meaning in the chunk: integration/code-splitter-import-attributes.test.ts.
   it('keeps an import assertion of a route file working', async () => {
@@ -348,7 +348,7 @@ function Page() {
         {
           files: {
             'foo.ts': `export const Foo = () => 'foo'\n`,
-            // Another module of the app imports the re-export (ruling P1)
+            // Another module of the app imports the re-export (SPEC G9, J2.4)
             'importer.ts': `export { ${exported} } from './route'\n`,
           },
         },
@@ -706,7 +706,7 @@ export const Route = createFileRoute('/')({
   )
 
   // The chunk of a split option holds only what that option needs: an
-  // exported component of another option is not copied into it (D5: its
+  // exported component of another option is not copied into it (J2.5: its
   // code, found by its marker).
   it.each([
     {
@@ -918,7 +918,6 @@ export const Route = createFileRoute('/')({
   // Impact: with `verbatimModuleSyntax` (Vite reads it from tsconfig) the
   // client build fails ([MISSING_EXPORT] "readVersion" is not exported by
   // "routes/index.tsx?tsr-shared=1"); in dev the route module fails to load.
-  // NEW (infra-fix H3, 2026-10-18).
   it.fails(
     'reads an ambient var merged with an interface from the environment in a shared declaration, with verbatimModuleSyntax',
     async () => {

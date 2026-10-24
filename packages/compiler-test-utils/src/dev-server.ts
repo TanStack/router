@@ -26,7 +26,7 @@
  * events brings no new one, and fails when the app's files still change at
  * `settleTimeout` (a plugin that keeps writing files on each event never
  * settles). How many events, rounds or hot updates an edit causes is the
- * plugins' business (coupling N21).
+ * plugins' business.
  *
  * Diagnostics: one channel (`./diagnostic-channel`) records, from the start
  * until `stop()`, what Vite's logger, `console.*` and direct writes to
@@ -684,7 +684,7 @@ async function startServer(
             // first address 500 ms on the event loop's clock: a loop blocked
             // past that (other tests' synchronous work under load) abandons
             // the connection the kernel made, and the other address refuses
-            // it (FINAL-PASS #56; FOLLOWUPS "UPSTREAM (final pass F-E-a)").
+            // it. So every harness server listens on `127.0.0.1`.
             ...(listen && { host: '127.0.0.1' }),
             // Vite's default `preTransformRequests` stays on, as in an app:
             // the client environment transforms the static imports of each
@@ -731,9 +731,9 @@ async function startServer(
   }
 
   /**
-   * Workaround (FOLLOWUPS "UPSTREAM (W5-ip)"): in full-bundle dev, Vite
-   * ends its initial build with a `getBundleState()` call that nothing
-   * awaits (`waitForInitialBuildFinish()`). Closing the server while it is in
+   * Workaround (oracle/KNOWN-BUGS.md, "Upstream issues"): in full-bundle
+   * dev, Vite ends its initial build with a `getBundleState()` call that
+   * nothing awaits (`waitForInitialBuildFinish()`). Closing the server while it is in
    * flight makes Rolldown reject it, and Vite leaves the rejection unhandled
    * ("Failed to get bundle state"). So `close()` first waits, one turn at a
    * time, for the flag Vite sets once that call chain has ended. The flag is
@@ -1288,16 +1288,15 @@ export function describeHmr(messages: Array<HmrMessage>): Array<string> {
 /**
  * Closes a Vite dev server once its dependency optimizer has nothing in
  * flight, so that nothing writes into the app after `close()` resolved
- * (authorized wait, FINAL-PASS #34; RULINGS "Vite's dependency optimizer:
- * close wait").
+ * (authorized wait: oracle/KNOWN-BUGS.md, "Upstream issues").
  *
  * Vite 8.3.4's optimizer does not await all of its own work on close: a
  * cancelled run's Rolldown build keeps writing its `deps_temp_*` directory
  * (`runOptimizeDeps().cancel()` only sets a flag the build reads before it
  * writes), the run a scan starts as `close()` awaits that scan is never
  * cancelled, and a commit removes the previous cache directory (renamed
- * `deps_temp_*`) without awaiting it. Removing the app then fails (`ENOTEMPTY`), or the build fails
- * to write into the removed app (an unhandled "Error during dependency
+ * `deps_temp_*`) without awaiting it. Removing the app then fails
+ * (`ENOTEMPTY`), or the build fails to write into the removed app (an unhandled "Error during dependency
  * optimization"). So before `close()` this waits, per environment, for the
  * optimizer's initialization and scan (`depsOptimizer.initState`,
  * `scanProcessing`: Vite's own state, public in its types) and until no
@@ -1306,7 +1305,7 @@ export function describeHmr(messages: Array<HmrMessage>): Array<string> {
  * committed or cancelled, and the previous cache directory it removes after
  * a commit carries that name too. A run Vite has not started by then never
  * starts: `close()` clears its timer. Remove the wait once Vite awaits its
- * optimizer's work on close (draft: validation/UPSTREAM/vite-optimizer-after-close.md).
+ * optimizer's work on close.
  */
 export async function closeViteServer(
   server: ViteDevServer,

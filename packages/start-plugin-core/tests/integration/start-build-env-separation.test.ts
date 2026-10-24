@@ -95,8 +95,8 @@ export const where = createIsomorphicFn()
     [`node_modules/${name}/index.js`]: code,
   })
 
-  // Source: lost-cases-campaign item 13 (a), no test built a server fn
-  // defined in node_modules through Start's plugin.
+  // Source: review (no test built a server fn defined in node_modules
+  // through Start's plugin).
   test(
     "a library's server fn: the client gets an RPC without the handler, and the SSR build runs it by that id",
     async () => {
@@ -366,8 +366,8 @@ const get = async (path) =>
       }).toEqual({ isomorphic: 'eager', component: 'lazy' })
     })
 
-    // Source: holes C1 (Rsbuild), C2 (Start's plugin wiring), C3 (each
-    // construct) in round2/oracle-gaps/REPORT.md.
+    // Source: review (Rsbuild, Start's plugin wiring and each construct were
+    // not covered).
     test.each([
       {
         construct: 'a server fn handler',
@@ -463,13 +463,13 @@ const get = async (path) =>
     // stops at the identifier. Pinned at compiler level in
     // createServerFn/caller-dead-code.test.ts and
     // start-compiler-factories.test.ts.
-    // Source: start-compiler/compiler.ts:1296-1330; fuzzing (oracle mode, N4).
+    // Source: start-compiler/compiler.ts:1296-1330; fuzzing.
     // Bug: a validator schema that a type alias reads with `typeof` stays in
     // the client output with its initializer. The root cause is upstream
     // (babel-dead-code-elimination 1.0.12 counts a `typeof` type query as a
     // reference; no workaround here). Pinned at compiler level in
     // known-bugs-start-compiler.test.ts.
-    // Source: router-utils/src/ast.ts:190; fuzzing (oracle mode, V1).
+    // Source: router-utils/src/ast.ts:190; fuzzing.
     // Impact: the validators and what they import load eagerly in the
     // client, which never runs them.
     test.fails.each([
@@ -524,8 +524,7 @@ const get = async (path) =>
     // undefined). Pinned at compiler level in
     // start-compiler-factories.test.ts.
     // Source: start-compiler/handleCreateIsomorphicFn.ts:17-25,
-    // start-compiler/compiler.ts:1296-1330; fuzzing (oracle mode, round 2,
-    // F3).
+    // start-compiler/compiler.ts:1296-1330; fuzzing.
     // Impact: the server (or client) call silently returns undefined.
     test.fails.each([
       { name: '.server() link', run: `return entry.isoServerVar()` },
@@ -544,7 +543,7 @@ const get = async (path) =>
     // build of the server fns: Start's server entry, which handles the
     // call, renders with the real `@tanstack/react-router`, not the shared
     // build's stand-in.
-    // Source: mutation round 3 sc-hosts 1 (no Rsbuild build made the
+    // Source: mutation testing (no Rsbuild build made the
     // compiler load another module, here the builder's).
     test(
       'each server fn of the client runs by its id in the SSR build',
@@ -597,7 +596,7 @@ describe("Vite build with Vite's default client target", () => {
   // The harness builds for `esnext`; Vite's default client target
   // (`baseline-widely-available`) lowers newer syntax after Start compiled
   // the module.
-  // Source: audit E2 missing coverage #5.
+  // Source: review.
   test(
     'a server function handler is only in the SSR build, and the client calls the server',
     async () => {
@@ -637,7 +636,7 @@ describe('Vite: an environment built twice by one builder', () => {
   // another module. Here an app plugin builds the SSR environment once more
   // after Start's builds (Vite's public `buildApp` hook), and the SSR
   // output of that last build serves the client's calls.
-  // Source: mutation round 3 sc-hosts 4.
+  // Source: mutation testing.
   test(
     'the second build compiles the server fns of its modules',
     async () => {
@@ -704,7 +703,7 @@ describe('Rsbuild: a build restored from the persistent cache', () => {
   // With `performance.buildCache`, Rspack restores unchanged modules from
   // its cache without running Start's compiler on them again; Start must
   // still know their server fns.
-  // Source: mutation round 3 sc-hosts 9 (e2e apps custom-server-rsbuild and
+  // Source: mutation testing (e2e apps custom-server-rsbuild and
   // server-functions build with buildCache).
   test(
     'each server fn of the client runs by its id in the SSR build',

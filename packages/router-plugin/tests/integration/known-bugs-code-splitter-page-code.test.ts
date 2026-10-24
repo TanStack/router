@@ -172,8 +172,8 @@ ${component}`,
     // Whether it renders is pinned at the compiler level ("top-level writes
     // to the split component (property assignment) stay with the binding
     // they write"); a fix must keep the component in its chunk.
-    // Source: the #8504 confidence campaign (exported-bindings fixture L,
-    // where a candidate fix moved the component to the entry).
+    // Source: review of #8504 (a candidate fix moved the component to the
+    // entry).
     routeCase(
       'an exported function component next to a helper the loader and the component share',
       'shared-helper-export',
@@ -197,7 +197,7 @@ export const Route = createFileRoute('$PATH')({
   // `Route` only) allows; whether our compiler or the bundler's
   // tree-shaking does it is free, with or without `"sideEffects": false` or
   // a `/* @__PURE__ */` initialiser.
-  // Sources: gaps S14, Z4, H1, H2; #8504's exported-bindings chunks tests.
+  // Source: #8504's exported-bindings chunks tests.
   // Impact: page code exported for tests or reuse loads with the entry chunk.
   const exported: Array<Case> = [
     routeCase(
@@ -237,8 +237,7 @@ ${component}`,
 }
 ${component}`,
     ),
-    // Source: the #8504 confidence campaign (exported-bindings S5, G1 and
-    // fixture C).
+    // Source: review of #8504.
     routeCase(
       'an exported const used as the component',
       'exported-const-component',
@@ -262,7 +261,7 @@ ${component}`,
   // module both chunks import, which the route module re-exports, so it
   // loads with the entry chunk unless the app declares `"sideEffects":
   // false` (then the bundler drops the unused re-export).
-  // Source: the #8504 confidence campaign (exported-bindings G1).
+  // Source: review of #8504.
   const exportedSharedByOptions = routeCase(
     'an exported component two split options render',
     'exported-two-options',
@@ -278,8 +277,8 @@ export const Route = createFileRoute('$PATH')({
   // Goals for split options the code splitter leaves in the route module.
   const unsplit: Array<Case> = [
     // Bug: a route option written as a method (`component() {}`) is not
-    // split (only property values are). Source: gap S11, ruling on method
-    // shorthand.
+    // split (only property values are). SPEC J2.9: method shorthand
+    // options are splittable like any other.
     // Impact: the component loads with the entry chunk.
     routeCase(
       'a component written as a method',
@@ -296,7 +295,7 @@ export const Route = createFileRoute('$PATH')({
   // (`computeSharedBindings` and the reference compiler skip
   // `createRootRoute`), so its errorComponent and notFoundComponent, which
   // only render on errors, load with the entry chunk. Its `component`
-  // renders on every page and may stay. Source: gap S20, decision D12.
+  // renders on every page and may stay (SPEC J2.7).
   const rootRoute = `import { createRootRoute, Outlet } from '@tanstack/react-router'
 export const Route = createRootRoute({
   component: () => <Outlet />,
@@ -315,7 +314,7 @@ export const Route = createRootRoute({
   // statically, so the component's code loads with the entry, silently.
   // Splitting them would change when the call runs, so the user has to
   // change the pattern: a warning naming the file and the option is the
-  // expected outcome (decision D11).
+  // expected outcome (SPEC J2.8, G5).
   const destructured = routeCase(
     'route options destructured from a call result',
     'destructured-options',
@@ -331,7 +330,7 @@ export const Route = createFileRoute('$PATH')({ component: MyComponent, loader }
   )
 
   // Bug: a split chunk keeps the route file's exported declarations that
-  // its option does not read (decision D5; compiler-level pin in "what
+  // its option does not read (SPEC J2.5; compiler-level pin in "what
   // split chunks hold"), and bundlers keep them.
   const unreadExport = routeCase(
     'an exported helper the split option does not read',

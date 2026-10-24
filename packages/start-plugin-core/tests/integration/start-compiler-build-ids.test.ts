@@ -20,8 +20,8 @@
  * cuts a file path at its first `#` outside `node_modules`, so a plain Vite
  * app without Start cannot serve a module under such a directory in dev,
  * nor build any query import of one (`./c#proj/src/module.ts?raw`:
- * UNRESOLVED_IMPORT), which is how the Start build fails there too
- * (FOLLOWUPS UPSTREAM "`#` in a directory name").
+ * UNRESOLVED_IMPORT), which is how the Start build fails there too (an
+ * upstream Vite limitation).
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import {
@@ -112,13 +112,12 @@ afterAll(async () => {
 })
 
 describe('production builds', () => {
-  // Dev-only code never reaches production (R7). Source: gap SF18 / DV33
-  // (N12). The code the build emits for the module's server fn, on the
-  // client and the server, holds no HMR code, and the server fn works. The
-  // module's code is found by the chunks that hold nothing but the case's
-  // modules (their layout is free: wherever the bundler put the module
-  // with other code, that chunk is not judged here; the router plugin's
-  // paired production builds decide HMR gating, G7).
+  // Dev-only code never reaches production (R7). The code the build emits for
+  // the module's server fn, on the client and the server, holds no HMR code,
+  // and the server fn works. The module's code is found by the chunks that hold
+  // nothing but the case's modules (their layout is free: wherever the bundler
+  // put the module with other code, that chunk is not judged here; the router
+  // plugin's paired production builds decide HMR gating, G7).
   test('build providers have no dev HMR code', async () => {
     expect(await callFromClient(defaults.noHmr, 'module.getPosts')).toBe(
       'posts',

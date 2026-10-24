@@ -1,12 +1,11 @@
 /**
- * A real compiler warning reaching the user (SPEC G5, J2.19; user ruling
- * D8): React's RSC CSS transform cannot give a `renderToReadableStream`
- * call its styles when the argument is not JSX it can see (a variable, a
- * spread), so the stream renders without its CSS; in development the user
- * is told, once per file, naming the module (the file and the API), on
- * whichever channel the host prints it (SPEC §5.7: console, logger or
- * bundler, all read together). D8 asks for the warning in development only:
- * builds are not required to warn.
+ * A real compiler warning reaching the user (SPEC G5, J2.19, J7.3): React's RSC
+ * CSS transform cannot give a `renderToReadableStream` call its styles when the
+ * argument is not JSX it can see (a variable, a spread), so the stream renders
+ * without its CSS; in development the user is told, once per file, naming the
+ * module (the file and the API), on whichever channel the host prints it (SPEC
+ * §5.7: console, logger or bundler, all read together). SPEC J7.3 asks for the
+ * warning in development only: builds are not required to warn.
  *
  * The app is a React Start app with RSC enabled, on each host's dev server,
  * through the public plugins (`rsc-warning-app.ts`). A request of its page
@@ -15,8 +14,8 @@
  * streamed component); then the warning is read.
  *
  * This replaces, as compiler acceptance, the former synthetic
- * `compilerTransforms` warning plumbing tests (SYNTHESIS S7-164/S7-167). The Vite dev twin with a real page and CSS is
- * react-start-rsc's `tests/integration/rsc-css.test.ts` ("dev:
+ * `compilerTransforms` warning plumbing tests. The Vite dev twin with a real
+ * page and CSS is react-start-rsc's `tests/integration/rsc-css.test.ts` ("dev:
  * renderToReadableStream with $name warns, naming the file").
  */
 import { describe, expect, test } from 'vitest'
@@ -99,8 +98,8 @@ describe.each(Object.keys(hosts) as Array<keyof typeof hosts>)('%s', (host) => {
   // context does not have).
   // Impact: the stream renders without its styles and nothing tells the
   // developer why.
-  // Source: user ruling D8 (warn in dev only); B3 task 8 (real coverage
-  // of the warning's delivery, replacing start-build-warnings :53/:133).
+  // SPEC J7.3: warn in dev only. Real coverage of the warning's delivery,
+  // replacing two tests of start-build-warnings.test.ts.
   test.fails(
     'renderToReadableStream with a variable or a spread warns once per file, naming the module',
     async () => {

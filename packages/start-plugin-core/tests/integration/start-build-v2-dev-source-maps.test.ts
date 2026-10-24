@@ -11,7 +11,7 @@
  * Maps are
  * read with the standard consumer (`@tanstack/compiler-test-utils/
  * source-maps`).
- * Source: FIX-PLAN V2-15b (#6667, #3828 as quoted).
+ * Source: #6667, #3828.
  */
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'

@@ -106,7 +106,7 @@ async function clientRead(
 // "Return false ... to allow this specific import (override the denial)",
 // guide/import-protection.md) is a mock in the client: its calls return mocks
 // in production, without any warning.
-// Source: oracle-gaps H2 / gap IP11 (`onViolation` false only had a recorder).
+// Source: review (`onViolation` false only had a recorder).
 describe.each(startBundlers)(
   '%s build, onViolation returning false',
   (bundler) => {
@@ -173,7 +173,7 @@ describe.each(startBundlers)('%s build, server-only marker', (bundler) => {
    * The importer a violation blames, relative to the app root: `Importer:`
    * when it is not the marked module itself, else the trace step that
    * imports the marked module (a marker violation may be reported at
-   * either, audit F ASK-1).
+   * either, SPEC J6.5).
    */
   const blamedImporter = (info: ViolationInfo) => {
     const fromRoot = (file: string | undefined) =>
@@ -219,7 +219,7 @@ describe.each(startBundlers)('%s build, server-only marker', (bundler) => {
   )
 
   // Bug (Rsbuild): the Rsbuild adapter reports a marker violation at the
-  // marked module (audit F ASK-1 allows it) with the shortest import chain
+  // marked module (SPEC J6.5 allows it) with the shortest import chain
   // from the entry to the marked module (`buildTrace`,
   // import-protection/trace.ts, a BFS to the nearest entry), whichever
   // importer it runs through: here the exempt `src/ignored.ts`, two steps
@@ -231,7 +231,7 @@ describe.each(startBundlers)('%s build, server-only marker', (bundler) => {
   // by an exempt importer and another one blames the exempt importer; the
   // user looks at code the project ignores on purpose, and the real
   // importer is not named.
-  // Source: V1 ip S20.
+  // Source: review.
   ;(bundler === 'rsbuild' ? test.fails : test)(
     'imported by an ignored importer and, further from the entry, another importer: the violation blames the other importer',
     async () => {
@@ -299,7 +299,7 @@ describe.each(startBundlers)('%s build, server-only marker', (bundler) => {
   // Bug: an importer `ignoreImporters` exempts still gets the mock of a
   // server-only-marked module in a mock-mode build: Rsbuild replaces the
   // marked module itself with a mock in its loader, for every importer
-  // (the exemption pins of exemptions.test.ts, user ruling 2026-10-17); on
+  // (the exemption pins of exemptions.test.ts, SPEC J6.7); on
   // Vite the marker violation is not exempt at all (the pin above), and in
   // error mode the build fails.
   // Impact: code a project exempts on purpose silently gets a mock instead
@@ -337,7 +337,7 @@ describe.each(startBundlers)('%s build, server-only marker', (bundler) => {
   // The orders where the other importer is nearer come first: they keep the
   // pin red on both bundlers in every run; the racy orders follow, so the
   // pin passes only when no order leaks.
-  // Source: V1R ip I09/S20; public entry-order and indirection variants.
+  // Source: review, with entry-order and indirection variants.
   // Impact: exemptions either stop working (Rsbuild) or leak the denied real
   // value to the importer that is not exempt (Vite).
   // Blame is read from onViolation/trace: marker-origin display is allowed.
@@ -453,7 +453,7 @@ console.log('client')
   )
 
   // The build fails and names the broken file at its line (an actionable
-  // error, SPEC G5); other diagnostics may come with it (V1 ip S21).
+  // error, SPEC G5); other diagnostics may come with it.
   test(
     'imported by a module that fails to compile: the build fails, naming the broken file and line',
     async () => {

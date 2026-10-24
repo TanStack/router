@@ -25,7 +25,7 @@ import type { StartBuildError } from '../../build-harness'
 
 // A use inside code the Start compiler removes from the client (a safe
 // boundary) is not reported: the client no longer imports the denied file.
-// Source: moved from analysis.usage.test.ts (audit F-H3), which decided "no
+// Source: review; moved from analysis.usage.test.ts, which decided "no
 // violation" from the compiled code's imports.
 describe('a use inside code the Start compiler removes from the client is not reported', () => {
   const safeUses = {
@@ -67,7 +67,7 @@ export const fn = myServerFn.handler(async () => secret())
 // rules) used only inside code the Start compiler removes from the server
 // (`createClientOnlyFn`) is not reported; a use the server keeps is reported
 // on the server, at that use.
-// Source: V1 ip S16 (the compiler-removal rows of analysis.usage.test.ts had
+// Source: review (the compiler-removal rows of analysis.usage.test.ts had
 // no server-side twin on a real adapter).
 describe('the reported location of a server violation is the leaking use or the import', () => {
   type ServerChannel = 'vite dev' | 'vite build' | 'rsbuild build'

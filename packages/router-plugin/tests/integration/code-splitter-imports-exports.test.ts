@@ -6,7 +6,7 @@ import { build, head, routeApp } from '../build-harness'
 describe('TypeScript-only syntax', () => {
   // With `verbatimModuleSyntax`, TypeScript keeps `import { type Db } from
   // './db'` as `import './db'`. A module a route file imports only for types
-  // need not load in the client (ruling L3, 2026-10-17; same as the Start
+  // need not load in the client (SPEC J2.5; same as the Start
   // client in start-plugin-core known-bugs-start-compiler.test.ts "a
   // server-only module imported only for a type specifier"). Only Vite reads
   // the app's tsconfig in this harness.

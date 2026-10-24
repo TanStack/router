@@ -27,7 +27,7 @@ import type { Plugin } from 'vite'
  * The modules of the app the served module `code` depends on (static
  * imports, re-exports and dynamic imports), as the requests the dev server
  * resolved them to (`/lib.ts`): an independent parse of what the page
- * receives, for D5 checks that a split chunk does not depend on a module of
+ * receives, for SPEC J2.5 checks that a split chunk does not depend on a module of
  * the app that its option does not use (SPEC J2.5).
  */
 function dependencies(code: string) {
@@ -72,8 +72,8 @@ describe('route options written in other shapes', () => {
   // `satisfies` cannot be split: the virtual compiler throws
   // "Unexpected splitNode type ☝️: TSSatisfiesExpression". These are our
   // limitations, so the goal is a split
-  // component (decision D11).
-  // Sources: corpus-diff, openalgon-alt/agri-prep-path
+  // component (SPEC J2.8).
+  // Sources: real apps: openalgon-alt/agri-prep-path
   // src/routes/admin/access.tsx (`createFileRoute('/admin/access')({ … } as
   // any)`); differential fuzzing (casts around the route factory call);
   // React Router route-chunks-test.ts "chunkable" detection of export
@@ -130,8 +130,8 @@ export const Route = ${route}
   // splits makes the build throw "Unexpected splitNode type ☝️:
   // MemberExpression" (LogicalExpression, TaggedTemplateExpression,
   // ClassExpression). These are our limitations, so the goal is a split
-  // option (decision D11).
-  // Source: round-3 mutation testing (compilers-B, bug B).
+  // option (SPEC J2.8).
+  // Source: mutation testing.
   // Impact: a route whose component is a namespace member (`Pages.Home`), a
   // fallback (`A ?? B`), a styled-components tagged template or a class
   // cannot be built once code splitting is on.
@@ -235,8 +235,8 @@ export const Route = createFileRoute('/')({
   // Source: compilers.ts:1081-1082 (`babel.parse(outputSplitNodeCode)`).
   // Sources: differential fuzzing; dev servers of the e2e apps, where the
   // `?tsr-split=component` module failed with HTTP 500; #8504
-  // (code-splitter-jsx.test.ts), where the JSX rows pass; fuzzing (oracle
-  // mode, V3) for the TypeScript rows.
+  // (code-splitter-jsx.test.ts), where the JSX rows pass; fuzzing for the
+  // TypeScript rows.
   // Impact: the route cannot be built once code splitting is on, or renders
   // a value that is not its component.
   test.fails.each<{
@@ -314,7 +314,7 @@ describe('route factories written in other shapes', () => {
   // Bug: the code splitter only recognises `createFileRoute` under its own
   // name, so a route whose factory is imported under an alias is not split,
   // and nothing says so. Our limitation, so the goal is a split component
-  // (decision D11). Source: the #8504 confidence campaign (K-21b, DX-02).
+  // (SPEC J2.8). Source: review of #8504.
   // Impact: the route's components load with the entry chunk, silently.
   test.fails(
     'a component is split when createFileRoute is imported under an alias',
@@ -334,8 +334,8 @@ function Page() {
   // Bug: the code splitter only compiles files whose code matches
   // `createFileRoute(`, so a route whose factory call has a type argument
   // (`createFileRoute<'/'>('/')`) is left as is, and nothing says so. Our
-  // limitation, so the goal is a split component (decision D11).
-  // Source: round-3 mutation testing (splitter-hosts X1).
+  // limitation, so the goal is a split component (SPEC J2.8).
+  // Source: mutation testing.
   // Impact: the route's components load with the entry chunk, silently.
   test.fails(
     'a component is split when createFileRoute has a type argument',
@@ -353,7 +353,7 @@ export const Route = createFileRoute<'/'>('/')({ component: Page })
   // Bug: route options returned by a call (`createFileRoute('/')(
   // makeOptions())`) are neither split nor reported. The user can write the
   // options inline, so a warning naming the file is an acceptable outcome
-  // (decision D11). Source: the #8504 confidence campaign (DX-02, RF-8).
+  // (SPEC J2.8). Source: review of #8504.
   // Impact: the route's components load with the entry chunk, silently.
   test.fails(
     'route options returned by a call are split or reported',
@@ -376,8 +376,8 @@ export const Route = createFileRoute('/')(makeOptions())
   // split options into the same chunk names, so one route renders the
   // other's component, silently. Supporting it, or refusing it with an error
   // or a warning naming the file, are both valid fixes.
-  // Source: the #8504 confidence campaign (corpus-diff K-01; the #8630 pin
-  // was dropped without a ruling).
+  // Source: review of #8504 (the pin of #8630 was
+  // dropped without a decision).
   // Impact: a route renders another route's component.
   test.fails(
     'each of two file routes of one module renders its own component, or the module is reported',
@@ -427,14 +427,14 @@ describe('what split chunks hold', () => {
   // imports they use, whether its option reads them or not
   // (`compilers.ts`, the virtual compiler keeps exported declarations).
   // Bundlers cannot drop them: the chunk is imported with `import()` and read
-  // through a computed key. Source: decision D5.
+  // through a computed key (SPEC J2.5).
   // Impact: every split chunk of the route downloads and evaluates the route
   // file's exported helpers and their dependencies again.
   test.fails(
     'a split chunk holds only what its option needs, not the other exports of the route file',
     async () => {
       // Each exported declaration carries a marker its code keeps under any
-      // name a compiler gives it (SPEC J2.5 D5: identified independently of
+      // name a compiler gives it (SPEC J2.5: identified independently of
       // names)
       const route = await loadRoute(
         `${head}import { heavy } from './heavy'
@@ -481,7 +481,7 @@ export const Route = createFileRoute('/')({ component: Page })
     'split chunks do not re-export or declare the re-exports and default class of the route file',
     async () => {
       // The class carries a marker its code keeps under any name a
-      // compiler gives the class (SPEC J2.5 D5: identified independently
+      // compiler gives the class (SPEC J2.5: identified independently
       // of generated names).
       const marker = 'default-class-marker-7f3a'
       const route = await loadRoute(
@@ -577,9 +577,9 @@ return { rendered, untouched, libraryLoadsEagerly }`)
   }
 
   // Bug: the route module keeps importing the classic JSX factory its pragma
-  // names after the JSX that compiles to it moved to a split chunk (D5
-  // family). Source: #8504 (code-splitter-pragmas.test.ts; mutation testing
-  // P-03), where it passes.
+  // names after the JSX that compiles to it moved to a split chunk (SPEC
+  // J2.5). Source: #8504 (code-splitter-pragmas.test.ts; mutation testing),
+  // where it passes.
   // Impact: the entry chunk loads the JSX library for nothing.
   // The factory is the real one (`@emotion/react`'s `jsx`), rendered by the
   // real React: the split component renders as the untouched file renders
@@ -619,8 +619,8 @@ ${head}export const Route = createFileRoute('/')({
 
   // The `@jsxFrag` row of the pin above, without its import check: a chunk
   // that keeps an unused `Fragment` specifier on the import of `react` it
-  // needs anyway pulls in no unrelated dependency (SYNTHESIS N10: an unused
-  // specifier is free, §5.9), so what remains to check is that the split
+  // needs anyway pulls in no unrelated dependency (an unused specifier is
+  // free, SPEC §5.9), so what remains to check is that the split
   // component renders as the untouched file renders it, with `@jsx` and
   // `@jsxFrag` pragmas naming React's real factories.
   test('a split component of a file with @jsx and @jsxFrag pragmas renders as the untouched file', async () => {
@@ -727,7 +727,7 @@ return {
 
   // Bug: the code splitter declares fixed names in the modules it emits
   // (`SplitComponent`, `SplitLoader`) without checking that the route file
-  // does not use them. Source: gap S38.
+  // does not use them.
   // Impact: a route file with such a binding cannot be built ("Duplicate
   // declaration") or its options read the generated value instead of the
   // user's.
@@ -812,7 +812,7 @@ return {
   // compile, through the same framework transform), does not declare, given
   // to bindings of the route file, keep their values in every split option.
   // Names of Vite's own import rewriting (`__vite__`) are the tool's.
-  // Source: gap S38, R3 (generated names) of the coupling audit.
+  // Generated names: SPEC G9, §5.1.
   // Impact: a route file whose binding has a name the compiler introduces
   // cannot be built, or its options read the generated value.
   test.fails(

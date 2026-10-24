@@ -91,8 +91,8 @@ describe('route files named like a route group', () => {
   // Bug: the generator rejects a `(group).tsx` route file with an error that
   // names the file relative to the routes directory (`(group).tsx`,
   // `nested/(group).tsx` for `src/routes/nested/(group).tsx`), neither
-  // absolute nor project-relative (SPEC §5.7; DECISIONS 2026-10-20 "file
-  // names in diagnostics"); it neither warns with the file's name nor routes
+  // absolute nor project-relative (SPEC G5, §5.7: a diagnostic names the
+  // file by its absolute or project-relative path); it neither warns with the file's name nor routes
   // the app.
   // Source: src/filesystem/physical/getRouteNodes.ts (the "route
   // configuration for a route group" error interpolates `filePath`, the

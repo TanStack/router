@@ -2,7 +2,7 @@
  * What a build reports about where a violation comes from, besides the
  * importer's location (reported-location.test.ts): the import chain from an
  * entry to the importer (SPEC J6.5: any real bounded chain from an entry,
- * printed in any order, ruling 2026-10-21 R10; each import located on its
+ * printed in any order, SPEC §5.19; each import located on its
  * line in the user's file). Read from Vite and Rsbuild builds with Start's
  * default rules (error mode), as `onViolation` receives it. Split from
  * reported-location.test.ts to keep each file of the slow tier short.
@@ -150,7 +150,7 @@ describe.each(startBundlers)(
     )
 
     // Any real chain from the entry to the importer will do, not
-    // necessarily the shortest (SPEC J6.5; V1 ip S07): `src/a.ts` imports
+    // necessarily the shortest (SPEC J6.5): `src/a.ts` imports
     // `src/s.ts` directly and through `src/c.ts`.
     test(
       'the trace is a real import chain from the entry to the importer',
@@ -180,7 +180,7 @@ export const page = () => c() + s()
     // Impact: the trace of a Vite build leaves out how the client reaches the
     // importer when the chain goes through a module outside `src` (a shared
     // directory of a monorepo, a dependency).
-    // Source: round 3 mutation testing (ip-location B2).
+    // Source: mutation testing.
     const outsideSrcTest = bundler === 'vite' ? test.fails : test
     outsideSrcTest(
       'the trace goes through modules outside the source directory',
@@ -206,8 +206,8 @@ export const page = () => leak()
 // An app that sets Vite's full-bundle dev (`experimental.bundledDev`) keeps
 // it set for `vite build` (as the e2e apps do with E2E_VITE_BUNDLED_DEV):
 // the build's trace does not change.
-// Source: r5-gaps N8 (spc:4988, 4989: route modules taken as entries in the
-// build, as full-bundle dev does).
+// Source: mutation testing (route modules taken as entries in the build, as
+// full-bundle dev does).
 test(
   'vite build with experimental.bundledDev: the trace of a violation under a module of src/routes leads from the entry through it',
   async () => {
@@ -242,8 +242,8 @@ test(
 // Impact: an Rsbuild build reports such a violation with a one-step trace
 // (low: diagnostics only, and an import of the app's entry is rare). Vite is
 // right.
-// Source: found writing the r5-gaps N10 test (spc:7260, 7261 remove that
-// registration, which changes nothing while it registers the wrong path).
+// Source: mutation testing (removing that registration changes nothing
+// while it registers the wrong path).
 describe.each(startBundlers)('%s build', (bundler) => {
   const entryBackTest = bundler === 'rsbuild' ? test.fails : test
   entryBackTest(
@@ -369,7 +369,7 @@ describe('the trace locates each import on its line after compiling moved it', (
   // lines and type-only imports, which moves the imports after them up.
   // Impact: the trace points at the wrong line of the modules between the
   // entry and the importer.
-  // Source: round 3 mutation testing (ip-location B1).
+  // Source: mutation testing.
   test.fails.each([
     ...movedImportRows('vite', false, Object.keys(movedImports)),
     ...movedImportRows('rsbuild', false, [

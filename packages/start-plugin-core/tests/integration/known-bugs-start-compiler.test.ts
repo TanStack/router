@@ -81,11 +81,10 @@ export const fn = createServerFn().handler(async () => find())
   // is bundled and runs in the browser.
   // Impact: server-only modules (database clients, SDKs initialised with
   // secrets) ship to the client and run their top-level code there.
-  // Source: gap D2 (gaps/dead-code.md), build canary.
   // One bundler (Vite): the compiler decides, as the import it leaves in
   // the client module loads the server-only module in any bundler; the
   // in-process pin above decides it, and this cell is its build canary.
-  // (The Rsbuild cell was removed in the W3 speed pass.)
+  // (No Rsbuild cell: it was removed to save test time.)
   if (bundler === 'vite') {
     test.fails(
       'client: the server-only module of a class only server code uses is not bundled',
@@ -143,7 +142,7 @@ export const fn = createServerFn().handler(async () => auth.get() as Session)
   // transform of the same app drops it.
   // Impact: the server-only module's top-level code is bundled and runs in
   // the browser.
-  // Source: gap D4 (gaps/dead-code.md), build canary.
+  // A build canary of the in-process compiler pin.
   ;(bundler === 'vite' ? test.fails : test)(
     'client: a server-only module a type mentions is not bundled with verbatimModuleSyntax',
     async () => {
@@ -161,7 +160,7 @@ export const fn = createServerFn().handler(async () => auth.get() as Session)
   // Impact: in one server process, the file's top-level side effects run
   // twice, handlers and SSR code of the file see different module state, and
   // `instanceof` fails for a class of the file passed to a server fn.
-  // Source: gap SF17 (gaps/start-env.md), PR #8656 (class identity).
+  // Source: PR #8656 (class identity).
   test.fails(
     'SSR: a server fn module is initialised once and shares its state with SSR code',
     async () => {
@@ -305,8 +304,8 @@ export { default } from '@tanstack/react-start/server-entry'
   // Impact: a server fn only server code uses (an SSR loader helper, a
   // server-only module) is callable over HTTP by anyone who learns its id,
   // bypassing what the server code around it checks.
-  // Source: user ruling D6 (only server fns client code references are
-  // HTTP-callable); the RSC-provider variant is pinned through a real RSC
+  // SPEC J4.2: only server fns client code references are HTTP-callable.
+  // The RSC-provider variant is pinned through a real RSC
   // provider in react-start-rsc tests/integration/rsc-start-dev.test.ts.
   // On Vite, when the SSR build loses the #7213 race (below), the server fn
   // is missing from the resolver: the call from SSR code fails too, so the
@@ -445,8 +444,8 @@ export const outer = createServerFn()
   // never sees a server fn there, and nothing warns.
   // Impact: the handler the user passes, and what it imports, ship to the
   // client bundle and run there instead of on the server.
-  // Source: lost-cases-campaign item 13 (b); user ruling D13 (a server fn
-  // created inside a function is supported, or rejected clearly).
+  // SPEC J4.6: a server fn created inside a function is supported, or
+  // rejected clearly.
   const wrapperLibrary = `import { createServerFn } from '@tanstack/react-start'
 export function createLoggedServerFn(handler) {
   return createServerFn().handler(handler)
@@ -572,7 +571,6 @@ export const libFn = createServerFn().handler(async () => 'MARK_LIB_HANDLER')
   // `PackagePathNotExported(".")` (start-compiler-host.ts `resolveId`).
   // Impact: an app with a middleware and an isomorphic fn in one module
   // does not build with Rsbuild.
-  // Source: lost-cases item 3 (BS-6 / K-13).
   ;(bundler === 'rsbuild' ? test.fails : test)(
     'a module with a middleware and an isomorphic fn builds, and its middleware runs on the server',
     async () => {
@@ -625,8 +623,8 @@ ${callByIdExports}`,
   // The same package without that text builds and runs on both bundlers.
   // Impact: an app with such a dependency does not build (Vite: when client
   // code imports it, or SSR code with `noExternal`; Rsbuild: client or SSR).
-  // Source: ruling Q7 (oracle RULINGS "CommonJS dependencies"), which
-  // replaced the in-process compiler pin of this name with these apps.
+  // SPEC J4.16. These apps replace the in-process compiler pin of this
+  // name.
   test.fails(
     'a CommonJS dependency with a top-level return builds and keeps its meaning',
     async () => {

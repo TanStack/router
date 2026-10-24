@@ -1,7 +1,6 @@
 /**
- * Contract test of the strict module runner (strict-runner.ts; N9,
- * RULES-AUDIT §2.D #4): server code still resolves, loads and evaluates
- * through Vite's own module runner, and a static import of a name the
+ * Contract test of the strict module runner (strict-runner.ts): server
+ * code still resolves, loads and evaluates through Vite's own module runner, and a static import of a name the
  * imported module does not export throws as an ES module link does,
  * instead of reading `undefined` (what Vite's runner does for an inlined
  * module). Namespace imports, dynamic imports and import cycles keep their

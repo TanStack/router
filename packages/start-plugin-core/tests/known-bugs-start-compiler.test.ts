@@ -13,7 +13,7 @@
  * Elsewhere: the build-mode export cache rows, which only a production
  * build exercises and which a real build does not reproduce (regression
  * tests now: integration/start-compiler-build-export-cache.test.ts); the
- * CommonJS dependency pins (ruling Q7), in
+ * CommonJS dependency pins (SPEC J4.16), in
  * integration/known-bugs-start-compiler.test.ts; the Vue SFC pin, in
  * integration/known-bugs-start-compiler-vue-sfc.test.ts.
  */
@@ -385,7 +385,7 @@ export const fn = Start.createServerFn().handler(async () => db.x())`,
   // (`authed().handler(...)`) is not traced. Builders returned by user
   // factories are a supported recognition form (SPEC J4.5), so the fix
   // supports it: the client calls an RPC and the server runs the handler
-  // (a rejection is no fix; FIX-PLAN S16).
+  // (a rejection is no fix).
   // Impact: the module is left untransformed and ships its handler and
   // server-only imports to the client, without an RPC.
   test.fails.each<{
@@ -423,9 +423,8 @@ export const fn = authed().handler(async () => db.x())`,
   // `.handler()` chain is not traced through the call, so the module is
   // left untransformed. Transparent wrappers are a supported form (SPEC
   // J4.5): the client gets neither the validator nor the handler, and the
-  // server runs both (a rejection is no fix; FIX-PLAN S16).
-  // Source: fuzzing (oracle mode, round 2: builders passed through user
-  // helpers, 88 mutants).
+  // server runs both (a rejection is no fix).
+  // Source: fuzzing (builders passed through user helpers).
   // Impact: the validator, the handler and what they import ship to the
   // client, and the client runs the handler instead of calling the server.
   test.fails(
@@ -451,9 +450,8 @@ export const fn = applyStep(
   // the inner `createIsomorphicFn().server(f)` is compiled on its own into a
   // plain function, so `.client(g)` is then called on that function. The
   // fix supports it (SPEC J4.5): each output runs its implementation (a
-  // rejection is no fix; FIX-PLAN S16).
-  // Source: fuzzing (oracle mode, round 2: builders passed through user
-  // helpers).
+  // rejection is no fix).
+  // Source: fuzzing (builders passed through user helpers).
   // Impact: the module throws when it loads ("withBuilder(...).client is not
   // a function"), on the client and on the server.
   test.fails(
@@ -616,9 +614,8 @@ export const db = {
   // member-called (`createServerOnlyFn(...).bind(null)`) is taken for the
   // inner call of a method chain and never visited as a candidate itself:
   // each module below is left untransformed in every environment.
-  // Source: corpus inputs U078-U081 (#8630 pins), restored by user ruling
-  // 2026-10-20; SPEC J4.5 ("unrecognised shapes must not silently leak"),
-  // J4.12. tsc against the real declarations accepts every row.
+  // Source: #8630 pins; SPEC J4.5 ("unrecognised shapes must not silently
+  // leak"), J4.12. tsc against the real declarations accepts every row.
   // Impact: the server implementation and its server-only import ship to the
   // client, where the server fn, isomorphic fn or server-only fn runs it in
   // the browser.
@@ -673,9 +670,8 @@ export const read = createServerOnlyFn(() => db.secret()).bind(null)`,
   // exported name (`isNestedDirectCallCandidate`), so a local alias of
   // createServerOnlyFn called in a top-level block is neither compiled nor
   // rejected.
-  // Source: the KB row "a local alias in a top-level block" deleted in
-  // a945fe4563, restored (coordinator 2026-10-20: the J4.6 "block" position
-  // of the user ruling "restore the two borderline corpus removals").
+  // Source: the known-bug row "a local alias in a top-level block" deleted in
+  // a945fe4563, restored (the "block" position of SPEC J4.6).
   // Impact: the implementation and its server-only import ship to the
   // client, where calling the server-only fn runs it instead of throwing.
   // Fix-agnostic: compiled per its contract (the client throws the
@@ -714,8 +710,7 @@ export let read: () => unknown
   // Impact: the handler and its server-only imports ship to the client
   // (createServerFn alone), or the server fails to serve the module
   // (another factory).
-  // Source: the block row restores corpus inputs U082/U086 (SPEC J4.6
-  // "block"; user ruling 2026-10-20).
+  // The block row covers the "block" position of SPEC J4.6.
   describe.each([
     { importHead: 'createServerFn alone' as const, rows: placements },
     {
@@ -773,7 +768,6 @@ export let read: () => unknown
   // Impact: its handler and server-only imports ship to the client
   // (createServerFn alone), or the server fails to serve the module
   // (another factory).
-  // Source: user ruling D13.
   test.fails.each(Object.keys(placementHeads) as Array<PlacementHead>)(
     'with %s imported, a nested server fn whose handler reads a local of its function is supported or rejected at the capture',
     async (importHead) => {
@@ -966,7 +960,7 @@ export const fn = createServerFn().handler(async () => 'from the server')`,
    * source nor a control module (the same imports, nothing to compile, served
    * by the same pipeline) has; digits are ignored when comparing with the
    * control, so the dev pipeline's own numbered names never count. Read from
-   * the served code, not assumed (N14): the probe follows any compiler's
+   * the served code, not assumed: the probe follows any compiler's
    * naming.
    */
   async function introducedNames() {
@@ -1005,8 +999,6 @@ export const fn = createServerFn().handler(async () => 'from the server')`,
   // that keeps them apart from user bindings passes).
   // Impact: a user binding or a server fn named like generated code breaks
   // the module or its server calls.
-  // Source: B2 (R3 flipped the fixed-name pins above: N14, SYNTHESIS
-  // "structure-sensitive pins").
   test.fails(
     'no name the compiler introduces collides with a user binding or a server fn of that name',
     async () => {
@@ -1051,7 +1043,7 @@ export const fn = createServerFn().handler(async () => 'from the server')`,
   // Impact: the server fn cannot be called: calling it from the client
   // throws the server-only error, and calling it from server code does not
   // run the handler.
-  // The outcome (DECISIONS 2026-10-21, R8): a call from either side returns
+  // The outcome (SPEC J4.1, J4.2): a call from either side returns
   // what the handler returns; how the call reaches it is free.
   test.fails.each(['client', 'ssr'] as const)(
     '%s: a server fn whose handler is a createServerOnlyFn call returns the handler result',
@@ -1068,8 +1060,8 @@ export const fn = createServerFn().handler(createServerOnlyFn(async () => db.x()
 
   // The server fn of a `'use client'` module (#7943) is pinned through a
   // real RSC app: react-start-rsc tests/integration/rsc-start-dev.test.ts
-  // "a server function of a 'use client' module runs on the server" (FIX-PLAN
-  // S21: no directive-mechanism requirement here).
+  // "a server function of a 'use client' module runs on the server" (no
+  // directive-mechanism requirement here).
 })
 
 describe('dev edits', () => {
@@ -1103,7 +1095,7 @@ describe('dev edits', () => {
   // Source: rerouted compiler.test.ts "invalidateModule clears cached module
   // resolution state" (green through the internal compiler, which the test
   // invalidated and recompiled itself); reproduced through a real Vite dev
-  // edit (workstream B2). Unbundled client edits of a server fn factory are
+  // edit. Unbundled client edits of a server fn factory are
   // covered by integration/start-compiler-dev-server.test.ts.
   test.fails(
     'a dev edit of a module a re-export chain ends in recompiles its importers',
@@ -1310,8 +1302,8 @@ export const render = () => renderToString(createElement(Hero))
   // `import * as React`, which only the JSX still reads.
   // Source: start-compiler/handleClientOnlyJSX.ts:26-27 (children removed),
   // start-compiler/compiler.ts:1349,1410 (dead-code elimination does not
-  // count the JSX as a read of `React`); fuzzing (oracle mode); one
-  // unmodified corpus file (a charts hero background).
+  // count the JSX as a read of `React`); fuzzing (an unmodified file of a
+  // real app, a charts hero background).
   // Impact: the server render throws "React is not defined".
   test.fails(
     'ssr: a module with a classic JSX runtime pragma keeps its React import',
@@ -1405,8 +1397,7 @@ export const fn = createServerFn().handler(async () => find())`,
   // declaration that only server code used keeps its server-only import.
   // Impact: the client (always in dev; in builds, the server module's
   // top-level code, see the Vite build pin) loads the server-only module.
-  // Source: gap D2/D3 (gaps/dead-code.md); #8504 caller-dead-code.test.ts:563
-  // covers server fns.
+  // Source: review; #8504 caller-dead-code.test.ts:563 covers server fns.
   test.fails.each([
     {
       name: 'a class used by a server fn handler',
@@ -1420,7 +1411,7 @@ export const fn = createServerFn().handler(async () => new Repo().get())`,
       // A class whose `extends` clause calls an imported factory, as error
       // classes of effect (`Data.TaggedError('NotFound')<...>`) and
       // better-result are written.
-      // Source: fuzzing (oracle mode, round 2; two corpus files).
+      // Source: fuzzing (two files of real apps).
       name: 'a class with a call in its extends clause used by a server fn handler',
       code: `import { createServerFn } from '@tanstack/react-start'
 import { TaggedError } from './db.server'
@@ -1550,7 +1541,7 @@ export const fn = createServerFn().handler(async () => describeDb())`)
   // Impact: with `verbatimModuleSyntax` (TypeScript keeps value imports),
   // the client loads the server-only module and its top-level code ships
   // (see the Vite build pin).
-  // Source: gap D4 (gaps/dead-code.md)
+  // Source: review.
   test.fails(
     'client: a server-only import last mentioned by a type alias is not loaded with verbatimModuleSyntax',
     async () => {
@@ -1597,7 +1588,7 @@ export const setTheme = createServerFn({ method: 'POST' })
   // babel-dead-code-elimination 1.0.12 counts a `typeof` type query as a
   // reference (no workaround here; `deadCodeElimination` at
   // router-utils/src/ast.ts:190 runs it).
-  // Source: fuzzing (oracle mode, V1); one unmodified corpus file.
+  // Source: fuzzing (an unmodified file of a real app).
   // Impact: the schema and its library (or server-only modules) ship to the
   // client, which never runs them (see the build pin in
   // start-build-env-separation.test.ts).
@@ -1635,8 +1626,8 @@ export const draw = createClientOnlyFn(() => chart.draw())`
   // reference; no workaround here), mirrored on the server: a module-level
   // declaration that only a client-only implementation and a `typeof` type
   // query read stays in the SSR output, with its initializer and imports.
-  // Source: fuzzing (oracle mode, round 2, V1 mirror; an unmodified file of
-  // tanstack.com, src/components/ThemeProvider.tsx).
+  // Source: fuzzing (an unmodified file of tanstack.com,
+  // src/components/ThemeProvider.tsx).
   // Impact: the server loads the client-only module and runs the
   // initializer (e.g. `window.matchMedia(...)`), which can throw during
   // SSR.

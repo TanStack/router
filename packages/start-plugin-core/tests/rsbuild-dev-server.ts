@@ -303,7 +303,7 @@ export async function withRecordedPage<T>(
  * harness's apps do not have). Rejects with the errors the page's code did
  * not catch while the page loaded, and when a file did not load.
  *
- * Not for HMR checks (FINAL-PASS #16): the document is fulfilled by the
+ * Not for HMR checks: the document is fulfilled by the
  * test, not served by the dev server, so the page's HMR client never
  * connects. Every caller opens a fresh page per run and reads the code a
  * fresh load gives (e.g. `v2-edits.test.ts` after an edit); a check of a

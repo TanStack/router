@@ -126,7 +126,6 @@ function expectAgreement(observation: Awaited<ReturnType<typeof observe>>) {
 }
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  // Source: oracle-gaps H3; FIX-PLAN S01 (same root, repeated and reordered).
   test(
     'the same app built again at the same root gives the same ids and results, and the same ids in another discovery order',
     async () => {
@@ -153,8 +152,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
     timeout,
   )
 
-  // FIX-PLAN S01: relocation (G4) requires correctness at each root, not
-  // equal ids.
+  // Relocation (SPEC G4) requires correctness at each root, not equal ids.
   test(
     'the same app at another root builds correctly: within each build the client ids run their handlers',
     async () => {
@@ -183,10 +181,8 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // de-duplicates them with a suffix (`same-id`, `same-id_1`; docs
   // server-functions.md:417-430, SPEC J4.4), each client id reaches its own
   // handler, and the SSR build, which compiles the two modules in the
-  // opposite order, agrees. Built again with the other discovery order, the
-  // pairing still holds.
-  // Source: oracle-gaps H3 (dedup suffix depends on compile order); FIX-PLAN
-  // S03.
+  // opposite order, agrees (the suffix can depend on compile order). Built
+  // again with the other discovery order, the pairing still holds.
   describe('colliding custom ids', () => {
     let oppositeEnvironments: Awaited<ReturnType<typeof observe>>
     let first: Awaited<ReturnType<typeof observe>>
@@ -228,7 +224,6 @@ describe.each(startBundlers)('%s build', (bundler) => {
     // Bug: collision suffixes follow discovery order across fresh
     // builds: at the same root, with the server function modules unchanged,
     // the function-to-id mapping changes.
-    // Source: start-SYNTH S03; the public fresh-build reversal workload above.
     // Impact: reordering the imports of an entry file, with no server
     // function changed, swaps which function each id calls: a client of the
     // previous build (an open tab during a deploy) runs the other function.

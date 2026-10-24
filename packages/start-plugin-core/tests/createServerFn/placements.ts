@@ -90,7 +90,7 @@ export function make() {
   },
   {
     // SPEC J4.6 ("other positions (…, block) likewise work or error
-    // clearly"); user ruling 2026-10-20 restoring corpus inputs U082/U086.
+    // clearly").
     name: 'a block at the module top level',
     code: `export const registry: Array<unknown> = []
 {
@@ -181,7 +181,7 @@ register(createServerFn().handler(async () => db.inner()))`,
  * function (`id`): it cannot be hoisted as it is. The compiler either keeps
  * the complete RPC semantics safely (each `make(id)` instance calls a server
  * handler that sees its own `id`, and nothing leaks) or rejects it with a
- * clear error naming the capture (SPEC J4.6, §5.13; user ruling D13).
+ * clear error naming the capture (SPEC J4.6, §5.13).
  */
 export const capturingPlacement: Placement = {
   name: 'a function body, with a handler reading a local of the function',

@@ -16,7 +16,7 @@ import type { Framework } from '../build-harness'
 
 const timeout = 120_000
 
-// D-04 (SPEC J2.16): a chunk's JSX compiles under the runtime decision of
+// SPEC J2.16: a chunk's JSX compiles under the runtime decision of
 // its source file. What a pragma written after the imports means is the
 // project's JSX transform's decision (Vite's Oxc reads leading pragmas only;
 // Rspack's SWC reads a pragma above any top-level statement), and the split
@@ -80,7 +80,6 @@ return getComputedStyle(document.getElementById('styled')).color`)
   // Oxc reads it there: the split component is styled by Emotion where the
   // untouched route left the `css` prop as an attribute. Same bug as the
   // fast-tier pin in ../code-splitter-pragmas.test.ts.
-  // Source: V1 split F12 (D-04 ruled 2026-10-18).
   // Impact: with Vite 8, a route renders differently once its component is
   // split.
   test.fails(
@@ -96,7 +95,7 @@ return getComputedStyle(document.getElementById('styled')).color`)
 // act on: naming the route file, or both plugins) or fails with an error
 // naming both plugins (their package, factory or plugin name; the wording
 // is free), so the user can act. Never a silent wrong result.
-// Source: V1 split F18; V2-26 (#6760: `vueJsx()` before the router plugin).
+// Source: #6760 (`vueJsx()` before the router plugin).
 describe('a framework JSX plugin registered before the router plugin', () => {
   const route = (
     framework: Framework,
@@ -199,7 +198,7 @@ export const Route = createFileRoute('/')({ component: Page })
 // leaves: the count the click set is reset). With Vite 8 and
 // vite-plugin-solid the pragma's only other effect on the unsplit app is a
 // page reload instead of a hot update, which G10 does not let a test
-// require. Source: V1 split F14, V1R split S07. (React's `/* @refresh reset */` has no
+// require. (React's `/* @refresh reset */` has no
 // observable effect under Vite 8's `@vitejs/plugin-react`, split or not: no
 // outcome to assert.)
 describe('refresh pragma comments of a route file, in a real page', () => {

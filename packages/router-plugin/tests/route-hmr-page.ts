@@ -12,7 +12,7 @@
  * accept the update, the framework's refresh runtime (React Refresh, Solid
  * Refresh, Vue's HMR runtime) patches components, and the route HMR code
  * the router plugin emits updates the live router. The harness waits on the
- * edit's outcome (`waitForOutcome`, coupling N21): the dev-server harnesses'
+ * edit's outcome (`waitForOutcome`): the dev-server harnesses'
  * `settle()`, then the page showing the edit with neither the dev server
  * nor the page having work in flight (transforms, the page's requests, a
  * reload), within one overall bound; never on how many hot updates or
@@ -433,7 +433,7 @@ export const Route = createRootRoute({})
         const files = Object.keys(edited).join(', ')
         await server.write(edited)
 
-        // Until the edit's outcome (N21; `waitForOutcome`): the page shows
+        // Until the edit's outcome (`waitForOutcome`): the page shows
         // the edit, and neither the dev server nor the page has work of it
         // in flight, within one overall bound. How many hot updates,
         // invalidations or `vite:afterUpdate` events the edit takes, and how
@@ -625,14 +625,14 @@ export function mountsOf(app: RouteHmrPage): Promise<Record<string, number>> {
 
 /**
  * Edits a route the compiler may handle, or leave to a reported fallback
- * (an unsupported but user-fixable shape: R-09, D11), and asserts what
+ * (an unsupported but user-fixable shape: SPEC J2.10, J2.8), and asserts what
  * both outcomes share: the page shows the edit (`expected`: new loader data
  * and component, also after a reload) without errors. A diagnostic never
  * stands in for that. Without a warning naming `file` through a real
  * channel (`app.warnings()`: the dev server's logger, its console, the
  * page), the edit must also apply in place (no reload); with one (the
- * fallback, e.g. the route left unsplit), a reload is allowed (V1R hmr H08,
- * split S11). Returns which outcome it was.
+ * fallback, e.g. the route left unsplit), a reload is allowed (SPEC G10).
+ * Returns which outcome it was.
  */
 export async function expectEditShownOrReportedFallback(
   app: RouteHmrPage,

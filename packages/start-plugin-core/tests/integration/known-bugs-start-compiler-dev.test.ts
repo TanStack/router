@@ -121,7 +121,8 @@ describe('Vite dev server', () => {
         logLevel: 'silent',
         cacheDir: path.join(root, '.vite'),
         appType: 'custom',
-        // One address, as the harness's other servers (FINAL-PASS #56)
+        // One address, as the harness's other servers: 127.0.0.1, because of
+        // Node's address-family selection
         server: { host: '127.0.0.1', hmr: false, ws: false, watch: null },
         plugins: [
           {
@@ -339,7 +340,7 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
   // Impact: after a dev server restart, calling a server fn whose module the
   // new server has not compiled yet (e.g. from a page loaded before the
   // restart) fails with "Invalid server function ID" (500).
-  // Source: issue #8447, gap SF8 (gaps/start-env.md).
+  // Source: issue #8447.
   test.fails(
     'calls a server fn id on a fresh dev server that has not compiled its module',
     async () => {

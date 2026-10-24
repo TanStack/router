@@ -68,7 +68,7 @@ const splitRouteExpected = {
 
 // Vite and Rspack: the same harness call and outcome as the React cells of
 // build-frameworks.test.ts ("<bundler> react ssr/client build the split
-// component loads lazily and renders"), which decide it (speedup 6).
+// component loads lazily and renders"), which decide it.
 // webpack here builds minified, as an app does (build-frameworks builds
 // webpack unminified).
 describe('router plugin with webpack', () => {
@@ -107,7 +107,7 @@ test(
 // nothing. The code splitter's esbuild adapter also never initialises its
 // config (no `esbuild` hook calls `initUserConfig`), so it would throw once
 // it saw a route file.
-// Splitting, or refusing (a build error), are both valid fixes (decision D3 (c), SPEC J2.18);
+// Splitting, or refusing (a build error), are both valid fixes (SPEC §1.3, J2.18);
 // a warning on a successful unsplit build is not a refusal.
 // Impact: `tanstackRouter({ autoCodeSplitting: true })` with esbuild bundles
 // every route component into the entry, without telling the user.

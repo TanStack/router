@@ -4,9 +4,6 @@
  * environment refuses to serve the module with a compile error that points
  * at the offending line. Prose, frame layout and
  * context length are free (§5.7).
- *
- * Source: `regression-helpers.test.ts:251` (B-mixed, split by B2; its
- * matcher-control half, a test of the legacy harness, is deleted).
  */
 import { test } from 'vitest'
 import {

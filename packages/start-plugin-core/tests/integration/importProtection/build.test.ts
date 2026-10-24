@@ -120,7 +120,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // into the client bundle (as the code it re-exports), so it must be
   // reported.
   // Source: issue #8102 (closed without a reproduction: Rolldown may elide
-  // the barrel from `chunk.modules`); gap IP6b (gaps/start-env.md).
+  // the barrel from `chunk.modules`).
   test(
     'a denied re-export barrel the client uses fails the build',
     async () => {
@@ -142,7 +142,6 @@ describe.each(startBundlers)('%s build', (bundler) => {
     timeout,
   )
 
-  // Source: gap IP5 (gaps/start-env.md).
   test(
     'a file with both a server-only and a client-only marker fails the build, naming the file',
     async () => {
@@ -172,8 +171,8 @@ export const value = 1
 // Start's default import protection (no options): the defaults deny
 // `*.server.*` files, `@tanstack/<framework>-start/server` and modules marked
 // server-only to the client, and a build fails on a violation.
-// Source: oracle-gaps H2 / gap IP1 (the default rules were never built in
-// error mode: every build test replaced `client.files`).
+// Source: review (the default rules were never built in error mode: every
+// build test replaced `client.files`).
 describe.each(startBundlers)('%s build, default rules', (bundler) => {
   // Each violation carries the rule that matched (the file pattern, or the
   // denied specifier; SPEC J6.5).
@@ -353,8 +352,7 @@ export const read = () => secret() + '|' + d()
 // is eliminated from the final bundle, no violation is reported"
 // (guide/import-protection.md, "False Positives: Dev vs Build"; its example is a marked file
 // re-exported through a mixed barrel that the client never uses).
-// Source: mutation run R4 (generateBundle's survival check, spc:5266, 5268,
-// 5275).
+// Source: mutation testing (generateBundle's survival check).
 describe.each(startBundlers)('%s build, tree-shaken imports', (bundler) => {
   // Bug (Rsbuild): same as the pins "a denied module the client bundle drops
   // does not fail the build" (known-bugs.test.ts): the Rsbuild report step

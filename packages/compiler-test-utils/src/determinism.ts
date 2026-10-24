@@ -1,6 +1,5 @@
 /**
- * Determinism versus relocation (FIX-PLAN A11; SPEC G4, J1.5, J4.4, J5.4,
- * §9).
+ * Determinism versus relocation (SPEC G4, J1.5, J4.4, J5.4, §9).
  *
  * What is compared is a semantic projection of what the test observes,
  * never emitted bytes (SPEC §5.1, §5.5, G4): the values the compiled code
@@ -11,7 +10,7 @@
  * private and generated names (bindings, generated type names, chunk
  * names), nor complete inventories of the modules a load evaluates (a
  * generated facade or support module is free). Byte equality is at most an
- * optional implementation control, outside the corpus.
+ * optional implementation control, outside the compiler tests.
  *
  * - Determinism: with the same effective root and configuration, repeated
  *   runs and runs that differ only in incidental order (file discovery,

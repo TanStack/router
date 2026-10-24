@@ -1222,20 +1222,19 @@ export async function describeBuild(
  * Throws a `DanglingNameError` when production client chunks read a name
  * that is neither declared, imported nor a global of the browser
  * (`clientGlobals` of `known-globals.ts`: no Node-only global such as
- * `process` or `Buffer`) (user ruling "Dead-code references, widened",
- * 2026-10-17: a dangling name that survives into a production client bundle
- * is a bug; one in code the bundler deletes is fine). Free names are Yuku's
+ * `process` or `Buffer`) (SPEC G8: a dangling name that survives into a
+ * production client bundle is a bug; one in code the bundler deletes is
+ * fine). Free names are Yuku's
  * unresolved references (`free-names.ts`): a name a module probes with
  * `typeof` is not free in that module, which each module decides (below),
  * not the chunk. A chunk Yuku cannot read (a parse error) fails the check.
- * esbuild is not checked: it is no supported production bundler of the
- * ruling.
+ * esbuild is not checked: it is no supported production bundler (SPEC
+ * §1.3).
  *
  * Every chunk is checked as the build emitted it, minified or not: that is
  * the artifact the configuration ships (SPEC G8).
  *
- * Which modules are checked (ruling "dangling-name attribution", amended
- * 2026-10-20; coupling N19, RULES-AUDIT R11): the ones the compilers under
+ * Which modules are checked (SPEC G8): the ones the compilers under
  * test produced or changed in that build, attributed from the build's own
  * public evidence (`ParsedModules`: every module's code after the build's
  * transforms, recorded through the bundler's hooks), never from the

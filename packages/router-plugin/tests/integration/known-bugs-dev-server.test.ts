@@ -220,7 +220,7 @@ ${cardB ? 'let renders = 0\nfunction CardB() { renders++; return <i>{"B" + rende
   // the next edit or a restart; an added one is copied into each chunk instead
   // of shared (two module states: each chunk's `CardB` counts its own
   // renders).
-  // Source: gap DV8 (gaps/dev-hmr.md); #8504 code-splitter-plugin-pipeline
+  // Source: #8504 code-splitter-plugin-pipeline
   // .test.ts ("a dev server compiling an edited route out of order").
   // Any fix passes: the page renders the edited route, with one module
   // state for what the split options share.

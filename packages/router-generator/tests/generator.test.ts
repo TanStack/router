@@ -248,7 +248,7 @@ describe('generator fixtures', async () => {
 
 // Windows checkouts with `autocrlf` give route files CRLF line endings: the
 // routes are the same as with LF sources, and a second run changes nothing.
-// Source: the #8504 confidence campaign (crlf-gen-run).
+// Source: review of #8504.
 describe('route files with CRLF line endings', () => {
   it('gives the routes of LF sources, and a second run changes nothing', async () => {
     const lf = await generateCrlf('\n')

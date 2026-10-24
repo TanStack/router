@@ -1,5 +1,5 @@
 /**
- * Server-only routes among pages (FIX-PLAN V2-03; SPEC J2.15, J1.9, J1.13):
+ * Server-only routes among pages (SPEC J2.15, J1.9, J1.13):
  * a route with only server handlers (`/admin`) that is the parent of a page
  * (`/admin/users`), a server-only subtree (`/api`, `/api/users`), and a
  * page whose component comes in through a spread (`/spread`). Built with

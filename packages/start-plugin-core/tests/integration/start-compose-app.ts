@@ -1,6 +1,6 @@
 /**
- * A Start app in production, served the way a host serves it (FIX-PLAN
- * V2-01/03/06, SPEC G11): the app is built with Start's own Vite or
+ * A Start app in production, served the way a host serves it (SPEC G11):
+ * the app is built with Start's own Vite or
  * Rsbuild plugin (`buildStart`), with Start's default entries (the client
  * hydrates the document with `StartClient`, the server entry is
  * `@tanstack/react-start/server-entry`), and `serveStartBuild` serves the

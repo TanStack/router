@@ -5,7 +5,7 @@
  * determinism`). Each root is a real app directory served by its own dev
  * server (`./route-app`), observed in a real browser page. The slow tier
  * builds the same app in two directories. Windows module ids are platform
- * evidence for a Windows run (N24).
+ * evidence for a Windows run.
  */
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'

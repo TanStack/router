@@ -2,7 +2,7 @@
  * The generator entries of webpack and Rspack in the compiler's own watch
  * mode (`compiler.watch`, as webpack-dev-server and `--watch` use it), on a
  * temporary app with file-based routes: what generator-watch-mode.test.ts
- * (the corpus) and the file-watcher control outside the corpus run. Waits
+ * (a compiler test) and a file-watcher control run. Waits
  * are on the compiler's own build events.
  */
 import { mkdir, rm, utimes, writeFile } from 'node:fs/promises'

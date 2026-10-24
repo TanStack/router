@@ -161,7 +161,7 @@ export const later = createServerFn().handler(async () => 'later:')`,
   },
   {
     // Replaces createServerFn.test.ts "should remove imports used only as
-    // caller handler identifiers" (N10).
+    // caller handler identifiers".
     name: 'an imported function',
     code: `import { getUsers } from './users.server'
 export const fn = createServerFn().handler(getUsers)`,
@@ -195,8 +195,8 @@ export const fn = createServerFn().handler(async () =>
 // module keeps `createServerFn().handler(() => 'client')`, the isomorphic
 // fn's client implementation passed as the handler; the call does not give
 // its 'client' either).
-// Source: TanStack/router#8446; #8504 handler-scope.test.ts (corpus-diff,
-// imaimai17468/tanstack-start-handler-call-expression-repro; red on main)
+// Source: TanStack/router#8446; #8504 handler-scope.test.ts
+// (imaimai17468/tanstack-start-handler-call-expression-repro; red on main)
 test.fails('the handler can be a createIsomorphicFn call', async () => {
   expect(
     await callHandler(`import { createIsomorphicFn } from '@tanstack/react-start'

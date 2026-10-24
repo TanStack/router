@@ -49,7 +49,7 @@ export const Route = createFileRoute('/')({ component: Page })
     60_000,
   )
 
-  // Source: gap P1 / DV51. (No esbuild row: the esbuild plugin neither
+  // (No esbuild row: the esbuild plugin neither
   // generates nor splits routes, pinned in build-harness.test.ts, so it
   // could not fail.)
   test.each(['rspack', 'webpack'] as const)(
@@ -61,9 +61,9 @@ export const Route = createFileRoute('/')({ component: Page })
   )
 
   // The pin of the control above (`NODE_ENV` unset: the route HMR plugin
-  // follows `NODE_ENV` at plugin creation, not the bundler's mode; gap CC-P1
-  // / routes.md R7) is "rspack/webpack a production react client bundle
-  // without code splitting has no dev-only code" in
+  // follows `NODE_ENV` at plugin creation, not the bundler's mode) is
+  // "rspack/webpack a production react client bundle without code splitting
+  // has no dev-only code" in
   // build-production.test.ts and build-production-webpack.test.ts: the same
   // build (React, automatic code splitting off, the plugin's `addHmr`
   // default, `NODE_ENV` unset), whose check of the bundlers' hot APIs

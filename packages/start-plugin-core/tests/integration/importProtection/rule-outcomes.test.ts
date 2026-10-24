@@ -182,7 +182,7 @@ test(
 )
 
 // J6.11: stateful RegExp flags must not make repeated public edges alternate
-// between permitted and denied (V4 red-astra/17).
+// between permitted and denied.
 test.each([/^private-sdk$/g, /^private-sdk$/y])(
   'a stateful %s rule denies every client importer',
   async (pattern) => {

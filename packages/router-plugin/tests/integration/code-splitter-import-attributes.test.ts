@@ -1,6 +1,6 @@
 /**
- * An import moved into a split chunk keeps its attributes (SPEC J2.16, J2.17,
- * decision D9): the bundler that compiles the chunk still applies them.
+ * An import moved into a split chunk keeps its attributes (SPEC J2.16,
+ * J2.17): the bundler that compiles the chunk still applies them.
  * Vite gives an import attribute no meaning (its dev server and build drop
  * them), so this is judged with webpack, which honours `type: 'json'`: a
  * `.txt` file holding JSON loads as JSON only through the attribute (without

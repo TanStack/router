@@ -1,5 +1,5 @@
 /**
- * Glue of the V2 import-protection tests (`v2-*.test.ts`) that run an app on
+ * Glue of the import-protection tests (`v2-*.test.ts`) that run an app on
  * a real host: what a dev server or build reports through `onViolation`,
  * and the Rsbuild dev server's SSR output run in Node.
  */
@@ -12,7 +12,7 @@ import type { Recorded } from '../../importProtection/start-apps'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
 // ---------------------------------------------------------------------------
-// The V2-14 page app (v2-edits-page.test.ts on Vite, v2-edits-page-rsbuild
+// The page app (v2-edits-page.test.ts on Vite, v2-edits-page-rsbuild
 // .test.ts on Rsbuild): a Start app a browser opens (Start's default server
 // and client entries, the real router over the generated route tree) whose
 // index route renders `Widget` on the client only (`ssr: false`).
@@ -112,8 +112,8 @@ export const recordedSince = (recorded: Recorded, since: number): Recorded => ({
  * MultiCompiler starts the compile of a dependent environment (Start's
  * `ssr` after `client`) through its queue on the tick after its parent's
  * compile ended, which `settle()` cannot see yet: a write landing while that
- * compile runs is reported late, and a removal never (FOLLOWUPS "UPSTREAM
- * (W3-harness2)"). Yielding a turn lets the queue start it; the second
+ * compile runs is reported late, and a removal never (KNOWN-BUGS.md,
+ * upstream issues). Yielding a turn lets the queue start it; the second
  * `settle()` waits for it. Not a timer.
  */
 export async function settledAcrossTurn(

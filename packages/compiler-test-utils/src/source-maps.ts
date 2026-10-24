@@ -1,8 +1,8 @@
 /**
- * Source-map assertions through a standard consumer (FIX-PLAN A12; SPEC G6,
- * §5.14): maps are read with `@jridgewell/trace-mapping`, never a hand
- * decoder, and tests locate code by parsed tokens or executed throws, never
- * by printed syntax. Only "this generated position resolves to the user's
+ * Source-map assertions through a standard consumer (SPEC G6, §5.14): maps
+ * are read with `@jridgewell/trace-mapping`, never a hand decoder, and
+ * tests locate code by parsed tokens or executed throws, never by printed
+ * syntax. Only "this generated position resolves to the user's
  * file, line (and column)" is asserted: map layout, `names`,
  * `sourcesContent`, granularity and mappings of generated support code are
  * free.

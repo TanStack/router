@@ -6,12 +6,10 @@
  * packages declaring `sideEffects: true`, `false` and an array, and a
  * server fn module has top-level initializers with and without
  * `@__PURE__`. The surviving client code works and calls the server by id.
- * One app per bundler also covers a dynamic `import()` inside a handler
- * (V2-07), a server fn module consumed statically, dynamically and through
- * a barrel (V2-17), a validator schema a client form also uses (V2-08) and
- * non-JS modules whose text contains `createServerFn(` (V2-32).
- * Source: FIX-PLAN V2-05, V2-07, V2-08, V2-17, V2-32 (SPEC J4.1, J4.7,
- * J4.12, J4.14, G2, G3, §2.1).
+ * One app per bundler also covers a dynamic `import()` inside a handler, a
+ * server fn module consumed statically, dynamically and through a barrel, a
+ * validator schema a client form also uses and non-JS modules whose text
+ * contains `createServerFn(` (SPEC J4.1, J4.7, J4.12, J4.14, G2, G3, §2.1).
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import {
@@ -75,7 +73,7 @@ const expectedMarks = (construct: string) =>
   dependencyTags.map((tag) => `MARK_${tag}_${construct.toUpperCase()}`)
 
 /**
- * `src/text.ts`: the non-JS modules' text (V2-32). `?raw` is Vite's (Rspack
+ * `src/text.ts`: the non-JS modules' text. `?raw` is Vite's (Rspack
  * parses the query-less `.md` as JavaScript: not a Start matter), so the
  * Rsbuild app imports the JSON only.
  */
@@ -133,7 +131,7 @@ export const countSecrets = createServerFn().handler(async () => [
 ])
 export const registryName = () => registry.name
 `,
-  // V2-07: a dynamic import inside the handler.
+  // A dynamic import inside the handler.
   'src/vault.server.ts': `export const secret = () => 'MARK_VAULT_SECRET'\n`,
   'src/fns/dynamic.ts': `import { createServerFn } from '@tanstack/react-start'
 export const readVault = createServerFn().handler(async () => {
@@ -141,7 +139,7 @@ export const readVault = createServerFn().handler(async () => {
   return secret()
 })
 `,
-  // V2-17: a server fn module with secret canaries, consumed three ways.
+  // A server fn module with secret canaries, consumed three ways.
   'src/canaries/handler-canary.ts': `export const canaryHandler = (data: unknown) =>
   'MARK_CANARY_HANDLER:' + JSON.stringify(data)
 `,
@@ -161,7 +159,7 @@ export const getTarget = createServerFn()
   .handler(async ({ data }) => canaryHandler(data))
 `,
   'src/fns/index.ts': `export * from './target'\n`,
-  // V2-08: a schema the client form also validates with, and one only a
+  // A schema the client form also validates with, and one only a
   // validator uses.
   'src/post-schema.ts': `export interface Post {
   title: string
@@ -193,7 +191,7 @@ export function validateForm(input: unknown) {
   return PostSchema(input)
 }
 `,
-  // V2-32: non-JS modules whose text contains the detection pattern.
+  // Non-JS modules whose text contains the detection pattern.
   'src/notes.md': `# Notes
 
 Call \`createServerFn(\` from a route; \`createMiddleware(\` too.
@@ -253,7 +251,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
   }, timeout)
   afterAll(() => dispose?.())
 
-  describe.concurrent('server code under side-effect hints (V2-05)', () => {
+  describe.concurrent('server code under side-effect hints', () => {
     test.each([
       { construct: 'a handler', name: 'viaHandler', tag: 'Handler' },
       { construct: 'a validator', name: 'viaValidator', tag: 'Validator' },
@@ -352,8 +350,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
     })
   })
 
-  // Source: FIX-PLAN V2-07 (start-fable SF-23; 2,235 corpus files).
-  test('a dynamic import inside a handler: no client chunk carries its target, the call by id returns its value (V2-07)', async () => {
+  test('a dynamic import inside a handler: no client chunk carries its target, the call by id returns its value', async () => {
     expect(build.client.where('MARK_VAULT_SECRET')).toBe('nowhere')
     const { result } = await build.ssr.run(
       `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(urls.readVault)}))`,
@@ -361,8 +358,8 @@ describe.each(startBundlers)('%s build', (bundler) => {
     expect(result).toBe('MARK_VAULT_SECRET')
   })
 
-  // Source: FIX-PLAN V2-17 (server-functions.md "avoid dynamic imports").
-  test('a server fn module consumed statically, dynamically and through a barrel: one id, no canary in the client, top-level code once per env (V2-17)', async () => {
+  // Source: docs server-functions.md ("avoid dynamic imports").
+  test('a server fn module consumed statically, dynamically and through a barrel: one id, no canary in the client, top-level code once per env', async () => {
     expect(urls.viaDynamic).toBe(urls.viaStatic)
     expect(urls.viaBarrel).toBe(urls.viaStatic)
     expect(
@@ -392,8 +389,7 @@ return globalThis.__targetInits`)
     })
   })
 
-  // Source: FIX-PLAN V2-08 (start-fable SF-3).
-  test('a validator schema the client form also uses stays with its behaviour; a validator-only schema is gone (V2-08)', async () => {
+  test('a validator schema the client form also uses stays with its behaviour; a validator-only schema is gone', async () => {
     expect(build.client.where('MARK_INVALID_DRAFT')).toBe('nowhere')
     const client = (
       await build.client.run(`return {
@@ -422,8 +418,8 @@ return {
     })
   })
 
-  // Source: FIX-PLAN V2-32 (#5525 regression guard).
-  test('non-JS modules whose text contains createServerFn( are imported byte for byte (V2-32)', async () => {
+  // Source: #5525 (regression guard).
+  test('non-JS modules whose text contains createServerFn( are imported byte for byte', async () => {
     const expected = {
       ...(bundler === 'vite' && { notes: files['src/notes.md'] }),
       code: JSON.parse(files['src/data.json']).code,

@@ -13,8 +13,7 @@ import { build, routeApp } from '../build-harness'
 // (TS2440). A real build either fails with an error, or
 // builds a page that renders; it never builds a page that breaks. The
 // error is read on every channel the build reports through (the thrown
-// error, the bundler's, the console: SPEC §5.7). Source: the #8504
-// confidence campaign (DX-07).
+// error, the bundler's, the console: SPEC §5.7). Source: review of #8504.
 it.each(['vite', 'rspack'] as const)(
   'a route file that imports and declares Route fails its build with an error, or renders (%s)',
   async (bundler) => {

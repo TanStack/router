@@ -1,6 +1,6 @@
 /**
  * A route file whose server fn the loader and the split component both read
- * (FIX-PLAN V2-01; SPEC G11, J4.1, J4.12, J2.3, J2.4): the Start compiler,
+ * (SPEC G11, J4.1, J4.12, J2.3, J2.4): the Start compiler,
  * the code splitter and import protection compose on one module. Built
  * with Start's Vite and Rsbuild plugins and served like a deployed app
  * (start-compose-app.ts), with the real router: the server renders the

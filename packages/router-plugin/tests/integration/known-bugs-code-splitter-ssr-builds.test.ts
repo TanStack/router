@@ -329,7 +329,7 @@ describe('app paths', () => {
   // as a split chunk, and throws "The split value for the virtual route ...
   // was not found" for the modules of an app in a directory named like
   // `tsr-split-demo`.
-  // Source: round-3 mutation testing (splitter-hosts P3).
+  // Source: mutation testing.
   // Impact: an app in such a directory cannot be built.
   // Fix-agnostic: the directory name holds what the compiler's own split
   // ids hold, read from the modules a dev server serves for the route's
@@ -413,4 +413,4 @@ PostsPage.title = 'Posts'
 
 // `this` in split callbacks (a split loader called as a method of its
 // chunk's namespace by router-core's `lazyFn`): a runtime cause (#8688),
-// not pinned in the compiler corpus.
+// not pinned in the compiler tests.

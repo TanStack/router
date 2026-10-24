@@ -3,8 +3,8 @@
  * files and modules marked `@tanstack/react-start/client-only`), used only by
  * client-only code, are eliminated from the server build: a default-config
  * Start build reports no import-protection violation, the server bundle
- * holds none of their code, and each environment runs its implementation.
- * Source: user ruling 2026-10-18 (E1 ASK-1).
+ * holds none of their code, and each environment runs its implementation
+ * (SPEC J4.11, §5.12).
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../build-harness'

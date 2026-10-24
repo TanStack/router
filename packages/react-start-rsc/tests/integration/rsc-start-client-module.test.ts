@@ -13,7 +13,8 @@ describe('Vite dev: a separate RSC provider', () => {
   // directive of its source module, so the RSC bundler turns the provider's
   // exports into client references and the handler is not there to run.
   // Impact: a server fn co-located with a client component cannot be called.
-  // Source: start S21 (compile-level pin in known-bugs-start-compiler.test.ts).
+  // Source: the compile-level pin in start-plugin-core
+  // tests/known-bugs-start-compiler.test.ts.
   test.fails(
     "a server function of a 'use client' module runs on the server",
     async () => {

@@ -9,8 +9,7 @@
  * provides the platform module the way the worker runtime would (a module
  * resolve hook of Node, registered by the SSR entry before any module of
  * the app links: the one stand-in, as the test process is no worker).
- * Source: FIX-PLAN V2-02 (start-fable SF-22/MW-7; #6185, #7460, #3990;
- * 1,007 corpus files, 241 with `cloudflare:workers`).
+ * Source: #6185, #7460, #3990.
  */
 import { describe, expect, test } from 'vitest'
 import {

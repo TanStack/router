@@ -8,8 +8,8 @@
  * How the compiler gets there (renaming, hoisting, registration) is free.
  *
  * Replaces the in-process registration checks of
- * react-refresh-route-components.test.ts and known-bugs-route-hmr.test.ts
- * (V1 HMR-17): those read which names React Refresh's transform registered,
+ * react-refresh-route-components.test.ts and known-bugs-route-hmr.test.ts:
+ * those read which names React Refresh's transform registered,
  * which neither shows new code nor kept state. Pins: known-bugs-route-hmr
  * -components.test.ts (integration). What modules importing the exports get:
  * react-refresh-route-components.test.ts.

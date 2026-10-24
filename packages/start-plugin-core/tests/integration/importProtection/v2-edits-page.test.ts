@@ -1,5 +1,5 @@
 /**
- * The edits of v2-edits.test.ts (FIX-PLAN V2-14; SPEC J6.13, G10) seen by a
+ * The edits of v2-edits.test.ts (SPEC J6.13, G10) seen by a
  * real browser page of a Start app on Vite's dev server: a component uses
  * the server-only `src/secret.server.ts` only in
  * `createIsomorphicFn().server()` (allowed), then also live (denied), then
@@ -181,7 +181,6 @@ describe.each(pageSteps)('step $step (live use: $live)', ({ step, live }) => {
   // use"; a scratch run keeping the incoming edges passes this pin.
   // Impact: a server-only import a developer adds to a component while the
   // dev server runs is mocked in the page without any warning.
-  // Source: FIX-PLAN V2-14.
   ;(live ? test.fails : test)(
     'the step reports its violations, and only those',
     async () => {

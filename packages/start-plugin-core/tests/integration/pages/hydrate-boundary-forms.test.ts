@@ -172,7 +172,7 @@ export function Page() {
 
   // A module-level element the boundary reads stays declared or not: the
   // prop is removed, and what is left of the module is dead code (SPEC
-  // §5.9; FIX-PLAN HYD-11).
+  // §5.9).
   test.each(forms)(
     'server: $name is removed',
     async ({ code, moduleLevel }) => {
@@ -426,7 +426,7 @@ const unsafeChildren = [
     code: (split = '') => childrenPage('<p>{useThing()}</p>', split),
   },
   {
-    // Source: V4 red-astra-r2/13; digit-bearing hook names follow React's convention.
+    // Digit-bearing hook names follow React's convention.
     name: 'a hook call named use3D',
     code: (split = '') => childrenPage('<p>{use3D()}</p>', split),
   },
@@ -441,7 +441,7 @@ describe('children that cannot be split', () => {
   // unless the boundary opts out of splitting", "rejects hook calls that
   // would be moved into an extracted component", "rejects parenthesized
   // unsafe extraction"; hydrateWhen FunctionChild and HookCall error
-  // fixtures; FIX-PLAN HYD-07.
+  // fixtures.
   test.each(unsafeChildren)(
     'client: $name is rejected at the boundary',
     async ({ code }) => {
@@ -451,7 +451,6 @@ describe('children that cannot be split', () => {
 
   // Only the literal `split={false}` opts out (docs): a dynamic `split`
   // extracts, so it rejects the same children.
-  // Source: FIX-PLAN HYD-07 (dynamic-split rows)
   test.each(unsafeChildren)(
     'client: $name with a dynamic split={flag} is rejected at the boundary',
     async ({ code }) => {
@@ -464,8 +463,7 @@ describe('children that cannot be split', () => {
   // uncompiled source (what React makes of a function child is the
   // framework's business) and nothing loads on demand.
   // Source: hydrate-when-transform.test.ts "respects parenthesized
-  // split={false}"; hydrateWhen SplitFalseFunctionChild fixture; FIX-PLAN
-  // HYD-07 (literal-false controls)
+  // split={false}"; hydrateWhen SplitFalseFunctionChild fixture.
   test.each([
     ...unsafeChildren.map(({ name, code }) => ({
       name,
@@ -522,7 +520,6 @@ export const useThing = () => (useId(), idle())`,
   // Only a literal opts out at compile time (docs): a dynamic value splits
   // the children whatever its value, and they hydrate like the server
   // renders them.
-  // Source: gap H14 (round2/oracle-gaps)
   test.each([true, false])(
     'a dynamic split={flag} (%s) still splits the children',
     async (flag) => {
@@ -574,8 +571,7 @@ describe('nested boundaries', () => {
   // Source: hydrate-when-transform.test.ts "supports nested Hydrate
   // boundaries in extracted virtual modules", "keeps sibling boundary ids
   // stable after nested boundaries"; hydrateWhen.test.ts "should extract
-  // virtual modules and keep nested ids stable" and the Nested fixture
-  // (gap H6).
+  // virtual modules and keep nested ids stable" and the Nested fixture.
   test('a nested boundary and a later sibling hydrate with the ids the server renders', async () => {
     const { client } = await expectRendersLikeSource(
       await hosts(),
@@ -611,7 +607,7 @@ export const Sibling = () => <aside>Sibling</aside>`,
 })
 
 describe('which elements are boundaries', () => {
-  // Source: hydrateWhen Renamed fixture (gap H11)
+  // Source: hydrateWhen Renamed fixture.
   test('a renamed import of Hydrate is a boundary', async () => {
     const { client } = await expectRendersLikeSource(
       await hosts(),
@@ -670,7 +666,7 @@ export const Hydrate = ({ children, ...props }) =>
     // the uncompiled source passes (the fallback included) and renders like
     // it, and the client loads nothing on demand.
     // Source: hydrateWhen NoImport, NotFromTanstack and WrongImportName
-    // fixtures (gap H12)
+    // fixtures.
     test.each([
       {
         name: 'a global Hydrate',
@@ -704,7 +700,6 @@ export function Page() {
       },
       // A namespace of another package and a binding shadowing the Start
       // namespace are look-alikes (SPEC J5.1, G15).
-      // Source: FIX-PLAN §D "Namespace <Hydrate>" (negatives)
       {
         name: 'a Hydrate member of a namespace of another package',
         code: `import * as Start from 'not-tanstack-start'
@@ -763,7 +758,7 @@ export const cleanup = ['__foreign']`,
   // the module, the page mounts it and loads its split code, and nothing it
   // loads, on either side, is a React package.
   // Source: hydrate-when-transform.test.ts "uses the Solid Router import
-  // source for Solid Hydrate boundaries" (gap H22).
+  // source for Solid Hydrate boundaries".
   test('Solid: a Hydrate of @tanstack/solid-start splits with the Solid packages', async () => {
     const solid = await solidHost()
     const mounted =
@@ -797,7 +792,8 @@ function Widget(props: { title: string }) {
 // loads split code with the code of its source file; dev servers of both in
 // hydrate-build.test.ts).
 // Source: hydrate-when-transform.test.ts "invalidates cached Hydrate source
-// for virtual module loads" (the compiler half of gaps H21 / DV42)
+// for virtual module loads" (the compiler half; the dev-server half is in
+// hydrate-build-dev.test.ts).
 test('client: a chunk loaded with the edited source before the parent is compiled again renders the new children', async () => {
   const source = (text: string) => `${head}export function Page() {
   return <Hydrate when={load()}><p>${text}</p></Hydrate>
@@ -817,7 +813,7 @@ test('client: a chunk loaded with the edited source before the parent is compile
   expect(await render()).toContain('<p>New</p>')
 }, 30_000)
 
-// Source: V4 red-astra-r2/12. A shared options object also renders outside
+// A shared options object also renders outside
 // the boundary: removing its fallback must not mutate that other consumer.
 test('a fallback spread shared with an aside keeps the aside on server and client', async () => {
   const { server, client } = await expectRendersLikeSource(

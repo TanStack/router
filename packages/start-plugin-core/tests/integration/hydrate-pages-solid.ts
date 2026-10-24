@@ -308,12 +308,11 @@ export function solidPageSuite(bundler: StartBundler) {
         expect(page.consoleErrors).toEqual([])
       })
 
-      // Goal (DECISIONS 2026-10-18 "namespace imports"; SPEC J5.1): a
+      // Goal (SPEC J5.1, J7.2): a
       // namespace member `<Start.Hydrate>` of `@tanstack/solid-start` is a
       // boundary like a named import. On main it is left unsplit (it hydrates:
       // "namespace-imported Start.Hydrate boundaries" above), so the click
       // loads nothing.
-      // Source: FIX-PLAN §D "Namespace <Hydrate>" (Solid row)
       test.fails(
         'a namespace-imported Start.Hydrate loads its children when it hydrates',
         async () => {
@@ -403,8 +402,7 @@ export function solidPageSuite(bundler: StartBundler) {
     // The split children read the newest signals, context and callbacks
     // (never a frozen first read), before their boundary hydrates, after
     // their code loaded and after a reorder, in the boundary clicked. The
-    // same page with `split={false}` is the reference.
-    // Source: FIX-PLAN V2-19 (SPEC J5.8, J5.4)
+    // same page with `split={false}` is the reference (SPEC J5.8, J5.4).
     test('split children follow their parent through updates and a reorder, like unsplit ones', async () => {
       const [split, reference] = await Promise.all([
         app.hydrate('updates', { script: updatesScript }),
@@ -424,7 +422,7 @@ export function solidPageSuite(bundler: StartBundler) {
     // instead of using the parent module's (`createContext` runs again
     // there), the Solid twin of known-bugs-hydrate.test.ts "client: the
     // children use the module-level context of the parent module".
-    // Source: FIX-PLAN V2-19 probe (a context declared in the page module)
+    // Found with a context declared in the page module.
     // Impact: split children of a Solid page read another context than the
     // one their parent provides (here its default value).
     test.fails(

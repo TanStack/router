@@ -3,7 +3,7 @@
  * app loads it (`route-app.ts`: the public router plugin in a real Vite dev
  * server, the route run in a page of the test process's browser): the split code reads
  * the bindings it read before splitting, and a dependency only another
- * option reads is not imported by the chunk (D5: that dependency, found by
+ * option reads is not imported by the chunk (SPEC J2.5: that dependency, found by
  * its request in the chunk as the dev server serves it).
  */
 import { parseSync, transformWithOxc } from 'vite'
@@ -321,7 +321,7 @@ export const Route = createFileRoute('/')({
   // read is the only one the split component makes of a binding the loader
   // reassigns, the component still sees the loader's reassignment (one
   // binding, not a copy or a dropped declaration).
-  // Source: V4 red-astra/24 (a free-reference walk that skips object keys,
+  // Source: mutation testing (a free-reference walk that skips object keys,
   // computed ones included).
   async function expectKeySeesReassignment(code: string) {
     const route = await loadRoute(code)
@@ -360,7 +360,7 @@ export const Route = createFileRoute('/')({
 
   // A computed key that is the only read of a binding the loader shares:
   // the split component sees the one binding, and its initializer runs
-  // once. Source: V4 red variant astra/24 (a reference walker that skips
+  // once. Source: mutation testing (a reference walker that skips
   // every object key escaped the test above, where a member read also names
   // the binding). (A `let` the route module reassigns while a chunk reads
   // it: pinned in integration/known-bugs-code-splitter-ssr-builds.test.ts.)

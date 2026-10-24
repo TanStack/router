@@ -9,9 +9,8 @@
  * files and waits for the bounded outcome of the edit (`trackCompiles`): a
  * compile that started after the last write ended, and nothing compiles or
  * is pending, within an overall timeout. Which files a compile reads, and
- * how many compiles an edit takes, are the plugins' business (coupling
- * N21): a plugin may watch an original source itself and hand Rspack a
- * virtual module. When plugins write files too (a generated route tree),
+ * how many compiles an edit takes, are the plugins' business: a plugin may
+ * watch an original source itself and hand Rspack a virtual module. When plugins write files too (a generated route tree),
  * `write()` and `settle()` wait the same way. Both also wait until Rspack's
  * watcher is attached and has scanned the app's directories, as the start
  * does (`CompileTracker.watching`: the authorised initial-scan adapter): a
@@ -703,7 +702,7 @@ export interface CompileTracker {
    * directories: a file removed while that scan runs is never reported
    * (watchpack 2.5.2 `DirectoryWatcher.doScan`: a file the listing had but
    * the stat no longer finds is neither known nor missing afterwards;
-   * FOLLOWUPS "UPSTREAM (W3-harness2)"). Ready when every compiler's
+   * oracle/KNOWN-BUGS.md, "Upstream issues"). Ready when every compiler's
    * watcher is attached and, together, their watchpack
    * `getTimeInfoEntries()` have an entry (a time, or `null` once the scan
    * ended) for each of those paths: a compiler may watch for another
@@ -727,7 +726,7 @@ export interface CompileTracker {
 
 /**
  * Follows the compiles of a watch mode Rspack build, to wait for the
- * outcome of an edit, bounded by a timeout (coupling N21): the edit is
+ * outcome of an edit, bounded by a timeout: the edit is
  * applied once a compile that started after the last write ended and every
  * compile that started meanwhile ended (`done()`). Which compiler reads the
  * edited files, what a compile reports changed, and how many compiles an
@@ -1075,9 +1074,8 @@ export const initialFilesAge = 10_000
  * dev server on files that are already on disk. Files written a moment
  * before the first compile fall within the accuracy watchpack allows for
  * their modification times, so its first scan reports them changed, and
- * Rspack starts a second compile by itself right after the first one
- * (DECISIONS 2026-10-20 "Rsbuild first-edit harness fixes"): a test's
- * first edit would then land during that compile.
+ * Rspack starts a second compile by itself right after the first one: a
+ * test's first edit would then land during that compile.
  */
 async function predateAppFiles(root: string) {
   const past = new Date(Date.now() - initialFilesAge)

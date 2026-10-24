@@ -1,6 +1,6 @@
 /**
- * Type-only imports of a denied file through real hosts (FIX-PLAN V2-22;
- * SPEC J6.2): `import type`, `import { type X }`, `export type { X } from`
+ * Type-only imports of a denied file through real hosts (SPEC
+ * J6.2): `import type`, `import { type X }`, `export type { X } from`
  * and `export type * from` of the denied file `src/types.server.ts` are no
  * violation: nothing is reported for their importers and the client never
  * loads the file (it records that it ran). A mixed `import { type X, value }`
@@ -190,7 +190,7 @@ describe('rsbuild dev', () => {
  * `verbatimModuleSyntax` (TypeScript then keeps an import left with type
  * specifiers only, as a side-effect import): once the compiler removes the
  * handler from the client, the import carries only a type, so it is no edge
- * (SPEC J6.2, J6.4, J4.12; DECISIONS L3): the client neither loads the
+ * (SPEC J6.2, J6.4, J4.12, J2.5): the client neither loads the
  * denied file nor reports it.
  */
 const verbatimApp = {

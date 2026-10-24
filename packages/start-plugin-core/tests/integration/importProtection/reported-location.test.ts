@@ -72,7 +72,7 @@ const unicode =
   "\texport const label = '🎉'; export const value = () => secret()\r\n"
 
 // (Each shadowing binding is read like the real use, so a lookup that
-// prefers calls cannot step over a shadow it does not see: V4 red-astra/19.)
+// prefers calls cannot step over a shadow it does not see.)
 const catchShadow = `import { secret } from './secret.server'
 export const run = () => {
   try { return 1 } catch (secret) { console.log(secret) }
@@ -148,7 +148,7 @@ const cases: Record<string, LocationCase> = {
     code: afterHandler.replaceAll('\n', '\r'),
     expected: [at(afterHandler, 4, 'secret()'), 'src/a.tsx:2'],
   },
-  // Ported from the internal usage lookup (V1 ip S24): columns count UTF-16
+  // Ported from the internal usage lookup: columns count UTF-16
   // code units (what editors and source maps count) after astral
   // characters, a tab and CRLF line endings.
   unicode: {
@@ -167,14 +167,14 @@ const cases: Record<string, LocationCase> = {
     expected: [at(scopeShadow, 9, 'secret'), 'src/a.tsx:1'],
   },
   // The client compile removes a `createServerOnlyFn(...)` call whatever
-  // its argument is, so a use inside a wrapped function is gone (V1 ip
-  // S26, replacing the internal pin on the original-source lookup).
+  // its argument is, so a use inside a wrapped function is gone (replacing
+  // the internal pin on the original-source lookup).
   wrappedBoundary: {
     name: 'a use after a createServerOnlyFn whose function is wrapped in a call',
     code: wrappedBoundary,
     expected: [at(wrappedBoundary, 6, 'secret()'), 'src/a.tsx:2'],
   },
-  // Other import forms (V1 ip S14): the dynamic import (with import
+  // Other import forms: the dynamic import (with import
   // attributes) and the re-export are the uses, on their line.
   dynamicImport: {
     name: 'a dynamic import with import attributes',
@@ -195,7 +195,7 @@ const rows = (names: Array<string>, on: Array<Channel>) =>
 describe('the reported location of a violation is the leaking use or the import', () => {
   // Source (lookAlike, isomorphicClient): moved from
   // analysis.usage.test.ts, which rebuilt the Vite plugin's location
-  // lookup from internals (audit F-H3).
+  // lookup from internals (review).
   test.each([
     ...rows(['afterHandler', 'loneCr', 'isomorphicClient'], channels),
     ...rows(['unicode', 'catchShadow', 'scopeShadow', 'reExport'], channels),
@@ -238,8 +238,8 @@ describe('the reported location of a violation is the leaking use or the import'
   // exist in the user's file (here 3:1 in dev, 5:42 in a build; in dev the
   // file is also named by its source-map URL, `webpack:/src/a.tsx`, the bug
   // pinned in "the reported importer is a file of the app").
-  // Source: audit F-H3 (moved from analysis.usage.test.ts, which followed
-  // the Vite order).
+  // Source: review (moved from analysis.usage.test.ts, which followed the
+  // Vite order).
   test.fails.each(rows(['lookAlike'], ['rsbuild dev', 'rsbuild build']))(
     '$channel: $name',
     async ({ channel, code, expected }) => {
@@ -280,8 +280,8 @@ describe('the reported location of a violation is the leaking use or the import'
   // on line 6.
   // Impact: on Rsbuild, the violation points at code the client never runs,
   // not at the leak (location only).
-  // Source: mutation round 3 ip-analysis pin P2, reproduced on a real app
-  // (V1 ip S26; the internal pin on the lookup is removed).
+  // Source: mutation testing, reproduced on a real app (the internal pin on
+  // the lookup is removed).
   //
   // Bug (Rsbuild): a dynamic import of a denied module is reported neither
   // on the line of the `import()` nor at a static import: the dev server
@@ -290,7 +290,7 @@ describe('the reported location of a violation is the leaking use or the import'
   // (src/a.tsx:1:33, a column line 1 does not have).
   // Impact: on Rsbuild, the violation of a lazily loaded denied module
   // points at the wrong line.
-  // Source: V1 ip S14 (an input shape the internal index tests had).
+  // Source: review (an input shape the internal index tests had).
   test.fails.each(
     rows(
       ['wrappedBoundary', 'dynamicImport'],
@@ -320,8 +320,7 @@ describe('the reported location of a violation is the leaking use or the import'
 // imports found in the compiled code (here a JSX element; the same happens
 // to an import `source.transformImport` rewrote). SPEC J6.5: the importer's
 // location in the original source, with or without source maps.
-// Source: F2 (repair A2; DECISIONS 2026-10-21), reproduced with the public
-// options of an app.
+// Source: review, reproduced with the public options of an app.
 describe('the reported importer is a file of the app, whatever source maps it has', () => {
   const jsx = cases.jsxElement!.code
   /** The files the reports name as the importer. */

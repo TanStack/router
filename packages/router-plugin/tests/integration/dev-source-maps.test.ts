@@ -8,7 +8,7 @@
  * which of them holds which code are free (SPEC §5.3). Maps are the ones the
  * page's modules point to (Vite's inline maps, Rsbuild's `sourceMappingURL`),
  * read with a standard consumer (`@tanstack/compiler-test-utils/source-maps`).
- * Source: V2-15a (#6667, #3828).
+ * Source: #6667, #3828.
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -212,7 +212,7 @@ describe('rsbuild dev server', () => {
   // build-source-maps.test.ts). The modules compiled from the route file
   // then map to the lines of the code splitter's output (here the throw of
   // the shared function to line 2 instead of 3; re-verified 2026-10-21).
-  // Source: V2-15a (#6667, #3828); upstream (unplugin), not the router
+  // Source: #6667, #3828; upstream (unplugin), not the router
   // plugin.
   // Impact: in Rsbuild dev, a thrown error in a split component, and a
   // breakpoint in it, resolve to the generated split module's lines.

@@ -132,7 +132,7 @@ export const Route = createFileRoute('/')({
   // TypeScript erases type positions, so a declaration the split component
   // only reads in a type is created once, by the route module. (Next to a
   // type alias that reads it: pinned in known-bugs-code-splitter.test.ts.)
-  // Source: #8504 (corpus-diff, forms that cast `as z.infer<typeof schema>`
+  // Source: #8504 (real apps: forms that cast `as z.infer<typeof schema>`
   // in the split component).
   it('creates a declaration the split component only reads in a type once', async () => {
     const route = await loadRoute(
@@ -223,7 +223,7 @@ return {
 // Initializers whose side effects hide in their syntax, read by the loader
 // and the split component: each runs once and both options read the one
 // value (when it runs is free). Source: #8504
-// (shared-bindings-helpers.test.ts; lost case L8).
+// (shared-bindings-helpers.test.ts).
 describe('a shared initializer with side effects', () => {
   it.each([
     {
@@ -612,8 +612,8 @@ const value = {
   read() { return config },
 }`,
     },
-    // The private method is the only code reading `config` (V4 round 2,
-    // red-astra-r2/04: a compiler ignoring private method bodies).
+    // The private method is the only code reading `config` (found by
+    // mutation testing: a compiler ignoring private method bodies).
     {
       name: 'a private method, the only reader of the binding',
       declarations: `const config = init({ name: 'config' })
@@ -868,7 +868,7 @@ export const see = (store) => store.label
       },
     )
     // Whether the route module creates it is free; loading the
-    // notFoundComponent chunk does not (it holds only what it needs, D5).
+    // notFoundComponent chunk does not (it holds only what it needs, SPEC J2.5).
     expect(
       await route.run(`// Until the page requests the module, nothing has created the store
 const inits = async () =>
@@ -916,7 +916,7 @@ export const Route = createFileRoute('/')({
 // component: the call runs when the chunk loads, after `Page` is
 // initialized (SPEC G3: ordering dependencies kept; J2.6: the chunk loads
 // and renders). A `function Page() {}` declaration is hoisted and would hide
-// a wrapper evaluated above it (V4 round 2, red-fable-r2/06).
+// a wrapper evaluated above it (found by mutation testing).
 describe('a split component wrapped in a call of a const component', () => {
   it.each([
     {

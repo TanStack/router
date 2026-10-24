@@ -109,7 +109,7 @@ function Posts() {
 }
 `
 
-  // (UTF-8 BOMs: outside the compiler test corpus, SPEC \u00A72.1 selects
+  // (UTF-8 BOMs: outside the compiler tests, SPEC \u00A72.1 selects
   // BOM-free sources.)
   test.each([
     {
@@ -710,8 +710,8 @@ export const Route = createFileRoute('/')({})
   })
 
   // An empty routeFileIgnorePrefix ignores nothing by prefix: a "-" file is
-  // a route like any other. Source: V4 round 2 escape astra-r2/03 (the
-  // default "-" restored for an empty prefix).
+  // a route like any other (a generator must not restore the default "-"
+  // for an empty prefix).
   test('with an empty routeFileIgnorePrefix, a "-" route file is a route', async () => {
     const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
@@ -835,8 +835,8 @@ export const Route = createFileRoute('/posts/')({})
 describe('custom tokens matching longer names', () => {
   // The routeToken regex of the docs (file-based-routing.md: "filenames like
   // `dashboard.main-layout.tsx` ... would all be recognized as layout
-  // routes") matches the whole name of a layout file.
-  // Source: r5-gaps N11 (rg:2723: every name read as bracket-wrapped).
+  // routes") matches the whole name of a layout file (a generator that read
+  // every name as bracket-wrapped missed it).
   test('a routeToken regex matching whole names makes such a file the layout route of its directory', async () => {
     const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
@@ -860,8 +860,8 @@ export const Route = createFileRoute('/posts/')({})
     })
   })
 
-  // A token RegExp keeps its flags' meaning: `\p{L}` needs the `u` flag.
-  // Source: V4 round 2 escape astra-r2/01 (the `u` flag dropped).
+  // A token RegExp keeps its flags' meaning: `\p{L}` needs the `u` flag (a
+  // generator must not drop it).
   test('a Unicode-mode routeToken regex makes a file with a non-ASCII name the layout route of its directory', async () => {
     const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
@@ -992,13 +992,13 @@ async function directoryOnAnotherDevice() {
 const otherDevice = await directoryOnAnotherDevice()
 
 describe('tmpDir', () => {
-  // Bug (K-19): with `tmpDir` on another filesystem than the app (e.g. the
+  // Bug (SPEC J1.16): with `tmpDir` on another filesystem than the app (e.g. the
   // app on a disk and TSR_TMP_DIR on a tmpfs), every publication fails:
   // renaming the temporary file onto the route file or the route tree fails
   // with EXDEV, and the run fails. The atomic fallback is to write the
   // temporary file beside the destination and rename it there (SPEC J1.16);
   // a copy over the destination is not atomic (the destination file must be
-  // replaced, not rewritten in place). Real filesystems only (ruling Q1): a
+  // replaced, not rewritten in place). Real filesystems only (SPEC §9): a
   // host without a second writable filesystem skips the pin.
   // Source: src/generator.ts `safeFileWrite` renames from
   // `getTempFileName`'s file in `config.tmpDir`.

@@ -61,7 +61,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
   }, timeout)
   afterAll(() => dispose?.())
 
-  // Source: mutation round 3 start-router B.
+  // Source: mutation testing.
   test('a server-only route with a page under it stays in the client route tree, under the root', async () => {
     const { result } = await build.client.run(routeTree)
     expect(result).toEqual({

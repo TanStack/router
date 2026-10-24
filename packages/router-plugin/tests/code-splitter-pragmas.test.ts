@@ -56,7 +56,7 @@ const emotionStyled = (html: string) => /class="css-/.test(html)
  * renderer: the JSX runtime decision of the file (its pragmas, leading or
  * not, as the project's transform reads them) holds in every module holding
  * its JSX (SPEC J2.16). A component left unsplit is accepted with a warning
- * naming the file and the option (D-04, J2.8). Returns the rendering.
+ * naming the file and the option (SPEC J2.16, J2.8). Returns the rendering.
  */
 async function expectRendersLikeUntouched(code: string) {
   const route = await loadWithUntouched(code)
@@ -98,7 +98,7 @@ describe('split modules keep file-level JSX pragmas', () => {
     expect(emotionStyled(rendered)).toBe(true)
   })
 
-  // D-04 (J2.16): what a pragma written after the imports means is the
+  // SPEC J2.16: what a pragma written after the imports means is the
   // project's JSX transform's decision. Vite's (Oxc) reads leading pragmas
   // only, so the untouched file renders with React's runtime, and so must
   // the split component: the pragma must not become effective in a chunk.
@@ -108,7 +108,6 @@ describe('split modules keep file-level JSX pragmas', () => {
   // (the imports above it in the route file are gone from the chunk), so
   // Oxc reads it there: the split component renders with Emotion's runtime
   // where the untouched file renders with React's.
-  // Source: V1 split F12 (D-04 ruled 2026-10-18).
   // Impact: with Vite 8, a `css` prop that the untouched route ignored is
   // styled once the component is split (or the reverse once the user
   // relies on the unsplit behaviour): the route renders differently split.
@@ -236,11 +235,11 @@ async function referenceModule(route: RouteApp) {
 }
 
 // License comments stay in the route module when the splitter moves or
-// removes the code below them (R-14, SPEC G12): minifiers keep legal
+// removes the code below them (SPEC G12): minifiers keep legal
 // comments in the modules that carry them, so the route module keeps the
 // notice of the code it no longer holds. Copies in other modules and other
 // orphaned comments are free. Source: #8504. The comment is the explicit
-// text contract R-14 names (N11): read in the route module the page loads.
+// text contract SPEC G12 names: read in the route module the page loads.
 describe('the route module keeps the license comments of the route file', () => {
   it('leading the file', async () => {
     const legal = '/*! Example Corp. | MIT License */'

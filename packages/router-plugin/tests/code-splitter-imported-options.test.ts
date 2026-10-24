@@ -1,10 +1,10 @@
 /**
  * Route options the code splitter cannot read statically: an options
  * object imported from another module, `createFileRoute('/x')(options)`
- * with `import { options } from './x.options'` (FIX-PLAN V2-10; SPEC J2.8,
+ * with `import { options } from './x.options'` (SPEC J2.8,
  * J2.14). The route keeps working through the real router; the compiler
  * either splits the options correctly or tells the developer once, naming
- * the file (the A9 oracle), or refuses the route with an error naming it;
+ * the file, or refuses the route with an error naming it;
  * with `deleteNodes` (Start's client list) it either removes the server
  * options (and what only they import) or tells the developer: never a
  * silent non-split, never silently kept server options. A local options
@@ -62,8 +62,7 @@ describe('route options held in a local object (control)', () => {
     )
     expect(html).toContain('MARK_X_PAGE')
     expect(loaded).toBe('MARK_X_DATA')
-    // No warning or error on any channel of the dev server (info is free,
-    // N15).
+    // No warning or error on any channel of the dev server (info is free).
     expectNoProblems(await route.diagnostics())
   })
 
@@ -165,7 +164,6 @@ export const options = {
   // nothing.
   // Impact: the route's component is never split, with no word to the
   // developer (SPEC J2.8: split correctly or report once naming the file).
-  // Source: FIX-PLAN V2-10 (split-fable O3/gap 5).
   it.fails('are split, or reported once naming the route file', async () => {
     const served = await serve()
     if (!expectWorkingOrRefused(served)) {
@@ -188,7 +186,6 @@ export const options = {
   // imports, silently.
   // Impact: server handlers and what they read ship to the client (SPEC
   // J2.8 "never ships their ssr/server/headers silently", J2.14, J4.12).
-  // Source: FIX-PLAN V2-10.
   it.fails(
     'lose the options of deleteNodes and what only they import, or are reported once naming the route file',
     async () => {

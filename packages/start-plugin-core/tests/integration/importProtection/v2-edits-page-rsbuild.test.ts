@@ -1,5 +1,5 @@
 /**
- * The edits of v2-edits-page.test.ts (FIX-PLAN V2-14; SPEC J6.13, G10) seen
+ * The edits of v2-edits-page.test.ts (SPEC J6.13, G10) seen
  * by a real browser page of a Start app on Rsbuild's dev server (Start's
  * whole Rsbuild plugin, `@rsbuild/plugin-react` for React Refresh, as the
  * hydrate-dev Rsbuild rows): the component uses the server-only
@@ -76,8 +76,8 @@ const run = () =>
       let since = 0
       if (step > 1) {
         // The deletion and the recreation each in their own edit, settled:
-        // a removal landing while Rspack compiles is lost (FOLLOWUPS
-        // "UPSTREAM (W3-harness2)": watchpack 2.5.2 vendored by Rspack).
+        // a removal landing while Rspack compiles is lost (watchpack 2.5.2
+        // vendored by Rspack; KNOWN-BUGS.md, upstream issues).
         // Merge the steps back once Rspack bundles watchpack >= 2.6.
         // (Settled first too: a compile the previous step still has
         // pending would pause the watcher while the removal lands.)

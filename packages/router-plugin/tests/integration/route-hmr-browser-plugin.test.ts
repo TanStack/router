@@ -169,15 +169,15 @@ export const Route = ${call}
 })
 
 // A route the route file creates inside a function of the same file (a
-// helper, an IIFE) is unsupported but user-fixable (user ruling 2026-10-17,
-// decision D11): it is either split like a module-scope route and
+// helper, an IIFE) is unsupported but user-fixable (SPEC J2.10,
+// J2.8): it is either split like a module-scope route and
 // hot-updated in place, or left unsplit with a warning naming the file
 // (code-splitter-plugin-pipeline.test.ts). Either way, an edit shows its
 // new loader data and component without errors: in place, or, when the
 // compiler warns naming the route file through a real channel (the dev
 // server's logger or console, or the page), possibly after a reload. A
-// warning never excuses an edit that does not show (V1R hmr H08, split
-// S11; `expectEditShownOrReportedFallback`). (A helper function
+// warning never excuses an edit that does not show (SPEC G10;
+// `expectEditShownOrReportedFallback`). (A helper function
 // without automatic code splitting keeps its old component silently:
 // pinned in known-bugs-route-hmr.test.ts.)
 describe.concurrent.each(['vite', 'rsbuild'] as const)(

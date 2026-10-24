@@ -1,6 +1,6 @@
 /**
- * Inputs the V2 corpus review found untested at the compiler level (FIX-PLAN
- * §G, W3-start-v2): each is ordinary user code the docs or the public types
+ * Inputs a review of real apps' code found untested at the compiler level:
+ * each is ordinary user code the docs or the public types
  * allow, served by the public Start host (`./start-host`) and checked
  * through what each environment loads and does (SPEC J4.1, J4.5, J4.8,
  * J4.12, §2.1): the client in a real page, server fns called from the
@@ -20,7 +20,7 @@ import {
 import type { Plugin } from 'vite'
 
 /**
- * The host defaults of the B2 lead's branch (until it is merged): no import
+ * The host defaults these tests use: no import
  * protection (its dev mock would hide a leaked server import from the
  * client's loads) and an app tsconfig with `verbatimModuleSyntax` (without
  * it, Vite's TypeScript transform drops unreferenced imports after the
@@ -62,12 +62,12 @@ const host = useStartHost({ ...hostDefaults, plugins: [workersPlatform()] })
 
 const head = `import { createMiddleware, createServerFn } from '@tanstack/react-start'\n`
 
-describe('server-only imports the client cannot resolve (V2-02)', () => {
-  // `cloudflare:workers` (241 corpus files) and `node:*` resolve on the
+describe('server-only imports the client cannot resolve', () => {
+  // `cloudflare:workers` (common in real apps) and `node:*` resolve on the
   // server only; the compiler removes them with the server code that reads
   // them, before any bundler tries to resolve them for the client (SPEC
   // J4.12). The server keeps them.
-  // Source: FIX-PLAN V2-02 (start-fable SF-22/MW-7; #6185, #7460, #3990).
+  // Source: #6185, #7460, #3990.
   const platform = `import { env } from 'cloudflare:workers'
 import { readFileSync } from 'node:fs'
 export const withEnv = createMiddleware({ type: 'function' }).server(
@@ -120,11 +120,10 @@ export const label = () => 'MARK_CLIENT_LABEL'
   })
 })
 
-describe('a validator schema the client also uses (V2-08)', () => {
+describe('a validator schema the client also uses', () => {
   // A schema that validates a server fn's input and also validates a form
   // on the client stays in the client with its behaviour (SPEC J4.1); a
   // schema only a validator uses is gone (J4.12).
-  // Source: FIX-PLAN V2-08 (start-fable SF-3; ~3,500 validator files).
   const files = {
     'post-schema.ts': `export interface Post {
   title: string
@@ -198,11 +197,10 @@ export function validateForm(input: unknown) {
   })
 })
 
-describe('.jsx modules (V2-11)', () => {
-  // Untyped `.jsx` files with JSX and a server fn (532 corpus files) are
+describe('.jsx modules', () => {
+  // Untyped `.jsx` files with JSX and a server fn (common in real apps) are
   // compiled like `.tsx` ones (SPEC §2.1): the client gets the stub and no
   // server code, the handler runs on the server, the JSX renders.
-  // Source: FIX-PLAN V2-11 (start-fable SF-19).
   const code = `import { createServerFn } from '@tanstack/react-start'
 import { db } from './db.server'
 export const getUser = createServerFn().handler(async () => db.user())
@@ -255,13 +253,12 @@ export function html() {
   })
 })
 
-describe('a server fn builder reused as middleware (V2-25)', () => {
+describe('a server fn builder reused as middleware', () => {
   // `createServerFn().middleware([auth])` passed in another server fn's
   // `.middleware([...])` contributes `auth` (SPEC J4.5): the client runs
   // `auth.client()` and ships no `auth.server()` code; the server runs
   // `auth.server()` before the handler (J4.8).
-  // Source: FIX-PLAN V2-25 (start-fable SF-6; runtime createServerFn.ts
-  // TSS_SERVER_FUNCTION_FACTORY).
+  // Source: runtime createServerFn.ts TSS_SERVER_FUNCTION_FACTORY.
   const code = `${head}import { audit } from './audit.server'
 export const auth = createMiddleware({ type: 'function' })
   .client(({ next }) => next({ sendContext: { from: 'client' } }))
@@ -292,11 +289,10 @@ export const whoAmI = createServerFn()
   })
 })
 
-describe('createServerFn options by identifier or spread (V2-31)', () => {
+describe('createServerFn options by identifier or spread', () => {
   // `createServerFn(opts)` and `createServerFn({ ...opts })` are ordinary
   // input (SPEC J4.5): each env keeps the options' `method`, the client
   // calls through the server, the server runs the handler.
-  // Source: FIX-PLAN V2-31 (start-fable SF-2; 26 corpus files).
   const code = `import { createServerFn } from '@tanstack/react-start'
 import { db } from './db.server'
 const opts = { method: 'POST' } as const

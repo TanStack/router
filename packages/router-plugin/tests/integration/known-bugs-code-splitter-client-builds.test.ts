@@ -18,7 +18,7 @@ const clientBundlers: Array<Bundler> = ['vite', 'rspack', 'webpack']
 
 describe('route options written in other shapes', () => {
   // The unused `makeOptions` of the two rows above may name a `Page` its
-  // module no longer declares (user ruling 2026-10-17, widened: the bundlers
+  // module no longer declares (SPEC G8: the bundlers
   // delete it), as long as that dead code does not reach a production client
   // bundle (which the build harness also checks for any dangling name).
   test.each(
@@ -61,7 +61,7 @@ export const Route = ${route}
 
 describe('what split chunks hold', () => {
   // Bug: once the pin above is fixed, the split option must also end up
-  // split, or the build must say why (decision D11). Splitting the result of
+  // split, or the build must say why (SPEC J2.8, G5). Splitting the result of
   // a call would change when the call runs, so the user has to change the
   // pattern: a warning naming the file and the option is acceptable. Today
   // the build fails first (same root cause as the pin above).
@@ -105,10 +105,10 @@ describe('exported bindings', () => {
   // copy. One instance is the goal: the function the route renders on its
   // error path is the one the entry imports, its module-level state is
   // created once (SPEC J2.4, G9); and the option is split, or unsplit with
-  // a warning naming the route file (decision D11), whichever chunk holds it.
+  // a warning naming the route file (SPEC J2.8), whichever chunk holds it.
   // Impact: the component's code ships twice and runs as two components.
   // Whether the option is lazy or reported is the router transform's
-  // decision, so one bundler shows it (speedup 7: the Rspack and webpack
+  // decision, so one bundler shows it (the Rspack and webpack
   // cells were decided by the same transform as this Vite cell).
   test.fails(
     'an exported errorComponent written as `PostErrorComponent as any` is one instance in the client (vite build)',

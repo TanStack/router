@@ -1,6 +1,6 @@
 /**
  * Controls of `describeBuild` (build-harness.ts) on an output written to
- * disk (final pass #21, seen under R9): a bundler may emit a chunk without
+ * disk: a bundler may emit a chunk without
  * a source map file next to chunks that have one. The description reads the
  * maps that exist and leaves the others unset, so that whether a map is
  * required stays the test's question; a map file that is not a map still

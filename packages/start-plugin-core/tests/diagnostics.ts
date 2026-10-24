@@ -1,7 +1,7 @@
 /**
  * What the Start compiler reports, checked through the shared diagnostic
- * oracle (`@tanstack/compiler-test-utils/diagnostics`; SPEC G5, §5.7;
- * ruling 2026-10-22): a compile error is reported, at the line (and column)
+ * oracle (`@tanstack/compiler-test-utils/diagnostics`; SPEC G5, §5.7: file
+ * and position only): a compile error is reported, at the line (and column)
  * of the user's module it is about; never its wording, code frame or
  * channel. And the check that a misplaced server fn is supported, or
  * rejected that way, and kept off the client, through the public Start
@@ -152,7 +152,7 @@ export async function expectNoClientHandler(
  * What `settle` gives for a `createServerOnlyFn` called outside the server,
  * or a `createClientOnlyFn` called outside the client (J4.10): it is a
  * function (`settle` gives back what is no function), and calling it threw
- * (ruling 2026-10-22: the error's wording is not checked). An asymmetric
+ * (SPEC G5, §5.7: the error's wording is not checked). An asymmetric
  * matcher: compare with `toEqual`.
  */
 export const throwsError = expect.toSatisfy(

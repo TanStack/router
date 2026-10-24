@@ -1,7 +1,7 @@
 /**
  * Start compiler behaviour that only a production build exercises
  * (build-mode export caches), moved from known-bugs-start-compiler.test.ts
- * (workstream B2) onto the production mode of the public Start host
+ * onto the production mode of the public Start host
  * (`createStartHost({ serve: false })` + `preview()`: `vite build` with
  * Start's plugin of the built `@tanstack/react-start`, Start's preview
  * server, a hydrated production page).
@@ -20,8 +20,7 @@
  * (`later/via-<module>.tsx`, reached only through it), so the bundler
  * compiles them after it. (With every importer reached at once, the build
  * compiles them in parallel and the outcome below depended on their timing:
- * the "export * diamonds" row failed in about 1 of 10 runs, FINAL-PASS
- * #35.)
+ * the "export * diamonds" row failed in about 1 of 10 runs.)
  */
 import { describe, expect, test } from 'vitest'
 import { callFromClient, createStartHost } from '../regression-helpers'
@@ -107,13 +106,14 @@ describe('server code in the client bundle', () => {
   // client call resolves to `undefined`).
   // Fix-agnostic: no server-only module in the client build, and every
   // importer's server fn reaches its handler.
-  // Source: known-bugs-start-compiler.test.ts "export * $name do not poison
-  // the build-mode export cache" (formerly a pin on the internal compiler;
-  // B2 kept it as a passing regression test, not reproduced through a real
-  // build); FINAL-PASS #35: the intermittent failure of the diamond row was
-  // this bug, reached when the build happened to compile an importer after
-  // the lookup that poisoned the cache. Reproduced in every run with the
-  // compile order fixed (control above: green).
+  // Source: known-bugs-start-compiler.test.ts "export * $name do not poison the
+  // build-mode export cache" (formerly a pin on the internal compiler; kept as
+  // a passing regression test, not reproduced through a real build). The
+  // intermittent failure of the diamond row (about 1 in 10 runs, when every
+  // importer compiled in parallel) was this bug, reached when the build
+  // happened to compile an importer after the lookup that poisoned the cache.
+  // Reproduced in every run with the compile order fixed (control above:
+  // green).
   test.fails.each<{ name: string; reExports: Record<string, string> }>([
     {
       name: 'diamonds',

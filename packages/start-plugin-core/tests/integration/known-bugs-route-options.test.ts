@@ -168,7 +168,7 @@ export const Route = createFileRoute('/cast-${slug(name)}')(${wrap(
   // server-only route.
   // Impact: the route is pruned from the client route tree: navigating to it
   // in the browser finds no route.
-  // Source: gap G11; #8504 router-generator transform.test.ts ("records
+  // Source: #8504 router-generator transform.test.ts ("records
   // method, async method and accessor option keys"), where the method and
   // accessor rows pass.
   describe.each(pageOptions)('$name', ({ name }) => {
@@ -189,8 +189,7 @@ export const Route = createFileRoute('/cast-${slug(name)}')(${wrap(
   // either.
   // Impact: the route's server handlers and their server-only imports ship
   // to the client bundle.
-  // Source: lost-cases-campaign item 1 (SU-4/8; 4 corpus files in 3 repos
-  // wrap route options in `as never` / `as any`).
+  // Real apps wrap route options in `as never` / `as any`.
   describe.each(casts)('options wrapped in $name', ({ name }) => {
     test.fails(
       'the server handler code of the route is not in the client bundle',

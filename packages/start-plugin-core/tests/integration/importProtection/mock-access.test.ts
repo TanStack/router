@@ -6,7 +6,7 @@
  * with the severity `mockAccess` gives (`error`, `warn`), naming the denied
  * import, and with `mockAccess: 'off'` no use of it is reported or has a side
  * effect. Which other uses of a mock are reported (a conversion to a string,
- * `toString()`, `new`, a property write) is free (ruling "mock access diagnostics"). What is
+ * `toString()`, `new`, a property write) is free (SPEC J6.3, §5.18). What is
  * reported is read through the shared diagnostic oracle: the severity and
  * the denied import, never the prose (J6.12). (The Rsbuild twin:
  * `integration/rsbuild/import-protection.test.ts`, "Rsbuild dev:

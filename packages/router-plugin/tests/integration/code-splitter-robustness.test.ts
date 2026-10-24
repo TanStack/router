@@ -6,7 +6,7 @@ import { expect, test } from 'vitest'
 import { build, clientMountEntry, head, rootRoute } from '../build-harness'
 
 /**
- * One app per bundler holds both unusual route files (speedup 6): a route
+ * One app per bundler holds both unusual route files: a route
  * file with a non-ASCII name (its route at `/café/日本語`, re-exported by
  * the entry as `CafeRoute`) and a JavaScript route file (`routes/index.jsx`,
  * the entry's `Route`). Built once and run once per route; each test reads

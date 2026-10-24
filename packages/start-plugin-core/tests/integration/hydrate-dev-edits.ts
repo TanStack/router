@@ -13,7 +13,7 @@ import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 /**
  * Modules only the children of one boundary import, each with a marker in
  * its code: which of them the page downloaded (not when their top-level
- * code runs, which is free: ruling "child-only module evaluation", SPEC G3).
+ * code runs, which is free: SPEC J5.6, G3).
  */
 const childModules = Object.fromEntries(
   ['a', 'b'].map((name) => [

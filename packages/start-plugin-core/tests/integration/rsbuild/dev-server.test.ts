@@ -99,7 +99,7 @@ import { fn2 } from './a2'
   // of the module it first loads it for; the other importers depend on it in
   // Rspack because the compiler resolves the whole import chain from each
   // importer (the loader's `resolve()` records the files it resolves).
-  // Source: gap DV27 (gaps/dev-hmr.md), suspected bug not reproduced.
+  // Source: review, suspected bug not reproduced.
   test.each(['./b', './c'])(
     'client: every module importing a factory from %s that becomes one loads no server code, and calls the server',
     async (importFrom) => {
@@ -169,8 +169,7 @@ function Page() {
   // a full reload; the client's hot update carries the edited client code
   // and never the handler. (What the edited component shows is route HMR's
   // business, router-plugin's page tests with React Refresh.)
-  // Source: audit E2 missing coverage #4 (the Rsbuild hot-update path never
-  // ran in tests); FIX-PLAN S12 (A13).
+  // Source: review (the Rsbuild hot-update path never ran in tests).
   test(
     'the page applies the hot update of an edited server fn module and the next call runs the edited handler, without a full reload',
     async () => {
@@ -256,8 +255,7 @@ describe('Rsbuild dev: removing a server fn module', () => {
   // The generated server fn resolver lists every server fn by id; a module
   // the app no longer has must leave it, or the next compile of the server
   // never completes.
-  // Source: mutation round 3 sc-hosts 10 (spc:6802), with Start's whole
-  // Rsbuild plugin.
+  // Source: mutation testing, with Start's whole Rsbuild plugin.
   test(
     'deleting a module with a server fn keeps the dev server compiling',
     async () => {
@@ -275,8 +273,8 @@ export const ${name} = createServerFn().handler(async () => 'MARK_${name}')
         },
       })
       // The deletion in its own edit, before the entry's: a write landing
-      // while Rspack compiles the deletion can be lost (FOLLOWUPS "UPSTREAM
-      // (W3-harness2)": watchpack 2.5.2 vendored by Rspack). Merge the two
+      // while Rspack compiles the deletion can be lost (watchpack 2.5.2
+      // vendored by Rspack; KNOWN-BUGS.md, upstream issues). Merge the two
       // edits back once Rspack bundles watchpack >= 2.6.
       await server.edit({ 'src/b.ts': null })
       await server.edit({ 'src/entry.ts': `export { a } from './a'\n` })
@@ -291,7 +289,7 @@ export const ${name} = createServerFn().handler(async () => 'MARK_${name}')
 describe('Rsbuild dev: server fn ids', () => {
   // Server fns are called by id: two server fns sharing an id would run
   // each other's handler.
-  // Source: mutation round 3 sc-hosts 2.
+  // Source: mutation testing.
   test(
     'same-named server fns of two modules get different ids',
     async () => {
@@ -339,7 +337,7 @@ export { getData as b } from './b'
     timeout,
   )
 
-  // (FIX-PLAN S35) Whether dev ids use `serverFns.generateFunctionId` is
+  // Whether dev ids use `serverFns.generateFunctionId` is
   // free: it is a production-build contract (SPEC J4.4), covered by
   // start-build-options.test.ts "serverFns.generateFunctionId returning an
   // id"; dev caller/provider agreement by the page calls of "Rsbuild dev:

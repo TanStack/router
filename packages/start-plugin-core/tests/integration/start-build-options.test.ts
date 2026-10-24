@@ -84,8 +84,8 @@ export const config: Register['config'] = { brand: 'OTHER' }`
 `
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  // Source: oracle-gaps "Start options never exercised"
-  // (serverFns.generateFunctionId returning undefined).
+  // Source: review (serverFns.generateFunctionId returning undefined was
+  // never exercised).
   test(
     'serverFns.generateFunctionId returning undefined: the default id, which the SSR build resolves',
     async () => {
@@ -109,7 +109,7 @@ return { id, value: await callById(id) }`,
     timeout,
   )
 
-  // Source: mutation round 3 sc-hosts 6 (a generator returning an id was
+  // Source: mutation testing (a generator returning an id was
   // never built).
   test(
     'serverFns.generateFunctionId returning an id: the client calls that id, which the SSR build resolves',
@@ -138,7 +138,7 @@ return { id, value: await callById(id) }`,
   /**
    * A route whose loader and component each read a module of their own
    * that records when it loads (`loadMarker`): what loads, and when, is
-   * observed at run time, not through chunk names (FIX-PLAN S47).
+   * observed at run time, not through chunk names.
    */
   const routeFiles = {
     'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
@@ -167,8 +167,8 @@ export { renderPath } from '../harness/render'
   // build (only replacing the options it owns: the route options it deletes
   // from client builds, and HMR). By default the loader stays with the
   // route.
-  // Source: oracle-gaps "Start options never exercised"
-  // (router.codeSplittingOptions through Start).
+  // Source: review (router.codeSplittingOptions through Start was never
+  // exercised).
   test.each([
     {
       name: 'by default',
@@ -243,8 +243,7 @@ return {
         ).result as object),
       })
       // The SSR build need not split route options like the client: it is
-      // not required for correctness, an eventual optimisation (ruling
-      // "SSR route splitting", SPEC §5.3).
+      // not required for correctness, an eventual optimisation (SPEC §5.3).
       expect(await placement(client)).toEqual(expected)
       // Wherever they are, the route's loader and component still run: the
       // real router renders the page at `/`.
@@ -267,7 +266,7 @@ return {
     timeout,
   )
 
-  // Source: mutation round 3 start-router F (the footer Start adds to the
+  // Source: mutation testing (the footer Start adds to the
   // route tree was never type-checked).
   test.each([
     { name: 'with', withStart: true },

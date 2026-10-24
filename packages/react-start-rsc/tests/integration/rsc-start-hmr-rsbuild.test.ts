@@ -14,8 +14,7 @@ describe('Rsbuild dev: edits with a separate RSC provider (SPEC J3.6)', () => {
   // the handler makes the next call run the new code and the client output
   // never has it; editing the component then hot-updates the page, keeping
   // its state; no full reload either way, and the server fn still answers.
-  // Source: SPEC J3.6, V2-13 (#7618 as quoted), Rsbuild row (DECISIONS
-  // 2026-10-19, `@rsbuild/plugin-react`).
+  // Source: #7618 (SPEC J3.6).
   test('a handler edit reaches the next call and a component edit hot-updates, keeping the state, without a full reload', async () => {
     const server = await startRscRsbuildDevServer({
       browser: true,

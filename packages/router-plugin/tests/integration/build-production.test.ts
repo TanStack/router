@@ -33,7 +33,7 @@ test.each([true, false])(
 // pinned for Rspack below); Vite drops the code `import.meta.hot` guards,
 // and the export the React HMR compile adds ships only to a module that
 // imports it, which the app (its route tree imports `Route`) does not
-// (ruling P1).
+// (SPEC G9, J2.4).
 test.each(frameworks)(
   'a production %s client bundle without code splitting has no dev-only code (vite)',
   async (framework) => {
@@ -49,7 +49,6 @@ test.each(frameworks)(
 // framework; the React row is also the pin of the control in
 // known-bugs-route-hmr-production.test.ts. (webpack:
 // build-production-webpack.test.ts.)
-// Source: gap CC-P1 / M3.
 // Impact: webpack/Rspack production bundles built from a shell without
 // `NODE_ENV` ship the route HMR code of every route.
 describe('rspack', () => {

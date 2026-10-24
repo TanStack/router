@@ -23,7 +23,7 @@ import {
 } from './regression-helpers'
 
 /**
- * The host defaults of the B2 lead's branch (until it is merged): no import
+ * The host defaults these tests use: no import
  * protection (its dev mock would hide a leaked server import from the
  * client's loads) and an app tsconfig with `verbatimModuleSyntax` (without
  * it, Vite's TypeScript transform drops unreferenced imports after the
@@ -302,9 +302,9 @@ export function Card() {
     </div>
   )
 }`
-// The effective runtime decision is what counts (SPEC J2.16, D-04), read
+// The effective runtime decision is what counts (SPEC J2.16), read
 // through Oxc, Vite 8's JSX transform; whether the comment text survives is
-// free (FIX-PLAN S30).
+// free.
 const hydrateParentImports = [
   {
     name: 'moves into a Hydrate chunk',

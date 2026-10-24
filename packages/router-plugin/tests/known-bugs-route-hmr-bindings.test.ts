@@ -7,8 +7,8 @@
  * code the user's class, and the route module throws when it loads, so the
  * page cannot render the route. The bookkeeping is built by the first route
  * module the page evaluates: the root route, which the route tree imports
- * first, so the route file here is the app's root. Found by B1 while
- * piloting the route app (2026-10-21).
+ * first, so the route file here is the app's root. Found in review while
+ * piloting the route app.
  *
  * Fix-agnostic: any fix that leaves the user's `Map` alone (a global
  * reference that no user binding captures, another structure, no

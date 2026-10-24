@@ -162,7 +162,7 @@ export const describeValuePrelude = `${probeMockPrelude}const describeValue = ${
 
 /**
  * What identifies the runtime diagnostic of a use of a mock: its severity
- * and, for a denied file, the file (ruling 2026-10-22: diagnostics are
+ * and, for a denied file, the file (SPEC G5, §5.7: diagnostics are
  * checked by file and position only; a use of the mock of a denied
  * specifier names no file of the app). Which importer used the mock is not
  * required: the violation names it, SPEC J6.5.

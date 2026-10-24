@@ -79,7 +79,8 @@ export const Route = createFileRoute('/')({ component: () => <p>home</p> })`,
           `new URLSearchParams(location.search).get('term') ?? ''`,
         )
         // A fresh app per replacement/removal keeps this to one edit per
-        // file (the Rsbuild lost-removal ruling, 2026-10-19).
+        // file (Rspack loses a removal during a compile: oracle/KNOWN-BUGS.md,
+        // "Upstream issues").
         expect(
           await app.edit(
             { 'routes/items/$itemId.tsx': item('v2', removed) },
@@ -109,7 +110,7 @@ export const Route = createFileRoute('/')({ component: () => <p>home</p> })`,
 
     // Bug: a replacement index export must keep the generated navigation
     // target, which differs from its fullPath's trailing slash.
-    // Source: V4 red-astra-r2/05 (J3.1, G1, G9).
+    // Source: mutation testing (SPEC J3.1, G1, G9).
     // Impact: user code importing Route builds a different link after HMR.
     test(
       'an edited index export keeps its public navigation target',

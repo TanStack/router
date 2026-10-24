@@ -1,6 +1,6 @@
 /**
  * Edits move an import across the import-protection boundary in a running
- * dev server (FIX-PLAN V2-14; SPEC J6.13, J6.4): each denied import is first
+ * dev server (SPEC J6.13, J6.4): each denied import is first
  * used only where the compiler removes it for the environment (allowed),
  * then also live (denied), then only removed again (allowed), and its
  * target is deleted and recreated between the steps. After each step: the
@@ -293,7 +293,7 @@ describe('vite dev', () => {
       }
       return outcomes
     },
-    // I11: the server importer's removal has its own settled window. The
+    // The server importer's removal has its own settled window. The
     // original combined-write pin passes with this isolation and a real page;
     // retain the strict empty report set to detect future stale violations.
   )
@@ -326,9 +326,9 @@ describe('rsbuild dev', () => {
       if (index > 0) {
         // Each deletion and each recreation in its own edit, settled before
         // the next write: a removal (or a write) landing while Rspack
-        // compiles the previous one can be lost (FOLLOWUPS "UPSTREAM
-        // (W3-harness2)": watchpack 2.5.2 vendored by Rspack, fixed in
-        // 2.6.0). Merge the deletions, then the recreations, back into one
+        // compiles the previous one can be lost (watchpack 2.5.2
+        // vendored by Rspack, fixed in 2.6.0; KNOWN-BUGS.md, upstream
+        // issues). Merge the deletions, then the recreations, back into one
         // edit each once Rspack bundles watchpack >= 2.6. (Settled first
         // too: a compile the start or the previous step still has pending
         // would pause the watcher while the first removal lands.)

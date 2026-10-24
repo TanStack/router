@@ -105,8 +105,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // INTERNALS-import-protection.md).
   // Impact: a denied module that a client-reachable module imports, but that
   // the client never uses, still fails the build.
-  // Source: issue #8101 (closed without a reproduction); gap IP6b
-  // (gaps/start-env.md).
+  // Source: issue #8101 (closed without a reproduction).
   test.fails(
     'a denied module the client bundle drops does not fail the build',
     async () => {
@@ -127,9 +126,9 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // `@__PURE__`), but its exports read members of the mock.
   // Impact: mock-mode builds ship mock code (a Proxy runtime) for unused
   // imports, and report violations the client never reaches.
-  // Source: weak check virtualModules.test.ts "returns mock code" (asserted
-  // the purity annotations as text), oracle-gaps REPORT.md "Weak checks".
-  // Judged by what the user sees (coupling watch list S6 known-bugs :152):
+  // Source: review (the check "returns mock code" of virtualModules.test.ts
+  // asserted the purity annotations as text).
+  // Judged by what the user sees:
   // no report on any channel, no code or effect of the module in the
   // bundle; not by comparing the bundle's statements with another build's.
   // The live-denial controls show the same harness sees a used mock: its
@@ -193,7 +192,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // (`processAssets` in rsbuild/import-protection.ts). Vite fails the build.
   // Impact: the real module ships to the client in a lazy chunk and runs
   // there, without any error or warning.
-  // Source: round 3 mutation testing (ip-misc P1).
+  // Source: mutation testing.
   const dynamicImportTest = bundler === 'rsbuild' ? test.fails : test
   dynamicImportTest(
     'a client dynamic import of a denied specifier fails the build, reporting one client violation',
@@ -262,7 +261,7 @@ return describeValue(entry.read(), 'MARK_SECRET')`)
   // rsbuild/import-protection.ts). Both warn.
   // Impact: a mock-mode build ships the real content of a denied
   // `*.server.json` (e.g. server configuration or credentials) to the client.
-  // Source: round 3 mutation testing (ip-vite B1).
+  // Source: mutation testing.
   test.fails(
     'in mock mode, a denied .server.json file is mocked, with a warning',
     async () => {
@@ -287,7 +286,7 @@ const secret = data.secret`,
   // import of the real module.
   // Impact: a mock-mode build of a project with a `*.server.cjs` the client
   // imports fails instead of mocking it.
-  // Source: round 3 mutation testing (ip-vite B1).
+  // Source: mutation testing.
   test.fails(
     'in mock mode, a denied .server.cjs file is mocked, with a warning',
     async () => {

@@ -1,7 +1,7 @@
 /**
- * The project's path and the generated route tree's name (FIX-PLAN V2-27;
- * SPEC §2.1, J2.15, G1): a Start app whose directory carries characters a
- * project path may (`my app (2)+`) builds, and its client route tree leaves
+ * The project's path and the generated route tree's name (SPEC §2.1,
+ * J2.15, G1): a Start app whose directory carries characters a project path
+ * may (`my app (2)+`) builds, and its client route tree leaves
  * out the server-only route like any other app's; and an app file whose
  * name is one character away from the generated route tree's
  * (`src/routeTree-gen.ts`) is the file it is, not the client route tree.
@@ -77,7 +77,6 @@ return { ids, page: await entry.renderPath(entry.getRouter().routeTree, '/') }`,
     // "a route with only server handlers is not in the client route tree").
     // Impact: the client bundle ships the server-only routes' entries and
     // modules; a page can navigate to a route that has no page.
-    // Source: FIX-PLAN V2-27 (Sol W07/#27).
     test.fails(
       'the client route tree leaves out the server-only route',
       async () => {
@@ -117,7 +116,6 @@ export { sibling } from './routeTree-gen'
     // client route tree instead of its own code.
     // Impact: the build fails (the file's exports are gone) or the app
     // reads the wrong module.
-    // Source: FIX-PLAN V2-27 (Sol W07/#27).
     ;(bundler === 'vite' ? test.fails : test)(
       'the client gets the file, not the client route tree',
       async () => {

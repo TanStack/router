@@ -5,7 +5,6 @@
  * it runs in, to the line of the throw in the user's file. The column is
  * left out: minifiers map the throw to different tokens of the statement.
  * (`<Hydrate>` children: hydrate-build.test.ts.)
- * Source: oracle-gaps M1 (round 2).
  */
 import { describe, expect, test } from 'vitest'
 import { originalFrameOf } from '@tanstack/compiler-test-utils/build-harness'
@@ -183,7 +182,7 @@ test.each(builds)(
 
 // The harness builds for `esnext`; Vite's default client target lowers
 // newer syntax, which moves code around once more.
-// Source: audit E2 missing coverage #5.
+// Source: review.
 test(
   "vite build with Vite's default client target: client: a throw in a split route component maps to its line in the route file (minified)",
   () =>
@@ -200,7 +199,7 @@ test(
 // unplugin/dist/rspack/loaders/transform.mjs), so Rsbuild maps the chunk to
 // the code splitter's output. Same cause as the router plugin's Rspack and
 // webpack pins (router-plugin build-source-maps.test.ts).
-// Source: oracle-gaps M1; upstream (unplugin).
+// Source: upstream (unplugin).
 // Impact: stack traces, devtools and error trackers of Rsbuild Start apps
 // point at lines of generated code for every route file.
 test.fails.each(builds)(

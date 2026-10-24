@@ -3,10 +3,10 @@
  * production builds (SPEC J4.14, J4.17, G3, G12), through Start's Vite and
  * Rsbuild plugins (build-harness.ts):
  * - the `__NO_SIDE_EFFECTS__` annotations bundlers read still make an
- *   unused call disappear and a consumed one return its value (S28);
- * - decorators and import attributes written `assert` (V2-23);
+ *   unused call disappear and a consumed one return its value;
+ * - decorators and import attributes written `assert`;
  * - browser-only code inside the component of an `ssr: false` route next to
- *   a server fn: SSR and the server fn work without running it (S18).
+ *   a server fn: SSR and the server fn work without running it.
  */
 import { describe, expect, test } from 'vitest'
 import {
@@ -31,7 +31,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // caller), its annotation still reaches the bundler. The control module
   // has no Start API: whatever the bundler drops there it must drop next to
   // a server fn too. Each label is tracked when its call runs.
-  // Source: #8504 start-compiler-preserves-user-code.test.ts; FIX-PLAN S28.
+  // Source: #8504 start-compiler-preserves-user-code.test.ts.
   test.each([
     {
       name: 'a function',
@@ -165,9 +165,8 @@ ${callByIdExports}`,
   }
 
   // Every output parses and runs: the decorators run, the JSON import
-  // works (`assert` reaches the bundler as `with`), the handler runs.
-  // Source: FIX-PLAN V2-23 (36 corpus files with decorators); user ruling
-  // D9 (`assert` stays supported).
+  // works (`assert` reaches the bundler as `with`; `assert` stays supported,
+  // SPEC J2.17), the handler runs.
   test(
     'a server fn module with decorated classes and an assert import attribute builds and runs',
     async () => {
@@ -209,7 +208,6 @@ ${callByIdExports}`,
   // defined).
   // Impact: the handler's class, and what its decorators and methods
   // reference, ship to the client and run their decorators there.
-  // Source: FIX-PLAN V2-23.
   test.fails(
     'the decorated class only a server fn handler uses is not in the client bundle',
     async () => {
@@ -225,9 +223,8 @@ ${callByIdExports}`,
   // client renders the component. (That the route module's top-level code
   // runs once per environment is the goal pinned in
   // known-bugs-start-compiler.test.ts "SSR: a server fn module is
-  // initialised once ...".)
-  // Source: FIX-PLAN S18 case 2 (the unconditional top-level `window` read
-  // of the deleted compiler-level rows is no requirement, SPEC J4.14).
+  // initialised once ...". An unconditional top-level `window` read is no
+  // requirement, SPEC J4.14.)
   test(
     'an ssr: false route with browser-only code in its component and a server fn',
     async () => {

@@ -1,11 +1,11 @@
 /**
  * What an importer exempted from import protection gets for a denied file:
- * the real module (user ruling 2026-10-17). Exempt means matched by
+ * the real module (SPEC J6.7). Exempt means matched by
  * `ignoreImporters` or `exclude`, or outside `include`. Exempting a file
  * does more than silence the report; importers that are not exempt still get
  * the mock and a report. Client environment, mock mode. That nothing is
  * reported for an exempt importer is also checked in build-options.test.ts.
- * Same ruling for a denied file `client.excludeFiles` / `server.excludeFiles`
+ * Same rule for a denied file `client.excludeFiles` / `server.excludeFiles`
  * match (end of the file): its importers get the real module.
  */
 import { afterAll, afterEach, describe, expect, test, vi } from 'vitest'
@@ -135,7 +135,7 @@ type Outcome = {
 // Bug: an exempt importer is only left out of the reports: it still gets
 // the mock, because the denied file is mocked by its own transform, for
 // every importer (vite/import-protection-plugin/plugin.ts:2158 self-denial;
-// the Rsbuild adapter behaves the same). User ruling 2026-10-17.
+// the Rsbuild adapter behaves the same). SPEC J6.7.
 // Impact: code a project exempts on purpose (tests, generated code)
 // silently gets a mock instead of the module it imports.
 const expectExemptGetsRealModule = (outcome: Outcome) =>
@@ -248,7 +248,7 @@ describe.each(exemptions)(
 )
 
 /**
- * `client.excludeFiles` / `server.excludeFiles` (user ruling 2026-10-17): a
+ * `client.excludeFiles` / `server.excludeFiles` (SPEC J6.7): a
  * denied file the patterns match is not checked, so its importers get the
  * real module and nothing is reported. Each use records whether its denied
  * file ran:

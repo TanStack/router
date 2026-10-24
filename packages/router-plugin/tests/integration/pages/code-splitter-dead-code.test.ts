@@ -3,11 +3,11 @@
  * moves into a chunk, and that every surviving effect runs once (SPEC
  * J2.5, J2.12, G1, G3). Each route runs in a real browser page served by a
  * real Vite dev server with the public router plugin (`route-app.ts`); the
- * route's other modules are files of the app, which record what runs. D5
+ * route's other modules are files of the app, which record what runs. J2.5
  * absence checks read the modules the page loads: a user marker (a decoded
  * string of the user's code), never declared names, import specifiers or
  * printed text; what an unused import leaves is judged in a production
- * build of the app, after tree-shaking (ruling 2026-10-24).
+ * build of the app, after tree-shaking (SPEC J2.5, §5.9).
  */
 import { describe, expect, it } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
@@ -204,7 +204,7 @@ return [loaded, await render('component')]`),
   // eliminates newly unreferenced identifiers", "unexported circular references"
   // and "SCC with external caller used -> all preserved". Whether unused user
   // code is kept or dropped is free, and unused code may name a binding its
-  // module no longer declares (user ruling 2026-10-17, widened: the bundlers
+  // module no longer declares (SPEC G8: the bundlers
   // delete it; the validator checks what Rolldown's tree-shaking keeps);
   // every module stays valid and the split component still reaches its
   // helper.
@@ -226,7 +226,7 @@ export const Route = createFileRoute('/')({ component: () => <p>{helper()}</p> }
     'moves mutually recursive helpers only the component uses, and their imports, out of the route module (hmr: $hmr)',
     async ({ hmr }) => {
       // The helpers carry user markers (their results are unchanged), so
-      // that their code is recognised wherever it goes (D5, N10). The
+      // that their code is recognised wherever it goes (SPEC J2.5). The
       // markers join values of another module, so no compiler can fold
       // them away.
       const route = await loadRoute(
@@ -287,7 +287,7 @@ export const Route = createFileRoute('/')({
     )
     // What loads with the route in a production build no longer holds the
     // code that reads `used` (whether it keeps loading `bar`, or an import
-    // specifier tree-shaking drops, is free: ruling 2026-10-24).
+    // specifier tree-shaking drops, is free: SPEC §5.9).
     expect((await route.production()).locate('MARK_APPLES').eager).toEqual([])
   })
 
@@ -447,7 +447,7 @@ export const registerAnalytics = (path: string) => registered.push(path)
 
 // Type arguments name types only: TypeScript erases them, so a type, its
 // parameters and the values a `typeof` there names are no reads of module
-// bindings. Source: #8504 (shared-bindings helper tests; lost case L6).
+// bindings. Source: #8504 (shared-bindings helper tests).
 it.each([
   { name: 'a function type', type: '(value: Item) => void' },
   { name: 'a constructor type', type: 'new (value: Item) => object' },
@@ -538,7 +538,7 @@ export const Route = createFileRoute('/')({
   // An unused function that renders the split component stays as written, or
   // goes, without keeping the component's imports in the route module.
   // Other shapes are pinned in known-bugs-code-splitter.test.ts ("page code
-  // left in the route module"). Source: #8504 (corpus-diff, Jp-K/DmCompanionAi
+  // left in the route module"). Source: #8504 (real apps: Jp-K/DmCompanionAi
   // frontend_old/src/routes/_layout/chat.tsx).
   it('moves the split component and its imports into its chunk when an unused function renders it', async () => {
     const route = await loadRoute(
@@ -657,7 +657,7 @@ export const Route = createFileRoute('/')({
       // Nothing that loads with the route requests what only the component
       // reads; in a production build, nothing the component loads holds the
       // code only the loader runs (an import specifier tree-shaking drops
-      // is free: ruling 2026-10-24).
+      // is free: SPEC §5.9).
       expect(
         await route.run(
           `return performance.getEntriesByType('resource').map((entry) => new URL(entry.name).pathname)`,
@@ -685,7 +685,7 @@ export const Route = createFileRoute('/')({
   // declarations sharing an export statement"; Next.js
   // ssg/getStaticProps/should-remove-re-exported-variable-declarations-safe
   // The declarators carry user markers, so that each one's code is
-  // recognised wherever it goes (D5, N10). The markers are part of what the
+  // recognised wherever it goes (SPEC J2.5). The markers are part of what the
   // route shows and returns, so no compiler can fold them away.
   it.each([
     {
@@ -732,7 +732,7 @@ export const Route = createFileRoute('/')({
         await route.run(`return [options.loader(), await render('component')]`),
       ).toEqual(['MARK_MAIN main', '<div title="MARK_PAGE">chunk</div>'])
       // In a production build too, after tree-shaking (what each module
-      // imports from './messages' is free: ruling 2026-10-24)
+      // imports from './messages' is free: SPEC §5.9)
       const built = await route.production()
       expect({
         page: built.locate('MARK_PAGE').eager,

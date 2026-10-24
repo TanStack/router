@@ -9,7 +9,7 @@ import { StartBuildError, buildStart, startBundlers } from '../build-harness'
 const timeout = 60_000
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  // Source: mutation round 3 sc-hosts 8 (on Rsbuild, the build hung forever
+  // Source: mutation testing (on Rsbuild, the build hung forever
   // when the compiler's module resolution failed).
   test(
     'a server fn whose builder comes from a missing module fails the build, naming the module',
@@ -34,7 +34,7 @@ export const greet = base.handler(async () => 'MARK_HANDLER')
           // Every warning and error the failed build reported, on every
           // channel (a compiler may print the details and fail with a short
           // error); an info line tells the user nothing went wrong
-          // (coordinator 2026-10-21, diagnostic severity)
+          // (SPEC G5, §5.7)
           (error: unknown) =>
             error instanceof StartBuildError
               ? problems(error.diagnostics)

@@ -18,7 +18,6 @@ describe('webpack', () => {
   // bundle. For every framework; the React row is also the pin of the
   // control in known-bugs-route-hmr-production.test.ts. (Rspack:
   // build-production.test.ts.)
-  // Source: gap CC-P1 / M3.
   // Impact: webpack/Rspack production bundles built from a shell without
   // `NODE_ENV` ship the route HMR code of every route.
   test.fails.each(frameworks)(

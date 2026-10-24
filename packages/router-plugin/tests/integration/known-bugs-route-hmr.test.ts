@@ -75,13 +75,12 @@ function Page() {
   // component: the router renders a new component, so the page loses the
   // component's local state (signals, refs, form input) on both hosts, and
   // on Vite the whole document reloads, losing all client state. Rsbuild's
-  // new text alone does not prove that the live component kept its identity
-  // (H11).
+  // new text alone does not prove that the live component kept its identity.
   // Goal (any fix): with either host and the framework's plugin, the
   // edit shows without a full reload, and the live route keeps the component
   // the page rendered.
-  // Source: decision D10 (Solid/Vue split components keep their identity
-  // across hot updates, as React's do); gaps H8/H9.
+  // SPEC J3.2: Solid/Vue split components keep their identity across hot
+  // updates, as React's do.
   test.fails.for(
     (['vite', 'rsbuild'] as const).flatMap((bundler) =>
       (['solid', 'vue'] as const).map((target) => ({ bundler, target })),
@@ -154,9 +153,9 @@ function Page() {
   // in an Rsbuild app without automatic code splitting.
   // Source: router-plugin src/core/hmr/webpack-adapter.ts:71 (`const hotData
   // = hot.data ??= {}`); solid-refresh 0.6.3 `$$refreshStandard` (reads
-  // `hot.data` as the previous run). Found by W2-g; cause located by
-  // W6-scope (a probe reading `hot.data` without assigning it passes this
-  // pin, reverted).
+  // `hot.data` as the previous run). Found in review; cause located by a
+  // probe (reading `hot.data` without assigning it passes this pin;
+  // reverted).
   test.fails(
     'rsbuild: an edit of an unsplit Solid route shows its new component in place',
     async ({ expect, onTestFinished }: TestContext) => {
@@ -186,14 +185,14 @@ function Page() {
   // (route-hmr-browser-plugin.test.ts).
   // Impact: edits of such a route's component do not show until a reload,
   // silently.
-  // Source: NEW (W2-g, found by the real page; the former in-process model
+  // Source: review (found by the real page; the former in-process model
   // compared a component whose text did not change between versions).
-  // Ruling (R-09 / D11, 2026-10-17): same-file route factories are
+  // SPEC J2.10, J2.8: same-file route factories are
   // unsupported but user-fixable. Any fix passes: the edit takes effect
   // without errors, in place, or, when the compiler warns naming the route
   // file through a real channel (the dev server's logger or console, or the
   // page), possibly after a reload. A warning never excuses an edit that
-  // does not show (V1R hmr H08; `expectEditShownOrReportedFallback`).
+  // does not show (SPEC G10; `expectEditShownOrReportedFallback`).
   // Silent wrong output fails.
   test.fails.for(['vite', 'rsbuild'] as const)(
     '%s: an edit of a route a helper function creates shows its new component, reloading only when the file is reported (autoCodeSplitting: false)',

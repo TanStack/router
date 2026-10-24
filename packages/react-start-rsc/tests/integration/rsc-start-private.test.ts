@@ -3,7 +3,7 @@ import { openRscPage, startRscDevServer, waitForHydration } from './rsc-app'
 import { callFromPage, page } from './rsc-start-page'
 
 describe('Vite dev: a separate RSC provider', () => {
-  // J4.2 (user ruling D6): only server functions client code references are
+  // J4.2: only server functions client code references are
   // callable over HTTP. `internal` is called by `greet`'s handler only
   // (server origin, allowed); a request by its id from the browser must be
   // refused.
@@ -13,7 +13,7 @@ describe('Vite dev: a separate RSC provider', () => {
   // provider.
   // Impact: a server fn only server code uses is callable by anyone who
   // learns its id.
-  // Source: start S36; the compiler-level pin was in
+  // Source: the compiler-level pin was in
   // start-plugin-core/tests/createServerFn/createServerFn.test.ts.
   test.fails(
     'a server function only server code calls is not callable from the browser',

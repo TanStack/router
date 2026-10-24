@@ -7,8 +7,8 @@
  * - the route generator's temporary files (`TSR_TMP_DIR`, the generator's
  *   documented environment variable; a test that gives the generator a
  *   `tmpDir` of its own keeps it). On the apps' filesystem: the generator
- *   renames them into the app, which fails across filesystems (SPEC J1.16,
- *   RULINGS K-19: a pinned bug). Not the generator's default
+ *   renames them into the app, which fails across filesystems (SPEC J1.16:
+ *   a pinned bug). Not the generator's default
  *   (`.tanstack/tmp` in the working directory: the package's own directory).
  *
  * The test processes inherit the directories through their environment

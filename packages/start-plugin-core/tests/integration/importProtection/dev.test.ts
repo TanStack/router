@@ -151,7 +151,7 @@ const deniedFileUse = 'src/a.ts:2:27'
 
 /**
  * The violation of `deniedFileApp`, reported at the use of `secret` or at
- * the import of the denied file (SPEC J6.5; V1R ip I01).
+ * the import of the denied file (SPEC J6.5).
  */
 const deniedFileViolation: ExpectedViolation = {
   environment: 'client',
@@ -160,7 +160,7 @@ const deniedFileViolation: ExpectedViolation = {
 }
 
 describe('a client import of a denied file', () => {
-  // Source: oracle-gaps M2 (the warning channel of dev violations).
+  // Source: review (the warning channel of dev violations).
   test(
     'is mocked, and the dev server logs a warning naming the importer at the use or the import',
     async () => {
@@ -208,8 +208,8 @@ describe('a client import of a denied file', () => {
   // by an edit is mocked without any warning; with `log: 'always'`, a
   // violation is not logged again after an edit (the 'always' pin below).
   // A scratch run that keeps the incoming edges passes both pins.
-  // Source: found registering Start's entries in the dev harness (mutation
-  // run R3, harness gap H1); the trace part is ip-vite V13.
+  // Source: found registering Start's entries in the dev harness; the trace
+  // part: mutation testing.
   test.fails(
     'added by an edit of the importer is logged at its original import or surviving use, with a trace from the entry',
     async () => {
@@ -223,8 +223,7 @@ describe('a client import of a denied file', () => {
     timeout,
   )
 
-  // Source: oracle-gaps options table (`behavior: { dev, build }`), gap DV39
-  // (`behavior: 'error'` in dev).
+  // Source: review (`behavior: { dev, build }`, `behavior: 'error'` in dev).
   test.each<{ behavior: NonNullable<ImportProtectionOptions>['behavior'] }>([
     { behavior: 'error' },
     { behavior: { dev: 'error', build: 'mock' } },
@@ -257,7 +256,7 @@ describe('a client import of a denied file', () => {
 describe('the trace of a client import of a denied file', () => {
   // A module under `src/routes` is not an entry: the trace goes on to the
   // router entry.
-  // Source: mutation run R4 (spc:4986, 4987: route modules taken as entries).
+  // Source: mutation testing (route modules taken as entries).
   test(
     'leads from the router entry through a module of src/routes to the importer',
     async () => {
@@ -280,7 +279,7 @@ describe('the trace of a client import of a denied file', () => {
     timeout,
   )
 
-  // Source: mutation run R4 (spc:4899: the dev server's module graph, which
+  // Source: mutation testing (the dev server's module graph, which
   // still has the edges an edit drops from import protection's own graph).
   test(
     'with behavior "error", of an import added by an edit, leads from the router entry',
@@ -303,8 +302,8 @@ describe('the trace of a client import of a denied file', () => {
 
   // In every Start app, a module imports the router entry: Start's client
   // runtime. The trace still starts at the router entry.
-  // Source: r5-gaps N8 (spc:4060, 4062: the module graph trace does not stop
-  // at an entry).
+  // Source: mutation testing (the module graph trace does not stop at an
+  // entry).
   test(
     'starts at the router entry when another module imports the router entry',
     async () => {
@@ -324,9 +323,8 @@ describe('the trace of a client import of a denied file', () => {
 
   // The dev twin of the build test in reported-location.test.ts "the trace is
   // a real import chain from the entry to the importer": any real chain will
-  // do, not necessarily the shortest (SPEC J6.5; V1 ip S07).
-  // Source: r5-gaps N8 (spc:4072, 4073: the module graph search revisits
-  // modules).
+  // do, not necessarily the shortest (SPEC J6.5).
+  // Source: mutation testing (the module graph search revisits modules).
   test(
     'is a real import chain from the entry to the importer',
     async () => {
@@ -366,7 +364,7 @@ export const page = () => c() + s()
 
 // Edits in the order people make them: a module, then the module importing
 // it, each loaded by the client in between.
-// Source: r5-gaps N1 (spc:1680: dropping the edges of the first edit left
+// Source: mutation testing (dropping the edges of the first edit left
 // the importer's edges pointing at nothing, and the second edit's HMR
 // handling threw).
 test(
@@ -399,8 +397,8 @@ test(
 
 // Import protection checks only JavaScript and TypeScript modules; edits of
 // the app's other modules update as usual.
-// Source: mutation run R4 (spc:4497: the edit of a module import protection
-// never compiled).
+// Source: mutation testing (the edit of a module import protection never
+// compiled).
 test(
   'an edit of a CSS module and a JSON module the app imports updates them without an error',
   async () => {
@@ -426,7 +424,7 @@ export const count = () => data.count
 
 // A CSS file that another one `@import`s is in Vite's module graph only as
 // a file (a module without an id).
-// Source: r5-gaps N2 (spc:4916: such a module reached import protection's
+// Source: mutation testing (such a module reached import protection's
 // HMR handling, which threw).
 test(
   'an edit of a CSS file another CSS module @imports updates it without an error',
@@ -472,7 +470,7 @@ export const other = 1
     }
   }
 
-  // Source: oracle-gaps options table (`log`).
+  // Source: review (`log`).
   test(
     "'once' does not log a violation again after an edit",
     async () => {
@@ -489,9 +487,8 @@ export const other = 1
   // from Start's router entry.
   // Impact: with `log: 'always'`, a violation is not logged again after an
   // edit of its module.
-  // Source: found registering Start's entries in the dev harness (mutation
-  // run R3, harness gap H1); this test passed while the harness registered
-  // no entry.
+  // Source: found registering Start's entries in the dev harness; this test
+  // passed while the harness registered no entry.
   test.fails(
     "'always' logs a violation again after an edit",
     async () => {
@@ -528,8 +525,8 @@ export const other = 1
     }
   }
 
-  // Source: mutation run R3c (`log` regressions spc:4462-4465, 4469, 4856:
-  // the edit-based test above is a pin).
+  // Source: mutation testing (`log` regressions: the edit-based test above
+  // is a pin).
   test(
     "'once' does not log a violation again when the dev server reloads every module",
     async () => {
@@ -540,7 +537,7 @@ export const other = 1
     timeout,
   )
 
-  // Source: mutation run R3c, as above.
+  // Source: mutation testing, as above.
   test(
     "'always' logs a violation again when the dev server reloads every module",
     async () => {
@@ -551,7 +548,7 @@ export const other = 1
     timeout,
   )
 
-  // Source: mutation run R3 ip-vite V15.
+  // Source: mutation testing.
   test(
     "'always' does not log a violation again when the client loads other modules",
     async () => {
@@ -584,7 +581,7 @@ export { b } from './b'
   // loop and `resolveId`).
   // Impact: every violation of a denied file appears twice in the dev server
   // output, the second time naming the resolved path as the import.
-  // Source: found writing the `log` rows (oracle-gaps options table).
+  // Source: found writing the `log` rows (review).
   test.fails(
     "'once' logs one warning for one import",
     async () => {
@@ -604,8 +601,7 @@ export { b } from './b'
   // once for the resolved path (the 'once' pin above).
   // Impact: with 'always', the dev server output repeats each violation of
   // a denied file three times per load of its module.
-  // Source: found by mutation run R3c (the 'always' rows of the reload
-  // tests above).
+  // Source: mutation testing (the 'always' rows of the reload tests above).
   test.fails(
     "'always' logs one warning for one import each time its module is loaded",
     async () => {
@@ -634,7 +630,7 @@ export const request = () => getRequest()
     'src/entry.ts': `export * from './a'\n`,
   }
 
-  // Source: mutation run R3 ip-vite V7.
+  // Source: mutation testing.
   test(
     'is logged at its original import or surviving use, alongside the denied file',
     async () => {
@@ -648,7 +644,7 @@ export const request = () => getRequest()
     timeout,
   )
 
-  // Source: mutation run R3 ip-vite V12.
+  // Source: mutation testing.
   test(
     'is a mock that reports its use in the browser console, naming the import, like the mock of the denied file',
     async () => {
@@ -678,7 +674,7 @@ return [probeMock(entry.request(), 'MARK_SECRET'), probeMock(entry.read(), 'MARK
 
   // `mockAccess` (guide/import-protection.md): how the dev client mocks
   // report their use.
-  // Source: mutation run R4 (spc:4859, the option ignored).
+  // Source: mutation testing (the option ignored).
   test.each([
     { mockAccess: 'warn', severities: ['warning'] },
     { mockAccess: 'off', severities: [] },
@@ -710,7 +706,7 @@ return [probeMock(entry.request(), 'MARK_SECRET'), probeMock(entry.read(), 'MARK
     timeout,
   )
 
-  // Source: mutation run R4 (spc:4494: the names the mock exports, read from
+  // Source: mutation testing (the names the mock exports, read from
   // the importer, after an edit of the importer).
   test(
     'added to an importer by an edit is a mock the edited module can import',
@@ -768,9 +764,8 @@ export const read = () => secret() + leak()
    */
   const inPage = ({ located = true } = {}) =>
     originalLocation('src/page.mdx:7:27', 5, { unavailable: !located })
-  // Source: mutation run R4 (spc:4639: the module has no compiled imports
-  // import protection could check its violations against; spc:4579: nor
-  // can it tell whether its imports survived compiling, so a module it
+  // Source: mutation testing (the module has no compiled imports import
+  // protection could check its violations against; nor can it tell whether its imports survived compiling, so a module it
   // imports is reachable through it).
   test(
     'importing a denied file, directly or through a module, gets the mock, and the dev server logs a warning at each importer',
@@ -814,7 +809,7 @@ export const leak = () => secret()
   // an `.mdx` importer has no transform result (code and composed source
   // map), and each finder `resolveImporterLocation` (534-557) tries gives
   // up on it (import-protection/sourceLocation.ts:412-415, 451-452,
-  // 482-483). (V1R ip I05/S22.) A probe that let the cache record `.mdx`
+  // 482-483). A probe that let the cache record `.mdx`
   // located the report at the use (7:27) but logged it twice, as written
   // and as the resolved path: the "'once' logs one warning for one import"
   // pin above (src/import-protection/utils.ts:61, the dedupe key includes
@@ -852,7 +847,7 @@ export const leak = () => secret()
   // Impact: in dev, an `.mdx` (or other non-JS) module that imports a denied
   // specifier fails to load with that internal error, instead of getting
   // the mock and a warning.
-  // Source: found by mutation run R4 (spc:4365-4369).
+  // Source: mutation testing.
   test.fails(
     'importing a denied specifier gets the mock, and the dev server logs a warning naming it',
     async () => {
@@ -886,7 +881,7 @@ return probeMock(entry.request(), 'MARK_')`,
 
 describe('onViolation', () => {
   // What the client then gets is pinned below.
-  // Source: mutation run R3 ip-vite V8.
+  // Source: mutation testing.
   test(
     'returning false silences the warning; it receives the importer',
     async () => {
@@ -917,7 +912,7 @@ describe('onViolation', () => {
   // "Return false ... to allow this specific import (override the denial)",
   // guide/import-protection.md) is a mock in the browser, whose calls return
   // mocks, without any warning.
-  // Source: audit F (dev.test.ts "returning false silences the warning"
+  // Source: review (dev.test.ts "returning false silences the warning"
   // asserted the mock).
   test.fails(
     'returning false allows the import: the client gets the real module',
@@ -969,7 +964,7 @@ export const read = () => getRequest()
   // Bug: same as the pin "returning false allows the import" above, with
   // behavior "error": the denied file is still replaced with its mock.
   // Impact: an allowed import is a mock in the browser.
-  // Source: audit F (dev.test.ts "with behavior "error", an import of $name
+  // Source: review (dev.test.ts "with behavior "error", an import of $name
   // it allows loads" passed with the mock).
   test.fails(
     'with behavior "error", an import of a denied file it allows gets the real module',
@@ -991,7 +986,7 @@ export const read = () => getRequest()
 
   // Only `false` overrides the denial (guide/import-protection.md): an
   // `onViolation` that only records (returns nothing) changes nothing.
-  // Source: mutation run R4 (spc:4741).
+  // Source: mutation testing.
   test(
     'that returns nothing keeps the warning; it receives the importer',
     async () => {
@@ -1013,7 +1008,7 @@ export const read = () => getRequest()
     timeout,
   )
 
-  // Source: mutation run R4 (spc:4763).
+  // Source: mutation testing.
   test.each<{ name: string; files: Record<string, string>; use: string }>([
     { name: 'a denied file', files: deniedFileApp, use: deniedFileUse },
     {
@@ -1059,8 +1054,8 @@ export const read = () => secret()
   /**
    * A logged report of the client import of the marked `src/<marked>.ts` by
    * `src/<importer>.ts` (whose line 1 imports it and whose line 2 uses it at
-   * column 27): at the importer's use, at its import (SPEC J6.5, V1 ip S08),
-   * or at the marked module (audit F ASK-1).
+   * column 27): at the importer's use, at its import, or at the marked
+   * module (SPEC J6.5).
    */
   const markerReport = (importer: string, marked: string) =>
     originalLocation(`client src/${importer}.ts:2:27`, 1, {
@@ -1080,7 +1075,7 @@ export const read = () => secret()
     timeout,
   )
 
-  // Source: mutation run R3 ip-vite V2 (the logging half of the pin below,
+  // Source: mutation testing (the logging half of the pin below,
   // which passes).
   test(
     'is logged when the client loads the importer first',
@@ -1092,7 +1087,7 @@ export const read = () => secret()
     timeout,
   )
 
-  // Source: mutation run R4 (spc:5089: only the first marked module's
+  // Source: mutation testing (only the first marked module's
   // importers were checked).
   test(
     'the importers of each of several server-only-marked modules are logged when the client loads the importers first',
@@ -1126,7 +1121,8 @@ export const peek = () => other()
   // Impact: in dev, the browser runs the real code of server-only-marked
   // modules (in mock mode the import should be a mock), unlike the build,
   // which fails; whether the client gets the mock depends on load order.
-  // Source: found writing the DV37 pin below (gaps/dev-hmr.md).
+  // Source: found writing the pin "after an edit adds the marker, the
+  // violation is logged" below (review).
   test.fails(
     'is mocked when the client loads the importer first',
     async () => {
@@ -1171,12 +1167,12 @@ export const peek = () => other()
   // vite/import-protection-plugin/plugin.ts). Neither the report nor the
   // mock follows (the opposite edit is pinned in known-bugs-dev-server.test.ts
   // "the importer of a module whose server-only marker was removed loads the
-  // module"). The two outcomes are pinned apart (FOLLOWUPS H5: the
-  // report was claimed to work).
+  // module"). The two outcomes are pinned apart (the report was
+  // claimed to work).
   // Impact: after marking a module server-only in dev, the browser keeps
   // running its real code, without any warning, until the importers are
   // edited or the server restarts.
-  // Source: gap DV37, adding direction (gaps/dev-hmr.md).
+  // Source: review (the adding direction).
   test.fails(
     'after an edit adds the marker, the violation is logged',
     async () => {
@@ -1196,8 +1192,8 @@ export const peek = () => other()
   )
 })
 
-// Source: mutation run R3 ip-vite V3 (the SSR counterpart of the client
-// control above).
+// Source: mutation testing (the SSR counterpart of the client control
+// above).
 test(
   'an SSR import of a client-only-marked module the server already transformed is mocked and logged',
   async () => {
@@ -1223,16 +1219,16 @@ export const read = () => widget()
 /**
  * The SSR violations of an app whose `src/a.ts` imports the client-only
  * marked `src/b.ts`: at `a`'s use of `widget` or its import of `./b`, or
- * at `b`'s marker import (audit F ASK-1; SPEC J6.5).
+ * at `b`'s marker import (SPEC J6.5).
  */
 const clientOnlyImporter = {
   a: { environment: 'server', use: 'src/a.ts:2:27', also: ['src/a.ts:1'] },
   marker: { environment: 'server', use: 'src/b.ts:1:8', also: ['src/b.ts:1'] },
 } satisfies Record<string, ExpectedViolation>
 
-// A marker violation may also be reported at the marker (audit F ASK-1);
-// the use in the importer must be logged.
-// Source: mutation run R3 ip-vite V3 (the SSR counterpart of the client
+// A marker violation may also be reported at the marker (SPEC J6.5); the
+// use in the importer must be logged.
+// Source: mutation testing (the SSR counterpart of the client
 // logging test "is logged at the importer's use when the client loads the
 // importer first").
 test(
@@ -1263,7 +1259,7 @@ export const read = () => widget()
 
 // The provider environment of a React Start app with RSC enabled (its
 // `rsc` environment, `tanstackStart({ rsc: { enabled: true } })`).
-// Source: mutation run R3 ip-vite V9.
+// Source: mutation testing.
 test(
   'the server fn provider environment (rsc) mocks and logs an import of a .client file',
   async () => {
@@ -1287,7 +1283,7 @@ export const read = () => widget()
 // marker checks by default, a dependency marking itself server-only
 // included; `excludeFiles: []` checks them. The build rows are in
 // build-options.test.ts ("excludeFiles").
-// Source: V1 F J6.10 (no dev row).
+// Source: review (SPEC J6.10 had no dev row).
 describe('a client import of a dependency that marks itself server-only', () => {
   const app = {
     'node_modules/db-lib/package.json': JSON.stringify({
@@ -1323,7 +1319,7 @@ export const read = () => query()
   // itself server-only and is not pre-bundled (`optimizeDeps.exclude`)
   // fails to load with an internal error, by default and with
   // `excludeFiles: []` alike.
-  // Source: V1 F J6.10 (the dev row was missing).
+  // Source: review (the dev row of SPEC J6.10 was missing).
   test.fails(
     'by default, is not logged, and the client gets the real module',
     async () => {
@@ -1353,7 +1349,7 @@ return probeMock(entry.read(), 'MARK_LIB')`,
       )
       expect(result).toEqual(safeMock)
       // (at the importer's import or use, or at the dependency's marker
-      // import, audit F ASK-1)
+      // import, SPEC J6.5)
       expect(loggedViolations(server)).toEqual([
         originalLocation('client src/a.ts:2:27', 1, {
           others: [
@@ -1369,7 +1365,7 @@ return probeMock(entry.read(), 'MARK_LIB')`,
 
 // The violations a dev server logs for a module both environments load do
 // not depend on which environment transforms it first (SPEC J6.11).
-// Source: V1 F J6.11 (per-environment first-transform order, no row).
+// Source: review (per-environment first-transform order had no row).
 describe('a module the client and the server both load', () => {
   /** `src/a.ts` uses a denied file of each environment. */
   const app = {
@@ -1479,8 +1475,8 @@ export const read = () => widget()
   // Impact: on the server (SSR, the server fn provider), code that runs on
   // a mocked client-only import does so without any console diagnostic; the
   // violation warning of the dev server is the only trace of it.
-  // Source: V1 ip S03 (the unit row demanded that silence); user ruling
-  // 2026-10-19 "mock mode always logs".
+  // Source: review (the unit row demanded that silence); SPEC J6.3: mock
+  // mode always logs.
   test.fails.each([
     { mockAccess: undefined, severity: 'error' },
     { mockAccess: 'error', severity: 'error' },
@@ -1499,7 +1495,7 @@ export const read = () => widget()
 })
 
 describe('reachability from the router entry', () => {
-  // Source: mutation run R3 ip-vite V4(a).
+  // Source: mutation testing.
   test(
     'only a leak is logged, not the imports a server fn factory uses inside .server()',
     async () => {
@@ -1541,7 +1537,7 @@ export const createSecretFn = createServerFn().middleware([mw])
 
   // Control for the pin below: without Vite's pre-transform requests, the
   // helper is never transformed for the client, and nothing is logged.
-  // Source: harness realism (r5-gaps M1): the harness used to turn
+  // Source: harness realism: the harness used to turn
   // pre-transform requests off for every test.
   test(
     'with preTransformRequests off, a helper a server fn factory module uses only inside .server() is not logged',
@@ -1616,7 +1612,7 @@ export const createSecretFn = createServerFn().middleware([mw])
   // inside `.server()` is logged as a client violation, with a trace through
   // an import the client never has; the client is correct (it never loads
   // the helper). A false warning in the most common server fn layout.
-  // Source: mutation run R4 final re-audit (M1), hidden while the harness
+  // Source: mutation testing, hidden while the harness
   // turned pre-transform requests off.
   test.fails(
     'a helper a server fn factory module uses only inside .server() is not logged',
@@ -1638,7 +1634,7 @@ export const createSecretFn = createServerFn().middleware([mw])
 
   // The start entry (`src/start.ts`) is an entry like the router entry: the
   // client loads it, and so what it imports.
-  // Source: mutation run R4 (spc:4524).
+  // Source: mutation testing.
   test(
     'a denied import reached only from the start entry is mocked and logged',
     async () => {
@@ -1662,7 +1658,7 @@ export const startInstance = { leak }
     timeout,
   )
 
-  // Source: mutation run R3 ip-vite V4(b); a control of the harness
+  // Source: mutation testing; a control of the harness
   // registering Start's router entry: the factory module is a module the
   // Start compiler looked up, whose violations are only logged once they
   // are known to be reachable from an entry (without the entry, this test
@@ -1681,7 +1677,7 @@ export const startInstance = { leak }
     timeout,
   )
 
-  // Source: r5-gaps N7 (spc:4641: the factory module's violations found when
+  // Source: mutation testing (the factory module's violations found when
   // the Start compiler looked it up, which include the imports used inside
   // `.server()`, were logged without waiting for its compiled imports).
   test(
@@ -1732,7 +1728,7 @@ ${factoryTopLevelCall}`
     }
   }
 
-  // Source: r5-gaps N3 (spc:5428: the client's edge from a module the Start
+  // Source: mutation testing (the client's edge from a module the Start
   // compiler looked up to the modules it imports).
   test(
     'a denied import of a module a server fn factory module re-exports is logged, with a trace to the use',
@@ -1758,7 +1754,7 @@ ${factoryTopLevelCall}`
   // Impact: in dev, the warning for a module a server fn factory module
   // re-exports names `other.ts:2:24` instead of `src/other.ts:2:24` (low:
   // diagnostics only; an editor link does not open the file).
-  // Source: found writing the r5-gaps N3 test above.
+  // Source: found writing the test above.
   test.fails(
     'a denied import of a module a server fn factory module re-exports is reported at its original import or use, with its path',
     async () => {
@@ -1773,7 +1769,7 @@ ${factoryTopLevelCall}`
     timeout,
   )
 
-  // Source: mutation run R3 ip-vite V7 (spc:5415). The factory module's
+  // Source: mutation testing. The factory module's
   // violations wait for its compiled imports (the Start compiler looked it
   // up), and its denied file import comes before its denied specifier.
   test(
@@ -1873,8 +1869,8 @@ export const q = () => [read(), request(), slow]
     return { server, served }
   }
 
-  // Source: mutation run R3c (the dev 'unknown'-reachability fallback,
-  // spc:4704-4727: some edges to the module lack transform data).
+  // Source: mutation testing (the dev 'unknown'-reachability fallback: some
+  // edges to the module lack transform data).
   test(
     'a module served while its only importer is still being transformed has its denied imports mocked and logged at their original imports or uses',
     async () => {
@@ -1893,7 +1889,7 @@ export const q = () => [read(), request(), slow]
           also: ['src/p.ts:2'],
         },
       ])
-      // Source: r5-gaps N8 (spc:4216, 4218, 4219: the trace from Vite's
+      // Source: mutation testing (the trace from Vite's
       // module graph, which does not have the importer yet, replaced it).
       for (const report of violationsOf(server)) {
         expect(
@@ -1914,8 +1910,8 @@ export const q = () => [read(), request(), slow]
   // the module from its entry.
   // Impact: in dev (mock mode), denied imports of warmed-up modules are
   // mocked without any warning (the build still reports them).
-  // Source: found by mutation run R3c (looking for edges without transform
-  // data); the control is "a client import of a denied file is mocked, and
+  // Source: mutation testing (looking for edges without transform data);
+  // the control is "a client import of a denied file is mocked, and
   // the dev server logs a warning naming the importer at the use".
   test.fails(
     'a denied import of a module warmed up before its importers is logged once the client loads the app',
@@ -1986,7 +1982,7 @@ export const read = () => secret()
   // Impact: with that Vite option, dev import protection mocks the denied
   // imports of modules loaded after the first server request without any
   // warning (low: opt-in option).
-  // Source: found by mutation run R4 (clearEnvState mutants).
+  // Source: mutation testing (clearEnvState mutants).
   test.fails(
     'with perEnvironmentStartEndDuringDev, a denied import of a module the client loads after the server rendered is logged',
     async () => {
@@ -2052,7 +2048,7 @@ export const leak = () => secret()
   // The `importProtection` option of `tanstackStart()` reaches the plugin
   // (the adapter harness above wires the plugin by hand): `onViolation`
   // receives the violation, `mockAccess: 'off'` silences the mock's use.
-  // Source: V1 ip S18.
+  // Source: review.
   test(
     "Start's plugin passes the importProtection option on: onViolation and mockAccess apply",
     async () => {
@@ -2136,7 +2132,7 @@ export default { fetch: () => new Response(String(handler())) }
 // Vite's full-bundle dev (`experimental.bundledDev`), which Start supports:
 // Rolldown bundles the client, so a module can be transformed before its
 // importers.
-// Source: mutation run R4 (the bundledDev branches of the plugin had no
+// Source: mutation testing (the bundledDev branches of the plugin had no
 // unit test; e2e import-protection runs them with E2E_VITE_BUNDLED_DEV).
 describe('full-bundle dev', () => {
   test.each([
@@ -2166,7 +2162,7 @@ describe('full-bundle dev', () => {
     timeout,
   )
 
-  // Source: mutation run R4 (full-bundle dev had no import-protection test).
+  // Source: mutation testing (full-bundle dev had no import-protection test).
   test(
     'denied imports are mocked in the client bundle, and the dev server logs each at its original import or use',
     async () => {
@@ -2199,7 +2195,7 @@ export const request = () => getRequest()
   const traces = (recorded: Recorded) =>
     violationsOf(recorded).map(traceModules)
 
-  // Source: r5-gaps N8 (spc:4997, 4998: every importer taken as an entry).
+  // Source: mutation testing (every importer taken as an entry).
   test(
     'the trace of a denied file imported through a chain of modules leads from the router entry',
     async () => {
@@ -2235,7 +2231,7 @@ export const read = () => secret()
   // starts at the route module: it does not show how the app reaches the
   // route (unbundled dev and builds start at the router entry). Low:
   // diagnostics only.
-  // Source: mutation run R4 final re-audit (M4).
+  // Source: mutation testing.
   test.fails(
     'the trace of a denied file imported from a module of src/routes leads from the router entry',
     async () => {
@@ -2264,8 +2260,7 @@ export const read = () => secret()
 
   // Full-bundle dev bundles only the client: the server still loads modules
   // one by one, and its traces do not change.
-  // Source: r5-gaps N8 (spc:4991, 4992: route modules taken as server
-  // entries).
+  // Source: mutation testing (route modules taken as server entries).
   test(
     'the SSR trace of a .client file imported from a module of src/routes leads from the router entry',
     async () => {
@@ -2313,7 +2308,7 @@ export const fn = createSecretFn().handler(async () => 'data')
   }
   const deniedFactoryUse = 'src/usage.ts:2:19'
 
-  // Source: r5-gaps N7 (spc:2154: the mock the Start compiler's lookup of the
+  // Source: mutation testing (the mock the Start compiler's lookup of the
   // denied factory module gets).
   test(
     'a server fn built with a factory of a denied file gets the mock in the client bundle and is logged at its original import or use',
@@ -2343,7 +2338,7 @@ export const fn = createSecretFn().handler(async () => 'data')
   // Impact: in full-bundle dev with `mockAccess: 'off'`, an app with a server
   // fn built from a factory in a denied file fails to bundle the client
   // (UNLOADABLE_DEPENDENCY). Low: opt-in option, unusual layout.
-  // Source: mutation run R4 final re-audit (M2).
+  // Source: mutation testing.
   test.fails(
     'with mockAccess off, a server fn built with a factory of a denied file gets the mock in the client bundle and is logged at its original import or use',
     async () => {
@@ -2364,7 +2359,7 @@ export const fn = createSecretFn().handler(async () => 'data')
   // Start's virtual client entry, the bundle's input, imports the app's
   // `src/client.tsx`, which may import modules before the router entry's
   // imports reach them.
-  // Source: r5-gaps N6 (spc:4664-4698: the violations of a module the bundle
+  // Source: mutation testing (the violations of a module the bundle
   // reaches before the router entry does are kept until it does).
   test(
     'a denied import of a module the bundle input imports before the router entry reaches it is logged at its original import or use',
@@ -2423,7 +2418,7 @@ export const app = [read, router]
 
 // The route module the router plugin compiles (with route HMR in dev): a
 // violation is located in the route file as the user wrote it.
-// Source: r5-gaps N12 (rp:532-534: the route module's source map without
+// Source: mutation testing (the route module's source map without
 // the source text, so import protection showed the compiled module).
 test(
   "a denied import used in a route module is located in the route file's source, with Start's whole plugin",
@@ -2447,7 +2442,7 @@ export const getRouter = () => ({ routeTree })
     await server.load('/src/router.ts')
     await server.idle()
     const use = locationIn('src/routes/index.tsx', route, 6, 'secret()')
-    // At the use or the import (SPEC J6.5; V1R ip I01).
+    // At the use or the import (SPEC J6.5).
     expectViolationsAt(server, [
       { environment: 'client', use, also: ['src/routes/index.tsx:2'] },
     ])
@@ -2456,7 +2451,7 @@ export const getRouter = () => ({ routeTree })
 )
 
 describe('diagnostics', () => {
-  // Source: mutation run R3 ip-vite V14 (the served code of a JSX module
+  // Source: mutation testing (the served code of a JSX module
   // has an extra import line, of the JSX runtime).
   test.each([
     {
@@ -2477,7 +2472,7 @@ export const Page = () => <div>{String(secret())}</div>
       importProtection: { client: { files: ['**/private/**'] } },
       expected: 'client src/a.tsx:2:40',
     },
-    // Source: r5-gaps N7 (spc:4144: a module without exports, imported for
+    // Source: mutation testing (a module without exports, imported for
     // its side effects, was located in its compiled code).
     {
       name: 'a use of a denied file in a module without exports (client)',
@@ -2497,7 +2492,7 @@ export const Page = () => <div>{String(1)}</div>
       importProtection: {},
       expected: 'server src/a.tsx:1:8',
       // A marker violation may be reported at the importer's use instead
-      // (audit F ASK-1): a report in `src/a.tsx` must be at the marker.
+      // (SPEC J6.5): a report in `src/a.tsx` must be at the marker.
       marker: true,
     },
   ])(
@@ -2535,7 +2530,7 @@ export const Page = () => <div>{String(1)}</div>
   // Impact: in dev, the warning for a denied file imported through an alias
   // in a JSX module points at a line that is not in the source (here 4:77
   // of a two-line module).
-  // Source: mutation run R4 (spc:5436, that late source map capture).
+  // Source: mutation testing (that late source map capture).
   test.fails(
     'in a JSX module, a use of a denied file imported through a subpath import alias is located on its source line',
     async () => {
@@ -2562,7 +2557,7 @@ export const Page = () => <div>{String(secret())}</div>
     timeout,
   )
 
-  // Source: mutation run R4 (spc:4174: a pattern rule cannot be found in
+  // Source: mutation testing (a pattern rule cannot be found in
   // the module's code as text, unlike the specifiers of the rows above).
   test(
     'in a JSX module, a use of a specifier denied by a custom pattern rule (client) is located on its source line',
@@ -2617,7 +2612,7 @@ export const read = () => secret()
     )
   }
 
-  // Source: mutation run R4 (the trace from Vite's module graph, which dev
+  // Source: mutation testing (the trace from Vite's module graph, which dev
   // import protection prefers when it is longer than its own: here, its own
   // stops at `maxTraceDepth`).
   test(
@@ -2645,7 +2640,7 @@ export const read = () => secret()
   // trace, keeping the importer").
   // Impact: in dev, `maxTraceDepth` does not cut traces (low: diagnostics
   // only).
-  // Source: found by mutation run R4 (module graph trace mutants).
+  // Source: mutation testing (module graph trace mutants).
   test.fails(
     'with maxTraceDepth, a deeper trace is cut, keeping the importer',
     async () => {

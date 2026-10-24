@@ -33,7 +33,7 @@ async function callOnServer(served: ServedCase, names: Array<string>) {
 // Each output runs only its environment's implementation; an isomorphic fn
 // without one for that environment is a no-op returning undefined, and the
 // client has no server implementation. `noImpl` stays a runtime call.
-// Replaces the former snapshot fixtures of this directory (N2).
+// Replaces the former snapshot fixtures of this directory.
 describe('each output runs the implementation of its environment', () => {
   const files = {
     'x.server.ts': `export const server = (value: string) => value\n`,
@@ -48,7 +48,7 @@ import { client } from './x.client'
   /**
    * The client does not load the server module, and the SSR environment
    * does not load the `.client` module (import protection denies it on the
-   * server, user ruling 2026-10-18).
+   * server, SPEC J4.11, §5.12).
    */
   async function expectEnvImports(served: ServedCase) {
     expectNotLoaded(await served.loads(), ['./x.server'])

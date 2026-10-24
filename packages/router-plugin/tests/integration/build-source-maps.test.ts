@@ -252,9 +252,9 @@ describe('vite', () => {
 // These rows flip once unplugin keeps the map: with a loader passing an
 // identity map in front of unplugin's (so it returns the plugin's map), the
 // four split-component rows pass (checked 2026-10-18). The route-module and
-// shared-module rows (added for V1R split S12) fail the same way: the frame
+// shared-module rows fail the same way: the frame
 // maps to the generated module's line, one above the throw's.
-// Source: oracle-gaps M1; upstream (unplugin), not the router plugin.
+// Source: upstream (unplugin), not the router plugin.
 // Impact: stack traces, devtools and error trackers point at lines of the
 // generated split module (here line 3 instead of line 5 of the route file).
 describe.each(['rspack', 'webpack'] as const)('%s', (bundler) => {

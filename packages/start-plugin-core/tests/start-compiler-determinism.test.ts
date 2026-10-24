@@ -11,9 +11,8 @@
  * root are build clauses: integration/start-compiler-build-determinism.test.ts
  * and integration/start-compiler-build-custom-ids.test.ts (real `vite build` and
  * Start's preview server). Windows module ids (Rsbuild on Windows) are not
- * reachable through a POSIX host; only a Windows CI build covers them
- * (N24).
- * Source: oracle-gaps H3 (round 2); FIX-PLAN S01, S02.
+ * reachable through a POSIX host; only a Windows CI build covers them.
+ * Source: review.
  */
 import { beforeAll, describe, expect, test } from 'vitest'
 import {
@@ -25,7 +24,7 @@ import {
 } from './regression-helpers'
 
 /**
- * The host defaults of the B2 lead's branch (until it is merged): no import
+ * The host defaults these tests use: no import
  * protection (its dev mock would hide a leaked server import from the
  * client's loads) and an app tsconfig with `verbatimModuleSyntax` (without
  * it, Vite's TypeScript transform drops unreferenced imports after the

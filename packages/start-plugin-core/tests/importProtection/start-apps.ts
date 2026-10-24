@@ -14,8 +14,8 @@
  * callback receives them (`server.violations`, `build.violations`; SPEC
  * J6.5, J6.6), never parsed from the printed report. That each is printed
  * (a warning or an error the user sees) is checked by `expectViolationsAt`
- * and `expectPrinted`, only for the file and position it names (ruling
- * 2026-10-22).
+ * and `expectPrinted`, only for the file and position it names (SPEC G5,
+ * §5.7).
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -106,8 +106,7 @@ export function violationRecorder(
 
 /**
  * The steps of `info.trace` from the entry to the importer. A trace may be
- * listed entry first or entry last (SPEC J6.5, ruling "restructured
- * compilers", R10): one whose first step is the importer, and whose last
+ * listed entry first or entry last (SPEC J6.5, §5.19): one whose first step is the importer, and whose last
  * step is not, is listed entry last.
  */
 export function traceFromEntry(info: ViolationInfo): ViolationInfo['trace'] {
@@ -170,7 +169,7 @@ export function inEnvironment(
 /**
  * A violation a test expects: its environment type, the importer's use of
  * the denied import (`use`: `file:line:column`) and the other places it
- * may be reported at instead (SPEC J6.5, V1R ip I01: any line of the
+ * may be reported at instead (SPEC J6.5: any line of the
  * import, another genuine use, a marker's origin), written out: `file:line`
  * (any column), `file:line:column`, or `file` (no location).
  */
@@ -188,7 +187,7 @@ export const violationLabel = (expected: ExpectedViolation) =>
  * The file, line and column of a location (`file`, `file:line` or
  * `file:line:column`): only a trailing `:line` or `:line:column` is the
  * position, so a file named with a colon (Rspack's `webpack:/src/a.tsx`,
- * the F2 pin) keeps its whole name.
+ * pinned in reported-location.test.ts) keeps its whole name.
  */
 export function locationParts(location: string): {
   file: string
@@ -207,7 +206,7 @@ export function locationParts(location: string): {
  * The file of the app a location names: its file (`locationParts`) without
  * a URL scheme such as Rspack's `webpack:/` (how the report names the file
  * is pinned in reported-location.test.ts, "the reported importer is a file
- * of the app", F2).
+ * of the app").
  */
 export const appFileOf = (location: string) =>
   locationParts(location).file.replace(/^[a-z]+:\/+/, '')
@@ -461,8 +460,8 @@ export const factoryTopLevelCall = `export const request = getRequest()\n`
  * `export * from`, line 1) and a module importing one of its names
  * (`src/c.ts`, as `v`), with the import-protection options that deny it:
  * a denied file, and a package denied by a specifier rule. The denied
- * module's value carries `MARK_SECRET`. For the ruling Q4 rows (RULINGS
- * "Q4: `export *` of a denied module").
+ * module's value carries `MARK_SECRET`. For the rows of SPEC J6.8 on
+ * `export *` of a denied module.
  */
 export const starReexportApps: Array<{
   name: string
@@ -501,8 +500,7 @@ export const starReexportApps: Array<{
  * marker; any column of it, or the file without a location), at the
  * importer's use of the import (`use`, `file:line:column`) or at a line of
  * the importer's import of the marked module (`imports`, `file:line`).
- * Each location is fine (coordinator ruling on audit F ASK-1; SPEC J6.5,
- * V1R ip I01).
+ * Each location is fine (SPEC J6.5).
  */
 export function expectMarkerViolation(
   violation: Violation,
@@ -519,8 +517,8 @@ export function expectMarkerViolation(
 
 /**
  * Asserts that a `severity` diagnostic the user sees (`diagnostics`: every
- * channel) names the importer of `violation` and its position (SPEC §5.7:
- * file and position; ruling 2026-10-22).
+ * channel) names the importer of `violation` and its position (SPEC G5, §5.7:
+ * file and position only).
  */
 export function expectPrinted(
   diagnostics: Array<Diagnostic>,

@@ -7,7 +7,7 @@
  *
  * One browser per test process, launched on first use, and kept for the
  * process (also across test files when the project does not isolate them).
- * What one process opens in it is bounded (FINAL-PASS #40: under heavy load,
+ * What one process opens in it is bounded (under heavy load,
  * an unbounded number of pages and in-flight module requests made Chromium
  * fail requests with `ERR_INSUFFICIENT_RESOURCES`):
  * - `runInPage` runs on a pool of at most `runPageLimit` pages, which runs
@@ -113,8 +113,8 @@ async function takeRunPage(): Promise<Page> {
  * reloads the page when the server sends a full reload (e.g. after the
  * edit a test makes right after the run). A reload starting while the page
  * leaves the document outlives the navigation to `about:blank`, and then
- * interrupts the next run's navigation (FINAL-PASS #40 follow-up: seen
- * under load when this happened after the run returned). A page that
+ * interrupts the next run's navigation (seen under load when this happened
+ * after the run returned). A page that
  * cannot leave its document (a script holds it, the renderer crashed) is
  * closed instead.
  */
@@ -139,7 +139,7 @@ export interface PageRun<T = unknown> {
 
 /**
  * Runs client code in a real browser, fast: a page of the process's run
- * pages (N24; RULES-AUDIT R24), held by this run alone. The page loads
+ * pages, held by this run alone. The page loads
  * `pageUrl` fresh (a new document: no module or global state of an earlier
  * run survives), then, when `moduleUrl` is given, imports that module as
  * the browser imports a module of the page (real ES module linking: a
@@ -257,7 +257,7 @@ export async function openPage(
      * The document of `url`, instead of what its server answers (e.g. a page
      * of a dev server that serves no HTML, which loads the client code the
      * dev server serves); the page's other requests reach the server. Not
-     * for a check that involves HMR (final pass #16): the given document is
+     * for a check that involves HMR: the given document is
      * none the dev server transformed (no HMR client or refresh preamble it
      * injects), and a dev server's HMR client may not connect from it. Open
      * a document the dev server serves instead (`index.html` of a `browser`

@@ -7,11 +7,11 @@
  * the edits are files written to disk, which Vite's watcher reports.
  *
  * - A loaded child hot-updates in place, and a sibling whose code had not
- *   loaded yet shows the edited version when it opens (FIX-PLAN V2-20,
- *   SPEC J5.2, G10), React and Solid.
+ *   loaded yet shows the edited version when it opens (SPEC J5.2, G10),
+ *   React and Solid.
  * - Route code splitting and `<Hydrate>` in one route module: the split
  *   route component's boundaries hydrate the server's HTML (splitter
- *   composition, FIX-PLAN HYD-04).
+ *   composition).
  *
  * The Rsbuild counterparts of the edit rows: hydrate-dev-rsbuild.test.ts.
  */
@@ -43,7 +43,6 @@ const reactOptimizeDeps = {
 }
 
 describe('Vite dev, React', () => {
-  // Source: FIX-PLAN V2-20 (React half)
   test(
     'a loaded child hot-updates in place, and a sibling opened later shows the edited version',
     async () => {
@@ -87,7 +86,6 @@ export const Route = createFileRoute('/')({ component: Widgets })
   // The router splits the route component into its own module, which the
   // Hydrate plugin splits again: the page hydrates the server's HTML with
   // both, the deferred child loading its code on its interaction.
-  // Source: FIX-PLAN HYD-04 "splitter composition" (W2-h-1 hand-over)
   test(
     'boundaries of a split route component hydrate the server HTML',
     async () => {

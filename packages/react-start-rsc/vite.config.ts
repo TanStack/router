@@ -36,7 +36,7 @@ const config = defineConfig({
   test: {
     name: packageJson.name,
     watch: false,
-    // At most 4 test processes per Vitest run (PERF-STUDY 2026-10-23): each
+    // At most 4 test processes per Vitest run: each
     // runs real bundlers, dev servers and its own browser, and Nx runs several
     // packages' tiers at once. More workers add swap and load flakes, not
     // speed. `--maxWorkers` on the command line still overrides it.

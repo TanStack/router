@@ -18,9 +18,9 @@ export const shapeOf = `const shapeOf = (value) => JSON.parse(JSON.stringify(val
  * A page expression of what the client must get of the options of the
  * middleware `middleware` (a page expression): its `type`, and whether a
  * server implementation or a validator ships (`server`, `validator`: `true`
- * when present). On the client both are absent, not stubs (SPEC J4.8,
- * ruling Q3); other fields of `.options` (metadata a compiler adds) are free
- * (SPEC §5.19, ruling "client middleware options").
+ * when present). On the client both are absent, not stubs (SPEC J4.8);
+ * other fields of `.options` (metadata a compiler adds) are free
+ * (SPEC §5.19).
  */
 export const clientMiddlewareOf = (middleware: string) =>
   `((options) => ({ type: options.type, server: options.server !== undefined, validator: options.validator !== undefined }))(${middleware}.options)`

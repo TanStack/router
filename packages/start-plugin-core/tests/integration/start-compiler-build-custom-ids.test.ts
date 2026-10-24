@@ -13,7 +13,7 @@
  *   correctness, not id equality: G4).
  * Moved from the unit test start-compiler-determinism.test.ts, which
  * compiled through the internal compiler; its Windows-path rows are not
- * reachable through a POSIX host (N24).
+ * reachable through a POSIX host.
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { expectRelocatable } from '@tanstack/compiler-test-utils/determinism'
@@ -26,7 +26,7 @@ import {
 import type { StartCase, StartHost } from '../regression-helpers'
 
 /**
- * The host defaults of the B2 lead's branch (until it is merged): no import
+ * The host defaults these tests use: no import
  * protection (its dev mock would hide a leaked server import from the
  * client's loads) and an app tsconfig with `verbatimModuleSyntax` (without
  * it, Vite's TypeScript transform drops unreferenced imports after the

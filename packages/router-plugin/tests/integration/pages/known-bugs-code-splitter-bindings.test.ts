@@ -93,7 +93,6 @@ describe('module state next to bindings that read Route', () => {
   // (`removeBindingsDependingOnRoute`), and a destructuring is never split
   // across modules, so a `Map` declared next to a binding that reads `Route`
   // is created by the route module and again by the chunk that reads it.
-  // Source: gap S19.
   // Impact: the loader and the component use two different caches.
   test.fails(
     'a destructuring whose sibling reads Route keeps one cache for the loader and the component',
@@ -251,7 +250,7 @@ export const Route = createFileRoute('/')({
 })`,
     },
     {
-      // Source: #8504 (mutation testing P-03).
+      // Source: #8504 (mutation testing).
       name: 'a pragma written with two spaces',
       code: `/** @jsxRuntime classic */
 /** @jsx  jsx */
@@ -287,7 +286,7 @@ export const createJsx = () => {
   // and keeping it in the chunk without sharing it creates it again there.
   // Impact: the split component throws "jsx is not defined", or the route
   // module and the chunk each create their own factory.
-  // Source of the `@jsx` only row: the #8504 probe (R-13; a project whose
+  // Source of the `@jsx` only row: #8504 (a project whose
   // JSX runtime is classic: `@vitejs/plugin-react` with `jsxRuntime:
   // 'classic'`).
   test.fails.each([
@@ -360,7 +359,7 @@ export default Page`,
       binding: 'Page',
     },
     {
-      // Source: #8504 (lost case L4).
+      // Source: #8504.
       name: 'a function exported as default by specifier',
       declaration: `function Page() {
   return <p>page</p>
@@ -396,12 +395,12 @@ export const Route = createFileRoute('/')({ ${options}component: ${binding} })
   // two functions: a binding that reads `Route` is never shared
   // (`removeBindingsDependingOnRoute`), so the chunk declares a copy of the
   // exported function. Importers of the route module and the route must
-  // share one instance (user ruling 2026-10-17, P1): a copy in the chunk is
-  // this bug even when the function holds no state. Source: gap S19.
+  // share one instance (SPEC G9, J2.4): a copy in the chunk is
+  // this bug even when the function holds no state.
   // Impact: code that relies on the identity of an exported hook or helper
   // (memoisation, registries, `===` checks) sees two of them.
   // (The title lives in `staticData`, typed by the documented
-  // `StaticDataRouteOption` augmentation; V1 split F28.)
+  // `StaticDataRouteOption` augmentation.)
   test.fails(
     'an exported function that reads Route is the one the split component calls',
     async () => {
@@ -454,7 +453,7 @@ return {
   // Bug: a split component that reads a `Route` declared with `const` and
   // exported later (`export { Route }`) gets a chunk that creates the route
   // again instead of importing it from the route module.
-  // Source: corpus-diff, route files that end with `export { Route }`
+  // Source: real apps: route files that end with `export { Route }`
   // (rahulroy0322/RacketHub, mchar7/nohiki-monorepo); #8504
   // (code-splitter-route-options.test.ts), where it passes.
   // Impact: the split component reads a second route object, which the
@@ -625,8 +624,8 @@ return [await options.loader(), load()]`),
   /**
    * Loads a route whose errorComponent option is the exported
    * `PostErrorComponent`, written as `value`, next to another module of the
-   * app that imports `PostErrorComponent` from the route file (ruling P1:
-   * through a real importer). `withAuth` (`./with-auth`) is an identity
+   * app that imports `PostErrorComponent` from the route file (SPEC G9,
+   * J2.4: through a real importer). `withAuth` (`./with-auth`) is an identity
    * function. The component records the instance it runs as (`./see`).
    * Returns what the route's errorComponent renders, whether it ran as the
    * importer's instance, and whether the option is split or the user is told
@@ -693,7 +692,7 @@ return { rendered, sameInstance: seen.length === 1 && seen[0] === imported }`)
   // the exported component, so the route renders another instance than the
   // one other modules import (and no "not code-split" warning is shown).
   // Either outcome of the bare identifier (one instance, split or unsplit
-  // with a warning) is fine (ruling P1, decision D11).
+  // with a warning) is fine (SPEC G9, J2.4, J2.8).
   // Reach: the repository's examples (react and solid
   // basic-virtual-file-based posts-detail.tsx) and e2e apps (react, solid
   // and vue basic-file-based-code-splitting, virtual and rspack-virtual
@@ -701,8 +700,7 @@ return { rendered, sameInstance: seen.length === 1 && seen[0] === imported }`)
   // PostErrorComponent as any`; no other module imports it there, so they
   // show no symptom.
   // Source: compilers.ts:945-960 (the export check only handles a bare
-  // Identifier), :572-591, the copy via :1170-1242; fuzzing (oracle mode,
-  // round 2, F1).
+  // Identifier), :572-591, the copy via :1170-1242; fuzzing.
   // Impact: code that relies on the identity of the component (`===`
   // checks, registries, memoised props) sees two of them, and the component
   // code ships twice (see the build pin below).
@@ -727,10 +725,10 @@ describe('TypeScript-only syntax', () => {
   // Bug: the code splitter rejects an ES decorator after `export` (`export
   // @dec class`, valid since TypeScript 5.0): "Decorators must be placed
   // before the export keyword".
-  // A real bug (ruling NEW-1): the syntax is valid TypeScript. The pin reads
+  // A real bug (SPEC §2.1, G1): the syntax is valid TypeScript. The pin reads
   // the compiled module without running the page (whether a browser runs
   // the decorator syntax is not the compiler's).
-  // Source: round-3 mutation testing (router-utils P6).
+  // Source: mutation testing.
   // Impact: a route file with such a class cannot be built once code
   // splitting is on.
   test.fails('a decorator after `export` compiles', async () => {
@@ -767,8 +765,8 @@ export const Route = createFileRoute('/')({ component: () => <div /> })
 
   // Bug: the code splitter cannot parse a constructor parameter decorator
   // (TypeScript `experimentalDecorators`, as dependency injection libraries
-  // use them) and fails the build. Source: the #8504 confidence campaign
-  // (F-22), where #8504 compiles it.
+  // use them) and fails the build. Source: review of #8504, which compiles
+  // it.
   // Impact: a route file with such a class cannot be built once code
   // splitting is on.
   test.fails(
@@ -942,7 +940,7 @@ export const Route = createFileRoute('/')({ component: Page })
   // workaround here; router-utils/src/ast.ts:72 `generateFromAst` prints
   // with it). The Start compiler has the same bug (pin in
   // start-plugin-core/tests/start-compiler-preserves-user-code.test.ts).
-  // Source: fuzzing (oracle mode, round 2).
+  // Source: fuzzing.
   // Impact: the split component's chunk fails to compile, so the build
   // fails.
   test.fails(

@@ -16,7 +16,7 @@ import {
 // handler either way. "Drops" is observed as loading: the modules a page
 // importing the module loads (`loads`: what the browser requests and Vite's
 // client module graph holds), never as an inventory of its import
-// declarations (FIX-PLAN S06). Every module the fixtures import is a real
+// declarations. Every module the fixtures import is a real
 // file of the case.
 
 const host = useStartHost()
@@ -500,8 +500,7 @@ export const fn = ${wrap(`createServerFn().validator(schema)`)}.handler(async ({
   // declaration keeps its validator. An inline chain is stripped ("when the
   // handler only reads it through a validator or a middleware", above).
   // Source: start-compiler/compiler.ts:1296-1330 (the chain walk stops at an
-  // identifier), start-compiler/handleCreateServerFn.ts:277-290; fuzzing (oracle
-  // mode, N4).
+  // identifier), start-compiler/handleCreateServerFn.ts:277-290; fuzzing.
   // Impact: the validator and its imports (schemas, server-only modules)
   // ship to the client, which never runs them.
   test.fails.each([

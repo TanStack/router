@@ -1,5 +1,5 @@
 /**
- * Two inputs of the V2 review in one real Vite production build through
+ * Two inputs a review found untested, in one real Vite production build through
  * Start's plugin (build-harness.ts), next to their compiler-level rows in
  * start-compiler-v2-inputs.test.ts:
  * - `.jsx` modules (SPEC §2.1, J4.1, J2.1): a `.jsx` server fn module with
@@ -7,8 +7,6 @@
  * - a server fn builder reused as middleware (J4.5, J4.8):
  *   `createServerFn().middleware([auth])` passed in another server fn's
  *   `.middleware([...])`.
- * Source: FIX-PLAN V2-11 (start-fable SF-19; 532 corpus files), V2-25
- * (start-fable SF-6).
  */
 import { afterAll, beforeAll, expect, test } from 'vitest'
 import {
@@ -79,7 +77,7 @@ beforeAll(async () => {
 afterAll(() => dispose?.())
 
 test(
-  'vite build: a .jsx server fn module and a .jsx route file: the client calls by id without the handler, the route component is lazy and renders (V2-11)',
+  'vite build: a .jsx server fn module and a .jsx route file: the client calls by id without the handler, the route component is lazy and renders',
   async () => {
     const { client, ssr } = build
     expect({
@@ -119,7 +117,7 @@ test(
 )
 
 test(
-  'vite build: a server fn builder reused as middleware: the client runs auth.client() and has no auth.server() code; the server runs auth.server() then the handler (V2-25)',
+  'vite build: a server fn builder reused as middleware: the client runs auth.client() and has no auth.server() code; the server runs auth.server() then the handler',
   async () => {
     const { client, ssr } = build
     expect(client.where(/MARK_AUDIT_USER|audit\.server/)).toBe('nowhere')

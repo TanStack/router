@@ -1,5 +1,5 @@
 /**
- * Where a `createServerFn` can be written (SPEC J4.6; user ruling D13):
+ * Where a `createServerFn` can be written (SPEC J4.6):
  * top-level server fns work everywhere; a server fn nested in a function
  * whose handler reads no local of the function works too (goal pins); any
  * other position works or is rejected with a clear error at the call, and
@@ -107,7 +107,7 @@ test.each(literalPlacements)(
 )
 
 // Bug: dependency-free nested handlers remain in successful client output.
-// Source: start-SYNTH S13; the four public make/pick usages below.
+// The rows: the four public make/pick usages below.
 // Impact: client calls execute the server handler locally instead of using RPC.
 test.fails.each(literalPlacements)(
   'a server fn declared in $name never ships its nested handler to the client',
@@ -162,7 +162,7 @@ test.each(placements.filter((placement) => !placement.declarator))(
 const wrappedTwice = `const wrap = <T,>(fn: T) => fn
 export const fn = wrap(wrap(createServerFn().handler(async () => db.inner())))`
 
-// Loosened regression of the goal below (S16): wrapped in user helper calls,
+// Loosened regression of the goal below: wrapped in user helper calls,
 // a top-level server fn never ships its handler to the client, whatever
 // factories the module imports.
 test.each<PlacementHead>(['createServerFn alone', 'another Start factory'])(
@@ -183,7 +183,7 @@ test.each<PlacementHead>(['createServerFn alone', 'another Start factory'])(
 // supported recognition form (SPEC J4.5), so rejecting is no fix here.
 // Impact: the build fails for a module whose server fn the user can only
 // write unwrapped.
-// Source: FIX-PLAN S16 (Sol F17); declaration-sites "wrapped in two calls".
+// Source: declaration-sites "wrapped in two calls".
 test.fails.each<PlacementHead>([
   'createServerFn alone',
   'another Start factory',
@@ -216,7 +216,7 @@ export const fn = createServerFn().validator().handler(async () => 1)`
   }
 })
 
-// Goal (N13, user ruling D13): a server fn nested in a function is supported
+// Goal (SPEC J4.6): a server fn nested in a function is supported
 // like a top-level one when its handler reads no local of the function: the
 // client gets an RPC, and the server runs its handler under the id the
 // client uses. (One whose handler reads a local may also be rejected:
@@ -243,7 +243,7 @@ describe.each<PlacementHead>(['createServerFn alone', 'another Start factory'])(
   },
 )
 
-// Goal (N13, user ruling D13): a server fn created in the handler of another
+// Goal (SPEC J4.6): a server fn created in the handler of another
 // one is supported. The client gets an RPC of the outer server fn, its
 // handler runs on the server under the id the client uses and calls the
 // inner one there; how the inner one is compiled is left open. Today it is
@@ -273,7 +273,7 @@ test.fails.each<PlacementHead>([
   },
 )
 
-// Goal (N13, user ruling D13): two functions of a module each declare a
+// Goal (SPEC J4.6): two functions of a module each declare a
 // server fn under the same local name; each runs its own handler.
 // Today they are left untransformed, rejected or extracted into an invalid
 // server module (pins in known-bugs-start-compiler.test.ts, placement "a

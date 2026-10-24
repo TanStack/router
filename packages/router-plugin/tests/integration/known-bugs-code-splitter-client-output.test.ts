@@ -56,7 +56,7 @@ export const Route = createFileRoute('/')({
 
   // Whether a server-only option reaches the client bundle is the router
   // transform's decision (an option it keeps stays referenced by the route
-  // options), so one bundler shows it (speedup 7: the Rspack and webpack
+  // options), so one bundler shows it (the Rspack and webpack
   // cells of the two tests below were decided by the same transform as
   // their Vite cells).
 
@@ -251,7 +251,7 @@ export const Route = createFileRoute('/')({
   // code-split") is injected into the route module unless the build
   // process's `NODE_ENV` is `production`, instead of following the
   // bundler's mode as the rest of the code splitter does. webpack and Rspack
-  // set `NODE_ENV` only inside the bundle. Source: gap CC-P2.
+  // set `NODE_ENV` only inside the bundle.
   // Impact: webpack/Rspack production bundles built from a shell without
   // `NODE_ENV` log a development warning in every user's console, with the
   // developer's absolute file path.

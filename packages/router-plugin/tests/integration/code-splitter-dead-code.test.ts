@@ -7,7 +7,7 @@ import { build, clientMountEntry, head, routeApp } from '../build-harness'
  * Which code a production client build drops is the bundler's decision: one
  * app per bundler holds the route of every test below (`routes/index.tsx`
  * and the routes the entry exports as `<name>Route`), built once and run
- * once per route (speedup 6).
+ * once per route.
  */
 type BundlerName = 'vite' | 'rspack' | 'webpack'
 
@@ -138,12 +138,12 @@ describe('the reference module only drops code that splitting left unused', () =
   // eliminates newly unreferenced identifiers", "unexported circular references"
   // and "SCC with external caller used -> all preserved". Whether unused user
   // code is kept or dropped is free, and unused code may name a binding its
-  // module no longer declares (user ruling 2026-10-17, widened: the bundlers
+  // module no longer declares (SPEC G8: the bundlers
   // delete it; the validator checks what Rolldown's tree-shaking keeps);
   // every module stays valid and the split component still reaches its
   // helper.
 
-  // The other half of the ruling: the unused functions (and any binding they
+  // The other half of that rule: the unused functions (and any binding they
   // name that their module no longer declares) do not reach a production
   // client bundle.
   it.each(['vite', 'rspack', 'webpack'] as const)(
@@ -167,7 +167,7 @@ describe('the reference module only drops code that splitting left unused', () =
 // Bundlers drop an unused call of a function annotated #__NO_SIDE_EFFECTS__,
 // so the annotation must move with the function into whichever module the
 // code splitter puts it in, also in a file whose pragma comment every
-// emitted module repeats (SPEC G2, G12; V1 split F38). Observed on the
+// emitted module repeats (SPEC G2, G12). Observed on the
 // production client output: the unused call (and the effect it would run)
 // is gone, the used one still renders. The emitted name of the function is
 // free.

@@ -1,5 +1,5 @@
 /**
- * Controls of the edit completion by outcome (outcome.ts; N21): the wait
+ * Controls of the edit completion by outcome (outcome.ts): the wait
  * ends once the outcome holds with the hosts quiet, however many steps the
  * edit took and however late after the first one it shows; it fails at
  * its one bound, or at once on a problem. The old page wait failed a

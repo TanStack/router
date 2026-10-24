@@ -1,6 +1,6 @@
 /**
- * `<Hydrate>` modules rendered and hydrated through the public Start plugin
- * (SYNTHESIS recipe P4): the case module of a Start app on a real dev server
+ * `<Hydrate>` modules rendered and hydrated through the public Start
+ * plugin: the case module of a Start app on a real dev server
  * (`./start-host`: `tanstackStart()` and the framework's Vite plugin) is
  *
  * - rendered on the server by the SSR environment (its module runner
@@ -20,7 +20,7 @@
  *   plugin), rendered by its SSR environment with the same renderer, where
  *   the real `Hydrate` renders its children in place.
  *
- * Markup is compared semantically (SPEC N13): the page parses each HTML
+ * Markup is compared semantically: the page parses each HTML
  * string and serializes its DOM again with sorted attributes, merged text
  * and no comments (`html`), hydration ids blanked where the uncompiled
  * source is the reference. What loads when is read from the page's own
@@ -931,7 +931,7 @@ ${options.script ?? 'return null'}
  * an empty map), the case module `file`'s own graph imports it: a module
  * of the case directory or one whose map names a file of it imports it
  * (an import edge, static or dynamic), reached from the case module through
- * such modules only (final pass #47: never through a module of the harness
+ * such modules only (never through a module of the harness
  * or another directory, a package or a virtual module of its own). A
  * module the dev server fails to serve is not the case's code, nor is a
  * package, the runtime or Vite's client. Observation only: the dev

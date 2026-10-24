@@ -15,7 +15,7 @@ import {
 import type { StartCase, StartHost } from './regression-helpers'
 
 /**
- * The host defaults of the B2 lead's branch (until it is merged): no import
+ * The host defaults these tests use: no import
  * protection (its dev mock would hide a leaked server import from the
  * client's loads) and an app tsconfig with `verbatimModuleSyntax` (without
  * it, Vite's TypeScript transform drops unreferenced imports after the
@@ -340,9 +340,8 @@ export const fn = createServerFn().handler(async () => red)`,
 })
 
 // A JSON import written with the deprecated `assert` keyword (Node 22+ and
-// the bundlers only read `with`) keeps working in every output (user ruling
-// D9: `assert` stays supported; dropping it once nobody writes it is fine).
-// Source: FIX-PLAN V2-23.
+// the bundlers only read `with`) keeps working in every output (SPEC J2.17:
+// `assert` stays supported; dropping it once nobody writes it is fine).
 test('an import attribute written with assert keeps working in every output', async () => {
   const served = await serveCase(await host(), {
     'module.tsx': `import { createServerFn } from '@tanstack/react-start'
@@ -361,7 +360,6 @@ export const fn = createServerFn().handler(async () => secrets.key)`,
 // fn: every environment serves and evaluates the module (running them,
 // decorators included, is checked through real builds too:
 // integration/start-build-user-code.test.ts).
-// Source: FIX-PLAN V2-23.
 test('decorated classes next to a server fn compile to valid modules', async () => {
   const served = await serveCase(await host(), {
     'module.tsx': `import { createServerFn } from '@tanstack/react-start'
@@ -417,7 +415,7 @@ export function bump() {
 // `generateFromAst` prints with it). The code splitter has the same bug (pin
 // in router-plugin/tests/known-bugs-code-splitter.test.ts).
 // Impact: the module fails to parse, so the build fails.
-// Source: fuzzing (oracle mode, round 2).
+// Source: fuzzing.
 test.fails(
   'keeps the parentheses of an asserted conditional test',
   async () => {
@@ -462,7 +460,7 @@ export function html() {
 })
 
 // Where license comments end up is free outside the code splitter (SPEC G12,
-// user ruling OQ12). The `__NO_SIDE_EFFECTS__` annotations bundlers read are
+// SPEC §6 OQ12). The `__NO_SIDE_EFFECTS__` annotations bundlers read are
 // checked through a real production build
 // (integration/start-build-user-code.test.ts).
 

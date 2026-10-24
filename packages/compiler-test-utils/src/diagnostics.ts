@@ -1,6 +1,6 @@
 /**
- * What a user is told about a problem (SPEC G5, J2.8, §5.7; ruling
- * 2026-10-22: diagnostics are checked by file and position only).
+ * What a user is told about a problem (SPEC G5, J2.8, §5.7: diagnostics are
+ * checked by file and position only).
  *
  * Tests capture what the user sees (a thrown or rejected error, a bundler's
  * errors and warnings, console output; every channel at once:
@@ -21,7 +21,7 @@
  *   `expectDiagnostic(diagnostics, expectation)`: the diagnostics meeting
  *   an expectation; the latter fails unless one (or exactly `times`) does.
  *   Unless an expectation asks for `info`, only a `warning` or an `error`
- *   meets it (DECISIONS 2026-10-21).
+ *   meets it (SPEC G5, §5.7).
  * - `mentionsFile(text, file, { root })`: the text holds the file's absolute
  *   path, or its project-relative path as a whole path.
  * - `diagnosticPosition(source, needle)`: the 1-based line and column of
@@ -70,7 +70,7 @@ export interface Diagnostic {
 export interface DiagnosticExpectation {
   /**
    * Accepted severities. Default: `warning` or `error` (an `info` line
-   * reports nothing, N15).
+   * reports nothing).
    */
   severity?: Severity | Array<Severity>
   /** The file the diagnostic must name: absolute, or relative to `root`. */

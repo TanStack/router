@@ -1,7 +1,7 @@
 /**
  * The binding names of a module's code (an independent parse, Oxc through
  * Vite's `parseSync`): what an adaptive hygiene probe offers user code as
- * names, after reading them from what the compiler served (SPEC G15, N14).
+ * names, after reading them from what the compiler served (SPEC G15).
  */
 import { parseSync } from 'vite'
 

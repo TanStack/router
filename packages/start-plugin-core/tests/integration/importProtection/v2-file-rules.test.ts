@@ -1,6 +1,6 @@
 /**
- * `client.files` and `server.files` replace the default file rules (FIX-PLAN
- * V2-21; SPEC J6.1, docs table "replaces defaults"): with `client.files:
+ * `client.files` and `server.files` replace the default file rules (SPEC
+ * J6.1, docs table "replaces defaults"): with `client.files:
  * ['**\/private/**']`, a live client import of `src/private/db.ts` is denied,
  * and one of `src/db.server.ts` no longer is (the client gets the real
  * module, nothing is reported); the marker and specifier rules still apply.
@@ -141,8 +141,8 @@ function outcome(
         ran: read.loaded.includes('privateDb'),
         reported: isReported('src/uses/private.ts'),
       },
-      // A marker violation may be reported at the marked module (audit F
-      // ASK-1).
+      // A marker violation may be reported at the marked module (SPEC
+      // J6.5).
       'the server-only marker': {
         reported: isReported('src/uses/marked.ts', 'src/marked.ts'),
       },

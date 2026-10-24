@@ -17,7 +17,7 @@ import { head, holdsMarker, loadRoute } from '../../route-app'
  * The modules of the app the served module `code` depends on (static
  * imports, re-exports and dynamic imports), as the requests the dev server
  * resolved them to (`/lib.ts`): an independent parse of what the page
- * receives, for D5 checks that a split chunk does not depend on a module of
+ * receives, for SPEC J2.5 checks that a split chunk does not depend on a module of
  * the app that its option does not use (SPEC J2.5).
  */
 function dependencies(code: string) {
@@ -138,8 +138,8 @@ const read = () => Value.One`,
       declaration: `namespace Value { export const one = init(1) }
 const read = () => Value.one`,
     },
-    // Source: the #8504 confidence campaign (mutation testing MHR2/MHR3: a
-    // direct read takes another path than a read through a helper).
+    // Source: mutation testing of #8504 (a direct read takes another path
+    // than a read through a helper).
     {
       name: 'an enum, read directly',
       declaration: `enum Value { One = init(1) }`,
@@ -346,7 +346,7 @@ register(items)`,
     // erases it), but the reference module keeps the declaration for it.
     {
       name: 'a type alias that reads it',
-      // Source: corpus-diff, route files that derive a type with
+      // Source: real apps: route files that derive a type with
       // `type FormValues = z.infer<typeof schema>`
       declaration: `const value = init(1)
 type Value = typeof value`,
@@ -457,7 +457,7 @@ return [rendered, callsBeforeChunks, effects.calls]`),
   // A reference cycle that nothing else reads keeps its own references, so a
   // fix that drops only declarations nothing references still copies it.
   // Source: router-utils/src/compiler-helpers.ts:884-901 (called from
-  // compilers.ts:1278); the call rows: fuzzing (oracle mode, N2), e.g.
+  // compilers.ts:1278); the call rows: fuzzing, e.g.
   // `const parts = [BarController, BarElement]; Chart.register(...parts)`.
   // Impact: side effects run again for every chunk that loads, even a chunk
   // holding only the errorComponent (duplicated subscriptions, logging,
@@ -492,8 +492,7 @@ const b = () => a`,
   Value = track(),
 }`,
     },
-    // Types read no value at runtime. Source: the #8504 confidence campaign
-    // (corpus-diff K-08 and K-21a).
+    // Types read no value at runtime. Source: review of #8504 (real apps).
     {
       name: 'an unused subscription only a type alias reads',
       effect: `const unsubscribe = subscribe(() => {})
@@ -564,7 +563,7 @@ export const Route = createFileRoute('/')({
           files: {
             'lib.ts': `export const x = 1\n`,
             // Another module of the app imports a name the route file
-            // re-exports (ruling P1: through a real importer)
+            // re-exports (SPEC G9, J2.4: through a real importer)
             'importer.ts': `import { x } from './route'\nexport const v = x\n`,
           },
         },
@@ -579,7 +578,7 @@ export const Route = createFileRoute('/')({
       expect({
         reExported,
         rendered,
-        // What loading the component requests depends on `./lib` (D5: an
+        // What loading the component requests depends on `./lib` (SPEC J2.5: an
         // unrelated module of the app, by the request it resolves to)
         componentRequestsLib: (await route.loadedBy('component')).some((code) =>
           dependencies(code).includes('/lib.ts'),
@@ -663,7 +662,7 @@ export const Route = createFileRoute('/')({
 
   // Bug: same as the type alias row above, in a route module compiled by the
   // route HMR plugin (automatic code splitting off), which runs the same
-  // reference compiler. Source: the #8504 confidence campaign (F-06).
+  // reference compiler. Source: review of #8504.
   // Impact: as above, in development without automatic code splitting.
   test.fails(
     'the initializer of a declaration only an exported type alias reads runs when a route module compiled for HMR loads',
@@ -715,7 +714,7 @@ describe('page code left in the route module', () => {
   // Sources: tanstack.com src/routes/index.tsx (`type PrincipleProof` next to
   // `function PrincipleProof`); babel-dead-code-elimination
   // dead-code-elimination.test.ts "function" > "declaration" and "variable" >
-  // "identifier"; corpus-diff, Jp-K/DmCompanionAi
+  // "identifier"; real apps: Jp-K/DmCompanionAi
   // frontend_old/src/routes/_layout/chat.tsx; #8504
   // (code-splitter-dead-code.test.ts), where they pass.
   // Impact: the page's code and dependencies load with the entry chunk.
@@ -796,8 +795,8 @@ ${code}
 describe('split route options', () => {
   // Bug: once the object form compiles (pins above), its handler must also
   // end up split: a loader configured to be split that stays in the route
-  // module is our limitation, not a pattern the user can change (decision
-  // D11). Only the handler can move; the router reads the other keys
+  // module is our limitation, not a pattern the user can change (SPEC
+  // J2.8). Only the handler can move; the router reads the other keys
   // (`staleReloadMode`) from the route options. Today the compiler throws
   // first (same root cause as above). A compiler that builds these routes
   // but keeps a method handler, or a handler next to a spread, in the route

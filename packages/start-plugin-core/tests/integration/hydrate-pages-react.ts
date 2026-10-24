@@ -12,7 +12,7 @@
  * function `when` evaluated on the client only (J5.8), the fallback of a
  * boundary mounted after startup (J5.3), a server fn called from split
  * children (J4.13), which `Hydrate` elements are boundaries (J5.1), and
- * the children under parent updates (J5.8, V2-19).
+ * the children under parent updates (J5.8).
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import {
@@ -89,29 +89,30 @@ const fixtures: Record<string, string> = {
   // inert. (Solid: the "nested" row of hydrate-pages-solid.ts runs the same
   // path on Rsbuild.)
   // Source: hydrate-split-modules.test.ts "react chunks loaded from the
-  // source code alone ..." (B2 dropped the Rsbuild path; FINAL-PASS #5).
+  // source code alone ..." (its Rsbuild path, which that test no longer
+  // covers).
   nestedGates: `import { Hydrate } from '@tanstack/react-start'
 import { load, never } from '@tanstack/react-start/hydration'
 import { Counter } from '../counter'
 export function Page() {
   return <Hydrate when={load()}><section><Counter label="outer" /><Hydrate when={never()}><Counter label="inner" /></Hydrate></section></Hydrate>
 }`,
-  // Source: V4 red-astra-r2/10. These are eleven literal boundaries in one
+  // These are eleven literal boundaries in one
   // source module, rather than eleven instances of one mapped boundary.
   eleven: `${head}export function Page() {
     return <>${Array.from({ length: 11 }, (_, index) => `<Hydrate when={idle()}><Counter label="boundary-${index}" /></Hydrate>`).join('')}</>
   }`,
-  // Source: V4 red-astra-r2/11. Edge spaces are visible inline content.
+  // Edge spaces are visible inline content.
   edgeSpaces: `${head}export function Page() {
     return <><span data-spacing>A<Hydrate when={load()}> B </Hydrate>C</span><Hydrate when={load()}><Counter label="ready" /></Hydrate></>
   }`,
-  // Source: V4 red-astra-r2/12. The options object is shared by a boundary
+  // The options object is shared by a boundary
   // and an ordinary server/client render consumer.
   sharedFallback: `${head}const opts = { when: idle(), fallback: <b>wait</b> }
 export function Page() {
     return <><Hydrate {...opts}><Counter label="child" /></Hydrate><aside>{opts.fallback}</aside></>
   }`,
-  // Source: V4 red-fable-r2/14. A render-local hoisted function still
+  // A render-local hoisted function still
   // captures this render's values when the child runs in another module.
   hoistedRows: `${head}export function Page() {
     const rows = ['a', 'b']
@@ -122,7 +123,7 @@ export function Page() {
     }
   }`,
   // Source: hydrate-boundary-forms.test.ts "a nested boundary and a later
-  // sibling hydrate with the ids the server renders" (gap H6)
+  // sibling hydrate with the ids the server renders"
   nested: `${head}export function Page() {
   return (
     <>
@@ -157,7 +158,7 @@ export function Other({ early }: { early: boolean }) {
   return <Hydrate when={idle()}><Counter label="late" /></Hydrate>
 }`,
   // Boundaries in mutually exclusive branches at the same position, then
-  // the page switches branches after it hydrated (S37).
+  // the page switches branches after it hydrated.
   switching: `${head}import { useState } from 'react'
 export function Page() {
   const [flag, setFlag] = useState(true)
@@ -168,7 +169,7 @@ export function Page() {
   </div>
 }`,
   // Source: hydrate-boundary-forms.test.ts "a renamed import of Hydrate is a
-  // boundary" (gap H11)
+  // boundary"
   renamed: `import { Hydrate as HW } from '@tanstack/react-start'
 import { interaction } from '@tanstack/react-start/hydration'
 import { Counter } from '../counter'
@@ -193,12 +194,12 @@ export function Page() {
   return <div><Hydrate when={idle()}><section><Hydrate when={idle()} split={false}><Counter label="inline" /></Hydrate></section></Hydrate><Hydrate when={idle()}><Counter label="second" /></Hydrate></div>
 }`,
   // Source: hydrate-boundary-forms.test.ts "a dynamic split={flag} (%s)
-  // still splits the children" (gap H14)
+  // still splits the children"
   dynamicSplit: `${head}export function Page({ flag }: { flag: boolean }) {
   return <div><Hydrate when={idle()} split={flag}><Counter label="dynamic" /></Hydrate><Hydrate when={idle()}><Counter label="after" /></Hydrate></div>
 }`,
-  // A let the component reassigns before the boundary renders (V4 red
-  // variant astra/14): the hydrated children read its latest value.
+  // A let the component reassigns before the boundary renders: the
+  // hydrated children read its latest value.
   latestLet: `${head}export function Page({ active }: { active: boolean }) {
   let label = 'first'
   if (active) {
@@ -266,7 +267,7 @@ const prefetchRows = {
   }
   `,
   ),
-  // Source: hydrateWhen PrefetchState fixture (HYD-06)
+  // Source: hydrateWhen PrefetchState fixture
   prefetchState: `${head}import { useState } from 'react'
 export function Page({ split }: { split: boolean }) {
   const [status, setStatus] = useState('idle')
@@ -372,7 +373,7 @@ Object.assign(fixtures, fallbackForms, prefetchRows, {
 export function Page() {
   return <Hydrate when={load()}><ul onClick={() => { (globalThis as any).__clicked = 'click'; return 'click' }}>{letters.map((letter) => { const upper = letter.toUpperCase(); return <li key={letter}>{upper}</li> })}{(function () { return 'iife' })()}</ul></Hydrate>
 }`,
-  // A function \`when\` (HYD-12): evaluated on the client only.
+  // A function \`when\`: evaluated on the client only.
   whenFunction: `${head}export function Page() {
   return (
     <Hydrate
@@ -402,8 +403,8 @@ const greet = createServerFn().handler(async () => 'greet-handler-marker')
 export function Page() {
   return <Hydrate when={load()}><button data-label="b" onClick={() => greet({ fetch: (globalThis as any).__recordFetch }).catch(() => {})}>b</button></Hydrate>
 }`,
-  // A namespace-imported boundary hydrating on interaction (DECISIONS
-  // 2026-10-18: recognised like a named import, J5.1).
+  // A namespace-imported boundary hydrating on interaction (recognised like
+  // a named import, J5.1).
   namespaceGated: `import * as Start from '@tanstack/react-start'
 import { interaction } from '@tanstack/react-start/hydration'
 import { Counter } from '../counter'
@@ -567,7 +568,6 @@ return [button('outer').textContent, button('inner').textContent]`,
         // Boundaries in mutually exclusive branches may share an identity; after
         // the switch the other branch's boundary renders and works, and the
         // boundary after them keeps its state.
-        // Source: S37 (V1 start)
         test('switching between boundaries in exclusive branches after hydration', async () => {
           const page = await app.hydrate('switching', {
             script: `const button = (label) => root.querySelector('button[data-label="' + label + '"]')
@@ -707,7 +707,7 @@ return [button('outer').textContent, button('inner').textContent]`,
 
       // A prefetch function's `preload()` loads the boundary's children; the
       // state it sets shows before any interaction.
-      // Source: FIX-PLAN HYD-06 (hydrateWhen PrefetchState fixture)
+      // Source: hydrateWhen PrefetchState fixture
       test('a prefetch function preloads the children and updates the parent state', async () => {
         const page = await app.hydrate('prefetchState', {
           script: `await waitFor(() => root.querySelector('[data-status]').textContent === 'prefetched')
@@ -739,7 +739,7 @@ return [button('outer').textContent, button('inner').textContent]`,
 
     // The function form of `when` is evaluated on the client only (J5.8): the
     // server renders the boundary without calling it.
-    // Source: FIX-PLAN HYD-12 (hydrate-boundary-forms.test.ts `when` table)
+    // Source: hydrate-boundary-forms.test.ts `when` table
     test('a function when is called on the client only, and its strategy hydrates the children', async () => {
       const page = await app.hydrate('whenFunction', {
         serverScript: 'globalThis.__whenCalls ?? []',
@@ -756,7 +756,6 @@ return [button('outer').textContent, button('inner').textContent]`,
     // A click in the split children calls the server fn by the id the server
     // runs it under, however the chunk reaches it (its own caller or the
     // parent's); the SSR build's server entry runs the handler for that id.
-    // Source: FIX-PLAN HYD-14
     describe.concurrent('server fns called from split children', () => {
       test.each([
         {
@@ -913,14 +912,13 @@ return [button('outer').textContent, button('inner').textContent]`,
     )
 
     describe.concurrent('which elements are boundaries', () => {
-      // Goal (DECISIONS 2026-10-18 "namespace imports"; SPEC J5.1): a
+      // Goal (SPEC J5.1, J7.2): a
       // namespace member `<Start.Hydrate>` is a boundary like a named import,
       // so its children's code loads when it hydrates, not with the page. On
       // main the compiler leaves it unsplit (it still hydrates the server's
       // HTML: "namespace-imported Start.Hydrate boundaries" above), so the
       // click loads nothing.
-      // Source: FIX-PLAN §D "Namespace <Hydrate>" (replaces the in-process
-      // goal of known-bugs-hydrate.test.ts)
+      // Replaces the in-process goal of known-bugs-hydrate.test.ts.
       test.fails(
         'a namespace-imported Start.Hydrate loads its children when it hydrates',
         async () => {
@@ -958,8 +956,8 @@ return beforeFocus`,
     // and after a keyed reorder, in the boundary clicked; a new `when` or
     // `prefetch` object does not restart a hydrated boundary (it would show
     // the server's HTML again). The same page with `split={false}` (left in
-    // place by the compiler) is the reference: the framework's behaviour.
-    // Source: FIX-PLAN V2-19 (SPEC J5.8, J5.4)
+    // place by the compiler) is the reference: the framework's behaviour
+    // (SPEC J5.8, J5.4).
     test('split children follow their parent through updates and a reorder, like unsplit ones', async () => {
       const [split, reference] = await Promise.all([
         app.hydrate('updates', { script: updatesScript }),

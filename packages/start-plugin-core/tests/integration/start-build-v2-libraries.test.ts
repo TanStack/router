@@ -4,7 +4,7 @@
  * J4.16, G11, J4.3: (a) a package whose only Start peer is
  * `@tanstack/start-client-core`, importing its APIs from there; (b) a
  * package without a Start peer, which the user bundles explicitly (Vite
- * `noExternal`, Rsbuild `source.include`); (d) the package of (a) linked
+ * `noExternal`, Rsbuild `source.include`); (c) the package of (a) linked
  * into `node_modules` by a real symlink from a directory outside it
  * (pnpm-style, #8139 as quoted). Each exports an isomorphic fn and a server
  * fn with a secret, and reads a module the app shares with it. Asserted
@@ -13,8 +13,6 @@
  * marker, the shared module initialises once and is one instance, and no
  * module throws while evaluating (TDZ). No pin unless a compiler cause is
  * shown (SPEC §9).
- * Source: FIX-PLAN V2-12 rows a, b, d (start-fable ISO-5/LIB-2, Sol T08;
- * 222 library repos).
  */
 import { describe, expect, test } from 'vitest'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
@@ -87,7 +85,7 @@ export const shared = { token: 'MARK_SHARED_' + Math.random() }
   ...library('node_modules/lib-bundled', 'lib-bundled', 'BUNDLED', {
     startPackage: '@tanstack/react-start',
   }),
-  // (d) the package of (a), outside node_modules, linked into it.
+  // (c) the package of (a), outside node_modules, linked into it.
   ...library('packages/lib-linked', 'lib-linked', 'LINKED', {
     peer: '@tanstack/start-client-core',
     startPackage: '@tanstack/start-client-core',
@@ -147,7 +145,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
         files,
         entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
         // The app depends on the libraries, as an installed one; the peer
-        // of (a) and (d) resolves like a dependency pnpm installed for
+        // of (a) and (c) resolves like a dependency pnpm installed for
         // them.
         packageJson: {
           name: 'app',

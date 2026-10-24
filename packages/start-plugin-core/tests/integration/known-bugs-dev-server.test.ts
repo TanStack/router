@@ -132,7 +132,6 @@ export const fn = base.handler(async () => db.x())
   // against the old factory until a restart: when the builder becomes a
   // server fn, its handler and server-only imports still load in the browser
   // (and when it stops being one, the client keeps an RPC stub).
-  // Source: gap DV26 (gaps/dev-hmr.md).
   test.fails.each([
     { name: 'export *', from: './c' },
     { name: 'an import and an export', from: './d' },
@@ -222,9 +221,9 @@ export const base = createServerFn()
   // against the old factory until a restart: its `fn` is no server fn (no
   // id, so no HTTP endpoint, e.g. for a form action), and in the opposite
   // edit it keeps a server fn that no longer exists.
-  // Source: N15 (replaces start-compiler-factories.test.ts "dev: modules
+  // Replaces the former start-compiler-factories.test.ts test "dev: modules
   // reaching a factory through imports and export * are its transitive
-  // importers", which only checked the walk).
+  // importers", which only checked the walk.
   test.fails.each([
     { name: 'export *', from: './c' },
     { name: 'an import and an export', from: './d' },
@@ -305,7 +304,7 @@ export const fn = createServerFn().handler(async () => request)
   // (vite/import-protection-plugin/plugin.ts `resolveExportsForDeniedSpecifier`).
   // Impact: in dev, the client transform of such a module fails (500), so the
   // client entry never loads and the page does not hydrate.
-  // Source: issue #8554 (closed without a fix), gap DV38 (gaps/dev-hmr.md).
+  // Source: issue #8554 (closed without a fix).
   test.fails(
     'client: a server fn module calling a function of a denied specifier at the top level loads',
     async () => {
@@ -382,7 +381,6 @@ export const read = () => secret() + '!'
   // that imported it keep a mock in dev until they are edited or the server
   // restarts: the client calls mocks and logs "Mocked import used in dev
   // client" errors.
-  // Source: gap DV37 (gaps/dev-hmr.md).
   test.fails(
     'client: the importer of a module whose server-only marker was removed loads the module',
     async () => {
@@ -458,9 +456,8 @@ export const values = [getRequest, getHeader, server.setCookie]
     timeout,
   )
 
-  // Ruling Q4 (RULINGS "Q4: `export *` of a denied module"; SPEC J6.8): in
-  // dev, a name a client module re-exports with `export *` from a denied
-  // module is a safe mock, or the server warns at the `export *`
+  // SPEC J6.8: in dev, a name a client module re-exports with `export *`
+  // from a denied module is a safe mock, or the server warns at the `export *`
   // (`src/b.ts`, line 1); either way the importer loads, and nothing the
   // client gets holds the denied module's value.
   // Bug: in dev, a client module's `export * from` a denied module re-exports
@@ -470,9 +467,8 @@ export const values = [getRequest, getHeader, server.setCookie]
   // Impact: a client module importing a name that another module re-exports
   // with `export *` from a denied module fails to load (missing export), so
   // the page does not hydrate.
-  // Source: gap IP12 (gaps/start-env.md); the rewrite of the same form
-  // (Rsbuild) also only removes the `export *`
-  // (today's `rewriteDeniedImports`).
+  // The rewrite of the same form (Rsbuild) also only removes the
+  // `export *` (today's `rewriteDeniedImports`).
   test.fails.each(starReexportApps)(
     'client: a name re-exported with `export *` from $name is a mock, or the server warns at the `export *`',
     async ({ files, importProtection: protection }) => {

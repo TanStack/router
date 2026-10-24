@@ -8,8 +8,6 @@
  * `.client()` once; the server runs the global `.server()` for an HTTP call
  * by id; the request middleware runs for the SSR page (rendered by Start's
  * own server entry) and for the HTTP call.
- * Source: FIX-PLAN V2-09 (start-fable MW-5; `functionMiddleware` in 179,
- * `requestMiddleware` in 697 corpus files).
  */
 import { describe, expect, onTestFinished, test } from 'vitest'
 import {

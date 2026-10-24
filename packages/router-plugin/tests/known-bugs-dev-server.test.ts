@@ -120,7 +120,7 @@ describe('router config file', () => {
 
   // The next route file edit generates the route tree with the new
   // configuration. (Whether the `tsr.config.json` edit itself regenerates
-  // it is free: ruling Q9.)
+  // it is free: SPEC J1.10.)
   test(
     'a route file edit after a tsr.config.json edit generates the route tree with the new configuration',
     async () => {

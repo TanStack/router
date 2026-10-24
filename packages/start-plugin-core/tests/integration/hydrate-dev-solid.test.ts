@@ -13,9 +13,8 @@ const timeout = 60_000
 
 describe('Vite dev, Solid', () => {
   // A Solid boundary is served with the Solid packages, its chunk renders,
-  // and an edit reaches it (the stand-in row deleted in wave 2, on the real
-  // packages, with Solid's hot updates).
-  // Source: FIX-PLAN V2-20 (Solid half); W2-h-2 hand-over (gaps H21/H22)
+  // and an edit reaches it (replaces a former row that used stand-in
+  // packages: here the real packages, with Solid's hot updates).
   test(
     'a loaded child hot-updates in place, and a sibling opened later shows the edited version',
     async () => {

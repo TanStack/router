@@ -123,8 +123,7 @@ export const Route = route('/old')({})`)
   // user's import of the same name.
   // Source: router-generator/src/transform/transform.ts:502-565
   // (`normalizeRouteImports` adds the import when no import of the router
-  // package owns the constructor); fuzzing (oracle mode, V2), 7 unmodified
-  // corpus files.
+  // package owns the constructor); fuzzing, 7 unmodified files of real apps.
   // Impact: the written route file declares `createFileRoute` twice and no
   // longer parses, so the app fails to build.
   test.fails(

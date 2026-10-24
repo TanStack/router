@@ -5,7 +5,7 @@
  * RPC sends its request to the dev server, whose server entry runs the
  * middleware and the handler) and from server code in a real request; and
  * a failing handler, whose error reaches both callers.
- * Source: audit E1 missing coverage 1.
+ * Source: review.
  */
 import { beforeAll, describe, expect, test } from 'vitest'
 import {
@@ -17,7 +17,7 @@ import {
 } from './regression-helpers'
 
 /**
- * The host defaults of the B2 lead's branch (until it is merged): no import
+ * The host defaults these tests use: no import
  * protection (its dev mock would hide a leaked server import from the
  * client's loads) and an app tsconfig with `verbatimModuleSyntax` (without
  * it, Vite's TypeScript transform drops unreferenced imports after the
@@ -104,8 +104,8 @@ export const env = () => where()`
   // method and an empty client context. The handler answers with a
   // `Response` (documented "Raw Responses"), which reaches the caller as is.
   // Source: the former leg "an HTTP call by id" of "runs on Start’s runtime
-  // from the client, the SSR caller and an HTTP call by id" (B2 dropped it:
-  // it called the provider's export directly).
+  // from the client, the SSR caller and an HTTP call by id" (that leg called
+  // the provider's export directly, so it was dropped).
   test('an HTTP call by id without client context runs the server middleware and the handler', async () => {
     const served = await serveCase(await host(), {
       'module.tsx': `import { createIsomorphicFn, createMiddleware, createServerFn } from '@tanstack/react-start'
@@ -150,8 +150,8 @@ return { status: response.status, body: await response.json() }`,
   })
 
   // Source: the former test "a failing handler answers { error }, which
-  // Start’s handler rethrows" (S4 B-mixed: the error reaching the callers is
-  // the concept; the `{ error }` answer of a provider export is internal).
+  // Start’s handler rethrows" (the error reaching the callers is the
+  // concept; the `{ error }` answer of a provider export is internal).
   test('a failing handler’s error reaches the client and the server caller', async () => {
     const served = await serveCase(await host(), {
       'module.tsx': `import { createServerFn } from '@tanstack/react-start'

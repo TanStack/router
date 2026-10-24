@@ -91,7 +91,7 @@ test(
   timeout,
 )
 
-// Final pass #21: Vite keeps a full reload sent while no client is
+// Vite keeps a full reload sent while no client is
 // connected and hands it to the next client that connects. Between two
 // `runClient` runs no page is connected, so the next run's page would
 // reload under its run; a client host keeps an idle HMR client connected
@@ -136,7 +136,7 @@ test(
   timeout,
 )
 
-// Final pass #56: under heavy load, a test worker's event loop can stay
+// Under heavy load, a test worker's event loop can stay
 // blocked (other tests' synchronous work) right when the idle HMR client
 // connects at host start. A client of this process must still reach the
 // server: Node's address-family selection gives a connection attempt

@@ -1,8 +1,8 @@
 /**
- * Independent observers of code as the dev server serves it to the page
- * (SYNTHESIS P8): an Oxc parse of the served JavaScript, for the few checks
- * that SPEC states on modules (D5 dependency absence, directives), never
- * on generated names, layout or printing.
+ * Independent observers of code as the dev server serves it to the page:
+ * an Oxc parse of the served JavaScript, for the few checks that SPEC states
+ * on modules (J2.5 dependency absence, directives), never on generated
+ * names, layout or printing.
  */
 import { parseSync } from 'vite'
 

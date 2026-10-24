@@ -125,8 +125,8 @@ export const channels: Array<Channel> = [
 
 /**
  * Fails unless one violation is reported, at one of `places`
- * (`file:line:column`, or `file:line` for any column; SPEC J6.5; V1R ip
- * I01): the genuine surviving uses, or the line of the original import of
+ * (`file:line:column`, or `file:line` for any column; SPEC J6.5): the
+ * genuine surviving uses, or the line of the original import of
  * the denied module, written out by the test. Never a type position, a use
  * inside a removed boundary, an unrelated member named like the import,
  * compiled coordinates, nor no coordinates.

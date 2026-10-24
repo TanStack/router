@@ -253,7 +253,7 @@ export const Route = createFileRoute('/posts')({
 `,
         { routeId: '/posts' },
       )
-      // D5: the split component's modules hold neither `fetchPosts` nor
+      // SPEC J2.5: the split component's modules hold neither `fetchPosts` nor
       // `prefix` (their user markers).
       const chunk = await route.loadedBy('component')
       expect(
@@ -431,8 +431,8 @@ return [html, registered.length, registered[0] === Route]`),
   // moves: here React Compiler's opt-out of a component. Shape of the
   // deleted code-splitter snapshot fixture random-number. Name- and
   // form-independent: every function of the route's modules whose own body
-  // renders the chart starts with the directive (SPEC N12: not one
-  // FunctionDeclaration named Chart).
+  // renders the chart starts with the directive (SPEC G12; names are free,
+  // §5.1: not one FunctionDeclaration named Chart).
   it("keeps a 'use no memo' directive in the body of a component that moves into a chunk", async () => {
     const route = await loadRoute(`${head}function Chart() {
   'use no memo'

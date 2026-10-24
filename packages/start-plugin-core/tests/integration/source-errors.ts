@@ -1,6 +1,6 @@
 /**
- * Judges a failed build's diagnostic (SPEC G5, §5.7; ruling 2026-10-22: file
- * and position only): it names one of the user's sources and a line of the
+ * Judges a failed build's diagnostic (SPEC G5, §5.7: file and position
+ * only): it names one of the user's sources and a line of the
  * call. Pure: only the shared diagnostics reader, no module of the
  * implementation.
  *

@@ -35,7 +35,7 @@ import type { SourceMapInput } from '@tanstack/compiler-test-utils/source-maps'
 // Start plugin on a dev server, the server render (React's server renderer
 // in the SSR environment) is compared with the uncompiled source, and the
 // client hydrates it in a real page (`render.ts`). Where the split code
-// lives (how many modules, under which ids) is free (SPEC N13).
+// lives (how many modules, under which ids) is free (SPEC §5.3).
 
 const hosts = useHydrateHost()
 const solidHost = useSolidHost()
@@ -122,8 +122,7 @@ export const cleanup = ['__formatCalls']`,
 
   // Source: #8504 hydrate-split-modules.test.ts
   // Whether the client-only split chunk repeats 'use client' is free: the
-  // directive has no effect in a chunk only the client loads (ruling
-  // "Hydrate chunk directives").
+  // directive has no effect in a chunk only the client loads (SPEC J5.9).
   test('client: the directives stay in the prologue of the parent module', async () => {
     const client = await renderClient(
       await hosts(),
@@ -445,7 +444,7 @@ describe('the split chunk', () => {
   )
 
   // Server code never reaches the client, the split code included. Where
-  // the split code lives and how many modules it takes is free (SPEC N13).
+  // the split code lives and how many modules it takes is free (SPEC §5.3).
   test('client: the chunk does not import what only a server fn handler uses', async () => {
     const client = await renderClient(
       await hosts(),
@@ -481,7 +480,6 @@ export function Page() {
   // `null` children are valid (TypeScript accepts `children={null}` and
   // `{null}`): both environments render the empty boundary the source
   // renders.
-  // Source: FIX-PLAN HYD-13 (null-child control)
   test('client: boundaries with null children render like the source', async () => {
     const { client } = await expectRendersLikeSource(
       await hosts(),
@@ -599,8 +597,7 @@ export function Page() {
   // children, located by their parsed string tokens (whatever the printing),
   // resolve through each served module's map to their line and column in
   // the source file. Real stack traces of a built page: hydrate-build.test.ts.
-  // Source: #8504 hydrate-split-modules.test.ts (gap H26); gap M1; FIX-PLAN
-  // HYD-21
+  // Source: #8504 hydrate-split-modules.test.ts.
   test('client: the source maps of the chunk and the parent point at the original code', async () => {
     const source = `${head}import { visible } from '@tanstack/react-start/hydration'
 export function Page() {
@@ -688,7 +685,7 @@ export function Page() {
   // behind its own gate: once the outer gate opens, the outer children's
   // modules load, and the nested children's modules wait for the nested
   // gate (here `never()`, which stays shut). How many modules either split
-  // takes is free (SPEC N13).
+  // takes is free (SPEC §5.3).
   test('client: the children of a nested boundary wait for its own gate', async () => {
     const client = await renderClient(
       await hosts(),
@@ -716,7 +713,7 @@ export function Page() {
 
   // SPEC J5.2: sibling boundaries have split code of their own, each behind
   // its own gate: opening one gate loads that boundary's children only (how
-  // many modules either split takes is free, SPEC N13).
+  // many modules either split takes is free, SPEC §5.3).
   test('client: opening one of two sibling boundaries loads its children only', async () => {
     const client = await renderClient(
       await hosts(),
@@ -747,7 +744,7 @@ export function Page() {
   // The split code of a boundary, and of the nested boundary it contains,
   // uses the packages of the module's framework only (a React module graph
   // has no Solid packages, and the other way around). How many modules the
-  // split takes is free (SPEC N13).
+  // split takes is free (SPEC §5.3).
   test('client: react split code of a boundary and a nested one renders with its own packages', async () => {
     const { client } = await expectRendersLikeSource(
       await hosts(),
@@ -767,7 +764,7 @@ export function Page() {
   // A Solid app (`vite-plugin-solid`) mounts the boundary in its page: the
   // split code of the boundary and of the nested one loads and renders,
   // and needs no React package. How many modules the split takes is free
-  // (SPEC N13).
+  // (SPEC §5.3).
   test('client: solid split code of a boundary and a nested one is valid and uses the Solid packages only', async () => {
     const solid = await solidHost()
     const mounted =

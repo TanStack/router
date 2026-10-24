@@ -85,9 +85,10 @@ ${route('v2')}`,
   // Source: ReactFreshBabelPlugin-test "registers likely HOCs with inline
   // functions" and "registers top-level variable declarations with arrow
   // functions"; #8504 react-refresh-route-components ("written inline and
-  // wrapped in ..."), where the wrapped rows pass; ruling on #8721 "keeps a
+  // wrapped in ..."), where the wrapped rows pass; #8721 "keeps a
   // method-shorthand component option" (split row). Formerly read React
-  // Refresh's registrations and modelled its runtime (ruling 2026-10-18).
+  // Refresh's registrations and modelled its runtime (now real tools only,
+  // SPEC §8).
   // Any fix passes: the edit shows without a full reload.
   test.fails.for([
     ...[
@@ -176,8 +177,8 @@ export const Route = createFileRoute('/')({ component: page${options} })
   // Impact: edits to the component do not show until a reload.
   // Source: ReactFreshBabelPlugin-test "only registers pascal case
   // functions"; the former in-process pin "registers a lowercase split
-  // component declared as %s" (V1 HMR-17: React Refresh's registrations,
-  // read, are not what the page shows). Controls: the lowercase function
+  // component declared as %s" (React Refresh's registrations, read, are
+  // not what the page shows). Controls: the lowercase function
   // declaration (split) and the unsplit variables of
   // route-hmr-browser-names.test.ts.
   // Any fix passes: the edit shows without a full reload or errors.
@@ -215,7 +216,7 @@ export const Route = createFileRoute('/')({ component: page${options} })
   // (SyntaxError: Export 'SplitComponent' is not defined): the page never
   // shows the route.
   // Source: #8504 react-refresh-route-components ("that is also the unsplit
-  // pendingComponent"); V1 HMR-17 (registration read in process).
+  // pendingComponent"); the former in-process registration read.
   // Any fix passes: the page shows the route, and an edit shows in place.
   test.fails(
     'vite: a lowercase function component that is also the unsplit pendingComponent renders, and an edit shows in place',
@@ -244,7 +245,7 @@ export const Route = createFileRoute('/')({ component: page${options} })
   // Impact: in development, the route module fails to load (SyntaxError:
   // Export 'page' is not defined): the page never shows the route.
   // Source: ReactFreshBabelPlugin-test "registers top-level exported function
-  // declarations" (`export { Baz }`); V1 HMR-17. Unsplit: route-hmr-browser
+  // declarations" (`export { Baz }`). Unsplit: route-hmr-browser
   // -names.test.ts.
   // Any fix passes: the page shows the route, and an edit shows in place.
   test.fails(

@@ -6,8 +6,7 @@
  * imported under string export names, renamed env-only factories read
  * through a namespace import of a project module. SPEC J4.5 ("unrecognised
  * shapes must not silently leak"), J4.6 ("block … work or error clearly"),
- * J4.12; user ruling 2026-10-20 restoring corpus inputs U078-U082 and U086
- * (with U047/U048, the string export names).
+ * J4.12.
  *
  * Either outcome passes, shape by shape: the shape works (the client bundle
  * holds none of its server-only module, the client's function does what the
@@ -17,7 +16,7 @@
  * and the line of the call (`expectSourceError`). A silent leak, a broken
  * function or a build error elsewhere fails. String export names, renamed
  * re-exports and namespace members are forms SPEC J4.5 lists as recognised:
- * those shapes must work (coordinator 2026-10-20).
+ * those shapes must work.
  *
  * The compile-level twins: ../known-bugs-start-compiler.test.ts ("the
  * client holds no server code, or the module is rejected at the call", and
@@ -331,8 +330,8 @@ const marker = (shape: Shape) => `MARK_${shape.slug.toUpperCase()}_DB`
 const result = (shape: Shape) => `MARK_${shape.slug.toUpperCase()}_RESULT`
 
 /**
- * Re-export forms SPEC J4.5 lists as recognised: these shapes must work
- * (coordinator 2026-10-20), with no rejection branch.
+ * Re-export forms SPEC J4.5 lists as recognised: these shapes must work,
+ * with no rejection branch.
  */
 const recognisedForms = [
   'stringNames',
@@ -465,8 +464,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // block (with createServerFn the only factory imported) are left
   // untransformed by the client compiler (in-process pins in
   // ../known-bugs-start-compiler.test.ts), and the build succeeds.
-  // Source: corpus inputs U078-U082/U086 (#8630 pins), user ruling
-  // 2026-10-20; SPEC J4.5, J4.6, J4.12.
+  // Source: #8630 pins; SPEC J4.5, J4.6, J4.12.
   // Impact: the server implementation and its server-only module ship in
   // the client bundle and run in the browser.
   test.fails.each(

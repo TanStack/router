@@ -22,7 +22,7 @@ export const Route = createFileRoute('/posts')(options)
       },
     )
     expect(await route.isLazy('component')).toBe(true)
-    // D5: the component's code does not load with the route module, and its
+    // SPEC J2.5: the component's code does not load with the route module, and its
     // chunk does not import what only the loader reads.
     expect(
       (await route.eagerModules()).some((code) =>
@@ -373,7 +373,7 @@ export const Route = createFileRoute('/posts')({
 `,
       { files, routeId: '/posts' },
     )
-    // D5: the split component's modules do not read the loader's binding
+    // SPEC J2.5: the split component's modules do not read the loader's binding
     // (an unused import specifier of a module they need is free, §5.9).
     expect(
       (await route.loadedBy('component')).some((code) =>

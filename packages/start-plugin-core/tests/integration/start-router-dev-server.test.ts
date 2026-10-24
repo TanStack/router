@@ -111,7 +111,7 @@ describe('Vite dev: a route switching between page and server-only', () => {
   // the route is server-only again. A full reload is allowed for a tree
   // change (SPEC J3.10, J1.10); an edit that keeps the route server-only
   // changes nothing for the client (no reload, no update).
-  // Source: mutation round 3 start-router D; FIX-PLAN HMR-33 (A13).
+  // Source: mutation testing.
   test(
     'the page follows a route that becomes a page, loses its handlers and becomes server-only again',
     async () => {
@@ -181,7 +181,7 @@ describe('Vite dev: a route switching between page and server-only', () => {
   )
 
   // The server starts before any browser loaded the client route tree.
-  // Source: mutation round 3 start-router I/J (spc:5972).
+  // Source: mutation testing.
   test(
     'a route that becomes a page before the client loaded the route tree is in the client route tree',
     async () => {
@@ -221,7 +221,7 @@ describe('Vite dev: route HMR in a real page', () => {
   // server middleware, which would answer the page request with the app's
   // server entry, is off. Start's SSR with HMR in a real app:
   // e2e/react-start/hmr.
-  // Source: mutation round 3 start-router I/J (spc:6046).
+  // Source: mutation testing.
   test(
     'an edited page route shows its new loader and component without a full reload, and its split component keeps its state',
     async () => {

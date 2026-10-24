@@ -1,9 +1,9 @@
 /**
  * Policy branches of import protection on dev servers with Start's whole
- * plugin (FIX-PLAN V2-18; SPEC J6.6, J6.7, J6.9): per importer of the same
+ * plugin (SPEC J6.6, J6.7, J6.9): per importer of the same
  * denied file, an importer `ignoreImporters` exempts and one `onViolation`
  * allows (returning `false`, or `Promise<false>`) get the real module and
- * are not reported (user ruling 2026-10-17 on exemptions; J6.6 "real module,
+ * are not reported (SPEC J6.7; J6.6 "real module,
  * no mock, no report"); any other importer gets a safe mock and is reported.
  * Every entry counts: the app's own client entry `src/client.ts` and server
  * entry `src/server.ts`. Rsbuild dev, and the `Promise<false>` row on Vite
@@ -170,7 +170,6 @@ describe('rsbuild dev', () => {
   // Impact: code a project exempts on purpose, or an import it allows with
   // `onViolation` (documented: "Return false (or Promise<false>) to allow
   // this specific import"), silently gets a mock whose calls return mocks.
-  // Source: FIX-PLAN V2-18.
   test.fails.each(permitted)(
     'an importer $how gets the real module',
     async ({ name, file }) => {
@@ -265,7 +264,6 @@ export const getRouter = () => undefined
   // silences the report (the control above).
   // Impact: an import allowed by an async `onViolation` (the form the docs
   // show) is a mock in the browser, without any warning.
-  // Source: FIX-PLAN V2-18.
   test.fails(
     'the client gets the real module',
     async () => {

@@ -1,6 +1,6 @@
 /**
  * Code splitting in Vite's full-bundle dev mode (`experimental.bundledDev`,
- * SPEC §2.1 "Modes", J2.13; V2-29): Rolldown's dev engine bundles the client
+ * SPEC §2.1 "Modes", J2.13): Rolldown's dev engine bundles the client
  * with the router plugin's emitted modules, a real browser page runs the
  * bundle with Vite's HMR client, and the test edits the route file on disk.
  * The page renders, the split component's code loads only when the router

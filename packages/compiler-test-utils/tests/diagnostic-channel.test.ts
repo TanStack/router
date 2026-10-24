@@ -1,6 +1,6 @@
 /**
  * Controls of the one diagnostic channel (diagnostic-channel.ts; SPEC §5.7,
- * N15–N17): it merges every channel a compiler or a tool may report on
+ * G5): it merges every channel a compiler or a tool may report on
  * (console, the process streams, Vite's logger, a bundler compilation), in
  * order and scoped, and "nothing reported" reads them all: a warning on any
  * one channel fails it, while info output does not.
@@ -118,7 +118,7 @@ describe('diagnostic channel', () => {
     ])
   })
 
-  // N15: "nothing reported" reads every channel. A check that read only
+  // "Nothing reported" reads every channel. A check that read only
   // Vite's logger (the old dev harness `logs`) or only the compilation
   // (the old Rsbuild `diagnostics`) misses a compiler warning through
   // the console or the streams.
@@ -149,7 +149,7 @@ describe('diagnostic channel', () => {
     },
   )
 
-  test('expectNoProblems passes on info output only (N15: no warning is not no output)', async () => {
+  test('expectNoProblems passes on info output only (no warning is not no output)', async () => {
     const { diagnostics } = await captureDiagnostics((channel) => {
       console.log('generated the route tree')
       console.info('built in 12 ms')
@@ -160,7 +160,7 @@ describe('diagnostic channel', () => {
     expectNoProblems(diagnostics)
   })
 
-  // DECISIONS 2026-10-21 "diagnostic severity": where SPEC says "warn", an
+  // Diagnostic severity (SPEC G5, §5.7): where SPEC says "warn", an
   // info or log line on any channel is no warning. The merged matchers keep
   // the floor by default; an expectation asks for `info` to read one.
   test('an info line does not meet an expectation that does not ask for info (severity floor)', async () => {

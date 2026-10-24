@@ -1,6 +1,6 @@
 /**
  * What a route file edit does to the live router of a running app (SPEC
- * J3.1, J3.3, G10), through real tools only (SYNTHESIS recipe P7): a real
+ * J3.1, J3.3, G10), through real tools only (SPEC §8): a real
  * dev server with the public router plugin and the framework's plugin, a
  * real page running the dev server's own HMR client, and edits of route
  * files on disk (`openRouteHmrPage`). The app keeps its own reference to the
@@ -11,11 +11,11 @@
  * (handle-route-update.test.ts, deleted) checked with explicit inputs:
  * matching and resolving next to an edited parent or pathless
  * layout, params parsing, the generated route state of the hot `Route`
- * export, the lazy options the route tree gave a route (V4 red-astra/08),
+ * export, the lazy options the route tree gave a route,
  * removed loaders and callbacks, loader races with an older refresh or an
  * inactive preload, route context, and descendants of an edited parent;
  * and an edit of a route the router the HMR code finds on the page does not
- * have (a second router created after the app's; ruling Q5).
+ * have (a second router created after the app's; SPEC J3.11).
  */
 import { describe, test } from 'vitest'
 import { openRouteHmrPage } from '../route-hmr-page'
@@ -309,7 +309,7 @@ export const Route = createRootRoute({
         expect(await app.page.text('#app')).toBe('root hot home')
         // The old loader does not run again; the hot one runs at least once
         // (how often an edit runs a changed loader is the router's business,
-        // ruling 2026-10-24)
+        // SPEC J3.1)
         const { old, hot } = await calls(app)
         expect({ old, hot: hot! >= 1 }).toEqual({ old: 2, hot: true })
         expect(
@@ -391,7 +391,7 @@ export const Route = createRootRoute({
 })()`)
         await visit(app, '/pre', 'pre hot')
         // The obsolete loader does not run again; the new one runs at least
-        // once (ruling 2026-10-24: not exactly once)
+        // once (SPEC J3.1: not exactly once)
         const { preOld, preNew } = await calls(app)
         expect({ preOld, preNew: preNew! >= 1 }).toEqual({
           preOld: 1,

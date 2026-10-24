@@ -1,5 +1,5 @@
 /**
- * Import protection through path aliases (FIX-PLAN V2-04; SPEC J6.1, J6.5,
+ * Import protection through path aliases (SPEC J6.1, J6.5,
  * G11): a client module imports the denied file `src/secret.server.ts` as
  * `~/secret.server`, an alias of the app's `tsconfig.json` `paths`, and uses
  * it live. Rules match the file the alias resolves to, whichever resolver
@@ -209,8 +209,7 @@ function expectAliasFailure(recorded: Recorded) {
 // Vite's resolver and is reported as written.
 // Impact: the report names an import that is nowhere in the user's code
 // (SPEC J6.1, J6.5: the specifier the user wrote), and has no location; 72
-// of 165 Start configs of the V2 corpus use vite-tsconfig-paths.
-// Source: FIX-PLAN V2-04.
+// of 165 surveyed Start configs use vite-tsconfig-paths.
 describe.each(viteAliases)('vite: $alias', (alias) => {
   const reportTest = alias.reportPinned ? test.fails : test
 

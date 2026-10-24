@@ -21,7 +21,7 @@ type CodeSplitGroupings = NonNullable<CodeSplittingOptions['defaultBehavior']>
 // what loads with the route module but in what loading the component loads,
 // and a binding only the loader reads is not in what loading the component
 // loads (when the two are not grouped) but in what loads with the route
-// module or the loader (D5: the user's own code, told by a string marker in
+// module or the loader (SPEC J2.5: the user's own code, told by a string marker in
 // its body or initializer, whatever the compiler names or prints). A route
 // whose readers do not include the component gets one reading no binding,
 // so that what loading it loads can be checked, except next to a class (a

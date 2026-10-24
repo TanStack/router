@@ -180,7 +180,7 @@ document.getElementById('app').textContent = 'MARK_DOCUMENT ' + location.href
   ])
 })
 
-// Final pass #21: the run pages serve every run of a test process, so a
+// The run pages serve every run of a test process, so a
 // script that never settles must fail its run within the bound and leave
 // its page (or a new one) to the next run.
 test('a run whose script never settles fails within its bound, and the next run gets a page', async () => {
@@ -199,8 +199,9 @@ test('a run whose script never settles fails within its bound, and the next run 
   ).toBe(2)
 })
 
-// FINAL-PASS #40: what a test process opens in its browser is bounded, and
-// runs of concurrent tests do not share a document.
+// What a test process opens in its browser is bounded (Chromium fails
+// requests under too many pages), and runs of concurrent tests do not share
+// a document.
 test('concurrent runs each hold a page of their own, at most runPageLimit at once, each on a fresh document', async () => {
   let active = 0
   let most = 0

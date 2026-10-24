@@ -285,8 +285,7 @@ describe('layouts and groups', () => {
   // "Conflicting configuration paths were found" for `/` (the layout's full
   // path is `/`, like the index route's), although the layout matches no URL
   // of its own. A childless pathless layout is a valid, if useless, route
-  // (DECISIONS 2026-10-18 "childless pathless layout"; SPEC J1.15;
-  // routing/file-naming-conventions.md:35).
+  // (SPEC J1.15; routing/file-naming-conventions.md:35).
   // Source: src/utils.ts:1101-1125 (`checkRouteFullPathUniqueness` compares
   // the inferred full paths of all routes, pathless layouts included).
   // Impact: creating `_auth.tsx` before its first child route stops route
@@ -326,8 +325,8 @@ describe('layouts and groups', () => {
 
   // A pathless layout under a route that exists only as a lazy route file
   // (`posts.lazy.tsx`, no `posts.tsx`) nests under the lazy-only route's
-  // virtual anchor (guide/code-splitting.md:222-224; DECISIONS 2026-10-18
-  // PIN-A; SPEC J1.14). Control for the pin below.
+  // virtual anchor (guide/code-splitting.md:222-224; SPEC J1.14). Control for
+  // the pin below.
   test(
     'a pathless layout under a route with only a lazy route file nests under that route',
     () =>
@@ -374,15 +373,14 @@ describe('layouts and groups', () => {
     60_000,
   )
 
-  // Bug (PIN-A): a pathless layout one directory below a lazy-only route
+  // Bug (SPEC J1.14): a pathless layout one directory below a lazy-only route
   // (`app/posts.lazy.tsx`, no `app/posts.tsx`, and
   // `app/posts/drafts/_layout.tsx` with children) is attached to the next
   // real ancestor (`/app`) instead of to the lazy-only route's virtual anchor
   // `/app/posts`, so `/app/posts/drafts/child` renders without the
   // `/app/posts` page around it (same rule as the control above:
-  // guide/code-splitting.md:222-224; DECISIONS 2026-10-18 PIN-A; SPEC J1.14).
-  // Distinct from the G1 pin above (a lazy-only pathless layout losing its
-  // directory path).
+  // guide/code-splitting.md:222-224; SPEC J1.14). Distinct from the pin of a
+  // lazy-only pathless layout losing its directory path.
   // Source: src/generator.ts:1561-1606 (`isPathlessLayoutWithPath`: the
   // search for the layout's parent skips virtual routes, which include the
   // anchors of lazy-only routes).
@@ -446,9 +444,8 @@ describe('layouts and groups', () => {
   )
 
   // A layout with a piece file only (no route file) still adds no path
-  // segment, and is no page of its own.
-  // Source: r5-gaps N5 (rg:455: such a layout got `path: '/'`, which makes
-  // the router match the layout itself at `/`).
+  // segment, and is no page of its own (a layout given `path: '/'` makes the
+  // router match the layout itself at `/`).
   test('a pathless layout with only a Vue component piece in a route group has no path', async () => {
     const root = await createApp({
       'src/routes/__root.ts': rootRoute('vue'),
@@ -481,10 +478,10 @@ describe('layouts and groups', () => {
   // when nothing above it is a route. The route tree's types still say
   // `/foo/bar`. A layout with a route file (`foo/_auth.tsx`) is right.
   // Impact: the child route matches `/bar` instead of `/foo/bar`, and
-  // links typed `/foo/bar` lead nowhere. Unlike the pending PIN-A ruling
-  // (a pathless layout with a route file under a lazy-only route: which
-  // route is its parent), here the URL disagrees with the generated types.
-  // Source: mutation run R4 final re-audit (G1).
+  // links typed `/foo/bar` lead nowhere. Unlike the case of SPEC J1.14 (a
+  // pathless layout with a route file under a lazy-only route: which route
+  // is its parent), here the URL disagrees with the generated types.
+  // Source: mutation testing.
   test.fails.each<{
     name: string
     target: 'react' | 'vue'

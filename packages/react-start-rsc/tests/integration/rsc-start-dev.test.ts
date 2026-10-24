@@ -16,7 +16,6 @@ describe('Vite dev: a separate RSC provider', () => {
   // conditions (`react-server`), and the provider initialises the package
   // once; SSR's own code gets the `default` entry and the browser's the
   // `browser` entry, and no client script has another environment's entry.
-  // Source: start S11, S18 (case 3), S40; V2-12 (c).
   test('each environment runs its own entry of a dependency; the provider runs the handler, whether SSR or the browser calls it', async () => {
     const server = await startRscDevServer({
       browser: true,

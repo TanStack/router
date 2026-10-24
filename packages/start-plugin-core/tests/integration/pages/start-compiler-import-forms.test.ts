@@ -9,7 +9,7 @@
  * server in the SSR environment and in a real request.
  * Replaces the Rename / StarImport snapshot fixtures of the createServerFn,
  * createMiddleware, createIsomorphicFn, envOnly and ClientOnly suites and
- * envOnlyExportedAlias (N1; gaps SF5, MW4, CO4, SF24).
+ * envOnlyExportedAlias.
  */
 import { beforeAll, describe, expect, test } from 'vitest'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
@@ -404,7 +404,6 @@ return text`,
     // import (`<Router.ClientOnly>`) is never compiled.
     // Impact: the SSR environment keeps the children and the client-only
     // modules they import: browser-only code runs during SSR.
-    // Source: gap CO4 (gaps/start-env.md), N1 import-forms table.
     test.fails('through a namespace member', async () => {
       await checkBoundary(
         `import * as Router from '${router}'`,

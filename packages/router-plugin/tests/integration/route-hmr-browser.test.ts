@@ -397,9 +397,9 @@ describe.concurrent.each(['vite', 'rsbuild'] as const)(
       },
     )
 
-    // Source: decision on rp:1304 (shellComponent + HMR, 2026-10-18), the
-    // add-hmr snapshot fixture createRootRoute, and the factory ruling
-    // (2026-10-18: a reload is fine, the edit must show).
+    // Source: SPEC J3.5 (shellComponent and HMR), the add-hmr snapshot
+    // fixture createRootRoute, and SPEC J3.3, G10 for routes whose options a
+    // factory call builds (a reload is fine, the edit must show).
     it(
       'shows an edited root route in place, and the shell component the edit adds, changes or removes; an edit of a route whose options a factory call builds shows',
       async ({ expect, onTestFinished }) => {
@@ -477,7 +477,7 @@ export const Route = createFileRoute('/')(makeOptions('${version}'))
           ),
         ).toEqual(inPlace)
         // Route options a factory call builds: the edit shows, after a hot
-        // update or a reload (ruling 2026-10-18).
+        // update or a reload (SPEC J3.3, G10).
         await app.edit({ 'routes/index.tsx': factoryRoute('v2') }, 'made v2')
       },
       timeout,
@@ -491,7 +491,7 @@ export const Route = createFileRoute('/')(makeOptions('${version}'))
 // has it ignore), also without a component of its own or as the root route.
 // Sources: react-refresh-route-components "a React route module compiled
 // for Vite stays a Fast Refresh boundary" (it called the refresh runtime's
-// boundary check by hand; ruling 2026-10-18).
+// boundary check by hand; now real tools only, SPEC §8).
 describe.concurrent(
   'vite: a React route module without a component, and a root route with an inline component',
   () => {
@@ -560,9 +560,9 @@ export const Route = createFileRoute('/')({
 // components" (ReactFreshBabelPlugin-test "registers likely HOCs with
 // inline functions"; #8504 "written inline in a memo / forwardRef call"),
 // which read React Refresh's registrations and modelled how its runtime
-// resolves memo / forwardRef (ruling 2026-10-18); the former
+// resolves memo / forwardRef (now real tools only, SPEC §8); the former
 // known-bugs-route-hmr "an edit of a React route with only inline components
-// is a hot update" (gap H6a: the route HMR plugin runs before React
+// is a hot update" (the route HMR plugin runs before React
 // Refresh, so a route whose components are all inline still becomes a
 // boundary). The split bodies have no JSX: with JSX, the code splitter
 // cannot split the call (pinned in known-bugs-code-splitter.test.ts "a

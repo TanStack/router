@@ -4,11 +4,9 @@
  * `tanstackStart()` of `@tanstack/vue-start/plugin/vite` and Vue's own Vite
  * plugin (`@vitejs/plugin-vue`, which serves an SFC's `<script lang="ts">`
  * block in builds as its own module, `Page.vue?vue&type=script&lang.ts`),
- * built with `vite build` (`build()`). Moved from
- * pending-rulings/known-bugs-start-compiler-vue-sfc.test.ts (formerly
- * known-bugs-start-compiler.test.ts:1629-1650, on the internal compiler)
- * once `@vitejs/plugin-vue` became a test-only devDependency (coordinator
- * 2026-10-21, B2 questions).
+ * built with `vite build` (`build()`). Formerly a pin on the internal
+ * compiler in known-bugs-start-compiler.test.ts, moved here once
+ * `@vitejs/plugin-vue` became a test-only devDependency.
  */
 import { afterAll, expect, test } from 'vitest'
 import { createStartHost } from '../regression-helpers'
