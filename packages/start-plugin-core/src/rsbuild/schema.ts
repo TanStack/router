@@ -18,12 +18,10 @@ export const tanstackStartRsbuildOptionsSchema =
             .object({
               output: rsbuildClientOutputSchema.optional().default('module'),
             })
-            .optional()
             .prefault({}),
         })
         .optional(),
     })
-    .optional()
     .prefault({})
 
 export function parseStartConfig(
