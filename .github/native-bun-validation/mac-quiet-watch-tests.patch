@@ -1,0 +1,30 @@
+diff --git a/test/bake/dev/plugins.test.ts b/test/bake/dev/plugins.test.ts
+--- a/test/bake/dev/plugins.test.ts
++++ b/test/bake/dev/plugins.test.ts
+@@ -134,7 +134,13 @@
+     await c.expectElemText("button", "Count 1");
+-    await dev.write("unrelated.txt", "first");
++    await c.expectNoWebSocketActivity(async () => {
++      await dev.write("unrelated.txt", "first");
++    });
+     await c.expectElemText("button", "Count 1");
+-    await dev.write("unrelated.txt", "second");
++    await c.expectNoWebSocketActivity(async () => {
++      await dev.write("unrelated.txt", "second");
++    });
+     await c.expectElemText("button", "Count 1");
+-    await dev.write("data/a.ts", `export default "second";`);
++    await c.expectNoWebSocketActivity(async () => {
++      await dev.write("data/a.ts", `export default "second";`);
++    });
+     await c.expectElemText("button", "Count 1");
+diff --git a/test/bake/dev/client-plugin-cache.test.ts b/test/bake/dev/client-plugin-cache.test.ts
+--- a/test/bake/dev/client-plugin-cache.test.ts
++++ b/test/bake/dev/client-plugin-cache.test.ts
+@@ -92,3 +92,5 @@
+     await client.click("button");
+-    await dev.write("data/a.ts", `export default "second";`);
++    await client.expectNoWebSocketActivity(async () => {
++      await dev.write("data/a.ts", `export default "second";`);
++    });
+     await client.expectElemText("button", "Count 1");

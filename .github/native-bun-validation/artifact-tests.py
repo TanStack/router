@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import xml.etree.ElementTree as ET
 
@@ -17,15 +18,67 @@ assert expected["base"] == manifest["head"]
 assert expected["patchSha256"] == manifest["trackedPatchSha256"]
 assert expected["additionalFiles"] == manifest["additionalFiles"]
 binary.chmod(0o755)
-source = root / ".native-test-source"
+source = root / ".cache/native-bun-validation/test-source"
 subprocess.run([
     "python3", str(root / ".github/native-bun-validation/prepare.py"),
     "--bun", str(source), "--out", str(proof / "native-source"),
 ], check=True)
+adjustments = root / ".github/native-bun-validation/mac-quiet-watch-tests.patch"
+patch = adjustments.read_bytes()
+assert hashlib.sha256(patch).hexdigest() == "65c3d33ff88d44e9748498ad7a34bb3113be8fdd940a39aaad4de4b98b2aa062"
+paths = re.findall(rb"^diff --git a/(\S+) b/(\S+)$", patch, re.MULTILINE)
+assert all(old == new for old, new in paths)
+assert {old.decode() for old, _ in paths} == {
+    "test/bake/dev/plugins.test.ts", "test/bake/dev/client-plugin-cache.test.ts",
+}
+subprocess.run(["git", "apply", "--check", "-"], cwd=source, input=patch, check=True)
+subprocess.run(["git", "apply", "-"], cwd=source, input=patch, check=True)
+overrides = proof / "native-test-overrides"
+overrides.mkdir(exist_ok=True)
+(overrides / "adjustments.patch").write_bytes(patch)
+adjusted_sources = {}
+for old, _ in paths:
+    name = old.decode()
+    contents = (source / name).read_bytes()
+    adjusted_sources[name] = hashlib.sha256(contents).hexdigest()
+    target = overrides / name
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(contents)
+(overrides / "proof.json").write_text(json.dumps({
+    "binaryRuntimeUnchanged": True,
+    "testOnlyPatchSha256": hashlib.sha256(patch).hexdigest(),
+    "adjustedSourceSha256": adjusted_sources,
+}, indent=2) + "\n")
 for cwd in [source, source / "test"]:
     subprocess.run([str(binary), "install", "--frozen-lockfile"], cwd=cwd, check=True)
 tests = manifest["testCommand"].split(" test ", 1)[1].split()
 assert len(tests) == 9
+isolated = [
+    ("test/bake/dev/plugins.test.ts", "watchDirs preserves browser state when only a child file's contents change"),
+    ("test/bake/dev/plugins.test.ts", "watchDirs shares directory events with imported files and trailing-slash aliases"),
+    ("test/bake/dev/client-plugin-cache.test.ts", "client plugin cache probe: structural dependency update serves the current manifest"),
+    ("test/bake/dev/server-sourcemap.test.ts", "server-side source maps handle nested imports"),
+]
+isolated_results = []
+for index, (filename, title) in enumerate(isolated):
+    isolated_report = proof / f"native-isolated-{index}.xml"
+    run = subprocess.run([
+        str(binary), "test", filename, "-t", re.escape(title),
+        "--reporter=junit", f"--reporter-outfile={isolated_report}",
+    ], cwd=source, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env={
+        **os.environ,
+        "BUN_DEV_SERVER_VERBOSE_SYNC": "1",
+        "BUN_WATCHER_TRACE": str(proof / f"native-isolated-{index}-watcher.jsonl"),
+    })
+    (proof / f"native-isolated-{index}.log").write_text(run.stdout)
+    selected = ET.parse(isolated_report).findall(".//testcase") if isolated_report.exists() else []
+    passed = run.returncode == 0 and bool(selected) and all(
+        not any(case.find(tag) is not None for tag in ["failure", "error", "skipped"])
+        for case in selected
+    )
+    isolated_results.append({"file": filename, "title": title, "passed": passed, "cases": len(selected)})
+    print(json.dumps(isolated_results[-1]))
+(proof / "native-isolated-results.json").write_text(json.dumps(isolated_results, indent=2) + "\n")
 report = proof / "native-results.xml"
 # Execute the verified, source-built artifact. The Bun CI build path ignores
 # trailing execution arguments, so a successful build alone is not a test run.
@@ -34,10 +87,8 @@ result = subprocess.run([
 ], cwd=source, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 (proof / "native-regressions.log").write_text(result.stdout)
 print(result.stdout, end="")
-result.check_returncode()
 cases = ET.parse(report).findall(".//testcase")
 assert cases, "Native test runner executed no cases"
-assert not any(case.find("failure") is not None or case.find("error") is not None for case in cases)
 by_file = {filename: [] for filename in tests}
 for case in cases:
     filename = Path(case.attrib["file"])
@@ -52,7 +103,11 @@ summary = {
     "binarySha256": expected["sha256"], "selectedFiles": tests,
     "cases": len(cases),
     "skipped": sum(case.find("skipped") is not None for case in cases),
+    "failed": sum(case.find("failure") is not None or case.find("error") is not None for case in cases),
     "perFile": {filename: len(group) for filename, group in by_file.items()},
 }
 (proof / "native-results.json").write_text(json.dumps(summary, indent=2) + "\n")
 print(json.dumps(summary, indent=2))
+result.check_returncode()
+assert summary["failed"] == 0
+assert all(run["passed"] for run in isolated_results)

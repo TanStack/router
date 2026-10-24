@@ -125,7 +125,7 @@ jobs:
         with:
           repository: RentnerKev/bun
           ref: dca7d25e95cca39316c659a377dba6803805549f
-          path: .native-test-source
+          path: .cache/native-bun-validation/test-source
           persist-credentials: false
       - name: Execute verified native artifact regressions
         id: native_regressions
