@@ -130,12 +130,9 @@ export const Route = createFileRoute('/cast-${slug(name)}')(${wrap(
   // `pruneServerOnlySubtrees`; Rsbuild parity is the intended behaviour.
   // Impact: Rsbuild client bundles ship the route tree entries and route
   // modules of server-only routes, which Vite builds leave out.
-  ;(bundler === 'vite' ? test : test.fails)(
-    'a route with only server handlers is not in the client route tree',
-    () => {
-      expect(clientRoutes).not.toContain('/api')
-    },
-  )
+  test('a route with only server handlers is not in the client route tree', () => {
+    expect(clientRoutes).not.toContain('/api')
+  })
 
   // Option keys written as strings and a Route exported under an alias are
   // read like the plain ones above (same build; moved from router-generator
@@ -153,12 +150,9 @@ export const Route = createFileRoute('/cast-${slug(name)}')(${wrap(
     })
 
     // Rsbuild does not prune the client route tree yet (pinned above).
-    ;(bundler === 'vite' ? test : test.fails)(
-      'a route with only server handlers is not in the client route tree',
-      () => {
-        expect(clientRoutes).not.toContain(api)
-      },
-    )
+    test('a route with only server handlers is not in the client route tree', () => {
+      expect(clientRoutes).not.toContain(api)
+    })
   })
 
   // Bug: the route generator records only plain, non-computed, non-method
@@ -174,12 +168,9 @@ export const Route = createFileRoute('/cast-${slug(name)}')(${wrap(
   describe.each(pageOptions)('$name', ({ name }) => {
     // Rsbuild does not prune the client route tree yet (pinned above), so
     // the route stays.
-    ;(bundler === 'vite' ? test.fails : test)(
-      'a route with server handlers and these options is in the client route tree',
-      () => {
-        expect(clientRoutes).toContain(`/${slug(name)}`)
-      },
-    )
+    test('a route with server handlers and these options is in the client route tree', () => {
+      expect(clientRoutes).toContain(`/${slug(name)}`)
+    })
   })
 
   // Bug: route options wrapped in a cast (`as never`, `as any`,
@@ -191,12 +182,9 @@ export const Route = createFileRoute('/cast-${slug(name)}')(${wrap(
   // to the client bundle.
   // Real apps wrap route options in `as never` / `as any`.
   describe.each(casts)('options wrapped in $name', ({ name }) => {
-    test.fails(
-      'the server handler code of the route is not in the client bundle',
-      () => {
-        const marker = `MARK_CAST_${slug(name).toUpperCase().replace(/-/g, '_')}`
-        expect(build.client.where(marker)).toBe('nowhere')
-      },
-    )
+    test('the server handler code of the route is not in the client bundle', () => {
+      const marker = `MARK_CAST_${slug(name).toUpperCase().replace(/-/g, '_')}`
+      expect(build.client.where(marker)).toBe('nowhere')
+    })
   })
 })

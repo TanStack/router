@@ -30,13 +30,9 @@ describeGeneratorWatching('vite')
 // virtualRouteConfig file updates the route tree".
 // Impact: in Vite dev, a route added to (or changed in) the virtual route
 // config is missing from the app until the dev server restarts.
-test.fails(
-  'an edit of the virtual route config file changes the live routes',
-  async () => {
-    await expectVirtualRouteConfigEdit('vite')
-  },
-  45_000,
-)
+test('an edit of the virtual route config file changes the live routes', async () => {
+  await expectVirtualRouteConfigEdit('vite')
+}, 45_000)
 
 // Bug: an edit of a `__virtual.ts` subtree config never reaches the live
 // routes: the route tree keeps the subtree the dev server started with.
@@ -47,10 +43,6 @@ test.fails(
 // src/filesystem/physical/getRouteNodes.ts for `__virtual.ts` files.
 // Impact: in Vite dev, a route added to a `__virtual.ts` file is missing
 // from the app until the dev server restarts.
-test.fails(
-  'an edit of a __virtual.ts file changes the live routes',
-  async () => {
-    await expectVirtualSubtreeEdit('vite')
-  },
-  45_000,
-)
+test('an edit of a __virtual.ts file changes the live routes', async () => {
+  await expectVirtualSubtreeEdit('vite')
+}, 45_000)

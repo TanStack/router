@@ -32,13 +32,9 @@ describeGeneratorWatching('rsbuild')
 // loadConfigFile.ts.
 // Impact: in Rsbuild/Rspack dev, a route added to the virtual route config
 // is missing from the app until the dev server restarts.
-test.fails(
-  'an edit of the virtual route config file changes the live routes',
-  async () => {
-    await expectVirtualRouteConfigEdit('rsbuild')
-  },
-  45_000,
-)
+test('an edit of the virtual route config file changes the live routes', async () => {
+  await expectVirtualRouteConfigEdit('rsbuild')
+}, 45_000)
 
 // Bug: an edit of a `__virtual.ts` subtree config never reaches the live
 // routes: the file is in no bundle and the generator's own watcher reports
@@ -49,10 +45,6 @@ test.fails(
 // loadConfigFile.ts (not probed in the product).
 // Impact: in Rsbuild/Rspack dev, a route added to a `__virtual.ts` file is
 // missing from the app until the dev server restarts.
-test.fails(
-  'an edit of a __virtual.ts file changes the live routes',
-  async () => {
-    await expectVirtualSubtreeEdit('rsbuild')
-  },
-  45_000,
-)
+test('an edit of a __virtual.ts file changes the live routes', async () => {
+  await expectVirtualSubtreeEdit('rsbuild')
+}, 45_000)
