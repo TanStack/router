@@ -1,4 +1,4 @@
-import { bench, describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute } from '../src'
 import {
@@ -89,50 +89,59 @@ describe.each([
     url = executeRewriteOutput(rewrite, url)
     expect(url.href).toBe('https://example.com/app/public?sort=name#title')
 
-    bench(
-      `${name} round trip`,
-      () => {
-        // Reuse the round-trip URL so URL construction does not hide the
-        // composition cost for callbacks that mutate or leave it unchanged.
-        for (let index = 0; index < 64; index++) {
-          url = executeRewriteOutput(rewrite, executeRewriteInput(rewrite, url))
-        }
-      },
-      {
+    test(`${name} round trip`, async ({ bench }) => {
+      await bench(
+        `${name} round trip`,
+        {
+          afterAll: () => {
+            expect(url.href).toBe(
+              'https://example.com/app/public?sort=name#title',
+            )
+          },
+        },
+        () => {
+          // Reuse the round-trip URL so URL construction does not hide the
+          // composition cost for callbacks that mutate or leave it unchanged.
+          for (let index = 0; index < 64; index++) {
+            url = executeRewriteOutput(
+              rewrite,
+              executeRewriteInput(rewrite, url),
+            )
+          }
+        },
+      ).run({
         time: 1000,
         warmupTime: 200,
         throws: true,
-        teardown: () => {
-          expect(url.href).toBe(
-            'https://example.com/app/public?sort=name#title',
-          )
-        },
-      },
-    )
+      })
+    })
   }
 
   let trailingSlash = false
-  bench(
-    'router update rebuilding the rewrite',
-    () => {
-      if (custom) {
-        router.update({ rewrite: { ...custom } })
-      } else {
-        trailingSlash = !trailingSlash
-        router.update({ basepath: trailingSlash ? '/app/' : '/app' })
-      }
-    },
-    {
+  test('router update rebuilding the rewrite', async ({ bench }) => {
+    await bench(
+      'router update rebuilding the rewrite',
+      {
+        afterAll: () => {
+          expect(router.latestLocation.pathname).toBe(
+            unchanged ? '/public' : '/internal',
+          )
+        },
+      },
+      () => {
+        if (custom) {
+          router.update({ rewrite: { ...custom } })
+        } else {
+          trailingSlash = !trailingSlash
+          router.update({ basepath: trailingSlash ? '/app/' : '/app' })
+        }
+      },
+    ).run({
       time: 1000,
       warmupTime: 200,
       throws: true,
-      teardown: () => {
-        expect(router.latestLocation.pathname).toBe(
-          unchanged ? '/public' : '/internal',
-        )
-      },
-    },
-  )
+    })
+  })
 })
 
 describe.each(['/', '/app'])('unchanged rewrite options (%s)', (basepath) => {
@@ -152,17 +161,20 @@ describe.each(['/', '/app'])('unchanged rewrite options (%s)', (basepath) => {
   expect(router.rewrite).toBe(rewrite)
   expect(router.latestLocation.pathname).toBe('/public')
 
-  bench(
-    'router update without rebuilding the rewrite',
-    () => router.update({}),
-    {
+  test('router update without rebuilding the rewrite', async ({ bench }) => {
+    await bench(
+      'router update without rebuilding the rewrite',
+      {
+        afterAll: () => {
+          expect(router.rewrite).toBe(rewrite)
+          expect(router.latestLocation.pathname).toBe('/public')
+        },
+      },
+      () => router.update({}),
+    ).run({
       time: 1000,
       warmupTime: 200,
       throws: true,
-      teardown: () => {
-        expect(router.rewrite).toBe(rewrite)
-        expect(router.latestLocation.pathname).toBe('/public')
-      },
-    },
-  )
+    })
+  })
 })

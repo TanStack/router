@@ -36,7 +36,7 @@
       "cache": false,
       "dependsOn": ["build:client"],
       "options": {
-        "command": "NODE_ENV=production vitest bench --config ./link-performance/vite.client.config.ts",
+        "command": "NODE_ENV=production vitest bench --mode benchmark --config ./link-performance/vite.client.config.ts",
         "cwd": "benchmarks/client-nav"
       }
     },
@@ -45,7 +45,7 @@
       "cache": false,
       "dependsOn": ["build:ssr"],
       "options": {
-        "command": "NODE_ENV=production vitest bench --config ./link-performance/vite.ssr.config.ts",
+        "command": "NODE_ENV=production vitest bench --mode benchmark --config ./link-performance/vite.ssr.config.ts",
         "cwd": "benchmarks/client-nav"
       }
     },

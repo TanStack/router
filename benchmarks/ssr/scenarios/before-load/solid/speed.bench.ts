@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { test } from 'vitest'
 import {
   assertBeforeLoadScenario,
   beforeLoadBenchOptions,
@@ -16,10 +16,8 @@ const { default: handler } = (await import(
 
 await assertBeforeLoadScenario(handler)
 
-describe('ssr', () => {
-  bench(
-    'ssr before-load chain (solid)',
-    () => runBeforeLoadLoop(handler),
-    beforeLoadBenchOptions,
-  )
+test('ssr', async ({ bench }) => {
+  await bench('ssr before-load chain (solid)', async () =>
+    runBeforeLoadLoop(handler),
+  ).run(beforeLoadBenchOptions)
 })
