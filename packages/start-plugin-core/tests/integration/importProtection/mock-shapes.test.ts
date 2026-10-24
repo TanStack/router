@@ -8,8 +8,8 @@
  * `describeValue`: `a safe mock`), never by its label or its module.
  *
  * Two kinds of denied modules: a package denied by a specifier rule
- * (`private-sdk`, `other-sdk`: the importer gets a mock of each name it
- * uses) and denied files (`src/shapes/*.server.ts`: the importer gets a mock
+ * (`private-sdk`, `other-sdk`, the JSON package `private-config`: the
+ * importer gets a mock of each name it uses) and denied files (`src/shapes/*.server.ts`: the importer gets a mock
  * of each export of the file). Each case is a module of its own under
  * `src/cases/` whose `values()` gives what it read from the denied module;
  * one app holds every case, so each channel builds or serves it once.
@@ -150,6 +150,10 @@ export { type U, reexported, reexported as aliased, reexported as "string export
 export { default as renamedDefault } from 'private-sdk'
 export const values = (): T => [def, ns.value, value, renamed, kebab] as unknown as T
 `,
+  // An import carrying an import attribute: the denied package is JSON
+  'a default import with an import attribute': `import config from 'private-config' with { type: 'json' }
+export const values = () => [config]
+`,
   'a .ts module with angle-bracket type assertions': `import { alpha } from 'private-sdk'
 const identity = <T>(value: T) => value
 export const values = () => [<unknown>identity(<unknown>alpha)]
@@ -275,6 +279,12 @@ const slug = (name: string) =>
 const files: Record<string, string> = {
   ...deniedPackage('private-sdk', sdkNames),
   ...deniedPackage('other-sdk', ['beta']),
+  // A JSON package (its secret in its data)
+  'node_modules/private-config/package.json': JSON.stringify({
+    name: 'private-config',
+    exports: './config.json',
+  }),
+  'node_modules/private-config/config.json': `{ "secret": "MARK_SECRET_JSON" }\n`,
   'src/types.ts': `export type Foo = string\n`,
   'src/secret-default.ts': `export default 'MARK_SECRET'\n`,
   'src/ok.ts': `export const safe = 'MARK_REAL_OK'\n`,
@@ -346,7 +356,7 @@ return Object.fromEntries(
 )`
 
 const importProtection: ImportProtectionOptions = {
-  client: { specifiers: ['private-sdk', 'other-sdk'] },
+  client: { specifiers: ['private-sdk', 'other-sdk', 'private-config'] },
   mockAccess: 'off',
 }
 
