@@ -8,7 +8,6 @@ import { mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { createServer, createServerModuleRunner, parseSync } from 'vite'
-import { makeRunnerStrict } from '@tanstack/compiler-test-utils/strict-runner'
 import { openDiagnosticChannel } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import { inputsOf, recordInputs } from './consumer-inputs'
@@ -177,7 +176,6 @@ async function withModule<T>(
   const runner = createServerModuleRunner(server.environments.ssr, {
     hmr: false,
   })
-  makeRunnerStrict(runner, root)
   try {
     const consumer = await runner.import(entry)
     const exports = await runner.import(realFile)

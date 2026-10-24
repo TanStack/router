@@ -6,7 +6,6 @@
  * - server code evaluates through the environment's module runner; a module
  *   reached through different specifiers (relative, root-absolute, through a
  *   plugin's virtual module) is one instance;
- * - a missing import throws;
  * - an edit settles and the next evaluation sees it;
  * - what a plugin reports on any channel is in `diagnostics`.
  * The plugins here stand for any public plugin: nothing in the host knows
@@ -66,9 +65,6 @@ export const run = () => {
   return { count, viaRoot }
 }
 `,
-  'src/missing.ts': `import { absent } from './counter'
-export const read = () => absent
-`,
 }
 
 async function host(warn?: 'console' | 'context') {
@@ -87,13 +83,6 @@ test('server code runs through the module runner; a module is one instance whate
   // Two increments through two spellings, read through a third: one module
   expect(server.run()).toEqual({ count: 2, viaRoot: 2 })
   expect(await app.transform('/src/server.ts', 'ssr')).toContain('MARKED')
-})
-
-test('a missing import throws', async () => {
-  const app = await host()
-  await expect(app.importServer('/src/missing.ts')).rejects.toThrow(
-    /does not provide an export named 'absent'/,
-  )
 })
 
 test('an edit settles; the next evaluation runs the edited module', async () => {

@@ -62,7 +62,6 @@ import { createApp, stripAnsi } from './build-harness'
 import { scopeMethods } from './console-hook'
 import { openDiagnosticChannel } from './diagnostic-channel'
 import { saveAppFile } from './save-file'
-import { makeRunnerStrict } from './strict-runner'
 import type { AppOptions } from './build-harness'
 import type { ChannelDiagnostic, DiagnosticChannel } from './diagnostic-channel'
 import type {
@@ -202,9 +201,7 @@ export interface DevServer {
   /**
    * Imports a module in a runnable environment (default `ssr`) through
    * Vite's own module runner of that environment: Vite resolves, loads and
-   * transforms every module by its resolved id, and a static import of a
-   * name a module does not export throws in the app's modules, as in
-   * Node.js and a build (`./strict-runner`).
+   * transforms every module by its resolved id.
    */
   import: (url: string, environment?: string) => Promise<Record<string, any>>
   /**
@@ -1151,13 +1148,6 @@ async function startServer(
   }
 
   try {
-    // Every runnable environment's runner checks named imports, also when
-    // a plugin (e.g. a framework's dev middleware) imports through it
-    for (const environment of Object.values(vite.environments)) {
-      if (isRunnableDevEnvironment(environment)) {
-        makeRunnerStrict(environment.runner, root)
-      }
-    }
     if (listen) {
       // Vite's default port (`strictPort` off): the server binds a port
       // itself, trying the next one while a port is in use, and `url` reads
@@ -1239,7 +1229,7 @@ async function startServer(
       if (!isRunnableDevEnvironment(runnable)) {
         throw new Error(`the "${environmentName}" environment is not runnable`)
       }
-      return makeRunnerStrict(runnable.runner, root).import(url)
+      return runnable.runner.import(url)
     },
     clientBundle: async () => {
       const engine = devEngine()

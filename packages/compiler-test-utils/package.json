@@ -27,7 +27,6 @@
     "./run-directory": "./src/run-directory.ts",
     "./run-node": "./src/run-node.ts",
     "./source-maps": "./src/source-maps.ts",
-    "./strict-runner": "./src/strict-runner.ts",
     "./test-scope": "./src/test-scope.ts",
     "./test-scope-setup": "./src/test-scope-setup.ts",
     "./workspace-packages": "./src/workspace-packages.ts",

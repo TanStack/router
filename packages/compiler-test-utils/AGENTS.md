@@ -43,7 +43,7 @@ package. What the suite is and how to read it: [oracle/README.md](oracle/README.
 - `./pins` (`runPins`) with `./pins-setup` (`setupFiles`): `COMPILER_TESTS_PINS=run` runs every known-bug pin as an
   ordinary test; the shared reporter lists the pins that passed.
 - `./workspace-packages`: link built `@tanstack/*` packages into test apps (not declared, to avoid Nx cycles).
-- `./run-node`, `./strict-runner`: run built output in a child Node; Vite's module runner with strict named imports.
+- `./run-node`: run built output in a child Node.
 
 Package hosts build on these: router-plugin `tests/route-app.ts` (`loadRoute`), start-plugin-core
 `tests/start-host.ts` (`useStartHost`). Start apps use `tanstackStart()` of the built framework package

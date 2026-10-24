@@ -7,8 +7,7 @@
  * hands a user:
  * - server code: a module of a server environment evaluated by that
  *   environment's own module runner (`importServer`); Vite resolves, loads
- *   and transforms every module by its resolved id, and a missing named
- *   import throws (`./strict-runner`);
+ *   and transforms every module by its resolved id;
  * - client code: the module as the dev server serves it to a browser,
  *   imported and run in a real Chromium page (`runClient`: a run page of
  *   `./browser`, from the test process's bounded pool, so fast-tier client
