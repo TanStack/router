@@ -1,4 +1,4 @@
-import { bench, describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { findRouteMatch, processRouteTree } from '../src/new-process-route-tree'
 import type { AnyRoute } from '../src'
@@ -62,37 +62,42 @@ for (const count of [100, 1000, 10000]) {
       }
       verify()
 
-      bench(
-        'processRouteTree + route.init on fresh objects',
-        () => {
-          result = processRouteTree<AnyRoute>(tree)
-        },
-        {
-          setup: (task) => {
-            // Vitest forwards Bench options, not per-iteration Task options.
-            task.opts.beforeEach = () => {
+      test('processRouteTree + route.init on fresh objects', async ({
+        bench,
+      }) => {
+        await bench(
+          'processRouteTree + route.init on fresh objects',
+          {
+            beforeEach: () => {
               tree = createTree(count, shape)
-            }
+            },
+            afterAll: verify,
           },
-          teardown: verify,
+          () => {
+            result = processRouteTree<AnyRoute>(tree)
+          },
+        ).run({
           time: 1500,
           warmupTime: 500,
           throws: true,
-        },
-      )
+        })
+      })
 
-      bench(
-        'route objects + processRouteTree + route.init',
-        () => {
-          result = processRouteTree<AnyRoute>(createTree(count, shape))
-        },
-        {
-          teardown: verify,
+      test('route objects + processRouteTree + route.init', async ({
+        bench,
+      }) => {
+        await bench(
+          'route objects + processRouteTree + route.init',
+          { afterAll: verify },
+          () => {
+            result = processRouteTree<AnyRoute>(createTree(count, shape))
+          },
+        ).run({
           time: 1500,
           warmupTime: 500,
           throws: true,
-        },
-      )
+        })
+      })
     },
   )
 }
