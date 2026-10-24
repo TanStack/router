@@ -6,7 +6,7 @@ import { getRequest } from '@tanstack/react-start/server'
 // so the compiler should prune this import from the client bundle.
 //
 // This mirrors the real-world pattern of a session utility that wraps
-// `useSession` from `@tanstack/react-start/server`.
+// `getCookie` from `@tanstack/react-start/server`.
 export function getSessionData() {
   const req = getRequest()
   return { method: req.method }

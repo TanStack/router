@@ -8,6 +8,7 @@
 ## Work and validation
 
 - Start bug fixes with a failing regression test that uses only public APIs to reproduce and assert user- or developer-visible behavior. Do not manufacture bugs by mutating internals. Establish whether real usage can reach the failing state before adding runtime handling; simplify handling of states proven unreachable.
+- When removing an API, option, or behavior, delete its tests. Never add tests that assert the removed thing is gone, such as `not.toHaveProperty('oldName')`, a type error for the old call, or a runtime throw.
 - For suspected dependency issues, verify the upstream root cause, then propose an upstream fix to the user, including for other `@tanstack/*` packages. **Never implement a workaround in this repository unless the user explicitly authorizes it.**
 - During debugging/prototyping, keep fixes aligned with the PR's intended architecture. If making a test pass requires another flag, counter, copied deadline, or duplicate completion authority, stop and consolidate state and ownership. Remove superseded paths instead of accumulating patches and bundle growth.
 - Use Node from `.nvmrc` and pnpm from root `package.json`. Install at the root with `CI=1 pnpm install --frozen-lockfile`.

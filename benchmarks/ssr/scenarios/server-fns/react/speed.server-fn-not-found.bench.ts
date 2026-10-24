@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { test } from 'vitest'
 import {
   assertServerFnScenario,
   runServerFnNotFoundRequestLoop,
@@ -16,10 +16,8 @@ const context = await setupServerFnBench(handler)
 
 await assertServerFnScenario(handler, context)
 
-describe('ssr', () => {
-  bench(
-    'ssr server-fn not-found (react)',
-    () => runServerFnNotFoundRequestLoop(handler, context),
-    serverFnBenchOptions,
-  )
+test('ssr', async ({ bench }) => {
+  await bench('ssr server-fn not-found (react)', async () =>
+    runServerFnNotFoundRequestLoop(handler, context),
+  ).run(serverFnBenchOptions)
 })

@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { test } from 'vitest'
 import {
   assertServerFnScenario,
   runServerFnSendContextRequestLoop,
@@ -16,10 +16,8 @@ const context = await setupServerFnBench(handler)
 
 await assertServerFnScenario(handler, context)
 
-describe('ssr', () => {
-  bench(
-    'ssr server-fn send-context (react)',
-    () => runServerFnSendContextRequestLoop(handler, context),
-    serverFnBenchOptions,
-  )
+test('ssr', async ({ bench }) => {
+  await bench('ssr server-fn send-context (react)', async () =>
+    runServerFnSendContextRequestLoop(handler, context),
+  ).run(serverFnBenchOptions)
 })
