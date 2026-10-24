@@ -430,8 +430,7 @@ export class Generator {
 
   private rebuildModel() {
     const scan = this.scan!
-    const factsOf = (node: RouteNode) =>
-      this.files.get(node.fullPath)?.facts
+    const factsOf = (node: RouteNode) => this.files.get(node.fullPath)?.facts
     const model = buildTreeModel({
       scan,
       config: this.config,
