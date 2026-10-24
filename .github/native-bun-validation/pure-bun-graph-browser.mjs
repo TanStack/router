@@ -2,7 +2,14 @@ import assert from 'node:assert/strict'
 import { spawn, execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { createRequire } from 'node:module'
-import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises'
+import {
+  mkdtemp,
+  mkdir,
+  readFile,
+  realpath,
+  writeFile,
+  rm,
+} from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -55,7 +62,9 @@ try {
         : [false, true]) {
       const name = `${label}-${reloadWhileAfter ? 'reload-B' : 'automatic'}`
       console.log(`START ${name}`)
-      const directory = await mkdtemp(path.join(tmpdir(), 'bun-pure-graph-'))
+      const directory = await realpath(
+        await mkdtemp(path.join(tmpdir(), 'bun-pure-graph-')),
+      )
       const result = {
         name,
         label,

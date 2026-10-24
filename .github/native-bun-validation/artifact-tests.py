@@ -81,12 +81,14 @@ for index, (filename, title) in enumerate(isolated):
         "BUN_WATCHER_TRACE": str(proof / f"native-isolated-{index}-watcher.jsonl"),
     })
     (proof / f"native-isolated-{index}.log").write_text(run.stdout)
-    selected = ET.parse(isolated_report).findall(".//testcase") if isolated_report.exists() else []
-    passed = run.returncode == 0 and bool(selected) and all(
+    all_cases = ET.parse(isolated_report).findall(".//testcase") if isolated_report.exists() else []
+    selected = [case for case in all_cases if case.attrib.get("name", "").endswith(title)]
+    passed = run.returncode == 0 and len(selected) == 1 and all(
         not any(case.find(tag) is not None for tag in ["failure", "error", "skipped"])
         for case in selected
-    )
-    isolated_results.append({"file": filename, "title": title, "passed": passed, "cases": len(selected)})
+    ) and all(case.find("skipped") is not None for case in all_cases if case not in selected)
+    isolated_results.append({"file": filename, "title": title, "passed": passed,
+                             "cases": len(selected), "filteredOut": len(all_cases) - len(selected)})
     print(json.dumps(isolated_results[-1]))
 (proof / "native-isolated-results.json").write_text(json.dumps(isolated_results, indent=2) + "\n")
 report = proof / "native-results.xml"

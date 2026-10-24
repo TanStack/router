@@ -20,13 +20,14 @@ result = subprocess.run([
 ], cwd=source, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 (proof / "native-chrome.log").write_text(result.stdout)
 print(result.stdout, end="")
-cases = ET.parse(report).findall(".//testcase") if report.exists() else []
+all_cases = ET.parse(report).findall(".//testcase") if report.exists() else []
+cases = [case for case in all_cases if case.attrib.get("name", "") == title]
 passed = result.returncode == 0 and len(cases) == 1 and all(
     not any(case.find(tag) is not None for tag in ["failure", "error", "skipped"])
     for case in cases
-)
+) and all(case.find("skipped") is not None for case in all_cases if case not in cases)
 (proof / "native-chrome.json").write_text(json.dumps({
     "binarySha256": expected["sha256"], "title": title,
-    "cases": len(cases), "passed": passed,
+    "cases": len(cases), "filteredOut": len(all_cases) - len(cases), "passed": passed,
 }, indent=2) + "\n")
 assert passed, "Native Chromium ordering regression must execute and pass"

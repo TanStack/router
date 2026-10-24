@@ -2,6 +2,7 @@ import {
   mkdtemp,
   mkdir,
   readFile,
+  realpath,
   rename,
   rm,
   writeFile,
@@ -39,7 +40,9 @@ const helperSource = (ext, name) =>
       : `export default ${JSON.stringify(routeConfig(name))}\n`
 
 for (const scenario of cases) {
-  const root = await mkdtemp(path.join(tmpdir(), 'router-built-helper-'))
+  const root = await realpath(
+    await mkdtemp(path.join(tmpdir(), 'router-built-helper-')),
+  )
   const checks = []
   const record = (name, passed, details = undefined) =>
     checks.push({ name, passed, details })
