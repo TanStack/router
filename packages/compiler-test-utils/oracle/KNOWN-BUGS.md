@@ -7,7 +7,7 @@ One entry per root cause: the bug, the SPEC clause, the pins (`file` and test na
 `$name`, `%s` and `${…}` are table-row placeholders), and what a fix must achieve. The test comment (`Bug:`,
 `Impact:`) has the details. "Cause" files name today's implementation; a rewrite may have no such file.
 
-Totals: 373 pin sites in 103 test files (a table test counts once; Vitest counts each row).
+Totals: 374 pin sites in 103 test files (a table test counts once; Vitest counts each row).
 
 Pins whose input picks a name today's compiler generates (S6) flip with a compiler that generates other names. The
 adaptive pins next to them, which read the names a compiler actually generates, are the real check.
@@ -528,7 +528,7 @@ Paths under `start-plugin-core/tests/` unless noted.
   `react-start-rsc/tests/integration/rsc-start-build.test.ts`: "a server fn only a 'use client' component of a server
   component imports runs when clicked". Fix: every server fn the client references is callable by id.
 
-## J5 Deferred hydration `<Hydrate>` (38 pins: 35 below, 3 in S1, S6)
+## J5 Deferred hydration `<Hydrate>` (39 pins: 36 below, 3 in S1, S6)
 
 Paths under `start-plugin-core/tests/integration/`; `pages/` means `integration/pages/`.
 
@@ -575,6 +575,9 @@ Paths under `start-plugin-core/tests/integration/`; `pages/` means `integration/
   "client: the split children render member-expression tags of $name"; "client: the split children render a component
   bound inside them"; "client: property names, method keys and optional members are no reads of a local"; "client: the
   split children read a local enum"; "client: split children reading the component's arguments render its props".
+- **A Solid directive (`use:tip`) is no use of `tip`**: the chunk neither declares a module-level `tip` nor receives
+  a component's `tip`, and Solid's JSX transform calls it there ("tip is not defined"). SPEC G1, J5.2.
+  `hydrate-pages-solid.ts`: "split children run a directive declared in the $where".
 - **A Solid `ref={input}` to a `let` of the component assigns the chunk's own copy**: the `let` is passed to the
   chunk as a prop, so the component never sees the element. SPEC J5.8. `hydrate-pages-solid.ts`: "a ref in split
   children binds the let of their component".

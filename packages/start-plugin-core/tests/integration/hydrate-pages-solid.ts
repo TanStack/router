@@ -119,6 +119,21 @@ export function Page() {
 }
 
 /**
+ * A page whose boundary's children use a Solid directive (`use:tip`, which
+ * Solid's JSX transform turns into a call of `tip` where the JSX ends up),
+ * declared at module level or in the component (`where`).
+ */
+function directivePage(where: 'module' | 'component') {
+  const tip = `function tip(el: HTMLElement) {
+  el.dataset.tip = '${where}'
+}
+`
+  return `${head}${where === 'module' ? tip : ''}export function Page() {
+  ${where === 'component' ? tip : ''}return <Hydrate when={idle()}><span use:tip><Counter label="child" /></span></Hydrate>
+}`
+}
+
+/**
  * A page rendering `boundary` once the app hydrated (`useHydrated` of the
  * real router), like a boundary that appears after the app started (e.g.
  * after a client-side navigation): Solid's `Hydrate` then renders its
@@ -225,6 +240,8 @@ export function Page() {
   updatesPropsReference: updatesPage(' split={false}', true),
   letRef: letRefPage(''),
   letRefReference: letRefPage(' split={false}'),
+  directiveModule: directivePage('module'),
+  directiveComponent: directivePage('component'),
   // A context declared in the page module itself.
   localContext: `import { Hydrate } from '@tanstack/solid-start'
 import { idle } from '@tanstack/solid-start/hydration'
@@ -338,6 +355,31 @@ export function solidPageSuite(bundler: StartBundler) {
         props: { active: true },
       })
     })
+
+    // Bug: a Solid directive names its function in a JSX attribute only
+    // (`use:tip`), which the Hydrate transform does not take for a use of
+    // `tip`: the chunk neither declares a module-level `tip` nor receives a
+    // component's `tip` as a capture, and Solid's JSX transform turns the
+    // attribute into a call of `tip` in the chunk. SPEC G1, J5.2.
+    // Impact: the children throw "tip is not defined" when the boundary
+    // hydrates, and stay the server's HTML.
+    // (A directive runs on the client only: its attribute shows that the
+    // children hydrated.)
+    test.fails.each([
+      { where: 'module', fixture: 'directiveModule' },
+      { where: 'component', fixture: 'directiveComponent' },
+    ])(
+      'split children run a directive declared in the $where',
+      async ({ where, fixture }) => {
+        const page = await app.hydrate(fixture, {
+          script: `return root.querySelector('span').dataset.tip ?? 'none'`,
+        })
+        expect({
+          tip: page.result,
+          consoleErrors: page.consoleErrors,
+        }).toEqual({ tip: where, consoleErrors: [] })
+      },
+    )
   })
 
   describe.concurrent(

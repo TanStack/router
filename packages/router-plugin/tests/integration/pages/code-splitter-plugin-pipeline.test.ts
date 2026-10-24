@@ -282,6 +282,26 @@ export const Route = createFileRoute('/')({
     ).toEqual(['data', '<p>imported</p>'])
   })
 
+  // A Solid directive (`use:tip`) names its function in a JSX attribute
+  // only; Solid's JSX transform turns it into a call of `tip` in the module
+  // the JSX ends up in. The split component keeps the module-level
+  // directive it uses (SPEC J2.3, G1).
+  it('a split Solid component runs the module-level directive it uses', async () => {
+    const route = await loadRoute(
+      `import { createFileRoute } from '@tanstack/solid-router'
+function tip(el: HTMLElement) {
+  el.dataset.tip = 'on'
+}
+export const Route = createFileRoute('/')({ component: () => <p use:tip>tip</p> })
+`,
+      { targetFramework: 'solid' },
+    )
+    expect(await route.isLazy('component')).toBe(true)
+    expect(await route.run(`return render('component')`)).toBe(
+      '<p data-tip="on">tip</p>',
+    )
+  })
+
   // Each framework's route module imports the lazy route helpers from its
   // own router package, and no module the page loads is another
   // framework's router: the routes run with the real router of their
