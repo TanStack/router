@@ -1,6 +1,5 @@
 import * as React from 'react'
 import { Link, Outlet } from '@tanstack/react-router'
-import { fetchPosts } from '../posts'
 import { Route } from 'arrow-function.tsx'
 const PostsComponent = () => {
   const posts = Route.useLoaderData()
@@ -29,6 +28,4 @@ const PostsComponent = () => {
     </div>
   )
 }
-const SplitLoader = fetchPosts
-export { SplitLoader as loader }
 export { PostsComponent as component }

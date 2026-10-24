@@ -1,6 +1,7 @@
 import { transformWithOxc } from 'vite'
 import { describe, expect, it } from 'vitest'
 import {
+  buildAndRun,
   compileRouteModules,
   componentChunk,
   declarationOf,
@@ -12,6 +13,7 @@ import {
   importedNames,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
+import type { CodeSplitGroupings } from '../src/core/constants'
 
 describe('each module imports only the specifiers it reads', () => {
   // Source: React Router route-chunks-test.ts "functions referencing their own
@@ -88,6 +90,155 @@ export const Route = createFileRoute('/')({
     ])
     await expectValidModules(modules)
   })
+
+  // The split component's import stays in the reference module while another
+  // option reads it; dead-code elimination drops it, and the import
+  // declaration once empty, when nothing does.
+  it("keeps an imported component's import while another option reads it, and drops it when nothing does", async () => {
+    const route = (
+      headOption: string,
+    ) => `${head}import { PostsComponent } from './posts-component'
+export const Route = createFileRoute('/')({
+  component: PostsComponent,
+  ${headOption}
+})
+`
+    const withHead = route(
+      'head: () => ({ meta: [{ title: PostsComponent.title }] }),',
+    )
+    const sibling = compileRouteModules(withHead)
+    // React HMR rewrites the reference module before unused code is removed.
+    const hmrReference = compileRouteModules(withHead, { hmr: true }).modules
+      .reference!
+    for (const reference of [sibling.modules.reference!, hmrReference]) {
+      expect(reference).toContain('title: PostsComponent.title')
+      expect(importedNames(reference, './posts-component')).toEqual([
+        'PostsComponent',
+      ])
+    }
+    expect(sibling.modules['virtual component']).toContain(
+      'const SplitComponent = PostsComponent',
+    )
+    expect(
+      importedNames(sibling.modules['virtual component']!, './posts-component'),
+    ).toEqual(['PostsComponent'])
+    await expectValidModules(sibling.modules)
+
+    const alone = compileRouteModules(route(''))
+    expect(importSources(alone.modules.reference!)).toEqual([
+      '@tanstack/react-router',
+    ])
+    await expectValidModules(alone.modules)
+  })
+
+  // A type is erased, so a type that reads the split value (`typeof X`)
+  // keeps no import alive: under `verbatimModuleSyntax` the erased reference
+  // module would still import the module and load it eagerly with the route.
+  it.each([
+    {
+      name: 'a component',
+      declarations: `import { PostsComponent } from './posts'
+type PostsProps = Parameters<typeof PostsComponent>[0]`,
+      options: 'component: PostsComponent,',
+      groupings: undefined,
+    },
+    {
+      name: 'a component another split option renders too',
+      declarations: `import { PostsComponent } from './posts'
+type PostsProps = Parameters<typeof PostsComponent>[0]`,
+      options: `component: PostsComponent,
+  errorComponent: () => <PostsComponent />,`,
+      groupings: undefined,
+    },
+    {
+      name: 'an object-form handler',
+      declarations: `import { fetchPosts } from './posts'
+type PostsData = Awaited<ReturnType<typeof fetchPosts>>`,
+      options:
+        'loader: { handler: fetchPosts, staleReloadMode: "background" },',
+      groupings: [['loader'], ['component']] satisfies CodeSplitGroupings,
+    },
+    {
+      name: 'a component that another split component renders',
+      declarations: `import { PostsError } from './posts-error'
+type PostsErrorProps = Parameters<typeof PostsError>[0]
+function PostsComponent() {
+  return <PostsError />
+}`,
+      options: `component: PostsComponent,
+  errorComponent: PostsError,`,
+      groupings: undefined,
+    },
+  ])(
+    'drops the import of $name that only a type still reads',
+    async ({ declarations, options, groupings }) => {
+      const { modules } = compileRouteModules(
+        `${head}${declarations}
+export const Route = createFileRoute('/')({
+  ${options}
+})
+`,
+        { groupings },
+      )
+      expect(importSources(modules.reference!)).toEqual([
+        '@tanstack/react-router',
+      ])
+      await expectValidModules(modules)
+    },
+  )
+
+  // A bare `import './x'` runs for its side effects and stays in every
+  // module, also next to `import { X } from './x'` of the split component.
+  it("keeps a side-effect import of the split component's module", async () => {
+    const code = `${head}import './posts-component'
+import { PostsComponent } from './posts-component'
+export const Route = createFileRoute('/')({
+  component: PostsComponent,
+})
+`
+    const { modules } = compileRouteModules(code)
+    const hmrReference = compileRouteModules(code, { hmr: true }).modules
+      .reference!
+    for (const reference of [modules.reference!, hmrReference]) {
+      expect(importSources(reference)).toContain('./posts-component')
+      expect(importedNames(reference, './posts-component')).toEqual([])
+    }
+    const chunk = modules['virtual component']!
+    expect(importSources(chunk)).toEqual(['./posts-component'])
+    expect(importedNames(chunk, './posts-component')).toEqual([
+      'PostsComponent',
+    ])
+    await expectValidModules(modules)
+  })
+
+  it('reads the imported component from `head` at runtime once the component is split', async () => {
+    const result = await buildAndRun(
+      `${head}import { PostsComponent } from '../posts-component'
+export const Route = createFileRoute('/')({
+  component: PostsComponent,
+  head: () => ({ meta: [{ title: PostsComponent.title }] }),
+})
+`,
+      `return {
+  head: entry.Route.options.head(),
+  rendered: await entry.render(entry.Route.options.component),
+}`,
+      {
+        files: {
+          'posts-component.tsx': `import { createElement } from 'react'
+export function PostsComponent() {
+  return createElement('p', null, 'posts')
+}
+PostsComponent.title = 'Posts'
+`,
+        },
+      },
+    )
+    expect(result).toEqual({
+      head: { meta: [{ title: 'Posts' }] },
+      rendered: '<p>posts</p>',
+    })
+  }, 30_000)
 
   // With React's classic JSX runtime (`jsx: "react"` in tsconfig), JSX
   // compiles to `React.createElement`, so a React import that the TypeScript

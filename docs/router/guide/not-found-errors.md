@@ -233,6 +233,8 @@ TanStack Router exposes a `CatchNotFound` component similar to `CatchBoundary` t
 
 `notFoundComponent` is a special case when it comes to data loading. **`SomeRoute.useLoaderData` may not be defined depending on which route you are trying to access and where the not-found error gets thrown**. However, `Route.useParams`, `Route.useSearch`, `Route.useRouteContext`, etc. will return a defined value.
 
+With SSR, a `beforeLoad` or `loader` result that is not sent to the client (`dehydrate: false`, experimental) is missing in the browser on a route the server rendered as not-found, and on the root route when it shows the not-found page. The browser does not run `beforeLoad` or `loader` there during hydration. The root layout renders around the not-found page, so if it shows such a result, keep the result sent (the default). Otherwise the browser renders the root layout without it on every unknown URL, which can show up as a hydration mismatch.
+
 **If you need to pass incomplete loader data to `notFoundComponent`,** pass the data via the `data` option in the `notFound` function and validate it in `notFoundComponent`.
 
 ```tsx

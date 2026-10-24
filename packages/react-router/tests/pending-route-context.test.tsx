@@ -12,6 +12,73 @@ import {
 
 afterEach(cleanup)
 
+test.each(['handler', 'custom'] as const)(
+  'forcePending shows pending UI during context-only %s revalidation',
+  async (revalidation) => {
+    const revalidationStarted = createControlledPromise<void>()
+    const revalidationGate = createControlledPromise<{ generation: number }>()
+    let generation = 0
+    const handler = () => {
+      if (++generation === 1) {
+        return { generation }
+      }
+      revalidationStarted.resolve()
+      return revalidationGate
+    }
+    const rootRoute = createRootRoute({ component: Outlet })
+    const pageRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      context: {
+        handler,
+        revalidate: revalidation === 'handler' ? true : handler,
+      },
+      pendingMs: 0,
+      pendingMinMs: 0,
+      pendingComponent: () => <p role="status">Refreshing context</p>,
+      component: () => (
+        <p>Context generation {pageRoute.useRouteContext().generation}</p>
+      ),
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([pageRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+    const view = render(<RouterProvider router={router} />)
+    let invalidation: Promise<void> | undefined
+
+    try {
+      expect(await screen.findByText('Context generation 1')).toBeVisible()
+
+      await act(async () => {
+        invalidation = router.invalidate({ forcePending: true })
+        await revalidationStarted
+      })
+
+      expect(await screen.findByRole('status')).toHaveTextContent(
+        'Refreshing context',
+      )
+      expect(screen.getByText('Context generation 1')).not.toBeVisible()
+
+      await act(async () => {
+        revalidationGate.resolve({ generation: 2 })
+        await invalidation
+      })
+
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      expect(screen.getByText('Context generation 2')).toBeVisible()
+      expect(generation).toBe(2)
+    } finally {
+      revalidationGate.resolve({ generation: 2 })
+      await act(async () => {
+        await Promise.allSettled(invalidation ? [invalidation] : [])
+      })
+      view.unmount()
+      router.history.destroy()
+    }
+  },
+)
+
 test('a pending child observes settled ancestor context during beforeLoad and loader waits', async () => {
   const childBeforeLoadStarted = createControlledPromise<void>()
   const childBeforeLoadGate = createControlledPromise<void>()

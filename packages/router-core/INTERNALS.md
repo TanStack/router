@@ -68,22 +68,22 @@ independent writer, resource owner, or invalid transition.
 
 The main authorities are:
 
-| Authority                    | What it owns                                                        |
-| ---------------------------- | ------------------------------------------------------------------- |
-| `_tx`                        | The client navigation allowed to commit and publish foreground flow |
-| `_preflight`                 | The current client plan or asynchronous hydration reconstruction    |
-| `_handoff`                   | The temporary right to transfer one reconstructed SSR prefix        |
-| `_committed`                 | The accepted current lane and lifecycle/background identity base    |
-| `stores.matches`             | The current match presentation exposed to renderers and users       |
-| `router._cache`              | Off-screen loader generations preferred during same-ID planning     |
-| Active preload entry         | Cancellation, cache clearing, and private redirect-chain ownership  |
-| Loader flight registry entry | The latest same-ID loader generation available to new consumers     |
-| Match flight lease           | Ownership keeping that loader work alive                            |
-| Pending session              | One reveal/minimum-visible deadline and its current owner           |
-| React acknowledgement slot   | The one requested publication whose render may settle a transition  |
-| Refresh transaction          | Forced rematerialization and an optional hydration handoff          |
-| Request signal               | Lifetime of one server request and any accepted SSR stream          |
-| Accepted SSR stream response | Cleanup ownership transferred from the handler to the response body |
+| Authority                    | What it owns                                                         |
+| ---------------------------- | -------------------------------------------------------------------- |
+| `_tx`                        | The client navigation allowed to commit and publish foreground flow  |
+| `_preflight`                 | The current client plan or asynchronous hydration reconstruction     |
+| `_handoff`                   | The temporary right to transfer one reconstructed SSR prefix         |
+| `_committed`                 | The accepted current lane and lifecycle/background identity base     |
+| `stores.matches`             | The current match presentation exposed to renderers and users        |
+| `router._cache`              | Off-screen loader generations and temporary own-context memo entries |
+| Active preload entry         | Cancellation, cache clearing, and private redirect-chain ownership   |
+| Loader flight registry entry | The latest same-ID loader generation available to new consumers      |
+| Match flight lease           | Ownership keeping that loader work alive                             |
+| Pending session              | One reveal/minimum-visible deadline and its current owner            |
+| React acknowledgement slot   | The one requested publication whose render may settle a transition   |
+| Refresh transaction          | Forced rematerialization and an optional hydration handoff           |
+| Request signal               | Lifetime of one server request and any accepted SSR stream           |
+| Accepted SSR stream response | Cleanup ownership transferred from the handler to the response body  |
 
 These authorities are related, but none is a substitute for another. In
 particular, presentation is not semantic authority, registry membership is not
@@ -239,19 +239,25 @@ Contextualization walks parent to child. For each route it:
 This serial order guarantees that child route context, child `beforeLoad`, and
 child loader context cannot observe a partially completed parent guard.
 
-Route context is synchronous in the public type contract. Its own contribution
-is cached on the match as `_ctx`, and match identity includes route identity,
-path params, and `loaderDeps`. A same-ID cache hit may therefore reuse that
-route-local result, including one produced by a completed preload. The merged
-context is still rebuilt parent-first from the current parent's merged context,
-the route's `_ctx`, and the current `beforeLoad` result. Reusing `_ctx` must never
-reuse an older merged context or `beforeLoad` contribution.
+Route context is an async-capable lifecycle. Its own contribution is cached on
+the match as `_ctx`, and match identity includes route identity, path params,
+and `loaderDeps`. A same-ID cache hit may reuse that route-local result,
+including one produced by a completed preload. The merged context is rebuilt
+parent-first from the current parent's merged context, the route's `_ctx`, and
+the current `beforeLoad` result. Reusing `_ctx` must never reuse an older merged
+context or `beforeLoad` contribution. A failed context retains the inherited
+context for boundary rendering.
 
-Server requests have fresh matches and execute route context normally.
-Hydration executes each accepted route context locally, stores its `_ctx`, and
-then merges transported `beforeLoad` output. Every normal client lane,
-including every preload, performs its own contextualization and `beforeLoad`
-chain.
+An async context on a non-retained client match presents pending state while
+awaiting its result. A synchronous context adds no separate microtask turn to
+the client serial phase. Context-only routes need not start pending before the
+handler reveals whether it is asynchronous.
+
+Server requests execute context according to effective SSR policy. Hydration
+restores transported context, applying its transform first, and recomputes
+unsent context. Every normal client lane, including every preload, performs its
+own contextualization and `beforeLoad` chain. The lifecycle decisions below
+explain which contributions may survive a lane and why.
 
 ### Reduced
 
@@ -343,9 +349,9 @@ uses the active preload entry as its additional authority.
 `beforeLoad` context is not a cache.
 
 Client `beforeLoad` only installs a cancellable wait for Promise results.
-Synchronous context still crosses an `await` before the cancellation check:
+A synchronous `beforeLoad` result still crosses an `await` before the cancellation check:
 a hook can queue a replacement navigation before its loader is planned.
-Promise detection assumes ordinary Promise behavior.
+Serial phases share `isPromise` detection before adding cancellable waits.
 
 A completed client preload never stores reusable `beforeLoad` output. When its
 loader data enters the route cache, the merged context is discarded; the
@@ -378,10 +384,12 @@ decision.
 ### Hydration
 
 The server-resolved prefix is authoritative for the initial document. Hydration
-therefore restores transported `beforeLoad` output for the accepted prefix
-without rerunning it on the client. This applies to the server-rendered prefix
-in selective SSR; the unresolved client suffix follows normal navigation
-rules.
+restores transported `beforeLoad` output for the accepted prefix, applying its
+`hydrate` transform when present. A non-terminal match whose result was not
+transported reruns `beforeLoad` after its own context, before the child's context.
+Terminal server outcomes retain their boundary instead of rerunning an unsent
+guard. The unresolved selective-SSR suffix follows normal navigation rules;
+hydration prepares context for its first pending boundary before that load.
 
 Hydration is not a general `beforeLoad` cache. Its temporary handoff is valid
 only for the initial client load of the same document entry and exact committed
@@ -445,17 +453,21 @@ and does not preserve the private parent chain: merged context and `beforeLoad`
 output are cleared. Same-ID `_ctx`, loader identity, and successful loader data
 remain reusable by design.
 
-Hydration retry is the transported-work exception because it did not run those
-client loader tasks. There, `loaderData` membership together with
-`invalid === false` proves a transported successful generation even when
-terminal boundary state is attached to the match. Hydration normalizes that copy
+Hydration retry admits only loader data whose transported `l` key is present
+and whose transform, if any, completed. Browser-produced results at or below a
+failed boundary are discarded: a descendant may have read the failed parent
+through `parentMatchPromise`. Hydration normalizes an eligible transported copy
 before passing it through the same cache identity and lease rules.
 
-The dehydrated payload omits `loaderData` both when no loader result exists and
-when the accepted result is `undefined`. This deliberately keeps the HTML
-payload smaller at the cost of making those states indistinguishable after
-transport. Reconstruction preserves the absence and does not treat an omitted
-value as reusable loader success during hydration retry.
+The payload preserves an executed, transported `undefined` result as a present
+`l` key. Absence means there is no transported result, not a successful result
+whose value happens to be `undefined`. The same presence protocol applies to
+context (`m`) and `beforeLoad` (`b`).
+
+The same map also temporarily holds context memo entries written before loader
+settlement. These are not proof of reusable loader success. They allow a later
+lane to reuse a computed `_ctx` after a redirect or preload. Normal commit and
+GC rules can remove them; this is not a second durable context cache.
 
 The cache may deliberately contain a successful generation with the same match
 ID as a committed match. For example, a navigation can finish an ancestor
@@ -494,23 +506,28 @@ removes a successful generation only if it is still the current registry entry,
 then aborts its controller. Every copied semantic match that retains a flight
 must acquire a lease, and every discarded match must release one exactly once.
 
-There is one short exception to normal zero-lease cleanup. When one navigation
-replaces another with the same match ID, the predecessor's loader flight can
-reach zero leases before the successor finishes `beforeLoad` and decides whether
-to reuse it. While the current transaction is visibly running `beforeLoad` for
-that same-ID successor, the flight remains discoverable. The same grace period
-applies if any other same-ID flight loses its final lease during that phase.
-Outside this phase, merely having a current `_tx` is not enough to retain a
-zero-lease flight.
+There is one short reservation period with two admission paths. When one
+navigation replaces another with the same match ID,
+`transferMatchResources(..., true)` explicitly leaves the predecessor's loader
+flight discoverable until the successor plans its loaders. This also survives
+an awaited context callback. Separately, another owner releasing a flight's last
+lease preserves discovery while the current transaction is running an async
+context or `beforeLoad` and contains a same-ID successor. The serial phase uses
+its existing `isFetching: 'beforeLoad'` marker for both callbacks; it needs no
+second reservation flag. Merely having a current `_tx` is not enough. This keeps
+a redirecting preload from aborting loader work while its successor awaits
+context, without sharing the context invocation itself.
 
 Loader planning ends the grace period synchronously. The successor either
 acquires the discoverable flight or one sweep removes and aborts it. A lane with
-no `beforeLoad` reaches loader planning before contextualization yields; an
-asynchronous `beforeLoad` keeps the grace period visible until it settles.
-Preloads neither create nor sweep this navigation-only reservation. An explicit
-`shouldReload: false` declines the flight, while invalidation removes discovery
-for selected IDs before starting the replacement load. No extra flag, counter,
-or completion promise represents the grace period.
+synchronous or reused context and no `beforeLoad` reaches loader planning before
+contextualization yields. An asynchronous context or `beforeLoad` keeps the
+grace period visible until it settles. Context clears the serial marker in
+`finally`, including error and cancellation paths. Preloads neither create nor
+sweep this navigation-only reservation. An explicit `shouldReload: false`
+declines the flight, while invalidation removes discovery for selected IDs
+before starting the replacement load. No extra flag, counter, or completion
+promise represents the grace period.
 
 Releasing a set of matches is deliberately two-phase. First every outgoing
 match drops its `_flight` lease and every zero-owner generation not reserved by
@@ -607,9 +624,20 @@ Redirect and cancellation are control flow, not committed match statuses.
 Error and not-found are terminal semantic outcomes assigned once during
 reduction.
 
-Returned and thrown redirects/not-founds normalize identically. Only an error
-invokes route `onError`; if `onError` throws, its value is normalized again and
-may itself become an error, not-found, or redirect.
+A returned or thrown redirect from a context handler, context revalidation,
+`beforeLoad`, or loader is control flow. Context checks it before caching its
+own contribution, merging inheritance, or invoking server `dehydrate`, then
+uses the same error/control normalization as a thrown redirect. Only an
+ordinary error invokes route `onError`; if `onError` throws, its value is
+normalized again and may become an error, not-found, or redirect.
+
+The supported not-found contract is `throw notFound()`. Existing `beforeLoad`
+and loader normalization also recognizes returned tagged not-found values, but
+returning them is not a supported inference contract. A returned not-found
+object from context is ordinary data, including for serialization validation.
+This distinction avoids promising a return form whose all-optional type can
+admit unrelated values and create registered-route inference cycles.
+
 Client and server lanes build a route redirect while its source route still owns
 the outcome. Target-construction failures therefore become that route's error,
 and a successful client target travels with the redirect so navigation does not
@@ -626,11 +654,18 @@ proves request cancellation, while the already selected failure/control outcome
 proves that an aborted descendant is obsolete. The client calls a discarded
 non-result `canceled`, while the server calls it `skipped`; neither is a
 publishable terminal state.
-The transaction controller exposed to client `context` and `beforeLoad` is
-router-owned; route code may observe its signal but must not abort it. A canceled
-client lane has therefore already lost writer authority to a successor.
-Canceled client lanes release only their private work; the transaction that
-superseded them owns presentation and completion.
+The transaction controller exposed to normal client-lane `context` and
+`beforeLoad` is router-owned; route code may observe its signal but must not
+abort it. Cancellation in that contract comes from the router, after writer
+authority has moved to a successor. Canceled client lanes release only their
+private work; the transaction that superseded them owns presentation and
+completion.
+
+Hydration has a separate shared-controller contract. A reconstruction callback
+may abort that controller to stop subsequent callbacks and refuse the initial
+handoff, while the attempt still owns fallback or terminal publication. The
+hydration handoff section specifies that behavior; it does not grant ordinary
+client-lane callbacks ownership of their transaction controller.
 
 The client and server use the same settlement order and renderable-ancestor
 rules.
@@ -655,8 +690,8 @@ prefix is checked root-to-leaf. The first failed ancestor without its own accept
 `loaderData` property replaces a deeper failure because that deeper boundary is
 not reachable. Locally retained loader data, including an accepted `undefined`,
 keeps the ancestor renderable with stale data and preserves settlement
-chronology. An `undefined` result reconstructed from SSR is intentionally absent
-under the transport policy above.
+chronology. SSR transport also preserves a present `l: undefined`; key presence,
+rather than the value's truthiness, determines whether data was transported.
 
 A redirect is control flow and wins even after an ancestor loader has already
 failed. Reduction therefore waits for started descendant loader work to reveal
@@ -769,14 +804,17 @@ executing them.
 
 Pending UI is presentation, not partial semantic commit.
 
-An exact successful match remains successful while `beforeLoad` or a blocking
-loader revalidates it only when the same successful, non-not-found prefix is in
+An exact successful match remains successful while asynchronous route context,
+`beforeLoad`, or a blocking loader revalidates it only when the same successful,
+non-not-found prefix is in
 both the transaction's committed base and its starting presentation.
 `isFetching` exposes that work without replacing its rendered UI. A cache-only
 success, a different match ID, or a success hidden below a terminal boundary has
 no retained presentation and remains eligible for pending UI. Explicit
-force-pending invalidation already changes the committed generation to pending
-and therefore overrides retention.
+force-pending invalidation changes the committed generation to pending and
+therefore overrides retention. This includes opted-in context revalidation;
+initial context-only matching still waits for actual asynchronous work before
+presenting pending state.
 
 The initial pending offer for a fuzzy not-found lane waits until lazy route
 options resolve its boundary. This prevents a provisional ancestor boundary
@@ -956,17 +994,19 @@ transaction path. It does not turn `stores.matches` into a planning lane.
 
 Filtered invalidation evaluates committed, cached, active-transaction, and
 active-preload matches and collects the selected match IDs. Every committed and
-cached generation with one of those IDs is made invalid. Cached matches are
-already settled successes, so their data owner is marked invalid in place.
+cached generation with one of those IDs is made invalid. Cached loader data and
+provisional context memo entries are marked invalid in place.
 Matching active preload owners are retired first, which prevents older
 speculative work from clearing that stale mark or publishing fresh cache data;
 the lane signal remains the publication fence if its loader outcome already
 fulfilled. The loader discovery entry is also detached before the superseding
 load. Unselected preload lanes remain active. This ID-wide rule prevents a
 cache-first or in-flight same-ID generation from escaping invalidation merely
-because a different generation was the one passed to the filter. Route context
-retains same-ID cacheability across this replacement and needs no separate
-invalidation marker.
+because a different generation was the one passed to the filter. Explicit
+invalidation also sets `_ctxInvalid`. Only a route with `context.revalidate`
+consumes that mark by recomputing context; generic loader retry invalidation
+must not trigger context revalidation. Without opt-in, context retains same-ID
+cacheability across invalidation.
 
 Invalidated successful data may remain visible until pending or terminal
 publication, depending on reload mode. Error/not-found generations reset through
@@ -1014,6 +1054,7 @@ navigation, but it never becomes `_tx` and never publishes match presentation.
 
 Its match/cache ownership effects are limited to:
 
+- computed own-context contributions, including before a redirect;
 - joinable same-ID loader flights; and
 - individual successful preload loader generations entering the loader cache as
   they settle.
@@ -1022,9 +1063,10 @@ A preload can also install durable lazy route options through the separate
 route-chunk owner described above. That is route definition readiness, not
 authority over a completed match lane or `beforeLoad` result.
 
-Preload lane-local matching, route context, validation, cancellation, and
+Preload lane-local matching, merged context, validation, cancellation, and
 `beforeLoad` outcomes do not become authority for another preload or a later
-navigation. Consumers that join its same-ID loader flight nevertheless share
+navigation. Its completed own-context contribution may be reused; an in-flight
+context invocation is not shared. Consumers that join its same-ID loader flight share
 that flight's normalized outcome. After a normal standalone preload redirect,
 the private chain continues only if that lane's controller was still present and
 was successfully removed from `_preloads`; replacing an unrelated `_tx` does not
@@ -1107,25 +1149,28 @@ the router stream transform. Normal completion, downstream cancellation,
 request abort, renderer failure, and stream lifetime timeout all converge on the
 same cleanup authority; none creates a second response owner.
 
-Once a server lane is accepted for rendering, its match controllers are
-registered with that same SSR cleanup authority. They remain live through
-dehydration and response streaming so deferred loader work can finish while the
-response is active, then abort when the response or stream lifetime ends.
+Once a server lane is accepted for rendering, its match controllers use the
+same SSR cleanup authority. They remain live through dehydration and response
+streaming so deferred work can finish while the response is active. Unsettled
+work and loader work whose data is not transported as-is must be stopped at
+cleanup. The implementation currently makes the latter decision lane-wide by
+comparing payload and loader-data identity; lane-wide versus per-match cleanup
+remains an unresolved design choice.
 
 ## Selective SSR
 
 SSR policy is the first parent-to-child serial step, before route context,
 params/search validation handling, and `beforeLoad`:
 
-- `true` runs server `beforeLoad` and loaders, loads render chunks, projects
+- `true` runs server context, `beforeLoad`, and loaders, loads render chunks, projects
   assets, and renders the component.
-- `'data-only'` runs server `beforeLoad` and loaders and projects `head`,
+- `'data-only'` runs server context, `beforeLoad`, and loaders and projects `head`,
   `scripts`, and `headers`, but does not render that route component.
-- `false` skips server `beforeLoad`, loaders, and component chunks. The first
+- `false` skips server context, `beforeLoad`, loaders, and component chunks. The first
   `false` boundary still projects `head`, `scripts`, and `headers` for its server
   shell, then projection stops before descendants that inherit `false`. Route
-  context and params/search validation still run, so their errors remain real
-  server outcomes.
+  params/search validation errors remain real server outcomes. Descendants
+  retain only the context inherited from the server-executed prefix.
 
 A parent restriction cannot be relaxed by a child: `false` remains false, and a
 `'data-only'` parent caps a child requesting `true` at `'data-only'`.
@@ -1133,7 +1178,8 @@ A parent restriction cannot be relaxed by a child: `false` remains false, and a
 If a functional `ssr` option throws, the inherited/default policy is established
 before calling it. The failure therefore retains the correct boundary
 renderability instead of leaving `ssr` undefined. An error or not-found from
-the policy still reconstructs route context for its boundary. If route context
+the policy still reconstructs route context for its boundary when the effective
+policy permits context. If route context
 also fails, the original policy failure keeps precedence. Redirects remain
 control flow and skip route-context reconstruction.
 
@@ -1143,8 +1189,9 @@ descendants. This permits server and initial client presentation to agree.
 
 ## Hydration handoff
 
-Hydration reconstructs server work; it does not run a competing hydration
-loader. While reconstruction is asynchronous, its controller is `_preflight`.
+Hydration reconstructs server work and runs missing non-terminal lifecycles;
+it has no independent navigation/error reducer. While reconstruction is
+asynchronous, its controller is `_preflight`.
 Under the framework-supported startup order, `RouterClient` finishes hydration
 before mounting the provider that starts the initial client load, so no client
 transaction or descendant preload competes with reconstruction. Core does
@@ -1154,8 +1201,48 @@ unsupported rather than blocked.
 
 The identity of `_preflight` proves that reconstruction is still current. A
 replacement installs itself before aborting the prior controller. The same
-controller interrupts asynchronous application hydration and chunk work, and
-every asynchronous phase checks that identity before mutating or publishing.
+controller interrupts asynchronous application hydration, chunk work, serial
+context/`beforeLoad` handlers or transforms, ordered loader consumption, and
+asset projection. These phases share one abort listener and one slot for the
+currently awaited promise. Immediate results do not need a cancellation wrapper.
+A serialization adapter can restore a pending thenable, so transported serial
+results still pass through the shared promise check.
+The shared `isPromise` predicate recognizes object and callable thenables. It
+reads `then` without invoking it; native promises perform result assimilation.
+
+Detection and native assimilation can read `.then` separately. Lifecycle results
+must keep that property stable throughout those reads. Getters that change its
+value are unsupported. This contract preserves the direct path for synchronous
+results.
+
+The listener and slot are cleared on every exit, including successful
+publication of a handoff, so the handoff cannot retain the last awaited value.
+Development failure diagnostics are cleared on every exit. Neither the handoff
+nor abandoned loader work must retain an Error or input referenced by its cause.
+A promise need not observe the signal itself: cancellation stops the router's
+wait while retaining rejection handling for late settlement. It does not stop
+application work that ignores the signal. `createLoaderFlight` owns shared
+loader execution and its raw outcome. Normal lanes use `loadResource` to wait
+cancellably and resolve redirects for each consumer. Hydration consumes the raw
+outcome and owns cancellation at its ordered ancestor-prefix wait. Cancellation
+is a consumer outcome, excluded from the raw generation's TypeScript union.
+Detached descendants then have no owner-signal listener retaining their abandoned wire
+data. Releasing a consumer does not change a shared loader's self-abort contract.
+Reconstruction rechecks ownership before publication and before
+admitting subsequent work; completed promises can still mutate their private
+candidates after supersession without becoming publication authority.
+
+Context and beforeLoad reconstruction receive the shared hydration controller.
+A callback that aborts it stops subsequent serial callbacks, later hydration
+loaders, and head/scripts callbacks. The step dispatcher checks the signal
+before invoking user code. Self-abort does not replace the `_preflight` owner:
+the attempt can still publish fallback or terminal state, but the aborted
+controller prevents the initial-load handoff from claiming the prefix.
+Supersession instead replaces the slot and removes publication authority.
+This reuses the existing controller and wait mechanism rather than adding
+another completion authority. It is separate from loader-flight self-abort,
+which does not discard the loader's result or error while a semantic owner
+remains.
 
 Once hydration has accepted a semantic prefix and is ready to publish it,
 `_preflight` is no longer the right authority: no planning operation is in
@@ -1176,17 +1263,22 @@ The high-level process is:
 2. match a fresh candidate lane for the browser location,
 3. accept the identity-compatible serialized lane as the ordered prefix
    guaranteed by the document protocol,
-4. copy server loader data, `beforeLoad` context, terminal state, and effective
-   SSR policy into private candidates, and install each transported effective
+4. copy terminal state and effective SSR policy into private candidates, retain
+   transported lifecycle values by key presence, and install each effective
    SSR value on its route so a functional server policy is not re-evaluated,
 5. start exactly the chunks required by the accepted prefix and any selected
    terminal boundary concurrently, then consume their outcomes in route order
    so the earliest failed position can retire its suffix without waiting for
    irrelevant descendants,
-6. rebuild route context parent-first,
-7. project client `head` and `scripts` through the same projection
+6. restore or rerun context and `beforeLoad` serially per route, applying any
+   transform before merging a transported value,
+7. start missing loader handlers and transported loader transforms in parallel,
+   with real parent-match promises; preserve server timestamps for transformed
+   data and stamp browser-produced loader results,
+8. send non-terminal failures through the normal client-load fallback,
+9. project client `head` and `scripts` through the same projection
    function used after a normal client load, and
-8. publish accepted semantic work and the complete structural presentation.
+10. publish accepted semantic work and the complete structural presentation.
 
 Hydration relies on the framework transport contract. For normal and selective
 SSR, the data was produced for the exact document URL by the same route build,
@@ -1195,6 +1287,13 @@ shell uses the same prefix protocol for its root-only payload; the framework is
 responsible for serving a shell that applies to the document. Core does not
 serialize a second URL identity. Instead, hydration bounds reconstruction to
 the local lane and validates every transported position with a compact match ID.
+
+Verification can cover at most the first unresolved match beyond the accepted
+prefix. Context preparation and asset verification keep separate bounds: a
+failed chunk can exclude that route from context reconstruction while its
+verified identity still limits document assets. Handoff validation checks every
+committed identity, then at most one additional verified asset position. The
+asset bound must never replace full committed-prefix identity validation.
 
 A mismatch ends the accepted prefix and leaves the local suffix for normal
 client loading. A longer server lane is accepted only through a local global
@@ -1208,24 +1307,38 @@ chunks required by the selected error/not-found boundary, but not normal
 component chunks below it. Neither route context nor projection runs below the
 transported boundary.
 The transported terminal route remains authoritative even when its effective
-SSR policy is `false` or `'data-only'`: route context or validation was still
-allowed to fail on the server, so hydration must not turn that outcome into an
-unresolved client-only route. Before-load and loader work remain skipped there
-according to the server policy.
+SSR policy is `false` or `'data-only'`: validation and policy failures can still
+produce server outcomes, so hydration must not turn a terminal outcome into an
+unresolved client-only route. Unsent `beforeLoad` and loader handlers remain
+skipped; transported contributions can still run their hydrate transforms.
 
 Every executed context, `head`, and `scripts` hook nevertheless receives the
 complete locally matched candidate lane. Hook arguments describe structural
 membership; the accepted prefix describes execution authority.
 
-If a required chunk or route-context reconstruction fails, hydration preserves
-only the successfully reconstructed committed prefix. The public presentation
-still contains the complete locally matched lane, so a
-terminal server boundary does not make route membership disappear while its
-client reconstruction is retried. Eligible transported loader successes cross
-the normal loader-cache boundary with merged context and `beforeLoad`
-contribution removed. Because `resolvedLocation` remains unset, normal
-initial client loading retries the failed boundary or context and finishes the
-unresolved suffix.
+If a required chunk fails, or a lifecycle fails on a non-terminal match,
+hydration preserves the successfully reconstructed committed prefix and leaves
+`resolvedLocation` unset. The normal initial client load retries the failed
+boundary and unresolved suffix with the existing error/redirect/not-found
+handling. Public presentation keeps complete structural membership. Only
+transported loader results whose transforms completed cross the cache boundary;
+merged context and `beforeLoad` contributions are removed from those copies.
+
+Loader work starts in parallel, but readiness is consumed in route order. Once
+a failure is known, only its unsettled ancestors can extend or shorten the
+accepted prefix. Hydration can fall back after those ancestors settle without
+waiting for unrelated descendants. The cutoff remains the first failed route;
+parent promises retain their semantic meaning. Removing the suffix releases
+its existing flight leases, so abandoned work cannot publish later results.
+Completed, successfully transformed transported descendant data can still be
+cached; browser-produced descendant data cannot cross that boundary.
+
+A server error/not-found match, or the root global-not-found boundary, keeps its
+terminal result. Its context can reconstruct, and transported values can run
+their transforms, but unsent `beforeLoad`/loaders do not rerun. Failed terminal
+contributions are dropped and diagnosed in development; they neither expose raw
+wire data nor start a client retry. A non-root global-not-found layout is not
+terminal under this rule. Chunk-readiness failures still use the prefix fallback.
 
 For a non-terminal selective-SSR handoff, the semantic committed prefix is the
 complete contiguous transported prefix accepted as resolved. The first
@@ -1265,20 +1378,20 @@ The two-phase transfer proceeds as follows:
    probes the handoff without consuming it.
 2. It installs its own `_preflight`, emits the events, matches a private lane,
    and asks the handoff to finish the transfer.
-3. Finish revalidates handoff identity, transaction absence, hydration
-   controller liveness, captured location identity, and the exact committed
-   owner.
-4. On rejection, the handoff clears itself before aborting its controller,
-   so abort listeners cannot reenter and claim a rejected handoff.
+3. Finish consumes the handoff slot before revalidating transaction absence,
+   hydration controller liveness, captured location identity, and the exact
+   committed owner. The same handoff cannot be claimed twice.
+4. On rejection, finish aborts its controller after consuming the slot, so abort
+   listeners cannot reenter and claim a rejected handoff.
 5. On acceptance, the accepted matches replace the planner's private copies. A
    successfully reconstructed terminal handoff owns the complete local branch,
    even though its SSR payload was prefix-capped, so it has no local suffix to
    remove. For a non-terminal handoff, the remaining suffix stays in the lane
    and transfers to the hydration controller so one signal owns the
    continuation.
-6. The handoff remains available across synchronous reentrancy until the
-   current load installs `_tx`. That load installs `_tx` before clearing the
-   handoff; stale planners may release only their own private work.
+6. After the transfer, the planner rechecks its preflight before installing
+   `_tx`. A synchronous successor replaces and aborts the planner's preflight;
+   a stale planner releases only its own private work.
 
 This ordering closes the gap between hydration publication and client
 transaction installation without making the handoff an independent completion
@@ -1305,6 +1418,242 @@ bootstrap. The promise deduplicates framework rendering/replay only. It replaces
 neither `_preflight` reconstruction authority nor `_handoff`
 continuation authority.
 
+## Lifecycle design decisions
+
+These implementation constraints explain lifecycle ownership, transport,
+inference, and compilation choices. They also record the reasons for rejecting
+alternatives. Unresolved choices are separated below.
+
+### Context ownership and invalidation
+
+- Context is a cached, async-capable serial lifecycle so an auth lookup can
+  outlive one navigation. `beforeLoad` continues to run per lane and
+  cannot provide that cache. Explicit invalidation revalidates context only when
+  opted in. Recomputing every context on invalidation would replace query-option
+  closures and other sub-object identities. A separate `revalidate` callback
+  receives `prev`; putting that recursive input on `handler` prevents useful
+  inference. Time-based context freshness is intentionally absent: loader/query
+  stale times must not acquire a second meaning.
+- **Selective SSR:** `ssr: false` skips server context as well as beforeLoad and
+  loaders. The match keeps inherited context, and descendants inherit the
+  disabled SSR policy. The client prepares the first pending boundary's context
+  during hydration; its beforeLoad and loader run in the subsequent client load.
+- A computed own-context contribution may survive a lane that redirects or
+  preloads. The router cache carries it with the consumed `_ctxInvalid` mark,
+  so one explicit invalidation need not revalidate again across a redirect.
+  A cache replacement transfers the previous entry's flight lease; it must not
+  invent or duplicate a loader owner. A valid committed same-ID context prevents
+  a late preload from replacing it. In-flight contexts are not shared, and
+  normal commit/GC can sweep loaderless or unsettled memo entries. This decision
+  does not promise permanent context retention across leaving and returning to
+  a layout. Temporary memo entries may be visible to public cache filters and
+  devtools; hiding them behind a separate cache is not required.
+- Context cache admission indexes valid committed IDs lazily for each serial
+  lane. The index is rebuilt after an awaited callback replaces the committed
+  array. Context writes affect private candidates, and invalidation replaces
+  committed matches before marking cached entries, so validity cannot change
+  under the same committed-array identity. A Set preserves the rule that any
+  valid same-ID match protects its context, including a legacy fallback that
+  appears twice in a matched branch. Match position is not a stable identity:
+  route-tree replacement and legacy fallbacks can move a match to another depth.
+- Request `additionalContext` is supplied to context as well as guards and
+  loaders, because async server context needs request information. It stays
+  on the request's router/matches, never shared route definitions.
+- The unsent-async-context warning is development-only and keyed by route
+  identity in a WeakSet, avoiding one warning per Start request.
+  Explicit `dehydrate: false` acknowledges the client rerun and silences it;
+  HMR replacing a route permits the warning again.
+
+### Transport and reconstruction
+
+- Context defaults to unsent, while `beforeLoad` and loader default to sent.
+  Existing contexts can contain functions. There is no app-wide transport
+  default: it would couple each route to Start configuration inference and hide
+  transport policy outside the route file.
+- The server emits `m`, `b`, and `l` only for executed, transported results,
+  preserving present `undefined`. These keys, not client options, are
+  reconstruction authority. The browser never reads `dehydrate`; whole-key
+  stripping therefore needs no replacement marker and cannot disagree with a
+  client-side default. A custom wire value cannot become application data until
+  its transform succeeds. This does not relax the document URL/build/prefix
+  compatibility contract above.
+  The internal step dispatcher requires a record. Accepted matches provide
+  their wire record; the first uncommitted context gets an empty record because
+  it has no accepted transport. This removes optional-record states from the
+  dispatcher without treating absent keys as transported undefined values.
+- Codecs can be asynchronous and are awaited at lifecycle settlement. Server
+  rendering keeps the full result; `_dehydrated` keeps the
+  separate wire value. A failed server codec belongs to that match's error
+  handling, rather than escaping a later whole-document serialization step.
+  Codecs are transforms, not control-flow hooks: a thrown redirect/not-found
+  from server `dehydrate` becomes an ordinary error. Client transform failures
+  use normal-load recovery. Unsent values remain allowed on rendered SSR routes
+  under the same-rendered-output requirement; prohibiting them would prohibit
+  ordinary deterministic context.
+- Codec types expose data, route context and the corresponding lifecycle's
+  passive metadata. Navigation functions, abort controllers and parent-match work
+  are outside that API. Runtime calls may pass existing lifecycle arguments;
+  filtering extra fields would copy metadata without changing the supported API.
+  Handler and context revalidation arguments keep their lifecycle capabilities.
+  Hydration builds fresh arguments for each step and attaches codec data to them
+  without another metadata copy. This assumes standard `Object.prototype`
+  behavior. Server codecs still copy the arguments because a handler may retain
+  its original argument object.
+  A transported loader transform belongs to its hydration attempt and stays out
+  of reusable flight discovery. When a navigation supersedes it, the new load
+  runs its normal handler. Successfully reconstructed
+  data can still transfer through the hydration handoff or recovery cache.
+  A pending omitted handler that depends on a private parent result stays out of
+  flight discovery too: a replacement must use its new parent's snapshot.
+  Existing flight identity propagates this restriction without separate state.
+  A settled or loaderless immediate parent ends that dependency.
+- Hydration does not duplicate client error installation, redirect navigation,
+  not-found selection, or descendant reduction. A
+  non-terminal failure creates a pending continuation boundary and hands work
+  to the normal client lane. A separate in-place failure reducer would duplicate
+  substantial emitted code. Rerunning the failing client lifecycle is an
+  explicit accepted cost. Collateral reruns are accepted too: successful guards
+  at/below the cut and browser-produced child loaders can run again, and a root
+  cut can rerun the complete reconstructed context chain. Context below a
+  non-root cut can still transfer through the handoff. The existing preflight
+  owner suppresses `onError` and destination resolution during hydration;
+  resolving a discarded redirect would execute destination callbacks too early.
+  An ordinary load adopting an omitted handler's flight after supersession must
+  regain normal error handling and destination resolution.
+- Loader reruns and loader transforms start in parallel after serial
+  context/guard reconstruction. Serializing them would add a latency waterfall.
+  Both use shared raw loader flights and ordered parent snapshots, including
+  private ownership for transforms and real parent promises for omitted handlers.
+  Normal lanes apply their own cancellation and redirect handling; hydration
+  waits at its ordered prefix. Detaching hydration does not erase the parent
+  result used by an adopted ordinary handler.
+  Neither uses `createLoaderTask` freshness,
+  `shouldReload`, background reload, or pending decisions. Settlement writes
+  data/timestamps directly: a transform preserves server time and terminal
+  state, while an in-place loader receives a new timestamp. Only matches with
+  actual loader work need new promises. The immediate parent comes from the
+  preceding load promise, or its committed match when idle, and is wrapped only
+  when a child needs `parentMatchPromise`. No separate mutable parent is needed.
+  Ordered readiness consumption permits fallback
+  after the relevant ancestors settle while unrelated descendants remain
+  pending. This preserves parallel startup and immediate-parent identity.
+- Raw transported serial results do not need callback arguments. Construct
+  those arguments only when a handler or transform executes, sharing the common
+  arguments and navigation function between the two serial callbacks of a match.
+- Keep server terminal UI authoritative. The wire cannot prove whether an
+  unsent guard/loader ran before an error, so terminal reconstruction
+  does not execute it. Terminal transform failures drop only that contribution.
+  A root global-not-found follows this rule; a non-root global-not-found layout
+  does not. After a retry cut, only successfully reconstructed transported loader
+  values remain cacheable. Browser-produced descendant values may depend on a
+  failed parent and must be discarded. A cut successful match with no trusted
+  loader data becomes pending, even if it has no loader.
+- Unsent or custom-codec loader results need rejection handlers on
+  native promises in their own enumerable top-level plain-object fields, before
+  deferred rejection can escape transport ownership. Read fields as the
+  serializer does; skip throwing getters. Do not recursively walk data, invoke
+  thenables, or scan arrays/buffers. Those broader policies are outside the
+  supported cleanup behavior. Cleanup stops abandoned work, and a codec failure
+  aborts its dropped result
+  immediately. A reused server router also clears prior loader data, wire keys,
+  terminal state, SSR policy, and projected assets before a fresh load.
+
+### Inference and compilation boundaries
+
+- Keep flat object options with a required handler. Preserve raw handler types
+  in Route slots. Factory-only wire generics infer codec data; hydrate results
+  do not introduce another inference source or widen client data. The client
+  handler determines the client contract, and hydrate must satisfy it.
+- Loader-data hooks follow the component hierarchy. A parent component must not
+  depend on descendant loader data, since the descendant can still be pending.
+  This applies during client navigation and SSR. Such reads do not require wider
+  client data types or an additional SSR restriction.
+- Isomorphic handlers carry type-only `~types.server` and `~types.client`
+  results. Router reads this structural protocol without importing Start.
+  The ordinary callable still returns the union of both results. Start's
+  builder returns use intrinsic `NoInfer` to prevent contextual typing of a
+  route from influencing nested implementation inference. Metadata does not
+  exist at runtime.
+- A route that can render on the server requires its successful server result
+  to satisfy its client contract. A proven false/data-only policy permits
+  different shapes. Functional policies use their awaited possible results;
+  omitted/undefined modes use the registered router default before ancestors
+  cap descendants. An unregistered default stays unknown. Explicit true can
+  override a disabled default when ancestors allow rendering, so serialization
+  and client-contract guards share this effective calculation. Raw
+  transport requires hydration when the server result lacks client fields.
+  Unsent values use the client handler. Shared callbacks and asset projection
+  retain both context/data possibilities because data-only still runs server
+  lifecycles and asset callbacks.
+- `hydrate` requires explicit true/function `dehydrate`, and a custom
+  `dehydrate` requires `hydrate`. Both return values can be asynchronous.
+  Hydration's return constraint accepts stable object and callable thenables,
+  including nested assimilation and non-chainable `then` methods. It checks
+  the final fulfilled value against the client contract; it does not infer
+  public data from the transform.
+- Preserve `LifecycleNoWire` as the uninferred sentinel: `unknown` can be an
+  actual wire type, while `never` breaks assignability to constructor options
+  wired with `any`. Codec inference uses intersection targets to preserve union
+  wires, and shared context-plus-data aliases avoid cycles through the registered
+  router. Union-arm ordering controls contextual typing and error quality.
+  Deprecated constructors retain `any` wire generics and do not provide factory
+  codec validation.
+- Check transported results under registered SSR, including code-based
+  factories. Redirects are control flow and are excluded from successful context
+  contributions, codec `data`, and revalidation `prev`. Match redirects by their
+  structural `Response` plus `options` shape so the check does not instantiate
+  the registered router. Revalidation may return a redirect even when its
+  handler returns only data. The context serialization gate exempts redirects
+  only; returned not-found objects remain data and are validated normally.
+  The existing beforeLoad/loader gate retains its not-found exemption, but does
+  not establish support for returning not-found values from registered routes.
+  Adapter registration extends the serializability checks.
+- Lint supplies the parameter-annotation and key-order rules that inference
+  alone cannot enforce. Inline codecs infer their parameters; by-
+  reference `hydrate` beside `dehydrate: true` retains a documented limitation.
+  Ordering autofixes may not cross spreads/computed keys or detach comments.
+- Delete environment-specific keys, not callback bodies replaced by markers.
+  Client compilation drops `dehydrate`; server compilation drops
+  `hydrate` and `context.revalidate`. Apply this consistently to reference,
+  virtual split, and shared modules. Lifecycle objects must be inline for both
+  handler splitting and nested environment stripping, including supported
+  TypeScript wrappers. A lifecycle object held in a same-file const stays eager
+  and retains its keys. Preserve same-file const resolution for the outer
+  file/root factory options object; that does not authorize following its
+  lifecycle values through variables. Imported objects, spreads,
+  factory-produced objects, and code-based `createRoute` are outside the
+  stripping guarantee. Opaque loader values stay eager, including imported
+  functions and helper-produced values whose shape cannot be established.
+  Statically visible function declarations or function expressions can still
+  split. This conservative boundary avoids guessing whether an opaque loader
+  carries lifecycle metadata and avoids duplicating binding-resolution logic
+  across compiler outputs. A split inline handler leaves its lifecycle metadata
+  available for hydration. Stripping is a bundle optimization, never a secrecy
+  boundary.
+- Type-cost acceptance uses instantiation and type counts on regenerated
+  large route examples, not wall-clock check time or a standalone synthetic
+  benchmark. Keep lifecycle keys inline in `FileBaseRouteOptions`: introducing
+  a large generic alias forced variance analysis through `matches` and the whole
+  registered tree. Deferred factory results, `NoInfer` upstream slots, and the
+  intrinsic inference guards avoid eagerly resolving uninferred slots. Treat
+  their simplification as a measured type-performance change, not cosmetic
+  cleanup. Intrinsic `NoInfer` establishes the TypeScript 5.4 floor.
+
+### Unresolved choices
+
+The choices below remain unresolved; current behavior does not establish a
+supported contract:
+
+- Whether pending-boundary head projection may temporarily lack transformed
+  loader data, and lane-wide versus per-match abort for server loader data not
+  transported as-is.
+- The organization of the public lifecycle documentation.
+
+Terminal hydration failures have development diagnostics, and failed server
+context preserves inherited context. Preserve both behaviors when changing
+reconstruction. Performance claims require measurements against the current
+source; intermediate benchmark results do not establish invariants.
+
 ## Change checklist
 
 The detailed sections above are the source of truth. Use this shorter checklist
@@ -1313,8 +1662,8 @@ algorithm here.
 
 ### Publication and reentrancy
 
-- Does every asynchronous write recheck its exact owner immediately before the
-  write: `_tx`, `_preflight`, `_handoff`, an active-preload controller, or the
+- Does every asynchronous publication recheck its exact owner immediately before
+  publication: `_tx`, `_preflight`, `_handoff`, an active-preload controller, or the
   request signal?
 - Does a background publication check both its `_tx` and the exact `_committed`
   base from which it was derived?
@@ -1368,8 +1717,8 @@ algorithm here.
 - Does exactly one owner perform SSR cleanup, with router ownership released
   before best-effort stream cancellation?
 - Does hydration validate transported match IDs, execute only the accepted
-  prefix, retain the complete local branch, and preserve any verified
-  `'data-only'` asset prefix?
+  prefix and context for its first pending boundary, retain the complete local
+  branch, and preserve any verified `'data-only'` asset prefix?
 - Does the initial-load handoff revalidate its controller, browser history entry,
   committed owner, and rematched IDs? Do framework adapters still obey the
   no-preload startup gap described above?

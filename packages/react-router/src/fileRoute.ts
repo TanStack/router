@@ -20,6 +20,7 @@ import type {
   FileBaseRouteOptions,
   FileRoutesByPath,
   LazyRouteOptions,
+  LifecycleNoWire,
   Register,
   RegisteredRouter,
   ResolveParams,
@@ -85,6 +86,7 @@ export class FileRoute<
     this.silent = _opts?.silent
   }
 
+  // The return type is a conditional on purpose, see UpdatableRouteOptions.
   createRoute = <
     TRegister = Register,
     TSearchValidator = undefined,
@@ -97,6 +99,9 @@ export class FileRoute<
     TSSR = unknown,
     const TMiddlewares = unknown,
     THandlers = undefined,
+    TContextWire = LifecycleNoWire,
+    TBeforeLoadWire = LifecycleNoWire,
+    TLoaderWire = LifecycleNoWire,
   >(
     options?: FileBaseRouteOptions<
       TRegister,
@@ -113,7 +118,10 @@ export class FileRoute<
       AnyContext,
       TSSR,
       TMiddlewares,
-      THandlers
+      THandlers,
+      TContextWire,
+      TBeforeLoadWire,
+      TLoaderWire
     > &
       UpdatableRouteOptions<
         TParentRoute,
@@ -127,26 +135,28 @@ export class FileRoute<
         TRouteContextFn,
         TBeforeLoadFn
       >,
-  ): Route<
-    TRegister,
-    TParentRoute,
-    TPath,
-    TFullPath,
-    TFilePath,
-    TId,
-    TSearchValidator,
-    TParams,
-    AnyContext,
-    TRouteContextFn,
-    TBeforeLoadFn,
-    TLoaderDeps,
-    TLoaderFn,
-    TChildren,
-    unknown,
-    TSSR,
-    TMiddlewares,
-    THandlers
-  > => {
+  ): TRegister extends unknown
+    ? Route<
+        TRegister,
+        TParentRoute,
+        TPath,
+        TFullPath,
+        TFilePath,
+        TId,
+        TSearchValidator,
+        TParams,
+        AnyContext,
+        TRouteContextFn,
+        TBeforeLoadFn,
+        TLoaderDeps,
+        TLoaderFn,
+        TChildren,
+        unknown,
+        TSSR,
+        TMiddlewares,
+        THandlers
+      >
+    : never => {
     if (process.env.NODE_ENV !== 'production') {
       if (!this.silent) {
         console.warn(
