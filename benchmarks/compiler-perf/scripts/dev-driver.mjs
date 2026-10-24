@@ -11,6 +11,7 @@ import fs from 'node:fs'
 import module from 'node:module'
 import path from 'node:path'
 import { performance } from 'node:perf_hooks'
+import { pathToFileURL } from 'node:url'
 
 const [appDir, portArg] = process.argv.slice(2)
 const send = (msg) => process.send?.(msg)
@@ -21,7 +22,11 @@ const marks = { processStart: 0 }
 module.enableCompileCache?.()
 setTimeout(() => module.flushCompileCache?.(), 10_000).unref()
 
-const vite = await import('vite')
+// The app links the vite instance the TanStack plugins use (see
+// resolveSharedPackages in generate.mjs).
+const vite = await import(
+  pathToFileURL(path.join(appDir, 'node_modules/vite/dist/node/index.js')).href
+)
 marks.viteImported = performance.now()
 
 const server = await vite.createServer({

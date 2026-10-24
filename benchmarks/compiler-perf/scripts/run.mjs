@@ -230,8 +230,13 @@ function startViteDev(dir, { profileDir } = {}) {
   }
 }
 
-function binPath(pkg, bin) {
-  const pkgJson = require.resolve(`${pkg}/package.json`)
+function binPath(pkg, bin, dir) {
+  // Prefer the instance linked into the app (shared with the plugins).
+  const linked = dir && path.join(dir, 'node_modules', pkg, 'package.json')
+  const pkgJson =
+    linked && fs.existsSync(linked)
+      ? linked
+      : require.resolve(`${pkg}/package.json`)
   const meta = JSON.parse(fs.readFileSync(pkgJson, 'utf8'))
   const rel = typeof meta.bin === 'string' ? meta.bin : meta.bin[bin]
   return path.join(path.dirname(pkgJson), rel)
@@ -490,7 +495,7 @@ async function viteBuildRun(variant, { profileDir } = {}) {
   const dir = appDir(variant)
   clean(dir)
   const prof = profilingEnv(profileDir)
-  const { ms } = await runCommand(binPath('vite', 'vite'), ['build'], {
+  const { ms } = await runCommand(binPath('vite', 'vite', dir), ['build'], {
     cwd: dir,
     execArgv: prof.execArgv,
     env: { ...prof.env, NODE_ENV: 'production' },
@@ -503,7 +508,7 @@ async function rsbuildBuildRun(variant, { profileDir } = {}) {
   clean(dir)
   const prof = profilingEnv(profileDir)
   const { ms } = await runCommand(
-    binPath('@rsbuild/core', 'rsbuild'),
+    binPath('@rsbuild/core', 'rsbuild', dir),
     ['build'],
     {
       cwd: dir,
@@ -522,7 +527,7 @@ async function rsbuildDevRun(variant) {
   const child = spawn(
     process.execPath,
     [
-      binPath('@rsbuild/core', 'rsbuild'),
+      binPath('@rsbuild/core', 'rsbuild', dir),
       'dev',
       '--port',
       String(PORT),
@@ -801,6 +806,13 @@ async function main() {
 
   for (const variant of variants) {
     const info = writeApp(variant)
+    results.meta.shared ??= {}
+    results.meta.shared[variant] = Object.fromEntries(
+      Object.entries(info.shared).map(([name, target]) => [
+        name,
+        target && path.relative(repoRoot, target),
+      ]),
+    )
     results.workloads[variant] = {
       hash: info.hash,
       files: info.fileCount,

@@ -1020,6 +1020,42 @@ export function workloadHash(files) {
   return hash.digest('hex').slice(0, 16)
 }
 
+function findPackageDir(name, fromDir) {
+  for (let dir = fromDir; ; dir = path.dirname(dir)) {
+    const candidate = path.join(dir, 'node_modules', name, 'package.json')
+    if (fs.existsSync(candidate)) {
+      return fs.realpathSync(path.dirname(candidate))
+    }
+    if (path.dirname(dir) === dir) {
+      return undefined
+    }
+  }
+}
+
+/**
+ * Bundler packages the apps must share with the TanStack plugins. A workspace
+ * can hold several peer-dependency variants of the same version (e.g. vite
+ * built against different sass versions); a second instance breaks
+ * `instanceof` checks such as Start's RunnableDevEnvironment detection, so the
+ * apps use the instance the plugin package resolves, as a single npm install
+ * would.
+ */
+export function resolveSharedPackages(variant) {
+  const pluginPath =
+    variant === 'react-start'
+      ? ['@tanstack/react-start', '@tanstack/start-plugin-core']
+      : ['@tanstack/router-plugin']
+  let from = benchRoot
+  for (const name of pluginPath) {
+    from = findPackageDir(name, from) ?? from
+  }
+  const shared = {}
+  for (const name of ['vite', '@rsbuild/core']) {
+    shared[name] = findPackageDir(name, from) ?? findPackageDir(name, benchRoot)
+  }
+  return shared
+}
+
 export function appDir(variant) {
   return path.join(appsRoot, variant)
 }
@@ -1046,6 +1082,14 @@ export function writeApp(variant, { keepRouteTree = false } = {}) {
   if (routeTree !== undefined) {
     fs.writeFileSync(routeTreePath, routeTree)
   }
+  const shared = resolveSharedPackages(variant)
+  for (const [name, target] of Object.entries(shared)) {
+    if (target) {
+      const link = path.join(dir, 'node_modules', name)
+      fs.mkdirSync(path.dirname(link), { recursive: true })
+      fs.symlinkSync(target, link, 'dir')
+    }
+  }
   const routeCount = [...files.keys()].filter((f) =>
     f.startsWith('src/routes/'),
   ).length
@@ -1055,6 +1099,7 @@ export function writeApp(variant, { keepRouteTree = false } = {}) {
   )
   return {
     dir,
+    shared,
     hash: workloadHash(files),
     fileCount: files.size,
     routeCount,

@@ -154,13 +154,11 @@ export function analyzeCpuProfileDir(dir) {
   analyses.sort((a, b) => b.busyMs - a.busyMs)
   return {
     main: analyses[0],
-    others: analyses
-      .slice(1)
-      .map(({ file, busyMs, compilerInclusiveMs }) => ({
-        file,
-        busyMs,
-        compilerInclusiveMs,
-      })),
+    others: analyses.slice(1).map(({ file, busyMs, compilerInclusiveMs }) => ({
+      file,
+      busyMs,
+      compilerInclusiveMs,
+    })),
   }
 }
 

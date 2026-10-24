@@ -72,7 +72,16 @@ CI=1 pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
 node benchmarks/compiler-perf/scripts/run.mjs --label <name> --out <dir>
 ```
 
-Use the same Node version for baseline and candidate (`compare.mjs` warns otherwise).
+Use the same Node binary for baseline and candidate (`compare.mjs` warns
+otherwise). pnpm may select a different Node per checkout from its `.nvmrc`,
+so pass an absolute path, e.g.
+`NODE=$(cd <baseline-checkout> && node -p process.execPath); $NODE benchmarks/compiler-perf/scripts/run.mjs ...`.
+
+Each generated app links `vite` and `@rsbuild/core` (`apps/<variant>/node_modules/`)
+to the instance the TanStack plugin packages resolve (`meta.shared` in the
+results). A workspace can contain several peer-dependency variants of the same
+Vite version, and a second instance breaks Start's dev server detection
+(`instanceof RunnableDevEnvironment`).
 
 ## Scenarios and metrics
 
