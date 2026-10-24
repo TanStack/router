@@ -101,9 +101,6 @@ export function fixtureConfig(name: string, dir = fixtureDir(name)): Config {
       config.enableRouteTreeFormatting = false
       break
     case 'custom-tokens':
-      config.indexToken = '_1nd3x'
-      config.routeToken = '_r0ut3_'
-      break
     case 'escaped-custom-tokens':
       config.indexToken = '_1nd3x'
       config.routeToken = '_r0ut3_'
