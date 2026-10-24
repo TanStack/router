@@ -233,10 +233,8 @@ export async function runInPage<T = unknown>(input: {
       if (await leaveRunDocument(page)) {
         idlePages.push(page)
       }
-      release()
-    } else {
-      release()
     }
+    release()
   }
 }
 

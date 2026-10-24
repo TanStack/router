@@ -740,7 +740,6 @@ export interface CompileTracker {
  */
 export function trackCompiles(): CompileTracker {
   interface EditWait {
-    files: Array<string>
     /** The writes ended. */
     written: boolean
     /**
@@ -963,10 +962,8 @@ export function trackCompiles(): CompileTracker {
       )
     },
     async edit(root, edits, timeout, accept = () => false) {
-      const files = Object.keys(edits).map((file) => path.join(root, file))
       const startedBefore = started
       const wait: EditWait = {
-        files,
         written: false,
         owed: new Map(
           Object.keys(edits)
