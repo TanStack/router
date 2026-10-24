@@ -91,6 +91,15 @@ export interface PlacementInput {
   canonicalId: string
   routeModule: boolean
   benignEffects: ReadonlySet<UnitId>
+  /** Exported symbols a planner allows into an extracted-export output (§3.5.3). */
+  extractions?: ReadonlyMap<SymbolId, OutputId>
+}
+
+export interface ExtractedExport {
+  cluster: ClusterId
+  output: OutputId
+  /** The exported symbols of the cluster (the env module re-exports them from `output`). */
+  syms: Array<SymbolId>
 }
 
 export interface Placement {
@@ -111,6 +120,8 @@ export interface Placement {
   fallbacks: Array<Fallback>
   /** Outputs created by placement (lazy shared modules). */
   created: Array<OutputDecl>
+  /** Exported clusters homed in an extracted-export output (the env module re-exports them). */
+  extracted: Array<ExtractedExport>
   /** Live reads per (output, cluster) — syms read by the cluster's members in that output. */
   readsIn: (output: OutputId, cluster: ClusterId) => Set<SymbolId>
 }
@@ -166,6 +177,7 @@ export function symRefsOf(frags: ReadonlyArray<Frag>): Array<SymbolId> {
 
 export function computePlacement(input: PlacementInput): Placement {
   const { t1, rewrites, outputs, routeModule, benignEffects } = input
+  const extractions = input.extractions ?? new Map<SymbolId, OutputId>()
   const { units, regions, refs, symbols, items } = t1
   const regionCount = regions.regions.length
   const gens = rewrites.generated
@@ -619,7 +631,11 @@ export function computePlacement(input: PlacementInput): Placement {
     }
     return out
   }
-  function reach(o: OutputId, roots: Iterable<ClusterId>): Set<ClusterId> {
+  function reach(
+    o: OutputId,
+    roots: Iterable<ClusterId>,
+    stopAt: ReadonlySet<ClusterId> | null = null,
+  ): Set<ClusterId> {
     const included = new Set<ClusterId>()
     const work = [...roots]
     while (work.length > 0) {
@@ -628,11 +644,78 @@ export function computePlacement(input: PlacementInput): Placement {
         continue
       }
       included.add(c)
+      if (stopAt !== null && stopAt.has(c)) {
+        continue // imported from its own output: its dependencies are that output's
+      }
       for (const d of successors(c, o, true)) {
         work.push(d)
       }
     }
     return included
+  }
+
+  // ---- extracted exports (§3.5.3): candidates and their export companions -------
+  // A candidate is a pure, unwritten exported declaration cluster a planner
+  // allowed out; its companions are the export-specifier / `export default x`
+  // clusters that only read it. Neither is an env root for now: the decision
+  // (extract, or keep in the env module) is taken once env liveness is known.
+  const extractCandidates = new Map<
+    ClusterId,
+    { output: OutputId; syms: Set<SymbolId>; companions: Set<ClusterId> }
+  >()
+  for (const [sym, output] of extractions) {
+    const c = clusterOfSym.get(sym)
+    if (c === undefined) {
+      continue
+    }
+    const cl = clusters[c]!
+    if (cl.kind !== 'declaration' || cl.effectful || cl.gens.length > 0) {
+      continue
+    }
+    let e = extractCandidates.get(c)
+    if (!e) {
+      e = { output, syms: new Set(), companions: new Set() }
+      extractCandidates.set(c, e)
+    } else if (e.output !== output) {
+      continue
+    }
+    e.syms.add(sym)
+  }
+  const extractRelated = new Set<ClusterId>()
+  if (extractCandidates.size > 0) {
+    for (const cl of clusters) {
+      if (
+        cl.kind !== 'export' ||
+        !cl.units.every((u) => {
+          const k = units[u]!.kind
+          return k === 'export-specifier' || k === 'export-default'
+        })
+      ) {
+        continue
+      }
+      const targets = new Set<ClusterId>()
+      for (const s of clusterReads(cl.id, 'env', false).syms) {
+        if (!symbols.isModuleLevel(s)) {
+          continue
+        }
+        const d = clusterOfSym.get(s)
+        if (d !== undefined && d !== cl.id) {
+          targets.add(d)
+        }
+      }
+      if (targets.size !== 1) {
+        continue
+      }
+      const [target] = targets
+      const e = extractCandidates.get(target!)
+      if (e) {
+        e.companions.add(cl.id)
+        extractRelated.add(cl.id)
+      }
+    }
+    for (const c of extractCandidates.keys()) {
+      extractRelated.add(c)
+    }
   }
 
   // ---- dead claims (ancestor erasure, R37): the owner contributes nothing ----
@@ -698,7 +781,9 @@ export function computePlacement(input: PlacementInput): Placement {
       u.kind === 'export-default' ||
       u.exported.length > 0
     ) {
-      envRoots.add(c)
+      if (!extractRelated.has(c)) {
+        envRoots.add(c)
+      }
     }
   }
   for (const g of gens) {
@@ -793,7 +878,27 @@ export function computePlacement(input: PlacementInput): Placement {
         derivedNeeds = true
       }
     }
-    if (!derivedNeeds) {
+    if (derivedNeeds) {
+      continue
+    }
+    // dead code that would keep a chunk's dependency in the env module (an
+    // unused function rendering the split component) is dropped instead
+    let pulls = false
+    for (const c of reach('env', [cl.id])) {
+      if (c === cl.id) {
+        continue
+      }
+      for (const set of derivedReach.values()) {
+        if (set.has(c)) {
+          pulls = true
+          break
+        }
+      }
+      if (pulls) {
+        break
+      }
+    }
+    if (!pulls) {
       envRoots.add(cl.id)
     }
   }
@@ -845,15 +950,15 @@ export function computePlacement(input: PlacementInput): Placement {
       ) {
         continue
       }
-      if (fromErased.has(cl.id)) {
-        continue // orphaned by us: removable with its initialiser effects
-      }
       if (envRoots.has(cl.id)) {
         continue
       }
       if (isMovable(cl)) {
         movable.add(cl.id)
         continue
+      }
+      if (fromErased.has(cl.id)) {
+        continue // orphaned by us: removable with its initialiser effects
       }
       envRoots.add(cl.id)
       added = true
@@ -940,6 +1045,80 @@ export function computePlacement(input: PlacementInput): Placement {
     return true
   }
 
+  // ---- extracted exports: decide ----------------------------------------------
+  const extracted: Array<ExtractedExport> = []
+  if (extractCandidates.size > 0) {
+    let cancelled = false
+    for (const [c, e] of extractCandidates) {
+      let ok = !liveEnv.has(c)
+      if (ok) {
+        let derivedNeeds = false
+        for (const set of derivedReach.values()) {
+          if (set.has(c)) {
+            derivedNeeds = true
+            break
+          }
+        }
+        ok = derivedNeeds
+      }
+      if (ok) {
+        // an eager read of something the env module keeps would evaluate in a
+        // cycle (the env module re-exports the extracted module): stay
+        for (const r of clusters[c]!.regions) {
+          for (const ref of ownedRefs.get(r) ?? []) {
+            if (
+              !ref.eager ||
+              !READ_KINDS.has(ref.kind) ||
+              !symbols.isModuleLevel(ref.sym)
+            ) {
+              continue
+            }
+            const d = clusterOfSym.get(ref.sym)
+            if (d === undefined || d === c) {
+              continue
+            }
+            if (liveEnv.has(d) || clusters[d]!.envPinned) {
+              ok = false
+              break
+            }
+          }
+          if (!ok) {
+            break
+          }
+        }
+      }
+      if (ok) {
+        pinned.set(c, e.output)
+        for (const k of e.companions) {
+          deadClusters.add(k) // rendered as the env module's re-export glue
+        }
+        extracted.push({ cluster: c, output: e.output, syms: [...e.syms] })
+      } else {
+        envRoots.add(c)
+        for (const k of e.companions) {
+          envRoots.add(k)
+        }
+        cancelled = true
+      }
+    }
+    if (cancelled) {
+      liveEnv = reach('env', envRoots)
+    }
+    if (extracted.length > 0) {
+      // chunks import an extracted cluster from its output: their reach stops
+      // there; the extracted output reaches what its cluster reads
+      const stop = new Set(extracted.map((e) => e.cluster))
+      for (const [id, roots] of derivedRoots) {
+        derivedReach.set(id, reach(id, roots, stop))
+      }
+      for (const e of extracted) {
+        const others = new Set([...stop].filter((c) => c !== e.cluster))
+        derivedRoots.set(e.output, new Set([e.cluster]))
+        derivedReach.set(e.output, reach(e.output, [e.cluster], others))
+      }
+    }
+  }
+
   // ---- needers and homes -----------------------------------------------------
   const needers = new Map<ClusterId, Set<OutputId>>()
   for (const cl of clusters) {
@@ -982,14 +1161,15 @@ export function computePlacement(input: PlacementInput): Placement {
     }
     const derived = [...S].filter((o) => o !== 'env')
     if (derived.length === 0) {
-      // nobody needs it: a gen unit disappears; an unread import of a route module is dropped (J2.5);
+      // nobody needs it: a gen unit disappears; an unread import of a route
+      // module is dropped (J2.5); a pure unexported declaration that was not
+      // rooted (dead code that would pull a chunk's dependency) is dropped;
       // other source stays in the env module (harmless) unless orphaned
-      home.set(
-        cl.id,
-        cl.kind === 'gen' || (cl.kind === 'import' && routeModule)
-          ? 'removed'
-          : 'env',
-      )
+      const dead =
+        cl.kind === 'gen' ||
+        (cl.kind === 'import' && routeModule) ||
+        (cl.kind === 'declaration' && !cl.effectful && !cl.exported)
+      home.set(cl.id, dead ? 'removed' : 'env')
       continue
     }
     if (derived.length === 1) {
@@ -1182,6 +1362,17 @@ export function computePlacement(input: PlacementInput): Placement {
     }
   }
 
+  for (const e of extracted) {
+    let ex = exportsNeeded.get(e.output)
+    if (!ex) {
+      ex = new Set()
+      exportsNeeded.set(e.output, ex)
+    }
+    for (const s of e.syms) {
+      ex.add(s)
+    }
+  }
+
   return {
     clusters,
     clusterOfRegion,
@@ -1196,6 +1387,7 @@ export function computePlacement(input: PlacementInput): Placement {
     movable,
     fallbacks,
     created,
+    extracted,
     readsIn: (o, c) => clusterReads(c, o, true).syms,
   }
 }

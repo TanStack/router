@@ -576,6 +576,7 @@ function withConfig(plan: AnalysisPlan, config: unknown): PlanContext {
     outputIdFor: (derived) => plan.outputIdFor(derived),
     addRoot: (output, root) => plan.addRoot(output, root),
     markBenignEffect: (unit) => plan.markBenignEffect(unit),
+    extract: (sym, output) => plan.extract(sym, output),
     setRouteModule: () => plan.setRouteModule(),
     liveness: (output) => plan.liveness(output),
     renameRefs: (sym, to, scope, by, except) =>

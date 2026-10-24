@@ -796,6 +796,44 @@ export function buildUnits(
     return out
   }
 
+  // `var`s hoisted out of nested blocks (`for (var x …)`, `if (…) { var y }`)
+  // are module bindings declared by the statement that holds them
+  for (const b of file.rootScope.bindings) {
+    if (b.has(BindingFlags.Import) || b.has(BindingFlags.Ambient)) {
+      continue
+    }
+    const sym = symbols.ofBinding(b)
+    if (declaringUnits.has(sym) || !b.has(BindingFlags.ValueSpace)) {
+      continue
+    }
+    for (const d of b.declarations) {
+      const item = items.find(
+        (it) => it.range.start <= d.start && d.start < it.range.end,
+      )
+      if (!item) {
+        continue
+      }
+      const unit =
+        item.units
+          .map((u) => units[u]!)
+          .find((u) => u.range.start <= d.start && d.start < u.range.end) ??
+        (item.units.length === 1 ? units[item.units[0]!] : undefined)
+      if (!unit || unit.kind !== 'effect') {
+        continue
+      }
+      unit.declares.push(sym)
+      unit.declNameRanges.push({ start: d.start, end: d.end })
+      let list = declaringUnits.get(sym)
+      if (!list) {
+        list = []
+        declaringUnits.set(sym, list)
+      }
+      if (!list.includes(unit.id)) {
+        list.push(unit.id)
+      }
+    }
+  }
+
   return { units, regions, declaringUnits }
 }
 

@@ -46,6 +46,7 @@ import type {
   TreeEdit,
 } from './rewrite'
 import type { DependencyFingerprint } from './cache'
+import type { Node } from 'yuku'
 
 export type {
   OutputDecl,
@@ -161,6 +162,12 @@ export interface PlanContext {
   outputIdFor: (derived: DerivedQuery) => OutputId
   addRoot: (output: OutputId, root: RootRef) => void
   markBenignEffect: (unit: UnitId) => void
+  /**
+   * Allows an exported, pure, unwritten declaration into `output` (an
+   * extracted-export output, §3.5.3): the core moves it there when only
+   * derived outputs need it, and the env module re-exports it.
+   */
+  extract: (sym: SymbolId, output: OutputId) => void
   setRouteModule: () => void
   liveness: (output: OutputId) => LivenessView
   renameRefs: (
@@ -190,6 +197,7 @@ export class AnalysisPlan implements PlanContext {
   readonly diagnostics: Array<Diagnostic> = []
   readonly facts: Record<string, unknown> = {}
   readonly benignEffects = new Set<UnitId>()
+  readonly extractions = new Map<SymbolId, OutputId>()
   routeModule = false
   placement: Placement | null = null
   /** Renamed directly-exported declarations: sym → export names (R38). */
@@ -223,6 +231,28 @@ export class AnalysisPlan implements PlanContext {
       derivedId: null,
       roots: [],
     })
+    // J2.17: the deprecated `assert` keyword of import attributes is printed
+    // as `with` wherever the import lands (browsers dropped `assert`)
+    const code = analysis.source.code
+    for (const imp of analysis.imports) {
+      if (!imp.attributesRange) {
+        continue
+      }
+      const from = imp.specifierRange.end
+      const between = code.slice(from, imp.attributesRange.start)
+      const m = /\bassert\b/.exec(between)
+      if (m) {
+        this.rewrites.add({
+          range: {
+            start: from + m.index,
+            end: from + m.index + 'assert'.length,
+          },
+          body: [{ k: 'text', parts: ['with'] }],
+          scope: 'all-outputs',
+          by: 'core:attributes',
+        })
+      }
+    }
   }
 
   region(range: Range, kind: Exclude<RegionKind, 'unit'>): RegionId {
@@ -265,6 +295,13 @@ export class AnalysisPlan implements PlanContext {
 
   markBenignEffect(unit: UnitId): void {
     this.benignEffects.add(unit)
+  }
+
+  extract(sym: SymbolId, output: OutputId): void {
+    if (!this.outputs.has(output)) {
+      throw new Error(`extract: unknown output ${output}`)
+    }
+    this.extractions.set(sym, output)
   }
 
   setRouteModule(): void {
@@ -393,6 +430,7 @@ export class AnalysisPlan implements PlanContext {
       canonicalId: this.identity.canonicalId,
       routeModule: this.routeModule,
       benignEffects: this.benignEffects,
+      extractions: this.extractions,
     })
     for (const created of placement.created) {
       this.outputs.set(created.id, created)
@@ -535,7 +573,24 @@ export class AnalysisPlan implements PlanContext {
     for (const uid of item.units) {
       const u = this.t1.units[uid]!
       if (u.kind === 'type') {
-        if (!derived) {
+        if (derived) {
+          // ambient value declarations (`declare enum`, `declare var`, …) are
+          // copied: erased by TypeScript, but a TS transform resolves the
+          // names through them (Oxc inlines `declare enum` members)
+          if (isAmbientValueDeclaration(u.node)) {
+            set.add(uid)
+          }
+          continue
+        }
+        // inline `type` specifiers of a route module go everywhere (J2.5:
+        // under verbatimModuleSyntax TypeScript keeps the bare import, so the
+        // module would load); `import type` statements and other type units
+        // stay in the env module (erased by TypeScript)
+        const inlineTypeSpecifier =
+          this.routeModule &&
+          u.importIndex !== null &&
+          !this.analysis.imports[u.importIndex]!.typeOnly
+        if (!inlineTypeSpecifier) {
           set.add(uid)
         }
         continue
@@ -619,13 +674,11 @@ export class AnalysisPlan implements PlanContext {
         internal: true,
       })
     }
-    // export glue at the end
-    const exportGlue = this.exportGlue(
-      'env',
-      placement,
-      exportNameOf,
-      glueExports,
-    )
+    // export glue at the end (re-exports of extracted exports first)
+    const exportGlue = [
+      ...this.reexportGlue(placement, exportNameOf),
+      ...this.exportGlue('env', placement, exportNameOf, glueExports),
+    ]
     if (exportGlue.length > 0) {
       extra.push({
         range: { start: code.length, end: code.length },
@@ -750,6 +803,47 @@ export class AnalysisPlan implements PlanContext {
     return frags
   }
 
+  /** `export { x as name, … } from './file?tsr-split=export~x'` for every extracted cluster. */
+  private reexportGlue(
+    placement: Placement,
+    exportNameOf: Map<OutputId, Map<SymbolId, string>>,
+  ): Array<Frag> {
+    const frags: Array<Frag> = []
+    for (const e of placement.extracted) {
+      const decl = this.outputs.get(e.output)
+      if (!decl?.derivedId) {
+        continue
+      }
+      const parts: Array<string> = []
+      for (const s of [...e.syms].sort((a, b) => a - b)) {
+        const exported = exportNameOf.get(e.output)?.get(s) ?? this.nameOf(s)
+        for (const x of this.analysis.exports) {
+          if (x.kind === 'local' && x.local === s && !x.typeOnly) {
+            parts.push(
+              exported === x.name ? exported : `${exported} as ${x.name}`,
+            )
+          }
+        }
+      }
+      if (parts.length === 0) {
+        continue
+      }
+      frags.push({ k: 'text', parts: [`export { ${parts.join(', ')} } from `] })
+      frags.push({
+        k: 'spec',
+        specifier: siblingSpecifier(decl.derivedId),
+        edgeKey: this.edgeKey(
+          siblingSpecifier(decl.derivedId),
+          'reexport',
+          'runtime',
+        ),
+        provenance: { origin: 'runtime' },
+      })
+      frags.push({ k: 'text', parts: ['\n'] })
+    }
+    return frags
+  }
+
   private exportGlue(
     output: OutputId,
     placement: Placement,
@@ -768,7 +862,11 @@ export class AnalysisPlan implements PlanContext {
       }
     }
     if (output === 'env') {
-      for (const r of this.exportedRenames.values()) {
+      const extractedSyms = new Set(placement.extracted.flatMap((e) => e.syms))
+      for (const [sym, r] of this.exportedRenames) {
+        if (extractedSyms.has(sym)) {
+          continue // re-exported from the extracted output under its public names
+        }
         const local = 'sym' in r.to ? this.symbols.name(r.to.sym) : null
         if (local === null) {
           continue
@@ -778,7 +876,6 @@ export class AnalysisPlan implements PlanContext {
         }
       }
     }
-    void placement
     if (parts.length === 0) {
       return []
     }
@@ -1021,6 +1118,23 @@ export class AnalysisPlan implements PlanContext {
         provenance: { origin: 'source' },
       })
     }
+  }
+}
+
+/** `declare enum|namespace|var|let|const|function|class` (an ambient declaration with a value-space name). */
+function isAmbientValueDeclaration(node: Node): boolean {
+  switch (node.type) {
+    case 'TSEnumDeclaration':
+    case 'VariableDeclaration':
+    case 'ClassDeclaration':
+    case 'FunctionDeclaration':
+      return node.declare === true
+    case 'TSDeclareFunction':
+      return node.declare
+    case 'TSModuleDeclaration':
+      return node.declare === true && node.id.type === 'Identifier'
+    default:
+      return false
   }
 }
 
