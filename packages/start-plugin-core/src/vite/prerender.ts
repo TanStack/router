@@ -67,6 +67,7 @@ async function startPreviewServer(
   try {
     return await vite.preview({
       configFile: viteConfig.configFile,
+      configLoader: viteConfig.inlineConfig.configLoader,
       preview: {
         port: 0,
         open: false,
