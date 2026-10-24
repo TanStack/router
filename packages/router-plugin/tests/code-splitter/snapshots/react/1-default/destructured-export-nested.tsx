@@ -1,19 +1,16 @@
-const $$splitComponentImporter = () => import('destructured-export-nested.tsx?tsr-split=component');
-import { lazyRouteComponent } from '@tanstack/react-router';
-import { createFileRoute } from '@tanstack/react-router';
+const $$splitComponentImporter = () =>
+  import('destructured-export-nested.tsx?tsr-split=component')
+import { lazyRouteComponent } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 const getConfig = () => ({
-  api: {
-    baseUrl: 'https://api.example.com'
-  },
+  api: { baseUrl: 'https://api.example.com' },
   timeout: 5000,
-  extra: 'data'
-});
+  extra: 'data',
+})
 export const {
-  api: {
-    baseUrl
-  },
+  api: { baseUrl },
   ...rest
-} = getConfig();
+} = getConfig()
 export const Route = createFileRoute('/about')({
-  component: lazyRouteComponent($$splitComponentImporter, 'component')
-});
+  component: lazyRouteComponent($$splitComponentImporter, 'component'),
+})

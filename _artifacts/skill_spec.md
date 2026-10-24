@@ -83,11 +83,11 @@ TanStack Router is a type-safe router for React and Solid applications with buil
 
 ### external-data-loading (3 failure modes)
 
-| #   | Mistake                                           | Priority | Source                           | Cross-skill? |
-| --- | ------------------------------------------------- | -------- | -------------------------------- | ------------ |
-| 1   | Not setting defaultPreloadStaleTime to 0          | HIGH     | docs/guide/external-data-loading | —            |
-| 2   | Creating QueryClient outside createRouter for SSR | HIGH     | docs/guide/external-data-loading | —            |
-| 3   | Awaiting prefetchQuery in loader blocks rendering | MEDIUM   | docs/integrations/query          | —            |
+| #   | Mistake                                                     | Priority | Source                           | Cross-skill? |
+| --- | ----------------------------------------------------------- | -------- | -------------------------------- | ------------ |
+| 1   | Not setting defaultPreloadStaleTime to 0                    | HIGH     | docs/guide/external-data-loading | —            |
+| 2   | Creating QueryClient outside createRouter for SSR           | HIGH     | docs/guide/external-data-loading | —            |
+| 3   | Awaiting a fire-and-forget query in loader blocks rendering | MEDIUM   | docs/integrations/query          | —            |
 
 ### auth-and-guards (3 failure modes)
 
