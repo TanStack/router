@@ -171,15 +171,8 @@ export interface HydrateOptions {
 
 export interface HydrationApp {
   build: StartBuild
-  framework: PageFramework
-  bundler: StartBundler
   /** Renders fixture `name` on the server and hydrates it in a page. */
   hydrate: (name: string, options?: HydrateOptions) => Promise<Hydrated>
-  /** Renders fixture `name` with the SSR build only. */
-  renderServer: (
-    name: string,
-    options?: HydrateOptions,
-  ) => Promise<{ html: string; result: unknown }>
   /**
    * Sends the request of a client call of the server fn of `url` (a server
    * fn URL a page requested) to Start's server entry of the SSR build
@@ -460,5 +453,5 @@ try {
 }`)
     return result
   }
-  return { build, framework, bundler, hydrate, renderServer, callServerFn }
+  return { build, hydrate, callServerFn }
 }
