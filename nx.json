@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "defaultBase": "main",
-  "bust": "nx24-task-packing-full-2026-10-24-02",
+  "bust": "nx24-packing-isolated-preview-full-2026-10-24-03",
   "nxCloudId": "6442f7de8226a6291646a813",
   "useInferencePlugins": false,
   "parallel": 5,

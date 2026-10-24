@@ -32,6 +32,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
       - name: Start Nx Agents
         run: npx nx-cloud start-ci-run --distribute-on=".nx/workflows/dynamic-changesets.yaml"
@@ -42,6 +43,9 @@ jobs:
         with:
           main-branch-name: main
       - name: Run Checks
+        env:
+          # Use the same comparison base even if main advances between runs.
+          NX_BASE: 6b9fe6d29552270836c511bc9b343d73541f4424
         run: pnpm run test:pr --parallel=3
       - name: Stop Nx Agents
         if: ${{ always() }}
@@ -49,6 +53,9 @@ jobs:
   preview:
     name: Preview
     runs-on: ubuntu-latest
+    env:
+      # Keep preview builds from warming the distributed Test job cache.
+      NX_NO_CLOUD: true
     permissions:
       contents: read
       pull-requests: write
@@ -57,6 +64,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
       - name: Setup Tools
         uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
