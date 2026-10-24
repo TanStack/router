@@ -335,7 +335,7 @@ export const base = createServerFn()`,
       },
       head: `import { base } from './builder'`,
     },
-  ])('with the builder of $where', ({ where, files, head }) => {
+  ])('with the builder of $where', ({ files, head }) => {
     const calls = [
       { name: 'spaces before the call', call: '.handler  (' },
       { name: 'a newline before the call', call: '.handler\n(' },
