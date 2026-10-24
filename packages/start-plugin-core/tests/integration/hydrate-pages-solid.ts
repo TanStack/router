@@ -99,6 +99,26 @@ ${
 }
 
 /**
+ * A page whose boundary's children bind an element to a `let` of the
+ * component (Solid's `ref={input}` assigns the element to `input`), which a
+ * button outside the boundary reads.
+ */
+function letRefPage(split: string) {
+  return `${head}import { createSignal } from 'solid-js'
+export function Page() {
+  let input: HTMLInputElement | undefined
+  const [read, setRead] = createSignal('none')
+  return (
+    <div>
+      <button data-read onClick={() => setRead(input ? input.value : 'unset')}>read</button>
+      <output>{read()}</output>
+      <Hydrate when={interaction()}${split}><input ref={input} value="typed" /><Counter label="child" /></Hydrate>
+    </div>
+  )
+}`
+}
+
+/**
  * A page rendering `boundary` once the app hydrated (`useHydrated` of the
  * real router), like a boundary that appears after the app started (e.g.
  * after a client-side navigation): Solid's `Hydrate` then renders its
@@ -203,6 +223,8 @@ export function Page() {
   updatesReference: updatesPage(' split={false}'),
   updatesProps: updatesPage('', true),
   updatesPropsReference: updatesPage(' split={false}', true),
+  letRef: letRefPage(''),
+  letRefReference: letRefPage(' split={false}'),
   // A context declared in the page module itself.
   localContext: `import { Hydrate } from '@tanstack/solid-start'
 import { idle } from '@tanstack/solid-start/hydration'
@@ -454,6 +476,37 @@ export function solidPageSuite(bundler: StartBundler) {
       }
       expect(split.requested).not.toEqual([])
     })
+
+    // Bug: `ref={input}` in the children binds the element to the
+    // component's `let` (Solid assigns it), which code outside the boundary
+    // reads, as with `split={false}`. The chunk receives `input` as a prop
+    // and assigns its own parameter, so the component's `let` stays unset.
+    // SPEC J5.8 (extraction keeps legal `ref` behaviour).
+    // Impact: silently, the parent never sees the element (`input` stays
+    // `undefined`): focusing or reading it does nothing.
+    test.fails(
+      'a ref in split children binds the let of their component',
+      async () => {
+        const script = `const counter = () => root.querySelector('button[data-label="child"]')
+await clickUntil(counter, () => counter().textContent === 'child:1')
+root.querySelector('button[data-read]').click()
+await settled()
+return root.querySelector('output').textContent`
+        const [split, reference] = await Promise.all([
+          app.hydrate('letRef', { script }),
+          app.hydrate('letRefReference', { script }),
+        ])
+        expect(
+          [split, reference].map((page) => ({
+            read: page.result,
+            consoleErrors: page.consoleErrors,
+          })),
+        ).toEqual([
+          { read: 'typed', consoleErrors: [] },
+          { read: 'typed', consoleErrors: [] },
+        ])
+      },
+    )
 
     // Bug: the chunk re-declares the module-level bindings its children use
     // instead of using the parent module's (`createContext` runs again
