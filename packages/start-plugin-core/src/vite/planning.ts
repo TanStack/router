@@ -49,9 +49,15 @@ export function createViteConfigPlan(opts: {
   clientOutputDirectory: string
   serverOutputDirectory: string
   serverFnProviderEnv: string
+  separatePrerenderRouteOptions: boolean
   optimizeDepsExclude: Array<string>
   noExternal: Array<string>
 }) {
+  const serverInput =
+    getBundlerOptions(
+      opts.viteConfig.environments?.[START_ENVIRONMENT_NAMES.server]?.build,
+    )?.input ?? opts.entryAliases.server
+
   return {
     environments: {
       [START_ENVIRONMENT_NAMES.client]: {
@@ -80,11 +86,7 @@ export function createViteConfigPlan(opts: {
         build: {
           ssr: true,
           rolldownOptions: {
-            input:
-              getBundlerOptions(
-                opts.viteConfig.environments?.[START_ENVIRONMENT_NAMES.server]
-                  ?.build,
-              )?.input ?? opts.entryAliases.server,
+            input: serverInput,
           },
           outDir: opts.serverOutputDirectory,
           commonjsOptions: {
@@ -102,6 +104,35 @@ export function createViteConfigPlan(opts: {
           ]),
         },
       },
+      ...(opts.separatePrerenderRouteOptions
+        ? {
+            [START_ENVIRONMENT_NAMES.prerender]: {
+              consumer: 'server',
+              build: {
+                ssr: true,
+                rolldownOptions: {
+                  input:
+                    typeof serverInput === 'string'
+                      ? { server: serverInput }
+                      : serverInput,
+                  external: [/^cloudflare:/],
+                },
+                outDir: join(opts.serverOutputDirectory, '.tanstack/prerender'),
+                commonjsOptions: {
+                  include: [/node_modules/],
+                },
+                copyPublicDir: false,
+              },
+              optimizeDeps: {
+                entries: escapeEntries([
+                  opts.entryAliases.server,
+                  opts.entryAliases.start,
+                  opts.entryAliases.router,
+                ]),
+              },
+            },
+          }
+        : {}),
       ...(opts.serverFnProviderEnv !== START_ENVIRONMENT_NAMES.server && {
         [opts.serverFnProviderEnv]: {
           build: {
@@ -178,6 +209,7 @@ export async function buildStartViteEnvironments(opts: {
   builder: vite.ViteBuilder
   providerEnvironmentName: string
   ssrIsProvider: boolean
+  separatePrerenderRouteOptions: boolean
 }) {
   const client = getRequiredBuilderEnvironment(
     opts.builder,
@@ -196,6 +228,18 @@ export async function buildStartViteEnvironments(opts: {
 
   if (!server.isBuilt) {
     await opts.builder.build(server)
+  }
+
+  if (opts.separatePrerenderRouteOptions) {
+    const prerender = getRequiredBuilderEnvironment(
+      opts.builder,
+      START_ENVIRONMENT_NAMES.prerender,
+      'Prerender environment not found',
+    )
+
+    if (!prerender.isBuilt) {
+      await opts.builder.build(prerender)
+    }
   }
 
   if (opts.ssrIsProvider) {

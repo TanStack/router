@@ -17,10 +17,11 @@ export async function postServerBuild({
       getClientOutputDirectory() {
         return getClientOutputDirectory(builder.config)
       },
-      prerender(startConfig) {
+      prerender(startConfig, options) {
         return prerenderWithVite({
           startConfig,
           builder,
+          pageSink: options?.pageSink,
         })
       },
     },
