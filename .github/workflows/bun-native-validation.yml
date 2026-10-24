@@ -49,7 +49,7 @@ jobs:
         with:
           node-version: '26.10.0'
           package-manager-cache: false
-      - name: Build native release binary and execute all nine suites
+      - name: Build native release binary
         id: native_tests
         run: bash .github/native-bun-validation/build-macos.sh
       - name: Collect binary and final machine state
@@ -190,10 +190,12 @@ jobs:
           package_json_file: .native-jiti/package.json
           dest: ~/native-pnpm10
       - name: Install and build actual Jiti PR
+        working-directory: .native-jiti
         run: |
-          pnpm --dir .native-jiti install --frozen-lockfile
-          pnpm --dir .native-jiti build
-          test -f .native-jiti/dist/jiti.cjs
+          [[ "$(pnpm --ignore-workspace --version)" == '10.30.3' ]]
+          pnpm --ignore-workspace install --frozen-lockfile
+          pnpm --ignore-workspace build
+          test -f dist/jiti.cjs
       - name: Imported virtual configuration helpers with actual Jiti PR
         id: configuration
         continue-on-error: true
