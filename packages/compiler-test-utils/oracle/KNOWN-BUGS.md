@@ -7,7 +7,7 @@ One entry per root cause: the bug, the SPEC clause, the pins (`file` and test na
 `$name`, `%s` and `${…}` are table-row placeholders), and what a fix must achieve. The test comment (`Bug:`,
 `Impact:`) has the details. "Cause" files name today's implementation; a rewrite may have no such file.
 
-Totals: 366 pin sites in 101 test files (a table test counts once; Vitest counts each row).
+Totals: 367 pin sites in 101 test files (a table test counts once; Vitest counts each row).
 
 Pins whose input picks a name today's compiler generates (S6) flip with a compiler that generates other names. The
 adaptive pins next to them, which read the names a compiler actually generates, are the real check.
@@ -396,7 +396,7 @@ Paths under `router-plugin/tests/`.
 - **With options in a variable, the HMR transform declares the component binding after the object that reads it.**
   SPEC G1. `known-bugs-route-hmr.test.ts`: "route options in a variable ($name) evaluate to a route with a component".
 
-## J4 Start environment separation (82 pins: 64 below, 18 in S1–S6)
+## J4 Start environment separation (83 pins: 65 below, 18 in S1–S6)
 
 Paths under `start-plugin-core/tests/` unless noted.
 
@@ -483,6 +483,10 @@ Paths under `start-plugin-core/tests/` unless noted.
 - **Library discovery reads the `package.json` of `process.cwd()`, not Vite's root.** SPEC J4.16.
   `integration/known-bugs-start-compiler.test.ts`: "a build run from another directory: a library's server fn runs in
   the SSR build".
+- **Vite dev: discovered Start libraries are left out of pre-bundling** (`optimizeDeps.exclude`), so their CommonJS
+  dependencies reach the browser untransformed. SPEC J4.16, G13. `integration/known-bugs-start-compiler-dev.test.ts`:
+  "a Start library's import of a CommonJS dependency works in a client route". Fix: such a library works in dev as in
+  a build.
 - **Rsbuild SSR: an isomorphic fn makes the compiler resolve the module's `createMiddleware` import.** SPEC J4.8.
   `integration/known-bugs-start-compiler.test.ts`: "a module with a middleware and an isomorphic fn builds, and its
   middleware runs on the server".

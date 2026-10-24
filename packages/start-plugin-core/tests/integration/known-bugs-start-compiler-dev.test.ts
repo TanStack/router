@@ -10,16 +10,19 @@ import { mkdir, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { createServer, isRunnableDevEnvironment } from 'vite'
-import { describe, expect, test, vi } from 'vitest'
+import { describe, expect, onTestFinished, test, vi } from 'vitest'
 import { createAppDirectory } from '@tanstack/compiler-test-utils/app-directory'
+import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { closeViteServer } from '@tanstack/compiler-test-utils/dev-server'
 import { linkStartRuntime } from '../build-harness'
 import {
   callServerFn,
+  startDevServer,
   startPlugin,
   startPluginFiles,
   startRequestFiles,
 } from '../dev-server'
+import { reactApp } from './hydrate-dev-edits'
 import {
   runViteClient,
   startBrowserStartDevServer,
@@ -347,5 +350,81 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
       expect(await callServerFnId(true)).toBe('hello')
     },
     30_000,
+  )
+
+  // SPEC J4.16, G13, G1: a library Start's discovery selects (a peer
+  // dependency on `@tanstack/react-start`) keeps working in dev as in a
+  // build, including what it imports from a CommonJS dependency.
+  // Bug: Start puts the libraries it discovers in the client's
+  // `optimizeDeps.exclude`, so Vite serves them as source and their
+  // CommonJS dependency reaches the browser untransformed ("does not provide
+  // an export named 'parse'").
+  // Source: src/vite/plugin.ts (crawlFrameworkPkgs), src/vite/planning.ts
+  // (`optimizeDeps.exclude`); issues #5738, #6361.
+  // Impact: in dev, a client route using such a library does not run.
+  test.fails(
+    "a Start library's import of a CommonJS dependency works in a client route",
+    async () => {
+      const cwd = process.cwd()
+      let server: Awaited<ReturnType<typeof startDevServer>>
+      try {
+        server = await startDevServer({
+          browser: true,
+          files: {
+            ...reactApp,
+            'package.json': JSON.stringify({
+              name: 'app',
+              private: true,
+              type: 'module',
+              dependencies: { 'start-lib': '*' },
+            }),
+            'node_modules/start-lib/package.json': JSON.stringify({
+              name: 'start-lib',
+              type: 'module',
+              exports: './index.js',
+              peerDependencies: { '@tanstack/react-start': '*' },
+            }),
+            'node_modules/start-lib/index.js': `import { parse } from 'cjs-dep'
+export const format = (value) => 'lib ' + parse(value)
+`,
+            'node_modules/cjs-dep/package.json': JSON.stringify({
+              name: 'cjs-dep',
+              main: './index.js',
+            }),
+            'node_modules/cjs-dep/index.js': `exports.parse = (value) => 'parsed:' + value\n`,
+            'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
+import { format } from 'start-lib'
+export const Route = createFileRoute('/')({ component: Page })
+function Page() {
+  const [text, setText] = useState('')
+  return <button data-testid="lib" onClick={() => setText(format('x'))}>clicked {text}</button>
+}
+`,
+          },
+          // `vite dev` runs in the app's directory, whose package.json
+          // Start reads to discover the libraries
+          plugins: ({ root }) => {
+            process.chdir(root)
+            return []
+          },
+        })
+      } finally {
+        process.chdir(cwd)
+      }
+      const browser = await openPage(server.url!, {
+        registerCleanup: onTestFinished,
+      })
+      await browser.waitForText('hydrated', {
+        selector: '[data-testid=hydrated]',
+      })
+      await browser.page.locator('[data-testid=lib]').click()
+      await browser.waitForText('clicked lib parsed:x', {
+        selector: '[data-testid=lib]',
+        timeout: 5_000,
+      })
+      expect(browser.errors).toEqual([])
+    },
+    60_000,
   )
 })
