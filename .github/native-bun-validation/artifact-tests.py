@@ -72,9 +72,9 @@ for name, digest, allowed_paths in [
                 env={**os.environ, "BUN_DEV_SERVER_VERBOSE_SYNC": "1"})
             (proof / "native-watcher-path-before.log").write_text(before.stdout)
             identities = [json.loads(line.split("NATIVE_PATH_IDENTITY ", 1)[1])
-                          for line in before.stdout.splitlines() if "NATIVE_PATH_IDENTITY " in line]
+                          for line in before.stdout.splitlines() if line.startswith("NATIVE_PATH_IDENTITY ")]
             final_traces = [json.loads(line.split("NATIVE_TRACE_AT_TIMEOUT ", 1)[1])["trace"]
-                            for line in before.stdout.splitlines() if "NATIVE_TRACE_AT_TIMEOUT " in line]
+                            for line in before.stdout.splitlines() if line.startswith("NATIVE_TRACE_AT_TIMEOUT ")]
             expected_file = identities[-1]["expected"]
             native_events = [json.loads(line) for trace in final_traces for line in trace.splitlines()]
             assert before.returncode != 0 and any(expected_file in event["files"] for event in native_events), \
