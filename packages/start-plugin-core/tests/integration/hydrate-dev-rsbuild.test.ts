@@ -16,9 +16,11 @@ import {
 import {
   editLoadedChild,
   expectEditsReached,
+  expectRouteBoundaryCounts,
   reactApp,
   reactWidgets,
   solidApp,
+  solidRouteWithBoundary,
   solidWidgets,
 } from './hydrate-dev-edits'
 import { solidAppConfig } from './hydrate-pages'
@@ -86,6 +88,32 @@ export const Route = createFileRoute('/')({ component: Widgets })
       expect(reportedErrors(server)).toEqual([])
       expect(browser.loads()).toBe(1)
       expect(browser.errors).toEqual([])
+    },
+    timeout,
+  )
+
+  // A boundary in the split route component itself: the route's chunk is
+  // split again, and each module still gets Solid's JSX transform.
+  test(
+    'Solid: a boundary written in a split route component loads on a click, hydrates and counts',
+    async () => {
+      const server = await startRsbuildStartDevServer({
+        framework: 'solid',
+        hmr: true,
+        browser: true,
+        config: {
+          ...solidAppConfig.rsbuildConfig,
+          // Start serves the pages, not an HTML template.
+          tools: { htmlPlugin: false },
+        },
+        files: { ...solidApp, ...solidRouteWithBoundary },
+      })
+      expect(reportedErrors(server)).toEqual([])
+      const browser = await openPage(server.url!, {
+        registerCleanup: onTestFinished,
+      })
+      await expectRouteBoundaryCounts(browser)
+      expect(reportedErrors(server)).toEqual([])
     },
     timeout,
   )

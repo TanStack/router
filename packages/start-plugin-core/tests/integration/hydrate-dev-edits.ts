@@ -143,6 +143,59 @@ export const Route = createFileRoute('/')({ component: Widgets })
 `,
 }
 
+/**
+ * Files over `solidApp` whose index route component (split by Start's
+ * router plugin) holds a boundary itself, so the route's split chunk is
+ * split again for the boundary's children: a counter hydrating on
+ * interaction (SPEC J2.20, J5.2).
+ */
+export const solidRouteWithBoundary = {
+  'src/counter.tsx': `import { createSignal } from 'solid-js'
+export function Counter(props: { label: string }) {
+  const [clicks, setClicks] = createSignal(0)
+  return <button data-label={props.label} onClick={() => setClicks(clicks() + 1)}>{props.label + ':' + clicks()}</button>
+}
+`,
+  'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/solid-router'
+import { Hydrate } from '@tanstack/solid-start'
+import { interaction } from '@tanstack/solid-start/hydration'
+import { Counter } from '../counter'
+export const Route = createFileRoute('/')({ component: Home })
+function Home() {
+  return <section><Hydrate when={interaction()}><Counter label="child" /></Hydrate></section>
+}
+`,
+}
+
+/**
+ * The page of `solidRouteWithBoundary` hydrates, and a click on the
+ * counter loads its boundary's code (scripts the page had not requested),
+ * hydrates it and counts.
+ */
+export async function expectRouteBoundaryCounts(browser: BrowserPage) {
+  const scripts = () =>
+    browser.page.evaluate(
+      () =>
+        performance
+          .getEntriesByType('resource')
+          .filter(
+            (entry) =>
+              (entry as PerformanceResourceTiming).initiatorType === 'script',
+          ).length,
+    )
+  await browser.waitForText('hydrated', {
+    selector: '[data-testid=hydrated]',
+  })
+  expect(await browser.text('[data-label=child]')).toBe('child:0')
+  const beforeClick = await scripts()
+  await browser.page.locator('[data-label=child]').click()
+  await browser.waitForText('child:1', { selector: '[data-label=child]' })
+  expect({
+    loadedByClick: (await scripts()) > beforeClick,
+    errors: browser.errors,
+  }).toEqual({ loadedByClick: true, errors: [] })
+}
+
 /** `reactWidgets` in Solid (a signal; mounted instances in `__effects`). */
 export const solidWidgets = (
   children: string,

@@ -5,7 +5,9 @@ import { startDevServer } from '../dev-server'
 import {
   editLoadedChild,
   expectEditsReached,
+  expectRouteBoundaryCounts,
   solidApp,
+  solidRouteWithBoundary,
   solidWidgets,
 } from './hydrate-dev-edits'
 
@@ -38,6 +40,26 @@ describe('Vite dev, Solid', () => {
       expectEditsReached(await editLoadedChild(server, browser, solidWidgets))
       expect(browser.loads()).toBe(1)
       expect(browser.errors).toEqual([])
+    },
+    timeout,
+  )
+
+  // A boundary in the split route component itself: the route's chunk is
+  // split again, and each module still gets Solid's JSX transform.
+  test(
+    'a boundary written in a split route component loads on a click, hydrates and counts',
+    async () => {
+      const server = await startDevServer({
+        start: {},
+        framework: 'solid',
+        browser: true,
+        plugins: [solid({ ssr: true })],
+        files: { ...solidApp, ...solidRouteWithBoundary },
+      })
+      const browser = await openPage(server.url!, {
+        registerCleanup: onTestFinished,
+      })
+      await expectRouteBoundaryCounts(browser)
     },
     timeout,
   )
