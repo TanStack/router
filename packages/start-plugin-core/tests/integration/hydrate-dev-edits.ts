@@ -10,11 +10,15 @@ import { expect } from 'vitest'
 import { startServerEntryFiles } from '../dev-server'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 
-/** Distinct child-only modules expose actual evaluation, separately from mounts. */
+/**
+ * Modules only the children of one boundary import, each with a marker in
+ * its code: which of them the page downloaded (not when their top-level
+ * code runs, which is free: ruling "child-only module evaluation", SPEC G3).
+ */
 const childModules = Object.fromEntries(
   ['a', 'b'].map((name) => [
     `src/child-${name}.ts`,
-    `if (typeof window !== 'undefined') { ((globalThis as any).__childModules ??= []).push('${name}') }\nexport const probe = 'child-${name}-exclusive-marker'\n`,
+    `export const probe = 'child-${name}-exclusive-marker'\n`,
   ]),
 )
 
@@ -183,19 +187,20 @@ export async function editLoadedChild(
   widgets: (children: string, label: string) => string,
 ) {
   const { page } = browser
-  const childLoads = async () =>
-    page.evaluate(() => ({
-      evaluated: [...new Set<string>((globalThis as any).__childModules ?? [])],
-      requested: performance
+  /** The child-only modules the page requested by their own URL. */
+  const childRequests = async () =>
+    page.evaluate(() =>
+      performance
         .getEntriesByType('resource')
         .map((entry) => entry.name)
         .filter((url) => /child-[ab]\.ts(?:\?|$)/.test(url)),
-    }))
+    )
   // Inspect the scripts the browser actually requested, including opaque
   // Rsbuild chunk URLs. The test-side HTTP client reads their real response
   // bodies; it neither evaluates them nor requests them from the page.
   const inspected = new Map<string, string>()
-  const downloadedSibling = async () => {
+  /** Whether the page downloaded the code of `src/child-<name>.ts`. */
+  const downloaded = async (name: 'a' | 'b') => {
     const urls = await page.evaluate(() =>
       performance
         .getEntriesByType('resource')
@@ -215,13 +220,12 @@ export async function editLoadedChild(
         }),
     )
     return [...inspected.values()].some((body) =>
-      body.includes('child-b-exclusive-marker'),
+      body.includes(`child-${name}-exclusive-marker`),
     )
   }
-  expect(await downloadedSibling()).toBe(false)
-  const initialLoads = await childLoads()
-  expect(initialLoads.evaluated).toEqual([])
-  expect(initialLoads.requested).toEqual([])
+  expect(await downloaded('a')).toBe(false)
+  expect(await downloaded('b')).toBe(false)
+  expect(await childRequests()).toEqual([])
   /** The text of the section of child `name` (`''` while it has none). */
   const section = (name: string) =>
     page.evaluate(
@@ -289,38 +293,31 @@ export async function editLoadedChild(
   }
   await clickUntil('a', 'a capture-v1 1')
   const opened = await step()
-  const openedLoads = await childLoads()
-  expect(openedLoads.evaluated).toEqual(['a'])
-  expect(await downloadedSibling()).toBe(false)
+  expect(await downloaded('b')).toBe(false)
 
   await server.edit({ 'src/widgets.tsx': widgets('<i>v2</i>', 'capture-v1') })
   await shows('a', 'v2')
   const childrenEdited = await step()
-  const childrenLoads = await childLoads()
   if (childrenEdited.b === 'b capture-v1 0v1') {
-    expect(await downloadedSibling()).toBe(false)
-    expect(childrenLoads.evaluated).toEqual(['a'])
+    expect(await downloaded('b')).toBe(false)
     expect(
-      childrenLoads.requested.filter((url) => /child-b\.ts(?:\?|$)/.test(url)),
+      (await childRequests()).filter((url) => /child-b\.ts(?:\?|$)/.test(url)),
     ).toEqual([])
   }
 
   await server.edit({ 'src/widgets.tsx': widgets('<i>v2</i>', 'capture-v2') })
   await shows('a', 'capture-v2')
   const captureEdited = await step()
-  const captureLoads = await childLoads()
   if (captureEdited.b === 'b capture-v1 0v1') {
-    expect(await downloadedSibling()).toBe(false)
-    expect(captureLoads.evaluated).toEqual(['a'])
+    expect(await downloaded('b')).toBe(false)
     expect(
-      captureLoads.requested.filter((url) => /child-b\.ts(?:\?|$)/.test(url)),
+      (await childRequests()).filter((url) => /child-b\.ts(?:\?|$)/.test(url)),
     ).toEqual([])
   }
 
   await clickUntil('b', 'b capture-v2 1')
   const siblingOpened = await step()
-  expect((await childLoads()).evaluated).toEqual(['a', 'b'])
-  expect(await downloadedSibling()).toBe(true)
+  expect(await downloaded('b')).toBe(true)
   return { opened, childrenEdited, captureEdited, siblingOpened }
 }
 

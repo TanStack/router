@@ -385,7 +385,8 @@ files" and `plugin-options.test.ts` "two code splitters scoped to the client and
 per dev server, is `integration/pages/code-splitter-edits.test.ts`. Start's client and SSR splitting through the
 public Start plugin stays covered by start-plugin-core (`integration/start-router-dev-server.test.ts`,
 `integration/hydrate-dev.test.ts`, `integration/start-build-options.test.ts` "router.codeSplittingOptions: the
-client and SSR builds load the route loader and component $name"). Clauses: §2.2, §5.20.
+client build loads the route loader and component $name, and both builds run them"; SSR splitting itself is not
+required: "SSR route splitting", 2026-10-24). Clauses: §2.2, §5.20.
 
 ### Q9: `tsr.config.json` edits (2026-10-23)
 
@@ -550,7 +551,8 @@ On the client, the parts of a middleware the compiler removes leave nothing behi
 code as possible. While a stub would be harmless on correctness, it would not be harmless on bytes." So the property
 checks of the client middleware rows stay as they are (`createMiddleware/createMiddleware.test.ts`,
 `compiler.test.ts`, `start-compiler-v2-inputs.test.ts`, `start-compiler-factories.test.ts`,
-`known-bugs-start-compiler.test.ts`, `integration/pages/start-compiler-import-forms.test.ts`). Clauses: J4.8,
+`known-bugs-start-compiler.test.ts`, `integration/pages/start-compiler-import-forms.test.ts`). Q3 is about stubs
+only: other fields of the client `.options` are free ("client middleware options", 2026-10-24). Clauses: J4.8,
 §5.19.
 
 ### Q4: `export *` of a denied module (2026-10-23)
@@ -591,7 +593,56 @@ Clauses: §1.2, §8.
 With `behavior: 'mock'` (dev or build, client or server env), every violation is reported, and the runtime access
 diagnostic follows `mockAccess` (default `error`; `warn`; `off` silences) wherever a mock is served. Main's
 client-dev-only runtime diagnostic is a bug. Why: the docs say "A warning is logged but the build continues".
-Clause: J6.3.
+Clause: J6.3. Which uses of a mock count for that diagnostic beyond a call is free ("mock access diagnostics",
+2026-10-24).
+
+### rulings of 2026-10-24 (outcomes audit B)
+
+The second outcomes audit (validation `AUDIT-OUTCOMES-B.md`) found tests that pin a correct compiler's free choices.
+The user: tests must be sensible, not paranoid; the implementer may adjust a test that pins an incidental detail.
+Message wording, exact positions and columns, which line of a construct an error points at, and generated or
+internal type names are left as they are; so are the pins whose inputs reuse today's generated names
+("restructured compilers", R3) and the choice between an error and a warning ("depends on each case").
+
+#### client middleware options
+
+User: extra fields (e.g. metadata) on a client middleware's `.options` are allowed; Q3 forbids shipping server
+code or stubs, not other fields. The client rows check `type`, and that no server implementation or validator ships
+(`server`, `validator` absent: `page-values.ts` `clientMiddlewareOf`), never the whole `.options` object.
+Clauses: J4.8, §5.19.
+
+#### mock access diagnostics
+
+User (agreed to the recommendation): the required, documented behaviour is a warning in dev at import time naming
+the file, a mock that never crashes and leaks nothing, and builds that fail by default. The runtime "a mock was
+used" diagnostic (`mockAccess`, undocumented) is left to the implementer: one row checks that calling a mocked
+import is reported with the severity `mockAccess` gives (and nothing with `off`); which other uses count (a
+conversion to a string, `toString()`, `new`, a property write) is not checked
+(`integration/importProtection/mock-access.test.ts`). Clauses: J6.3, §5.18.
+
+#### Hydrate chunk directives
+
+`'use client'` need not be copied into a client-only `<Hydrate>` split chunk: it has no effect in a chunk only the
+client loads. The parent module keeps its directives (J4.17). Clauses: G12, J5.9.
+
+#### child-only module evaluation
+
+A module only `<Hydrate>` children import is not downloaded before its boundary needs it (the page's scripts hold
+none of its code); when its top-level code runs is not checked (`integration/hydrate-dev-edits.ts`). Clauses: G3,
+J5.6.
+
+#### SSR route splitting
+
+User: SSR splitting is "not required, but to be fully optimized even the server code should load as little code as
+possible, so eventually an optimization will have to be made." The SSR build must render correctly; whether it splits
+route options like the client is not checked (`integration/start-build-options.test.ts`). Clauses: R2, G2, §5.3.
+
+#### reading the existing clauses
+
+Applied without a new ruling: an `onViolation` trace may list the entry first or last ("restructured compilers",
+R10; `importProtection/start-apps.ts` `traceFromEntry`); `resolved` is optional for a specifier violation and is
+checked only when given (J6.5, §5.14); a module's directives are each kept, other directives are not forbidden
+(G12); a client server fn is checked through its public `url`, not `serverFnMeta` or its dev id (J4.4, §5.19).
 
 ## Test workarounds for upstream bugs
 

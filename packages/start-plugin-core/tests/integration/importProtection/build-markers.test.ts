@@ -20,6 +20,7 @@ import {
   rejection,
   reportedImporters,
   reportedViolations,
+  traceFromEntry,
   violationsOf,
 } from '../../importProtection/start-apps'
 import type { TanStackStartInputConfig } from '../../../src'
@@ -182,7 +183,7 @@ describe.each(startBundlers)('%s build, server-only marker', (bundler) => {
         .replace(/^.*?\/(?=src\/)/, '')
     const importer = fromRoot(info.importer)
     return importer === 'src/marked.ts'
-      ? fromRoot(info.trace.at(-2)?.file)
+      ? fromRoot(traceFromEntry(info).at(-2)?.file)
       : importer
   }
 

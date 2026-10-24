@@ -609,8 +609,9 @@ createServerFn().middleware([auth])`, then `createServerFn().middleware([authed]
   listed in `createStart(() => ({ requestMiddleware, functionMiddleware }))` in `src/start.ts`: that module is part
   of the client bundle, the listed middlewares' `.server()`/`.validator()` code is absent there, and a global
   function middleware's `.client()` runs on every client call. No stub of a removed part ships: on the client a
-  middleware's `.options.server` (and `.options.validator`) is absent, not an empty or throwing stand-in.
-  `[doc: guide/middleware.md:415-503,808-815; ruling: Q3]`
+  middleware's `.options.server` (and `.options.validator`) is absent, not an empty or throwing stand-in. Other
+  fields of a client middleware's `.options` (metadata a compiler adds) are free (§5.19).
+  `[doc: guide/middleware.md:415-503,808-815; ruling: Q3, client middleware options]`
 - **J4.9 `createIsomorphicFn`.** Client keeps only `.client()`, server keeps only `.server()`; a missing
   implementation is a no-op returning `undefined`; the other env's implementation and its imports are absent; links
   stored in variables or returned from factories keep their implementation. `[doc: guide/environment-functions.md:17-85,117-121]`
@@ -654,7 +655,7 @@ createServerFn().middleware([auth])`, then `createServerFn().middleware([authed]
   Start-_compiled_ output are unsupported (2.2).
 - **J4.17 User code preserved** (G12): directives (`'use strict'`, `'use client'`, `'use no memo'`), decorators,
   class semantics, imports written with `assert` (they keep working; the printed keyword is free, J2.17),
-  parentheses.
+  parentheses. Each user directive is kept; an added directive without effect is not forbidden.
 
 ### J5 Deferred hydration `<Hydrate>`
 
@@ -694,7 +695,9 @@ createServerFn().middleware([auth])`, then `createServerFn().middleware([authed]
   `prefetch` (and absent React's documented correctness-driven early hydration), a child chunk loads when the
   boundary is about to render/hydrate; a configured `prefetch` may load it earlier (that is its purpose). The
   documented initial-hydration vs later client-mount behaviour, including `never()`, is preserved. A boundary inside
-  code the production bundler removes leaves no chunk and no child code behind (per bundler, G2). `[doc: deferred-hydration.md:209-243,565-574,643-646]`
+  code the production bundler removes leaves no chunk and no child code behind (per bundler, G2). A module only the
+  children import is likewise not downloaded before the boundary needs it; when its top-level code runs is free (G3)
+  `[ruling: child-only module evaluation]`. `[doc: deferred-hydration.md:209-243,565-574,643-646]`
 - **J5.7 CSS stays route-linked.** CSS imported by split children remains discoverable for the route's SSR HTML (not
   deferred with the chunk). `[doc: deferred-hydration.md:648-654]`
 - **J5.8 Semantics otherwise untouched.** `when`, `prefetch`, `onHydrated`, keys and context flow through as written;
@@ -704,7 +707,8 @@ createServerFn().middleware([auth])`, then `createServerFn().middleware([authed]
   identity does not restart an established gate; a new `key` creates a new boundary. React's documented early
   hydration stays allowed (J5.6). `[doc: deferred-hydration.md:98-101,146-179,403-407]`
 - **J5.9 Printing.** Children/fallback JSX re-printed in the chunk or stripped from the server must keep their meaning
-  (G12).
+  (G12). The parent keeps its directives (J4.17); a client-only split chunk need not repeat `'use client'`, which has
+  no effect there `[ruling: Hydrate chunk directives]`.
 
 ### J6 Import protection
 
@@ -722,7 +726,8 @@ createServerFn().middleware([auth])`, then `createServerFn().middleware([authed]
 - **J6.3 Behaviour.** Default dev `mock` (warn once, replace with a recursive-Proxy mock; `mockAccess` controls the
   runtime console diagnostic — error/warn/off — and nothing else), default build `error` (fail the build);
   overridable globally or per mode, including `mock` in production builds; `enabled: false` disables everything.
-  `mockAccess` (default `error`) applies wherever a mock is served — dev and production, client and server envs;
+  `mockAccess` (default `error`) applies wherever a mock is served — dev and production, client and server envs
+  (which uses of a mock beyond a call it reports is free, §5.18 `[ruling: mock access diagnostics]`);
   there is no production or server exemption, so a test that expects silence sets `mockAccess: 'off'`. In mock
   mode (dev or build, client or server env) both channels hold: every violation is reported (the build or dev-time
   warning), and the runtime access diagnostic follows `mockAccess` wherever a mock is served
@@ -824,6 +829,8 @@ as `§5.N` (or "§5 item N").
   provided the configured group semantics hold: a group is available together (no new module holding user code
   once one of its options loaded; forwarding modules allowed, J2.2), independently configured groups are
   neither made eager nor loaded together when only one is needed, and no chunk carries unrelated code (J2.5).
+  Whether the SSR build splits route options like the client: not required for correctness, an eventual
+  optimisation (R2 is a goal for the server here, not a gate) `[ruling: SSR route splitting]`.
 - **§5.4 SSR handler placement** in place or extracted, when SSR and the provider share an environment (P2, J4.3); the
   forwarding mechanism for a separate provider.
 - **§5.5 Statement/import order, printing** (quotes, semicolons, parentheses beyond necessity — free only where they
@@ -860,7 +867,9 @@ as `§5.N` (or "§5 item N").
 - **§5.16 Idempotence** (recompiling output is unsupported).
 - **§5.17 Change-detection strategy** of the generator in dev (J1.10) and the hydration-identity scheme (J5.4).
 - **§5.18 Mock representation** (J6.8): the mock's label, its primitive-conversion result, Proxy shape and where the
-  mock runtime lives, as long as it is safe and leaks nothing.
+  mock runtime lives, as long as it is safe and leaks nothing; which uses of a mock beyond a call the `mockAccess`
+  diagnostic reports (a conversion to a string, `toString()`, `new`, a property write)
+  `[ruling: mock access diagnostics]`.
 - **§5.19 Extra fields on runtime objects** the compiler emits or decorates (e.g. additional server-function metadata
   next to the id), as long as the public contract holds. A stub where the compiler removed a part (a client
   middleware's `.options.server`) is not such a field (J4.8, ruling Q3).
@@ -965,7 +974,7 @@ api/router/RouteOptionsType.md:32]`; the docs recommend `createLazyFileRoute` in
 - **Dev-server edits are realistic.** The app's files exist before the dev server starts (as in a real project), and
   a compile counts for an edit only if it started after the edit's last write. A multi-file edit (moving
   `src/lib.ts` to `src/lib/index.ts`) passes through in-between states that a dev server may compile and report:
-  tests assert the state after the last write (the last report since the edit names the new target), not an exact
+  tests assert the state after the last write (a report since the edit that gives a resolved path names the new target), not an exact
   report list that excludes the in-between states. `[ruling: Rsbuild dev-server edits]`
 - **Original source in code frames.** Code frames are not checked (§5.7): a location is checked by its file, line
   and column. `[ruling: valid alternative compilers; diagnostics: file and position only]`

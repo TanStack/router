@@ -197,7 +197,7 @@ export { renderPath } from '../harness/render'
       },
     },
   ])(
-    'router.codeSplittingOptions: the client and SSR builds load the route loader and component $name',
+    'router.codeSplittingOptions: the client build loads the route loader and component $name, and both builds run them',
     async ({ router, expected }) => {
       const { client, ssr } = await buildStart({
         bundler,
@@ -242,11 +242,10 @@ return {
           )
         ).result as object),
       })
-      // Source: mutation round 3 start-router H for the SSR build.
-      expect({
-        client: await placement(client),
-        ssr: await placement(ssr),
-      }).toEqual({ client: expected, ssr: expected })
+      // The SSR build need not split route options like the client: it is
+      // not required for correctness, an eventual optimisation (ruling
+      // "SSR route splitting", SPEC §5.3).
+      expect(await placement(client)).toEqual(expected)
       // Wherever they are, the route's loader and component still run: the
       // real router renders the page at `/`.
       const script = `const route = Object.values(entry.getRouter().routeTree.children).find(

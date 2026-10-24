@@ -9,7 +9,7 @@ import {
   serveCase,
   useStartHost,
 } from '../regression-helpers'
-import { shapeOf } from '../page-values'
+import { clientMiddleware, clientMiddlewareOf } from '../page-values'
 
 /** A third-party library the middlewares below import (a real package). */
 const someLib = {
@@ -181,15 +181,19 @@ export const getUser = async () => ({ role: 'admin' })
     expect(
       await inPage(
         served,
-        `${shapeOf}
-return [
-  shapeOf(module.createPublicRateLimitMiddleware('ip').options),
-  shapeOf(module.createAuthMiddleware('admin').options),
+        `return [
+  ${clientMiddlewareOf(`module.createPublicRateLimitMiddleware('ip')`)},
+  ${clientMiddlewareOf(`module.createAuthMiddleware('admin')`)},
   module.topLevelMiddleware.options.client(),
   module.topLevelMiddleware.options.server === undefined,
 ]`,
       ),
-    ).toEqual([{ type: 'function' }, { type: 'function' }, 'topLevel', true])
+    ).toEqual([
+      clientMiddleware('function'),
+      clientMiddleware('function'),
+      'topLevel',
+      true,
+    ])
   })
 
   // Source: snapshot fixture createStart.tsx (gap MW5)
@@ -217,14 +221,13 @@ export const requestMw = startInstance
     expect(
       await inPage(
         served,
-        `${shapeOf}
-return [
+        `return [
   typeof module.serverFnMw.options.client,
   module.serverFnMw.options.server === undefined,
-  shapeOf(module.requestMw.options),
+  ${clientMiddlewareOf('module.requestMw')},
 ]`,
       ),
-    ).toEqual(['function', true, { type: 'request' }])
+    ).toEqual(['function', true, clientMiddleware('request')])
   })
 })
 

@@ -382,7 +382,7 @@ console.log(secret(), other)
   // Source: mutation run R3 ip-rsbuild R4 (the resolve cache of a previous
   // compile).
   test(
-    'a denied specifier that an edit makes resolve elsewhere is reported with its new target',
+    'a denied specifier that an edit makes resolve elsewhere is reported again, never with its old target',
     async () => {
       const resolved: Array<string | undefined> = []
       const server = await startRsbuildDevServer({
@@ -401,7 +401,10 @@ console.log(secret(), other)
           'src/entry.ts': `import { lib } from './lib'\nconsole.log(lib)\n`,
         },
       })
-      expect(resolved).toEqual(['src/lib.ts'])
+      // `resolved` is optional for a specifier violation (SPEC J6.5,
+      // §5.14): what is checked is a resolved path when one is given.
+      expect(resolved).toHaveLength(1)
+      expect([undefined, 'src/lib.ts']).toContain(resolved[0])
       await server.edit({
         'src/lib.ts': null,
         'src/lib/index.ts': `export const lib = 2\n`,
@@ -410,15 +413,17 @@ console.log(secret(), other)
       // The edit passes through states the dev server may compile and
       // report: `./lib` resolving nowhere (`undefined`) once `src/lib.ts` is
       // gone and before `src/lib/index.ts` exists (DECISIONS 2026-10-20
-      // "Rsbuild first-edit harness fixes", C). The new target is reported
-      // last, and from the compile that saw it on, never the old one.
+      // "Rsbuild first-edit harness fixes", C). The violation is reported
+      // again; every resolved path given since the edit is the new target,
+      // never the old one, and a compiler that gave one before the edit
+      // reports the new target last.
       const sinceEdit = resolved.slice(1)
-      expect(sinceEdit.at(-1)).toBe('src/lib/index.ts')
-      const seen = sinceEdit.indexOf('src/lib/index.ts')
-      expect(sinceEdit.slice(0, seen)).toEqual(
-        sinceEdit.slice(0, seen).map(() => undefined),
-      )
-      expect(sinceEdit.slice(seen)).not.toContain('src/lib.ts')
+      expect(sinceEdit).not.toEqual([])
+      const given = sinceEdit.filter((target) => target !== undefined)
+      expect(given).toEqual(given.map(() => 'src/lib/index.ts'))
+      if (resolved[0] !== undefined) {
+        expect(sinceEdit.at(-1)).toBe('src/lib/index.ts')
+      }
     },
     timeout,
   )

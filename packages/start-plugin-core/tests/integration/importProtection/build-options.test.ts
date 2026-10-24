@@ -496,8 +496,11 @@ export const read = () => getRequest()
       timeout,
     )
 
+    // `resolved` is optional (SPEC J6.5, §5.14: a compiler that denies by
+    // the raw specifier need not resolve it); when given, it is the file the
+    // specifier resolves to.
     test(
-      'in mock mode, it gets each import of a denied specifier with the file the specifier resolves to; the mocks are safe (and silent with mockAccess off)',
+      'in mock mode, it gets each import of a denied specifier, with the file the specifier resolves to when it gives one; the mocks are safe (and silent with mockAccess off)',
       async () => {
         const seen: Array<Violation> = []
         const { client } = await buildStart({
@@ -531,20 +534,21 @@ export const read = () => a()
         })
         const fromRoot = (file: string) =>
           file.replace(/^.*?\/(src|node_modules)\//, '$1/')
+        const inClient = seen.filter((info) => info.envType === 'client')
         expect(
           distinct(
-            seen
-              .filter((info) => info.envType === 'client')
-              .map(
-                (info) =>
-                  `${fromRoot(info.importer)} ${info.specifier} -> ${info.resolved ? fromRoot(info.resolved) : 'none'}`,
-              ),
+            inClient.map(
+              (info) => `${fromRoot(info.importer)} ${info.specifier}`,
+            ),
           ).sort(),
-        ).toEqual([
-          'src/a.ts db-lib -> node_modules/db-lib/index.js',
-          'src/a.ts mail-lib -> node_modules/mail-lib/index.js',
-          'src/b.ts db-lib -> node_modules/db-lib/index.js',
-        ])
+        ).toEqual(['src/a.ts db-lib', 'src/a.ts mail-lib', 'src/b.ts db-lib'])
+        for (const info of inClient) {
+          if (info.resolved !== undefined) {
+            expect(fromRoot(info.resolved)).toBe(
+              `node_modules/${info.specifier}/index.js`,
+            )
+          }
+        }
         expect(
           await client.run(`${describeValuePrelude}
 return entry.read().map((value) => describeValue(value, 'MARK_SECRET'))`),
