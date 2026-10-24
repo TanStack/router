@@ -3,7 +3,8 @@
  * (`rsc-app.ts`: `buildApp()` of the `client`, `ssr` and `rsc`
  * environments, served by Start's preview server) in a real page: which
  * entry of a dependency each environment runs (SPEC J4.3, J4.16, J4.12),
- * and the CSS of server components rendered with each RSC
+ * env-only fns a server fn handler calls (J4.10), and the CSS of server
+ * components rendered with each RSC
  * helper (SPEC J7.2, J7.3). The dev counterparts are rsc-start-dev.test.ts
  * and rsc-css-matrix.test.ts.
  */
@@ -150,6 +151,40 @@ function Page() {
   return <main>{data.tree}</main>
 }
 `,
+  // A server fn module whose source names only createServerFn: its handler
+  // calls env-only fns that a project module re-exports under other names.
+  'src/aliased/env.ts': `export { createServerOnlyFn as makeServerOnly, createClientOnlyFn as makeClientOnly } from '@tanstack/react-start'
+`,
+  'src/aliased/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+import { makeClientOnly, makeServerOnly } from './env'
+const readSecret = makeServerOnly(() => 'MARK_ALIASED_SERVER_ONLY')
+const readBrowser = makeClientOnly(() => 'MARK_ALIASED_CLIENT_ONLY')
+export const readAliased = createServerFn().handler(() => {
+  let clientOnly = 'threw'
+  try {
+    clientOnly = readBrowser()
+  } catch {}
+  return 'server-only ' + readSecret() + ' client-only ' + clientOnly
+})
+`,
+  'src/routes/aliased.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
+import { readAliased } from '../aliased/fns'
+export const Route = createFileRoute('/aliased')({
+  loader: () => readAliased(),
+  component: Page,
+})
+function Page() {
+  const [called, setCalled] = useState('')
+  return (
+    <main>
+      <p data-testid="loaded">loaded {Route.useLoaderData()}</p>
+      <p data-testid="called">called {called}</p>
+      <button data-testid="call" onClick={() => readAliased().then(setCalled)}>call</button>
+    </main>
+  )
+}
+`,
   'src/routes/control.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { render as renderable } from '../rows/renderable'
 import { render as composite } from '../rows/composite'
@@ -270,6 +305,34 @@ describe('Vite production build with RSC', () => {
         /MARK_REACT_SERVER|MARK_DEFAULT/.test(code),
       ),
     }).toEqual({ browser: true, server: false })
+    expect(page.errors).toEqual([])
+  })
+
+  // SPEC J4.10, J4.12, G11 (the Start compiler composed with the RSC CSS
+  // transform): in the provider, the handler's env-only fns, reached
+  // through renamed re-exports of a module whose source names only
+  // createServerFn, are compiled: the server-only one runs, the client-only
+  // one throws, whether SSR or the browser calls the server fn; the
+  // server-only body is not in any client file.
+  test('a server fn handler compiles env-only fns of renamed re-exports in the provider', async () => {
+    const expected = 'server-only MARK_ALIASED_SERVER_ONLY client-only threw'
+    const page = await open('/aliased')
+    await page.waitForText(`loaded ${expected}`, {
+      selector: '[data-testid=loaded]',
+    })
+    await waitForHydration(page)
+    await page.page.locator('[data-testid=call]').click()
+    await page.waitForText(`called ${expected}`, {
+      selector: '[data-testid=called]',
+    })
+    const client = await Promise.all(
+      (await filesOf(path.join(server.root, 'dist/client'))).map((file) =>
+        readFile(file, 'utf8'),
+      ),
+    )
+    expect(
+      client.some((code) => code.includes('MARK_ALIASED_SERVER_ONLY')),
+    ).toBe(false)
     expect(page.errors).toEqual([])
   })
 
