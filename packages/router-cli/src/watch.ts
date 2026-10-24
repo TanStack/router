@@ -3,8 +3,9 @@ import {
   Generator,
   getConfig,
   resolveConfigPath,
+  watchRouteFiles,
 } from '@tanstack/router-generator'
-import type { FileEventType } from '@tanstack/router-generator'
+import type { RouteFileWatcher } from '@tanstack/router-generator'
 
 export function watch(root: string) {
   const configPath = resolveConfigPath({
@@ -12,48 +13,27 @@ export function watch(root: string) {
   })
   const configWatcher = chokidar.watch(configPath)
 
-  let watcher = new chokidar.FSWatcher({})
+  let watcher: Promise<RouteFileWatcher> | undefined
 
-  const generatorWatcher = () => {
+  const report = (run: Promise<void>) =>
+    run.catch((err: unknown) => {
+      console.error(err)
+      console.info()
+    })
+
+  const generatorWatcher = async () => {
     const config = getConfig()
     const generator = new Generator({ config, root })
 
-    watcher.close()
+    const previous = watcher
+    watcher = undefined
+    await (await previous)?.close()
 
     console.info(`TSR: Watching routes (${config.routesDirectory})...`)
-    watcher = chokidar.watch(config.routesDirectory)
-
-    watcher.on('ready', async () => {
-      const handle = async () => {
-        try {
-          await generator.run()
-        } catch (err) {
-          console.error(err)
-          console.info()
-        }
-      }
-
-      await handle()
-
-      watcher.on('all', (event, path) => {
-        let type: FileEventType | undefined
-        switch (event) {
-          case 'add':
-            type = 'create'
-            break
-          case 'change':
-            type = 'update'
-            break
-          case 'unlink':
-            type = 'delete'
-            break
-        }
-        if (type) {
-          return generator.run({ path, type })
-        }
-        return generator.run()
-      })
-    })
+    await report(generator.run())
+    // Every route file event under the routes directory and the
+    // `physical()` mounts, and edits of the virtual route config
+    watcher = watchRouteFiles(generator, (run) => void report(run))
   }
 
   configWatcher.on('ready', generatorWatcher)

@@ -149,7 +149,7 @@ tanstackRouter({
 | `disableTypes`              | `boolean`              | `false`    | Disable TypeScript types         |
 | `disableLogging`            | `boolean`              | `false`    | Suppress plugin logs             |
 | `addExtensions`             | `boolean \| string`    | `false`    | Add file extensions to imports   |
-| `enableRouteTreeFormatting` | `boolean`              | `true`     | Format generated route tree      |
+| `enableRouteTreeFormatting` | `boolean`              | `false`    | Format the route tree (Prettier) |
 
 ### Virtual Route Config
 

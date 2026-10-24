@@ -1,3 +1,4 @@
+import { utimes } from 'node:fs/promises'
 import path from 'pathe'
 import { createRouterPluginContext } from '@tanstack/router-plugin/context'
 import {
@@ -7,6 +8,7 @@ import {
 import { routesManifestPlugin } from '../start-router-plugin/generator-plugins/routes-manifest-plugin'
 import { prerenderRoutesPlugin } from '../start-router-plugin/generator-plugins/prerender-routes-plugin'
 import { buildRouteTreeFileFooterFromConfig } from '../start-router-plugin/route-tree-footer'
+import { createClientRouteTree } from '../start-router-plugin/client-route-tree'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type { RsbuildPluginAPI } from '@rsbuild/core'
 import type { GetConfigFn, TanStackStartCoreOptions } from '../types'
@@ -29,6 +31,35 @@ export function registerRouterPlugins(
   },
 ): void {
   const routerPluginContext = createRouterPluginContext()
+  let generatedRouteTreePath: string | undefined
+  const generatedRouteTree = () =>
+    (generatedRouteTreePath ??= path.normalize(
+      path.resolve(opts.getConfig().startConfig.router.generatedRouteTree),
+    ))
+
+  // The client gets the route tree without its server-only routes (SPEC
+  // J2.15), served for the route tree module of the client environment. An
+  // edit that changes which routes those are may leave the tree file as it
+  // is: in dev, the file's modification time is touched so that the client
+  // compiler loads it again.
+  const clientRouteTree = createClientRouteTree({
+    onClientRoutesChange: () => {
+      if (api.context.action !== 'dev') {
+        return
+      }
+      const now = new Date()
+      utimes(generatedRouteTree(), now, now).catch(() => {})
+    },
+  })
+  api.transform(
+    {
+      test: (resource: string) =>
+        path.normalize(resource) === generatedRouteTree(),
+      environments: [RSBUILD_ENVIRONMENT_NAMES.client],
+      order: 'pre',
+    },
+    () => clientRouteTree.code(),
+  )
 
   api.modifyRspackConfig((config, utils) => {
     const envName = utils.environment.name
@@ -51,6 +82,7 @@ export function registerRouterPlugins(
             })
           },
           plugins: [
+            clientRouteTree.plugin,
             routesManifestPlugin(),
             ...(opts.startPluginOpts.prerender?.enabled === true
               ? [prerenderRoutesPlugin()]

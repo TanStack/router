@@ -23,21 +23,18 @@ export {
   removeUnderscores,
   resetRegex,
   multiSortBy,
-  writeIfDifferent,
-  format,
   removeExt,
-  checkRouteFullPathUniqueness,
-  inferFullPath,
 } from './utils'
 
 export type {
   RouteNode,
+  RouteProps,
+  ModelRoute,
+  TreeModel,
+  RoutePieceName,
   GetRouteNodesResult,
   GetRoutesByFileMapResult,
   GetRoutesByFileMapResultValue,
-  ImportDeclaration,
-  ImportSpecifier,
-  HandleNodeAccumulator,
 } from './types'
 
 export { getRouteNodes as physicalGetRouteNodes } from './filesystem/physical/getRouteNodes'
@@ -45,4 +42,5 @@ export { getRouteNodes as virtualGetRouteNodes } from './filesystem/virtual/getR
 
 export { rootPathId } from './filesystem/physical/rootPathId'
 
-export type { TransformContext, TransformOptions } from './transform/types'
+export { watchRouteFiles } from './watch/chokidar'
+export type { RouteFileWatcher } from './watch/chokidar'

@@ -204,27 +204,24 @@ export const Route = createLazyFileRoute('/about')({
   // piece is a page at `/posts/route` instead of the `/posts` layout's
   // component.
   // Source: mutation testing.
-  test.fails(
-    'a component piece of a directory route (route.component.vue) is the component of the route',
-    async () => {
-      const root = await createApp({
-        'src/routes/__root.ts': rootRoute('vue'),
-        'src/routes/posts/route.ts': fileRoute('/posts', '{}', 'vue'),
-        'src/routes/posts/route.component.vue': sfc('posts'),
-        'src/routes/posts/index.ts': fileRoute('/posts/', '{}', 'vue'),
-      })
-      const { generatedRouteTree } = await generate(root, { target: 'vue' })
+  test('a component piece of a directory route (route.component.vue) is the component of the route', async () => {
+    const root = await createApp({
+      'src/routes/__root.ts': rootRoute('vue'),
+      'src/routes/posts/route.ts': fileRoute('/posts', '{}', 'vue'),
+      'src/routes/posts/route.component.vue': sfc('posts'),
+      'src/routes/posts/index.ts': fileRoute('/posts/', '{}', 'vue'),
+    })
+    const { generatedRouteTree } = await generate(root, { target: 'vue' })
 
-      expect(await urlsOf(generatedRouteTree)).toEqual({
-        __root__: '/',
-        '/posts': '/posts',
-        '/posts/': '/posts/',
-      })
-      expect((await piecesOf(generatedRouteTree))['/posts']).toEqual({
-        component: 'posts',
-      })
-    },
-  )
+    expect(await urlsOf(generatedRouteTree)).toEqual({
+      __root__: '/',
+      '/posts': '/posts',
+      '/posts/': '/posts/',
+    })
+    expect((await piecesOf(generatedRouteTree))['/posts']).toEqual({
+      component: 'posts',
+    })
+  })
 
   // Bug: a `.lazy.vue` route file is wired as the route's lazy route
   // (`.lazy(() => import('./routes/about.lazy.vue').then((d) => d.default))`,
@@ -237,23 +234,20 @@ export const Route = createLazyFileRoute('/about')({
   // `.lazy.vue` file is the lazily loaded component of its route (SPEC
   // J1.17).
   // Source: mutation testing.
-  test.fails(
-    'a .lazy.vue route file is the lazily loaded component of the route',
-    async () => {
-      const root = await createApp({
-        'src/routes/__root.ts': rootRoute('vue'),
-        'src/routes/about.ts': fileRoute('/about', '{}', 'vue'),
-        'src/routes/about.lazy.vue': sfc('about'),
-      })
-      const { generatedRouteTree } = await generate(root, { target: 'vue' })
+  test('a .lazy.vue route file is the lazily loaded component of the route', async () => {
+    const root = await createApp({
+      'src/routes/__root.ts': rootRoute('vue'),
+      'src/routes/about.ts': fileRoute('/about', '{}', 'vue'),
+      'src/routes/about.lazy.vue': sfc('about'),
+    })
+    const { generatedRouteTree } = await generate(root, { target: 'vue' })
 
-      await withRouteTree(generatedRouteTree, async (tree) => {
-        // (lazily: the app does not load it before the route renders)
-        expect(tree.loadedFiles()).not.toContain('routes/about.lazy.vue')
-        expect(textOf(await tree.renderAt('/about'))).toBe('about')
-      })
-    },
-  )
+    await withRouteTree(generatedRouteTree, async (tree) => {
+      // (lazily: the app does not load it before the route renders)
+      expect(tree.loadedFiles()).not.toContain('routes/about.lazy.vue')
+      expect(textOf(await tree.renderAt('/about'))).toBe('about')
+    })
+  })
 
   // Bug: when only the root route has piece files, the route tree calls
   // `lazyRouteComponent` without importing it, and fails to load with
@@ -262,22 +256,19 @@ export const Route = createLazyFileRoute('/about')({
   // pieces of non-root routes only).
   // Impact: a Vue app whose only piece file is, e.g., `__root.component.vue`
   // fails to start.
-  test.fails(
-    'pieces of the root route only are lazy components of their default export',
-    async () => {
-      const root = await createApp({
-        'src/routes/__root.ts': rootRoute('vue'),
-        'src/routes/__root.component.vue': sfc('root'),
-        'src/routes/index.ts': fileRoute('/', '{}', 'vue'),
-      })
-      const { generatedRouteTree } = await generate(root, { target: 'vue' })
+  test('pieces of the root route only are lazy components of their default export', async () => {
+    const root = await createApp({
+      'src/routes/__root.ts': rootRoute('vue'),
+      'src/routes/__root.component.vue': sfc('root'),
+      'src/routes/index.ts': fileRoute('/', '{}', 'vue'),
+    })
+    const { generatedRouteTree } = await generate(root, { target: 'vue' })
 
-      expect(await piecesOf(generatedRouteTree)).toEqual({
-        __root__: { component: 'root' },
-        '/': {},
-      })
-    },
-  )
+    expect(await piecesOf(generatedRouteTree)).toEqual({
+      __root__: { component: 'root' },
+      '/': {},
+    })
+  })
 })
 
 describe('empty files', () => {
@@ -319,25 +310,22 @@ describe('empty files', () => {
   // Impact: creating an empty `about.lazy.vue` in a Vue app turns it into a
   // file that fails to compile (low).
   // Source: mutation testing.
-  test.fails(
-    'an empty .lazy.vue route file is not filled with TypeScript route code',
-    async () => {
-      const root = await createApp({
-        'src/routes/__root.ts': rootRoute('vue'),
-        'src/routes/about.ts': fileRoute('/about', '{}', 'vue'),
-        'src/routes/about.lazy.vue': '',
-      })
-      await generate(root, { target: 'vue' })
+  test('an empty .lazy.vue route file is not filled with TypeScript route code', async () => {
+    const root = await createApp({
+      'src/routes/__root.ts': rootRoute('vue'),
+      'src/routes/about.ts': fileRoute('/about', '{}', 'vue'),
+      'src/routes/about.lazy.vue': '',
+    })
+    await generate(root, { target: 'vue' })
 
-      const content = await read(root, 'src/routes/about.lazy.vue')
-      // Empty, or a single-file component the Vue plugin compiles to a
-      // component that renders.
-      if (content !== '') {
-        const { exports } = await evaluateModule(content, 'about.lazy.vue')
-        await renderToString(createSSRApp(exports.default))
-      }
-    },
-  )
+    const content = await read(root, 'src/routes/about.lazy.vue')
+    // Empty, or a single-file component the Vue plugin compiles to a
+    // component that renders.
+    if (content !== '') {
+      const { exports } = await evaluateModule(content, 'about.lazy.vue')
+      await renderToString(createSSRApp(exports.default))
+    }
+  })
 
   test('an empty pathless layout file is scaffolded and added to the route tree', async () => {
     const root = await createApp({

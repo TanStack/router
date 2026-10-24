@@ -4,10 +4,8 @@
  * created, renamed, moved and deleted keep their `createFileRoute` path in
  * line with their location, the live routes follow, and each route's
  * component loads on navigation (scenarios: `generator-dev-scenarios.ts`;
- * the Vite counterpart is dev-server-generator.test.ts). A route file
- * created under a `physical()` mount is pinned in
- * known-bugs-rsbuild-generator-physical.test.ts.
+ * the Vite counterpart is dev-server-generator.test.ts).
  */
 import { describeRouteFileUpkeep } from '../generator-dev-scenarios'
 
-describeRouteFileUpkeep('rsbuild', { pinPhysicalMountCreation: true })
+describeRouteFileUpkeep('rsbuild')

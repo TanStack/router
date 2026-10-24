@@ -189,23 +189,17 @@ describe.each(startBundlers)('%s build, served', (bundler) => {
   // Rsbuild: same bug as known-bugs-route-options.test.ts "a route with
   // only server handlers is not in the client route tree" (only Start's
   // Vite plugin prunes the client route tree).
-  ;(bundler === 'vite' ? test : test.fails)(
-    'the client route tree leaves out the server-only subtree',
-    () => {
-      expect(clientRoutes.filter((id) => id.startsWith('/api'))).toEqual([])
-    },
-  )
+  test('the client route tree leaves out the server-only subtree', () => {
+    expect(clientRoutes.filter((id) => id.startsWith('/api'))).toEqual([])
+  })
 
   // Vite: same bug as known-bugs-route-options.test.ts "a route with server
   // handlers and these options is in the client route tree: a spread" (the
   // route generator misses the spread component, so Start takes the route
   // for server-only and prunes it; Rsbuild prunes nothing).
-  ;(bundler === 'vite' ? test.fails : test)(
-    'the client route tree keeps the page whose component is spread in',
-    () => {
-      expect(clientRoutes).toContain('/spread')
-    },
-  )
+  test('the client route tree keeps the page whose component is spread in', () => {
+    expect(clientRoutes).toContain('/spread')
+  })
 
   test(
     'client-side navigation reaches the page under the server-only ancestor',
@@ -228,7 +222,7 @@ describe.each(startBundlers)('%s build, served', (bundler) => {
 
   // Rsbuild: the server-only route is in the client route tree (pinned
   // above), so the navigation finds a route without a page.
-  ;(bundler === 'vite' ? test : test.fails)(
+  test(
     'client-side navigation to a server-only route finds nothing',
     async () => {
       const page = await openAppPage(served, '/', {
@@ -245,7 +239,7 @@ describe.each(startBundlers)('%s build, served', (bundler) => {
   )
 
   // Vite: the spread route is pruned (pinned above).
-  ;(bundler === 'vite' ? test.fails : test)(
+  test(
     'client-side navigation reaches the page whose component is spread in',
     async () => {
       const page = await openAppPage(served, '/', {

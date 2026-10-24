@@ -106,16 +106,13 @@ export const Route = createFileRoute('/old')({})`)
   // from its import: an aliased import (`createFileRoute as route`) is not
   // recognized.
   // Impact: the route keeps its old id when its file moves.
-  test.fails(
-    'a moved route with an aliased import of the constructor gets the id of its new path',
-    async () => {
-      const { written, error } =
-        await generateMovedRoute(`import { createFileRoute as route } from '@tanstack/react-router'
+  test('a moved route with an aliased import of the constructor gets the id of its new path', async () => {
+    const { written, error } =
+      await generateMovedRoute(`import { createFileRoute as route } from '@tanstack/react-router'
 export const Route = route('/old')({})`)
-      expect(await routeIdOf(written)).toBe('/moved')
-      expect(error).toBeUndefined()
-    },
-  )
+    expect(await routeIdOf(written)).toBe('/moved')
+    expect(error).toBeUndefined()
+  })
 
   // Bug: same root cause as above, for `createFileRoute` imported from a
   // module of the app (a wrapper re-exporting it): no import from the
@@ -126,22 +123,19 @@ export const Route = route('/old')({})`)
   // package owns the constructor); fuzzing, 7 unmodified files of real apps.
   // Impact: the written route file declares `createFileRoute` twice and no
   // longer parses, so the app fails to build.
-  test.fails(
-    'a moved route importing createFileRoute from a module of the app stays a valid module',
-    async () => {
-      const { written, error } = await generateMovedRoute(
-        `import { createFileRoute } from '../lib/router'
+  test('a moved route importing createFileRoute from a module of the app stays a valid module', async () => {
+    const { written, error } = await generateMovedRoute(
+      `import { createFileRoute } from '../lib/router'
 export const Route = createFileRoute('/old')({})`,
-        {
-          'lib/router.ts': `export { createFileRoute } from '@tanstack/react-router'`,
-        },
-      )
-      const { errors } = parseSync('route.tsx', written, {
-        sourceType: 'module',
-        showSemanticErrors: true,
-      })
-      expect(errors.map((error) => error.message)).toEqual([])
-      expect(error).toBeUndefined()
-    },
-  )
+      {
+        'lib/router.ts': `export { createFileRoute } from '@tanstack/react-router'`,
+      },
+    )
+    const { errors } = parseSync('route.tsx', written, {
+      sourceType: 'module',
+      showSemanticErrors: true,
+    })
+    expect(errors.map((error) => error.message)).toEqual([])
+    expect(error).toBeUndefined()
+  })
 })

@@ -33,10 +33,6 @@ const settleTimeout = 6_000
 // directory a virtual route config mounts with `physical()` is missing from
 // the app until another route file is created in the routes directory or the
 // dev server restarts.
-test.fails(
-  'a route file created under a physical() mount outside the routes directory reaches the live routes',
-  async () => {
-    await expectPhysicalMountRouteFile('rsbuild', settleTimeout)
-  },
-  30_000,
-)
+test('a route file created under a physical() mount outside the routes directory reaches the live routes', async () => {
+  await expectPhysicalMountRouteFile('rsbuild', settleTimeout)
+}, 30_000)

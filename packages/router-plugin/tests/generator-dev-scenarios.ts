@@ -16,7 +16,6 @@ import {
   expectDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { runPins } from '@tanstack/compiler-test-utils/pins'
 import {
   createFileRouteCall,
   expectLoadedOnNavigation,
@@ -93,17 +92,7 @@ function expectNoErrorsSince(app: GeneratorDevApp, since: DiagnosticsMark) {
   ).toEqual([])
 }
 
-export function describeRouteFileUpkeep(
-  bundler: Bundler,
-  options: {
-    /**
-     * Pins the case of a route file created under a `physical()` mount
-     * outside the routes directory (the caller's file says why), instead of
-     * asserting it here.
-     */
-    pinPhysicalMountCreation?: boolean
-  } = {},
-) {
+export function describeRouteFileUpkeep(bundler: Bundler) {
   describe(`route generator in ${bundler} dev`, () => {
     // A route template whose component is a marker of its own.
     test(
@@ -295,17 +284,15 @@ export function describeRouteFileUpkeep(
       timeout,
     )
 
-    if (!options.pinPhysicalMountCreation) {
-      // Route files under a `physical()` mount outside the routes directory
-      // are delivered edits like route-directory files (SPEC J1.10).
-      test(
-        'a route file created, edited and deleted under a physical() mount outside the routes directory reaches the live routes',
-        async () => {
-          await expectPhysicalMountRouteFile(bundler)
-        },
-        timeout,
-      )
-    }
+    // Route files under a `physical()` mount outside the routes directory
+    // are delivered edits like route-directory files (SPEC J1.10).
+    test(
+      'a route file created, edited and deleted under a physical() mount outside the routes directory reaches the live routes',
+      async () => {
+        await expectPhysicalMountRouteFile(bundler)
+      },
+      timeout,
+    )
   })
 }
 
@@ -313,16 +300,7 @@ export function describeRouteFileUpkeep(
  * Created route files the generator cannot handle yet, and edits of routes
  * created or renamed while the page runs.
  */
-export function describeCreatedRoutes(
-  bundler: Bundler,
-  options: {
-    /**
-     * Pins the cases of a route file created before it exports a valid
-     * `Route` (the caller's comment says why), instead of asserting them.
-     */
-    pinCreatedBrokenRouteFiles?: boolean
-  } = {},
-) {
+export function describeCreatedRoutes(bundler: Bundler) {
   // A route created in dev joins HMR like the routes the server started
   // with (the root route too).
   describe(`created routes in ${bundler} dev`, () => {
@@ -418,16 +396,13 @@ export function describeCreatedRoutes(
       timeout,
     )
 
-    // With `COMPILER_TESTS_PINS=run`, pinned cases run as ordinary tests.
-    if (!options.pinCreatedBrokenRouteFiles || runPins) {
-      test.each(createdBrokenRouteFiles)(
-        'a created route file the generator $name is reported, and fixing it adds the route',
-        async ({ initial }) => {
-          await expectCreatedBrokenRouteFileFixed(bundler, initial)
-        },
-        timeout,
-      )
-    }
+    test.each(createdBrokenRouteFiles)(
+      'a created route file the generator $name is reported, and fixing it adds the route',
+      async ({ initial }) => {
+        await expectCreatedBrokenRouteFileFixed(bundler, initial)
+      },
+      timeout,
+    )
   })
 }
 

@@ -74,20 +74,17 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // Rsbuild: same bug as known-bugs-route-options.test.ts "a route with only
   // server handlers is not in the client route tree" (only the Vite plugin
   // prunes).
-  ;(bundler === 'vite' ? test : test.fails)(
-    'the client route tree is the SSR route tree without the server-only subtree',
-    async () => {
-      const ssr = (await build.ssr.run(routeTree)).result as {
-        paths: Array<string>
-      }
-      expect(ssr.paths).toEqual(expect.arrayContaining(['/api', '/inner']))
-      // (the harness's probe route, which serves the requests SSR scripts
-      // run in, is a server-only route too)
-      const serverOnly = ['/api', '/inner', probeRoutePath]
-      expect((await build.client.run(routeTree)).result).toEqual({
-        rootIsRoot: true,
-        paths: ssr.paths.filter((path) => !serverOnly.includes(path)),
-      })
-    },
-  )
+  test('the client route tree is the SSR route tree without the server-only subtree', async () => {
+    const ssr = (await build.ssr.run(routeTree)).result as {
+      paths: Array<string>
+    }
+    expect(ssr.paths).toEqual(expect.arrayContaining(['/api', '/inner']))
+    // (the harness's probe route, which serves the requests SSR scripts
+    // run in, is a server-only route too)
+    const serverOnly = ['/api', '/inner', probeRoutePath]
+    expect((await build.client.run(routeTree)).result).toEqual({
+      rootIsRoot: true,
+      paths: ssr.paths.filter((path) => !serverOnly.includes(path)),
+    })
+  })
 })

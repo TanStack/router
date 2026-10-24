@@ -36,14 +36,10 @@ const settleTimeout = 6_000
 // the same path) stays out of the route tree, keeping the path it was
 // written with, until another route file is created or the dev server
 // restarts.
-test.fails(
-  'a created route file the generator cannot parse is reported, and fixing it adds the route',
-  async () => {
-    await expectCreatedBrokenRouteFileFixed(
-      'rsbuild',
-      createdBrokenRouteFiles[0]!.initial,
-      settleTimeout,
-    )
-  },
-  30_000,
-)
+test('a created route file the generator cannot parse is reported, and fixing it adds the route', async () => {
+  await expectCreatedBrokenRouteFileFixed(
+    'rsbuild',
+    createdBrokenRouteFiles[0]!.initial,
+    settleTimeout,
+  )
+}, 30_000)

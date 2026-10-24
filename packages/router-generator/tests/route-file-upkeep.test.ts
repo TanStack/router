@@ -522,7 +522,7 @@ export const createFileRoute = (id: any) => (options: any) =>
   // give its routes defaults) silently loses the wrapper in that route file
   // (here: no pending component), or the file stops compiling (a binding
   // declared twice).
-  test.fails.each([
+  test.each([
     {
       name: 'declared in the file',
       source: `${factory.replace('export const', 'const')}

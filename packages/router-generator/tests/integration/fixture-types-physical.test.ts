@@ -31,7 +31,7 @@ describe('the types of the generator fixtures without a virtual route config', (
   // its trailing slash is dropped).
   // Impact: `Route.fullPath` and the types derived from it (`from` of links
   // and hooks) say `''` in such a layout while the app sees `/`.
-  test.fails.each([...knownTypeBugs])(
+  test.each([...knownTypeBugs])(
     'the "%s" route tree types its routes like the router',
     async (name) => {
       expect(await typeErrorsOfFixture(name)).toEqual([])

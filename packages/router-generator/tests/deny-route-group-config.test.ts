@@ -100,7 +100,7 @@ describe('route files named like a route group', () => {
   // Impact: the failed run names a path that does not open from the project
   // root (`(group).tsx` is `src/routes/(group).tsx`), so the user has to
   // guess where the file to rename is. Low: diagnostics only.
-  it.fails.each(testCases)(
+  it.each(testCases)(
     'a (group).tsx route file is reported by name or routes correctly: $name',
     async ({ group, index }) => {
       const { root, config, error, diagnostics } = await generateApp({

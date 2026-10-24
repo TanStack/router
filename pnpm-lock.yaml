@@ -14705,27 +14705,24 @@ importers:
 
   packages/router-generator:
     dependencies:
-      '@babel/types':
-        specifier: 'catalog:'
-        version: 7.29.8
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
-      '@tanstack/router-utils':
-        specifier: workspace:*
-        version: link:../router-utils
       '@tanstack/virtual-file-routes':
         specifier: workspace:*
         version: link:../virtual-file-routes
+      chokidar:
+        specifier: 'catalog:'
+        version: 5.0.0
       jiti:
         specifier: ^2.7.0
         version: 2.7.0
-      magic-string:
-        specifier: ^0.30.21
-        version: 0.30.21
       prettier:
         specifier: ^3.9.6
         version: 3.9.6
+      yuku:
+        specifier: 0.23.0
+        version: 0.23.0
       zod:
         specifier: 'catalog:'
         version: 4.5.4

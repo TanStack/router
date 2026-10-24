@@ -9,26 +9,14 @@ import { VITE_ENVIRONMENT_NAMES } from '../../constants'
 import { routesManifestPlugin } from '../../start-router-plugin/generator-plugins/routes-manifest-plugin'
 import { prerenderRoutesPlugin } from '../../start-router-plugin/generator-plugins/prerender-routes-plugin'
 import { buildRouteTreeFileFooterFromConfig } from '../../start-router-plugin/route-tree-footer'
-import { pruneServerOnlySubtrees } from '../../start-router-plugin/pruneServerOnlySubtrees'
-import { SERVER_PROP } from '../../start-router-plugin/constants'
+import { createClientRouteTree } from '../../start-router-plugin/client-route-tree'
 import type { GetConfigFn } from '../../types'
 import type { TanStackStartVitePluginCoreOptions } from '../types'
-import type {
-  Generator,
-  GeneratorPlugin,
-  RouteNode,
-} from '@tanstack/router-generator'
 import type { DevEnvironment, Plugin, PluginOption } from 'vite'
 import type { TanStackStartInputConfig } from '../../schema'
 
-function isServerOnlyNode(node: RouteNode | undefined) {
-  if (!node?.createFileRouteProps) {
-    return false
-  }
-  return (
-    node.createFileRouteProps.has(SERVER_PROP) &&
-    node.createFileRouteProps.size === 1
-  )
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 export function tanStackStartRouter(
@@ -58,19 +46,12 @@ export function tanStackStartRouter(
     clientEnvironment.hot.send({ type: 'full-reload', path: '*' })
   }
 
-  let generatorInstance: Generator | null = null
-
-  const clientTreeGeneratorPlugin: GeneratorPlugin = {
-    name: 'start-client-tree-plugin',
-    init({ generator }) {
-      generatorInstance = generator
-    },
-    afterTransform({ node, prevNode }) {
-      if (isServerOnlyNode(node) !== isServerOnlyNode(prevNode)) {
-        invalidate()
-      }
-    },
-  }
+  // The client gets the route tree without its server-only routes; when an
+  // edit changes which routes those are, the client's tree module is
+  // invalidated (the tree file itself may not change).
+  const clientRouteTree = createClientRouteTree({
+    onClientRoutesChange: invalidate,
+  })
 
   let routeTreeFileFooter: Array<string> | null = null
 
@@ -104,8 +85,13 @@ export function tanStackStartRouter(
       resolvedGeneratedRouteTreePath = normalizePath(
         getGeneratedRouteTreePath(),
       )
+      // The route tree module itself, by its exact id (a query aside)
       ;(clientTreePlugin.load as LoadObjectHook).filter = {
-        id: { include: new RegExp(resolvedGeneratedRouteTreePath) },
+        id: {
+          include: new RegExp(
+            `^${escapeRegExp(resolvedGeneratedRouteTreePath)}(?:\\?.*)?$`,
+          ),
+        },
       }
     },
 
@@ -113,32 +99,14 @@ export function tanStackStartRouter(
       filter: {
         // this will be set in the config hook above since it relies on `config` hook being called first
       },
-      async handler() {
-        if (!generatorInstance) {
-          throw new Error('Generator instance not initialized')
+      async handler(id) {
+        if (
+          normalizePath(id.replace(/\?.*$/, '')) !==
+          resolvedGeneratedRouteTreePath
+        ) {
+          return null
         }
-        const crawlingResult = await generatorInstance.getCrawlingResult()
-        if (!crawlingResult) {
-          throw new Error('Crawling result not available')
-        }
-        const prunedAcc = pruneServerOnlySubtrees(crawlingResult)
-        const acc = {
-          ...crawlingResult.acc,
-          ...prunedAcc,
-        }
-        const buildResult = generatorInstance.buildRouteTree({
-          ...crawlingResult,
-          acc,
-          config: {
-            // importRoutesUsingAbsolutePaths: true,
-            // addExtensions: true,
-            disableTypes: true,
-            enableRouteTreeFormatting: false,
-            routeTreeFileHeader: [],
-            routeTreeFileFooter: [],
-          },
-        })
-        return { code: buildResult.routeTreeContent, map: null }
+        return { code: await clientRouteTree.code(), map: null }
       },
     },
   }
@@ -146,7 +114,7 @@ export function tanStackStartRouter(
     clientTreePlugin,
     tanstackRouterGenerator(() => {
       const routerConfig = getConfig().startConfig.router
-      const plugins = [clientTreeGeneratorPlugin, routesManifestPlugin()]
+      const plugins = [clientRouteTree.plugin, routesManifestPlugin()]
       if (startPluginOpts.prerender?.enabled === true) {
         plugins.push(prerenderRoutesPlugin())
       }

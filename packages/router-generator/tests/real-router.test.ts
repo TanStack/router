@@ -38,7 +38,7 @@ describe('the real router on a generated route tree', () => {
   // a layout without a route file is typed `static`).
   // Impact: the pages under such a layout are served at the wrong URL, and
   // typed links to them lead nowhere.
-  test.fails(
+  test(
     'a pathless layout with only a lazy route file keeps its directory path',
     () =>
       checkApp({

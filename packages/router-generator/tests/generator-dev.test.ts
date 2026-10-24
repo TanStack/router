@@ -185,25 +185,22 @@ export const Route = (`
   // deleted layout).
   // Impact: in dev, deleting `posts.tsx` while keeping `posts.$id.tsx`
   // removes `/posts/$id` from the app until the dev server restarts.
-  test.fails(
-    'deleting a layout route keeps its child routes in the route tree',
-    async () => {
-      const root = await createApp({
-        'src/routes/__root.tsx': rootRoute(),
-        'src/routes/posts.tsx': fileRoute('/posts'),
-        'src/routes/posts.$id.tsx': fileRoute('/posts/$id'),
-      })
-      const { config, generator } = await startGenerator(root)
+  test('deleting a layout route keeps its child routes in the route tree', async () => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/posts.tsx': fileRoute('/posts'),
+      'src/routes/posts.$id.tsx': fileRoute('/posts/$id'),
+    })
+    const { config, generator } = await startGenerator(root)
 
-      const deleted = await remove(root, 'src/routes/posts.tsx')
-      await generator.run({ type: 'delete', path: deleted })
+    const deleted = await remove(root, 'src/routes/posts.tsx')
+    await generator.run({ type: 'delete', path: deleted })
 
-      expect(await routesOf(config.generatedRouteTree)).toEqual({
-        __root__: 'routes/__root.tsx',
-        '/posts/$id': 'routes/posts.$id.tsx',
-      })
-    },
-  )
+    expect(await routesOf(config.generatedRouteTree)).toEqual({
+      __root__: 'routes/__root.tsx',
+      '/posts/$id': 'routes/posts.$id.tsx',
+    })
+  })
 })
 
 // A rename or move reaches the generator as a delete and a create event, in
@@ -313,51 +310,39 @@ describe('route tree file events', () => {
   // Impact: in dev, deleting `routeTree.gen.ts` (e.g. `git clean`, a branch
   // switch) leaves the app without a route tree until the dev server
   // restarts.
-  test.fails(
-    'a deleted route tree is written again on its delete event',
-    async () => {
-      const root = await createApp({
-        'src/routes/__root.tsx': rootRoute(),
-        'src/routes/index.tsx': fileRoute('/'),
-      })
-      const { config, generator } = await startGenerator(root)
-      const generated = await observeRouteTree(config.generatedRouteTree)
+  test('a deleted route tree is written again on its delete event', async () => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/index.tsx': fileRoute('/'),
+    })
+    const { config, generator } = await startGenerator(root)
+    const generated = await observeRouteTree(config.generatedRouteTree)
 
-      await rm(config.generatedRouteTree)
-      await generator.run({ type: 'delete', path: config.generatedRouteTree })
+    await rm(config.generatedRouteTree)
+    await generator.run({ type: 'delete', path: config.generatedRouteTree })
 
-      expect(existsSync(config.generatedRouteTree)).toBe(true)
-      expect(await observeRouteTree(config.generatedRouteTree)).toEqual(
-        generated,
-      )
-    },
-  )
+    expect(existsSync(config.generatedRouteTree)).toBe(true)
+    expect(await observeRouteTree(config.generatedRouteTree)).toEqual(generated)
+  })
 
-  test.fails(
-    'after the route tree is deleted, adding a route writes the route tree',
-    async () => {
-      const root = await createApp({
-        'src/routes/__root.tsx': rootRoute(),
-        'src/routes/index.tsx': fileRoute('/'),
-      })
-      const { config, generator } = await startGenerator(root)
+  test('after the route tree is deleted, adding a route writes the route tree', async () => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/index.tsx': fileRoute('/'),
+    })
+    const { config, generator } = await startGenerator(root)
 
-      await rm(config.generatedRouteTree)
-      await generator.run({ type: 'delete', path: config.generatedRouteTree })
-      const about = await save(
-        root,
-        'src/routes/about.tsx',
-        fileRoute('/about'),
-      )
-      await generator.run({ type: 'create', path: about })
+    await rm(config.generatedRouteTree)
+    await generator.run({ type: 'delete', path: config.generatedRouteTree })
+    const about = await save(root, 'src/routes/about.tsx', fileRoute('/about'))
+    await generator.run({ type: 'create', path: about })
 
-      expect(await routesOf(config.generatedRouteTree)).toEqual({
-        __root__: 'routes/__root.tsx',
-        '/': 'routes/index.tsx',
-        '/about': 'routes/about.tsx',
-      })
-    },
-  )
+    expect(await routesOf(config.generatedRouteTree)).toEqual({
+      __root__: 'routes/__root.tsx',
+      '/': 'routes/index.tsx',
+      '/about': 'routes/about.tsx',
+    })
+  })
 })
 
 describe('events that arrive together', () => {
@@ -401,12 +386,9 @@ describe('events that arrive together', () => {
   // first build (when webpack rebuilds for the route tree the generator
   // wrote) is neither scaffolded nor routed until another route file
   // changes (router-plugin generator-watch-mode.test.ts hit it now and then).
-  test.fails(
-    'a route created while an update event that changed nothing is checked joins the route tree',
-    async () => {
-      expect(await createdWith(true)).toEqual(withAbout)
-    },
-  )
+  test('a route created while an update event that changed nothing is checked joins the route tree', async () => {
+    expect(await createdWith(true)).toEqual(withAbout)
+  })
 })
 
 describe('first runs', () => {
@@ -488,30 +470,27 @@ describe('route files outside the routes directory', () => {
   // src/filesystem/virtual/loadConfigFile.ts (jiti import of the config).
   // Impact: in dev, changing the virtual route config has no effect until
   // the dev server restarts.
-  test.fails(
-    'editing the virtualRouteConfig file updates the route tree',
-    async () => {
-      const routes = (routePath: string) =>
-        `import { rootRoute, route } from '@tanstack/virtual-file-routes'
+  test('editing the virtualRouteConfig file updates the route tree', async () => {
+    const routes = (routePath: string) =>
+      `import { rootRoute, route } from '@tanstack/virtual-file-routes'
 
 export const routes = rootRoute('__root.tsx', [route('${routePath}', 'posts.tsx')])
 `
-      const root = await createApp({
-        'routes.ts': routes('/posts'),
-        'src/routes/__root.tsx': rootRoute(),
-        'src/routes/posts.tsx': fileRoute('/posts'),
-      })
-      const { config, generator } = await startGenerator(root, {
-        virtualRouteConfig: './routes.ts',
-      })
+    const root = await createApp({
+      'routes.ts': routes('/posts'),
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/posts.tsx': fileRoute('/posts'),
+    })
+    const { config, generator } = await startGenerator(root, {
+      virtualRouteConfig: './routes.ts',
+    })
 
-      const configFile = await save(root, 'routes.ts', routes('/articles'))
-      await generator.run({ type: 'update', path: configFile })
+    const configFile = await save(root, 'routes.ts', routes('/articles'))
+    await generator.run({ type: 'update', path: configFile })
 
-      expect(await routesOf(config.generatedRouteTree)).toEqual({
-        __root__: 'routes/__root.tsx',
-        '/articles': 'routes/posts.tsx',
-      })
-    },
-  )
+    expect(await routesOf(config.generatedRouteTree)).toEqual({
+      __root__: 'routes/__root.tsx',
+      '/articles': 'routes/posts.tsx',
+    })
+  })
 })

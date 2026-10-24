@@ -77,12 +77,9 @@ return { ids, page: await entry.renderPath(entry.getRouter().routeTree, '/') }`,
     // "a route with only server handlers is not in the client route tree").
     // Impact: the client bundle ships the server-only routes' entries and
     // modules; a page can navigate to a route that has no page.
-    test.fails(
-      'the client route tree leaves out the server-only route',
-      async () => {
-        expect((await build.client.run(clientRouteIds)).result).toEqual(['/'])
-      },
-    )
+    test('the client route tree leaves out the server-only route', async () => {
+      expect((await build.client.run(clientRouteIds)).result).toEqual(['/'])
+    })
   })
 
   describe('of an app with a file named one character away from the generated route tree', () => {
@@ -116,16 +113,13 @@ export { sibling } from './routeTree-gen'
     // client route tree instead of its own code.
     // Impact: the build fails (the file's exports are gone) or the app
     // reads the wrong module.
-    ;(bundler === 'vite' ? test.fails : test)(
-      'the client gets the file, not the client route tree',
-      async () => {
-        if (!build) {
-          throw failure
-        }
-        expect((await build.client.run(`return entry.sibling`)).result).toBe(
-          'MARK_SIBLING',
-        )
-      },
-    )
+    test('the client gets the file, not the client route tree', async () => {
+      if (!build) {
+        throw failure
+      }
+      expect((await build.client.run(`return entry.sibling`)).result).toBe(
+        'MARK_SIBLING',
+      )
+    })
   })
 })

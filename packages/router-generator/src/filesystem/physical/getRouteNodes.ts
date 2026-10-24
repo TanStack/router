@@ -63,9 +63,13 @@ export async function getRouteNodes(
   const routeNodes: Array<RouteNode> = []
   const allPhysicalDirectories: Array<string> = []
 
-  async function recurse(dir: string) {
+  async function recurse(dir: string): Promise<Array<RouteNode>> {
     const fullDir = path.resolve(config.routesDirectory, dir)
-    let dirList = await fsp.readdir(fullDir, { withFileTypes: true })
+    // Sorted by name: the scan's output order is the same whatever order the
+    // filesystem lists entries in (SPEC J1.5).
+    let dirList = (await fsp.readdir(fullDir, { withFileTypes: true })).sort(
+      (a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0),
+    )
 
     dirList = dirList.filter((d) => {
       if (
@@ -158,18 +162,18 @@ export async function getRouteNodes(
         delete node._virtualParentRoutePath
       })
 
-      routeNodes.push(...virtualRouteNodes)
-
-      return
+      return virtualRouteNodes
     }
 
-    await Promise.all(
-      dirList.map(async (dirent) => {
+    // Entries are scanned concurrently; each one's nodes are collected in
+    // its own slot and appended in directory order.
+    const nodesByEntry = await Promise.all(
+      dirList.map(async (dirent): Promise<Array<RouteNode>> => {
         const fullPath = replaceBackslash(path.join(fullDir, dirent.name))
         const relativePath = path.posix.join(dir, dirent.name)
 
         if (dirent.isDirectory()) {
-          await recurse(relativePath)
+          return recurse(relativePath)
         } else if (fullPath.match(/\.(tsx|ts|jsx|js|vue)$/)) {
           const filePath = replaceBackslash(path.join(dir, dirent.name))
           const filePathNoExt = removeExt(filePath)
@@ -190,7 +194,7 @@ export async function getRouteNodes(
           }
 
           if (disallowedRouteGroupConfiguration.test(dirent.name)) {
-            const errorMessage = `A route configuration for a route group was found at \`${filePath}\`. This is not supported. Did you mean to use a layout/pathless route instead?`
+            const errorMessage = `A route configuration for a route group was found at \`${fullPath}\`. This is not supported. Did you mean to use a layout/pathless route instead?`
             logger.error(`ERROR: ${errorMessage}`)
             throw new Error(errorMessage)
           }
@@ -217,9 +221,16 @@ export async function getRouteNodes(
             routeType = 'pathless_layout'
           }
 
+          // A `.lazy.vue` single-file component is the lazily loaded
+          // component of its route (its default export), not a lazy route
+          // module (SPEC J1.17).
+          const isVueFile = filePath.endsWith('.vue')
+          if (isVueFile && routeType === 'lazy') {
+            routeType = 'component'
+          }
+
           // Only show deprecation warning for .tsx/.ts files, not .vue files
           // Vue files using .component.vue is the Vue-native way
-          const isVueFile = filePath.endsWith('.vue')
           if (!isVueFile) {
             ;(
               [
@@ -282,16 +293,35 @@ export async function getRouteNodes(
             routeTokenSegmentRegex.test(lastRouteSegment) &&
             !isRouteTokenEscaped
 
-          if (suffixToStrip || shouldStripRouteToken) {
-            const stripSegment = suffixToStrip ?? lastRouteSegment
+          const stripLastSegment = (segment: string) => {
             routePath = routePath.replace(
-              new RegExp(`/${escapeRegExp(stripSegment)}$`),
+              new RegExp(`/${escapeRegExp(segment)}$`),
               '',
             )
             originalRoutePath = originalRoutePath.replace(
-              new RegExp(`/${escapeRegExp(stripSegment)}$`),
+              new RegExp(`/${escapeRegExp(segment)}$`),
               '',
             )
+          }
+
+          if (suffixToStrip) {
+            stripLastSegment(suffixToStrip)
+            // A piece of a directory route (`posts/route.component.vue`)
+            // belongs to the route itself: its route token goes too.
+            const originalSegmentsAfter = originalRoutePath
+              .split('/')
+              .filter(Boolean)
+            const lastOriginalAfter =
+              originalSegmentsAfter[originalSegmentsAfter.length - 1] || ''
+            const lastAfter = routePath.split('/').filter(Boolean).pop() || ''
+            if (
+              routeTokenSegmentRegex.test(lastAfter) &&
+              lastOriginalAfter === lastAfter
+            ) {
+              stripLastSegment(lastAfter)
+            }
+          } else if (shouldStripRouteToken) {
+            stripLastSegment(lastRouteSegment)
           }
 
           // Check if the index token should be treated specially or as a literal path
@@ -335,26 +365,29 @@ export async function getRouteNodes(
             }
           }
 
-          routeNodes.push({
-            filePath,
-            fullPath,
-            routePath,
-            variableName,
-            _fsRouteType: routeType,
-            originalRoutePath,
-            _routePathSegmentMetadata: createRoutePathSegmentMetadata(
+          return [
+            {
+              filePath,
+              fullPath,
               routePath,
+              variableName,
+              _fsRouteType: routeType,
               originalRoutePath,
-            ),
-          })
+              _routePathSegmentMetadata: createRoutePathSegmentMetadata(
+                routePath,
+                originalRoutePath,
+              ),
+            },
+          ]
         }
+        return []
       }),
     )
 
-    return routeNodes
+    return nodesByEntry.flat()
   }
 
-  await recurse('./')
+  routeNodes.push(...(await recurse('./')))
 
   // Find the root route node - prefer the actual route file over component/loader files
   const rootRouteNode =
