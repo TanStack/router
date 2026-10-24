@@ -186,3 +186,24 @@ If `playwrightModes` is not configured, the plugin still supports:
 
 This generates legacy shard targets under `test:e2e--shard-...` plus a parent
 `test:e2e` target.
+
+## Scheduling builds and E2E tasks
+
+Independent E2E projects can share an Nx Cloud worker. The plugin leaves
+`parallelism` at its default; project-specific overrides still apply.
+
+`.nx/ci-config.yaml` loads `.nx/e2e-scheduling-constraints.yaml`. Each rule pairs
+one project's `build*` and `test:e2e*` targets with that same project. This keeps
+fixture builds, modes, and shards from overlapping on one worker while they
+share generated routes, caches, counters, databases, or output directories.
+Add a project-scoped rule when adding an E2E fixture. Keep the worker counts
+in `dte.distribute-on` unchanged when adjusting these constraints.
+
+Source-editing HMR/watch suites retain explicit `parallelism: false` overrides
+in their package manifests. Do not remove these while they modify shared source
+files. Playwright's own `workers: 1` setting is independent of Nx scheduling.
+
+Scheduling constraints apply to distributed workers. For local runs that select
+multiple build/E2E targets from the same project, use `--parallel=1`; separate
+projects may run concurrently. Select finite validation targets with explicit
+projects and targets through `pnpm nx run-many`.

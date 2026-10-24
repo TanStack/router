@@ -60,6 +60,14 @@
           "mode": "ssr"
         }
       ]
+    },
+    "targets": {
+      "test:e2e": {
+        "parallelism": false
+      },
+      "test:e2e:rsbuild-cache": {
+        "parallelism": false
+      }
     }
   }
 }

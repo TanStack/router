@@ -1,0 +1,750 @@
+# Builds and E2E variants of one fixture share generated files, caches and outputs.
+# Keep each fixture serial on a worker; unrelated projects may share that worker.
+# Add a project-scoped rule when adding an E2E fixture.
+scheduling-constraints:
+  - projects: ['tanstack-e2e-router-react-example-view-transitions']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-e2e-router-react-example-view-transitions']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-e2e-router-solid-example-view-transitions']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-e2e-router-solid-example-view-transitions']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-e2e-router-vue-example-view-transitions']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-e2e-router-vue-example-view-transitions']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-eslint-plugin-start-e2e']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-eslint-plugin-start-e2e']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-basic']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-basic']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-basic-auth']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-basic-auth']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-basic-cloudflare']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-basic-cloudflare']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-basic-react-query']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-basic-react-query']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-basic-scroll-restoration']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-basic-scroll-restoration']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-basic-tsr-config']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-basic-tsr-config']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-clerk-basic']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-clerk-basic']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-csp']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-csp']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-css-inline']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-css-inline']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-css-modules']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-css-modules']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-custom-basepath']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-custom-basepath']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-custom-server-rsbuild']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-custom-server-rsbuild']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-deferred-hydration']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-deferred-hydration']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-dev-ssr-styles']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-dev-ssr-styles']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-early-hints']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-early-hints']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-hmr']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-hmr']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-i18n-paraglide']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-i18n-paraglide']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-import-protection']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-import-protection']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-import-protection-custom-config']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-import-protection-custom-config']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-issue-8049']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-issue-8049']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-query-integration']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-query-integration']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-response-reconciliation']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-response-reconciliation']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-root-document-hydration']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-root-document-hydration']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-rsbuild']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-rsbuild']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-rsc']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-rsc']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-rsc-deferred-hydration']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-rsc-deferred-hydration']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-rsc-query']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-rsc-query']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-rsc-rsbuild']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-rsc-rsbuild']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-selective-ssr']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-selective-ssr']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-serialization-adapters']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-serialization-adapters']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-server-functions']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-server-functions']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-server-functions-global-middleware']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects:
+          ['tanstack-react-start-e2e-server-functions-global-middleware']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-server-routes']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-server-routes']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-server-routes-global-middleware']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-server-routes-global-middleware']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-session-handling']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-session-handling']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-spa-mode']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-spa-mode']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-split-base-and-basepath']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-split-base-and-basepath']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-start-manifest']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-start-manifest']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-static-server-functions']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-static-server-functions']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-streaming-ssr']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-streaming-ssr']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-transform-asset-urls']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-transform-asset-urls']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-virtual-routes']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-virtual-routes']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-react-start-e2e-website']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-react-start-e2e-website']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-react-basepath-file-based']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-react-basepath-file-based']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-react-basic']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-react-basic']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-react-basic-esbuild-file-based']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-react-basic-esbuild-file-based']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-react-basic-file-based']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-react-basic-file-based']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-react-basic-file-based-code-splitting']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-react-basic-file-based-code-splitting']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-react-basic-react-query-file-based']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-react-basic-react-query-file-based']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-react-basic-scroll-restoration']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-react-basic-scroll-restoration']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-react-basic-virtual-file-based']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-react-basic-virtual-file-based']
+        targets: ['build*', 'test:e2e*']
+  - projects:
+      ['tanstack-router-e2e-react-basic-virtual-named-export-config-file-based']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects:
+          [
+            'tanstack-router-e2e-react-basic-virtual-named-export-config-file-based',
+          ]
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-react-compiler']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-react-compiler']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-react-escaped-special-strings']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-react-escaped-special-strings']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-react-generator-cli-only']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-react-generator-cli-only']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-react-i18n-paraglide']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-react-i18n-paraglide']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-react-issue-4759']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-react-issue-4759']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-react-issue-7120']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-react-issue-7120']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-react-issue-7457']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-react-issue-7457']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-react-js-only-file-based']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-react-js-only-file-based']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-react-match-params']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-react-match-params']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-react-react-query']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-react-react-query']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-react-rspack-basic-file-based']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-react-rspack-basic-file-based']
+        targets: ['build*', 'test:e2e*']
+  - projects:
+      [
+        'tanstack-router-e2e-react-rspack-basic-virtual-named-export-config-file-based',
+      ]
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects:
+          [
+            'tanstack-router-e2e-react-rspack-basic-virtual-named-export-config-file-based',
+          ]
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-react-scroll-restoration-sandbox-vite']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-react-scroll-restoration-sandbox-vite']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-sentry-integration']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-sentry-integration']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-solid-basepath-file-based']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-solid-basepath-file-based']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-solid-basic']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-solid-basic']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-solid-basic-esbuild-file-based']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-solid-basic-esbuild-file-based']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-solid-basic-file-based']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-solid-basic-file-based']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-solid-basic-file-based-code-splitting']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-solid-basic-file-based-code-splitting']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-solid-basic-scroll-restoration']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-solid-basic-scroll-restoration']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-solid-basic-solid-query-file-based']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-solid-basic-solid-query-file-based']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-solid-basic-virtual-file-based']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-solid-basic-virtual-file-based']
+        targets: ['build*', 'test:e2e*']
+  - projects:
+      ['tanstack-router-e2e-solid-basic-virtual-named-export-config-file-based']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects:
+          [
+            'tanstack-router-e2e-solid-basic-virtual-named-export-config-file-based',
+          ]
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-solid-generator-cli-only']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-solid-generator-cli-only']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-solid-js-only-file-based']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-solid-js-only-file-based']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-solid-rspack-basic-file-based']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-solid-rspack-basic-file-based']
+        targets: ['build*', 'test:e2e*']
+  - projects:
+      [
+        'tanstack-router-e2e-solid-rspack-basic-virtual-named-export-config-file-based',
+      ]
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects:
+          [
+            'tanstack-router-e2e-solid-rspack-basic-virtual-named-export-config-file-based',
+          ]
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-solid-scroll-restoration-sandbox-vite']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-solid-scroll-restoration-sandbox-vite']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-solid-solid-query']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-solid-solid-query']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-vue-basepath-file-based']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-vue-basepath-file-based']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-vue-basic']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-vue-basic']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-vue-basic-esbuild-file-based']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-vue-basic-esbuild-file-based']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-vue-basic-file-based-jsx']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-vue-basic-file-based-jsx']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-vue-basic-file-sfc']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-vue-basic-file-sfc']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-vue-basic-scroll-restoration']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-vue-basic-scroll-restoration']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-vue-basic-virtual-file-based']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-vue-basic-virtual-file-based']
+        targets: ['build*', 'test:e2e*']
+  - projects:
+      ['tanstack-router-e2e-vue-basic-virtual-named-export-config-file-based']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects:
+          [
+            'tanstack-router-e2e-vue-basic-virtual-named-export-config-file-based',
+          ]
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-vue-basic-vue-query']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-vue-basic-vue-query']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-vue-basic-vue-query-file-based']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-vue-basic-vue-query-file-based']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-vue-generator-cli-only']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-vue-generator-cli-only']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-vue-js-only-file-based']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-vue-js-only-file-based']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-vue-rspack-basic-file-based']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-vue-rspack-basic-file-based']
+        targets: ['build*', 'test:e2e*']
+  - projects:
+      [
+        'tanstack-router-e2e-vue-rspack-basic-virtual-named-export-config-file-based',
+      ]
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects:
+          [
+            'tanstack-router-e2e-vue-rspack-basic-virtual-named-export-config-file-based',
+          ]
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-router-e2e-vue-scroll-restoration-sandbox-vite']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-router-e2e-vue-scroll-restoration-sandbox-vite']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-solid-router-e2e-sentry-integration']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-solid-router-e2e-sentry-integration']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-solid-start-e2e-basic']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-solid-start-e2e-basic']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-solid-start-e2e-basic-auth']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-solid-start-e2e-basic-auth']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-solid-start-e2e-basic-cloudflare']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-solid-start-e2e-basic-cloudflare']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-solid-start-e2e-basic-scroll-restoration']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-solid-start-e2e-basic-scroll-restoration']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-solid-start-e2e-basic-solid-query']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-solid-start-e2e-basic-solid-query']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-solid-start-e2e-basic-tsr-config']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-solid-start-e2e-basic-tsr-config']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-solid-start-e2e-csp']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-solid-start-e2e-csp']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-solid-start-e2e-css-modules']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-solid-start-e2e-css-modules']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-solid-start-e2e-custom-basepath']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-solid-start-e2e-custom-basepath']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-solid-start-e2e-deferred-hydration']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-solid-start-e2e-deferred-hydration']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-solid-start-e2e-dev-ssr-styles']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-solid-start-e2e-dev-ssr-styles']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-solid-start-e2e-query-integration']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-solid-start-e2e-query-integration']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-solid-start-e2e-selective-ssr']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-solid-start-e2e-selective-ssr']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-solid-start-e2e-serialization-adapters']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-solid-start-e2e-serialization-adapters']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-solid-start-e2e-server-functions']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-solid-start-e2e-server-functions']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-solid-start-e2e-server-routes']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-solid-start-e2e-server-routes']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-solid-start-e2e-solid-query-layout-suspense']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-solid-start-e2e-solid-query-layout-suspense']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-solid-start-e2e-spa-mode']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-solid-start-e2e-spa-mode']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-solid-start-e2e-start-manifest']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-solid-start-e2e-start-manifest']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-solid-start-e2e-streaming-ssr']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-solid-start-e2e-streaming-ssr']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-solid-start-e2e-virtual-routes']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-solid-start-e2e-virtual-routes']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-solid-start-e2e-website']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-solid-start-e2e-website']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-vue-router-e2e-sentry-integration']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-vue-router-e2e-sentry-integration']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-vue-start-e2e-basic']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-vue-start-e2e-basic']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-vue-start-e2e-basic-auth']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-vue-start-e2e-basic-auth']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-vue-start-e2e-basic-cloudflare']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-vue-start-e2e-basic-cloudflare']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-vue-start-e2e-basic-scroll-restoration']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-vue-start-e2e-basic-scroll-restoration']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-vue-start-e2e-basic-tsr-config']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-vue-start-e2e-basic-tsr-config']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-vue-start-e2e-basic-vue-query']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-vue-start-e2e-basic-vue-query']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-vue-start-e2e-css-modules']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-vue-start-e2e-css-modules']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-vue-start-e2e-custom-basepath']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-vue-start-e2e-custom-basepath']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-vue-start-e2e-dev-ssr-styles']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-vue-start-e2e-dev-ssr-styles']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-vue-start-e2e-query-integration']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-vue-start-e2e-query-integration']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-vue-start-e2e-selective-ssr']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-vue-start-e2e-selective-ssr']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-vue-start-e2e-serialization-adapters']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-vue-start-e2e-serialization-adapters']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-vue-start-e2e-server-functions']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-vue-start-e2e-server-functions']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-vue-start-e2e-server-routes']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-vue-start-e2e-server-routes']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-vue-start-e2e-spa-mode']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-vue-start-e2e-spa-mode']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-vue-start-e2e-start-manifest']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-vue-start-e2e-start-manifest']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-vue-start-e2e-streaming-ssr']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-vue-start-e2e-streaming-ssr']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-vue-start-e2e-virtual-routes']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-vue-start-e2e-virtual-routes']
+        targets: ['build*', 'test:e2e*']
+  - projects: ['tanstack-vue-start-e2e-website']
+    targets: ['build*', 'test:e2e*']
+    cannot-run-with:
+      - projects: ['tanstack-vue-start-e2e-website']
+        targets: ['build*', 'test:e2e*']

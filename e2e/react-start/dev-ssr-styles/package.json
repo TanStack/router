@@ -46,5 +46,45 @@
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",
     "zod": "^4.4.3"
+  },
+  "nx": {
+    "targets": {
+      "test:e2e": {
+        "parallelism": false
+      },
+      "test:e2e:dev": {
+        "parallelism": false
+      },
+      "test:e2e:dev:disabled": {
+        "parallelism": false
+      },
+      "test:e2e:dev:custom-basepath": {
+        "parallelism": false
+      },
+      "test:e2e:dev:bundled-dev": {
+        "parallelism": false
+      },
+      "test:e2e:dev:disabled:bundled-dev": {
+        "parallelism": false
+      },
+      "test:e2e:dev:custom-basepath:bundled-dev": {
+        "parallelism": false
+      },
+      "test:e2e:dev:nitro": {
+        "parallelism": false
+      },
+      "test:e2e:dev:disabled:nitro": {
+        "parallelism": false
+      },
+      "test:e2e:dev:custom-basepath:nitro": {
+        "parallelism": false
+      },
+      "test:e2e:bundled-dev": {
+        "parallelism": false
+      },
+      "test:e2e:nitro": {
+        "parallelism": false
+      }
+    }
   }
 }

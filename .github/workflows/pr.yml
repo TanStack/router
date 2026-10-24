@@ -34,8 +34,8 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
-      - name: Start Nx Agents
-        run: npx nx-cloud start-ci-run --distribute-on=".nx/workflows/dynamic-changesets.yaml"
+      - name: Start Nx Workers
+        run: npx nx-cloud start-workers
       - name: Setup Tools
         uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
       - name: Get base and head commits for `nx affected`
@@ -47,9 +47,9 @@ jobs:
           # Use the same comparison base even if main advances between runs.
           NX_BASE: 6b9fe6d29552270836c511bc9b343d73541f4424
         run: pnpm run test:pr --parallel=3
-      - name: Stop Nx Agents
+      - name: Stop Nx Workers
         if: ${{ always() }}
-        run: npx nx-cloud stop-all-agents
+        run: npx nx-cloud stop-all-workers
   preview:
     name: Preview
     runs-on: ubuntu-latest

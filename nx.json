@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "defaultBase": "main",
-  "bust": "nx24-packing-isolated-preview-full-2026-10-24-03",
+  "bust": "nx24-project-scoped-e2e-workers-full-2026-10-24-04",
   "nxCloudId": "6442f7de8226a6291646a813",
   "useInferencePlugins": false,
   "parallel": 5,
@@ -13,11 +13,12 @@
       "{workspaceRoot}/.npmrc",
       "{workspaceRoot}/nx.json",
       "{workspaceRoot}/.github/workflows/pr.yml",
-      "{workspaceRoot}/.nx/workflows/dynamic-changesets.yaml",
+      "{workspaceRoot}/.nx/ci-config.yaml",
       "{workspaceRoot}/.nx/workflows/ultracache-config.yaml",
       "{workspaceRoot}/.nvmrc",
       "{workspaceRoot}/package.json",
-      "{workspaceRoot}/tsconfig.json"
+      "{workspaceRoot}/tsconfig.json",
+      "{workspaceRoot}/.nx/e2e-scheduling-constraints.yaml"
     ],
     "dependentTaskOutputs": [
       {
@@ -72,26 +73,22 @@
       "cache": true,
       "dependsOn": ["^build", "test:e2e--*"],
       "inputs": ["buildProduction", "^production", "dependentTaskOutputs"],
-      "outputs": ["{projectRoot}/dist", "{projectRoot}/test-results"],
-      "parallelism": false
+      "outputs": ["{projectRoot}/dist", "{projectRoot}/test-results"]
     },
     "test:e2e:nitro": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^production"],
-      "parallelism": false
+      "inputs": ["default", "^production"]
     },
     "test:e2e:basepath": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^production"],
-      "parallelism": false
+      "inputs": ["default", "^production"]
     },
     "test:e2e:preview": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^production"],
-      "parallelism": false
+      "inputs": ["default", "^production"]
     },
     "test:types": {
       "cache": true,
@@ -149,9 +146,6 @@
       "cache": true,
       "dependsOn": ["build"],
       "inputs": ["buildProduction", "dependentTaskOutputs"]
-    },
-    "test:e2e*": {
-      "parallelism": false
     }
   },
   "plugins": [
