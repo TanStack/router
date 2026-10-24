@@ -13,8 +13,9 @@
  * still resolves, loads, transforms and evaluates through Vite, by the
  * importee's resolved id; only the check is added, and only to the imports
  * of the app's modules (files under `root`, outside `node_modules`, with
- * any query: what the compilers under test emit for the app's files). The
- * modules of the app's dependencies (e.g. a framework plugin's runtime and
+ * any query: what the compilers under test emit for the app's files) and
+ * of the virtual modules they import (a compiler's support module, through
+ * any chain of virtual modules). The modules of the app's dependencies (e.g. a framework plugin's runtime and
  * the virtual modules it imports) keep Vite's dev semantics, which their
  * plugins rely on; a production build links them (Rolldown's
  * `MISSING_EXPORT`). A module still being evaluated (an import cycle) is
@@ -79,6 +80,11 @@ function isAppModule(file: string | undefined, root: string) {
   )
 }
 
+/** Whether a module is a virtual one (a plugin's id, no file on disk). */
+function isVirtualModule(module: { id: string; file?: string | null }) {
+  return module.id.startsWith('\0') || !path.isAbsolute(module.file ?? '')
+}
+
 /**
  * An evaluator running inlined modules with the named-import check on the
  * imports of the app's modules (under `root`).
@@ -90,18 +96,27 @@ export function strictEvaluator(
   if (strict.has(inner)) {
     return inner
   }
+  // The modules whose imports are checked, by id
+  const checked = new Set<string>()
   const evaluator: ModuleEvaluator = {
     startOffset: inner.startOffset,
     runExternalModule: (file) => inner.runExternalModule(file),
     runInlinedModule: (context, code, module) => {
-      if (!isAppModule(module.file, root)) {
+      if (
+        !isAppModule(module.file, root) &&
+        !(
+          isVirtualModule(module) &&
+          [...module.importers].some((importer) => checked.has(importer))
+        )
+      ) {
         return inner.runInlinedModule(context, code, module)
       }
+      checked.add(module.id)
       const request = context[ssrImportKey] as (
         specifier: string,
         metadata?: ImportMetadata,
       ) => Promise<unknown>
-      const checked = {
+      const checkedContext = {
         ...context,
         [ssrImportKey]: async (
           specifier: string,
@@ -112,7 +127,7 @@ export function strictEvaluator(
           return namespace
         },
       } as ModuleRunnerContext
-      return inner.runInlinedModule(checked, code, module)
+      return inner.runInlinedModule(checkedContext, code, module)
     },
   }
   strict.add(evaluator)

@@ -547,11 +547,24 @@ async function startServer(
     }
   }
 
+  const followed = new WeakSet<object>()
+  /** Records what `hot` sends (`hmr`), once per channel. */
+  const recordSends = (name: string, hot: { send: (...args: any) => void }) => {
+    if (followed.has(hot.send)) {
+      return
+    }
+    const send = hot.send.bind(hot) as (...args: Array<unknown>) => void
+    const recordingSend = (...args: Array<unknown>) => {
+      hmr.push(hmrMessage(name, args))
+      send(...args)
+    }
+    followed.add(recordingSend)
+    hot.send = recordingSend
+  }
   /**
    * Follows a server (the first one, and the one each restart creates):
    * the file events its watcher reports, and the HMR payloads it sends.
    */
-  const followed = new WeakSet<object>()
   const follow = (server: ViteDevServer) => {
     const watcher = server.watcher
     if ((watching || devEngineWatching) && !followed.has(watcher)) {
@@ -629,18 +642,11 @@ async function startServer(
         followed.add(followedWatchChange)
         container.watchChange = followedWatchChange
       }
-      const hot = environment.hot
-      if (followed.has(hot.send)) {
-        continue
-      }
-      const send = hot.send.bind(hot) as (...args: Array<unknown>) => void
-      const recordingSend = (...args: Array<unknown>) => {
-        hmr.push(hmrMessage(name, args))
-        send(...args)
-      }
-      followed.add(recordingSend)
-      hot.send = recordingSend as typeof hot.send
+      recordSends(name, environment.hot)
     }
+    // The server's WebSocket channel too, where it is not the client
+    // environment's (a plugin may send its reload there)
+    recordSends('client', server.ws)
   }
   const followPlugin: Plugin = {
     name: 'dev-server-harness:follow',

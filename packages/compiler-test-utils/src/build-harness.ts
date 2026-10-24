@@ -571,9 +571,12 @@ async function buildWithVite(
           onwarn(warning, warn) {
             // Vite silences these for node_modules; the workspace packages
             // are linked, so it would report every "use client" of theirs.
+            // A virtual module (a compiler's, no file on disk) still counts.
             if (
               warning.code === 'MODULE_LEVEL_DIRECTIVE' &&
-              !warning.id?.startsWith(config.root)
+              warning.id !== undefined &&
+              path.isAbsolute(warning.id) &&
+              !warning.id.startsWith(config.root)
             ) {
               return
             }
