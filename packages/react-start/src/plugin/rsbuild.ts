@@ -2,7 +2,6 @@ import {
   RSBUILD_ENVIRONMENT_NAMES,
   tanStackStartRsbuild,
 } from '@tanstack/start-plugin-core/rsbuild'
-import { createRscCssCompilerTransforms } from '@tanstack/react-start-rsc/plugin/rscCssTransform'
 import { reactStartDefaultEntryPaths } from './shared'
 import type {
   TanStackStartRsbuildInputConfig,
@@ -29,10 +28,7 @@ export function tanstackStart(
       providerEnvironmentName: rscConfig.providerEnvironmentName,
       ssrIsProvider: false,
       serializationAdapters: rscConfig.serializationAdapters,
-      compilerTransforms: rscConfig.compilerTransforms,
-      serverFnProviderModuleDirectives:
-        rscConfig.serverFnProviderModuleDirectives,
-      rsc: true,
+      rsc: rscConfig.rsc,
     }
   }
 
@@ -51,8 +47,7 @@ export function tanstackStart(
 function configureRscRsbuild(): {
   providerEnvironmentName: TanStackStartRsbuildPluginCoreOptions['providerEnvironmentName']
   serializationAdapters: TanStackStartRsbuildPluginCoreOptions['serializationAdapters']
-  compilerTransforms: TanStackStartRsbuildPluginCoreOptions['compilerTransforms']
-  serverFnProviderModuleDirectives: TanStackStartRsbuildPluginCoreOptions['serverFnProviderModuleDirectives']
+  rsc: NonNullable<TanStackStartRsbuildPluginCoreOptions['rsc']>
 } {
   return {
     providerEnvironmentName: RSBUILD_ENVIRONMENT_NAMES.server,
@@ -70,10 +65,9 @@ function configureRscRsbuild(): {
         },
       },
     ],
-    compilerTransforms: createRscCssCompilerTransforms({
+    rsc: {
       loadCssExpression: 'import.meta.rspackRsc.loadCss()',
-      serverFnProviderOnly: true,
-    }),
-    serverFnProviderModuleDirectives: ['use server-entry'],
+      providerDirective: 'use server-entry',
+    },
   }
 }

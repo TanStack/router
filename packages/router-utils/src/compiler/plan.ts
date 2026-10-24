@@ -477,20 +477,82 @@ export class AnalysisPlan implements PlanContext {
     derived: boolean,
   ): Set<UnitId> {
     const set = new Set<UnitId>()
+    let includedValueUnits = 0
     for (const uid of item.units) {
       const u = this.t1.units[uid]!
       if (u.kind === 'type') {
-        if (!derived) {
-          set.add(uid)
-        }
         continue
+      }
+      if (
+        u.kind === 'export-specifier' &&
+        this.exportsDroppedTypeImport(u, placement, included)
+      ) {
+        continue // `export { T }` of a type-only import that leaves: a type re-export, erased
       }
       const c = placement.clusterOfRegion.get(u.region)
       if (c !== undefined && included.has(c)) {
         set.add(uid)
+        includedValueUnits++
+      }
+    }
+    // Type units stay in the env module, except the inline type-only specifiers of an import
+    // statement with no included value specifier: `import { type X } from './m'` would keep
+    // loading the module (`import {} from './m'`), and type positions keep nothing alive (S2,
+    // J4.12). A whole-declaration `import type` is erased downstream anyway and stays.
+    const dropTypes =
+      derived ||
+      (item.shape === 'import' &&
+        includedValueUnits === 0 &&
+        (item.node as { importKind?: string }).importKind !== 'type')
+    if (!dropTypes) {
+      for (const uid of item.units) {
+        if (this.t1.units[uid]!.kind === 'type') {
+          set.add(uid)
+        }
       }
     }
     return set
+  }
+
+  /** Whether an export specifier re-exports a binding declared only by inline type-only import specifiers of an import statement that is dropped. */
+  private exportsDroppedTypeImport(
+    unit: Unit,
+    placement: Placement,
+    included: ReadonlySet<number>,
+  ): boolean {
+    const { t1 } = this
+    const ref = t1.refs
+      .refsIn(unit.range)
+      .find((r) => r.kind === 'exportSpecifier')
+    if (!ref) {
+      return false
+    }
+    const decls = t1.declaringUnits.get(ref.sym)
+    if (!decls || decls.length === 0) {
+      return false
+    }
+    for (const d of decls) {
+      const du = t1.units[d]!
+      if (du.kind !== 'type' || du.importIndex === null) {
+        return false
+      }
+      const item = t1.items[du.item]!
+      if ((item.node as { importKind?: string }).importKind === 'type') {
+        return false
+      }
+      // dropped iff no value specifier of its import statement is included
+      for (const sibling of item.units) {
+        const su = t1.units[sibling]!
+        if (su.kind === 'type') {
+          continue
+        }
+        const c = placement.clusterOfRegion.get(su.region)
+        if (c !== undefined && included.has(c)) {
+          return false
+        }
+      }
+    }
+    return true
   }
 
   private renderEnv(

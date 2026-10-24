@@ -100,7 +100,7 @@ describe.each(Object.keys(hosts) as Array<keyof typeof hosts>)('%s', (host) => {
   // developer why.
   // SPEC J7.3: warn in dev only. Real coverage of the warning's delivery,
   // replacing two tests of start-build-warnings.test.ts.
-  test.fails(
+  ;(host === 'Vite dev' ? test : test.fails)(
     'renderToReadableStream with a variable or a spread warns once per file, naming the module',
     async () => {
       const { server, html } = await hosts[host]()

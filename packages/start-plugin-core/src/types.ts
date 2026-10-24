@@ -1,6 +1,3 @@
-import type * as babel from '@babel/core'
-import type * as t from '@babel/types'
-import type { GeneratorResult } from '@tanstack/router-utils'
 import type { TanStackStartOutputConfig } from './schema'
 
 export type CompileStartFrameworkOptions = 'react' | 'solid' | 'vue'
@@ -22,77 +19,6 @@ export type SerializationAdapterByRuntime = Partial<
 export type SerializationAdapterConfig =
   | SerializationAdapterModuleRef
   | SerializationAdapterByRuntime
-
-export type StartCompilerEnvironment = 'client' | 'server'
-
-export interface StartCompilerImportTransformImport {
-  libName: string
-  rootExport: string
-}
-
-export interface StartCompilerTransformCandidate {
-  path: babel.NodePath<t.CallExpression>
-}
-
-export interface StartCompilerTransformContext {
-  readonly ast: t.File
-  readonly code: string
-  readonly id: string
-  readonly env: StartCompilerEnvironment
-  readonly envName: string
-  readonly mode: 'dev' | 'build'
-  readonly root: string
-  readonly framework: CompileStartFrameworkOptions
-  readonly providerEnvName: string
-  readonly types: typeof t
-  parseExpression: (code: string) => t.Expression
-  warn?: (message: string) => void
-}
-
-export interface StartCompilerImportTransform {
-  name: string
-  environment?:
-    | StartCompilerEnvironment
-    | Array<StartCompilerEnvironment>
-    | undefined
-  imports: Array<StartCompilerImportTransformImport>
-  detect: RegExp
-  order?: 'pre' | 'post' | undefined
-  transform: (
-    candidates: Array<StartCompilerTransformCandidate>,
-    context: StartCompilerTransformContext,
-  ) => void
-}
-
-export interface StartCompilerTransformResult {
-  code: string
-  map?: GeneratorResult['map'] | null
-}
-
-export interface StartCompilerVirtualModuleContext {
-  readonly id: string
-  readonly root: string
-  readonly env: StartCompilerEnvironment
-  readonly envName: string
-  readonly code?: string
-}
-
-export interface StartCompilerPlugin {
-  name: string
-  environment?:
-    | StartCompilerEnvironment
-    | Array<StartCompilerEnvironment>
-    | undefined
-  detect?: RegExp | undefined
-  virtualModuleIdPattern?: RegExp | undefined
-  transformAst?: (
-    context: StartCompilerTransformContext,
-  ) => boolean | null | undefined
-  loadVirtualModule?: (
-    context: StartCompilerVirtualModuleContext,
-  ) => StartCompilerTransformResult | null
-  invalidateModule?: (context: { id: string; envName: string }) => void
-}
 
 export interface NormalizedBasePaths {
   publicBase: string
@@ -138,8 +64,16 @@ export interface TanStackStartCoreOptions {
   providerEnvironmentName: string
   ssrIsProvider: boolean
   serializationAdapters?: Array<SerializationAdapterConfig> | undefined
-  compilerTransforms?: Array<StartCompilerImportTransform> | undefined
-  serverFnProviderModuleDirectives?: ReadonlyArray<string> | undefined
+  /** React Server Components integration: the host's CSS loader and the provider module directive. */
+  rsc?: StartRscOptions | undefined
+}
+
+/** What an RSC integration passes the compiler (DESIGN §3.12, §7). */
+export interface StartRscOptions {
+  /** The RSC host's CSS loader expression, emitted as source text in the modules that render server components. */
+  loadCssExpression: string
+  /** The directive a derived server-fn provider module carries (Rsbuild: `'use server-entry'`). */
+  providerDirective?: string | undefined
 }
 
 export interface ResolvedStartConfig {

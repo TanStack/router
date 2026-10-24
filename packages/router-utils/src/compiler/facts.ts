@@ -9,9 +9,9 @@ import { digestOf, identify, isCommonJsPath, revision } from './identity'
 import { parseModule } from './source'
 import { ModuleAnalysis } from './analysis'
 import { buildSummary } from './summary'
-import { EMPTY_RECOGNIZER } from './values'
+import { EMPTY_RECOGNIZER, isKnownSpecifier } from './values'
 import type { ModuleSummary, SummaryExtraHook } from './summary'
-import type { RecognizerTable } from './values'
+import type { AbstractValue, RecognizerTable } from './values'
 
 export interface TargetFacts {
   exists: boolean
@@ -82,6 +82,11 @@ export class RawFactsCache {
 
   constructor(private readonly opts: RawFactsOptions) {}
 
+  /** Whether `specifier` is a known package of the recognizer: it is never read or resolved (D4). */
+  isKnownSpecifier(specifier: string): boolean {
+    return isKnownSpecifier(this.opts.recognizer ?? EMPTY_RECOGNIZER, specifier)
+  }
+
   /** The marker specifiers every analysis of this session uses (transform and raw reads agree). */
   get markerSpecifiers(): RawFactsOptions['markerSpecifiers'] {
     return this.opts.markerSpecifiers
@@ -123,6 +128,11 @@ export class RawFactsCache {
     let e = this.entries.get(canonicalId)
     if (e && e.facts && !e.stale) {
       return e.facts
+    }
+    if (this.isKnownSpecifier(canonicalId)) {
+      const facts = this.knownFacts(canonicalId)
+      this.entries.set(canonicalId, { stale: false, facts, pending: null })
+      return facts
     }
     if (e?.pending) {
       return e.pending
@@ -171,6 +181,46 @@ export class RawFactsCache {
   async targetDigestOf(canonicalId: string): Promise<string> {
     const f = await this.get(canonicalId)
     return f.targetFacts.digest
+  }
+
+  /** The synthetic facts of a known package specifier: its factory exports, side-effect free. */
+  private knownFacts(specifier: string): RawFacts {
+    const table = this.opts.recognizer ?? EMPTY_RECOGNIZER
+    const exportFacts: ModuleSummary['exports'] = {}
+    for (const [name, kind] of Object.entries(
+      table.factories[specifier] ?? {},
+    )) {
+      const value: AbstractValue = { t: 'factory', kind }
+      exportFacts[name] = { kind: 'local', value, noSideEffects: true }
+    }
+    const exportNames = Object.keys(exportFacts).sort()
+    const digest = digestOf({ known: specifier, exports: exportNames })
+    const tf: Omit<TargetFacts, 'digest'> = {
+      exists: true,
+      marker: null,
+      exportNames,
+      stars: [],
+      imports: [],
+      esm: true,
+      effectful: false,
+      codeEffects: false,
+      effectProvenance: null,
+    }
+    return {
+      canonicalId: specifier,
+      rawRevision: digest,
+      summary: {
+        canonicalId: specifier,
+        rawRevision: digest,
+        exports: exportFacts,
+        stars: [],
+        isoImplExports: {},
+        marker: null,
+        hasImportOrExport: true,
+        digest,
+      },
+      targetFacts: { ...tf, digest: digestOf(tf) },
+    }
   }
 
   private async read(canonicalId: string): Promise<string | null> {

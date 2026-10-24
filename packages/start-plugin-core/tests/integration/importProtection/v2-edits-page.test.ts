@@ -181,7 +181,7 @@ describe.each(pageSteps)('step $step (live use: $live)', ({ step, live }) => {
   // use"; a scratch run keeping the incoming edges passes this pin.
   // Impact: a server-only import a developer adds to a component while the
   // dev server runs is mocked in the page without any warning.
-  ;(live ? test.fails : test)(
+  test(
     'the step reports its violations, and only those',
     async () => {
       expect((await outcome()).reported).toEqual(live ? ['src/widget.tsx'] : [])

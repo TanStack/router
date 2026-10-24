@@ -58,8 +58,12 @@ export class ImportGraph {
     this.entries.clear()
   }
 
+  /**
+   * A changed module: its outgoing edges (id as importer) are replaced when
+   * it is transformed again. Its incoming edges belong to its importers,
+   * which are not transformed again (Vite soft-invalidates them), and stay.
+   */
   invalidate(id: string): void {
-    // Remove all outgoing edges (id as importer) using the forward index.
     const targets = this.forwardEdges.get(id)
     if (targets) {
       for (const resolved of targets) {
@@ -67,8 +71,6 @@ export class ImportGraph {
       }
       this.forwardEdges.delete(id)
     }
-    // Remove as a target (id as resolved module)
-    this.reverseEdges.delete(id)
   }
 }
 

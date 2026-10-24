@@ -16,5 +16,4 @@ export type TanStackStartRsbuildPluginCoreOptions = TanStackStartCoreOptions & {
   providerEnvironmentName: string
   ssrIsProvider: boolean
   rsbuild?: RsbuildCoreOptions | undefined
-  rsc?: boolean | undefined
 }

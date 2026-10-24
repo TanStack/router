@@ -147,7 +147,7 @@ export default { plugins: [tsconfigPaths()] }
     viteConfig: { plugins: [tsconfigPaths()] },
     devPlugins: (start) => [start, tsconfigPaths()],
     devConfig: {},
-    reportPinned: true,
+    reportPinned: false,
   },
   {
     alias: 'resolve.tsconfigPaths',

@@ -237,17 +237,13 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
   // static imports: requested before the server listens, or within about
   // 50 ms of the dependency optimizer's start (`server.warmup`, the first
   // request of a middleware-mode server), and the page hangs.
-  test.fails(
-    'transforms a client module with a server fn and a top-level call of a pre-bundled dependency',
-    async () => {
-      await expectClientRpc(
-        `${head}import { object } from 'zod'
+  test('transforms a client module with a server fn and a top-level call of a pre-bundled dependency', async () => {
+    await expectClientRpc(
+      `${head}import { object } from 'zod'
 export const schema = object({})
 export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
-      )
-    },
-    30_000,
-  )
+    )
+  }, 30_000)
 
   /**
    * Starts a Vite dev server (middleware mode) with Start's Vite plugin on
@@ -344,13 +340,9 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
   // new server has not compiled yet (e.g. from a page loaded before the
   // restart) fails with "Invalid server function ID" (500).
   // Source: issue #8447.
-  test.fails(
-    'calls a server fn id on a fresh dev server that has not compiled its module',
-    async () => {
-      expect(await callServerFnId(true)).toBe('hello')
-    },
-    30_000,
-  )
+  test('calls a server fn id on a fresh dev server that has not compiled its module', async () => {
+    expect(await callServerFnId(true)).toBe('hello')
+  }, 30_000)
 
   // SPEC J4.16, G13, G1: a library Start's discovery selects (a peer
   // dependency on `@tanstack/react-start`) keeps working in dev as in a

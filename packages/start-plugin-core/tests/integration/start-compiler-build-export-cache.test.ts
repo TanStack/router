@@ -114,7 +114,7 @@ describe('server code in the client bundle', () => {
   // happened to compile an importer after the lookup that poisoned the cache.
   // Reproduced in every run with the compile order fixed (control above:
   // green).
-  test.fails.each<{ name: string; reExports: Record<string, string> }>([
+  test.each<{ name: string; reExports: Record<string, string> }>([
     {
       name: 'diamonds',
       reExports: {

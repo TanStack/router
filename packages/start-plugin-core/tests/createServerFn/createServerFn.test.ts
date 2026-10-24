@@ -159,19 +159,16 @@ export const ref = getUsers`,
 // module compiles and its server fn works.
 // Source: the former test "keeps query-bearing virtual module identities
 // distinct", rerouted through the public plugin.
-test.fails(
-  'a server fn whose factory a virtual module serves by its exact id compiles in dev',
-  async () => {
-    const served = await serveCase(await host(), {
-      'module.tsx': `import { createAppServerFn } from 'virtual:exact-server-fn-factory'
+test('a server fn whose factory a virtual module serves by its exact id compiles in dev', async () => {
+  const served = await serveCase(await host(), {
+    'module.tsx': `import { createAppServerFn } from 'virtual:exact-server-fn-factory'
 export const fn = createAppServerFn().handler(async () => 'virtual-factory-handler')`,
-    })
-    expect(served.code.client).not.toContain('virtual-factory-handler')
-    expect(await callServerFnThroughCallers(served, 'module.fn')).toBe(
-      'virtual-factory-handler',
-    )
-  },
-)
+  })
+  expect(served.code.client).not.toContain('virtual-factory-handler')
+  expect(await callServerFnThroughCallers(served, 'module.fn')).toBe(
+    'virtual-factory-handler',
+  )
+})
 
 describe('server fns need a handler', () => {
   // `.handler()` type-checks (tsc against the real declarations), so this
@@ -338,7 +335,7 @@ export const base = createServerFn()`,
       },
       head: `import { base } from './builder'`,
     },
-  ])('with the builder of $where', ({ where, files, head }) => {
+  ])('with the builder of $where', ({ files, head }) => {
     const calls = [
       { name: 'spaces before the call', call: '.handler  (' },
       { name: 'a newline before the call', call: '.handler\n(' },
@@ -347,17 +344,7 @@ export const base = createServerFn()`,
       { name: 'a comment after the dot', call: './* c */handler(' },
     ]
     for (const { name, call } of calls) {
-      // Bug: a module is only compiled when its text matches
-      // `createServerFn` or `.handler(` (whitespace allowed), so with the
-      // builder imported from another module, a comment between the dot and
-      // `handler` hides the server fn.
-      // Impact: the handler and its server-only imports ship to the client.
-      // Source: TanStack/router#7280 class.
-      const run =
-        where === 'another module' && name === 'a comment after the dot'
-          ? test.fails
-          : test
-      run(`a handler called with ${name} is extracted`, async () => {
+      test(`a handler called with ${name} is extracted`, async () => {
         const served = await serveCase(await host(), {
           'module.tsx': `${head}
 import { db } from './db.server'

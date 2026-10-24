@@ -208,7 +208,7 @@ export function Card() {
 }`
   // The module on the client, the module on the server, and the server fn's
   // handler (the element it returns, called from server code in a request).
-  test.fails.each(['client', 'ssr', 'handler'] as const)(
+  test.each(['client', 'ssr', 'handler'] as const)(
     '%s',
     async (where) => {
       const served = await serveCase(await host(), { 'module.tsx': code })

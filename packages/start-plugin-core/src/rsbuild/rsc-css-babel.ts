@@ -1,7 +1,12 @@
+/**
+ * INTERIM: the Babel RSC CSS transforms (J7) of the previous compiler, kept
+ * for the Rsbuild host until its lane moves it to the compiler core. The
+ * Vite host uses the `rsc-css` planner.
+ */
 import type {
   StartCompilerImportTransform,
   StartCompilerTransformContext,
-} from '@tanstack/start-plugin-core'
+} from '../start-compiler/babel-types'
 
 const TSS_SERVERFN_SPLIT_PARAM = 'tss-serverfn-split'
 const RSC_CSS_OPTIONS_KEY = '__tanstackStartRscCss'

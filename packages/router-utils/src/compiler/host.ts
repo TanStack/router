@@ -114,6 +114,11 @@ export interface PrefetchContext {
   resolver: ExportResolver
   /** Resolves a specifier from this module (records a resolution fingerprint); returns the canonical id or null. */
   resolve: (specifier: string) => Promise<string | null>
+  /** Resolves a specifier from another module (a re-export chain's importer); records the fingerprint. */
+  resolveFrom: (
+    specifier: string,
+    importerCanonicalId: string,
+  ) => Promise<string | null>
   /** The raw-domain summary of a canonical id (records a summary fingerprint). */
   summary: (canonicalId: string) => Promise<ModuleSummary | null>
   /** Target facts (records a target-facts fingerprint). */
@@ -148,7 +153,15 @@ export interface Planner {
   name: string
   tier: 0 | 1
   gate: (t0: ModuleAnalysis, ctx: GateContext) => boolean
-  prefetch?: (t0: ModuleAnalysis, ctx: PrefetchContext) => Promise<void>
+  /**
+   * Phase A contributions. Resolving to `false` withdraws the planner from
+   * this compile (an async refinement of `gate`); the facts it recorded stay
+   * dependencies of the plan.
+   */
+  prefetch?: (
+    t0: ModuleAnalysis,
+    ctx: PrefetchContext,
+  ) => Promise<void | boolean>
   prepare?: (ctx: PlanContext) => void
   plan: (ctx: PlanContext) => void
   policy?: (
@@ -300,6 +313,11 @@ export async function resolveCached(
   const k = `${importerCanonicalId}\u0000${specifier}`
   if (m.has(k)) {
     return m.get(k)!
+  }
+  if (caches.rawFacts.isKnownSpecifier(specifier)) {
+    // D4: known packages are recognised by specifier, never resolved
+    m.set(k, specifier)
+    return specifier
   }
   const r = await host.resolve(specifier, importerCanonicalId)
   const id = r && !r.external ? identify(r.id).canonicalId : null

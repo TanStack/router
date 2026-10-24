@@ -74,10 +74,7 @@ export const fn = createServerFn().handler(async () => db.x(input))`)
 // the build.
 // Fix-agnostic: the build succeeds, the SFC is in the client build, and
 // the server-only module the handler reads is not.
-test.fails(
-  'build: a server fn in a <script lang="ts"> block may use angle-bracket type assertions',
-  async () => {
-    await expectSfcServerFnBuilds(`${head}const input = <string>(globalThis as any).input
+test('build: a server fn in a <script lang="ts"> block may use angle-bracket type assertions', async () => {
+  await expectSfcServerFnBuilds(`${head}const input = <string>(globalThis as any).input
 export const fn = createServerFn().handler(async () => db.x(input))`)
-  },
-)
+})

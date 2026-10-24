@@ -1,12 +1,12 @@
 import { StartCompiler, getLookupKindsForEnv } from './compiler'
 import { getLookupConfigurationsForEnv } from './config'
+import type { CompileStartFrameworkOptions } from '../types'
 import type {
-  CompileStartFrameworkOptions,
   StartCompilerImportTransform,
   StartCompilerPlugin,
   StartCompilerTransformResult,
   StartCompilerVirtualModuleContext,
-} from '../types'
+} from './babel-types'
 import type {
   DevServerFnModuleSpecifierEncoder,
   GenerateFunctionIdFnOptional,

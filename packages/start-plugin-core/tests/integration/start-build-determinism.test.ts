@@ -227,7 +227,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
     // Impact: reordering the imports of an entry file, with no server
     // function changed, swaps which function each id calls: a client of the
     // previous build (an open tab during a deploy) runs the other function.
-    test.fails(
+    ;(bundler === 'vite' ? test : test.fails)(
       'fresh builds keep the function-to-id mapping when discovery order reverses',
       () => {
         expect(reordered.ids).toEqual(first.ids)

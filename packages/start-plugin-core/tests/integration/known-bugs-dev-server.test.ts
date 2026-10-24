@@ -132,7 +132,7 @@ export const fn = base.handler(async () => db.x())
   // against the old factory until a restart: when the builder becomes a
   // server fn, its handler and server-only imports still load in the browser
   // (and when it stops being one, the client keeps an RPC stub).
-  test.fails.each([
+  test.each([
     { name: 'export *', from: './c' },
     { name: 'an import and an export', from: './d' },
   ])(
@@ -224,7 +224,7 @@ export const base = createServerFn()
   // Replaces the former start-compiler-factories.test.ts test "dev: modules
   // reaching a factory through imports and export * are its transitive
   // importers", which only checked the walk.
-  test.fails.each([
+  test.each([
     { name: 'export *', from: './c' },
     { name: 'an import and an export', from: './d' },
   ])(
@@ -305,7 +305,7 @@ export const fn = createServerFn().handler(async () => request)
   // Impact: in dev, the client transform of such a module fails (500), so the
   // client entry never loads and the page does not hydrate.
   // Source: issue #8554 (closed without a fix).
-  test.fails(
+  test(
     'client: a server fn module calling a function of a denied specifier at the top level loads',
     async () => {
       const server = await startBrowserStartDevServer({

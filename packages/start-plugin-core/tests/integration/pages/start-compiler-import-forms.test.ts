@@ -300,7 +300,7 @@ export const fn = createServerFn().handler(async () => 'fn')`,
     // `detectKindsInCode` (used by vite/start-compiler-plugin/plugin.ts and
     // rsbuild/start-compiler-host.ts). Outcome twin of main's printed-code
     // test of #8758 (compiler.test.ts).
-    test.fails.each(calls)(
+    test.each(calls)(
       '$name alone in its module: the other environment neither loads nor runs the implementation',
       async (call) => {
         await expectEnvOnly(call, call.code)
@@ -370,7 +370,7 @@ return text`,
     // import (`<Router.ClientOnly>`) is never compiled.
     // Impact: the SSR environment keeps the children and the client-only
     // modules they import: browser-only code runs during SSR.
-    test.fails('through a namespace member', async () => {
+    test('through a namespace member', async () => {
       await checkBoundary(
         `import * as Router from '${router}'`,
         'Router.ClientOnly',

@@ -331,7 +331,7 @@ ${code}`,
   // runs in the browser).
   // Source: #8504 caller-dead-code.test.ts (typescript-eslint scope fixtures;
   // red on main)
-  test.fails.each<{
+  test.each<{
     name: string
     code: string
     check: PageCheck
@@ -478,7 +478,7 @@ export const fn = createServerFn({ method: 'POST' })
   // client never runs.
   // Source: #8504 caller-dead-code.test.ts (differential fuzzing; red on
   // main)
-  test.fails.each([
+  test.each([
     { name: 'satisfies', wrap: (link: string) => `(${link} satisfies any)` },
     { name: 'cast', wrap: (link: string) => `(${link} as any)` },
   ])(
@@ -503,7 +503,7 @@ export const fn = ${wrap(`createServerFn().validator(schema)`)}.handler(async ({
   // identifier), start-compiler/handleCreateServerFn.ts:277-290; fuzzing.
   // Impact: the validator and its imports (schemas, server-only modules)
   // ship to the client, which never runs them.
-  test.fails.each([
+  test.each([
     {
       name: 'one handler',
       handlers: `export const fn = withPost.handler(async ({ data }) => data)`,
@@ -679,7 +679,7 @@ describe('declarations only the handler needs', () => {
   // Impact: the client loads the server-only module.
   // Source: React Compiler fixture context-variable-as-jsx-element-tag.js;
   // #8504 caller-dead-code.test.ts (red on main)
-  test.fails(
+  test(
     'callers drop a handler-only function that declares a local of its own name',
     async () => {
       const served = await serveCase(await host(), {

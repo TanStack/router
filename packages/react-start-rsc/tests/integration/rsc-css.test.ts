@@ -394,7 +394,7 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
   // Impact: a stream of a conditionally chosen element has no CSS, so its
   // styles never arrive.
   // Source: SPEC J7.3.
-  test.fails.each([
+  test.each([
     { argument: 'flag ? <Card /> : <Badge />', row: rows.ternary },
     { argument: 'flag && <Card />', row: rows.logicalAnd },
   ])('renderToReadableStream($argument) styles the stream', async ({ row }) => {
@@ -443,19 +443,16 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
   // parentheses and TS wrappers), so the transform skips the call and never
   // wraps either branch with the CSS fragment (`createCssFragment`).
   // Impact: choosing false renders the badge without its stylesheet.
-  test.fails(
-    'a false ternary stream carries its selected badge CSS',
-    async () => {
-      expect(
-        await app.style(
-          rows.ternaryFalse,
-          '[data-testid=badge]',
-          'background-color',
-          BADGE_BACKGROUND,
-        ),
-      ).toBe(BADGE_BACKGROUND)
-    },
-  )
+  test('a false ternary stream carries its selected badge CSS', async () => {
+    expect(
+      await app.style(
+        rows.ternaryFalse,
+        '[data-testid=badge]',
+        'background-color',
+        BADGE_BACKGROUND,
+      ),
+    ).toBe(BADGE_BACKGROUND)
+  })
 
   // The second `options` argument is undocumented (React Start's public
   // type is `renderToReadableStream(node)`; `options` is typed only under
@@ -482,7 +479,7 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
   // Impact: the stream has no CSS, so its styles never arrive, and nothing
   // tells the developer.
   // Source: SPEC J7.3: warn in dev only.
-  test.fails.each([
+  test.each([
     { name: 'an identifier', row: rows.identifier },
     { name: 'a spread', row: rows.spread },
   ])(
@@ -551,7 +548,7 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
     // Bug: a comment before the JSX argument of `renderToReadableStream` is
     // moved into the generated CSS fragment, where it becomes JSX text.
     // Impact: the comment is rendered into the RSC payload as visible text.
-    test.fails.each([
+    test.each([
       { name: 'a block comment', row: rows.blockComment },
       { name: 'a line comment', row: rows.lineComment },
     ])(
@@ -570,11 +567,8 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
     // Source: start-plugin-core/src/start-compiler/compiler.ts, candidate
     // detection ("inner call in a chain").
     // Impact: the server component renders without its CSS.
-    test.fails(
-      'renderServerComponent styles the server component when its result is chained',
-      async () => {
-        expect(await cardBackground(rows.chained)).toBe(CARD_BACKGROUND)
-      },
-    )
+    test('renderServerComponent styles the server component when its result is chained', async () => {
+      expect(await cardBackground(rows.chained)).toBe(CARD_BACKGROUND)
+    })
   })
 })

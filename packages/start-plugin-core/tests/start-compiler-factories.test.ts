@@ -350,7 +350,7 @@ return links`
     // Impact: the validator and its server-only imports ship to the client.
     // Source: #8504 start-compiler-factories.test.ts "the client strips a
     // validator link wrapped in $name" (Vite and Rsbuild builds; red on main).
-    test.fails.each(
+    test.each(
       ['', '.middleware([])'].flatMap((middleware) =>
         wrappers.slice(1).map((wrapper) => ({ ...wrapper, middleware })),
       ),
@@ -407,7 +407,7 @@ return links`
     // an identifier), start-compiler/handleCreateMiddleware.ts:21-32;
     // fuzzing.
     // Impact: the validator and its server-only imports ship to the client.
-    test.fails(
+    test(
       'the client strips a validator link of a builder stored in a variable',
       async () => {
         const { served, client, ssr } = await runLinks(
@@ -457,7 +457,7 @@ export const getEnv = createIsomorphicFn().server(() => 'server').client(() => '
   // return undefined too).
   // Impact: the server (or client) call silently returns undefined instead
   // of running its implementation.
-  test.fails.each([
+  test.each([
     {
       name: '.server() link',
       code: `const base = createIsomorphicFn().server(() => 'server')
@@ -485,7 +485,7 @@ export const getEnv = base.server(() => 'server')`,
   // or the client call returns undefined).
   // Source: #8504 start-compiler-factories.test.ts (differential fuzzing,
   // Vite and Rsbuild builds; red on main)
-  test.fails.each([
+  test.each([
     `(createIsomorphicFn().server(() => 'server') satisfies any).client(() => 'client')`,
     `(createIsomorphicFn().server(() => 'server') as any).client(() => 'client')`,
     `(createIsomorphicFn().client(() => 'client') as any).server(() => 'server')`,
@@ -509,7 +509,7 @@ export const fn = ${chain}`,
   // implementation); a client-only fn runs during SSR.
   // Source: #8504 start-compiler-factories.test.ts (Vite and Rsbuild builds;
   // red on main)
-  test.fails.each(
+  test.each(
     [
       {
         shape: 'createServerOnlyFn(fn)',
@@ -730,7 +730,7 @@ function settle(run: () => unknown) {
   // functions nested in a server function are compiled too); #8504
   // start-compiler-factories.test.ts "the provider compiles env-specific
   // functions inside a server fn handler" (red on main).
-  test.fails(
+  test(
     'the server compiles env-specific functions inside a server fn handler',
     async () => {
       const loadedKey = '__startHostChartClientLoaded'
@@ -990,7 +990,7 @@ export const serverOnly = createServerOnlyFn(() => 'server-only-marker')`,
     // behaviour of an edited factory.
     // Reproduced through a Vite dev server and the public Start plugin;
     // served code read for the diagnosis only.
-    test.fails(
+    test(
       'dev: editing a factory module recompiles its importers against the new code',
       async () => {
         const started = await editHost()

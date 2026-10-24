@@ -45,7 +45,7 @@ export function tanstackStart(
       ssrIsProvider: false,
       ssrResolverStrategy: rscConfig.ssrResolverStrategy,
       serializationAdapters: rscConfig.serializationAdapters,
-      compilerTransforms: rscConfig.compilerTransforms,
+      rsc: rscConfig.rsc,
     }
   }
   return [

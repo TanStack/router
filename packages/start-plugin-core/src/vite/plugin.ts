@@ -11,7 +11,7 @@ import {
   shouldRewriteDevBasepath,
 } from '../planning'
 import { importProtectionPlugin } from './import-protection-plugin/plugin'
-import { startCompilerPlugin } from './start-compiler-plugin/plugin'
+import { startCompilerPlugin } from './compiler-plugin'
 import { loadEnvPlugin } from './load-env-plugin/plugin'
 import {
   buildStartViteEnvironments,
@@ -140,7 +140,7 @@ export function tanStackStartVite(
         // see https://github.com/vitejs/vite/blob/557f797d29422027e8c451ca50dd84bf8c41b5f0/packages/vite/src/node/optimizer/index.ts#L1282
 
         const crawlFrameworkPkgsResult = await crawlFrameworkPkgs({
-          root: process.cwd(),
+          root: viteConfig.root || process.cwd(),
           isBuild: command === 'build',
           isFrameworkPkgByJson(pkgJson) {
             const peerDependencies = pkgJson['peerDependencies']
@@ -220,9 +220,7 @@ export function tanStackStartVite(
       environments,
       generateFunctionId:
         normalizedStartPluginOpts.serverFns?.generateFunctionId,
-      compilerTransforms: corePluginOpts.compilerTransforms,
-      serverFnProviderModuleDirectives:
-        corePluginOpts.serverFnProviderModuleDirectives,
+      rsc: corePluginOpts.rsc,
       providerEnvName: serverFnProviderEnv,
     }),
     importProtectionPlugin({

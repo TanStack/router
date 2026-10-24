@@ -86,7 +86,7 @@ export const fn = createServerFn().handler(async () => find())
   // in-process pin above decides it, and this cell is its build canary.
   // (No Rsbuild cell: it was removed to save test time.)
   if (bundler === 'vite') {
-    test.fails(
+    test(
       'client: the server-only module of a class only server code uses is not bundled',
       async () => {
         const { client } = await buildStart({
@@ -143,7 +143,7 @@ export const fn = createServerFn().handler(async () => auth.get() as Session)
   // Impact: the server-only module's top-level code is bundled and runs in
   // the browser.
   // A build canary of the in-process compiler pin.
-  ;(bundler === 'vite' ? test.fails : test)(
+  test(
     'client: a server-only module a type mentions is not bundled with verbatimModuleSyntax',
     async () => {
       const { client } = await buildStart({ bundler, files: typeofFiles(true) })
@@ -161,7 +161,7 @@ export const fn = createServerFn().handler(async () => auth.get() as Session)
   // twice, handlers and SSR code of the file see different module state, and
   // `instanceof` fails for a class of the file passed to a server fn.
   // Source: PR #8656 (class identity).
-  test.fails(
+  ;(bundler === 'vite' ? test : test.fails)(
     'SSR: a server fn module is initialised once and shares its state with SSR code',
     async () => {
       const { ssr } = await buildStart({
@@ -310,7 +310,7 @@ export { default } from '@tanstack/react-start/server-entry'
   // On Vite, when the SSR build loses the #7213 race (below), the server fn
   // is missing from the resolver: the call from SSR code fails too, so the
   // pin stays red (for #7213) and cannot pass by the missing server fn.
-  test.fails(
+  ;(bundler === 'vite' ? test : test.fails)(
     'SSR: a server fn only server code references is not callable over HTTP',
     async () => {
       expect(await callClientAccess()).toEqual({
@@ -385,10 +385,7 @@ export const outer = createServerFn()
       }
 
       if (bundler !== 'vite' || caller === 'another server fn') {
-        ;(bundler === 'vite' ? test.fails : test).each([
-          'as written',
-          'reversed',
-        ] as const)(
+        test.each(['as written', 'reversed'] as const)(
           'is callable, the app files written %s',
           async (order) => {
             const { ssr } = await buildStart({
@@ -412,10 +409,7 @@ export const outer = createServerFn()
         )
       }
 
-      ;(bundler === 'vite' ? test.fails : test).each([
-        'as written',
-        'reversed',
-      ] as const)(
+      test.each(['as written', 'reversed'] as const)(
         'its caller only client code imports: the caller is callable over HTTP, the app files written %s',
         async (order) => {
           const { client, ssr } = await buildStart({
@@ -455,7 +449,7 @@ export function createLoggedServerFn(handler) {
 import { db } from './db'
 export const fn = createLoggedServerFn(async () => db.secret())
 `
-  test.fails(
+  ;(bundler === 'vite' ? test : test.fails)(
     'a server fn created by a library function: the handler is not in the client bundle, or the build fails clearly',
     async () => {
       const outcome = await buildStart({
@@ -527,7 +521,7 @@ export const fn = createLoggedServerFn(async () => db.secret())
   // instead of the handler's result.
   // Control: start-build-env-separation.test.ts "a library's server fn"
   // (the same library, built in the app's directory).
-  ;(bundler === 'vite' ? test.fails : test)(
+  test(
     "a build run from another directory: a library's server fn runs in the SSR build",
     async () => {
       const { ssr } = await buildStart({

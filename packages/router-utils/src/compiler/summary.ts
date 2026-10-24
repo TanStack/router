@@ -88,9 +88,18 @@ export function buildSummary(
         exportFacts[e.name] = { kind: 'local', value }
         break
       }
-      case 'expression':
-        exportFacts.default = { kind: 'local', value: { t: 'unknown' } }
+      case 'expression': {
+        const stmt = file.program.body.find(
+          (n) =>
+            n.type === 'ExportDefaultDeclaration' && n.start === e.range.start,
+        )
+        const value: AbstractValue =
+          stmt && stmt.type === 'ExportDefaultDeclaration'
+            ? values.valueOf(stmt.declaration)
+            : { t: 'unknown' }
+        exportFacts.default = { kind: 'local', value }
         break
+      }
       case 'reExport':
         if (!e.typeOnly) {
           exportFacts[e.name] = {
