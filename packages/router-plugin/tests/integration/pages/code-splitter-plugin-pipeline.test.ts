@@ -50,28 +50,6 @@ const routesOf = (files: Record<string, string>) =>
     })),
   }) as Config['virtualRouteConfig']
 
-/** The page-side description of what a module's exports are and do. */
-const describeExports = `async (namespace) => {
-  const described = {}
-  for (const key of Object.keys(namespace).sort()) {
-    const value = namespace[key]
-    if (typeof value !== 'function') {
-      described[key] = { value: JSON.stringify(value) }
-      continue
-    }
-    try {
-      described[key] = { rendered: await renderComponent(value) }
-    } catch {
-      try {
-        described[key] = { returned: JSON.stringify(await value()) }
-      } catch (error) {
-        described[key] = { threw: String(error) }
-      }
-    }
-  }
-  return described
-}`
-
 /**
  * The directive prologue of a module as the page receives it: the leading
  * string-literal expression statements, after the statements Vite's import
@@ -108,51 +86,14 @@ function servedPrologue(code: string) {
 // resolves the config, orders the plugins, applies their hook filters and
 // resolves and loads the emitted modules.
 describe('code-splitter plugin pipeline', () => {
-  // A bundler may request an emitted module with an extra cache-busting
-  // parameter (`t=…`, as Vite's HMR client does after an edit). Whatever
-  // the compiler's own ids look like (with a query or not), the module the
-  // host serves under that id behaves like the one it serves without it:
-  // the route loads, its options return and render the same, and each
-  // module's exports do the same (SPEC G4, §5.3; the emitted text is free).
-  it('serves a split module with the same behaviour when its id has an extra cache-busting parameter', async () => {
-    const route = await loadRoute(routeSource('query'), {
-      filename: 'query.tsx',
-      routeId: '/query',
-    })
-    expect(
-      await route.run(`return [
-  await options.loader(),
-  options.head(),
-  await render('component'),
-  await render('errorComponent'),
-  await renderRoute(),
-]`),
-    ).toEqual([
-      { name: 'query' },
-      { meta: [{ title: 'query' }] },
-      '<p>query</p>',
-      '<p>error in query</p>',
-      '<p>query</p>',
-    ])
-    const { ids } = await route.modules()
-    const emitted = Object.entries(ids)
-      .filter(([label]) => label !== 'reference')
-      .map(([, id]) => id)
-    expect(emitted.length).toBeGreaterThan(0)
-    const busted = (id: string) =>
-      id.includes('?')
-        ? [`${id}&t=123`, id.replace('?', '?t=123&')]
-        : [`${id}?t=123`]
-    for (const id of emitted) {
-      for (const requested of busted(id)) {
-        const [plain, again] = await route.run<Array<unknown>>(
-          `const describe = ${describeExports}
-return [await describe(await import(${JSON.stringify(id)})), await describe(await import(${JSON.stringify(requested)}))]`,
-        )
-        expect(again, requested).toEqual(plain)
-      }
-    }
-  })
+  // A request with Vite's cache-busting parameter (`t=…`) reaches a split
+  // module the way real usage does: after an edit, Vite's import analysis
+  // adds it to the imports of the modules the edit changed
+  // (code-splitter-edits.test.ts renders the edited route in a new document;
+  // the route-hmr-browser*.test.ts pages hot-update it). Vite strips the
+  // parameter before any plugin hook sees a file's id, and a module whose
+  // id never changes is never requested with it, so no test imports an
+  // emitted module by its id (SPEC §8, §5.3).
 
   // One plugin instance compiles every route of an app: what it emits for a
   // route does not depend on the routes it compiled before (SPEC G4). The
@@ -450,7 +391,7 @@ const label = 'directive preserved'
 export const Route = createFileRoute('/directive')({
   loader: () => label,
   component: () => <div>{label} MARK_PAGE</div>,
-  errorComponent: () => <div>error</div>,
+  errorComponent: () => <div>MARK_ERROR</div>,
 })
 `,
     { routeId: '/directive' },
@@ -460,7 +401,7 @@ export const Route = createFileRoute('/directive')({
   const carrying = Object.entries(modules).filter(
     ([name, code]) =>
       name === 'reference' ||
-      ['directive preserved', 'MARK_PAGE', 'error'].some((marker) =>
+      ['directive preserved', 'MARK_PAGE', 'MARK_ERROR'].some((marker) =>
         holdsMarker(code, marker),
       ),
   )

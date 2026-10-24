@@ -58,6 +58,7 @@ import { clientGlobals } from '@tanstack/compiler-test-utils/known-globals'
 import { tanstackRouter } from '../src/vite'
 import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import type { PageRun } from '@tanstack/compiler-test-utils/browser'
+import type { BuildResult } from '@tanstack/compiler-test-utils/build-harness'
 import type { PluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 import type { ESTree, Plugin, PluginOption } from 'vite'
 import type { Config, DeletableNodes } from '../src'
@@ -923,8 +924,12 @@ const stamped = ${JSON.stringify(stamped)}
 const importUrl = (request) => stamped[request] ?? probe.requestUrl(request)
 /** Modules the compilers emitted that the page requested so far (path and query; async). */
 const compiled = () => probe.compiledRequests(routeUrl, [...own])
-/** Every app-local module the page requested so far: compiled ones and the test's files (async). */
-const requested = () => probe.appRequests(routeUrl, [...own])
+/**
+ * Every app-local module the page requested so far: compiled ones and the
+ * test's files, each once, by path (\`/data.json\`, whatever query a tool or
+ * a compiler requests it with; async).
+ */
+const requested = async () => [...new Set((await probe.appRequests(routeUrl, [...own])).map((request) => request.split('?')[0]))]
 /** An app file the test wrote, as the page imports it (the instance the route gets). */
 const app = (file) => import(importUrl('/' + file.replace(/^\\.?\\//, '')))
 ${before}
@@ -947,7 +952,8 @@ export interface RouteModules {
    * server serves it, by label: `reference` (the route module), `shared`
    * (another module loading with it), `lazy <option>` (a module that loads
    * when the option loads, labelled by the first option, in
-   * `splittableOptions` order, whose loading requests it).
+   * `splittableOptions` order, whose loading requests it). Where a label
+   * has several modules, each is labelled `<label> (<request>)`.
    */
   modules: Record<string, string>
   /** The request (path and query) of each label. */
@@ -977,6 +983,11 @@ export interface RouteApp {
    * (e.g. to set a global the route reads).
    */
   run: <T = unknown>(body: string, options?: { before?: string }) => Promise<T>
+  /**
+   * The production client build of the app (its route tree as the input),
+   * for what ships after the bundler's tree-shaking (`locate`, `where`).
+   */
+  production: () => Promise<BuildResult>
   /** `run`, with the page's errors and console. */
   runPage: <T = unknown>(
     body: string,
@@ -995,13 +1006,17 @@ export interface RouteApp {
   loadedBy: (option: string) => Promise<Array<string>>
   /**
    * The lazy options grouped by what loads together: once an option
-   * loaded, loading every other option of its group requests nothing new
-   * (each pair observed in a fresh document). Groups sorted, each sorted.
+   * loaded, loading every other option of its group requests no new module
+   * holding user code (each pair observed in a fresh document): no file of
+   * the test, and no compiled module but one that only imports and
+   * re-exports (`forwardsOnly`: a small forwarding module over the group's
+   * module is allowed, ruling 2026-10-24). Groups sorted, each sorted.
    */
   groups: () => Promise<Array<Array<string>>>
   /**
    * Every app-local module loading the route module requests (compiled
-   * modules and the test's files), as requests (`/config.ts`).
+   * modules and the test's files), each once, by path (`/config.ts`,
+   * whatever query it is requested with).
    */
   requested: () => Promise<Array<string>>
   /** Code of the compiled modules that load with the route module. */
@@ -1096,15 +1111,16 @@ probe.assertNoFailedRequests()
 return (await compiled()).filter((request) => !before.has(request))`)
 
   /**
-   * The free names of the production client build of the app as it is now
-   * (`vite build` of the host): what the build harness's dangling-name
-   * check (`DanglingNameError`) finds in the modules the compilers
-   * produced. Its input is the generated route tree, with its export kept,
-   * as an app's router reads it: each route's `Route` and what its options
-   * load, not the route file's other exports. Its output goes under
-   * `node_modules/`, which the dev server's watcher ignores.
+   * The production client build of the app as it is now (`vite build` of
+   * the host), as the build harness describes it (`describeBuild`: chunk
+   * placement, and the dangling-name check, `DanglingNameError`, on the
+   * modules the compilers produced). Its input is the generated route tree,
+   * with its export kept, as an app's router reads it: each route's `Route`
+   * and what its options load, not the route file's other exports. Its
+   * output goes under `node_modules/`, which the dev server's watcher
+   * ignores.
    */
-  const shipped = async (): Promise<Array<string>> => {
+  const production = async (): Promise<BuildResult> => {
     await writeRoute(state, owner, files)
     const outDir = path.join(state.host.root, 'node_modules/.route-app-build')
     const built = await state.host.build({
@@ -1119,8 +1135,13 @@ return (await compiled()).filter((request) => !before.has(request))`)
         },
       },
     })
+    return built.describe('client')
+  }
+
+  /** The free names the production build's dangling-name check finds. */
+  const shipped = async (): Promise<Array<string>> => {
     try {
-      await built.describe('client')
+      await production()
     } catch (error) {
       if (!(error instanceof DanglingNameError)) {
         throw error
@@ -1136,6 +1157,7 @@ return (await compiled()).filter((request) => !before.has(request))`)
     code,
     run,
     runPage,
+    production,
     isLazy: async (option) => (await newlyCompiled(option)).length > 0,
     loadedBy: async (option) => {
       const loaded = await run<
@@ -1167,12 +1189,18 @@ return Promise.all(loaded.map(served))`)
           if (other === option) {
             continue
           }
-          const added =
-            await run<number>(`await trigger(${JSON.stringify(option)})
-const before = new Set(await compiled())
+          const added = await run<
+            Array<{ request: string; code: string | undefined }>
+          >(`await trigger(${JSON.stringify(option)})
+const requests = () => probe.appRequests(routeUrl, [...own])
+const before = new Set(await requests())
 await trigger(${JSON.stringify(other)})
-return (await compiled()).filter((request) => !before.has(request)).length`)
-          if (added === 0) {
+const added = (await requests()).filter((request) => !before.has(request))
+return Promise.all(added.map(async (request) => ({ request, code: own.has(request.split('?')[0]) ? undefined : await served(request) })))`)
+          const userCode = added.filter(
+            ({ code: served }) => served === undefined || !forwardsOnly(served),
+          )
+          if (userCode.length === 0) {
             group.push(other)
           }
         }
@@ -1206,9 +1234,15 @@ return Promise.all(found.map(async (module) => ({ ...module, code: await served(
       )
       const modules: Record<string, string> = {}
       const ids: Record<string, string> = {}
+      // A label several modules have names each by its request, whatever
+      // the order the page requested them in (a cached module loads first)
+      const counts = new Map<string, number>()
+      for (const module of found) {
+        counts.set(module.label, (counts.get(module.label) ?? 0) + 1)
+      }
       for (const module of found) {
         const label =
-          module.label in modules
+          counts.get(module.label)! > 1
             ? `${module.label} (${module.request})`
             : module.label
         modules[label] = module.code
@@ -1328,8 +1362,10 @@ const refreshGlobals = ['$RefreshReg$', '$RefreshSig$']
 /**
  * The decoded values of the string literals and template quasis of a module
  * (an independent parse: a user marker is found whatever its quoting or
- * escaping), for D5 checks that user code is absent from a module. Throws
- * on code that does not parse: an absence check on it would prove nothing.
+ * escaping), for D5 checks that user code is absent from a module. The
+ * module specifiers of imports and exports are not values of the code (a
+ * request's query may name an option). Throws on code that does not parse:
+ * an absence check on it would prove nothing.
  */
 function stringValues(code: string, filename = 'module.js'): Set<string> {
   const { program, errors } = parseSync(filename, code, {
@@ -1360,14 +1396,46 @@ function stringValues(code: string, filename = 'module.js'): Set<string> {
     } else if (value.type === 'JSXText') {
       values.add(String(value.value))
     }
+    const specifier =
+      value.type === 'ImportDeclaration' ||
+      value.type === 'ImportExpression' ||
+      value.type === 'ExportAllDeclaration' ||
+      value.type === 'ExportNamedDeclaration'
     for (const key of Object.keys(value)) {
-      if (key !== 'type' && key !== 'start' && key !== 'end') {
+      if (
+        key !== 'type' &&
+        key !== 'start' &&
+        key !== 'end' &&
+        !(specifier && key === 'source')
+      ) {
         visit(value[key])
       }
     }
   }
   visit(program)
   return values
+}
+
+/**
+ * Whether a served module only imports and re-exports (no statement of its
+ * own: a forwarding module, which holds no user code).
+ */
+function forwardsOnly(code: string) {
+  const { program } = parseSync('module.js', code, { sourceType: 'module' })
+  return (program.body as Array<Record<string, any>>).every(
+    (statement) =>
+      statement.type === 'ImportDeclaration' ||
+      statement.type === 'ExportAllDeclaration' ||
+      (statement.type === 'ExportNamedDeclaration' && !statement.declaration),
+  )
+}
+
+/**
+ * The uncaught errors of a page run (`runPage`), without what the page
+ * logged with `console.error` (dev diagnostics are free, SPEC §5.11).
+ */
+export function uncaughtErrors(run: PageRun) {
+  return run.errors.filter((error) => !run.console.includes(`error: ${error}`))
 }
 
 /** Whether a module holds the user marker `marker` (a decoded string value). */
