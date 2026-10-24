@@ -290,7 +290,7 @@ describe('layouts and groups', () => {
   // the inferred full paths of all routes, pathless layouts included).
   // Impact: creating `_auth.tsx` before its first child route stops route
   // generation for the whole app.
-  test.fails.each([
+  test.each([
     { name: '_auth.tsx', file: '_auth.tsx', constructor: 'createFileRoute' },
     {
       name: '_auth.lazy.tsx',
@@ -386,7 +386,7 @@ describe('layouts and groups', () => {
   // anchors of lazy-only routes).
   // Impact: the lazy-only route's component (its layout) and its loaders do
   // not wrap the pages under such a layout.
-  test.fails(
+  test(
     'a pathless layout in a directory under a route with only a lazy route file nests under that route',
     () =>
       checkApp({
@@ -482,7 +482,7 @@ describe('layouts and groups', () => {
   // pathless layout with a route file under a lazy-only route: which route
   // is its parent), here the URL disagrees with the generated types.
   // Source: mutation testing.
-  test.fails.each<{
+  test.each<{
     name: string
     target: 'react' | 'vue'
     files: Record<string, string>
@@ -672,18 +672,15 @@ describe('route names', () => {
   // src/generator.ts:703-706 (`id: '${node.path}'`, `path: '...'`).
   // Impact: an app with, e.g., `what's-new.tsx` gets no route tree until
   // the file is renamed.
-  test.fails(
-    'a route file name with an apostrophe gets a route with it in its URL',
-    async () => {
-      const root = await appWithRoutes(["what's-new.tsx"])
-      const { generatedRouteTree } = await generate(root)
+  test('a route file name with an apostrophe gets a route with it in its URL', async () => {
+    const root = await appWithRoutes(["what's-new.tsx"])
+    const { generatedRouteTree } = await generate(root)
 
-      expect(await urlsOf(generatedRouteTree)).toEqual({
-        __root__: '/',
-        "/what's-new": "/what's-new",
-      })
-    },
-  )
+    expect(await urlsOf(generatedRouteTree)).toEqual({
+      __root__: '/',
+      "/what's-new": "/what's-new",
+    })
+  })
 
   // Control: "routes whose names differ only by a leading @ get their own
   // routes" above (same harness, two names the route tree tells apart).
@@ -696,7 +693,7 @@ describe('route names', () => {
   // no deduplication of the generated names).
   // Impact: an app with, e.g., `about-us.tsx` and `aboutUs.tsx` fails to
   // build until one of the files is renamed.
-  test.fails.each([
+  test.each([
     { files: ['about-us.tsx', 'aboutUs.tsx'], ids: ['/about-us', '/aboutUs'] },
     {
       files: ['blog.tsx', 'blog/_layout.tsx', 'blog/layout.tsx'],

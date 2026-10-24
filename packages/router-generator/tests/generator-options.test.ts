@@ -280,19 +280,16 @@ describe('empty route files', () => {
   // src/generator.ts:1096 (parse of the scaffolded file).
   // Impact: an empty .ts route file breaks route generation for the whole
   // app (no route tree update) until the file is renamed or filled in.
-  test.fails(
-    'an empty .ts route file is scaffolded, and the other routes still generate',
-    async () => {
-      const { written, routes } = await scaffold('posts.ts')
-      expect(parseErrors(written, 'posts.ts')).toEqual([])
-      expect(await routeIdOf(written)).toBe('/posts')
-      expect(routes).toEqual({
-        __root__: 'routes/__root.tsx',
-        '/': 'routes/index.tsx',
-        '/posts': 'routes/posts.ts',
-      })
-    },
-  )
+  test('an empty .ts route file is scaffolded, and the other routes still generate', async () => {
+    const { written, routes } = await scaffold('posts.ts')
+    expect(parseErrors(written, 'posts.ts')).toEqual([])
+    expect(await routeIdOf(written)).toBe('/posts')
+    expect(routes).toEqual({
+      __root__: 'routes/__root.tsx',
+      '/': 'routes/index.tsx',
+      '/posts': 'routes/posts.ts',
+    })
+  })
 
   /**
    * Runs the generator on an app with an index route and an empty
@@ -632,29 +629,22 @@ export const Route = createLazyFileRoute('/posts')({})
   // tree's route imports to be absolute (a tree evaluated from another
   // location than the one it was generated for) still gets relative imports
   // for every lazy route.
-  test.fails(
-    'importRoutesUsingAbsolutePaths imports the lazy route files by absolute paths too',
-    async () => {
-      const root = await createApp(app())
-      const { generatedRouteTree } = await generate(root, {
-        importRoutesUsingAbsolutePaths: true,
-      })
+  test('importRoutesUsingAbsolutePaths imports the lazy route files by absolute paths too', async () => {
+    const root = await createApp(app())
+    const { generatedRouteTree } = await generate(root, {
+      importRoutesUsingAbsolutePaths: true,
+    })
 
-      // (static imports of the route files and dynamic ones of the lazy file)
-      const imports = await routeFileImports(
-        root,
-        generatedRouteTree,
-        appFiles(),
-      )
-      for (const [file, specifiers] of Object.entries(imports)) {
-        expect(specifiers.length, file).toBeGreaterThan(0)
-        for (const { specifier } of specifiers) {
-          expect(path.isAbsolute(specifier), specifier).toBe(true)
-        }
+    // (static imports of the route files and dynamic ones of the lazy file)
+    const imports = await routeFileImports(root, generatedRouteTree, appFiles())
+    for (const [file, specifiers] of Object.entries(imports)) {
+      expect(specifiers.length, file).toBeGreaterThan(0)
+      for (const { specifier } of specifiers) {
+        expect(path.isAbsolute(specifier), specifier).toBe(true)
       }
-      expect(await routesOf(generatedRouteTree)).toEqual(appRoutes())
-    },
-  )
+    }
+    expect(await routesOf(generatedRouteTree)).toEqual(appRoutes())
+  })
 
   test.each([
     {
@@ -1004,60 +994,58 @@ describe('tmpDir', () => {
   // `getTempFileName`'s file in `config.tmpDir`.
   // Impact: route generation fails until tmpDir is moved to the app's
   // filesystem (api/file-based-routing.md `tmpDir` names no such limit).
-  test
-    .skipIf(!otherDevice)
-    .fails(
-      'with tmpDir on another filesystem, the route file and the route tree are replaced atomically',
-      async () => {
-        const tmpDir = await mkdtemp(
-          path.join(otherDevice!, 'tsr-generator-tmp-'),
-        )
-        onTestFinished(() => rm(tmpDir, { recursive: true, force: true }))
-        const postsRoute = (id: string) =>
-          `import { createFileRoute } from '@tanstack/react-router'
+  test.skipIf(!otherDevice)(
+    'with tmpDir on another filesystem, the route file and the route tree are replaced atomically',
+    async () => {
+      const tmpDir = await mkdtemp(
+        path.join(otherDevice!, 'tsr-generator-tmp-'),
+      )
+      onTestFinished(() => rm(tmpDir, { recursive: true, force: true }))
+      const postsRoute = (id: string) =>
+        `import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('${id}')({
   component: () => 'posts',
 })
 `
-        // A first run, with tmpDir on the app's filesystem; the next one
-        // rewrites the route file (a wrong id) and the route tree (a new route)
-        const root = await createApp({
-          'src/routes/__root.tsx': rootRoute(),
-          'src/routes/posts.tsx': postsRoute('/posts'),
-        })
-        const config = await generate(root)
-        await writeFile(
-          path.join(root, 'src/routes/posts.tsx'),
-          postsRoute('/old'),
-        )
-        await writeFile(
-          path.join(root, 'src/routes/about.tsx'),
-          postsRoute('/about'),
-        )
-        recordInputs(root, { 'src/routes/about.tsx': postsRoute('/about') })
-        const files = [
-          path.join(root, 'src/routes/posts.tsx'),
-          config.generatedRouteTree,
-        ]
-        const inodes = await Promise.all(
-          files.map(async (file) => (await stat(file)).ino),
-        )
+      // A first run, with tmpDir on the app's filesystem; the next one
+      // rewrites the route file (a wrong id) and the route tree (a new route)
+      const root = await createApp({
+        'src/routes/__root.tsx': rootRoute(),
+        'src/routes/posts.tsx': postsRoute('/posts'),
+      })
+      const config = await generate(root)
+      await writeFile(
+        path.join(root, 'src/routes/posts.tsx'),
+        postsRoute('/old'),
+      )
+      await writeFile(
+        path.join(root, 'src/routes/about.tsx'),
+        postsRoute('/about'),
+      )
+      recordInputs(root, { 'src/routes/about.tsx': postsRoute('/about') })
+      const files = [
+        path.join(root, 'src/routes/posts.tsx'),
+        config.generatedRouteTree,
+      ]
+      const inodes = await Promise.all(
+        files.map(async (file) => (await stat(file)).ino),
+      )
 
-        await generate(root, { tmpDir })
+      await generate(root, { tmpDir })
 
-        expect(await routeIdOf(await read(root, 'src/routes/posts.tsx'))).toBe(
-          '/posts',
-        )
-        expect(await routesOf(config.generatedRouteTree)).toEqual({
-          __root__: 'routes/__root.tsx',
-          '/about': 'routes/about.tsx',
-          '/posts': 'routes/posts.tsx',
-        })
-        // Replaced by a rename, not rewritten in place or copied over
-        for (const [index, file] of files.entries()) {
-          expect((await stat(file)).ino, file).not.toBe(inodes[index])
-        }
-      },
-    )
+      expect(await routeIdOf(await read(root, 'src/routes/posts.tsx'))).toBe(
+        '/posts',
+      )
+      expect(await routesOf(config.generatedRouteTree)).toEqual({
+        __root__: 'routes/__root.tsx',
+        '/about': 'routes/about.tsx',
+        '/posts': 'routes/posts.tsx',
+      })
+      // Replaced by a rename, not rewritten in place or copied over
+      for (const [index, file] of files.entries()) {
+        expect((await stat(file)).ino, file).not.toBe(inodes[index])
+      }
+    },
+  )
 })

@@ -46,7 +46,7 @@ describe('route tree types agree with the router', () => {
   // dropped), printed at src/utils.ts:1260.
   // Impact: `Route.fullPath` and the types derived from it (`from` of
   // links and hooks) say `''` in such a layout while the app sees `/`.
-  test.fails(
+  test(
     'the layout route of a route group directory has the full path of the router in the types',
     () => checkApp(groupLayout, { runtime: false }),
     60_000,
