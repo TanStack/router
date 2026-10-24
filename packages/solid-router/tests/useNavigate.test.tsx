@@ -1,5 +1,4 @@
 import * as Solid from 'solid-js'
-import '@testing-library/jest-dom/vitest'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import {
   cleanup,

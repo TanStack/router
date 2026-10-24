@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { test } from 'vitest'
 import {
   assertServerFnScenario,
   runServerFnPostRequestLoop,
@@ -16,10 +16,8 @@ const context = await setupServerFnBench(handler)
 
 await assertServerFnScenario(handler, context)
 
-describe('ssr', () => {
-  bench(
-    'ssr server-fn POST (vue)',
-    () => runServerFnPostRequestLoop(handler, context),
-    serverFnBenchOptions,
-  )
+test('ssr', async ({ bench }) => {
+  await bench('ssr server-fn POST (vue)', async () =>
+    runServerFnPostRequestLoop(handler, context),
+  ).run(serverFnBenchOptions)
 })

@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { describe, test } from 'vitest'
 
 const BODY_END_TAG = '</body>'
 const MIN_CLOSING_TAG_LENGTH = 4
@@ -680,204 +680,284 @@ verifyBodyImplementations()
 describe('Closing Tag Detection - Small Chunk (~70 chars)', () => {
   const chunk = generateSmallChunk()
 
-  bench('regex', () => {
-    findLastClosingTagRegex(chunk)
+  test('regex', async ({ bench }) => {
+    await bench('regex', () => {
+      findLastClosingTagRegex(chunk)
+    }).run()
   })
 
-  bench('manual backwards scan', () => {
-    findLastClosingTagManual(chunk)
+  test('manual backwards scan', async ({ bench }) => {
+    await bench('manual backwards scan', () => {
+      findLastClosingTagManual(chunk)
+    }).run()
   })
 
-  bench('optimized (charCodeAt)', () => {
-    findLastClosingTagOptimized(chunk)
+  test('optimized (charCodeAt)', async ({ bench }) => {
+    await bench('optimized (charCodeAt)', () => {
+      findLastClosingTagOptimized(chunk)
+    }).run()
   })
 
-  bench('hybrid (lastIndexOf + validation)', () => {
-    findLastClosingTagHybrid(chunk)
+  test('hybrid (lastIndexOf + validation)', async ({ bench }) => {
+    await bench('hybrid (lastIndexOf + validation)', () => {
+      findLastClosingTagHybrid(chunk)
+    }).run()
   })
 })
 
 describe('Closing Tag Detection - Medium Chunk (~1.5KB)', () => {
   const chunk = generateMediumChunk()
 
-  bench('regex', () => {
-    findLastClosingTagRegex(chunk)
+  test('regex', async ({ bench }) => {
+    await bench('regex', () => {
+      findLastClosingTagRegex(chunk)
+    }).run()
   })
 
-  bench('manual backwards scan', () => {
-    findLastClosingTagManual(chunk)
+  test('manual backwards scan', async ({ bench }) => {
+    await bench('manual backwards scan', () => {
+      findLastClosingTagManual(chunk)
+    }).run()
   })
 
-  bench('optimized (charCodeAt)', () => {
-    findLastClosingTagOptimized(chunk)
+  test('optimized (charCodeAt)', async ({ bench }) => {
+    await bench('optimized (charCodeAt)', () => {
+      findLastClosingTagOptimized(chunk)
+    }).run()
   })
 
-  bench('hybrid (lastIndexOf + validation)', () => {
-    findLastClosingTagHybrid(chunk)
+  test('hybrid (lastIndexOf + validation)', async ({ bench }) => {
+    await bench('hybrid (lastIndexOf + validation)', () => {
+      findLastClosingTagHybrid(chunk)
+    }).run()
   })
 })
 
 describe('Closing Tag Detection - Large Chunk (~13KB)', () => {
   const chunk = generateLargeChunk()
 
-  bench('regex', () => {
-    findLastClosingTagRegex(chunk)
+  test('regex', async ({ bench }) => {
+    await bench('regex', () => {
+      findLastClosingTagRegex(chunk)
+    }).run()
   })
 
-  bench('manual backwards scan', () => {
-    findLastClosingTagManual(chunk)
+  test('manual backwards scan', async ({ bench }) => {
+    await bench('manual backwards scan', () => {
+      findLastClosingTagManual(chunk)
+    }).run()
   })
 
-  bench('optimized (charCodeAt)', () => {
-    findLastClosingTagOptimized(chunk)
+  test('optimized (charCodeAt)', async ({ bench }) => {
+    await bench('optimized (charCodeAt)', () => {
+      findLastClosingTagOptimized(chunk)
+    }).run()
   })
 
-  bench('hybrid (lastIndexOf + validation)', () => {
-    findLastClosingTagHybrid(chunk)
+  test('hybrid (lastIndexOf + validation)', async ({ bench }) => {
+    await bench('hybrid (lastIndexOf + validation)', () => {
+      findLastClosingTagHybrid(chunk)
+    }).run()
   })
 })
 
 describe('Closing Tag Detection - Web Components', () => {
   const chunk = generateWebComponentChunk()
 
-  bench('regex', () => {
-    findLastClosingTagRegex(chunk)
+  test('regex', async ({ bench }) => {
+    await bench('regex', () => {
+      findLastClosingTagRegex(chunk)
+    }).run()
   })
 
-  bench('manual backwards scan', () => {
-    findLastClosingTagManual(chunk)
+  test('manual backwards scan', async ({ bench }) => {
+    await bench('manual backwards scan', () => {
+      findLastClosingTagManual(chunk)
+    }).run()
   })
 
-  bench('optimized (charCodeAt)', () => {
-    findLastClosingTagOptimized(chunk)
+  test('optimized (charCodeAt)', async ({ bench }) => {
+    await bench('optimized (charCodeAt)', () => {
+      findLastClosingTagOptimized(chunk)
+    }).run()
   })
 
-  bench('hybrid (lastIndexOf + validation)', () => {
-    findLastClosingTagHybrid(chunk)
+  test('hybrid (lastIndexOf + validation)', async ({ bench }) => {
+    await bench('hybrid (lastIndexOf + validation)', () => {
+      findLastClosingTagHybrid(chunk)
+    }).run()
   })
 })
 
 describe('Closing Tag Detection - No Closing Tags (worst case for regex)', () => {
   const chunk = generateNoClosingTagChunk()
 
-  bench('regex', () => {
-    findLastClosingTagRegex(chunk)
+  test('regex', async ({ bench }) => {
+    await bench('regex', () => {
+      findLastClosingTagRegex(chunk)
+    }).run()
   })
 
-  bench('manual backwards scan', () => {
-    findLastClosingTagManual(chunk)
+  test('manual backwards scan', async ({ bench }) => {
+    await bench('manual backwards scan', () => {
+      findLastClosingTagManual(chunk)
+    }).run()
   })
 
-  bench('optimized (charCodeAt)', () => {
-    findLastClosingTagOptimized(chunk)
+  test('optimized (charCodeAt)', async ({ bench }) => {
+    await bench('optimized (charCodeAt)', () => {
+      findLastClosingTagOptimized(chunk)
+    }).run()
   })
 
-  bench('hybrid (lastIndexOf + validation)', () => {
-    findLastClosingTagHybrid(chunk)
+  test('hybrid (lastIndexOf + validation)', async ({ bench }) => {
+    await bench('hybrid (lastIndexOf + validation)', () => {
+      findLastClosingTagHybrid(chunk)
+    }).run()
   })
 })
 
 describe('Closing Tag Detection - Nested React-like Structure', () => {
   const chunk = generateNestedChunk()
 
-  bench('regex', () => {
-    findLastClosingTagRegex(chunk)
+  test('regex', async ({ bench }) => {
+    await bench('regex', () => {
+      findLastClosingTagRegex(chunk)
+    }).run()
   })
 
-  bench('manual backwards scan', () => {
-    findLastClosingTagManual(chunk)
+  test('manual backwards scan', async ({ bench }) => {
+    await bench('manual backwards scan', () => {
+      findLastClosingTagManual(chunk)
+    }).run()
   })
 
-  bench('optimized (charCodeAt)', () => {
-    findLastClosingTagOptimized(chunk)
+  test('optimized (charCodeAt)', async ({ bench }) => {
+    await bench('optimized (charCodeAt)', () => {
+      findLastClosingTagOptimized(chunk)
+    }).run()
   })
 
-  bench('hybrid (lastIndexOf + validation)', () => {
-    findLastClosingTagHybrid(chunk)
+  test('hybrid (lastIndexOf + validation)', async ({ bench }) => {
+    await bench('hybrid (lastIndexOf + validation)', () => {
+      findLastClosingTagHybrid(chunk)
+    }).run()
   })
 })
 
 describe('Closing Tag Detection - Partial Chunk (streaming edge case)', () => {
   const chunk = generatePartialChunk()
 
-  bench('regex', () => {
-    findLastClosingTagRegex(chunk)
+  test('regex', async ({ bench }) => {
+    await bench('regex', () => {
+      findLastClosingTagRegex(chunk)
+    }).run()
   })
 
-  bench('manual backwards scan', () => {
-    findLastClosingTagManual(chunk)
+  test('manual backwards scan', async ({ bench }) => {
+    await bench('manual backwards scan', () => {
+      findLastClosingTagManual(chunk)
+    }).run()
   })
 
-  bench('optimized (charCodeAt)', () => {
-    findLastClosingTagOptimized(chunk)
+  test('optimized (charCodeAt)', async ({ bench }) => {
+    await bench('optimized (charCodeAt)', () => {
+      findLastClosingTagOptimized(chunk)
+    }).run()
   })
 
-  bench('hybrid (lastIndexOf + validation)', () => {
-    findLastClosingTagHybrid(chunk)
+  test('hybrid (lastIndexOf + validation)', async ({ bench }) => {
+    await bench('hybrid (lastIndexOf + validation)', () => {
+      findLastClosingTagHybrid(chunk)
+    }).run()
   })
 })
 
 function benchBodyEndTagDetection(name: string, chunk: string) {
   describe(`Body End Tag Detection - ${name}`, () => {
-    bench('forward charCodeAt', () => {
-      findBodyEndTagForward(chunk)
+    test('forward charCodeAt', async ({ bench }) => {
+      await bench('forward charCodeAt', () => {
+        findBodyEndTagForward(chunk)
+      }).run()
     })
 
-    bench('backward charCodeAt', () => {
-      findBodyEndTagBackward(chunk)
+    test('backward charCodeAt', async ({ bench }) => {
+      await bench('backward charCodeAt', () => {
+        findBodyEndTagBackward(chunk)
+      }).run()
     })
 
-    bench('lastIndexOf(</) candidates', () => {
-      findBodyEndTagLastOpenSlash(chunk)
+    test('lastIndexOf(</) candidates', async ({ bench }) => {
+      await bench('lastIndexOf(</) candidates', () => {
+        findBodyEndTagLastOpenSlash(chunk)
+      }).run()
     })
 
-    bench('native lowercase + lastIndexOf(</)', () => {
-      findBodyEndTagNativeLowerThenLastOpenSlash(chunk)
+    test('native lowercase + lastIndexOf(</)', async ({ bench }) => {
+      await bench('native lowercase + lastIndexOf(</)', () => {
+        findBodyEndTagNativeLowerThenLastOpenSlash(chunk)
+      }).run()
     })
 
-    bench('combined boundary scan', () => {
-      findHtmlBoundaryCombined(chunk).bodyEndIndex
+    test('combined boundary scan', async ({ bench }) => {
+      await bench('combined boundary scan', () => {
+        findHtmlBoundaryCombined(chunk).bodyEndIndex
+      }).run()
     })
   })
 }
 
 function benchBoundaryDetection(name: string, chunk: string) {
   describe(`HTML Boundary Detection - ${name}`, () => {
-    bench('current two-step forward body + last closing', () => {
-      const bodyEndIndex = findBodyEndTagForward(chunk)
-      if (bodyEndIndex === -1) {
-        findLastClosingTagOptimized(chunk)
-      }
+    test('current two-step forward body + last closing', async ({ bench }) => {
+      await bench('current two-step forward body + last closing', () => {
+        const bodyEndIndex = findBodyEndTagForward(chunk)
+        if (bodyEndIndex === -1) {
+          findLastClosingTagOptimized(chunk)
+        }
+      }).run()
     })
 
-    bench('lastIndexOf(</) body + last closing', () => {
-      const bodyEndIndex = findBodyEndTagLastOpenSlash(chunk)
-      if (bodyEndIndex === -1) {
-        findLastClosingTagOptimized(chunk)
-      }
+    test('lastIndexOf(</) body + last closing', async ({ bench }) => {
+      await bench('lastIndexOf(</) body + last closing', () => {
+        const bodyEndIndex = findBodyEndTagLastOpenSlash(chunk)
+        if (bodyEndIndex === -1) {
+          findLastClosingTagOptimized(chunk)
+        }
+      }).run()
     })
 
-    bench('native lowercase body + last closing', () => {
-      const bodyEndIndex = findBodyEndTagNativeLowerThenLastOpenSlash(chunk)
-      if (bodyEndIndex === -1) {
-        findLastClosingTagOptimized(chunk)
-      }
+    test('native lowercase body + last closing', async ({ bench }) => {
+      await bench('native lowercase body + last closing', () => {
+        const bodyEndIndex = findBodyEndTagNativeLowerThenLastOpenSlash(chunk)
+        if (bodyEndIndex === -1) {
+          findLastClosingTagOptimized(chunk)
+        }
+      }).run()
     })
 
-    bench('fused lastIndexOf(</) boundary scan', () => {
-      findHtmlBoundaryLastOpenSlash(chunk)
+    test('fused lastIndexOf(</) boundary scan', async ({ bench }) => {
+      await bench('fused lastIndexOf(</) boundary scan', () => {
+        findHtmlBoundaryLastOpenSlash(chunk)
+      }).run()
     })
 
-    bench('lazy fused lastIndexOf(</) boundary scan', () => {
-      findHtmlBoundaryLastOpenSlashLazy(chunk)
+    test('lazy fused lastIndexOf(</) boundary scan', async ({ bench }) => {
+      await bench('lazy fused lastIndexOf(</) boundary scan', () => {
+        findHtmlBoundaryLastOpenSlashLazy(chunk)
+      }).run()
     })
 
-    bench('lazy encoded lastIndexOf(</) boundary scan', () => {
-      findHtmlBoundaryLastOpenSlashLazyEncoded(chunk)
+    test('lazy encoded lastIndexOf(</) boundary scan', async ({ bench }) => {
+      await bench('lazy encoded lastIndexOf(</) boundary scan', () => {
+        findHtmlBoundaryLastOpenSlashLazyEncoded(chunk)
+      }).run()
     })
 
-    bench('combined boundary scan', () => {
-      findHtmlBoundaryCombined(chunk)
+    test('combined boundary scan', async ({ bench }) => {
+      await bench('combined boundary scan', () => {
+        findHtmlBoundaryCombined(chunk)
+      }).run()
     })
   })
 }

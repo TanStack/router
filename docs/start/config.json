@@ -36,6 +36,10 @@
             {
               "label": "Migrate from Next.js",
               "to": "framework/react/migrate-from-next-js"
+            },
+            {
+              "label": "Migrate from the Release Candidate",
+              "to": "framework/react/migrate-from-release-candidate"
             }
           ]
         },
@@ -53,6 +57,10 @@
             {
               "label": "Build from Scratch",
               "to": "framework/solid/build-from-scratch"
+            },
+            {
+              "label": "Migrate from the Release Candidate",
+              "to": "framework/solid/migrate-from-release-candidate"
             }
           ]
         }

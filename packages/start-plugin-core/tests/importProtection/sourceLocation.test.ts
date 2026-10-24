@@ -1,10 +1,14 @@
+import { transformWithOxc } from 'vite'
 import { describe, expect, test } from 'vitest'
 import {
   createImportSpecifierLocationIndex,
   ImportLocCache,
+  addTraceImportLocations,
   buildCodeSnippet,
   buildLineIndex,
+  findImportStatementLocationFromTransformed,
   findOriginalUsageLocation,
+  findPostCompileUsageLocation,
   getOrCreateOriginalTransformResult,
   normalizeSourceMap,
   pickOriginalCodeFromSourcesContent,
@@ -489,5 +493,103 @@ describe('ImportLocCache', () => {
     cache.clear()
     expect(cache.has('/a.ts::./x')).toBe(false)
     expect(cache.has('/b.ts::./y')).toBe(false)
+  })
+})
+
+describe('locations through a real source map', () => {
+  const file = '/root/src/page.tsx'
+  // Multi-byte characters before the import shift every generated column.
+  const original = `// ünïcödé 👨‍👩‍👧 comment
+import type { Shape } from './types'
+import { getSecret } from './secret.server'
+interface Props { shape: Shape }
+export const Page = ({ shape }: Props) => <div title="é">{getSecret(shape)}</div>
+`
+
+  const importLocation = {
+    file,
+    line: 3,
+    column: original.split('\n')[2]!.indexOf("'./secret.server'") + 1,
+  }
+
+  async function createProvider(): Promise<TransformResultProvider> {
+    const output = await transformWithOxc(original, file, {
+      jsx: 'preserve',
+      sourcemap: true,
+    })
+    const result: TransformResult = {
+      code: output.code,
+      map: {
+        ...output.map!,
+        file: undefined,
+        sourceRoot: '/root/',
+        sources: ['src/page.tsx'],
+        sourcesContent: [original],
+      },
+      originalCode: undefined,
+      filename: file,
+    }
+    return { getTransformResult: () => result }
+  }
+
+  function findSpecifier() {
+    const index = createImportSpecifierLocationIndex()
+    return (result: TransformResult, source: string) =>
+      index.find(result, source)
+  }
+
+  test('import and usage locations map back to the original source', async () => {
+    const provider = await createProvider()
+    expect(
+      await findImportStatementLocationFromTransformed(
+        provider,
+        file,
+        './secret.server',
+        new ImportLocCache(),
+        findSpecifier(),
+      ),
+    ).toEqual(importLocation)
+    const usageLine = original.split('\n')[4]!
+    const usage = { file, line: 5, column: usageLine.indexOf('getSecret(') + 1 }
+    expect(
+      await findPostCompileUsageLocation(provider, file, './secret.server'),
+    ).toEqual(usage)
+    expect(
+      findOriginalUsageLocation(
+        provider,
+        file,
+        './secret.server',
+        'client',
+        '/root',
+      ),
+    ).toEqual(usage)
+  })
+
+  test('trace steps that import a specifier get the original import line', async () => {
+    const provider = await createProvider()
+    const trace: Array<{
+      file: string
+      specifier?: string
+      line?: number
+      column?: number
+    }> = [
+      { file: '/root/src/entry.tsx' },
+      { file, specifier: './secret.server' },
+      // A second lookup of the same specifier exercises the cache-hit path.
+      { file, specifier: './secret.server' },
+      { file, specifier: './types', line: 1, column: 1 },
+    ]
+    await addTraceImportLocations(
+      provider,
+      trace,
+      new ImportLocCache(),
+      findSpecifier(),
+    )
+    expect(trace).toEqual([
+      { file: '/root/src/entry.tsx' },
+      { specifier: './secret.server', ...importLocation },
+      { specifier: './secret.server', ...importLocation },
+      { file, specifier: './types', line: 1, column: 1 },
+    ])
   })
 })

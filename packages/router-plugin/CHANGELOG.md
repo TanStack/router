@@ -1,5 +1,82 @@
 # @tanstack/router-plugin
 
+## 1.168.48
+
+### Patch Changes
+
+- [#8670](https://github.com/TanStack/router/pull/8670) [`32a3360`](https://github.com/TanStack/router/commit/32a3360cba0e0f884b3215813a48c63467f5a53c) - Reference agent skills in other packages by their `intent load` identifier (`@tanstack/<package>#<skill>`) instead of relative file links that break once packages are installed.
+
+- [#8737](https://github.com/TanStack/router/pull/8737) [`647cb73`](https://github.com/TanStack/router/commit/647cb737a5622813d276d6042766692ca5ae67ed) - Remove the `enableRouteGeneration` option. Route generation now always runs, so `autoCodeSplitting` always has the route metadata it needs.
+
+- Updated dependencies [[`32a3360`](https://github.com/TanStack/router/commit/32a3360cba0e0f884b3215813a48c63467f5a53c), [`689a7c5`](https://github.com/TanStack/router/commit/689a7c5419de68bce0aaaef72b9a36f115ea1398)]:
+  - @tanstack/react-router@1.170.46
+  - @tanstack/router-core@1.171.39
+  - @tanstack/router-generator@1.167.46
+
+## 1.168.47
+
+### Patch Changes
+
+- Updated dependencies [[`18154b1`](https://github.com/TanStack/router/commit/18154b1c45454a70aa77e9d6d27c8a6e0733d031)]:
+  - @tanstack/router-core@1.171.38
+  - @tanstack/react-router@1.170.45
+  - @tanstack/router-generator@1.167.45
+
+## 1.168.46
+
+### Patch Changes
+
+- Updated dependencies [[`923d98b`](https://github.com/TanStack/router/commit/923d98b18b6cd90b6219591e20e86115dc61048e)]:
+  - @tanstack/router-utils@1.162.4
+  - @tanstack/router-generator@1.167.44
+
+## 1.168.45
+
+### Patch Changes
+
+- Updated dependencies [[`d6ba115`](https://github.com/TanStack/router/commit/d6ba115d5751c75e20943f0062577cf17b446d82)]:
+  - @tanstack/router-core@1.171.37
+  - @tanstack/react-router@1.170.44
+  - @tanstack/router-generator@1.167.43
+
+## 1.168.44
+
+### Patch Changes
+
+- [#8655](https://github.com/TanStack/router/pull/8655) [`e66da18`](https://github.com/TanStack/router/commit/e66da18266859ab49e20a7b8c858232449ee5290) - Remove redundant string excludes from the reference code-splitter transform filter to avoid unnecessary glob compilation in unplugin bundler adapters.
+
+- Updated dependencies [[`57bd1a9`](https://github.com/TanStack/router/commit/57bd1a92f9839af5bf773c3b36d039569fb1a41e), [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5)]:
+  - @tanstack/router-generator@1.167.42
+  - @tanstack/router-core@1.171.36
+  - @tanstack/react-router@1.170.43
+
+## 1.168.43
+
+### Patch Changes
+
+- Updated dependencies [[`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`2413cc0`](https://github.com/TanStack/router/commit/2413cc009826fba4f97b166a35a8a50a4a8fe4bb), [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb), [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb), [`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`d35aab4`](https://github.com/TanStack/router/commit/d35aab425b07b46e222a507c0f0239644669757b), [`663282b`](https://github.com/TanStack/router/commit/663282b0ebbc494aee3595ed95867ee29d01938e)]:
+  - @tanstack/router-core@1.171.35
+  - @tanstack/react-router@1.170.42
+  - @tanstack/router-generator@1.167.41
+
+## 1.168.42
+
+### Patch Changes
+
+- Updated dependencies [[`60b8ad1`](https://github.com/TanStack/router/commit/60b8ad1ad00812bf966a8eeee6be238c37ddad74), [`614bc27`](https://github.com/TanStack/router/commit/614bc27034c8ec98747bf305ed41d4a619640949), [`d521abd`](https://github.com/TanStack/router/commit/d521abd71c69f1ff010bb3def4d417cb5fa058cb), [`ff66a03`](https://github.com/TanStack/router/commit/ff66a03df4816f44a48a4a37189fc4021b1c8480), [`863c8a7`](https://github.com/TanStack/router/commit/863c8a736b96746c56278a16c50554356f5523d1)]:
+  - @tanstack/react-router@1.170.41
+  - @tanstack/router-core@1.171.34
+  - @tanstack/router-generator@1.167.40
+
+## 1.168.41
+
+### Patch Changes
+
+- Updated dependencies [[`f5ffd38`](https://github.com/TanStack/router/commit/f5ffd3884ba26778a2a8ce53b379a5bded231676), [`488d046`](https://github.com/TanStack/router/commit/488d046a907d330429e2c807ef95326dad87480f), [`0c1b5e3`](https://github.com/TanStack/router/commit/0c1b5e38de71b7e81bbf1fd81c73ee0cd68ffe47), [`3cdd1af`](https://github.com/TanStack/router/commit/3cdd1af04b3e2d6f777797ee7bddf285318dd9d2)]:
+  - @tanstack/react-router@1.170.40
+  - @tanstack/router-core@1.171.33
+  - @tanstack/router-generator@1.167.39
+
 ## 1.168.40
 
 ### Patch Changes
