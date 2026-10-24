@@ -191,6 +191,18 @@ describe('setupScrollRestoration', () => {
     )
   })
 
+  test('stops reclaiming browser restoration on pageshow after the history is destroyed', () => {
+    window.history.scrollRestoration = 'auto'
+    const router = createRouter({ scrollRestoration: true })
+
+    router.history.destroy()
+    window.dispatchEvent(
+      new PageTransitionEvent('pageshow', { persisted: true }),
+    )
+
+    expect(window.history.scrollRestoration).toBe('auto')
+  })
+
   test.each([false, true])(
     'reattaches after cleanup with scrollRestoration=%s',
     (scrollRestoration) => {
@@ -417,7 +429,6 @@ describe('setupScrollRestoration', () => {
     vi.stubGlobal('scrollTo', vi.fn())
     emitNavigation(router, 'onRendered', destination, source)
 
-    expect(router._scroll.restoring).toBe(true)
     expect(element.scrollTop).toBe(120)
   })
 

@@ -1,5 +1,5 @@
 import { createMemoryHistory } from '@tanstack/history'
-import { bench, describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { BaseRootRoute, BaseRoute, setupScrollRestoration } from '../src'
 import { createTestRouter } from './routerTestUtils'
 
@@ -40,16 +40,14 @@ for (const scrollRestoration of [false, true, 'mixed'] as const) {
         expect(router.subscribers.size).toBe(0)
       }
 
-      bench(
-        'attach, repeat setup, and destroy',
-        () => {
+      test('attach, repeat setup, and destroy', async ({ bench }) => {
+        await bench('attach, repeat setup, and destroy', () => {
           // Batch lifecycle work so individual timer reads do not dominate it.
           for (let index = 0; index < 100; index++) {
             run()
           }
-        },
-        { time: 2_000 },
-      )
+        }).run({ time: 2_000 })
+      })
     })
   }
 }
@@ -90,6 +88,10 @@ for (const ownerCount of [1, 8]) {
       expect(router.subscribers.size).toBe(0)
     }
 
-    bench('replace shared history and return', replace, { time: 2_000 })
+    test('replace shared history and return', async ({ bench }) => {
+      await bench('replace shared history and return', replace).run({
+        time: 2_000,
+      })
+    })
   })
 }
