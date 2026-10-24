@@ -1,7 +1,14 @@
 import * as Vue from 'vue'
+import { isServer } from '@tanstack/router-core/isServer'
 import { Outlet } from './Match'
 import { ClientOnly } from './ClientOnly'
+import type { LazyRouteComponentHot } from '@tanstack/router-core'
 import type { AsyncRouteComponent } from './route'
+
+type VueLazyRouteComponentHot = LazyRouteComponentHot & {
+  version: Vue.ShallowRef<number>
+  read: () => any
+}
 
 // If the load fails due to module not found, it may mean a new version of
 // the build was deployed and the user's browser is still using an old version.
@@ -45,8 +52,15 @@ export function lazyRouteComponent<
     // Use existing promise or create new one
     if (!loadPromise) {
       error = undefined
-      loadPromise = importer()
-        .then((res) => {
+      const promise = (loadPromise = importer()
+        .then((res): any => {
+          // A hot update replaced this load: settle with the newer one.
+          if (
+            process.env.NODE_ENV !== 'production' &&
+            loadPromise !== promise
+          ) {
+            return loadPromise
+          }
           if (typeof document !== 'undefined') {
             loadPromise = undefined
             ;(lazyComp as any).preload = undefined
@@ -54,7 +68,13 @@ export function lazyRouteComponent<
           comp = res[exportName ?? 'default']
           return comp
         })
-        .catch((err) => {
+        .catch((err): any => {
+          if (
+            process.env.NODE_ENV !== 'production' &&
+            loadPromise !== promise
+          ) {
+            return loadPromise
+          }
           error = err
           loadPromise = undefined
 
@@ -64,7 +84,7 @@ export function lazyRouteComponent<
           }
 
           throw err
-        })
+        }))
     }
 
     return loadPromise
@@ -125,8 +145,18 @@ export function lazyRouteComponent<
 
       // Return a render function
       return () => {
+        let current = component.value
+        if (process.env.NODE_ENV !== 'production') {
+          const hot: VueLazyRouteComponentHot | undefined = (lazyComp as any)
+            .__tsrHot
+          // After a hot swap every instance renders the wrapper's component.
+          if (hot?.version.value) {
+            current = hot.read()
+          }
+        }
+
         // If we're still loading or don't have a component yet, use a suspense pattern
-        if (loading.value || !component.value) {
+        if (loading.value || !current) {
           return Vue.h('div', null) // Empty div while loading
         }
 
@@ -138,19 +168,79 @@ export function lazyRouteComponent<
               fallback: Vue.h(Outlet),
             },
             {
-              default: () => Vue.h(component.value, props),
+              default: () => Vue.h(current, props),
             },
           )
         }
 
         // Regular render with the loaded component
-        return Vue.h(component.value, props)
+        return Vue.h(current, props)
       }
     },
   })
 
   // Add preload method
   lazyComp.preload = load
+
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    !(isServer ?? typeof document === 'undefined')
+  ) {
+    // One ref per wrapper, shared by all of its instances.
+    const version = Vue.shallowRef(0)
+    const rerender = () => {
+      version.value++
+    }
+    const hot: VueLazyRouteComponentHot = {
+      get importer() {
+        return importer
+      },
+      get exportName() {
+        return exportName as string | undefined
+      },
+      version,
+      read: () => {
+        if (error) {
+          throw error
+        }
+        return comp ? Vue.markRaw(comp) : comp
+      },
+      update: (nextImporter, nextExportName, keep) => {
+        importer = nextImporter as () => Promise<T>
+        exportName = nextExportName as TKey | undefined
+        if (comp === null && loadPromise === undefined && !error) {
+          // Never loaded: the next render loads through the new importer.
+          return
+        }
+        const promise: Promise<any> = nextImporter().then(
+          (res) => {
+            if (loadPromise !== promise) {
+              return loadPromise
+            }
+            loadPromise = undefined
+            const next = res[nextExportName ?? 'default']
+            if (comp === null || !keep(next, comp)) {
+              comp = next
+              error = undefined
+              rerender()
+            }
+            return comp
+          },
+          (err) => {
+            if (loadPromise !== promise) {
+              return loadPromise
+            }
+            loadPromise = undefined
+            error = err
+            rerender()
+            return null
+          },
+        )
+        loadPromise = promise
+      },
+    }
+    ;(lazyComp as any).__tsrHot = hot
+  }
 
   return lazyComp as any
 }
