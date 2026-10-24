@@ -1,5 +1,4 @@
 import { HEADERS } from '@tanstack/start-server-core/constants'
-import { buildSitemap } from './build-sitemap'
 import type { Page, TanStackStartOutputConfig } from './schema'
 import type { PrerenderPageSink } from './prerender'
 
@@ -80,6 +79,7 @@ export async function postBuild({
   }
 
   if (startConfig.sitemap?.enabled) {
+    const { buildSitemap } = await import('./build-sitemap')
     await buildSitemap({
       startConfig,
       publicDir: adapter.getClientOutputDirectory(),
