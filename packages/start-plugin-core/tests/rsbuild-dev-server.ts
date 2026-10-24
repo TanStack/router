@@ -17,8 +17,8 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { pluginNames } from '@tanstack/compiler-test-utils/build-harness'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
-import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
 import { pluginReact } from '@rsbuild/plugin-react'
 import { onTestFinished } from 'vitest'
 import { startRuntimeLinks } from './build-harness'
@@ -37,26 +37,18 @@ const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 /**
  * Starts an Rsbuild dev server with Start's whole Rsbuild plugin
  * (`startRsbuildStartDevServer`) on an app of `files` (its entry
- * `src/entry.ts`), with Start's `importProtection` option and its
- * `serverFns.generateFunctionId` option when given: the import-protection
- * and server fn tests' shorthand of `start`.
+ * `src/entry.ts`), with Start's `importProtection` option when given: the
+ * import-protection tests' shorthand of `start`.
  */
 export function startRsbuildDevServer(
   options: Omit<RsbuildDevServerOptions, 'dir' | 'plugins'> & {
     importProtection?: TanStackStartInputConfig['importProtection']
-    /** Start's `serverFns.generateFunctionId` option. */
-    generateFunctionId?: NonNullable<
-      TanStackStartInputConfig['serverFns']
-    >['generateFunctionId']
   },
 ): Promise<RsbuildDevServer> {
-  const { importProtection, generateFunctionId, ...devServerOptions } = options
+  const { importProtection, ...devServerOptions } = options
   return startRsbuildStartDevServer({
     ...devServerOptions,
-    start: {
-      ...(importProtection && { importProtection }),
-      ...(generateFunctionId && { serverFns: { generateFunctionId } }),
-    },
+    start: { ...(importProtection && { importProtection }) },
   })
 }
 
@@ -170,12 +162,7 @@ export async function startRsbuildStartDevServer(
     registerCleanup: onTestFinished,
     ...devServerOptions,
     symlinks: {
-      ...startRuntimeLinks(),
-      ...(framework === 'solid' &&
-        workspacePackageLinks([
-          '@tanstack/solid-start',
-          '@tanstack/solid-router',
-        ])),
+      ...startRuntimeLinks(framework),
       ...devServerOptions.symlinks,
     },
     files: {
@@ -197,7 +184,8 @@ export const Route = createRootRoute()
       return [
         // A React app's own Rsbuild plugin, as in every React Start app,
         // unless the test gives it
-        ...(framework === 'react' && !hasPluginReact(devServerOptions.config)
+        ...(framework === 'react' &&
+        !pluginNames(devServerOptions.config?.plugins).includes('rsbuild:react')
           ? [pluginReact()]
           : []),
         tanstackStart(withHarnessEntries(root, start ?? {}, entries)),
@@ -205,19 +193,6 @@ export const Route = createRootRoute()
       ]
     },
   }).then((server) => withClientEntry(server, entry))
-}
-
-/** Whether an app's Rsbuild configuration has `pluginReact()`. */
-function hasPluginReact(config: RsbuildDevServerOptions['config']): boolean {
-  return (config?.plugins ?? [])
-    .flat(Infinity as 1)
-    .some(
-      (plugin) =>
-        !!plugin &&
-        typeof plugin === 'object' &&
-        'name' in plugin &&
-        plugin.name === 'rsbuild:react',
-    )
 }
 
 /**

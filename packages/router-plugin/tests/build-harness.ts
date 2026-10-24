@@ -31,6 +31,7 @@ import {
   createApp,
   describeBuild,
   parsedModules,
+  pluginNames,
   recordParsedModules,
   statsDiagnostics,
   statsMessages,
@@ -272,17 +273,6 @@ const routerPlugins: Record<Bundler, () => Promise<unknown>> = {
   esbuild: async () => (await import('../src/esbuild')).tanstackRouter,
 }
 
-/** The names of plugins (nested arrays of Vite plugins included). */
-function pluginNames(plugins: Array<unknown>): Array<string> {
-  return plugins
-    .flat(Infinity as 1)
-    .flatMap((plugin) =>
-      plugin && typeof plugin === 'object' && 'name' in plugin
-        ? [String(plugin.name)]
-        : [],
-    )
-}
-
 /**
  * A rule of webpack or Rspack compiling the app's TypeScript and JSX with
  * Babel (`babel-loader`): the TypeScript preset, then the framework's JSX
@@ -503,7 +493,7 @@ export async function buildWithRsbuild(
                 },
               },
               plugins: [
-                ...(pluginNames(options.rsbuildConfig?.plugins ?? []).includes(
+                ...(pluginNames(options.rsbuildConfig?.plugins).includes(
                   'rsbuild:react',
                 )
                   ? []

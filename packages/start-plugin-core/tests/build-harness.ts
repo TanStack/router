@@ -61,6 +61,7 @@ import {
   createApp,
   describeBuild,
   parsedModules,
+  pluginNames,
   recordParsedModules,
   recordViteModules,
   statsDiagnostics,
@@ -100,10 +101,18 @@ import type { InlineConfig, Plugin } from 'vite'
  * (`workspacePackageLinks`), so the app bundles and runs the built package
  * with its own export conditions. Its dependencies
  * (`@tanstack/start-client-core`, `@tanstack/start-server-core`, ...)
- * resolve from its real path, as in an installed app.
+ * resolve from its real path, as in an installed app. A Solid app also
+ * gets the built `@tanstack/solid-start` and `@tanstack/solid-router`.
  */
-export function startRuntimeLinks(): Record<string, string> {
-  return workspacePackageLinks(['@tanstack/react-start'])
+export function startRuntimeLinks(
+  framework: 'react' | 'solid' = 'react',
+): Record<string, string> {
+  return workspacePackageLinks([
+    '@tanstack/react-start',
+    ...(framework === 'solid'
+      ? ['@tanstack/solid-start', '@tanstack/solid-router']
+      : []),
+  ])
 }
 
 /** Creates the `startRuntimeLinks()` of an app made without `createApp`. */
@@ -445,12 +454,7 @@ export async function buildStart(
       ...files,
     },
     symlinks: {
-      ...startRuntimeLinks(),
-      ...(options.framework === 'solid' &&
-        workspacePackageLinks([
-          '@tanstack/solid-start',
-          '@tanstack/solid-router',
-        ])),
+      ...startRuntimeLinks(options.framework),
       ...options.symlinks,
     },
   })
@@ -787,7 +791,9 @@ async function buildWithVite(
             // A React app's own Vite plugin, as in every React Start app,
             // unless the test configures it
             ...(target.framework === 'react' &&
-            !hasReactPlugin(target.viteConfig?.plugins)
+            !pluginNames(target.viteConfig?.plugins).some((name) =>
+              name.startsWith('vite:react'),
+            )
               ? [react()]
               : []),
             outputPlugin,
@@ -824,35 +830,6 @@ type Onwarn = (
   warning: { message: string; code?: string },
   handler?: (warning: { message: string }) => void,
 ) => void
-
-/** Whether a test's Vite plugins include `@vitejs/plugin-react`. */
-function hasReactPlugin(plugins: InlineConfig['plugins']): boolean {
-  return (plugins ?? [])
-    .flat(Infinity as 1)
-    .some(
-      (plugin) =>
-        !!plugin &&
-        typeof plugin === 'object' &&
-        'name' in plugin &&
-        String(plugin.name).startsWith('vite:react'),
-    )
-}
-
-/** Whether a test's Rsbuild plugins include the plugin named `name`. */
-function hasRsbuildPlugin(
-  plugins: RsbuildConfig['plugins'],
-  name: string,
-): boolean {
-  return (plugins ?? [])
-    .flat(Infinity as 1)
-    .some(
-      (plugin) =>
-        !!plugin &&
-        typeof plugin === 'object' &&
-        'name' in plugin &&
-        plugin.name === name,
-    )
-}
 
 /**
  * Builds with Rsbuild. Compilation warnings go to `warnings` (per
@@ -948,7 +925,9 @@ async function buildWithRsbuild(
             // A React app's own Rsbuild plugin, as in every React Start app,
             // unless the test configures it
             ...(target.framework === 'react' &&
-            !hasRsbuildPlugin(target.rsbuildConfig?.plugins, 'rsbuild:react')
+            !pluginNames(target.rsbuildConfig?.plugins).includes(
+              'rsbuild:react',
+            )
               ? [pluginReact()]
               : []),
             startRsbuildPlugin(

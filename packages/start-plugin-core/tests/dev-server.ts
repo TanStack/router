@@ -16,8 +16,8 @@
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { pluginNames } from '@tanstack/compiler-test-utils/build-harness'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
-import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
 import react from '@vitejs/plugin-react'
 import { onTestFinished } from 'vitest'
 import { startRuntimeLinks } from './build-harness'
@@ -185,19 +185,6 @@ export function startPlugin(
   return startPlugins(framework, root, start, entries)
 }
 
-/** Whether an app's Vite plugins include `@vitejs/plugin-react`. */
-function hasReactPlugin(plugins: Array<PluginOption>): boolean {
-  return plugins
-    .flat(Infinity as 1)
-    .some(
-      (plugin) =>
-        !!plugin &&
-        typeof plugin === 'object' &&
-        'name' in plugin &&
-        String(plugin.name).startsWith('vite:react'),
-    )
-}
-
 /** Starts a Vite dev server with Start's plugin on an app of `files`. */
 export function startDevServer(
   options: StartDevServerOptions,
@@ -219,12 +206,7 @@ export function startDevServer(
       ...files,
     },
     symlinks: {
-      ...startRuntimeLinks(),
-      ...(framework === 'solid' &&
-        workspacePackageLinks([
-          '@tanstack/solid-start',
-          '@tanstack/solid-router',
-        ])),
+      ...startRuntimeLinks(framework),
       ...devServerOptions.symlinks,
     },
     plugins: ({ root }) => {
@@ -234,7 +216,8 @@ export function startDevServer(
         startPlugin(root, start, framework),
         // A React app's own Vite plugin, as in every React Start app,
         // unless the test gives it
-        ...(framework === 'react' && !hasReactPlugin(appPlugins)
+        ...(framework === 'react' &&
+        !pluginNames(appPlugins).some((name) => name.startsWith('vite:react'))
           ? [react()]
           : []),
         ...appPlugins,

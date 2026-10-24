@@ -17,10 +17,8 @@
  * and `expectPrinted`, only for the file and position it names (ruling
  * 2026-10-22).
  */
-import { readFileSync } from 'node:fs'
-import { createRequire } from 'node:module'
 import path from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import { expect, onTestFinished } from 'vitest'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
@@ -28,11 +26,13 @@ import {
   expectDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import {
-  workspacePackage,
-  workspacePackageLinks,
-} from '@tanstack/compiler-test-utils/workspace-packages'
+import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
 import { startDevServer } from '../dev-server'
+import {
+  rscDependency,
+  rscPluginFactory,
+  startPluginFactory,
+} from '../start-plugins'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import type { ImportProtectionOptions, ViolationInfo } from './public-types'
@@ -369,30 +369,10 @@ export async function startProtectedDevServer(
 }
 
 /**
- * The file a package's `package.json` exports for `subpath` (its `import`
- * condition), as Node resolves an app's import of it.
- */
-function exportedFile(root: string, subpath: string): string {
-  const manifest = JSON.parse(
-    readFileSync(path.join(root, 'package.json'), 'utf8'),
-  ) as {
-    exports: Record<string, string | { import?: unknown; default?: unknown }>
-  }
-  const entry = manifest.exports[subpath]!
-  const target =
-    typeof entry === 'string'
-      ? entry
-      : typeof entry.import === 'string'
-        ? entry.import
-        : ((entry.import as { default?: string } | undefined)?.default ??
-          (entry.default as string))
-  return path.join(root, target)
-}
-
-/**
  * Starts a Vite dev server on a React Start app with RSC enabled, the way
  * its `vite.config.ts` configures it: `tanstackStart({ rsc: { enabled:
- * true }, importProtection, router })` of the built
+ * true }, importProtection, router })` (Start's import protection with its
+ * defaults, recorded; router entry `src/entry.ts`) of the built
  * `@tanstack/react-start/plugin/vite`, Vite's RSC plugin
  * (`@vitejs/plugin-rsc`, as `@tanstack/react-start-rsc` installs it) and
  * `@vitejs/plugin-react`. Its server fn provider environment is `rsc`, a
@@ -402,24 +382,10 @@ function exportedFile(root: string, subpath: string): string {
  */
 export async function startRscProtectedDevServer(
   files: Record<string, string>,
-  importProtection: ImportProtectionOptions = {},
-  options: { router?: string } = {},
 ): Promise<ProtectedDevServer> {
-  const { router = 'src/entry.ts' } = options
-  const recorder = violationRecorder(importProtection)
-  const reactStart = workspacePackage('@tanstack/react-start')
-  const reactStartRsc = workspacePackage('@tanstack/react-start-rsc')
-  const rscPluginRoot = path.dirname(
-    createRequire(path.join(reactStartRsc, 'package.json')).resolve(
-      '@vitejs/plugin-rsc/package.json',
-    ),
-  )
-  const { tanstackStart } = (await import(
-    pathToFileURL(exportedFile(reactStart, './plugin/vite')).href
-  )) as { tanstackStart: (options?: Record<string, unknown>) => PluginOption }
-  const { default: rsc } = (await import(
-    pathToFileURL(exportedFile(rscPluginRoot, '.')).href
-  )) as { default: () => PluginOption }
+  const recorder = violationRecorder({})
+  const tanstackStart = await startPluginFactory('react')
+  const rsc = await rscPluginFactory()
   const server = await createDevServer({
     dir: path.dirname(path.dirname(fileURLToPath(import.meta.url))),
     prefix: '.start-rsc-dev-server-',
@@ -436,14 +402,14 @@ export const Route = createRootRoute()
         '@tanstack/react-start',
         '@tanstack/react-start-rsc',
       ]),
-      'node_modules/@vitejs/plugin-rsc': rscPluginRoot,
+      'node_modules/@vitejs/plugin-rsc': rscDependency('@vitejs/plugin-rsc'),
     },
     config: { appType: 'custom' },
     plugins: [
       tanstackStart({
         rsc: { enabled: true },
         importProtection: recorder.importProtection,
-        router: { entry: path.posix.relative('src', router) },
+        router: { entry: 'entry.ts' },
       }),
       rsc(),
       react(),

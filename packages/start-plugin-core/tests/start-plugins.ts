@@ -13,7 +13,8 @@
  * only those the app does not have itself (`src/client.*`, `src/server.*`):
  * Start then uses the app's own, as in any app.
  */
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { resolveModulePath } from 'exsolve'
@@ -145,4 +146,46 @@ export async function startRsbuildPlugin(
 ): Promise<RsbuildPlugin> {
   const tanstackStart = await startRsbuildPluginFactory(framework)
   return tanstackStart(withHarnessEntries(root, start, entries))
+}
+
+/**
+ * The file a package's `package.json` exports for `subpath` (its `import`
+ * condition), as Node resolves an app's import of it.
+ */
+function exportedFile(root: string, subpath: string): string {
+  const manifest = JSON.parse(
+    readFileSync(path.join(root, 'package.json'), 'utf8'),
+  ) as {
+    exports: Record<string, string | { import?: unknown; default?: unknown }>
+  }
+  const entry = manifest.exports[subpath]!
+  const target =
+    typeof entry === 'string'
+      ? entry
+      : typeof entry.import === 'string'
+        ? entry.import
+        : ((entry.import as { default?: string } | undefined)?.default ??
+          (entry.default as string))
+  return path.join(root, target)
+}
+
+/** A dependency of `@tanstack/react-start-rsc`, by its package root. */
+export function rscDependency(name: string): string {
+  const rscPackage = workspacePackage('@tanstack/react-start-rsc')
+  return path.dirname(
+    createRequire(path.join(rscPackage, 'package.json')).resolve(
+      `${name}/package.json`,
+    ),
+  )
+}
+
+/**
+ * Vite's RSC plugin (`@vitejs/plugin-rsc`, as `@tanstack/react-start-rsc`
+ * installs it).
+ */
+export async function rscPluginFactory(): Promise<() => PluginOption> {
+  const { default: rsc } = (await import(
+    pathToFileURL(exportedFile(rscDependency('@vitejs/plugin-rsc'), '.')).href
+  )) as { default: () => PluginOption }
+  return rsc
 }

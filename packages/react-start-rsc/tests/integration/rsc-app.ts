@@ -28,6 +28,7 @@ import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import {
   createApp,
+  pluginNames,
   withBuildEnvironment,
 } from '@tanstack/compiler-test-utils/build-harness'
 import { createBuilder, mergeConfig, preview } from 'vite'
@@ -301,15 +302,7 @@ export async function startRscRsbuildDevServer(
         },
       },
       plugins: [
-        ...((config?.plugins ?? [])
-          .flat(Infinity as 1)
-          .some(
-            (plugin) =>
-              !!plugin &&
-              typeof plugin === 'object' &&
-              'name' in plugin &&
-              plugin.name === 'rsbuild:react',
-          )
+        ...(pluginNames(config?.plugins).includes('rsbuild:react')
           ? []
           : [pluginReact()]),
         {

@@ -1927,6 +1927,19 @@ function errorMessage(error: unknown) {
   return stripAnsi(error instanceof Error ? error.message : String(error))
 }
 
+/** The names of plugins (nested arrays of Vite plugins included). */
+export function pluginNames(
+  plugins: ReadonlyArray<unknown> | undefined,
+): Array<string> {
+  return (plugins ?? [])
+    .flat(Infinity as 1)
+    .flatMap((plugin) =>
+      plugin && typeof plugin === 'object' && 'name' in plugin
+        ? [String(plugin.name)]
+        : [],
+    )
+}
+
 /** `text` without its terminal colour codes. */
 export function stripAnsi(text: string) {
   // eslint-disable-next-line no-control-regex
