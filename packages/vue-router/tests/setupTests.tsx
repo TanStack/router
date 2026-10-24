@@ -1,4 +1,3 @@
-import '@testing-library/jest-dom/vitest'
 import { vi } from 'vitest'
 
 // For @testing-library to work properly with Vue tests

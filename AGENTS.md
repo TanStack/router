@@ -9,8 +9,9 @@
 
 ## Build and test constraints
 
-- Regression coverage must establish a supported public trigger and observable failure. Tests that directly mutate internals do not establish that an application can reach the failing state.
-- Diagnostic counters and profiles may observe that supported path without changing its behavior. A diagnostic control proves only the measured mechanism; verify the final implementation through public behavior or the supported compiler-plugin boundary.
+- Start bug fixes with a failing regression test that uses only public APIs to reproduce and assert user- or developer-visible behavior. Do not manufacture bugs by mutating internals. Establish whether real usage can reach the failing state before adding runtime handling; simplify handling of states proven unreachable.
+- When removing an API, option, or behavior, delete its tests. Never add tests that assert the removed thing is gone, such as `not.toHaveProperty('oldName')`, a type error for the old call, or a runtime throw.
+- Diagnostic counters and profiles may observe a supported public path without changing its behavior. A diagnostic control proves only the measured mechanism; verify the final implementation through public behavior or the supported compiler-plugin boundary.
 - For asynchronous setup and cleanup, identify the authoritative state and lifetime before adding flags, timers, or completion callbacks. Preserve intentional ownership transfers and remove obsolete paths when replacing an implementation.
 - For suspected dependency issues, verify the upstream root cause, then propose an upstream fix to the user, including for other `@tanstack/*` packages. **Never implement a workaround in this repository unless the user explicitly authorizes it.**
 - Use Node from `.nvmrc` and pnpm from root `package.json`. Install at the root with `CI=1 pnpm install --frozen-lockfile`.

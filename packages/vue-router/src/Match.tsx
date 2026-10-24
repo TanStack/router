@@ -6,7 +6,7 @@ import { CatchBoundary } from './CatchBoundary'
 import { ClientOnly } from './ClientOnly'
 import { useRouter } from './useRouter'
 import { CatchNotFound } from './not-found'
-import { routeIdContext } from './matchContext'
+import { provideLinkLocation, routeIdContext } from './matchContext'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import {
@@ -37,6 +37,11 @@ export const Match = Vue.defineComponent({
     // Provide routeId context (stable string) for children.
     // MatchInner, Outlet, and useMatch all consume this.
     Vue.provide(routeIdContext, routeId)
+    // This match's links hold their location while a navigation leaves it.
+    // Server links read the live location.
+    if (!(isServer ?? router.isServer)) {
+      provideLinkLocation(router, routeId)
+    }
 
     return (): VNode => {
       const match = activeMatch.value

@@ -27,7 +27,7 @@ export function parseSearchWith(parser: (str: string) => any) {
   const isJsonParser = parser === JSON.parse
   return (searchStr: string): AnySchema => {
     if (searchStr[0] === '?') {
-      searchStr = searchStr.substring(1)
+      searchStr = searchStr.slice(1)
     }
 
     const query: Record<string, unknown> = decode(searchStr)
