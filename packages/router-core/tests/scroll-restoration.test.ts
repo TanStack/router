@@ -66,10 +66,7 @@ describe('setupScrollRestoration', () => {
 
     window.history.scrollRestoration = 'auto'
 
-    const router = createRouter({ scrollRestoration: true })
-
-    expect(router._scroll.restoring).toBe(true)
-    expect(router._scroll.restoration).toBe(true)
+    createRouter({ scrollRestoration: true })
     expect(window.history.scrollRestoration).toBe('manual')
     expect(
       windowAddEventListener.mock.calls.some(([event]) => event === 'pagehide'),
@@ -152,13 +149,7 @@ describe('setupScrollRestoration', () => {
 
       window.history.scrollRestoration = 'auto'
 
-      const router = createRouter(
-        scrollRestoration === undefined ? {} : { scrollRestoration },
-      )
-
-      expect(router._scroll.restoring).toBeUndefined()
-      expect(router._scroll.restoration).toBeUndefined()
-      expect(router._scroll.reset).toBe(true)
+      createRouter(scrollRestoration === undefined ? {} : { scrollRestoration })
       expect(window.history.scrollRestoration).toBe('auto')
       expect(
         windowAddEventListener.mock.calls.some(

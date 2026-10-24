@@ -1,5 +1,4 @@
 import React from 'react'
-import '@testing-library/jest-dom/vitest'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import combinate from 'combinate'
