@@ -22,13 +22,23 @@ Clause ids: `G1`–`G15` are cross-cutting rules, `J<job>.<n>` job clauses, `§5
 
 ## What is the oracle
 
-`test:unit` and `test:integration` of `@tanstack/compiler-test-utils` (the shared harness), `@tanstack/router-generator`,
-`@tanstack/router-plugin`, `@tanstack/start-plugin-core` and `@tanstack/react-start-rsc`.
+`test:unit` and `test:integration` of `@tanstack/router-generator`, `@tanstack/router-plugin`,
+`@tanstack/start-plugin-core` and `@tanstack/react-start-rsc`.
+
+Not the oracle: the tests of `@tanstack/compiler-test-utils` (the shared harness). They are controls of the harness.
 
 Not the oracle: `test:noncompiler` (start-plugin-core, react-start-rsc). It runs main's own tests of features that are
 not compilers (manifest, sitemap, prerender, RSC runtime, …), listed in each package's `tests/noncompiler-tests.json`.
 
 ## Running
+
+The whole oracle, one task at a time (about 5 minutes on 16 cores, builds included):
+
+```sh
+CI=1 NX_DAEMON=false pnpm nx run-many -t test:unit test:integration -p @tanstack/router-generator @tanstack/router-plugin @tanstack/start-plugin-core @tanstack/react-start-rsc --parallel=1 --outputStyle=stream --skipRemoteCache
+```
+
+One tier, one file, one test:
 
 ```sh
 CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-plugin:test:unit --outputStyle=stream --skipRemoteCache
@@ -38,9 +48,9 @@ CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-plugin:test:unit --outputStyle
 - Always go through Nx: it builds the dependencies first; Vitest alone can test a stale `dist`.
 - One Nx command at a time. Each run uses 4 workers (`--maxWorkers=<n>` after `--` overrides).
 - Never put `|` in a `-t` filter (Nx passes it through a shell).
-- Use `--skip-nx-cache` only when you measure time.
-- The time budgets (`../test-budgets.json`) hold only on a quiet machine. They are tight on 16 cores. Strict mode:
-  `COMPILER_TEST_BUDGETS=strict` (see [../AGENTS.md](../AGENTS.md)).
+- Use `--skip-nx-cache` only when you measure time or set a switch below (Nx's cache does not know them).
+- The time budgets (`../test-budgets.json`) are reported after each run, and fail nothing unless
+  `COMPILER_TEST_BUDGETS=strict` (see [../AGENTS.md](../AGENTS.md)). They hold only on a quiet machine.
 
 ## Reading results
 
@@ -50,6 +60,12 @@ CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-plugin:test:unit --outputStyle
   the test. A new compiler flips many pins at once.
 - Pins whose input uses a name today's compiler generates flip when your compiler generates other names. That is
   fine; the adaptive pins next to them are the real check.
+- `COMPILER_TESTS_PINS=run` runs every pin as an ordinary test (add `--skip-nx-cache`). The pins your compiler
+  fails are failures; the report after the run lists the pins it passes.
+- A few known bugs are marked by a small table of today's behaviour instead of `.fails`: `isKnownBug` in
+  `router-plugin/tests/integration/pages/code-splitter-module-state-bindings.test.ts`, `failsOn` in
+  `start-plugin-core/tests/integration/importProtection/known-bugs-dev.test.ts`, and `hotToday`/`brokenToday` in
+  `router-plugin/tests/integration/route-hmr-browser-frameworks.test.ts`. The switch covers them: every cell must pass.
 
 ## Free, and only a goal
 

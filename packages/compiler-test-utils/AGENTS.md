@@ -55,6 +55,8 @@ Package hosts build on these: router-plugin `tests/route-app.ts` (`loadRoute`), 
 CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-plugin:test:unit --outputStyle=stream --skipRemoteCache -- tests/code-splitter-scope.test.ts -t "unlike computed keys"
 ```
 
+- The whole oracle (this package's tests, the harness controls, are not part of it): the `nx run-many --parallel=1`
+  command of [oracle/README.md](oracle/README.md).
 - Always through Nx, one command at a time. A file path is a substring filter.
 - 4 workers by default (`maxWorkers` in each `vite.config.ts`).
 - No `|` inside `-t`; run one command per filter.
