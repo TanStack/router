@@ -33,9 +33,9 @@ export { declarationOf } from './validate-module'
 export const head = `import { createFileRoute } from '@tanstack/react-router'\n`
 
 /**
- * Compiles a route file with the default groupings into every module the code
- * splitter emits for it: `reference`, one `virtual <split>` chunk per grouping
- * and, when bindings are shared, `shared`.
+ * Compiles a route file (with the default groupings unless `groupings` is
+ * given) into every module the code splitter emits for it: `reference`, one
+ * `virtual <split>` chunk per grouping and, when bindings are shared, `shared`.
  */
 export function compileRouteModules(
   code: string,
@@ -44,14 +44,15 @@ export function compileRouteModules(
     targetFramework?: 'react' | 'solid'
     /** Compile with route HMR and the framework's HMR compiler plugins. */
     hmr?: boolean
+    groupings?: CodeSplitGroupings
   } = {},
 ) {
   const {
     filename = 'route.tsx',
     targetFramework = 'react',
     hmr = false,
+    groupings = defaultCodeSplitGroupings,
   } = options
-  const groupings = defaultCodeSplitGroupings
   const compilerPlugins = hmr
     ? getFrameworkHmrCompilerPlugins({ targetFramework })
     : undefined
