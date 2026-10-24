@@ -268,7 +268,9 @@ return globalThis.__inits === undefined ? [html] : [html, globalThis.__inits]`,
  * modules' requests on a real dev server (`?tsr-split=component` gives
  * `tsr-split`), else the file name of a request whose path is not the
  * route file's. Read from the requests a page makes (`loadRoute`), so the
- * probe follows the compiler's own id scheme.
+ * probe follows the compiler's own id scheme (assumed to hold the same
+ * names in a build), each name cut into the parts a directory name can
+ * hold (`virtual:tsr-split` gives `virtual` and `tsr-split`).
  */
 async function splitIdNames(route: string) {
   const loaded = await loadRoute(route, { filename: 'routes/index.tsx' })
@@ -291,7 +293,9 @@ async function splitIdNames(route: string) {
       )
     }
   }
-  return [...names].filter((name) => /^[\w.-]+$/.test(name))
+  return [
+    ...new Set([...names].flatMap((name) => name.match(/[\w.-]+/g) ?? [])),
+  ]
 }
 
 describe('app paths', () => {
@@ -334,7 +338,11 @@ describe('app paths', () => {
     'an app in a directory whose name contains what split module ids contain builds and preloads a split component',
     async () => {
       const names = await splitIdNames(route)
-      expect(names.length, 'names read from the split ids').toBeGreaterThan(0)
+      if (names.length === 0) {
+        // Nothing to probe: the pin passes, so vitest reports it (an
+        // expected failure must not come from the probe itself)
+        return
+      }
       for (const name of names) {
         expect(
           await buildAndRun(route, script, {

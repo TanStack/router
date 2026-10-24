@@ -510,10 +510,11 @@ describe('route factories', () => {
 `,
       { routeId: '/x' },
     )
-    // The input under test reaches the compiler as written (the generator
-    // leaves a route file whose path is right as it is).
-    expect(await route.host.dev.read('route.tsx')).toContain(
-      "createFileRoute ('/x')",
+    // The input under test reaches the compiler with its whitespace (the
+    // generator leaves a route file whose path is right as it is; the quote
+    // character of the path is the generator's, J1.2).
+    expect(await route.host.dev.read('route.tsx')).toMatch(
+      /createFileRoute \((['"`])\/x\1\)/,
     )
     expect(await route.isLazy('component')).toBe(true)
     expect(await route.run(`return render('component')`)).toBe('<p>spaced</p>')
