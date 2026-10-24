@@ -20,7 +20,7 @@ export default defineConfig(async () => {
 
   return {
     resolve: { tsconfigPaths: true },
-    experimental: viteBundledDev ? { bundledDev: true } : undefined,
+    experimental: { bundledDev: viteBundledDev },
     server: {
       port: 3000,
     },

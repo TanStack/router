@@ -9,6 +9,7 @@ If you don't create a history instance, a browser-oriented instance of this API 
 - `createBrowserHistory`: The default history type.
 - `createHashHistory`: A history type that uses a hash to track history.
 - `createMemoryHistory`: A history type that keeps the history in memory.
+- `createServerHistory`: A history type with a fixed request URL and no-op navigation, used by the SSR request handlers.
 
 Once you have a history instance, you can pass it to the `Router` constructor:
 

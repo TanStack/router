@@ -17,8 +17,6 @@ import type {
 import type { InlineCssTemplate } from './inlineCss'
 import type { NormalizedClientBuild, NormalizedClientChunk } from '../types'
 
-const VISITING_CHUNK = 1
-
 type RouteTreeRoute = {
   filePath?: string
   preloads?: Array<string>
@@ -40,7 +38,15 @@ interface ScannedClientChunks {
 interface ManifestAssetResolvers {
   getAssetPath: (fileName: string) => string
   getChunkPreloads: (chunk: NormalizedClientChunk) => Array<string>
+  getChunkCssAssets: (chunk: NormalizedClientChunk) => Array<ManifestCssLink>
   getStylesheetLink: (cssFile: string) => ManifestCssLink
+}
+
+interface StaticImportClosure {
+  /** File names reachable through static imports, in discovery order. */
+  fileNames: Array<string>
+  /** Chunks reachable through static imports, dependencies before importers. */
+  dependenciesFirst: Array<NormalizedClientChunk>
 }
 
 type DedupeRoute = {
@@ -265,7 +271,10 @@ export function buildStartManifest(options: {
   >
 }): StartManifest {
   const scannedChunks = scanClientChunks(options.clientBuild)
-  const assetResolvers = createManifestAssetResolvers(options.basePath)
+  const assetResolvers = createManifestAssetResolvers(
+    options.basePath,
+    scannedChunks.chunksByFileName,
+  )
 
   const routes = buildRouteManifestRoutes({
     routeTreeRoutes: options.routeTreeRoutes,
@@ -355,10 +364,16 @@ export function scanClientChunks(
 
 export function createManifestAssetResolvers(
   basePath: string,
+  chunksByFileName: ReadonlyMap<string, NormalizedClientChunk>,
 ): ManifestAssetResolvers {
   const assetPathByFileName = new Map<string, string>()
   const stylesheetLinkByFileName = new Map<string, ManifestCssLink>()
+  const closureByChunk = new Map<NormalizedClientChunk, StaticImportClosure>()
   const preloadsByChunk = new Map<NormalizedClientChunk, Array<string>>()
+  const cssAssetsByChunk = new Map<
+    NormalizedClientChunk,
+    Array<ManifestCssLink>
+  >()
 
   const getAssetPath = (fileName: string) => {
     const cachedPath = assetPathByFileName.get(fileName)
@@ -384,87 +399,100 @@ export function createManifestAssetResolvers(
     return link
   }
 
+  // One depth-first walk over the static import graph serves both preloads and
+  // stylesheets. `imports` lists direct imports only, so transitive chunks are
+  // only reached by walking the graph. The walk records the file names it
+  // discovers for preloads and the chunks in post-order so dependency CSS
+  // precedes importer CSS. Cycles are cut by the seen set, so every chunk in a
+  // cycle still sees the whole cycle from its own walk.
+  const getStaticImportClosure = (chunk: NormalizedClientChunk) => {
+    const cachedClosure = closureByChunk.get(chunk)
+    if (cachedClosure) {
+      return cachedClosure
+    }
+
+    const seen = new Set<string>([chunk.fileName])
+    const fileNames: Array<string> = []
+    const dependenciesFirst: Array<NormalizedClientChunk> = []
+    const stack: Array<{ chunk: NormalizedClientChunk; index: number }> = [
+      { chunk, index: 0 },
+    ]
+
+    while (stack.length > 0) {
+      const frame = stack[stack.length - 1]!
+
+      if (frame.index < frame.chunk.imports.length) {
+        const fileName = frame.chunk.imports[frame.index++]!
+        if (seen.has(fileName)) {
+          continue
+        }
+
+        seen.add(fileName)
+        fileNames.push(fileName)
+
+        const importedChunk = chunksByFileName.get(fileName)
+        if (importedChunk) {
+          stack.push({ chunk: importedChunk, index: 0 })
+        }
+        continue
+      }
+
+      stack.pop()
+      dependenciesFirst.push(frame.chunk)
+    }
+
+    const closure = { fileNames, dependenciesFirst }
+    closureByChunk.set(chunk, closure)
+    return closure
+  }
+
   const getChunkPreloads = (chunk: NormalizedClientChunk) => {
     const cachedPreloads = preloadsByChunk.get(chunk)
     if (cachedPreloads) {
       return cachedPreloads
     }
 
+    const { fileNames } = getStaticImportClosure(chunk)
     const preloads = [getAssetPath(chunk.fileName)]
 
-    for (let i = 0; i < chunk.imports.length; i++) {
-      preloads.push(getAssetPath(chunk.imports[i]!))
+    for (let i = 0; i < fileNames.length; i++) {
+      preloads.push(getAssetPath(fileNames[i]!))
     }
 
     preloadsByChunk.set(chunk, preloads)
     return preloads
   }
 
-  return {
-    getAssetPath,
-    getChunkPreloads,
-    getStylesheetLink,
-  }
-}
-
-export function createChunkCssAssetCollector(options: {
-  chunksByFileName: ReadonlyMap<string, NormalizedClientChunk>
-  getStylesheetLink: (cssFile: string) => ManifestCssLink
-}) {
-  const linksByChunk = new Map<NormalizedClientChunk, Array<ManifestCssLink>>()
-  const stateByChunk = new Map<NormalizedClientChunk, number>()
-
-  const appendAsset = (
-    links: Array<ManifestCssLink>,
-    seenLinks: Set<ManifestCssLink>,
-    link: ManifestCssLink,
-  ) => {
-    if (seenLinks.has(link)) {
-      return
-    }
-
-    seenLinks.add(link)
-    links.push(link)
-  }
-
-  const getChunkCssAssets = (
-    chunk: NormalizedClientChunk,
-  ): Array<ManifestCssLink> => {
-    const cachedLinks = linksByChunk.get(chunk)
+  const getChunkCssAssets = (chunk: NormalizedClientChunk) => {
+    const cachedLinks = cssAssetsByChunk.get(chunk)
     if (cachedLinks) {
       return cachedLinks
     }
 
-    if (stateByChunk.get(chunk) === VISITING_CHUNK) {
-      return []
-    }
-    stateByChunk.set(chunk, VISITING_CHUNK)
-
+    const { dependenciesFirst } = getStaticImportClosure(chunk)
     const links: Array<ManifestCssLink> = []
     const seenLinks = new Set<ManifestCssLink>()
 
-    for (let i = 0; i < chunk.imports.length; i++) {
-      const importedChunk = options.chunksByFileName.get(chunk.imports[i]!)
-      if (!importedChunk) {
-        continue
-      }
-
-      const importedLinks = getChunkCssAssets(importedChunk)
-      for (let j = 0; j < importedLinks.length; j++) {
-        appendAsset(links, seenLinks, importedLinks[j]!)
+    for (let i = 0; i < dependenciesFirst.length; i++) {
+      for (const cssFile of dependenciesFirst[i]!.css) {
+        const link = getStylesheetLink(cssFile)
+        if (!seenLinks.has(link)) {
+          seenLinks.add(link)
+          links.push(link)
+        }
       }
     }
 
-    for (const cssFile of chunk.css) {
-      appendAsset(links, seenLinks, options.getStylesheetLink(cssFile))
-    }
-
-    stateByChunk.delete(chunk)
-    linksByChunk.set(chunk, links)
+    cssAssetsByChunk.set(chunk, links)
     return links
   }
 
-  return { getChunkCssAssets }
+  return {
+    getAssetPath,
+    getChunkPreloads,
+    getChunkCssAssets,
+    getStylesheetLink,
+  }
 }
 
 function buildInlineCssManifestData(options: {
@@ -491,13 +519,12 @@ function buildInlineCssManifestData(options: {
     )
   }
 
-  const { getAssetPath } = createManifestAssetResolvers(options.basePath)
   const styles: Record<string, string> = {}
   let templates: Record<string, InlineCssTemplate> | undefined
   const missingHrefs = new Set(stylesheetHrefs)
 
   for (const [cssFile, css] of options.cssContentByFileName) {
-    const cssHref = getAssetPath(cssFile)
+    const cssHref = joinURL(options.basePath, cssFile)
     if (!stylesheetHrefs.has(cssHref)) {
       continue
     }
@@ -544,10 +571,7 @@ export function buildRouteManifestRoutes(options: {
   >
 }) {
   const routes: Record<string, RouteTreeRoute> = {}
-  const getChunkCssAssets = createChunkCssAssetCollector({
-    chunksByFileName: options.chunksByFileName,
-    getStylesheetLink: options.assetResolvers.getStylesheetLink,
-  }).getChunkCssAssets
+  const getChunkCssAssets = options.assetResolvers.getChunkCssAssets
 
   for (const [routeId, route] of Object.entries(options.routeTreeRoutes)) {
     if (!route.filePath) {

@@ -1,3 +1,4 @@
+import { defineComponent } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   cleanup,
@@ -51,11 +52,10 @@ export function validateSearchParams<
 function createTestRouter(
   options?: RouterOptions<AnyRoute, 'never', any, any, any>,
 ) {
-  const rootRoute = createRootRoute({
-    validateSearch: z.object({ root: z.string().optional() }),
-    component: () => {
+  const RootComponent = defineComponent({
+    setup() {
       const search = rootRoute.useSearch()
-      return (
+      return () => (
         <>
           <div data-testid="search-root">
             {search.value.root ?? '$undefined'}
@@ -64,6 +64,11 @@ function createTestRouter(
         </>
       )
     },
+  })
+
+  const rootRoute = createRootRoute({
+    validateSearch: z.object({ root: z.string().optional() }),
+    component: RootComponent,
   })
   const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: '/' })
   const usersRoute = createRoute({
@@ -164,13 +169,10 @@ function createTestRouter(
       f.FileRoute('/_protected/_fileBasedLayout/fileBasedParent/child'),
     ),
   )
-  const searchRoute = createRoute({
-    validateSearch: z.object({ search: z.string().optional() }),
-    getParentRoute: () => rootRoute,
-    path: 'search',
-    component: () => {
+  const SearchComponent = defineComponent({
+    setup() {
       const search = searchRoute.useSearch()
-      return (
+      return () => (
         <>
           <div data-testid="search-search">
             {search.value.search ?? '$undefined'}
@@ -178,6 +180,13 @@ function createTestRouter(
         </>
       )
     },
+  })
+
+  const searchRoute = createRoute({
+    validateSearch: z.object({ search: z.string().optional() }),
+    getParentRoute: () => rootRoute,
+    path: 'search',
+    component: SearchComponent,
   })
   const searchWithDefaultRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -223,16 +232,10 @@ function createTestRouter(
     },
   })
 
-  const searchWithDefaultCheckRoute = createRoute({
-    validateSearch: z.object({
-      default: z.string().default('d1'),
-      optional: z.string().optional(),
-    }),
-    getParentRoute: () => searchWithDefaultRoute,
-    path: 'check',
-    component: () => {
+  const SearchWithDefaultCheckComponent = defineComponent({
+    setup() {
       const search = searchWithDefaultCheckRoute.useSearch()
-      return (
+      return () => (
         <>
           <div data-testid="search-default">{search.value.default}</div>
           <div data-testid="search-optional">
@@ -241,6 +244,16 @@ function createTestRouter(
         </>
       )
     },
+  })
+
+  const searchWithDefaultCheckRoute = createRoute({
+    validateSearch: z.object({
+      default: z.string().default('d1'),
+      optional: z.string().optional(),
+    }),
+    getParentRoute: () => searchWithDefaultRoute,
+    path: 'check',
+    component: SearchWithDefaultCheckComponent,
   })
 
   const nestedSearchRoute = createRoute({
@@ -1659,11 +1672,10 @@ describe('does not strip search params if search validation fails', () => {
   })
 
   function getRouter() {
-    const rootRoute = createRootRoute({
-      validateSearch: z.object({ root: z.string() }),
-      component: () => {
+    const RootComponent = defineComponent({
+      setup() {
         const search = rootRoute.useSearch()
-        return (
+        return () => (
           <div>
             <div data-testid="search-root">
               {search.value.root ?? '$undefined'}
@@ -1673,13 +1685,15 @@ describe('does not strip search params if search validation fails', () => {
         )
       },
     })
-    const indexRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
-      validateSearch: z.object({ index: z.string() }),
-      component: () => {
+
+    const rootRoute = createRootRoute({
+      validateSearch: z.object({ root: z.string() }),
+      component: RootComponent,
+    })
+    const IndexComponent = defineComponent({
+      setup() {
         const search = rootRoute.useSearch()
-        return (
+        return () => (
           <>
             <div data-testid="search-index">
               {search.value.index ?? '$undefined'}
@@ -1688,6 +1702,13 @@ describe('does not strip search params if search validation fails', () => {
           </>
         )
       },
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      validateSearch: z.object({ index: z.string() }),
+      component: IndexComponent,
     })
 
     const routeTree = rootRoute.addChildren([indexRoute])

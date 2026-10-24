@@ -1,4 +1,3 @@
-import { isAbsoluteUrl } from './utils'
 import type { NavigateOptions } from './link'
 import type { AnyRouter, RegisteredRouter } from './router'
 
@@ -88,11 +87,11 @@ export interface RedirectFnRoute<in out TDefaultFrom extends string = string> {
  *
  * Use from route `loader`/`beforeLoad` or server functions to trigger a
  * navigation. If `throw: true` is set, the redirect is thrown instead of
- * returned. When an absolute `href` is supplied and `reloadDocument` is not
- * set, a full-document navigation is inferred.
+ * returned. External `href` values are classified as full-document
+ * navigations when the router resolves the redirect.
  *
  * @param opts Options for the redirect. Common fields:
- * - `href`: absolute URL for external redirects; infers `reloadDocument`.
+ * - `href`: absolute URL for external redirects.
  * - `statusCode`: HTTP status code to use (defaults to 307).
  * - `headers`: additional headers to include on the Response.
  * - Standard navigation options like `to`, `params`, `search`, `replace`,
@@ -110,14 +109,6 @@ export function redirect<
   opts: RedirectOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> {
   opts.statusCode = opts.statusCode || opts.code || 307
-
-  if (
-    !opts.reloadDocument &&
-    typeof opts.href === 'string' &&
-    isAbsoluteUrl(opts.href)
-  ) {
-    opts.reloadDocument = true
-  }
 
   const headers = new Headers(opts.headers)
   if (opts.href && headers.get('Location') === null) {
@@ -140,12 +131,10 @@ export function redirect<
 }
 
 /** Check whether a value is a TanStack Router redirect Response. */
-/** Check whether a value is a TanStack Router redirect Response. */
 export function isRedirect(obj: any): obj is AnyRedirect {
   return obj instanceof Response && !!(obj as any).options
 }
 
-/** True if value is a redirect with a resolved `href` location. */
 /** True if value is a redirect with a resolved `href` location. */
 export function isResolvedRedirect(
   obj: any,
@@ -153,7 +142,6 @@ export function isResolvedRedirect(
   return isRedirect(obj) && !!obj.options.href
 }
 
-/** Parse a serialized redirect object back into a redirect Response. */
 /** Parse a serialized redirect object back into a redirect Response. */
 export function parseRedirect(obj: any) {
   if (obj !== null && typeof obj === 'object' && obj.isSerializedRedirect) {

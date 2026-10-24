@@ -7,7 +7,7 @@ description: Use when working in this repository on JS bundle size, gzip regress
 
 ## Overview
 
-Optimize measured client bundles, not source text. The source of truth is `@benchmarks/bundle-size:build`, `benchmarks/bundle-size/results/current.json`, and emitted JS in `benchmarks/bundle-size/dist/`.
+Optimize measured client bundles, not source text. The source of truth is `@benchmarks/bundle-size:measure`, `benchmarks/bundle-size/results/current.json`, and emitted JS in `benchmarks/bundle-size/dist/`.
 Use `benchmark:bundle-size:run` for local iterations. It uses the same measurement script and builds the selected packages through Nx.
 
 ## Commands
@@ -147,3 +147,8 @@ Rolldown removes code only when unused and side-effect-free. Property reads may 
 - Skipping behavior or benchmark tests because the change is “only bundle size.”
 - Skipping hunk-level attribution and keeping changes only because the full candidate improved.
 - Trading runtime performance, security, readability, or maintainability for bytes.
+
+## Meta work
+
+If you need to work on the bundle size measurements / workflow themselves,
+read `benchmarks/bundle-size/README.md`

@@ -1,12 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
-import {
-  getDummyServerPort,
-  getTestServerPort,
-} from '@tanstack/router-e2e-utils'
-import packageJson from './package.json' with { type: 'json' }
+import { appServerReady } from '@tanstack/router-e2e-utils'
 
-const PORT = await getTestServerPort(packageJson.name)
-const EXTERNAL_PORT = await getDummyServerPort(packageJson.name)
+const PORT = Number(process.env.E2E_APP_PORT ?? 0)
 const baseURL = `http://localhost:${PORT}`
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -22,13 +17,10 @@ export default defineConfig({
     baseURL,
   },
 
-  globalSetup: './tests/setup/global.setup.ts',
-  globalTeardown: './tests/setup/global.teardown.ts',
-
   webServer: {
-    command: `VITE_NODE_ENV="test" VITE_SERVER_PORT=${PORT} VITE_EXTERNAL_PORT=${EXTERNAL_PORT} pnpm build && pnpm preview --port ${PORT}`,
-    url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    command: `pnpm build && pnpm preview --port ${PORT}`,
+    wait: appServerReady,
+    reuseExistingServer: false,
     stdout: 'pipe',
   },
 

@@ -8,7 +8,7 @@
     "build": "vite build && tsc --noEmit",
     "preview": "vite preview",
     "start": "tsx express-server.ts",
-    "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
+    "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
     "@tanstack/solid-router": "workspace:^",
@@ -25,7 +25,7 @@
     "@types/express": "^5.0.6",
     "@types/node": "^22.10.2",
     "cross-env": "^10.0.0",
-    "srvx": "^0.11.9",
+    "srvx": "^1.0.0",
     "tailwindcss": "^4.2.2",
     "tsx": "^4.20.3",
     "@typescript/native": "npm:typescript@^7.0.2",

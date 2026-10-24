@@ -13,6 +13,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as AnchorRouteImport } from './routes/anchor'
 import { Route as ComponentTypesTestRouteImport } from './routes/component-types-test'
+import { Route as DocumentNavigationRouteImport } from './routes/document-navigation'
+import { Route as DocumentNavigationTargetRouteImport } from './routes/document-navigation-target'
 import { Route as EditingARouteImport } from './routes/editing-a'
 import { Route as EditingBRouteImport } from './routes/editing-b'
 import { Route as FullpathTestRouteRouteImport } from './routes/fullpath-test/route'
@@ -150,6 +152,17 @@ const ComponentTypesTestRoute = ComponentTypesTestRouteImport.update({
   path: '/component-types-test',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DocumentNavigationRoute = DocumentNavigationRouteImport.update({
+  id: '/document-navigation',
+  path: '/document-navigation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocumentNavigationTargetRoute =
+  DocumentNavigationTargetRouteImport.update({
+    id: '/document-navigation-target',
+    path: '/document-navigation-target',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const EditingARoute = EditingARouteImport.update({
   id: '/editing-a',
   path: '/editing-a',
@@ -793,6 +806,8 @@ export interface FileRoutesByFullPath {
   '/대한민국': typeof Char45824Char54620Char48124Char44397RouteRouteWithChildren
   '/anchor': typeof AnchorRoute
   '/component-types-test': typeof ComponentTypesTestRoute
+  '/document-navigation': typeof DocumentNavigationRoute
+  '/document-navigation-target': typeof DocumentNavigationTargetRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
   '/history-blocking': typeof HistoryBlockingRoute
@@ -910,6 +925,8 @@ export interface FileRoutesByTo {
   '/대한민국': typeof Char45824Char54620Char48124Char44397RouteRouteWithChildren
   '/anchor': typeof AnchorRoute
   '/component-types-test': typeof ComponentTypesTestRoute
+  '/document-navigation': typeof DocumentNavigationRoute
+  '/document-navigation-target': typeof DocumentNavigationTargetRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
   '/history-blocking': typeof HistoryBlockingRoute
@@ -1019,6 +1036,8 @@ export interface FileRoutesById {
   '/_layout': typeof LayoutRouteWithChildren
   '/anchor': typeof AnchorRoute
   '/component-types-test': typeof ComponentTypesTestRoute
+  '/document-navigation': typeof DocumentNavigationRoute
+  '/document-navigation-target': typeof DocumentNavigationTargetRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
   '/history-blocking': typeof HistoryBlockingRoute
@@ -1143,6 +1162,8 @@ export interface FileRouteTypes {
     | '/대한민국'
     | '/anchor'
     | '/component-types-test'
+    | '/document-navigation'
+    | '/document-navigation-target'
     | '/editing-a'
     | '/editing-b'
     | '/history-blocking'
@@ -1260,6 +1281,8 @@ export interface FileRouteTypes {
     | '/대한민국'
     | '/anchor'
     | '/component-types-test'
+    | '/document-navigation'
+    | '/document-navigation-target'
     | '/editing-a'
     | '/editing-b'
     | '/history-blocking'
@@ -1368,6 +1391,8 @@ export interface FileRouteTypes {
     | '/_layout'
     | '/anchor'
     | '/component-types-test'
+    | '/document-navigation'
+    | '/document-navigation-target'
     | '/editing-a'
     | '/editing-b'
     | '/history-blocking'
@@ -1492,6 +1517,8 @@ export interface RootRouteChildren {
   LayoutRoute: typeof LayoutRouteWithChildren
   AnchorRoute: typeof AnchorRoute
   ComponentTypesTestRoute: typeof ComponentTypesTestRoute
+  DocumentNavigationRoute: typeof DocumentNavigationRoute
+  DocumentNavigationTargetRoute: typeof DocumentNavigationTargetRoute
   EditingARoute: typeof EditingARoute
   EditingBRoute: typeof EditingBRoute
   HistoryBlockingRoute: typeof HistoryBlockingRoute
@@ -1560,6 +1587,20 @@ declare module '@tanstack/react-router' {
       path: '/component-types-test'
       fullPath: '/component-types-test'
       preLoaderRoute: typeof ComponentTypesTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/document-navigation': {
+      id: '/document-navigation'
+      path: '/document-navigation'
+      fullPath: '/document-navigation'
+      preLoaderRoute: typeof DocumentNavigationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/document-navigation-target': {
+      id: '/document-navigation-target'
+      path: '/document-navigation-target'
+      fullPath: '/document-navigation-target'
+      preLoaderRoute: typeof DocumentNavigationTargetRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/editing-a': {
@@ -2898,6 +2939,8 @@ const rootRouteChildren: RootRouteChildren = {
   LayoutRoute: LayoutRouteWithChildren,
   AnchorRoute: AnchorRoute,
   ComponentTypesTestRoute: ComponentTypesTestRoute,
+  DocumentNavigationRoute: DocumentNavigationRoute,
+  DocumentNavigationTargetRoute: DocumentNavigationTargetRoute,
   EditingARoute: EditingARoute,
   EditingBRoute: EditingBRoute,
   HistoryBlockingRoute: HistoryBlockingRoute,

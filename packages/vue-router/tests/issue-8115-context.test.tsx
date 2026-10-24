@@ -51,20 +51,10 @@ test('invalidate merges fresh parent beforeLoad context with cached child contex
     },
     component: Outlet,
   })
-  const childRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/',
-    context: ({ context }) => {
-      childContextCalls++
-      return {
-        childSnapshotOfParent: context.parentGeneration,
-        collision: `child-snapshot-${context.parentGeneration}`,
-      }
-    },
-    component: () => {
+  const ChildComponent = Vue.defineComponent({
+    setup() {
       const context = childRoute.useRouteContext()
-
-      return (
+      return () => (
         <div>
           <div data-testid="parent-generation">
             {context.value.parentGeneration}
@@ -76,6 +66,19 @@ test('invalidate merges fresh parent beforeLoad context with cached child contex
         </div>
       )
     },
+  })
+
+  const childRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    context: ({ context }) => {
+      childContextCalls++
+      return {
+        childSnapshotOfParent: context.parentGeneration,
+        collision: `child-snapshot-${context.parentGeneration}`,
+      }
+    },
+    component: ChildComponent,
   })
   const router = createRouter({
     routeTree: rootRoute.addChildren([childRoute]),
@@ -116,6 +119,31 @@ test('a same-id child beforeLoad error observes fresh inherited context', async 
     beforeLoad: () => ({ generation: ++parentGeneration }),
     component: Outlet,
   })
+  const ChildComponent = Vue.defineComponent({
+    setup() {
+      const context = childRoute.useRouteContext()
+      return () => (
+        <div data-testid="child-generation">{context.value.generation}</div>
+      )
+    },
+  })
+
+  const ChildErrorComponent = Vue.defineComponent({
+    props: ['error'],
+    setup(props) {
+      const context = childRoute.useRouteContext()
+
+      return () => {
+        renderedError = props.error
+        return (
+          <div data-testid="child-error-generation">
+            {context.value.generation}
+          </div>
+        )
+      }
+    },
+  })
+
   const childRoute = createRoute({
     getParentRoute: () => parentRoute,
     path: '/child',
@@ -125,22 +153,8 @@ test('a same-id child beforeLoad error observes fresh inherited context', async 
         throw childError
       }
     },
-    component: () => {
-      const context = childRoute.useRouteContext()
-      return (
-        <div data-testid="child-generation">{context.value.generation}</div>
-      )
-    },
-    errorComponent: ({ error }) => {
-      renderedError = error
-      const context = childRoute.useRouteContext()
-
-      return (
-        <div data-testid="child-error-generation">
-          {context.value.generation}
-        </div>
-      )
-    },
+    component: ChildComponent,
+    errorComponent: ChildErrorComponent,
   })
   const router = createRouter({
     routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
@@ -183,6 +197,15 @@ test('a same-match reload merges new provider context with cached route context'
     collision: 'provider:B',
   }
   const rootRoute = createRootRouteWithContext<ProviderContext>()()
+  const IndexComponent = Vue.defineComponent({
+    setup() {
+      const context = indexRoute.useRouteContext()
+      return () => (
+        <pre data-testid="full-context">{JSON.stringify(context.value)}</pre>
+      )
+    },
+  })
+
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
@@ -190,12 +213,7 @@ test('a same-match reload merges new provider context with cached route context'
       derivedFromProvider: `derived:${context.providerValue}`,
       collision: `route-cached:${context.providerValue}`,
     }),
-    component: () => {
-      const context = indexRoute.useRouteContext()
-      return (
-        <pre data-testid="full-context">{JSON.stringify(context.value)}</pre>
-      )
-    },
+    component: IndexComponent,
   })
   const router = createRouter({
     routeTree: rootRoute.addChildren([indexRoute]),
@@ -254,6 +272,20 @@ test('navigation merges fresh parent context with cached child preload context',
     },
     component: Outlet,
   })
+  const ChildComponent = Vue.defineComponent({
+    setup() {
+      const context = childRoute.useRouteContext()
+      return () => (
+        <div data-testid="context">
+          {JSON.stringify({
+            parentValue: context.value.parentValue,
+            childValue: context.value.childValue,
+          })}
+        </div>
+      )
+    },
+  })
+
   const childRoute = createRoute({
     getParentRoute: () => parentRoute,
     path: '/child',
@@ -268,17 +300,7 @@ test('navigation merges fresh parent context with cached child preload context',
       return 'child data'
     },
     preloadStaleTime: Infinity,
-    component: () => {
-      const context = childRoute.useRouteContext()
-      return (
-        <div data-testid="context">
-          {JSON.stringify({
-            parentValue: context.value.parentValue,
-            childValue: context.value.childValue,
-          })}
-        </div>
-      )
-    },
+    component: ChildComponent,
   })
   const router = createRouter({
     routeTree: rootRoute.addChildren([
@@ -321,6 +343,18 @@ test('a cached child context contribution is merged with fresh parent context', 
     context: ({ deps }) => ({ parentVersion: `version-${deps.version}` }),
     component: Outlet,
   })
+  const ChildComponent = Vue.defineComponent({
+    setup() {
+      const context = childRoute.useRouteContext()
+      return () => (
+        <div>
+          Parent: {context.value.parentVersion}; cached child:{' '}
+          {context.value.childSnapshot}
+        </div>
+      )
+    },
+  })
+
   const childRoute = createRoute({
     getParentRoute: () => parentRoute,
     path: '/child',
@@ -328,15 +362,7 @@ test('a cached child context contribution is merged with fresh parent context', 
     context: ({ context }) => ({
       childSnapshot: `derived-from-${context.parentVersion}`,
     }),
-    component: () => {
-      const context = childRoute.useRouteContext()
-      return (
-        <div>
-          Parent: {context.value.parentVersion}; cached child:{' '}
-          {context.value.childSnapshot}
-        </div>
-      )
-    },
+    component: ChildComponent,
   })
   const router = createRouter({
     routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
@@ -399,6 +425,25 @@ test('#8115: hydration does not render a successful route with missing context w
         </>
       ),
     })
+    const IndexComponent = Vue.defineComponent({
+      setup() {
+        const context = indexRoute.useRouteContext({
+          select: (routeContext): { locale?: string } => routeContext,
+        })
+        return () => {
+          if (!serverPhase) {
+            clientSuccessRenderValues.push(context.value.locale)
+          }
+
+          return (
+            <div data-testid="route-success">
+              Locale: {context.value.locale ?? 'missing'}
+            </div>
+          )
+        }
+      },
+    })
+
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
@@ -409,19 +454,7 @@ test('#8115: hydration does not render a successful route with missing context w
         clientContextAttempts++
         throw contextError
       },
-      component: () => {
-        const context = indexRoute.useRouteContext({
-          select: (routeContext): { locale?: string } => routeContext,
-        })
-        if (!serverPhase) {
-          clientSuccessRenderValues.push(context.value.locale)
-        }
-        return (
-          <div data-testid="route-success">
-            Locale: {context.value.locale ?? 'missing'}
-          </div>
-        )
-      },
+      component: IndexComponent,
       errorComponent: ({ error }) => (
         <div data-testid="route-error">
           {error instanceof Error ? error.message : String(error)}
@@ -544,13 +577,10 @@ test('a same-id child retry presents one coherent beforeLoad context generation'
   let childLoads = 0
 
   const rootRoute = createRootRoute({ component: Outlet })
-  const parentRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/parent',
-    beforeLoad: () => ({ generation: ++parentGeneration }),
-    component: () => {
+  const ParentComponent = Vue.defineComponent({
+    setup() {
       const context = parentRoute.useRouteContext()
-      return (
+      return () => (
         <div>
           <div data-testid="parent-generation">
             Parent generation {context.value.generation}
@@ -560,6 +590,35 @@ test('a same-id child retry presents one coherent beforeLoad context generation'
       )
     },
   })
+
+  const parentRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/parent',
+    beforeLoad: () => ({ generation: ++parentGeneration }),
+    component: ParentComponent,
+  })
+  const ChildPendingComponent = Vue.defineComponent({
+    setup() {
+      const context = childRoute.useRouteContext()
+      return () => (
+        <div data-testid="child-pending-generation">
+          Child generation {context.value.inheritedGeneration}
+        </div>
+      )
+    },
+  })
+
+  const ChildComponent = Vue.defineComponent({
+    setup() {
+      const context = childRoute.useRouteContext()
+      return () => (
+        <div data-testid="child-generation">
+          Child generation {context.value.inheritedGeneration}
+        </div>
+      )
+    },
+  })
+
   const childRoute = createRoute({
     getParentRoute: () => parentRoute,
     path: '/child',
@@ -574,22 +633,8 @@ test('a same-id child retry presents one coherent beforeLoad context generation'
     },
     pendingMs: 0,
     pendingMinMs: 0,
-    pendingComponent: () => {
-      const context = childRoute.useRouteContext()
-      return (
-        <div data-testid="child-pending-generation">
-          Child generation {context.value.inheritedGeneration}
-        </div>
-      )
-    },
-    component: () => {
-      const context = childRoute.useRouteContext()
-      return (
-        <div data-testid="child-generation">
-          Child generation {context.value.inheritedGeneration}
-        </div>
-      )
-    },
+    pendingComponent: ChildPendingComponent,
+    component: ChildComponent,
   })
   const router = createRouter({
     routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
@@ -654,19 +699,16 @@ test('a same-id navigation merges new inherited context with cached route contex
       inheritedRevision: location.state.issue8115Revision,
     }),
   })
-  const indexRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/',
-    context: ({ location }) => ({
-      selfRevision: location.state.issue8115Revision,
-    }),
-    component: () => {
+  const IndexComponent = Vue.defineComponent({
+    setup() {
       const location = useLocation()
-      const context = indexRoute.useRouteContext()
-      const matchId = indexRoute.useMatch({ select: (match) => match.id })
-      const navigate = indexRoute.useNavigate()
 
-      return (
+      const context = indexRoute.useRouteContext()
+
+      const matchId = indexRoute.useMatch({ select: (match) => match.id })
+
+      const navigate = indexRoute.useNavigate()
+      return () => (
         <>
           <output data-testid="match-id">{matchId.value}</output>
           <output data-testid="snapshot">
@@ -687,6 +729,15 @@ test('a same-id navigation merges new inherited context with cached route contex
         </>
       )
     },
+  })
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    context: ({ location }) => ({
+      selfRevision: location.state.issue8115Revision,
+    }),
+    component: IndexComponent,
   })
   const router = createRouter({
     routeTree: rootRoute.addChildren([indexRoute]),
@@ -717,20 +768,27 @@ test('#8115: a successful root never renders without its context while a child i
   })
   const rootRenderValues: Array<string | undefined> = []
 
+  const RootComponent = Vue.defineComponent({
+    setup() {
+      const context = rootRoute.useRouteContext()
+      return () => {
+        const locale = context.value.locale
+
+        rootRenderValues.push(locale)
+
+        return (
+          <main>
+            <p data-testid="root-locale">Locale: {locale ?? 'missing'}</p>
+            <Outlet />
+          </main>
+        )
+      }
+    },
+  })
+
   const rootRoute = createRootRoute({
     context: () => ({ locale: 'en' }),
-    component: () => {
-      const context = rootRoute.useRouteContext()
-      const locale = context.value.locale
-      rootRenderValues.push(locale)
-
-      return (
-        <main>
-          <p data-testid="root-locale">Locale: {locale ?? 'missing'}</p>
-          <Outlet />
-        </main>
-      )
-    },
+    component: RootComponent,
   })
   const childRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -771,19 +829,14 @@ test('a same-id search navigation merges fresh inherited context with cached rou
     context: ({ deps }) => ({ inheritedRevision: deps.revision }),
     component: Outlet,
   })
-  const childRoute = createRoute({
-    getParentRoute: () => parentRoute,
-    path: '/child',
-    loaderDeps: () => ({}),
-    context: ({ context, location }) => ({
-      cachedSelfRevision: `${context.inheritedRevision}:${String((location.search as Record<string, unknown>).revision)}`,
-    }),
-    component: () => {
+  const ChildComponent = Vue.defineComponent({
+    setup() {
       const context = childRoute.useRouteContext()
-      const search = childRoute.useSearch()
-      const matchId = childRoute.useMatch({ select: (match) => match.id })
 
-      return (
+      const search = childRoute.useSearch()
+
+      const matchId = childRoute.useMatch({ select: (match) => match.id })
+      return () => (
         <>
           <div data-testid="match-id">{matchId.value}</div>
           <div data-testid="current-search">{search.value.revision}</div>
@@ -796,6 +849,16 @@ test('a same-id search navigation merges fresh inherited context with cached rou
         </>
       )
     },
+  })
+
+  const childRoute = createRoute({
+    getParentRoute: () => parentRoute,
+    path: '/child',
+    loaderDeps: () => ({}),
+    context: ({ context, location }) => ({
+      cachedSelfRevision: `${context.inheritedRevision}:${String((location.search as Record<string, unknown>).revision)}`,
+    }),
+    component: ChildComponent,
   })
   const router = createRouter({
     routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),

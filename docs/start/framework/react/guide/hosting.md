@@ -1,6 +1,7 @@
 ---
 id: hosting
 title: Hosting
+description: Deploy TanStack Start with Vite or Rsbuild using hosting guides for Cloudflare, Netlify, Railway, Vercel, Node.js, and other runtimes.
 ---
 
 Hosting is the process of deploying your application to the internet so that users can access it. This is a critical part of any web development project, ensuring your application is available to the world. TanStack Start supports Vite and Rsbuild, giving you flexible build outputs for different hosting providers and runtimes.
@@ -474,7 +475,7 @@ In your Appwrite project, navigate to the **Sites** page from the sidebar. Click
 3. Confirm the build settings:
    - **Install command:** `npm install`
    - **Build command:** `npm run build`
-   - **Output directory:** `./dist` (if you're using Nitro v2 or v3, this should be `./.output`)
+   - **Output directory:** `./dist` (if you're using Nitro, this should be `./.output`)
 
 4. Add any required **environment variables**
 5. Click **Deploy**

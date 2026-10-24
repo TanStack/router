@@ -11,26 +11,28 @@ const scriptPath = fileURLToPath(new URL('./run.mjs', import.meta.url))
 const measurePath = fileURLToPath(new URL('./measure.mjs', import.meta.url))
 
 /** @param {string} filePath */
-function writeCurrent(filePath, gzipBytes = 100) {
+function writeCurrent(
+  filePath,
+  gzipBytes = 100,
+  ids = ['react-router.minimal'],
+) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true })
   fs.writeFileSync(
     filePath,
     JSON.stringify({
-      metrics: [
-        {
-          id: 'react-router.minimal',
-          gzipBytes,
-          initialGzipBytes: gzipBytes,
-          rawBytes: gzipBytes * 3,
-          brotliBytes: gzipBytes - 10,
-        },
-      ],
+      metrics: ids.map((id) => ({
+        id,
+        gzipBytes,
+        initialGzipBytes: gzipBytes,
+        rawBytes: gzipBytes * 3,
+        brotliBytes: gzipBytes - 10,
+      })),
     }),
   )
 }
 
 /** @param {import('node:test').TestContext} t */
-function fixture(t) {
+function fixture(t, measuredIds = ['react-router.minimal']) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bundle-runner-'))
   t.after(() => fs.rmSync(root, { recursive: true, force: true }))
   /** @type {Array<{command: string, args: string[], options: import('./run.mjs').CommandOptions}>} */
@@ -52,7 +54,7 @@ function fixture(t) {
     if (args[0] === measurePath) {
       const outputDir = args[args.indexOf('--results-dir') + 1]
       assert.ok(outputDir)
-      writeCurrent(path.join(outputDir, 'current.json'), 90)
+      writeCurrent(path.join(outputDir, 'current.json'), 90, measuredIds)
     }
     if (options.stdio !== 'inherit') {
       fs.writeSync(options.stdio[1], 'noisy stdout\n')
@@ -114,6 +116,7 @@ test('runs targeted tests before measurement and saves named results and logs', 
   assert.equal(measure.args[0], measurePath)
   assert.ok(measure.args.includes('react-router.minimal,react-router.full'))
   assert.ok(!measure.args.includes('--skip-package-builds'))
+  assert.ok(!measure.args.includes('--timings'))
   assert.ok(!measure.args.includes('tests/path.test.ts'))
   for (const { options } of calls) {
     assert.equal(options.env.CI, '1')
@@ -167,6 +170,7 @@ test('accepts an external baseline and forwards measurement options', (t) => {
         path.join(root, 'dist with spaces'),
         '--analysis',
         '--sourcemap',
+        '--timings',
         '--skip-package-builds',
       ],
       execute,
@@ -178,9 +182,142 @@ test('accepts an external baseline and forwards measurement options', (t) => {
     path.join(root, 'dist with spaces'),
     '--analysis',
     '--sourcemap',
+    '--timings',
     '--skip-package-builds',
   ])
+  assert.ok(calls.slice(1).every(({ args }) => !args.includes('--timings')))
   assert.match(reports.join(''), /100 -> 90 \(-10\)/)
+})
+
+test('targeted comparisons omit unrequested scenarios from a broader baseline', async (t) => {
+  for (const [
+    scenario,
+    measuredIds,
+  ] of /** @type {Array<[string, string[]]>} */ ([
+    ['react-router.minimal', ['react-router.minimal']],
+    ['react-router-minimal', ['react-router.minimal']],
+    [
+      ' solid-router.minimal, react-router.minimal ',
+      ['solid-router.minimal', 'react-router.minimal'],
+    ],
+  ])) {
+    await t.test(scenario, (t) => {
+      const { root, reports, execute } = fixture(t, measuredIds)
+      writeCurrent(path.join(root, 'runs/baseline/current.json'), 100, [
+        'react-router.full',
+        'react-router.minimal',
+        'solid-router.minimal',
+      ])
+
+      assert.equal(
+        run(
+          [
+            '--results-dir',
+            root,
+            '--baseline',
+            'baseline',
+            '--scenario',
+            scenario,
+          ],
+          execute,
+        ),
+        0,
+      )
+      assert.equal(
+        reports.join(''),
+        [...measuredIds]
+          .sort()
+          .map((id) => `${id} 100 -> 90 (-10) initial=-10 raw=-30 brotli=-10\n`)
+          .join(''),
+      )
+    })
+  }
+})
+
+test('targeted comparisons keep measured scenarios missing from the baseline', (t) => {
+  const { root, reports, execute } = fixture(t)
+  writeCurrent(path.join(root, 'runs/baseline/current.json'), 100, [
+    'react-router.full',
+  ])
+
+  assert.equal(
+    run(
+      [
+        '--results-dir',
+        root,
+        '--baseline',
+        'baseline',
+        '--scenario',
+        'react-router.minimal',
+      ],
+      execute,
+    ),
+    0,
+  )
+  assert.equal(
+    reports.join(''),
+    'react-router.minimal n/a -> 90 (n/a) initial=n/a raw=n/a brotli=n/a\n',
+  )
+})
+
+test('unfiltered comparisons retain baseline-only scenarios', (t) => {
+  const { root, reports, execute } = fixture(t)
+  writeCurrent(path.join(root, 'runs/baseline/current.json'), 100, [
+    'react-router.full',
+  ])
+
+  assert.equal(
+    run(['--results-dir', root, '--baseline', 'baseline'], execute),
+    0,
+  )
+  assert.equal(
+    reports.join(''),
+    'react-router.full 100 -> n/a (n/a) initial=n/a raw=n/a brotli=n/a\n' +
+      'react-router.minimal n/a -> 90 (n/a) initial=n/a raw=n/a brotli=n/a\n',
+  )
+})
+
+test('current-only diffs filter JSON output and preserve explicit ID selection', (t) => {
+  const { root } = fixture(t)
+  const baseline = path.join(root, 'baseline.json')
+  const current = path.join(root, 'current.json')
+  writeCurrent(baseline, 100, ['react-router.full', 'react-router.minimal'])
+  writeCurrent(current, 90, ['solid-router.minimal', 'react-router.minimal'])
+  const args = [
+    fileURLToPath(new URL('./diff.mjs', import.meta.url)),
+    '--baseline',
+    baseline,
+    '--current',
+    current,
+    '--current-only',
+    '--json',
+  ]
+  const result = spawnSync(process.execPath, args, { encoding: 'utf8' })
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(JSON.parse(result.stdout), [
+    {
+      id: 'react-router.minimal',
+      baseline: 100,
+      current: 90,
+      delta: -10,
+      initialDelta: -10,
+      rawDelta: -30,
+      brotliDelta: -10,
+    },
+    { id: 'solid-router.minimal', current: 90 },
+  ])
+
+  const selected = spawnSync(
+    process.execPath,
+    [...args, '--id', 'react-router.full'],
+    {
+      encoding: 'utf8',
+    },
+  )
+  assert.equal(selected.status, 0, selected.stderr)
+  assert.deepEqual(JSON.parse(selected.stdout), [
+    { id: 'react-router.full', baseline: 100 },
+  ])
 })
 
 test('stops on test failure, preserves its exit code, and prints only a bounded log tail', (t) => {
@@ -285,6 +422,10 @@ test('reports help and argument errors through the CLI entry point', () => {
   })
   assert.equal(help.status, 0)
   assert.match(help.stdout, /Usage: pnpm benchmark:bundle-size:run/)
+  assert.match(
+    help.stdout,
+    /--timings\s+Record fresh phase timings in measure\.log/,
+  )
   const invalid = spawnSync(process.execPath, [scriptPath, '--unknown'], {
     encoding: 'utf8',
   })

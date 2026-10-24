@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "start": "node .output/server/index.mjs",
     "prisma-generate": "prisma generate",
-    "test:e2e": "exit 0; rm -rf port*.txt; pnpm run prisma-generate && playwright test --project=chromium"
+    "test:e2e": "exit 0; pnpm run prisma-generate && playwright test --project=chromium"
   },
   "dependencies": {
     "@libsql/client": "^0.15.15",
@@ -19,6 +19,7 @@
     "@tanstack/react-router": "workspace:^",
     "@tanstack/react-router-devtools": "workspace:^",
     "@tanstack/react-start": "workspace:^",
+    "iron-session": "^9.0.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "catalog:",

@@ -446,11 +446,14 @@ test('#8115: hydration does not render a successful route with missing context w
     expect(serverRouter.state.matches.at(-1)?.status).toBe('success')
 
     await serverRouter.serverSsr!.dehydrate()
-    const script = serverRouter.serverSsr!.takeBufferedScripts()
-    expect(script?.children).toBeTruthy()
-    currentScriptSpy.mockReturnValue(document.createElement('script'))
-    // This script comes exclusively from the router's production SSR serializer.
-    new Function(script!.children!)()
+    const scripts = serverRouter.serverSsr!.takeInitialHydrationScriptTags()
+    expect(scripts?.before.length).toBeGreaterThan(0)
+    // These scripts come exclusively from the router's production SSR serializer.
+    for (const script of scripts!.before) {
+      expect(script.children).toBeTruthy()
+      currentScriptSpy.mockReturnValue(document.createElement('script'))
+      new Function(script.children!)()
+    }
   } finally {
     currentScriptSpy.mockRestore()
     serverRouter.serverSsr?.cleanup()

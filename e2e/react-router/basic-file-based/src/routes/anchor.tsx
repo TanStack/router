@@ -25,6 +25,10 @@ const anchors: Array<{
     title: 'Smooth Scroll',
     hashScrollIntoView: { behavior: 'smooth' },
   },
+  {
+    id: '/\\section',
+    title: 'Fragment with slashes',
+  },
 ] as const
 
 function AnchorSection({ id, title }: { id: string; title: string }) {

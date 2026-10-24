@@ -1,4 +1,4 @@
 function component() {
-  return <div>lowercase function declaration</div>;
+  return <div>lowercase function declaration</div>
 }
-export { component };
+export { component }

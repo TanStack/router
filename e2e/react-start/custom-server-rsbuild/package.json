@@ -10,7 +10,7 @@
     "start": "tsx express-server.ts",
     "test:e2e:dev": "cross-env MODE=dev playwright test --project=chromium",
     "test:e2e:prod": "cross-env MODE=prod playwright test --project=chromium",
-    "test:e2e": "rm -rf port*.txt && pnpm run test:e2e:dev && pnpm run test:e2e:prod"
+    "test:e2e": "pnpm run test:e2e:dev && pnpm run test:e2e:prod"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",
@@ -30,7 +30,7 @@
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "cross-env": "^10.0.0",
-    "srvx": "^0.11.9",
+    "srvx": "^1.0.0",
     "tailwindcss": "^4.2.2",
     "tsx": "^4.20.3",
     "@typescript/native": "npm:typescript@^7.0.2",

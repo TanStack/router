@@ -60,7 +60,9 @@ To implement non-streaming SSR with TanStack Router, you will need the following
 
 ### Automatic Server History
 
-On the client, Router defaults to using an instance of `createBrowserHistory`, which is the preferred type of history to use on the client. On the server, however, you will want to use an instance of `createMemoryHistory` instead. This is because `createBrowserHistory` uses the `window` object, which does not exist on the server. This is handled automatically for you in the RouterServer component.
+On the client, Router defaults to using an instance of `createBrowserHistory`. On the server, the Router SSR request handler and TanStack Start automatically create a lightweight history containing only the request URL. This history does not keep a navigation stack or respond to `push`, `replace`, `go`, `back`, or `forward` calls.
+
+Server-side calls to `router.navigate()` and `router.commitLocation()` are also no-ops: their promises resolve without changing the request location or running another load. To redirect a request, use the dedicated [redirect API](../api/router/redirectFunction.md), such as `throw redirect({ to: '/login' })` in `beforeLoad` or a loader.
 
 ### Automatic Loader Dehydration/Hydration
 
@@ -155,6 +157,8 @@ export async function render({ request }: { request: Request }) {
 <!-- ::end:framework -->
 
 using `renderRouterToString`
+
+React and Solid use their native synchronous string renderers. Suspended components render their Suspense fallback without waiting for the component to resolve. The router still finishes serializing hydration data before returning the response. Use `renderRouterToStream` when you need the server to render suspended content after it resolves.
 
 <!-- ::start:framework -->
 
@@ -257,6 +261,9 @@ This pattern can be useful for pages that have slow or high-latency data fetchin
 
 > [!NOTE]
 > This streaming pattern is all automatic as long as you are using either `defaultStreamHandler` or `renderRouterToStream`.
+
+> [!IMPORTANT]
+> Render [`<Scripts />`](./document-head-management.md#scripts) inside `<body>` of your root route. It emits the route scripts and marks where the router inserts streamed hydration data. Without it the response still completes, but the page cannot hydrate.
 
 using `defaultStreamHandler`
 
