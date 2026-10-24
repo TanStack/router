@@ -50,13 +50,8 @@ export interface RouterDevServerOptions extends Omit<
    * read them from `tsr.config.json`).
    */
   pluginOptions?: Partial<Config> | null
-  /**
-   * Other Vite plugins, after the router plugin (e.g. a framework plugin),
-   * or a function of the app root returning them.
-   */
-  plugins?:
-    | Array<PluginOption>
-    | ((app: { root: string }) => Array<PluginOption>)
+  /** Other Vite plugins, after the router plugin (e.g. a framework plugin). */
+  plugins?: Array<PluginOption>
 }
 
 /**
@@ -278,7 +273,7 @@ export function routerDevServer(
       'routes/__root.tsx': rootRouteOf(pluginOptions?.target),
       ...files,
     },
-    plugins: (app) => [
+    plugins: () => [
       tanstackRouter(
         pluginOptions === null
           ? {}
@@ -290,7 +285,7 @@ export function routerDevServer(
               ...pluginOptions,
             },
       ),
-      ...(typeof plugins === 'function' ? plugins(app) : plugins),
+      ...plugins,
     ],
   })
 }

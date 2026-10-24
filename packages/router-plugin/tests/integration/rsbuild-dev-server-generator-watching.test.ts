@@ -17,7 +17,7 @@ import {
   expectVirtualSubtreeEdit,
 } from '../generator-dev-scenarios'
 
-describeGeneratorWatching('rsbuild', { pinVirtualConfigEdits: true })
+describeGeneratorWatching('rsbuild')
 
 // Bug: an edit of the file `virtualRouteConfig` names never reaches the
 // live routes. On Rspack the file is not a module of the bundle, so the

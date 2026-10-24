@@ -180,24 +180,20 @@ export function routeApp(
  * splitting on, HMR off; `pluginOptions` overrides these. `files` holds the
  * routes and the entry (see `routeApp`). `routerPlugins` creates the router
  * plugins from the harness's plugin options instead of the bundler's
- * `tanstackRouter` (e.g. other entry points); `extraPlugins` creates more
- * plugins of the bundler, after the router plugins and the framework's. A
- * framework plugin of Vite that `routerPlugins` or `extraPlugins` already
- * give (by its name) is not added again.
+ * `tanstackRouter` (e.g. other entry points). A framework plugin of Vite
+ * that `routerPlugins` already gives (by its name) is not added again.
  */
 export async function build(
   options: Omit<BundleOptions, 'dir'> & {
     pluginOptions?: RouterPluginOptions
     framework?: Framework
     routerPlugins?: (config: RouterPluginOptions) => Array<unknown>
-    extraPlugins?: (app: AppInfo) => Array<unknown>
   },
 ): Promise<BuildResult> {
   const {
     pluginOptions = {},
     framework = 'react',
     routerPlugins: createRouterPlugins,
-    extraPlugins,
     ...bundleOptions
   } = options
   const tanstackRouter = (await routerPlugins[options.bundler]()) as (
@@ -231,8 +227,7 @@ export async function build(
           },
         }
         const router = createRouterPlugins?.(config) ?? [tanstackRouter(config)]
-        const extra = extraPlugins?.(app) ?? []
-        const given = pluginNames([...router, ...extra])
+        const given = pluginNames(router)
         const all = [
           ...router,
           ...frameworkBuild
@@ -241,7 +236,6 @@ export async function build(
               (plugin) =>
                 !pluginNames([plugin]).some((name) => given.includes(name)),
             ),
-          ...extra,
         ]
         if (all.length === 1) {
           return all[0]
@@ -558,8 +552,7 @@ export type CodeSplitGroupings = NonNullable<
  * `entry`.
  *
  * A production Vite SSR build, without minification. The app's
- * `package.json` declares no side-effect hint unless `sideEffects` gives
- * one, like an app's.
+ * `package.json` declares no side-effect hint, like an app's.
  */
 export async function buildAndRun(
   route: string,
@@ -568,14 +561,12 @@ export async function buildAndRun(
     files?: Record<string, string>
     groupings?: CodeSplitGroupings
     prefix?: string
-    sideEffects?: boolean
   } = {},
 ) {
   const app = await build({
     bundler: 'vite',
     env: 'ssr',
     minify: false,
-    sideEffects: options.sideEffects,
     prefix: options.prefix ?? '.regression-build-',
     files: routeApp(route, { files: options.files }),
     pluginOptions: options.groupings && {

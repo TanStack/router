@@ -16,7 +16,7 @@ import {
   expectVirtualSubtreeEdit,
 } from '../generator-dev-scenarios'
 
-describeGeneratorWatching('vite', { pinVirtualConfigEdits: true })
+describeGeneratorWatching('vite')
 
 // Bug: an edit of the file `virtualRouteConfig` names (path form, as the
 // docs configure it: './routes.ts') never reaches the live routes: the

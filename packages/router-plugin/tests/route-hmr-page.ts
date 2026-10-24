@@ -41,6 +41,7 @@ import {
   diagnosticsOf,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
+import { trackRequests } from '@tanstack/compiler-test-utils/hmr-sync'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import { tanstackRouter as tanstackRouterRspack } from '../src/rspack'
@@ -56,29 +57,29 @@ import type { TargetFramework } from './route-app'
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 
 /**
- * How the app mounts the router into `#app`, per framework, with the router
- * options `ROUTER_OPTIONS` stands for. The app keeps its own reference to its
- * router (`window.__APP_ROUTER__`), which tests read.
+ * How the app mounts the router into `#app`, per framework. The app keeps
+ * its own reference to its router (`window.__APP_ROUTER__`), which tests
+ * read.
  */
 const mains: Record<TargetFramework, string> = {
   react: `import { createRoot } from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
-const router = createRouter({ routeTree, ROUTER_OPTIONS })
+const router = createRouter({ routeTree })
 ;(window as any).__APP_ROUTER__ = router
 createRoot(document.getElementById('app')!).render(<RouterProvider router={router} />)
 `,
   solid: `import { render } from 'solid-js/web'
 import { RouterProvider, createRouter } from '@tanstack/solid-router'
 import { routeTree } from './routeTree.gen'
-const router = createRouter({ routeTree, ROUTER_OPTIONS })
+const router = createRouter({ routeTree })
 ;(window as any).__APP_ROUTER__ = router
 render(() => <RouterProvider router={router} />, document.getElementById('app')!)
 `,
   vue: `import { createApp } from 'vue'
 import { RouterProvider, createRouter } from '@tanstack/vue-router'
 import { routeTree } from './routeTree.gen'
-const router = createRouter({ routeTree, ROUTER_OPTIONS })
+const router = createRouter({ routeTree })
 ;(window as any).__APP_ROUTER__ = router
 createApp({ setup: () => () => <RouterProvider router={router} /> }).mount('#app')
 `,
@@ -165,21 +166,8 @@ export interface RouteHmrPageOptions {
    * an entry mounting the router into `#app`.
    */
   files: Record<string, string>
-  /**
-   * More options of the app's router, as source (e.g. `defaultErrorComponent:
-   * () => null`), in the default `main.tsx`.
-   */
-  routerOptions?: string
-  /**
-   * More plugins of the dev server, after the router and framework plugins
-   * (e.g. a test plugin emitting a diagnostic through the bundler's own
-   * channel): Vite plugins with Vite, Rsbuild plugins with Rsbuild.
-   */
-  plugins?: { vite?: Array<PluginOption>; rsbuild?: Array<RsbuildPlugin> }
   /** Text the app shows once it rendered. */
   ready: string | RegExp
-  /** How long the app may take to show `ready` (default 15 s). */
-  readyTimeout?: number
   /**
    * Registers the cleanup (closing the page and the dev server) to run when
    * the test ends. Default: vitest's `onTestFinished`; a concurrent test
@@ -215,8 +203,7 @@ export interface RouteHmrPage {
    * the edit's outcome (`waitForOutcome`): the app shows `expected` and
    * neither the dev server (transforms) nor the page (requests, a reload)
    * has work in flight, twice in a row; returns whether the page reloaded
-   * meanwhile and what it logged. One overall bound, `timeout` (default
-   * 15 s): how many updates or client events the edit takes is the
+   * meanwhile and what it logged. One overall bound (15 s): how many updates or client events the edit takes is the
    * compiler's business (a full reload shows `expected` once the page
    * loaded again). An edit that leaves the page without `expected` while
    * neither has anything of it in flight for 3 s (`editQuietFailure`) has
@@ -225,7 +212,6 @@ export interface RouteHmrPage {
   edit: (
     files: Record<string, string | null>,
     expected: string | RegExp,
-    options?: { timeout?: number },
   ) => Promise<EditResult>
   /**
    * Runs `script` in the page (e.g. reads the app's live router,
@@ -367,10 +353,7 @@ export async function openRouteHmrPage(
   const target = options.target ?? 'react'
   const bundler = options.bundler ?? 'vite'
   const files = {
-    'main.tsx': mains[target].replace(
-      'ROUTER_OPTIONS',
-      options.routerOptions ?? '',
-    ),
+    'main.tsx': mains[target],
     'routes/__root.tsx': `import { createRootRoute } from '@tanstack/${target}-router'
 export const Route = createRootRoute({})
 `,
@@ -397,10 +380,7 @@ export const Route = createRootRoute({})
     const opened = await openPage(started.url, {
       registerCleanup: options.onTestFinished ?? onTestFinished,
     })
-    await opened.waitForText(options.ready, {
-      selector: '#app',
-      timeout: options.readyTimeout,
-    })
+    await opened.waitForText(options.ready, { selector: '#app' })
     await started.idle()
     return { server: started, page: opened }
   })()
@@ -417,18 +397,7 @@ export const Route = createRootRoute({})
    * The page's requests in flight: module and hot-update fetches, and the
    * document of a full reload.
    */
-  const pageRequests = new Set<unknown>()
-  page.page.on('request', (request) => pageRequests.add(request))
-  page.page.on('requestfinished', (request) => pageRequests.delete(request))
-  page.page.on('requestfailed', (request) => pageRequests.delete(request))
-  // A new document (a full reload) ends the old one: its requests in flight
-  // end with it, whether or not the browser reports them as finished or
-  // failed (the new document's own requests come after)
-  page.page.on('framenavigated', (frame) => {
-    if (frame === page.page.mainFrame()) {
-      pageRequests.clear()
-    }
-  })
+  const pageRequests = trackRequests(page)
 
   const matches = (expected: string | RegExp, current: string) =>
     typeof expected === 'string'
@@ -450,9 +419,9 @@ export const Route = createRootRoute({})
     click: async (selector) => {
       await page.page.locator(selector).first().click()
     },
-    edit: (edited, expected, editOptions = {}) =>
+    edit: (edited, expected) =>
       (async () => {
-        const timeout = editOptions.timeout ?? defaultEditTimeout
+        const timeout = defaultEditTimeout
         const start = {
           loads: page.loads(),
           errors: page.errors.length,
@@ -479,7 +448,7 @@ export const Route = createRootRoute({})
           applied: async () => matches(expected, await text()),
           quiet: async () => {
             await server.idle()
-            return pageRequests.size === 0
+            return pageRequests() === 0
           },
           describe: async () =>
             `edit of ${files}\n${describe(expected, await text())}`,
@@ -554,7 +523,6 @@ async function viteServer(
       ...(options.frameworkPlugin === false
         ? []
         : [frameworkVitePlugins[target]()]),
-      ...(options.plugins?.vite ?? []),
     ],
   })
   const fullReloads = () =>
@@ -606,7 +574,6 @@ async function rsbuildServer(
           })
         },
       } satisfies RsbuildPlugin,
-      ...(options.plugins?.rsbuild ?? []),
     ],
   })
   return {
@@ -627,13 +594,6 @@ async function rsbuildServer(
 }
 
 /**
- * A statement for the body of a React component (with `useState` in scope)
- * that counts the component's mounts under `name` (`mountsOf`): a state
- * initializer, which React runs when it mounts the component only. React
- * Refresh keeps the state of a component it patches in place, so a body
- * edit it patches mounts nothing anew; a remount counts again.
- */
-/**
  * Whether a page error (`EditResult.errors`) is the app's own deliberate
  * error `message` (\`throw new Error(message)\`): it reports that error
  * (\`Error: <message>\`), not a report quoting the source that throws it (a
@@ -648,6 +608,13 @@ export function isAppError(error: string, message: string) {
   )
 }
 
+/**
+ * A statement for the body of a React component (with `useState` in scope)
+ * that counts the component's mounts under `name` (`mountsOf`): a state
+ * initializer, which React runs when it mounts the component only. React
+ * Refresh keeps the state of a component it patches in place, so a body
+ * edit it patches mounts nothing anew; a remount counts again.
+ */
 export const countMounts = (name: string) =>
   `useState(() => { const mounts = (window.__mounts ??= {}); mounts[${JSON.stringify(name)}] = (mounts[${JSON.stringify(name)}] ?? 0) + 1 })`
 

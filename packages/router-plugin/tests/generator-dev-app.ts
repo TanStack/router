@@ -98,7 +98,6 @@ export interface LiveRoute {
 }
 
 export interface GeneratorDevApp {
-  bundler: Bundler
   root: string
   /** Content of an app file (relative to the app root). */
   read: (relative: string) => Promise<string>
@@ -143,20 +142,12 @@ export interface GeneratorDevApp {
    * last compile's errors on Rsbuild.
    */
   errors: () => Array<string>
-  /** Closes the dev server (and the page), like stopping `vite`/`rsbuild dev`. */
-  close: () => Promise<void>
   /**
    * Stops the dev server (and closes the page), like stopping `vite`/
    * `rsbuild dev`, but keeps the app on disk, to edit it afterwards and
    * observe that nothing reacts; the app is removed when the test ends.
    */
   stop: () => Promise<void>
-  /**
-   * What the test process printed while the app ran: every `console` method
-   * and direct stdout/stderr writes (e.g. the generator reporting a route
-   * file it cannot handle), joined.
-   */
-  logs: () => string
   /** A point in the app's diagnostics, to read those after it. */
   mark: () => DiagnosticsMark
   /**
@@ -211,10 +202,6 @@ export async function generatorDevApp(
   const channel = openDiagnosticChannel()
   onTestFinished(() => channel.close())
   const printed = () => channel.diagnostics
-  const logs = () =>
-    printed()
-      .map((diagnostic) => diagnostic.text)
-      .join('\n')
 
   const files = {
     'main.tsx': main,
@@ -338,7 +325,6 @@ export async function generatorDevApp(
   }
 
   return {
-    bundler,
     root: app.root,
     read: (relative) => readFile(path.join(app.root, relative), 'utf8'),
     write,
@@ -378,15 +364,10 @@ export async function generatorDevApp(
     },
     scripts: () => Promise.all(scripts),
     errors: app.errors,
-    close: async () => {
-      await page.close()
-      await app.close()
-    },
     stop: async () => {
       await page.close()
       await app.stop()
     },
-    logs,
     mark: () => ({
       console: printed().length,
       server: app.diagnostics().length,

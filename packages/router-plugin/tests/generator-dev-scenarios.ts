@@ -538,35 +538,8 @@ export const routes = rootRoute('__root.tsx', [
  * edits like route files), and the end of the generator's watching with the
  * dev server that owns it.
  */
-export function describeGeneratorWatching(
-  bundler: Bundler,
-  options: {
-    /**
-     * Pins the cases of edits of the virtual route config files (the
-     * caller's file says why), instead of asserting them.
-     */
-    pinVirtualConfigEdits?: boolean
-  } = {},
-) {
+export function describeGeneratorWatching(bundler: Bundler) {
   describe(`route generator watching in ${bundler} dev`, () => {
-    if (!options.pinVirtualConfigEdits) {
-      test(
-        'an edit of the virtual route config file changes the live routes',
-        async () => {
-          await expectVirtualRouteConfigEdit(bundler)
-        },
-        timeout,
-      )
-
-      test(
-        'an edit of a __virtual.ts file changes the live routes',
-        async () => {
-          await expectVirtualSubtreeEdit(bundler)
-        },
-        timeout,
-      )
-    }
-
     test(
       'closing the dev server stops the generator: a route file created afterwards is left as it is, and the route tree with it',
       async () => {
@@ -605,13 +578,9 @@ export const routes = rootRoute('__root.tsx', [${children}])
 /**
  * An app whose routes come from a virtual route config file (`routes.ts`,
  * path form): adding a route to the config while the dev server runs adds
- * it to the live routes, and the app serves its page. `waitTimeout` guards
- * the wait for the new route (see the Rsbuild pin).
+ * it to the live routes, and the app serves its page.
  */
-export async function expectVirtualRouteConfigEdit(
-  bundler: Bundler,
-  waitTimeout?: number,
-) {
+export async function expectVirtualRouteConfigEdit(bundler: Bundler) {
   const app = await generatorDevApp({
     bundler,
     links: ['@tanstack/virtual-file-routes'],
@@ -636,7 +605,7 @@ export async function expectVirtualRouteConfigEdit(
       `index('index.tsx'), route('/contact', 'contact.tsx')`,
     ),
   })
-  await waitForLiveRoute(app, '/contact', waitTimeout)
+  await waitForLiveRoute(app, '/contact')
   await app.visit('/contact', 'MARK_CONTACT')
   expect(await app.routes()).toEqual([rootLive, live('/'), live('/contact')])
 }
@@ -651,13 +620,9 @@ export default defineVirtualSubtreeConfig([${children}])
  * An app whose `routes/posts/` directory is configured by a `__virtual.ts`
  * file (routing/virtual-file-routes.md): adding a route to it while the dev
  * server runs adds the route to the live routes, and the app serves its
- * page. `waitTimeout` guards the wait for the new route (see the Rsbuild
- * pin).
+ * page.
  */
-export async function expectVirtualSubtreeEdit(
-  bundler: Bundler,
-  waitTimeout?: number,
-) {
+export async function expectVirtualSubtreeEdit(bundler: Bundler) {
   const app = await generatorDevApp({
     bundler,
     links: ['@tanstack/virtual-file-routes'],
@@ -678,7 +643,7 @@ export async function expectVirtualSubtreeEdit(
       `index('home.tsx'), route('$id', 'details.tsx')`,
     ),
   })
-  await waitForLiveRoute(app, '/posts/$id', waitTimeout)
+  await waitForLiveRoute(app, '/posts/$id')
   await app.visit('/posts/1', 'MARK_DETAILS')
 }
 
@@ -691,10 +656,8 @@ export async function expectVirtualSubtreeEdit(
  * took to scaffold that first file (a few hundred milliseconds in these
  * harnesses), so a generator that is slower here is watched longer.
  */
-export async function expectGeneratorStopsWithServer(
-  bundler: Bundler,
-  quietFor = 1500,
-) {
+export async function expectGeneratorStopsWithServer(bundler: Bundler) {
+  const quietFor = 1500
   const app = await generatorDevApp({ bundler, files: index })
   // (a route file the running generator sees: its watching is live)
   const started = Date.now()

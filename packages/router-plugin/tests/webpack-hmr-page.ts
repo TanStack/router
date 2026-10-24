@@ -30,6 +30,7 @@ import webpack from 'webpack'
 import WebpackDevServer from 'webpack-dev-server'
 import { createApp } from '@tanstack/compiler-test-utils/build-harness'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { trackRequests } from '@tanstack/compiler-test-utils/hmr-sync'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
 import { onTestFinished } from '@tanstack/compiler-test-utils/test-scope'
 import { tanstackRouter } from '../src/webpack'
@@ -213,15 +214,7 @@ export async function openWebpackHmrPage(
   await page.waitForText(options.ready, { selector: '#app' })
 
   /** The page's requests in flight (hot-update fetches, a reload). */
-  const requests = new Set<unknown>()
-  page.page.on('request', (request) => requests.add(request))
-  page.page.on('requestfinished', (request) => requests.delete(request))
-  page.page.on('requestfailed', (request) => requests.delete(request))
-  page.page.on('framenavigated', (frame) => {
-    if (frame === page.page.mainFrame()) {
-      requests.clear()
-    }
-  })
+  const requests = trackRequests(page)
   const text = async () => {
     try {
       return await page.text('#app')
@@ -259,7 +252,7 @@ export async function openWebpackHmrPage(
         failWhenQuietFor: editQuietFailure,
         problems: () => compileErrors,
         applied: async () => (await text()).includes(expected),
-        quiet: () => webpackQuiet() && requests.size === 0,
+        quiet: () => webpackQuiet() && requests() === 0,
         describe: async () =>
           [
             `the page shows: ${JSON.stringify(await text())}`,

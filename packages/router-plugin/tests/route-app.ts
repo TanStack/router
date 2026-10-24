@@ -98,14 +98,11 @@ export interface RouteAppOptions {
   pluginOptions?: Partial<Config>
   /**
    * Other Vite plugins, before and after the router plugin and the
-   * framework's plugin (a host of its own). `compilers`: plugins whose
-   * emitted modules count as the compilers' (a harness control standing in
-   * for a compiler), right before the router plugin.
+   * framework's plugin (a host of its own).
    */
   plugins?: {
     before?: Array<PluginOption>
     after?: Array<PluginOption>
-    compilers?: Array<PluginOption>
   }
   /**
    * The other files of the app (what the route file imports), by path
@@ -838,7 +835,6 @@ async function startHost(
     plugins: ({ root: appRoot }) => [
       emittedEndpointPlugin(emitted),
       ...(options.plugins?.before ?? []),
-      observeEmitted(options.plugins?.compilers ?? [], emitted),
       observeEmitted(
         tanstackRouter(routerOptions(options, root, appRoot)),
         emitted,
@@ -1367,8 +1363,8 @@ const refreshGlobals = ['$RefreshReg$', '$RefreshSig$']
  * request's query may name an option). Throws on code that does not parse:
  * an absence check on it would prove nothing.
  */
-function stringValues(code: string, filename = 'module.js'): Set<string> {
-  const { program, errors } = parseSync(filename, code, {
+function stringValues(code: string): Set<string> {
+  const { program, errors } = parseSync('module.js', code, {
     sourceType: 'module',
   })
   if (errors.length > 0) {
