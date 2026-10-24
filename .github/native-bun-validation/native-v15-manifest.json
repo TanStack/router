@@ -1,7 +1,7 @@
 {
-  "candidate": "native-v12",
+  "candidate": "native-v15",
   "head": "dca7d25e95cca39316c659a377dba6803805549f",
-  "trackedPatchSha256": "d4d09320680f3602c018b157fd5bbb595f9c2fda30b81a583dbaf8a1e043cd76",
+  "trackedPatchSha256": "1a5cedfdb16551893d366b38bf7c5a0ad7d4d6c030e79c138623f3f282eabc2b",
   "additionalFiles": {
     "src/bundler/input_source_map.rs": "6afe1551ae56d44dfa6abccc89668cd582db68c79f65acf692abba457f678cbf",
     "src/runtime/bake/dev_server/plugin_watch_store.rs": "41277667be6a81103ff304092777fe9f6844ec9297749e271222237dabd4a2ac",
@@ -25,9 +25,19 @@
     "src/runtime/bake/dev_server/incremental_graph.rs": "59d319121c7d7a42760e0e0e4df08303e8c08bc885c70b2d487d980ebaf85a9c",
     "src/runtime/bake/dev_server/finalize.rs": "8bbc23a6df4e8444a4e6f71c1ef693c6b2445ee4ac5ad8e01139f2f627b89578",
     "src/runtime/bake/dev_server/render.rs": "2fa45a019c3b96d387f5419945f49aeead30f496d57368c64362cf426958bc15",
-    "src/runtime/bake/hmr-module.ts": "9fdb9e89a356a8631a8a99411db16066e62b017f594be7711127bb0ba3151773",
+    "src/runtime/bake/hmr-module.ts": "20660b5fefeb174dbefc832d429d93d7bc5859ea9458fc75b8b82f89410092ae",
     "src/runtime/bake/hmr-runtime-client.ts": "16fa1b0f4f5ed13a2f4e22e8a7059772f0cb1bee22cbb65ef535874b2d76f701",
-    "test/bake/dev/bundle.test.ts": "48a984dbdd53ded01bda8a1cc73de5756c745dfccf232af6b6cd75772ec07dfa"
+    "test/bake/dev/bundle.test.ts": "48a984dbdd53ded01bda8a1cc73de5756c745dfccf232af6b6cd75772ec07dfa",
+    "src/runtime/bake/dev_server/watcher_atomics.rs": "3efecf6b04601cbcf501df3304c30910c491bf03bce047d5707d318444256bd9",
+    "test/bake/dev/hot.test.ts": "8eb189558672bda096f54b957f0455656c04397f0c72a7cf50414666d2a935d6"
   },
-  "windowsBinarySha256": "1de0e1882f6097fdb06baa9994aa07c8a1556971a26f2d4c0c457659d23cc02b"
+  "windowsBinarySha256": "56c24634993f1452d949924405ed06000530a9317c36c93a89fee3566beada85",
+  "changesSinceV12": [
+    "Reclaim pending watcher events before collecting later batches",
+    "Preserve atomic plugin dependency events and rearm their file watches",
+    "Invalidate every affected HMR module before evaluating importers",
+    "Snapshot old accept callbacks and wait for asynchronous dependencies",
+    "Dispose shared accepting boundaries once per update",
+    "Six public regressions: two native watch cases and four client HMR cases"
+  ]
 }

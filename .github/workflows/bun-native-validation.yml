@@ -63,7 +63,7 @@ jobs:
           import hashlib, json, os, subprocess
           from pathlib import Path
           binary = Path('.native-proof/binary/bun')
-          manifest = json.loads(Path('.github/native-bun-validation/native-v12-manifest.json').read_text())
+          manifest = json.loads(Path('.github/native-bun-validation/native-v15-manifest.json').read_text())
           proof = {
               'sha256': hashlib.sha256(binary.read_bytes()).hexdigest(),
               'base': manifest['head'],
@@ -181,6 +181,15 @@ jobs:
           PURE_BUN_SOURCE_MAPS: '1'
           PURE_BUN_BROWSER_OUTPUT: ${{ github.workspace }}/.native-browser-proof/pure-restored-maps.json
         run: node .github/native-bun-validation/pure-bun-graph-browser.mjs
+      - name: Apply every native watcher batch in the browser
+        id: pending_batches
+        continue-on-error: true
+        env:
+          ROUTER_REPOSITORY_ROOT: ${{ github.workspace }}
+          PENDING_BATCH_NATIVE_SYNC: '1'
+          BUN_WATCHER_TRACE: ${{ github.workspace }}/.native-browser-proof/pending-batches-watcher.jsonl
+          PENDING_BATCH_OUTPUT: ${{ github.workspace }}/.native-browser-proof/pending-batches-browser.json
+        run: node .github/native-bun-validation/pure-bun-pending-batches-browser.mjs
       - name: Production builds, navigation and source maps
         id: production
         continue-on-error: true
@@ -263,5 +272,6 @@ jobs:
           HMR_ORDER: ${{ steps.hmr_order.outcome }}
           RESTORED_MAPS: ${{ steps.restored_maps.outcome }}
           NATIVE_CHROME: ${{ steps.native_chrome.outcome }}
+          PENDING_BATCHES: ${{ steps.pending_batches.outcome }}
         run: |
-          [[ "$PRODUCTION" == success && "$DEVELOPMENT" == success && "$CONFIGURATION" == success && "$CONFIGURATION_BROWSER" == success && "$NATIVE_REGRESSIONS" == success && "$HMR_ORDER" == success && "$RESTORED_MAPS" == success && "$NATIVE_CHROME" == success ]]
+          [[ "$PRODUCTION" == success && "$DEVELOPMENT" == success && "$CONFIGURATION" == success && "$CONFIGURATION_BROWSER" == success && "$NATIVE_REGRESSIONS" == success && "$HMR_ORDER" == success && "$RESTORED_MAPS" == success && "$NATIVE_CHROME" == success && "$PENDING_BATCHES" == success ]]

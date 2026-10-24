@@ -13,7 +13,7 @@ binary = root / ".native-artifact/binary/bun"
 proof = root / ".native-browser-proof"
 proof.mkdir(exist_ok=True)
 expected = json.loads((root / ".native-artifact/binary-proof.json").read_text())
-manifest = json.loads((root / ".github/native-bun-validation/native-v12-manifest.json").read_text())
+manifest = json.loads((root / ".github/native-bun-validation/native-v15-manifest.json").read_text())
 assert hashlib.sha256(binary.read_bytes()).hexdigest() == expected["sha256"]
 assert expected["base"] == manifest["head"]
 assert expected["patchSha256"] == manifest["trackedPatchSha256"]
@@ -68,12 +68,18 @@ isolated = [
     ("test/bake/dev/plugins.test.ts", "watchDirs shares directory events with imported files and trailing-slash aliases"),
     ("test/bake/dev/client-plugin-cache.test.ts", "client plugin cache probe: structural dependency update serves the current manifest"),
     ("test/bake/dev/server-sourcemap.test.ts", "server-side source maps handle nested imports"),
+    ("test/bake/dev/hot.test.ts", "retains separate watcher batches while the server thread is busy"),
+    ("test/bake/dev/hot.test.ts", "retains separate watcher batches while the server thread is busy with an atomic plugin dependency"),
+    ("test/bake/dev/hot.test.ts", "evaluates an accepting importer after all changed dependencies"),
+    ("test/bake/dev/hot.test.ts", "evaluates an accepting importer after all changed dependencies and disposes it once"),
+    ("test/bake/dev/hot.test.ts", "evaluates an accepting importer after all changed dependencies with an async dependency"),
+    ("test/bake/dev/hot.test.ts", "evaluates an accepting importer after all changed dependencies and disposes it once with an async dependency"),
 ]
 isolated_results = []
 for index, (filename, title) in enumerate(isolated):
     isolated_report = proof / f"native-isolated-{index}.xml"
     run = subprocess.run([
-        str(binary), "test", filename, "-t", re.escape(title),
+        str(binary), "test", filename, "-t", re.escape(title) + "$",
         "--reporter=junit", f"--reporter-outfile={isolated_report}",
     ], cwd=source, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env={
         **os.environ,

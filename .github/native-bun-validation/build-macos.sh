@@ -53,4 +53,4 @@ bun install --cwd test --frozen-lockfile 2>&1 | tee "$proof/test-install.log"
 
 # The CI build wrapper does not execute trailing arguments. Regressions run
 # against the verified binary in the artifact validation job.
-bun run build:release --lto=off --canary=off --build-dir=build/native-release -j1 2>&1 | tee "$proof/native-build.log"
+GITHUB_SHA="$(git rev-parse HEAD)" bun run build:release --lto=off --canary=off --build-dir=build/native-release -j1 2>&1 | tee "$proof/native-build.log"

@@ -10,7 +10,7 @@ import tarfile
 
 
 BASE = "dca7d25e95cca39316c659a377dba6803805549f"
-PATCH_HASH = "d4d09320680f3602c018b157fd5bbb595f9c2fda30b81a583dbaf8a1e043cd76"
+PATCH_HASH = "1a5cedfdb16551893d366b38bf7c5a0ad7d4d6c030e79c138623f3f282eabc2b"
 ADDITIONAL = {
     "src/bundler/input_source_map.rs",
     "src/runtime/bake/dev_server/plugin_watch_store.rs",
@@ -45,11 +45,11 @@ def main():
     parser.add_argument("--check-assets-only", action="store_true")
     args = parser.parse_args()
     data = Path(__file__).resolve().parent
-    manifest = json.loads((data / "native-v12-manifest.json").read_text())
+    manifest = json.loads((data / "native-v15-manifest.json").read_text())
     assert manifest["head"] == BASE
     assert manifest["trackedPatchSha256"] == PATCH_HASH
     assert set(manifest["additionalFiles"]) == ADDITIONAL
-    patch = gzip.decompress((data / "native-v12-tracked.patch.gz").read_bytes())
+    patch = gzip.decompress((data / "native-v15-tracked.patch.gz").read_bytes())
     assert digest(patch) == PATCH_HASH, "Tracked patch hash mismatch"
     paths = re.findall(rb"^diff --git a/(\S+) b/(\S+)$", patch, re.MULTILINE)
     assert paths, "No tracked patch paths"
@@ -59,7 +59,7 @@ def main():
         tracked.append(old.decode())
     extra = {}
     archive = gzip.decompress(
-        (data / "native-v12-additional-files.tar.gz").read_bytes()
+        (data / "native-v15-additional-files.tar.gz").read_bytes()
     )
     with tarfile.open(fileobj=io.BytesIO(archive)) as bundle:
         for member in bundle.getmembers():
@@ -96,7 +96,7 @@ def main():
     with tarfile.open(out / "applied-source.tar.gz", "w:gz") as bundle:
         for name in sorted(set(tracked) | ADDITIONAL):
             bundle.add(bun / name, arcname=name)
-    (out / "native-v12-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    (out / "native-v15-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     (out / "tracked.patch").write_bytes(patch)
     for name in ["CONTRIBUTING.md", "rust-toolchain.toml", "package.json"]:
         (out / name).write_bytes((bun / name).read_bytes())
