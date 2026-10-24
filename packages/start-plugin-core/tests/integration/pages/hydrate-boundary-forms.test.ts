@@ -567,7 +567,7 @@ ${childrenPage('<p id={React.useId()}>x</p>')}`,
 
 describe('nested boundaries', () => {
   // The outer boundary uses `idle()` (the original fixture: `visible()`),
-  // whose boundary renders an id: every boundary's id is compared.
+  // whose boundary renders an id: the outermost boundaries' ids are compared.
   // Source: hydrate-when-transform.test.ts "supports nested Hydrate
   // boundaries in extracted virtual modules", "keeps sibling boundary ids
   // stable after nested boundaries"; hydrateWhen.test.ts "should extract
