@@ -63,7 +63,7 @@ jobs:
           import hashlib, json, os, subprocess
           from pathlib import Path
           binary = Path('.native-proof/binary/bun')
-          manifest = json.loads(Path('.github/native-bun-validation/native-v9-manifest.json').read_text())
+          manifest = json.loads(Path('.github/native-bun-validation/native-v10-manifest.json').read_text())
           proof = {
               'sha256': hashlib.sha256(binary.read_bytes()).hexdigest(),
               'base': manifest['head'],
@@ -72,7 +72,7 @@ jobs:
               'version': subprocess.check_output([str(binary.resolve()), '--version'], text=True).strip(),
               'workflowRun': os.environ['GITHUB_RUN_ID'],
               'workflowCommit': os.environ['GITHUB_SHA'],
-              'buildProfile': 'release --lto=off',
+              'buildProfile': 'release --lto=off --canary=off',
           }
           Path('.native-proof/binary-proof.json').write_text(json.dumps(proof, indent=2) + '\n')
           PY
