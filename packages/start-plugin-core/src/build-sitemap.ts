@@ -1,8 +1,10 @@
 import { mkdir, open } from 'node:fs/promises'
 import path from 'node:path'
 import { create } from 'xmlbuilder2'
+import { z } from 'zod'
+import { pageBaseSchema } from './schema'
 import { createLogger } from './utils'
-import type { Page, TanStackStartOutputConfig } from './schema'
+import type { Page, PageBase, TanStackStartOutputConfig } from './schema'
 import type { FileHandle } from 'node:fs/promises'
 
 export type SitemapUrl = {
@@ -19,7 +21,7 @@ export type SitemapUrl = {
     | 'never'
   alternateRefs?: Array<{
     href: string
-    hreflang?: string
+    hreflang: string
   }>
   images?: Array<{
     loc: string
@@ -40,7 +42,21 @@ export type SitemapData = {
   urls: Array<SitemapUrl>
 }
 
-function pageToXml(input: Page, host: string): string {
+// The schema strips private fields (prerender headers, extra data returned by
+// `prerender.onSuccess`), so both public outputs are built from the same
+// validated page data.
+function toPublicPage(page: Page): PageBase {
+  const result = pageBaseSchema.safeParse(page)
+  if (!result.success) {
+    throw new Error(
+      `Invalid sitemap data for page "${page.path}". Check the value returned by \`prerender.onSuccess\`.\n${z.prettifyError(result.error)}`,
+      { cause: result.error },
+    )
+  }
+  return result.data
+}
+
+function pageToXml(input: PageBase, host: string): string {
   const item: SitemapUrl = {
     ...input.sitemap,
     loc: `${host}${host.endsWith('/') ? '' : '/'}${input.path.replace(/^\/+/g, '')}`,
@@ -142,9 +158,12 @@ export function createSitemapWriter({
     const pending = closing
       ? Promise.reject(new Error('Sitemap writer is closed'))
       : queue.then(async () => {
-          const json = JSON.stringify(page)
+          const publicPage = toPublicPage(page)
+          const json = JSON.stringify(publicPage)
           const xml =
-            page.sitemap?.exclude === true ? '' : pageToXml(page, sitemapHost)
+            publicPage.sitemap?.exclude === true
+              ? ''
+              : pageToXml(publicPage, sitemapHost)
           if (!hasPages) {
             await mkdir(path.dirname(xmlOutputPath), { recursive: true })
             await mkdir(publicDir, { recursive: true })

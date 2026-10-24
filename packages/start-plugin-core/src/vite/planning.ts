@@ -62,21 +62,17 @@ export function createViteConfigPlan(opts: {
     environments: {
       [START_ENVIRONMENT_NAMES.client]: {
         consumer: 'client',
-        build: (() => {
-          const input =
-            opts.command === 'serve' ? DEV_CLIENT_ENTRY : ENTRY_POINTS.client
-
-          const bundlerOptions = {
+        build: {
+          rolldownOptions: {
             input: {
-              index: input,
+              index:
+                opts.command === 'serve'
+                  ? DEV_CLIENT_ENTRY
+                  : ENTRY_POINTS.client,
             },
-          }
-          return {
-            rollupOptions: bundlerOptions,
-            rolldownOptions: bundlerOptions,
-            outDir: opts.clientOutputDirectory,
-          }
-        })(),
+          },
+          outDir: opts.clientOutputDirectory,
+        },
         optimizeDeps: {
           exclude: opts.optimizeDepsExclude,
           entries: escapeEntries([
@@ -89,7 +85,9 @@ export function createViteConfigPlan(opts: {
         consumer: 'server',
         build: {
           ssr: true,
-          ...buildViteInputOptions(serverInput),
+          rolldownOptions: {
+            input: serverInput,
+          },
           outDir: opts.serverOutputDirectory,
           commonjsOptions: {
             include: [/node_modules/],
@@ -112,12 +110,13 @@ export function createViteConfigPlan(opts: {
               consumer: 'server',
               build: {
                 ssr: true,
-                ...buildViteInputOptions(
-                  typeof serverInput === 'string'
-                    ? { server: serverInput }
-                    : serverInput,
-                  [/^cloudflare:/],
-                ),
+                rolldownOptions: {
+                  input:
+                    typeof serverInput === 'string'
+                      ? { server: serverInput }
+                      : serverInput,
+                  external: [/^cloudflare:/],
+                },
                 outDir: join(opts.serverOutputDirectory, '.tanstack/prerender'),
                 commonjsOptions: {
                   include: [/node_modules/],
@@ -260,18 +259,6 @@ export async function buildStartViteEnvironments(opts: {
 
 function escapeEntries(entries: Array<string>) {
   return entries.map((entry) => escapePath(entry))
-}
-
-function buildViteInputOptions(
-  input: NonNullable<vite.BuildOptions['rollupOptions']>['input'],
-  external?: NonNullable<vite.BuildOptions['rollupOptions']>['external'],
-) {
-  const bundlerOptions = external ? { input, external } : { input }
-
-  return {
-    rollupOptions: bundlerOptions,
-    rolldownOptions: bundlerOptions,
-  }
 }
 
 function defineReplaceEnv<TKey extends string, TValue extends string>(

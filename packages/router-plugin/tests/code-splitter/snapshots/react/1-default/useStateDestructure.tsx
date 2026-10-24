@@ -1,5 +1,4 @@
 import * as React from 'react'
-
 import { CgCornerUpLeft, CgSpinner } from 'react-icons/cg'
 import {
   FaBolt,
@@ -21,7 +20,6 @@ import { startProject } from '~/projects/start'
 import { createFileRoute } from '@tanstack/react-router'
 import { Framework, getBranch } from '~/projects'
 import { seo } from '~/utils/seo'
-
 const menu = [
   {
     label: (
@@ -72,31 +70,22 @@ const menu = [
     to: `https://cottonbureau.com/people/tanstack`,
   },
 ]
-
 export const Route = createFileRoute('/_libraries/start/$version/')({
   component: VersionIndex,
   meta: () =>
-    seo({
-      title: startProject.name,
-      description: startProject.description,
-    }),
+    seo({ title: startProject.name, description: startProject.description }),
 })
-
 const librariesRouteApi = getRouteApi('/_libraries')
-
 export default function VersionIndex() {
   const { sponsorsPromise } = librariesRouteApi.useLoaderData()
   const { version } = Route.useParams()
   const branch = getBranch(startProject, version)
   const [framework, setFramework] = React.useState<Framework>('react')
   const [isDark, setIsDark] = React.useState(true)
-
   React.useEffect(() => {
     setIsDark(window.matchMedia?.(`(prefers-color-scheme: dark)`).matches)
   }, [])
-
   const gradientText = `inline-block text-transparent bg-clip-text bg-gradient-to-r ${startProject.colorFrom} ${startProject.colorTo}`
-
   return (
     <div className="flex flex-col gap-20 md:gap-32 max-w-full">
       <div
@@ -107,7 +96,6 @@ export default function VersionIndex() {
           const label = (
             <div className="p-2 opacity-90 hover:opacity-100">{item.label}</div>
           )
-
           return (
             <div key={i} className="hover:underline">
               {item.to.startsWith('http') ? (
@@ -269,7 +257,6 @@ Check it out at https://tanstack.com/start/`,
           </div>
         </div>
       </div> */}
-
       {/* <div className="px-4 sm:px-6 lg:px-8 mx-auto">
         <div className=" sm:text-center pb-16">
           <h3 className="text-3xl text-center mx-auto leading-tight font-extrabold tracking-tight sm:text-4xl lg:leading-none mt-2">
@@ -315,7 +302,6 @@ Check it out at https://tanstack.com/start/`,
           })}
         </div>
       </div> */}
-
       {/* <div>
         <div className="uppercase tracking-wider text-sm font-semibold text-center text-gray-400 mb-3">
           Trusted in Production by
@@ -358,7 +344,6 @@ Check it out at https://tanstack.com/start/`,
           </div>
         </marquee>
       </div> */}
-
       <div className="px-4 w-[500px] max-w-full mx-auto">
         <h3 className="text-center text-3xl leading-8 font-extrabold tracking-tight sm:text-4xl sm:leading-10 lg:leading-none mt-8">
           Partners
@@ -388,16 +373,13 @@ Check it out at https://tanstack.com/start/`,
           </div>
         </div>
       </div>
-
       <div className="relative text-lg overflow-hidden">
         <h3 className="text-center text-3xl leading-8 font-extrabold tracking-tight sm:text-4xl sm:leading-10 lg:leading-none mt-8">
           Sponsors
         </h3>
         <div
           className="my-4 flex flex-wrap mx-auto max-w-screen-lg"
-          style={{
-            aspectRatio: '1/1',
-          }}
+          style={{ aspectRatio: '1/1' }}
         >
           <Await
             promise={sponsorsPromise}
@@ -416,7 +398,6 @@ Check it out at https://tanstack.com/start/`,
           </a>
         </div>
       </div>
-
       <div className="mx-auto max-w-[400px] flex flex-col gap-2 items-center">
         <div className="shadow-lg rounded-lg overflow-hidden bg-white dark:bg-gray-800 dark:text-white">
           <Carbon />
@@ -429,7 +410,6 @@ Check it out at https://tanstack.com/start/`,
           rage-quit OSS. Yay money! 😉
         </span>
       </div>
-
       {/* <div className="flex flex-col gap-4">
         <div className="px-4 sm:px-6 lg:px-8  mx-auto max-w-3xl sm:text-center">
           <h3 className="text-3xl text-center leading-8 font-extrabold tracking-tight sm:text-4xl sm:leading-10 lg:leading-none mt-2">
@@ -468,7 +448,6 @@ Check it out at https://tanstack.com/start/`,
           </div>
         </div>
       </div> */}
-
       {/* {[''].includes(framework) ? (
         <div className="px-2">
           <div className="p-8 text-center text-lg w-full max-w-screen-lg mx-auto bg-black text-white rounded-xl">
@@ -503,7 +482,6 @@ Check it out at https://tanstack.com/start/`,
           ></iframe>
         </div>
       )} */}
-
       {/* <div className="flex flex-col gap-4 items-center">
         <div className="font-extrabold text-xl lg:text-2xl">
           Wow, you've come a long way!
