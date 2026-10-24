@@ -3,6 +3,13 @@
  * R8). The same transfer function serves local analysis and summaries.
  * Recognition is by specifier through a pluggable `RecognizerTable` (Start
  * supplies its kinds; the core ships an empty table).
+ *
+ * Values a module cannot evaluate on its own (a call of an imported function,
+ * a member of an imported value) stay **symbolic terms** (`importRef`,
+ * `member`, `call`): a summary records them, and a consumer reduces them
+ * once it knows what the imports are (`applyMember`/`applyCall` are the
+ * transfer function on already-known values; `stampSites` gives links from
+ * another module their owner).
  */
 import type { Node, SourceFile } from 'yuku'
 import type { Range } from './header'
@@ -37,7 +44,17 @@ export type AbstractValue =
   | { t: 'envOnlyResult'; kind: 'server' | 'client' }
   | { t: 'namespace'; specifier: string }
   | { t: 'function'; returns: AbstractValue | { t: 'param'; index: number } }
+  /** Symbolic: an import nobody resolved yet (summaries; local analysis without `resolveImport`). */
   | { t: 'importRef'; specifier: string; name: string }
+  /** Symbolic: a member of a value that is not reducible yet. */
+  | { t: 'member'; object: AbstractValue; name: string }
+  /** Symbolic: a call of a value that is not reducible yet (args are the argument values, null for spreads). */
+  | {
+      t: 'call'
+      callee: AbstractValue
+      args: Array<AbstractValue | null>
+      site: LinkSite
+    }
   | { t: 'unknown' }
 
 export const UNKNOWN: AbstractValue = { t: 'unknown' }
@@ -76,6 +93,18 @@ export function recognizeImport(
   return { t: 'factory', kind }
 }
 
+/** Whether `specifier` is a known package of the table (recognised by specifier, never resolved — D4). */
+export function isKnownSpecifier(
+  table: RecognizerTable,
+  specifier: string,
+): boolean {
+  return Object.prototype.hasOwnProperty.call(table.factories, specifier)
+}
+
+export function isSymbolicValue(v: AbstractValue): boolean {
+  return v.t === 'importRef' || v.t === 'member' || v.t === 'call'
+}
+
 function unwrap(node: Node): Node {
   let n = node
   for (;;) {
@@ -97,10 +126,184 @@ function unwrap(node: Node): Node {
   }
 }
 
+export type ImportResolver = (specifier: string, name: string) => AbstractValue
+
+/**
+ * The transfer function of a member access `object.name` on a known value.
+ * `resolveImport` answers members of unknown-package namespaces (default:
+ * symbolic `importRef`).
+ */
+export function applyMember(
+  table: RecognizerTable,
+  obj: AbstractValue,
+  name: string,
+  resolveImport?: ImportResolver,
+): AbstractValue {
+  switch (obj.t) {
+    case 'namespace': {
+      const known = recognizeImport(table, obj.specifier, name)
+      if (known.t !== 'unknown') {
+        return known
+      }
+      return resolveImport
+        ? resolveImport(obj.specifier, name)
+        : { t: 'importRef', specifier: obj.specifier, name }
+    }
+    case 'startInstance': {
+      const kind = table.startMembers?.[name]
+      return kind ? { t: 'factory', kind } : UNKNOWN
+    }
+    case 'builder':
+    case 'isoFn':
+    case 'importRef':
+    case 'member':
+    case 'call':
+      return { t: 'member', object: obj, name }
+    default:
+      return UNKNOWN
+  }
+}
+
+/**
+ * The transfer function of a call `fn(args)` on a known callee value. `args`
+ * is a thunk: argument values are only computed when the callee needs them
+ * (a user function returning a parameter, a symbolic callee).
+ */
+export function applyCall(
+  table: RecognizerTable,
+  fn: AbstractValue,
+  args: () => Array<AbstractValue | null>,
+  site: LinkSite,
+): AbstractValue {
+  switch (fn.t) {
+    case 'member': {
+      const recv = fn.object
+      const method = fn.name
+      if (recv.t === 'builder') {
+        const terminal = table.terminal[recv.kind] ?? 'serverFn'
+        switch (method) {
+          case 'middleware':
+          case 'validator':
+          case 'inputValidator':
+            return {
+              t: 'builder',
+              kind: recv.kind,
+              links: [...recv.links, { method, site }],
+            }
+          case 'handler':
+            return terminal === 'serverFn'
+              ? { t: 'serverFn', links: [...recv.links, { method, site }] }
+              : {
+                  t: 'builder',
+                  kind: recv.kind,
+                  links: [...recv.links, { method, site }],
+                }
+          case 'server':
+          case 'client':
+            if (terminal === 'isoFn') {
+              return { t: 'isoFn', links: [...recv.links, { method, site }] }
+            }
+            return {
+              t: 'builder',
+              kind: recv.kind,
+              links: [...recv.links, { method, site }],
+            }
+          default:
+            return UNKNOWN
+        }
+      }
+      if (recv.t === 'isoFn' && (method === 'server' || method === 'client')) {
+        return { t: 'isoFn', links: [...recv.links, { method, site }] }
+      }
+      if (isSymbolicValue(recv)) {
+        return { t: 'call', callee: fn, args: args(), site }
+      }
+      return UNKNOWN
+    }
+    case 'factory': {
+      if (table.startKind !== undefined && fn.kind === table.startKind) {
+        return { t: 'startInstance' }
+      }
+      if (table.builderKinds.has(fn.kind)) {
+        return { t: 'builder', kind: fn.kind, links: [] }
+      }
+      const envOnly = table.envOnlyKinds[fn.kind]
+      if (envOnly) {
+        return { t: 'envOnlyResult', kind: envOnly }
+      }
+      return UNKNOWN
+    }
+    case 'builder':
+      // R8: calling a configured builder keeps links/provenance
+      return {
+        t: 'builder',
+        kind: fn.kind,
+        links: [...fn.links, { method: 'call', site }],
+      }
+    case 'function': {
+      const r = fn.returns
+      if (r.t === 'param') {
+        const arg = args()[r.index]
+        return arg ?? UNKNOWN
+      }
+      return r
+    }
+    case 'importRef':
+    case 'call':
+      return { t: 'call', callee: fn, args: args(), site }
+    default:
+      return UNKNOWN
+  }
+}
+
+/** Gives every link site of `v` without an owner the owner `canonicalId` (a value adopted from another module's summary). */
+export function stampSites(
+  v: AbstractValue,
+  canonicalId: string,
+): AbstractValue {
+  const site = (s: LinkSite): LinkSite =>
+    s.canonicalId === null ? { range: s.range, canonicalId } : s
+  const links = (ls: Array<Link>) =>
+    ls.map((l) => ({ method: l.method, site: site(l.site) }))
+  switch (v.t) {
+    case 'builder':
+      return { t: 'builder', kind: v.kind, links: links(v.links) }
+    case 'serverFn':
+    case 'middleware':
+    case 'isoFn':
+      return { t: v.t, links: links(v.links) }
+    case 'function':
+      return {
+        t: 'function',
+        returns:
+          v.returns.t === 'param'
+            ? v.returns
+            : stampSites(v.returns, canonicalId),
+      }
+    case 'member':
+      return {
+        t: 'member',
+        object: stampSites(v.object, canonicalId),
+        name: v.name,
+      }
+    case 'call':
+      return {
+        t: 'call',
+        callee: stampSites(v.callee, canonicalId),
+        args: v.args.map((a) =>
+          a === null ? null : stampSites(a, canonicalId),
+        ),
+        site: site(v.site),
+      }
+    default:
+      return v
+  }
+}
+
 export interface ValueAnalysisOptions {
   table: RecognizerTable
   /** Cross-module lookups (phase A results); default keeps imports symbolic. */
-  resolveImport?: (specifier: string, name: string) => AbstractValue
+  resolveImport?: ImportResolver
 }
 
 /**
@@ -204,129 +407,23 @@ export class ValueAnalysis {
         if (name === null) {
           return UNKNOWN
         }
-        const obj = this.valueOf(node.object)
-        if (obj.t === 'namespace') {
-          const known = recognizeImport(this.opts.table, obj.specifier, name)
-          if (known.t !== 'unknown') {
-            return known
-          }
-          return this.opts.resolveImport
-            ? this.opts.resolveImport(obj.specifier, name)
-            : { t: 'importRef', specifier: obj.specifier, name }
-        }
-        if (obj.t === 'startInstance') {
-          const kind = this.opts.table.startMembers?.[name]
-          return kind ? { t: 'factory', kind } : UNKNOWN
-        }
-        // `builder.method` is not a value by itself; the call transfers (see CallExpression)
-        return UNKNOWN
+        return applyMember(
+          this.opts.table,
+          this.valueOf(node.object),
+          name,
+          this.opts.resolveImport,
+        )
       }
       case 'CallExpression': {
-        const callee = unwrap(node.callee)
-        if (
-          callee.type === 'MemberExpression' &&
-          !callee.computed &&
-          callee.property.type === 'Identifier'
-        ) {
-          const method = callee.property.name
-          const recv = this.valueOf(callee.object)
-          if (recv.t === 'builder') {
-            const site: LinkSite = {
-              range: { start: node.start, end: node.end },
-              canonicalId: null,
-            }
-            const terminal = this.opts.table.terminal[recv.kind] ?? 'serverFn'
-            switch (method) {
-              case 'middleware':
-              case 'validator':
-              case 'inputValidator':
-                return {
-                  t: 'builder',
-                  kind: recv.kind,
-                  links: [...recv.links, { method, site }],
-                }
-              case 'handler':
-                return terminal === 'serverFn'
-                  ? { t: 'serverFn', links: [...recv.links, { method, site }] }
-                  : {
-                      t: 'builder',
-                      kind: recv.kind,
-                      links: [...recv.links, { method, site }],
-                    }
-              case 'server':
-              case 'client':
-                if (terminal === 'isoFn') {
-                  return {
-                    t: 'isoFn',
-                    links: [...recv.links, { method, site }],
-                  }
-                }
-                return {
-                  t: 'builder',
-                  kind: recv.kind,
-                  links: [...recv.links, { method, site }],
-                }
-              default:
-                return UNKNOWN
-            }
-          }
-          if (
-            recv.t === 'isoFn' &&
-            (method === 'server' || method === 'client')
-          ) {
-            return {
-              t: 'isoFn',
-              links: [
-                ...recv.links,
-                {
-                  method,
-                  site: {
-                    range: { start: node.start, end: node.end },
-                    canonicalId: null,
-                  },
-                },
-              ],
-            }
-          }
-        }
-        const fn = this.valueOf(node.callee)
         const site: LinkSite = {
           range: { start: node.start, end: node.end },
           canonicalId: null,
         }
-        if (fn.t === 'factory') {
-          const table = this.opts.table
-          if (table.startKind !== undefined && fn.kind === table.startKind) {
-            return { t: 'startInstance' }
-          }
-          if (table.builderKinds.has(fn.kind)) {
-            return { t: 'builder', kind: fn.kind, links: [] }
-          }
-          const envOnly = table.envOnlyKinds[fn.kind]
-          if (envOnly) {
-            return { t: 'envOnlyResult', kind: envOnly }
-          }
-          return UNKNOWN
-        }
-        if (fn.t === 'builder') {
-          // R8: calling a configured builder keeps links/provenance
-          return {
-            t: 'builder',
-            kind: fn.kind,
-            links: [...fn.links, { method: 'call', site }],
-          }
-        }
-        if (fn.t === 'function') {
-          const r = fn.returns
-          if (r.t === 'param') {
-            const arg = node.arguments[r.index]
-            return arg && arg.type !== 'SpreadElement'
-              ? this.valueOf(arg)
-              : UNKNOWN
-          }
-          return r
-        }
-        return UNKNOWN
+        const args = () =>
+          node.arguments.map((a) =>
+            a.type === 'SpreadElement' ? null : this.valueOf(a),
+          )
+        return applyCall(this.opts.table, this.valueOf(node.callee), args, site)
       }
       default:
         return UNKNOWN
@@ -396,6 +493,14 @@ export function stripSites(
       return { t: v.t, links: v.links.map((l) => l.method) }
     case 'function':
       return { t: v.t, returns: stripSites(v.returns) }
+    case 'member':
+      return { t: v.t, object: stripSites(v.object), name: v.name }
+    case 'call':
+      return {
+        t: v.t,
+        callee: stripSites(v.callee),
+        args: v.args.map((a) => (a === null ? null : stripSites(a))),
+      }
     default:
       return v
   }

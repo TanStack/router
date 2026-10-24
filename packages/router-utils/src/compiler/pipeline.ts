@@ -326,10 +326,11 @@ async function runAttempt(
     summaryOf,
     resolveSpecifier: (spec, importer) => resolveFrom(spec, importer),
   })
+  const withdrawn = new Set<string>()
   await Promise.all(
-    planners.map((p) => {
+    planners.map(async (p) => {
       if (!p.prefetch) {
-        return Promise.resolve()
+        return
       }
       const ctx: PrefetchContext = {
         identity,
@@ -339,13 +340,21 @@ async function runAttempt(
         ledger,
         resolver,
         resolve: (spec) => resolveFrom(spec, identity.canonicalId),
+        resolveFrom,
         summary: summaryOf,
         targetFacts: targetFactsOf,
         set: (data) => prefetched.set(p.name, data),
       }
-      return p.prefetch(t0, ctx)
+      if ((await p.prefetch(t0, ctx)) === false) {
+        withdrawn.add(p.name)
+      }
     }),
   )
+  if (withdrawn.size > 0) {
+    // a withdrawn planner keeps its recorded dependencies: the (possibly verbatim)
+    // plan is cached, so a dependency change can bring the module back
+    planners = planners.filter((p) => !withdrawn.has(p.name))
+  }
 
   // ---- B: planning (sync) ------------------------------------------------------
   const tier1Needed = planners.some((p) => p.tier === 1)

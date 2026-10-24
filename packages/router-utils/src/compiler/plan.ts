@@ -477,17 +477,30 @@ export class AnalysisPlan implements PlanContext {
     derived: boolean,
   ): Set<UnitId> {
     const set = new Set<UnitId>()
+    let valueUnits = 0
+    let includedValueUnits = 0
     for (const uid of item.units) {
       const u = this.t1.units[uid]!
       if (u.kind === 'type') {
-        if (!derived) {
-          set.add(uid)
-        }
         continue
       }
+      valueUnits++
       const c = placement.clusterOfRegion.get(u.region)
       if (c !== undefined && included.has(c)) {
         set.add(uid)
+        includedValueUnits++
+      }
+    }
+    // Type units stay in the env module, except the type-only specifiers of an import
+    // statement whose value specifiers were all orphaned: the whole import goes (S2, J4.12).
+    const dropTypes =
+      derived ||
+      (item.shape === 'import' && valueUnits > 0 && includedValueUnits === 0)
+    if (!dropTypes) {
+      for (const uid of item.units) {
+        if (this.t1.units[uid]!.kind === 'type') {
+          set.add(uid)
+        }
       }
     }
     return set
