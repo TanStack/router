@@ -411,6 +411,7 @@ ${options}  component: () => <p>${render}</p>,
       // `type FormValues = z.infer<typeof schema>`
       declaration: `const value = init(1)
 type Value = typeof value`,
+      options: '',
       render: '{value satisfies Value}',
       html: '<p>1</p>',
     },

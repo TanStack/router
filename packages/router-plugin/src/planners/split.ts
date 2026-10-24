@@ -267,7 +267,7 @@ export function routeSplitPlanner(): Planner {
         // or any other value gets the chunk's own declaration
         const direct = valueSym !== null && d.member === null
         const exported: SymRef | string = direct
-          ? { sym: valueSym! }
+          ? { sym: valueSym }
           : split.name
         if (valueSym !== null) {
           // the original symbol: placement follows its declaring unit; a
