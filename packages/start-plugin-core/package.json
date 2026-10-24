@@ -98,7 +98,7 @@
     "lightningcss": "^1.33.0",
     "pathe": "catalog:",
     "picomatch": "^4.0.7",
-    "seroval": "^1.6.7",
+    "seroval": "^1.7.1",
     "source-map": "^0.7.6",
     "srvx": "^1.0.0",
     "tinyglobby": "catalog:",
