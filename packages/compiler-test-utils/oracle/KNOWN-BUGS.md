@@ -7,7 +7,7 @@ One entry per root cause: the bug, the SPEC clause, the pins (`file` and test na
 `$name`, `%s` and `${…}` are table-row placeholders), and what a fix must achieve. The test comment (`Bug:`,
 `Impact:`) has the details. "Cause" files name today's implementation; a rewrite may have no such file.
 
-Totals: 369 pin sites in 102 test files (a table test counts once; Vitest counts each row).
+Totals: 370 pin sites in 102 test files (a table test counts once; Vitest counts each row).
 
 Pins whose input picks a name today's compiler generates (S6) flip with a compiler that generates other names. The
 adaptive pins next to them, which read the names a compiler actually generates, are the real check.
@@ -359,7 +359,7 @@ Paths under `start-plugin-core/tests/integration/`.
   `start-compose-project-path.test.ts`: "the client route tree leaves out the server-only route"; "the client gets the
   file, not the client route tree".
 
-## J3 Route HMR (26 pins: 20 below, 2 in S6, 4 in J2)
+## J3 Route HMR (27 pins: 21 below, 2 in S6, 4 in J2)
 
 Paths under `router-plugin/tests/`.
 
@@ -377,7 +377,8 @@ Paths under `router-plugin/tests/`.
   function component split into two chunks renders with the module state they share"; "a lowercase function component
   shared with the loader renders with the module state it shares"; "a lowercase function component that is also the
   unsplit pendingComponent renders as both"; "a destructured binding that the loader, the split component and the
-  unsplit pendingComponent share works and is created once".
+  unsplit pendingComponent share works and is created once"; "a lowercase component created by a call that the loader, the
+  split component and the unsplit pendingComponent share is created once".
 - **A removed split option's module stays in Vite's graph and is compiled as CommonJS.** SPEC J2.13, J3.3.
   `integration/known-bugs-route-hmr-removals.test.ts`: "vite: an edit that removes a split option the page loaded
   applies in place without errors".

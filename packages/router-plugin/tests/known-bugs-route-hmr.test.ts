@@ -414,6 +414,38 @@ export const Route = createFileRoute('/')({ component: page, pendingComponent: p
     ).toEqual(['<p>made</p>', '<p>made</p>', 1])
   })
 
+  // Bug: same root cause as the destructuring pin above, for a plain `const`
+  // that the loader (kept in the route module) and the split component also
+  // read: the route module keeps the renamed declaration and the split
+  // component gets the shared one, so the initializer runs twice, with no
+  // error.
+  // Impact: in development, the loader and the component see different
+  // instances of the module's state.
+  test.fails(
+    'a lowercase component created by a call that the loader, the split component and the unsplit pendingComponent share is created once',
+    async () => {
+      const route = await loadRoute(
+        `${head}import { make } from './helpers'
+const page = make()
+export const Route = createFileRoute('/')({
+  loader: () => typeof page,
+  component: () => <div>{page()}</div>,
+  pendingComponent: page,
+})`,
+        { hmr: true, files: helpers },
+      )
+      await expectValidModules(route)
+      expect(
+        await route.run(`return [
+  await (await load('loader'))(),
+  await render('component'),
+  await render('pendingComponent'),
+  (await app('helpers.tsx')).calls,
+]`),
+      ).toEqual(['function', '<div><p>made</p></div>', '<p>made</p>', 1])
+    },
+  )
+
   // Bug: with React HMR, the code splitter moves a component exported by an
   // export list (`export { page }`) into its chunk and leaves the export list
   // in the route module (same root cause as known-bugs-code-splitter.test.ts
