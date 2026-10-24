@@ -698,8 +698,8 @@ Paths under `react-start-rsc/tests/integration/`.
 - **Rsbuild writes Start's virtual modules under `process.cwd()`.** SPEC G11, J4.16. `rsc-css-rsbuild-root.test.ts`:
   "Rsbuild: the app compiles when the process does not run in the app directory".
 - **Rsbuild injects CSS in server-fn provider modules only**, so a render call in a helper module is unstyled. SPEC
-  J7.1, J7.2. `rsc-css-rsbuild.test.ts`: "a render call in a helper module styles the server component" (Rsbuild dev
-  and production build).
+  J7.1, J7.2. `rsc-css-rsbuild.test.ts` (Rsbuild dev) and `rsc-css-rsbuild-build.test.ts` (production build), rows
+  of `rsc-css-rsbuild-app.ts`: "a render call in a helper module styles the server component".
 - **A conditional whose branches are all JSX is not wrapped.** SPEC J7.3. `rsc-css.test.ts`:
   "renderToReadableStream($argument) styles the stream"; "a false ternary stream carries its selected badge CSS".
 - **A comment before the JSX argument becomes JSX text.** SPEC J7.4, G12. `rsc-css.test.ts`: "renderToReadableStream
