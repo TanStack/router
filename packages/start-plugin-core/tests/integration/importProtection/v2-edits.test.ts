@@ -159,11 +159,7 @@ const expected = (live: boolean): Omit<StepOutcome, 'clientHasSecret'> => ({
  * The tests of a host: `run()` runs every step once (shared by the tests)
  * and gives what each step showed.
  */
-function hostSuite(
-  run: () => Promise<Array<StepOutcome>>,
-  /** The steps whose report test main fails (`.fails`). */
-  pinnedReports: Array<number> = [],
-) {
+function hostSuite(run: () => Promise<Array<StepOutcome>>) {
   let outcomes: Promise<Array<StepOutcome>> | undefined
   const outcome = async (step: number) => (await (outcomes ??= run()))[step]!
 
@@ -189,7 +185,7 @@ function hostSuite(
         },
         timeout,
       )
-      ;(pinnedReports.includes(index) ? test.fails : test)(
+      test(
         'the step reports its violations, and only those',
         async () => {
           const { client, server } = await outcome(index)
