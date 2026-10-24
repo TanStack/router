@@ -5,14 +5,13 @@ import { promisify } from 'node:util'
 import { pathToFileURL } from 'node:url'
 import { build } from 'vite'
 import { expect, it } from 'vitest'
-import { tanstackRouter } from '../src/vite'
-import type { CodeSplitGroupings } from '../src/core/constants'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
+import type { CodeSplittingOptions } from '@tanstack/router-plugin'
+
+type CodeSplitGroupings = NonNullable<CodeSplittingOptions['defaultBehavior']>
 
 const runNode = promisify(execFile)
-const fixture = path.resolve(
-  __dirname,
-  'code-splitter/test-files/react/shared-runtime.tsx',
-)
+const fixture = path.resolve(__dirname, 'fixtures/shared-runtime.tsx')
 
 const groupings: Array<{ name: string; groupings: CodeSplitGroupings }> = [
   { name: 'eager loader', groupings: [['component']] },
