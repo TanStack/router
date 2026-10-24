@@ -41,8 +41,8 @@ for name, digest, allowed_paths in [
     ("input-map-sync-test.patch.gz",
      "a9a19adad05b39a99efbe48d80cf06334cd0d53e93aa58a2f2cfb02bd7e5f487",
      {"test/bundler/bun-build-api.test.ts"}),
-    ("canonical-watcher-test.patch.gz",
-     "fd2796c31cf5d50270040db55dce53be19528dfed86c56b32ab5b9dc987dc73e",
+    ("watcher-poll-test.patch.gz",
+     "9b519899a32da4eb217e3131e62d4ea2934805703d41dec1503f881a8e3f9743",
      {"test/bake/dev/hot.test.ts"}),
 ]:
     patch = (root / ".github/native-bun-validation" / name).read_bytes()
@@ -52,7 +52,7 @@ for name, digest, allowed_paths in [
     paths = re.findall(rb"^diff --git a/(\S+) b/(\S+)$", patch, re.MULTILINE)
     assert all(old == new for old, new in paths)
     assert {old.decode() for old, _ in paths} == allowed_paths
-    if name == "canonical-watcher-test.patch.gz":
+    if name == "watcher-poll-test.patch.gz":
         original_test = source / "test/bake/dev/hot.test.ts"
         original_contents = original_test.read_bytes()
         needle = b'const text = readFileSync(trace, "utf8").slice(offset);'
