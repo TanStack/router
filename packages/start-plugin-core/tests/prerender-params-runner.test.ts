@@ -24,6 +24,105 @@ function createRouteTree(optionsById: Record<string, any>) {
 }
 
 describe('collectPrerenderParams', () => {
+  it('uses static route sitemap defaults without overwriting explicit false or zero', async () => {
+    const routeTree = createRouteTree({
+      '/about': {
+        sitemap: { priority: 0.8, exclude: true, changefreq: 'weekly' },
+      },
+    })
+    const pages = await collectPrerenderParams({
+      routeTree,
+      pages: [{ path: '/about', sitemap: { priority: 0, exclude: false } }],
+      logger,
+    })
+    expect(pages).toEqual([
+      {
+        path: '/about',
+        sitemap: { priority: 0, exclude: false, changefreq: 'weekly' },
+      },
+    ])
+  })
+
+  it('merges route, generated-entry, and explicit sitemap metadata in precedence order', async () => {
+    const images = [
+      { loc: 'https://example.com/image.png', title: 'Image & caption' },
+    ]
+    const routeTree = createRouteTree({
+      '/posts/$slug': {
+        sitemap: { priority: 0.8, exclude: true, changefreq: 'weekly', images },
+        prerenderParams: () => [
+          {
+            params: { slug: 'generated' },
+            sitemap: { priority: 0, exclude: false, lastmod: '2026-05-05' },
+          },
+          {
+            params: { slug: 'explicit' },
+            sitemap: { priority: 0.4, exclude: true, lastmod: '2026-05-05' },
+          },
+        ],
+      },
+    })
+    const pages = await collectPrerenderParams({
+      routeTree,
+      pages: [
+        {
+          path: '/posts/explicit',
+          sitemap: { priority: 0, exclude: false, lastmod: '2026-05-06' },
+        },
+      ],
+      logger,
+    })
+    expect(pages).toEqual([
+      {
+        path: '/posts/generated',
+        prerender: undefined,
+        sitemap: {
+          priority: 0,
+          exclude: false,
+          lastmod: '2026-05-05',
+          changefreq: 'weekly',
+          images,
+        },
+      },
+      {
+        path: '/posts/explicit',
+        prerender: undefined,
+        sitemap: {
+          priority: 0,
+          exclude: false,
+          lastmod: '2026-05-06',
+          changefreq: 'weekly',
+          images,
+        },
+      },
+    ])
+  })
+
+  it('makes generated sitemap metadata available to the page filter', async () => {
+    const routeTree = createRouteTree({
+      '/posts/$slug': {
+        sitemap: { changefreq: 'daily' },
+        prerenderParams: () => [
+          { params: { slug: 'keep' }, sitemap: { priority: 0.5 } },
+          { params: { slug: 'drop' }, sitemap: { priority: 0 } },
+        ],
+      },
+    })
+    const pages = await collectPrerenderParams({
+      routeTree,
+      pages: [],
+      logger,
+      filter: (page) => page.sitemap?.priority !== 0,
+    })
+    expect(pages).toEqual([
+      {
+        path: '/posts/keep',
+        prerender: undefined,
+        sitemap: { changefreq: 'daily', priority: 0.5 },
+      },
+    ])
+  })
+
   it('expands dynamic route params into pages', async () => {
     const routeTree = createRouteTree({
       '/posts/$slug': {

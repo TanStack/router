@@ -66,7 +66,7 @@ describe('post-build sitemap', () => {
         await readFile(path.join(publicDir, 'pages.json'), 'utf8'),
       )
       expect(pages).toEqual({
-        pages: startConfig.pages,
+        pages: [...startConfig.pages, { path: '/discovered' }],
         host: 'https://example.com',
         lastBuilt: expect.any(String),
       })

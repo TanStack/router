@@ -12,6 +12,7 @@ describe('client route option stripping', () => {
       'headers',
       'prerenderParams',
       'prerender',
+      'sitemap',
     ])
   })
 
@@ -19,6 +20,7 @@ describe('client route option stripping', () => {
     expect(SERVER_ROUTE_OPTION_DELETE_NODES).toEqual([
       'prerenderParams',
       'prerender',
+      'sitemap',
     ])
   })
 })

@@ -1,5 +1,5 @@
 import { HEADERS } from '@tanstack/start-server-core/constants'
-import type { Page, TanStackStartOutputConfig } from './schema'
+import type { TanStackStartOutputConfig } from './schema'
 import type { PrerenderPageSink } from './prerender'
 
 export interface StartPostBuildAdapter {
@@ -65,24 +65,21 @@ export async function postBuild({
     })
   }
 
-  if (startConfig.prerender.enabled) {
-    const pages: Array<Page> = []
-    await adapter.prerender(
-      { ...startConfig },
-      {
-        pageSink: (page) => {
-          pages.push(page)
-        },
-      },
-    )
-    startConfig.pages = pages
-  }
-
-  if (startConfig.sitemap?.enabled) {
-    const { buildSitemap } = await import('./build-sitemap')
-    await buildSitemap({
-      startConfig,
-      publicDir: adapter.getClientOutputDirectory(),
-    })
+  const sitemap = startConfig.sitemap?.enabled
+    ? (await import('./build-sitemap')).createSitemapWriter({
+        startConfig,
+        publicDir: adapter.getClientOutputDirectory(),
+      })
+    : undefined
+  try {
+    if (startConfig.prerender.enabled) {
+      await adapter.prerender({ ...startConfig }, { pageSink: sitemap?.write })
+    } else if (sitemap) {
+      for (const page of startConfig.pages) {
+        await sitemap.write(page)
+      }
+    }
+  } finally {
+    await sitemap?.close()
   }
 }

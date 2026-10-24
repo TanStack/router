@@ -140,5 +140,30 @@ test.describe('Prerender Static Path Discovery', () => {
         }),
       ).toBe(false)
     })
+
+    test('should include route sitemap options from prerenderParams', () => {
+      const sitemapPath = join(distDir, 'sitemap.xml')
+
+      expect(existsSync(sitemapPath)).toBe(true)
+
+      const sitemap = readFileSync(sitemapPath, 'utf-8')
+      expect(sitemap).toContain(
+        '<loc>https://example.com/prerender-params/hello-world</loc>',
+      )
+      expect(sitemap).toContain('<lastmod>2026-05-05</lastmod>')
+      expect(sitemap).toContain('<priority>0.8</priority>')
+      expect(sitemap).toContain('<changefreq>weekly</changefreq>')
+      expect(sitemap).toContain(
+        '<loc>https://example.com/prerender-params/대한민국</loc>',
+      )
+      expect(sitemap).toContain('<priority>0.6</priority>')
+      expect(sitemap).toContain(
+        '<loc>https://example.com/prerender-params/with-query?page=2&amp;tag=router+start</loc>',
+      )
+      expect(sitemap).toContain('<priority>0.4</priority>')
+      expect(sitemap).not.toContain(
+        '<loc>https://example.com/prerender-params/server-only-slug</loc>',
+      )
+    })
   })
 })

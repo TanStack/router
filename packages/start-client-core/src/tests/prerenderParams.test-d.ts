@@ -1,5 +1,9 @@
 import { expectTypeOf, test } from 'vitest'
-import type {} from '../prerenderParams'
+import type {
+  PrerenderParamsEntry,
+  RoutePrerenderOptions,
+  RouteSitemapOptions,
+} from '../prerenderParams'
 import type { AnyRoute, FileBaseRouteOptions } from '@tanstack/router-core'
 
 type ParentRoute = Omit<AnyRoute, 'types'> & {
@@ -9,6 +13,46 @@ type ParentRoute = Omit<AnyRoute, 'types'> & {
     }
   }
 }
+
+test('sitemap metadata is available on entries and onSuccess pages', () => {
+  const sitemap = {
+    priority: 0,
+    exclude: false,
+    lastmod: new Date(),
+    alternateRefs: [{ href: 'https://example.com/fr', hreflang: 'fr' }],
+    images: [
+      {
+        loc: 'https://example.com/image.png',
+        title: 'Image',
+        caption: 'Caption',
+      },
+    ],
+    news: {
+      publication: { name: 'News', language: 'en' },
+      publicationDate: new Date(),
+      title: 'Title',
+    },
+  } satisfies RouteSitemapOptions
+  const entry = {
+    params: { slug: 'post' },
+    sitemap,
+  } satisfies PrerenderParamsEntry<{ slug: string }>
+  expectTypeOf(entry.sitemap.lastmod).toEqualTypeOf<Date>()
+  const options = {
+    onSuccess: ({ page }) => {
+      expectTypeOf(page.sitemap).toEqualTypeOf<
+        RouteSitemapOptions | undefined
+      >()
+    },
+  } satisfies RoutePrerenderOptions
+  expectTypeOf(options.onSuccess).toBeFunction()
+
+  const invalid = {
+    // @ts-expect-error changefreq must be a sitemap frequency
+    changefreq: 'sometimes',
+  } satisfies RouteSitemapOptions
+  expectTypeOf(invalid.changefreq).toEqualTypeOf<'sometimes'>()
+})
 
 test('prerenderParams uses route path and all params', () => {
   const options = {
@@ -26,6 +70,10 @@ test('prerenderParams uses route path and all params', () => {
         },
       ]
     },
+    sitemap: {
+      priority: 0.7,
+      changefreq: 'weekly',
+    },
   } satisfies FileBaseRouteOptions<
     unknown,
     ParentRoute,
@@ -34,6 +82,8 @@ test('prerenderParams uses route path and all params', () => {
     undefined,
     { slug: string }
   >
+
+  expectTypeOf(options.sitemap.changefreq).toEqualTypeOf<'weekly'>()
 
   type Entry = Awaited<
     ReturnType<NonNullable<typeof options.prerenderParams>>

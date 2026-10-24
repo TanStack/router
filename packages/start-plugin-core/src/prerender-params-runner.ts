@@ -6,7 +6,10 @@ import {
 } from '@tanstack/router-core'
 import { collectPrerenderRouteOptions } from './prerender-route-options'
 import type { Page } from './schema'
-import type { RoutePrerenderOptions } from '@tanstack/start-client-core'
+import type {
+  RoutePrerenderOptions,
+  RouteSitemapOptions,
+} from '@tanstack/start-client-core'
 import type { AnyRoute } from '@tanstack/router-core'
 
 interface PrerenderParamsLogger {
@@ -16,6 +19,7 @@ interface PrerenderParamsLogger {
 interface PrerenderParamsEntry {
   params: Record<string, unknown>
   search?: Record<string, unknown>
+  sitemap?: RouteSitemapOptions
   prerender?: RoutePrerenderOptions
 }
 
@@ -38,7 +42,7 @@ export async function runPrerenderParams({
   signal,
   onPage,
 }: RunPrerenderParamsOptions): Promise<void> {
-  const { routeOptions, dynamicRoutes } =
+  const { routeOptions, dynamicRoutes, sitemapRoutes } =
     collectPrerenderRouteOptions(routeTree)
 
   // Explicit pages may receive route-level defaults and gap-fills from
@@ -47,6 +51,22 @@ export async function runPrerenderParams({
   const explicitByPath = new Map<string, Page>()
   for (const page of pages) {
     explicitByPath.set(page.path, page)
+  }
+
+  for (const route of sitemapRoutes) {
+    if (isDynamicPath(route.path)) {
+      continue
+    }
+    const page = explicitByPath.get(route.path)
+    if (page) {
+      explicitByPath.set(route.path, {
+        ...page,
+        sitemap: mergeOptions(
+          routeOptions.get(route.routePath)?.sitemap,
+          page.sitemap,
+        ),
+      })
+    }
   }
 
   const seen = new Set<string>(explicitByPath.keys())
@@ -141,7 +161,8 @@ export async function runPrerenderParams({
             )
           }
 
-          const { params, search, prerender } = entry as PrerenderParamsEntry
+          const { params, search, prerender, sitemap } =
+            entry as PrerenderParamsEntry
 
           const usedParams: Record<string, unknown> = {}
           const interpolatedPath = interpolatePath(
@@ -167,6 +188,7 @@ export async function runPrerenderParams({
             path:
               interpolatedPath + (search ? defaultStringifySearch(search) : ''),
             prerender: mergeOptions(options.prerender, prerender),
+            sitemap: mergeOptions(options.sitemap, sitemap),
           }
 
           if (filter && !filter(page)) {
@@ -255,10 +277,11 @@ function merge(base: Page, override: Partial<Page>): Page {
     ...base,
     ...override,
     prerender: mergeOptions(base.prerender, override.prerender),
+    sitemap: mergeOptions(base.sitemap, override.sitemap),
   }
 }
 
-function mergeOptions<T extends RoutePrerenderOptions>(
+function mergeOptions<T extends RoutePrerenderOptions | RouteSitemapOptions>(
   base: T | undefined,
   override: T | undefined,
 ) {
