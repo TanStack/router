@@ -66,7 +66,7 @@ describe.concurrent.each(['vite', 'rspack', 'webpack', 'rsbuild'] as const)(
       { hint: 'with "sideEffects": false', sideEffects: false },
     ])(
       'a component the route file writes a property of loads with its chunk and renders the property ($hint)',
-      { timeout, fails: true },
+      { timeout },
       async ({ sideEffects }, { expect, onTestFinished }: TestContext) => {
         const options = {
           sideEffects,

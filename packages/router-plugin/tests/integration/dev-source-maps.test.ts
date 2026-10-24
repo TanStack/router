@@ -233,35 +233,31 @@ describe('vite dev server', () => {
   // Impact: in Vite dev, a debugger sees the split component and the shared
   // code as other files than the route file.
   const rows = [
-    { name: 'the loader', marker: 'MARK_LOADER_THROW', fails: false },
+    { name: 'the loader', marker: 'MARK_LOADER_THROW' },
     {
       name: 'a function the loader and the split component share',
       marker: 'MARK_SHARED_THROW',
-      fails: true,
     },
-    { name: 'the split component', marker: 'MARK_PAGE_THROW ', fails: true },
+    { name: 'the split component', marker: 'MARK_PAGE_THROW ' },
   ]
-  for (const { name, marker, fails } of rows) {
-    ;(fails ? test.fails : test)(
-      `a throw in ${name} maps to its line in the route file, which its module names as its source`,
-      () => {
-        const { stacks, maps, root, origin } = throws
-        // (a module's URL path is relative to the app root)
-        expectThrowsMapToRouteFile(
-          stacks,
-          maps,
-          root,
-          (location) => path.join(root, new URL(location).pathname),
-          [marker],
-        )
-        const [top] = traceStack(stacks[marker]!, (location) =>
-          maps.get(location),
-        )
-        expect(new URL(top!.original!.source, top!.location).href).toBe(
-          new URL('/routes/index.tsx', origin).href,
-        )
-      },
-    )
+  for (const { name, marker } of rows) {
+    test(`a throw in ${name} maps to its line in the route file, which its module names as its source`, () => {
+      const { stacks, maps, root, origin } = throws
+      // (a module's URL path is relative to the app root)
+      expectThrowsMapToRouteFile(
+        stacks,
+        maps,
+        root,
+        (location) => path.join(root, new URL(location).pathname),
+        [marker],
+      )
+      const [top] = traceStack(stacks[marker]!, (location) =>
+        maps.get(location),
+      )
+      expect(new URL(top!.original!.source, top!.location).href).toBe(
+        new URL('/routes/index.tsx', origin).href,
+      )
+    })
   }
 })
 
@@ -277,7 +273,7 @@ describe('rsbuild dev server', () => {
   // plugin.
   // Impact: in Rsbuild dev, a thrown error in a split component, and a
   // breakpoint in it, resolve to the generated split module's lines.
-  test.fails(
+  test(
     'the route module and every module derived from it map a throw to its line in the route file',
     async () => {
       const { tanstackRouter: tanstackRouterRspack } =

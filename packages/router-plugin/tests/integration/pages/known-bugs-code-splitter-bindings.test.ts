@@ -38,11 +38,9 @@ describe('code-split groupings', () => {
   // of arrays for the codeSplitGroupings").
   // Impact: groupings shared between route files through a constant cannot
   // be used.
-  test.fails(
-    'groupings declared in a module-level constant are honoured',
-    async () => {
-      const route =
-        await loadRoute(`${head}const groupings: Array<Array<'loader' | 'component'>> = [
+  test('groupings declared in a module-level constant are honoured', async () => {
+    const route =
+      await loadRoute(`${head}const groupings: Array<Array<'loader' | 'component'>> = [
   ['loader'],
   ['component'],
 ]
@@ -52,15 +50,14 @@ export const Route = createFileRoute('/')({
   component: () => <p>page</p>,
 })
 `)
-      expect(
-        await route.run(
-          `return [await options.loader(), await render('component')]`,
-        ),
-      ).toEqual(['data', '<p>page</p>'])
-      // The loader and the component each load on their own.
-      expect(await route.groups()).toEqual([['component'], ['loader']])
-    },
-  )
+    expect(
+      await route.run(
+        `return [await options.loader(), await render('component')]`,
+      ),
+    ).toEqual(['data', '<p>page</p>'])
+    // The loader and the component each load on their own.
+    expect(await route.groups()).toEqual([['component'], ['loader']])
+  })
 })
 
 describe('module state read by route options written as methods', () => {
@@ -70,10 +67,8 @@ describe('module state read by route options written as methods', () => {
   // the split chunk declares its own copy.
   // Impact: the split component reads another instance of the module state
   // than the route's other options.
-  test.fails(
-    'module state a method option shares with a split option is created once',
-    async () => {
-      const route = await loadRoute(`${head}const state = { count: 0 }
+  test('module state a method option shares with a split option is created once', async () => {
+    const route = await loadRoute(`${head}const state = { count: 0 }
 export const Route = createFileRoute('/')({
   loader() {
     return ++state.count
@@ -81,11 +76,10 @@ export const Route = createFileRoute('/')({
   component: () => <div>{state.count}</div>,
 })
 `)
-      expect(
-        await route.run(`return [options.loader(), await render('component')]`),
-      ).toEqual([1, '<div>1</div>'])
-    },
-  )
+    expect(
+      await route.run(`return [options.loader(), await render('component')]`),
+    ).toEqual([1, '<div>1</div>'])
+  })
 })
 
 describe('module state next to bindings that read Route', () => {
@@ -94,11 +88,9 @@ describe('module state next to bindings that read Route', () => {
   // across modules, so a `Map` declared next to a binding that reads `Route`
   // is created by the route module and again by the chunk that reads it.
   // Impact: the loader and the component use two different caches.
-  test.fails(
-    'a destructuring whose sibling reads Route keeps one cache for the loader and the component',
-    async () => {
-      const route = await loadRoute(
-        `${head}import { createRouteHelpers } from './helpers'
+  test('a destructuring whose sibling reads Route keeps one cache for the loader and the component', async () => {
+    const route = await loadRoute(
+      `${head}import { createRouteHelpers } from './helpers'
 const { cache, useTitle } = createRouteHelpers(() => Route)
 export const Route = createFileRoute('/')({
   staticData: { title: 'title' },
@@ -109,9 +101,9 @@ export const Route = createFileRoute('/')({
   component: () => <div>{cache.size}{useTitle()}</div>,
 })
 `,
-        {
-          files: {
-            'helpers.ts': `export let created = 0
+      {
+        files: {
+          'helpers.ts': `export let created = 0
 export const createRouteHelpers = (getRoute: () => any) => {
   created++
   return {
@@ -120,18 +112,17 @@ export const createRouteHelpers = (getRoute: () => any) => {
   }
 }
 `,
-          },
         },
-      )
-      expect(
-        await route.run(`return [
+      },
+    )
+    expect(
+      await route.run(`return [
   options.loader(),
   await render('component'),
   (await app('helpers.ts')).created,
 ]`),
-      ).toEqual([1, '<div>1title</div>', 1])
-    },
-  )
+    ).toEqual([1, '<div>1title</div>', 1])
+  })
 })
 
 describe('route options read from the environment', () => {
@@ -167,7 +158,7 @@ ${head}export const Route = createFileRoute('/')({ component: Page })
   // chunk never declares ("Export '...' is not defined"), or the export is
   // erased with the `declare`.
   // Impact: the chunk fails to load, or the route renders no component.
-  test.fails.each([
+  test.each([
     { name: 'an undeclared global', declaration: '' },
     {
       name: 'an ambient declare const',
@@ -219,24 +210,21 @@ return {
   // start-plugin-core/tests/known-bugs-start-compiler.test.ts and
   // known-bugs-hydrate.test.ts.
   // Impact: the split component throws "jsx is not defined".
-  test.fails(
-    'a split component renders through the factory of a classic JSX pragma',
-    async () => {
-      const { split, untouched } =
-        await renderBoth(`${pragma}${head}export const Route = createFileRoute('/')({
+  test('a split component renders through the factory of a classic JSX pragma', async () => {
+    const { split, untouched } =
+      await renderBoth(`${pragma}${head}export const Route = createFileRoute('/')({
   component: () => <div css={{ color: 'red' }}>page</div>,
   errorComponent: () => jsx('b', null, 'error'),
 })`)
-      expect(split).toBe(untouched)
-    },
-  )
+    expect(split).toBe(untouched)
+  })
 
   // Bug: same root cause as above, for a chunk with only fragments (the
   // @jsxFrag factory too) and a pragma written with two spaces. Source: #8504
   // (code-splitter-pragmas.test.ts; mutation testing of the dead code
   // removal), where they pass.
   // Impact: the split component throws "jsx is not defined".
-  test.fails.each([
+  test.each([
     {
       name: 'the fragments of a chunk, with @jsxFrag',
       code: `/** @jsxRuntime classic */
@@ -289,7 +277,7 @@ export const createJsx = () => {
   // Source of the `@jsx` only row: #8504 (a project whose
   // JSX runtime is classic: `@vitejs/plugin-react` with `jsxRuntime:
   // 'classic'`).
-  test.fails.each([
+  test.each([
     {
       name: '@jsxRuntime classic and @jsx',
       header: '/** @jsxRuntime classic */\n/** @jsx jsx */',
@@ -335,7 +323,7 @@ describe('exported bindings', () => {
   // it).
   // Impact: no diagnostic in production builds for a page that stays in the
   // entry chunk.
-  test.fails.each([
+  test.each([
     {
       name: 'an exported function',
       declaration: `export function Page() {
@@ -401,11 +389,9 @@ export const Route = createFileRoute('/')({ ${options}component: ${binding} })
   // (memoisation, registries, `===` checks) sees two of them.
   // (The title lives in `staticData`, typed by the documented
   // `StaticDataRouteOption` augmentation.)
-  test.fails(
-    'an exported function that reads Route is the one the split component calls',
-    async () => {
-      const route = await loadRoute(
-        `${head}import { see } from './see'
+  test('an exported function that reads Route is the one the split component calls', async () => {
+    const route = await loadRoute(
+      `${head}import { see } from './see'
 declare module '@tanstack/react-router' {
   interface StaticDataRouteOption {
     title?: string
@@ -423,18 +409,18 @@ export const Route = createFileRoute('/')({
   component: Page,
 })
 `,
-        {
-          files: {
-            'see.ts': `export const seen: Array<unknown> = []
+      {
+        files: {
+          'see.ts': `export const seen: Array<unknown> = []
 export const see = (value: unknown) => seen.push(value)
 `,
-            // Another module of the app imports the hook.
-            'importer.ts': `export { useTitle } from './route'\n`,
-          },
+          // Another module of the app imports the hook.
+          'importer.ts': `export { useTitle } from './route'\n`,
         },
-      )
-      expect(
-        await route.run(`const { useTitle } = await app('importer.ts')
+      },
+    )
+    expect(
+      await route.run(`const { useTitle } = await app('importer.ts')
 const rendered = await render('component')
 const { seen } = await app('see.ts')
 return {
@@ -442,13 +428,12 @@ return {
   imported: useTitle(),
   sameInstance: seen.length === 1 && seen[0] === useTitle,
 }`),
-      ).toEqual({
-        rendered: '<p>title</p>',
-        imported: 'title',
-        sameInstance: true,
-      })
-    },
-  )
+    ).toEqual({
+      rendered: '<p>title</p>',
+      imported: 'title',
+      sameInstance: true,
+    })
+  })
 
   // Bug: a split component that reads a `Route` declared with `const` and
   // exported later (`export { Route }`) gets a chunk that creates the route
@@ -458,11 +443,9 @@ return {
   // (code-splitter-route-options.test.ts), where it passes.
   // Impact: the split component reads a second route object, which the
   // router does not know.
-  test.fails(
-    'a split component reads the route the route module exports through export { Route }',
-    async () => {
-      const route = await loadRoute(
-        `${head}const Route = createFileRoute('/')({
+  test('a split component reads the route the route module exports through export { Route }', async () => {
+    const route = await loadRoute(
+      `${head}const Route = createFileRoute('/')({
   component: Page,
 })
 function Page() {
@@ -470,12 +453,11 @@ function Page() {
 }
 export { Route }
 `,
-      )
-      // The router mounted the exported route (which sets its id): a second
-      // route object has none.
-      expect(await route.run(`return renderRoute()`)).toBe('<p>/</p>')
-    },
-  )
+    )
+    // The router mounted the exported route (which sets its id): a second
+    // route object has none.
+    expect(await route.run(`return renderRoute()`)).toBe('<p>/</p>')
+  })
 
   // Bug: a route whose component is a default-exported function (which
   // stays in the route module) that another split option renders cannot be
@@ -483,11 +465,9 @@ export { Route }
   // Source: React Compiler gating/gating-test-export-default-function.js;
   // #8504 (code-splitter-imports-exports.test.ts), where it passes.
   // Impact: the route cannot be built once code splitting is on.
-  test.fails(
-    'a split option renders the default-exported component other modules import',
-    async () => {
-      const route = await loadRoute(
-        `${head}import type { ReactNode } from 'react'
+  test('a split option renders the default-exported component other modules import', async () => {
+    const route = await loadRoute(
+      `${head}import type { ReactNode } from 'react'
 import { see } from './see'
 export default function Bar(props: { children?: ReactNode }) {
   return <div>{props.children}</div>
@@ -498,24 +478,23 @@ function NoForget(props: { noForget?: string }) {
 }
 export const Route = createFileRoute('/')({ component: Bar, errorComponent: NoForget })
 `,
-        {
-          files: {
-            'see.ts': `export const seen: Array<unknown> = []
+      {
+        files: {
+          'see.ts': `export const seen: Array<unknown> = []
 export const see = (value: unknown) => seen.push(value)
 `,
-            // The component other modules import.
-            'importer.ts': `export { default } from './route'\n`,
-          },
+          // The component other modules import.
+          'importer.ts': `export { default } from './route'\n`,
         },
-      )
-      expect(
-        await route.run(`const rendered = await render('errorComponent', { noForget: 'x' })
+      },
+    )
+    expect(
+      await route.run(`const rendered = await render('errorComponent', { noForget: 'x' })
 const { default: imported } = await app('importer.ts')
 const { seen } = await app('see.ts')
 return { rendered, seen: seen.length, sameInstance: seen[0] === imported }`),
-      ).toEqual({ rendered: '<div>x</div>', seen: 1, sameInstance: true })
-    },
-  )
+    ).toEqual({ rendered: '<div>x</div>', seen: 1, sameInstance: true })
+  })
 
   // Bug: the code splitter deletes the exported declaration of an option's
   // component from every chunk, so a split component that renders the
@@ -523,7 +502,7 @@ return { rendered, seen: seen.length, sameInstance: seen[0] === imported }`),
   // undeclared binding ("NotFound is not defined").
   // Source: round-3 mutation testing (compilers-B, bug A).
   // Impact: the route crashes when its component renders.
-  test.fails.each([
+  test.each([
     {
       name: 'export function',
       declaration: `export function NotFound() {
@@ -555,11 +534,9 @@ export const Route = createFileRoute('/')({
   // declaration" for it.
   // Source: round-3 mutation testing (router-utils).
   // Impact: the route cannot be built once code splitting is on.
-  test.fails(
-    'a default-exported function the loader and the split component call works on one state',
-    async () => {
-      const route = await loadRoute(
-        `${head}import { init } from './state'
+  test('a default-exported function the loader and the split component call works on one state', async () => {
+    const route = await loadRoute(
+      `${head}import { init } from './state'
 const store = init({ n: 0 })
 export default function bump() {
   return ++store.n
@@ -569,40 +546,37 @@ export const Route = createFileRoute('/')({
   component: () => <p>{bump()}</p>,
 })
 `,
-        {
-          files: {
-            'state.ts': `export let inits = 0
+      {
+        files: {
+          'state.ts': `export let inits = 0
 export const init = <T,>(value: T) => {
   inits++
   return value
 }
 `,
-            'importer.ts': `export { default } from './route'\n`,
-          },
+          'importer.ts': `export { default } from './route'\n`,
         },
-      )
-      expect(
-        await route.run(`const { default: bump } = await app('importer.ts')
+      },
+    )
+    expect(
+      await route.run(`const { default: bump } = await app('importer.ts')
 return [
   options.loader(),
   await render('component'),
   bump(),
   (await app('state.ts')).inits,
 ]`),
-      ).toEqual([1, '<p>2</p>', 3, 1])
-    },
-  )
+    ).toEqual([1, '<p>2</p>', 3, 1])
+  })
 
   // Bug: a split loader that the route file also exports through an export
   // list (`export { load }`) loses its declaration in the route module:
   // "Export 'load' is not defined".
   // Source: round-3 mutation testing (compilers-A).
   // Impact: the route cannot be built once code splitting is on.
-  test.fails(
-    'a split loader exported through an export list keeps working',
-    async () => {
-      const route = await loadRoute(
-        `${head}function load() {
+  test('a split loader exported through an export list keeps working', async () => {
+    const route = await loadRoute(
+      `${head}function load() {
   return 'data'
 }
 export { load }
@@ -612,14 +586,13 @@ export const Route = createFileRoute('/')({
   component: () => <p>page</p>,
 })
 `,
-        { files: { 'importer.ts': `export { load } from './route'\n` } },
-      )
-      expect(
-        await route.run(`const { load } = await app('importer.ts')
+      { files: { 'importer.ts': `export { load } from './route'\n` } },
+    )
+    expect(
+      await route.run(`const { load } = await app('importer.ts')
 return [await options.loader(), load()]`),
-      ).toEqual(['data', 'data'])
-    },
-  )
+    ).toEqual(['data', 'data'])
+  })
 
   /**
    * Loads a route whose errorComponent option is the exported
@@ -704,7 +677,7 @@ return { rendered, sameInstance: seen.length === 1 && seen[0] === imported }`)
   // Impact: code that relies on the identity of the component (`===`
   // checks, registries, memoised props) sees two of them, and the component
   // code ships twice (see the build pin below).
-  test.fails.each([
+  test.each([
     'PostErrorComponent as any',
     'PostErrorComponent as typeof PostErrorComponent',
     'withAuth(PostErrorComponent)',
@@ -731,7 +704,7 @@ describe('TypeScript-only syntax', () => {
   // Source: mutation testing.
   // Impact: a route file with such a class cannot be built once code
   // splitting is on.
-  test.fails('a decorator after `export` compiles', async () => {
+  test('a decorator after `export` compiles', async () => {
     const route = await loadRoute(
       `${head}import { injectable } from 'tsyringe'
 export @injectable() class Store {}
@@ -769,11 +742,9 @@ export const Route = createFileRoute('/')({ component: () => <div /> })
   // it.
   // Impact: a route file with such a class cannot be built once code
   // splitting is on.
-  test.fails(
-    'a class with a parameter decorator that the split component uses compiles into parseable modules',
-    async () => {
-      const route = await loadRoute(
-        `${head}import { Inject } from './di'
+  test('a class with a parameter decorator that the split component uses compiles into parseable modules', async () => {
+    const route = await loadRoute(
+      `${head}import { Inject } from './di'
 class Service {
   constructor(@Inject() readonly dep: unknown) {}
 }
@@ -782,29 +753,28 @@ export const Route = createFileRoute('/')({
   component: () => <p>{String(new Service(1).dep)}</p>,
 })
 `,
-        {
-          tsconfig: { experimentalDecorators: true },
-          files: {
-            'di.ts': `export const Inject = () => (_target: unknown, _key: unknown, _index: number) => {}\n`,
-          },
+      {
+        tsconfig: { experimentalDecorators: true },
+        files: {
+          'di.ts': `export const Inject = () => (_target: unknown, _key: unknown, _index: number) => {}\n`,
         },
-      )
-      await expectValidModules(route)
-      expect(
-        await route.run(`return [options.loader(), await render('component')]`),
-      ).toEqual(['data', '<p>1</p>'])
-      // Compiled: nothing reported an error compiling the route, and the
-      // component is split, as configured (not left in the route module)
-      expect(
-        findDiagnostics(problems(await route.diagnostics()), {
-          severity: 'error',
-          file: 'route.tsx',
-          root: route.host.root,
-        }).map((diagnostic) => diagnostic.text),
-      ).toEqual([])
-      expect(await route.isLazy('component')).toBe(true)
-    },
-  )
+      },
+    )
+    await expectValidModules(route)
+    expect(
+      await route.run(`return [options.loader(), await render('component')]`),
+    ).toEqual(['data', '<p>1</p>'])
+    // Compiled: nothing reported an error compiling the route, and the
+    // component is split, as configured (not left in the route module)
+    expect(
+      findDiagnostics(problems(await route.diagnostics()), {
+        severity: 'error',
+        file: 'route.tsx',
+        root: route.host.root,
+      }).map((diagnostic) => diagnostic.text),
+    ).toEqual([])
+    expect(await route.isLazy('component')).toBe(true)
+  })
 
   // Bug: a type-only import re-exported without `type` (`export { Settings }`,
   // which TypeScript accepts unless verbatimModuleSyntax is on) loses its
@@ -813,10 +783,25 @@ export const Route = createFileRoute('/')({
   // compiler has the same bug (pin in
   // start-plugin-core/tests/known-bugs-start-compiler.test.ts).
   // Impact: the route fails to load ("Export 'Settings' is not defined").
-  test.fails.each([
-    `import type { Settings } from './settings'`,
-    `import { type Settings } from './settings'`,
-  ])(
+  test.each([`import type { Settings } from './settings'`])(
+    'a type-only import re-exported as `export { Settings }` is erased (%s)',
+    async (importDeclaration) => {
+      const route = await loadRoute(
+        `${head}${importDeclaration}
+export { Settings }
+export const Route = createFileRoute('/')({
+  component: () => <p>index</p>,
+})`,
+        {
+          files: {
+            'settings.ts': `export type Settings = { theme: string }\n`,
+          },
+        },
+      )
+      await expectValidModules(route)
+    },
+  )
+  test.each([`import { type Settings } from './settings'`])(
     'a type-only import re-exported as `export { Settings }` is erased (%s)',
     async (importDeclaration) => {
       const route = await loadRoute(
@@ -846,7 +831,7 @@ export const Route = createFileRoute('/')({
   // runtime-neutral `import type` is gone, §5.5), must not import the module
   // (a value the project exports next to the type, so the import is valid
   // with `verbatimModuleSyntax`, which keeps it where it is written).
-  test.fails.each([
+  test.each([
     {
       name: 'the return type of the loader',
       code: `import { Framework } from './projects'
@@ -898,18 +883,15 @@ return Promise.all(loaded.map(served))`)
   // without its body. Source: #8504 (code-splitter-imports-exports.test.ts),
   // where it passes.
   // Impact: the split component throws ("Labels is not defined").
-  test.fails(
-    'a namespace the split component reads keeps its body',
-    async () => {
-      const route =
-        await loadRoute(`${head}namespace Labels { export const quiet = 'quiet' }
+  test('a namespace the split component reads keeps its body', async () => {
+    const route =
+      await loadRoute(`${head}namespace Labels { export const quiet = 'quiet' }
 export const Route = createFileRoute('/')({
   component: () => <p>{Labels.quiet}</p>,
 })
 `)
-      expect(await route.run(`return render('component')`)).toBe('<p>quiet</p>')
-    },
-  )
+    expect(await route.run(`return render('component')`)).toBe('<p>quiet</p>')
+  })
 
   // Bug: the split chunk prints a type assertion used as an update target
   // without its parentheses (`count as number++`), which does not parse.
@@ -917,19 +899,16 @@ export const Route = createFileRoute('/')({
   // type-assertion/increment/as-increment.js; #8504
   // (code-splitter-imports-exports.test.ts), where it passes.
   // Impact: the split component's chunk fails to compile.
-  test.fails(
-    'an asserted update operand keeps its parentheses in a split component',
-    async () => {
-      const route = await loadRoute(`${head}let count = 0
+  test('an asserted update operand keeps its parentheses in a split component', async () => {
+    const route = await loadRoute(`${head}let count = 0
 function Page() {
   ;(count as number)++
   return count
 }
 export const Route = createFileRoute('/')({ component: Page })
 `)
-      expect(await route.run(`return render('component')`)).toBe('1')
-    },
-  )
+    expect(await route.run(`return render('component')`)).toBe('1')
+  })
 
   // Bug: the split chunk prints a type assertion that is the test of a
   // conditional whose branch starts with a unary minus without its
@@ -943,11 +922,9 @@ export const Route = createFileRoute('/')({ component: Page })
   // Source: fuzzing.
   // Impact: the split component's chunk fails to compile, so the build
   // fails.
-  test.fails(
-    'an asserted conditional test keeps its parentheses in a split component',
-    async () => {
-      const route =
-        await loadRoute(`${head}function pick(flag: unknown, x: number, y: number) {
+  test('an asserted conditional test keeps its parentheses in a split component', async () => {
+    const route =
+      await loadRoute(`${head}function pick(flag: unknown, x: number, y: number) {
   return ((flag) as any) ? -x : y
 }
 function Page() {
@@ -955,10 +932,9 @@ function Page() {
 }
 export const Route = createFileRoute('/')({ component: Page })
 `)
-      await expectValidModules(route)
-      expect(await route.run(`return render('component')`)).toBe('<p>-1</p>')
-    },
-  )
+    await expectValidModules(route)
+    expect(await route.run(`return render('component')`)).toBe('<p>-1</p>')
+  })
 
   /**
    * Loads a route whose split component returns `expression`, checks that
@@ -1035,14 +1011,11 @@ export function helper(value: string | number) { return value }`
   // overload signatures). Source: #8505.
   // Impact: in a project without `verbatimModuleSyntax`, the route module
   // fails to load ("Export 'helper' is not defined").
-  test.fails(
-    'an overloaded function the route module and a split loader share keeps working',
-    async () => {
-      expect(await callSharedHelper(overloadedHelper, false)).toEqual([
-        true,
-        'before',
-        42,
-      ])
-    },
-  )
+  test('an overloaded function the route module and a split loader share keeps working', async () => {
+    expect(await callSharedHelper(overloadedHelper, false)).toEqual([
+      true,
+      'before',
+      42,
+    ])
+  })
 })

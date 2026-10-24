@@ -6,7 +6,7 @@
  * references, JSX info, name universe. Both are views over one Yuku parse
  * that lives for the compile attempt only (R19).
  */
-import { walk } from 'yuku'
+import { BindingFlags, walk } from 'yuku'
 import { analyzeHeader } from './header'
 import { SymbolTable } from './symbols'
 import { buildItems, buildUnits } from './units'
@@ -726,12 +726,21 @@ export class ModuleAnalysis {
       const b = file.rootScope.find(root)
       return b ? symbols.ofBinding(b) : null
     }
+    // Without a pragma the project's transform decides the runtime; a
+    // module-level `React` binding is read by every JSX element when it is
+    // classic (Babel's default factory), so it is counted as a read.
     const factory =
-      runtime === 'classic' ? rootSym(factoryName ?? 'React') : null
+      runtime === 'classic'
+        ? rootSym(factoryName ?? 'React')
+        : runtime === 'unknown'
+          ? rootSym('React')
+          : null
     const fragment =
       runtime === 'classic'
         ? rootSym(fragmentName ?? factoryName ?? 'React')
-        : null
+        : runtime === 'unknown'
+          ? factory
+          : null
     let jsxSeen: boolean | null = null
     const hasJsx = (): boolean => {
       if (jsxSeen === null) {
@@ -749,7 +758,7 @@ export class ModuleAnalysis {
       }
       return jsxSeen
     }
-    if (runtime === 'classic' && factory !== null) {
+    if (factory !== null) {
       walk(file.program, {
         JSXElement: (n) => {
           refs.push({
@@ -765,6 +774,32 @@ export class ModuleAnalysis {
             sym: fragment ?? factory,
             range: { start: n.start, end: n.start },
             kind: 'implicitJsxFactory',
+            ctx: 'plain',
+            eager: !isLazyAt(n.start),
+          })
+        },
+      })
+    }
+    // Solid directives (`<p use:tip>`) name their function in a JSX
+    // attribute only: a value read of the binding where the JSX is
+    if (this.source.code.includes('use:')) {
+      walk(file.program, {
+        JSXAttribute: (n) => {
+          const name = n.name
+          if (
+            name.type !== 'JSXNamespacedName' ||
+            name.namespace.name !== 'use'
+          ) {
+            return
+          }
+          const b = file.scopeOf(n).lookup(name.name.name, 'value')
+          if (!b || b.has(BindingFlags.Ambient)) {
+            return
+          }
+          refs.push({
+            sym: symbols.ofBinding(b),
+            range: { start: name.name.start, end: name.name.end },
+            kind: 'value',
             ctx: 'plain',
             eager: !isLazyAt(n.start),
           })

@@ -70,22 +70,18 @@ export const Route = createFileRoute('/')({
   // Bug: build-level canary of the method pin in
   // pages/known-bugs-code-splitter.test.ts (same root cause).
   // Impact: the server code of an `ssr()` method reaches the client bundle.
-  test.fails(
-    'a client build has no server code of an `ssr()` method (vite)',
-    async () => {
-      expect(
-        await secretPlacement('vite', 'ssr() { return !!readSecret() }'),
-      ).toBe('nowhere')
-    },
-    60_000,
-  )
+  test('a client build has no server code of an `ssr()` method (vite)', async () => {
+    expect(
+      await secretPlacement('vite', 'ssr() { return !!readSecret() }'),
+    ).toBe('nowhere')
+  }, 60_000)
 
   // Bug: build-level canary of the typed-wrapper pin in
   // pages/known-bugs-code-splitter.test.ts (same root cause: options wrapped in
   // a cast or `satisfies` are not read; one bundler, as above).
   // Impact: the server handler and its server-only import reach the client
   // bundle.
-  test.fails.each(['as never', 'as any', 'satisfies object'])(
+  test.each(['as never', 'as any', 'satisfies object'])(
     'a client build has no server code of options wrapped in `%s` (vite)',
     async (cast) => {
       expect(
@@ -167,7 +163,7 @@ export const Route = createFileRoute('/')({
   // removed, silently. Failing the build is a valid fix too. Source: #8514.
   // Impact: with symlinked sources (Bazel, Nix, linked checkouts), Start's
   // client bundle ships `server.handlers` and their server-only imports.
-  test.fails.each(clientBundlers)(
+  test.each(clientBundlers)(
     'a client build of a symlinked route file has no server handler code (%s)',
     async (bundler) => {
       expect(['nowhere', 'refused']).toContain(
@@ -255,7 +251,7 @@ export const Route = createFileRoute('/')({
   // Impact: webpack/Rspack production bundles built from a shell without
   // `NODE_ENV` log a development warning in every user's console, with the
   // developer's absolute file path.
-  test.fails.each(['rspack', 'webpack'] as const)(
+  test.each(['rspack', 'webpack'] as const)(
     'a production client bundle logs no development warning in the page when NODE_ENV is unset (%s)',
     async (bundler) => {
       expect((await productionWarnings(bundler, null)).loggedInPage).toBe(false)

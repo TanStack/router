@@ -5,7 +5,13 @@
  * main and is marked .fails; remove .fails when the bug is fixed.
  */
 import { describe, expect, test } from 'vitest'
-import { build, buildAndRun, head, routeApp } from '../build-harness'
+import {
+  build,
+  buildAndRun,
+  head,
+  routeApp,
+  ssrRenderEntry,
+} from '../build-harness'
 import { loadRoute } from '../route-app'
 
 describe('module state shared with split chunks', () => {
@@ -18,7 +24,7 @@ describe('module state shared with split chunks', () => {
   // A real build, as the user sees it: the bundler rejects the assignment.
   // (Evaluated without a bundler, as in code-splitter-scope.test.ts, the
   // first row throws "Assignment to constant variable" on load.)
-  test.fails.each([
+  test.each([
     {
       name: 'the loader reassigns',
       route: `${head}let count = 0
@@ -30,6 +36,15 @@ export const Route = createFileRoute('/')({
 return [...loaded, await entry.render(entry.Route.options.component)]`,
       expected: [1, 2, '<p>2</p>'],
     },
+  ])(
+    'a let $name stays writable and the split component reads its value',
+    async ({ route, script, expected }) => {
+      expect(await buildAndRun(route, script)).toEqual(expected)
+    },
+    30_000,
+  )
+  // The entry re-exports `count` next to `Route`, as the script reads it.
+  test.each([
     {
       name: 'the split component reassigns (exported)',
       route: `${head}export let count = 0
@@ -45,7 +60,16 @@ return [await entry.render(component), await entry.render(component), entry.coun
   ])(
     'a let $name stays writable and the split component reads its value',
     async ({ route, script, expected }) => {
-      expect(await buildAndRun(route, script)).toEqual(expected)
+      expect(
+        await buildAndRun(route, script, {
+          files: {
+            'entry.ts': ssrRenderEntry.replace(
+              "export { Route } from './routes/index'",
+              "export { Route, count } from './routes/index'",
+            ),
+          },
+        }),
+      ).toEqual(expected)
     },
     30_000,
   )
@@ -92,7 +116,7 @@ export async function load() {
   // are both valid fixes.
   // Impact: a route with an object-form loader cannot be built once the
   // loader is split.
-  test.fails.each([
+  test.each([
     { name: 'an arrow handler', loader: `{ handler: () => 'loaded' }` },
     { name: 'a method handler', loader: `{ handler() { return 'loaded' } }` },
     {
@@ -115,18 +139,14 @@ export async function load() {
   // `{ handler }`) is split as if it were the loader function, so the route
   // calls the object ("... is not a function").
   // Impact: the route's data never loads once the loader is split.
-  test.fails(
-    'a split loader in object form passed by reference loads route data',
-    async () => {
-      expect(
-        await loadWithSplitLoader(
-          'loader',
-          `const loader = { handler: () => 'loaded' }\n`,
-        ),
-      ).toEqual([null, 'loaded'])
-    },
-    30_000,
-  )
+  test('a split loader in object form passed by reference loads route data', async () => {
+    expect(
+      await loadWithSplitLoader(
+        'loader',
+        `const loader = { handler: () => 'loaded' }\n`,
+      ),
+    ).toEqual([null, 'loaded'])
+  }, 30_000)
 })
 
 describe('exported bindings', () => {
@@ -158,7 +178,7 @@ export async function render(component: any) {
   // they pass.
   // Impact: `instanceof` checks, registries and counters see two copies
   // once code splitting is on; module state is created twice.
-  test.fails.each([
+  test.each([
     {
       // An instance another module creates is an instance of the class the
       // split component reads
@@ -314,15 +334,11 @@ describe('app paths', () => {
   // in the path is read as the start of a URL fragment.
   // Impact: an app in a directory whose name contains `#` cannot be built
   // with code splitting ([UNRESOLVED_IMPORT]).
-  test.fails(
-    'an app in a directory with # in its name builds and preloads a split component',
-    async () => {
-      expect(
-        await buildAndRun(route, script, { prefix: '.regression-build-#' }),
-      ).toBe('<p>index</p>')
-    },
-    30_000,
-  )
+  test('an app in a directory with # in its name builds and preloads a split component', async () => {
+    expect(
+      await buildAndRun(route, script, { prefix: '.regression-build-#' }),
+    ).toBe('<p>index</p>')
+  }, 30_000)
 
   // Bug: the code splitter compiles every module whose id contains the
   // marker of its split ids (today `tsr-split`: path text, not its query)
@@ -334,26 +350,22 @@ describe('app paths', () => {
   // Fix-agnostic: the directory name holds what the compiler's own split
   // ids hold, read from the modules a dev server serves for the route's
   // split component (`splitIdNames`), whatever the compiler names them.
-  test.fails(
-    'an app in a directory whose name contains what split module ids contain builds and preloads a split component',
-    async () => {
-      const names = await splitIdNames(route)
-      if (names.length === 0) {
-        // Nothing to probe: the pin passes, so vitest reports it (an
-        // expected failure must not come from the probe itself)
-        return
-      }
-      for (const name of names) {
-        expect(
-          await buildAndRun(route, script, {
-            prefix: `.regression-build-${name}-demo-`,
-          }),
-          `an app in a directory named after ${name}`,
-        ).toBe('<p>index</p>')
-      }
-    },
-    60_000,
-  )
+  test('an app in a directory whose name contains what split module ids contain builds and preloads a split component', async () => {
+    const names = await splitIdNames(route)
+    if (names.length === 0) {
+      // Nothing to probe: the pin passes, so vitest reports it (an
+      // expected failure must not come from the probe itself)
+      return
+    }
+    for (const name of names) {
+      expect(
+        await buildAndRun(route, script, {
+          prefix: `.regression-build-${name}-demo-`,
+        }),
+        `an app in a directory named after ${name}`,
+      ).toBe('<p>index</p>')
+    }
+  }, 60_000)
 
   // Bug: the route module's chunk importers are built by pasting the
   // absolute file path into a single-quoted string
@@ -362,22 +374,18 @@ describe('app paths', () => {
   // Impact: an app in a directory whose name contains `'` (e.g. a user
   // folder) cannot be built or served once code splitting is on: every route
   // fails with a syntax error.
-  test.fails(
-    "an app in a directory with ' in its name builds and preloads a split component",
-    async () => {
-      expect(
-        await buildAndRun(route, script, { prefix: ".regression-build-it's-" }),
-      ).toBe('<p>index</p>')
-    },
-    30_000,
-  )
+  test("an app in a directory with ' in its name builds and preloads a split component", async () => {
+    expect(
+      await buildAndRun(route, script, { prefix: ".regression-build-it's-" }),
+    ).toBe('<p>index</p>')
+  }, 30_000)
 })
 
 describe('code that reads a split binding', () => {
   // Bug: same root cause as above, in a real build.
   // Impact: the server render of the route throws "PostsPage is not defined"
   // when it runs head().
-  test.fails.each(['vite', 'rspack'] as const)(
+  test.each(['vite', 'rspack'] as const)(
     'an imported split component that head() reads renders, and head() reads it (%s build)',
     async (bundler) => {
       const app = await build({

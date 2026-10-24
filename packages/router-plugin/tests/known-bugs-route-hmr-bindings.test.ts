@@ -45,10 +45,7 @@ it('a route file importing a binding named Map renders without route HMR (contro
   expect(await app.run('return renderRoute()')).toContain('MARK_PAGE 0')
 })
 
-it.fails(
-  'a route file importing a binding named Map renders with route HMR',
-  async () => {
-    const app = await loadRoute(route, { files: mapsLibrary, hmr: true })
-    expect(await app.run('return renderRoute()')).toContain('MARK_PAGE 0')
-  },
-)
+it('a route file importing a binding named Map renders with route HMR', async () => {
+  const app = await loadRoute(route, { files: mapsLibrary, hmr: true })
+  expect(await app.run('return renderRoute()')).toContain('MARK_PAGE 0')
+})

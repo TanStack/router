@@ -8,7 +8,7 @@
  * chains).
  */
 import { BindingFlags, bindingIdentifiers } from 'yuku'
-import { extendOverTrailingLine } from './header'
+import { extendOverTrailingLine, isLicenseComment } from './header'
 import {
   hasNoSideEffectsAnnotation,
   isPrimitiveLiteral,
@@ -22,6 +22,17 @@ import type { Header, Range } from './header'
 import type { Node, SourceFile } from 'yuku'
 import type { SymbolId, SymbolTable } from './symbols'
 import type { Frag } from './rewrite'
+
+/** Binding flags of declarations with a runtime value. */
+const VALUE_BINDING_FLAGS =
+  BindingFlags.FunctionScopedVariable |
+  BindingFlags.BlockScopedVariable |
+  BindingFlags.Function |
+  BindingFlags.Class |
+  BindingFlags.RegularEnum |
+  BindingFlags.ConstEnum |
+  BindingFlags.ValueModule |
+  BindingFlags.ValueImport
 
 export type UnitId = number
 export type RegionId = number
@@ -289,7 +300,20 @@ export function buildItems(
   let prevEnd = header.end
   for (let i = header.directiveCount; i < body.length; i++) {
     const node = body[i]!
-    const start = Math.min(prevEnd, node.start)
+    let start = Math.min(prevEnd, node.start)
+    // license comments belong to no item: they stay in the env module and
+    // never travel into a derived output (G12)
+    for (const c of file.comments) {
+      if (c.start < start) {
+        continue
+      }
+      if (c.end > node.start) {
+        break
+      }
+      if (isLicenseComment(c)) {
+        start = Math.min(node.start, extendOverTrailingLine(code, c.end))
+      }
+    }
     const end = extendOverTrailingLine(code, node.end)
     const nodeRange = { start: node.start, end: node.end }
     let shape: ItemShape = 'single'
@@ -356,6 +380,14 @@ export function buildUnits(
   const symOf = (nameNode: Node): SymbolId | null => {
     const b = file.bindingOf(nameNode)
     return b ? symbols.ofBinding(b) : null
+  }
+  /** Whether a local name resolves to a binding without a runtime value. */
+  const isTypeOnlyBinding = (local: Node): boolean => {
+    if (local.type !== 'Identifier') {
+      return false
+    }
+    const b = file.referenceOf(local)?.binding ?? null
+    return b !== null && !b.has(VALUE_BINDING_FLAGS)
   }
   const add = (
     item: TopLevelItem,
@@ -493,7 +525,9 @@ export function buildUnits(
           break
         }
         for (const spec of node.specifiers) {
-          if (spec.exportKind === 'type') {
+          // `export { type X }`, or `export { X }` of a binding with no value
+          // (a type-only import, an interface, a type alias): erased by TS
+          if (spec.exportKind === 'type' || isTypeOnlyBinding(spec.local)) {
             add(item, base(spec, 'type', { start: spec.start, end: spec.end }))
             continue
           }
@@ -781,6 +815,44 @@ export function buildUnits(
         break
     }
     return out
+  }
+
+  // `var`s hoisted out of nested blocks (`for (var x …)`, `if (…) { var y }`)
+  // are module bindings declared by the statement that holds them
+  for (const b of file.rootScope.bindings) {
+    if (b.has(BindingFlags.Import) || b.has(BindingFlags.Ambient)) {
+      continue
+    }
+    const sym = symbols.ofBinding(b)
+    if (declaringUnits.has(sym) || !b.has(BindingFlags.ValueSpace)) {
+      continue
+    }
+    for (const d of b.declarations) {
+      const item = items.find(
+        (it) => it.range.start <= d.start && d.start < it.range.end,
+      )
+      if (!item) {
+        continue
+      }
+      const unit =
+        item.units
+          .map((u) => units[u]!)
+          .find((u) => u.range.start <= d.start && d.start < u.range.end) ??
+        (item.units.length === 1 ? units[item.units[0]!] : undefined)
+      if (!unit || unit.kind !== 'effect') {
+        continue
+      }
+      unit.declares.push(sym)
+      unit.declNameRanges.push({ start: d.start, end: d.end })
+      let list = declaringUnits.get(sym)
+      if (!list) {
+        list = []
+        declaringUnits.set(sym, list)
+      }
+      if (!list.includes(unit.id)) {
+        list.push(unit.id)
+      }
+    }
   }
 
   return { units, regions, declaringUnits }

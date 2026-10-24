@@ -12,6 +12,7 @@ import { computePlacement } from './reach'
 import { RewriteSet } from './rewrite'
 import { specifierLiteral } from './strings'
 import { statementRecipe } from './units'
+import { isLineTerminator, pragmasOf } from './header'
 import type {
   Fallback,
   HeaderPolicy,
@@ -45,6 +46,7 @@ import type {
   TreeEdit,
 } from './rewrite'
 import type { DependencyFingerprint } from './cache'
+import type { Node } from 'yuku'
 
 export type {
   OutputDecl,
@@ -160,6 +162,12 @@ export interface PlanContext {
   outputIdFor: (derived: DerivedQuery) => OutputId
   addRoot: (output: OutputId, root: RootRef) => void
   markBenignEffect: (unit: UnitId) => void
+  /**
+   * Allows an exported, pure, unwritten declaration into `output` (an
+   * extracted-export output, §3.5.3): the core moves it there when only
+   * derived outputs need it, and the env module re-exports it.
+   */
+  extract: (sym: SymbolId, output: OutputId) => void
   setRouteModule: () => void
   liveness: (output: OutputId) => LivenessView
   renameRefs: (
@@ -167,6 +175,8 @@ export interface PlanContext {
     to: RefTarget,
     scope: EditScope,
     by: string,
+    /** References inside these ranges are left to their owner (another planner rewrites them). */
+    except?: ReadonlyArray<Range>,
   ) => void
   setFacts: (planner: string, data: unknown) => void
   diagnostic: (d: Diagnostic) => void
@@ -187,6 +197,7 @@ export class AnalysisPlan implements PlanContext {
   readonly diagnostics: Array<Diagnostic> = []
   readonly facts: Record<string, unknown> = {}
   readonly benignEffects = new Set<UnitId>()
+  readonly extractions = new Map<SymbolId, OutputId>()
   routeModule = false
   placement: Placement | null = null
   /** Renamed directly-exported declarations: sym → export names (R38). */
@@ -194,6 +205,8 @@ export class AnalysisPlan implements PlanContext {
     SymbolId,
     { to: RefTarget; names: Array<string>; units: Array<UnitId> }
   >()
+  /** Module-wide renames (`renameRefs`): the symbol glue and generated text name instead. */
+  readonly renames = new Map<SymbolId, SymbolId>()
   config: unknown = undefined
 
   constructor(
@@ -218,6 +231,28 @@ export class AnalysisPlan implements PlanContext {
       derivedId: null,
       roots: [],
     })
+    // J2.17: the deprecated `assert` keyword of import attributes is printed
+    // as `with` wherever the import lands (browsers dropped `assert`)
+    const code = analysis.source.code
+    for (const imp of analysis.imports) {
+      if (!imp.attributesRange) {
+        continue
+      }
+      const from = imp.specifierRange.end
+      const between = code.slice(from, imp.attributesRange.start)
+      const m = /\bassert\b/.exec(between)
+      if (m) {
+        this.rewrites.add({
+          range: {
+            start: from + m.index,
+            end: from + m.index + 'assert'.length,
+          },
+          body: [{ k: 'text', parts: ['with'] }],
+          scope: 'all-outputs',
+          by: 'core:attributes',
+        })
+      }
+    }
   }
 
   region(range: Range, kind: Exclude<RegionKind, 'unit'>): RegionId {
@@ -262,6 +297,13 @@ export class AnalysisPlan implements PlanContext {
     this.benignEffects.add(unit)
   }
 
+  extract(sym: SymbolId, output: OutputId): void {
+    if (!this.outputs.has(output)) {
+      throw new Error(`extract: unknown output ${output}`)
+    }
+    this.extractions.set(sym, output)
+  }
+
   setRouteModule(): void {
     this.routeModule = true
   }
@@ -294,20 +336,55 @@ export class AnalysisPlan implements PlanContext {
   }
 
   /** Renames every reference and declaration of `sym` (R14, R38, §3.17). */
-  renameRefs(sym: SymbolId, to: RefTarget, scope: EditScope, by: string): void {
+  /** The binding name a symbol renders as (after module-wide renames). */
+  nameOf(sym: SymbolId): string {
+    const to = this.renames.get(sym)
+    return this.symbols.name(to ?? sym)
+  }
+
+  renameRefs(
+    sym: SymbolId,
+    to: RefTarget,
+    scope: EditScope,
+    by: string,
+    except: ReadonlyArray<Range> = [],
+  ): void {
     const { refs, units, declaringUnits } = this.t1
+    if ('sym' in to) {
+      this.renames.set(sym, to.sym)
+    }
     for (const ref of refs.refsOf(sym)) {
       if (ref.kind === 'implicitJsxFactory') {
+        continue
+      }
+      if (
+        except.some((r) => ref.range.start >= r.start && ref.range.end <= r.end)
+      ) {
         continue
       }
       this.rewrites.ref(ref, to, scope, by)
     }
     const exportNames: Array<string> = []
     const renamedUnits: Array<UnitId> = []
+    const code = this.analysis.source.code
+    const name = this.symbols.name(sym)
     for (const uid of declaringUnits.get(sym) ?? []) {
       const u = units[uid]!
       for (const r of u.declNameRanges) {
-        this.rewrites.declName(r, to, scope, by)
+        if (code.slice(r.start, r.end) !== name) {
+          continue // another binding of the same declarator (destructuring)
+        }
+        if (this.isShorthandPatternName(r)) {
+          // `const { a } = …` / `{ a = d }`: the key stays, the binding is renamed
+          this.rewrites.add({
+            range: r,
+            body: [{ k: 'ref', range: r, to, ctx: 'shorthandPattern' }],
+            scope,
+            by,
+          })
+        } else {
+          this.rewrites.declName(r, to, scope, by)
+        }
       }
       const item = this.t1.items[u.item]!
       if (item.exportKeyword !== null && u.exported.length > 0) {
@@ -315,7 +392,9 @@ export class AnalysisPlan implements PlanContext {
           if (name === 'default' && item.kind === 'ExportDefaultDeclaration') {
             continue // `export default function a` keeps `export default`
           }
-          exportNames.push(name)
+          if (!exportNames.includes(name)) {
+            exportNames.push(name) // overloads: one export per name
+          }
         }
         renamedUnits.push(uid)
       }
@@ -329,6 +408,19 @@ export class AnalysisPlan implements PlanContext {
     }
   }
 
+  /** Whether a declaration name is the shorthand of an object pattern property (`{ a }`, `{ a = d }`). */
+  private isShorthandPatternName(r: Range): boolean {
+    const node = this.t1.nodeAt(r.start)
+    if (!node || node.start !== r.start || node.end !== r.end) {
+      return false
+    }
+    let parent = this.t1.parentOf(node)
+    if (parent?.type === 'AssignmentPattern' && parent.left === node) {
+      parent = this.t1.parentOf(parent)
+    }
+    return parent?.type === 'Property' && parent.shorthand === true
+  }
+
   /** The core phase after all planners: placement over the live rewrite tree. */
   resolve(): Placement {
     const placement = computePlacement({
@@ -338,6 +430,7 @@ export class AnalysisPlan implements PlanContext {
       canonicalId: this.identity.canonicalId,
       routeModule: this.routeModule,
       benignEffects: this.benignEffects,
+      extractions: this.extractions,
     })
     for (const created of placement.created) {
       this.outputs.set(created.id, created)
@@ -389,11 +482,11 @@ export class AnalysisPlan implements PlanContext {
           if (existing !== null && !this.exportedRenames.has(s)) {
             name = existing
           } else {
-            name = this.names.allocExportName(symbols.name(s))
+            name = this.names.allocExportName(this.nameOf(s))
             glueExports.add(s)
           }
         } else {
-          name = symbols.name(s)
+          name = this.nameOf(s)
         }
         map.set(s, name)
       }
@@ -477,17 +570,43 @@ export class AnalysisPlan implements PlanContext {
     derived: boolean,
   ): Set<UnitId> {
     const set = new Set<UnitId>()
+    const typeUnits: Array<UnitId> = []
     let includedValueUnits = 0
     for (const uid of item.units) {
       const u = this.t1.units[uid]!
       if (u.kind === 'type') {
+        if (derived) {
+          // ambient value declarations (`declare enum`, `declare var`, …) are
+          // copied: erased by TypeScript, but a TS transform resolves the
+          // names through them (Oxc inlines `declare enum` members)
+          if (isAmbientValueDeclaration(u.node)) {
+            set.add(uid)
+          }
+          continue
+        }
+        // inline `type` specifiers of a route module go everywhere (J2.5:
+        // under verbatimModuleSyntax TypeScript keeps the bare import, so the
+        // module would load); `import type` statements and other type units
+        // stay in the env module (erased by TypeScript)
+        const inlineTypeSpecifier =
+          this.routeModule &&
+          u.importIndex !== null &&
+          !this.analysis.imports[u.importIndex]!.typeOnly
+        const typeOnlyExport =
+          u.node.type === 'ExportSpecifier' && u.node.exportKind !== 'type'
+        // `export { X }` of a type-only binding goes with it: the route
+        // module no longer holds the import a TS transform erases it by; in
+        // other modules, when the inline type-only import it names is dropped
+        if (
+          inlineTypeSpecifier ||
+          (typeOnlyExport &&
+            (this.routeModule ||
+              this.exportsDroppedTypeImport(u, placement, included)))
+        ) {
+          continue
+        }
+        typeUnits.push(uid)
         continue
-      }
-      if (
-        u.kind === 'export-specifier' &&
-        this.exportsDroppedTypeImport(u, placement, included)
-      ) {
-        continue // `export { T }` of a type-only import that leaves: a type re-export, erased
       }
       const c = placement.clusterOfRegion.get(u.region)
       if (c !== undefined && included.has(c)) {
@@ -500,15 +619,12 @@ export class AnalysisPlan implements PlanContext {
     // loading the module (`import {} from './m'`), and type positions keep nothing alive (S2,
     // J4.12). A whole-declaration `import type` is erased downstream anyway and stays.
     const dropTypes =
-      derived ||
-      (item.shape === 'import' &&
-        includedValueUnits === 0 &&
-        (item.node as { importKind?: string }).importKind !== 'type')
+      item.shape === 'import' &&
+      includedValueUnits === 0 &&
+      (item.node as { importKind?: string }).importKind !== 'type'
     if (!dropTypes) {
-      for (const uid of item.units) {
-        if (this.t1.units[uid]!.kind === 'type') {
-          set.add(uid)
-        }
+      for (const uid of typeUnits) {
+        set.add(uid)
       }
     }
     return set
@@ -626,13 +742,11 @@ export class AnalysisPlan implements PlanContext {
         internal: true,
       })
     }
-    // export glue at the end
-    const exportGlue = this.exportGlue(
-      'env',
-      placement,
-      exportNameOf,
-      glueExports,
-    )
+    // export glue at the end (re-exports of extracted exports first)
+    const exportGlue = [
+      ...this.reexportGlue(placement, exportNameOf),
+      ...this.exportGlue('env', placement, exportNameOf, glueExports),
+    ]
     if (exportGlue.length > 0) {
       extra.push({
         range: { start: code.length, end: code.length },
@@ -642,6 +756,19 @@ export class AnalysisPlan implements PlanContext {
         claim: null,
         internal: true,
       })
+    }
+    // text appended at the end starts on its own line
+    if (
+      code.length > 0 &&
+      !isLineTerminator(code.charCodeAt(code.length - 1))
+    ) {
+      const atEnd = extra
+        .filter((e) => e.range.start === code.length && e.body.length > 0)
+        .sort((a, b) => a.seq - b.seq)
+      const first = atEnd[0]
+      if (first) {
+        first.body = [{ k: 'text', parts: ['\n'] }, ...first.body]
+      }
     }
     const tree = rewrites.tree('env', extra)
     renderer.setTree(tree)
@@ -706,9 +833,8 @@ export class AnalysisPlan implements PlanContext {
         const names = [...syms]
           .sort((a, b) => a - b)
           .map((s) => {
-            const exported =
-              exportNameOf.get(home)?.get(s) ?? this.symbols.name(s)
-            const local = this.symbols.name(s)
+            const exported = exportNameOf.get(home)?.get(s) ?? this.nameOf(s)
+            const local = this.nameOf(s)
             return exported === local ? local : `${exported} as ${local}`
           })
         frags.push({
@@ -745,6 +871,47 @@ export class AnalysisPlan implements PlanContext {
     return frags
   }
 
+  /** `export { x as name, … } from './file?tsr-split=export~x'` for every extracted cluster. */
+  private reexportGlue(
+    placement: Placement,
+    exportNameOf: Map<OutputId, Map<SymbolId, string>>,
+  ): Array<Frag> {
+    const frags: Array<Frag> = []
+    for (const e of placement.extracted) {
+      const decl = this.outputs.get(e.output)
+      if (!decl?.derivedId) {
+        continue
+      }
+      const parts: Array<string> = []
+      for (const s of [...e.syms].sort((a, b) => a - b)) {
+        const exported = exportNameOf.get(e.output)?.get(s) ?? this.nameOf(s)
+        for (const x of this.analysis.exports) {
+          if (x.kind === 'local' && x.local === s && !x.typeOnly) {
+            parts.push(
+              exported === x.name ? exported : `${exported} as ${x.name}`,
+            )
+          }
+        }
+      }
+      if (parts.length === 0) {
+        continue
+      }
+      frags.push({ k: 'text', parts: [`export { ${parts.join(', ')} } from `] })
+      frags.push({
+        k: 'spec',
+        specifier: siblingSpecifier(decl.derivedId),
+        edgeKey: this.edgeKey(
+          siblingSpecifier(decl.derivedId),
+          'reexport',
+          'runtime',
+        ),
+        provenance: { origin: 'runtime' },
+      })
+      frags.push({ k: 'text', parts: ['\n'] })
+    }
+    return frags
+  }
+
   private exportGlue(
     output: OutputId,
     placement: Placement,
@@ -758,12 +925,16 @@ export class AnalysisPlan implements PlanContext {
         if (glueExports !== null && !glueExports.has(s)) {
           continue
         }
-        const local = this.symbols.name(s)
+        const local = this.nameOf(s)
         parts.push(exported === local ? local : `${local} as ${exported}`)
       }
     }
     if (output === 'env') {
-      for (const r of this.exportedRenames.values()) {
+      const extractedSyms = new Set(placement.extracted.flatMap((e) => e.syms))
+      for (const [sym, r] of this.exportedRenames) {
+        if (extractedSyms.has(sym)) {
+          continue // re-exported from the extracted output under its public names
+        }
         const local = 'sym' in r.to ? this.symbols.name(r.to.sym) : null
         if (local === null) {
           continue
@@ -773,7 +944,6 @@ export class AnalysisPlan implements PlanContext {
         }
       }
     }
-    void placement
     if (parts.length === 0) {
       return []
     }
@@ -812,6 +982,7 @@ export class AnalysisPlan implements PlanContext {
         }
       }
     }
+    const afterPragmas = out.length
     for (const d of header.directives) {
       if (decl.header?.dropDirectives?.includes(d.value)) {
         continue
@@ -834,7 +1005,12 @@ export class AnalysisPlan implements PlanContext {
     )
     renderer.renderFrags(glue, null, null, out)
     // pieces in order: generated units by anchor, items by position
-    type Piece = { pos: number; order: number; render: () => void }
+    type Piece = {
+      pos: number
+      order: number
+      item?: TopLevelItem
+      render: () => void
+    }
     const pieces: Array<Piece> = []
     for (const item of items) {
       const inc = this.includedUnitsOf(item, included, placement, true)
@@ -848,6 +1024,7 @@ export class AnalysisPlan implements PlanContext {
       pieces.push({
         pos: item.range.start,
         order: 1,
+        item,
         render: () => {
           if (recipe === 'keep') {
             renderer.renderRange(
@@ -893,12 +1070,40 @@ export class AnalysisPlan implements PlanContext {
       })
     }
     pieces.sort((x, y) => x.pos - y.pos || x.order - y.order)
+    // leadingness (§3.8, J2.16): a pragma comment the source wrote after its
+    // first statement (ineffective for a transform that reads leading
+    // comments only) must not open this output; a token keeps it where the
+    // source had it
+    const first = pieces[0]
+    if (
+      out.length === afterPragmas &&
+      first?.item !== undefined &&
+      this.startsWithPragmaComment(first.item)
+    ) {
+      out.push({ k: 'text', text: 'export {}\n' })
+    }
     for (const p of pieces) {
       p.render()
     }
     const exportGlue = this.exportGlue(decl.id, placement, exportNameOf, null)
     renderer.renderFrags(exportGlue, null, null, out)
     return out
+  }
+
+  /** Whether the comments between an item's owned start and its statement carry a JSX pragma. */
+  private startsWithPragmaComment(item: TopLevelItem): boolean {
+    for (const c of this.analysis.file.comments) {
+      if (c.start < item.range.start) {
+        continue
+      }
+      if (c.end > item.nodeRange.start) {
+        break
+      }
+      if (pragmasOf(c).length > 0) {
+        return true
+      }
+    }
+    return false
   }
 
   /** Records this output's surviving source edges and isolates their specifier literals as segments. */
@@ -1031,6 +1236,23 @@ export class AnalysisPlan implements PlanContext {
         provenance: { origin: 'source' },
       })
     }
+  }
+}
+
+/** `declare enum|namespace|var|let|const|function|class` (an ambient declaration with a value-space name). */
+function isAmbientValueDeclaration(node: Node): boolean {
+  switch (node.type) {
+    case 'TSEnumDeclaration':
+    case 'VariableDeclaration':
+    case 'ClassDeclaration':
+    case 'FunctionDeclaration':
+      return node.declare === true
+    case 'TSDeclareFunction':
+      return node.declare
+    case 'TSModuleDeclaration':
+      return node.declare === true && node.id.type === 'Identifier'
+    default:
+      return false
   }
 }
 
@@ -1301,14 +1523,13 @@ class Renderer {
   }
 
   private targetText(to: RefTarget, env: SubstEnv | null): string {
-    const symbols = this.plan.symbols
     if ('sym' in to) {
       const sub = env?.get(to.sym)
-      return sub ? this.targetText(sub, null) : symbols.name(to.sym)
+      return sub ? this.targetText(sub, null) : this.plan.nameOf(to.sym)
     }
     const [root, ...path] = to.member
     const sub = env?.get(root)
-    const rootText = sub ? this.targetText(sub, null) : symbols.name(root)
+    const rootText = sub ? this.targetText(sub, null) : this.plan.nameOf(root)
     return [rootText, ...path].join('.')
   }
 

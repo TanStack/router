@@ -111,7 +111,7 @@ export const Route = createRootRoute({
   // transforms replace `component` in the options object with a generated
   // binding declared after the object that reads it.
   // Impact: the route module throws a TDZ ReferenceError in development.
-  test.fails.each([
+  test.each([
     {
       name: 'an unsplittable root route',
       code: `import { createRootRoute, Outlet } from '@tanstack/react-router'
@@ -178,7 +178,7 @@ export const Route = createFileRoute('/')({
   // top-level `const hot = import.meta.hot` that collides with a user's
   // top-level `hot` binding (compile error `Duplicate declaration "hot"`).
   // Impact: the route cannot be served in development.
-  test.fails.each([
+  test.each([
     { name: 'a constant', keyword: 'const', exported: false },
     { name: 'an exported constant', keyword: 'export const', exported: true },
   ])(
@@ -274,17 +274,14 @@ export const Route = createFileRoute('/')({
   // module, so the chunk exports `SplitComponent`, which nothing declares.
   // Impact: in development, the route's component chunk fails to load
   // (SyntaxError: Export 'SplitComponent' is not defined).
-  test.fails(
-    'a lowercase function component split into two chunks renders with the module state they share',
-    async () => {
-      expect(
-        await renderSharedComponent(`function page() {
+  test('a lowercase function component split into two chunks renders with the module state they share', async () => {
+    expect(
+      await renderSharedComponent(`function page() {
   renders++
   return <p>{renders}</p>
 }`),
-      ).toEqual(['<p>1</p>', '<p>2</p>', 1])
-    },
-  )
+    ).toEqual(['<p>1</p>', '<p>2</p>', 1])
+  })
 
   // SPEC J2.4, G1: the same, for a lowercase component that the split
   // `component` and the loader (kept in the route module) share.
@@ -303,20 +300,17 @@ export const Route = createFileRoute('/')({
   // Bug: same root cause as the pin above, for a lowercase component that
   // the split `component` and the loader share.
   // Impact: in development, the route's component chunk fails to load.
-  test.fails(
-    'a lowercase function component shared with the loader renders with the module state it shares',
-    async () => {
-      expect(
-        await renderSharedComponent(
-          `function page() {
+  test('a lowercase function component shared with the loader renders with the module state it shares', async () => {
+    expect(
+      await renderSharedComponent(
+        `function page() {
   renders++
   return <p>{renders}</p>
 }`,
-          'loader',
-        ),
-      ).toEqual(['<p>1</p>', '<p>2</p>', 1])
-    },
-  )
+        'loader',
+      ),
+    ).toEqual(['<p>1</p>', '<p>2</p>', 1])
+  })
 
   // Bug: same root cause as the pin above, for a lowercase component that
   // the split `component` and the unsplit `pendingComponent` share.
@@ -325,24 +319,21 @@ export const Route = createFileRoute('/')({
   // Source: #8504 react-refresh-route-components ("that is also the unsplit
   // pendingComponent"). That edits of both show in place: the page pin in
   // integration/known-bugs-route-hmr-components.test.ts.
-  test.fails(
-    'a lowercase function component that is also the unsplit pendingComponent renders as both',
-    async () => {
-      const route = await loadRoute(
-        `${head}function page() {
+  test('a lowercase function component that is also the unsplit pendingComponent renders as both', async () => {
+    const route = await loadRoute(
+      `${head}function page() {
   return <p>hi</p>
 }
 export const Route = createFileRoute('/')({ component: page, pendingComponent: page })`,
-        { hmr: true },
-      )
-      await expectValidModules(route)
-      expect(
-        await route.run(
-          `return [await render('component'), await render('pendingComponent')]`,
-        ),
-      ).toEqual(['<p>hi</p>', '<p>hi</p>'])
-    },
-  )
+      { hmr: true },
+    )
+    await expectValidModules(route)
+    expect(
+      await route.run(
+        `return [await render('component'), await render('pendingComponent')]`,
+      ),
+    ).toEqual(['<p>hi</p>', '<p>hi</p>'])
+  })
 
   /**
    * `./helpers`: `makeHelpers` returns a loader helper and a component,
@@ -370,30 +361,27 @@ export const make = () => {
   // module keeps the renamed declaration and also imports the shared names:
   // a destructuring then declares `read` twice ("Duplicate declaration").
   // Impact: in development, the route module does not compile (#8455).
-  test.fails(
-    'a destructured binding that the loader, the split component and the unsplit pendingComponent share works and is created once',
-    async () => {
-      const route = await loadRoute(
-        `${head}import { makeHelpers } from './helpers'
+  test('a destructured binding that the loader, the split component and the unsplit pendingComponent share works and is created once', async () => {
+    const route = await loadRoute(
+      `${head}import { makeHelpers } from './helpers'
 const { read, render } = makeHelpers()
 export const Route = createFileRoute('/')({
   loader: () => read(),
   component: () => render(),
   pendingComponent: render,
 })`,
-        { hmr: true, files: helpers },
-      )
-      await expectValidModules(route)
-      expect(
-        await route.run(`return [
+      { hmr: true, files: helpers },
+    )
+    await expectValidModules(route)
+    expect(
+      await route.run(`return [
   await (await load('loader'))(),
   await render('component'),
   await render('pendingComponent'),
   (await app('helpers.tsx')).calls,
 ]`),
-      ).toEqual(['MARK_READ', '<p>rendered</p>', '<p>rendered</p>', 1])
-    },
-  )
+    ).toEqual(['MARK_READ', '<p>rendered</p>', '<p>rendered</p>', 1])
+  })
 
   // SPEC G1, J2.4: the same with a plain `const` that holds the component
   // the split `component` and the unsplit `pendingComponent` share.
@@ -421,30 +409,27 @@ export const Route = createFileRoute('/')({ component: page, pendingComponent: p
   // error.
   // Impact: in development, the loader and the component see different
   // instances of the module's state.
-  test.fails(
-    'a lowercase component created by a call that the loader, the split component and the unsplit pendingComponent share is created once',
-    async () => {
-      const route = await loadRoute(
-        `${head}import { make } from './helpers'
+  test('a lowercase component created by a call that the loader, the split component and the unsplit pendingComponent share is created once', async () => {
+    const route = await loadRoute(
+      `${head}import { make } from './helpers'
 const page = make()
 export const Route = createFileRoute('/')({
   loader: () => typeof page,
   component: () => <div>{page()}</div>,
   pendingComponent: page,
 })`,
-        { hmr: true, files: helpers },
-      )
-      await expectValidModules(route)
-      expect(
-        await route.run(`return [
+      { hmr: true, files: helpers },
+    )
+    await expectValidModules(route)
+    expect(
+      await route.run(`return [
   await (await load('loader'))(),
   await render('component'),
   await render('pendingComponent'),
   (await app('helpers.tsx')).calls,
 ]`),
-      ).toEqual(['function', '<div><p>made</p></div>', '<p>made</p>', 1])
-    },
-  )
+    ).toEqual(['function', '<div><p>made</p></div>', '<p>made</p>', 1])
+  })
 
   // Bug: with React HMR, the code splitter moves a component exported by an
   // export list (`export { page }`) into its chunk and leaves the export list
@@ -459,27 +444,24 @@ export const Route = createFileRoute('/')({
   // way a module importing the export and the route render the same
   // component. That edits show in place: the page pin in
   // integration/known-bugs-route-hmr-components.test.ts.
-  test.fails(
-    'a component exported by an export list renders for a module importing it and as the route component',
-    async () => {
-      const route = await loadRoute(
-        `${head}const page = () => <p>hi</p>
+  test('a component exported by an export list renders for a module importing it and as the route component', async () => {
+    const route = await loadRoute(
+      `${head}const page = () => <p>hi</p>
 export { page }
 export const Route = createFileRoute('/')({ component: page })`,
-        {
-          hmr: true,
-          files: { 'importer.ts': `export { page } from './route'\n` },
-        },
-      )
-      await expectValidModules(route)
-      expect(
-        await route.run(`return [
+      {
+        hmr: true,
+        files: { 'importer.ts': `export { page } from './route'\n` },
+      },
+    )
+    await expectValidModules(route)
+    expect(
+      await route.run(`return [
   await render('component'),
   await renderComponent((await app('importer.ts')).page),
 ]`),
-      ).toEqual(['<p>hi</p>', '<p>hi</p>'])
-    },
-  )
+    ).toEqual(['<p>hi</p>', '<p>hi</p>'])
+  })
 
   // Control for the lowercase shared component pins above: a lowercase
   // `function` loader that the split component also calls.

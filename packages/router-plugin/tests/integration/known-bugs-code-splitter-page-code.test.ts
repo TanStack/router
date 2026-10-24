@@ -199,6 +199,21 @@ export const Route = createFileRoute('$PATH')({
   // a `/* @__PURE__ */` initialiser.
   // Source: #8504's exported-bindings chunks tests.
   // Impact: page code exported for tests or reuse loads with the entry chunk.
+  // webpack and Rspack keep an export another module imports through the
+  // route module in the entry chunk unless the package is side-effect free
+  // (vite: Rollup redirects the import to the split output)
+  const exportedImportedByRoute = routeCase(
+    "an exported component another route's split component renders",
+    'exported-shared',
+    `export function Card() {
+  return <b>{'$MARK'}</b>
+}
+function Page() {
+  return <Card />
+}
+${component}`,
+  )
+
   const exported: Array<Case> = [
     routeCase(
       'an exported const component only the split component renders',
@@ -244,17 +259,7 @@ ${component}`,
       `export const Page = () => <p>{'$MARK'}</p>
 ${component}`,
     ),
-    routeCase(
-      "an exported component another route's split component renders",
-      'exported-shared',
-      `export function Card() {
-  return <b>{'$MARK'}</b>
-}
-function Page() {
-  return <Card />
-}
-${component}`,
-    ),
+    exportedImportedByRoute,
   ]
 
   // Bug: an exported component that two split options render goes to a
@@ -479,14 +484,26 @@ export const Route = createFileRoute('/imports-exported')({ component: Page })
       // A component the route file writes a property of, per bundler and
       // hint: known-bugs-code-splitter-property-write.test.ts (its own apps).
 
-      test.fails.each([...exported, ...unsplit])(
+      test.each([
+        ...exported.filter((row) => row !== exportedImportedByRoute),
+        ...unsplit,
+      ])(
         '$name loads with its chunk',
         async (row) => {
           expect(await outcome(row)).toEqual(lazyAndRendered)
         },
         timeout,
       )
-      ;(sideEffects === false ? test : test.fails)(
+      ;(sideEffects === false || bundler === 'vite' ? test : test.fails).each([
+        exportedImportedByRoute,
+      ])(
+        '$name loads with its chunk',
+        async (row) => {
+          expect(await outcome(row)).toEqual(lazyAndRendered)
+        },
+        timeout,
+      )
+      test(
         `${exportedSharedByOptions.name} loads with its chunk`,
         async () => {
           expect(await outcome(exportedSharedByOptions)).toEqual(
@@ -496,7 +513,7 @@ export const Route = createFileRoute('/imports-exported')({ component: Page })
         timeout,
       )
 
-      test.fails.each(['errorComponent', 'notFoundComponent'] as const)(
+      test.each(['errorComponent', 'notFoundComponent'] as const)(
         "a root route's %s loads lazily",
         async (option) => {
           expect((await app()).where(rootMarkers[option])).toBe('lazy')
@@ -504,7 +521,7 @@ export const Route = createFileRoute('/imports-exported')({ component: Page })
         timeout,
       )
 
-      test.fails(
+      test(
         `${destructured.name} load with their chunk or are reported`,
         async () => {
           const built = await app()
@@ -522,7 +539,7 @@ export const Route = createFileRoute('/imports-exported')({ component: Page })
         timeout,
       )
 
-      test.fails(
+      test(
         `${unreadExport.name} is not in its chunk`,
         async () => {
           expect((await app()).locate(unreadExport.marker).lazy).toEqual([])

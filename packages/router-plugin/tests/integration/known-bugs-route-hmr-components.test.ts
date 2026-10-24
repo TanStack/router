@@ -90,7 +90,7 @@ ${route('v2')}`,
   // Refresh's registrations and modelled its runtime (now real tools only,
   // SPEC §8).
   // Any fix passes: the edit shows without a full reload.
-  test.fails.for([
+  test.for([
     ...[
       ['as any', '', `(() => <p>inline VERSION</p>) as any`],
       [
@@ -182,7 +182,7 @@ export const Route = createFileRoute('/')({ component: page${options} })
   // declaration (split) and the unsplit variables of
   // route-hmr-browser-names.test.ts.
   // Any fix passes: the edit shows without a full reload or errors.
-  test.fails.for([
+  test.for([
     {
       name: 'an arrow function',
       declaration: (body: string) => `const page = () => ${body}`,
@@ -218,24 +218,24 @@ export const Route = createFileRoute('/')({ component: page${options} })
   // Source: #8504 react-refresh-route-components ("that is also the unsplit
   // pendingComponent"); the former in-process registration read.
   // Any fix passes: the page shows the route, and an edit shows in place.
-  test.fails(
-    'vite: a lowercase function component that is also the unsplit pendingComponent renders, and an edit shows in place',
-    async ({ expect, onTestFinished }: TestContext) => {
-      expect(
-        await editRoute(
-          {
-            file: 'routes/index.tsx',
-            route: lowercaseRoute(
-              (body) => `function page() ${body}`,
-              ', pendingComponent: page',
-            ),
-            shows: (version) => `page ${version}`,
-          },
-          onTestFinished,
-        ),
-      ).toEqual(inPlace)
-    },
-  )
+  test('vite: a lowercase function component that is also the unsplit pendingComponent renders, and an edit shows in place', async ({
+    expect,
+    onTestFinished,
+  }: TestContext) => {
+    expect(
+      await editRoute(
+        {
+          file: 'routes/index.tsx',
+          route: lowercaseRoute(
+            (body) => `function page() ${body}`,
+            ', pendingComponent: page',
+          ),
+          shows: (version) => `page ${version}`,
+        },
+        onTestFinished,
+      ),
+    ).toEqual(inPlace)
+  })
 
   // Bug: with React HMR, the code splitter moves a component exported by an
   // export list (`export { page }`) into its chunk and leaves the export
@@ -248,23 +248,23 @@ export const Route = createFileRoute('/')({ component: page${options} })
   // declarations" (`export { Baz }`). Unsplit: route-hmr-browser
   // -names.test.ts.
   // Any fix passes: the page shows the route, and an edit shows in place.
-  test.fails(
-    'vite: a split component exported by an export list renders, and an edit shows in place',
-    async ({ expect, onTestFinished }: TestContext) => {
-      expect(
-        await editRoute(
-          {
-            file: 'routes/index.tsx',
-            route: lowercaseRoute(
-              (body) => `const page = () => ${body}`,
-              '',
-              'export { page }',
-            ),
-            shows: (version) => `page ${version}`,
-          },
-          onTestFinished,
-        ),
-      ).toEqual(inPlace)
-    },
-  )
+  test('vite: a split component exported by an export list renders, and an edit shows in place', async ({
+    expect,
+    onTestFinished,
+  }: TestContext) => {
+    expect(
+      await editRoute(
+        {
+          file: 'routes/index.tsx',
+          route: lowercaseRoute(
+            (body) => `const page = () => ${body}`,
+            '',
+            'export { page }',
+          ),
+          shows: (version) => `page ${version}`,
+        },
+        onTestFinished,
+      ),
+    ).toEqual(inPlace)
+  })
 })

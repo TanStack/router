@@ -117,6 +117,8 @@ export interface ToySplitOptions {
   deleteNodes?: Array<string>
   /** Whether to add a dev HMR-like hoist of an inline component (claim → chunk). */
   hoist?: boolean
+  /** Allow every exported pure declaration into an extracted-export output (§3.5.3). */
+  extractExports?: boolean
 }
 
 /**
@@ -139,6 +141,31 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
       ctx.markBenignEffect(found.unit.id)
       const code = ctx.analysis.source.code
       const { options, unit } = found
+      if (opts.extractExports) {
+        for (const e of ctx.analysis.exports) {
+          if (e.kind !== 'local' || e.local === null || e.typeOnly) {
+            continue
+          }
+          const sym = e.local
+          const declaring = ctx.t1.declaringUnits.get(sym) ?? []
+          if (
+            declaring.length === 0 ||
+            declaring.some((u) => ctx.t1.units[u]!.kind !== 'declaration') ||
+            declaring.some((u) => ctx.t1.units[u]!.effectful) ||
+            ctx.t1.refs.writesOf(sym).length > 0
+          ) {
+            continue
+          }
+          const name = ctx.symbols.name(sym)
+          const out = ctx.declareOutput({
+            kind: 'export',
+            key: `export~${name}`,
+            derived: { kind: 'export', value: name },
+            sideEffectFree: true,
+          })
+          ctx.extract(sym, out)
+        }
+      }
       for (const key of opts.deleteNodes ?? []) {
         const p = propertyOf(options, key)
         if (p) {
@@ -152,20 +179,39 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
         }
       }
       let lazyImportSym: SymbolId | null = null
+      const reasons: Record<string, string> = {}
       for (const key of keys) {
         const p = propertyOf(options, key)
         if (!p) {
           continue
         }
         const valueRange = { start: p.value.start, end: p.value.end }
-        if (
-          ctx.fallbacks.some(
-            (f) =>
-              f.range.start === valueRange.start &&
-              f.range.end === valueRange.end,
-          )
-        ) {
-          ctx.setFacts('toy-split', { notSplittable: key })
+        // an identifier value: the binding is the chunk's root (the core
+        // reports it when its effects keep it in the env module)
+        const valueBinding =
+          p.value.type === 'Identifier'
+            ? (ctx.analysis.file.referenceOf(p.value)?.binding ?? null)
+            : null
+        const valueSym = valueBinding
+          ? ctx.symbols.ofBinding(valueBinding)
+          : null
+        const declaringRanges =
+          valueSym === null
+            ? []
+            : (ctx.t1.declaringUnits.get(valueSym) ?? []).map(
+                (u) => ctx.t1.regions.get(ctx.t1.units[u]!.region).range,
+              )
+        const fallback = ctx.fallbacks.find(
+          (f) =>
+            (f.range.start === valueRange.start &&
+              f.range.end === valueRange.end) ||
+            declaringRanges.some(
+              (r) => r.start === f.range.start && r.end === f.range.end,
+            ),
+        )
+        if (fallback) {
+          reasons[key] = fallback.reason
+          ctx.setFacts('toy-split', { notSplittable: key, reasons })
           continue
         }
         const region = ctx.region(valueRange, 'option-value')
@@ -225,6 +271,9 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
           home: output,
           by: 'toy-split',
         })
+        if (valueSym !== null) {
+          ctx.addRoot(output, { t: 'sym', id: valueSym })
+        }
         ctx.rewrites.claim({
           region,
           owner,

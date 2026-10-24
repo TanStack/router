@@ -111,7 +111,7 @@ test(
 // a warning on a successful unsplit build is not a refusal.
 // Impact: `tanstackRouter({ autoCodeSplitting: true })` with esbuild bundles
 // every route component into the entry, without telling the user.
-test.fails.each(['ssr', 'client'] as const)(
+test.each(['ssr', 'client'] as const)(
   'router plugin with esbuild loads a split component lazily and renders it, or refuses the build (%s)',
   async (env) => {
     let app: BuildResult

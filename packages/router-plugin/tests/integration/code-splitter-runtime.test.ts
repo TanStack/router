@@ -25,16 +25,12 @@ it.each(groupings)(
 // Known bug, remove .fails when fixed (more in known-bugs-code-splitter.test.ts).
 // Bug: shared extraction duplicates a named default function declaration.
 // Impact: the route fails to build (`Duplicate declaration`).
-it.fails(
-  'preserves executable route contracts with shared named-default declarations',
-  async () => {
-    await assertRuntimeContracts({
-      groupings: [['component'], ['loader']],
-      syntax: 'named-default',
-    })
-  },
-  30_000,
-)
+it('preserves executable route contracts with shared named-default declarations', async () => {
+  await assertRuntimeContracts({
+    groupings: [['component'], ['loader']],
+    syntax: 'named-default',
+  })
+}, 30_000)
 
 async function assertRuntimeContracts({
   groupings,

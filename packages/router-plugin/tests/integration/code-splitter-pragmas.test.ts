@@ -82,7 +82,7 @@ return getComputedStyle(document.getElementById('styled')).color`)
   // fast-tier pin in ../code-splitter-pragmas.test.ts.
   // Impact: with Vite 8, a route renders differently once its component is
   // split.
-  test.fails(
+  test(
     'means in the split route what it means in the untouched route (Vite: Oxc ignores it)',
     () => expectSplitRendersLikeUntouched('vite', false),
     timeout,

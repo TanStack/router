@@ -94,7 +94,7 @@ return [rendered, await renderComponent(${read})]`)
   // bug.
   // Impact: the route module throws when it loads ("Page is not defined",
   // "Export 'Page' is not defined"), so the route never renders.
-  test.fails.each([
+  test.each([
     {
       name: 'an exported object',
       exports: 'export const meta = { fn: Page }',
@@ -143,7 +143,7 @@ return [rendered, await renderComponent(${read})]`)
   // once, also after the chunk loads (a chunk that runs that code again
   // makes a second registry). Source: #8504 (code-splitter-dead-code.test.ts).
   // Impact: the route module throws when it loads ("Page is not defined").
-  test.fails.each([
+  test.each([
     {
       name: 'module-level code registers',
       setup: `registry.set('preview', Preview)`,
@@ -214,11 +214,9 @@ return [loaded, rendered, { ...(await app('subscribe.ts')).runs }]`),
   // pendingComponent: Page`); #8504 (code-splitter-route-options.test.ts),
   // where it passes.
   // Impact: the route module throws when it loads ("Page is not defined").
-  test.fails(
-    'a component read by a split and an unsplit option renders from both',
-    async () => {
-      const route =
-        await loadRoute(`${head}export const Route = createFileRoute('/')({
+  test('a component read by a split and an unsplit option renders from both', async () => {
+    const route =
+      await loadRoute(`${head}export const Route = createFileRoute('/')({
   component: Page,
   pendingComponent: Page,
 })
@@ -226,13 +224,12 @@ function Page() {
   return <p>{typeof Route}</p>
 }
 `)
-      expect(
-        await route.run(
-          `return [await render('pendingComponent'), await render('component')]`,
-        ),
-      ).toEqual(['<p>object</p>', '<p>object</p>'])
-    },
-  )
+    expect(
+      await route.run(
+        `return [await render('pendingComponent'), await render('component')]`,
+      ),
+    ).toEqual(['<p>object</p>', '<p>object</p>'])
+  })
 
   // Bug: same root cause as above, for an unsplit option that reads the
   // split component (which reads `Route`, so it moves to its chunk) with
@@ -242,11 +239,9 @@ function Page() {
   // the repository's e2e routes).
   // Impact: code that checks the component (`typeof Page === 'function'`)
   // takes the wrong branch on every navigation, with no error.
-  test.fails(
-    'an unsplit option that reads the split component with typeof sees a function',
-    async () => {
-      const route =
-        await loadRoute(`${head}export const Route = createFileRoute('/')({
+  test('an unsplit option that reads the split component with typeof sees a function', async () => {
+    const route =
+      await loadRoute(`${head}export const Route = createFileRoute('/')({
   component: Page,
   beforeLoad: () => typeof Page,
 })
@@ -254,49 +249,45 @@ function Page() {
   return <p>{typeof Route}</p>
 }
 `)
-      expect(
-        await route.run(
-          `return [options.beforeLoad(), await render('component')]`,
-        ),
-      ).toEqual(['function', '<p>object</p>'])
-    },
-  )
+    expect(
+      await route.run(
+        `return [options.beforeLoad(), await render('component')]`,
+      ),
+    ).toEqual(['function', '<p>object</p>'])
+  })
 
   // Bug: same root cause as above, for a top-level call that reads the split
   // component. The call runs once, also after the chunk loads (a chunk that
   // calls `register` again registers a second component). Source: #8504
   // (differential fuzzing).
   // Impact: the route module throws when it loads ("Page is not defined").
-  test.fails(
-    'a split component that a top-level call reads renders from both',
-    async () => {
-      const route = await loadRoute(
-        `${head}import { register } from './registry'
+  test('a split component that a top-level call reads renders from both', async () => {
+    const route = await loadRoute(
+      `${head}import { register } from './registry'
 function Page() {
   return <div>page</div>
 }
 export const Route = createFileRoute('/')({ component: Page })
 register(Page)
 `,
-        {
-          files: {
-            'registry.ts': `export const registered: Array<unknown> = []
+      {
+        files: {
+          'registry.ts': `export const registered: Array<unknown> = []
 export const register = (component: unknown) => {
   registered.push(component)
 }
 `,
-          },
         },
-      )
-      expect(
-        await route.run(`const rendered = await render('component')
+      },
+    )
+    expect(
+      await route.run(`const rendered = await render('component')
 const { registered } = await app('registry.ts')
 const fromRegistry = []
 for (const component of registered) fromRegistry.push(await renderComponent(component))
 return [fromRegistry, rendered]`),
-      ).toEqual([['<div>page</div>'], '<div>page</div>'])
-    },
-  )
+    ).toEqual([['<div>page</div>'], '<div>page</div>'])
+  })
 
   // Control for the imported-component pins below (same harness): the split
   // component is declared in the route file.
@@ -329,31 +320,28 @@ export const Route = createFileRoute('/posts')({
   // fuzzing.
   // Impact: the route throws "PostsPage is not defined" where the other code
   // runs (head() on every navigation, an importer's render).
-  test.fails(
-    'an imported split component that head() reads renders, and head() reads it',
-    async () => {
-      const route = await loadRoute(
-        `${head}import { PostsPage } from './posts-page'
+  test('an imported split component that head() reads renders, and head() reads it', async () => {
+    const route = await loadRoute(
+      `${head}import { PostsPage } from './posts-page'
 export const Route = createFileRoute('/posts')({
   component: PostsPage,
   head: () => ({ meta: [{ title: PostsPage.title }] }),
 })
 `,
-        {
-          routeId: '/posts',
-          files: {
-            'posts-page.ts': `export const PostsPage = Object.assign(() => 'posts', {
+      {
+        routeId: '/posts',
+        files: {
+          'posts-page.ts': `export const PostsPage = Object.assign(() => 'posts', {
   title: 'Posts',
 })
 `,
-          },
         },
-      )
-      expect(
-        await route.run(`return [options.head(), await render('component')]`),
-      ).toEqual([{ meta: [{ title: 'Posts' }] }, 'posts'])
-    },
-  )
+      },
+    )
+    expect(
+      await route.run(`return [options.head(), await render('component')]`),
+    ).toEqual([{ meta: [{ title: 'Posts' }] }, 'posts'])
+  })
 
   // Bug: same root cause as above, for an exported component that renders
   // the imported split one, used by another module of the app (SPEC G9,
@@ -364,11 +352,9 @@ export const Route = createFileRoute('/posts')({
   // way for every framework).
   // Impact: rendering `PostErrorComponent` throws "ErrorComponent is not
   // defined".
-  test.fails(
-    'an imported split errorComponent that an exported component renders works for an importer',
-    async () => {
-      const route = await loadRoute(
-        `import { ErrorComponent, createFileRoute } from '@tanstack/react-router'
+  test('an imported split errorComponent that an exported component renders works for an importer', async () => {
+    const route = await loadRoute(
+      `import { ErrorComponent, createFileRoute } from '@tanstack/react-router'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 export const Route = createFileRoute('/posts/$postId')({
   loader: ({ params: { postId } }) => postId,
@@ -382,16 +368,16 @@ function PostComponent() {
   return <h4>post</h4>
 }
 `,
-        {
-          routeId: '/posts/$postId',
-          files: {
-            'importer.ts': `export { PostErrorComponent } from './route'\n`,
-          },
+      {
+        routeId: '/posts/$postId',
+        files: {
+          'importer.ts': `export { PostErrorComponent } from './route'\n`,
         },
-      )
-      const [routeError, imported, component] = await route.run<
-        Array<string>
-      >(`const error = new Error('boom')
+      },
+    )
+    const [routeError, imported, component] = await route.run<
+      Array<string>
+    >(`const error = new Error('boom')
 const routeError = await render('errorComponent', { error })
 const { PostErrorComponent } = await app('importer.ts')
 return [
@@ -399,19 +385,16 @@ return [
   await renderComponent(PostErrorComponent, { error }),
   await render('component'),
 ]`)
-      expect(routeError).toContain('boom')
-      expect([imported, component]).toEqual([routeError, '<h4>post</h4>'])
-    },
-  )
+    expect(routeError).toContain('boom')
+    expect([imported, component]).toEqual([routeError, '<h4>post</h4>'])
+  })
 
   // Bug: same root cause as above, for a pendingComponent that custom
   // groupings split and an unsplit errorComponent renders.
   // Impact: rendering the errorComponent throws "Spinner is not defined".
-  test.fails(
-    'an imported pendingComponent split by custom groupings renders, and an unsplit option renders it',
-    async () => {
-      const route = await loadRoute(
-        `${head}import { Spinner } from './spinner'
+  test('an imported pendingComponent split by custom groupings renders, and an unsplit option renders it', async () => {
+    const route = await loadRoute(
+      `${head}import { Spinner } from './spinner'
 export const Route = createFileRoute('/')({
   codeSplitGroupings: [['component'], ['pendingComponent']],
   pendingComponent: Spinner,
@@ -419,15 +402,14 @@ export const Route = createFileRoute('/')({
   component: () => <p>page</p>,
 })
 `,
-        { files: { 'spinner.ts': `export const Spinner = () => 'spin'\n` } },
-      )
-      expect(
-        await route.run(
-          `return [await render('errorComponent'), await render('pendingComponent')]`,
-        ),
-      ).toEqual(['<div>spin</div>', 'spin'])
-    },
-  )
+      { files: { 'spinner.ts': `export const Spinner = () => 'spin'\n` } },
+    )
+    expect(
+      await route.run(
+        `return [await render('errorComponent'), await render('pendingComponent')]`,
+      ),
+    ).toEqual(['<div>spin</div>', 'spin'])
+  })
 })
 
 describe('class components', () => {
@@ -458,7 +440,7 @@ export const Route = createFileRoute('/')({ component: Page })
   // Source: #8505 (`export class component {}`).
   // Impact: a route whose component is a class component cannot be built
   // once code splitting is on.
-  test.fails.each([
+  test.each([
     { declaration: classPage, exported: false },
     { declaration: `export ${classPage}`, exported: true },
   ])(
@@ -484,11 +466,9 @@ export const Route = createFileRoute('/')({ component: Page })
   // and what they import belong to its chunk.
   // Source: Next.js ssg/getStaticProps/should-support-class-exports; #8504
   // (code-splitter-dead-code.test.ts), where it passes.
-  test.fails(
-    'a class component and the imports of its static fields leave the route module',
-    async () => {
-      const route = await loadRoute(
-        `${head}import { Component } from 'react'
+  test('a class component and the imports of its static fields leave the route module', async () => {
+    const route = await loadRoute(
+      `${head}import { Component } from 'react'
 import { format } from './format'
 class Page extends Component {
   static title = format('home')
@@ -501,20 +481,19 @@ export const Route = createFileRoute('/')({
   component: Page,
 })
 `,
-        {
-          filename: 'route.jsx',
-          files: {
-            'format.js': 'export const format = (value) => `[${value}]`\n',
-          },
+      {
+        filename: 'route.jsx',
+        files: {
+          'format.js': 'export const format = (value) => `[${value}]`\n',
         },
-      )
-      expect([
-        // Nothing the route module loads requests what only the class reads
-        (await route.requested()).includes('/format.js'),
-        await route.run(`return render('component')`),
-      ]).toEqual([false, '<p>[home]</p>'])
-    },
-  )
+      },
+    )
+    expect([
+      // Nothing the route module loads requests what only the class reads
+      (await route.requested()).includes('/format.js'),
+      await route.run(`return render('component')`),
+    ]).toEqual([false, '<p>[home]</p>'])
+  })
 })
 
 describe('side-effect imports', () => {
@@ -557,19 +536,16 @@ export const Route = createFileRoute('/')({ component: Page })
   // `import './Page'`.
   // Impact: what that module does when it loads (registrations, styles,
   // polyfills) is deferred until the component chunk loads.
-  test.fails(
-    "a side-effect import of the split component's module runs when the route module loads",
-    async () => {
-      const route = await loadRoute(
-        `${head}import './Page'
+  test("a side-effect import of the split component's module runs when the route module loads", async () => {
+    const route = await loadRoute(
+      `${head}import './Page'
 import { Page } from './Page'
 export const Route = createFileRoute('/')({ component: Page })
 `,
-        { files: recordingModules },
-      )
-      expect(await route.run(loadThenRender)).toEqual([['./Page'], 'page'])
-    },
-  )
+      { files: recordingModules },
+    )
+    expect(await route.run(loadThenRender)).toEqual([['./Page'], 'page'])
+  })
 })
 
 describe('server-only route options on the client', () => {
@@ -723,7 +699,7 @@ ${serverOptions}
   // (`selective-ssr.md` promise `ssr` is stripped).
   // Impact: Start's client bundle ships the route's `ssr`/`headers` code and
   // its server-only imports.
-  test.fails.each([
+  test.each([
     'ssr() { return db.flag() }',
     'async ssr() { return db.flag() }',
     'headers() { return db.headers() }',
@@ -746,19 +722,54 @@ export const Route = createFileRoute('/')({
   // option is a valid fix too (SPEC J2.8).
   // Impact: Start's client bundle silently ships server handlers and their
   // server-only imports.
-  test.fails.each([
+  test.each([
+    {
+      name: 'a computed key',
+      code: `export const Route = createFileRoute('/')({
+  ['server']: { handlers: { GET: () => db.all() } },
+  component: () => <p>x</p>,
+})`,
+    },
+  ])(
+    'a server-only option given through $name is removed, or the route is refused',
+    async ({ code }) => {
+      const route = await loadForClient(
+        `${head}import { db } from './secret-db'\n${code}`,
+      )
+      let result
+      try {
+        result = await clientRoute(route)
+      } catch (error) {
+        // A refusal names the route file and the server-only option, on any
+        // channel (the compile error the dev server serves, what it logged)
+        const compiled = await route.transform().then(
+          () => [],
+          (compileError: unknown) => diagnosticsOf(compileError),
+        )
+        expectDiagnostic(
+          [
+            ...diagnosticsOf(error),
+            ...compiled,
+            ...problems(await route.diagnostics()),
+          ],
+          {
+            severity: 'error',
+            file: 'route.tsx',
+            root: route.host.root,
+          },
+        )
+        return
+      }
+      expect(result).toEqual(stripped)
+    },
+  )
+
+  test.each([
     {
       name: 'a spread',
       code: `const serverOptions = { server: { handlers: { GET: () => db.all() } } }
 export const Route = createFileRoute('/')({
   ...serverOptions,
-  component: () => <p>x</p>,
-})`,
-    },
-    {
-      name: 'a computed key',
-      code: `export const Route = createFileRoute('/')({
-  ['server']: { handlers: { GET: () => db.all() } },
   component: () => <p>x</p>,
 })`,
     },
@@ -816,7 +827,7 @@ export const Route = createFileRoute('/')(
   // Impact: Start's client bundle ships server handlers and their
   // server-only imports (build-level canary in
   // integration/known-bugs-code-splitter-client-output.test.ts).
-  test.fails.each(['as never', 'as any', 'satisfies object'])(
+  test.each(['as never', 'as any', 'satisfies object'])(
     'a server-only option of options wrapped in `%s` is removed with its imports',
     async (cast) => {
       const route = await loadForClient(`${head}import { db } from './secret-db'
@@ -845,10 +856,8 @@ describe('look-alike route factories', () => {
   // Impact: a route file whose own code uses a helper named
   // `createFileRoute` (a widget registry, a test fixture builder) fails to
   // load once code splitting is on.
-  test.fails(
-    'a local factory shadowing createFileRoute in a route file keeps its own semantics',
-    async () => {
-      const route = await loadRoute(`${head}function LocalWidget() {
+  test('a local factory shadowing createFileRoute in a route file keeps its own semantics', async () => {
+    const route = await loadRoute(`${head}function LocalWidget() {
   return <p>local widget</p>
 }
 function localWidget() {
@@ -868,9 +877,9 @@ export const Route = createFileRoute('/')({
   component: () => <p>page</p>,
 })
 `)
-      const [path, loaded, preload, ...rendered] = await route.run<
-        Array<unknown>
-      >(`const { widget } = exports
+    const [path, loaded, preload, ...rendered] = await route.run<
+      Array<unknown>
+    >(`const { widget } = exports
 return [
   widget.path,
   widget.options.loader(),
@@ -878,12 +887,11 @@ return [
   await renderComponent(widget.options.component),
   await render('component'),
 ]`)
-      expect([path, loaded, preload]).toEqual([
-        '/local-widget',
-        'local data',
-        false,
-      ])
-      expect(rendered).toEqual(['<p>local widget</p>', '<p>page</p>'])
-    },
-  )
+    expect([path, loaded, preload]).toEqual([
+      '/local-widget',
+      'local data',
+      false,
+    ])
+    expect(rendered).toEqual(['<p>local widget</p>', '<p>page</p>'])
+  })
 })

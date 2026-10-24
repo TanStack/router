@@ -959,12 +959,9 @@ export const Route = createFileRoute('/')({
   // Impact: with `verbatimModuleSyntax` (Vite reads it from tsconfig) the
   // client build fails ([MISSING_EXPORT] "readVersion" is not exported by
   // "routes/index.tsx?tsr-shared=1"); in dev the route module fails to load.
-  it.fails(
-    'reads an ambient var merged with an interface from the environment in a shared declaration, with verbatimModuleSyntax',
-    async () => {
-      await readsAmbientVar(true)
-    },
-  )
+  it('reads an ambient var merged with an interface from the environment in a shared declaration, with verbatimModuleSyntax', async () => {
+    await readsAmbientVar(true)
+  })
 
   it('keeps the namespace import that an import alias refers to', async () => {
     const route = await loadRoute(

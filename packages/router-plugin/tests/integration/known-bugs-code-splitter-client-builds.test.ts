@@ -66,36 +66,32 @@ describe('what split chunks hold', () => {
   // pattern: a warning naming the file and the option is acceptable. Today
   // the build fails first (same root cause as the pin above).
   // Impact: the component loads with the entry chunk.
-  test.fails(
-    'a component declared by an array destructuring of a call shared with the errorComponent is split or reported',
-    async () => {
-      const app = await build({
-        bundler: 'vite',
-        env: 'client',
-        files: routeApp(
-          `${head}const createPair = () => [() => <div>{'MARK_PAGE'}</div>, () => <p>error</p>]
+  test('a component declared by an array destructuring of a call shared with the errorComponent is split or reported', async () => {
+    const app = await build({
+      bundler: 'vite',
+      env: 'client',
+      files: routeApp(
+        `${head}const createPair = () => [() => <div>{'MARK_PAGE'}</div>, () => <p>error</p>]
 const [Page, ErrorView] = createPair()
 export const Route = createFileRoute('/')({
   component: Page,
   errorComponent: ErrorView,
 })
 `,
-          { env: 'client' },
-        ),
-      })
-      const reported =
-        findDiagnostics([...app.warnings, ...app.consoleMessages], {
-          severity: 'warning',
-          file: 'routes/index.tsx',
-          root: app.root,
-        }).length > 0
-      expect({
-        lazy: app.where('MARK_PAGE') === 'lazy',
-        reported,
-      }).not.toEqual({ lazy: false, reported: false })
-    },
-    60_000,
-  )
+        { env: 'client' },
+      ),
+    })
+    const reported =
+      findDiagnostics([...app.warnings, ...app.consoleMessages], {
+        severity: 'warning',
+        file: 'routes/index.tsx',
+        root: app.root,
+      }).length > 0
+    expect({
+      lazy: app.where('MARK_PAGE') === 'lazy',
+      reported,
+    }).not.toEqual({ lazy: false, reported: false })
+  }, 60_000)
 })
 
 describe('exported bindings', () => {
@@ -110,14 +106,12 @@ describe('exported bindings', () => {
   // Whether the option is lazy or reported is the router transform's
   // decision, so one bundler shows it (the Rspack and webpack
   // cells were decided by the same transform as this Vite cell).
-  test.fails(
-    'an exported errorComponent written as `PostErrorComponent as any` is one instance in the client (vite build)',
-    async () => {
-      const app = await build({
-        bundler: 'vite',
-        env: 'client',
-        files: routeApp(
-          `${head}import { label, see } from '../see'
+  test('an exported errorComponent written as `PostErrorComponent as any` is one instance in the client (vite build)', async () => {
+    const app = await build({
+      bundler: 'vite',
+      env: 'client',
+      files: routeApp(
+        `${head}import { label, see } from '../see'
 const errorLabel = label('MARK_POST_ERROR_END')
 export const Route = createFileRoute('/')({
   errorComponent: PostErrorComponent as any,
@@ -130,10 +124,10 @@ export function PostErrorComponent() {
   return <p>{errorLabel}</p>
 }
 `,
-          {
-            env: 'client',
-            files: {
-              'see.ts': `export const seen: Array<unknown> = []
+        {
+          env: 'client',
+          files: {
+            'see.ts': `export const seen: Array<unknown> = []
 export let labels = 0
 export function see(component: unknown) {
   seen.push(component)
@@ -143,9 +137,9 @@ export function label(text: string) {
   return text
 }
 `,
-              // The client entry (`mount`, the route and the exported
-              // component) and the app rendered at `/` through the real router.
-              'entry.ts': `${clientMountEntry}export { PostErrorComponent } from './routes/index'
+            // The client entry (`mount`, the route and the exported
+            // component) and the app rendered at `/` through the real router.
+            'entry.ts': `${clientMountEntry}export { PostErrorComponent } from './routes/index'
 import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 export { seen, labels } from './see'
@@ -164,12 +158,12 @@ export async function renderAt(path: string, text: string) {
   return container.innerHTML
 }
 `,
-            },
           },
-        ),
-      })
-      const { result } = await app.run(
-        `const html = await entry.renderAt('/', 'MARK_POST_ERROR_END')
+        },
+      ),
+    })
+    const { result } = await app.run(
+      `const html = await entry.renderAt('/', 'MARK_POST_ERROR_END')
 return {
   rendered: html.includes('MARK_POST_ERROR_END'),
   oneInstance:
@@ -178,22 +172,20 @@ return {
   labels: entry.labels,
   lazy: typeof entry.Route.options.errorComponent.preload === 'function',
 }`,
-      )
-      const { lazy, ...instance } = result as Record<string, unknown>
-      expect(instance).toEqual({ rendered: true, oneInstance: true, labels: 1 })
-      // Placement: split, or kept in the route with a report.
-      const reported =
-        findDiagnostics([...app.warnings, ...app.consoleMessages], {
-          severity: 'warning',
-          file: 'routes/index.tsx',
-          root: app.root,
-        }).length > 0
-      expect({ splitOrReported: lazy === true || reported }).toEqual({
-        splitOrReported: true,
-      })
-    },
-    60_000,
-  )
+    )
+    const { lazy, ...instance } = result as Record<string, unknown>
+    expect(instance).toEqual({ rendered: true, oneInstance: true, labels: 1 })
+    // Placement: split, or kept in the route with a report.
+    const reported =
+      findDiagnostics([...app.warnings, ...app.consoleMessages], {
+        severity: 'warning',
+        file: 'routes/index.tsx',
+        root: app.root,
+      }).length > 0
+    expect({ splitOrReported: lazy === true || reported }).toEqual({
+      splitOrReported: true,
+    })
+  }, 60_000)
 })
 
 describe('code that reads a split binding', () => {
@@ -239,11 +231,7 @@ export const Route = createFileRoute('/')({ component: Page })
   // Source: Wave B (a Vite Start client bundle crashed on it).
   // Impact: the client bundle throws when the route module loads ("Page is
   // not defined"), so the app never renders.
-  test.fails(
-    'a split component that an unused object names renders (vite)',
-    async () => {
-      expect(await mountUnusedReader('vite')).toContain('<p>MARK_PAGE</p>')
-    },
-    60_000,
-  )
+  test('a split component that an unused object names renders (vite)', async () => {
+    expect(await mountUnusedReader('vite')).toContain('<p>MARK_PAGE</p>')
+  }, 60_000)
 })
