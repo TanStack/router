@@ -14,7 +14,12 @@ type ProcessAssetsContext = Parameters<
 >[0]
 type RspackCompilation = Rspack.Compilation
 type RspackCompilationChunk = Rspack.Chunk
+type RspackChunkGroup = Rspack.ChunkGroup
 type RspackModule = Rspack.Module
+type ChunkGroupAvailability = Map<
+  RspackChunkGroup,
+  ReadonlySet<RspackCompilationChunk>
+>
 
 const backslashRegex = /\\/g
 
@@ -211,35 +216,82 @@ function computeDynamicImports(chunk: RspackCompilationChunk): Array<string> {
   return dynamicImportFiles
 }
 
+function intersect<T>(
+  left: ReadonlySet<T>,
+  right: ReadonlySet<T>,
+): ReadonlySet<T> {
+  const result = new Set<T>()
+  for (const value of left) {
+    if (right.has(value)) {
+      result.add(value)
+    }
+  }
+  return result
+}
+
 /**
- * Compute the emitted chunks reached by active static module dependencies.
- * Dependencies nested in async blocks are deliberately excluded: those are
- * represented by chunk-group children in `dynamicImports` instead.
+ * Chunks loaded whenever a group loads: its own plus the intersection of its
+ * parents', the rule Rspack's code splitter applies to modules.
  */
-function computeStaticDependencyChunks(
+function computeChunkGroupAvailability(
+  compilation: RspackCompilation,
+): ChunkGroupAvailability {
+  const groups = compilation.chunkGroups.map((group) => ({
+    group,
+    chunks: group.chunks,
+    parents: group.isInitial() ? [] : group.getParents(),
+  }))
+
+  // Unknown parents constrain nothing and known sets only shrink, so cycles
+  // converge to the same result in any visiting order.
+  const availability: ChunkGroupAvailability = new Map()
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const { group, chunks, parents } of groups) {
+      let inherited: ReadonlySet<RspackCompilationChunk> | undefined
+      for (const parent of parents) {
+        const parentAvailable = availability.get(parent)
+        if (parentAvailable) {
+          inherited = inherited
+            ? intersect(inherited, parentAvailable)
+            : parentAvailable
+        }
+      }
+      if (parents.length > 0 && !inherited) {
+        continue
+      }
+
+      const available = new Set(inherited)
+      for (const chunk of chunks) {
+        available.add(chunk)
+      }
+      if (availability.get(group)?.size !== available.size) {
+        availability.set(group, available)
+        changed = true
+      }
+    }
+  }
+
+  return availability
+}
+
+/**
+ * Emitted chunks holding the modules a chunk statically imports, in import
+ * order. Dependencies nested in async blocks are deliberately excluded: those
+ * are represented by chunk-group children in `dynamicImports` instead.
+ */
+function computeStaticDependencyCandidates(
   compilation: RspackCompilation,
   chunk: RspackCompilationChunk,
 ): Array<RspackCompilationChunk> {
-  const importedChunks: Array<RspackCompilationChunk> = []
+  const candidates: Array<RspackCompilationChunk> = []
   const seen = new Set<RspackCompilationChunk>([chunk])
   const modules = getModulesIncludingConcatenated(
     compilation.chunkGraph.getChunkModules(chunk),
   )
   const localModules = new Set(modules)
   const runtime = Array.from(chunk.runtime)
-  // A shared chunk can belong to several route groups. Group membership
-  // limits where dependencies can be loaded from; it does not establish
-  // an import from the shared chunk back to every route in those groups.
-  const availableChunks = new Set<RspackCompilationChunk>()
-  const groups = new Set(chunk.groupsIterable)
-  for (const group of groups) {
-    for (const availableChunk of group.chunks) {
-      availableChunks.add(availableChunk)
-    }
-    for (const parent of group.getParents()) {
-      groups.add(parent)
-    }
-  }
 
   for (const module of modules) {
     for (const dependency of module.dependencies) {
@@ -255,39 +307,127 @@ function computeStaticDependencyChunks(
       for (const importedChunk of compilation.chunkGraph.getModuleChunksIterable(
         importedModule,
       )) {
-        if (availableChunks.has(importedChunk) && !seen.has(importedChunk)) {
+        if (!seen.has(importedChunk)) {
           seen.add(importedChunk)
-          importedChunks.push(importedChunk)
+          candidates.push(importedChunk)
         }
       }
     }
   }
 
-  return importedChunks
+  return candidates
 }
 
 type GetStaticDependencyChunks = (
   chunk: RspackCompilationChunk,
 ) => Array<RspackCompilationChunk>
 
+type StaticDependencyChunkResolver = {
+  getAvailableChunks: (
+    chunk: RspackCompilationChunk,
+  ) => ReadonlySet<RspackCompilationChunk>
+  getCandidates: GetStaticDependencyChunks
+  getStaticDependencyChunks: GetStaticDependencyChunks
+}
+
 /**
- * Memoize static dependency resolution per chunk. Every chunk is resolved once
- * for its own `imports`, and CSS-only chunks are resolved again from each
- * importer that reaches them.
+ * Memoize dependency discovery per chunk. A chunk's static dependency chunks
+ * are the candidates loaded in every one of its groups.
  */
 function createStaticDependencyChunkResolver(
   compilation: RspackCompilation,
-): GetStaticDependencyChunks {
-  const cache = new Map<RspackCompilationChunk, Array<RspackCompilationChunk>>()
+): StaticDependencyChunkResolver {
+  const groupAvailability = computeChunkGroupAvailability(compilation)
+  const candidatesByChunk = new Map<
+    RspackCompilationChunk,
+    Array<RspackCompilationChunk>
+  >()
+  const availableByChunk = new Map<
+    RspackCompilationChunk,
+    ReadonlySet<RspackCompilationChunk>
+  >()
+  const dependenciesByChunk = new Map<
+    RspackCompilationChunk,
+    Array<RspackCompilationChunk>
+  >()
 
-  return (chunk) => {
-    let importedChunks = cache.get(chunk)
-    if (!importedChunks) {
-      importedChunks = computeStaticDependencyChunks(compilation, chunk)
-      cache.set(chunk, importedChunks)
+  const getCandidates = (chunk: RspackCompilationChunk) => {
+    let candidates = candidatesByChunk.get(chunk)
+    if (!candidates) {
+      candidates = computeStaticDependencyCandidates(compilation, chunk)
+      candidatesByChunk.set(chunk, candidates)
     }
-    return importedChunks
+    return candidates
   }
+
+  // Rspack may copy a module into each loading context, so require every group.
+  const getAvailableChunks = (chunk: RspackCompilationChunk) => {
+    let available = availableByChunk.get(chunk)
+    if (!available) {
+      for (const group of chunk.groupsIterable) {
+        const groupAvailable =
+          groupAvailability.get(group) ?? new Set<RspackCompilationChunk>()
+        available = available
+          ? intersect(available, groupAvailable)
+          : groupAvailable
+      }
+      available ??= new Set<RspackCompilationChunk>()
+      availableByChunk.set(chunk, available)
+    }
+    return available
+  }
+
+  const getStaticDependencyChunks = (chunk: RspackCompilationChunk) => {
+    let dependencies = dependenciesByChunk.get(chunk)
+    if (!dependencies) {
+      const available = getAvailableChunks(chunk)
+      dependencies = getCandidates(chunk).filter((candidate) =>
+        available.has(candidate),
+      )
+      dependenciesByChunk.set(chunk, dependencies)
+    }
+    return dependencies
+  }
+
+  return { getAvailableChunks, getCandidates, getStaticDependencyChunks }
+}
+
+/**
+ * A dependency's own `imports` hold only what all its contexts load. When this
+ * chunk's context supplies more, list its whole closure dependencies first.
+ */
+function computeImportedChunks(
+  resolver: StaticDependencyChunkResolver,
+  chunk: RspackCompilationChunk,
+): Array<RspackCompilationChunk> {
+  const reached = new Set<RspackCompilationChunk>([chunk])
+  const reach = (current: RspackCompilationChunk) => {
+    for (const dependency of resolver.getStaticDependencyChunks(current)) {
+      if (!reached.has(dependency)) {
+        reached.add(dependency)
+        reach(dependency)
+      }
+    }
+  }
+  reach(chunk)
+
+  const available = resolver.getAvailableChunks(chunk)
+  const visited = new Set<RspackCompilationChunk>([chunk])
+  const dependenciesFirst: Array<RspackCompilationChunk> = []
+  const visit = (current: RspackCompilationChunk) => {
+    for (const candidate of resolver.getCandidates(current)) {
+      if (available.has(candidate) && !visited.has(candidate)) {
+        visited.add(candidate)
+        visit(candidate)
+        dependenciesFirst.push(candidate)
+      }
+    }
+  }
+  visit(chunk)
+
+  return dependenciesFirst.some((dependency) => !reached.has(dependency))
+    ? dependenciesFirst
+    : resolver.getStaticDependencyChunks(chunk)
 }
 
 /**
@@ -357,8 +497,7 @@ export function normalizeRspackClientBuild(
     }
   }
 
-  const getStaticDependencyChunks =
-    createStaticDependencyChunkResolver(compilation)
+  const resolver = createStaticDependencyChunkResolver(compilation)
 
   // Iterate ALL chunks (initial + async) to capture route-split chunks
   for (const chunk of compilation.chunks) {
@@ -377,9 +516,9 @@ export function normalizeRspackClientBuild(
 
     // Compute dynamicImports from chunk group children
     const dynamicImports = computeDynamicImports(chunk)
-    const staticDependencyChunks = getStaticDependencyChunks(chunk)
+    const staticDependencyChunks = computeImportedChunks(resolver, chunk)
     const dependencyCssFiles = computeCssOnlyDependencyFiles(
-      getStaticDependencyChunks,
+      resolver.getStaticDependencyChunks,
       staticDependencyChunks,
     ).filter((cssFile) => !cssFiles.includes(cssFile))
     if (dependencyCssFiles.length > 0) {
