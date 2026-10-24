@@ -4,6 +4,7 @@ import { createRouterCodeSplitterPlugin } from './router-code-splitter-plugin'
 import { createRouterHmrPlugin } from './router-hmr-plugin'
 import { createRouterPluginContext } from './router-plugin-context'
 import type { Config } from './config'
+import type { PluginBuilder as BunPluginBuilder } from 'bun'
 import type {
   RspackCompiler,
   UnpluginFactory,
@@ -30,7 +31,7 @@ function applyRspackInlineCssDefaultDefinePlugin(compiler: RspackCompiler) {
 
 export const unpluginRouterComposedFactory: UnpluginFactory<
   Partial<Config | (() => Config)> | undefined
-> = (options = {}, _meta) => {
+> = (options = {}, meta) => {
   const ROOT: string = process.cwd()
   const userConfig = getConfig(
     (typeof options === 'function' ? options() : options) as Partial<Config>,
@@ -46,15 +47,27 @@ export const unpluginRouterComposedFactory: UnpluginFactory<
   }
 
   const routerGenerator = getPlugin(
-    createRouterGeneratorPlugin(options, routerPluginContext),
+    createRouterGeneratorPlugin(options, routerPluginContext, meta.framework),
   )
   const routerCodeSplitter = getPlugin(
-    createRouterCodeSplitterPlugin(options, routerPluginContext),
+    createRouterCodeSplitterPlugin(
+      options,
+      routerPluginContext,
+      meta.framework,
+    ),
   )
 
   const result = [
     {
       name: 'tanstack:router-inline-css-defaults',
+      bun: {
+        setup(build: BunPluginBuilder) {
+          build.config.define = {
+            ...INLINE_CSS_DEFAULT_DEFINES,
+            ...build.config.define,
+          }
+        },
+      },
       vite: {
         config() {
           return {
@@ -87,9 +100,12 @@ export const unpluginRouterComposedFactory: UnpluginFactory<
 
   const isProduction = process.env.NODE_ENV === 'production'
 
-  if (!isProduction && !userConfig.autoCodeSplitting) {
+  if (
+    (meta.framework === 'bun' || !isProduction) &&
+    !userConfig.autoCodeSplitting
+  ) {
     const routerHmr = getPlugin(
-      createRouterHmrPlugin(options, routerPluginContext),
+      createRouterHmrPlugin(options, routerPluginContext, meta.framework),
     )
     result.push(...routerHmr)
   }

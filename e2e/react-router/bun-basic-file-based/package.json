@@ -1,0 +1,50 @@
+{
+  "name": "tanstack-router-e2e-react-bun-basic-file-based",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:e2e:bun": "playwright test --config playwright.config.ts",
+    "test:e2e:bun:dev": "node run-dev.mjs"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "workspace:^",
+    "@tanstack/router-plugin": "workspace:^",
+    "@tanstack/virtual-file-routes": "workspace:^",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@playwright/test": "catalog:",
+    "@tanstack/router-e2e-utils": "workspace:^"
+  },
+  "nx": {
+    "targets": {
+      "test:e2e:bun": {
+        "dependsOn": [
+          "^build"
+        ],
+        "cache": true,
+        "inputs": [
+          "default",
+          "^production",
+          "dependentTaskOutputs",
+          {
+            "runtime": "bun --version"
+          }
+        ],
+        "outputs": [
+          "{projectRoot}/.cache/bun-e2e",
+          "{projectRoot}/test-results"
+        ],
+        "parallelism": false
+      },
+      "test:e2e:bun:dev": {
+        "dependsOn": [
+          "^build"
+        ],
+        "cache": false,
+        "parallelism": false
+      }
+    }
+  }
+}

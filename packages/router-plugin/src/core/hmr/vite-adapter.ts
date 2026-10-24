@@ -26,8 +26,7 @@ export function createViteHmrStatement(
     template.statement(
       `
 if (import.meta.hot) {
-  const hot = import.meta.hot
-  const hotData = hot.data ??= {}
+  const hotData = import.meta.hot.data ??= {}
   const handleRouteUpdate = ${handleRouteUpdateCode}
   const initialRouteId = ${routeIdFallback} ?? hotData['tsr-route-id']
   if (initialRouteId) {
@@ -41,7 +40,7 @@ if (import.meta.hot) {
     handleRouteUpdate(initialRouteId, Route)
     hotData['tsr-route-update-handled'] = Route
   }
-  hot.accept((newModule) => {
+  import.meta.hot.accept((newModule) => {
     if (Route && newModule && newModule.Route) {
       const routeId = hotData['tsr-route-id'] ?? ${routeIdFallback}
       if (routeId) {
