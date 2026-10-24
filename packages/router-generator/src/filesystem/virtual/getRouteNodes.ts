@@ -116,7 +116,9 @@ async function getVirtualRouteConfigFromFileExport(
   ) {
     throw new Error(`virtualRouteConfig is undefined or empty`)
   }
-  const exports = await loadConfigFile(join(root, tsrConfig.virtualRouteConfig))
+  const exports = await loadConfigFile(
+    resolve(root, tsrConfig.virtualRouteConfig),
+  )
 
   if (!('routes' in exports) && !('default' in exports)) {
     throw new Error(

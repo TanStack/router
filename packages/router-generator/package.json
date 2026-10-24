@@ -66,13 +66,12 @@
     "node": ">=20.19"
   },
   "dependencies": {
-    "@babel/types": "catalog:",
     "@tanstack/router-core": "workspace:*",
-    "@tanstack/router-utils": "workspace:*",
     "@tanstack/virtual-file-routes": "workspace:*",
+    "chokidar": "catalog:",
     "jiti": "^2.7.0",
-    "magic-string": "^0.30.21",
     "prettier": "^3.9.6",
+    "yuku": "0.23.0",
     "zod": "catalog:"
   },
   "devDependencies": {
