@@ -9,6 +9,7 @@ import { describe, expect, test } from 'vitest'
 import {
   diagnosticsOf,
   expectDiagnostic,
+  findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { StartBuildError, buildStart, startBundlers } from '../../build-harness'
 import {
@@ -93,11 +94,14 @@ describe.each(startBundlers)('%s build, mock mode', (bundler) => {
 
   /**
    * What the environment that imports `secret` gets for it in a mock-mode
-   * build with `mockAccess`: whether a warning was reported, whether the
-   * real code is in the bundle and its initializer ran, what the import is
-   * (`a safe mock`), the severities of what using it (a call) logged to the
-   * console, and the texts of those that do not name the
-   * denied import (`mockAccessDiagnostics`; their prose is free).
+   * build with `mockAccess`: whether the violation was reported (to
+   * `onViolation`, and printed as a warning at the importer's line of the
+   * import or of its use, or at a marked module's marker: SPEC J6.3,
+   * J6.5, J6.12), whether the real code is in the bundle and its
+   * initializer ran, what the import is (`a safe mock`), the severities of
+   * what using it (a call) logged to the console, and the texts of those
+   * that do not name the denied import (`mockAccessDiagnostics`; their
+   * prose is free).
    */
   async function mockedRead(
     denied: MockedImport,
@@ -150,11 +154,29 @@ return { read, ran: globalThis.secretLoaded ?? null, logged }`)
         specifier: denied.importedAs,
         file: deniedFile,
       }).length > 0
+    // `src/entry.ts`: the other imports, then the import and its use
+    const importLine = (denied.imports ?? '').split('\n').length
+    const printedAt = [
+      { file: 'src/entry.ts', line: importLine },
+      { file: 'src/entry.ts', line: importLine + 1 },
+      ...Object.entries(denied.files)
+        .filter(([, code]) => code.startsWith(`import '@tanstack/react-start/`))
+        .map(([file]) => ({ file, line: 1 })),
+    ]
     return {
       warned:
         reportedViolations(
           inEnvironment(built, env === 'ssr' ? 'server' : 'client'),
-        ).length > 0,
+        ).length > 0 &&
+        printedAt.some(
+          ({ file, line }) =>
+            findDiagnostics(built.diagnostics, {
+              severity: 'warning',
+              file,
+              root: built.root,
+              position: { line },
+            }).length > 0,
+        ),
       hasRealCode: built[env].where('MARK_SECRET') !== 'nowhere',
       ran,
       read,

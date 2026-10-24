@@ -155,6 +155,20 @@ console.log(read())
     expect(receivedViolations(recorder.violations, server.root)).toEqual([
       originalLocation('server src/entry.ts:2:27', 1),
     ])
+    // Printed as a warning at the importer's line of the import or of its
+    // use (SPEC J6.3, J6.12)
+    expect(
+      [1, 2].some(
+        (line) =>
+          findDiagnostics(server.diagnostics, {
+            severity: 'warning',
+            file: 'src/entry.ts',
+            root: server.root,
+            position: { line },
+          }).length > 0,
+      ),
+      'a printed warning at src/entry.ts:1 or :2',
+    ).toBe(true)
     const code = async (environment: string) =>
       Object.values(await server.outputs(environment)).join('\n')
     expect(await code('ssr')).not.toContain('MARK_CLIENT')
