@@ -161,6 +161,10 @@ jobs:
         run: node .github/native-bun-validation/browser-setup.mjs
       - name: Install Chromium
         run: pnpm exec playwright install chromium --only-shell
+      - name: Execute Bun's native Chromium ordering regression
+        id: native_chrome
+        continue-on-error: true
+        run: python3 .github/native-bun-validation/chrome-test.py
       - name: Preserve native HMR script order in the browser
         id: hmr_order
         continue-on-error: true
@@ -258,5 +262,6 @@ jobs:
           NATIVE_REGRESSIONS: ${{ steps.native_regressions.outcome }}
           HMR_ORDER: ${{ steps.hmr_order.outcome }}
           RESTORED_MAPS: ${{ steps.restored_maps.outcome }}
+          NATIVE_CHROME: ${{ steps.native_chrome.outcome }}
         run: |
-          [[ "$PRODUCTION" == success && "$DEVELOPMENT" == success && "$CONFIGURATION" == success && "$CONFIGURATION_BROWSER" == success && "$NATIVE_REGRESSIONS" == success && "$HMR_ORDER" == success && "$RESTORED_MAPS" == success ]]
+          [[ "$PRODUCTION" == success && "$DEVELOPMENT" == success && "$CONFIGURATION" == success && "$CONFIGURATION_BROWSER" == success && "$NATIVE_REGRESSIONS" == success && "$HMR_ORDER" == success && "$RESTORED_MAPS" == success && "$NATIVE_CHROME" == success ]]

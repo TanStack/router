@@ -1,3 +1,4 @@
+import gzip
 import hashlib
 import json
 import os
@@ -23,30 +24,39 @@ subprocess.run([
     "python3", str(root / ".github/native-bun-validation/prepare.py"),
     "--bun", str(source), "--out", str(proof / "native-source"),
 ], check=True)
-adjustments = root / ".github/native-bun-validation/mac-quiet-watch-tests.patch"
-patch = adjustments.read_bytes()
-assert hashlib.sha256(patch).hexdigest() == "65c3d33ff88d44e9748498ad7a34bb3113be8fdd940a39aaad4de4b98b2aa062"
-paths = re.findall(rb"^diff --git a/(\S+) b/(\S+)$", patch, re.MULTILINE)
-assert all(old == new for old, new in paths)
-assert {old.decode() for old, _ in paths} == {
-    "test/bake/dev/plugins.test.ts", "test/bake/dev/client-plugin-cache.test.ts",
-}
-subprocess.run(["git", "apply", "--check", "-"], cwd=source, input=patch, check=True)
-subprocess.run(["git", "apply", "-"], cwd=source, input=patch, check=True)
 overrides = proof / "native-test-overrides"
 overrides.mkdir(exist_ok=True)
-(overrides / "adjustments.patch").write_bytes(patch)
 adjusted_sources = {}
-for old, _ in paths:
-    name = old.decode()
-    contents = (source / name).read_bytes()
-    adjusted_sources[name] = hashlib.sha256(contents).hexdigest()
-    target = overrides / name
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_bytes(contents)
+patches = {}
+for name, digest, allowed_paths in [
+    ("mac-quiet-watch-tests.patch",
+     "65c3d33ff88d44e9748498ad7a34bb3113be8fdd940a39aaad4de4b98b2aa062",
+     {"test/bake/dev/plugins.test.ts", "test/bake/dev/client-plugin-cache.test.ts"}),
+    ("hmr-script-order-test.patch.gz",
+     "b63245335607c7b9afaaddb7114d5f42a580d67b90119d3c5b0aecea0389d6bf",
+     {"test/js/bun/webview/webview-chrome.test.ts"}),
+]:
+    patch = (root / ".github/native-bun-validation" / name).read_bytes()
+    if name.endswith(".gz"):
+        patch = gzip.decompress(patch)
+    assert hashlib.sha256(patch).hexdigest() == digest
+    paths = re.findall(rb"^diff --git a/(\S+) b/(\S+)$", patch, re.MULTILINE)
+    assert all(old == new for old, new in paths)
+    assert {old.decode() for old, _ in paths} == allowed_paths
+    subprocess.run(["git", "apply", "--check", "-"], cwd=source, input=patch, check=True)
+    subprocess.run(["git", "apply", "-"], cwd=source, input=patch, check=True)
+    (overrides / name.removesuffix(".gz")).write_bytes(patch)
+    patches[name] = digest
+    for old, _ in paths:
+        filename = old.decode()
+        contents = (source / filename).read_bytes()
+        adjusted_sources[filename] = hashlib.sha256(contents).hexdigest()
+        target = overrides / filename
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(contents)
 (overrides / "proof.json").write_text(json.dumps({
     "binaryRuntimeUnchanged": True,
-    "testOnlyPatchSha256": hashlib.sha256(patch).hexdigest(),
+    "testOnlyPatchSha256": patches,
     "adjustedSourceSha256": adjusted_sources,
 }, indent=2) + "\n")
 for cwd in [source, source / "test"]:
