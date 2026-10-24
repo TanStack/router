@@ -7,7 +7,7 @@ One entry per root cause: the bug, the SPEC clause, the pins (`file` and test na
 `$name`, `%s` and `${…}` are table-row placeholders), and what a fix must achieve. The test comment (`Bug:`,
 `Impact:`) has the details. "Cause" files name today's implementation; a rewrite may have no such file.
 
-Totals: 370 pin sites in 102 test files (a table test counts once; Vitest counts each row).
+Totals: 371 pin sites in 103 test files (a table test counts once; Vitest counts each row).
 
 Pins whose input picks a name today's compiler generates (S6) flip with a compiler that generates other names. The
 adaptive pins next to them, which read the names a compiler actually generates, are the real check.
@@ -405,7 +405,7 @@ Paths under `router-plugin/tests/`.
 - **With options in a variable, the HMR transform declares the component binding after the object that reads it.**
   SPEC G1. `known-bugs-route-hmr.test.ts`: "route options in a variable ($name) evaluate to a route with a component".
 
-## J4 Start environment separation (83 pins: 65 below, 18 in S1–S6)
+## J4 Start environment separation (84 pins: 66 below, 18 in S1–S6)
 
 Paths under `start-plugin-core/tests/` unless noted.
 
@@ -505,6 +505,12 @@ Paths under `start-plugin-core/tests/` unless noted.
   reverses".
 - **`export *` diamonds and cycles poison the build-mode export cache.** SPEC J4.5.
   `integration/start-compiler-build-export-cache.test.ts`: "export \* $name do not poison the build-mode export cache".
+- **Rsbuild: an `export *` of `@tanstack/react-start` that a factory import goes through fails the build**
+  ("PackagePathNotExported"): the compiler resolves the star export's target with the loader's resolver, which does
+  not resolve the package's `exports` (`import` and `react-server` conditions only); a named re-export is recognised by
+  its name and never resolved. SPEC J4.5, G11. `integration/start-compiler-build-inputs.test.ts`: "$name" (its
+  `rsbuild build` rows of the `export *` chains that re-export the package). Fix: the build resolves the package as the
+  bundler does, and the rows work.
 - **Re-exports are looked up by local name only**, so distinct aliases and shadowing locals resolve to the wrong
   factory. SPEC J4.5, G15. `known-bugs-start-compiler.test.ts`: "distinct re-export aliases of two factories keep their
   own kind"; "%s: parameters and locals shadowing the factories are left alone next to a compiled factory call".

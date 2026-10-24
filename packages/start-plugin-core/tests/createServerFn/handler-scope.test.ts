@@ -10,6 +10,12 @@ import {
   serveCase,
   useStartHost,
 } from '../regression-helpers'
+import {
+  handlerFiles,
+  handlerModule,
+  handlerModules,
+  handlerRows,
+} from '../compiler-inputs'
 
 // The server must run the handler with every module binding it closes over,
 // however the handler is written and however its scopes shadow module
@@ -20,7 +26,6 @@ import {
 const host = useStartHost()
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
-const dbServer = `export const db = { x: () => 'x', y: () => 'y' }\n`
 
 // Source: Next.js server-actions fixtures server-graph/5, /6, /16
 test('the provider keeps every kind of module binding the handler reads', async () => {
@@ -47,13 +52,8 @@ export const fn = createServerFn().handler(async () => [ns.x, counter, Repo.get(
   ])
 })
 
-/** The server-only modules the handlers below may read, as real files. */
-const handlerFiles = {
-  'db.server.ts': dbServer,
-  'auth.server.ts': `export const withAuth = (fn: (opts: unknown) => Promise<unknown>) => async (opts: unknown) => 'auth:' + (await fn(opts))\n`,
-  'users.server.ts': `export const getUsers = async () => 'users'\n`,
-}
-const handlerModules = ['./db.server', './auth.server', './users.server']
+/** The server-only module most handlers below read. */
+const dbServer = handlerFiles['db.server.ts']
 
 /**
  * Serves a module with the server fn `fn`: the client loads none of the
@@ -64,7 +64,7 @@ const handlerModules = ['./db.server', './auth.server', './users.server']
  */
 async function callHandler(code: string, iterate = false) {
   const served = await serveCase(await host(), {
-    'module.tsx': `${head}${code.includes('db.') ? `import { db } from './db.server'\n` : ''}${code}`,
+    'module.tsx': handlerModule(code),
     ...handlerFiles,
   })
   expectNotLoaded(await served.loads(), handlerModules)
@@ -91,102 +91,12 @@ return values`,
   return client
 }
 
-test.each<{
-  name: string
-  code: string
-  expected: unknown
-  iterate?: boolean
-}>([
-  {
-    // Source: Next.js server-actions fixtures server-graph/7, /44
-    name: 'a named function expression',
-    code: `export const fn = createServerFn().handler(async function deleteItem() {
-  return deleteItem.name + db.x()
-})`,
-    expected: 'deleteItemx',
+test.each(handlerRows)(
+  'the handler can be $name',
+  async ({ code, expected, iterate }) => {
+    expect(await callHandler(code, iterate)).toEqual(expected)
   },
-  {
-    // Start calls the handler with one argument, its context (`this` is
-    // runtime-defined: Start calls it as a method of its options).
-    // Source: Next.js server-actions fixtures server-graph/59
-    name: 'a function using arguments and new.target',
-    code: `export const fn = createServerFn().handler(async function () {
-  return [arguments.length, new.target === undefined, db.x()]
-})`,
-    expected: [1, true, 'x'],
-  },
-  {
-    // Source: Next.js server-actions fixtures server-graph/14 (streaming)
-    name: 'an async generator',
-    code: `export const fn = createServerFn().handler(async function* () {
-  yield db.x()
-  yield 'done'
-})`,
-    iterate: true,
-    expected: ['x', 'done'],
-  },
-  {
-    // Source: Next.js server-actions fixtures server-graph/31
-    name: 'an object literal method',
-    code: `const handlers = {
-  async f() {
-    return db.x()
-  },
-}
-export const fn = createServerFn().handler(handlers.f)`,
-    expected: 'x',
-  },
-  {
-    // Source: Next.js server-actions fixtures server-graph/21, /26
-    name: 'a wrapper call',
-    code: `import { withAuth } from './auth.server'
-export const fn = createServerFn().handler(withAuth(async () => db.x()))`,
-    expected: 'auth:x',
-  },
-  {
-    // Source: Next.js server-actions fixtures server-graph/25
-    name: 'a function declared after the server fn',
-    code: `export const fn = createServerFn().handler(impl)
-async function impl() {
-  return inner()
-  async function inner() {
-    return db.x()
-  }
-}`,
-    expected: 'x',
-  },
-  {
-    // Source: Next.js server-actions fixtures server-graph/28, /30
-    name: 'a call of a server fn declared later',
-    code: `export const fn = createServerFn().handler(async () => (await later()) + db.x())
-export const later = createServerFn().handler(async () => 'later:')`,
-    expected: 'later:x',
-  },
-  {
-    // Replaces createServerFn.test.ts "should remove imports used only as
-    // caller handler identifiers".
-    name: 'an imported function',
-    code: `import { getUsers } from './users.server'
-export const fn = createServerFn().handler(getUsers)`,
-    expected: 'users',
-  },
-  {
-    name: 'an initializer cast with as unknown as',
-    code: `export const fn = createServerFn().handler(async () => db.x()) as unknown as () => Promise<string>`,
-    expected: 'x',
-  },
-  {
-    // Source: TanStack/router#3698
-    name: 'a body calling other methods named handler',
-    code: `const local = { handler: (value: string) => value + '!' }
-export const fn = createServerFn().handler(async () =>
-  local.handler([db].map((source) => ({ handler: source.y }))[0]!.handler() + db.x()),
-)`,
-    expected: 'yx!',
-  },
-])('the handler can be $name', async ({ code, expected, iterate }) => {
-  expect(await callHandler(code, iterate)).toEqual(expected)
-})
+)
 
 // Bug: when the handler passed to `.handler()` is a `createIsomorphicFn()`
 // chain, the chain is compiled first and the caller is never rewritten into

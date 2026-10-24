@@ -14,40 +14,15 @@ import {
   serverFnUrls,
   useStartHost,
 } from '../regression-helpers'
+import {
+  factoryBuilderModule,
+  queryDistinctModule,
+  virtualFactories,
+} from '../compiler-inputs'
 import type { Plugin } from 'vite'
 
 // Moved: the custom-id build test (formerly :223) is in
 // integration/start-compiler-build-ids.test.ts.
-
-/**
- * A user plugin serving two virtual modules that differ only by their
- * `variant` query: the public one re-exports the factory the
- * implementation one defines. It reads its own query parameter and ignores
- * any other (a plugin of query-bearing modules does).
- */
-function virtualFactories(): Plugin {
-  const prefix = '\0virtual:server-fn-factory?'
-  const modules: Record<string, string> = {
-    public: `import { createIssueServerFn } from 'virtual:server-fn-factory?variant=implementation'
-export { createIssueServerFn }`,
-    implementation: `import { createServerFn } from '@tanstack/react-start'
-export const createIssueServerFn = createServerFn`,
-  }
-  return {
-    name: 'test:virtual-server-fn-factories',
-    resolveId: (source) =>
-      source.startsWith('virtual:server-fn-factory?') ? `\0${source}` : null,
-    load: (id) => {
-      if (!id.startsWith(prefix)) {
-        return null
-      }
-      const variant = new URLSearchParams(id.slice(prefix.length)).get(
-        'variant',
-      )
-      return variant ? (modules[variant] ?? null) : null
-    },
-  }
-}
 
 /**
  * A user plugin serving one virtual module by its exact id, as Vite's
@@ -151,10 +126,7 @@ export const ref = getUsers`,
     // implementation one defines.
     const served = await serveCase(
       await host(),
-      {
-        'test.ts': `import { createIssueServerFn } from 'virtual:server-fn-factory?variant=public'
-export const issueServerFn = createIssueServerFn().handler(async () => 'issue-handler')`,
-      },
+      { 'test.ts': queryDistinctModule },
       { file: 'test.ts' },
     )
     expect(served.code.client).not.toContain('issue-handler')
@@ -225,31 +197,7 @@ describe('server fns of builders, route files and reformatted code', () => {
   // Source: snapshot fixture factory.tsx
   test('a server fn builder with middleware is callable as a factory', async () => {
     const served = await serveCase(await host(), {
-      'module.tsx': `import { createServerFn, createMiddleware } from '@tanstack/react-start'
-const authMiddleware = createMiddleware({ type: 'function' }).server(
-  ({ next }) => next({ context: { auth: 'auth' } }),
-)
-const adminMiddleware = createMiddleware({ type: 'function' }).server(
-  ({ next }) => next({ context: { admin: 'admin' } }),
-)
-export const createAuthServerFn = createServerFn().middleware([authMiddleware])
-const createAdminServerFn = createAuthServerFn().middleware([adminMiddleware])
-export const myAuthedFn = createAuthServerFn().handler(({ context }) => {
-  return ['myAuthedFn', context, 'MARK_AUTHED_HANDLER_BODY'].slice(0, 2)
-})
-export const deleteUserFn = createAdminServerFn().handler(({ context }) => {
-  return ['deleteUserFn', context, 'MARK_DELETE_HANDLER_BODY'].slice(0, 2)
-})
-function createFakeFn() {
-  return {
-    handler: (cb) => {
-      return cb()
-    },
-  }
-}
-export const x = createFakeFn().handler(() => {
-  return 'fakeFn'
-})`,
+      'module.tsx': factoryBuilderModule,
     })
     expect(served.code.client).not.toContain('MARK_AUTHED_HANDLER_BODY')
     expect(served.code.client).not.toContain('MARK_DELETE_HANDLER_BODY')

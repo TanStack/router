@@ -23,7 +23,14 @@ import {
   throwsError,
   useStartHosts,
 } from '../../regression-helpers'
+import {
+  forms,
+  moduleFiles,
+  moduleImports,
+  serverFnConstruct,
+} from '../../compiler-inputs'
 import { clientMiddleware, clientMiddlewareOf } from '../../page-values'
+import type { Form } from '../../compiler-inputs'
 import type {
   Framework,
   PageSettled,
@@ -40,12 +47,6 @@ const frameworks: Array<Framework> = ['react', 'solid', 'vue']
 // a Vue app's JSX is Vue's own runtime.
 const hosts = useStartHosts()
 
-/** The real modules the constructs read. */
-const moduleFiles = {
-  'db.server.ts': `export const db = { x: () => 'x' }\n`,
-  'chart.client.ts': `export const chart = () => 'chart'\nexport const Chart = () => '<chart>'\n`,
-}
-
 /** The client does not load the server-only module. */
 async function expectClientFree(served: StartCase) {
   expectNotLoaded(await served.loads(), ['./db.server'])
@@ -61,36 +62,6 @@ async function settleInPage(served: StartCase, fn: string) {
   return fromPage(await inPage<PageSettled>(served, `return settle(${fn})`))
 }
 
-/** How the factory `name` of `pkg` is imported and its call written. */
-interface Form {
-  imports: (pkg: string, name: string) => string
-  callee: (name: string) => string
-  wrap: (expression: string) => string
-}
-
-const forms: Record<string, Form> = {
-  'a renamed import': {
-    imports: (pkg, name) => `import { ${name} as renamed } from '${pkg}'`,
-    callee: () => 'renamed',
-    wrap: (expression) => expression,
-  },
-  'a namespace member': {
-    imports: (pkg) => `import * as Start from '${pkg}'`,
-    callee: (name) => `Start.${name}`,
-    wrap: (expression) => expression,
-  },
-  'a call result wrapped in as': {
-    imports: (pkg, name) => `import { ${name} as renamed } from '${pkg}'`,
-    callee: () => 'renamed',
-    wrap: (expression) => `(${expression}) as any`,
-  },
-  'a call result wrapped in satisfies': {
-    imports: (pkg, name) => `import { ${name} as renamed } from '${pkg}'`,
-    callee: () => 'renamed',
-    wrap: (expression) => `(${expression}) satisfies unknown`,
-  },
-}
-
 /** A Start construct: the module creating it and the checks of each env. */
 interface Construct {
   name: string
@@ -102,8 +73,7 @@ interface Construct {
 const constructs: Array<Construct> = [
   {
     name: 'createServerFn',
-    code: (callee, wrap) =>
-      `export const fn = ${wrap(`${callee}({ method: 'POST' }).handler(async () => db.x())`)}`,
+    code: serverFnConstruct,
     check: async (served) => {
       await expectClientFree(served)
       // The callers keep the builder options (Start exposes `method`), and
@@ -169,10 +139,6 @@ const constructs: Array<Construct> = [
     },
   },
 ]
-
-/** The imports a construct's code reads, besides the factory. */
-const moduleImports = `import { db } from './db.server'
-import { chart } from './chart.client'`
 
 /**
  * What renders a module's `Page` with the framework's real renderers: on

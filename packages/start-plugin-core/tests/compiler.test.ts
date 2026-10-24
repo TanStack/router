@@ -20,49 +20,22 @@ import {
   useStartHost,
 } from './regression-helpers'
 import { shapeOf } from './page-values'
+import {
+  compiledLibraries,
+  cycleModule,
+  deeperChainModule,
+  libraryChainRows,
+  libraryPackages,
+  reexportCycles,
+} from './compiler-inputs'
 import type { PageSettled } from './regression-helpers'
-
-/**
- * Third-party packages of the app that import Start's factories from
- * `@tanstack/start-client-core` (TanStack/router#6583): real packages in the
- * app's `node_modules`, which the app compiles with its own code (a library
- * shipping Start factories is left out of dependency pre-bundling and SSR
- * externalization, as such an app configures it).
- */
-const packages = {
-  'node_modules/@third-party/lib/package.json': JSON.stringify({
-    name: '@third-party/lib',
-    type: 'module',
-    main: './index.js',
-    peerDependencies: { '@tanstack/start-client-core': '*' },
-  }),
-  'node_modules/@third-party/lib/index.js': `import { createIsomorphicFn, createClientOnlyFn } from '@tanstack/start-client-core'
-
-export const getThemeData = createIsomorphicFn()
-  .client(() => 'client-theme')
-  .server(() => 'server-theme')
-
-export const initClientFeature = createClientOnlyFn(() => {
-  console.log('client only initialization')
-  return 'initialized'
-})
-`,
-  'node_modules/@another-intermediate/pkg/package.json': JSON.stringify({
-    name: '@another-intermediate/pkg',
-    type: 'module',
-    main: './index.js',
-    peerDependencies: { '@tanstack/start-client-core': '*' },
-  }),
-  'node_modules/@another-intermediate/pkg/index.js': `export { createIsomorphicFn } from '@tanstack/start-client-core'\n`,
-}
-const compiledPackages = ['@third-party/lib', '@another-intermediate/pkg']
 
 const host = useStartHost({
   links: ['@tanstack/start-client-core'],
-  files: packages,
+  files: libraryPackages,
   config: {
-    optimizeDeps: { exclude: compiledPackages },
-    ssr: { noExternal: compiledPackages },
+    optimizeDeps: { exclude: compiledLibraries },
+    ssr: { noExternal: compiledLibraries },
   },
 })
 
@@ -292,40 +265,7 @@ describe('re-export chain resolution', () => {
   // @third-party/lib -> @tanstack/start-client-core). The compiler should
   // correctly resolve these imports.
 
-  const testCases: Array<{
-    env: 'client' | 'server'
-    fn: string
-    /** What the export returns, or the error it throws. */
-    value: unknown
-    /** Implementation code the served library must not contain. */
-    absent?: string
-  }> = [
-    {
-      env: 'client',
-      fn: 'createIsomorphicFn',
-      value: 'client-theme',
-      absent: 'server-theme',
-    },
-    {
-      env: 'server',
-      fn: 'createIsomorphicFn',
-      value: 'server-theme',
-      absent: 'client-theme',
-    },
-    {
-      env: 'client',
-      fn: 'createClientOnlyFn',
-      value: 'initialized',
-    },
-    {
-      env: 'server',
-      fn: 'createClientOnlyFn',
-      value: throwsError,
-      absent: 'client only initialization',
-    },
-  ]
-
-  test.each(testCases)(
+  test.each(libraryChainRows)(
     'resolves $fn via re-export chain on $env',
     async ({ env, fn, value, absent }) => {
       const started = await host()
@@ -353,61 +293,34 @@ describe('re-export chain resolution', () => {
   test('handles deeper re-export chains', async () => {
     // Another intermediate package between the importer and Start's package.
     const served = await serveCase(await host(), {
-      'module.tsx': `import { createIsomorphicFn } from '@another-intermediate/pkg'
-export const deepFn = createIsomorphicFn()
-  .client(() => 'deep-client')
-  .server(() => 'deep-server')`,
+      'module.tsx': deeperChainModule,
     })
     expect(served.code.client).not.toContain('deep-server')
     expect(await inPage(served, 'return module.deepFn()')).toBe('deep-client')
   })
 
-  test.each([
-    {
-      name: 'named re-export cycle',
-      files: {
-        'factory-a.ts': `export { createServerOnlyFn } from './factory-b'\n`,
-        'factory-b.ts': `export { createServerOnlyFn } from './factory-a'\n`,
-      },
+  test.each(reexportCycles)(
+    'handles circular import chain: $name',
+    async ({ files }) => {
+      // The cycle never reaches a Start factory (it cannot even link as ES
+      // modules): serving the module settles, with a result or an error,
+      // instead of looping.
+      const startCase = await (
+        await host()
+      ).case({
+        ...files,
+        'module.tsx': cycleModule,
+      })
+      const settled = await Promise.race([
+        startCase.served('module.tsx', 'ssr').then(
+          () => 'settled',
+          () => 'settled',
+        ),
+        new Promise((resolve) => setTimeout(resolve, 2_000, 'still compiling')),
+      ])
+      expect(settled).toBe('settled')
     },
-    {
-      name: 'import alias cycle',
-      files: {
-        'factory-a.ts': `import { createServerOnlyFn } from './factory-b'
-export { createServerOnlyFn }
-`,
-        'factory-b.ts': `import { createServerOnlyFn } from './factory-a'
-export { createServerOnlyFn }
-`,
-      },
-    },
-    {
-      name: 'export-star cycle',
-      files: {
-        'factory-a.ts': `export * from './factory-b'\n`,
-        'factory-b.ts': `export * from './factory-a'\n`,
-      },
-    },
-  ])('handles circular import chain: $name', async ({ files }) => {
-    // The cycle never reaches a Start factory (it cannot even link as ES
-    // modules): serving the module settles, with a result or an error,
-    // instead of looping.
-    const startCase = await (
-      await host()
-    ).case({
-      ...files,
-      'module.tsx': `import { createServerOnlyFn } from './factory-a'
-export const myFn = createServerOnlyFn(() => 'server-only-value')`,
-    })
-    const settled = await Promise.race([
-      startCase.served('module.tsx', 'ssr').then(
-        () => 'settled',
-        () => 'settled',
-      ),
-      new Promise((resolve) => setTimeout(resolve, 2_000, 'still compiling')),
-    ])
-    expect(settled).toBe('settled')
-  })
+  )
 
   // The dev-edit concepts of this suite (an edited module a re-export
   // chain ends in recompiles its importers) are pinned through real dev

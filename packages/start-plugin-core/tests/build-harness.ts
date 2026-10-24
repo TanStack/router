@@ -155,8 +155,9 @@ export { createClientRpc } from '@tanstack/react-start/client-rpc'
 
 /**
  * Prelude of an SSR script whose entry has `callByIdExports`:
- * `callById(id, data)` sends the GET request of a client call of the server
- * fn `id` (Start's client RPC) to Start's server entry, as a page of the
+ * `callById(id, data, method)` sends the request (`method`, default GET) of
+ * a client call of the server fn `id` (Start's client RPC) to Start's
+ * server entry, as a page of the
  * same origin does (the browser adds `Sec-Fetch-Site`, which Start's CSRF
  * middleware checks), and gives the decoded result or throws the decoded
  * error, like the client's server fn.
@@ -179,7 +180,7 @@ const serverFnId = (fnOrUrl) => {
   }
   return url.slice(serverFnBase.length)
 }
-const callById = async (id, data) => {
+const callById = async (id, data, method = 'GET') => {
   const fetch = (url, init) => {
     const headers = new Headers(init.headers)
     headers.set('sec-fetch-site', 'same-origin')
@@ -187,7 +188,7 @@ const callById = async (id, data) => {
       new Request(new URL(url, 'http://localhost'), { ...init, headers }),
     )
   }
-  const reply = await entry.createClientRpc(id)({ data, method: 'GET', fetch })
+  const reply = await entry.createClientRpc(id)({ data, method, fetch })
   if ('error' in reply) {
     throw reply.error
   }

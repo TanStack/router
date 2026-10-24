@@ -14,6 +14,13 @@ import {
   useStartHost,
 } from './regression-helpers'
 import { clientMiddleware, clientMiddlewareOf } from './page-values'
+import {
+  aliasedClientOnlyFiles,
+  exportStarModule,
+  exportStarRows,
+  factoryDb,
+  factoryRows,
+} from './compiler-inputs'
 import type { PageSettled, StartCase } from './regression-helpers'
 
 /**
@@ -854,144 +861,38 @@ export const value = createServerOnlyFn(() => 'mine')`,
 })
 
 describe('factories resolved through project modules', () => {
-  const dbFile = {
-    'db.server.ts': `export const db = { x: () => 'x', y: () => 'y', w: () => 'w', log: () => {} }\n`,
-  }
-
-  test.each<{
-    name: string
-    output: 'client' | 'ssr'
-    files: Record<string, string>
-    code: string
-    serverFns: number
-  }>([
-    {
-      name: 'a default-exported middleware builder imported as default',
-      output: 'client',
-      files: {
-        'mw.ts': `import { createMiddleware } from '@tanstack/react-start'
-export default createMiddleware({ type: 'function' })`,
-      },
-      // Known limitation on main: middleware is detected by the
-      // `createMiddleware` text, so a module that only calls an imported
-      // builder is not compiled and needs this import.
-      code: `import { createMiddleware } from '@tanstack/react-start'
-import mw from './mw'
-import { db } from './db.server'
-export const logged = mw.server(async ({ next }) => {
-  db.log()
-  return next()
-})`,
-      serverFns: 0,
+  test.each(factoryRows)(
+    '$output: $name',
+    async ({ output, files, code, serverFns }) => {
+      const served = await serve(code, { ...files, ...factoryDb })
+      if (output === 'client') {
+        await expectClientFree(served)
+      }
+      // The module gives its importers that many server fns (public urls).
+      expect(await serverFnUrls(served)).toHaveLength(serverFns)
+      if ('iso' in (await served.ssr())) {
+        // Each environment runs its own isomorphic implementation.
+        expect(
+          output === 'client'
+            ? await inPage(served, 'return module.iso()')
+            : (await served.ssr()).iso(),
+        ).toBe(output === 'client' ? 'client' : 'w')
+      }
+      // The server fn is called from the client (through the server) and
+      // from server code, and runs the handler on the server.
+      if (serverFns > 0) {
+        expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('x')
+      }
     },
-    {
-      name: 'a default-exported server fn builder declared by identifier',
-      output: 'client',
-      files: {
-        'builders.ts': `import { createServerFn } from '@tanstack/react-start'
-const authed = createServerFn({ method: 'POST' })
-export default authed`,
-      },
-      code: `import authed from './builders'
-import { db } from './db.server'
-export const fn = authed.handler(async () => db.x())`,
-      serverFns: 1,
-    },
-    ...(['client', 'ssr'] as const).map((output) => ({
-      name: 'a namespace import of a module re-exporting the factories',
-      output,
-      files: {
-        'factories.ts': `export { createServerFn, createIsomorphicFn } from '@tanstack/react-start'`,
-      },
-      code: `import * as F from './factories'
-import { db } from './db.server'
-export const fn = F.createServerFn().handler(async () => db.x())
-export const iso = F.createIsomorphicFn().server(() => db.w()).client(() => 'client')`,
-      serverFns: 1,
-    })),
-    {
-      name: 'a namespace import of a module re-exporting createMiddleware',
-      output: 'client',
-      files: {
-        'middleware.ts': `export { createMiddleware } from '@tanstack/react-start'`,
-      },
-      code: `import * as M from './middleware'
-import { db } from './db.server'
-export const logged = M.createMiddleware({ type: 'function' }).server(async ({ next }) => {
-  db.log()
-  return next()
-})`,
-      serverFns: 0,
-    },
-    {
-      name: 'renamed re-exports next to a type-only re-export',
-      output: 'client',
-      files: {
-        'f.ts': `export { createServerFn as csf, createServerOnlyFn as so } from '@tanstack/react-start'
-export type { Register } from '@tanstack/react-start'
-export type * as types from '@tanstack/react-start'`,
-      },
-      code: `import { csf, so } from './f'
-import type * as F from './f'
-import { db } from './db.server'
-export const fn = csf().handler(async () => db.x() as F.types.Register)
-export const s = so(() => db.y())`,
-      serverFns: 1,
-    },
-    {
-      // Replaces createServerFn.test.ts "should use slow path for factory
-      // pattern".
-      name: 'a server fn factory const-aliased in another module',
-      output: 'client',
-      files: {
-        'factory.ts': `import { createServerFn } from '@tanstack/react-start'
-export const createFooServerFn = createServerFn`,
-      },
-      code: `import { createFooServerFn } from './factory'
-import { db } from './db.server'
-export const fn = createFooServerFn().handler(async () => db.x())`,
-      serverFns: 1,
-    },
-  ])('$output: $name', async ({ output, files, code, serverFns }) => {
-    const served = await serve(code, { ...files, ...dbFile })
-    if (output === 'client') {
-      await expectClientFree(served)
-    }
-    // The module gives its importers that many server fns (public urls).
-    expect(await serverFnUrls(served)).toHaveLength(serverFns)
-    if ('iso' in (await served.ssr())) {
-      // Each environment runs its own isomorphic implementation.
-      expect(
-        output === 'client'
-          ? await inPage(served, 'return module.iso()')
-          : (await served.ssr()).iso(),
-      ).toBe(output === 'client' ? 'client' : 'w')
-    }
-    // The server fn is called from the client (through the server) and
-    // from server code, and runs the handler on the server.
-    if (serverFns > 0) {
-      expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('x')
-    }
-  })
+  )
 
   // Only createServerOnlyFn appears in the source text; on the server, the
   // client-only fn imported through an aliased re-export throws and the
   // server-only fn runs. (Which of its imports the SSR environment keeps is
   // left open for neutral file names: SPEC J4.11, §5.12.)
   test('ssr: an aliased re-export of createClientOnlyFn next to createServerOnlyFn', async () => {
-    const served = await serve(
-      `import { createServerOnlyFn } from '@tanstack/react-start'
-import { clientOnly } from './env'
-import { secret } from './secret.server'
-import { readWindow } from './browser'
-export const serverValue = createServerOnlyFn(() => secret())
-export const clientValue = clientOnly(() => readWindow())`,
-      {
-        'env.ts': `export { createClientOnlyFn as clientOnly } from '@tanstack/react-start'`,
-        'secret.server.ts': `export const secret = () => 'secret'\n`,
-        'browser.ts': `export const readWindow = () => 'window'\n`,
-      },
-    )
+    const { 'module.tsx': code, ...files } = aliasedClientOnlyFiles
+    const served = await serve(code, files)
     const module = await served.ssr()
     expect([module.serverValue(), settle(module.clientValue)]).toEqual([
       'secret',
@@ -999,84 +900,10 @@ export const clientValue = clientOnly(() => readWindow())`,
     ])
   })
 
-  // Source: @vitejs/plugin-rsc expand-export-all fixtures (per row)
-  test.each<{
-    name: string
-    files: Record<string, string>
-    resolvesServerOnlyFn: boolean
-  }>([
-    {
-      // expand-export-all/explicit-wins
-      name: 'a local export that overrides the star export',
-      files: {
-        'start.ts': `export * from '@tanstack/react-start'
-export function createServerOnlyFn(fn) {
-  return fn
-}`,
-      },
-      resolvesServerOnlyFn: false,
-    },
-    {
-      // expand-export-all/nested-conflict-explicit-reexport-wins
-      name: 'an explicit re-export that overrides a star export',
-      files: {
-        'start.ts': `export * from './custom'
-export { createServerFn, createServerOnlyFn } from '@tanstack/react-start'`,
-        'custom.ts': `export function createServerOnlyFn(fn) {
-  return fn
-}`,
-      },
-      resolvesServerOnlyFn: true,
-    },
-    {
-      // expand-export-all/bad-resolve. The star export names a module the
-      // bundler's resolver gives no id for (Vite resolves no `data:` URL; the
-      // browser and Node import it themselves), so a compiler following the
-      // chain cannot read it and must go on with the other star export. A
-      // star export to a missing file is not usable: it fails every real
-      // build and every dev page.
-      name: 'an unresolvable star export next to the package',
-      files: {
-        'start.ts': `export * from 'data:text/javascript,export const unrelated = 1'
-export * from '@tanstack/react-start'`,
-        'data-modules.d.ts': `declare module 'data:text/javascript,*' {
-  export const unrelated: number
-}
-`,
-      },
-      resolvesServerOnlyFn: true,
-    },
-    {
-      // expand-export-all/duplicate-star-same-source
-      name: 'the same module re-exported twice',
-      files: {
-        'start.ts': `export * from './inner'
-export * from './inner'`,
-        'inner.ts': `export * from '@tanstack/react-start'`,
-      },
-      resolvesServerOnlyFn: true,
-    },
-    {
-      // expand-export-all/namespace-same-binding
-      name: 'two star exports that each forward part of the package',
-      files: {
-        'start.ts': `export * from './a'
-export * from './b'`,
-        'a.ts': `export { createServerFn } from '@tanstack/react-start'`,
-        'b.ts': `export { createServerOnlyFn } from '@tanstack/react-start'`,
-      },
-      resolvesServerOnlyFn: true,
-    },
-  ])(
+  test.each(exportStarRows)(
     'an export * chain with $name',
     async ({ files, resolvesServerOnlyFn }) => {
-      const served = await serve(
-        `import { createServerFn, createServerOnlyFn } from './start'
-import { db } from './db.server'
-export const fn = createServerFn().handler(async () => db.x())
-export const serverOnly = createServerOnlyFn(() => 'server-only-marker')`,
-        { ...files, ...dbFile },
-      )
+      const served = await serve(exportStarModule, { ...files, ...factoryDb })
       expect(await serverFnUrls(served)).toHaveLength(1)
       await expectClientFree(served)
       expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('x')
@@ -1101,7 +928,7 @@ export const fn = createServerFn().handler(async () => db.x())
 export const serverOnly = createServerOnlyFn(() => 'server-only-marker')`,
       {
         'start.ts': `export { createServerFn as 'create server fn', createServerOnlyFn as 'server only' } from '@tanstack/react-start'`,
-        ...dbFile,
+        ...factoryDb,
       },
     )
     await expectClientFree(served)
