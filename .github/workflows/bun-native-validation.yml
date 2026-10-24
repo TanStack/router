@@ -1,0 +1,175 @@
+name: Temporary native Bun validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      router_ref:
+        description: 'Exact Router commit; empty uses this workflow commit'
+        type: string
+        default: ''
+      binary_run:
+        description: 'Existing successful native build run ID; empty builds Bun'
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  CI: '1'
+  NX_DAEMON: 'false'
+  NX_NO_CLOUD: 'true'
+
+jobs:
+  native:
+    if: github.repository == 'RentnerKev/router' && inputs.binary_run == ''
+    runs-on: macos-15-intel
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout validation harness
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Checkout immutable Bun base
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: RentnerKev/bun
+          ref: dca7d25e95cca39316c659a377dba6803805549f
+          path: .native-bun
+          persist-credentials: false
+      - name: Setup bootstrap Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: '1.4.4'
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: '26.10.0'
+          package-manager-cache: false
+      - name: Build native assertion binary and execute all nine suites
+        id: native_tests
+        run: bash .github/native-bun-validation/build-macos.sh
+      - name: Collect binary and final machine state
+        if: always()
+        run: |
+          mkdir -p .native-proof/binary
+          df -h > .native-proof/final-disk.log
+          if [[ -f .native-bun/build/release-assert/bun-assertions ]]; then
+            cp .native-bun/build/release-assert/bun-assertions .native-proof/binary/bun
+            python3 - <<'PY'
+          import hashlib, json, os, subprocess
+          from pathlib import Path
+          binary = Path('.native-proof/binary/bun')
+          manifest = json.loads(Path('.github/native-bun-validation/native-v9-manifest.json').read_text())
+          proof = {
+              'sha256': hashlib.sha256(binary.read_bytes()).hexdigest(),
+              'base': manifest['head'],
+              'patchSha256': manifest['trackedPatchSha256'],
+              'additionalFiles': manifest['additionalFiles'],
+              'version': subprocess.check_output([str(binary.resolve()), '--version'], text=True).strip(),
+              'workflowRun': os.environ['GITHUB_RUN_ID'],
+              'workflowCommit': os.environ['GITHUB_SHA'],
+          }
+          Path('.native-proof/binary-proof.json').write_text(json.dumps(proof, indent=2) + '\n')
+          PY
+          fi
+      - name: Upload native binary, source, toolchain and test proof
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: native-macos-intel-bun
+          path: .native-proof/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+
+  browser:
+    if: always() && !cancelled() && github.repository == 'RentnerKev/router' && (inputs.binary_run != '' || needs.native.result != 'skipped')
+    needs: native
+    runs-on: macos-15-intel
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout exact Router commit
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.router_ref || github.sha }}
+          persist-credentials: false
+      - name: Require immutable Router ref
+        env:
+          ROUTER_REF: ${{ inputs.router_ref || github.sha }}
+        run: |
+          [[ "$ROUTER_REF" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$(git rev-parse HEAD)" == "$ROUTER_REF" ]]
+      - name: Download native binary and proof
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BINARY_RUN: ${{ inputs.binary_run || github.run_id }}
+        run: |
+          [[ "$BINARY_RUN" =~ ^[0-9]+$ ]]
+          gh run download "$BINARY_RUN" --repo "$GITHUB_REPOSITORY" --name native-macos-intel-bun --dir .native-artifact
+      - name: Setup pnpm
+        uses: pnpm/action-setup@739bfe42ca9233c5e6aca07c1a25a9d34aca49b0 # v6.0.7
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: '26.10.0'
+          package-manager-cache: false
+      - name: Install Router dependencies
+        run: pnpm install --frozen-lockfile --filter . --filter 'tanstack-router-e2e-react-bun-basic-file-based...'
+      - name: Checkout actual unplugin PR source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: RentnerKev/unplugin
+          ref: 4d01143e6f60a6a93ed40411629ea4da14f540a7
+          path: .native-unplugin
+          persist-credentials: false
+      - name: Build actual unplugin PR distribution
+        run: |
+          pnpm dlx pnpm@12.14.0 --dir .native-unplugin install --frozen-lockfile
+          pnpm dlx pnpm@12.14.0 --dir .native-unplugin build
+          test -f .native-unplugin/dist/index.mjs
+      - name: Prepare isolated native Bun wrapper and unplugin preload
+        run: node .github/native-bun-validation/browser-setup.mjs
+      - name: Install Chromium
+        run: pnpm exec playwright install chromium --only-shell
+      - name: Production builds, navigation and source maps
+        id: production
+        continue-on-error: true
+        env:
+          NATIVE_REPORT: ${{ github.workspace }}/.native-browser-proof/production-results.json
+        run: |
+          set -o pipefail
+          pnpm nx run tanstack-router-e2e-react-bun-basic-file-based:test:e2e:bun --outputStyle=stream --skipRemoteCache -- --reporter="line,$GITHUB_WORKSPACE/.github/native-bun-validation/require-tests-reporter.mjs" 2>&1 | tee .native-browser-proof/production.log
+      - name: Native development navigation, HMR, recovery and source maps
+        id: development
+        if: ${{ !cancelled() && steps.production.outcome != 'skipped' }}
+        continue-on-error: true
+        env:
+          NATIVE_REPORT: ${{ github.workspace }}/.native-browser-proof/development-results.json
+        run: |
+          set -o pipefail
+          pnpm nx run tanstack-router-e2e-react-bun-basic-file-based:test:e2e:bun:dev --outputStyle=stream --skipRemoteCache -- --reporter="line,$GITHUB_WORKSPACE/.github/native-bun-validation/require-tests-reporter.mjs" 2>&1 | tee .native-browser-proof/development.log
+      - name: Upload all browser results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: native-macos-intel-router-browser
+          path: |
+            .native-browser-proof/
+            e2e/react-router/bun-basic-file-based/test-results/
+            e2e/react-router/bun-basic-file-based/.cache/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Require both browser suites to pass
+        if: always()
+        env:
+          PRODUCTION: ${{ steps.production.outcome }}
+          DEVELOPMENT: ${{ steps.development.outcome }}
+        run: |
+          [[ "$PRODUCTION" == success && "$DEVELOPMENT" == success ]]
