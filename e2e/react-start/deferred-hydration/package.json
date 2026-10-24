@@ -48,18 +48,6 @@
           "...",
           "{projectRoot}/dist-vite-ssr"
         ]
-      },
-      "test:e2e--vite-ssr": {
-        "parallelism": false
-      },
-      "test:e2e--rsbuild-ssr": {
-        "parallelism": false
-      },
-      "test:e2e:dev": {
-        "parallelism": false
-      },
-      "test:e2e:prod": {
-        "parallelism": false
       }
     },
     "metadata": {

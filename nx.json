@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "defaultBase": "main",
-  "bust": "nx24-project-scoped-e2e-workers-full-2026-10-24-04",
+  "bust": "nx24-exclusive-e2e-16-medium-baseline-2026-10-25-05",
   "nxCloudId": "6442f7de8226a6291646a813",
   "useInferencePlugins": false,
   "parallel": 5,
@@ -17,8 +17,7 @@
       "{workspaceRoot}/.nx/workflows/ultracache-config.yaml",
       "{workspaceRoot}/.nvmrc",
       "{workspaceRoot}/package.json",
-      "{workspaceRoot}/tsconfig.json",
-      "{workspaceRoot}/.nx/e2e-scheduling-constraints.yaml"
+      "{workspaceRoot}/tsconfig.json"
     ],
     "dependentTaskOutputs": [
       {
@@ -73,22 +72,26 @@
       "cache": true,
       "dependsOn": ["^build", "test:e2e--*"],
       "inputs": ["buildProduction", "^production", "dependentTaskOutputs"],
-      "outputs": ["{projectRoot}/dist", "{projectRoot}/test-results"]
+      "outputs": ["{projectRoot}/dist", "{projectRoot}/test-results"],
+      "parallelism": false
     },
     "test:e2e:nitro": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^production"]
+      "inputs": ["default", "^production"],
+      "parallelism": false
     },
     "test:e2e:basepath": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^production"]
+      "inputs": ["default", "^production"],
+      "parallelism": false
     },
     "test:e2e:preview": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^production"]
+      "inputs": ["default", "^production"],
+      "parallelism": false
     },
     "test:types": {
       "cache": true,
@@ -146,6 +149,9 @@
       "cache": true,
       "dependsOn": ["build"],
       "inputs": ["buildProduction", "dependentTaskOutputs"]
+    },
+    "test:e2e*": {
+      "parallelism": false
     }
   },
   "plugins": [

@@ -18,17 +18,6 @@
           "mode": "ssr"
         }
       ]
-    },
-    "targets": {
-      "test:e2e--rsbuild-ssr": {
-        "parallelism": false
-      },
-      "test:e2e": {
-        "parallelism": false
-      },
-      "test:e2e-full": {
-        "parallelism": false
-      }
     }
   },
   "dependencies": {
