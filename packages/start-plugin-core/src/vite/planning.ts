@@ -110,12 +110,13 @@ export function createViteConfigPlan(opts: {
               consumer: 'server',
               build: {
                 ssr: true,
-                ...buildViteInputOptions(
-                  typeof serverInput === 'string'
-                    ? { server: serverInput }
-                    : serverInput,
-                  [/^cloudflare:/],
-                ),
+                rolldownOptions: {
+                  input:
+                    typeof serverInput === 'string'
+                      ? { server: serverInput }
+                      : serverInput,
+                  external: [/^cloudflare:/],
+                },
                 outDir: join(opts.serverOutputDirectory, '.tanstack/prerender'),
                 commonjsOptions: {
                   include: [/node_modules/],
@@ -258,18 +259,6 @@ export async function buildStartViteEnvironments(opts: {
 
 function escapeEntries(entries: Array<string>) {
   return entries.map((entry) => escapePath(entry))
-}
-
-function buildViteInputOptions(
-  input: NonNullable<vite.BuildOptions['rollupOptions']>['input'],
-  external?: NonNullable<vite.BuildOptions['rollupOptions']>['external'],
-) {
-  const bundlerOptions = external ? { input, external } : { input }
-
-  return {
-    rollupOptions: bundlerOptions,
-    rolldownOptions: bundlerOptions,
-  }
 }
 
 function defineReplaceEnv<TKey extends string, TValue extends string>(

@@ -31,7 +31,7 @@ describe('Vite planning', () => {
     const prerenderEnvironment = plan.environments.prerender
 
     expect(prerenderEnvironment).toBeDefined()
-    expect(prerenderEnvironment!.build.rollupOptions.input).toEqual({
+    expect(prerenderEnvironment!.build.rolldownOptions.input).toEqual({
       server: '/app/src/server.tsx',
     })
   })
