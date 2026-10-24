@@ -23,6 +23,7 @@ export const Route = createFileRoute('/posts')({
 if (import.meta.webpackHot) {
   const hot = import.meta.webpackHot
   const hotData = (hot.data ??= {})
+  const previousRoute = hotData['tsr-route']
   const routeId =
     hotData['tsr-route-id'] ??
     Route.id ??
@@ -30,13 +31,12 @@ if (import.meta.webpackHot) {
   if (routeId) {
     hotData['tsr-route-id'] = routeId
   }
-  const existingRoute =
-    typeof window !== 'undefined' && routeId
-      ? window.__TSR_ROUTER__?.routesById?.[routeId]
-      : undefined
-  if (routeId && existingRoute && existingRoute !== Route) {
-    ;(function handleRouteUpdate(routeId, newRoute) {
-      const router = window.__TSR_ROUTER__
+  if (previousRoute && routeId && previousRoute !== Route) {
+    ;(function handleRouteUpdate(routeId, newRoute, previousRoute) {
+      const router = previousRoute._hmrRouter
+      if (!router) {
+        return
+      }
       const oldRoute = router.routesById[routeId]
       if (!oldRoute) {
         return
@@ -75,6 +75,10 @@ if (import.meta.webpackHot) {
       router.resolvePathCache.clear()
       void router._refreshRoute?.()
       function syncHotRouteExport(liveRoute) {
+        Object.defineProperty(newRoute, '_hmrRouter', {
+          value: router,
+          configurable: true,
+        })
         newRoute.options = liveRoute.options
         newRoute.parentRoute = liveRoute.parentRoute
         newRoute._path = liveRoute._path
@@ -82,7 +86,7 @@ if (import.meta.webpackHot) {
         newRoute._fullPath = liveRoute._fullPath
         newRoute._to = liveRoute._to
       }
-    })(routeId, Route)
+    })(routeId, Route, previousRoute)
     try {
       const tsrReactRefreshUtils =
         typeof __react_refresh_utils__ !== 'undefined'
@@ -99,6 +103,7 @@ if (import.meta.webpackHot) {
     } catch (_err) {}
   }
   hot.dispose((data) => {
+    data['tsr-route'] = Route
     if (routeId) {
       data['tsr-route-id'] = routeId
     }

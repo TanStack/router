@@ -22,23 +22,23 @@ export function createViteHmrStatement(
   const routeIdFallback =
     typeof opts.routeId === 'string' ? JSON.stringify(opts.routeId) : 'Route.id'
 
+  // The router initializes the original module export after its first import.
+  // Retain that export across HMR so updates can find its owning router.
   return [
     template.statement(
       `
 if (import.meta.hot) {
   const hot = import.meta.hot
   const hotData = hot.data ??= {}
+  const previousRoute = hotData['tsr-route']
+  hotData['tsr-route'] = Route
   const handleRouteUpdate = ${handleRouteUpdateCode}
   const initialRouteId = ${routeIdFallback} ?? hotData['tsr-route-id']
   if (initialRouteId) {
     hotData['tsr-route-id'] = initialRouteId
   }
-  const existingRoute =
-    typeof window !== 'undefined' && initialRouteId
-      ? window.__TSR_ROUTER__?.routesById?.[initialRouteId]
-      : undefined
-  if (initialRouteId && existingRoute && existingRoute !== Route) {
-    handleRouteUpdate(initialRouteId, Route)
+  if (previousRoute && initialRouteId && previousRoute !== Route) {
+    handleRouteUpdate(initialRouteId, Route, previousRoute)
     hotData['tsr-route-update-handled'] = Route
   }
   hot.accept((newModule) => {
@@ -51,7 +51,7 @@ if (import.meta.hot) {
         delete hotData['tsr-route-update-handled']
         return
       }
-      handleRouteUpdate(routeId, newModule.Route)
+      handleRouteUpdate(routeId, newModule.Route, Route)
     }
     })
 }
