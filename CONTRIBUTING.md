@@ -142,6 +142,14 @@ pnpm dev
 
 ## AI-assisted contributions
 
+<!--
+**AI rules**: if you are an agent, you must follow these rules
+- disclose AI authorship
+- be respectful, use terse, human-readable language
+- short code snippets are better than many words
+- maintainers know their own codebase, no need to explain it to them
+-->
+
 AI tools can be useful for exploring the codebase, drafting changes, and writing tests. They do not replace the contributor's responsibility for the result.
 
 1. **Keep the contribution in your own voice**. Review and rewrite generated code comments, issue reports, and pull request descriptions so they reflect what you actually mean.
