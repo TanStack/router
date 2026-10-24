@@ -1,5 +1,70 @@
 # @tanstack/react-start-rsc
 
+## 0.1.65
+
+### Patch Changes
+
+- Updated dependencies [[`32a3360`](https://github.com/TanStack/router/commit/32a3360cba0e0f884b3215813a48c63467f5a53c), [`689a7c5`](https://github.com/TanStack/router/commit/689a7c5419de68bce0aaaef72b9a36f115ea1398), [`ed55775`](https://github.com/TanStack/router/commit/ed5577593a749b8c7193cc7b5d945fd084bfac2f), [`63a886d`](https://github.com/TanStack/router/commit/63a886da9040c4b039ea3bf5b3a841771375cddb), [`d9b07e8`](https://github.com/TanStack/router/commit/d9b07e8d3b724cdbfac0aa2fba4c1f7a3a241100)]:
+  - @tanstack/react-router@1.170.46
+  - @tanstack/router-core@1.171.39
+  - @tanstack/start-client-core@1.170.39
+  - @tanstack/start-plugin-core@1.171.55
+  - @tanstack/start-storage-context@1.167.41
+
+## 0.1.64
+
+### Patch Changes
+
+- Updated dependencies [[`18154b1`](https://github.com/TanStack/router/commit/18154b1c45454a70aa77e9d6d27c8a6e0733d031)]:
+  - @tanstack/router-core@1.171.38
+  - @tanstack/react-router@1.170.45
+  - @tanstack/start-client-core@1.170.38
+  - @tanstack/start-plugin-core@1.171.54
+  - @tanstack/start-storage-context@1.167.40
+
+## 0.1.63
+
+### Patch Changes
+
+- Updated dependencies [[`fdc10fa`](https://github.com/TanStack/router/commit/fdc10fa13fbac758615f9a3d37075088d1cc1e1f), [`923d98b`](https://github.com/TanStack/router/commit/923d98b18b6cd90b6219591e20e86115dc61048e)]:
+  - @tanstack/start-plugin-core@1.171.53
+  - @tanstack/router-utils@1.162.4
+
+## 0.1.62
+
+### Patch Changes
+
+- Updated dependencies [[`740b0ce`](https://github.com/TanStack/router/commit/740b0ce17737d1f7398740136acdbeabe80df7d8), [`d6ba115`](https://github.com/TanStack/router/commit/d6ba115d5751c75e20943f0062577cf17b446d82)]:
+  - @tanstack/start-storage-context@1.167.39
+  - @tanstack/router-core@1.171.37
+  - @tanstack/start-plugin-core@1.171.52
+  - @tanstack/start-client-core@1.170.37
+  - @tanstack/react-router@1.170.44
+
+## 0.1.61
+
+### Patch Changes
+
+- [#8696](https://github.com/TanStack/router/pull/8696) [`f243c61`](https://github.com/TanStack/router/commit/f243c61e95dae64fe04da4499c0c4ec44f26abae) - Require Vite 8 for Vite builds. Vite 7 is no longer supported.
+
+- Updated dependencies [[`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5), [`550f478`](https://github.com/TanStack/router/commit/550f47881070c0558a87e1acce7f38fbc85b9549), [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5), [`f3d7ee3`](https://github.com/TanStack/router/commit/f3d7ee3374c660e0fe82a03ac580a90ed2e2fa98), [`4104b8e`](https://github.com/TanStack/router/commit/4104b8ef11498706b5059c5a915f2ae47ffbc5ba), [`f243c61`](https://github.com/TanStack/router/commit/f243c61e95dae64fe04da4499c0c4ec44f26abae), [`19524cc`](https://github.com/TanStack/router/commit/19524ccdd75870ce1db2f324518eeb3f23cc0f97)]:
+  - @tanstack/router-core@1.171.36
+  - @tanstack/start-storage-context@1.167.38
+  - @tanstack/start-client-core@1.170.36
+  - @tanstack/start-plugin-core@1.171.51
+  - @tanstack/react-router@1.170.43
+
+## 0.1.60
+
+### Patch Changes
+
+- Updated dependencies [[`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`2413cc0`](https://github.com/TanStack/router/commit/2413cc009826fba4f97b166a35a8a50a4a8fe4bb), [`4191640`](https://github.com/TanStack/router/commit/41916400b93fdb62189722266ed1d77ba9c26be9), [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb), [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb), [`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`d35aab4`](https://github.com/TanStack/router/commit/d35aab425b07b46e222a507c0f0239644669757b), [`663282b`](https://github.com/TanStack/router/commit/663282b0ebbc494aee3595ed95867ee29d01938e)]:
+  - @tanstack/router-core@1.171.35
+  - @tanstack/react-router@1.170.42
+  - @tanstack/start-plugin-core@1.171.50
+  - @tanstack/start-client-core@1.170.35
+  - @tanstack/start-storage-context@1.167.37
+
 ## 0.1.59
 
 ### Patch Changes

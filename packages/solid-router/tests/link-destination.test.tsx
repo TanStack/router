@@ -47,6 +47,69 @@ function setup(links: () => JSX.Element, initial = '/source/one') {
   return { router, go, builds: () => counted.mock.calls.length }
 }
 
+test('reuses a fixed destination across navigations', async () => {
+  const { go, builds } = setup(() => (
+    <Link
+      to="/target/$id"
+      params={{ id: 'fixed' }}
+      search={{ build: 1 }}
+      hash="details"
+      data-testid="link"
+    />
+  ))
+  const link = await screen.findByTestId('link')
+  expect(link).toHaveAttribute('href', '/target/fixed?build=1#details')
+  const initial = builds()
+
+  await go('two')
+  await go('three', { hash: 'x' })
+  expect(link).toHaveAttribute('href', '/target/fixed?build=1#details')
+  expect(builds()).toBe(initial)
+
+  fireEvent.click(link)
+  await screen.findByTestId('link')
+  await vi.waitFor(() => expect(link).toHaveAttribute('data-status', 'active'))
+  expect(link).toHaveAttribute('href', '/target/fixed?build=1#details')
+})
+
+test('rebuilds on a destination prop change, not a presentation prop change', async () => {
+  const [id, setId] = createSignal('one')
+  const [search, setSearch] = createSignal<Record<string, unknown>>({
+    build: 1,
+  })
+  const [hash, setHash] = createSignal('first')
+  const [to, setTo] = createSignal('/target/$id')
+  const [cls, setCls] = createSignal('a')
+  const { go, builds } = setup(() => (
+    <Link
+      to={to() as any}
+      params={{ id: id() } as any}
+      search={search() as any}
+      hash={hash()}
+      class={cls()}
+      data-testid="link"
+    />
+  ))
+  const link = await screen.findByTestId('link')
+  expect(link).toHaveAttribute('href', '/target/one?build=1#first')
+
+  setId('two')
+  expect(link).toHaveAttribute('href', '/target/two?build=1#first')
+  setSearch({ build: 2 })
+  expect(link).toHaveAttribute('href', '/target/two?build=2#first')
+  setHash('second')
+  expect(link).toHaveAttribute('href', '/target/two?build=2#second')
+  setTo('/visible/$id')
+  expect(link).toHaveAttribute('href', '/visible/two?build=2#second')
+
+  const settled = builds()
+  setCls('b')
+  expect(link).toHaveClass('b')
+  await go('three')
+  expect(builds()).toBe(settled)
+  expect(link).toHaveAttribute('href', '/visible/two?build=2#second')
+})
+
 test('store-backed params and search follow in-place mutations at the next navigation', async () => {
   const [params, setParams] = createStore({ id: 'one' })
   const [search, setSearch] = createStore({ build: 1 })
@@ -74,6 +137,26 @@ test('store-backed params and search follow in-place mutations at the next navig
     expect(screen.getByTestId('link')).toHaveAttribute('data-status', 'active'),
   )
   expect(link).toHaveAttribute('href', '/target/four?build=2')
+})
+
+test('does not re-read a store nested inside a plain object', async () => {
+  // Only the prop value itself is checked for a store (one level). A store
+  // nested inside a plain object is like any other object mutated in place:
+  // pass a new object, or the store itself, to change the destination.
+  const [filters, setFilters] = createStore({ page: 1 })
+  const { go } = setup(() => (
+    <Link
+      to="/target/$id"
+      params={{ id: 'fixed' }}
+      search={{ build: 1, filters }}
+      data-testid="link"
+    />
+  ))
+  const link = await screen.findByTestId('link')
+  const href = link.getAttribute('href')
+  setFilters('page', 2)
+  await go('two')
+  expect(link).toHaveAttribute('href', href!)
 })
 
 test('state store values are not reused either', async () => {
@@ -142,6 +225,42 @@ test('masked destinations follow their inputs', async () => {
   expect(inheritedMask).toHaveAttribute('href', '/visible/two#a')
   setHash('b')
   expect(inheritedMask).toHaveAttribute('href', '/visible/two#b')
+})
+
+test('switches a mounted Link between plain and store-backed inputs', async () => {
+  const [live, setLive] = createSignal(false)
+  const [params, setParams] = createStore({ id: 'one' })
+  const [search, setSearch] = createStore({ build: 1 })
+  const plainParams = { id: 'fixed' }
+  const plainSearch = { build: 0 }
+  const { go, builds } = setup(() => (
+    <Link
+      to="/target/$id"
+      params={live() ? params : plainParams}
+      search={live() ? search : plainSearch}
+      data-testid="link"
+    />
+  ))
+  const link = await screen.findByTestId('link')
+  expect(link).toHaveAttribute('href', '/target/fixed?build=0')
+
+  setLive(true)
+  expect(link).toHaveAttribute('href', '/target/one?build=1')
+  setParams('id', 'two')
+  setSearch('build', 2)
+  await go('two')
+  expect(link).toHaveAttribute('href', '/target/two?build=2')
+
+  setLive(false)
+  expect(link).toHaveAttribute('href', '/target/fixed?build=0')
+  const plain = builds()
+  await go('three')
+  expect(builds()).toBe(plain)
+
+  setLive(true)
+  setParams('id', 'three')
+  await go('four')
+  expect(link).toHaveAttribute('href', '/target/three?build=2')
 })
 
 test('never mutates frozen caller options', async () => {
@@ -220,6 +339,26 @@ test('function children render once per active state change', async () => {
   fireEvent.click(link)
   await vi.waitFor(() => expect(link).toHaveTextContent(/^active$/))
   expect(calls).toEqual([false, true])
+})
+
+test('calls a user ref once per element across state changes', async () => {
+  const refs: Array<Element> = []
+  const [id, setId] = createSignal('one')
+  const { go } = setup(() => (
+    <Link
+      to="/target/$id"
+      params={{ id: id() } as any}
+      ref={(el: HTMLAnchorElement) => refs.push(el)}
+      data-testid="link"
+    />
+  ))
+  const link = await screen.findByTestId('link')
+  setId('two')
+  expect(link).toHaveAttribute('href', '/target/two')
+  await go('two')
+  fireEvent.click(link)
+  await vi.waitFor(() => expect(link).toHaveAttribute('data-status', 'active'))
+  expect(refs).toEqual([link])
 })
 
 test('refreshes history formatting even when the destination is reused', async () => {

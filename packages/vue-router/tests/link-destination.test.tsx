@@ -47,6 +47,58 @@ function setup(links: () => any, initial = '/source/one') {
   return { router, go, builds: () => counted.mock.calls.length }
 }
 
+test('reuses a fixed destination across navigations', async () => {
+  const params = { id: 'fixed' }
+  const search = { build: 1 }
+  const { go, builds } = setup(() => (
+    <Link
+      to="/target/$id"
+      params={params}
+      search={search}
+      hash="details"
+      data-testid="link"
+    />
+  ))
+  const link = await screen.findByTestId('link')
+  expect(link).toHaveAttribute('href', '/target/fixed?build=1#details')
+  const initial = builds()
+
+  await go('two')
+  await go('three', { hash: 'x' })
+  await Vue.nextTick()
+  expect(link).toHaveAttribute('href', '/target/fixed?build=1#details')
+  expect(builds()).toBe(initial)
+
+  await fireEvent.click(link)
+  await vi.waitFor(() => expect(link).toHaveAttribute('data-status', 'active'))
+})
+
+test('rebuilds on a destination prop change, not a presentation prop change', async () => {
+  const id = Vue.ref('one')
+  const cls = Vue.ref('a')
+  const { go, builds } = setup(() => (
+    <Link
+      to="/target/$id"
+      params={{ id: id.value }}
+      search={{ build: 1 }}
+      class={cls.value}
+      data-testid="link"
+    />
+  ))
+  const link = await screen.findByTestId('link')
+  expect(link).toHaveAttribute('href', '/target/one?build=1')
+  id.value = 'two'
+  await Vue.nextTick()
+  expect(link).toHaveAttribute('href', '/target/two?build=1')
+  await go('two')
+  await Vue.nextTick()
+  const settled = builds()
+  await go('three')
+  await Vue.nextTick()
+  expect(builds()).toBe(settled)
+  expect(link).toHaveAttribute('href', '/target/two?build=1')
+})
+
 test('reactive params and search follow in-place mutations at the next navigation', async () => {
   const params = Vue.reactive({ id: 'one' })
   const search = Vue.reactive({ build: 1 })
@@ -64,6 +116,22 @@ test('reactive params and search follow in-place mutations at the next navigatio
   await go('three')
   await Vue.nextTick()
   expect(link).toHaveAttribute('href', '/target/three?build=2')
+})
+
+test('does not re-read a reactive object nested inside a plain object', async () => {
+  // Only the prop value itself is checked for a reactive proxy (one level).
+  const filters = Vue.reactive({ page: 1 })
+  const params = { id: 'fixed' }
+  const search = { build: 1, filters }
+  const { go } = setup(() => (
+    <Link to="/target/$id" params={params} search={search} data-testid="link" />
+  ))
+  const link = await screen.findByTestId('link')
+  const href = link.getAttribute('href')
+  filters.page = 2
+  await go('two')
+  await Vue.nextTick()
+  expect(link).toHaveAttribute('href', href!)
 })
 
 test('inherited params and search rebuild on every navigation', async () => {

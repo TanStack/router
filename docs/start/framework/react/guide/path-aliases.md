@@ -26,9 +26,7 @@ After updating your `tsconfig.json` file, configure your build tool so it resolv
 
 # Vite
 
-## Vite 8
-
-Vite 8+ has [built-in support for path aliases](https://vite.dev/config/shared-options#resolve-tsconfigpaths), which is disabled by default. To enable it, simply add the following configuration to your `vite.config.ts` file:
+Vite has [built-in support for path aliases](https://vite.dev/config/shared-options#resolve-tsconfigpaths), which is disabled by default. To enable it, add the following configuration to your `vite.config.ts` file:
 
 ```ts
 // vite.config.ts
@@ -39,31 +37,6 @@ export default defineConfig({
     // This enables built-in support for path aliases defined in tsconfig.json
     tsconfigPaths: true,
   },
-})
-```
-
-## Vite 7 and earlier
-
-For Vite 7 and earlier, install the `vite-tsconfig-paths` plugin to enable path aliases in your TanStack Start project. You can do this by running the following command:
-
-```sh
-npm install -D vite-tsconfig-paths
-```
-
-Now, you'll need to update your `vite.config.ts` file to include the following:
-
-```ts
-// vite.config.ts
-import { defineConfig } from 'vite'
-import viteTsConfigPaths from 'vite-tsconfig-paths'
-
-export default defineConfig({
-  plugins: [
-    // this is the plugin that enables path aliases
-    viteTsConfigPaths({
-      projects: ['./tsconfig.json'],
-    }),
-  ],
 })
 ```
 

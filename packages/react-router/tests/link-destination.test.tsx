@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import {
   Link,
   Outlet,
+  RouterContextProvider,
   RouterProvider,
   createMemoryHistory,
   createRootRoute,
@@ -354,5 +355,144 @@ describe('Link destination updates', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Change mask' }))
     expect(propMask).toHaveAttribute('href', '/visible/two')
+  })
+})
+
+describe('Link props that change without a destination prop', () => {
+  afterEach(() => {
+    cleanup()
+    vi.useRealTimers()
+  })
+
+  async function setup(targetLoader?: () => void, nextLoader?: () => void) {
+    const root = createRootRoute()
+    const router = createRouter({
+      routeTree: root.addChildren([
+        createRoute({ getParentRoute: () => root, path: '/a' }),
+        createRoute({
+          getParentRoute: () => root,
+          path: '/b',
+          loader: targetLoader,
+        }),
+        createRoute({
+          getParentRoute: () => root,
+          path: '/c',
+          loader: nextLoader,
+        }),
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/a'] }),
+    })
+    await router.load()
+    return router
+  }
+
+  test('changing reloadDocument affects the next click', async () => {
+    const router = await setup()
+    const blockedTargets: Array<string> = []
+    const unblock = router.history.block({
+      blockerFn: ({ nextLocation }) => {
+        blockedTargets.push(nextLocation.pathname)
+        return true
+      },
+    })
+    function Example() {
+      const [reload, setReload] = React.useState(false)
+      return (
+        <>
+          <button onClick={() => setReload(true)}>Enable reload</button>
+          <Link to="/b" reloadDocument={reload}>
+            Target
+          </Link>
+        </>
+      )
+    }
+    render(
+      <RouterContextProvider router={router}>
+        <Example />
+      </RouterContextProvider>,
+    )
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Enable reload' }))
+      await act(() => {
+        fireEvent.click(screen.getByRole('link', { name: 'Target' }))
+      })
+      // A document navigation shows blockers the current history location;
+      // a client navigation would show the pending /b location.
+      expect(blockedTargets).toEqual(['/a'])
+      expect(router.history.location.pathname).toBe('/a')
+    } finally {
+      unblock()
+    }
+  })
+
+  test('changing href updates the displayed target and active state', async () => {
+    const router = await setup()
+    function Example() {
+      const [changed, setChanged] = React.useState(false)
+      return (
+        <>
+          <button onClick={() => setChanged(true)}>Change href</button>
+          <Link to="/a" href={changed ? '/b' : '/a'}>
+            Target
+          </Link>
+        </>
+      )
+    }
+    render(
+      <RouterContextProvider router={router}>
+        <Example />
+      </RouterContextProvider>,
+    )
+    const link = screen.getByRole('link', { name: 'Target' })
+    expect(link).toHaveAttribute('href', '/a')
+    expect(link).toHaveAttribute('aria-current', 'page')
+    fireEvent.click(screen.getByRole('button', { name: 'Change href' }))
+    expect(link).toHaveAttribute('href', '/b')
+    expect(link).not.toHaveAttribute('aria-current')
+  })
+
+  test('changing href cancels intent work for the old target and preloads and navigates to the new one', async () => {
+    const oldLoader = vi.fn()
+    const nextLoader = vi.fn()
+    const router = await setup(oldLoader, nextLoader)
+    vi.useFakeTimers()
+    function Example() {
+      const [href, setHref] = React.useState('/b')
+      return (
+        <>
+          <button onClick={() => setHref('/c')}>Retarget</button>
+          <Link to="/a" href={href} preload="intent" preloadDelay={50}>
+            Target
+          </Link>
+        </>
+      )
+    }
+    render(
+      <RouterContextProvider router={router}>
+        <Example />
+      </RouterContextProvider>,
+    )
+    const link = screen.getByRole('link', { name: 'Target' })
+    expect(link).toHaveAttribute('href', '/b')
+    fireEvent.mouseOver(link)
+    await act(() => vi.advanceTimersByTimeAsync(20))
+    fireEvent.click(screen.getByRole('button', { name: 'Retarget' }))
+    expect(link).toHaveAttribute('href', '/c')
+    await act(() => vi.advanceTimersByTimeAsync(100))
+    expect(oldLoader).not.toHaveBeenCalled()
+    expect(nextLoader).not.toHaveBeenCalled()
+
+    fireEvent.mouseLeave(link)
+    fireEvent.mouseOver(link)
+    await act(() => vi.advanceTimersByTimeAsync(50))
+    expect(nextLoader).toHaveBeenCalledTimes(1)
+    expect(router.state.location.pathname).toBe('/a')
+
+    await act(() => {
+      fireEvent.click(link)
+    })
+    expect(router.state.location.pathname).toBe('/c')
+    expect(link).toHaveAttribute('aria-current', 'page')
+    expect(oldLoader).not.toHaveBeenCalled()
   })
 })

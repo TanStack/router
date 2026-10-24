@@ -2,6 +2,21 @@ import { describe, expect, test } from 'vitest'
 import { getNormalizedURL } from '../src/ssr/ssr-server'
 
 describe('getNormalizedURL', () => {
+  test('returns an independent URL that callers can modify', () => {
+    const input = new URL('https://example.com/path?query=value')
+    const { url } = getNormalizedURL(input)
+    url.pathname = '/changed'
+    expect(input.href).toBe('https://example.com/path?query=value')
+  })
+
+  test.each([
+    'https://user:password@example.com/path',
+    'https://example.com/path?',
+    'https://example.com/path#',
+  ])('normalizes the full URL consistently: %s', (input) => {
+    expect(getNormalizedURL(input).url.href).toBe('https://example.com/path')
+  })
+
   test.each(['/%2Fdocs', '/%5Cdocs', '/%00/docs'])(
     'preserves encoded pathname data in a URL object: %s',
     (pathname) => {

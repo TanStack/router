@@ -4,7 +4,6 @@ import { shouldRebaseInlineCssUrls } from '../../src/start-manifest-plugin/inlin
 import {
   appendUniqueStrings,
   buildStartManifest,
-  createChunkCssAssetCollector,
   createManifestAssetResolvers,
   scanClientChunks,
   serializeStartManifest,
@@ -189,7 +188,7 @@ describe('scanClientChunks', () => {
   })
 })
 
-describe('createManifestAssetResolvers + createChunkCssAssetCollector', () => {
+describe('createManifestAssetResolvers', () => {
   test('reuses cached stylesheet links', () => {
     const entryChunk = makeChunk({
       fileName: 'entry.js',
@@ -205,13 +204,12 @@ describe('createManifestAssetResolvers + createChunkCssAssetCollector', () => {
       ['shared.js', normalizeTestChunk(sharedChunk)],
     ])
 
-    const linkResolvers = createManifestAssetResolvers('/assets')
-    const cssLinkCollector = createChunkCssAssetCollector({
+    const linkResolvers = createManifestAssetResolvers(
+      '/assets',
       chunksByFileName,
-      getStylesheetLink: linkResolvers.getStylesheetLink,
-    })
+    )
 
-    const links = cssLinkCollector.getChunkCssAssets(
+    const links = linkResolvers.getChunkCssAssets(
       chunksByFileName.get('entry.js')!,
     )
 
@@ -223,7 +221,7 @@ describe('createManifestAssetResolvers + createChunkCssAssetCollector', () => {
   })
 })
 
-describe('createChunkCssAssetCollector', () => {
+describe('getChunkCssAssets', () => {
   test('dedupes css from shared imported chunks', () => {
     const chunkA = makeChunk({
       fileName: 'a.js',
@@ -251,12 +249,10 @@ describe('createChunkCssAssetCollector', () => {
       ['shared.js', normalizeTestChunk(sharedChunk)],
     ])
 
-    const { getChunkCssAssets } = createChunkCssAssetCollector({
+    const { getChunkCssAssets } = createManifestAssetResolvers(
+      '/',
       chunksByFileName,
-      getStylesheetLink: (cssFile) => ({
-        href: `/${cssFile}`,
-      }),
-    })
+    )
 
     const links = getChunkCssAssets(chunksByFileName.get('a.js')!)
 
@@ -284,12 +280,10 @@ describe('createChunkCssAssetCollector', () => {
       ['b.js', normalizeTestChunk(chunkB)],
     ])
 
-    const { getChunkCssAssets } = createChunkCssAssetCollector({
+    const { getChunkCssAssets } = createManifestAssetResolvers(
+      '/',
       chunksByFileName,
-      getStylesheetLink: (cssFile) => ({
-        href: `/${cssFile}`,
-      }),
-    })
+    )
 
     const links = getChunkCssAssets(chunksByFileName.get('a.js')!)
     const hrefs = links.map(getManifestCssHref)
@@ -427,7 +421,7 @@ describe('buildStartManifest', () => {
       moduleIds: ['/src/entry.tsx'],
     })
 
-    const linkResolvers = createManifestAssetResolvers('/assets')
+    const linkResolvers = createManifestAssetResolvers('/assets', new Map())
 
     const manifest = buildStartManifest({
       clientBuild: normalizeViteClientBuild({
@@ -535,7 +529,7 @@ describe('buildStartManifest', () => {
       moduleIds: ['/src/entry.tsx'],
     })
 
-    const linkResolvers = createManifestAssetResolvers('/assets')
+    const linkResolvers = createManifestAssetResolvers('/assets', new Map())
 
     expect(() =>
       buildStartManifest({
@@ -732,6 +726,62 @@ describe('buildStartManifest', () => {
     expect(manifest.routes['/posts']!.preloads).toEqual([
       '/assets/posts.js',
       '/assets/shared-widget.js',
+    ])
+  })
+
+  test('preloads transitive static imports when the bundler lists direct imports only', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+      imports: ['runtime.js'],
+    })
+    const runtimeChunk = makeChunk({
+      fileName: 'runtime.js',
+      imports: ['react.js'],
+    })
+    const reactChunk = makeChunk({ fileName: 'react.js' })
+    const aboutRouteChunk = makeChunk({
+      fileName: 'about.js',
+      imports: ['list.js', 'runtime.js'],
+      moduleIds: ['/routes/about.tsx?tsr-split=component'],
+    })
+    const listChunk = makeChunk({
+      fileName: 'list.js',
+      imports: ['query.js', 'runtime.js'],
+      dynamicImports: ['lazy.js'],
+    })
+    const queryChunk = makeChunk({
+      fileName: 'query.js',
+      imports: ['list.js'],
+    })
+    const lazyChunk = makeChunk({ fileName: 'lazy.js' })
+
+    const manifest = buildStartManifest({
+      clientBuild: normalizeTestBuild({
+        'entry.js': entryChunk,
+        'runtime.js': runtimeChunk,
+        'react.js': reactChunk,
+        'about.js': aboutRouteChunk,
+        'list.js': listChunk,
+        'query.js': queryChunk,
+        'lazy.js': lazyChunk,
+      }),
+      routeTreeRoutes: {
+        __root__: { children: ['/about'] },
+        '/about': { filePath: '/routes/about.tsx' },
+      },
+      basePath: '/assets',
+    })
+
+    expect(manifest.routes.__root__!.preloads).toEqual([
+      '/assets/entry.js',
+      '/assets/runtime.js',
+      '/assets/react.js',
+    ])
+    expect(manifest.routes['/about']!.preloads).toEqual([
+      '/assets/about.js',
+      '/assets/list.js',
+      '/assets/query.js',
     ])
   })
 
