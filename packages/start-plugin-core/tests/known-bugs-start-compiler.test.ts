@@ -52,6 +52,7 @@ import {
   placementModule,
   placements,
 } from './createServerFn/placements'
+import { factoryEdits } from './compiler-inputs'
 import type { PageSettled, StartCase, StartHost } from './regression-helpers'
 import type { PlacementHead } from './createServerFn/placements'
 
@@ -78,22 +79,14 @@ const editDirs = {
   reexportChain: 'src/edits/reexport-chain',
   aliasedEnvOnly: 'src/edits/aliased-env-only',
 }
+/** `files` in the directory `dir`. */
+const inDir = (dir: string, files: Record<string, string>) =>
+  Object.fromEntries(
+    Object.entries(files).map(([file, code]) => [`${dir}/${file}`, code]),
+  )
 const editFiles = {
-  [`${editDirs.reexportChain}/factory.ts`]: `export { createServerOnlyFn } from './factory-inner'\n`,
-  [`${editDirs.reexportChain}/factory-inner.ts`]: `export { createServerOnlyFn } from '@tanstack/react-start'\n`,
-  [`${editDirs.reexportChain}/module.tsx`]: `import { createServerOnlyFn } from './factory'
-export const myFn = createServerOnlyFn(() => 'server-only-value')
-`,
-  [`${editDirs.aliasedEnvOnly}/factory.ts`]: `export { createServerOnlyFn as createServerFnHmrFactory } from '@tanstack/react-start'\n`,
-  [`${editDirs.aliasedEnvOnly}/module.tsx`]: `import { createServerFn } from '@tanstack/react-start'
-import { createServerFnHmrFactory } from './factory'
-
-const serverOnlyImpl = createServerFnHmrFactory(() => 'server-only-value')
-
-export const serverFn = createServerFn().handler(async () => {
-  return serverOnlyImpl()
-})
-`,
+  ...inDir(editDirs.reexportChain, factoryEdits.reexportChain.files),
+  ...inDir(editDirs.aliasedEnvOnly, factoryEdits.aliasedEnvOnly.files),
   'src/routes/edit-probe.ts': `import { createFileRoute } from '@tanstack/react-router'
 import { serverFn } from '../edits/aliased-env-only/module'
 export const Route = createFileRoute('/edit-probe')({
@@ -1121,9 +1114,11 @@ describe('dev edits', () => {
       const before = await started.host.importServer(`/${dir}/module.tsx`)
       expect(settle(before.myFn)).toBe('server-only-value')
 
-      const after = await editAndImport(started, dir, {
-        'factory-inner.ts': `export { createClientOnlyFn as createServerOnlyFn } from '@tanstack/react-start'\n`,
-      })
+      const after = await editAndImport(
+        started,
+        dir,
+        factoryEdits.reexportChain.edit,
+      )
       expect(settle(after.myFn)).toEqual(throwsError)
     },
     30_000,
@@ -1148,9 +1143,7 @@ describe('dev edits', () => {
 
     expect(await callServerFn()).toBe('server-only-value')
 
-    await started.edit({
-      [`${dir}/factory.ts`]: `export { createClientOnlyFn as createServerFnHmrFactory } from '@tanstack/react-start'\n`,
-    })
+    await started.edit(inDir(dir, factoryEdits.aliasedEnvOnly.edit))
     expect(await callServerFn()).toEqual(throwsError)
   }, 30_000)
 })

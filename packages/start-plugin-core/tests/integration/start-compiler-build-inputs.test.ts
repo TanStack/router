@@ -37,6 +37,7 @@ import {
   exportStarRows,
   factoryBuilderModule,
   factoryDb,
+  factoryEdits,
   factoryRows,
   forms,
   handlerFiles,
@@ -494,6 +495,94 @@ describe.each(startBundlers)('%s build', (bundler) => {
         () => 'failed',
       )
       expect(['built', 'failed']).toContain(ended)
+    },
+    timeout,
+  )
+})
+
+// The dev edits of known-bugs-start-compiler.test.ts ("dev edits"), in
+// `rsbuild build --watch` (SPEC J4.5, G13): the first build fills the
+// build's resolution caches, then one module a factory comes from is
+// edited, which the module using the factory does not import directly.
+// The rebuild runs the edited code.
+describe('rsbuild build --watch', () => {
+  const dirs = {
+    reexportChain: 'src/edits/chain',
+    aliasedEnvOnly: 'src/edits/aliased',
+  }
+  const inDir = (dir: string, files: Record<string, string>) =>
+    Object.fromEntries(
+      Object.entries(files).map(([file, code]) => [`${dir}/${file}`, code]),
+    )
+  const cleanups: Array<() => Promise<void>> = []
+  afterAll(async () => {
+    await Promise.all(cleanups.map((cleanup) => cleanup()))
+  })
+
+  let rebuilt: Promise<StartBuild> | undefined
+  /** The rebuild both edits cause (one watch build). */
+  const rebuild = () =>
+    (rebuilt ??= buildStart({
+      bundler: 'rsbuild',
+      files: {
+        ...inDir(dirs.reexportChain, factoryEdits.reexportChain.files),
+        ...inDir(dirs.aliasedEnvOnly, factoryEdits.aliasedEnvOnly.files),
+        'src/entry.ts': `export * as chain from './edits/chain/module'
+export * as aliased from './edits/aliased/module'
+`,
+        'src/ssr-entry.ts': `export * from './entry'\n${callByIdExports}`,
+      },
+      entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+      start: { importProtection: { enabled: false } },
+      watchEdits: {
+        ...inDir(dirs.reexportChain, factoryEdits.reexportChain.edit),
+        ...inDir(dirs.aliasedEnvOnly, factoryEdits.aliasedEnvOnly.edit),
+      },
+      registerCleanup: (cleanup) => cleanups.push(cleanup),
+    }))
+
+  // (The dev server's twin is pinned: known-bugs-start-compiler.test.ts
+  // "a dev edit of a module a re-export chain ends in recompiles its
+  // importers".)
+  test(
+    'an edit of the module a re-export chain ends in recompiles its importers',
+    async () => {
+      const { client, ssr } = await rebuild()
+      const call = `try {
+  return { value: entry.chain.myFn() }
+} catch (error) {
+  return { thrown: String(error?.message ?? error) }
+}`
+      expect({
+        client: (await client.run(call)).result,
+        ssr: (await ssr.run(call)).result,
+      }).toEqual({
+        client: { value: 'server-only-value' },
+        ssr: { thrown: expect.any(String) },
+      })
+    },
+    timeout,
+  )
+
+  test(
+    'an edit of an aliased env-only factory recompiles the server fn that calls it',
+    async () => {
+      const { client, ssr } = await rebuild()
+      const { url } = (
+        await client.run(`return { url: entry.aliased.serverFn.url }`)
+      ).result as { url: string }
+      expect(
+        (
+          await ssr.run(`${callByIdPrelude}${settlePrelude}
+return {
+  called: await settle(() => entry.aliased.serverFn()),
+  byId: await settle(() => callById(serverFnId(${JSON.stringify(url)}))),
+}`)
+        ).result,
+      ).toEqual({
+        called: { thrown: expect.any(String) },
+        byId: { thrown: expect.any(String) },
+      })
     },
     timeout,
   )

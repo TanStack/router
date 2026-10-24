@@ -2,10 +2,11 @@
  * Inputs of Start compiler rows that run in both modes: on the dev server
  * (start-compiler-factories.test.ts, compiler.test.ts,
  * createServerFn/handler-scope.test.ts, createServerFn/createServerFn.test.ts,
- * integration/pages/start-compiler-import-forms.test.ts) and in production
- * builds (integration/start-compiler-build-inputs.test.ts). Each gives the
- * modules a user writes and what its rows expect; how each mode observes it
- * is the test file's.
+ * integration/pages/start-compiler-import-forms.test.ts, and the dev edits
+ * of known-bugs-start-compiler.test.ts) and in production builds
+ * (integration/start-compiler-build-inputs.test.ts; the edits in an Rsbuild
+ * watch build). Each gives the modules a user writes and what its rows
+ * expect; how each mode observes it is the test file's.
  */
 import { throwsError } from './diagnostics'
 import type { Plugin } from 'vite'
@@ -586,3 +587,45 @@ import { chart } from './chart.client'`
  */
 export const serverFnConstruct = (callee: string, wrap: Form['wrap']) =>
   `export const fn = ${wrap(`${callee}({ method: 'POST' }).handler(async () => db.x())`)}`
+
+/**
+ * Edits of a module a factory comes from, which the module using the factory
+ * does not import directly (`files`, then `edit`): `reexportChain` (the
+ * module a re-export chain ends in now re-exports createClientOnlyFn under
+ * the createServerOnlyFn name: `myFn` of `module.tsx` becomes client-only,
+ * so calling it on the server throws) and `aliasedEnvOnly` (the module that
+ * renames an env-only factory for a server fn module whose source only
+ * mentions createServerFn now renames createClientOnlyFn: `serverFn`, which
+ * returned `'server-only-value'`, throws).
+ */
+export const factoryEdits = {
+  reexportChain: {
+    files: {
+      'factory.ts': `export { createServerOnlyFn } from './factory-inner'\n`,
+      'factory-inner.ts': `export { createServerOnlyFn } from '@tanstack/react-start'\n`,
+      'module.tsx': `import { createServerOnlyFn } from './factory'
+export const myFn = createServerOnlyFn(() => 'server-only-value')
+`,
+    },
+    edit: {
+      'factory-inner.ts': `export { createClientOnlyFn as createServerOnlyFn } from '@tanstack/react-start'\n`,
+    },
+  },
+  aliasedEnvOnly: {
+    files: {
+      'factory.ts': `export { createServerOnlyFn as createServerFnHmrFactory } from '@tanstack/react-start'\n`,
+      'module.tsx': `import { createServerFn } from '@tanstack/react-start'
+import { createServerFnHmrFactory } from './factory'
+
+const serverOnlyImpl = createServerFnHmrFactory(() => 'server-only-value')
+
+export const serverFn = createServerFn().handler(async () => {
+  return serverOnlyImpl()
+})
+`,
+    },
+    edit: {
+      'factory.ts': `export { createClientOnlyFn as createServerFnHmrFactory } from '@tanstack/react-start'\n`,
+    },
+  },
+}
