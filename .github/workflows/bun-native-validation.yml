@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       router_ref:
-        description: 'Exact Router commit; empty uses this workflow commit'
+        description: 'Exact Router commit for browser tests; empty builds Bun only'
         type: string
         default: ''
       binary_run:
@@ -24,7 +24,7 @@ env:
 jobs:
   native:
     if: github.repository == 'RentnerKev/router' && inputs.binary_run == ''
-    runs-on: macos-15-intel
+    runs-on: macos-15
     defaults:
       run:
         shell: bash
@@ -80,16 +80,16 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: native-macos-intel-bun
+          name: native-macos-arm64-bun
           path: .native-proof/
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 14
 
   browser:
-    if: always() && !cancelled() && github.repository == 'RentnerKev/router' && (inputs.binary_run != '' || needs.native.result != 'skipped')
+    if: always() && !cancelled() && github.repository == 'RentnerKev/router' && inputs.router_ref != '' && (inputs.binary_run != '' || needs.native.result == 'success')
     needs: native
-    runs-on: macos-15-intel
+    runs-on: macos-15
     defaults:
       run:
         shell: bash
@@ -111,7 +111,7 @@ jobs:
           BINARY_RUN: ${{ inputs.binary_run || github.run_id }}
         run: |
           [[ "$BINARY_RUN" =~ ^[0-9]+$ ]]
-          gh run download "$BINARY_RUN" --repo "$GITHUB_REPOSITORY" --name native-macos-intel-bun --dir .native-artifact
+          gh run download "$BINARY_RUN" --repo "$GITHUB_REPOSITORY" --name native-macos-arm64-bun --dir .native-artifact
       - name: Setup pnpm
         uses: pnpm/action-setup@739bfe42ca9233c5e6aca07c1a25a9d34aca49b0 # v6.0.7
       - name: Setup Node
@@ -158,7 +158,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: native-macos-intel-router-browser
+          name: native-macos-arm64-router-browser
           path: |
             .native-browser-proof/
             e2e/react-router/bun-basic-file-based/test-results/
