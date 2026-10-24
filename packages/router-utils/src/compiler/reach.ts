@@ -960,7 +960,10 @@ export function computePlacement(input: PlacementInput): Placement {
   const keyOf = (o: OutputId) => outputs.get(o)?.key ?? o
   for (const cl of clusters) {
     const S = needers.get(cl.id)!
-    if (orphaned.has(cl.id) || deadClusters.has(cl.id)) {
+    const derivedNeeds = [...S].some((o) => o !== 'env')
+    if (deadClusters.has(cl.id) || (orphaned.has(cl.id) && !derivedNeeds)) {
+      // orphaned by an env erasure and needed by no derived output: gone;
+      // still needed by a chunk (an erased option value named it): homed below
       home.set(cl.id, 'removed')
       continue
     }

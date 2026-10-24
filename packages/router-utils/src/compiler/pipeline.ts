@@ -578,7 +578,8 @@ function withConfig(plan: AnalysisPlan, config: unknown): PlanContext {
     markBenignEffect: (unit) => plan.markBenignEffect(unit),
     setRouteModule: () => plan.setRouteModule(),
     liveness: (output) => plan.liveness(output),
-    renameRefs: (sym, to, scope, by) => plan.renameRefs(sym, to, scope, by),
+    renameRefs: (sym, to, scope, by, except) =>
+      plan.renameRefs(sym, to, scope, by, except),
     setFacts: (planner, data) => plan.setFacts(planner, data),
     diagnostic: (d) => plan.diagnostic(d),
     edgeKey: (raw, form, origin) => plan.edgeKey(raw, form, origin),

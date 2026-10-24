@@ -168,6 +168,8 @@ export interface PlanContext {
     to: RefTarget,
     scope: EditScope,
     by: string,
+    /** References inside these ranges are left to their owner (another planner rewrites them). */
+    except?: ReadonlyArray<Range>,
   ) => void
   setFacts: (planner: string, data: unknown) => void
   diagnostic: (d: Diagnostic) => void
@@ -303,13 +305,24 @@ export class AnalysisPlan implements PlanContext {
     return this.symbols.name(to ?? sym)
   }
 
-  renameRefs(sym: SymbolId, to: RefTarget, scope: EditScope, by: string): void {
+  renameRefs(
+    sym: SymbolId,
+    to: RefTarget,
+    scope: EditScope,
+    by: string,
+    except: ReadonlyArray<Range> = [],
+  ): void {
     const { refs, units, declaringUnits } = this.t1
     if ('sym' in to) {
       this.renames.set(sym, to.sym)
     }
     for (const ref of refs.refsOf(sym)) {
       if (ref.kind === 'implicitJsxFactory') {
+        continue
+      }
+      if (
+        except.some((r) => ref.range.start >= r.start && ref.range.end <= r.end)
+      ) {
         continue
       }
       this.rewrites.ref(ref, to, scope, by)

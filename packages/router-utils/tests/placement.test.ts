@@ -3,6 +3,8 @@ import {
   MemoryHost,
   dedent,
   envInfo,
+  findRouteOptions,
+  propertyOf,
   toyEnvPlanner,
   toySplitPlanner,
 } from './helpers'
@@ -220,6 +222,61 @@ describe('glue and renames (lane router)', () => {
       "import { TsrPendingComponent } from './route.tsx'",
     )
     expect(chunk?.code).toContain('() => TsrPendingComponent()')
+  })
+
+  it('keeps a declaration orphaned in the env module when a chunk needs it', async () => {
+    // the component option names `Page`; a planner erases that occurrence in
+    // the env output and roots the chunk on a unit reading `Page`
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      function Page() { return 'page' }
+      export const Route = createFileRoute('/')({
+        component: Page,
+      })
+    `)
+    const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+    const erase: Planner = {
+      name: 'toy-erase',
+      tier: 1,
+      gate: () => true,
+      plan(ctx) {
+        const found = findRouteOptions(ctx)!
+        const p = propertyOf(found.options, 'component')!
+        ctx.setRouteModule()
+        const out = ctx.declareOutput({
+          kind: 'split',
+          key: 'component',
+          derived: { kind: 'split', value: 'component' },
+        })
+        const sym = ctx.analysis.file.referenceOf(p.value)!.binding!.id as never
+        const split = ctx.names.alloc('TsrSplitComponent')
+        ctx.rewrites.addGenerated({
+          body: [
+            { k: 'text', parts: [`const ${split.name} = `, { sym }, '\n'] },
+            { k: 'text', parts: [`export { ${split.name} as component }\n`] },
+          ],
+          declares: [split.sym],
+          effectful: false,
+          anchor: { k: 'end' },
+          home: out,
+          by: 'toy-erase',
+        })
+        ctx.rewrites.add({
+          range: { start: p.value.start, end: p.value.end },
+          body: [{ k: 'text', parts: ['null'] }],
+          scope: ['env'],
+          by: 'toy-erase',
+        })
+      },
+    }
+    const main = await host.compile('/app/route.tsx', [erase])
+    const chunk = await host.compile('/app/route.tsx?tsr-split=component', [
+      erase,
+    ])
+    expect(main?.code).toContain('component: null')
+    expect(main?.code).not.toContain('function Page()')
+    expect(chunk?.code).toContain('function Page()')
+    expect(chunk?.code).toContain('const TsrSplitComponent = Page')
   })
 
   it('starts end glue on its own line when the source has no trailing newline', async () => {
