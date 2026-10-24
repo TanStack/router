@@ -25,12 +25,12 @@ import type { EmitPlan, EnvInfo, FallbackRecord, PlanContext } from './plan'
 import type { PlanKey, SourceIdentity } from './identity'
 import type { OutputId } from './rewrite'
 import type { Diagnostic } from './diagnostics'
-import type { RawSourceMap } from './output-builder'
 import type {
   CompileInput,
   CompileOutput,
   CompilerCaches,
   HostServices,
+  InputSourceMap,
   Planner,
   PolicyContext,
   PrefetchContext,
@@ -395,8 +395,8 @@ async function runAttempt(
   }
 
   // ---- C: per-output edge policy (async) ----------------------------------------
-  let inputMap: RawSourceMap | null | undefined
-  const readInputMap = (): RawSourceMap | null => {
+  let inputMap: InputSourceMap | null | undefined
+  const readInputMap = (): InputSourceMap | null => {
     if (inputMap === undefined) {
       inputMap =
         typeof input.inputMap === 'function'
