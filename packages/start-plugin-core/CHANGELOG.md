@@ -1,5 +1,21 @@
 # @tanstack/start-plugin-core
 
+## 1.171.55
+
+### Patch Changes
+
+- [#8748](https://github.com/TanStack/router/pull/8748) [`ed55775`](https://github.com/TanStack/router/commit/ed5577593a749b8c7193cc7b5d945fd084bfac2f) - Skip the Rsbuild import-protection loader and its plugins when import protection is disabled, so modules no longer pass through the loader.
+
+- [#8750](https://github.com/TanStack/router/pull/8750) [`63a886d`](https://github.com/TanStack/router/commit/63a886da9040c4b039ea3bf5b3a841771375cddb) - Skip the server function resolver rebuild in Rsbuild dev when the resolver has not changed, so most edits no longer rebuild the whole server chunk graph.
+
+- [#8758](https://github.com/TanStack/router/pull/8758) [`d9b07e8`](https://github.com/TanStack/router/commit/d9b07e8d3b724cdbfac0aa2fba4c1f7a3a241100) - Stop resolving top-level calls such as `z.object()` whose receiver is not a namespace import. They can never be a `createServerOnlyFn` or `createClientOnlyFn` call, and resolving them made the dev compiler load and parse the receiver's module (all of zod, for example).
+
+- Updated dependencies [[`32a3360`](https://github.com/TanStack/router/commit/32a3360cba0e0f884b3215813a48c63467f5a53c), [`647cb73`](https://github.com/TanStack/router/commit/647cb737a5622813d276d6042766692ca5ae67ed)]:
+  - @tanstack/router-core@1.171.39
+  - @tanstack/router-plugin@1.168.48
+  - @tanstack/start-server-core@1.169.45
+  - @tanstack/router-generator@1.167.46
+
 ## 1.171.54
 
 ### Patch Changes
