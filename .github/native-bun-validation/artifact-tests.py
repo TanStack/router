@@ -11,7 +11,7 @@ binary = root / ".native-artifact/binary/bun"
 proof = root / ".native-browser-proof"
 proof.mkdir(exist_ok=True)
 expected = json.loads((root / ".native-artifact/binary-proof.json").read_text())
-manifest = json.loads((root / ".github/native-bun-validation/native-v10-manifest.json").read_text())
+manifest = json.loads((root / ".github/native-bun-validation/native-v12-manifest.json").read_text())
 assert hashlib.sha256(binary.read_bytes()).hexdigest() == expected["sha256"]
 assert expected["base"] == manifest["head"]
 assert expected["patchSha256"] == manifest["trackedPatchSha256"]
