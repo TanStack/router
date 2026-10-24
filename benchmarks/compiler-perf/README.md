@@ -51,6 +51,13 @@ Useful options (`--help` lists all):
   `/proc/stat` and waits while other processes keep more than 4 cores busy
   (up to `--quiet-timeout` seconds; runs that time out are recorded with
   `flagged: true`). Each run records `busyCores` and the 1-minute load.
+  A pre-run sample is not enough (bursty neighbours slowed one series by
+  ~10% while every pre-run sample was below 4), so each run also records
+  `othersBusyDuring`: system-wide busy time during the run minus the
+  harness's own process tree (dev server, build, Chromium). Runs above
+  `--max-busy` are flagged and repeated, up to `--retries` (default 3) per
+  scenario and 3× that many HMR edits per kind; remaining flagged runs are
+  kept, counted in `summary.md` and reported by `compare.mjs`.
 
 Compare two runs:
 

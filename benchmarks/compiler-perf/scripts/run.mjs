@@ -40,6 +40,7 @@ const { values: args } = parseArgs({
     'hmr-warmup': { type: 'string', default: '3' },
     'max-busy': { type: 'string', default: '4' },
     'quiet-timeout': { type: 'string', default: '1800' },
+    retries: { type: 'string', default: '3' },
     'skip-package-builds': { type: 'boolean', default: false },
     port: { type: 'string', default: '4810' },
     help: { type: 'boolean', default: false },
@@ -58,6 +59,7 @@ if (args.help) {
   --hmr-warmup <n>          discarded edits per HMR kind (default 3)
   --max-busy <cores>        wait until other processes use fewer cores (default 4)
   --quiet-timeout <s>       max wait for a quiet machine, then flag the run (default 1800)
+  --retries <n>             repeat runs flagged for load during the run (default 3 per scenario)
   --skip-package-builds     do not run the Nx package builds first`)
   process.exit(0)
 }
@@ -68,6 +70,7 @@ const HMR_ITERATIONS = Number(args['hmr-iterations'])
 const HMR_WARMUP = Number(args['hmr-warmup'])
 const MAX_BUSY = Number(args['max-busy'])
 const QUIET_TIMEOUT_MS = Number(args['quiet-timeout']) * 1000
+const RETRIES = Number(args.retries)
 const PORT = Number(args.port)
 const variants = args.variants.split(',').filter(Boolean)
 const scenarios = new Set(args.scenarios.split(',').filter(Boolean))
@@ -481,6 +484,7 @@ function saveResults() {
 }
 
 async function repeat(name, fn, { runs = RUNS, warmup = WARMUP } = {}) {
+  let retries = RETRIES
   for (let i = 0; i < warmup + runs; i++) {
     const quiet = await waitForQuiet()
     const measured = i >= warmup
@@ -502,6 +506,12 @@ async function repeat(name, fn, { runs = RUNS, warmup = WARMUP } = {}) {
         .map(([k, v]) => `${k}=${typeof v === 'number' ? v.toFixed(0) : v}`)
         .join(' ')}`,
     )
+    if (measured && quiet.flagged && retries > 0) {
+      retries--
+      log(`  discarded (machine load), repeating; ${retries} retries left`)
+      i--
+      continue
+    }
     if (measured) {
       addSample(name, metrics, quiet)
       saveResults()
@@ -671,6 +681,7 @@ async function hmrScenario(variant) {
         await page.locator(`[data-probe="${kind}"]`).scrollIntoViewIfNeeded()
         await sleep(500)
       }
+      let retries = RETRIES * 3
       for (let i = 0; i < HMR_WARMUP + HMR_ITERATIONS; i++) {
         const quiet = await waitForQuiet(500)
         const next = `${prefix}-r${i + 1}x${Date.now().toString(36)}`
@@ -733,6 +744,14 @@ async function hmrScenario(variant) {
         Object.assign(quiet, stopWatch())
         if (quiet.othersBusyDuring > MAX_BUSY) {
           quiet.flagged = true
+        }
+        if (i >= HMR_WARMUP && quiet.flagged && retries > 0) {
+          retries--
+          log(
+            `${variant}/hmr/${kind} edit discarded (machine load ${quiet.othersBusyDuring} cores)`,
+          )
+          i--
+          continue
         }
         if (i >= HMR_WARMUP) {
           addSample(
