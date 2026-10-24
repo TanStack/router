@@ -77,6 +77,11 @@ export class RouterCompiler {
   readonly mode: 'dev' | 'build'
   readonly bundler: Bundler
   private readonly perPlanner: Record<string, unknown>
+  /** The registry's entries by the real path of their (symlinked) files, per registry. */
+  private realPaths: {
+    registry: RouterPluginContext['routesByFile']
+    byRealPath: Map<string, { routeId: string }>
+  } | null = null
 
   constructor(opts: RouterCompilerOptions) {
     this.context = opts.context
@@ -122,9 +127,33 @@ export class RouterCompiler {
     }
   }
 
-  /** The registry entry of a file, by its normalized path (scanned or real). */
+  /**
+   * The registry entry of a file, by its normalized path: the path the
+   * generator scanned, or the real path of a symlinked route file (bundlers
+   * resolve modules to their real path; DESIGN §3.5.1).
+   */
   routeEntry(path: string): RouteEntryFacts | null {
-    const entry = this.context.routesByFile.get(normalizePath(path))
+    const p = normalizePath(path)
+    const registry = this.context.routesByFile
+    let entry: { routeId: string } | undefined = registry.get(p)
+    if (!entry) {
+      if (this.realPaths?.registry !== registry) {
+        const byRealPath = new Map<string, { routeId: string }>()
+        for (const [file, e] of registry) {
+          let real: string
+          try {
+            real = normalizePath(fs.realpathSync.native(file))
+          } catch {
+            continue
+          }
+          if (real !== file && !registry.has(real)) {
+            byRealPath.set(real, { routeId: e.routeId })
+          }
+        }
+        this.realPaths = { registry, byRealPath }
+      }
+      entry = this.realPaths.byRealPath.get(p)
+    }
     return entry ? { routeId: entry.routeId } : null
   }
 
@@ -180,8 +209,13 @@ export class RouterCompiler {
       if (d.by === 'parse') {
         continue
       }
-      // once per (file, reason and wording) per run: an edit that leaves the
-      // finding as it is does not repeat it; a new finding is reported
+      // an error refuses every compile that produces it; a warning once per
+      // (file, reason and wording) per run: an edit that leaves the finding
+      // as it is does not repeat it, a new finding is reported
+      if (d.severity === 'error') {
+        report(d)
+        continue
+      }
       const keyed = d.code ? { ...d, code: `${d.code}\u0000${d.message}` } : d
       if (this.warnings.once(normalizePath(path), keyed)) {
         report(d)

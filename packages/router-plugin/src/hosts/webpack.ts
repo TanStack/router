@@ -30,7 +30,11 @@ export interface CompilerLike {
     target?: unknown
     module: { rules: Array<unknown> }
   }
+  webpack?: { WebpackError?: new (message: string) => Error }
   hooks: {
+    thisCompilation?: {
+      tap: (name: string, fn: (compilation: CompilationLike) => void) => void
+    }
     beforeRun: { tap: (name: string, fn: () => void) => void }
     watchRun: {
       tapPromise: (
@@ -45,7 +49,67 @@ export interface CompilerLike {
   }
 }
 
+/** The parts of a compilation the eager-export check reads (webpack and Rspack). */
+export interface CompilationLike {
+  hooks: { processAssets: { tap: (name: string, fn: () => void) => void } }
+  chunks: Iterable<{ canBeInitial: () => boolean }>
+  chunkGraph: {
+    getChunkModules: (chunk: unknown) => Array<ModuleLike>
+  }
+  warnings: Array<Error>
+}
+
+interface ModuleLike {
+  resource?: string
+  /** Inner modules of a concatenated module. */
+  modules?: Array<ModuleLike>
+  identifier?: () => string
+}
+
 const PLUGIN_NAME = 'tanstack-router:compiler'
+const EXTRACTED_EXPORT_RE = /[?&]tsr-split=export~([^&#]+)/
+
+/**
+ * Warns once per (route file, export) when an extracted-export output
+ * (page code the splitter moved out of the route module) ends up in an
+ * initial chunk: a module loaded with the entry imports it through the
+ * route file, so it is eager whatever the splitter did (J2.8: the user
+ * is told, the build goes on).
+ */
+export function warnEagerExports(
+  compilation: CompilationLike,
+  makeError: (message: string) => Error,
+): void {
+  const seen = new Set<string>()
+  for (const chunk of compilation.chunks) {
+    if (!chunk.canBeInitial()) {
+      continue
+    }
+    const modules: Array<ModuleLike> = []
+    for (const m of compilation.chunkGraph.getChunkModules(chunk)) {
+      modules.push(m, ...(m.modules ?? []))
+    }
+    for (const m of modules) {
+      const id = m.resource ?? m.identifier?.() ?? ''
+      const match = EXTRACTED_EXPORT_RE.exec(id)
+      if (!match) {
+        continue
+      }
+      const file = normalizePath(id.slice(0, id.indexOf('?')))
+      const name = decodeURIComponent(match[1]!)
+      const key = `${file}\0${name}`
+      if (seen.has(key)) {
+        continue
+      }
+      seen.add(key)
+      compilation.warnings.push(
+        makeError(
+          `[tanstack-router] The export \`${name}\` of "${file}" loads with the entry chunk, not with the route's split code: a module of the entry imports it through the route file. Move it to its own module, or declare "sideEffects": false in package.json so the bundler can bypass the route file.`,
+        ),
+      )
+    }
+  }
+}
 const JS_FILE_RE = /\.[cm]?[jt]sx?$/
 
 let loaderPath: string | null = null
@@ -164,6 +228,14 @@ export function createRouterCompilerWebpackPlugin(
       compiler.hooks.beforeRun.tap(PLUGIN_NAME, () => {
         session.warnings.reset()
       })
+      if (envType === 'client' && mode === 'build') {
+        const WebpackError = compiler.webpack?.WebpackError ?? Error
+        compiler.hooks.thisCompilation?.tap(PLUGIN_NAME, (compilation) => {
+          compilation.hooks.processAssets.tap(PLUGIN_NAME, () => {
+            warnEagerExports(compilation, (m) => new WebpackError(m))
+          })
+        })
+      }
       compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async (c) => {
         const changed = [...(c.modifiedFiles ?? []).values()].map(
           (f) => [f, 'change'] as const,

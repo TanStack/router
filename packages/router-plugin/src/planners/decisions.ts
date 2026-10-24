@@ -7,6 +7,7 @@
 import { splitGroupingsSchema } from '../core/config'
 import { defaultCodeSplitGroupings } from '../core/constants'
 import {
+  declaratorOf,
   identifierSymbol,
   isAlreadyLazy,
   isFallbackLiteral,
@@ -53,6 +54,8 @@ export interface SplitDecision {
   shorthandSym: SymbolId | null
   /** Object-form loader: the chunk exports the handler under `loader`. */
   exportName: string
+  /** A loader named by a binding holding `{ handler }`: the chunk exports that member. */
+  member: string | null
 }
 
 export type NotSplitReason =
@@ -60,6 +63,7 @@ export type NotSplitReason =
   | 'multi-writer'
   | 'ordered-effect'
   | 'hydrate-writer'
+  | 'env-declared'
 
 export interface NotSplit {
   key: string
@@ -172,12 +176,38 @@ function splitTarget(
   exportName: string
   container: Node | null
   prop: RouteOption
+  member: string | null
 } | null {
   if (option.value === null) {
     return null
   }
   let prop = option
   let container: Node | null = null
+  let member: string | null = null
+  if (
+    option.key === 'loader' &&
+    (option.kind === 'init' || option.kind === 'shorthand')
+  ) {
+    // `loader: handlers` / `{ loader }` naming a module const `{ handler }`:
+    // the chunk exports its handler (the router calls `loader.handler`;
+    // `lazyFn` calls what the chunk exports)
+    const sym = identifierSymbol(ctx, option.value)
+    const decl = sym !== null ? declaratorOf(ctx, sym) : null
+    const init = decl ? unwrapTs(decl.init) : null
+    if (
+      init !== null &&
+      init.type === 'ObjectExpression' &&
+      (init.properties as Array<Node>).some(
+        (p) =>
+          p.type === 'Property' &&
+          !p.computed &&
+          p.kind === 'init' &&
+          propertyKeyName(p) === 'handler',
+      )
+    ) {
+      member = 'handler'
+    }
+  }
   if (option.key === 'loader' && option.kind === 'init') {
     const v = unwrapTs(option.value)
     if (v.type === 'ObjectExpression') {
@@ -224,6 +254,7 @@ function splitTarget(
         exportName: option.key!,
         container,
         prop,
+        member,
       }
     }
     case 'method':
@@ -238,6 +269,7 @@ function splitTarget(
         exportName: option.key!,
         container,
         prop,
+        member: null,
       }
     case 'shorthand':
       return {
@@ -251,6 +283,7 @@ function splitTarget(
         exportName: option.key!,
         container,
         prop,
+        member,
       }
     default:
       return null
@@ -289,11 +322,13 @@ function computeSplitPlan(
           `the options ${[...deleteNodes].map((k) => `\`${k}\``).join(', ')} cannot be removed from this build`,
         )
       }
+      // with deleteNodes the build is refused: it would ship the options
+      // silently otherwise (J2.8, J2.14)
       warnings.push({
-        severity: 'warning',
+        severity: deleteNodes.size > 0 ? 'error' : 'warning',
         code: 'options-opaque',
         by: 'route-split',
-        message: `[tanstack-router] The route options of "${file}" are ${how}, so ${consequences.join(' and ')}.`,
+        message: `[tanstack-router] The route options of "${file}" are ${how}, so ${consequences.join(' and ')}.${deleteNodes.size > 0 ? ' Write the route options as an object literal in the route file.' : ''}`,
         range: {
           start: route.optionsCall.start,
           end: route.optionsCall.end,
@@ -318,10 +353,10 @@ function computeSplitPlan(
     ) {
       if (deleteNodes.size > 0) {
         warnings.push({
-          severity: 'warning',
+          severity: 'error',
           code: 'delete-nodes-dynamic',
           by: 'route-split',
-          message: `[tanstack-router] "${file}" spreads or computes route options, so the options ${[...deleteNodes].map((k) => `\`${k}\``).join(', ')} may remain in this build.`,
+          message: `[tanstack-router] "${file}" spreads or computes route options, so the options ${[...deleteNodes].map((k) => `\`${k}\``).join(', ')} cannot be removed from this build. Write them as literal properties of the route options.`,
           range: option.propertyRange,
         })
       }
@@ -376,16 +411,20 @@ function computeSplitPlan(
       if (isFallbackLiteral(target.value) || isAlreadyLazy(ctx, target.value)) {
         continue
       }
-      const fallback = ctx.fallbacks.find(
-        (f) =>
-          f.range.start === target.region.start &&
-          f.range.end === target.region.end,
-      )
       const shorthandSym =
         target.shape === 'shorthand'
           ? identifierSymbol(ctx, target.value)
           : null
       const valueSym = identifierSymbol(ctx, target.value)
+      // the core reports a fallback at the option value, or at the
+      // declaration of the binding the value names (its writes, its effects)
+      const fallback =
+        ctx.fallbacks.find((f) => sameRange(f.range, target.region)) ??
+        (valueSym !== null
+          ? ctx.fallbacks.find((f) =>
+              declaringRanges(ctx, valueSym).some((r) => sameRange(r, f.range)),
+            )
+          : undefined)
       if (fallback) {
         notSplit.push({
           key,
@@ -409,6 +448,7 @@ function computeSplitPlan(
         methodPrefix: target.methodPrefix,
         shorthandSym,
         exportName: target.exportName,
+        member: target.member,
       }
       decisions.push(decision)
       if (componentOptions.has(key)) {
@@ -448,5 +488,19 @@ function describeReason(reason: NotSplitReason): string {
       return 'it reads a module binding that top-level code mutates after it.'
     case 'hydrate-writer':
       return 'it writes a binding captured by a hydration boundary.'
+    case 'env-declared':
+      return 'its value stays in the route module (declared by a top-level call or destructuring, or one with an exported binding it writes); a split chunk could only import it.'
   }
+}
+
+/** The ranges of the module-level units declaring a symbol. */
+function declaringRanges(ctx: PlanContext, sym: SymbolId): Array<Range> {
+  const { t1 } = ctx
+  return (t1.declaringUnits.get(sym) ?? []).map(
+    (u) => t1.regions.get(t1.units[u]!.region).range,
+  )
+}
+
+function sameRange(a: Range, b: Range): boolean {
+  return a.start === b.start && a.end === b.end
 }

@@ -203,7 +203,7 @@ function describeOptions(ctx: PlanContext, options: Node): Array<RouteOption> {
 }
 
 /** The module-level declaration unit of a symbol, when it is a plain declarator with an initialiser. */
-function declaratorOf(
+export function declaratorOf(
   ctx: PlanContext,
   sym: SymbolId,
 ): { unit: Unit; init: Node } | null {

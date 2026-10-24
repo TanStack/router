@@ -264,11 +264,17 @@ export function routeSplitPlanner(): Planner {
         const body: Array<Frag> = []
         if (valueSym !== null) {
           // the original symbol: placement follows its declaring unit; a
-          // rename renders at emit time
+          // rename renders at emit time. The core reports it when its
+          // effects keep it in the route module (`env-declared`).
           body.push({
             k: 'text',
-            parts: [`const ${split.name} = `, { sym: valueSym }, '\n'],
+            parts: [
+              `const ${split.name} = `,
+              { sym: valueSym },
+              d.member ? `.${d.member}\n` : '\n',
+            ],
           })
+          ctx.addRoot(g.output, { t: 'sym', id: valueSym })
         } else {
           body.push({
             k: 'text',
