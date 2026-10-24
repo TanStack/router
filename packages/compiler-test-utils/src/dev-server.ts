@@ -58,7 +58,7 @@ import {
 import path from 'node:path'
 import { createServer, isRunnableDevEnvironment, mergeConfig } from 'vite'
 import { servedDirectories } from './app-directory'
-import { createApp } from './build-harness'
+import { createApp, stripAnsi } from './build-harness'
 import { scopeMethods } from './console-hook'
 import { openDiagnosticChannel } from './diagnostic-channel'
 import { saveAppFile } from './save-file'
@@ -92,12 +92,6 @@ export interface DevServerOptions extends AppOptions {
   config?: InlineConfig
   /** Serves over HTTP on a free port, for `fetch()`. Default `false`. */
   listen?: boolean
-  /**
-   * How long `settle()` waits for one step (the watcher reporting a file,
-   * the server handling a file event), in milliseconds: only a guard against
-   * an event that never comes. Default 20 000.
-   */
-  eventTimeout?: number
   /**
    * How long one `settle()` may take in all, in milliseconds: a bound on
    * the outcome, not a count of events (an app whose files keep changing,
@@ -312,7 +306,10 @@ async function startServer(
 ): Promise<DevServer> {
   const { plugins = [], config = {}, bundledDev, browser = false } = options
   const listen = options.listen ?? browser
-  const eventTimeout = options.eventTimeout ?? 20_000
+  // How long `settle()` waits for one step (the watcher reporting a file,
+  // the server handling a file event): only a guard against an event that
+  // never comes
+  const eventTimeout = 20_000
   const settleTimeout = options.settleTimeout ?? 60_000
   // Vite handles file events with HMR only: without it, nothing tells when
   // the server has handled one, so the server runs without a watcher. In
@@ -1279,11 +1276,6 @@ function hmrMessage(environment: string, args: Array<unknown>): HmrMessage {
     paths = payload.paths
   }
   return { environment, type: payload.type, paths, payload }
-}
-
-function stripAnsi(text: string) {
-  // eslint-disable-next-line no-control-regex
-  return text.replace(/\u001b\[[0-9;]*m/g, '')
 }
 
 /** One line per HMR message (`client: update /a.ts, /b.ts`), for assertions. */

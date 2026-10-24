@@ -30,7 +30,7 @@ import {
 import { openDiagnosticChannel } from './diagnostic-channel'
 import { createRsbuildDevServer, rsbuildLogger } from './rsbuild-dev-server'
 import type { PageRun } from './browser'
-import type { App, AppOptions, BuildMode, ParsedModules } from './build-harness'
+import type { App, AppOptions, ParsedModules } from './build-harness'
 import type { ChannelDiagnostic } from './diagnostic-channel'
 import type { RsbuildDevServer } from './rsbuild-dev-server'
 import type { RsbuildConfig, RsbuildPlugin, Rspack } from '@rsbuild/core'
@@ -57,8 +57,6 @@ export interface RsbuildPluginHostOptions extends AppOptions {
   serve?: boolean
   /** Serves the entry's page to the shared browser page (`runClient`). */
   client?: boolean
-  /** See `RsbuildDevServerOptions.compileTimeout`. */
-  compileTimeout?: number
 }
 
 export interface RsbuildHostBuildEnvironment {
@@ -120,10 +118,7 @@ export interface RsbuildPluginHost {
   /** `RsbuildDevServer.edit`. */
   edit: RsbuildDevServer['edit']
   /** Runs `rsbuild build` on the app. */
-  build: (options?: {
-    mode?: BuildMode
-    config?: RsbuildConfig
-  }) => Promise<RsbuildHostBuild>
+  build: () => Promise<RsbuildHostBuild>
   close: () => Promise<void>
 }
 
@@ -154,7 +149,6 @@ export async function createRsbuildPluginHost(
       plugins: ({ root }) => pluginsFor('serve', root),
       config,
       browser: client,
-      compileTimeout: options.compileTimeout,
     })
   } else {
     app = await createApp({ ...options, prefix })
@@ -204,8 +198,7 @@ export async function createRsbuildPluginHost(
       return runInPage({ pageUrl: devServer().url!, script })
     },
     edit: (files, editOptions) => devServer().edit(files, editOptions),
-    build: async (buildOptions = {}) => {
-      const mode = buildOptions.mode ?? 'production'
+    build: async () => {
       const channel = openDiagnosticChannel()
       channel.claim(root)
       return channel.run(async () => {
@@ -233,10 +226,7 @@ export async function createRsbuildPluginHost(
               }
             })
             api.modifyRspackConfig((rspackConfig, { environment }) => {
-              if (
-                mode === 'production' &&
-                environment.config.output.target === 'web'
-              ) {
+              if (environment.config.output.target === 'web') {
                 const parsed = emptyParsedModules()
                 evidence[environment.name] = parsed
                 rspackConfig.plugins.push(
@@ -273,18 +263,15 @@ export async function createRsbuildPluginHost(
           const rsbuild = await createRsbuild({
             cwd: root,
             rsbuildConfig: mergeRsbuildConfig(
-              mergeRsbuildConfig(
-                {
-                  root,
-                  mode,
-                  logLevel: 'silent',
-                  customLogger: rsbuildLogger(channel),
-                  source: { entry: { index: `./${entry}` } },
-                  plugins: [...pluginsFor('build', root), recorder],
-                },
-                config,
-              ),
-              buildOptions.config ?? {},
+              {
+                root,
+                mode: 'production',
+                logLevel: 'silent',
+                customLogger: rsbuildLogger(channel),
+                source: { entry: { index: `./${entry}` } },
+                plugins: [...pluginsFor('build', root), recorder],
+              },
+              config,
             ),
           })
           built = await rsbuild.build()

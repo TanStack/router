@@ -45,7 +45,6 @@ import type { PageRun } from './browser'
 import type {
   App,
   AppOptions,
-  BuildMode,
   BuildResult,
   EmittedChunk,
   SourceMap,
@@ -84,10 +83,6 @@ export interface PluginHostOptions extends AppOptions {
    * `connectIdleHmrClient`). Default `false` (middleware mode).
    */
   client?: boolean
-  /** See `DevServerOptions.settleTimeout`. */
-  settleTimeout?: number
-  /** See `DevServerOptions.eventTimeout`. */
-  eventTimeout?: number
 }
 
 /** An emitted chunk of one environment of a build, with its code. */
@@ -115,10 +110,7 @@ export interface HostBuild {
    * placement, `run()` in Node or Chromium, and, for a production client
    * build, the dangling-name check).
    */
-  describe: (
-    environment: string,
-    options?: { env?: 'client' | 'ssr'; entry?: string },
-  ) => Promise<BuildResult>
+  describe: (environment: string) => Promise<BuildResult>
 }
 
 /** A build that failed: its error, with what it reported meanwhile. */
@@ -171,10 +163,7 @@ export interface PluginHost {
    */
   diagnostics: Array<ChannelDiagnostic>
   /** Runs `vite build` on the app (see the module comment). */
-  build: (options?: {
-    mode?: BuildMode
-    config?: InlineConfig
-  }) => Promise<HostBuild>
+  build: (options?: { config?: InlineConfig }) => Promise<HostBuild>
   /** Closes the dev server and removes the app. */
   close: () => Promise<void>
 }
@@ -316,8 +305,6 @@ export async function createPluginHost(
       ],
       config,
       browser: client,
-      settleTimeout: options.settleTimeout,
-      eventTimeout: options.eventTimeout,
     })
   } else {
     app = await createApp({ ...options, prefix })
@@ -376,7 +363,7 @@ export async function createPluginHost(
     edit: (files) => devServer().edit(files),
     build: async (buildOptions = {}) => {
       const buildRoot = root
-      const mode = buildOptions.mode ?? 'production'
+      const mode = 'production'
       const outputs: Record<string, HostBuildEnvironment> = {}
       const clientModules = parsedModules()
       const channel = openDiagnosticChannel()
@@ -419,25 +406,17 @@ export async function createPluginHost(
         return {
           environments: outputs,
           diagnostics,
-          describe: async (name, describeOptions = {}) => {
+          describe: async (name) => {
             const environment = outputs[name]
             if (!environment) {
               throw new Error(
                 `no "${name}" environment was built (built: ${Object.keys(outputs).join(', ') || 'none'})`,
               )
             }
-            const env =
-              describeOptions.env ?? (name === 'client' ? 'client' : 'ssr')
-            // An app's own entry: the one emitted entry, unless named
-            const chunks = environment.chunks.filter(
-              (chunk) =>
-                describeOptions.entry === undefined ||
-                !chunk.isEntry ||
-                chunk.fileName === describeOptions.entry,
-            )
+            const chunks = environment.chunks
             return describeBuild({
               bundler: 'vite',
-              env,
+              env: name === 'client' ? 'client' : 'ssr',
               mode,
               root: buildRoot,
               outDir: environment.outDir,
