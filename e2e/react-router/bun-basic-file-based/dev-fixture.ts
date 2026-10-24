@@ -11,7 +11,7 @@ import {
 } from 'node:fs/promises'
 import path from 'node:path'
 import { tmpdir } from 'node:os'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 import { createHash } from 'node:crypto'
 
 export function aboutSource(
@@ -192,8 +192,8 @@ export default { name: 'observe-public-router-dev', setup(build) {
     const preload = process.env.BUN_PLUGIN_PRELOAD
     const preloadArg = preload
       ? preload.startsWith('file:')
-        ? preload
-        : pathToFileURL(path.resolve(preload)).href
+        ? fileURLToPath(preload)
+        : path.resolve(preload)
       : undefined
     let pending = ''
     let settleReady: (value: { url: string; pid: number }) => void
@@ -273,7 +273,7 @@ export default { name: 'observe-public-router-dev', setup(build) {
       preload: preloadArg ?? null,
       preloadSha256: preloadArg
         ? createHash('sha256')
-            .update(await readFile(new URL(preloadArg)))
+            .update(await readFile(preloadArg))
             .digest('hex')
         : null,
       routerHead: execFileSync('git', ['rev-parse', 'HEAD'], {

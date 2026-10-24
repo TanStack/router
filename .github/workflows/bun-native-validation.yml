@@ -130,10 +130,20 @@ jobs:
           path: .native-unplugin
           persist-credentials: false
       - name: Build actual unplugin PR distribution
+        uses: pnpm/action-setup@739bfe42ca9233c5e6aca07c1a25a9d34aca49b0 # v6.0.7
+        with:
+          version: '12.14.0'
+          package_json_file: .native-unplugin/package.json
+          dest: ~/native-pnpm12
+      - name: Install and build actual unplugin PR
         run: |
-          pnpm dlx pnpm@12.14.0 --dir .native-unplugin install --frozen-lockfile
-          pnpm dlx pnpm@12.14.0 --dir .native-unplugin build
+          pnpm --dir .native-unplugin install --frozen-lockfile
+          pnpm --dir .native-unplugin build
           test -f .native-unplugin/dist/index.mjs
+      - name: Restore Router pnpm version
+        uses: pnpm/action-setup@739bfe42ca9233c5e6aca07c1a25a9d34aca49b0 # v6.0.7
+        with:
+          dest: ~/native-pnpm11
       - name: Prepare isolated native Bun wrapper and unplugin preload
         run: node .github/native-bun-validation/browser-setup.mjs
       - name: Install Chromium
@@ -155,6 +165,36 @@ jobs:
         run: |
           set -o pipefail
           pnpm nx run tanstack-router-e2e-react-bun-basic-file-based:test:e2e:bun:dev --outputStyle=stream --skipRemoteCache -- --reporter="line,$GITHUB_WORKSPACE/.github/native-bun-validation/require-tests-reporter.mjs" 2>&1 | tee .native-browser-proof/development.log
+      - name: Checkout actual Jiti PR source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: RentnerKev/jiti
+          ref: 2669fd42050027531c7bbeb0e61b61f7ae35517a
+          path: .native-jiti
+          persist-credentials: false
+      - name: Build actual Jiti PR distribution
+        uses: pnpm/action-setup@739bfe42ca9233c5e6aca07c1a25a9d34aca49b0 # v6.0.7
+        with:
+          version: '10.30.3'
+          package_json_file: .native-jiti/package.json
+          dest: ~/native-pnpm10
+      - name: Install and build actual Jiti PR
+        run: |
+          pnpm --dir .native-jiti install --frozen-lockfile
+          pnpm --dir .native-jiti build
+          test -f .native-jiti/dist/jiti.cjs
+      - name: Imported virtual configuration helpers with actual Jiti PR
+        id: configuration
+        continue-on-error: true
+        env:
+          JITI_CANDIDATE_ENTRY: ${{ github.workspace }}/.native-jiti/lib/jiti.mjs
+        run: |
+          mkdir -p packages/router-generator/.cache
+          cp .github/native-bun-validation/helper-import-preload.mjs packages/router-generator/.cache/helper-import-preload.mjs
+          if "$BUN_EXECUTABLE" .github/native-bun-validation/combined-generator.mjs > .native-browser-proof/configuration-installed.json; then
+            echo 'Installed Jiti also passed the helper cases.'
+          fi
+          "$BUN_EXECUTABLE" --preload ./packages/router-generator/.cache/helper-import-preload.mjs .github/native-bun-validation/combined-generator.mjs > .native-browser-proof/configuration-candidate.json
       - name: Upload all browser results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -167,10 +207,11 @@ jobs:
           include-hidden-files: true
           if-no-files-found: warn
           retention-days: 14
-      - name: Require both browser suites to pass
+      - name: Require browser and configuration suites to pass
         if: always()
         env:
           PRODUCTION: ${{ steps.production.outcome }}
           DEVELOPMENT: ${{ steps.development.outcome }}
+          CONFIGURATION: ${{ steps.configuration.outcome }}
         run: |
-          [[ "$PRODUCTION" == success && "$DEVELOPMENT" == success ]]
+          [[ "$PRODUCTION" == success && "$DEVELOPMENT" == success && "$CONFIGURATION" == success ]]
