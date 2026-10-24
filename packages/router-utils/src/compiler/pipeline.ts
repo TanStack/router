@@ -30,6 +30,7 @@ import type {
   CompileOutput,
   CompilerCaches,
   HostServices,
+  InputSourceMap,
   Planner,
   PolicyContext,
   PrefetchContext,
@@ -58,7 +59,10 @@ export async function compileModule(
   host: HostServices,
   caches: CompilerCaches,
 ): Promise<CompileOutput | null> {
-  const identity = identify(input.id)
+  const own = identify(input.id)
+  // R48: a non-JS id whose code reaches us as JS compiles with Tier 0 only
+  const tier0Only = own.lang === null
+  const identity = tier0Only && input.lang ? { ...own, lang: input.lang } : own
   if (identity.lang === null) {
     return null
   }
@@ -118,6 +122,7 @@ export async function compileModule(
     const promise = runAttempt(
       input,
       identity,
+      tier0Only,
       host,
       caches,
       cache,
@@ -248,6 +253,7 @@ function dependencyPaths(plan: EmitPlan): Array<string> {
 async function runAttempt(
   input: CompileInput,
   identity: SourceIdentity,
+  tier0Only: boolean,
   host: HostServices,
   caches: CompilerCaches,
   cache: PlanCache,
@@ -266,6 +272,7 @@ async function runAttempt(
   }
   const t0 = new ModuleAnalysis(parsed.file, parsed.source, {
     path: identity.path,
+    markerSpecifiers: host.rawFacts.markerSpecifiers,
   })
   const cjs = t0.sourceType !== 'module' || isCommonJsPath(identity.path)
   const gateCtx = (p: Planner) => ({
@@ -274,7 +281,7 @@ async function runAttempt(
     config: input.config.perPlanner[p.name],
   })
   let planners = input.planners.filter((p) => p.gate(t0, gateCtx(p)))
-  if (cjs) {
+  if (cjs || tier0Only) {
     planners = planners.filter((p) => p.tier === 0)
   }
   if (planners.length === 0) {
@@ -402,6 +409,16 @@ async function runAttempt(
   }
 
   // ---- C: per-output edge policy (async) ----------------------------------------
+  let inputMap: InputSourceMap | null | undefined
+  const readInputMap = (): InputSourceMap | null => {
+    if (inputMap === undefined) {
+      inputMap =
+        typeof input.inputMap === 'function'
+          ? input.inputMap()
+          : (input.inputMap ?? null)
+    }
+    return inputMap
+  }
   for (const output of Object.keys(emitPlan.outputs) as Array<OutputId>) {
     const recipe = emitPlan.outputs[output]!
     const importerId = recipe.derivedId ?? identity.canonicalId
@@ -414,6 +431,8 @@ async function runAttempt(
         env,
         config: input.config.perPlanner[p.name],
         host,
+        code: input.code,
+        inputMap: readInputMap,
         ledger,
         resolve: (spec, importer) => resolveFrom(spec, importer ?? importerId),
         targetFacts: targetFactsOf,
@@ -492,9 +511,9 @@ function tier0Plan(
     const form = imp.bare ? 'bare' : 'static'
     const k = edgeKey(imp.specifier, form)
     mark(imp.specifierRange, k)
-    const names = imp.specifiers
-      .filter((s) => !s.typeOnly)
-      .map((s) => s.imported)
+    // binding edge iff a specifier is used as a value (an import whose
+    // bindings are unused, or only used as types, is an evaluation edge)
+    const names = t0.importEdgeNames(imp)
     edges.env!.push({
       output: 'env',
       importerId: identity.canonicalId,

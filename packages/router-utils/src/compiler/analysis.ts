@@ -266,6 +266,8 @@ export class ModuleAnalysis {
   readonly dynamicEdges: ReadonlyArray<DynamicEdge>
   readonly markers: Marker
   readonly ownEffects: boolean
+  /** Whether the module's own statements have effects, module loading aside (bare imports and re-exports are followed by consumers, R36). */
+  readonly codeEffects: boolean
   readonly sourceType: 'module' | 'script' | 'commonjs'
   readonly hasImportOrExport: boolean
   readonly purity: PurityContext
@@ -292,6 +294,7 @@ export class ModuleAnalysis {
     const reexports: Array<ReexportEntry> = []
     let marker: Marker = null
     let ownEffects = false
+    let codeEffects = false
     const body = file.program.body
     for (let i = this.header.directiveCount; i < body.length; i++) {
       const stmt = body[i]!
@@ -482,8 +485,14 @@ export class ModuleAnalysis {
         default:
           break
       }
-      if (!ownEffects && statementHasEffects(this.purity, stmt)) {
+      // module loading counts as an own effect, not as an effect of its own code
+      const loads = loadsModule(stmt)
+      if (
+        (loads ? !ownEffects : !codeEffects) &&
+        statementHasEffects(this.purity, stmt)
+      ) {
         ownEffects = true
+        codeEffects ||= !loads
       }
     }
     const dynamicEdges: Array<DynamicEdge> = []
@@ -514,6 +523,7 @@ export class ModuleAnalysis {
     this.dynamicEdges = dynamicEdges
     this.markers = marker
     this.ownEffects = ownEffects
+    this.codeEffects = codeEffects
     this.sourceType =
       file.sourceType === 'commonjs' ? 'commonjs' : file.program.sourceType
     this.hasImportOrExport = imports.length > 0 || exportEntries.length > 0
@@ -521,6 +531,88 @@ export class ModuleAnalysis {
 
   importIndexOfStatement(stmtStart: number): number | null {
     return this.importByStatement.get(stmtStart) ?? null
+  }
+
+  /**
+   * How an import binding is used as a value (J6 edge names, DESIGN
+   * §3.14.1): `live` when a value-space reference (a read, a JSX tag, an
+   * `export { x }`) starts where `keep` holds; for a namespace binding, the
+   * member names read statically (`ns.x`, `ns['x']`, `<ns.X/>`), `opaque`
+   * when the namespace is used any other way. A semantic query over the
+   * binding's references, no walk.
+   */
+  importUses(
+    local: SymbolId,
+    keep: (start: number) => boolean = () => true,
+  ): ImportUses {
+    const b = (local as number) >= 0 ? this.file.bindings[local] : undefined
+    const uses: ImportUses = { live: false, members: [], opaque: false }
+    if (!b) {
+      return uses
+    }
+    for (const ref of b.references) {
+      if (ref.inTypePosition || ref.space === 'type') {
+        continue
+      }
+      const node = ref.node
+      if (!keep(node.start)) {
+        continue
+      }
+      uses.live = true
+      const parent = this.file.parentOf(node)
+      const member =
+        parent &&
+        (parent.type === 'MemberExpression' ||
+          parent.type === 'JSXMemberExpression') &&
+        parent.object === node
+          ? staticMemberName(parent)
+          : null
+      if (member === null) {
+        uses.opaque = true
+      } else if (!uses.members.includes(member)) {
+        uses.members.push(member)
+      }
+    }
+    return uses
+  }
+
+  /**
+   * The names an import edge binds and reads (DESIGN §3.14.1): each live
+   * named/default specifier by its imported name; a live namespace by its
+   * static member reads, plus '*' when opaque. Type-only specifiers and
+   * specifiers `include` rejects are skipped.
+   */
+  importEdgeNames(
+    imp: ImportEntry,
+    keep: (start: number) => boolean = () => true,
+    include: (spec: ImportSpecifierEntry) => boolean = () => true,
+  ): Array<string> {
+    const names: Array<string> = []
+    const add = (n: string) => {
+      if (!names.includes(n)) {
+        names.push(n)
+      }
+    }
+    for (const spec of imp.specifiers) {
+      if (spec.typeOnly || !include(spec)) {
+        continue
+      }
+      const uses = this.importUses(spec.local, keep)
+      if (!uses.live) {
+        continue
+      }
+      if (spec.imported !== '*') {
+        add(spec.imported)
+        continue
+      }
+      for (const m of uses.members) {
+        add(m)
+      }
+      if (uses.opaque) {
+        add('*')
+      }
+    }
+    return names
   }
 
   get hasTier1(): boolean {
@@ -774,6 +866,37 @@ export class ModuleAnalysis {
     this.tier1 = tier1
     return tier1
   }
+}
+
+/** An import or re-export statement (it evaluates another module). */
+function loadsModule(stmt: Node): boolean {
+  return (
+    stmt.type === 'ImportDeclaration' ||
+    stmt.type === 'ExportAllDeclaration' ||
+    (stmt.type === 'ExportNamedDeclaration' && stmt.source !== null)
+  )
+}
+
+export interface ImportUses {
+  live: boolean
+  /** Statically read member names (namespace bindings). */
+  members: Array<string>
+  /** Used other than through a static member read. */
+  opaque: boolean
+}
+
+function staticMemberName(member: Node): string | null {
+  if (member.type === 'JSXMemberExpression') {
+    return member.property.name
+  }
+  if (member.type !== 'MemberExpression') {
+    return null
+  }
+  const p = member.property
+  if (!member.computed) {
+    return p.type === 'Identifier' ? p.name : null
+  }
+  return p.type === 'Literal' && typeof p.value === 'string' ? p.value : null
 }
 
 function moduleExportNameOf(n: Node): string {

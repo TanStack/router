@@ -147,6 +147,12 @@ const READ_KINDS = new Set([
   'implicitJsxFactory',
   'exportSpecifier',
 ])
+/**
+ * References an output needs the binding for: reads, and writes (an output
+ * cannot assign a binding it neither declares nor may import — `x = 1` and
+ * `x++` alone make a region depend on `x`).
+ */
+const NEED_KINDS = new Set([...READ_KINDS, 'write'])
 
 export function symRefsOf(frags: ReadonlyArray<Frag>): Array<SymbolId> {
   const out: Array<SymbolId> = []
@@ -290,7 +296,7 @@ export function computePlacement(input: PlacementInput): Placement {
     into: { syms: Array<SymbolId>; children: Array<RegionId> },
   ): void {
     for (const ref of ownedRefs.get(r.id) ?? []) {
-      if (!READ_KINDS.has(ref.kind)) {
+      if (!NEED_KINDS.has(ref.kind)) {
         continue
       }
       if (live && !isLive(ref, o)) {
@@ -354,7 +360,7 @@ export function computePlacement(input: PlacementInput): Placement {
           regionReads(region, o, live, into)
         } else {
           for (const ref of refs.refsIn(f.range)) {
-            if (READ_KINDS.has(ref.kind) && (!live || isLive(ref, o))) {
+            if (NEED_KINDS.has(ref.kind) && (!live || isLive(ref, o))) {
               into.syms.push(ref.sym)
             }
           }
@@ -452,6 +458,18 @@ export function computePlacement(input: PlacementInput): Placement {
     }
   }
 
+  // symbols generated text reads (R39): uses the semantic model does not see (a Solid `use:x`)
+  const generatedReads = new Set<SymbolId>()
+  for (const frags of [
+    ...rewrites.edits.map((e) => e.body),
+    ...gens.map((g) => g.body),
+    ...[...rewrites.claims.values()].map((c) => c.placeholder),
+  ]) {
+    for (const s of symRefsOf(frags)) {
+      generatedReads.add(s)
+    }
+  }
+
   // ---- materialise clusters ------------------------------------------------
   const clusters: Array<Cluster> = []
   const clusterOfRoot = new Map<number, ClusterId>()
@@ -540,7 +558,9 @@ export function computePlacement(input: PlacementInput): Placement {
     if (
       cl.kind === 'import' &&
       !routeModule &&
-      [...cl.declares].every((s) => refs.valueRefsOf(s).length === 0)
+      [...cl.declares].every(
+        (s) => refs.valueRefsOf(s).length === 0 && !generatedReads.has(s),
+      )
     ) {
       cl.envPinned = true
     }
@@ -1099,8 +1119,12 @@ export function computePlacement(input: PlacementInput): Placement {
       continue
     }
     if (h === 'duplicate') {
+      // a copy goes where it is rooted, and follows its direct readers (below): a needer that
+      // reaches it only through a cluster it imports from elsewhere does not copy it
       for (const o of S) {
-        included.get(o)!.add(cl.id)
+        if ((o === 'env' ? envRoots : derivedRoots.get(o))?.has(cl.id)) {
+          included.get(o)!.add(cl.id)
+        }
       }
       continue
     }

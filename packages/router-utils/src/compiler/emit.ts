@@ -4,6 +4,7 @@
  * module never ends inside a line comment.
  */
 import { OutputBuilder, SourceText } from './output-builder'
+import { specifierLiteral } from './strings'
 import type { RawSourceMap } from './output-builder'
 import type { EmitPlan, OutputRecipe, Segment } from './plan'
 import type { OutputId } from './rewrite'
@@ -65,8 +66,7 @@ export function substituteSpecifier(
     }
     const original =
       seg.k === 'slice' ? code.slice(seg.start, seg.end) : seg.text
-    const quote = original.startsWith('"') ? '"' : "'"
-    const text = `${quote}${specifier.replace(/\\/g, '\\\\').replace(quote, `\\${quote}`)}${quote}`
+    const text = specifierLiteral(specifier, original)
     const next: Segment =
       seg.k === 'slice'
         ? { k: 'text', text, mapTo: seg.start, edgeKey }
