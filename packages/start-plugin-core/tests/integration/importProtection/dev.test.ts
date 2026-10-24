@@ -210,7 +210,7 @@ describe('a client import of a denied file', () => {
   // A scratch run that keeps the incoming edges passes both pins.
   // Source: found registering Start's entries in the dev harness; the trace
   // part: mutation testing.
-  test.fails(
+  test(
     'added by an edit of the importer is logged at its original import or surviving use, with a trace from the entry',
     async () => {
       const { server } = await addDeniedImportByAnEdit()
@@ -489,7 +489,7 @@ export const other = 1
   // edit of its module.
   // Source: found registering Start's entries in the dev harness; this test
   // passed while the harness registered no entry.
-  test.fails(
+  test(
     "'always' logs a violation again after an edit",
     async () => {
       const { first, afterEdit } = await logsAroundAnEdit('always')
@@ -1173,7 +1173,7 @@ export const peek = () => other()
   // running its real code, without any warning, until the importers are
   // edited or the server restarts.
   // Source: review (the adding direction).
-  test.fails(
+  test(
     'after an edit adds the marker, the violation is logged',
     async () => {
       const { reported } = await addMarkerByAnEdit()
@@ -1614,7 +1614,7 @@ export const createSecretFn = createServerFn().middleware([mw])
   // the helper). A false warning in the most common server fn layout.
   // Source: mutation testing, hidden while the harness
   // turned pre-transform requests off.
-  test.fails(
+  test(
     'a helper a server fn factory module uses only inside .server() is not logged',
     async () => {
       const server = await startProtectedDevServer(
@@ -1755,7 +1755,7 @@ ${factoryTopLevelCall}`
   // re-exports names `other.ts:2:24` instead of `src/other.ts:2:24` (low:
   // diagnostics only; an editor link does not open the file).
   // Source: found writing the test above.
-  test.fails(
+  test(
     'a denied import of a module a server fn factory module re-exports is reported at its original import or use, with its path',
     async () => {
       for (const preTransformRequests of [false, true]) {
@@ -1913,7 +1913,7 @@ export const q = () => [read(), request(), slow]
   // Source: mutation testing (looking for edges without transform data);
   // the control is "a client import of a denied file is mocked, and
   // the dev server logs a warning naming the importer at the use".
-  test.fails(
+  test(
     'a denied import of a module warmed up before its importers is logged once the client loads the app',
     async () => {
       const server = await startProtectedDevServer(
@@ -2339,7 +2339,7 @@ export const fn = createSecretFn().handler(async () => 'data')
   // fn built from a factory in a denied file fails to bundle the client
   // (UNLOADABLE_DEPENDENCY). Low: opt-in option, unusual layout.
   // Source: mutation testing.
-  test.fails(
+  test(
     'with mockAccess off, a server fn built with a factory of a denied file gets the mock in the client bundle and is logged at its original import or use',
     async () => {
       const server = await startProtectedDevServer(

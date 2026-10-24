@@ -54,10 +54,12 @@ import type {
   Diagnostic,
   EnvInfo,
   HostServices,
+  InvalidateChange,
   Planner,
   RawSourceMap,
 } from '@tanstack/router-utils/compiler'
 import type {
+  DevEnvironment,
   Environment,
   EnvironmentModuleNode,
   Plugin,
@@ -150,6 +152,70 @@ export function startCompilerPlugin(
     string,
     Promise<Awaited<ReturnType<typeof invalidate>>>
   >()
+
+  /**
+   * Per env: files whose plans an `unlink` evicted or made stale, to
+   * re-transform when a file appears (see `applyInvalidation`).
+   */
+  const awaitingAdd = new Map<string, Set<string>>()
+
+  /**
+   * Applies one invalidation to an env's module graph: the nodes of the
+   * evicted and dependent plans are hard-invalidated and returned (the host
+   * side of the one operation; Vite re-transforms them and propagates their
+   * updates). Except on `unlink`: Vite propagates the deleted module's own
+   * update to its importers at once, and a dependent transformed while the
+   * file is missing fails at `vite:import-analysis`, which marks it not
+   * self-accepting, so its later updates go through its importers (a route
+   * module, whose split component is never re-imported: the page keeps the
+   * old module). Such dependents keep their soft-invalidated output until a
+   * file appears (`add`), then re-transform; a plan of theirs the core
+   * evicted at `unlink` is compiled then.
+   */
+  const applyInvalidation = (
+    environment: Environment,
+    change: InvalidateChange,
+    res: Awaited<ReturnType<typeof invalidate>>,
+    timestamp: number,
+  ): Array<EnvironmentModuleNode> => {
+    const paths = new Set<string>()
+    for (const k of [...res.evicted, ...res.dependents]) {
+      if (k.env !== environment.name) {
+        continue
+      }
+      const p = identify(k.canonicalId).path
+      if (p !== change.path) {
+        paths.add(p)
+      }
+    }
+    let waiting = awaitingAdd.get(environment.name)
+    if (!waiting) {
+      waiting = new Set()
+      awaitingAdd.set(environment.name, waiting)
+    }
+    if (change.kind === 'unlink') {
+      for (const p of paths) {
+        waiting.add(p)
+      }
+      return []
+    }
+    if (change.kind === 'add') {
+      for (const p of waiting) {
+        paths.add(p)
+      }
+      waiting.clear()
+    }
+    const graph = (environment as DevEnvironment).moduleGraph
+    const seen = new Set<EnvironmentModuleNode>()
+    const nodes: Array<EnvironmentModuleNode> = []
+    for (const p of paths) {
+      for (const m of graph.getModulesByFile(p) ?? []) {
+        graph.invalidateModule(m, seen, timestamp, true, false)
+        nodes.push(m)
+      }
+    }
+    return nodes
+  }
 
   /** Pre-bundled dependencies are opaque (a discovered Start library is never pre-bundled); everything else resolved is read. */
   const isOpaque = (canonicalId: string): boolean =>
@@ -450,28 +516,12 @@ export function startCompilerPlugin(
         if (ctx.type === 'delete') {
           registry.forget(ctx.file)
         }
-        const seen = new Set<EnvironmentModuleNode>()
-        const extra: Array<EnvironmentModuleNode> = []
-        for (const k of [...res.evicted, ...res.dependents]) {
-          if (k.env !== env.name) {
-            continue
-          }
-          const p = identify(k.canonicalId).path
-          if (p === ctx.file) {
-            continue
-          }
-          for (const m of this.environment.moduleGraph.getModulesByFile(p) ??
-            []) {
-            this.environment.moduleGraph.invalidateModule(
-              m,
-              seen,
-              ctx.timestamp,
-              true,
-              false,
-            )
-            extra.push(m)
-          }
-        }
+        const extra = applyInvalidation(
+          this.environment,
+          change,
+          res,
+          ctx.timestamp,
+        )
         return extra.length > 0 ? [...ctx.modules, ...extra] : undefined
       },
       async watchChange(id, change) {
@@ -505,18 +555,7 @@ export function startCompilerPlugin(
           },
         )
         hydrate.invalidate(id, env.name)
-        const graph = environment.moduleGraph
-        const seen = new Set<EnvironmentModuleNode>()
-        for (const k of [...res.evicted, ...res.dependents]) {
-          if (k.env !== env.name) {
-            continue
-          }
-          for (const m of graph.getModulesByFile(
-            identify(k.canonicalId).path,
-          ) ?? []) {
-            graph.invalidateModule(m, seen, Date.now(), true, false)
-          }
-        }
+        applyInvalidation(environment, { path: id, kind }, res, Date.now())
       },
       renderChunk(code, chunk) {
         if (!allocator || !code.includes('__TSS_FN_ID_')) {
