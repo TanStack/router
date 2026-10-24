@@ -180,7 +180,10 @@ export class RouterCompiler {
       if (d.by === 'parse') {
         continue
       }
-      if (this.warnings.once(normalizePath(path), d)) {
+      // once per (file, reason and wording) per run: an edit that leaves the
+      // finding as it is does not repeat it; a new finding is reported
+      const keyed = d.code ? { ...d, code: `${d.code}\u0000${d.message}` } : d
+      if (this.warnings.once(normalizePath(path), keyed)) {
         report(d)
       }
     }
@@ -191,7 +194,6 @@ export class RouterCompiler {
     path: string,
     kind: InvalidateChange['kind'],
   ): Promise<{ evicted: Array<PlanKey>; dependents: Array<PlanKey> }> {
-    this.warnings.reset(normalizePath(path))
     return invalidate(this.caches, { path, kind }, this.host)
   }
 

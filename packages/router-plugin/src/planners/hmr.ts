@@ -74,6 +74,16 @@ export function routeHmrPlanner(): Planner {
       const route = r.route
       const plan = splitPlanOf(ctx, cfg)
       const split = new Set(plan?.decisions.map((d) => d.key) ?? [])
+      // the split option values that name a binding: the splitter's own
+      // edit replaces those occurrences (a ref edit there would collide)
+      const splitRegions =
+        plan?.decisions
+          .filter(
+            (d) =>
+              d.shape === 'shorthand' ||
+              identifierSymbol(ctx, d.valueNode) !== null,
+          )
+          .map((d) => d.region) ?? []
       const round = roundOf(ctx)
       const { names, symbols } = ctx
       const code = ctx.analysis.source.code
@@ -82,7 +92,6 @@ export function routeHmrPlanner(): Planner {
           option.key === null ||
           !HMR_COMPONENT_KEYS.includes(option.key) ||
           option.value === null ||
-          split.has(option.key) ||
           option.kind === 'spread' ||
           option.kind === 'computed' ||
           option.kind === 'accessor'
@@ -91,6 +100,7 @@ export function routeHmrPlanner(): Planner {
         }
         const key = option.key
         const value = option.value
+        const isSplit = split.has(key)
         if (
           option.kind !== 'method' &&
           (isFallbackLiteral(value) || isAlreadyLazy(ctx, value))
@@ -100,18 +110,26 @@ export function routeHmrPlanner(): Planner {
         const sym =
           option.kind === 'method' ? null : identifierSymbol(ctx, value)
         if (sym !== null) {
+          // a module binding: registrable by its own declaration when
+          // capitalised; a lowercase local one is renamed module-wide, split
+          // or not (React Refresh registers it wherever it is declared)
           const name = symbols.name(sym)
+          const record = (registered: string) => {
+            if (!isSplit) {
+              round.unsplit[key] = registered
+            }
+          }
           if (isCapitalised(name)) {
-            round.unsplit[key] = name
+            record(name)
             continue
           }
           if (cfg.framework !== 'react' || symbols.isImport(sym)) {
-            round.unsplit[key] = name
+            record(name)
             continue
           }
           const already = round.renamed.get(sym)
           if (already !== undefined) {
-            round.unsplit[key] = symbols.name(already)
+            record(symbols.name(already))
             continue
           }
           const units = ctx.t1.declaringUnits.get(sym) ?? []
@@ -119,16 +137,24 @@ export function routeHmrPlanner(): Planner {
             (u) => ctx.t1.units[u]!.kind === 'declaration',
           )
           if (!local) {
-            round.unsplit[key] = name
+            record(name)
             continue
           }
           const next = names.alloc(`Tsr${pascal(key)}`)
-          ctx.renameRefs(sym, { sym: next.sym }, 'all-outputs', 'route-hmr')
+          // the occurrences that are split option values are the splitter's
+          // (its edit replaces them; the chunk reads the renamed symbol)
+          ctx.renameRefs(
+            sym,
+            { sym: next.sym },
+            'all-outputs',
+            'route-hmr',
+            splitRegions,
+          )
           round.renamed.set(sym, next.sym)
-          round.unsplit[key] = next.name
+          record(next.name)
           continue
         }
-        if (cfg.framework !== 'react') {
+        if (cfg.framework !== 'react' || isSplit) {
           continue
         }
         // inline value or method: hoist into a registrable binding before the options
@@ -150,10 +176,13 @@ export function routeHmrPlanner(): Planner {
             { k: 'text', parts: [`${option.keyText}: `, { sym: hoisted.sym }] },
           ]
         } else {
+          // casts and parentheses around the value are dropped from the hoist
+          // (`(() => …) as any`): React Refresh registers a bare function
+          const inner = unwrapTs(value)
           body.push({ k: 'text', parts: [`const ${hoisted.name} = `] })
           body.push({
             k: 'slice',
-            range: { start: value.start, end: value.end },
+            range: { start: inner.start, end: inner.end },
           })
           body.push({ k: 'text', parts: ['\n'] })
           region = { start: value.start, end: value.end }
@@ -175,12 +204,17 @@ export function routeHmrPlanner(): Planner {
         })
         round.unsplit[key] = hoisted.name
         void code
-        void unwrapTs
       }
     },
     plan(ctx) {
       const cfg = configOf(ctx)
       const r = recognizeRoute(ctx)
+      if (!cfg.split && cfg.deleteNodes.length === 0) {
+        // the split planner is not registered: this planner reports recognition
+        for (const w of r.warnings) {
+          ctx.diagnostic(w)
+        }
+      }
       if (!r.route || r.route.kind === 'lazy') {
         return
       }

@@ -88,7 +88,7 @@ export interface RouteModuleInfo {
 }
 
 export type RouteRecognition =
-  | { route: RouteModuleInfo }
+  | { route: RouteModuleInfo; warnings: Array<Diagnostic> }
   | {
       route: null
       reason: 'no-route-export' | 'unrecognized'
@@ -425,6 +425,7 @@ function recognize(ctx: PlanContext): RouteRecognition {
       warnings,
       routeId: prefetched?.routeId ?? null,
     },
+    warnings,
   }
 }
 

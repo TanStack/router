@@ -42,6 +42,8 @@ export interface SplitDecision {
   region: Range
   /** The text the chunk declares its export from (the value, or a method's function). */
   valueRange: Range
+  /** The value node (a method's function; an object-form loader's handler). */
+  valueNode: Node
   /** The key as written, for whole-property placeholders (`component: …`). */
   keyText: string
   /** Whether the placeholder replaces the whole property (method, shorthand). */
@@ -209,11 +211,14 @@ function splitTarget(
   }
   const value = prop.value!
   switch (prop.kind) {
-    case 'init':
+    case 'init': {
+      // the chunk declares the bare value (casts and parentheses dropped, so
+      // React Refresh registers a function); the placeholder replaces it all
+      const inner = unwrapTs(value)
       return {
         shape: 'init',
         region: { start: value.start, end: value.end },
-        valueRange: { start: value.start, end: value.end },
+        valueRange: { start: inner.start, end: inner.end },
         value,
         keyText: prop.keyText,
         wholeProperty: false,
@@ -222,6 +227,7 @@ function splitTarget(
         container,
         prop,
       }
+    }
     case 'method':
       return {
         shape: 'method',
@@ -408,6 +414,7 @@ function computeSplitPlan(
         shape: target.shape,
         region: target.region,
         valueRange: target.valueRange,
+        valueNode: target.value,
         keyText: target.keyText,
         wholeProperty: target.wholeProperty,
         methodPrefix: target.methodPrefix,

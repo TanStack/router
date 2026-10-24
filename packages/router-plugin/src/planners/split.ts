@@ -11,7 +11,13 @@
  * every component option is split (R42).
  */
 import { stringLiteral } from '@tanstack/router-utils/compiler'
-import { pascal, routeEntryDigest, routerRouteId } from './route'
+import {
+  identifierSymbol,
+  pascal,
+  recognizeRoute,
+  routeEntryDigest,
+  routerRouteId,
+} from './route'
 import { COMPONENT_KEYS, splitPlanOf } from './decisions'
 import { renamedSymbol } from './round'
 import type { RouteEntryFacts } from './route'
@@ -97,6 +103,10 @@ export function routeSplitPlanner(): Planner {
       const cfg = configOf(ctx)
       const plan = splitPlanOf(ctx, cfg)
       if (!plan) {
+        // no recognised route: report what recognition found (J2.10, J2.11)
+        for (const w of recognizeRoute(ctx).warnings) {
+          ctx.diagnostic(w)
+        }
         return
       }
       const { route } = plan
@@ -214,16 +224,24 @@ export function routeSplitPlanner(): Planner {
         const split = names.alloc(`TsrSplit${pascal(d.key)}`)
         facts.chunkExports[d.key] = d.exportName
 
-        // the chunk's unit: declares the export from the option's value
+        // the chunk's unit: declares the export from the option's value. An
+        // identifier value is read as a symbol (the binding travels by
+        // placement; a renamed one renders its new name) and its occurrence
+        // is replaced in the env output only; any other value is claimed by
+        // the chunk unit and a placeholder renders at its occurrence.
+        const valueSym =
+          d.shape === 'shorthand'
+            ? d.shorthandSym
+            : d.shape === 'init'
+              ? identifierSymbol(ctx, d.valueNode)
+              : null
         const body: Array<Frag> = []
-        if (d.shape === 'shorthand' && d.shorthandSym !== null) {
+        if (valueSym !== null) {
+          // the original symbol: placement follows its declaring unit; a
+          // rename renders at emit time
           body.push({
             k: 'text',
-            parts: [
-              `const ${split.name} = `,
-              { sym: renamedSymbol(ctx, d.shorthandSym) },
-              '\n',
-            ],
+            parts: [`const ${split.name} = `, { sym: valueSym }, '\n'],
           })
         } else {
           body.push({
@@ -234,10 +252,17 @@ export function routeSplitPlanner(): Planner {
           body.push({ k: 'text', parts: ['\n'] })
         }
         if (refreshMarkers && isComponent) {
+          // identity = chunk id + the binding React Refresh registers: the
+          // user's component when the value names one (a rename is a new
+          // family), else the chunk's own declaration
+          const registered =
+            valueSym !== null
+              ? symbols.name(renamedSymbol(ctx, valueSym))
+              : split.name
           body.push({
             k: 'text',
             parts: [
-              `${split.name}.$$tsrRefreshId = ${stringLiteral(`${g.derivedId} ${split.name}`, '"')}\n`,
+              `${split.name}.$$tsrRefreshId = ${stringLiteral(`${g.derivedId} ${registered}`, '"')}\n`,
             ],
           })
         }
@@ -268,8 +293,18 @@ export function routeSplitPlanner(): Planner {
             parts: d.wholeProperty ? [`${d.keyText}: `, ...call] : call,
           },
         ]
-        const region = ctx.region(d.region, 'option-value')
-        ctx.rewrites.claim({ region, owner, placeholder, by: ROUTE_SPLIT })
+        if (valueSym !== null) {
+          ctx.rewrites.add({
+            range: d.region,
+            body: placeholder,
+            scope: ['env'],
+            by: ROUTE_SPLIT,
+            reason: 'split',
+          })
+        } else {
+          const region = ctx.region(d.region, 'option-value')
+          ctx.rewrites.claim({ region, owner, placeholder, by: ROUTE_SPLIT })
+        }
       }
 
       if (helperImports.length > 0) {
@@ -346,7 +381,6 @@ export function routeSplitPlanner(): Planner {
       }
 
       ctx.setFacts(ROUTE_SPLIT, facts)
-      void symbols
     },
   }
 }
