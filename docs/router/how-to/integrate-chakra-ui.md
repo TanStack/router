@@ -819,5 +819,5 @@ Before deploying your Chakra UI + TanStack Router app:
 
 - [Chakra UI Documentation](https://chakra-ui.com/getting-started) - Complete component library guide
 - [Chakra UI Recipes](https://chakra-ui.com/community/recipes) - Common patterns and recipes
-- [TanStack Router createLink API](../api/router#createlink) - API documentation for component integration
+- [TanStack Router createLink API](../api/router/createLinkFunction) - API documentation for component integration
 - [Emotion CSS-in-JS](https://emotion.sh/docs/introduction) - Styling library used by Chakra UI
