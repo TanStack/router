@@ -17,8 +17,8 @@ import type {
   CompilerCaches,
   EnvInfo,
   HostServices,
+  InputSourceMap,
   Planner,
-  RawSourceMap,
 } from '@tanstack/router-utils/compiler'
 import type {
   CreateImportProtectionOptions,
@@ -159,7 +159,7 @@ export class MemoryApp {
     env: string,
     extra: {
       planners?: Array<Planner>
-      inputMap?: RawSourceMap | null
+      inputMap?: InputSourceMap | null
       code?: string
     } = {},
   ): Promise<{

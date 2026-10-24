@@ -7,7 +7,7 @@
  */
 import path from 'node:path'
 import { SourceText } from '@tanstack/router-utils/compiler'
-import type { RawSourceMap } from '@tanstack/router-utils/compiler'
+import type { InputSourceMap } from '@tanstack/router-utils/compiler'
 
 export interface OriginalLocation {
   /** Absolute path of the original source. */
@@ -102,11 +102,11 @@ class MappingCursor {
   }
 }
 
-const cursors = new WeakMap<RawSourceMap, MappingCursor>()
+const cursors = new WeakMap<InputSourceMap, MappingCursor>()
 
 /** The original position of a 0-based generated line/column, or null when the map does not cover it. */
 export function originalPositionFor(
-  map: RawSourceMap,
+  map: InputSourceMap,
   line: number,
   column: number,
   mapFile: string,
@@ -127,11 +127,11 @@ export function originalPositionFor(
   if (!found) {
     return null
   }
-  const source = map.sources[found[1]] as string | null | undefined
-  if (source === undefined || source === null) {
+  const source = map.sources[found[1]]
+  if (typeof source !== 'string') {
     return null
   }
-  const root = (map as { sourceRoot?: string }).sourceRoot ?? ''
+  const root = map.sourceRoot ?? ''
   return {
     file: resolveSource(mapFile, root, source),
     line: found[2] + 1,
@@ -170,7 +170,7 @@ export class Locator {
   constructor(
     private readonly code: string,
     private readonly file: string,
-    private readonly inputMap: () => RawSourceMap | null,
+    private readonly inputMap: () => InputSourceMap | null,
   ) {}
 
   at(offset: number): OriginalLocation | null {
