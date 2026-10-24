@@ -116,15 +116,41 @@ export function routeSplitPlanner(): Planner {
         ctx.diagnostic(w)
       }
 
-      // deleteNodes: the property is erased in the env output only (J2.14)
-      for (const option of plan.deleted) {
-        ctx.rewrites.add({
-          range: option.propertyRange,
-          body: [],
-          scope: ['env'],
-          by: ROUTE_SPLIT,
-          reason: 'deleteNodes',
-        })
+      // deleteNodes: the properties are erased in the env output only (J2.14);
+      // consecutive deleted properties form one edit (their comma ranges
+      // overlap), and the last property of the object takes its leading comma
+      if (
+        plan.deleted.length > 0 &&
+        route.options.kind === 'object' &&
+        route.options.node.type === 'ObjectExpression'
+      ) {
+        const props = route.options.node.properties as Array<{
+          start: number
+          end: number
+        }>
+        const deleted = new Set(plan.deleted.map((d) => d.prop))
+        let i = 0
+        while (i < props.length) {
+          if (!deleted.has(props[i] as never)) {
+            i++
+            continue
+          }
+          let j = i
+          while (j + 1 < props.length && deleted.has(props[j + 1] as never)) {
+            j++
+          }
+          const last = j === props.length - 1
+          const start = last && i > 0 ? props[i - 1]!.end : props[i]!.start
+          const end = last ? props[j]!.end : props[j + 1]!.start
+          ctx.rewrites.add({
+            range: { start, end },
+            body: [],
+            scope: ['env'],
+            by: ROUTE_SPLIT,
+            reason: 'deleteNodes',
+          })
+          i = j + 1
+        }
       }
 
       const facts: SplitFacts = {
@@ -305,6 +331,36 @@ export function routeSplitPlanner(): Planner {
           const region = ctx.region(d.region, 'option-value')
           ctx.rewrites.claim({ region, owner, placeholder, by: ROUTE_SPLIT })
         }
+      }
+
+      // §3.5.3: every exported pure, unwritten declaration may leave for an
+      // extracted-export output; the core keeps it in the route module when
+      // other route-module code reads it or no chunk needs it
+      for (const e of ctx.analysis.exports) {
+        if (e.kind !== 'local' || e.local === null || e.typeOnly) {
+          continue
+        }
+        const sym = e.local
+        if (sym === route.routeSym) {
+          continue
+        }
+        const declaring = ctx.t1.declaringUnits.get(sym) ?? []
+        if (
+          declaring.length === 0 ||
+          declaring.some((u) => ctx.t1.units[u]!.kind !== 'declaration') ||
+          declaring.some((u) => ctx.t1.units[u]!.effectful) ||
+          ctx.t1.refs.writesOf(sym).length > 0
+        ) {
+          continue
+        }
+        const name = symbols.name(renamedSymbol(ctx, sym))
+        const output = ctx.declareOutput({
+          kind: 'export',
+          key: `export~${name}`,
+          derived: { kind: 'export', value: name },
+          sideEffectFree: true,
+        })
+        ctx.extract(sym, output)
       }
 
       if (helperImports.length > 0) {

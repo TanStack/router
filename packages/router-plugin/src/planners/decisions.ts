@@ -9,7 +9,6 @@ import { defaultCodeSplitGroupings } from '../core/constants'
 import {
   identifierSymbol,
   isAlreadyLazy,
-  isExportedSymbol,
   isFallbackLiteral,
   propertyKeyName,
   propertyRangeWithComma,
@@ -57,7 +56,6 @@ export interface SplitDecision {
 }
 
 export type NotSplitReason =
-  | 'exported'
   | 'shared-writer'
   | 'multi-writer'
   | 'ordered-effect'
@@ -397,15 +395,6 @@ function computeSplitPlan(
         })
         continue
       }
-      if (valueSym !== null && isExportedSymbol(ctx, valueSym)) {
-        notSplit.push({
-          key,
-          reason: 'exported',
-          range: target.region,
-          name: ctx.symbols.name(valueSym),
-        })
-        continue
-      }
       const decision: SplitDecision = {
         key,
         option,
@@ -429,24 +418,7 @@ function computeSplitPlan(
   }
 
   // J2.8: what stays, once per (file, reason)
-  const exported = notSplit.filter((n) => n.reason === 'exported')
-  if (exported.length > 0) {
-    warnings.push({
-      severity: 'warning',
-      code: 'not-split:exported',
-      by: 'route-split',
-      message: [
-        `[tanstack-router] These exports from "${file}" will not be code-split and will increase your bundle size:`,
-        ...exported.map((n) => `- ${n.name ?? n.key}`),
-        'For the best optimization, these items should either have their export statements removed, or be imported from another location that is not a route file.',
-      ].join('\n'),
-      range: exported[0]!.range,
-    })
-  }
   for (const n of notSplit) {
-    if (n.reason === 'exported') {
-      continue
-    }
     warnings.push({
       severity: 'warning',
       code: `not-split:${n.reason}`,
@@ -476,7 +448,5 @@ function describeReason(reason: NotSplitReason): string {
       return 'it reads a module binding that top-level code mutates after it.'
     case 'hydrate-writer':
       return 'it writes a binding captured by a hydration boundary.'
-    case 'exported':
-      return 'its declaration is exported.'
   }
 }
