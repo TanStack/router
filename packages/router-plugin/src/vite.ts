@@ -1,12 +1,13 @@
 import { createVitePlugin } from 'unplugin'
 
 import { configSchema, getConfig } from './core/config'
-import { createRouterCodeSplitterPlugin } from './core/router-code-splitter-plugin'
 import { createRouterGeneratorPlugin } from './core/router-generator-plugin'
-import { unpluginRouterComposedFactory } from './core/router-composed-plugin'
 import { createRouterPluginContext } from './core/router-plugin-context'
+import { createRouterCompilerVitePlugin } from './hosts/vite'
+import { INLINE_CSS_DEFAULT_DEFINES } from './core/inline-css-defaults'
 import type { CodeSplittingOptions, Config } from './core/config'
 import type { RouterPluginContext } from './core/router-plugin-context'
+import type { Plugin, PluginOption } from 'vite'
 
 type RouterPluginOptions = Partial<Config | (() => Config)> | undefined
 
@@ -32,6 +33,9 @@ const tanstackRouterGenerator = (
 }
 
 /**
+ * The route compiler alone: code splitting (`autoCodeSplitting`) and route
+ * HMR (dev, `codeSplittingOptions.addHmr`).
+ *
  * @example
  * ```ts
  * export default defineConfig({
@@ -43,11 +47,9 @@ const tanstackRouterGenerator = (
 const tanStackRouterCodeSplitter = (
   options?: RouterPluginOptions,
   routerPluginContext?: RouterPluginContext,
-) => {
+): Plugin => {
   const pluginContext = routerPluginContext ?? defaultRouterPluginContext
-  return createVitePlugin((pluginOptions: RouterPluginOptions) =>
-    createRouterCodeSplitterPlugin(pluginOptions, pluginContext),
-  )(options)
+  return createRouterCompilerVitePlugin(options, pluginContext)
 }
 
 /**
@@ -59,7 +61,22 @@ const tanStackRouterCodeSplitter = (
  * })
  * ```
  */
-const tanstackRouter = createVitePlugin(unpluginRouterComposedFactory)
+const tanstackRouter = (
+  options: RouterPluginOptions = {},
+): Array<PluginOption> => {
+  const routerPluginContext = createRouterPluginContext()
+  const inlineCssDefaults: Plugin = {
+    name: 'tanstack:router-inline-css-defaults',
+    config() {
+      return { define: { ...INLINE_CSS_DEFAULT_DEFINES } }
+    },
+  }
+  return [
+    inlineCssDefaults,
+    tanstackRouterGenerator(options, routerPluginContext),
+    createRouterCompilerVitePlugin(options, routerPluginContext),
+  ]
+}
 
 /**
  * @deprecated Use `tanstackRouter` instead.

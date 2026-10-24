@@ -1,0 +1,202 @@
+/**
+ * The router compiler session of a host (DESIGN §4): the compiler caches,
+ * the host services the core needs, the planner configuration, the warning
+ * ledger (once per file per run) and the route registry view. One session
+ * per plugin instance; the registry and the ledger are shared through the
+ * `RouterPluginContext` so Start's two splitter instances warn once.
+ */
+import fs from 'node:fs'
+import {
+  RawFactsCache,
+  compileModule,
+  createCompilerCaches,
+  digestOf,
+  identify,
+  invalidate,
+} from '@tanstack/router-utils/compiler'
+import { routerPlannerConfig, routerPlanners } from '../planners'
+import { routeEntryDigest } from '../planners/route'
+import { defaultCodeSplitGroupings } from '../core/constants'
+import { contextInternals } from '../core/router-plugin-context'
+import type { RouterPluginContext } from '../core/router-plugin-context'
+import type { Config } from '../core/config'
+import type { HmrStyle, RouterPlannerConfig } from '../planners'
+import type { RouteEntryFacts } from '../planners/route'
+import type {
+  CompileOutput,
+  CompilerCaches,
+  Diagnostic,
+  EnvInfo,
+  HostServices,
+  InvalidateChange,
+  PlanKey,
+  Planner,
+  WarningLedger,
+} from '@tanstack/router-utils/compiler'
+
+export type Bundler = 'vite' | 'rspack' | 'webpack'
+
+export interface RouterCompilerOptions {
+  context: RouterPluginContext
+  config: Config
+  bundler: Bundler
+  mode: 'dev' | 'build'
+  hmrStyle: HmrStyle
+  /** Resolves a specifier from an importer (the bundler's resolver). */
+  resolve?: HostServices['resolve']
+}
+
+export interface CompileRequest {
+  /** The bundler's module id (path with query). */
+  id: string
+  code: string
+  env: { name: string; type: 'client' | 'server'; routerSplit?: boolean }
+  wantMap: boolean
+}
+
+export function normalizePath(p: string): string {
+  return p.replace(/\\/g, '/')
+}
+
+/** JS module ids the compiler may transform (query allowed). */
+export const JS_ID_RE = /\.[cm]?[jt]sx?(\?|$)/
+
+/** A query carrying one of the compiler-owned keys (derived module ids). */
+export const OWNED_QUERY_RE =
+  /(?:^|[?&])(?:tsr-split|tss-hydrate|tss-serverfn-split)(?:=|&|$)/
+
+export class RouterCompiler {
+  readonly caches: CompilerCaches
+  readonly host: HostServices
+  readonly planners: Array<Planner>
+  readonly plannerConfig: RouterPlannerConfig
+  readonly configKey: string
+  readonly warnings: WarningLedger
+  readonly context: RouterPluginContext
+  readonly config: Config
+  readonly mode: 'dev' | 'build'
+  readonly bundler: Bundler
+  private readonly perPlanner: Record<string, unknown>
+
+  constructor(opts: RouterCompilerOptions) {
+    this.context = opts.context
+    this.config = opts.config
+    this.mode = opts.mode
+    this.bundler = opts.bundler
+    const cs = opts.config.codeSplittingOptions
+    this.plannerConfig = {
+      framework: opts.config.target,
+      split: opts.config.autoCodeSplitting === true,
+      defaultGroupings: cs?.defaultBehavior ?? defaultCodeSplitGroupings,
+      splitBehavior: cs?.splitBehavior,
+      deleteNodes: cs?.deleteNodes ?? [],
+      hmr: { enabled: cs?.addHmr ?? true, style: opts.hmrStyle },
+    }
+    this.perPlanner = routerPlannerConfig(this.plannerConfig)
+    this.configKey = digestOf({
+      bundler: opts.bundler,
+      mode: opts.mode,
+      framework: this.plannerConfig.framework,
+      split: this.plannerConfig.split,
+      groupings: this.plannerConfig.defaultGroupings,
+      splitBehavior: this.plannerConfig.splitBehavior?.toString() ?? null,
+      deleteNodes: [...this.plannerConfig.deleteNodes],
+      hmr: this.plannerConfig.hmr,
+    })
+    this.planners = routerPlanners()
+    const internals = contextInternals(opts.context)
+    this.warnings = internals.warnings
+    const rawFacts = new RawFactsCache({
+      readFile: (p) => fs.promises.readFile(p, 'utf8').catch(() => null),
+      loadVirtual: () => Promise.resolve(null),
+    })
+    this.caches = createCompilerCaches(rawFacts)
+    const lookup = (path: string) => this.routeEntry(path)
+    this.host = {
+      resolve: opts.resolve ?? (() => Promise.resolve(null)),
+      readFile: (p) => fs.promises.readFile(p, 'utf8').catch(() => null),
+      loadVirtual: () => Promise.resolve(null),
+      rawFacts,
+      routes: { digestFor: (path) => routeEntryDigest(lookup(path)) },
+      services: { routes: { lookup } },
+    }
+  }
+
+  /** The registry entry of a file, by its normalized path (scanned or real). */
+  routeEntry(path: string): RouteEntryFacts | null {
+    const entry = this.context.routesByFile.get(normalizePath(path))
+    return entry ? { routeId: entry.routeId } : null
+  }
+
+  /** Whether the host should transform an id at all. */
+  wants(id: string): boolean {
+    return JS_ID_RE.test(id)
+  }
+
+  /** Whether any planner can apply in an env of this type (else the host skips the parse). */
+  appliesTo(envType: 'client' | 'server'): boolean {
+    const c = this.plannerConfig
+    return (
+      c.split ||
+      c.deleteNodes.length > 0 ||
+      (c.hmr.enabled && this.mode === 'dev' && envType === 'client')
+    )
+  }
+
+  envInfo(env: CompileRequest['env']): EnvInfo {
+    return {
+      name: env.name,
+      type: env.type,
+      mode: this.mode,
+      bundler: this.bundler,
+      framework: this.plannerConfig.framework,
+      conditions: [],
+      routerSplit: env.routerSplit ?? true,
+    }
+  }
+
+  async compile(req: CompileRequest): Promise<CompileOutput | null> {
+    return compileModule(
+      {
+        id: req.id,
+        code: req.code,
+        env: this.envInfo(req.env),
+        planners: this.planners,
+        config: { configKey: this.configKey, perPlanner: this.perPlanner },
+        wantMap: req.wantMap,
+      },
+      this.host,
+      this.caches,
+    )
+  }
+
+  /** Reports a compile's diagnostics once per (file, reason) through `report`. */
+  report(
+    out: CompileOutput,
+    path: string,
+    report: (d: Diagnostic) => void,
+  ): void {
+    for (const d of out.diagnostics) {
+      if (d.by === 'parse') {
+        continue
+      }
+      if (this.warnings.once(normalizePath(path), d)) {
+        report(d)
+      }
+    }
+  }
+
+  /** The one invalidation operation for a file event. */
+  invalidate(
+    path: string,
+    kind: InvalidateChange['kind'],
+  ): Promise<{ evicted: Array<PlanKey>; dependents: Array<PlanKey> }> {
+    this.warnings.reset(normalizePath(path))
+    return invalidate(this.caches, { path, kind }, this.host)
+  }
+
+  /** The path of a module id (query stripped, slashes normalized). */
+  static pathOf(id: string): string {
+    return normalizePath(identify(id).path)
+  }
+}

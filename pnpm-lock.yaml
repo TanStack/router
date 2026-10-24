@@ -14787,15 +14787,9 @@ importers:
 
   packages/router-plugin:
     dependencies:
-      '@babel/core':
-        specifier: 'catalog:'
-        version: 7.29.7(supports-color@10.2.2)
-      '@babel/template':
-        specifier: ^7.29.7
-        version: 7.29.7
-      '@babel/types':
-        specifier: 'catalog:'
-        version: 7.29.8
+      '@jridgewell/remapping':
+        specifier: ^2.3.5
+        version: 2.3.5
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
@@ -14817,6 +14811,9 @@ importers:
       vite:
         specifier: ^8.3.4
         version: 8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
+      yuku:
+        specifier: 0.23.0
+        version: 0.23.0
       zod:
         specifier: 'catalog:'
         version: 4.5.4
@@ -14824,6 +14821,9 @@ importers:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
         version: 0.18.4
+      '@babel/core':
+        specifier: 'catalog:'
+        version: 7.29.7(supports-color@10.2.2)
       '@babel/preset-typescript':
         specifier: ^7.28.5
         version: 7.28.5(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)
@@ -14866,9 +14866,6 @@ importers:
       '@types/babel__core':
         specifier: ^7.20.5
         version: 7.20.5
-      '@types/babel__template':
-        specifier: ^7.4.4
-        version: 7.4.4
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
@@ -16351,11 +16348,6 @@ packages:
   '@babel/helpers@7.29.7':
     resolution: {integrity: sha512-1k2lAGRMfHTcwuNYcCNUmaUffmQv8KWMfh2iJUUeRlwlwH4FdNG7mfPI10NPfLHJFThE4Tyr4mv7kTNZOiPuBg==}
     engines: {node: '>=6.9.0'}
-
-  '@babel/parser@7.28.5':
-    resolution: {integrity: sha512-KKBU1VGYR7ORr3At5HAtUQ+TV3SzRCXmA/8OdDZiLDBIZxVyzXuztPjfLd3BV1PRAQGCMWWSHYhL0F8d5uHBDQ==}
-    engines: {node: '>=6.0.0'}
-    hasBin: true
 
   '@babel/parser@7.29.8':
     resolution: {integrity: sha512-E8lTAYNB1KW+FH+VGJuZM1ioAx2E6oVlvQFRrf5P8ZZmsiJXYAD9vTFV7yyEURNzgh1dFqMZuO6tUwcARbqFCA==}
@@ -30572,10 +30564,6 @@ snapshots:
       '@babel/template': 7.29.7
       '@babel/types': 7.29.8
 
-  '@babel/parser@7.28.5':
-    dependencies:
-      '@babel/types': 7.29.8
-
   '@babel/parser@7.29.8':
     dependencies:
       '@babel/types': 7.29.8
@@ -36657,7 +36645,7 @@ snapshots:
 
   '@types/babel__core@7.20.5':
     dependencies:
-      '@babel/parser': 7.28.5
+      '@babel/parser': 7.29.8
       '@babel/types': 7.29.8
       '@types/babel__generator': 7.27.0
       '@types/babel__template': 7.4.4
@@ -36669,7 +36657,7 @@ snapshots:
 
   '@types/babel__template@7.4.4':
     dependencies:
-      '@babel/parser': 7.28.5
+      '@babel/parser': 7.29.8
       '@babel/types': 7.29.8
 
   '@types/babel__traverse@7.28.0':
