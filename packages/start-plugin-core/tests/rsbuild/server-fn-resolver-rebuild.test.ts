@@ -31,9 +31,7 @@ function setup(opts: { action?: 'dev' | 'build'; rsc?: boolean } = {}) {
       providerEnvName: RSBUILD_ENVIRONMENT_NAMES.server,
       ssrIsProvider: true,
       serializationAdapters: undefined,
-      getDevClientEntryUrl: () => '/client.js',
       rscEnabled: opts.rsc,
-      scriptFormat: 'module',
     },
   )
 

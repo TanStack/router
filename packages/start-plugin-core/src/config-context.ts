@@ -7,6 +7,7 @@ import {
 import type { TanStackStartOutputConfig } from './schema'
 import type {
   GetConfigFn,
+  NormalizedBasePaths,
   ResolvedStartConfig,
   TanStackStartCoreOptions,
 } from './types'
@@ -111,12 +112,14 @@ export function applyResolvedBaseAndOutput(opts: {
   resolvedStartConfig: ResolvedStartConfig
   root: string
   publicBase: string
+  assetBase?: NormalizedBasePaths['assetBase']
   clientOutputDirectory: string
   serverOutputDirectory: string
 }): void {
   opts.resolvedStartConfig.root = opts.root
   opts.resolvedStartConfig.basePaths = createNormalizedBasePaths({
     publicBase: opts.publicBase,
+    assetBase: opts.assetBase,
   })
   opts.resolvedStartConfig.outputDirectories =
     createNormalizedOutputDirectories({
