@@ -35,7 +35,12 @@ export interface ProductionResolverOptions {
   entries: ReadonlyArray<ServerFnEntry>
   /** The provider module id of an entry (the original module or its derived provider id). */
   providerModuleId: (entry: ServerFnEntry) => string
-  /** Only client-referenced functions are HTTP-callable in production (R44). */
+  /**
+   * Only client-referenced functions are HTTP-callable in production (R44):
+   * the client built before the provider (the SSR provider). The RSC
+   * provider builds before the client (plugin-rsc's `buildApp`), so its
+   * manifest lists every server fn of its environment without the check.
+   */
   clientReferencedOnly: boolean
 }
 
@@ -67,7 +72,7 @@ export function productionResolverModule(
   }
   return generateServerFnResolverModule({
     serverFnsById,
-    includeClientReferencedCheck: true,
+    includeClientReferencedCheck: opts.clientReferencedOnly,
     memoizeModules: true,
   })
 }

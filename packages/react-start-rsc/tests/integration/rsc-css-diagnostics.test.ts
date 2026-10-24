@@ -29,23 +29,26 @@ export const Route = createFileRoute('/')({
 // J7.3, G5: the real RSC integration currently skips identifier and
 // spread arguments silently. Two calls in one file require one warning naming the file.
 // G5 requires positions on errors, not on this warning; wording/channel are free.
-test.fails.each(['vite', 'rsbuild'] as const)(
-  '%s dev warns about the CSS limitation once per source file, naming it',
-  async (bundler) => {
-    const server = await (
-      bundler === 'vite' ? startRscDevServer : startRscRsbuildDevServer
-    )({
-      files,
-      browser: true,
-    })
-    const response = await fetch(server.url!)
-    expect(response.ok).toBe(true)
-    expect(await response.text()).toContain('MARK_STREAMS_RENDERED')
-    expectDiagnostic(server.diagnostics, {
-      severity: 'warning',
-      file: 'src/stream.tsx',
-      root: server.root,
-      times: 1,
-    })
-  },
-)
+// Rsbuild (the previous compiler) still skips them: its row stays pinned.
+for (const bundler of ['vite', 'rsbuild'] as const) {
+  ;(bundler === 'vite' ? test : test.fails)(
+    `${bundler} dev warns about the CSS limitation once per source file, naming it`,
+    async () => {
+      const server = await (
+        bundler === 'vite' ? startRscDevServer : startRscRsbuildDevServer
+      )({
+        files,
+        browser: true,
+      })
+      const response = await fetch(server.url!)
+      expect(response.ok).toBe(true)
+      expect(await response.text()).toContain('MARK_STREAMS_RENDERED')
+      expectDiagnostic(server.diagnostics, {
+        severity: 'warning',
+        file: 'src/stream.tsx',
+        root: server.root,
+        times: 1,
+      })
+    },
+  )
+}
