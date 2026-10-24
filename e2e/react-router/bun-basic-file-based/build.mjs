@@ -288,9 +288,9 @@ if (!process.argv.includes('--serve')) {
       ]),
     ),
   )
-  Bun.serve({
+  const server = Bun.serve({
     hostname: '127.0.0.1',
-    port: Number(process.env.E2E_APP_PORT ?? 43187),
+    port: Number(process.env.E2E_APP_PORT ?? 0),
     fetch(request) {
       const url = new URL(request.url)
       const pathname = url.pathname
@@ -314,4 +314,5 @@ if (!process.argv.includes('--serve')) {
       )
     },
   })
+  console.log(`E2E app: ${server.url}`)
 }

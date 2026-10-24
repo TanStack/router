@@ -1660,7 +1660,13 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     }
 
     // Virtual configuration modules and the helpers loaded while evaluating them.
-    if (this.configFilePaths.has(path.resolve(filePath))) {
+    const resolvedFilePath = path.resolve(filePath)
+    if (
+      this.configFilePaths.has(resolvedFilePath) ||
+      (typeof this.config.virtualRouteConfig === 'string' &&
+        resolvedFilePath ===
+          path.resolve(this.root, this.config.virtualRouteConfig))
+    ) {
       return true
     }
 

@@ -11,6 +11,62 @@ import path from 'node:path'
 import { expect, test } from 'vitest'
 import { Generator, getConfig } from '../src'
 
+test.each(
+  ['relative', 'absolute'].flatMap((configPath) =>
+    [
+      { failure: 'syntax', source: 'export default {' },
+      {
+        failure: 'schema',
+        source: "export default { type: 'root', file: 42 }",
+      },
+    ].map((invalid) => ({ configPath, ...invalid })),
+  ),
+)(
+  'recovers from an initial $failure error in a $configPath virtual configuration',
+  async ({ configPath, source }) => {
+    const root = await mkdtemp(path.join(tmpdir(), 'router-virtual-recovery-'))
+    const routes = path.join(root, 'routes')
+    const configFile = path.join(root, 'virtual-routes.ts')
+    const generatedRouteTree = path.join(root, 'routeTree.gen.ts')
+    try {
+      await mkdir(routes)
+      await Promise.all([
+        writeFile(
+          path.join(routes, '__root.tsx'),
+          `import { createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute({})\n`,
+        ),
+        writeFile(configFile, source),
+      ])
+      const generator = new Generator({
+        root,
+        config: getConfig(
+          {
+            routesDirectory: routes,
+            generatedRouteTree,
+            virtualRouteConfig:
+              configPath === 'relative' ? 'virtual-routes.ts' : configFile,
+            tmpDir: path.join(root, 'tmp'),
+            disableLogging: true,
+          },
+          root,
+        ),
+      })
+      await expect(generator.run()).rejects.toThrow()
+      await writeFile(
+        configFile,
+        "export default { type: 'root', file: '__root.tsx' }\n",
+      )
+      await generator.run({ path: configFile, type: 'update' })
+      expect(await readFile(generatedRouteTree, 'utf8')).toContain(
+        "import { Route as rootRouteImport } from './routes/__root'",
+      )
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  },
+)
+
 test.each([
   { source: 'configuration', depth: 0 },
   { source: 'helper', depth: 1 },

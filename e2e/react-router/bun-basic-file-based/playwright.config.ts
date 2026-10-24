@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
+import { appServerReady } from '@tanstack/router-e2e-utils'
 
-const port = Number(process.env.E2E_APP_PORT ?? 43187)
+const port = Number(process.env.E2E_APP_PORT ?? 0)
 
 export default defineConfig({
   testDir: '.',
@@ -17,7 +18,7 @@ export default defineConfig({
   webServer: {
     command: 'bun build.mjs --serve',
     env: { E2E_APP_PORT: String(port) },
-    url: `http://127.0.0.1:${port}/__builds`,
+    wait: appServerReady,
     reuseExistingServer: false,
     stdout: 'pipe',
   },
