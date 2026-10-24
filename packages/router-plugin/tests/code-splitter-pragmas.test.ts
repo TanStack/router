@@ -111,15 +111,12 @@ describe('split modules keep file-level JSX pragmas', () => {
   // Impact: with Vite 8, a `css` prop that the untouched route ignored is
   // styled once the component is split (or the reverse once the user
   // relies on the unsplit behaviour): the route renders differently split.
-  it.fails(
-    'keeps a @jsxImportSource written after the imports as ineffective as in the untouched file (leading-pragma project)',
-    async () => {
-      const rendered = await expectRendersLikeUntouched(
-        styledRoute(`${head}/** @jsxImportSource @emotion/react */\n`),
-      )
-      expect(emotionStyled(rendered)).toBe(false)
-    },
-  )
+  it('keeps a @jsxImportSource written after the imports as ineffective as in the untouched file (leading-pragma project)', async () => {
+    const rendered = await expectRendersLikeUntouched(
+      styledRoute(`${head}/** @jsxImportSource @emotion/react */\n`),
+    )
+    expect(emotionStyled(rendered)).toBe(false)
+  })
 
   // The component calls the factory itself too, so the chunk keeps its
   // import whatever dead-code elimination counts as a use (a chunk whose
@@ -166,13 +163,10 @@ return [
   // Impact: with Vite 8, the split component compiles with the default JSX
   // runtime as soon as it shares a binding with the loader: `css` props
   // are ignored and the component renders unstyled.
-  it.fails(
-    'keeps the pragma in effect in every module that contains JSX',
-    async () => {
-      const rendered = await expectRendersLikeUntouched(sharedJsxRoute)
-      expect(emotionStyled(rendered)).toBe(true)
-    },
-  )
+  it('keeps the pragma in effect in every module that contains JSX', async () => {
+    const rendered = await expectRendersLikeUntouched(sharedJsxRoute)
+    expect(emotionStyled(rendered)).toBe(true)
+  })
 })
 
 // With the classic runtime, the JSX of each module compiles to calls of the
@@ -204,28 +198,25 @@ ${head}import { jsx } from '@emotion/react'
   // JSX pragmas (a pendingComponent, JSX shared with the loader) ignores them
   // as soon as an option is split: Emotion's `css` props are dropped, and a
   // classic factory would throw "jsx is not defined" once the pragma is read.
-  it.fails(
-    'in the route module, when the code calling the factory is split',
-    async () => {
-      const code = `${classicHead}function Page() {
+  it('in the route module, when the code calling the factory is split', async () => {
+    const code = `${classicHead}function Page() {
   return jsx('div', { css: { color: 'blue' } }, 'page')
 }
 export const Route = createFileRoute('/')({
   component: Page,
   pendingComponent: () => <p css={{ color: 'red' }}>pending</p>,
 })`
-      const route = await loadWithUntouched(code)
-      const [expected, rendered] = await route.run<
-        [Array<string>, Array<string>]
-      >(`const control = ${untouched}
+    const route = await loadWithUntouched(code)
+    const [expected, rendered] = await route.run<
+      [Array<string>, Array<string>]
+    >(`const control = ${untouched}
 return [
   [await renderComponent(control.pendingComponent), await renderComponent(control.component)],
   [await render('pendingComponent'), await render('component')],
 ]`)
-      expect(expected.map(emotionStyled)).toEqual([true, true])
-      expect(rendered).toEqual(expected)
-    },
-  )
+    expect(expected.map(emotionStyled)).toEqual([true, true])
+    expect(rendered).toEqual(expected)
+  })
 })
 
 /** The route module as the dev server serves it, once the route loaded. */

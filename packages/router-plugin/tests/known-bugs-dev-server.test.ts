@@ -34,7 +34,7 @@ describe('route module exports with automatic code splitting', () => {
   // defined"), and the route's component chunk fails to compile.
   // Source: #8504 react-refresh-route-components ("route module exports with
   // React HMR and autoCodeSplitting=true"), where they pass.
-  test.fails.each(exportedComponentsLostWhenSplit)(
+  test.each(exportedComponentsLostWhenSplit)(
     'keep a $name component exported as the route option value',
     async ({ declaration, options, exported }) => {
       await expectExportedRouteOptions(
@@ -55,7 +55,7 @@ export const Route = createFileRoute('/page')({ ${options} })`,
   // route module fails to load (browsers).
   // Source: #8504 react-refresh-route-components ("keep exported overloads
   // and their aliases that unsplit and split options call"), where it passes.
-  test.fails(
+  test(
     'keep exported overloads and their aliases that unsplit and split options call',
     async () => {
       await expectSharedOverloads(true)

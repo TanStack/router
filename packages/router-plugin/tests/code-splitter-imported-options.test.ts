@@ -164,7 +164,7 @@ export const options = {
   // nothing.
   // Impact: the route's component is never split, with no word to the
   // developer (SPEC J2.8: split correctly or report once naming the file).
-  it.fails('are split, or reported once naming the route file', async () => {
+  it('are split, or reported once naming the route file', async () => {
     const served = await serve()
     if (!expectWorkingOrRefused(served)) {
       return
@@ -186,25 +186,22 @@ export const options = {
   // imports, silently.
   // Impact: server handlers and what they read ship to the client (SPEC
   // J2.8 "never ships their ssr/server/headers silently", J2.14, J4.12).
-  it.fails(
-    'lose the options of deleteNodes and what only they import, or are reported once naming the route file',
-    async () => {
-      const served = await serve(deleteNodes)
-      if (!expectWorkingOrRefused(served)) {
-        return
-      }
-      // What the page requests with the route module.
-      const kept =
-        served.seen!.server ||
-        (await served.route.requested()).includes('/admin-helper.ts')
-      if (kept) {
-        expectDiagnostic(served.diagnostics, {
-          severity: 'warning',
-          file: served.file,
-          root: served.route.host.root,
-          times: 1,
-        })
-      }
-    },
-  )
+  it('lose the options of deleteNodes and what only they import, or are reported once naming the route file', async () => {
+    const served = await serve(deleteNodes)
+    if (!expectWorkingOrRefused(served)) {
+      return
+    }
+    // What the page requests with the route module.
+    const kept =
+      served.seen!.server ||
+      (await served.route.requested()).includes('/admin-helper.ts')
+    if (kept) {
+      expectDiagnostic(served.diagnostics, {
+        severity: 'warning',
+        file: served.file,
+        root: served.route.host.root,
+        times: 1,
+      })
+    }
+  })
 })

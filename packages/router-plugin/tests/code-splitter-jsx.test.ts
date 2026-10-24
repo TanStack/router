@@ -70,7 +70,7 @@ it.each(['Widget', 'ÉWidget'])(
 // Impact: a component the loader and a split component share, named with a
 // leading `_` or `$` or a non-ASCII lowercase letter, exists twice: identity
 // checks and module state of the component differ between the chunks.
-it.fails.each(['_Widget', '$Widget', 'éWidget'])(
+it.each(['_Widget', '$Widget', 'éWidget'])(
   'gives separate loader and component chunks the one JSX component %s',
   async (name) => {
     expect(await renderSharedJsxComponent(name)).toEqual(['hello', true])
