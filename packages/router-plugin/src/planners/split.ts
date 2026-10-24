@@ -262,18 +262,27 @@ export function routeSplitPlanner(): Planner {
               ? identifierSymbol(ctx, d.valueNode)
               : null
         const body: Array<Frag> = []
+        // an identifier value is exported as it is (`export { Page as
+        // component }`: no alias for the minifier to keep); a member of it
+        // or any other value gets the chunk's own declaration
+        const direct = valueSym !== null && d.member === null
+        const exported: SymRef | string = direct
+          ? { sym: valueSym! }
+          : split.name
         if (valueSym !== null) {
           // the original symbol: placement follows its declaring unit; a
           // rename renders at emit time. The core reports it when its
           // effects keep it in the route module (`env-declared`).
-          body.push({
-            k: 'text',
-            parts: [
-              `const ${split.name} = `,
-              { sym: valueSym },
-              d.member ? `.${d.member}\n` : '\n',
-            ],
-          })
+          if (!direct) {
+            body.push({
+              k: 'text',
+              parts: [
+                `const ${split.name} = `,
+                { sym: valueSym },
+                `.${d.member}\n`,
+              ],
+            })
+          }
           ctx.addRoot(g.output, { t: 'sym', id: valueSym })
         } else {
           body.push({
@@ -294,17 +303,18 @@ export function routeSplitPlanner(): Planner {
           body.push({
             k: 'text',
             parts: [
-              `${split.name}.$$tsrRefreshId = ${stringLiteral(`${g.derivedId} ${registered}`, '"')}\n`,
+              exported,
+              `.$$tsrRefreshId = ${stringLiteral(`${g.derivedId} ${registered}`, '"')}\n`,
             ],
           })
         }
         body.push({
           k: 'text',
-          parts: [`export { ${split.name} as ${d.exportName} }\n`],
+          parts: ['export { ', exported, ` as ${d.exportName} }\n`],
         })
         const owner = ctx.rewrites.addGenerated({
           body,
-          declares: [split.sym],
+          declares: direct ? [] : [split.sym],
           effectful: false,
           anchor: { k: 'end' },
           home: g.output,
