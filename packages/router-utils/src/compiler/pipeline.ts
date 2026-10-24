@@ -267,6 +267,7 @@ async function runAttempt(
   }
   const t0 = new ModuleAnalysis(parsed.file, parsed.source, {
     path: identity.path,
+    markerSpecifiers: host.rawFacts.markerSpecifiers,
   })
   const cjs = t0.sourceType !== 'module' || isCommonJsPath(identity.path)
   const gateCtx = (p: Planner) => ({

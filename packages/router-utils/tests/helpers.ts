@@ -433,6 +433,9 @@ export interface MemoryHostOptions {
   /** Hook to suspend resolutions. */
   onResolve?: (specifier: string, importer: string) => Promise<void> | void
   recognizer?: ConstructorParameters<typeof RawFactsCache>[0]['recognizer']
+  markerSpecifiers?: ConstructorParameters<
+    typeof RawFactsCache
+  >[0]['markerSpecifiers']
 }
 
 export class MemoryHost implements HostServices {
@@ -449,6 +452,7 @@ export class MemoryHost implements HostServices {
       readFile: (p) => this.readFile(p),
       loadVirtual: () => Promise.resolve(null),
       recognizer: opts.recognizer,
+      markerSpecifiers: opts.markerSpecifiers,
     })
     this.caches = createCompilerCaches(this.rawFacts)
   }

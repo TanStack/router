@@ -182,3 +182,26 @@ describe('target facts (R36)', () => {
     expect(missing.targetFacts).toMatchObject({ exists: false, esm: false })
   })
 })
+
+describe('markers', () => {
+  it('a transform and a raw read of a module agree on its marker', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/m.ts': `import 'start/server-only'\nexport const a = 1\n`,
+      },
+      markerSpecifiers: { 'start/server-only': 'server-only' },
+    })
+    let marker: unknown
+    const rec: Planner = {
+      ...edgeRecorder(),
+      policy(plan) {
+        marker = plan.facts.marker
+        return Promise.resolve()
+      },
+    }
+    await host.compile('/app/m.ts', [rec])
+    expect(marker).toBe('server-only')
+    const raw = await host.rawFacts.get('/app/m.ts')
+    expect(raw.targetFacts.marker).toBe('server-only')
+  })
+})

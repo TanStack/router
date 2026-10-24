@@ -79,6 +79,11 @@ export class RawFactsCache {
 
   constructor(private readonly opts: RawFactsOptions) {}
 
+  /** The marker specifiers every analysis of this session uses (transform and raw reads agree). */
+  get markerSpecifiers(): RawFactsOptions['markerSpecifiers'] {
+    return this.opts.markerSpecifiers
+  }
+
   /** The known (possibly stale-marked) revision, without reading. */
   peekRevision(
     canonicalId: string,
