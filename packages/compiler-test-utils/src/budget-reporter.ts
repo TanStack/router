@@ -24,11 +24,15 @@
  * load), an error escaped the tests, or the run was interrupted is not a
  * measurement: its times leave out or cut short the failed work. The report
  * says so, and strict mode fails it as an invalid measurement.
+ *
+ * With `COMPILER_TESTS_PINS=run`, it also lists the known-bug pins that
+ * passed (`./pins`).
  */
 import { readFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { reportPins } from './pins'
 import type {
   Reporter,
   SerializedError,
@@ -102,6 +106,7 @@ export default class BudgetReporter implements Reporter {
     unhandledErrors: ReadonlyArray<SerializedError>,
     reason: TestRunEndReason,
   ) {
+    reportPins(this.vitest, allModules)
     const testModules = allModules.filter(
       (m) => tierOf(m.project.name) !== undefined,
     )

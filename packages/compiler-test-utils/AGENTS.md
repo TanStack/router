@@ -40,6 +40,8 @@ package. What the suite is and how to read it: [oracle/README.md](oracle/README.
 - `./run-directory` (Vitest `globalSetup`): the run's temp dir, removed when the run ends.
 - `./test-scope` (`currentTest`, `onTestFinished`) with `./test-scope-setup` (`setupFiles`): per-test resources in
   concurrent files.
+- `./pins` (`runPins`) with `./pins-setup` (`setupFiles`): `COMPILER_TESTS_PINS=run` runs every known-bug pin as an
+  ordinary test; the shared reporter lists the pins that passed.
 - `./workspace-packages`: link built `@tanstack/*` packages into test apps (not declared, to avoid Nx cycles).
 - `./run-node`, `./strict-runner`: run built output in a child Node; Vite's module runner with strict named imports.
 

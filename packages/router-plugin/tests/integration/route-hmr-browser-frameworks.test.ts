@@ -12,6 +12,7 @@
  * React apps: route-hmr-browser.test.ts.
  */
 import { describe, it } from 'vitest'
+import { runPins } from '@tanstack/compiler-test-utils/pins'
 import { openRouteHmrPage } from '../route-hmr-page'
 import type { TestContext } from 'vitest'
 
@@ -53,9 +54,11 @@ const same = (a: Cell, b: Cell) =>
  * route module runs again). The other cells reload the page (Vite: the
  * route module's accept call is on an alias) and are pinned in
  * known-bugs-route-hmr.test.ts ("an edit of a split Solid/Vue route", "an
- * edit of an unsplit Vue route").
+ * edit of an unsplit Vue route"). With `COMPILER_TESTS_PINS=run`, every
+ * cell is required to apply in place.
  */
 const hotToday = (cell: Cell) =>
+  runPins ||
   [
     { bundler: 'vite', target: 'solid', autoCodeSplitting: false },
     { bundler: 'rsbuild', target: 'solid', autoCodeSplitting: true },
@@ -66,9 +69,11 @@ const hotToday = (cell: Cell) =>
 /**
  * Where the edit does not show at all today: an unsplit Solid route on
  * Rsbuild keeps its old component (pinned in known-bugs-route-hmr.test.ts
- * "rsbuild: an edit of an unsplit Solid route").
+ * "rsbuild: an edit of an unsplit Solid route"). With
+ * `COMPILER_TESTS_PINS=run`, no cell is left out.
  */
 const brokenToday = (cell: Cell) =>
+  !runPins &&
   same(cell, { bundler: 'rsbuild', target: 'solid', autoCodeSplitting: false })
 
 describe.concurrent.each([

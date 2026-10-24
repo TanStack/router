@@ -37,7 +37,10 @@ const config = defineConfig({
     maxWorkers: 4,
     reporters: ['default', '@tanstack/compiler-test-utils/budget-reporter'],
     globalSetup: ['@tanstack/compiler-test-utils/run-directory'],
-    setupFiles: ['@tanstack/compiler-test-utils/test-scope-setup'],
+    setupFiles: [
+      '@tanstack/compiler-test-utils/test-scope-setup',
+      '@tanstack/compiler-test-utils/pins-setup',
+    ],
     projects: [
       {
         extends: true,

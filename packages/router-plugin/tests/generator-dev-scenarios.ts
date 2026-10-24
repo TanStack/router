@@ -16,6 +16,7 @@ import {
   expectDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
+import { runPins } from '@tanstack/compiler-test-utils/pins'
 import {
   createFileRouteCall,
   expectLoadedOnNavigation,
@@ -417,7 +418,8 @@ export function describeCreatedRoutes(
       timeout,
     )
 
-    if (!options.pinCreatedBrokenRouteFiles) {
+    // With `COMPILER_TESTS_PINS=run`, pinned cases run as ordinary tests.
+    if (!options.pinCreatedBrokenRouteFiles || runPins) {
       test.each(createdBrokenRouteFiles)(
         'a created route file the generator $name is reported, and fixing it adds the route',
         async ({ initial }) => {

@@ -19,6 +19,8 @@
     "./importers": "./src/importers.ts",
     "./known-globals": "./src/known-globals.ts",
     "./outcome": "./src/outcome.ts",
+    "./pins": "./src/pins.ts",
+    "./pins-setup": "./src/pins-setup.ts",
     "./plugin-host": "./src/plugin-host.ts",
     "./rsbuild-dev-server": "./src/rsbuild-dev-server.ts",
     "./rsbuild-plugin-host": "./src/rsbuild-plugin-host.ts",
