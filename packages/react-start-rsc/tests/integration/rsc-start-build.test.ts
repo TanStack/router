@@ -117,6 +117,39 @@ function Page() {
     `const args = [<Card />] as const
   return new Response(renderToReadableStream(...args), { headers: { 'Content-Type': 'text/x-component' } })`,
   ),
+  // A server fn whose only importer is a `'use client'` component that a
+  // server component renders.
+  'src/client-ref/update.ts': `import { createServerFn } from '@tanstack/react-start'
+export const update = createServerFn({ method: 'POST' }).handler(() => 'MARK_UPDATED')
+`,
+  'src/client-ref/Counter.tsx': `'use client'
+import { useState } from 'react'
+import { update } from './update'
+export function Counter() {
+  const [result, setResult] = useState('')
+  return (
+    <button data-testid="counter" onClick={() => update().then(setResult, (error) => setResult('error ' + error))}>
+      counter {result}
+    </button>
+  )
+}
+`,
+  'src/client-ref/page.tsx': `import { createServerFn } from '@tanstack/react-start'
+import { renderServerComponent } from '@tanstack/react-start/rsc'
+import { Counter } from './Counter'
+export const getPage = createServerFn().handler(() => renderServerComponent(<div>server <Counter /></div>))
+`,
+  'src/routes/client-ref.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { getPage } from '../client-ref/page'
+export const Route = createFileRoute('/client-ref')({
+  loader: async () => ({ tree: await getPage() }),
+  component: Page,
+})
+function Page() {
+  const data = Route.useLoaderData()
+  return <main>{data.tree}</main>
+}
+`,
   'src/routes/control.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { render as renderable } from '../rows/renderable'
 import { render as composite } from '../rows/composite'
@@ -239,6 +272,31 @@ describe('Vite production build with RSC', () => {
     }).toEqual({ browser: true, server: false })
     expect(page.errors).toEqual([])
   })
+
+  // SPEC J4.2: a server fn the client references is registered and runs
+  // when called by id, also when its only importer is a `'use client'`
+  // component that reaches the browser through a server component.
+  // Bug: the server-fn manifest of the build has no entry for it (the
+  // provider build never processes a module only a client reference
+  // imports), so the call answers 500 ("Server function info not found").
+  // Impact: a server fn imported only by a client component of a server
+  // component cannot be called in production (#7943).
+  test.fails(
+    "a server fn only a 'use client' component of a server component imports runs when clicked",
+    async () => {
+      const page = await open('/client-ref')
+      await page.page.locator('[data-testid=counter]').waitFor()
+      await waitForHydration(page)
+      await page.page.locator('[data-testid=counter]').click()
+      expect(
+        await settledValue(
+          page,
+          () => page.text('[data-testid=counter]'),
+          (text) => text.includes('MARK_UPDATED'),
+        ),
+      ).toBe('counter MARK_UPDATED')
+    },
+  )
 
   test('loading the client callers without an RSC result supplies no server CSS', async () => {
     const page = await open('/control')
