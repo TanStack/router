@@ -1,4 +1,4 @@
-import { bench, describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { splitGroupingsSchema } from '../src/core/config'
 import { defaultCodeSplitGroupings } from '../src/core/constants'
 
@@ -32,10 +32,14 @@ describe.each([
     expect(actual.error.issues).toEqual(expected.error.issues)
   }
 
-  bench('uncompiled', () => {
-    uncompiledSchema.safeParse(input)
-  })
-  bench('compiled', () => {
-    splitGroupingsSchema.safeParse(input)
+  test('safeParse', async ({ bench }) => {
+    await bench.compare(
+      bench('uncompiled', () => {
+        uncompiledSchema.safeParse(input)
+      }),
+      bench('compiled', () => {
+        splitGroupingsSchema.safeParse(input)
+      }),
+    )
   })
 })

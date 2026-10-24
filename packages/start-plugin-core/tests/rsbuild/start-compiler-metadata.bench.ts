@@ -1,4 +1,4 @@
-import { bench, describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import * as z from 'zod'
 import { readServerFnBuildInfo } from '../../src/rsbuild/start-compiler-host'
 import { SERVER_FN_BUILD_INFO_FIELD } from '../../src/rsbuild/start-compiler-metadata'
@@ -68,14 +68,18 @@ describe.each([0, 1, 10, 100])(
     expect(restore(readServerFnBuildInfo)).toEqual(restore(readWithoutGuard))
     expect(restore(readServerFnBuildInfo)).toEqual(restore(readWithGuard))
 
-    bench('always parse', () => {
-      restore(readWithoutGuard)
-    })
-    bench('skip absent metadata, uncompiled', () => {
-      restore(readWithGuard)
-    })
-    bench('skip absent metadata, compiled', () => {
-      restore(readServerFnBuildInfo)
+    test('restore', async ({ bench }) => {
+      await bench.compare(
+        bench('always parse', () => {
+          restore(readWithoutGuard)
+        }),
+        bench('skip absent metadata, uncompiled', () => {
+          restore(readWithGuard)
+        }),
+        bench('skip absent metadata, compiled', () => {
+          restore(readServerFnBuildInfo)
+        }),
+      )
     })
   },
 )
@@ -92,10 +96,14 @@ describe.each([
   expect(readWithGuard(module)).toBeNull()
   expect(readServerFnBuildInfo(module)).toBeNull()
 
-  bench('uncompiled', () => {
-    readWithGuard(module)
-  })
-  bench('compiled', () => {
-    readServerFnBuildInfo(module)
+  test('read', async ({ bench }) => {
+    await bench.compare(
+      bench('uncompiled', () => {
+        readWithGuard(module)
+      }),
+      bench('compiled', () => {
+        readServerFnBuildInfo(module)
+      }),
+    )
   })
 })
