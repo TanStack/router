@@ -1102,6 +1102,31 @@ importers:
         specifier: ^8.3.4
         version: 8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
 
+  e2e/react-router/bun-basic-file-based:
+    dependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-plugin
+      '@tanstack/virtual-file-routes':
+        specifier: workspace:*
+        version: link:../../../packages/virtual-file-routes
+      react:
+        specifier: ^19.2.3
+        version: 19.2.3
+      react-dom:
+        specifier: ^19.2.3
+        version: 19.2.3(react@19.2.3)
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.63.0
+        version: 1.63.0
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+
   e2e/react-router/escaped-special-strings:
     dependencies:
       '@tanstack/react-router':

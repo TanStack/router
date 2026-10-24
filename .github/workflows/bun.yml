@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - 'packages/router-plugin/**'
+      - 'e2e/react-router/bun-basic-file-based/**'
+      - 'e2e/e2e-utils/**'
       - 'packages/router-generator/**'
       - 'packages/router-utils/**'
       - 'packages/virtual-file-routes/**'
@@ -60,7 +62,7 @@ jobs:
           pnpm install --frozen-lockfile
           --filter .
           --filter "@tanstack/router-plugin..."
-          --filter "@tanstack/react-router..."
+          --filter "tanstack-router-e2e-react-bun-basic-file-based..."
       - name: Setup Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
@@ -72,4 +74,4 @@ jobs:
         if: runner.os != 'Linux'
         run: pnpm exec playwright install chromium --only-shell
       - name: Test production builds and navigation
-        run: pnpm nx run @tanstack/router-plugin:test:e2e:bun --outputStyle=stream --skipRemoteCache
+        run: pnpm nx run tanstack-router-e2e-react-bun-basic-file-based:test:e2e:bun --outputStyle=stream --skipRemoteCache

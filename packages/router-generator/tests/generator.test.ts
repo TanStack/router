@@ -426,11 +426,17 @@ describe('generator works', async () => {
       const expected = directories.map((directory) =>
         path.resolve(root, directory),
       )
-      const snapshot = generator.getRoutesDirectoryPaths()
-      expect(snapshot).toEqual(expected)
-      snapshot[0] = path.resolve(root, 'changed')
-      snapshot.push(path.resolve(root, 'extra'))
-      expect(generator.getRoutesDirectoryPaths()).toEqual(expected)
+      const snapshot = generator.getWatchDependencies()
+      expect(snapshot.directories).toEqual(expected)
+      const files = [...snapshot.files]
+      if (typeof config.virtualRouteConfig === 'string') {
+        expect(files).toContain(path.resolve(root, config.virtualRouteConfig))
+      }
+      snapshot.directories[0] = path.resolve(root, 'changed')
+      snapshot.directories.push(path.resolve(root, 'extra'))
+      snapshot.files.push(path.resolve(root, 'extra.ts'))
+      expect(generator.getWatchDependencies().directories).toEqual(expected)
+      expect(generator.getWatchDependencies().files).toEqual(files)
     },
   )
 

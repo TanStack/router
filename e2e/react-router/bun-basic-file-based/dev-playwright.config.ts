@@ -12,7 +12,7 @@ export default defineConfig({
   timeout: 90_000,
   expect: { timeout: 15_000 },
   reporter: [['line']],
-  outputDir: process.env.BUN_DEV_TEST_OUTPUT ?? '../../.cache/bun-dev-results',
+  outputDir: process.env.BUN_DEV_TEST_OUTPUT ?? './.cache/bun-dev-results',
   use: {
     ...devices['Desktop Chrome'],
     trace: 'retain-on-failure',

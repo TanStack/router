@@ -1,4 +1,5 @@
-import { expect, test as base } from '@playwright/test'
+import { expect } from '@playwright/test'
+import { test as base } from '@tanstack/router-e2e-utils'
 import { SourceMap } from 'node:module'
 import type { SourceMapPayload } from 'node:module'
 import type { CDPSession, Page } from '@playwright/test'
@@ -14,14 +15,22 @@ const test = base.extend<{
   generatedExtension: string
   virtualMount: boolean
   virtualConfigFile: boolean
+  virtualConfigHelperDepth: 0 | 1 | 2
   autoCodeSplitting: boolean
 }>({
   generatedExtension: ['ts', { option: true }],
   virtualMount: [false, { option: true }],
   virtualConfigFile: [false, { option: true }],
+  virtualConfigHelperDepth: [0, { option: true }],
   autoCodeSplitting: [true, { option: true }],
   native: async (
-    { generatedExtension, virtualMount, virtualConfigFile, autoCodeSplitting },
+    {
+      generatedExtension,
+      virtualMount,
+      virtualConfigFile,
+      virtualConfigHelperDepth,
+      autoCodeSplitting,
+    },
     use,
     testInfo,
   ) => {
@@ -29,6 +38,7 @@ const test = base.extend<{
       generatedExtension,
       virtualMount,
       virtualConfigFile,
+      virtualConfigHelperDepth,
       autoCodeSplitting,
     })
     try {
@@ -441,7 +451,9 @@ test('repairs a route generation conflict without restarting the server', async 
   page,
   request,
   native,
+  whitelistErrors,
 }, testInfo) => {
+  whitelistErrors.push(/conflicting configuration paths/i)
   await page.goto(native.url)
   await expect(page.getByRole('heading')).toHaveText('HOME_NATIVE_DEV')
   const token = await documentToken(page)
@@ -482,7 +494,11 @@ test('repairs a syntax error in an active route without restarting the server', 
   page,
   request,
   native,
+  whitelistErrors,
 }, testInfo) => {
+  whitelistErrors.push(
+    /Unexpected.*;|Expected (?:expression|identifier)|SyntaxError|SYNTAX_BROKEN/,
+  )
   await page.goto(native.url)
   await page.getByRole('link', { name: 'About', exact: true }).click()
   await expect(page.getByRole('heading')).toHaveText('ABOUT_BEFORE')
@@ -524,49 +540,53 @@ test('repairs a syntax error in an active route without restarting the server', 
   })
 })
 
-test.describe('string virtual configuration outside routesDirectory', () => {
-  test.use({ virtualConfigFile: true })
-  test('updates existing browser navigation after an in-place config edit', async ({
-    page,
-    request,
-    native,
-  }, testInfo) => {
-    await page.goto(native.url)
-    await page
-      .getByRole('link', { name: 'Virtual before', exact: true })
-      .click()
-    await expect(page.getByRole('heading')).toHaveText('VIRTUAL_BEFORE')
-    await page.getByRole('link', { name: 'Home', exact: true }).click()
-    await expect(page.getByRole('heading')).toHaveText('HOME_NATIVE_DEV')
-    const token = await documentToken(page)
+for (const virtualConfigHelperDepth of [0, 1, 2] as const) {
+  test.describe(`string virtual configuration with ${virtualConfigHelperDepth} helper imports`, () => {
+    test.use({ virtualConfigFile: true, virtualConfigHelperDepth })
+    test('updates existing browser navigation after an in-place config edit', async ({
+      page,
+      request,
+      native,
+    }, testInfo) => {
+      await page.goto(native.url)
+      await page
+        .getByRole('link', { name: 'Virtual before', exact: true })
+        .click()
+      await expect(page.getByRole('heading')).toHaveText('VIRTUAL_BEFORE')
+      await page.getByRole('link', { name: 'Home', exact: true }).click()
+      await expect(page.getByRole('heading')).toHaveText('HOME_NATIVE_DEV')
+      const token = await documentToken(page)
 
-    await native.save('virtual-routes.ts', virtualConfigSource('after'))
-    await expect
-      .poll(async () => {
-        const tree = await native.tree()
-        return (
-          tree.includes('/virtual-after') && !tree.includes('/virtual-before')
-        )
+      await native.save(native.virtualConfigPath, virtualConfigSource('after'))
+      await expect
+        .poll(async () => {
+          const tree = await native.tree()
+          return (
+            tree.includes('/virtual-after') && !tree.includes('/virtual-before')
+          )
+        })
+        .toBe(true)
+      await page
+        .getByRole('link', { name: 'Virtual after', exact: true })
+        .click()
+      await expect(page.getByRole('heading')).toHaveText('VIRTUAL_AFTER')
+      await page
+        .getByRole('link', { name: 'Virtual before', exact: true })
+        .click()
+      await expect(page.getByRole('heading')).toHaveText('NOT_FOUND')
+      native.assertAlive()
+      expect(
+        await (
+          await request.get(new URL('/__native-info', native.url).href)
+        ).json(),
+      ).toEqual({ pid: native.pid })
+      await testInfo.attach('virtual-config.json', {
+        body: JSON.stringify({
+          sameProcess: true,
+          automaticDocumentReload: (await documentToken(page)) !== token,
+        }),
+        contentType: 'application/json',
       })
-      .toBe(true)
-    await page.getByRole('link', { name: 'Virtual after', exact: true }).click()
-    await expect(page.getByRole('heading')).toHaveText('VIRTUAL_AFTER')
-    await page
-      .getByRole('link', { name: 'Virtual before', exact: true })
-      .click()
-    await expect(page.getByRole('heading')).toHaveText('NOT_FOUND')
-    native.assertAlive()
-    expect(
-      await (
-        await request.get(new URL('/__native-info', native.url).href)
-      ).json(),
-    ).toEqual({ pid: native.pid })
-    await testInfo.attach('virtual-config.json', {
-      body: JSON.stringify({
-        sameProcess: true,
-        automaticDocumentReload: (await documentToken(page)) !== token,
-      }),
-      contentType: 'application/json',
     })
   })
-})
+}

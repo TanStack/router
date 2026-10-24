@@ -15,9 +15,8 @@ while (!existsSync(path.join(repo, 'packages/router-plugin/package.json'))) {
   }
   repo = parent
 }
-const requirePlugin = createRequire(
-  path.join(repo, 'packages/router-plugin/package.json'),
-)
+const project = path.dirname(fileURLToPath(import.meta.url))
+const requireProject = createRequire(path.join(project, 'package.json'))
 const config = fileURLToPath(
   new URL('./dev-playwright.config.ts', import.meta.url),
 )
@@ -26,14 +25,14 @@ const preload = process.env.BUN_PLUGIN_PRELOAD
 const child = spawn(
   process.execPath,
   [
-    requirePlugin.resolve('@playwright/test/cli'),
+    requireProject.resolve('@playwright/test/cli'),
     'test',
     '--config',
     config,
     ...process.argv.slice(2),
   ],
   {
-    cwd: path.join(repo, 'packages/router-plugin'),
+    cwd: project,
     env: {
       ...process.env,
       ROUTER_REPOSITORY_ROOT: repo,

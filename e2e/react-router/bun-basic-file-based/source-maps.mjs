@@ -6,7 +6,7 @@ import tanstackRouter from '@tanstack/router-plugin/bun'
 
 export async function verifyBunRouteSourceMaps() {
   const here = path.dirname(fileURLToPath(import.meta.url))
-  const workspace = path.resolve(here, '../../.cache/bun-source-maps')
+  const workspace = path.resolve(here, './.cache/bun-source-maps')
   const fixture = path.join(workspace, 'fixture # %')
   await rm(workspace, { recursive: true, force: true })
   await mkdir(workspace, { recursive: true })

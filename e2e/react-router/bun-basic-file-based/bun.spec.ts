@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
+import { test } from '@tanstack/router-e2e-utils'
 import { SourceMap } from 'node:module'
 import type { SourceMapPayload } from 'node:module'
 

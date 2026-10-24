@@ -11,7 +11,7 @@ import {
 } from 'node:fs/promises'
 import path from 'node:path'
 import { tmpdir } from 'node:os'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { createHash } from 'node:crypto'
 
 export function aboutSource(
@@ -55,11 +55,13 @@ export async function startDevFixture({
   generatedExtension = 'ts',
   virtualMount = false,
   virtualConfigFile = false,
+  virtualConfigHelperDepth = 0,
   autoCodeSplitting = true,
 }: {
   generatedExtension?: string
   virtualMount?: boolean
   virtualConfigFile?: boolean
+  virtualConfigHelperDepth?: 0 | 1 | 2
   autoCodeSplitting?: boolean
 } = {}) {
   const executable = process.env.BUN_EXECUTABLE
@@ -72,6 +74,9 @@ export async function startDevFixture({
   )
   const requireReact = createRequire(
     path.join(repo, 'packages/react-router/package.json'),
+  )
+  const requireProject = createRequire(
+    fileURLToPath(new URL('./package.json', import.meta.url)),
   )
   const directory = await mkdtemp(path.join(tmpdir(), 'router-bun-native-dev-'))
   const inlineMaps: Array<InlineMapEvent> = []
@@ -111,7 +116,18 @@ export async function startDevFixture({
     await save('routes/index.tsx', nestedSource('/', 'HOME_NATIVE_DEV'))
     await save('routes/about.tsx', aboutSource())
     if (virtualConfigFile) {
-      await save('virtual-routes.ts', virtualConfigSource('before'))
+      for (let index = 0; index < virtualConfigHelperDepth; index++) {
+        await save(
+          index ? `config/helper${index}.ts` : 'virtual-routes.ts',
+          `export { routes } from '${index ? './' : './config/'}helper${index + 1}.ts'\n`,
+        )
+      }
+      await save(
+        virtualConfigHelperDepth
+          ? `config/helper${virtualConfigHelperDepth}.ts`
+          : 'virtual-routes.ts',
+        virtualConfigSource('before'),
+      )
       await save(
         'virtual-pages/before.tsx',
         nestedSource('/virtual-before', 'VIRTUAL_BEFORE'),
@@ -253,7 +269,7 @@ export default { name: 'observe-public-router-dev', setup(build) {
       reactRouter: await versionOf('@tanstack/react-router', requireReact),
       react: await versionOf('react', requireReact),
       unplugin: await versionOf('unplugin', requirePlugin),
-      playwright: await versionOf('@playwright/test', requirePlugin),
+      playwright: await versionOf('@playwright/test', requireProject),
       preload: preloadArg ?? null,
       preloadSha256: preloadArg
         ? createHash('sha256')
@@ -270,6 +286,9 @@ export default { name: 'observe-public-router-dev', setup(build) {
       directory,
       versions,
       inlineMaps,
+      virtualConfigPath: virtualConfigHelperDepth
+        ? `config/helper${virtualConfigHelperDepth}.ts`
+        : 'virtual-routes.ts',
       logs: () => logs,
       save,
       tree: () => readFile(file(`routeTree.gen.${generatedExtension}`), 'utf8'),

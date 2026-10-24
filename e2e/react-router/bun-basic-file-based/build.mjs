@@ -7,7 +7,7 @@ import tanstackRouter, {
 import { verifyBunRouteSourceMaps } from './source-maps.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
-const workspace = path.resolve(here, '../../.cache/bun-e2e')
+const workspace = path.resolve(here, './.cache/bun-e2e')
 const fixture = path.join(workspace, 'fixture')
 const generatedRouteTree = path.join(fixture, 'routeTree.gen.ts')
 

@@ -205,6 +205,7 @@ export class Generator {
   private routeTreeFileCache: GeneratorCacheEntry | undefined
 
   private crawlingResult: CrawlingResult | undefined
+  private configFilePaths = new Set<string>()
   public config: Config
   public targetTemplate: TargetTemplate
 
@@ -304,15 +305,23 @@ export class Generator {
     )
   }
 
-  public getRoutesDirectoryPaths(): Array<string> {
-    return [
-      ...new Set(
-        [
-          ...(this.config.virtualRouteConfig ? [] : [this.routesDirectoryPath]),
-          ...this.physicalDirectories,
-        ].map((directory) => path.resolve(this.root, directory)),
-      ),
-    ]
+  public getWatchDependencies(): {
+    files: Array<string>
+    directories: Array<string>
+  } {
+    return {
+      files: [...this.configFilePaths],
+      directories: [
+        ...new Set(
+          [
+            ...(this.config.virtualRouteConfig
+              ? []
+              : [this.routesDirectoryPath]),
+            ...this.physicalDirectories,
+          ].map((directory) => path.resolve(this.root, directory)),
+        ),
+      ],
+    }
   }
 
   public async run(event?: GeneratorEvent): Promise<void> {
@@ -418,6 +427,7 @@ export class Generator {
       rootRouteNode,
       routeNodes: beforeRouteNodes,
       physicalDirectories,
+      configFilePaths,
     } = getRouteNodesResult
     if (rootRouteNode === undefined) {
       let errorMessage = `rootRouteNode must not be undefined. Make sure you've added your root route into the route-tree.`
@@ -427,6 +437,9 @@ export class Generator {
       throw new Error(errorMessage)
     }
     this.physicalDirectories = physicalDirectories
+    this.configFilePaths = new Set(
+      configFilePaths?.map((filePath) => path.resolve(filePath)),
+    )
 
     await this.handleRootNode(rootRouteNode)
 
@@ -1646,11 +1659,8 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       return true
     }
 
-    // the virtual route config file passed into `virtualRouteConfig`
-    if (
-      typeof this.config.virtualRouteConfig === 'string' &&
-      filePath === this.config.virtualRouteConfig
-    ) {
+    // Virtual configuration modules and the helpers loaded while evaluating them.
+    if (this.configFilePaths.has(path.resolve(filePath))) {
       return true
     }
 

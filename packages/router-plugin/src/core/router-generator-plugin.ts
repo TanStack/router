@@ -104,10 +104,11 @@ export function createRouterGeneratorPlugin(
               ),
             },
             async () => {
+              const dependencies = generator.getWatchDependencies()
               // Bun watches immediate directory entries. Include empty directories
               // so a route added there also triggers generation before bundling.
               const watchDirs = await Promise.all(
-                generator.getRoutesDirectoryPaths().map(async (directory) => {
+                dependencies.directories.map(async (directory) => {
                   const entries = await readdir(directory, {
                     recursive: true,
                     withFileTypes: true,
@@ -133,10 +134,7 @@ export function createRouterGeneratorPlugin(
                         : 'js'),
                 resolveDir: dirname(generatedRouteTree),
                 watchDirs: watchDirs.flat(),
-                watchFiles:
-                  typeof userConfig.virtualRouteConfig === 'string'
-                    ? [resolve(ROOT, userConfig.virtualRouteConfig)]
-                    : undefined,
+                watchFiles: dependencies.files,
               }
             },
           )
