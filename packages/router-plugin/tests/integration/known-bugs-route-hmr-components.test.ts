@@ -229,8 +229,6 @@ export const Route = createFileRoute('/')({ component: page${options} })
               ', pendingComponent: page',
             ),
             shows: (version) => `page ${version}`,
-            // The page never shows the route
-            readyTimeout: 4_000,
           },
           onTestFinished,
         ),
@@ -262,8 +260,6 @@ export const Route = createFileRoute('/')({ component: page${options} })
               'export { page }',
             ),
             shows: (version) => `page ${version}`,
-            // The page never shows the route
-            readyTimeout: 4_000,
           },
           onTestFinished,
         ),

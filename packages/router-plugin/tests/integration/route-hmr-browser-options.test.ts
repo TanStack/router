@@ -213,24 +213,20 @@ export const Route = createFileRoute('/')({ component: () => <p>index</p> })
     },
   )
 
-  // An edit that adds component options before a stateful inline component:
-  // the component keeps its state (React Refresh matches components across
-  // versions by how the module registers them). The app's router has
-  // default pending and error components, so the route's boundaries are
-  // the same before and after the edit (otherwise the router wraps the
-  // component in a new boundary, and React mounts it anew). Source: the
-  // former react-refresh-route-components "names hoisted components after
-  // their option, so adding options keeps the family"
-  // (ReactFreshIntegration-test "preserves state ...").
+  // An edit that adds component options before an inline component shows
+  // in place. Whether the component keeps its state is free: adding sibling
+  // options next to an inline component may remount it (ruling 2026-10-24,
+  // SPEC J3.2). Source: the former react-refresh-route-components "names
+  // hoisted components after their option, so adding options keeps the
+  // family" (ReactFreshIntegration-test "preserves state ...").
   test.for([false, true])(
-    'an edit that adds component options before a stateful inline component shows in place and keeps its state (autoCodeSplitting: %s)',
+    'an edit that adds component options before an inline component shows in place (autoCodeSplitting: %s)',
     async (
       autoCodeSplitting: boolean,
       { expect, onTestFinished }: TestContext,
     ) => {
       const route = (version: string) =>
         `import { createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
 export const Route = createFileRoute('/')({${
           version === 'v1'
             ? ''
@@ -238,26 +234,18 @@ export const Route = createFileRoute('/')({${
   pendingComponent: () => <p>pending</p>,
   errorComponent: () => <p>error</p>,`
         }
-  component: () => {
-    ${countMounts('page')}
-    return <p>page ${version}</p>
-  },
+  component: () => <p>page ${version}</p>,
 })
 `
       const app = await openRouteHmrPage({
         onTestFinished,
         pluginOptions: { autoCodeSplitting },
-        routerOptions:
-          'defaultPendingComponent: () => null, defaultErrorComponent: () => null',
         files: { 'routes/index.tsx': route('v1') },
         ready: 'page v1',
       })
-      const mounts = await mountsOf(app)
-      expect(mounts.page).toBeGreaterThan(0)
       expect(
         await app.edit({ 'routes/index.tsx': route('v2') }, 'page v2'),
       ).toEqual(inPlace)
-      expect(await mountsOf(app)).toEqual(mounts)
     },
   )
 

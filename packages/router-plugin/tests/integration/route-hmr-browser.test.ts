@@ -15,7 +15,7 @@
  * (each has its own dev server and page; most of their time is waiting).
  */
 import { describe, it } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
+import { isAppError, openRouteHmrPage } from '../route-hmr-page'
 import type { TestContext } from 'vitest'
 import type { EditResult, RouteHmrPage } from '../route-hmr-page'
 
@@ -235,7 +235,7 @@ function hot(result: EditResult, ...expected: Array<string>) {
   return {
     reloaded: result.reloaded,
     errors: result.errors.filter(
-      (error) => !expected.some((message) => error.includes(message)),
+      (error) => !expected.some((message) => isAppError(error, message)),
     ),
   }
 }

@@ -17,14 +17,19 @@
  * Concurrent: each test has its own dev server and page, and mostly waits.
  */
 import { describe, test } from 'vitest'
-import { countMounts, mountsOf, openRouteHmrPage } from '../route-hmr-page'
+import {
+  countMounts,
+  isAppError,
+  mountsOf,
+  openRouteHmrPage,
+} from '../route-hmr-page'
 import type { TestContext } from 'vitest'
 
 const inPlace = { reloaded: false, errors: [] }
 
 /** Errors the page logged that the app causes on purpose. */
 const withoutLoaderErrors = (errors: Array<string>) =>
-  errors.filter((error) => !error.includes('loader failed'))
+  errors.filter((error) => !isAppError(error, 'loader failed'))
 
 describe.concurrent('vite: React route components', { timeout: 60_000 }, () => {
   /**

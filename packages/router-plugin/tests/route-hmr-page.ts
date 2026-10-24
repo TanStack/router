@@ -253,13 +253,17 @@ export interface RouteHmrPage {
 const appScope = new AsyncLocalStorage<string>()
 let apps = 0
 
+/** The apps whose output `processOutput` is reading. */
+const openApps = new Set<string>()
+
 /**
  * What the process printed (console, stdout/stderr) while doing the work of
  * app `id` (`appScope`), from now on until the test ends. Pages of
  * concurrent tests share the process's console; the context tells their
  * output apart, so a warning counts whatever path form (absolute or
  * project-relative) and wording it has. Output outside any app's context
- * counts only when it names the app's root (`root()`, once known).
+ * counts when it names the app's root (`root()`, once known), or, whatever
+ * path form it has, when it was printed while no other app was open.
  */
 function processOutput(
   id: string,
@@ -268,16 +272,18 @@ function processOutput(
 ) {
   const channel = openDiagnosticChannel({ console: true, streams: true })
   const scoped: Array<ChannelDiagnostic> = []
-  const unscoped: Array<ChannelDiagnostic> = []
+  const unscoped: Array<{ diagnostic: ChannelDiagnostic; alone: boolean }> = []
+  openApps.add(id)
   channel.onDiagnostic((diagnostic) => {
     const store = appScope.getStore()
     if (store === id) {
       scoped.push(diagnostic)
     } else if (store === undefined) {
-      unscoped.push(diagnostic)
+      unscoped.push({ diagnostic, alone: openApps.size === 1 })
     }
   })
   registerCleanup(() => {
+    openApps.delete(id)
     channel.close()
     return Promise.resolve()
   })
@@ -285,9 +291,13 @@ function processOutput(
     const appRoot = root()
     return [
       ...scoped,
-      ...(appRoot === undefined
-        ? []
-        : unscoped.filter((diagnostic) => diagnostic.text.includes(appRoot))),
+      ...unscoped
+        .filter(
+          ({ diagnostic, alone }) =>
+            alone ||
+            (appRoot !== undefined && diagnostic.text.includes(appRoot)),
+        )
+        .map(({ diagnostic }) => diagnostic),
     ]
   }
 }
@@ -623,6 +633,21 @@ async function rsbuildServer(
  * Refresh keeps the state of a component it patches in place, so a body
  * edit it patches mounts nothing anew; a remount counts again.
  */
+/**
+ * Whether a page error (`EditResult.errors`) is the app's own deliberate
+ * error `message` (\`throw new Error(message)\`): it reports that error
+ * (\`Error: <message>\`), not a report quoting the source that throws it (a
+ * transform or HMR error's code frame), which stays an error of the edit.
+ */
+export function isAppError(error: string, message: string) {
+  return (
+    error.includes(`Error: ${message}`) &&
+    !['"', "'", '`'].some((quote) =>
+      error.includes(`Error(${quote}${message}${quote}`),
+    )
+  )
+}
+
 export const countMounts = (name: string) =>
   `useState(() => { const mounts = (window.__mounts ??= {}); mounts[${JSON.stringify(name)}] = (mounts[${JSON.stringify(name)}] ?? 0) + 1 })`
 
