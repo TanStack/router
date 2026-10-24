@@ -332,9 +332,10 @@ lazyRouteTemplate}`; `.lazy.tsx`/`.lazy.ts` files get the lazy template (a `.laz
   exclusion, `_` pathless, `_` suffix un-nesting, `$` params, `$` splat, `__virtual.ts`, `physical()`) plus the
   virtual anchor routes the docs promise for deleted/lazy-only route files `[doc: guide/code-splitting.md:222-224]`,
   with the paths of the docs' tables, the right parent links and lazy/piece attachments, and with `disableTypes`,
-  `addExtensions`, `importRoutesUsingAbsolutePaths`, `routeTreeFileHeader/Footer`, `enableRouteTreeFormatting`
-  honoured. Tests assert hierarchy, ids, paths, parent links and what an importing router sees — not an exact emitted
-  tree text. `[doc: routing/file-based-routing.md tables; file-naming-conventions.md; virtual-file-routes.md; api/file-based-routing.md]`
+  `addExtensions`, `importRoutesUsingAbsolutePaths`, `routeTreeFileHeader/Footer`, `enableRouteTreeFormatting`,
+  `quoteStyle` and `semicolons` honoured (the docs promise a route tree "formatted with the quote style you
+  specify"; §5.5 frees printing elsewhere) `[ruling: route tree quoteStyle and semicolons]`. Tests assert hierarchy,
+  ids, paths, parent links and what an importing router sees — not an exact emitted tree text. `[doc: routing/file-based-routing.md tables; file-naming-conventions.md; virtual-file-routes.md; api/file-based-routing.md]`
 - **J1.5** The route tree is deterministic (G4): independent of directory scan order, cwd (except for outputs that
   are cwd-relative by configuration), OS path separators, and process. `[R4]`
 - **J1.6** Writes are atomic (temp file in `tmpDir` + rename; beside the destination when `tmpDir` is on another
@@ -401,7 +402,9 @@ lazyRouteTemplate}`; `.lazy.tsx`/`.lazy.ts` files get the lazy template (a `.laz
   `notFoundComponent`, `loader` are split. Grouping precedence: `codeSplitGroupings` in the file > `splitBehavior({
 routeId })` > `defaultBehavior` > the default `[['component'],['errorComponent'],['notFoundComponent']]`; a property
   may appear in at most one group; options in one group load as one unit and different groups stay independently
-  lazy (§5.3). `[doc: guide/automatic-code-splitting.md:53-75,187-195; type: router-plugin config splitGroupingsSchema]`
+  lazy (§5.3). Two options load as one unit when, once one loaded, loading the other fetches no new module holding
+  user code; a small forwarding module per option over the group's module is acceptable, though not ideal (bytes).
+  `[ruling: split groups and forwarding modules; doc: guide/automatic-code-splitting.md:53-75,187-195; type: router-plugin config splitGroupingsSchema]`
 - **J2.3 Behaviour identical.** A split route renders, errors, pends, not-founds and loads exactly as the unsplit
   route; everything not configured for splitting (path parsing, search validation, `beforeLoad`, context, `head`,
   `scripts`, `staticData`, `ssr`, `server`, `headers`, …) stays eager in the route module. `[doc: guide/code-splitting.md:13-31; R1]`
@@ -422,7 +425,12 @@ routeId })` > `defaultBehavior` > the default `[['component'],['errorComponent']
   fails even if never called; an extra helper actually needed to implement that component does not fail merely
   because it increases the declaration count; a shared dependency needed by another legitimate consumer must not be
   misclassified as an unused copy in this chunk. Also check final bundle contents per supported bundler, on
-  production output with side-effect hints varied; that does not replace the compiler-level D5 obligation. `[ruling: D5, L3; R2]`
+  production output with side-effect hints varied; that does not replace the compiler-level D5 obligation. What
+  counts as unused code left behind is judged after the bundler's production tree-shaking: unused code must be gone
+  from the production bundle (checked by value reads and user markers); an unused import specifier or an
+  unreferenced declaration an emitted module keeps is free (§5.9). Ideal goals, not gates: a split chunk holds only
+  what its option uses, and options read shared pieces directly from a shared module rather than through forwarding
+  modules. `[ruling: D5, L3, unused code is judged after the bundler; R2]`
 - **J2.6 Lazy loading contract.** Split options are loaded on demand and behave under the framework/router's public
   lazy contract: split components are preloadable before render (the route's `component.preload()`, so intent
   preloading keeps working) and render correctly afterwards; split loaders run on demand with the same result.
@@ -494,8 +502,10 @@ routeId })` > `defaultBehavior` > the default `[['component'],['errorComponent']
 - **J3.1 In-place update.** Editing a file route module in dev updates the live route on the running router without
   a full reload: non-component options (loader, beforeLoad, head, validateSearch, …) are replaced; matching and
   navigation use the new options (stale derived route state is invalidated; how is mechanism); generated options
-  (`id`, `path`, `getParentRoute`) stay on the live route; the active match re-renders with the new options. Vite and
-  Rsbuild/Rspack (webpack lower priority); React, Solid, Vue. `[ruling: dev edits and full reloads; type: HmrOptions]`
+  (`id`, `path`, `getParentRoute`) stay on the live route; the active match re-renders with the new options. A hot
+  edit runs each changed loader at least once and the page shows its new data; how many times it runs is not
+  pinned, while an obsolete loader the edit replaced or removed does not run again. Vite and Rsbuild/Rspack (webpack
+  lower priority); React, Solid, Vue. `[ruling: dev edits and full reloads, loaders after a hot edit; type: HmrOptions]`
 - **J3.2 Component identity is kept for compatible edits.** For compatible hot updates, preserve the router-owned
   component/lazy-wrapper identity required by D10, including Solid and Vue split components, and show the new
   component code. Where the framework's supported refresh behaviour can retain the mounted component and its state
@@ -503,8 +513,10 @@ routeId })` > `defaultBehavior` > the default `[['component'],['errorComponent']
   Compatibility is determined by the real framework's refresh contract, not merely an unchanged component name or
   family (React Refresh, for instance, remounts class components, changed hook signatures and forced resets even
   within one family). Framework-required replacement, including incompatible hook signatures or component kinds, is
-  allowed without an unconditional descendant-state guarantee. Renames and other family replacements must display
-  the new component (J3.3). A framework subtree replacement is distinct from a full reload; full reloads remain
+  allowed without an unconditional descendant-state guarantee. Adding sibling route options next to an inline
+  component (e.g. a `pendingComponent` and an `errorComponent` before an inline `component`) may remount it: the
+  edit must show in place, its state need not survive `[ruling: sibling options next to an inline component]`.
+  Renames and other family replacements must display the new component (J3.3). A framework subtree replacement is distinct from a full reload; full reloads remain
   governed by G10 and the explicit factory-options exception (2.2, J3.3). Test both split and unsplit cases with
   real framework tooling (§8). Oracle boundary: a compatible body-only edit that loses state because the router
   recreates its wrapper must fail; an edit the real framework must remount must not fail solely for that remount;
@@ -809,7 +821,8 @@ as `§5.N` (or "§5 item N").
 - **§5.3 Virtual-module ids and query strings** (`?tsr-split=`, `?tss-hydrate=`, `?server-fn-module-lookup`), physical
   chunk count and shape, shared-dependency chunks, where shared bindings live (shared module, chunk re-import, entry
   re-export), copying _pure, unexported, identity-unobservable_ helpers into a chunk vs importing them (J2.4) —
-  provided the configured group semantics hold: a group is available together, independently configured groups are
+  provided the configured group semantics hold: a group is available together (no new module holding user code
+  once one of its options loaded; forwarding modules allowed, J2.2), independently configured groups are
   neither made eager nor loaded together when only one is needed, and no chunk carries unrelated code (J2.5).
 - **§5.4 SSR handler placement** in place or extracted, when SSR and the provider share an environment (P2, J4.3); the
   forwarding mechanism for a separate provider.
@@ -832,7 +845,9 @@ as `§5.N` (or "§5 item N").
 - **§5.8 Where helpers live**: runtime helpers inlined, imported from the framework package, or placed in a virtual
   module; which lazy helper builds a lazy boundary (`lazyRouteComponent`, `lazyFn`, an equivalent wrapper or an
   intermediate module).
-- **§5.9 Which dead code is left** (G8): unreferenced functions, unused imports in never-executed code.
+- **§5.9 Which dead code is left** (G8): unreferenced functions, unused imports in never-executed code, unused
+  import specifiers. Unused code is judged after the bundler's production tree-shaking (J2.5): it must not reach the
+  production bundle. `[ruling: unused code is judged after the bundler]`
 - **§5.10 Root `component` split or not**; root `errorComponent`/`notFoundComponent` split preferred (J2.7).
 - **§5.11 Dev-only extras**: HMR accept code shape, hot-data layout, Refresh registration mechanics, dev diagnostics.
 - **§5.12 Dropping client-only-guarded declarations on the server for neutral file names** (preferred, not required).

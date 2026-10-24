@@ -201,6 +201,16 @@ Out of scope: a known limitation, no test (the production checklist in the docs 
 webpack should work but is low priority; it is in the matrix. esbuild: no work; the only requirement is "works or
 refuses clearly". Clauses: §1.3, J2.18, C12.
 
+### sensible, not paranoid (2026-10-24)
+
+The user, on the outcomes-only audit: tests must be sensible, not paranoid. The implementer is smart and may adjust
+a test that pins an incidental detail, so a test does not over-specify. Left as they are: the diagnostic details the
+audit listed (message wording, which channel an error is printed on, exact positions inside a construct; see
+"diagnostics: file and position only") and the generated file's own type names such as `FileRoutesByTo`. What a
+test must not do is constrain a correct compiler's design (output shape, module layout, order), depend on harness
+details a correct compiler changes, contradict a ruling, or pass without checking anything (a check that filters
+on something asserts that it found it). Clauses: §5, §8.
+
 ## Router (J1–J3)
 
 ### one route per file
@@ -399,6 +409,42 @@ router, its `Route` has the right constructor and id, everything outside the imp
 the imports still bind what the user's code uses (each binding with its imported and local name, source module,
 type/value meaning and import attributes; side-effect imports stay). `router-generator/tests/owned-edits.ts`
 (`expectOnlyOwnedEdits`). Clauses: J1.1, J1.2.
+
+### loaders after a hot edit (2026-10-24)
+
+The user: a hot edit must run each changed loader at least once and the page show the new data, not exactly once.
+Tests check that the page shows the new loader's data and that the new loader ran (`>= 1`); an obsolete loader the
+edit replaced or removed still must not run again (`router-plugin/tests/integration/route-hmr-browser-updates.test.ts`).
+Clauses: J3.1, J3.3.
+
+### sibling options next to an inline component (2026-10-24)
+
+The user: adding sibling route options next to an inline component may remount it. The edit that adds a
+`pendingComponent` and an `errorComponent` before an inline `component` must show in place (no full reload); keeping
+the component's state is not required (`router-plugin/tests/integration/route-hmr-browser-options.test.ts`, "an edit
+that adds component options before an inline component shows in place"). Clause: J3.2.
+
+### split groups and forwarding modules (2026-10-24)
+
+The user: small forwarding modules are acceptable (not ideal: bytes). Two options share a group when, once one of
+them loaded, loading the other fetches no new module holding user code: no file of the app, and no compiled module
+but one that only imports and re-exports (`router-plugin/tests/route-app.ts` `groups()`). A per-option module that
+only forwards to the group's module does not split the group. Clauses: J2.2, §5.3.
+
+### unused code is judged after the bundler (2026-10-24)
+
+The user: what matters is the code after the bundler's production tree-shaking. A test checks that unused code is
+gone from the production bundle (value reads, user markers), not the import specifiers of a module the compiler
+emits: an unused specifier is dropped by the bundler (`router-plugin/tests/served-code.ts` `readsImport`, used by
+`integration/pages/code-splitter-dead-code.test.ts`). Goals, not gates: a split chunk holds only what its option
+uses, and options import shared pieces directly from a shared module. Clauses: J2.5, §5.9.
+
+### route tree quoteStyle and semicolons (2026-10-24)
+
+The docs promise that the generated route tree is "formatted with the quote style you specify"
+(`docs/router/api/file-based-routing.md`), so `quoteStyle` and `semicolons` are among the options the route tree
+honours (J1.4), next to `routeTreeFileHeader/Footer`; §5.5 frees printing everywhere else. Checked by
+`router-generator/tests/generator-options.test.ts`. Clauses: J1.4, §5.5.
 
 ## Start (J4–J7)
 
