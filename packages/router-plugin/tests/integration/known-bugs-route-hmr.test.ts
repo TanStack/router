@@ -227,7 +227,7 @@ function Root() {
   // page), possibly after a reload. A warning never excuses an edit that
   // does not show (SPEC G10; `expectEditShownOrReportedFallback`).
   // Silent wrong output fails.
-  test.fails.for(['vite', 'rsbuild'] as const)(
+  test.for(['vite', 'rsbuild'] as const)(
     '%s: an edit of a route a helper function creates shows its new component, reloading only when the file is reported (autoCodeSplitting: false)',
     async (bundler: 'vite' | 'rsbuild', { onTestFinished }: TestContext) => {
       const route = (version: string) =>

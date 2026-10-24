@@ -335,7 +335,7 @@ return {
         assertReads,
       )
       // See `isKnownBug`.
-      it.fails.each(cases.filter((row) => isKnownBug(row, codeSplitGroupings)))(
+      it.each(cases.filter((row) => isKnownBug(row, codeSplitGroupings)))(
         '$name',
         assertReads,
       )

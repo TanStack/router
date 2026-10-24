@@ -224,7 +224,7 @@ ${cardB ? 'let renders = 0\nfunction CardB() { renders++; return <i>{"B" + rende
   // .test.ts ("a dev server compiling an edited route out of order").
   // Any fix passes: the page renders the edited route, with one module
   // state for what the split options share.
-  test.fails.each([
+  test.each([
     {
       name: 'removing a component two split options render',
       before: cards(true),

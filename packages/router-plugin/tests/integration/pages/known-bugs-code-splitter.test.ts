@@ -88,11 +88,9 @@ export const Route = createFileRoute('/')({
   // Source: round-3 mutation testing (compilers-A).
   // Impact: module state is created twice (two stores, registrations run
   // twice).
-  test.fails(
-    'a binding read by a computed-key option and a split option is created once',
-    async () => {
-      const route = await loadRoute(
-        `${head}import { init } from './state'
+  test('a binding read by a computed-key option and a split option is created once', async () => {
+    const route = await loadRoute(
+      `${head}import { init } from './state'
 const store = init({ count: 1 })
 const key = 'staticData'
 export const Route = createFileRoute('/')({
@@ -101,15 +99,14 @@ export const Route = createFileRoute('/')({
   component: () => <p>{store.count}</p>,
 })
 `,
-        { files: { 'state.ts': stateFile } },
-      )
-      expect(
-        await route.run(
-          `return [await render('component'), (await app('state.ts')).calls]`,
-        ),
-      ).toEqual(['<p>1</p>', 1])
-    },
-  )
+      { files: { 'state.ts': stateFile } },
+    )
+    expect(
+      await route.run(
+        `return [await render('component'), (await app('state.ts')).calls]`,
+      ),
+    ).toEqual(['<p>1</p>', 1])
+  })
 
   // Bug: a `var` nested in a statement, an enum or a namespace is not shared.
   // The `var` is missed because module bindings are collected from top-level
@@ -117,7 +114,7 @@ export const Route = createFileRoute('/')({
   // as the nested-block `var` pin in
   // start-plugin-core/tests/known-bugs-hydrate.test.ts.
   // Impact: the route throws a ReferenceError or runs the declaration per module.
-  test.fails.each([
+  test.each([
     {
       name: 'a var in an if block',
       declaration: `if (globalThis) { var value = init(1) }
@@ -186,7 +183,7 @@ export const Route = createFileRoute('/')({
   // Impact: the write throws (an import is read-only, or the moved binding is
   // not declared there) or runs after the shared declarations that it should
   // precede.
-  test.fails.each<{
+  test.each<{
     name: string
     filename?: string
     setup: string
@@ -306,7 +303,7 @@ export const Route = createFileRoute('/')({
   // option under a computed key, pinned above) is not shared: the chunk
   // declares its own copy.
   // Impact: module state is duplicated; the component reads another instance.
-  test.fails.each([
+  test.each([
     {
       name: 'a destructuring with one exported binding',
       declaration: `const { a, b } = init({ a: 'a', b: 'b' })
@@ -345,15 +342,6 @@ register(items)`,
     // below). A type that reads a value is no read at runtime (TypeScript
     // erases it), but the reference module keeps the declaration for it.
     {
-      name: 'a type alias that reads it',
-      // Source: real apps: route files that derive a type with
-      // `type FormValues = z.infer<typeof schema>`
-      declaration: `const value = init(1)
-type Value = typeof value`,
-      render: '{value satisfies Value}',
-      html: '<p>1</p>',
-    },
-    {
       // A second initialization in the chunk is another instance than the
       // one other modules import. Importing `cache` from the route module is
       // not enough: a chunk that declares the private `initial` again runs
@@ -391,6 +379,40 @@ export default store`,
       options: `  loader: () => typeof ui.Box,\n`,
       render: '<ui.Box />',
       html: '<p><b>box</b></p>',
+    },
+  ])(
+    'module state that the reference module keeps for $name is initialized once',
+    async ({ declaration, options = '', render, html }) => {
+      const route = await loadRoute(
+        `${head}import { init, register } from './state'
+${declaration}
+export const Route = createFileRoute('/')({
+${options}  component: () => <p>${render}</p>,
+})`,
+        { files: { 'state.ts': stateFile } },
+      )
+      expect(
+        await route.run(
+          `return [await render('component'), (await app('state.ts')).calls]`,
+        ),
+      ).toEqual([html, 1])
+    },
+  )
+
+  // The row below compiles like the rows above (the initializer moves to the
+  // chunk, SPEC G3) and passes alone and under COMPILER_TESTS_PINS=run, but
+  // in this file's order the page's `app('state.ts')` and the chunk get two
+  // instances of `state.ts` (a timestamped URL on one side): a harness
+  // sequencing issue to resolve, kept pinned until then.
+  test.fails.each([
+    {
+      name: 'a type alias that reads it',
+      // Source: real apps: route files that derive a type with
+      // `type FormValues = z.infer<typeof schema>`
+      declaration: `const value = init(1)
+type Value = typeof value`,
+      render: '{value satisfies Value}',
+      html: '<p>1</p>',
     },
   ])(
     'module state that the reference module keeps for $name is initialized once',
@@ -464,7 +486,7 @@ return [rendered, callsBeforeChunks, effects.calls]`),
   // plugin registrations); every chunk depends on and re-exports all of the
   // `export *` module through the opaque namespace of its dynamic import,
   // which defeats tree-shaking of it.
-  test.fails.each([
+  test.each([
     {
       name: 'an if statement',
       effect: `if (typeof globalThis === 'object') {
@@ -551,45 +573,42 @@ track(widget)`,
   // Bug: same root cause as above: every split chunk keeps the route file's
   // `export * from './lib'`.
   // Impact: every split chunk depends on and re-exports all of `./lib`.
-  test.fails(
-    'split chunks do not re-export a module-level export *, which importers of the route file still get',
-    async () => {
-      const route = await loadRoute(
-        `${head}export * from './lib'
+  test('split chunks do not re-export a module-level export *, which importers of the route file still get', async () => {
+    const route = await loadRoute(
+      `${head}export * from './lib'
 export const Route = createFileRoute('/')({
   component: () => <p>index</p>,
 })`,
-        {
-          files: {
-            'lib.ts': `export const x = 1\n`,
-            // Another module of the app imports a name the route file
-            // re-exports (SPEC G9, J2.4: through a real importer)
-            'importer.ts': `import { x } from './route'\nexport const v = x\n`,
-          },
+      {
+        files: {
+          'lib.ts': `export const x = 1\n`,
+          // Another module of the app imports a name the route file
+          // re-exports (SPEC G9, J2.4: through a real importer)
+          'importer.ts': `import { x } from './route'\nexport const v = x\n`,
         },
-      )
-      const { reExported, rendered } = await route.run<{
-        reExported: number
-        rendered: string
-      }>(`return {
+      },
+    )
+    const { reExported, rendered } = await route.run<{
+      reExported: number
+      rendered: string
+    }>(`return {
   reExported: (await app('importer.ts')).v,
   rendered: await render('component'),
 }`)
-      expect({
-        reExported,
-        rendered,
-        // What loading the component requests depends on `./lib` (SPEC J2.5: an
-        // unrelated module of the app, by the request it resolves to)
-        componentRequestsLib: (await route.loadedBy('component')).some((code) =>
-          dependencies(code).includes('/lib.ts'),
-        ),
-      }).toEqual({
-        reExported: 1,
-        rendered: '<p>index</p>',
-        componentRequestsLib: false,
-      })
-    },
-  )
+    expect({
+      reExported,
+      rendered,
+      // What loading the component requests depends on `./lib` (SPEC J2.5: an
+      // unrelated module of the app, by the request it resolves to)
+      componentRequestsLib: (await route.loadedBy('component')).some((code) =>
+        dependencies(code).includes('/lib.ts'),
+      ),
+    }).toEqual({
+      reExported: 1,
+      rendered: '<p>index</p>',
+      componentRequestsLib: false,
+    })
+  })
 
   // Bug: an ambient `declare const` is handled as a module binding. Read by
   // the loader and the split component, it is shared: the shared module
@@ -598,22 +617,18 @@ export const Route = createFileRoute('/')({
   // options read from the environment".)
   // Impact: the build fails with a missing export, e.g. for a constant
   // injected with Vite's `define`.
-  test.fails(
-    'an ambient declare const read by the loader and the split component stays a global',
-    async () => {
-      const route = await loadRoute(`${head}declare const APP_VERSION: string
+  test('an ambient declare const read by the loader and the split component stays a global', async () => {
+    const route = await loadRoute(`${head}declare const APP_VERSION: string
 export const Route = createFileRoute('/')({
   loader: () => APP_VERSION,
   component: () => <p>{APP_VERSION}</p>,
 })`)
-      expect(
-        await route.run(
-          `return [options.loader(), await render('component')]`,
-          { before: `globalThis.APP_VERSION = '1.0'` },
-        ),
-      ).toEqual(['1.0', '<p>1.0</p>'])
-    },
-  )
+    expect(
+      await route.run(`return [options.loader(), await render('component')]`, {
+        before: `globalThis.APP_VERSION = '1.0'`,
+      }),
+    ).toEqual(['1.0', '<p>1.0</p>'])
+  })
 })
 
 /** `./init`: `init` returns its argument and records it in `calls`. */
@@ -632,7 +647,7 @@ describe('top-level code nothing reads at runtime', () => {
   // Impact: what the initializer does when the route module loads
   // (registrations, analytics, polyfills) silently stops once code splitting
   // is on.
-  test.fails.each([
+  test.each([
     {
       name: 'a declaration only an exported type alias reads',
       setup: `const analytics = init('analytics')
@@ -664,28 +679,25 @@ export const Route = createFileRoute('/')({
   // route HMR plugin (automatic code splitting off), which runs the same
   // reference compiler. Source: review of #8504.
   // Impact: as above, in development without automatic code splitting.
-  test.fails(
-    'the initializer of a declaration only an exported type alias reads runs when a route module compiled for HMR loads',
-    async () => {
-      const route = await loadRoute(
-        `${head}import { init } from './init'
+  test('the initializer of a declaration only an exported type alias reads runs when a route module compiled for HMR loads', async () => {
+    const route = await loadRoute(
+      `${head}import { init } from './init'
 const analytics = init('analytics')
 export type Analytics = typeof analytics
 export const Route = createFileRoute('/')({
   component: () => <p>component</p>,
 })
 `,
-        {
-          // The composed plugin's route HMR plugin compiles it in dev
-          pluginOptions: { autoCodeSplitting: false },
-          files: { 'init.ts': initFile },
-        },
-      )
-      expect(await route.run(`return (await app('init.ts')).calls`)).toEqual([
-        'analytics',
-      ])
-    },
-  )
+      {
+        // The composed plugin's route HMR plugin compiles it in dev
+        pluginOptions: { autoCodeSplitting: false },
+        files: { 'init.ts': initFile },
+      },
+    )
+    expect(await route.run(`return (await app('init.ts')).calls`)).toEqual([
+      'analytics',
+    ])
+  })
 })
 
 describe('page code left in the route module', () => {
@@ -718,7 +730,7 @@ describe('page code left in the route module', () => {
   // frontend_old/src/routes/_layout/chat.tsx; #8504
   // (code-splitter-dead-code.test.ts), where they pass.
   // Impact: the page's code and dependencies load with the entry chunk.
-  test.fails.each([
+  test.each([
     {
       name: 'a type of the same name',
       code: `type Panel = 'a' | 'b'
@@ -803,7 +815,7 @@ describe('split route options', () => {
   // module on purpose still has this bug.
   // Impact: the loader's code loads with the entry chunk, or the route
   // cannot be built.
-  test.fails.each([
+  test.each([
     { name: 'an arrow handler', loader: `{ handler: () => 'MARK_handler' }` },
     {
       name: 'a method handler',
@@ -851,7 +863,7 @@ export const Route = createFileRoute('/')({
   // module state the handler, those keys and the split component read must
   // be created once.
   // Impact: the route cannot be built once the loader is split.
-  test.fails.each([
+  test.each([
     {
       name: 'what the handler and the split component each read',
       code: `import { createStore, createTheme } from './store'

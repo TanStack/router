@@ -258,13 +258,13 @@ describe('vite', () => {
 // Impact: stack traces, devtools and error trackers point at lines of the
 // generated split module (here line 3 instead of line 5 of the route file).
 describe.each(['rspack', 'webpack'] as const)('%s', (bundler) => {
-  test.fails.each(builds)(
+  test.each(builds)(
     'a throw in a split component maps to its line in the route file ($name)',
     (options) => expectThrowMapsToRouteFile(bundler, options),
     timeout,
   )
 
-  test.fails.each(moduleThrows)(
+  test.each(moduleThrows)(
     'a throw in $name maps to its line and column in the route file',
     ({ route: source, marker }) =>
       expectModuleThrowMapsToRouteFile(bundler, source, marker),

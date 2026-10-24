@@ -519,7 +519,7 @@ export const Route = (() =>
   // Source: review of #8504.
   // Impact: the route throws when it renders or loads, or silently renders
   // the wrong component.
-  it.fails.each([
+  it.each([
     {
       name: 'a component the factory receives, shadowing a module-level component',
       route: `function Comp() {
