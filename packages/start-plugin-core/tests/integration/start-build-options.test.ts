@@ -17,6 +17,7 @@ import {
   callByIdPrelude,
   startBundlers,
 } from '../build-harness'
+import { solidAppConfig } from './hydrate-pages'
 import type { StartBuild } from '../build-harness'
 
 const timeout = 60_000
@@ -62,7 +63,8 @@ function typeCheck(root: string, files: Array<string>) {
  */
 const registerChecks = (
   withConfig: boolean,
-) => `import type { Register } from '@tanstack/react-start'
+  framework: 'react' | 'solid',
+) => `import type { Register } from '@tanstack/${framework}-start'
 type Equal<A, B> =
   (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
     ? true
@@ -268,22 +270,26 @@ return {
 
   // Source: mutation testing (the footer Start adds to the
   // route tree was never type-checked).
+  // The footer augments the Start package of the app's framework.
   test.each([
-    { name: 'with', withStart: true },
-    { name: 'without', withStart: false },
-  ])(
-    'the route tree registers the router and Start config ($name src/start.ts) for TypeScript, and keeps the router.routeTreeFileFooter',
-    async ({ withStart }) => {
+    { name: 'with', withStart: true, framework: 'react' },
+    { name: 'without', withStart: false, framework: 'react' },
+    { name: 'with', withStart: true, framework: 'solid' },
+  ] as const)(
+    'the route tree registers the router and Start config ($framework, $name src/start.ts) for TypeScript, and keeps the router.routeTreeFileFooter',
+    async ({ withStart, framework }) => {
       const { ssr } = await buildStart({
         bundler,
+        framework,
+        ...(framework === 'solid' && solidAppConfig),
         files: {
-          'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+          'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/${framework}-router'
 export const Route = createRootRoute()
 `,
-          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/${framework}-router'
 export const Route = createFileRoute('/')({ component: () => null })
 `,
-          'src/router.ts': `import { createRouter } from '@tanstack/react-router'
+          'src/router.ts': `import { createRouter } from '@tanstack/${framework}-router'
 import { routeTree } from './routeTree.gen'
 export const getRouter = async () =>
   Object.assign(createRouter({ routeTree }), { brand: 'ROUTER' as const })
@@ -306,7 +312,7 @@ export const getRouter = async () =>
       )
       await writeFile(
         path.join(ssr.root, 'src/check.ts'),
-        registerChecks(withStart),
+        registerChecks(withStart, framework),
       )
       expect(
         typeCheck(ssr.root, ['src/routeTree.gen.ts', 'src/check.ts']),
