@@ -12,6 +12,7 @@ import { computePlacement } from './reach'
 import { RewriteSet } from './rewrite'
 import { specifierLiteral } from './strings'
 import { statementRecipe } from './units'
+import { isLineTerminator } from './header'
 import type {
   Fallback,
   HeaderPolicy,
@@ -194,6 +195,8 @@ export class AnalysisPlan implements PlanContext {
     SymbolId,
     { to: RefTarget; names: Array<string>; units: Array<UnitId> }
   >()
+  /** Module-wide renames (`renameRefs`): the symbol glue and generated text name instead. */
+  readonly renames = new Map<SymbolId, SymbolId>()
   config: unknown = undefined
 
   constructor(
@@ -294,8 +297,17 @@ export class AnalysisPlan implements PlanContext {
   }
 
   /** Renames every reference and declaration of `sym` (R14, R38, §3.17). */
+  /** The binding name a symbol renders as (after module-wide renames). */
+  nameOf(sym: SymbolId): string {
+    const to = this.renames.get(sym)
+    return this.symbols.name(to ?? sym)
+  }
+
   renameRefs(sym: SymbolId, to: RefTarget, scope: EditScope, by: string): void {
     const { refs, units, declaringUnits } = this.t1
+    if ('sym' in to) {
+      this.renames.set(sym, to.sym)
+    }
     for (const ref of refs.refsOf(sym)) {
       if (ref.kind === 'implicitJsxFactory') {
         continue
@@ -304,10 +316,25 @@ export class AnalysisPlan implements PlanContext {
     }
     const exportNames: Array<string> = []
     const renamedUnits: Array<UnitId> = []
+    const code = this.analysis.source.code
+    const name = this.symbols.name(sym)
     for (const uid of declaringUnits.get(sym) ?? []) {
       const u = units[uid]!
       for (const r of u.declNameRanges) {
-        this.rewrites.declName(r, to, scope, by)
+        if (code.slice(r.start, r.end) !== name) {
+          continue // another binding of the same declarator (destructuring)
+        }
+        if (this.isShorthandPatternName(r)) {
+          // `const { a } = …` / `{ a = d }`: the key stays, the binding is renamed
+          this.rewrites.add({
+            range: r,
+            body: [{ k: 'ref', range: r, to, ctx: 'shorthandPattern' }],
+            scope,
+            by,
+          })
+        } else {
+          this.rewrites.declName(r, to, scope, by)
+        }
       }
       const item = this.t1.items[u.item]!
       if (item.exportKeyword !== null && u.exported.length > 0) {
@@ -315,7 +342,9 @@ export class AnalysisPlan implements PlanContext {
           if (name === 'default' && item.kind === 'ExportDefaultDeclaration') {
             continue // `export default function a` keeps `export default`
           }
-          exportNames.push(name)
+          if (!exportNames.includes(name)) {
+            exportNames.push(name) // overloads: one export per name
+          }
         }
         renamedUnits.push(uid)
       }
@@ -327,6 +356,19 @@ export class AnalysisPlan implements PlanContext {
         units: renamedUnits,
       })
     }
+  }
+
+  /** Whether a declaration name is the shorthand of an object pattern property (`{ a }`, `{ a = d }`). */
+  private isShorthandPatternName(r: Range): boolean {
+    const node = this.t1.nodeAt(r.start)
+    if (!node || node.start !== r.start || node.end !== r.end) {
+      return false
+    }
+    let parent = this.t1.parentOf(node)
+    if (parent?.type === 'AssignmentPattern' && parent.left === node) {
+      parent = this.t1.parentOf(parent)
+    }
+    return parent?.type === 'Property' && parent.shorthand === true
   }
 
   /** The core phase after all planners: placement over the live rewrite tree. */
@@ -389,11 +431,11 @@ export class AnalysisPlan implements PlanContext {
           if (existing !== null && !this.exportedRenames.has(s)) {
             name = existing
           } else {
-            name = this.names.allocExportName(symbols.name(s))
+            name = this.names.allocExportName(this.nameOf(s))
             glueExports.add(s)
           }
         } else {
-          name = symbols.name(s)
+          name = this.nameOf(s)
         }
         map.set(s, name)
       }
@@ -581,6 +623,19 @@ export class AnalysisPlan implements PlanContext {
         internal: true,
       })
     }
+    // text appended at the end starts on its own line
+    if (
+      code.length > 0 &&
+      !isLineTerminator(code.charCodeAt(code.length - 1))
+    ) {
+      const atEnd = extra
+        .filter((e) => e.range.start === code.length && e.body.length > 0)
+        .sort((a, b) => a.seq - b.seq)
+      const first = atEnd[0]
+      if (first) {
+        first.body = [{ k: 'text', parts: ['\n'] }, ...first.body]
+      }
+    }
     const tree = rewrites.tree('env', extra)
     renderer.setTree(tree)
     const out: Array<Segment> = []
@@ -644,9 +699,8 @@ export class AnalysisPlan implements PlanContext {
         const names = [...syms]
           .sort((a, b) => a - b)
           .map((s) => {
-            const exported =
-              exportNameOf.get(home)?.get(s) ?? this.symbols.name(s)
-            const local = this.symbols.name(s)
+            const exported = exportNameOf.get(home)?.get(s) ?? this.nameOf(s)
+            const local = this.nameOf(s)
             return exported === local ? local : `${exported} as ${local}`
           })
         frags.push({
@@ -696,7 +750,7 @@ export class AnalysisPlan implements PlanContext {
         if (glueExports !== null && !glueExports.has(s)) {
           continue
         }
-        const local = this.symbols.name(s)
+        const local = this.nameOf(s)
         parts.push(exported === local ? local : `${local} as ${exported}`)
       }
     }
@@ -1224,14 +1278,13 @@ class Renderer {
   }
 
   private targetText(to: RefTarget, env: SubstEnv | null): string {
-    const symbols = this.plan.symbols
     if ('sym' in to) {
       const sub = env?.get(to.sym)
-      return sub ? this.targetText(sub, null) : symbols.name(to.sym)
+      return sub ? this.targetText(sub, null) : this.plan.nameOf(to.sym)
     }
     const [root, ...path] = to.member
     const sub = env?.get(root)
-    const rootText = sub ? this.targetText(sub, null) : symbols.name(root)
+    const rootText = sub ? this.targetText(sub, null) : this.plan.nameOf(root)
     return [rootText, ...path].join('.')
   }
 

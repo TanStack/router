@@ -6,6 +6,7 @@ import {
   toyEnvPlanner,
   toySplitPlanner,
 } from './helpers'
+import type { Planner } from '../src/compiler'
 
 async function split(
   code: string,
@@ -69,6 +70,182 @@ describe('clusters and the single-writer rule (A1)', () => {
     })
     expect(r.env).toContain('component: () => { count++; return count }')
     expect(r.chunks.component).toBe('export {}\n')
+  })
+})
+
+describe('copyable clusters (impl-notes #6, lane router)', () => {
+  it('duplicates an import specifier only where an included cluster reads it, not through an env-homed cluster', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { fetchPosts } from './api'
+      function Posts() {
+        return Route.useLoaderData().length
+      }
+      export const Route = createFileRoute('/posts')({
+        loader: () => fetchPosts(),
+        component: Posts,
+      })
+    `)
+    const r = await split(code)
+    expect(r.chunks.component).toContain('function Posts()')
+    expect(r.chunks.component).toContain("import { Route } from './route.tsx'")
+    expect(r.chunks.component).not.toContain('fetchPosts')
+    expect(r.chunks.component).not.toContain('createFileRoute')
+    expect(r.env).toContain("import { fetchPosts } from './api'")
+  })
+})
+
+describe('glue and renames (lane router)', () => {
+  it('names a renamed binding in the export and import glue', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      const page = () => 'x'
+      export const Route = createFileRoute('/')({
+        component: page,
+        pendingComponent: page,
+      })
+    `)
+    const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+    const rename: Planner = {
+      name: 'toy-rename',
+      tier: 1,
+      gate: () => true,
+      prepare(ctx) {
+        const sym = ctx.analysis.exports.length
+          ? ctx.t1.units.find(
+              (u) =>
+                u.kind === 'declaration' &&
+                ctx.symbols.name(u.declares[0]!) === 'page',
+            )!.declares[0]!
+          : null
+        if (sym !== null) {
+          const next = ctx.names.alloc('TsrPendingComponent')
+          ctx.renameRefs(sym, { sym: next.sym }, 'all-outputs', 'toy-rename')
+        }
+      },
+      plan() {},
+    }
+    const planners = [toySplitPlanner(), rename]
+    const main = await host.compile('/app/route.tsx', planners)
+    const chunk = await host.compile(
+      '/app/route.tsx?tsr-split=component',
+      planners,
+    )
+    expect(main?.code).toContain('const TsrPendingComponent = ')
+    expect(main?.code).not.toContain('page')
+    expect(main?.code).toContain('export { TsrPendingComponent }')
+    expect(chunk?.code).toContain(
+      "import { TsrPendingComponent } from './route.tsx'",
+    )
+    expect(chunk?.code).not.toContain('page')
+  })
+
+  it('renames an exported overloaded function with one export specifier', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      export function page(): string
+      export function page() { return 'x' }
+      export const Route = createFileRoute('/')({ pendingComponent: page })
+    `)
+    const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+    const rename: Planner = {
+      name: 'toy-rename',
+      tier: 1,
+      gate: () => true,
+      prepare(ctx) {
+        const unit = ctx.t1.units.find(
+          (u) =>
+            u.kind === 'declaration' &&
+            ctx.symbols.name(u.declares[0]!) === 'page',
+        )!
+        const next = ctx.names.alloc('TsrPendingComponent')
+        ctx.renameRefs(
+          unit.declares[0]!,
+          { sym: next.sym },
+          'all-outputs',
+          'toy-rename',
+        )
+      },
+      plan() {},
+    }
+    const main = await host.compile('/app/route.tsx', [
+      toySplitPlanner(),
+      rename,
+    ])
+    expect(main?.code).toContain('function TsrPendingComponent(): string')
+    expect(main?.code).toContain(
+      "function TsrPendingComponent() { return 'x' }",
+    )
+    expect(main?.code.match(/as page/g)?.length).toBe(1)
+  })
+
+  it('renames a destructured binding by keeping its pattern key', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      const { read, render = fallback } = makeHelpers()
+      export const Route = createFileRoute('/')({
+        loader: () => read(),
+        component: () => render(),
+        pendingComponent: render,
+      })
+    `)
+    const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+    const rename: Planner = {
+      name: 'toy-rename',
+      tier: 1,
+      gate: () => true,
+      prepare(ctx) {
+        const unit = ctx.t1.units.find(
+          (u) =>
+            u.kind === 'declaration' &&
+            u.declares.some((d) => ctx.symbols.name(d) === 'render'),
+        )!
+        const sym = unit.declares.find((d) => ctx.symbols.name(d) === 'render')!
+        const next = ctx.names.alloc('TsrPendingComponent')
+        ctx.renameRefs(sym, { sym: next.sym }, 'all-outputs', 'toy-rename')
+      },
+      plan() {},
+    }
+    const planners = [toySplitPlanner(), rename]
+    const main = await host.compile('/app/route.tsx', planners)
+    const chunk = await host.compile(
+      '/app/route.tsx?tsr-split=component',
+      planners,
+    )
+    expect(main?.code).toContain(
+      'const { read, render: TsrPendingComponent = fallback } = makeHelpers()',
+    )
+    expect(main?.code).toContain('pendingComponent: TsrPendingComponent')
+    expect(chunk?.code).toContain(
+      "import { TsrPendingComponent } from './route.tsx'",
+    )
+    expect(chunk?.code).toContain('() => TsrPendingComponent()')
+  })
+
+  it('starts end glue on its own line when the source has no trailing newline', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      export const Route = createFileRoute('/')({
+        component: () => 'x',
+      })`).replace(/\n$/, '')
+    const r = await split(code)
+    expect(r.env.endsWith('})\n')).toBe(true)
+  })
+
+  it('keeps a license comment above a moved component in the env module only (G12)', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      /** @license Example Corp. | MIT License */
+      function Page() {
+        return 'page'
+      }
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await split(code)
+    expect(r.env).toContain('/** @license Example Corp. | MIT License */')
+    expect(r.env).not.toContain('function Page()')
+    expect(r.chunks.component).toContain('function Page()')
+    expect(r.chunks.component).not.toContain('@license')
   })
 })
 

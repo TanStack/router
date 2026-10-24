@@ -1099,14 +1099,13 @@ export function computePlacement(input: PlacementInput): Placement {
       continue
     }
     if (h === 'duplicate') {
-      for (const o of S) {
-        included.get(o)!.add(cl.id)
-      }
+      // placed by the loop below: only where an included cluster reads it, not in
+      // every output that reaches it through a cluster homed elsewhere
       continue
     }
     included.get(h)!.add(cl.id)
   }
-  // duplicated clusters follow their readers into every output that includes a reader (shared modules)
+  // duplicated clusters follow their readers into every output that includes a reader
   for (let round = 0; round < 4; round++) {
     let changed = false
     for (const o of allOutputs) {

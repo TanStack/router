@@ -8,7 +8,7 @@
  * chains).
  */
 import { BindingFlags, bindingIdentifiers } from 'yuku'
-import { extendOverTrailingLine } from './header'
+import { extendOverTrailingLine, isLicenseComment } from './header'
 import {
   hasNoSideEffectsAnnotation,
   isPrimitiveLiteral,
@@ -289,7 +289,20 @@ export function buildItems(
   let prevEnd = header.end
   for (let i = header.directiveCount; i < body.length; i++) {
     const node = body[i]!
-    const start = Math.min(prevEnd, node.start)
+    let start = Math.min(prevEnd, node.start)
+    // license comments belong to no item: they stay in the env module and
+    // never travel into a derived output (G12)
+    for (const c of file.comments) {
+      if (c.start < start) {
+        continue
+      }
+      if (c.end > node.start) {
+        break
+      }
+      if (isLicenseComment(c)) {
+        start = Math.min(node.start, extendOverTrailingLine(code, c.end))
+      }
+    }
     const end = extendOverTrailingLine(code, node.end)
     const nodeRange = { start: node.start, end: node.end }
     let shape: ItemShape = 'single'
