@@ -260,6 +260,29 @@ describe('needers and homes (§3.5.2)', () => {
     )
   })
 
+  it('copies an import only into outputs that read it, not into one importing its reader', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { fmt } from './fmt'
+      import { other } from './other'
+      export function exported() { return fmt(1) }
+      export const Route = createFileRoute('/')({
+        component: () => exported() + other(),
+      })
+    `)
+    const r = await split(code)
+    expect(r.chunks.component).toBe(
+      dedent(`
+      import { exported } from './route.tsx'
+      import { other } from './other'
+      const TsrSplitComponent = () => exported() + other()
+      export { TsrSplitComponent as component }
+    `),
+    )
+    expect(r.env).toContain("import { fmt } from './fmt'")
+    expect(r.env).not.toContain("from './other'")
+  })
+
   it('allocates collision-free names from the file universe (D10)', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'

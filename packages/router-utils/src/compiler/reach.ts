@@ -1119,8 +1119,12 @@ export function computePlacement(input: PlacementInput): Placement {
       continue
     }
     if (h === 'duplicate') {
+      // a copy goes where it is rooted, and follows its direct readers (below): a needer that
+      // reaches it only through a cluster it imports from elsewhere does not copy it
       for (const o of S) {
-        included.get(o)!.add(cl.id)
+        if ((o === 'env' ? envRoots : derivedRoots.get(o))?.has(cl.id)) {
+          included.get(o)!.add(cl.id)
+        }
       }
       continue
     }
