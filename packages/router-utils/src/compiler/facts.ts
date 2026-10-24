@@ -167,14 +167,14 @@ export class RawFactsCache {
   /** The synthetic facts of a known package specifier: its factory exports, side-effect free. */
   private knownFacts(specifier: string): RawFacts {
     const table = this.opts.recognizer ?? EMPTY_RECOGNIZER
-    const exports: ModuleSummary['exports'] = {}
+    const exportFacts: ModuleSummary['exports'] = {}
     for (const [name, kind] of Object.entries(
       table.factories[specifier] ?? {},
     )) {
       const value: AbstractValue = { t: 'factory', kind }
-      exports[name] = { kind: 'local', value, noSideEffects: true }
+      exportFacts[name] = { kind: 'local', value, noSideEffects: true }
     }
-    const exportNames = Object.keys(exports).sort()
+    const exportNames = Object.keys(exportFacts).sort()
     const digest = digestOf({ known: specifier, exports: exportNames })
     const tf: Omit<TargetFacts, 'digest'> = {
       exists: true,
@@ -189,7 +189,7 @@ export class RawFactsCache {
       summary: {
         canonicalId: specifier,
         rawRevision: digest,
-        exports,
+        exports: exportFacts,
         stars: [],
         isoImplExports: {},
         marker: null,

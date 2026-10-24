@@ -13,10 +13,10 @@ import { startRecognizer } from '../compiler/recognizer'
 import { startAnalysisOf, unwrapNode } from '../compiler/start-analysis'
 import type {
   Frag,
+  YukuNode as Node,
   PlanContext,
   Planner,
   Range,
-  YukuNode as Node,
 } from '@tanstack/router-utils/compiler'
 
 export const RSC_CSS = 'rsc-css'

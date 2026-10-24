@@ -77,19 +77,16 @@ export function createInterimHydrate(opts: {
         sourceFileName: id,
         filename: id,
       })
-      let map: RawSourceMap | null =
-        (result.map as unknown as RawSourceMap) ?? null
-      if (map) {
-        ;(map as { sourcesContent?: Array<string> }).sourcesContent = [code]
-        if (inputMap) {
-          map = remapping(
-            [
-              map as unknown as SourceMapInput,
-              inputMap as unknown as SourceMapInput,
-            ],
-            () => null,
-          ) as unknown as RawSourceMap
-        }
+      let map = result.map as unknown as RawSourceMap
+      ;(map as { sourcesContent?: Array<string> }).sourcesContent = [code]
+      if (inputMap) {
+        map = remapping(
+          [
+            map as unknown as SourceMapInput,
+            inputMap as unknown as SourceMapInput,
+          ],
+          () => null,
+        ) as unknown as RawSourceMap
       }
       return { code: result.code, map }
     },

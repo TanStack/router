@@ -3,7 +3,11 @@ import { normalizePath } from 'vite'
 import { dirname, relative } from 'pathe'
 
 import { escapeRegExp, resolveViteId } from '../../utils'
-import { SERVER_FN_LOOKUP, VITE_ENVIRONMENT_NAMES } from '../../constants'
+import {
+  COMPILER_RESOLVE_CUSTOM_KEY,
+  SERVER_FN_LOOKUP,
+  VITE_ENVIRONMENT_NAMES,
+} from '../../constants'
 import { hasIdQueryFlag } from '../module-id'
 import {
   ImportGraph,
@@ -1171,10 +1175,6 @@ export function importProtectionPlugin(
       if (filtered === 'await-transform') continue
 
       const { active, edgeSurvivalApplied } = filtered
-      const isBundledClientDev =
-        config.command === 'serve' &&
-        config.bundledDev &&
-        active.some((pv) => pv.info.envType === 'client')
       // Wait for entries before running reachability.  registerEntries()
       // populates entries at buildStart; resolveId(!importer) may add more.
       let status: 'reachable' | 'unreachable' | 'unknown'
@@ -1190,13 +1190,12 @@ export function importProtectionPlugin(
         }
         toDelete.push(file)
       } else if (status === 'unreachable') {
-        if (isBundledClientDev) {
-          // Bundled dev can transform a child before its route/importer has
-          // recorded the source edge.  Keep confirmed-surviving violations
-          // pending until a real source importer makes them reachable.
-          continue
-        }
-        toDelete.push(file)
+        // A module can be transformed before an importer has recorded the
+        // source edge (bundled dev, overlapping requests, `server.warmup`, an
+        // edit: its importers are not transformed again).  Keep surviving
+        // violations pending until a real source importer makes them
+        // reachable; the next transform runs this check again.
+        continue
       } else if (config.command === 'serve') {
         // 'unknown' reachability — some graph edges lack transform data.
         // When edge-survival was applied, surviving violations are confirmed
@@ -1553,6 +1552,15 @@ export function importProtectionPlugin(
           },
         },
         async handler(source, importer, _options) {
+          // The compiler's recognition-time resolutions (summaries of imported
+          // modules) are not import edges: no evidence, no violation (J6).
+          if (
+            (_options.custom as Record<string, unknown> | undefined)?.[
+              COMPILER_RESOLVE_CUSTOM_KEY
+            ]
+          ) {
+            return undefined
+          }
           perf?.count('resolveId.calls')
           const envName = this.environment.name
           const env = getEnv(envName)

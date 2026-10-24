@@ -19,7 +19,6 @@ import type {
   ModuleAnalysis,
   PrefetchContext,
   RecognizerTable,
-  YukuNode as Node,
 } from '@tanstack/router-utils/compiler'
 
 /** Phase A result: `${specifier}\0${name}` → value, for this module's imports. */

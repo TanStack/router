@@ -17,10 +17,10 @@ import type { StartPrefetch } from './prefetch'
 import type {
   AbstractValue,
   ModuleAnalysis,
+  YukuNode as Node,
   PlanContext,
   RecognizerTable,
   SymbolId,
-  YukuNode as Node,
 } from '@tanstack/router-utils/compiler'
 
 export type CallNode = Extract<Node, { type: 'CallExpression' }>
@@ -105,7 +105,7 @@ function isWrapper(n: Node): boolean {
 
 export function unwrapNode(n: Node): Node {
   let cur = n
-  while (true) {
+  for (;;) {
     switch (cur.type) {
       case 'ParenthesizedExpression':
       case 'TSAsExpression':

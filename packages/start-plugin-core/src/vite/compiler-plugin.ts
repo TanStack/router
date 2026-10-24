@@ -26,7 +26,11 @@ import {
   identify,
   invalidate,
 } from '@tanstack/router-utils/compiler'
-import { TRANSFORM_ID_REGEX, VITE_ENVIRONMENT_NAMES } from '../constants'
+import {
+  COMPILER_RESOLVE_CUSTOM_KEY,
+  TRANSFORM_ID_REGEX,
+  VITE_ENVIRONMENT_NAMES,
+} from '../constants'
 import { startRecognizer } from '../compiler/recognizer'
 import { START_ENV, startPlanners } from '../planners'
 import { FunctionIdAllocator, decodeDevFunctionId } from '../server-fns/ids'
@@ -37,9 +41,9 @@ import {
   devResolverModule,
   productionResolverModule,
 } from '../server-fns/resolver'
+import { MissingHydrateSourceError } from '../hydrate-when-transform'
 import { createVirtualModule } from './createVirtualModule'
 import { createInterimHydrate } from './hydrate-interim'
-import { MissingHydrateSourceError } from '../hydrate-when-transform'
 import type { InterimHydrateEnv } from './hydrate-interim'
 import type { GenerateFunctionId } from '../server-fns/ids'
 import type { ServerFnEntry } from '../server-fns/registry'
@@ -54,7 +58,6 @@ import type {
   RawSourceMap,
 } from '@tanstack/router-utils/compiler'
 import type {
-  DevEnvironment,
   Environment,
   EnvironmentModuleNode,
   Plugin,
@@ -216,12 +219,15 @@ export function startCompilerPlugin(
     resolve: (
       source: string,
       importer?: string,
-      options?: { skipSelf?: boolean },
+      options?: { skipSelf?: boolean; custom?: Record<string, unknown> },
     ) => Promise<{ id: string; external?: boolean | string } | null>
     environment: Environment
   }): HostServices => ({
     resolve: async (specifier, importer) => {
-      const r = await ctx.resolve(specifier, importer, { skipSelf: true })
+      const r = await ctx.resolve(specifier, importer, {
+        skipSelf: true,
+        custom: { [COMPILER_RESOLVE_CUSTOM_KEY]: true },
+      })
       if (!r) {
         return null
       }
@@ -323,16 +329,14 @@ export function startCompilerPlugin(
         const environment = this.environment
         virtualLoaders.set(env.name, async (id) => {
           if (environment.mode === 'dev') {
-            const loaded = await (
-              environment as DevEnvironment
-            ).pluginContainer.load(id)
+            const loaded = await environment.pluginContainer.load(id)
             if (loaded === null || loaded === undefined) {
               return null
             }
-            return typeof loaded === 'string' ? loaded : (loaded.code ?? null)
+            return typeof loaded === 'string' ? loaded : loaded.code
           }
           const info = await this.load({ id })
-          return info.code ?? null
+          return info.code
         })
       },
       transform: {
@@ -364,9 +368,9 @@ export function startCompilerPlugin(
               env: envInfo,
               planners: plannersFor(env),
               config: configFor(envInfo),
-              wantMap:
-                envInfo.mode === 'dev' ||
-                environment.config.build.sourcemap !== false,
+              // always: downstream plugins read positions through the combined map (import
+              // protection's reported locations), whatever `build.sourcemap` says
+              wantMap: true,
             },
             host,
             caches,
@@ -428,6 +432,7 @@ export function startCompilerPlugin(
               const r = await environment.pluginContainer.resolveId(
                 specifier,
                 importer,
+                { custom: { [COMPILER_RESOLVE_CUSTOM_KEY]: true } },
               )
               return r ? { id: r.id, external: r.external === true } : null
             },
@@ -438,7 +443,7 @@ export function startCompilerPlugin(
             warnings,
           })
           invalidations.set(key, pending)
-          setTimeout(() => invalidations.delete(key), 10_000).unref?.()
+          setTimeout(() => invalidations.delete(key), 10_000).unref()
         }
         const res = await pending
         hydrate.invalidate(ctx.file, env.name)
@@ -479,7 +484,7 @@ export function startCompilerPlugin(
             : change.event === 'create'
               ? 'add'
               : 'change'
-        const environment = this.environment as DevEnvironment
+        const environment = this.environment
         const res = await invalidate(
           caches,
           { path: id, kind },
@@ -488,6 +493,7 @@ export function startCompilerPlugin(
               const r = await environment.pluginContainer.resolveId(
                 specifier,
                 importer,
+                { custom: { [COMPILER_RESOLVE_CUSTOM_KEY]: true } },
               )
               return r ? { id: r.id, external: r.external === true } : null
             },
@@ -572,9 +578,7 @@ export function startCompilerPlugin(
         const key = decodeDevFunctionId(fnId)
         if (key && this.environment.mode === 'dev') {
           const abs = path.resolve(root, key.rootRel)
-          await (this.environment as DevEnvironment)
-            .transformRequest(abs)
-            .catch(() => null)
+          await this.environment.transformRequest(abs).catch(() => null)
           entry = registry.get(fnId)
         }
       }
@@ -648,7 +652,7 @@ export function startCompilerPlugin(
           this.environment.mode === 'dev' &&
           !(bundledDev && env.type === 'client')
         ) {
-          await (this.environment as DevEnvironment).transformRequest(sourceId)
+          await this.environment.transformRequest(sourceId)
         } else {
           await this.load({ id: sourceId })
         }

@@ -16,7 +16,7 @@ import {
   stringLiteral,
   walk,
 } from '@tanstack/router-utils/compiler'
-import { startRecognizer, runtimeSpecifiers } from '../compiler/recognizer'
+import { runtimeSpecifiers, startRecognizer } from '../compiler/recognizer'
 import { prefetchStartValues } from '../compiler/prefetch'
 import { startAnalysisOf, unwrapNode } from '../compiler/start-analysis'
 import {
@@ -31,13 +31,13 @@ import type {
   EditScope,
   Frag,
   GenUnitId,
+  YukuNode as Node,
   OutputId,
   PlanContext,
   Planner,
   Range,
   SymbolId,
   Unit,
-  YukuNode as Node,
 } from '@tanstack/router-utils/compiler'
 import type { CompileStartFrameworkOptions } from '../types'
 
@@ -687,10 +687,20 @@ function planStartEnv(
           : defaultFunctionId(key)
     const name = site.exportName ?? site.base
     const h = site.handler
-    // the provider's export name, allocated identically in every env (the resolver is generated from the client's registry)
-    const exportName = names.allocExportName(
-      `${identifierBase(site.stableKey)}_createServerFn_handler`,
-    )
+    // the provider wrapper's name: a binding and an export of the same name (an export list
+    // `export { name }` survives tools that re-export bindings by their local name), allocated
+    // identically in every env (the resolver is generated from the client's registry)
+    const wrapperBase = `${identifierBase(site.stableKey)}_createServerFn_handler`
+    let wrapperName = wrapperBase
+    for (
+      let n = 1;
+      !(names.isFree(wrapperName) && names.isExportNameFree(wrapperName));
+      n++
+    ) {
+      wrapperName = `${wrapperBase}$${n}`
+    }
+    const rpcLocal = names.alloc(wrapperName)
+    const exportName = names.allocExportName(wrapperName)
     const providerDerived = config.providerSeparate && useClient
     if (role === 'client') {
       const rpc = glueImport(specs.clientRpc, 'createClientRpc', 'tsrClientRpc')
@@ -723,7 +733,6 @@ function planStartEnv(
       }
     }
     // provider: the handler stays in place next to a generated createServerRpc export
-    const rpcLocal = names.alloc(`tsrRpc$${identifierBase(site.base)}`)
     const serverRpc = glueImport(
       specs.serverRpc,
       'createServerRpc',
@@ -766,7 +775,7 @@ function planStartEnv(
           { sym: opts.sym },
           '))\nexport { ',
           { sym: rpcLocal.sym },
-          ` as ${exportName} }\n`,
+          ' }\n',
         ),
       ],
       declares: [rpcLocal.sym],
@@ -783,6 +792,29 @@ function planStartEnv(
     facts.serverFns.push(
       serverFnFact(site, id, name, exportName, providerDerived, rootRel),
     )
+  }
+
+  // the in-place provider accepts its own hot updates in development (J4.15): an edit of a
+  // module only its handlers read reaches the next call without an SSR full reload
+  if (
+    role === 'provider' &&
+    !providerOut &&
+    ctx.env.mode === 'dev' &&
+    facts.serverFns.length > 0
+  ) {
+    const accept = rewrites.addGenerated({
+      body: [
+        text(
+          '\nif (import.meta.hot) {\n  import.meta.hot.accept(() => {})\n}\n',
+        ),
+      ],
+      declares: [],
+      effectful: true,
+      anchor: { k: 'end' },
+      home: 'auto',
+      by,
+    })
+    ctx.addRoot('env', { t: 'gen', id: accept })
   }
 
   // ---- 6. unsupported uses (leak-prone on the client)
@@ -903,10 +935,10 @@ function hoist(
     )
   }
   // this / arguments / super / new.target / await / yield owned by an enclosing function
-  let owned: Node | null = null
+  const found: { node: Node | null } = { node: null }
   walk(X, {
     enter: (n, wctx) => {
-      if (owned) {
+      if (found.node) {
         wctx.stop()
         return
       }
@@ -934,12 +966,12 @@ function hoist(
         case 'ThisExpression':
         case 'Super':
           if (!inFn) {
-            owned = n
+            found.node = n
           }
           break
         case 'MetaProperty':
           if (!inFn && n.meta.name === 'new') {
-            owned = n
+            found.node = n
           }
           break
         case 'Identifier':
@@ -948,13 +980,13 @@ function hoist(
             !inFn &&
             !file.referenceOf(n)?.binding
           ) {
-            owned = n
+            found.node = n
           }
           break
         case 'AwaitExpression':
         case 'YieldExpression':
           if (!inAnyFn) {
-            owned = n
+            found.node = n
           }
           break
         default:
@@ -962,8 +994,8 @@ function hoist(
       }
     },
   })
-  if (owned) {
-    const o = owned as Node
+  if (found.node) {
+    const o = found.node
     return refuse(
       'A server function nested in a function cannot be compiled when its code uses `this`, `arguments`, `super`, `new.target`, `await` or `yield` of the enclosing function. Move it to the module top level.',
       rangeOf(o),

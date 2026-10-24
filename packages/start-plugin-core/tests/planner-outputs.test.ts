@@ -139,10 +139,10 @@ export const label = () => 'client'
       "import { createServerRpc as tsrServerRpc } from '@tanstack/react-start/server-rpc'",
     )
     expect(out.code).toMatch(
-      /const tsrRpc\$fn = tsrServerRpc\(\{ id: '[^']+', name: 'fn', filename: 'module\.tsx' \}, \(opts\) => fn\.__executeServer\(opts\)\)\nexport \{ tsrRpc\$fn as fn_createServerFn_handler \}/,
+      /const fn_createServerFn_handler = tsrServerRpc\(\{ id: '[^']+', name: 'fn', filename: 'module\.tsx' \}, \(opts\) => fn\.__executeServer\(opts\)\)\nexport \{ fn_createServerFn_handler \}/,
     )
     expect(out.code).toContain(
-      '.validator(schema).handler(tsrRpc$fn, async () => db.x())',
+      '.validator(schema).handler(fn_createServerFn_handler, async () => db.x())',
     )
     expect(out.code).toContain("from './db.server'")
   })
@@ -284,9 +284,11 @@ export const wrapped = wrap(wrap(createServerFn().handler(async () => 'w')))
     )
     expect(client.code).not.toContain('schema')
     const ssr = (await compile(files, 'ssr'))!
-    expect(ssr.code).toContain('.handler(tsrRpc$fn, async ({ data }) => data)')
     expect(ssr.code).toContain(
-      'wrap(wrap(createServerFn().handler(tsrRpc$wrapped, async',
+      '.handler(fn_createServerFn_handler, async ({ data }) => data)',
+    )
+    expect(ssr.code).toContain(
+      'wrap(wrap(createServerFn().handler(wrapped_createServerFn_handler, async',
     )
   })
 
@@ -336,7 +338,7 @@ export function make() {
     expect(client.code).not.toContain('db.server')
     const ssr = (await compile(files2, 'ssr'))!
     expect(ssr.code).toContain(
-      'const tsrServerFn$inner = createServerFn().handler(tsrRpc$inner, async () => db.inner())',
+      'const tsrServerFn$inner = createServerFn().handler(inner_make_createServerFn_handler, async () => db.inner())',
     )
     expect(ssr.code).toContain('const inner = tsrServerFn$inner')
     expect(ssr.code).toContain("name: 'inner'")
@@ -502,5 +504,37 @@ export const d = () => renderToReadableStream(/* c */ <X />).then((v) => v)
     expect(out.code).toContain(
       'renderToReadableStream(/* c */ <>{import.meta.viteRsc.loadCss()}<X /></>)',
     )
+  })
+})
+
+describe('route modules', () => {
+  test('a private server fn of a route module: provider output', async () => {
+    const out = (await compile(
+      {
+        '/app/src/routes/posts.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
+import { secret } from '../db.server'
+const cache = new Map<string, string>()
+;(globalThis as any).__postsInits = ((globalThis as any).__postsInits ?? 0) + 1
+const getPosts = createServerFn().handler(async () => 'posts:' + secret())
+function Posts() {
+  return <p>{String(cache.size)}</p>
+}
+export const Route = createFileRoute('/posts')({
+  loader: async () => getPosts(),
+  component: Posts,
+})
+`,
+        '/app/src/db.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+      },
+      'ssr',
+      '/app/src/routes/posts.tsx',
+    ))!
+    expect(out.code).toContain('export { getPosts_createServerFn_handler }')
+    const facts = out.facts.planners[START_ENV] as StartEnvFacts
+    expect(facts.serverFns[0]).toMatchObject({
+      rootRel: 'src/routes/posts.tsx',
+      exportName: 'getPosts_createServerFn_handler',
+    })
   })
 })
