@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { test } from 'vitest'
 import {
   assertLoadersSanity,
   benchOptions,
@@ -16,6 +16,8 @@ const { default: handler } = (await import(
 
 await assertLoadersSanity(handler)
 
-describe('ssr', () => {
-  bench('ssr loaders (vue)', () => runLoadersLoop(handler), benchOptions)
+test('ssr', async ({ bench }) => {
+  await bench('ssr loaders (vue)', async () => runLoadersLoop(handler)).run(
+    benchOptions,
+  )
 })

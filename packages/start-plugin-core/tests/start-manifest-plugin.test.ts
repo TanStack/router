@@ -1,3 +1,4 @@
+import { runInNewContext } from 'node:vm'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { DEV_CLIENT_ENTRY, START_ENVIRONMENT_NAMES } from '../src/constants'
@@ -73,24 +74,54 @@ describe('startManifestPlugin', () => {
     )
   })
 
-  test('uses the bundled client entry during bundled dev', () => {
-    expect(loadDevManifest({ bundledDev: true })).toContain(
-      `src: '/assets/index.js'`,
-    )
-  })
+  test.each(['/', '/base/'])(
+    'loads the bundled runtime before hydration under %s',
+    (basePath) => {
+      const source = loadDevManifest({
+        bundledDev: true,
+        basePath,
+      })
+      const manifest = runInNewContext(
+        `${source.replace('export const', 'const')}; tsrStartManifest()`,
+      )
+      const entries = [
+        `${basePath}bundledDevClient.mjs`,
+        `${basePath}assets/index.js`,
+      ]
+      expect(manifest.routes.__root__.preloads).toEqual(entries)
+      expect(manifest.routes.__root__.scripts).toEqual(
+        entries.map((src) => ({
+          attrs: { type: 'module', async: false, src },
+        })),
+      )
+    },
+  )
 })
 
-function loadDevManifest(opts: { bundledDev: boolean }) {
+function loadDevManifest(opts: { bundledDev: boolean; basePath?: string }) {
+  const basePath = opts.basePath ?? '/'
   const plugins = startManifestPlugin({
     getConfig: () =>
       ({
         resolvedStartConfig: {
           basePaths: {
-            publicBase: '/',
+            publicBase: basePath,
           },
         },
       }) as any,
   }) as Array<any>
+  const capture = plugins.find(
+    (item) =>
+      item.name === 'tanstack-start:start-manifest-capture-client-build',
+  )!
+  capture.configureServer({
+    config: { base: basePath },
+    environments: {
+      [START_ENVIRONMENT_NAMES.client]: {
+        bundledDev: opts.bundledDev ? {} : undefined,
+      },
+    },
+  })
   const plugin = plugins.find(
     (item) => item.name === 'tanstack-start:start-manifest-plugin',
   )!

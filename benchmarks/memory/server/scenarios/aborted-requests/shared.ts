@@ -221,7 +221,7 @@ export function createWorkloadGroup(
   handler: StartRequestHandler,
 ) {
   const mode = abortedRequestModes[framework]
-  const run = () => runAbortedRequestLoop(handler, mode)
+  const run = async () => runAbortedRequestLoop(handler, mode)
 
   return {
     sanity: () => assertAbortedRequestsSanity(handler, mode),
