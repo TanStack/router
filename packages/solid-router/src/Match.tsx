@@ -203,7 +203,7 @@ export const MatchInner = (): any => {
   const route = router.routesById[routeId()!]!
   const currentMatch = () => match()!
 
-  const componentKey = () => {
+  let componentKey = () => {
     const current = currentMatch()
     const remount =
       route.options.remountDeps ?? router.options.defaultRemountDeps
@@ -217,6 +217,22 @@ export const MatchInner = (): any => {
       search: current._strictSearch,
     })
     return JSON.stringify(deps) ?? routeId()
+  }
+
+  if (process.env.NODE_ENV !== 'production') {
+    // Route HMR can replace the component of a live route: re-key once the
+    // refreshed match arrives so the new component renders.
+    const baseComponentKey = componentKey
+    let component = route.options.component
+    let version = 0
+    componentKey = () => {
+      const key = baseComponentKey()
+      if (route.options.component !== component) {
+        component = route.options.component
+        version++
+      }
+      return version ? `${key}\0${version}` : key
+    }
   }
 
   const out = () => {

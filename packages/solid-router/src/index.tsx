@@ -217,6 +217,7 @@ export {
 export * from './history'
 
 export { lazyRouteComponent } from './lazyRouteComponent'
+export { __tsrRouteHmr } from './hmr'
 
 export { useLinkProps, createLink, Link, linkOptions } from './link'
 export type {
