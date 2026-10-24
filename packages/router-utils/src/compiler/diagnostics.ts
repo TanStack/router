@@ -1,0 +1,54 @@
+export type DiagnosticSeverity = 'error' | 'warning' | 'info'
+
+export interface Diagnostic {
+  severity: DiagnosticSeverity
+  message: string
+  /** UTF-16 range into the input text, when positioned. */
+  range?: { start: number; end: number }
+  /** The planner (or 'core' / 'parse') that reported it. */
+  by?: string
+  /** A stable code for the reason, used by the warning ledger. */
+  code?: string
+}
+
+/**
+ * Reports each `(file, reason)` once per session through the host channel.
+ */
+export class WarningLedger {
+  private readonly seen = new Set<string>()
+
+  constructor(private readonly report: (d: Diagnostic, path: string) => void) {}
+
+  /** Returns true when the diagnostic was new and has been reported. */
+  once(path: string, d: Diagnostic): boolean {
+    const key = `${path}\u0000${d.code ?? d.message}`
+    if (this.seen.has(key)) {
+      return false
+    }
+    this.seen.add(key)
+    this.report(d, path)
+    return true
+  }
+
+  reset(path?: string): void {
+    if (path === undefined) {
+      this.seen.clear()
+      return
+    }
+    for (const key of this.seen) {
+      if (key.startsWith(`${path}\u0000`)) {
+        this.seen.delete(key)
+      }
+    }
+  }
+}
+
+export class CompilerError extends Error {
+  constructor(
+    message: string,
+    readonly range?: { start: number; end: number },
+  ) {
+    super(message)
+    this.name = 'CompilerError'
+  }
+}
