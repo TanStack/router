@@ -35,6 +35,9 @@ for name, digest, allowed_paths in [
     ("hmr-script-order-test.patch.gz",
      "2d550b1127c34240788bf4a5ce5a5ca69c76ff0f83aca675373d2d2d04c854bc",
      {"test/js/bun/webview/webview-chrome.test.ts"}),
+    ("input-map-sync-test.patch",
+     "a9a19adad05b39a99efbe48d80cf06334cd0d53e93aa58a2f2cfb02bd7e5f487",
+     {"test/bundler/bun-build-api.test.ts"}),
 ]:
     patch = (root / ".github/native-bun-validation" / name).read_bytes()
     if name.endswith(".gz"):
@@ -74,6 +77,8 @@ isolated = [
     ("test/bake/dev/hot.test.ts", "evaluates an accepting importer after all changed dependencies and disposes it once"),
     ("test/bake/dev/hot.test.ts", "evaluates an accepting importer after all changed dependencies with an async dependency"),
     ("test/bake/dev/hot.test.ts", "evaluates an accepting importer after all changed dependencies and disposes it once with an async dependency"),
+    ("test/bundler/bun-build-api.test.ts", "an external input source map is read synchronously"),
+    ("test/bundler/bun-build-api.test.ts", "an input source map named by a file: URL is composed"),
 ]
 isolated_results = []
 for index, (filename, title) in enumerate(isolated):
