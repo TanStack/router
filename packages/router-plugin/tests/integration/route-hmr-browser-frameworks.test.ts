@@ -112,3 +112,46 @@ describe.concurrent.each([
     },
   )
 })
+
+/**
+ * A Solid root route whose component names the version of the file and
+ * renders the child route.
+ */
+const solidRoot = (version: string) =>
+  `import { Outlet, createRootRoute } from '@tanstack/solid-router'
+export const Route = createRootRoute({ component: Root })
+function Root() {
+  return <div><p>root ${version}</p><Outlet /></div>
+}
+`
+
+// SPEC J3.5: an edit of the root route (never split) hot-updates. On
+// Rsbuild the edit does not show today: pinned in
+// known-bugs-route-hmr.test.ts ("rsbuild: an edit of a Solid root route").
+// React apps: route-hmr-browser.test.ts.
+describe.concurrent('vite: a solid app', () => {
+  it.for([true, false])(
+    'shows the new code of an edited root route in place (autoCodeSplitting: %s)',
+    { timeout },
+    async (
+      autoCodeSplitting: boolean,
+      { expect, onTestFinished }: TestContext,
+    ) => {
+      const app = await openRouteHmrPage({
+        target: 'solid',
+        onTestFinished,
+        pluginOptions: { autoCodeSplitting },
+        files: {
+          'routes/__root.tsx': solidRoot('v1'),
+          'routes/index.tsx': route('solid', 'v1'),
+        },
+        ready: /root v1[\s\S]*page v1 data v1/,
+      })
+      const result = await app.edit(
+        { 'routes/__root.tsx': solidRoot('v2') },
+        /root v2[\s\S]*page v1 data v1/,
+      )
+      expect(result).toEqual({ reloaded: false, errors: [] })
+    },
+  )
+})

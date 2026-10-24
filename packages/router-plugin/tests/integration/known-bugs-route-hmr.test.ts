@@ -175,6 +175,39 @@ function Page() {
     },
   )
 
+  // Bug: the same on an edit of a Solid root route, whose module always
+  // holds its component and the route HMR code (root routes are never
+  // split): the page keeps showing the old root component, with or without
+  // automatic code splitting. Vite applies the same edit in place
+  // (route-hmr-browser-frameworks.test.ts). SPEC J3.5.
+  // Impact: edits of a Solid app's root component (its layout) do not show
+  // until a reload on Rsbuild.
+  test.fails.for([true, false])(
+    'rsbuild: an edit of a Solid root route shows its new component in place (autoCodeSplitting: %s)',
+    async (autoCodeSplitting, { expect, onTestFinished }: TestContext) => {
+      expect(
+        await editRoute(
+          {
+            bundler: 'rsbuild',
+            target: 'solid',
+            pluginOptions: { autoCodeSplitting },
+            files: { 'routes/index.tsx': frameworkRoute('solid')('v1') },
+            file: 'routes/__root.tsx',
+            route: (version) =>
+              `import { Outlet, createRootRoute } from '@tanstack/solid-router'
+export const Route = createRootRoute({ component: Root })
+function Root() {
+  return <div><p>root ${version}</p><Outlet /></div>
+}
+`,
+            shows: (version) => `root ${version}page v1 data v1`,
+          },
+          onTestFinished,
+        ),
+      ).toEqual(inPlace)
+    },
+  )
+
   // Bug: a route a helper function of the route file creates
   // (`export const Route = makeRoute()`) edited without automatic code
   // splitting (the route HMR plugin alone) shows its new loader data but

@@ -7,7 +7,7 @@ One entry per root cause: the bug, the SPEC clause, the pins (`file` and test na
 `$name`, `%s` and `${…}` are table-row placeholders), and what a fix must achieve. The test comment (`Bug:`,
 `Impact:`) has the details. "Cause" files name today's implementation; a rewrite may have no such file.
 
-Totals: 374 pin sites in 103 test files (a table test counts once; Vitest counts each row).
+Totals: 375 pin sites in 103 test files (a table test counts once; Vitest counts each row).
 
 Pins whose input picks a name today's compiler generates (S6) flip with a compiler that generates other names. The
 adaptive pins next to them, which read the names a compiler actually generates, are the real check.
@@ -359,7 +359,7 @@ Paths under `start-plugin-core/tests/integration/`.
   `start-compose-project-path.test.ts`: "the client route tree leaves out the server-only route"; "the client gets the
   file, not the client route tree".
 
-## J3 Route HMR (27 pins: 21 below, 2 in S6, 4 in J2)
+## J3 Route HMR (28 pins: 22 below, 2 in S6, 4 in J2)
 
 Paths under `router-plugin/tests/`.
 
@@ -396,9 +396,10 @@ Paths under `router-plugin/tests/`.
   page reloads. SPEC J3.1, G10. `integration/known-bugs-route-hmr.test.ts`: "vite: an edit of an unsplit Vue route shows
   in place"; "vite: an edit of a React .ts route module shows its new loader data in place (autoCodeSplitting: %s)";
   "vite: an edit of a route component in an app without @vitejs/plugin-react shows in place (autoCodeSplitting: %s)".
-- **Rsbuild: an unsplit Solid route keeps rendering the old component.** SPEC J3.3.
-  `integration/known-bugs-route-hmr.test.ts`: "rsbuild: an edit of an unsplit Solid route shows its new component in
-  place".
+- **Rsbuild: an unsplit Solid route keeps rendering the old component**, the root route too (always unsplit). SPEC
+  J3.3, J3.5. `integration/known-bugs-route-hmr.test.ts`: "rsbuild: an edit of an unsplit Solid route shows its new
+  component in place"; "rsbuild: an edit of a Solid root route shows its new component in place (autoCodeSplitting:
+  %s)".
 - **Rsbuild: an edit of a split loader only never reaches the page** (the route module did not change). SPEC J3.3.
   `integration/known-bugs-route-hmr.test.ts`: "rsbuild: an edit of a split loader (codeSplitGroupings: %s) shows its
   data in place".
