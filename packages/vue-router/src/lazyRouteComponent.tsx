@@ -143,20 +143,21 @@ export function lazyRouteComponent<
         throw errorState.value
       }
 
+      if (process.env.NODE_ENV !== 'production') {
+        const hot: VueLazyRouteComponentHot | undefined = (lazyComp as any)
+          .__tsrHot
+        if (hot) {
+          // A hot swap replaces the component of every instance.
+          Vue.watch(hot.version, () => {
+            component.value = hot.read()
+          })
+        }
+      }
+
       // Return a render function
       return () => {
-        let current = component.value
-        if (process.env.NODE_ENV !== 'production') {
-          const hot: VueLazyRouteComponentHot | undefined = (lazyComp as any)
-            .__tsrHot
-          // After a hot swap every instance renders the wrapper's component.
-          if (hot?.version.value) {
-            current = hot.read()
-          }
-        }
-
         // If we're still loading or don't have a component yet, use a suspense pattern
-        if (loading.value || !current) {
+        if (loading.value || !component.value) {
           return Vue.h('div', null) // Empty div while loading
         }
 
@@ -168,13 +169,13 @@ export function lazyRouteComponent<
               fallback: Vue.h(Outlet),
             },
             {
-              default: () => Vue.h(current, props),
+              default: () => Vue.h(component.value, props),
             },
           )
         }
 
         // Regular render with the loaded component
-        return Vue.h(current, props)
+        return Vue.h(component.value, props)
       }
     },
   })
@@ -199,12 +200,13 @@ export function lazyRouteComponent<
         return exportName as string | undefined
       },
       version,
-      read: () => {
-        if (error) {
-          throw error
-        }
-        return comp ? Vue.markRaw(comp) : comp
-      },
+      // A failed hot import renders as a component that throws it.
+      read: () =>
+        error
+          ? Vue.markRaw(() => {
+              throw error
+            })
+          : comp && Vue.markRaw(comp),
       update: (nextImporter, nextExportName, keep) => {
         importer = nextImporter as () => Promise<T>
         exportName = nextExportName as TKey | undefined

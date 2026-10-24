@@ -104,16 +104,15 @@ export function lazyRouteComponent<
       throw error
     }
 
-    return (
-      <Dynamic
-        component={
-          process.env.NODE_ENV !== 'production' && (Lazy as any).__tsrHot
-            ? ((Lazy as any).__tsrHot as SolidLazyRouteComponentHot).read()
-            : comp
-        }
-        {...props}
-      />
-    )
+    if (process.env.NODE_ENV !== 'production') {
+      const hot: SolidLazyRouteComponentHot | undefined = (Lazy as any).__tsrHot
+      if (hot) {
+        // Read through the hot slot so a hot swap re-renders in place.
+        return <Dynamic component={hot.read()} {...props} />
+      }
+    }
+
+    return <Dynamic component={comp} {...props} />
   }
 
   const Loadable = lazy(async () => {
@@ -141,7 +140,6 @@ export function lazyRouteComponent<
       get exportName() {
         return exportName as string | undefined
       },
-      // Read by the rendered Dynamic, so a hot swap re-renders in place.
       read: () => {
         version()
         if (error) {
