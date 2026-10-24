@@ -455,7 +455,7 @@ export class AnalysisPlan implements PlanContext {
 
   freeze(key: PlanKey, revision: string): EmitPlan {
     const placement = this.placement ?? this.resolve()
-    const { analysis, symbols } = this
+    const { analysis } = this
     const code = analysis.source.code
     const outputs: Record<string, OutputRecipe> = {}
     const edges: Record<string, Array<EdgeRecord>> = {}
