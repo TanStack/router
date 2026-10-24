@@ -202,7 +202,7 @@ export async function createWorkloadGroup(
   handler: StartRequestHandler,
 ) {
   const urls = await discoverUrls(handler)
-  const run = () =>
+  const run = async () =>
     runSequentialRequestLoop(handler, {
       seed: benchmarkSeed,
       iterations: serverFnChurnIterations,

@@ -4,6 +4,14 @@ body:
   - type: markdown
     attributes:
       value: |
+        <!--
+        AI-authored issue rules:
+        - disclose AI authorship
+        - be respectful, use terse, human-readable language
+        - short code snippets are better than many words
+        - maintainers know their own codebase, no need to explain it to them
+        -->
+
         Thank you for reporting an issue :pray:.
 
         This issue tracker is for reporting bugs found in TanStack Router and/or Start.
