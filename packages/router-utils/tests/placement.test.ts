@@ -54,6 +54,27 @@ describe('clusters and the single-writer rule (A1)', () => {
     expect(r.chunks.component).toContain('next++')
   })
 
+  it.each([
+    ['assigns', 'next = 1'],
+    ['updates', '++next'],
+  ])(
+    'homes a module binding the sole group only %s in its chunk (writes need the binding)',
+    async (_, write) => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        let next = 0
+        export const Route = createFileRoute('/')({
+          component: () => { ${write}; return null },
+        })
+      `)
+      const r = await split(code)
+      expect(r.main?.facts.planners['toy-split']).toBeUndefined()
+      expect(r.env).not.toContain('let next')
+      expect(r.chunks.component).toContain('let next = 0')
+      expect(r.chunks.component).toContain(write)
+    },
+  )
+
   it('falls back when the route module also needs a binding the component writes (shared-writer)', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'

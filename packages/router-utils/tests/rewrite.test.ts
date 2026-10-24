@@ -473,6 +473,68 @@ describe('claims, homes and substitution (R37, R39)', () => {
     )
   })
 
+  it('moves an import only generated text reads out of a non-route env module (R39)', () => {
+    // a Solid `use:tip` directive is no reference in the semantic model: the planner's edit reads `tip`
+    const code = dedent(`
+      import { tip } from './tip'
+      export function Comp() {
+        return <div><p use:tip={1}>x</p></div>
+      }
+    `)
+    const e = engine(code, { id: '/app/mod.tsx' })
+    const { ctx } = e
+    const tipSym = ctx.analysis.imports[0]!.specifiers[0]!.local
+    const children = rangeOf(code, '<p use:tip={1}>x</p>')
+    const region = ctx.region(children, 'hydrate-children')
+    const out = ctx.declareOutput({
+      kind: 'hydrate',
+      key: 'h0',
+      derived: { kind: 'hydrate', value: 'h0' },
+    })
+    const comp = ctx.names.alloc('TsrHydrate0', { jsxTag: true })
+    const owner = ctx.rewrites.addGenerated({
+      body: [
+        {
+          k: 'text',
+          parts: ['export function ', { sym: comp.sym }, '() { return ('],
+        },
+        { k: 'slice', range: children },
+        { k: 'text', parts: [') }\n'] },
+      ],
+      declares: [comp.sym],
+      effectful: false,
+      anchor: { k: 'end' },
+      home: out,
+      by: 'hydrate',
+    })
+    ctx.rewrites.claim({
+      region,
+      owner,
+      placeholder: [{ k: 'text', parts: ['{null}'] }],
+      by: 'hydrate',
+    })
+    const name = rangeOf(code, 'tip={1}')
+    ctx.rewrites.add({
+      range: { start: name.start, end: name.start + 3 },
+      body: [{ k: 'text', parts: [{ sym: tipSym }] }],
+      scope: [out],
+      by: 'hydrate',
+    })
+    expect(e.render().code).toBe(
+      dedent(`
+      export function Comp() {
+        return <div>{null}</div>
+      }
+    `),
+    )
+    expect(e.render(out).code).toBe(
+      dedent(`
+      import { tip } from './tip'
+      export function TsrHydrate0() { return (<p use:tip={1}>x</p>) }
+    `),
+    )
+  })
+
   it('forwards captures through nested placeholders with a substitution environment (N9)', () => {
     const code = dedent(`
       import { Hydrate } from 'toy-start'
