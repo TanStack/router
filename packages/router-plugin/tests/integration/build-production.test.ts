@@ -29,28 +29,15 @@ test.each([true, false])(
   timeout,
 )
 
-test.each(['solid', 'vue'] as const)(
+// The route HMR plugin also runs in these builds (it follows `NODE_ENV`,
+// pinned for Rspack below); Vite drops the code `import.meta.hot` guards,
+// and the export the React HMR compile adds ships only to a module that
+// imports it, which the app (its route tree imports `Route`) does not
+// (ruling P1).
+test.each(frameworks)(
   'a production %s client bundle without code splitting has no dev-only code (vite)',
   async (framework) => {
     await expectProductionClientBundle('vite', framework, false)
-  },
-  timeout,
-)
-
-// Bug: same root cause as the pins below, on Vite: the route HMR plugin has
-// no `apply: 'serve'` and follows `NODE_ENV` at plugin creation. Vite drops
-// the code `import.meta.hot` guards, but not the React Refresh anchor export
-// the HMR compile adds to every React route. The Vite CLI sets `NODE_ENV`
-// before loading the config; Vite's JavaScript API (`build({ plugins:
-// [tanstackRouter(...)] })` from a script without `NODE_ENV`) does not.
-// Source: router-composed-plugin.ts (`isProduction` from `NODE_ENV`),
-// router-hmr-plugin.ts (no `apply`).
-// Impact: production bundles built through Vite's API keep the refresh
-// anchor of every React route.
-test.fails(
-  'a production react client bundle without code splitting has no dev-only code (vite)',
-  async () => {
-    await expectProductionClientBundle('vite', 'react', false)
   },
   timeout,
 )

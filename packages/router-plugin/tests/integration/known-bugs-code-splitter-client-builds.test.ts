@@ -100,7 +100,7 @@ export const Route = createFileRoute('/')({
 
 describe('exported bindings', () => {
   // Bug: same as above, in a real client build whose entry imports the
-  // exported component (`export * from './routes/index'`): the component is
+  // exported component (`export { PostErrorComponent } from './routes/index'`): the component is
   // in both the entry chunk and the split chunk, and the route renders the
   // copy. One instance is the goal: the function the route renders on its
   // error path is the one the entry imports, its module-level state is
@@ -143,9 +143,10 @@ export function label(text: string) {
   return text
 }
 `,
-              // The client entry (`mount`, the route module's exports) and
-              // the app rendered at `/` through the real router.
-              'entry.ts': `${clientMountEntry}import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
+              // The client entry (`mount`, the route and the exported
+              // component) and the app rendered at `/` through the real router.
+              'entry.ts': `${clientMountEntry}export { PostErrorComponent } from './routes/index'
+import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 export { seen, labels } from './see'
 export async function renderAt(path: string, text: string) {

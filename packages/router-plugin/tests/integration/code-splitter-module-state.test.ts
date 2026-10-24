@@ -1,7 +1,7 @@
 // Slow-tier half of this suite: the tests that need a real tool. Its
 // page tests are in pages/code-splitter-module-state.test.ts.
 import { describe, expect, it } from 'vitest'
-import { buildAndRun, head } from '../build-harness'
+import { buildAndRun, head, ssrRenderEntry } from '../build-harness'
 
 describe('split chunks keep the module state the route relies on', () => {
   // Route files commonly export a store or helpers over private state next to
@@ -28,6 +28,12 @@ export const Route = createFileRoute('/')({ component: Page })
 `,
       `const component = entry.Route.options.component
 return [await entry.render(component), await entry.render(component), entry.store.count]`,
+      // The app imports the exported store too
+      {
+        files: {
+          'entry.ts': `${ssrRenderEntry}export { store } from './routes/index'\n`,
+        },
+      },
     )
     // Known limitation on main: the chunk gets its own copy of `state` and
     // `renders`, so callers of the exported functions are not checked here.
