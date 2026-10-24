@@ -566,7 +566,6 @@ async function buildAt(
       bundler: bundler === 'vite' ? 'vite' : 'rspack',
       env,
       mode,
-      minify: target.minify,
       esModules: outputs[env].esModules,
       parsedModules: outputs[env].parsedModules,
       root: app.root,

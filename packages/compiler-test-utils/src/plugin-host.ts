@@ -439,7 +439,6 @@ export async function createPluginHost(
               bundler: 'vite',
               env,
               mode,
-              minify: true,
               root: buildRoot,
               outDir: environment.outDir,
               chunks: chunks.map(

@@ -1,13 +1,13 @@
 // webpack loader of the build harness (build-harness.ts): compiles
 // TypeScript and JSX with Vite's Oxc transformer, as webpack has no built-in
-// transform. Options: `{ development: boolean, importSource?: string }`.
+// transform. Options: `{ development: boolean }`.
 // Like a real loader, it emits a source map, composed with the map of the
 // loaders before it (e.g. a plugin's transform), so that webpack's source
 // maps point at the original source.
 import { transformWithOxc } from 'vite'
 
 /**
- * @this {{ async: () => (error: Error | null, code?: string, map?: object) => void, resourcePath: string, getOptions: () => { development?: boolean, importSource?: string } }}
+ * @this {{ async: () => (error: Error | null, code?: string, map?: object) => void, resourcePath: string, getOptions: () => { development?: boolean } }}
  * @param {string} code
  * @param {object | string | undefined} inputMap
  */
@@ -30,7 +30,7 @@ export default function oxcLoader(code, inputMap) {
       jsx: {
         runtime: 'automatic',
         development: options.development === true,
-        importSource: options.importSource ?? 'react',
+        importSource: 'react',
       },
     },
     typeof inputMap === 'string' ? JSON.parse(inputMap) : inputMap,

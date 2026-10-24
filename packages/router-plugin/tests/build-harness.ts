@@ -313,7 +313,7 @@ function babelRule(babel: {
 
 interface FrameworkBuild {
   /** Bundle options of the framework (JSX compilation). */
-  target: Pick<BundleOptions, 'jsxImportSource' | 'sourceRules' | 'conditions'>
+  target: Pick<BundleOptions, 'sourceRules' | 'conditions'>
   /** Bundler plugins of the framework, after the router plugin. */
   plugins: (app: AppInfo) => Array<unknown>
 }

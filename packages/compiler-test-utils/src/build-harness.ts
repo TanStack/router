@@ -149,11 +149,6 @@ export interface BundleTarget {
   /** Creates the plugin (a Vite plugin array for Vite) of this build. */
   plugin?: (app: AppInfo) => unknown
   /**
-   * Import source of the automatic JSX runtime the harness's own TypeScript
-   * and JSX transform uses (default `react`), e.g. `vue` for `vue/jsx-runtime`.
-   */
-  jsxImportSource?: string
-  /**
    * webpack and Rspack: module rules that compile the app's TypeScript and
    * JSX instead of the harness's (e.g. `babel-loader` with a framework's JSX
    * preset). Each rule gets `include: <app root>` unless it sets `include`
@@ -404,7 +399,6 @@ interface BundlerConfig {
   minify: boolean
   sourcemap: boolean
   plugin: (() => unknown) | undefined
-  jsxImportSource: string
   sourceRules: Array<Record<string, unknown>> | undefined
   conditions: Array<string>
   rebuildAfter: Record<string, string> | undefined
@@ -448,7 +442,6 @@ async function bundle(
       (mode === 'production' && !(bundler === 'vite' && env === 'ssr')),
     sourcemap: target.sourcemap ?? false,
     plugin: plugin && (() => plugin({ root, env, mode })),
-    jsxImportSource: target.jsxImportSource ?? 'react',
     sourceRules: target.sourceRules,
     conditions: target.conditions ?? [],
     rebuildAfter: target.rebuildAfter,
@@ -483,7 +476,6 @@ async function bundle(
     bundler,
     env,
     mode,
-    minify: config.minify,
     root,
     outDir: config.outDir,
     chunks: output,
@@ -551,9 +543,6 @@ async function buildWithVite(
           ? [recordViteModules(config.parsedModules) as never]
           : []),
       ],
-      ...(config.jsxImportSource !== 'react' && {
-        oxc: { jsx: { importSource: config.jsxImportSource } },
-      }),
       build: {
         ssr: config.env === 'ssr' ? config.entry : false,
         outDir: config.outDir,
@@ -722,7 +711,7 @@ async function buildWithWebpackApi(
           test: { ts: /\.[cm]?ts$/, tsx: /\.tsx$/, jsx: /\.[cm]?jsx$/ }[lang],
           include: config.root,
           loader: 'builtin:swc-loader',
-          options: swcOptions(development, lang, config.jsxImportSource),
+          options: swcOptions(development, lang),
           type: 'javascript/auto',
         }))
       : [
@@ -730,7 +719,7 @@ async function buildWithWebpackApi(
             test: /\.[cm]?(tsx?|jsx)$/,
             include: config.root,
             loader: oxcLoader,
-            options: { development, importSource: config.jsxImportSource },
+            options: { development },
           },
         ]
   const options = {
@@ -793,48 +782,37 @@ async function buildWithWebpackApi(
   }
   config.configure?.(options)
 
-  if (config.rebuildAfter) {
-    const stats = await watchAndRebuild(
-      bundler,
-      { ...options, cache: bundler === 'rspack' ? true : { type: 'memory' } },
-      config.root,
-      config.rebuildAfter,
-      warnings,
-      config.diagnosticChannel,
-    )
-    const json = stats.toJson(statsOptions)
-    warnings.push(...statsDiagnostics(json.warnings, 'warning'))
-    if (json.errors?.length) {
-      throw new BuildError(bundler, statsMessages(json.errors), warnings)
-    }
-    return chunksOfStats(json, { entry: 'entry', extension: '.mjs' })
-  }
-
-  const stats = await new Promise<WebpackStats>((resolve, reject) => {
-    const run = (compiler: WebpackCompiler) =>
-      compiler.run((error, result) => {
-        compiler.close(() => {
-          if (error) {
-            reject(new BuildError(bundler, [errorMessage(error)], warnings))
-          } else {
-            resolve(result!)
-          }
-        })
-      })
-    if (bundler === 'rspack') {
-      import('@rsbuild/core')
-        .then(({ rspack }) => {
-          const compiler = rspack(options as unknown as Rspack.Configuration)
-          config.diagnosticChannel?.scopeRspack(compiler)
-          return run(compiler as never)
-        })
-        .catch(reject)
-    } else {
-      import('webpack')
-        .then(({ default: webpack }) => run(webpack(options as never) as never))
-        .catch(reject)
-    }
-  })
+  const stats = config.rebuildAfter
+    ? await watchAndRebuild(
+        bundler,
+        await createCompiler(
+          bundler,
+          {
+            ...options,
+            cache: bundler === 'rspack' ? true : { type: 'memory' },
+          },
+          config.diagnosticChannel,
+        ),
+        config.root,
+        config.rebuildAfter,
+        warnings,
+      )
+    : await createCompiler(bundler, options, config.diagnosticChannel).then(
+        (compiler) =>
+          new Promise<WebpackStats>((resolve, reject) => {
+            compiler.run((error, result) => {
+              compiler.close(() => {
+                if (error) {
+                  reject(
+                    new BuildError(bundler, [errorMessage(error)], warnings),
+                  )
+                } else {
+                  resolve(result!)
+                }
+              })
+            })
+          }),
+      )
 
   const json = stats.toJson(statsOptions)
   warnings.push(...statsDiagnostics(json.warnings, 'warning'))
@@ -842,6 +820,24 @@ async function buildWithWebpackApi(
     throw new BuildError(bundler, statsMessages(json.errors), warnings)
   }
   return chunksOfStats(json, { entry: 'entry', extension: '.mjs' })
+}
+
+/** A webpack or Rspack compiler of `options`; Rspack's scoped to `channel`. */
+async function createCompiler(
+  bundler: 'webpack' | 'rspack',
+  options: Record<string, unknown>,
+  channel: DiagnosticChannel | undefined,
+): Promise<WebpackCompiler> {
+  if (bundler === 'rspack') {
+    const compiler = (await import('@rsbuild/core')).rspack(
+      options as unknown as Rspack.Configuration,
+    )
+    channel?.scopeRspack(compiler)
+    return compiler as unknown as WebpackCompiler
+  }
+  return (await import('webpack')).default(
+    options as never,
+  ) as unknown as WebpackCompiler
 }
 
 /**
@@ -852,25 +848,11 @@ async function buildWithWebpackApi(
  */
 async function watchAndRebuild(
   bundler: 'webpack' | 'rspack',
-  options: Record<string, unknown>,
+  compiler: WebpackCompiler,
   root: string,
   files: Record<string, string>,
   warnings: Array<ChannelDiagnostic>,
-  diagnosticChannel?: DiagnosticChannel,
 ): Promise<WebpackStats> {
-  const compiler = (bundler === 'rspack'
-    ? (await import('@rsbuild/core')).rspack(options as never)
-    : (await import('webpack')).default(
-        options as never,
-      )) as unknown as WebpackCompiler & {
-    watch: (
-      options: { aggregateTimeout: number },
-      callback: (error: Error | null, stats?: WebpackStats) => void,
-    ) => { close: (callback: () => void) => void }
-  }
-  if (bundler === 'rspack') {
-    diagnosticChannel?.scopeRspack(compiler as unknown as Rspack.Compiler)
-  }
   let builds = 0
   let last: { error: Error | null; stats?: WebpackStats } | undefined
   const watching = compiler.watch({ aggregateTimeout: 50 }, (error, stats) => {
@@ -974,7 +956,7 @@ async function buildWithEsbuild(
       chunkNames: '[name]-[hash]',
       jsx: 'automatic',
       jsxDev: config.mode === 'development',
-      jsxImportSource: config.jsxImportSource,
+      jsxImportSource: 'react',
       minify: config.minify,
       sourcemap: config.sourcemap,
       metafile: true,
@@ -1069,8 +1051,6 @@ export interface DescribeBuildInput {
   bundler: Bundler
   env: BuildEnv
   mode: BuildMode
-  /** Whether the build minified its output (default: `mode === 'production'`). */
-  minify?: boolean
   /**
    * Whether the chunks are ES modules (the bundler's `output.module`).
    * Default `true`, as Vite and esbuild always emit and the harness
@@ -1391,7 +1371,7 @@ async function nameCounts(name: string, scope: ScopeEvidence) {
     return !bound
   }
   for (const resource of readers) {
-    if (await countsAsDangling(name, resource, scope)) {
+    if (await countsAsDangling(name, resource, parsed, scope)) {
       return true
     }
   }
@@ -1416,13 +1396,10 @@ interface ScopeEvidence extends ModuleEvidence {
  */
 async function countsAsDangling(
   name: string,
-  resource: string | undefined,
+  resource: string,
+  parsed: ParsedModules,
   scope: ScopeEvidence,
 ) {
-  if (resource === undefined || !scope.parsedModules) {
-    // No evidence of the module
-    return true
-  }
   const original = await scope.originalOf(resource)
   if (original === undefined) {
     // No file: a virtual or support module
@@ -1433,7 +1410,7 @@ async function countsAsDangling(
     // A module of the app
     return true
   }
-  const transformed = scope.parsedModules.transformed.get(resource)
+  const transformed = parsed.transformed.get(resource)
   if (transformed === undefined) {
     // A dependency the build did not change: out of scope
     return false
@@ -1455,8 +1432,6 @@ async function countsAsDangling(
  * `describeBuild` reads (`parsedModules`).
  */
 export interface ParsedModules {
-  /** Resource path of each module of the output, by module id. */
-  resourceById: Map<string, string>
   /** Every module of the build, by resource path (or id, without a file). */
   modules: Set<string>
   /**
@@ -1496,19 +1471,6 @@ interface RecordingCompiler {
       tap: (
         name: string,
         callback: (compilation: RecordingCompilation) => void,
-      ) => void
-    }
-    done: {
-      tap: (
-        name: string,
-        callback: (stats: {
-          toJson: (options: Record<string, unknown>) => {
-            modules?: Array<{
-              id?: string | number | null
-              nameForCondition?: string | null
-            }>
-          }
-        }) => void,
       ) => void
     }
   }
@@ -1552,18 +1514,6 @@ export function recordParsedModules(parsed: ParsedModules) {
             }
           }
         })
-      })
-      compiler.hooks.done.tap(name, (stats) => {
-        const { modules = [] } = stats.toJson({
-          all: false,
-          modules: true,
-          ids: true,
-        })
-        for (const module of modules) {
-          if (module.id != null && module.nameForCondition) {
-            parsed.resourceById.set(String(module.id), module.nameForCondition)
-          }
-        }
       })
     },
   }
@@ -1615,7 +1565,7 @@ export function recordViteModules(
 
 /** An empty `ParsedModules`, for `recordParsedModules` to fill. */
 export function parsedModules(): ParsedModules {
-  return { resourceById: new Map(), modules: new Set(), transformed: new Map() }
+  return { modules: new Set(), transformed: new Map() }
 }
 
 /** A position in an original source file, according to a source map. */
@@ -1859,11 +1809,7 @@ return JSON.stringify({ result, html: document.body.innerHTML })
  * Options of Rspack's SWC loader for a language: `.ts` files are parsed
  * without JSX (`<T>(x) => x` is a generic arrow there), as Rsbuild does.
  */
-function swcOptions(
-  development: boolean,
-  lang: 'ts' | 'tsx' | 'jsx',
-  importSource: string,
-) {
+function swcOptions(development: boolean, lang: 'ts' | 'tsx' | 'jsx') {
   return {
     jsc: {
       parser:
@@ -1871,7 +1817,9 @@ function swcOptions(
           ? { syntax: 'ecmascript', jsx: true }
           : { syntax: 'typescript', tsx: lang === 'tsx' },
       target: 'esnext',
-      transform: { react: { runtime: 'automatic', development, importSource } },
+      transform: {
+        react: { runtime: 'automatic', development, importSource: 'react' },
+      },
     },
   }
 }
@@ -1950,6 +1898,10 @@ interface WebpackStats {
 
 interface WebpackCompiler {
   run: (callback: (error: Error | null, stats?: WebpackStats) => void) => void
+  watch: (
+    options: { aggregateTimeout: number },
+    callback: (error: Error | null, stats?: WebpackStats) => void,
+  ) => { close: (callback: () => void) => void }
   close: (callback: () => void) => void
 }
 
