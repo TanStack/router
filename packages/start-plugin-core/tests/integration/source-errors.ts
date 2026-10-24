@@ -1,7 +1,7 @@
 /**
  * Judges a failed build's diagnostic (SPEC G5, §5.7: file and position
- * only): it names one of the user's sources and a line of the
- * call. Pure: only the shared diagnostics reader, no module of the
+ * only): it names one of the user's sources and, where the test gives
+ * one, a line of the call. Pure: only the shared diagnostics reader, no module of the
  * implementation.
  *
  * Every channel is read: pass the `StartBuildError` of `buildStart` (its
@@ -30,22 +30,26 @@ function diagnosticsOfFailure(error: unknown): Array<Diagnostic> {
 
 /**
  * Fails unless one diagnostic of `error` reports one of `sites`: its file,
- * and the line of `at` in its `source`.
+ * and the line of `at` in its `source` (any position without `at`).
  */
 export function expectSourceError(
   error: unknown,
-  expected: { sites: Array<{ file: string; source: string; at: string }> },
+  expected: {
+    sites: Array<{ file: string; source: string; at: string | undefined }>
+  },
 ) {
   const diagnostics = diagnosticsOfFailure(error)
   const reported = expected.sites.some(
     (site) =>
       findDiagnostics(diagnostics, {
         file: site.file,
-        position: { line: diagnosticPosition(site.source, site.at).line },
+        ...(site.at !== undefined && {
+          position: { line: diagnosticPosition(site.source, site.at).line },
+        }),
       }).length > 0,
   )
   expect(
     reported,
-    `a diagnostic at ${expected.sites.map((site) => `${site.file} (${site.at})`).join(' or ')}:\n${diagnostics.map((diagnostic) => diagnostic.text).join('\n---\n')}`,
+    `a diagnostic at ${expected.sites.map((site) => `${site.file} (${site.at ?? 'any position'})`).join(' or ')}:\n${diagnostics.map((diagnostic) => diagnostic.text).join('\n---\n')}`,
   ).toBe(true)
 }

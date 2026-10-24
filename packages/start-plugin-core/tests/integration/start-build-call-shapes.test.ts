@@ -26,7 +26,9 @@
  *
  * The shapes share one build per bundler. When that build (or a run of it)
  * fails, each shape is built on its own, so the rejection of one shape never
- * decides the outcome of another.
+ * decides the outcome of another. A server fn whose handler is an env
+ * function call (#8446) is built on its own: today its SSR build does not
+ * load.
  */
 import { afterAll, describe, expect, test } from 'vitest'
 import {
@@ -55,8 +57,11 @@ interface Shape {
   slug: string
   /** The module's source (`src/<slug>.ts`). */
   source: (db: string) => string
-  /** The text of the call a build error points at, in `source`. */
-  at: string
+  /**
+   * The text of the call a build error points at, in `source` (`undefined`:
+   * an error naming the file is enough).
+   */
+  at: string | undefined
   /** Other modules of the shape, by path relative to the app root. */
   files?: Record<string, string>
   /** Client script body: `shape` is the module's exports. */
@@ -263,6 +268,40 @@ export const registry: Array<unknown> = []
       expectServerFnWorks(client, ssr, result),
   },
   {
+    name: 'a server fn whose handler is a createServerOnlyFn call',
+    slug: 'serverOnlyHandler',
+    source: (
+      db,
+    ) => `import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
+import { db } from './${db}'
+export const fn = createServerFn().handler(createServerOnlyFn(async () => db.x()))
+`,
+    at: undefined,
+    client: clientServerFn('shape.fn'),
+    ssr: ssrServerFn('shape.fn'),
+    expectWorks: ({ client, ssr }, result) =>
+      expectServerFnWorks(client, ssr, result),
+  },
+  {
+    name: 'a server fn whose handler is a createIsomorphicFn chain',
+    slug: 'isomorphicHandler',
+    source: (
+      db,
+    ) => `import { createServerFn, createIsomorphicFn } from '@tanstack/react-start'
+import { db } from './${db}'
+export const fn = createServerFn().handler(
+  createIsomorphicFn()
+    .server(async () => db.x())
+    .client(() => 'client'),
+)
+`,
+    at: undefined,
+    client: clientServerFn('shape.fn'),
+    ssr: ssrServerFn('shape.fn'),
+    expectWorks: ({ client, ssr }, result) =>
+      expectServerFnWorks(client, ssr, result),
+  },
+  {
     name: 'builders imported under string export names',
     slug: 'stringNames',
     source: stringNamesSource,
@@ -341,6 +380,12 @@ const recognisedForms = [
 /** Recognised forms main leaves untransformed (pinned below). */
 const pinnedForms = ['namespaceFactory']
 
+/**
+ * Server fns whose handler is an env function call: they work, or the
+ * build fails naming the file (pinned below).
+ */
+const envFnHandlers = ['serverOnlyHandler', 'isomorphicHandler']
+
 /** The app files of `list`, each shape exported from the entry. */
 function appFiles(list: Array<Shape>) {
   const files: Record<string, string> = {}
@@ -416,10 +461,14 @@ describe.each(startBundlers)('%s build', (bundler) => {
   async function outcomeOf(
     shape: Shape,
   ): Promise<{ observed: Observed } | { error: unknown }> {
-    shared ??= observe(bundler, shapes, (cleanup) =>
-      cleanups.push(cleanup),
+    shared ??= observe(
+      bundler,
+      shapes.filter((other) => !envFnHandlers.includes(other.slug)),
+      (cleanup) => cleanups.push(cleanup),
     ).catch(() => undefined)
-    const together = await shared
+    const together = envFnHandlers.includes(shape.slug)
+      ? undefined
+      : await shared
     if (together) {
       return { observed: together[shape.slug]! }
     }
@@ -468,7 +517,11 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // Impact: the server implementation and its server-only module ship in
   // the client bundle and run in the browser.
   test.fails.each(
-    shapes.filter((shape) => !recognisedForms.includes(shape.slug)),
+    shapes.filter(
+      (shape) =>
+        !recognisedForms.includes(shape.slug) &&
+        !envFnHandlers.includes(shape.slug),
+    ),
   )(
     '$name: the client bundle holds no server code and the shape works, or the build fails at the call',
     async (shape) => {
@@ -517,6 +570,26 @@ describe.each(startBundlers)('%s build', (bundler) => {
     '$name are recognised: the client bundle holds no server code and the shape works',
     async (shape) => {
       await expectRecognised(shape)
+    },
+    timeout,
+  )
+
+  // Bug: when the handler passed to `.handler()` is a createServerOnlyFn
+  // call or a createIsomorphicFn chain, that call is compiled first and the
+  // caller is never rewritten into an RPC, and the build succeeds without a
+  // report (the dev twins: ../createServerFn/handler-scope.test.ts and
+  // ../known-bugs-start-compiler.test.ts).
+  // Impact: the server fn cannot be called, and the SSR build's server
+  // entry throws while it loads ("Cannot create property 'method' on
+  // string"), so the production server does not start. (Built on their
+  // own, outside the shared build.)
+  // Source: TanStack/router#8446. The outcome (SPEC J4.1, J4.2, G5): the
+  // server fn works, or the build fails with an error naming the file (a
+  // warning alone does not count in a build).
+  test.fails.each(shapes.filter((shape) => envFnHandlers.includes(shape.slug)))(
+    '$name: the server fn works, or the build fails naming the file',
+    async (shape) => {
+      await expectWorksOrRejected(shape)
     },
     timeout,
   )

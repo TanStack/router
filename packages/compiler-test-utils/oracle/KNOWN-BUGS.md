@@ -7,7 +7,7 @@ One entry per root cause: the bug, the SPEC clause, the pins (`file` and test na
 `$name`, `%s` and `${…}` are table-row placeholders), and what a fix must achieve. The test comment (`Bug:`,
 `Impact:`) has the details. "Cause" files name today's implementation; a rewrite may have no such file.
 
-Totals: 371 pin sites in 103 test files (a table test counts once; Vitest counts each row).
+Totals: 372 pin sites in 103 test files (a table test counts once; Vitest counts each row).
 
 Pins whose input picks a name today's compiler generates (S6) flip with a compiler that generates other names. The
 adaptive pins next to them, which read the names a compiler actually generates, are the real check.
@@ -405,7 +405,7 @@ Paths under `router-plugin/tests/`.
 - **With options in a variable, the HMR transform declares the component binding after the object that reads it.**
   SPEC G1. `known-bugs-route-hmr.test.ts`: "route options in a variable ($name) evaluate to a route with a component".
 
-## J4 Start environment separation (84 pins: 66 below, 18 in S1–S6)
+## J4 Start environment separation (85 pins: 67 below, 18 in S1–S6)
 
 Paths under `start-plugin-core/tests/` unless noted.
 
@@ -461,8 +461,10 @@ Paths under `start-plugin-core/tests/` unless noted.
 - **A handler that is a `createIsomorphicFn()` or `createServerOnlyFn()` call is compiled first, and the caller never
   becomes an RPC.** SPEC J4.1, J4.2, G5. `createServerFn/handler-scope.test.ts`: "the handler can be a
   createIsomorphicFn call, or the module is reported"; `known-bugs-start-compiler.test.ts`: "%s: a server fn whose
-  handler is a createServerOnlyFn call returns the handler result, or is reported". Fix: the server fn works, or the
-  build fails with an error naming the file (in dev, an error or a warning naming the file).
+  handler is a createServerOnlyFn call returns the handler result, or is reported";
+  `integration/start-build-call-shapes.test.ts`: "$name: the server fn works, or the build fails naming the file" (in a
+  build, the server entry throws while it loads). Fix: the server fn works, or the build fails with an error naming the
+  file (in dev, an error or a warning naming the file).
 - **Dev edits of a factory module do not recompile its (transitive) importers.** SPEC J4.5, G10.
   `integration/known-bugs-dev-server.test.ts`: "client: a module importing an edited factory module through a
   re-export ($name) loads no server code"; "SSR: a module importing an edited factory module through a re-export
