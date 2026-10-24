@@ -1,6 +1,6 @@
 /**
- * Real importers and behavioural probes instead of inventories (FIX-PLAN
- * A10; SPEC G9, §5.3, §5.6). A compiled module's export list, import list
+ * Real importers and behavioural probes instead of inventories (SPEC G9,
+ * §5.3, §5.6). A compiled module's export list, import list
  * and generated names are free; what is observable is what a real importer
  * gets (the same value and the same instance the module itself uses) and
  * which modules actually load.
@@ -11,12 +11,12 @@
  *   not identifiers) and exports them as live getters on `bindings`. Write
  *   it into a real app (a build entry, a dev-server module).
  * - `loadMarker(name)`: a statement that records `name` when the module it
- *   is in evaluates; put it in a stub or a fixture file. `loadedModules()`
- *   and `resetLoadedModules()` read and clear the records of this realm;
- *   `loadedModulesExpression` reads them in another realm (a child Node
- *   run, a browser page).
+ *   is in evaluates; put it in a stub or a fixture file.
+ *   `resetLoadedModules()` clears the records of this realm;
+ *   `loadedModulesExpression` reads them in any realm (a child Node run, a
+ *   browser page).
  * - `expectNotLoaded(loaded, forbidden)`: asserts no forbidden module is
- *   in a list of loaded modules (`loadedModules()`, a page's records).
+ *   in a list of loaded modules (a page's records, module ids).
  */
 import { expect } from 'vitest'
 
@@ -65,11 +65,6 @@ export function loadMarker(name: string) {
 function records(): Array<string> {
   const global = globalThis as unknown as Record<symbol, Array<string>>
   return (global[Symbol.for(loadedKey)] ??= [])
-}
-
-/** The names `loadMarker` recorded in this realm, in load order. */
-export function loadedModules(): Array<string> {
-  return [...records()]
 }
 
 /** Clears the records of `loadMarker` in this realm. */
