@@ -25,6 +25,7 @@ import type { EmitPlan, EnvInfo, FallbackRecord, PlanContext } from './plan'
 import type { PlanKey, SourceIdentity } from './identity'
 import type { OutputId } from './rewrite'
 import type { Diagnostic } from './diagnostics'
+import type { RawSourceMap } from './output-builder'
 import type {
   CompileInput,
   CompileOutput,
@@ -393,6 +394,16 @@ async function runAttempt(
   }
 
   // ---- C: per-output edge policy (async) ----------------------------------------
+  let inputMap: RawSourceMap | null | undefined
+  const readInputMap = (): RawSourceMap | null => {
+    if (inputMap === undefined) {
+      inputMap =
+        typeof input.inputMap === 'function'
+          ? input.inputMap()
+          : (input.inputMap ?? null)
+    }
+    return inputMap
+  }
   for (const output of Object.keys(emitPlan.outputs) as Array<OutputId>) {
     const recipe = emitPlan.outputs[output]!
     const importerId = recipe.derivedId ?? identity.canonicalId
@@ -405,6 +416,8 @@ async function runAttempt(
         env,
         config: input.config.perPlanner[p.name],
         host,
+        code: input.code,
+        inputMap: readInputMap,
         ledger,
         resolve: (spec, importer) => resolveFrom(spec, importer ?? importerId),
         targetFacts: targetFactsOf,
@@ -483,9 +496,9 @@ function tier0Plan(
     const form = imp.bare ? 'bare' : 'static'
     const k = edgeKey(imp.specifier, form)
     mark(imp.specifierRange, k)
-    const names = imp.specifiers
-      .filter((s) => !s.typeOnly)
-      .map((s) => s.imported)
+    // binding edge iff a specifier is used as a value (an import whose
+    // bindings are unused, or only used as types, is an evaluation edge)
+    const names = t0.importEdgeNames(imp)
     edges.env!.push({
       output: 'env',
       importerId: identity.canonicalId,

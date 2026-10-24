@@ -875,17 +875,32 @@ export class AnalysisPlan implements PlanContext {
       if (tree.isErasedAt(imp.declRange.start)) {
         continue
       }
-      const names = live
-        .filter(
-          (u) =>
-            u.kind === 'import-specifier' &&
-            u.declares.some((s) =>
-              t1.refs
-                .valueRefsOf(s)
-                .some((r) => !tree.isErasedAt(r.range.start)),
-            ),
-        )
-        .map((u) => u.importedName!)
+      const liveLocals = new Set(
+        live
+          .filter((u) => u.kind === 'import-specifier')
+          .flatMap((u) => u.declares),
+      )
+      const names = analysis.importEdgeNames(
+        imp,
+        (start) => !tree.isErasedAt(start),
+        (spec) => liveLocals.has(spec.local),
+      )
+      // classic-runtime JSX reads its factory implicitly (no Yuku reference)
+      for (const spec of imp.specifiers) {
+        if (
+          liveLocals.has(spec.local) &&
+          !names.includes(spec.imported) &&
+          t1.refs
+            .refsOf(spec.local)
+            .some(
+              (r) =>
+                r.kind === 'implicitJsxFactory' &&
+                !tree.isErasedAt(r.range.start),
+            )
+        ) {
+          names.push(spec.imported)
+        }
+      }
       const form: EdgeForm = imp.bare ? 'bare' : 'static'
       const edgeKey = this.edgeKey(imp.specifier, form)
       const marked = markSegment(segments, imp.specifierRange, edgeKey)
