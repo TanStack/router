@@ -430,6 +430,9 @@ dir)` is not a conflict by itself.
   standalone Router with `autoCodeSplitting: true` (default `false`; CLI-only generation never splits); Start always
   enables the splitter (§1.1). With splitting off, route modules reach the bundler unsplit, and J2.14 and J2.15 still
   apply where Start wires them.
+- **J2.22 Route CSS loads with its route.** The CSS a route module imports (`import './users.css'`) loads only when
+  that route matches, whether what is mounted is the component, the `errorComponent`, the `notFoundComponent`, the
+  `pendingComponent`, or no component at all.
 
 ### J3 Route HMR (dev only)
 

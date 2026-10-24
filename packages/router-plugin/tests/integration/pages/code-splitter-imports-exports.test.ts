@@ -202,9 +202,10 @@ export const Route = createFileRoute('/')({
     'removes an import whose specifiers all moved instead of leaving a side-effect import (hmr: $hmr)',
     async ({ hmr }) => {
       // React HMR rewrites the route module before unused code is removed.
+      // (Where a route's CSS import loads: start-plugin-core
+      // tests/integration/known-bugs-route-css.test.ts.)
       const route = await loadRoute(
         `${head}import a, { b } from 'pkg'
-import './styles.css'
 export const Route = createFileRoute('/')({
   loader: () => 'data',
   component: () => <p>{a}{b}</p>,
@@ -212,25 +213,17 @@ export const Route = createFileRoute('/')({
 `,
         {
           hmr,
-          files: {
-            ...packageFiles(
-              'pkg',
-              `globalThis.pkgLoads = (globalThis.pkgLoads ?? 0) + 1
+          files: packageFiles(
+            'pkg',
+            `globalThis.pkgLoads = (globalThis.pkgLoads ?? 0) + 1
 export default 'a'
 export const b = 'b'
 `,
-            ),
-            'styles.css': `p { margin: 0 }\n`,
-          },
+          ),
         },
       )
-      // The side-effect import still loads with the route; what only the
-      // component reads does not.
-      expect(
-        await route.run(
-          `return { requested: await requested(), pkg: globalThis.pkgLoads ?? 0 }`,
-        ),
-      ).toEqual({ requested: expect.arrayContaining(['/styles.css']), pkg: 0 })
+      // What only the component reads does not load with the route.
+      expect(await route.run(`return globalThis.pkgLoads ?? 0`)).toBe(0)
       await expectValidModules(route)
       expect(
         await route.run(
