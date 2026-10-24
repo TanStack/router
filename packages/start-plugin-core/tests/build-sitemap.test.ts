@@ -130,7 +130,10 @@ describe('streaming sitemap output', () => {
     const json = JSON.parse(
       await fs.readFile(join(publicDir, 'pages.json'), 'utf8'),
     )
-    expect(json.pages).toEqual(JSON.parse(JSON.stringify(pages)))
+    expect(json.pages).toEqual([
+      ...JSON.parse(JSON.stringify(pages.slice(0, 2))),
+      { path: '/excluded', sitemap: { exclude: true } },
+    ])
     expect(json.host).toBe('https://example.com')
     expect(Number.isNaN(Date.parse(json.lastBuilt))).toBe(false)
   })

@@ -118,8 +118,8 @@ describe('postBuild sitemap output', () => {
       priority: 0,
       lastmod: '2026-05-05',
     })
-    expect(json.pages[1]).toMatchObject({
-      prerender: { enabled: false },
+    expect(json.pages[1]).toEqual({
+      path: '/disabled',
       sitemap: { changefreq: 'weekly' },
     })
     expect(json.pages[2].sitemap).toEqual({ exclude: true })
