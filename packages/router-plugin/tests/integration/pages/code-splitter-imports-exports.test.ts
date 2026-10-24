@@ -10,6 +10,7 @@
  */
 import { parse as parseWithBabel } from '@babel/core'
 import { describe, expect, it } from 'vitest'
+import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   expectValidModules,
   head,
@@ -640,8 +641,55 @@ const { exported } = await app('importer.ts')
 return [result, seen.length, seen[0] === exported]`),
       ).toEqual([value, 1, true])
       expect(await route.isLazy(split)).toBe(true)
+      // Left unsplit, the option is reported once, naming the route file
+      // (SPEC J2.8, J2.19)
+      if (!(await route.isLazy(option))) {
+        expectDiagnostic(await route.diagnostics(), {
+          severity: 'warning',
+          file: route.url.slice(1),
+          root: route.host.root,
+          times: 1,
+        })
+      }
     },
   )
+
+  // With route HMR, as a dev server has it: an exported component that
+  // another route imports is split, or the user is told once per file
+  // (SPEC J2.8, J2.19), however often the route module and its split
+  // modules are served and transformed.
+  it('an exported component another route imports is split, or reported once naming the file, with route HMR', async () => {
+    const route = await loadRoute(
+      `${head}export function Page() {
+  return <p>page</p>
+}
+export const Route = createFileRoute('/')({ component: Page })
+`,
+      {
+        hmr: true,
+        files: {
+          'about.tsx': `${head}import { Page } from './route'
+export const Route = createFileRoute('/about')({ component: () => <Page /> })
+`,
+        },
+      },
+    )
+    expect(
+      await route.run(`await app('about.tsx')
+return render('component')`),
+    ).toBe('<p>page</p>')
+    const split = await route.isLazy('component')
+    await route.transform()
+    expect(await route.run(`return render('component')`)).toBe('<p>page</p>')
+    if (!split) {
+      expectDiagnostic(await route.diagnostics(), {
+        severity: 'warning',
+        file: route.url.slice(1),
+        root: route.host.root,
+        times: 1,
+      })
+    }
+  })
 
   it.each([
     {
