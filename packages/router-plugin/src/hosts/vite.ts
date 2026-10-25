@@ -317,11 +317,6 @@ export function createRouterCompilerVitePlugin(
     resolveId: {
       filter: { id: OWNED_QUERY_RE },
       handler(source, importer) {
-        // an absolute derived id of the compiler's own making is resolved
-        // (Vite's file resolution would read a `#` of the path as a fragment)
-        if (identify(source).derived !== null && path.isAbsolute(source)) {
-          return source
-        }
         if (!importer || !source.startsWith('./')) {
           return null
         }

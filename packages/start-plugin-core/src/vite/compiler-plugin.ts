@@ -930,11 +930,6 @@ export function startCompilerPlugin(
           if (edge !== null) {
             return edge
           }
-          // an absolute derived id of the compiler's own making is resolved
-          // (Vite's file resolution would read a `#` of the path as a fragment)
-          if (identify(source).derived !== null && path.isAbsolute(source)) {
-            return source
-          }
           // a derived module of the compiler (`./route.tsx?tsr-split=…`): the
           // importer's sibling with the query verbatim, no file system (§3.5.4)
           if (!importer || !source.startsWith('./')) {
