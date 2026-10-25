@@ -381,7 +381,11 @@ export class ImportProtectionEnv {
    * reported again (`onViolation` asked again, the report printed again),
    * as every compilation bundling them reports them.
    */
-  async reportAgain(importerId: string, info: unknown): Promise<void> {
+  async reportAgain(
+    importerId: string,
+    info: unknown,
+    opts: { enqueue?: boolean } = {},
+  ): Promise<void> {
     const record = info as RspackImportProtectionBuildInfo | undefined
     if (
       record?.version !== 1 ||
@@ -397,7 +401,9 @@ export class ImportProtectionEnv {
       }
       const vi = violationInfo(v, this.ip.config, () => this.trace(importerId))
       const verdict = await this.ip.config.onViolation?.(vi)
-      if (verdict !== false) {
+      // `enqueue: false`: the compile that registered the violations printed
+      // them already; only `onViolation` sees this compile
+      if (verdict !== false && opts.enqueue !== false) {
         this.reporter?.enqueue({ violation: v, info: vi })
       }
     }

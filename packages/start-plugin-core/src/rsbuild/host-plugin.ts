@@ -171,10 +171,6 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async (c) => {
         const modified = [...(c.modifiedFiles ?? [])]
         const removed = [...(c.removedFiles ?? [])]
-        // one warning per file per compilation: a module this compilation
-        // rebuilds reports its compiler warnings again (each compilation's
-        // `warnings` starts empty)
-        session.warnings.reset()
         ipEnv?.beginLogicalBuild()
         // Rspack reports no event for a file created while nothing depended on it (a target
         // deleted and recreated between edits): failed resolutions and missing-file facts are
