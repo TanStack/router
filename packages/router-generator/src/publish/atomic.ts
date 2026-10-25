@@ -39,6 +39,8 @@ export async function readIfExists(file: string): Promise<string | null> {
  */
 export class AtomicPublisher {
   private readonly session = crypto.randomBytes(4).toString('hex')
+  /** Numbers the temporary files: writes in flight never share one. */
+  private writes = 0
   private tmpDirReady: Promise<unknown> | undefined
   /** Destination directories whose renames from `tmpDir` cross devices. */
   private readonly besideDestination = new Set<string>()
@@ -63,13 +65,9 @@ export class AtomicPublisher {
     }
     this.tmpDirReady ??= fsp.mkdir(this.tmpDir, { recursive: true })
     await this.tmpDirReady
-    const hash = crypto
-      .createHash('md5')
-      .update(path.resolve(file))
-      .digest('hex')
     try {
       await this.writeVia(
-        path.join(this.tmpDir, `${this.session}-${hash}`),
+        path.join(this.tmpDir, `${this.session}-${this.writes++}`),
         file,
         content,
         expected,
@@ -86,7 +84,7 @@ export class AtomicPublisher {
   private besideName(file: string) {
     return path.join(
       path.dirname(file),
-      `.${path.basename(file)}.${this.session}.tmp`,
+      `.${path.basename(file)}.${this.session}-${this.writes++}.tmp`,
     )
   }
 

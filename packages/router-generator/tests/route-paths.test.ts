@@ -638,6 +638,92 @@ describe('conflicting routes', () => {
   // (A layout route file at the root of a directory merged at the current
   // level, `physical('', 'merged')` with `merged/route.tsx`: not tested; the
   // spec, J1.7, leaves virtual route configs the docs do not describe open.)
+
+  // Bug: a route file and a layout route file of one route (`posts.tsx`,
+  // `posts/route.tsx`) with a child route give two routes with one id
+  // without an error; the router then throws "Duplicate routes found with
+  // id: /posts", naming no file.
+  // Source: src/model/build.ts `checkRouteFullPathUniqueness()` (checked
+  // childless routes only, by full path).
+  // Impact: the app fails at startup with no hint which files clash.
+  test.each([
+    { name: 'an index route', child: 'posts/index.tsx' },
+    { name: 'a param route', child: 'posts/$id.tsx' },
+  ])(
+    'a route file and a layout route file of one route with $name under it fail the generator with an error naming both files',
+    async ({ child }) => {
+      const root = await appWithRoutes(['posts.tsx', 'posts/route.tsx', child])
+
+      const error = await captureThrow(() => generate(root))
+      for (const file of [
+        'src/routes/posts.tsx',
+        'src/routes/posts/route.tsx',
+      ]) {
+        expectDiagnostic(error, { severity: 'error', file, root })
+      }
+    },
+  )
+
+  // Bug: a route file the virtual route config uses for two routes is
+  // imported twice by the route tree (one `Route` object updated with two
+  // ids: the router's duplicate route invariant at startup), or the run fails
+  // with an `ENOENT` of a temporary file (two concurrent writes of the file).
+  // Source: src/generator.ts `processBatch()` (one update per scanned node,
+  // in parallel), src/publish/atomic.ts (one temporary file per destination).
+  // Impact: a config mistake gives a broken app or a bare fs error instead
+  // of an error naming the file.
+  test.each([
+    {
+      name: 'two route() entries',
+      files: { 'src/routes/x.tsx': fileRoute('/a') },
+      config: virtualRootRoute('__root.tsx', [
+        virtualRoute('/a', 'x.tsx'),
+        virtualRoute('/b', 'x.tsx'),
+      ]),
+      file: 'src/routes/x.tsx',
+    },
+    {
+      name: 'two physical() mounts of one directory',
+      files: { 'src/routes/sub/users.tsx': fileRoute('/a/users') },
+      config: virtualRootRoute('__root.tsx', [
+        physical('/a', 'sub'),
+        physical('/b', 'sub'),
+      ]),
+      file: 'src/routes/sub/users.tsx',
+    },
+  ])(
+    'a route file used for two routes by $name fails the generator with an error naming it',
+    async ({ files, config, file }) => {
+      // (the file already has the first route's id: nothing writes it)
+      const root = await createApp({
+        'src/routes/__root.tsx': rootRoute(),
+        ...files,
+      })
+
+      const error = await captureThrow(() =>
+        generate(root, { virtualRouteConfig: config }),
+      )
+      expectDiagnostic(error, { severity: 'error', file, root })
+    },
+  )
+
+  test('a route file a __virtual.ts subtree config uses while the directory scan also routes it fails the generator with an error naming it', async () => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/x.tsx': fileRoute('/x'),
+      'src/routes/sub/__virtual.ts': `import { route } from '@tanstack/virtual-file-routes'
+
+export default [route('/y', '../x.tsx')]
+`,
+    })
+
+    const error = await captureThrow(() => generate(root))
+    expectDiagnostic(error, {
+      severity: 'error',
+      file: 'src/routes/x.tsx',
+      root,
+    })
+  })
 })
 
 describe('route names', () => {
