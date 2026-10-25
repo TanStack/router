@@ -141,6 +141,20 @@ export class RawFactsCache {
     }
   }
 
+  /**
+   * Keeps the entries `keep` accepts. For hosts whose watcher reports a
+   * deleted file only while something depends on it (Rspack): the entries
+   * of files no compilation depends on any more are dropped.
+   */
+  retain(keep: (canonicalId: string) => boolean): void {
+    for (const [id, e] of this.entries) {
+      if (!keep(id)) {
+        e.pending = null
+        this.entries.delete(id)
+      }
+    }
+  }
+
   async get(canonicalId: string): Promise<RawFacts> {
     if (this.noFacts) {
       return this.isKnownSpecifier(canonicalId)

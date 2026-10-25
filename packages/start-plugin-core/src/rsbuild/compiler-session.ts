@@ -474,6 +474,60 @@ export class StartRsbuildCompilerSession {
     }
   }
 
+  /** Per environment: the files its last compilation depended on (dev; see `retain`). */
+  private readonly liveFiles = new Map<string, ReadonlySet<string>>()
+
+  /**
+   * After an environment's dev compilation: forget what the session holds of
+   * files the compilation no longer depends on (plans, raw facts, import
+   * protection's importer records, the per-resource fingerprints and server-fn
+   * records). Rspack reports a deleted file only while a module depends on it,
+   * so a module the app stopped importing and then deleted never gets its
+   * `unlink`; without this its state stayed for the session (D12: bounded by
+   * the live modules).
+   */
+  retain(envName: string, files: Iterable<string>): void {
+    const live = new Set<string>()
+    for (const f of files) {
+      live.add(normalizePath(f))
+    }
+    this.liveFiles.set(envName, live)
+    const isFile = (path: string) =>
+      path.startsWith('/') || /^[A-Za-z]:\//.test(path)
+    const keepIn =
+      (set: (path: string) => boolean) =>
+      (path: string): boolean =>
+        !isFile(path) || path.includes('/node_modules/.virtual/') || set(path)
+    const keepEnv = keepIn((p) => live.has(p))
+    const plans = this.caches.plans.get(envName)
+    if (plans) {
+      for (const entry of [...plans.values()]) {
+        if (!keepEnv(identify(entry.key.canonicalId).path)) {
+          plans.delete(entry.key)
+        }
+      }
+    }
+    const env = this.envs.get(envName)
+    if (env) {
+      for (const map of [env.fingerprints, env.serverFns]) {
+        for (const resource of [...map.keys()]) {
+          if (!keepEnv(identify(canonicalResource(resource)).path)) {
+            map.delete(resource)
+          }
+        }
+      }
+    }
+    this.ip?.retain(keepEnv, envName)
+    if (this.liveFiles.size === this.envs.size) {
+      // shared state: kept while any environment depends on the file
+      const anyEnv = keepIn((p) =>
+        [...this.liveFiles.values()].some((set) => set.has(p)),
+      )
+      this.rawFacts.retain((id) => anyEnv(identify(id).path))
+      this.ip?.retain(anyEnv)
+    }
+  }
+
   /** The one invalidation operation (R3): the host's bundler rebuilds through the loader's `addDependency` set. */
   invalidate(
     file: string,

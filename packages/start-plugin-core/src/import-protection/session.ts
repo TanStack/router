@@ -163,6 +163,22 @@ export class ImportProtection {
     }
   }
 
+  /** Keeps the importer records (and scope-cache entries) of the paths `keep` accepts (see `RawFactsCache.retain`). */
+  retain(keep: (path: string) => boolean, envName?: string): void {
+    if (envName === undefined) {
+      for (const path of [...this.scopeCache.keys()]) {
+        if (!keep(path)) {
+          this.scopeCache.delete(path)
+        }
+      }
+    }
+    for (const env of this.envs.values()) {
+      if (envName === undefined || env.name === envName) {
+        env.retain(keep)
+      }
+    }
+  }
+
   inScope(importerPath: string): boolean {
     return importerInScope(this.config, importerPath, this.scopeCache)
   }
@@ -536,6 +552,23 @@ export class ImportProtectionEnv {
         .join('\n')
     }
     return { error }
+  }
+
+  /** Forgets the importer records of every path `keep` rejects. */
+  retain(keep: (path: string) => boolean): void {
+    const gone = new Set<string>()
+    for (const importerId of [
+      ...this.byImporter.keys(),
+      ...this.edges.importerIds(),
+    ]) {
+      const path = traceFile(importerId)
+      if (!keep(path)) {
+        gone.add(path)
+      }
+    }
+    for (const path of gone) {
+      this.forget(path)
+    }
   }
 
   /** Forgets a deleted file's importer records (edges, violations of its ids). */

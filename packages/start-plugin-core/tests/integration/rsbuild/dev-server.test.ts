@@ -2,7 +2,8 @@
  * The Start compiler on a running Rsbuild dev server: editing a factory
  * module rebuilds every client module compiled against it.
  */
-import { describe, expect, onTestFinished, test } from 'vitest'
+import { describe, expect, onTestFinished, test, vi } from 'vitest'
+import { compilerStats } from '@tanstack/router-utils/compiler'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { pluginReact } from '@rsbuild/plugin-react'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
@@ -281,6 +282,51 @@ export const ${name} = createServerFn().handler(async () => 'MARK_${name}')
       expect(server.errors).toEqual([])
       const ssr = Object.values(await server.outputs('ssr')).join('\n')
       expect(ssr).toContain('MARK_a')
+    },
+    timeout,
+  )
+})
+
+describe('Rsbuild dev: modules the app stops importing', () => {
+  // D12: the compiler's caches are bounded by the live modules. Rspack
+  // reports a deleted file only while a module depends on it: a module the
+  // app stopped importing and then deleted got no invalidation, and its plans
+  // and raw facts stayed for the session (found by the compiler soak,
+  // benchmarks/compiler-perf `--scenarios soak --soak-bundlers rsbuild`).
+  // Measured through the documented stats knob (TSR_COMPILER_STATS=1); other
+  // sessions alive in this worker are idle, so the change is this server's.
+  test(
+    'leave no plans or raw facts behind once deleted',
+    async () => {
+      vi.stubEnv('TSR_COMPILER_STATS', '1')
+      onTestFinished(() => {
+        vi.unstubAllEnvs()
+      })
+      const server = await startRsbuildStartDevServer({
+        compileTimeout: 10_000,
+        files: {
+          'src/a.ts': `export const a = 'MARK_a'\n`,
+          'src/entry.ts': `export { a } from './a'\n`,
+        },
+      })
+      const counts = () => {
+        const s = compilerStats()['start:rsbuild'] ?? {}
+        return { plans: s.plans ?? 0, rawFacts: s.rawFacts ?? 0 }
+      }
+      const before = counts()
+      for (let i = 0; i < 3; i++) {
+        await server.edit({
+          [`src/m${i}.ts`]: `export const m = 'MARK_m${i}'\n`,
+        })
+        await server.edit({
+          'src/entry.ts': `export { a } from './a'\nexport { m } from './m${i}'\n`,
+        })
+        await server.edit({ 'src/entry.ts': `export { a } from './a'\n` })
+        // deleted once nothing imports it: Rspack reports no removal
+        await server.edit({ [`src/m${i}.ts`]: null })
+      }
+      expect(server.errors).toEqual([])
+      expect(counts()).toEqual(before)
     },
     timeout,
   )

@@ -67,6 +67,10 @@ export class EdgeIndex {
     this.forward.delete(importerId)
   }
 
+  importerIds(): Iterable<string> {
+    return this.forward.keys()
+  }
+
   /** Forgets the edges of every importer id of a deleted file. */
   forget(path: string): void {
     for (const importerId of [...this.forward.keys()]) {
