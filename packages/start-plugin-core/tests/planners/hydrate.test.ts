@@ -778,6 +778,9 @@ export const Page = () => <Hydrate><p onClick={() => clicks++}>{clicks}</p></Hyd
     expect(client.chunks).toEqual({})
   })
 
+  // (Adjusted: the exported writer and its state are an extracted export
+  // only the chunk needs, §3.5.3, so the live binding's home is that
+  // output, not the parent; main kept it in the parent.)
   it('lets the children read a let the parent reassigns through the live binding', async () => {
     const code = `${REACT}let clicks = 0
 export function bump() { clicks++ }
@@ -786,9 +789,12 @@ export const Page = () => <Hydrate><p>{clicks}</p></Hydrate>
     const client = await compile(code)
     const [b] = client.facts.boundaries
     expect(client.chunks[b!.id]).toContain(
-      "import { clicks } from './page.tsx'",
+      "import { clicks } from './page.tsx?tsr-split=export~bump'",
     )
-    expect(client.code).toContain('export { clicks }')
+    expect(client.code).toContain(
+      "export { bump } from './page.tsx?tsr-split=export~bump'",
+    )
+    expect(client.code).not.toContain('let clicks')
   })
 
   it('reads the classic JSX pragma’s factory in a fragment-wrapped chunk', async () => {
