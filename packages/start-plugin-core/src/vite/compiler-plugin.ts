@@ -38,7 +38,6 @@ import {
 } from '@tanstack/router-plugin/planners'
 import {
   DEV_CLIENT_ENTRY,
-  ENTRY_POINTS,
   TRANSFORM_ID_REGEX,
   VITE_ENVIRONMENT_NAMES,
 } from '../constants'
@@ -52,6 +51,7 @@ import {
   devLookupModule,
   devResolverModule,
   productionResolverModule,
+  unreferencedWarning,
 } from '../server-fns/resolver'
 import { createImportProtection } from '../import-protection/session'
 import {
@@ -1130,58 +1130,15 @@ export function startCompilerPlugin(
   const lookupPrefix = `\0${SERVER_FN_LOOKUP_VIRTUAL_ID}?`
 
   /**
-   * R44 in development: a server function is HTTP-callable once the client
-   * environment compiled its defining module (client-referenced, as in a
-   * build). The client graph is lazy in development, so a module the client
-   * has not compiled yet (a fresh server answering a page loaded before a
-   * restart) is compiled on demand: the client graph is walked from the
-   * client's entries (the dev client entry and the router entry) through
-   * every import, static and dynamic, each module transformed by the client
-   * environment itself (outside any transform of the provider environment:
-   * this is the load of the lookup module). Dependencies are left out (a
-   * server function is defined in the app). Then the registry decides. One
-   * walk at a time; a module reached once stays compiled, so a later miss
-   * mostly reads the graph.
+   * R44 in development: a client-origin call of a function whose defining
+   * module the client environment has not compiled (no client module in the
+   * dev server's graph references it: a stale page after a restart, an
+   * external caller, a serialized function) is answered, with one warning
+   * per function saying a production build refuses it. The dev server
+   * compiles lazily, so nothing short of crawling the client graph could
+   * prove reachability; it is not attempted.
    */
-  let clientWalk: Promise<void> | null = null
-  const walkClientGraph = async (client: DevEnvironment): Promise<void> => {
-    const seen = new Set<string>()
-    const queue = [DEV_CLIENT_ENTRY, ENTRY_POINTS.router]
-    while (queue.length > 0) {
-      const url = queue.pop()!
-      if (seen.has(url)) {
-        continue
-      }
-      seen.add(url)
-      await client.transformRequest(url).catch(() => null)
-      const node = await client.moduleGraph
-        .getModuleByUrl(url)
-        .catch(() => undefined)
-      if (!node) {
-        continue
-      }
-      for (const dep of node.importedModules) {
-        if (seen.has(dep.url) || /[\\/]node_modules[\\/]/.test(dep.url)) {
-          continue
-        }
-        queue.push(dep.url)
-      }
-    }
-  }
-  const clientReferenced = async (fnId: string): Promise<boolean> => {
-    if (registry.get(fnId)?.clientReferenced) {
-      return true
-    }
-    const client = server?.environments[VITE_ENVIRONMENT_NAMES.client]
-    // bundled dev compiles the whole client graph up front: the registry knows
-    if (client && !client.config.experimental.bundledDev) {
-      clientWalk ??= walkClientGraph(client).finally(() => {
-        clientWalk = null
-      })
-      await clientWalk
-    }
-    return registry.get(fnId)?.clientReferenced === true
-  }
+  const devWarned = new Set<string>()
   const devLookupPlugin: Plugin = {
     name: 'tanstack-start:server-fn-lookup',
     apply: 'serve',
@@ -1216,9 +1173,11 @@ export function startCompilerPlugin(
       }
       if (
         params.get('origin') === 'client' &&
-        !(await clientReferenced(fnId))
+        !entry.clientReferenced &&
+        !devWarned.has(fnId)
       ) {
-        this.error(`Server function not accessible from client: ${fnId}`)
+        devWarned.add(fnId)
+        this.warn(unreferencedWarning(entry))
       }
       const specifier = toDevSpecifier(providerModuleIdOf(entry), root)
       return devLookupModule(entry, specifier)

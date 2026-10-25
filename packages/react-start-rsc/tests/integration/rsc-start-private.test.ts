@@ -6,12 +6,15 @@ describe('Vite dev: a separate RSC provider', () => {
   // J4.2: only server functions client code references are
   // callable over HTTP. `internal` is called by `greet`'s handler only
   // (server origin, allowed); a request by its id from the browser must be
-  // refused (R44 in development: the client environment never compiled
-  // `internal`'s module, not even when the lookup compiles the client graph
-  // on demand).
+  // refused.
+  // R44 in development: the dev server answers the call (the client
+  // graph is lazy, so reachability is unknown) and warns once that a
+  // production build refuses it; the refusal this test asserts is the
+  // production rule (known-bugs-start-compiler.test.ts "not callable over
+  // HTTP"). Pinned until the dev assertion accepts the warning.
   // Source: the compiler-level pin was in
   // start-plugin-core/tests/createServerFn/createServerFn.test.ts.
-  test(
+  test.fails(
     'a server function only server code calls is not callable from the browser',
     async () => {
       const server = await startRscDevServer({
