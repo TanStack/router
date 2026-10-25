@@ -1,23 +1,23 @@
-import { realpathSync, statSync } from 'node:fs'
-import { join, normalize } from 'pathe'
+import { resolveModulePath } from 'exsolve'
 
 interface ResolveModuleOptions {
   baseName: string
   from: string
 }
-
-const extensions = ['', '.ts', '.js', '.mts', '.mjs', '.tsx', '.jsx']
-
-/** The first existing file of `from/baseName` + each extension, by its real path. */
 function resolveModule(opts: ResolveModuleOptions): string | undefined {
-  const base = join(opts.from, opts.baseName)
-  for (const extension of extensions) {
-    const file = base + extension
-    if (statSync(file, { throwIfNoEntry: false })?.isFile()) {
-      return normalize(realpathSync(file))
-    }
+  let baseName = opts.baseName
+  if (!baseName.startsWith('./')) {
+    baseName = `./${baseName}`
   }
-  return undefined
+  return resolveModulePath(baseName, {
+    from: opts.from,
+    extensions: ['.ts', '.js', '.mts', '.mjs', '.tsx', '.jsx'],
+    try: true,
+    // exsolve's default cache is process-wide and keeps misses: a dev server
+    // restart would not see an entry created since. The plugin already
+    // resolves the entries once per instance.
+    cache: false,
+  })
 }
 
 export function resolveEntry<
