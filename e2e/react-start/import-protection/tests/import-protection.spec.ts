@@ -14,6 +14,14 @@ function stripLocation(value: string): string {
   return value.replace(/:\d+:\d+$/, '')
 }
 
+// Traces follow the bundler graph from the real entry, through framework
+// package modules. Their steps may carry no line (SPEC J6.5: optional fields).
+function isFrameworkDistFile(file: string): boolean {
+  return /\/(node_modules|packages\/[^/]+\/dist)\//.test(
+    file.replace(/\\/g, '/'),
+  )
+}
+
 function normalizeKeyPath(value: string): string {
   let normalized = stripLocation(value).replace(/\\/g, '/')
   const normalizedFixtureRoot = fixtureRoot.replace(/\\/g, '/')
@@ -271,6 +279,7 @@ for (const mode of ['build', 'dev'] as const) {
       const step = v!.trace[i]
       if (step.specifier?.includes('?tsr-split=')) continue
       if (step.file.includes('routeTree.gen')) continue
+      if (step.line == null && isFrameworkDistFile(step.file)) continue
       // In dev mode, the step right after a ?tsr-split= virtual step
       // re-enters the same file — its import may not be locatable.
       const prev = v!.trace[i - 1]
@@ -338,7 +347,18 @@ for (const mode of ['build', 'dev'] as const) {
   })
 }
 
-for (const mode of ['build', 'dev'] as const) {
+// SPEC J6.4: builds decide violations after tree-shaking. `leakyReference`
+// is exported but imported by nobody, so its `secret.server` edge is dead in
+// the client build and not reported; dev reports it.
+test('compiler leak dead edge is not reported in build', async () => {
+  const violations = await readViolations('build')
+  const v = violations.find(
+    (x) => x.envType === 'client' && x.importer.includes('compiler-leak'),
+  )
+  expect(v).toBeUndefined()
+})
+
+for (const mode of ['dev'] as const) {
   test(`compiler leak violation includes line/col in importer in ${mode}`, async () => {
     const violations = await readViolations(mode)
     const v = violations.find(
@@ -396,7 +416,8 @@ for (const mode of ['build', 'dev', 'dev.warm'] as const) {
   })
 }
 
-for (const mode of ['build', 'dev'] as const) {
+// Dev only: the build drops compiler-leak's dead edge (SPEC J6.4, above).
+for (const mode of ['dev'] as const) {
   test(`compiler-processed module has code snippet in ${mode}`, async () => {
     const violations = await readViolations(mode)
 
@@ -669,6 +690,7 @@ test('warm run traces include line numbers', async () => {
     const step = v!.trace[i]
     if (step.specifier?.includes('?tsr-split=')) continue
     if (step.file.includes('routeTree.gen')) continue
+    if (step.line == null && isFrameworkDistFile(step.file)) continue
     const prev = v!.trace[i - 1]
     if (prev.specifier?.includes('?tsr-split=')) continue
     if (
