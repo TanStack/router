@@ -342,28 +342,22 @@ describe('Vite production build with RSC', () => {
 
   // SPEC J4.2: a server fn the client references is registered and runs
   // when called by id, also when its only importer is a `'use client'`
-  // component that reaches the browser through a server component.
-  // Bug: the server-fn manifest of the build has no entry for it (the
-  // provider build never processes a module only a client reference
-  // imports), so the call answers 500 ("Server function info not found").
-  // Impact: a server fn imported only by a client component of a server
-  // component cannot be called in production (#7943).
-  test.fails(
-    "a server fn only a 'use client' component of a server component imports runs when clicked",
-    async () => {
-      const page = await open('/client-ref')
-      await page.page.locator('[data-testid=counter]').waitFor()
-      await waitForHydration(page)
-      await page.page.locator('[data-testid=counter]').click()
-      expect(
-        await settledValue(
-          page,
-          () => page.text('[data-testid=counter]'),
-          (text) => text.includes('MARK_UPDATED'),
-        ),
-      ).toBe('counter MARK_UPDATED')
-    },
-  )
+  // component that reaches the browser through a server component (the
+  // provider builds before the client: it compiles the reach of its
+  // handlers before its build, so its manifest lists the fn; #7943).
+  test("a server fn only a 'use client' component of a server component imports runs when clicked", async () => {
+    const page = await open('/client-ref')
+    await page.page.locator('[data-testid=counter]').waitFor()
+    await waitForHydration(page)
+    await page.page.locator('[data-testid=counter]').click()
+    expect(
+      await settledValue(
+        page,
+        () => page.text('[data-testid=counter]'),
+        (text) => text.includes('MARK_UPDATED'),
+      ),
+    ).toBe('counter MARK_UPDATED')
+  })
 
   test('loading the client callers without an RSC result supplies no server CSS', async () => {
     const page = await open('/control')

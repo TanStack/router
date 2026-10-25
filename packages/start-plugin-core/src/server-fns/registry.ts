@@ -45,6 +45,16 @@ export class ServerFnRegistry {
     return [...this.byId.values()]
   }
 
+  /** Whether a compile of `definingCanonicalId` recorded a function. */
+  definedIn(definingCanonicalId: string): boolean {
+    for (const e of this.byId.values()) {
+      if (e.definingCanonicalId === definingCanonicalId) {
+        return true
+      }
+    }
+    return false
+  }
+
   /** Records the facts of a compile of `definingCanonicalId` in an env of `type`. */
   record(
     definingCanonicalId: string,

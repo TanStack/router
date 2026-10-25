@@ -24,6 +24,7 @@ import {
   digestOf,
   identify,
   invalidate,
+  isAnalyzableSpecifier,
 } from '@tanstack/router-utils/compiler'
 import { defaultCodeSplitGroupings } from '@tanstack/router-plugin'
 import {
@@ -130,6 +131,9 @@ export interface StartCompilerPluginOptions {
 }
 
 const PROVIDER_QUERY = 'tss-serverfn-split'
+
+/** A module naming no server-fn factory nor `.handler(` defines no server function (the Rsbuild session's text gate, D14). */
+const SERVER_FN_TEXT_RE = /createServerFn|\.handler\s*\(/
 
 /** Specifiers of the compiler's own derived modules (`./x.tsx?tsr-split=…`, `?tss-hydrate=…`) and import protection's edge modules. */
 const OWNED_QUERY_RE =
@@ -561,6 +565,93 @@ export function startCompilerPlugin(
     }
   }
 
+  /** Whether `env` is a server-fn provider of its own (RSC), not the SSR environment. */
+  const isSeparateProvider = (env: StartCompilerEnvironment): boolean =>
+    !ssrIsProvider && env.name === opts.providerEnvName
+
+  /**
+   * A separate provider's build (RSC; plugin-rsc's `buildApp` builds the
+   * provider before the client, after scanning the provider and the SSR
+   * environments). The provider's graph unfolds from its manifest, which
+   * lists the server functions the scans registered. The SSR scan compiles
+   * a server-fn module as a caller: its handlers are deleted, with the
+   * imports only they read, so a `'use client'` component a handler renders
+   * (through a server component) and the server-fn modules that component
+   * imports are seen by no environment before the client builds: their
+   * functions were missing from the manifest (J4.2, #7943). Before the
+   * provider's real build, the raw reach of every registered server-fn
+   * module (static and lazy imports, project modules only, what the deleted
+   * handlers read included) is walked, and each module that may define a
+   * server function is compiled in the provider environment, outside any
+   * transform, so the manifest lists its functions; the build then imports
+   * and compiles it in place (the plans are reused).
+   */
+  const compileHandlerReach = async (
+    s: Session,
+    env: StartCompilerEnvironment,
+    environment: Environment,
+    host: HostServices,
+  ): Promise<void> => {
+    const seen = new Set<string>()
+    const queue = registry.entries().map((e) => e.definingCanonicalId)
+    while (queue.length > 0) {
+      const id = queue.pop()!
+      if (seen.has(id)) {
+        continue
+      }
+      seen.add(id)
+      const identity = identify(id)
+      if (/[\\/]node_modules[\\/]/.test(identity.path)) {
+        continue
+      }
+      const facts = await s.rawFacts.get(identity.canonicalId)
+      if (!facts.targetFacts.exists) {
+        continue
+      }
+      if (!registry.definedIn(identity.canonicalId)) {
+        const code = await fs.readFile(identity.path, 'utf8').catch(() => null)
+        // the cheap text gate of a module that may define a server function (D14)
+        if (code !== null && SERVER_FN_TEXT_RE.test(code)) {
+          const out = await compileModule(
+            {
+              id: identity.canonicalId,
+              code,
+              env: envInfoOf(environment, env),
+              planners: s.planners.get(env.name)!,
+              config: s.configs.get(env.name)!,
+              inputMap: () => null,
+              wantMap: false,
+            },
+            host,
+            s.caches,
+          )
+          const startFacts = out?.facts.planners[START_ENV] as
+            | StartEnvFacts
+            | undefined
+          if (startFacts && startFacts.serverFns.length > 0) {
+            registry.record(
+              identity.canonicalId,
+              startFacts.serverFns,
+              env.type,
+            )
+          }
+        }
+      }
+      for (const spec of [
+        ...facts.targetFacts.imports,
+        ...facts.targetFacts.lazyImports,
+      ]) {
+        if (s.rawFacts.isKnownSpecifier(spec) || !isAnalyzableSpecifier(spec)) {
+          continue
+        }
+        const r = await host.resolve(spec, identity.canonicalId)
+        if (r && !r.external) {
+          queue.push(identify(r.id).canonicalId)
+        }
+      }
+    }
+  }
+
   const providerModuleIdOf = (e: ServerFnEntry): string =>
     e.providerDerived
       ? deriveId(e.definingCanonicalId, { kind: 'provider', value: '' })
@@ -713,13 +804,27 @@ export function startCompilerPlugin(
           unsubscribeRoutes = null
         })
       },
-      buildStart() {
+      async buildStart() {
         const s = requireSession()
         if (this.environment.mode === 'build' && env.type === 'client') {
           // a new build: the registry of the previous one is gone (the client builds first)
           registry.clear()
           // one warning per file per run
           s.warnings.reset()
+        }
+        if (
+          this.environment.mode === 'build' &&
+          this.environment.config.build.write !== false &&
+          isSeparateProvider(env)
+        ) {
+          await compileHandlerReach(
+            s,
+            env,
+            this.environment,
+            hostFor(s, this.environment, (source, imp, options) =>
+              this.resolve(source, imp, options),
+            ),
+          )
         }
         const environment = this.environment
         virtualLoaders.set(env.name, async (id) => {

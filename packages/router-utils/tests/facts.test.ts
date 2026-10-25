@@ -56,3 +56,28 @@ describe('target facts of a marked module (lane P)', () => {
     expect(effects.targetFacts.effectProvenance).toBe('own')
   })
 })
+
+describe('target facts: lazy imports (lane C2)', () => {
+  it('lists the literal specifiers of import() and require() apart from the evaluation edges', async () => {
+    const files: Record<string, string> = {
+      '/app/a.ts': `import { b } from './b'
+export const load = () => import('./panel')
+export const other = () => import(/* webpackChunkName: "x" */ './other')
+export const dyn = (name: string) => import(name)
+export const cjs = () => require('./legacy')
+export const value = b
+`,
+    }
+    const cache = new RawFactsCache({
+      readFile: (p) => Promise.resolve(files[p] ?? null),
+      loadVirtual: () => Promise.resolve(null),
+    })
+    const facts = await cache.get('/app/a.ts')
+    expect(facts.targetFacts.imports).toEqual(['./b'])
+    expect(facts.targetFacts.lazyImports).toEqual([
+      './panel',
+      './other',
+      './legacy',
+    ])
+  })
+})
