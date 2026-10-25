@@ -24,13 +24,11 @@ import { hash } from 'node:crypto'
 import { relative } from 'node:path'
 import {
   cleanOrphanedDeclarations,
-  isPureExpression,
   siblingSpecifier,
 } from '@tanstack/router-utils/compiler'
 import type {
   ClassifiedRef,
   Diagnostic,
-  Frag,
   GateContext,
   ModuleAnalysis,
   OutputId,
