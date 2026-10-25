@@ -980,8 +980,10 @@ describe('provider outputs (DESIGN §3.10.5, lane B)', () => {
           key: 'provider',
           derived: { kind: 'provider', value: '' },
         })
-        const sym = ctx.analysis.exports.find((e) => e.name === 'fn')!
-          .local as never
+        const fn = ctx.analysis.exports.find(
+          (e) => e.kind === 'local' && e.name === 'fn',
+        )
+        const sym = (fn?.kind === 'local' ? fn.local : null) as never
         const wrapper = ctx.names.alloc('fn_handler')
         ctx.rewrites.addGenerated({
           body: [
