@@ -119,6 +119,8 @@ export function tanStackStartRouter(
       if (startPluginOpts.prerender?.enabled === true) {
         plugins.push(prerenderRoutesPlugin())
       }
+      // (the app's own generator plugins run too, #7768)
+      plugins.push(...(routerConfig.plugins ?? []))
       return {
         ...routerConfig,
         target: corePluginOpts.framework,
