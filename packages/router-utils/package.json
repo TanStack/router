@@ -73,8 +73,6 @@
     "node": ">=20.19"
   },
   "dependencies": {
-    "ansis": "^4.3.1",
-    "diff": "^9.0.0",
     "pathe": "catalog:",
     "tinyglobby": "catalog:",
     "yuku": "0.23.0"
