@@ -62,6 +62,12 @@ export interface HydratePlannerConfig {
    * compile that would extract the boundary fails alike). Default true.
    */
   rejectEverywhere?: boolean
+  /**
+   * React development: the chunk component carries the route-HMR identity
+   * marker (`$$tsrRefreshId`, R41), so an update of a boundary's chunk is
+   * kept by React Refresh instead of swapped. Default false.
+   */
+  refreshMarkers?: boolean
 }
 
 /** Facts a plan records for its boundaries (plain data). */
@@ -93,6 +99,7 @@ interface ResolvedConfig {
   packages: Readonly<Record<string, HydrateFramework>>
   routerPackage: (fw: HydrateFramework) => string
   rejectEverywhere: boolean
+  refreshMarkers: boolean
 }
 
 function resolveConfig(config: unknown): ResolvedConfig {
@@ -107,6 +114,7 @@ function resolveConfig(config: unknown): ResolvedConfig {
     packages: c.packages ?? DEFAULT_PACKAGES,
     routerPackage: (fw) => c.routerPackages?.[fw] ?? `@tanstack/${fw}-router`,
     rejectEverywhere: c.rejectEverywhere ?? true,
+    refreshMarkers: c.refreshMarkers ?? false,
   }
 }
 
@@ -271,7 +279,7 @@ function findBoundaries(
       id: `${(ordinal++).toString(36)}_${hash}`,
       split,
       children,
-      insertAt: insertPoint(code, opening),
+      insertAt: insertPoint(opening),
       index: split && children ? index++ : -1,
     })
   }
@@ -294,19 +302,11 @@ function isLiteralSplitFalse(opening: JSXOpeningElement): boolean {
 }
 
 /** After the last attribute (or the tag name) of the opening tag, before `>` or `/>`. */
-function insertPoint(code: string, opening: JSXOpeningElement): number {
-  let i = opening.end - 1 // `>`
-  if (opening.selfClosing) {
-    i--
-    while (i > opening.start && /\s/.test(code[i]!)) {
-      i--
-    }
-    // `/`
-  }
-  while (i > opening.start && /\s/.test(code[i - 1]!)) {
-    i--
-  }
-  return i
+function insertPoint(opening: JSXOpeningElement): number {
+  // right after the last attribute, the type arguments or the tag name: a
+  // comment between them and `>` (`<Hydrate // note\n>`) stays a comment
+  const last = opening.attributes[opening.attributes.length - 1]
+  return last ? last.end : (opening.typeArguments?.end ?? opening.name.end)
 }
 
 /** JSX drops whitespace-only text that spans lines (Babel's `cleanJSXElementLiteralChild`). */
@@ -486,7 +486,15 @@ function plan(ctx: PlanContext): void {
     const n = names.get(b)
     const result =
       n && live(b)
-        ? extract(ctx, b, n, nestedRegions(boundaries, b), extracted, shared)
+        ? extract(
+            ctx,
+            b,
+            n,
+            nestedRegions(boundaries, b),
+            extracted,
+            shared,
+            cfg,
+          )
         : null
     if (result) {
       planned.set(b, result)
@@ -829,6 +837,64 @@ function validate(
   return scan
 }
 
+/**
+ * Whether the children of `b` read, through module-level declarations, the
+ * unexported top-level declaration holding the boundary (a recursive
+ * component rendering itself inside its own boundary): that declaration is
+ * then the chunk's, and so is the lazy const only it reads.
+ */
+function reachesEnclosingDeclaration(
+  ctx: PlanContext,
+  b: Boundary,
+  region: Range,
+): boolean {
+  const { t1, symbols } = ctx
+  const item = t1.items.find(
+    (it) => it.range.start <= b.element.start && b.element.start < it.range.end,
+  )
+  if (!item) {
+    return false
+  }
+  const enclosing = item.units
+    .map((u) => t1.units[u]!)
+    .find(
+      (u) => u.range.start <= b.element.start && b.element.start < u.range.end,
+    )
+  if (
+    !enclosing ||
+    enclosing.kind !== 'declaration' ||
+    enclosing.exported.length > 0 ||
+    enclosing.declares.length === 0
+  ) {
+    return false
+  }
+  const target = new Set(enclosing.declares)
+  const seen = new Set<SymbolId>()
+  const work: Array<SymbolId> = []
+  const push = (range: Range) => {
+    for (const ref of t1.refs.refsIn(range)) {
+      if (symbols.isModuleLevel(ref.sym) && !seen.has(ref.sym)) {
+        seen.add(ref.sym)
+        work.push(ref.sym)
+      }
+    }
+  }
+  push(region)
+  while (work.length > 0) {
+    const sym = work.pop()!
+    if (target.has(sym)) {
+      return true
+    }
+    for (const u of t1.declaringUnits.get(sym) ?? []) {
+      const unit = t1.units[u]!
+      if (unit.kind === 'declaration') {
+        push(unit.range)
+      }
+    }
+  }
+  return false
+}
+
 function declaredWithin(ctx: PlanContext, s: SymbolId, region: Range): boolean {
   const scope = ctx.symbols.scopeRange(s)
   return scope !== null && within(scope, region)
@@ -911,6 +977,7 @@ function extract(
   nested: ReadonlyArray<Range>,
   extracted: Array<Extracted>,
   shared: SharedNames,
+  cfg: ResolvedConfig,
 ): { sym: SymbolId; chunk: string } | null {
   const { t1, symbols } = ctx
   const shape = b.children!
@@ -1027,8 +1094,14 @@ function extract(
     derived: { kind: 'hydrate', value: b.id },
   })
   const chunkId = out.slice('derived:'.length)
-  // the parent's lazy const: same name as the chunk component, its own symbol (D10, impl-notes-core 29)
-  const lazy = symbols.declare(comp.name)
+  // the parent's lazy const: same name as the chunk component, its own symbol
+  // (D10, impl-notes-core 29), unless the children reach the unexported
+  // declaration holding the boundary (a recursive component): that
+  // declaration then moves into the chunk with the lazy const, next to the
+  // chunk component, and the two need distinct names
+  const lazy = reachesEnclosingDeclaration(ctx, b, region)
+    ? ctx.names.alloc(comp.name).sym
+    : symbols.declare(comp.name)
   const propOf = new Map<SymbolId, string>()
   for (const c of captures) {
     const name = symbols.name(c)
@@ -1122,18 +1195,21 @@ function extract(
   } else {
     head.push('(')
   }
+  const tail: Array<string | SymRef> = [shape.wrap ? '</> }\n' : ') }\n']
+  if (cfg.refreshMarkers && b.framework === 'react') {
+    // identity = chunk id + the binding React Refresh registers (R41, as the
+    // route splitter marks its component chunks)
+    tail.push(
+      { sym: comp.sym },
+      `.$$tsrRefreshId = ${JSON.stringify(`${chunkId} ${comp.name}`)}\n`,
+    )
+  }
+  tail.push('export { ', { sym: comp.sym }, ` as ${chunkExportName(b)} }\n`)
   const owner = ctx.rewrites.addGenerated({
     body: [
       { k: 'text', parts: head, mapTo: b.element.start },
       { k: 'slice', range: region },
-      {
-        k: 'text',
-        parts: [
-          shape.wrap ? '</> }\nexport { ' : ') }\nexport { ',
-          { sym: comp.sym },
-          ` as ${chunkExportName(b)} }\n`,
-        ],
-      },
+      { k: 'text', parts: tail },
     ],
     declares: [comp.sym],
     effectful: false,
@@ -1147,7 +1223,18 @@ function extract(
   const placeholderSyms: Array<{ sym: SymbolId; pos: number }> = []
   const parts: Array<string | SymRef> = ['<', { sym: lazy, ctx: 'jsxTag' }]
   for (const c of captures) {
-    parts.push(` ${propOf.get(c)}={`, { sym: c }, '}')
+    if (
+      solid &&
+      symbols.isReassignable(c) &&
+      (t1.refs.writesOf(c).length > 0 || setters.some((s) => s.sym === c))
+    ) {
+      // Solid passes a bare identifier by value; a binding assigned later
+      // (`ref={el}` sets it, a reassigned let) is read through a getter
+      // (a call makes the prop dynamic), so the chunk sees its current value
+      parts.push(` ${propOf.get(c)}={(() => `, { sym: c }, ')()}')
+    } else {
+      parts.push(` ${propOf.get(c)}={`, { sym: c }, '}')
+    }
     placeholderSyms.push({ sym: c, pos: b.element.start })
   }
   if (args) {

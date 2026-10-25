@@ -367,7 +367,14 @@ export function startCompilerPlugin(
         alwaysDeriveProvider: opts.rsc !== undefined,
         isOpaque,
       }
-      const hydrate: HydratePlannerConfig = { root: config.root }
+      const hydrate: HydratePlannerConfig = {
+        root: config.root,
+        refreshMarkers:
+          mode === 'dev' &&
+          env.type === 'client' &&
+          opts.framework === 'react' &&
+          (routerCfg?.hmr.enabled ?? false),
+      }
       const rscCssConfig: RscCssConfig | undefined = opts.rsc
         ? { loadCssExpression: opts.rsc.loadCssExpression }
         : undefined

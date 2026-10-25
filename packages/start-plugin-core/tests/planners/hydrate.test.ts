@@ -1516,3 +1516,136 @@ describe('source maps (G6)', () => {
     )
   })
 })
+
+describe('placement and markup edge cases (J5.2, R41)', () => {
+  // A recursive component rendering itself inside its own boundary: the
+  // unexported component moves into the chunk with the lazy const only it
+  // reads, next to the chunk component. Their names differ (two
+  // `TsrHydrate0` declarations were a SyntaxError).
+  it('names the lazy const apart from the chunk component when the children reach the component holding the boundary', async () => {
+    const code = `${REACT}export const depth = 2
+function Tree({ n }) {
+  return n > 0 ? <Hydrate><Tree n={n - 1} /></Hydrate> : null
+}
+`
+    const client = await compile(code)
+    const [b] = client.facts.boundaries
+    const chunk = client.chunks[b!.id]!
+    expect(client.code).not.toContain('function Tree')
+    expect(chunk).toContain(
+      'function Tree({ n }) {\n  return n > 0 ? <Hydrate h="',
+    )
+    expect(chunk).toContain('<TsrHydrate0$1 n={n}/>')
+    expect(chunk).toContain('const TsrHydrate0$1 = /* @__PURE__ */ tsrLazy(')
+    expect(chunk).toContain(
+      'function TsrHydrate0({ n }) { return (<Tree n={n - 1} />) }',
+    )
+    expect(chunk.match(/\bTsrHydrate0\b(?!\$)/g)?.length).toBe(2)
+  })
+
+  // A mutually recursive pair: the component the children render renders
+  // the boundary's component back.
+  it('names the lazy const apart when the children reach the component through another declaration', async () => {
+    const code = `${REACT}export const depth = 2
+function Branch({ n }) { return <Tree n={n - 1} /> }
+function Tree({ n }) {
+  return n > 0 ? <Hydrate><Branch n={n} /></Hydrate> : null
+}
+`
+    const client = await compile(code)
+    const [b] = client.facts.boundaries
+    const chunk = client.chunks[b!.id]!
+    expect(chunk).toContain('function Tree({ n })')
+    expect(chunk).toContain('function Branch({ n })')
+    expect(chunk).toContain('const TsrHydrate0$1 = ')
+  })
+
+  it('keeps the same name for the lazy const and the chunk component otherwise', async () => {
+    const code = `${REACT}export function Page() { return <Hydrate><p>x</p></Hydrate> }
+`
+    const client = await compile(code)
+    expect(client.code).toContain(
+      'const TsrHydrate0 = /* @__PURE__ */ tsrLazy(',
+    )
+    expect(client.code).toContain('<TsrHydrate0/>')
+  })
+
+  // The inserted `h`/`p` attributes go right after the last attribute or
+  // the tag name, never inside a comment written before `>`.
+  it('inserts the hydration attributes before a comment in the opening tag', async () => {
+    const code = `${REACT}export function Page() {
+  return (
+    <Hydrate // deferred
+    >
+      <p>x</p>
+    </Hydrate>
+  )
+}
+`
+    const { client, server } = await both(code)
+    const [b] = client.facts.boundaries
+    expect(client.code).toContain(
+      `<Hydrate h="${b!.id}" // deferred\n    >\n      <TsrHydrate0/>`,
+    )
+    expect(server.code).toContain(`<Hydrate h="${b!.id}" // deferred\n    >`)
+  })
+
+  it('inserts the hydration attributes after the last attribute when a comment follows it', async () => {
+    const code = `${REACT}export function Page() {
+  return (
+    <Hydrate when={w} /* soon */>
+      <p>x</p>
+    </Hydrate>
+  )
+}
+`
+    const client = await compile(code)
+    const [b] = client.facts.boundaries
+    expect(client.code).toContain(
+      `<Hydrate when={w} h="${b!.id}" /* soon */>\n      <TsrHydrate0/>`,
+    )
+  })
+
+  // React development with route HMR: the chunk component carries the
+  // identity marker the route-HMR runtime compares (R41), as split
+  // component chunks do, so an update of the chunk is kept, not swapped.
+  it('marks the chunk component with its refresh identity when the host asks for markers', async () => {
+    const code = `${REACT}export function Page() { return <Hydrate><p>x</p></Hydrate> }
+`
+    const marked = await compile(code, { config: { refreshMarkers: true } })
+    const [b] = marked.facts.boundaries
+    expect(marked.chunks[b!.id]).toBe(
+      `function TsrHydrate0() { return (<p>x</p>) }\nTsrHydrate0.$$tsrRefreshId = ${JSON.stringify(`${b!.chunk} TsrHydrate0`)}\nexport { TsrHydrate0 as H0 }\n`,
+    )
+    const plain = await compile(code)
+    expect(plain.chunks[b!.id]).not.toContain('$$tsrRefreshId')
+    const solid = await compile(code.replace(REACT, SOLID), {
+      env: solidClient,
+      config: { refreshMarkers: true },
+    })
+    expect(solid.chunks[b!.id]).not.toContain('$$tsrRefreshId')
+  })
+
+  // Solid passes a bare identifier prop by value: a binding `ref={el}`
+  // assigns later (or a let the parent reassigns) is read through a getter,
+  // so the chunk reads its current value (`props.el?.focus()` saw
+  // `undefined` forever).
+  it('passes a Solid capture that a ref or a reassignment writes through a getter', async () => {
+    const code = `${SOLID}export function Page() {
+  let el
+  let count = 0
+  const bump = () => { count++ }
+  const label = 'x'
+  return <Hydrate><input ref={el} onClick={() => el?.focus()} />{count}{label}</Hydrate>
+}
+`
+    const client = await compile(code, { env: solidClient })
+    const [b] = client.facts.boundaries
+    expect(client.code).toContain(
+      "<TsrHydrate0 el={(() => el)()} count={(() => count)()} label={label} tsrRef$el={(el$1) => typeof el === 'function' ? el(el$1) : (el = el$1)}/>",
+    )
+    expect(client.chunks[b!.id]).toContain(
+      'return <><input ref={props.tsrRef$el} onClick={() => props.el?.focus()} />{props.count}{props.label}</> }',
+    )
+  })
+})

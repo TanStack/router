@@ -153,7 +153,6 @@ export interface EnvState {
   /** The resources the loader compiled in the current compilation (host: cleared at `thisCompilation`). */
   compiled: Set<string>
   /** The plan fingerprint of the last compile of each resource (a repeat is a cache hit). */
-  fingerprints: Map<string, string>
 }
 
 /** The session every compiler of one Rsbuild plugin shares. */
@@ -193,7 +192,6 @@ export class StartRsbuildCompilerSession {
         serverFns: new Map(),
         transformImport: [],
         compiled: new Set(),
-        fingerprints: new Map(),
       })
     }
     const root = opts.root()
@@ -344,12 +342,19 @@ export class StartRsbuildCompilerSession {
       providerDirective: opts.rsc?.providerDirective,
       alwaysDeriveProvider: opts.rsc !== undefined,
     }
-    const hydrate: HydratePlannerConfig = { root }
+    const router = this.routerPlannerConfig(env.type)
+    const hydrate: HydratePlannerConfig = {
+      root,
+      refreshMarkers:
+        opts.mode === 'dev' &&
+        env.type === 'client' &&
+        opts.framework === 'react' &&
+        router.hmr.enabled,
+    }
     const rscCss: RscCssConfig | undefined =
       rscLayer && opts.rsc
         ? { loadCssExpression: opts.rsc.loadCssExpression }
         : undefined
-    const router = this.routerPlannerConfig(env.type)
     const ipKey = this.ip?.config.configKey ?? null
     return {
       configKey: digestOf({
@@ -554,24 +559,13 @@ export class StartRsbuildCompilerSession {
     const ipEnv = ip?.env(env.name)
     env.compiled.add(ctx.resource)
     if (ipEnv) {
+      // registers the edges and, in development, reports the violations of
+      // this compile (a plan the cache answered again included: an importer
+      // Rspack rebuilt for a dependency's edit reports once per compile)
       const { error } = ipEnv.afterCompile(id, out)
       if (error) {
         throw error
       }
-      // dev `log: 'always'`: a compile the plan cache answered (the same plan again: an
-      // importer Rspack rebuilt for a dependency's edit) reports its violations again
-      if (
-        this.opts.mode === 'dev' &&
-        ip!.config.log === 'always' &&
-        env.fingerprints.get(ctx.resource) === out.fingerprint
-      ) {
-        await ipEnv.reportAgain(id, {
-          version: 1,
-          env: env.name,
-          violations: violationsOf(out),
-        })
-      }
-      env.fingerprints.set(ctx.resource, out.fingerprint)
     }
     const buildInfo = ctx._module?.buildInfo
     if (!late) {
