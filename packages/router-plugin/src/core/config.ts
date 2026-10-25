@@ -132,3 +132,20 @@ export const getConfig = (inlineConfig: Partial<Config>, root: string) => {
 export type Config = z.infer<typeof configSchema>
 export type ConfigInput = z.input<typeof configSchema>
 export type ConfigOutput = z.output<typeof configSchema>
+
+/**
+ * The options of a code-splitter plugin used alone
+ * (`tanStackRouterCodeSplitter`, `TanStackRouterCodeSplitter{Rspack,Webpack}`):
+ * it always splits, as it did before `autoCodeSplitting` reached the
+ * compiler (`autoCodeSplitting` selects the splitter in `tanstackRouter`).
+ */
+export function splitterOptions<T>(options: T): T {
+  if (typeof options === 'function') {
+    const read = options as () => Partial<Config>
+    return (() => ({ ...read(), autoCodeSplitting: true })) as T
+  }
+  return {
+    ...(options as Partial<Config> | undefined),
+    autoCodeSplitting: true,
+  } as T
+}

@@ -1,6 +1,6 @@
 import { createWebpackPlugin } from 'unplugin'
 
-import { configSchema } from './core/config'
+import { configSchema, splitterOptions } from './core/config'
 import { createRouterGeneratorPlugin } from './core/router-generator-plugin'
 import { createRouterPluginContext } from './core/router-plugin-context'
 import { createRouterCompilerWebpackPlugin } from './hosts/webpack'
@@ -49,7 +49,7 @@ const TanStackRouterCodeSplitterWebpack = (
 ): WebpackPluginInstance => {
   const pluginContext = routerPluginContext ?? defaultRouterPluginContext
   return createRouterCompilerWebpackPlugin(
-    options,
+    splitterOptions(options),
     pluginContext,
     'webpack',
   ) as WebpackPluginInstance

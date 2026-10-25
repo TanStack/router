@@ -1,6 +1,6 @@
 import { createRspackPlugin } from 'unplugin'
 
-import { configSchema } from './core/config'
+import { configSchema, splitterOptions } from './core/config'
 import { createRouterGeneratorPlugin } from './core/router-generator-plugin'
 import { createRouterPluginContext } from './core/router-plugin-context'
 import { createRouterCompilerWebpackPlugin } from './hosts/webpack'
@@ -65,7 +65,7 @@ const TanStackRouterCodeSplitterRspack = (
 ): RspackPluginInstance => {
   const pluginContext = routerPluginContext ?? defaultRouterPluginContext
   return createRouterCompilerWebpackPlugin(
-    options,
+    splitterOptions(options),
     pluginContext,
     'rspack',
   ) as RspackPluginInstance

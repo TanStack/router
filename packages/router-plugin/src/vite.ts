@@ -1,6 +1,6 @@
 import { createVitePlugin } from 'unplugin'
 
-import { configSchema, getConfig } from './core/config'
+import { configSchema, getConfig, splitterOptions } from './core/config'
 import { createRouterGeneratorPlugin } from './core/router-generator-plugin'
 import { createRouterPluginContext } from './core/router-plugin-context'
 import { createRouterCompilerVitePlugin } from './hosts/vite'
@@ -49,7 +49,7 @@ const tanStackRouterCodeSplitter = (
   routerPluginContext?: RouterPluginContext,
 ): Plugin => {
   const pluginContext = routerPluginContext ?? defaultRouterPluginContext
-  return createRouterCompilerVitePlugin(options, pluginContext)
+  return createRouterCompilerVitePlugin(splitterOptions(options), pluginContext)
 }
 
 /**
