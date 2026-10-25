@@ -63,6 +63,8 @@ export interface RouteOption {
 export type OptionsResolution =
   | { kind: 'object'; node: Node; unit: Unit }
   | { kind: 'opaque'; reason: 'imported' | 'call' | 'other' }
+  /** `createRootRoute()`: no options to split or remove */
+  | { kind: 'none' }
 
 export interface RouteModuleInfo {
   kind: RouteKind
@@ -369,7 +371,7 @@ function recognize(ctx: PlanContext): RouteRecognition {
   let options: OptionsResolution
   let optionsUnit: Unit = routeUnit
   if (!argument) {
-    options = { kind: 'opaque', reason: 'other' }
+    options = { kind: 'none' }
   } else {
     const arg = unwrapTs(argument)
     if (arg.type === 'ObjectExpression') {

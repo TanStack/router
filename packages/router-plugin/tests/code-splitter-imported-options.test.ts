@@ -79,6 +79,64 @@ describe('route options held in a local object (control)', () => {
   })
 })
 
+describe('a route factory called without options', () => {
+  // Source: every Start app's `createRootRoute()` (Start's client build
+  // configures deleteNodes): there is nothing to remove or split.
+  it('compiles with deleteNodes, nothing reported', async () => {
+    const route = await loadRoute(
+      `${head}export const Route = createFileRoute('/x')()\n`,
+      { routeId: '/x', deleteNodes },
+    )
+    await expectValidModules(route)
+    expectNoProblems(await route.diagnostics())
+  })
+})
+
+describe('route options with a spread or a computed key that holds none of deleteNodes', () => {
+  // Source: start-plugin-core's server-only-routes builds (a page whose
+  // component the options spread in, `[key]: Page`).
+  it.each([
+    {
+      name: 'a spread of a local object',
+      declaration: `const page = { component: () => 'MARK_X_PAGE' }`,
+      option: '...page',
+    },
+    {
+      name: 'a computed key naming a const',
+      declaration: `const key = 'component'`,
+      option: `[key]: () => 'MARK_X_PAGE'`,
+    },
+  ])(
+    'removes the options of deleteNodes next to $name, nothing reported',
+    async ({ declaration, option }) => {
+      const route = await loadRoute(
+        `${head}import { readSecret } from './admin-helper'
+${declaration}
+export const Route = createFileRoute('/x')({
+  server: { handlers: { GET: () => readSecret() } },
+  ${option},
+})
+`,
+        {
+          files: {
+            'admin-helper.ts': `export const readSecret = () => 'MARK_HELPER_SECRET'\n`,
+          },
+          routeId: '/x',
+          deleteNodes,
+        },
+      )
+      await expectValidModules(route)
+      expect(await route.requested()).not.toContain('/admin-helper.ts')
+      const [server, html] = await route.run<[boolean, string]>(
+        `return ['server' in options, await renderRoute()]`,
+      )
+      expect(server).toBe(false)
+      expect(html).toContain('MARK_X_PAGE')
+      expectNoProblems(await route.diagnostics())
+    },
+  )
+})
+
 describe('route options imported from another module', () => {
   const importedOptions = `${head}import { options } from './-x.options'
 export const Route = createFileRoute('/x')(options)

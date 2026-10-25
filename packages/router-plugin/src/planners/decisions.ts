@@ -10,6 +10,7 @@ import {
   declaratorOf,
   identifierSymbol,
   isAlreadyLazy,
+  isExportedSymbol,
   isFallbackLiteral,
   propertyKeyName,
   propertyRangeWithComma,
@@ -290,6 +291,46 @@ function splitTarget(
   }
 }
 
+/**
+ * Whether a spread or computed route option provably holds none of
+ * `deleteNodes`: a spread of a module object literal of static keys that
+ * nothing else references, or a computed key naming a module string const.
+ */
+function hidesNoDeletedOption(
+  ctx: PlanContext,
+  option: RouteOption,
+  deleteNodes: ReadonlySet<string>,
+): boolean {
+  const ref =
+    option.kind === 'spread'
+      ? option.value
+      : (option.prop as { key?: Node }).key
+  const sym = ref ? identifierSymbol(ctx, ref) : null
+  const decl = sym !== null ? declaratorOf(ctx, sym) : null
+  if (!decl) {
+    return false
+  }
+  const init = unwrapTs(decl.init)
+  if (option.kind !== 'spread') {
+    return (
+      init.type === 'Literal' &&
+      typeof init.value === 'string' &&
+      !deleteNodes.has(init.value)
+    )
+  }
+  if (
+    init.type !== 'ObjectExpression' ||
+    ctx.t1.refs.refsOf(sym!).length !== 1 ||
+    isExportedSymbol(ctx, sym!)
+  ) {
+    return false
+  }
+  return (init.properties as Array<Node>).every((p) => {
+    const key = p.type === 'Property' && !p.computed ? propertyKeyName(p) : null
+    return key !== null && !deleteNodes.has(key)
+  })
+}
+
 function computeSplitPlan(
   ctx: PlanContext,
   cfg: RouterPlannerConfig,
@@ -351,7 +392,10 @@ function computeSplitPlan(
       option.kind === 'spread' ||
       (option.kind === 'computed' && option.key === null)
     ) {
-      if (deleteNodes.size > 0) {
+      if (
+        deleteNodes.size > 0 &&
+        !hidesNoDeletedOption(ctx, option, deleteNodes)
+      ) {
         warnings.push({
           severity: 'error',
           code: 'delete-nodes-dynamic',
