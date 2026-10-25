@@ -235,7 +235,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                       !env.compiled.has(module.resource)
                     ) {
                       await ipEnv.reportAgain(
-                        normalizePath(module.resource),
+                        canonicalResource(module.resource),
                         record,
                       )
                     }
@@ -270,9 +270,12 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 }
               },
             )
+            // a bail hook stops at the first tap answering anything but
+            // `undefined`: `false` would silence later taps asking for a pass
+            // (Rspack types the answer `boolean`; `undefined` is "no vote")
             compilation.hooks.needAdditionalPass.tap(
               PLUGIN_NAME,
-              () => ipEnv.build.needPass,
+              () => (ipEnv.build.needPass || undefined) as unknown as boolean,
             )
           }
         }

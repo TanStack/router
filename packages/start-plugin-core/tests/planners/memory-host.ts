@@ -45,11 +45,17 @@ export class MemoryHost implements HostServices {
   readonly rawFacts: RawFactsCache
   readonly caches: CompilerCaches
 
-  constructor(files: Record<string, string>) {
+  constructor(
+    files: Record<string, string>,
+    opts: {
+      recognizer?: ConstructorParameters<typeof RawFactsCache>[0]['recognizer']
+    } = {},
+  ) {
     this.files = { ...files }
     this.rawFacts = new RawFactsCache({
       readFile: (p) => this.readFile(p),
       loadVirtual: () => Promise.resolve(null),
+      recognizer: opts.recognizer,
     })
     this.caches = createCompilerCaches(this.rawFacts)
   }

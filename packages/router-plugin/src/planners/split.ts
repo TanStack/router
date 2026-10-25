@@ -312,7 +312,14 @@ export function routeSplitPlanner(): Planner {
           body.push({ k: 'slice', range: d.valueRange })
           body.push({ k: 'text', parts: ['\n'] })
         }
-        if (refreshMarkers && isComponent) {
+        if (
+          refreshMarkers &&
+          isComponent &&
+          // a foreign module's export (an imported binding or a member of
+          // one) is not this module's to mark: React Refresh registers it
+          // where it is declared, and the object may be frozen
+          !(valueSym !== null && symbols.isImport(valueSym))
+        ) {
           // identity = chunk id + the binding React Refresh registers: the
           // user's component when the value names one (a rename is a new
           // family), else the chunk's own declaration

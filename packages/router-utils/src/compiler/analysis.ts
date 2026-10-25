@@ -84,6 +84,13 @@ export interface DynamicEdge {
   specifierRange: Range
   callRange: Range
   form: 'dynamic' | 'require'
+  /**
+   * The names a `require()` edge reads of its result (J6 edge names): the
+   * keys of a destructuring pattern, the static member reads of the binding
+   * holding it or of the call itself; `'*'` when it escapes any other way.
+   * Empty for `import()` (a promise of the namespace).
+   */
+  names: Array<string>
 }
 
 export type Marker = 'server-only' | 'client-only' | 'conflict' | null
@@ -521,6 +528,7 @@ export class ModuleAnalysis {
         specifierRange: { start: specNode.start, end: specNode.end },
         callRange: { start: node.start, end: node.end },
         form: imp.kind === 'dynamic' ? 'dynamic' : 'require',
+        names: imp.kind === 'require' ? this.requireNames(node) : [],
       })
     }
     this.imports = imports
@@ -537,6 +545,79 @@ export class ModuleAnalysis {
 
   importIndexOfStatement(stmtStart: number): number | null {
     return this.importByStatement.get(stmtStart) ?? null
+  }
+
+  /**
+   * The names a `require(...)` call's result is read by: `const { a, b } =
+   * require(…)` its pattern keys, `const m = require(…)` the static member
+   * reads of `m` (`'*'` when `m` escapes), `require(…).a` the member; any
+   * other use is opaque (`'*'`). A mock of a denied CommonJS or unknown
+   * target then owns the names the importer reads (J6.3).
+   */
+  private requireNames(call: Node): Array<string> {
+    const names: Array<string> = []
+    const add = (n: string | null) => {
+      if (n !== null && !names.includes(n)) {
+        names.push(n)
+      }
+    }
+    const parent = this.file.parentOf(call)
+    if (
+      parent &&
+      parent.type === 'MemberExpression' &&
+      parent.object === call
+    ) {
+      add(staticMemberName(parent) ?? '*')
+      return names
+    }
+    if (
+      parent &&
+      parent.type === 'VariableDeclarator' &&
+      parent.init === call
+    ) {
+      const id = parent.id
+      if (id.type === 'ObjectPattern') {
+        for (const prop of id.properties) {
+          if (prop.type === 'RestElement') {
+            add('*')
+          } else if (!prop.computed) {
+            add(
+              prop.key.type === 'Identifier'
+                ? prop.key.name
+                : prop.key.type === 'Literal' &&
+                    typeof prop.key.value === 'string'
+                  ? prop.key.value
+                  : '*',
+            )
+          } else {
+            add('*')
+          }
+        }
+        return names
+      }
+      if (id.type === 'Identifier') {
+        const binding = this.file.bindingOf(id)
+        if (binding) {
+          for (const ref of binding.references) {
+            const node = ref.node
+            if (node === id || ref.isWrite || ref.inTypePosition) {
+              continue
+            }
+            const parent = this.file.parentOf(node)
+            add(
+              parent &&
+                parent.type === 'MemberExpression' &&
+                parent.object === node
+                ? (staticMemberName(parent) ?? '*')
+                : '*',
+            )
+          }
+          return names
+        }
+      }
+    }
+    add('*')
+    return names
   }
 
   /**

@@ -684,6 +684,8 @@ export class AnalysisPlan implements PlanContext {
     const extra: Array<TreeEdit> = []
     let seq = 2e9
     const baseTree = rewrites.tree('env')
+    /** Exported declarators of statements whose `export` keyword a sibling's rename drops. */
+    const siblingExports: Array<{ sym: SymbolId; name: string }> = []
     // statement-level DCE edits
     for (const item of items) {
       if (baseTree.isErasedAt(item.nodeRange.start)) {
@@ -696,6 +698,27 @@ export class AnalysisPlan implements PlanContext {
         for (const s of u.declares) {
           if (this.exportedRenames.has(s)) {
             keepExport = false
+          }
+        }
+      }
+      if (!keepExport && item.exportKeyword !== null) {
+        // the statement loses its `export` keyword for the renamed binding
+        // (R38: re-exported under its public name by the glue); the other
+        // exported declarators of the statement stay exported through the
+        // same glue
+        for (const uid of item.units) {
+          const u = units[uid]!
+          if (
+            !retained.has(uid) ||
+            u.exported.length === 0 ||
+            u.declares.some((s) => this.exportedRenames.has(s))
+          ) {
+            continue
+          }
+          for (const s of u.declares) {
+            for (const name of u.exported) {
+              siblingExports.push({ sym: s, name })
+            }
           }
         }
       }
@@ -745,7 +768,13 @@ export class AnalysisPlan implements PlanContext {
     // export glue at the end (re-exports of extracted exports first)
     const exportGlue = [
       ...this.reexportGlue(placement, exportNameOf),
-      ...this.exportGlue('env', placement, exportNameOf, glueExports),
+      ...this.exportGlue(
+        'env',
+        placement,
+        exportNameOf,
+        glueExports,
+        siblingExports,
+      ),
     ]
     if (exportGlue.length > 0) {
       extra.push({
@@ -917,6 +946,7 @@ export class AnalysisPlan implements PlanContext {
     placement: Placement,
     exportNameOf: Map<OutputId, Map<SymbolId, string>>,
     glueExports: ReadonlySet<SymbolId> | null = null,
+    siblingExports: ReadonlyArray<{ sym: SymbolId; name: string }> = [],
   ): Array<Frag> {
     const parts: Array<string> = []
     const names = exportNameOf.get(output)
@@ -927,6 +957,13 @@ export class AnalysisPlan implements PlanContext {
         }
         const local = this.nameOf(s)
         parts.push(exported === local ? local : `${local} as ${exported}`)
+      }
+    }
+    for (const { sym, name } of siblingExports) {
+      const local = this.nameOf(sym)
+      const part = name === local ? local : `${local} as ${name}`
+      if (!parts.includes(part)) {
+        parts.push(part)
       }
     }
     if (output === 'env') {
@@ -1232,7 +1269,7 @@ export class AnalysisPlan implements PlanContext {
         specifier: dyn.specifier,
         locations: [{ range: dyn.specifierRange }],
         typeOnly: false,
-        names: [],
+        names: dyn.names,
         provenance: { origin: 'source' },
       })
     }

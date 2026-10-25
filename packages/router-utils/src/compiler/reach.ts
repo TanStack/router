@@ -676,13 +676,35 @@ export function computePlacement(input: PlacementInput): Placement {
     clusterChildren.set(key, children)
     return { syms, children }
   }
+  /**
+   * The output whose tree decides the live reads of cluster `c` reached from
+   * output `o`: an env root a derived output imports from the env module
+   * reads what it evaluates there (an identifier option value the splitter
+   * replaced in the env output only is no read of a chunk importing `Route`),
+   * a cluster pinned to another output what it evaluates in that output. A
+   * provider output copies every cluster it reaches: its own tree decides.
+   */
+  function readsOutput(c: ClusterId, o: OutputId): OutputId {
+    if (o === 'env' || outputs.get(o)?.kind === 'provider') {
+      return o
+    }
+    const pin = pinned.get(c)
+    if (pin !== undefined) {
+      return pin
+    }
+    return envRoots.has(c) ? 'env' : o
+  }
   function successors(
     c: ClusterId,
     o: OutputId,
     live: boolean,
   ): Set<ClusterId> {
     const out = new Set<ClusterId>()
-    const { syms, children } = clusterReads(c, o, live)
+    const { syms, children } = clusterReads(
+      c,
+      live ? readsOutput(c, o) : o,
+      live,
+    )
     for (const s of syms) {
       if (!symbols.isModuleLevel(s)) {
         continue
@@ -1437,12 +1459,13 @@ export function computePlacement(input: PlacementInput): Placement {
       }
       // R-27's two patterns: the declaration itself has effects (a call
       // result, a destructuring) or travels with an exported binding (a
-      // writer of module state the route module exports)
+      // writer of module state the route module exports); the value being
+      // the exported declaration itself is the §3.5.2 import (no report)
       const decl = units[declaring[0]!]!
       if (
         decl.kind === 'declaration' &&
         !decl.effectful &&
-        !clusters[d]!.exported
+        (!clusters[d]!.exported || decl.exported.length > 0)
       ) {
         continue
       }

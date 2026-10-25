@@ -319,13 +319,16 @@ export function registerVirtualModules(
   }
 
   function writeResolverContent(environmentName: string, content: string) {
-    if (
-      !isDev ||
+    const changed =
       content !== lastResolverContentByEnvironment[environmentName]
-    ) {
+    if (changed) {
       lastResolverContentByEnvironment[environmentName] = content
+      // the count tells the resolver rebuild whether the content it last
+      // rebuilt from is still current
       resolverWriteCountByEnvironment[environmentName] =
         (resolverWriteCountByEnvironment[environmentName] ?? 0) + 1
+    }
+    if (!isDev || changed) {
       tryWriteModule(environmentName, pathsOf().serverFnResolver, content)
     }
   }

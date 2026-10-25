@@ -9,6 +9,7 @@ import {
 } from '../config-context'
 import { normalizePath } from '../utils'
 import { createServerFnBasePath, normalizePublicBase } from '../planning'
+import { CLIENT_REFERENCED_IDS_PLACEHOLDER } from '../server-fns/resolver'
 import { addWorkspaceWatchIgnored } from './watch-ignored'
 import { parseStartConfig, rsbuildClientOutputSchema } from './schema'
 import {
@@ -683,6 +684,11 @@ export function tanStackStartRsbuild(
         const manifestPlaceholderLiteral = JSON.stringify(
           START_MANIFEST_PLACEHOLDER,
         )
+        const clientIdsPlaceholderLiteral = JSON.stringify(
+          CLIENT_REFERENCED_IDS_PLACEHOLDER,
+        )
+        const clientReferencedIdsLiteral = () =>
+          compiler.session()?.clientReferencedIdsLiteral() ?? '[]'
         api.modifyRspackConfig((config, utils) => {
           if (utils.environment.name !== RSBUILD_ENVIRONMENT_NAMES.server)
             return
@@ -710,7 +716,10 @@ export function tanStackStartRsbuild(
                         }
 
                         const sourceStr = String(asset.source.source())
-                        if (!sourceStr.includes(manifestPlaceholderLiteral)) {
+                        if (
+                          !sourceStr.includes(manifestPlaceholderLiteral) &&
+                          !sourceStr.includes(clientIdsPlaceholderLiteral)
+                        ) {
                           continue
                         }
 
@@ -738,6 +747,9 @@ export function tanStackStartRsbuild(
                         virtualModuleState.generateManifestValueLiteral(
                           clientBuild,
                         )
+                      // the server fn resolver's client-origin gate (R44): the
+                      // client compiled, so its references are known
+                      const clientIdsLiteral = clientReferencedIdsLiteral()
 
                       for (const {
                         asset,
@@ -746,10 +758,15 @@ export function tanStackStartRsbuild(
                         compilation.updateAsset(
                           asset.name,
                           new utils.rspack.sources.RawSource(
-                            sourceStr.replace(
-                              manifestPlaceholderLiteral,
-                              manifestValueLiteral,
-                            ),
+                            sourceStr
+                              .replace(
+                                manifestPlaceholderLiteral,
+                                manifestValueLiteral,
+                              )
+                              .replaceAll(
+                                clientIdsPlaceholderLiteral,
+                                clientIdsLiteral,
+                              ),
                           ),
                         )
                       }

@@ -559,7 +559,7 @@ function tier0Plan(
       specifier: dyn.specifier,
       locations: [{ range: dyn.specifierRange }],
       typeOnly: false,
-      names: [],
+      names: dyn.names,
       provenance: { origin: 'source' },
     })
   }

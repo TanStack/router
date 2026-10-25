@@ -193,3 +193,53 @@ ${removal.code(shape.root)}${kept}`,
     })
   }
 })
+
+// Function-local declarations only the removed code read go with it too
+// (SPEC J4.12), whatever their statement shape: several declarators of one
+// statement (two neighbours orphaned by one erasure once made the compile
+// fail), declarators without initialisers, a block of the module level. The
+// module keeps working: the client stub throws, the server runs the body.
+describe('function-local declarations only the removed code read', () => {
+  test.each<{ name: string; body: string; expected: unknown }>([
+    {
+      name: 'two declarators of one statement',
+      body: `const a = 1, b = 2
+  const run = createServerOnlyFn(() => a + b)
+  return run()`,
+      expected: 3,
+    },
+    {
+      name: 'three declarators of one statement',
+      body: `const a = 1, b = 2, c = 3
+  const run = createServerOnlyFn(() => a + b + c)
+  return run()`,
+      expected: 6,
+    },
+    {
+      name: 'a kept declarator between two orphaned ones',
+      body: `const a = 1, b = 2, c = 3
+  const run = createServerOnlyFn(() => a + c)
+  return run() + b`,
+      expected: 6,
+    },
+    {
+      name: 'declarators without initialisers',
+      body: `let a, b
+  const run = createServerOnlyFn(() => { a = 1; b = 2; return a + b })
+  return run()`,
+      expected: 3,
+    },
+  ])('$name', async ({ body, expected }) => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `import { createServerOnlyFn } from '@tanstack/react-start'
+export function fn() {
+  ${body}
+}
+`,
+    })
+    expect([
+      await settled(served, 'client'),
+      await settled(served, 'ssr'),
+    ]).toEqual([throwsError, expected])
+  })
+})

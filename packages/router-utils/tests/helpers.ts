@@ -13,6 +13,7 @@ import type {
   CompileOutput,
   CompilerCaches,
   EnvInfo,
+  Frag,
   HostServices,
   PlanContext,
   Planner,
@@ -119,6 +120,12 @@ export interface ToySplitOptions {
   hoist?: boolean
   /** Allow every exported pure declaration into an extracted-export output (§3.5.3). */
   extractExports?: boolean
+  /**
+   * An identifier option value is replaced by an env-scoped edit (the real
+   * splitter's shape: the binding travels by placement and the chunk roots
+   * it as a symbol) instead of a claim.
+   */
+  identifierEdits?: boolean
 }
 
 /**
@@ -214,7 +221,6 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
           ctx.setFacts('toy-split', { notSplittable: key, reasons })
           continue
         }
-        const region = ctx.region(valueRange, 'option-value')
         const output = ctx.declareOutput({
           kind: 'split',
           key,
@@ -274,21 +280,32 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
         if (valueSym !== null) {
           ctx.addRoot(output, { t: 'sym', id: valueSym })
         }
+        const placeholder: Array<Frag> = [
+          {
+            k: 'text',
+            parts: [
+              '/* @__PURE__ */ ',
+              { sym: lazyImportSym, ctx: 'callee' },
+              '(',
+              { sym: importer.sym },
+              `, '${key}')`,
+            ],
+          },
+        ]
+        if (opts.identifierEdits && valueSym !== null) {
+          ctx.rewrites.add({
+            range: valueRange,
+            body: placeholder,
+            scope: ['env'],
+            by: 'toy-split',
+            reason: 'split',
+          })
+          continue
+        }
         ctx.rewrites.claim({
-          region,
+          region: ctx.region(valueRange, 'option-value'),
           owner,
-          placeholder: [
-            {
-              k: 'text',
-              parts: [
-                '/* @__PURE__ */ ',
-                { sym: lazyImportSym, ctx: 'callee' },
-                '(',
-                { sym: importer.sym },
-                `, '${key}')`,
-              ],
-            },
-          ],
+          placeholder,
           by: 'toy-split',
         })
       }

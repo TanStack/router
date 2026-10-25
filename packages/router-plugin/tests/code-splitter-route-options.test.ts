@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { expectNoProblems } from '@tanstack/compiler-test-utils/diagnostic-channel'
+import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { expectValidModules, head, holdsMarker, loadRoute } from './route-app'
 import { readsImport, servedImports } from './served-code'
 
@@ -583,5 +584,57 @@ export const Route = createRootRouteWithContext<Ctx>()({
     )
     await expectValidModules(route)
     expect(await route.run(`return render('component')`)).toBe('<p>root</p>')
+  })
+})
+
+// Issue #8688: the router calls a route callback as a method of the options
+// object (`options.loader(...)`), so a method or function-expression callback
+// may read `this`. A split chunk's `lazyFn` wrapper calls the chunk's export
+// detached (`this` undefined): such a callback stays in the route module,
+// with a warning naming the file (SPEC J2.8: informed, never broken). An
+// arrow function has the module's `this` wherever it evaluates and splits.
+describe('route callbacks reading this (#8688)', () => {
+  it.each([
+    [
+      'a method',
+      `loader() { return this !== undefined && 'loader' in this ? 'MARK_THIS' : 'MARK_OTHER' },`,
+    ],
+    [
+      'a function expression',
+      `loader: function () { return this !== undefined && 'loader' in this ? 'MARK_THIS' : 'MARK_OTHER' },`,
+    ],
+  ])('keeps %s in the route module and warns', async (_name, option) => {
+    const route = await loadRoute(
+      `${head}export const Route = createFileRoute('/')({
+  codeSplitGroupings: [['loader'], ['component']],
+  ${option}
+  component: () => <p>page</p>,
+})
+`,
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('loader')).toBe(false)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(await route.run('return options.loader()')).toBe('MARK_THIS')
+    expectDiagnostic(await route.diagnostics(), {
+      severity: 'warning',
+      file: 'route.tsx',
+      root: route.host.root,
+    })
+  })
+
+  it('splits a method whose nested functions read their own this', async () => {
+    const route = await loadRoute(
+      `${head}export const Route = createFileRoute('/')({
+  codeSplitGroupings: [['loader'], ['component']],
+  loader() { return [1].map(function () { return this === undefined ? 'MARK_OWN' : 'MARK_OTHER' }) },
+  component: () => <p>page</p>,
+})
+`,
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('loader')).toBe(true)
+    expect(await route.run('return options.loader()')).toEqual(['MARK_OWN'])
+    expectNoProblems(await route.diagnostics())
   })
 })

@@ -34,10 +34,13 @@ import { HYDRATE_PLANNER, createHydratePlanner } from '../planners/hydrate'
 import { RSC_CSS } from '../planners/rsc-css'
 import { FunctionIdAllocator } from '../server-fns/ids'
 import { ServerFnRegistry } from '../server-fns/registry'
-import { manifestResolverModule } from '../server-fns/resolver'
+import {
+  CLIENT_REFERENCED_IDS_PLACEHOLDER,
+  manifestResolverModule,
+} from '../server-fns/resolver'
 import { createImportProtection } from '../import-protection/session'
-import { violationsOf } from '../import-protection/violations'
 import { rspackEdgeModuleIds } from '../import-protection/edge-modules'
+import { violationsOf } from '../import-protection/violations'
 import { normalizePath } from '../utils'
 import type { ImportProtection } from '../import-protection/session'
 import type { ImportRewrite } from '../planners/edges'
@@ -344,12 +347,19 @@ export class StartRsbuildCompilerSession {
       providerDirective: opts.rsc?.providerDirective,
       alwaysDeriveProvider: opts.rsc !== undefined,
     }
-    const hydrate: HydratePlannerConfig = { root }
+    const router = this.routerPlannerConfig(env.type)
+    const hydrate: HydratePlannerConfig = {
+      root,
+      refreshMarkers:
+        opts.mode === 'dev' &&
+        env.type === 'client' &&
+        opts.framework === 'react' &&
+        router.hmr.enabled,
+    }
     const rscCss: RscCssConfig | undefined =
       rscLayer && opts.rsc
         ? { loadCssExpression: opts.rsc.loadCssExpression }
         : undefined
-    const router = this.routerPlannerConfig(env.type)
     const ipKey = this.ip?.config.configKey ?? null
     return {
       configKey: digestOf({
@@ -438,9 +448,14 @@ export class StartRsbuildCompilerSession {
     return entry ? digestOf({ routeId: entry.routeId }) : null
   }
 
-  /** The host for the invalidation operation (an environment's resolver when one is known). */
-  private invalidationHost(): HostServices {
-    const resolvers = [...this.resolvers.values()]
+  /**
+   * The host of the invalidation operation for an environment: its own
+   * resolver (per-environment aliases and conditions, R35); an environment
+   * without a registered resolver yet asks the others in turn.
+   */
+  private invalidationHost(env?: string): HostServices {
+    const own = env === undefined ? undefined : this.resolvers.get(env)
+    const resolvers = own ? [own] : [...this.resolvers.values()]
     return {
       resolve: async (specifier, importer) => {
         const dir = path.dirname(identify(importer).path)
@@ -465,10 +480,8 @@ export class StartRsbuildCompilerSession {
     file: string,
     kind: InvalidateChange['kind'],
   ): Promise<{ evicted: Array<PlanKey>; dependents: Array<PlanKey> }> {
-    return invalidate(
-      this.caches,
-      { path: normalizePath(file), kind },
-      this.invalidationHost(),
+    return invalidate(this.caches, { path: normalizePath(file), kind }, (env) =>
+      this.invalidationHost(env),
     )
   }
 
@@ -551,22 +564,25 @@ export class StartRsbuildCompilerSession {
     const ipEnv = ip?.env(env.name)
     env.compiled.add(ctx.resource)
     if (ipEnv) {
+      // registers the edges and, in development, reports the violations of
+      // this compile once
       const { error } = ipEnv.afterCompile(id, out)
       if (error) {
         throw error
       }
-      // dev `log: 'always'`: a compile the plan cache answered (the same plan again: an
-      // importer Rspack rebuilt for a dependency's edit) reports its violations again
+      // dev `log: 'always'`: a compile the plan cache answered (the same plan
+      // again: an importer Rspack rebuilt for a dependency's edit) asks
+      // `onViolation` again, like every compile; printed above, not twice
       if (
         this.opts.mode === 'dev' &&
         ip!.config.log === 'always' &&
         env.fingerprints.get(ctx.resource) === out.fingerprint
       ) {
-        await ipEnv.reportAgain(id, {
-          version: 1,
-          env: env.name,
-          violations: violationsOf(out),
-        })
+        await ipEnv.reportAgain(
+          id,
+          { version: 1, env: env.name, violations: violationsOf(out) },
+          { enqueue: false },
+        )
       }
       env.fingerprints.set(ctx.resource, out.fingerprint)
     }
@@ -697,7 +713,27 @@ export class StartRsbuildCompilerSession {
       warnUnreferenced: opts.mode === 'dev' && opts.ssrIsProvider,
       staticImports: opts.rsc !== undefined && opts.mode === 'dev',
       memoizeModules: opts.mode === 'build',
+      // RSC build (R44): the RSC coordinator interleaves the server and client
+      // compilations, so the manifest is generated before the client's
+      // references are known; it lists every function (server-origin calls
+      // reach the provider through it) and gates client-origin calls on a
+      // set the server asset pipeline fills in once the client build exists
+      clientOriginGate:
+        opts.mode === 'build' && !opts.ssrIsProvider
+          ? JSON.stringify(CLIENT_REFERENCED_IDS_PLACEHOLDER)
+          : undefined,
     })
+  }
+
+  /** The JSON array of client-referenced function ids (the gate's set, R44). */
+  clientReferencedIdsLiteral(): string {
+    return JSON.stringify(
+      this.registry
+        .entries()
+        .filter((e) => e.clientReferenced)
+        .map((e) => e.id)
+        .sort(),
+    )
   }
 
   /** The entries of a rank for the custom-id allocation (R40): client-referenced first, the rest after. */

@@ -263,3 +263,32 @@ export const options = {
     }
   })
 })
+
+describe('a component option naming an import', () => {
+  // The split chunk re-exports the imported component as it is; nothing of
+  // this route's is written onto the foreign module's export (a frozen
+  // component object threw "object is not extensible" in development when
+  // the chunk marked it for route HMR). SPEC J2.1, J3.
+  it('renders a frozen component imported from another module, nothing reported', async () => {
+    const route = await loadRoute(
+      `${head}import { page } from './page-component'
+export const Route = createFileRoute('/x')({
+  component: page,
+  loader: () => 'MARK_X_DATA',
+})
+`,
+      {
+        files: {
+          'page-component.tsx': `export const page = Object.freeze(() => <p>MARK_X_PAGE</p>)\n`,
+        },
+        routeId: '/x',
+        // route HMR on: the development markers of the route's components
+        hmr: true,
+      },
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(await route.run('return renderRoute()')).toContain('MARK_X_PAGE')
+    expectNoProblems(await route.diagnostics())
+  })
+})
