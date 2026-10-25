@@ -262,7 +262,6 @@ function findBoundaries(
     .update(relative(cfg.root, analysis.path).replaceAll('\\', '/'))
     .digest('hex')
     .slice(0, 10)
-  const code = analysis.source.code
   const out: Array<Boundary> = []
   let index = 0
   // the id's ordinal counts every boundary of the pristine source (the
@@ -1277,7 +1276,7 @@ function extract(
 function addLazyConst(
   ctx: PlanContext,
   b: Boundary,
-  { comp, lazyImport }: BoundaryNames,
+  { lazyImport }: BoundaryNames,
   lazy: SymbolId,
   chunkId: string,
   cfg: ResolvedConfig,
