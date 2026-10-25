@@ -144,6 +144,29 @@ it('split the component, errorComponent and notFoundComponent, each on its own, 
 // imported-default-component*, imported-errorComponent,
 // imported-notFoundComponent, imported-pendingComponent, arrow-function,
 // function-declaration and conditional-properties.
+describe('deleted options', () => {
+  // A server route's only option is `server` (deleted on the client, Start's
+  // list): the client module must still parse. Source: the perf harness app
+  // (`/api/*` routes compiled in the client dev environment).
+  it('erase the only option together with its trailing comma', async () => {
+    const route = await loadRoute(
+      `${head}export const Route = createFileRoute('/api/health')({
+  server: {
+    handlers: {
+      GET: async () => Response.json({ ok: true }),
+    },
+  },
+})
+`,
+      { deleteNodes: ['server'], routeId: '/api/health' },
+    )
+    await expectValidModules(route)
+    const { modules } = await route.modules()
+    expect(modules.reference).not.toContain('handlers')
+    expectNoProblems(await route.diagnostics())
+  })
+})
+
 describe('route options given by reference', () => {
   const files = {
     'page.ts': `const Page = () => 'page'

@@ -233,7 +233,7 @@ function splitTarget(
             : 'init',
         prop: handler,
         value: handler.value,
-        propertyRange: propertyRangeWithComma(v, handler),
+        propertyRange: propertyRangeWithComma(v, handler, code),
         keyText: code.slice(handler.key.start, handler.key.end),
       }
     }

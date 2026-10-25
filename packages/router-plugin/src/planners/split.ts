@@ -118,12 +118,16 @@ export function routeSplitPlanner(): Planner {
 
       // deleteNodes: the properties are erased in the env output only (J2.14);
       // consecutive deleted properties form one edit (their comma ranges
-      // overlap), and the last property of the object takes its leading comma
+      // overlap), the last property of the object takes its leading comma, and
+      // a run that is the whole object takes its trailing comma (`{ server:
+      // {…}, }` erased to `{ , }` is a syntax error)
       if (
         plan.deleted.length > 0 &&
         route.options.kind === 'object' &&
         route.options.node.type === 'ObjectExpression'
       ) {
+        const code = ctx.analysis.source.code
+        const objectEnd = route.options.node.end
         const props = route.options.node.properties as Array<{
           start: number
           end: number
@@ -141,7 +145,16 @@ export function routeSplitPlanner(): Planner {
           }
           const last = j === props.length - 1
           const start = last && i > 0 ? props[i - 1]!.end : props[i]!.start
-          const end = last ? props[j]!.end : props[j + 1]!.start
+          let end = last ? props[j]!.end : props[j + 1]!.start
+          if (last && i === 0) {
+            let k = end
+            while (k < objectEnd && /\s/.test(code[k]!)) {
+              k++
+            }
+            if (code[k] === ',') {
+              end = k + 1
+            }
+          }
           ctx.rewrites.add({
             range: { start, end },
             body: [],
