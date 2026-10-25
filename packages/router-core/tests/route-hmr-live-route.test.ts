@@ -36,6 +36,8 @@ describe('applyRouteHmr after a route tree rebuild', () => {
    * execution imported for `/page`.
    */
   const routerOf = (page: any) => {
+    root.addChildren([page])
+    page.parentRoute = root
     const tree = { page }
     const router = {
       routesById: { '/page': page } as Record<string, any>,
@@ -63,6 +65,8 @@ describe('applyRouteHmr after a route tree rebuild', () => {
 
     // the route tree module re-executes (a route added): it imports the
     // route module's current export, `second`; the router has not read it
+    root.addChildren([second])
+    second.parentRoute = root
     tree.page = second
 
     // second edit: the tree's route must get the new loader and be the live one
@@ -84,6 +88,8 @@ describe('applyRouteHmr after a route tree rebuild', () => {
     applyRouteHmr('/page', first, {}, adapter)
     // a tree holding a route this module never evaluated to (another router's)
     const foreign = evaluate('other')
+    root.addChildren([foreign])
+    foreign.parentRoute = root
     tree.page = foreign
     applyRouteHmr('/page', evaluate('v1'), {}, adapter)
     expect(foreign.options.loader()).toBe('other')

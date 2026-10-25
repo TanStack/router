@@ -110,15 +110,20 @@ export function applyRouteHmr(
     }
     known.routes.add(route)
     const router = window.__TSR_ROUTER__
+    const current = router?.routesById?.[routeId] as HotRoute | undefined
     // Another router, or a router without this route: leave it alone.
-    if (!router?.routesById?.[routeId]) {
+    if (!router || !current) {
       return
     }
-    // The route tree module re-executed since the router last read it (a
-    // route added or renamed) holds this module's current export: the
-    // tree's route is the one to update, not the one of the router's last
-    // read.
-    router.setRoutes(router.buildRouteTree())
+    // A route tree module that re-executed since the router last read it (a
+    // route added or renamed) holds this module's current export where the
+    // router still holds an older evaluation: its parent's children no
+    // longer include the router's route. Read the tree again first, so the
+    // tree's route is the one updated.
+    const siblings = (current.parentRoute as { children?: unknown }).children
+    if (siblings && !Object.values(siblings).includes(current)) {
+      router.setRoutes(router.buildRouteTree())
+    }
     const live = router.routesById[routeId] as HotRoute | undefined
     if (!live || !known.routes.has(live) || live === route) {
       return
