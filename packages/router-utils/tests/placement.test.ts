@@ -447,6 +447,31 @@ describe('extracted-export outputs (§3.5.3)', () => {
     expect(await r.extracted('bump')).toMatchObject({ code: 'export {}\n' })
   })
 
+  it('keeps an import a cancelled extraction candidate reads when an erased range read it too', async () => {
+    // `Page` is a candidate nothing extracted needs, so it stays an env root;
+    // the client erases the `wrapServer` argument, the only other reader of
+    // `fmt`. Orphans are decided on the final env liveness, not before the
+    // candidate came back (a `<Hydrate>` after erased server code lost its
+    // import this way).
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { wrapServer } from 'toy-start'
+      import { fmt } from './fmt'
+      export const serverFn = wrapServer(() => fmt('s'))
+      export function Page() { return fmt('p') }
+      export const Route = createFileRoute('/')({ component: () => 1 })
+    `)
+    const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+    const planners = [
+      toyEnvPlanner(),
+      toySplitPlanner({ extractExports: true }),
+    ]
+    const env = (await host.compile('/app/route.tsx', planners))?.code ?? ''
+    expect(env).toContain("import { fmt } from './fmt'")
+    expect(env).toContain('export const serverFn = tsrStub()')
+    expect(env).toContain("export function Page() { return fmt('p') }")
+  })
+
   it('does not extract a declaration that eagerly reads the env module', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'

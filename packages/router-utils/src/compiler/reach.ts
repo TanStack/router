@@ -1090,12 +1090,6 @@ export function computePlacement(input: PlacementInput): Placement {
       break
     }
   }
-  for (const cl of clusters) {
-    if (!liveEnv.has(cl.id) && fromErased.has(cl.id) && !cl.envPinned) {
-      orphaned.add(cl.id)
-    }
-  }
-
   function isMovable(cl: Cluster): boolean {
     // (a) exactly one derived needer
     const needs: Array<OutputId> = []
@@ -1252,6 +1246,15 @@ export function computePlacement(input: PlacementInput): Placement {
         derivedRoots.set(e.output, new Set([e.cluster]))
         derivedReach.set(e.output, reach(e.output, [e.cluster], others))
       }
+    }
+  }
+
+  // ---- orphans: erased-only clusters the final env liveness does not reach ------
+  // (after the extraction decision: a cancelled candidate is an env root again,
+  // and what it reads is live, however an erased range also read it)
+  for (const cl of clusters) {
+    if (!liveEnv.has(cl.id) && fromErased.has(cl.id) && !cl.envPinned) {
+      orphaned.add(cl.id)
     }
   }
 
