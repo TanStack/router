@@ -509,6 +509,8 @@ importProtection: {
 }
 ```
 
+In builds, `onViolation` is called once per denied import that survives tree-shaking. Returning `false` gives that import the real module, and the build runs again until no newly allowed import remains. In dev, it is called when the importing module is compiled.
+
 ## Disabling Import Protection
 
 To disable import protection entirely:

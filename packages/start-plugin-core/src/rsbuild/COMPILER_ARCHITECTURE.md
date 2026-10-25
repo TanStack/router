@@ -1,7 +1,7 @@
 # Rsbuild compiler architecture
 
 How TanStack Start's compiler runs on Rsbuild (Rspack): one compile per (environment, layer, module) on the shared
-compiler core (`@tanstack/router-utils/compiler`), through Start's own Rspack loaders.
+compiler core (`@tanstack/router-utils/compiler`, [README](../../../router-utils/src/compiler/README.md)), through Start's own Rspack loaders.
 
 ## Files
 
@@ -12,7 +12,9 @@ compiler core (`@tanstack/router-utils/compiler`), through Start's own Rspack lo
   protection, the server-function registry, the planners and configuration per environment and layer, the loader
   implementation, the invalidation operation, the resolver module content, custom server-function ids.
 - `compiler-loader.ts` is the static loader file Rspack loads by path; the implementation lives on the compiler
-  (`compiler.__tanstackStartCompiler`), installed by the host plugin.
+  (`compiler.__tanstackStartCompiler`, named in `loader-registry.ts`), installed by the host plugin.
+- `server-fn-resolver-rebuild.ts` rebuilds the server-function resolver within `finishMake` while its content still
+  changes (each rebuild may register the functions of the provider modules it reaches; bounded).
 - `host-plugin.ts` holds the Rspack hooks of one environment compiler (below).
 - `router-generator.ts` runs the route generator as a precondition of every compiler and serves the client route
   tree without its server-only routes.

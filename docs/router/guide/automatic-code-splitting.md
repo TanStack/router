@@ -4,7 +4,7 @@ title: Automatic Code Splitting
 
 The automatic code splitting feature in TanStack Router allows you to optimize your application's bundle size by lazily loading route components and their associated data. This is particularly useful for large applications where you want to minimize the initial load time by only loading the necessary code for the current route.
 
-To turn this feature on, simply set the `autoCodeSplitting` option to `true` in your bundler plugin configuration. This enables the router to automatically handle code splitting for your routes without requiring any additional setup.
+To turn this feature on, simply set the `autoCodeSplitting` option to `true` in your bundler plugin configuration. This enables the router to automatically handle code splitting for your routes without requiring any additional setup. It is available with Vite, Rspack/Rsbuild and Webpack, not with Esbuild.
 
 ```ts
 // vite.config.ts
@@ -101,6 +101,14 @@ function PostsNotFoundComponent() {
   // ...
 }
 ```
+
+#### Route callbacks that read `this` are not split
+
+A route option written as a method or a function expression whose body reads `this` stays in the route file, and the build warns once, naming the file. Write such callbacks as arrow functions (or without `this`) to have them split.
+
+#### Route CSS loads with the split components
+
+A style import in a route file (`import './posts.css'`) moves into the route's split component chunks only when every component option the route defines (`component`, `errorComponent`, `pendingComponent`, `notFoundComponent`) is split. Otherwise it stays in the route file and loads with it, because the compiler cannot tell which component needs it.
 
 **That's it!** There are no other restrictions. You can use any other JavaScript or TypeScript features in your route files as you normally would. If you run into any issues, please [open an issue](https://github.com/tanstack/router/issues) on GitHub.
 
