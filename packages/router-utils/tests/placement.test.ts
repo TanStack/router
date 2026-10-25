@@ -8,7 +8,7 @@ import {
   toyEnvPlanner,
   toySplitPlanner,
 } from './helpers'
-import type { Planner } from '../src/compiler'
+import type { Planner, SymbolId } from '../src/compiler'
 
 async function split(
   code: string,
@@ -1057,5 +1057,92 @@ describe('provider outputs (DESIGN §3.10.5, lane B)', () => {
     expect(out?.code).toContain('export const fn_handler = () => fn')
     expect(out?.code).not.toContain("from './fns.ts")
     expect(out?.code).not.toContain('other')
+  })
+})
+
+describe('clusters an env root reads after homing', () => {
+  it('keeps a generated import an env-scoped edit reads in a cluster homed in the env module for its derived needers', async () => {
+    // `fn` is read by the split component, a provider output and an option
+    // the env module erases (so it starts as an orphan of the env module); it
+    // is homed in the env module for its derived needers and then rooted there
+    // for its effects, and its env rendering reads a generated import no
+    // other output reads (Rsbuild RSC SSR: a server fn's `tsrSsrRpc` stub,
+    // found by the react-start/rsc e2e app)
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { make } from 'toy-lib'
+      const fn = make().handler(async () => 1)
+      export const Route = createFileRoute('/')({
+        loader: () => fn,
+        component: () => fn,
+      })
+    `)
+    const host = new MemoryHost({
+      files: { '/app/route.tsx': code },
+    })
+    const provider: Planner = {
+      name: 'toy-provider',
+      tier: 1,
+      gate: () => true,
+      plan(ctx) {
+        const out = ctx.declareOutput({
+          kind: 'provider',
+          key: 'provider',
+          derived: { kind: 'provider', value: '' },
+        })
+        const isFn = (s: SymbolId) => ctx.t1.symbols.name(s) === 'fn'
+        const decl = ctx.t1.units.find((u) => u.declares.some(isFn))!
+        const sym = decl.declares.find(isFn)!
+        const handler = 'async () => 1'
+        const init = ctx.analysis.source.code.indexOf(handler, decl.range.start)
+        const stub = ctx.names.alloc('tsrStub')
+        ctx.rewrites.addGenerated({
+          body: [],
+          declares: [],
+          effectful: false,
+          anchor: { k: 'after-header' },
+          home: 'auto',
+          by: 'toy-provider',
+          imports: [
+            {
+              names: [{ imported: 'stub', local: stub.sym }],
+              spec: {
+                k: 'spec',
+                specifier: 'toy-runtime',
+                edgeKey: ctx.edgeKey('toy-runtime', 'static', 'runtime'),
+                provenance: { origin: 'runtime' },
+              },
+            },
+          ],
+        })
+        ctx.rewrites.add({
+          range: { start: init, end: init + handler.length },
+          body: [{ k: 'text', parts: [{ sym: stub.sym }, "('id')"] }],
+          scope: ['env'],
+          by: 'toy-provider',
+        })
+        const wrapper = ctx.names.alloc('fn_handler')
+        ctx.rewrites.addGenerated({
+          body: [
+            {
+              k: 'text',
+              parts: [`export const ${wrapper.name} = () => `, { sym }, '\n'],
+            },
+          ],
+          declares: [wrapper.sym],
+          effectful: false,
+          anchor: { k: 'end' },
+          home: out,
+          by: 'toy-provider',
+        })
+      },
+    }
+    const planners = [toySplitPlanner({ deleteNodes: ['loader'] }), provider]
+    const env = envInfo({ name: 'ssr', type: 'server' })
+    const main = await host.compile('/app/route.tsx', planners, { env })
+    expect(main?.code).toContain("const fn = make().handler(tsrStub('id'))")
+    expect(main?.code).toContain(
+      "import { stub as tsrStub } from 'toy-runtime'",
+    )
   })
 })

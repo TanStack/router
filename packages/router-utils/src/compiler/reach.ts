@@ -1353,8 +1353,18 @@ export function computePlacement(input: PlacementInput): Placement {
   }
   liveEnv = reach('env', envRoots)
   for (const cl of clusters) {
-    if (liveEnv.has(cl.id)) {
-      needers.get(cl.id)!.add('env')
+    if (!liveEnv.has(cl.id)) {
+      continue
+    }
+    const S = needers.get(cl.id)!
+    if (S.has('env')) {
+      continue
+    }
+    S.add('env')
+    // what those roots read in the env module was homed as if the env module did not need it
+    // (an orphan removed, a chunk's own import): it is homed like any env-needed cluster
+    if (!deadClusters.has(cl.id) && !pinned.has(cl.id)) {
+      home.set(cl.id, cl.copyable && S.size > 1 ? 'duplicate' : 'env')
     }
   }
 
