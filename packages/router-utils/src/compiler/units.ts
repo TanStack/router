@@ -110,6 +110,8 @@ export class RegionTable {
   readonly regions: Array<Region> = []
   /** Unit regions sorted by start (disjoint). */
   private readonly unitRegions: Array<Region> = []
+  /** Sub-regions by `start:end:kind` (one region per range and kind). */
+  private readonly subRegionByKey = new Map<string, RegionId>()
 
   /** Registers a unit region; units are added in source order. */
   addUnitRegion(unit: UnitId, range: Range): RegionId {
@@ -129,19 +131,16 @@ export class RegionTable {
 
   /** Registers a sub-region under the innermost region containing it. */
   register(range: Range, kind: Exclude<RegionKind, 'unit'>): RegionId {
-    const parent = this.innermostAt(range.start, range.end)
-    for (const existing of this.regions) {
-      if (
-        existing.range.start === range.start &&
-        existing.range.end === range.end &&
-        existing.kind === kind
-      ) {
-        return existing.id
-      }
+    const key = `${range.start}:${range.end}:${kind}`
+    const existing = this.subRegionByKey.get(key)
+    if (existing !== undefined) {
+      return existing
     }
+    const parent = this.innermostAt(range.start, range.end)
     const id = this.regions.length
     const r: Region = { id, range, kind, unit: null, parent, children: [] }
     this.regions.push(r)
+    this.subRegionByKey.set(key, id)
     if (parent !== null) {
       const p = this.regions[parent]!
       // existing children inside the new range are re-parented (regions may be registered inner-first)
@@ -828,9 +827,7 @@ export function buildUnits(
       continue
     }
     for (const d of b.declarations) {
-      const item = items.find(
-        (it) => it.range.start <= d.start && d.start < it.range.end,
-      )
+      const item = itemAt(items, d.start)
       if (!item) {
         continue
       }
@@ -856,6 +853,27 @@ export function buildUnits(
   }
 
   return { units, regions, declaringUnits }
+}
+
+/** The top-level item whose range holds `offset` (items are in source order, disjoint). */
+function itemAt(
+  items: ReadonlyArray<TopLevelItem>,
+  offset: number,
+): TopLevelItem | null {
+  let lo = 0
+  let hi = items.length - 1
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1
+    const it = items[mid]!
+    if (it.range.end <= offset) {
+      lo = mid + 1
+    } else if (it.range.start > offset) {
+      hi = mid - 1
+    } else {
+      return it
+    }
+  }
+  return null
 }
 
 export type StatementRecipe = 'keep' | 'drop' | Array<Frag>
