@@ -97,13 +97,7 @@ Let's start by creating a file-based storage system for our jokes.
 
 ### Step 1.1: Create a JSON File with Jokes
 
-Let's set up a list of jokes that we can use to render on the page. Create a `jokes.json` file within `src/data`:
-
-```bash
-touch src/data/jokes.json
-```
-
-Now, let's add some sample jokes to this file:
+Let's set up a list of jokes that we can use to render on the page. Create `src/data/jokes.json` and add some sample jokes to this file:
 
 ```json
 [
