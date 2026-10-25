@@ -45,6 +45,30 @@ export const Route = createFileRoute('/posts')(options)
     )
   })
 
+  // A leading comment (a triple-slash directive) belongs to the first
+  // statement; when that import statement loses a name only the split
+  // component reads, the route module still declares each generated binding
+  // once. Source: the react-start and solid-start e2e apps (their root
+  // routes start with `/// <reference types="vite/client" />`).
+  it('are split when the route module starts with a comment before an import the component shares', async () => {
+    const route = await loadRoute(
+      `/// <reference types="vite/client" />
+import { createFileRoute, useRouter } from '@tanstack/react-router'
+function Page() {
+  return <p data-mark="MARK_PAGE">{typeof useRouter()}</p>
+}
+export const Route = createFileRoute('/')({
+  component: Page,
+})
+`,
+    )
+    expect(await route.isLazy('component')).toBe(true)
+    await expectValidModules(route)
+    expect(await route.run('return renderRoute()')).toBe(
+      '<p data-mark="MARK_PAGE">object</p>',
+    )
+  })
+
   it.each([
     { option: 'errorComponent', value: false },
     { option: 'errorComponent', value: null },

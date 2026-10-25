@@ -30,6 +30,7 @@ describe('<ClientOnly> children', () => {
     './WindowSize': { WindowSize: `() => 'size'` },
     'outer-lib': { OuterWidget: `() => 'outer'` },
     'inner-lib': { InnerWidget: `() => 'inner'` },
+    './state': { readState: `() => ({ isLoading: false, status: 'idle' })` },
     'some-other-package': { ClientOnly: `(props) => props.children ?? null` },
   }
   /**
@@ -146,6 +147,26 @@ export function MyComponent() {
 }`,
       childModules: ['animation-library'],
       ssr: '<div></div>',
+    },
+    {
+      // Source: the react-start/basic e2e app (its root route: two
+      // destructured locals only the children read)
+      name: 'locals of one pattern only its children read',
+      code: `import { ClientOnly } from '@tanstack/react-router'
+import { readState } from './state'
+export function MyComponent() {
+  const { isLoading, status } = readState()
+  return (
+    <div>
+      <ClientOnly fallback={<div>Loading...</div>}>
+        <b>{isLoading ? 'true' : 'false'}</b>
+        <b>{status}</b>
+      </ClientOnly>
+    </div>
+  )
+}`,
+      childModules: [],
+      ssr: '<div><div>Loading...</div></div>',
     },
     {
       // Source: snapshot fixture clientOnlyRenamed.tsx

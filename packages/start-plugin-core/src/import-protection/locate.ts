@@ -190,4 +190,63 @@ export class Locator {
     const { line, column } = this.lf.locate(offset)
     return originalPositionFor(map, line, column, this.file)
   }
+
+  /** The code frame of an original location `at` gave (null without the original text). */
+  frame(loc: OriginalLocation): CodeFrame | null {
+    const map = this.inputMap()
+    let text: string | null = null
+    if (map === null) {
+      text = loc.file === this.file ? this.code : null
+    } else {
+      const root = map.sourceRoot ?? ''
+      const index = map.sources.findIndex(
+        (s) =>
+          typeof s === 'string' &&
+          resolveSource(this.file, root, s) === loc.file,
+      )
+      text = index < 0 ? null : (map.sourcesContent?.[index] ?? null)
+    }
+    // (lines counted like `at` counts them: the input by every ECMAScript
+    // terminator, a map's sources by LF)
+    return text === null
+      ? null
+      : codeFrame(text, loc, map === null ? /\r\n|[\n\r\u2028\u2029]/ : /\r?\n/)
+  }
+}
+
+/** Vitest-style lines of the original source around a location (`ViolationInfo.snippet`). */
+export interface CodeFrame {
+  lines: Array<string>
+  highlightLine: number
+  /** `file:line:column`. */
+  location: string
+}
+
+const CONTEXT_LINES = 2
+
+function codeFrame(
+  text: string,
+  loc: OriginalLocation,
+  lineBreaks: RegExp,
+): CodeFrame | null {
+  const all = text.split(lineBreaks)
+  if (loc.line > all.length) {
+    return null
+  }
+  const first = Math.max(1, loc.line - CONTEXT_LINES)
+  const last = Math.min(all.length, loc.line + CONTEXT_LINES)
+  const gutter = String(last).length
+  const lines: Array<string> = []
+  for (let n = first; n <= last; n++) {
+    const marker = n === loc.line ? '>' : ' '
+    lines.push(`  ${marker} ${String(n).padStart(gutter)} | ${all[n - 1]}`)
+    if (n === loc.line) {
+      lines.push(`    ${' '.repeat(gutter)} | ${' '.repeat(loc.column - 1)}^`)
+    }
+  }
+  return {
+    lines,
+    highlightLine: loc.line,
+    location: `${loc.file}:${loc.line}:${loc.column}`,
+  }
 }

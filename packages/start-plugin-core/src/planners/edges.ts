@@ -246,6 +246,7 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
           importerId,
           resolved: j.resolved,
           loc: j.loc,
+          snippet: j.loc && locator.frame(j.loc),
           behavior,
           module: null,
         }

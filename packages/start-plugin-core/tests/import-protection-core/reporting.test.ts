@@ -60,6 +60,7 @@ function violation(partial: Partial<EdgeViolation> = {}): EdgeViolation {
     importerId: '/app/src/b.ts',
     resolved: '/app/src/secret.server.ts',
     loc: { file: '/app/src/b.ts', line: 3, column: 24 },
+    snippet: null,
     behavior: 'mock',
     module: null,
     ...partial,
