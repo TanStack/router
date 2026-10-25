@@ -129,54 +129,50 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // bundle; not by comparing the bundle's statements with another build's.
   // The live-denial controls show the same harness sees a used mock: its
   // report, its safe value, and the real value without protection.
-  ;(bundler === 'rsbuild' ? test : test.fails)(
-    'in mock mode, an unused denied module leaves nothing in the client bundle and no warning',
-    async () => {
-      // (one build at a time: a Vite build runs in its app's directory)
-      const mocked = await buildStart({
-        bundler,
-        files: droppedCorpusFiles,
-        entry: 'src/entry.ts',
-        start: mockToClient(['**/corpus.ts']),
-      })
-      const usedFiles = {
-        ...droppedCorpusFiles,
-        'src/entry.ts': `export { size } from './layout'\n`,
-      }
-      const used = await buildStart({
-        bundler,
-        files: usedFiles,
-        entry: 'src/entry.ts',
-        start: mockToClient(['**/corpus.ts']),
-      })
-      const usedDisabled = await buildStart({
-        bundler,
-        files: usedFiles,
-        entry: 'src/entry.ts',
-        start: { importProtection: { enabled: false } },
-      })
-      expect(reportedViolations(inEnvironment(used, 'client'))).toHaveLength(1)
-      expect(
-        (
-          await used.client.run(
-            `${describeValuePrelude}\nreturn describeValue(entry.size(), 'MARK_CORPUS')`,
-          )
-        ).result,
-      ).toBe('a safe mock')
-      expect(
-        (await usedDisabled.client.run('return entry.size()')).result,
-      ).toContain('MARK_CORPUS')
-      // Nothing reported, on any channel
-      expect(reportedViolations(mocked)).toEqual([])
-      expect(problems(mocked.diagnostics).map(({ text }) => text)).toEqual([])
-      expect(mocked.client.where('MARK_CORPUS')).toBe('nowhere')
-      expect(
-        (await mocked.client.run('return globalThis.corpusInitialized ?? null'))
-          .result,
-      ).toBe(null)
-    },
-    60_000,
-  )
+  test('in mock mode, an unused denied module leaves nothing in the client bundle and no warning', async () => {
+    // (one build at a time: a Vite build runs in its app's directory)
+    const mocked = await buildStart({
+      bundler,
+      files: droppedCorpusFiles,
+      entry: 'src/entry.ts',
+      start: mockToClient(['**/corpus.ts']),
+    })
+    const usedFiles = {
+      ...droppedCorpusFiles,
+      'src/entry.ts': `export { size } from './layout'\n`,
+    }
+    const used = await buildStart({
+      bundler,
+      files: usedFiles,
+      entry: 'src/entry.ts',
+      start: mockToClient(['**/corpus.ts']),
+    })
+    const usedDisabled = await buildStart({
+      bundler,
+      files: usedFiles,
+      entry: 'src/entry.ts',
+      start: { importProtection: { enabled: false } },
+    })
+    expect(reportedViolations(inEnvironment(used, 'client'))).toHaveLength(1)
+    expect(
+      (
+        await used.client.run(
+          `${describeValuePrelude}\nreturn describeValue(entry.size(), 'MARK_CORPUS')`,
+        )
+      ).result,
+    ).toBe('a safe mock')
+    expect(
+      (await usedDisabled.client.run('return entry.size()')).result,
+    ).toContain('MARK_CORPUS')
+    // Nothing reported, on any channel
+    expect(reportedViolations(mocked)).toEqual([])
+    expect(problems(mocked.diagnostics).map(({ text }) => text)).toEqual([])
+    expect(mocked.client.where('MARK_CORPUS')).toBe('nowhere')
+    expect(
+      (await mocked.client.run('return globalThis.corpusInitialized ?? null'))
+        .result,
+    ).toBe(null)
+  }, 60_000)
 })
 
 describe.each(startBundlers)('%s build', (bundler) => {

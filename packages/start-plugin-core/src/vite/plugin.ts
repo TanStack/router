@@ -15,10 +15,12 @@ import { startCompilerPlugin } from './compiler-plugin'
 import { loadEnvPlugin } from './load-env-plugin/plugin'
 import {
   buildStartViteEnvironments,
+  composeOnwarn,
   createViteConfigPlan,
   createViteDefineConfig,
   createViteResolvedEntryAliases,
 } from './planning'
+import type { OnwarnLike } from './planning'
 import { devServerPlugin } from './dev-server-plugin/plugin'
 import { previewServerPlugin } from './preview-server-plugin/plugin'
 import {
@@ -178,6 +180,16 @@ export function tanStackStartVite(
           appType: viteConfig.appType ?? 'custom',
           environments: viteConfigPlan.environments,
           resolve: viteConfigPlan.resolve,
+          build: {
+            rolldownOptions: {
+              // the server-fn resolver's lazy imports are no chunking mistake
+              onwarn: composeOnwarn(
+                viteConfig.build?.rolldownOptions?.onwarn as
+                  | OnwarnLike
+                  | undefined,
+              ),
+            },
+          },
           define: createViteDefineConfig({
             command,
             mode: viteConfig.mode,
