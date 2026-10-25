@@ -550,7 +550,19 @@ function extractExports(ctx: PlanContext): void {
       declaring.length === 0 ||
       declaring.some((u) => ctx.t1.units[u]!.kind !== 'declaration') ||
       declaring.some((u) => ctx.t1.units[u]!.effectful) ||
-      ctx.t1.refs.writesOf(sym).length > 0
+      ctx.t1.refs.writesOf(sym).length > 0 ||
+      // a declaration writing another module binding stays with it (the
+      // parent and the children keep one live binding)
+      declaring.some((u) =>
+        ctx.t1.refs
+          .refsIn(ctx.t1.units[u]!.range)
+          .some(
+            (r) =>
+              (r.ctx === 'assignTarget' || r.ctx === 'updateTarget') &&
+              r.sym !== sym &&
+              ctx.symbols.isModuleLevel(r.sym),
+          ),
+      )
     ) {
       continue
     }
