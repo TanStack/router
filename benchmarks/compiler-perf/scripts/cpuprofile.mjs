@@ -43,6 +43,10 @@ const CATEGORY_RULES = [
     /\/node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?@vitejs\//,
   ],
   [
+    'plugin-solid',
+    /\/node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?(?:vite-plugin-solid|babel-preset-solid|babel-plugin-jsx-dom-expressions|solid-refresh|@rsbuild\/plugin-solid)\//,
+  ],
+  [
     'react-runtime',
     /\/node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?(?:react|react-dom|scheduler)\//,
   ],

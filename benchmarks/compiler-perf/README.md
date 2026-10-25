@@ -24,6 +24,8 @@ zero-cost compiler) and **memory** (peak RSS, heap after GC, HMR leak check).
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `react-start`  | TanStack Start (Vite and Rsbuild configs): 338 route files (10 sections × 3 groups, nested layouts, pathless/group/splat/param routes, 5 server routes), loaders, `validateSearch`/`loaderDeps`, `beforeLoad`, pending/error/notFound components, 106 server functions (20 files + inline, validators, middleware), `createIsomorphicFn`/`createServerOnlyFn`/`createClientOnlyFn`, `ClientOnly`, 10 `<Hydrate>` boundaries, `*.server.ts` modules, 40 shared components |
 | `react-router` | the same route tree as a client-only Router app with `autoCodeSplitting`, no Start features                                                                                                                                                                                                                                                                                                                                                                              |
+| `solid-start`  | `react-start` written for Solid (signals, `<For>`/`<Show>`, `class`, accessor router hooks); Vite only (`vite-plugin-solid`; no Rsbuild config, which would need `@rsbuild/plugin-babel` + `@rsbuild/plugin-solid`). Same route tree, server functions and probes                                                                                                                                                                                                        |
+| `solid-router` | `react-router` written for Solid                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 
 Every result records a hash of the generated sources (`workloads.<variant>.hash`);
 `compare.mjs` warns when baseline and candidate inputs differ. Apps resolve
@@ -45,7 +47,10 @@ Without `--out`, results go to `benchmarks/compiler-perf/results/<label>/`.
 
 Useful options (`--help` lists all):
 
-- `--variants react-start,react-router`
+- `--variants react-start,react-router` (default); the Solid variants run with
+  `--variants solid-start,solid-router`. The Solid apps keep the React apps'
+  structure (same seeded choices), so React and Solid numbers are comparable
+  per scenario, but Solid's own JSX transform runs Babel in every variant.
 - `--scenarios build,dev-compile,dev-cold,dev-warm,hmr,rsbuild,profile` (the
   default set); also `rsbuild-build`/`rsbuild-dev` (the halves of `rsbuild`),
   `floor`, `memory`, `leak` (see below)

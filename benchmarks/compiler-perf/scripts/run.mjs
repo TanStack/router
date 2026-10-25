@@ -14,11 +14,15 @@ import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import { analyzeCpuProfileDir } from './cpuprofile.mjs'
 import {
+  ALL_VARIANTS,
   PROBES,
   VARIANTS,
   appDir,
   appsRoot,
   benchRoot,
+  frameworkOf,
+  hasRsbuild,
+  isStart,
   writeApp,
 } from './generate.mjs'
 import { descendantsRssMb } from './memory.mjs'
@@ -74,7 +78,7 @@ if (args.help) {
   console.log(`Usage: node scripts/run.mjs [options]
   --label <name>            result label (default "run")
   --out <dir>               output directory (default results/<label>)
-  --variants <list>         ${VARIANTS.join(',')}
+  --variants <list>         ${VARIANTS.join(',')} (default; all: ${ALL_VARIANTS.join(',')})
   --scenarios <list>        ${ALL_SCENARIOS.join(',')} (default)
                             also: ${EXTRA_SCENARIOS.join(',')}
   --runs <n>                measured runs for startup/build (default 5)
@@ -102,6 +106,11 @@ const PORT = Number(args.port)
 const MEMORY_RUNS = Number(args['memory-runs'])
 const LEAK_CYCLES = Number(args['leak-cycles'])
 const variants = args.variants.split(',').filter(Boolean)
+for (const variant of variants) {
+  if (!ALL_VARIANTS.includes(variant)) {
+    throw new Error(`Unknown variant ${variant}`)
+  }
+}
 const scenarios = new Set(args.scenarios.split(',').filter(Boolean))
 if (scenarios.has('rsbuild')) {
   scenarios.add('rsbuild-build')
@@ -1209,7 +1218,7 @@ async function memoryScenario(variant) {
     () => devCompileRun(variant, { mem: true }),
     opts,
   )
-  if (variant === 'react-start') {
+  if (hasRsbuild(variant)) {
     await repeat(
       `${variant}/mem-rsbuild-build`,
       () => rsbuildBuildRun(variant, { mem: true }),
@@ -1234,7 +1243,7 @@ async function floorScenario(variant) {
     if (!floorKinds.has(kind)) {
       continue
     }
-    if (kind === 'rsbuild-build' && variant !== 'react-start') {
+    if (kind === 'rsbuild-build' && !hasRsbuild(variant)) {
       continue
     }
     const name = `${variant}-${kind}`
@@ -1289,7 +1298,7 @@ async function profileScenario(variant) {
       (m) => m.buildMs,
     ],
   ]
-  if (scenarios.has('rsbuild-build') && variant === 'react-start') {
+  if (scenarios.has('rsbuild-build') && hasRsbuild(variant)) {
     runs.push([
       'rsbuild-build',
       (profileDir) => rsbuildBuildRun(variant, { profileDir }),
@@ -1354,6 +1363,9 @@ async function main() {
         '@rsbuild/core',
         '@playwright/test',
         'react',
+        ...(variants.some((v) => frameworkOf(v) === 'solid')
+          ? ['solid-js', 'vite-plugin-solid']
+          : []),
       ].map((n) => [n, pkgVersion(n)]),
     ),
     options: {
@@ -1380,9 +1392,13 @@ async function main() {
         '-t',
         'build',
         '-p',
-        '@tanstack/react-start',
         '@tanstack/router-plugin',
-        '@tanstack/react-router',
+        ...new Set(
+          variants.flatMap((v) => [
+            `@tanstack/${frameworkOf(v)}-router`,
+            ...(isStart(v) ? [`@tanstack/${frameworkOf(v)}-start`] : []),
+          ]),
+        ),
         '--outputStyle=stream',
         '--skipRemoteCache',
       ],
@@ -1435,7 +1451,7 @@ async function main() {
     if (scenarios.has('hmr')) {
       await hmrScenario(variant)
     }
-    if (variant === 'react-start') {
+    if (hasRsbuild(variant)) {
       if (scenarios.has('rsbuild-build')) {
         await repeat(`${variant}/rsbuild-build`, () => rsbuildBuildRun(variant))
       }
