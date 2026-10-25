@@ -825,6 +825,16 @@ export function trackCompiles(): CompileTracker {
         (dep) => (lastDone.get(dep) ?? 0) > (lastDone.get(compiler) ?? 0),
       ),
     )
+  /**
+   * Compilers Rspack has not finished handing a compile on for: from its
+   * `done` until a macrotask after its `afterDone`. A compiler whose
+   * dependency was invalidated while it compiled (Rspack's MultiCompiler:
+   * `running-outdated`) is run again once its `done` hooks ended, on the
+   * next tick; the MultiCompiler's `done` (Rsbuild's `onAfterBuild`,
+   * `done()` here) comes from the last compiler's `done` taps, before that.
+   * The run again announces itself (`invalid`) by the macrotask.
+   */
+  const handingOn = new Set<Rspack.Compiler>()
   /** Whether the edit's outcome is in (see `trackCompiles`). */
   const settled = (wait: EditWait) => {
     const last = lastReader(wait)
@@ -834,8 +844,17 @@ export function trackCompiles(): CompileTracker {
       startedBeforeDone >= last &&
       startedBeforeDone === started &&
       invalid.size === 0 &&
+      handingOn.size === 0 &&
       !owesDependentRun()
     )
+  }
+  /** Resolves the waits whose edit's outcome is in. */
+  const settle = () => {
+    for (const wait of waits) {
+      if (settled(wait)) {
+        wait.resolve()
+      }
+    }
   }
 
   const withTimeout = (
@@ -958,12 +977,20 @@ export function trackCompiles(): CompileTracker {
         environmentCompiler.hooks.done.tap({ name, stage: -100 }, (stats) => {
           const { compilation } = stats
           lastDone.set(environmentCompiler, ++doneSeq)
+          handingOn.add(environmentCompiler)
           dependencies.set(environmentCompiler, {
             files: new Set(compilation.fileDependencies),
             missing: new Set(compilation.missingDependencies),
           })
         })
+        environmentCompiler.hooks.afterDone.tap(name, () => {
+          setImmediate(() => {
+            handingOn.delete(environmentCompiler)
+            settle()
+          })
+        })
         environmentCompiler.hooks.failed.tap(name, (cause) => {
+          handingOn.delete(environmentCompiler)
           const error = new Error(
             `Rsbuild failed to compile the app: ${cause.message}`,
             { cause },
@@ -991,11 +1018,7 @@ export function trackCompiles(): CompileTracker {
       for (const wait of firstWaits) {
         wait.resolve()
       }
-      for (const wait of waits) {
-        if (settled(wait)) {
-          wait.resolve()
-        }
-      }
+      settle()
     },
     first(timeout) {
       if (finished > 0) {
