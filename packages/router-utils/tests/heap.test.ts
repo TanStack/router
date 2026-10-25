@@ -146,18 +146,8 @@ describe('retained heap (gate l)', () => {
       // drop everything but the caches
       texts.clear()
       const plans = host.caches.plans.get('client')!
-      let withEmitted = 0
-      for (const e of plans.values()) {
-        for (const em of e.emitted.values()) {
-          withEmitted += em.code.length
-        }
-      }
       // flush Yuku's last native result before measuring
       void parse('export {}', { lang: 'ts' }).program.body.length
-      const afterAll = await measure()
-      for (const e of plans.values()) {
-        e.emitted.clear()
-      }
       const after = await measure()
       const heapDelta = after.heapUsed - before.heapUsed
       const abDelta = after.arrayBuffers - before.arrayBuffers
@@ -167,11 +157,6 @@ describe('retained heap (gate l)', () => {
         untouched,
         plans: plans.size,
         heapDeltaMB: +(heapDelta / 1048576).toFixed(2),
-        heapDeltaWithEmittedMB: +(
-          (afterAll.heapUsed - before.heapUsed) /
-          1048576
-        ).toFixed(2),
-        emittedChars: withEmitted,
         arrayBuffersDelta: abDelta,
         parseOnlyUsPerFile: +((parseOnly * 1000) / files.length).toFixed(1),
         compileUsPerFile: +((compileTotal * 1000) / files.length).toFixed(1),

@@ -1,6 +1,6 @@
 import { TraceMap, originalPositionFor } from '@jridgewell/trace-mapping'
 import { describe, expect, it } from 'vitest'
-import { compileModule, invalidate, resolveCached } from '../src/compiler'
+import { compileModule, invalidate } from '../src/compiler'
 import {
   MemoryHost,
   dedent,
@@ -187,12 +187,29 @@ describe('resolution for analysis', () => {
     ]
     await host.compile('/app/page.tsx', planners)
     // a package specifier (not a known one here), a project module and a
-    // bundler virtual module are asked; the builtins and the platform scheme never
+    // bundler virtual module are asked; the builtins and the platform scheme
+    // never. Each is asked once: the attempt's snapshot validation and later
+    // hits do not re-ask while no file appeared or disappeared
+    const asked = ['toy-router', './service', 'virtual:served']
+    expect(host.resolveCalls.map((c) => c.specifier)).toEqual(asked)
+    host.resolveCalls.length = 0
+    await host.compile('/app/page.tsx', planners)
+    await host.compile('/app/page.tsx?tsr-split=component', planners)
+    expect(host.resolveCalls).toEqual([])
+    // a file appeared: the failed resolutions are re-asked by the event (R47),
+    // then the next validation of the plan asks the resolver again, once
+    host.write('/app/other.ts', 'export {}\n')
+    await invalidate(host.caches, { path: '/app/other.ts', kind: 'add' }, host)
     expect(host.resolveCalls.map((c) => c.specifier)).toEqual([
       'toy-router',
-      './service',
       'virtual:served',
     ])
+    host.resolveCalls.length = 0
+    await host.compile('/app/page.tsx', planners)
+    expect(host.resolveCalls.map((c) => c.specifier)).toEqual(asked)
+    host.resolveCalls.length = 0
+    await host.compile('/app/page.tsx?tsr-split=component', planners)
+    expect(host.resolveCalls).toEqual([])
   })
 })
 
@@ -341,9 +358,10 @@ describe('slice gates: invalidation', () => {
 
   it('re-validates each environment with its own resolver on add/unlink (R35: no cross-env resolution contamination)', async () => {
     // the client resolves `./dep` to the browser file, the server to the node
-    // file, and only the server resolves `./maybe`; an `unlink` handled with
-    // the server's resolver must not leave the client's resolution cache
-    // pointing at the server's file
+    // file, and only the server resolves `./maybe`: an `add` checked with the
+    // server's resolver would find the client's failed `./maybe` resolving
+    // (a false dependent), an `unlink` of the client's file checked with the
+    // client's resolver would find the server's `./dep` moved (another)
     const files = {
       '/app/a.ts': `import { x } from './dep'\nimport './maybe'\nexport const y = x\n`,
       '/app/dep.client.ts': 'export const x = 1\n',
@@ -382,41 +400,28 @@ describe('slice gates: invalidation', () => {
       server,
       client.caches,
     )
-    const resolved = async (env: string) => ({
-      dep: await resolveCached(
-        client.caches,
-        hosts(env),
-        env,
-        '/app/a.ts',
-        './dep',
-      ),
-      maybe: await resolveCached(
-        client.caches,
-        hosts(env),
-        env,
-        '/app/a.ts',
-        './maybe',
-      ),
-    })
-    expect(await resolved('client')).toEqual({
-      dep: '/app/dep.client.ts',
-      maybe: null,
-    })
-    expect(await resolved('ssr')).toEqual({
-      dep: '/app/dep.server.ts',
-      maybe: '/app/maybe.server.ts',
-    })
+    const resolutionsOf = (env: string) =>
+      client.caches.plans
+        .get(env)!
+        .get({ env, canonicalId: '/app/a.ts', configKey: 'cfg' })!
+        .plan.dependencies.filter((fp) => fp.kind === 'resolution')
+        .map((fp) => [fp.specifier, fp.resolved])
+    expect(resolutionsOf('client')).toEqual([
+      ['./dep', '/app/dep.client.ts'],
+      ['./maybe', null],
+    ])
+    expect(resolutionsOf('ssr')).toEqual([
+      ['./dep', '/app/dep.server.ts'],
+      ['./maybe', '/app/maybe.server.ts'],
+    ])
     // an unrelated file appears, then the client's dependency is deleted: every
     // environment's fingerprints are checked with that environment's resolver
-    await invalidate(
+    const added = await invalidate(
       client.caches,
       { path: '/app/other.ts', kind: 'add' },
       hosts,
     )
-    expect(await resolved('client')).toEqual({
-      dep: '/app/dep.client.ts',
-      maybe: null,
-    })
+    expect(added.dependents).toEqual([])
     client.files['/app/dep.client.ts'] = undefined as never
     delete client.files['/app/dep.client.ts']
     const r = await invalidate(
@@ -425,14 +430,8 @@ describe('slice gates: invalidation', () => {
       hosts,
     )
     expect(r.dependents.map((k) => k.env).sort()).toEqual(['client'])
-    expect(await resolved('client')).toEqual({
-      dep: '/app/dep.client.ts',
-      maybe: null,
-    })
-    expect(await resolved('ssr')).toEqual({
-      dep: '/app/dep.server.ts',
-      maybe: '/app/maybe.server.ts',
-    })
+    expect(client.caches.plans.get('ssr')!.size).toBe(1)
+    expect(client.caches.plans.get('client')!.size).toBe(0)
   })
 
   it('watches only files: a known package an export resolves to is no dependency path', async () => {

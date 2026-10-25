@@ -18,10 +18,9 @@ import { DependencyLedger, PlanCache, fingerprintCurrent } from './cache'
 import { emitRecipe, substituteSpecifier } from './emit'
 import { SourceText } from './output-builder'
 import { ExportResolver } from './resolve'
-import { fingerprintSourceFor, resolutionCounters, resolveCached } from './host'
+import { fingerprintSourceFor, resolveForAnalysis } from './host'
 import { registerCompilerStats } from './stats'
 import type { CacheEntry } from './cache'
-import type { Emitted } from './emit'
 import type { EmitPlan, EnvInfo, FallbackRecord, PlanContext } from './plan'
 import type { PlanKey, SourceIdentity } from './identity'
 import type { OutputId } from './rewrite'
@@ -50,7 +49,7 @@ export function createCompilerCaches(
   const caches: CompilerCaches = {
     plans: new Map(),
     rawFacts,
-    resolutions: new Map(),
+    fileSetVersion: 0,
   }
   registerCompilerStats(label, caches, (c) => {
     const withBytes = process.env.TSR_COMPILER_STATS_BYTES !== '0'
@@ -63,11 +62,6 @@ export function createCompilerCaches(
     for (const plans of c.plans.values()) {
       add(plans.stats(withBytes))
     }
-    let resolutions = 0
-    for (const m of c.resolutions.values()) {
-      resolutions += m.size
-    }
-    add({ resolutions, ...resolutionCounters(c) })
     return out
   })
   return caches
@@ -117,22 +111,24 @@ export async function compileModule(
     cache.noteRevision(key, rev)
     const hit = cache.lookup(key, rev)
     if (hit) {
-      const src = fingerprintSourceFor(
-        caches,
-        host,
-        env.name,
-        input.config.configKey,
-      )
+      const src = fingerprintSourceFor(caches, host, input.config.configKey)
+      // resolutions validated at the current file-set version stand (R54: no resolution cache, no re-asking either)
+      const fileSetVersion = caches.fileSetVersion
+      const resolutionsCurrent = hit.resolvedAt === fileSetVersion
       let valid = true
       for (const fp of hit.plan.dependencies) {
+        if (resolutionsCurrent && fp.kind === 'resolution') {
+          continue
+        }
         if (!(await fingerprintCurrent(fp, src))) {
           valid = false
           break
         }
       }
       if (valid && cache.lookup(key, rev) === hit) {
+        hit.resolvedAt = fileSetVersion
         cache.counters.planHits++
-        return emitFrom(hit, requested, input, caches, cache)
+        return emitFrom(hit, requested, input, caches)
       }
       cache.delete(key)
       cache.bump(key)
@@ -155,6 +151,7 @@ export async function compileModule(
         CompileOutput | null | typeof RETRY
       > => {
         const generation = cache.generation(key)
+        const fileSetVersion = caches.fileSetVersion
         const ledger = new DependencyLedger(key, generation, cache.dependents)
         const promise = runAttempt(
           input,
@@ -201,13 +198,11 @@ export async function compileModule(
           configKey: input.config.configKey,
           deps: plan.dependencies,
         })
-        const src = fingerprintSourceFor(
-          caches,
-          host,
-          env.name,
-          input.config.configKey,
+        const src = fingerprintSourceFor(caches, host, input.config.configKey)
+        const snapshotOk = await ledger.validateSnapshot(
+          src,
+          caches.fileSetVersion === fileSetVersion,
         )
-        const snapshotOk = await ledger.validateSnapshot(src)
         if (!snapshotOk || cache.generation(key) !== generation) {
           ledger.discard()
           if (cache.latestRevision(key) !== rev) {
@@ -217,9 +212,9 @@ export async function compileModule(
               revision: rev,
               generation,
               plan,
-              emitted: new Map(),
+              resolvedAt: fileSetVersion,
             }
-            return emitFrom(entry, requested, input, caches, cache)
+            return emitFrom(entry, requested, input, caches)
           }
           return RETRY
         }
@@ -228,14 +223,14 @@ export async function compileModule(
           revision: rev,
           generation,
           plan,
-          emitted: new Map(),
+          resolvedAt: fileSetVersion,
         }
         if (cache.set(entry)) {
           ledger.publish()
         } else {
           ledger.discard()
         }
-        return emitFrom(entry, requested, input, caches, cache)
+        return emitFrom(entry, requested, input, caches)
       })()
     } finally {
       cache.end(key)
@@ -249,31 +244,18 @@ export async function compileModule(
   )
 }
 
+/** Emits the requested output from a frozen plan (never memoised, R54: emission costs microseconds). */
 function emitFrom(
   entry: CacheEntry,
   requested: OutputId,
   input: CompileInput,
   caches: CompilerCaches,
-  cache: PlanCache,
 ): CompileOutput {
   const plan = entry.plan
-  const memoKey = `${requested}|${input.wantMap ? 'map' : 'code'}`
-  let emitted = entry.emitted.get(memoKey)
-  if (emitted) {
-    cache.counters.emitHits++
-  } else {
-    cache.counters.emitMisses++
-    const recipe = plan.outputs[requested]
-    if (!recipe) {
-      emitted = { code: 'export {}\n', map: null }
-    } else {
-      emitted = emitRecipe(recipe, new SourceText(input.code), input.wantMap)
-    }
-    if (cache.memoiseEmits) {
-      entry.emitted.set(memoKey, emitted)
-    }
-  }
   const recipe = plan.outputs[requested]
+  const emitted = recipe
+    ? emitRecipe(recipe, new SourceText(input.code), input.wantMap)
+    : { code: 'export {}\n', map: null }
   return {
     code: emitted.code,
     map: emitted.map,
@@ -359,13 +341,12 @@ async function runAttempt(
     specifier: string,
     importer: string,
   ): Promise<string | null> => {
-    const resolved = await resolveCached(
-      caches,
-      host,
-      env.name,
-      importer,
-      specifier,
-    )
+    // one answer per attempt: the ledger's recorded resolution is reused (R54: no resolution cache)
+    const known = ledger.resolved(env.name, importer, specifier)
+    if (known !== undefined) {
+      return known
+    }
+    const resolved = await resolveForAnalysis(caches, host, importer, specifier)
     ledger.record({
       kind: 'resolution',
       env: env.name,
@@ -685,5 +666,3 @@ function withConfig(plan: AnalysisPlan, config: unknown): PlanContext {
     edgeKey: (raw, form, origin) => plan.edgeKey(raw, form, origin),
   }
 }
-
-export type { Emitted }
