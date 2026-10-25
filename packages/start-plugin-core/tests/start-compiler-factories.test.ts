@@ -922,11 +922,12 @@ describe('factories resolved through project modules', () => {
 
   // Only createServerOnlyFn appears in the source text; on the server, the
   // client-only fn imported through an aliased re-export throws and the
-  // server-only fn runs. (Which of its imports the SSR environment keeps is
-  // left open for neutral file names: SPEC J4.11, §5.12.)
+  // server-only fn runs. The SSR environment does not load the neutral
+  // module only the client-only fn reads (SPEC J4.11, G16).
   test('ssr: an aliased re-export of createClientOnlyFn next to createServerOnlyFn', async () => {
     const { 'module.tsx': code, ...files } = aliasedClientOnlyFiles
     const served = await serve(code, files)
+    expectNotLoaded(await served.serverLoads(), ['./browser'])
     const module = await served.ssr()
     expect([module.serverValue(), settle(module.clientValue)]).toEqual([
       'secret',

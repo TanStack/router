@@ -4,7 +4,7 @@
  * client-only code, are eliminated from the server build: a default-config
  * Start build reports no import-protection violation, the server bundle
  * holds none of their code, and each environment runs its implementation
- * (SPEC J4.11, §5.12). So is an installed browser-only package (it reads
+ * (SPEC J4.11). So is an installed browser-only package (it reads
  * `window` when it loads) that only client-only code reads, through a
  * diamond and a cycle of helpers: the server build neither bundles nor
  * imports it, and reports nothing about it (G16).

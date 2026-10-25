@@ -47,8 +47,7 @@ import { client } from './x.client'
 
   /**
    * The client does not load the server module, and the SSR environment
-   * does not load the `.client` module (import protection denies it on the
-   * server, SPEC J4.11, §5.12).
+   * does not load the `.client` module (SPEC J4.9, J4.11).
    */
   async function expectEnvImports(served: ServedCase) {
     expectNotLoaded(await served.loads(), ['./x.server'])

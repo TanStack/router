@@ -1,6 +1,6 @@
 /**
  * `<ClientOnly>` children importing a `*.client.*` module in a route component,
- * in a default-config Start build (SPEC J4.11, §5.12): the module is one import
+ * in a default-config Start build (SPEC J4.11): the module is one import
  * protection denies on the server, and only the children use it, so the server
  * build must not load it: a default-config build reports no import-protection
  * violation, the server bundle holds none of its code, Start's real server

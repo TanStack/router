@@ -159,9 +159,9 @@ const failsToday = new Set(
 
 describe.each(removals)('$name', (removal) => {
   // The module only the removed code needs is a `*.server.*` file where
-  // server code leaves the client, a `*.client.*` file where client code
-  // leaves the server (J4.11: required for such files).
-  const dep = removal.removedFrom === 'client' ? 'dep.server' : 'dep.client'
+  // server code leaves the client, and a neutral module where client code
+  // leaves the server (J4.11: dropped whatever the file's name).
+  const dep = removal.removedFrom === 'client' ? 'dep.server' : 'dep'
   for (const shape of deadCodeShapes) {
     test(
       `takes with it what only it uses through ${shape.name}`,

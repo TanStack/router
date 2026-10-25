@@ -122,7 +122,10 @@ beforeAll(async () => {
       ...library('outer-lib', { OuterWidget: 'outer-el' }),
       ...library('inner-lib', { InnerWidget: 'inner-el' }),
       'src/utils.ts': `export const formatData = () => 'data'\n`,
-      'src/WindowSize.tsx': `export const WindowSize = () => <size-el />\n`,
+      // (a top-level effect, which a bundler keeps in any module it bundles)
+      'src/WindowSize.tsx': `;(globalThis as Record<string, unknown>).MARK_WINDOW_SIZE_LOADED = true
+export const WindowSize = () => <size-el />
+`,
       'src/chart.client.tsx': `export const Chart = () => <client-chart-el data-mark="MARK_CLIENT_CHART" />\n`,
     },
     registerCleanup: (cleanup) => cleanups.push(cleanup),
@@ -188,7 +191,7 @@ describe('<ClientOnly> in a hydrated page', () => {
 // the children of a `<ClientOnly>` use is eliminated from the server build
 // (the build above reports no import-protection violation: by default a
 // violation fails a build) and its code is not in the server bundle.
-// Source: SPEC J4.11, §5.12.
+// Source: SPEC J4.11.
 test('a *.client.* module only ClientOnly children use is not in the server build', () => {
   expect(
     // (everything the build reported, on every channel)
@@ -196,4 +199,11 @@ test('a *.client.* module only ClientOnly children use is not in the server buil
   ).toEqual([])
   expect(app.build.ssr.where('MARK_CLIENT_CHART')).toBe('nowhere')
   expect(app.build.client.where('MARK_CLIENT_CHART')).not.toBe('nowhere')
+})
+
+// So is a neutral module (`src/WindowSize.tsx`, the `renamed` fixture):
+// the server build neither bundles nor runs it (SPEC J4.11, G16).
+test('a neutral module only ClientOnly children use is not in the server build', () => {
+  expect(app.build.ssr.where('MARK_WINDOW_SIZE_LOADED')).toBe('nowhere')
+  expect(app.build.client.where('MARK_WINDOW_SIZE_LOADED')).not.toBe('nowhere')
 })
