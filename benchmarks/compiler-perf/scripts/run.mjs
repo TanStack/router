@@ -114,7 +114,8 @@ if (args.help) {
   --soak-snapshots <list>   cycles after which a heap snapshot is written (default 0,100,500;
                             0 = before the first sample, so V8's one-time snapshot overhead is not growth)
   --soak-bundlers <list>    vite,rsbuild (rsbuild: react-start only; default vite)
-  --soak-modes <list>       real (default), replay (record + replayed transforms)
+  --soak-modes <list>       real (default), replay (record + replayed transforms),
+                            transform-off (Router app: no splitting/HMR, nothing compiled)
   --soak-heap-dir <dir>     heap snapshot directory (default <out>/heap)
   --soak-kinds <list>       only these edit kinds (debugging; default all, see soak-files.mjs)
   --skip-package-builds     do not run the Nx package builds first`)
@@ -1303,10 +1304,10 @@ async function leakRun(variant) {
  * the SOAK_SNAPSHOTS cycles. `replay` (floor): our transform hooks return
  * recorded outputs (record run first, same deterministic edits).
  */
-async function soakRun(variant, bundler, { replay } = {}) {
+async function soakRun(variant, bundler, { replay, transformOff } = {}) {
   const dir = appDir(variant)
   clean(dir)
-  const name = `${variant}/soak-${bundler}${replay ? `-${replay.mode}` : ''}`
+  const name = `${variant}/soak-${bundler}${replay ? `-${replay.mode}` : transformOff ? '-transform-off' : ''}`
   const probes = PROBES[variant]
   const kinds = soakKinds(variant, probes).filter(
     (k) => !args['soak-kinds'] || args['soak-kinds'].split(',').includes(k),
@@ -1358,6 +1359,19 @@ async function soakRun(variant, bundler, { replay } = {}) {
       fs.rmSync(abs('src/routes/soak'), { recursive: true, force: true })
     }
   }
+  if (transformOff) {
+    // the router plugin without code splitting or HMR: no module reaches the
+    // compiler (the route generator still runs), the floor of the plugin
+    write(
+      'vite.config.ts',
+      fs
+        .readFileSync(abs('vite.config.ts'), 'utf8')
+        .replace(
+          'autoCodeSplitting: true',
+          'autoCodeSplitting: false, codeSplittingOptions: { addHmr: false }',
+        ),
+    )
+  }
   const inst = instrumentation({ replay, mem: 'ipc' })
   inst.env.TSR_COMPILER_STATS = '1'
   const dev =
@@ -1373,7 +1387,7 @@ async function soakRun(variant, bundler, { replay } = {}) {
   const out = {
     variant,
     bundler,
-    mode: replay?.mode ?? 'real',
+    mode: replay?.mode ?? (transformOff ? 'transform-off' : 'real'),
     kinds,
     cycles: SOAK_CYCLES,
     series: [],
@@ -1479,26 +1493,41 @@ async function soakRun(variant, bundler, { replay } = {}) {
       pages.push(p)
       return p
     }
+    /** Runs `load` on the page of `key`, replacing the page once if it crashed or never loads. */
+    const ensure = async (key, load) => {
+      try {
+        await load(byKind[key].page)
+      } catch (error) {
+        log(
+          `${name}: page ${key} replaced (${String(error?.message ?? error).split('\n')[0]})`,
+        )
+        const old = byKind[key]
+        pages.splice(pages.indexOf(old), 1)
+        await old.context.close().catch(() => {})
+        byKind[key] = await addPage()
+        await load(byKind[key].page)
+      }
+    }
     const openPages = async () => {
       for (const kind of kinds) {
         if (probes[kind]) {
           byKind[kind] ??= await addPage()
-          await openProbe(byKind[kind].page, kind, probes[kind])
+          await ensure(kind, (page) => openProbe(page, kind, probes[kind]))
         }
       }
       byKind.soak ??= await addPage()
-      await loadUntilHydrated(
-        byKind.soak.page,
-        `http://127.0.0.1:${PORT}/soak/`,
-        { quietMs: 500 },
-      )
-      await byKind.soak.page.waitForSelector('[data-probe="soak-module"]', {
-        timeout: 30_000,
+      await ensure('soak', async (page) => {
+        await loadUntilHydrated(page, `http://127.0.0.1:${PORT}/soak/`, {
+          quietMs: 500,
+        })
+        await page.waitForSelector('[data-probe="soak-module"]', {
+          timeout: 30_000,
+        })
       })
       byKind.visit ??= await addPage()
-      await loadUntilHydrated(byKind.visit.page, `http://127.0.0.1:${PORT}/`, {
-        quietMs: 300,
-      })
+      await ensure('visit', (page) =>
+        loadUntilHydrated(page, `http://127.0.0.1:${PORT}/`, { quietMs: 300 }),
+      )
     }
     await openPages()
     const soakTarget = () => ({ ...byKind.soak, dev })
@@ -1667,7 +1696,15 @@ async function soakRun(variant, bundler, { replay } = {}) {
         }
         restore(false)
         await sleep(3000)
-        await openPages()
+        try {
+          await openPages()
+        } catch (reopenError) {
+          out.failures.push({
+            cycle: i + 1,
+            kind: 'reopen',
+            message: String(reopenError?.message ?? reopenError).slice(0, 500),
+          })
+        }
       }
       if ((i + 1) % SOAK_EVERY === 0 || i === SOAK_CYCLES - 1) {
         await sample(i + 1)
@@ -1730,6 +1767,14 @@ async function soakScenario(variant) {
         await soakRun(variant, bundler, {
           replay: { mode: 'replay', name: replayName },
         })
+      } else if (mode === 'transform-off') {
+        if (isStart(variant) || bundler !== 'vite') {
+          log(
+            `${variant}/soak-${bundler}: transform-off needs a Router app on Vite, skipped`,
+          )
+          continue
+        }
+        await soakRun(variant, bundler, { transformOff: true })
       } else {
         await soakRun(variant, bundler)
       }

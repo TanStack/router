@@ -41,42 +41,60 @@ if (!opts['report-only']) {
         continue
       }
       console.log(`round ${round} knob ${knob}`)
-      execFileSync(
-        process.execPath,
-        [
-          path.join(here, 'run.mjs'),
-          '--label',
-          `cache-${knob}-r${round}`,
-          '--out',
-          dir,
-          '--variants',
-          opts.variants,
-          '--scenarios',
-          opts.scenarios,
-          '--runs',
-          opts.runs,
-          '--warmup',
-          round === 1 ? '1' : '0',
-          '--hmr-iterations',
-          opts['hmr-iterations'],
-          '--hmr-warmup',
-          '2',
-          '--max-busy',
-          opts['max-busy'],
-          '--skip-package-builds',
-          '--port',
-          opts.port,
-        ],
-        {
-          stdio: 'inherit',
-          env: {
-            ...process.env,
-            TSR_COMPILER_NO_CACHE: knob === 'on' ? '' : knob,
-          },
-        },
-      )
+      // a run that dies (a crashed browser) is retried once from scratch
+      for (let attempt = 1; ; attempt++) {
+        try {
+          runOnce(knob, round, dir)
+          break
+        } catch (error) {
+          console.log(
+            `round ${round} knob ${knob} failed (attempt ${attempt}): ${error.message.split('\n')[0]}`,
+          )
+          if (attempt === 2) {
+            break
+          }
+          fs.rmSync(dir, { recursive: true, force: true })
+        }
+      }
     }
   }
+}
+
+function runOnce(knob, round, dir) {
+  execFileSync(
+    process.execPath,
+    [
+      path.join(here, 'run.mjs'),
+      '--label',
+      `cache-${knob}-r${round}`,
+      '--out',
+      dir,
+      '--variants',
+      opts.variants,
+      '--scenarios',
+      opts.scenarios,
+      '--runs',
+      opts.runs,
+      '--warmup',
+      round === 1 ? '1' : '0',
+      '--hmr-iterations',
+      opts['hmr-iterations'],
+      '--hmr-warmup',
+      '2',
+      '--max-busy',
+      opts['max-busy'],
+      '--skip-package-builds',
+      '--port',
+      opts.port,
+    ],
+    {
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        TSR_COMPILER_NO_CACHE: knob === 'on' ? '' : knob,
+      },
+    },
+  )
 }
 
 // ---------------------------------------------------------------------------
