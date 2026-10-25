@@ -304,9 +304,8 @@ export { default } from '@tanstack/react-start/server-entry'
   // Impact: a server fn only server code uses (an SSR loader helper, a
   // server-only module) is callable over HTTP by anyone who learns its id,
   // bypassing what the server code around it checks.
-  // SPEC J4.2: only server fns client code references are HTTP-callable.
-  // The RSC-provider variant is pinned through a real RSC
-  // provider in react-start-rsc tests/integration/rsc-start-dev.test.ts.
+  // SPEC J4.2: in a production build, only server fns client code
+  // references are HTTP-callable (dev may answer any).
   // On Vite, when the SSR build loses the #7213 race (below), the server fn
   // is missing from the resolver: the call from SSR code fails too, so the
   // pin stays red (for #7213) and cannot pass by the missing server fn.

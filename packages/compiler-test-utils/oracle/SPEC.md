@@ -248,9 +248,9 @@ srcDirectory, … })`. Which clauses a switch turns on or off: J2.21, J3.7, J6.3
   printer bugs that change meaning are our bugs. (R1)
 - **G13 Mode parity.** Each mode preserves the behaviour its effective configuration and the runtime contract
   require; equivalent settings give equivalent application semantics, apart from documented mode differences.
-  Import-protection mock/error policy (J6.3), diagnostics, HMR and dev id representation (J4.4) may differ as
-  configured or documented. For the same configuration, which options are split, how they are grouped and which
-  options `deleteNodes` removes are the same in dev and build.
+  Import-protection mock/error policy (J6.3), diagnostics, HMR, dev id representation (J4.4) and which server
+  functions answer an HTTP call by id (J4.2) may differ as configured or documented. For the same configuration,
+  which options are split, how they are grouped and which options `deleteNodes` removes are the same in dev and build.
 - **G14 Idempotence is not required** (§2.2, recompiling output).
 - **G15 Recognition is by binding identity, not spelling.** Every compiler recognises its APIs by the lexical binding
   and its module provenance (an import from the TanStack package, through the alias, re-export and factory forms
@@ -497,11 +497,12 @@ dir)` is not a conflict by itself.
   also uses stays.
 - **J4.2 `createServerFn` on the provider.** The handler runs with its original semantics and closure; the function
   is registered under its id, so an HTTP call by id (with validation and middleware) runs it; the defining module's
-  top-level code runs once in that env, even when the handler is extracted into a provider module. Only server
-  functions the client references are HTTP-callable: a function no client code references must not answer a direct
-  HTTP call by id. Calling a server function from server code is documented: a server function only server code
-  calls (another handler, a middleware `.server()`, an SSR-only module) works for those callers in every production
-  build, whether or not the client build found it, in any module processing order (G4).
+  top-level code runs once in that env, even when the handler is extracted into a provider module. In a production
+  build, only server functions the client references are HTTP-callable: a function no client code references must
+  not answer a direct HTTP call by id. In dev, an HTTP call by id may run any server function. Calling a server
+  function from server code is documented: a server function only server code calls (another handler, a middleware
+  `.server()`, an SSR-only module) works for those callers in every production build, whether or not the client
+  build found it, in any module processing order (G4).
 - **J4.3 `createServerFn` during SSR.** Calling a server function while rendering runs the handler directly (no HTTP
   fetch), with the same result as an HTTP call. When SSR and the provider share an environment, the handler may stay
   in the SSR module or be looked up by id (§5.4). When the provider is a separate environment (RSC), the handler runs
