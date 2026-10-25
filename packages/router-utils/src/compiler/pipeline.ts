@@ -39,6 +39,9 @@ import type {
 
 export const MAX_ATTEMPTS = 3
 
+/** An attempt whose snapshot moved: compile again. */
+const RETRY = Symbol('retry')
+
 /** The caches of one compiler session; `label` names them in `compilerStats()`. */
 export function createCompilerCaches(
   rawFacts: HostServices['rawFacts'],
@@ -143,64 +146,82 @@ export async function compileModule(
       }
       continue
     }
-    const generation = cache.generation(key)
-    const ledger = new DependencyLedger(key, generation, cache.dependents)
-    const promise = runAttempt(
-      input,
-      identity,
-      tier0Only,
-      host,
-      caches,
-      cache,
-      ledger,
-      verdictMemo,
-    )
-    const record = { key, revision: rev, generation, promise, ledger }
-    cache.inFlight.set(keyString, record)
-    let result: AttemptResult
+    // the key's generation and latest revision stay meaningful until the attempt ends
+    cache.begin(key)
+    let outcome: CompileOutput | null | typeof RETRY
     try {
-      result = await promise
-    } finally {
-      if (cache.inFlight.get(keyString) === record) {
-        cache.inFlight.delete(keyString)
-      }
-    }
-    if (result.kind === 'untouched') {
-      ledger.discard()
-      return null
-    }
-    if (result.kind === 'parse-error') {
-      ledger.discard()
-      return {
-        code: input.code,
-        map: null,
-        sideEffectFree: false,
-        edges: [],
-        facts: { marker: null, publishedSummaryDigest: null, planners: {} },
-        diagnostics: result.diagnostics,
-        dependencies: [],
-        fingerprint: '',
-        output: requested,
-      }
-    }
-    const plan = result.plan
-    plan.dependencies = [...ledger.entries]
-    plan.fingerprint = digestOf({
-      rev,
-      configKey: input.config.configKey,
-      deps: plan.dependencies,
-    })
-    const src = fingerprintSourceFor(
-      caches,
-      host,
-      env.name,
-      input.config.configKey,
-    )
-    const snapshotOk = await ledger.validateSnapshot(src)
-    if (!snapshotOk || cache.generation(key) !== generation) {
-      ledger.discard()
-      if (cache.latestRevision(key) !== rev) {
-        // superseded by a newer save: this text is stale; never publish, but answer this request
+      outcome = await (async (): Promise<
+        CompileOutput | null | typeof RETRY
+      > => {
+        const generation = cache.generation(key)
+        const ledger = new DependencyLedger(key, generation, cache.dependents)
+        const promise = runAttempt(
+          input,
+          identity,
+          tier0Only,
+          host,
+          caches,
+          cache,
+          ledger,
+          verdictMemo,
+        )
+        const record = { key, revision: rev, generation, promise, ledger }
+        cache.inFlight.set(keyString, record)
+        let result: AttemptResult
+        try {
+          result = await promise
+        } finally {
+          if (cache.inFlight.get(keyString) === record) {
+            cache.inFlight.delete(keyString)
+          }
+        }
+        if (result.kind === 'untouched') {
+          ledger.discard()
+          return null
+        }
+        if (result.kind === 'parse-error') {
+          ledger.discard()
+          return {
+            code: input.code,
+            map: null,
+            sideEffectFree: false,
+            edges: [],
+            facts: { marker: null, publishedSummaryDigest: null, planners: {} },
+            diagnostics: result.diagnostics,
+            dependencies: [],
+            fingerprint: '',
+            output: requested,
+          }
+        }
+        const plan = result.plan
+        plan.dependencies = [...ledger.entries]
+        plan.fingerprint = digestOf({
+          rev,
+          configKey: input.config.configKey,
+          deps: plan.dependencies,
+        })
+        const src = fingerprintSourceFor(
+          caches,
+          host,
+          env.name,
+          input.config.configKey,
+        )
+        const snapshotOk = await ledger.validateSnapshot(src)
+        if (!snapshotOk || cache.generation(key) !== generation) {
+          ledger.discard()
+          if (cache.latestRevision(key) !== rev) {
+            // superseded by a newer save: this text is stale; never publish, but answer this request
+            const entry: CacheEntry = {
+              key,
+              revision: rev,
+              generation,
+              plan,
+              emitted: new Map(),
+            }
+            return emitFrom(entry, requested, input)
+          }
+          return RETRY
+        }
         const entry: CacheEntry = {
           key,
           revision: rev,
@@ -208,23 +229,19 @@ export async function compileModule(
           plan,
           emitted: new Map(),
         }
+        if (cache.set(entry)) {
+          ledger.publish()
+        } else {
+          ledger.discard()
+        }
         return emitFrom(entry, requested, input)
-      }
-      continue
+      })()
+    } finally {
+      cache.end(key)
     }
-    const entry: CacheEntry = {
-      key,
-      revision: rev,
-      generation,
-      plan,
-      emitted: new Map(),
+    if (outcome !== RETRY) {
+      return outcome
     }
-    if (cache.set(entry)) {
-      ledger.publish()
-    } else {
-      ledger.discard()
-    }
-    return emitFrom(entry, requested, input)
   }
   throw new Error(
     `dependencies of ${input.id} changed repeatedly during compilation (${MAX_ATTEMPTS} attempts)`,

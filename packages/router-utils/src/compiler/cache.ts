@@ -119,9 +119,15 @@ interface DependentEntry {
   inFlight: boolean
 }
 
-/** Reverse index: dependency path (or the unresolved bucket) → plan keys (published or in flight). */
+/**
+ * Reverse index: dependency path (or the unresolved bucket) → plan keys
+ * (published or in flight), with each key's own buckets (`planKey → paths`)
+ * so publishing, discarding and evicting a plan touch its rows only. Empty
+ * buckets are removed: the index holds rows of live plans and attempts only.
+ */
 export class DependentsIndex {
   private readonly byPath = new Map<string, Map<string, DependentEntry>>()
+  private readonly byKey = new Map<string, Set<string>>()
 
   add(path: string, key: PlanKey, inFlight: boolean): void {
     let m = this.byPath.get(path)
@@ -134,19 +140,35 @@ export class DependentsIndex {
     if (!prev || (prev.inFlight && !inFlight)) {
       m.set(ks, { key, inFlight })
     }
+    let paths = this.byKey.get(ks)
+    if (!paths) {
+      paths = new Set()
+      this.byKey.set(ks, paths)
+    }
+    paths.add(path)
   }
 
   get(path: string): Array<DependentEntry> {
     return [...(this.byPath.get(path)?.values() ?? [])]
   }
 
-  /** Promotes a key's in-flight entries to published (on publication). */
-  promote(key: PlanKey): void {
+  /**
+   * Publication of a key's plan whose dependencies index under `paths`: those
+   * rows become published, and the key's published rows of a previous plan
+   * that no longer depends on them are removed (rows of other attempts still
+   * in flight stay).
+   */
+  publish(key: PlanKey, paths: ReadonlySet<string>): void {
     const ks = planKeyString(key)
-    for (const m of this.byPath.values()) {
-      const e = m.get(ks)
-      if (e) {
+    for (const path of [...(this.byKey.get(ks) ?? [])]) {
+      const e = this.byPath.get(path)?.get(ks)
+      if (!e) {
+        continue
+      }
+      if (paths.has(path)) {
         e.inFlight = false
+      } else if (!e.inFlight) {
+        this.remove(path, ks)
       }
     }
   }
@@ -154,10 +176,9 @@ export class DependentsIndex {
   /** Drops a key's in-flight entries (discarded attempt). */
   dropInFlight(key: PlanKey): void {
     const ks = planKeyString(key)
-    for (const m of this.byPath.values()) {
-      const e = m.get(ks)
-      if (e && e.inFlight) {
-        m.delete(ks)
+    for (const path of [...(this.byKey.get(ks) ?? [])]) {
+      if (this.byPath.get(path)?.get(ks)?.inFlight) {
+        this.remove(path, ks)
       }
     }
   }
@@ -165,13 +186,35 @@ export class DependentsIndex {
   /** Drops every entry of a key (eviction). */
   drop(key: PlanKey): void {
     const ks = planKeyString(key)
-    for (const m of this.byPath.values()) {
+    for (const path of [...(this.byKey.get(ks) ?? [])]) {
+      this.remove(path, ks)
+    }
+  }
+
+  private remove(path: string, ks: string): void {
+    const m = this.byPath.get(path)
+    if (m) {
       m.delete(ks)
+      if (m.size === 0) {
+        this.byPath.delete(path)
+      }
+    }
+    const paths = this.byKey.get(ks)
+    if (paths) {
+      paths.delete(path)
+      if (paths.size === 0) {
+        this.byKey.delete(ks)
+      }
     }
   }
 
   /** Sizes for `compilerStats()`. */
-  stats(): { paths: number; emptyPaths: number; entries: number } {
+  stats(): {
+    paths: number
+    emptyPaths: number
+    entries: number
+    keys: number
+  } {
     let entries = 0
     let emptyPaths = 0
     for (const m of this.byPath.values()) {
@@ -180,7 +223,12 @@ export class DependentsIndex {
         emptyPaths++
       }
     }
-    return { paths: this.byPath.size, emptyPaths, entries }
+    return {
+      paths: this.byPath.size,
+      emptyPaths,
+      entries,
+      keys: this.byKey.size,
+    }
   }
 }
 
@@ -191,6 +239,8 @@ export class DependentsIndex {
 export class DependencyLedger {
   readonly entries: Array<DependencyFingerprint> = []
   private readonly ids = new Set<string>()
+  /** The dependents-index buckets of `entries`. */
+  private readonly indexKeys = new Set<string>()
 
   constructor(
     readonly key: PlanKey,
@@ -207,6 +257,7 @@ export class DependencyLedger {
     this.entries.push(fp)
     const indexKey = fingerprintIndexKey(fp)
     if (indexKey !== null) {
+      this.indexKeys.add(indexKey)
       this.index.add(indexKey, this.key, true)
     }
   }
@@ -220,8 +271,9 @@ export class DependencyLedger {
     return true
   }
 
+  /** The plan is published: its rows replace the key's previous plan's. */
   publish(): void {
-    this.index.promote(this.key)
+    this.index.publish(this.key, this.indexKeys)
   }
 
   discard(): void {
@@ -257,11 +309,18 @@ export interface InFlight {
   ledger: DependencyLedger
 }
 
-/** One plan per (env, canonical id, config) at its latest content hash. */
+/**
+ * One plan per (env, canonical id, config) at its latest content hash. A
+ * key's generation and latest revision are kept while it has a plan or an
+ * attempt in flight (`begin`/`end`); then they are retired: no attempt holds
+ * a generation number any more, and the next request starts over.
+ */
 export class PlanCache {
   private readonly entries = new Map<string, CacheEntry>()
   private readonly generations = new Map<string, number>()
   private readonly latest = new Map<string, string>()
+  /** Attempts in flight per key (an overlapping attempt may have replaced the key's `inFlight` record). */
+  private readonly active = new Map<string, number>()
   readonly inFlight = new Map<string, InFlight>()
   readonly dependents = new DependentsIndex()
   /** `TSR_COMPILER_NO_CACHE=plans`: nothing is published (measurement knob). */
@@ -273,8 +332,12 @@ export class PlanCache {
     return this.generations.get(planKeyString(key)) ?? 0
   }
 
+  /** Makes attempts in flight for `key` stale (nothing to do when there are none). */
   bump(key: PlanKey): void {
     const ks = planKeyString(key)
+    if (this.retire(ks)) {
+      return
+    }
     this.generations.set(ks, (this.generations.get(ks) ?? 0) + 1)
   }
 
@@ -283,12 +346,40 @@ export class PlanCache {
     const ks = planKeyString(key)
     if (this.latest.get(ks) !== revision) {
       this.latest.set(ks, revision)
-      this.bump(key)
+      this.generations.set(ks, (this.generations.get(ks) ?? 0) + 1)
     }
   }
 
   latestRevision(key: PlanKey): string | undefined {
     return this.latest.get(planKeyString(key))
+  }
+
+  /** An attempt for `key` starts (its generation must stay meaningful until `end`). */
+  begin(key: PlanKey): void {
+    const ks = planKeyString(key)
+    this.active.set(ks, (this.active.get(ks) ?? 0) + 1)
+  }
+
+  /** An attempt for `key` ended (published or not). */
+  end(key: PlanKey): void {
+    const ks = planKeyString(key)
+    const n = (this.active.get(ks) ?? 1) - 1
+    if (n > 0) {
+      this.active.set(ks, n)
+    } else {
+      this.active.delete(ks)
+    }
+    this.retire(ks)
+  }
+
+  /** Forgets a key's generation and latest revision when nothing holds them; true when retired. */
+  private retire(ks: string): boolean {
+    if (this.entries.has(ks) || this.active.has(ks)) {
+      return false
+    }
+    this.generations.delete(ks)
+    this.latest.delete(ks)
+    return true
   }
 
   /** A hit by key and revision; the caller validates the dependency snapshot. */
@@ -318,6 +409,7 @@ export class PlanCache {
     const ks = planKeyString(key)
     const had = this.entries.delete(ks)
     this.dependents.drop(key)
+    this.retire(ks)
     return had
   }
 
@@ -372,7 +464,9 @@ export class PlanCache {
       generations: this.generations.size,
       latest: this.latest.size,
       inFlight: this.inFlight.size,
+      active: this.active.size,
       dependentPaths: d.paths,
+      dependentKeys: d.keys,
       dependentEmptyPaths: d.emptyPaths,
       dependentEntries: d.entries,
       ...(withBytes && { planBytes, emittedBytes }),

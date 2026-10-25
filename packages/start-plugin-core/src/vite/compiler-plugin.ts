@@ -971,6 +971,7 @@ export function startCompilerPlugin(
         const res = await pending
         if (ctx.type === 'delete') {
           registry.forget(ctx.file)
+          s.ip?.forget(normalizePath(ctx.file))
         }
         const extra = applyInvalidation(
           this.environment,
@@ -987,6 +988,9 @@ export function startCompilerPlugin(
         }
         const environment = this.environment
         const kind = changeKindOf(change.event)
+        if (kind === 'unlink') {
+          s.ip?.forget(normalizePath(id))
+        }
         const res = await invalidate(
           s.caches,
           { path: id, kind },

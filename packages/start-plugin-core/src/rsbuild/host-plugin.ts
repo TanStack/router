@@ -172,6 +172,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         }
         for (const file of removed) {
           await session.invalidate(file, 'unlink')
+          session.ip?.forget(normalizePath(file))
         }
         await opts.generator.watchRun(modified, removed)
       })

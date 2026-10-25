@@ -17,7 +17,7 @@ import {
   mockRuntimeCode,
   viteEdgeModuleIds,
 } from './edge-modules'
-import { EdgeIndex, buildTrace } from './graph-trace'
+import { EdgeIndex, buildTrace, traceFile } from './graph-trace'
 import { DevReporter, devViolationError } from './report'
 import { importerInScope } from './rules'
 import { BuildVerdicts, RSPACK_BUILD_INFO_KEY } from './verdict'
@@ -152,6 +152,17 @@ export class ImportProtection {
   }
 
   /** Whether an importer path is checked (cached per path). */
+  /**
+   * A file was deleted (dev): forget what was recorded of it as an importer,
+   * so the session's records stay bounded by the live files.
+   */
+  forget(path: string): void {
+    this.scopeCache.delete(path)
+    for (const env of this.envs.values()) {
+      env.forget(path)
+    }
+  }
+
   inScope(importerPath: string): boolean {
     return importerInScope(this.config, importerPath, this.scopeCache)
   }
@@ -525,6 +536,19 @@ export class ImportProtectionEnv {
         .join('\n')
     }
     return { error }
+  }
+
+  /** Forgets a deleted file's importer records (edges, violations of its ids). */
+  forget(path: string): void {
+    this.edges.forget(path)
+    for (const [importerId, keys] of [...this.byImporter]) {
+      if (traceFile(importerId) === path) {
+        this.byImporter.delete(importerId)
+        for (const key of keys) {
+          this.release(importerId, key)
+        }
+      }
+    }
   }
 
   private release(importerId: string, key: string): void {

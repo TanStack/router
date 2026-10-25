@@ -226,7 +226,11 @@ export async function invalidate(
       cache.bump(key)
     }
   }
-  caches.rawFacts.markStale(change.path)
+  if (change.kind === 'unlink') {
+    caches.rawFacts.forget(change.path)
+  } else {
+    caches.rawFacts.markStale(change.path)
+  }
   if (change.kind === 'add' || change.kind === 'unlink') {
     for (const m of caches.resolutions.values()) {
       m.clear()

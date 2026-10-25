@@ -124,10 +124,16 @@ export class RawFactsCache {
     }
   }
 
-  /** Drops entries nobody depends on (host bookkeeping). */
-  prune(keep: (canonicalId: string) => boolean): void {
-    for (const id of [...this.entries.keys()]) {
-      if (!keep(id)) {
+  /**
+   * Forgets the facts of a deleted file: entries are kept for files that
+   * exist only (a missing file's facts are not stored either), so the cache
+   * is bounded by the live files, not by every file a session saw.
+   */
+  forget(path: string): void {
+    for (const [id, e] of this.entries) {
+      if (identify(id).path === path || id === path) {
+        // a read in flight is not published
+        e.pending = null
         this.entries.delete(id)
       }
     }
@@ -165,6 +171,10 @@ export class RawFactsCache {
         entry.facts = facts
         entry.stale = false
         entry.pending = null
+        if (text === null && this.entries.get(canonicalId) === entry) {
+          // a missing file's facts are not kept (`forget`)
+          this.entries.delete(canonicalId)
+        }
       }
       return facts
     })()
