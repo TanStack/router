@@ -1649,4 +1649,25 @@ export const draw = createClientOnlyFn(() => chart.draw())`
       expectNotLoaded(await startCase.serverLoads(), ['./chart.client'])
     },
   )
+
+  // Bug: the server twin of the class rows of "client: $name does not load
+  // its server-only import" above (dead-code elimination never removes a
+  // class declaration): a class only a client-only implementation uses
+  // stays in the SSR output with its client-only import (SPEC J4.11, G16).
+  // Impact: the server loads the client-only module and runs its top-level
+  // code; a browser-only package that reads `window` when it loads crashes
+  // SSR (Vite dev and build, Rsbuild build).
+  // Source: review (dead-code investigation, server direction).
+  test.fails(
+    'ssr: a class only a client-only fn uses does not load its client-only import',
+    async () => {
+      const startCase =
+        await erasedCase(`import { createClientOnlyFn } from '@tanstack/react-start'
+import { createChart } from './chart.client'
+class Chart { draw() { return createChart().draw() } }
+export const draw = createClientOnlyFn(() => new Chart().draw())`)
+      expectNotLoaded(await startCase.serverLoads(), ['./chart.client'])
+      expect(await inPage(startCase, 'return module.draw()')).toBe('drawn')
+    },
+  )
 })
