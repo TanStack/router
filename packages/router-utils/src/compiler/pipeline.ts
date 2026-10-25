@@ -102,7 +102,7 @@ export async function compileModule(
         }
       }
       if (valid && cache.lookup(key, rev) === hit) {
-        return emitFrom(hit, requested, input)
+        return emitFrom(hit, requested, input, caches)
       }
       cache.delete(key)
       cache.bump(key)
@@ -182,7 +182,7 @@ export async function compileModule(
           plan,
           emitted: new Map(),
         }
-        return emitFrom(entry, requested, input)
+        return emitFrom(entry, requested, input, caches)
       }
       continue
     }
@@ -198,7 +198,7 @@ export async function compileModule(
     } else {
       ledger.discard()
     }
-    return emitFrom(entry, requested, input)
+    return emitFrom(entry, requested, input, caches)
   }
   throw new Error(
     `dependencies of ${input.id} changed repeatedly during compilation (${MAX_ATTEMPTS} attempts)`,
@@ -209,6 +209,7 @@ function emitFrom(
   entry: CacheEntry,
   requested: OutputId,
   input: CompileInput,
+  caches: CompilerCaches,
 ): CompileOutput {
   const plan = entry.plan
   const memoKey = `${requested}|${input.wantMap ? 'map' : 'code'}`
@@ -230,21 +231,30 @@ function emitFrom(
     edges: plan.edges[requested] ?? [],
     facts: plan.facts,
     diagnostics: plan.diagnostics,
-    dependencies: dependencyPaths(plan),
+    dependencies: dependencyPaths(plan, caches),
     fingerprint: plan.fingerprint,
     output: requested,
   }
 }
 
-function dependencyPaths(plan: EmitPlan): Array<string> {
+/** The files a plan read (a known package is recognised by its specifier, never read: D4). */
+function dependencyPaths(
+  plan: EmitPlan,
+  caches: CompilerCaches,
+): Array<string> {
   const out = new Set<string>()
+  const addModule = (canonicalId: string) => {
+    if (!caches.rawFacts.isKnownSpecifier(canonicalId)) {
+      out.add(identify(canonicalId).path)
+    }
+  }
   for (const fp of plan.dependencies) {
     if (fp.kind === 'summary' || fp.kind === 'target-facts') {
-      out.add(identify(fp.canonicalId).path)
+      addModule(fp.canonicalId)
     } else if (fp.kind === 'route-registry') {
       out.add(fp.path)
     } else if (fp.kind === 'resolution' && fp.resolved !== null) {
-      out.add(identify(fp.resolved).path)
+      addModule(fp.resolved)
     }
   }
   return [...out]
