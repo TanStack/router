@@ -483,6 +483,34 @@ export function startCompilerPlugin(
     })
 
   /**
+   * The hosts of one invalidation, per environment: each environment's
+   * fingerprints are re-validated with its own resolver (per-environment
+   * aliases and conditions, R35); an environment the dev server does not
+   * know falls back to the hook's own.
+   */
+  const invalidationHosts = (
+    s: Session,
+    viteServer: ViteDevServer | null,
+    own: DevEnvironment,
+  ): ((env: string) => HostServices) => {
+    const hosts = new Map<string, HostServices>()
+    return (name) => {
+      let h = hosts.get(name)
+      if (!h) {
+        const environment = viteServer?.environments[name]
+        h = invalidationHost(
+          s,
+          environment && environment.mode === 'dev'
+            ? (environment as DevEnvironment)
+            : own,
+        )
+        hosts.set(name, h)
+      }
+      return h
+    }
+  }
+
+  /**
    * Applies one invalidation to an env's module graph: the nodes of the
    * evicted and dependent plans are hard-invalidated and returned (the host
    * side of the one operation; Vite re-transforms them and propagates their
@@ -559,7 +587,11 @@ export function startCompilerPlugin(
       path: normalizePath(file),
       kind: 'registry',
     }
-    const res = await invalidate(s.caches, change, invalidationHost(s, first))
+    const res = await invalidate(
+      s.caches,
+      change,
+      invalidationHosts(s, server, first as DevEnvironment),
+    )
     const now = Date.now()
     for (const environment of environments) {
       if (envNames.has(environment.name)) {
@@ -941,7 +973,7 @@ export function startCompilerPlugin(
           pending = invalidate(
             s.caches,
             change,
-            invalidationHost(s, this.environment),
+            invalidationHosts(s, server, this.environment),
           )
           invalidations.set(key, pending)
           setTimeout(() => invalidations.delete(key), 10_000).unref()
@@ -968,7 +1000,7 @@ export function startCompilerPlugin(
         const res = await invalidate(
           s.caches,
           { path: id, kind },
-          invalidationHost(s, environment),
+          invalidationHosts(s, server, environment),
         )
         applyInvalidation(environment, { path: id, kind }, res, Date.now())
       },

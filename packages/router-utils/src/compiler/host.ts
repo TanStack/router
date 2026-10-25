@@ -195,18 +195,29 @@ export interface InvalidateChange {
 }
 
 /**
+ * The host of each environment for an invalidation: one host for every
+ * environment, or a function of the environment name (an environment's
+ * resolutions are re-validated with its own resolver: per-environment
+ * aliases and conditions resolve a specifier differently, R35).
+ */
+export type InvalidationHosts = HostServices | ((env: string) => HostServices)
+
+/**
  * The ONE invalidation operation (R3). Evicts the plans of the changed file
  * in every env, bumps generations (published and in-flight), marks raw facts
  * stale and re-validates dependents' fingerprints; the host hard-invalidates
  * `evicted ∪ dependents` in the same operation. File `add`/`unlink` events
  * also re-resolve every failed resolution of every env (R47): a plan whose
- * unresolved specifier now resolves is a dependent.
+ * unresolved specifier now resolves is a dependent. Each environment's
+ * fingerprints are checked with that environment's host (its resolver fills
+ * its own resolution cache).
  */
 export async function invalidate(
   caches: CompilerCaches,
   change: InvalidateChange,
-  host: HostServices,
+  hosts: InvalidationHosts,
 ): Promise<{ evicted: Array<PlanKey>; dependents: Array<PlanKey> }> {
+  const hostOf = typeof hosts === 'function' ? hosts : () => hosts
   const evicted: Array<PlanKey> = []
   const dependents: Array<PlanKey> = []
   for (const cache of caches.plans.values()) {
@@ -229,7 +240,7 @@ export async function invalidate(
     relevant: (fp: DependencyFingerprint) => boolean,
   ): Promise<void> => {
     const seen = new Set<string>()
-    const src = fingerprintSourceFor(caches, host, cache.env, '')
+    const src = fingerprintSourceFor(caches, hostOf(cache.env), cache.env, '')
     for (const entry of cache.dependents.get(indexKey)) {
       const ks = `${cache.env}|${planKeyString(entry.key)}`
       if (seen.has(ks)) {

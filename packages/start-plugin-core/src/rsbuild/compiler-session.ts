@@ -438,9 +438,14 @@ export class StartRsbuildCompilerSession {
     return entry ? digestOf({ routeId: entry.routeId }) : null
   }
 
-  /** The host for the invalidation operation (an environment's resolver when one is known). */
-  private invalidationHost(): HostServices {
-    const resolvers = [...this.resolvers.values()]
+  /**
+   * The host of the invalidation operation for an environment: its own
+   * resolver (per-environment aliases and conditions, R35); an environment
+   * without a registered resolver yet asks the others in turn.
+   */
+  private invalidationHost(env?: string): HostServices {
+    const own = env === undefined ? undefined : this.resolvers.get(env)
+    const resolvers = own ? [own] : [...this.resolvers.values()]
     return {
       resolve: async (specifier, importer) => {
         const dir = path.dirname(identify(importer).path)
@@ -465,10 +470,8 @@ export class StartRsbuildCompilerSession {
     file: string,
     kind: InvalidateChange['kind'],
   ): Promise<{ evicted: Array<PlanKey>; dependents: Array<PlanKey> }> {
-    return invalidate(
-      this.caches,
-      { path: normalizePath(file), kind },
-      this.invalidationHost(),
+    return invalidate(this.caches, { path: normalizePath(file), kind }, (env) =>
+      this.invalidationHost(env),
     )
   }
 

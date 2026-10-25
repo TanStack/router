@@ -1,6 +1,6 @@
 import { TraceMap, originalPositionFor } from '@jridgewell/trace-mapping'
 import { describe, expect, it } from 'vitest'
-import { invalidate } from '../src/compiler'
+import { compileModule, invalidate, resolveCached } from '../src/compiler'
 import {
   MemoryHost,
   dedent,
@@ -11,7 +11,7 @@ import {
   toySplitPlanner,
   toySummaryPlanner,
 } from './helpers'
-import type { Planner } from '../src/compiler'
+import type { HostServices, Planner } from '../src/compiler'
 
 const ROUTE = dedent(`
   import { createFileRoute } from 'toy-router'
@@ -336,6 +336,102 @@ describe('slice gates: invalidation', () => {
     const second = await host.compile('/app/consumer.ts', planners)
     expect(second!.facts.planners['toy-summary']).toEqual({
       './factory-inner': { t: 'envOnlyResult', kind: 'client' },
+    })
+  })
+
+  it('re-validates each environment with its own resolver on add/unlink (R35: no cross-env resolution contamination)', async () => {
+    // the client resolves `./dep` to the browser file, the server to the node
+    // file, and only the server resolves `./maybe`; an `unlink` handled with
+    // the server's resolver must not leave the client's resolution cache
+    // pointing at the server's file
+    const files = {
+      '/app/a.ts': `import { x } from './dep'\nimport './maybe'\nexport const y = x\n`,
+      '/app/dep.client.ts': 'export const x = 1\n',
+      '/app/dep.server.ts': 'export const x = 2\n',
+      '/app/maybe.server.ts': 'export {}\n',
+    }
+    const resolverOf = (kind: 'client' | 'server') => (spec: string) =>
+      spec === './dep'
+        ? `/app/dep.${kind}.ts`
+        : spec === './maybe' && kind === 'server'
+          ? '/app/maybe.server.ts'
+          : null
+    const client = new MemoryHost({ files, resolve: resolverOf('client') })
+    const server: HostServices = {
+      resolve: (spec) => {
+        const r = resolverOf('server')(spec)
+        return Promise.resolve(r ? { id: r } : null)
+      },
+      readFile: (p) => client.readFile(p),
+      loadVirtual: () => Promise.resolve(null),
+      rawFacts: client.rawFacts,
+    }
+    const hosts = (env: string) => (env === 'ssr' ? server : client)
+    const planners = [toySummaryPlanner()]
+    const ssr = envInfo({ name: 'ssr', type: 'server', routerSplit: false })
+    await client.compile('/app/a.ts', planners)
+    await compileModule(
+      {
+        id: '/app/a.ts',
+        code: files['/app/a.ts'],
+        env: ssr,
+        planners,
+        config: { configKey: 'cfg', perPlanner: {} },
+        wantMap: false,
+      },
+      server,
+      client.caches,
+    )
+    const resolved = async (env: string) => ({
+      dep: await resolveCached(
+        client.caches,
+        hosts(env),
+        env,
+        '/app/a.ts',
+        './dep',
+      ),
+      maybe: await resolveCached(
+        client.caches,
+        hosts(env),
+        env,
+        '/app/a.ts',
+        './maybe',
+      ),
+    })
+    expect(await resolved('client')).toEqual({
+      dep: '/app/dep.client.ts',
+      maybe: null,
+    })
+    expect(await resolved('ssr')).toEqual({
+      dep: '/app/dep.server.ts',
+      maybe: '/app/maybe.server.ts',
+    })
+    // an unrelated file appears, then the client's dependency is deleted: every
+    // environment's fingerprints are checked with that environment's resolver
+    await invalidate(
+      client.caches,
+      { path: '/app/other.ts', kind: 'add' },
+      hosts,
+    )
+    expect(await resolved('client')).toEqual({
+      dep: '/app/dep.client.ts',
+      maybe: null,
+    })
+    client.files['/app/dep.client.ts'] = undefined as never
+    delete client.files['/app/dep.client.ts']
+    const r = await invalidate(
+      client.caches,
+      { path: '/app/dep.client.ts', kind: 'unlink' },
+      hosts,
+    )
+    expect(r.dependents.map((k) => k.env).sort()).toEqual(['client'])
+    expect(await resolved('client')).toEqual({
+      dep: '/app/dep.client.ts',
+      maybe: null,
+    })
+    expect(await resolved('ssr')).toEqual({
+      dep: '/app/dep.server.ts',
+      maybe: '/app/maybe.server.ts',
     })
   })
 
