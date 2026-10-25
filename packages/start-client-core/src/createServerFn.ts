@@ -152,6 +152,12 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
           const result = await executeMiddleware(resolvedMiddleware, 'client', {
             ...extractedFn,
             ...newOptions,
+            // During SSR the caller can hold the provider's extractedFn (full
+            // ServerFnMeta); client middleware only ever sees the id
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- isServer is only known outside development
+            ...((isServer ?? typeof window === 'undefined')
+              ? { serverFnMeta: { id: extractedFn.serverFnMeta.id } }
+              : {}),
             data: opts?.data,
             headers: opts?.headers,
             signal: opts?.signal,
