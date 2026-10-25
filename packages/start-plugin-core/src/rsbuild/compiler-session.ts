@@ -106,6 +106,8 @@ export interface StartRsbuildSessionOptions {
   routes: { lookup: (path: string) => { routeId: string } | null }
   /** tsconfig `verbatimModuleSyntax` (TypeScript keeps unused imports). */
   verbatimModuleSyntax?: boolean
+  /** Whether a path is an app entry (a marked entry is its own import-protection violation). */
+  isEntry: (path: string) => boolean
 }
 
 /** What the loader implementation uses of Rspack's loader context. */
@@ -150,8 +152,6 @@ export interface EnvState {
   transformImport: Array<TransformImportRule>
   /** The resources the loader compiled in the current compilation (host: cleared at `thisCompilation`). */
   compiled: Set<string>
-  /** In-scope modules whose own marker denies them in this environment (an entry reports itself), by resource. */
-  selfMarked: Map<string, { specifier: string; line: number }>
   /** The plan fingerprint of the last compile of each resource (a repeat is a cache hit). */
   fingerprints: Map<string, string>
 }
@@ -193,7 +193,6 @@ export class StartRsbuildCompilerSession {
         serverFns: new Map(),
         transformImport: [],
         compiled: new Set(),
-        selfMarked: new Map(),
         fingerprints: new Map(),
       })
     }
@@ -208,6 +207,7 @@ export class StartRsbuildCompilerSession {
       ),
       verbatimModuleSyntax: opts.verbatimModuleSyntax,
       readFile: (file) => this.readFile(file),
+      isEntry: opts.isEntry,
     })
     for (const env of opts.environments) {
       this.ip?.env(env.name, env.type)
@@ -569,12 +569,6 @@ export class StartRsbuildCompilerSession {
         })
       }
       env.fingerprints.set(ctx.resource, out.fingerprint)
-      const denying = env.type === 'client' ? 'server-only' : 'client-only'
-      if (out.facts.marker === denying && ip!.inScope(identity.path)) {
-        env.selfMarked.set(ctx.resource, markerImportOf(source, ip!, denying))
-      } else {
-        env.selfMarked.delete(ctx.resource)
-      }
     }
     const buildInfo = ctx._module?.buildInfo
     if (!late) {
@@ -716,29 +710,6 @@ export class StartRsbuildCompilerSession {
     )
     return allocator
   }
-}
-
-/** The marker import of a module's text (its specifier and 1-based line), for an entry's own report. */
-function markerImportOf(
-  source: string,
-  ip: ImportProtection,
-  kind: 'server-only' | 'client-only',
-): { specifier: string; line: number } {
-  let best: { specifier: string; line: number } | null = null
-  for (const [specifier, k] of Object.entries(ip.markerSpecifiers)) {
-    if (k !== kind) {
-      continue
-    }
-    const at = source.indexOf(specifier)
-    if (at === -1) {
-      continue
-    }
-    const line = source.slice(0, at).split(/\r\n|\r|\n|\u2028|\u2029/).length
-    if (!best || line < best.line) {
-      best = { specifier, line }
-    }
-  }
-  return best ?? { specifier: kind, line: 1 }
 }
 
 /**

@@ -186,47 +186,6 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       })
 
       /** The entry modules' resources of a compilation. */
-      const entryResources = (compilation: Rspack.Compilation): Set<string> => {
-        const out = new Set<string>()
-        for (const entry of compilation.entries.values()) {
-          for (const dep of entry.dependencies) {
-            const resource = (
-              compilation.moduleGraph.getModule(
-                dep,
-              ) as unknown as ModuleLike | null
-            )?.resource
-            if (resource) {
-              out.add(resource)
-            }
-          }
-        }
-        return out
-      }
-
-      /** The reports of this environment's self-marked entry modules (an entry has no importer to report it). */
-      const selfMarkedReports = async (compilation: Rspack.Compilation) => {
-        const reports: Array<{
-          severity: 'error' | 'warning'
-          message: string
-        }> = []
-        if (!ipEnv || env.selfMarked.size === 0) {
-          return reports
-        }
-        const entries = entryResources(compilation)
-        for (const [resource, marker] of env.selfMarked) {
-          if (entries.has(resource)) {
-            const report = await ipEnv.selfMarkedReport(
-              normalizePath(resource.split('?')[0]!),
-              marker,
-            )
-            if (report) {
-              reports.push(report)
-            }
-          }
-        }
-        return reports
-      }
-
       compiler.hooks.thisCompilation.tap(PLUGIN_NAME, (compilation) => {
         currentCompilation = compilation
         env.compiled.clear()
@@ -274,12 +233,6 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                     }
                   }
                 }
-                for (const report of await selfMarkedReports(compilation)) {
-                  ;(report.severity === 'error'
-                    ? compilation.errors
-                    : compilation.warnings
-                  ).push(new WebpackError(report.message))
-                }
                 ipEnv.reporter?.flush(true)
               },
             )
@@ -301,11 +254,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 if (result.needPass) {
                   return
                 }
-                const reports = [
-                  ...ipEnv.buildReports(),
-                  ...(await selfMarkedReports(compilation)),
-                ]
-                for (const report of reports) {
+                for (const report of ipEnv.buildReports()) {
                   ;(report.severity === 'error'
                     ? compilation.errors
                     : compilation.warnings
