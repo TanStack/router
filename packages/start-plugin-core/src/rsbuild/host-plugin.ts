@@ -16,7 +16,7 @@ import {
 } from '../import-protection/witness'
 import { normalizePath } from '../utils'
 import { SERVER_FN_BUILD_INFO_FIELD } from './compiler-session'
-import { LOADER_REGISTRY } from './compiler-loader'
+import { LOADER_REGISTRY } from './loader-registry'
 import type { LoaderImpl } from './compiler-loader'
 import type {
   ServerFnBuildInfo,
@@ -90,42 +90,46 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       // the session reads files through the compiler's input file system (virtual modules included)
       const inputFs = compiler.inputFileSystem
       if (inputFs) {
-        session.inputFileSystems.set(environment.name, (file) =>
-          new Promise((resolve) => {
-            try {
-              inputFs.readFile(file, (error, data) => {
-                resolve(
-                  error || data == null
-                    ? null
-                    : Buffer.isBuffer(data)
-                      ? data.toString('utf8')
-                      : String(data),
-                )
-              })
-            } catch {
-              resolve(null)
-            }
-          }),
+        session.inputFileSystems.set(
+          environment.name,
+          (file) =>
+            new Promise((resolve) => {
+              try {
+                inputFs.readFile(file, (error, data) => {
+                  resolve(
+                    error || data == null
+                      ? null
+                      : Buffer.isBuffer(data)
+                        ? data.toString('utf8')
+                        : String(data),
+                  )
+                })
+              } catch {
+                resolve(null)
+              }
+            }),
         )
       }
       try {
         const resolver = compiler.resolverFactory.get('normal', {
           dependencyType: 'esm',
         })
-        session.resolvers.set(environment.name, (dir, request) =>
-          new Promise((resolve) => {
-            try {
-              resolver.resolve({}, dir, request, {}, (error, result) => {
-                resolve(
-                  !error && typeof result === 'string'
-                    ? normalizePath(result)
-                    : null,
-                )
-              })
-            } catch {
-              resolve(null)
-            }
-          }),
+        session.resolvers.set(
+          environment.name,
+          (dir, request) =>
+            new Promise((resolve) => {
+              try {
+                resolver.resolve({}, dir, request, {}, (error, result) => {
+                  resolve(
+                    !error && typeof result === 'string'
+                      ? normalizePath(result)
+                      : null,
+                  )
+                })
+              } catch {
+                resolve(null)
+              }
+            }),
         )
       } catch {
         // no resolver outside loaders: the invalidation re-resolves nothing
@@ -187,9 +191,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         for (const entry of compilation.entries.values()) {
           for (const dep of entry.dependencies) {
             const resource = (
-              compilation.moduleGraph.getModule(dep) as unknown as
-                | ModuleLike
-                | null
+              compilation.moduleGraph.getModule(
+                dep,
+              ) as unknown as ModuleLike | null
             )?.resource
             if (resource) {
               out.add(resource)
@@ -201,8 +205,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
 
       /** The reports of this environment's self-marked entry modules (an entry has no importer to report it). */
       const selfMarkedReports = async (compilation: Rspack.Compilation) => {
-        const reports: Array<{ severity: 'error' | 'warning'; message: string }> =
-          []
+        const reports: Array<{
+          severity: 'error' | 'warning'
+          message: string
+        }> = []
         if (!ipEnv || env.selfMarked.size === 0) {
           return reports
         }
@@ -315,7 +321,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         }
         if (session.allocator && session.opts.mode === 'build') {
           compilation.hooks.processAssets.tap(
-            { name: PLUGIN_NAME, stage: Compilation.PROCESS_ASSETS_STAGE_OPTIMIZE },
+            {
+              name: PLUGIN_NAME,
+              stage: Compilation.PROCESS_ASSETS_STAGE_OPTIMIZE,
+            },
             () => patchFunctionIds(compilation),
           )
         }

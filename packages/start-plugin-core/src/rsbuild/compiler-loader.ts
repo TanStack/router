@@ -2,15 +2,13 @@
  * The Rspack loader of Start's compiler (DESIGN §4.2.1). A static file so
  * that Rspack loads it by path (and the persistent cache keys it); the
  * implementation lives on the environment's compiler, installed by the
- * host plugin (`host-plugin.ts`), so this file imports nothing of the
- * package (one module instance of the session, whichever `dist` entry
- * Rspack loads this from).
+ * host plugin (`host-plugin.ts`), so this file imports nothing stateful of
+ * the package (one module instance of the session, whichever `dist` entry
+ * Rspack loads this from), and nothing of the package imports this file.
  */
+import { LOADER_REGISTRY } from './loader-registry'
 import type { Rspack } from '@rsbuild/core'
 import type { LoaderOptions } from './compiler-session'
-
-/** The property of an environment's compiler holding the loader implementation. */
-export const LOADER_REGISTRY = '__tanstackStartCompiler'
 
 export type LoaderImpl = (
   ctx: Rspack.LoaderContext<LoaderOptions>,
