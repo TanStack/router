@@ -269,7 +269,11 @@ function ownerTotals(s, detail) {
       cache.set(n, owner)
     }
     if (detail && owner.includes(detail) && sizeOf(s, i) >= 2048) {
-      detail.list.push({ size: sizeOf(s, i), group: groupKey(s, i), path: pathOf(s, tree, i, 10) })
+      detail.list.push({
+        size: sizeOf(s, i),
+        group: groupKey(s, i),
+        path: pathOf(s, tree, i, 10),
+      })
     }
     totals.set(owner, (totals.get(owner) ?? 0) + sizeOf(s, i))
     let groups = byGroup.get(owner)
@@ -317,7 +321,10 @@ export function diff(fileA, fileB) {
   const detailB = detailOf()
   const { byGroup: groupsB } = ownerTotals(b, detailB)
   if (detailA) {
-    for (const [name, d] of [['A', detailA], ['B', detailB]]) {
+    for (const [name, d] of [
+      ['A', detailA],
+      ['B', detailB],
+    ]) {
       console.log(`--- ${name}: largest objects of ${d}`)
       for (const o of d.list.sort((x, y) => y.size - x.size).slice(0, 25)) {
         console.log(`${(o.size / 1024).toFixed(1)} KB ${o.group}: ${o.path}`)
