@@ -36,6 +36,7 @@ package. What the suite is and how to read it: [oracle/README.md](oracle/README.
 - `./global-trap`: trap a page's dev-only globals (SPEC G7).
 - `./source-maps`: map assertions through `@jridgewell/trace-mapping`.
 - `./determinism`: compare builds across roots and orders (SPEC G4).
+- `./dead-code-shapes`: the dependency shapes every removal runs through (SPEC G16); inputs, no judging logic.
 - `./app-directory` (`createAppDirectory`, `servedDirectories`): temp app directories that resolve like the package.
 - `./run-directory` (Vitest `globalSetup`): the run's temp dir, removed when the run ends.
 - `./test-scope` (`currentTest`, `onTestFinished`) with `./test-scope-setup` (`setupFiles`): per-test resources in
