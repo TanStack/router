@@ -363,8 +363,9 @@ export function hydrateBuildSuite(bundler: StartBundler) {
 
     // The client parent declares the lazy component of each boundary with a
     // call marked pure, so the children of an unused exported component do
-    // not ship. Source: fuzzing.
-    test(
+    // not ship. Source: fuzzing. (Rsbuild, still on the previous compiler:
+    // the call is not marked pure, so the chunk ships.)
+    ;(bundler === 'rsbuild' ? test.fails : test)(
       'an unused exported component with a boundary is not in the client',
       async () => {
         const build = await sharedApp()
@@ -398,8 +399,10 @@ export function hydrateBuildSuite(bundler: StartBundler) {
     // An export only the children use, initialized by a call, moves with
     // the chunk (one instance, initialized once). Source:
     // hydrate-when-transform.test.ts "unwraps exported declarations needed
-    // by extracted virtual modules".
-    test(
+    // by extracted virtual modules". (Rsbuild, still on the previous
+    // compiler: the chunk gets a copy of the declaration and the parent
+    // keeps the export, so the initializer runs twice.)
+    ;(bundler === 'rsbuild' ? test.fails : test)(
       'an export only the children use, initialized by a call, is initialized once and hydrates',
       async () => {
         const build = await sharedApp()
