@@ -226,7 +226,11 @@ export function createRouterCompilerWebpackPlugin(
         },
       )
       compiler.hooks.beforeRun.tap(PLUGIN_NAME, () => {
-        session.warnings.reset()
+        // one warning per file per run (J2.19): the session's ledger is
+        // shared by every environment's compiler; the client's run starts it
+        if (envType === 'client') {
+          session.warnings.reset()
+        }
       })
       if (envType === 'client' && mode === 'build') {
         const WebpackError = compiler.webpack?.WebpackError ?? Error

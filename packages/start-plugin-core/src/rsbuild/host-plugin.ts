@@ -163,7 +163,11 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       let clientTreeBuiltAt = -1
 
       compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, async () => {
-        session.warnings.reset()
+        // one warning per file per run (J2.19): the session's ledger is
+        // shared by every environment's compiler; the client's run starts it
+        if (environment.type === 'client') {
+          session.warnings.reset()
+        }
         ipEnv?.beginLogicalBuild()
         await opts.generator.beforeRun()
       })
