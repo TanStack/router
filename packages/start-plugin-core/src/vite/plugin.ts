@@ -15,6 +15,7 @@ import { startCompilerPlugin } from './compiler-plugin'
 import { loadEnvPlugin } from './load-env-plugin/plugin'
 import {
   buildStartViteEnvironments,
+  composeOnwarn,
   createViteConfigPlan,
   createViteDefineConfig,
   createViteResolvedEntryAliases,
@@ -35,6 +36,7 @@ import {
 } from './output-directory'
 import { postServerBuild } from './post-server-build'
 import { serializationAdaptersPlugin } from './serialization-adapters-plugin'
+import type { OnwarnLike } from './planning'
 import type {
   TanStackStartVitePluginCoreOptions,
   ViteRscForwardSsrResolverStrategy,
@@ -178,6 +180,16 @@ export function tanStackStartVite(
           appType: viteConfig.appType ?? 'custom',
           environments: viteConfigPlan.environments,
           resolve: viteConfigPlan.resolve,
+          build: {
+            rolldownOptions: {
+              // the server-fn resolver's lazy imports are no chunking mistake
+              onwarn: composeOnwarn(
+                viteConfig.build?.rolldownOptions?.onwarn as
+                  | OnwarnLike
+                  | undefined,
+              ),
+            },
+          },
           define: createViteDefineConfig({
             command,
             mode: viteConfig.mode,

@@ -250,7 +250,7 @@ export interface ModuleAnalysisOptions {
   markerSpecifiers?: Record<string, 'server-only' | 'client-only'>
 }
 
-const DEFAULT_MARKERS: Record<string, 'server-only' | 'client-only'> = {
+export const DEFAULT_MARKERS: Record<string, 'server-only' | 'client-only'> = {
   'server-only': 'server-only',
   'client-only': 'client-only',
 }
@@ -485,9 +485,15 @@ export class ModuleAnalysis {
         default:
           break
       }
-      // module loading counts as an own effect, not as an effect of its own code
+      // module loading counts as an own effect, not as an effect of its own
+      // code; a marker import declares the module's environment and loads
+      // nothing
       const loads = loadsModule(stmt)
+      const isMarkerImport =
+        stmt.type === 'ImportDeclaration' &&
+        markers[stmt.source.value] !== undefined
       if (
+        !isMarkerImport &&
         (loads ? !ownEffects : !codeEffects) &&
         statementHasEffects(this.purity, stmt)
       ) {

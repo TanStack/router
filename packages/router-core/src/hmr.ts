@@ -153,3 +153,33 @@ export function applyRouteHmr(
     void router._refreshRoute?.()
   }
 }
+
+// The split chunks of route modules that evaluated so far (`routeId\0chunk`).
+// Bounded by the number of split chunks.
+const hotChunks = new Set<string>()
+
+/**
+ * Applies one evaluation of a split chunk of a route module (webpack-style
+ * hosts): the first evaluation only records the chunk; a later one is a hot
+ * update of the chunk (its own `accept()`), and the route's non-component
+ * options reload through their lazy wrappers once the live route refreshes.
+ *
+ * Not a public API: called by the framework packages' `__tsrRouteChunkHmr`.
+ */
+export function applyRouteChunkHmr(routeId: string, chunk: string): void {
+  if (process.env.NODE_ENV !== 'production') {
+    if (isServer ?? typeof window === 'undefined') {
+      return
+    }
+    const key = `${routeId}\0${chunk}`
+    if (!hotChunks.has(key)) {
+      hotChunks.add(key)
+      return
+    }
+    const router = window.__TSR_ROUTER__
+    if (!router?.routesById?.[routeId]) {
+      return
+    }
+    void router._refreshRoute?.()
+  }
+}

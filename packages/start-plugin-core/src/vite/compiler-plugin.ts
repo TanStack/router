@@ -605,6 +605,13 @@ export function startCompilerPlugin(
     }
     const source = new SourceText(code)
     for (const d of diagnostics) {
+      if (d.by === 'parse') {
+        // the module is left as it is: the bundler's own parser reports a
+        // syntax error at the user's position, and a script no ESM parse
+        // accepts (a CommonJS dependency with a top-level `return`) is
+        // nothing the compiler touches (J4.16, §5.15)
+        continue
+      }
       if (d.severity === 'error') {
         const loc = locationOf(source, filePath, d)
         ctx.error({

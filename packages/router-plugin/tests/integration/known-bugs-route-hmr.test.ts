@@ -365,20 +365,15 @@ export const Route = createFileRoute('/')({ loader: () => 'data ${version}' })
     )
   })
 
-  // Bug: on Rsbuild (Rspack), an edit that only changes a loader split from
-  // the route module (`codeSplitGroupings` with `loader` in a chunk) never
-  // reaches the page: the route module's code is unchanged, so Rspack does
-  // not run it again and the route HMR code (`webpack-adapter.ts`, in the
-  // route module only) never refreshes the route; the split loader module
-  // accepts no update of its own. The next load gets the new loader, but
-  // nothing reloads the route. Vite updates the route in place
+  // On Rsbuild (Rspack), an edit that only changes a loader split from the
+  // route module (`codeSplitGroupings` with `loader` in a chunk) leaves the
+  // route module's code unchanged: the chunk's own dev block asks the live
+  // route to refresh when the chunk is evaluated again after its hot update
+  // (its export is no React Refresh boundary, so the update reaches its
+  // importer, which re-imports it). Vite re-runs the route module itself
   // (route-hmr-browser.test.ts).
-  // Impact: the page keeps the old loader's data until a reload or a
-  // navigation, with no sign that the edit was not applied.
-  // Source: router-plugin src/core/hmr/webpack-adapter.ts (HMR code only in
-  // the route module); NEW (hmr-real).
-  // Goal: a hot update showing the new loader's data, without a full reload.
-  test.fails.for([`[['loader'], ['component']]`, `[['component', 'loader']]`])(
+  // Source: NEW (hmr-real).
+  test.for([`[['loader'], ['component']]`, `[['component', 'loader']]`])(
     'rsbuild: an edit of a split loader (codeSplitGroupings: %s) shows its data in place',
     async (groupings: string, { expect, onTestFinished }: TestContext) => {
       const route = (version: string) =>

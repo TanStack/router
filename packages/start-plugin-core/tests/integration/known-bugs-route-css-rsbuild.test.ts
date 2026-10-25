@@ -15,19 +15,14 @@ import { routeCssSuite } from './route-css-cases'
 // Impact: a route's styles apply on every page of the app.
 const routeModuleCss = ['shows-pending', 'shows-nothing']
 
-// Bug: Start's Rsbuild client manifest counts a chunk as available to a
-// chunk when any one of its chunk groups has it, not every one: the chunk
-// of the module both routes share gets the copy of the module it imports
-// in each route's chunk as a dependency, so each route's manifest entry
-// lists the other route's chunk and its CSS.
-// Source: #8780; computeStaticDependencyChunks,
-// src/rsbuild/normalized-client-build.ts.
-// Impact: the page Start renders at /shares-module-a links the stylesheet
-// of /shares-module-c (and preloads its chunk), whose styles apply there;
-// in dev and in a build.
-const siblingChunks = ['shares-module-a', 'shares-module-c']
+// (The `shares-module-*` rows, #8780: Start's Rsbuild client manifest
+// counted a chunk as available to a chunk when any one of its chunk groups
+// had it, so the chunk of the module both routes share depended on each
+// route's copy of the module it imports, and each route's manifest entry
+// listed the other route's chunk and its CSS. Fixed in
+// computeStaticDependencyChunks, src/rsbuild/normalized-client-build.ts.)
 
 routeCssSuite('rsbuild', {
-  dev: [...routeModuleCss, ...siblingChunks],
-  build: [...routeModuleCss, ...siblingChunks],
+  dev: routeModuleCss,
+  build: routeModuleCss,
 })

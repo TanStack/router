@@ -618,9 +618,9 @@ ${callByIdExports}`,
   // Impact: an app with such a dependency does not build (Vite: when client
   // code imports it, or SSR code with `noExternal`; Rsbuild: client or SSR).
   // SPEC J4.16. These apps replace the in-process compiler pin of this
-  // name.
-  // (Rsbuild compiles only modules whose plan needs it; Vite's row stays pinned)
-  ;(bundler === 'rsbuild' ? test : test.fails)(
+  // name. (Both hosts leave a module the compiler cannot parse as an ES
+  // module to the bundler's own parser.)
+  test(
     'a CommonJS dependency with a top-level return builds and keeps its meaning',
     async () => {
       const { client, ssr } = await buildStart({

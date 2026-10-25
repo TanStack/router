@@ -26,7 +26,11 @@ import { splitPlanOf } from './decisions'
 import { prefetchRouteEntry, routeGate } from './split'
 import { roundOf } from './round'
 import type { RouterPlannerConfig } from './config'
-import type { Frag, Planner } from '@tanstack/router-utils/compiler'
+import type {
+  Frag,
+  PlanContext,
+  Planner,
+} from '@tanstack/router-utils/compiler'
 
 export const HMR_COMPONENT_KEYS: ReadonlyArray<string> = [
   'component',
@@ -300,11 +304,82 @@ export function routeHmrPlanner(): Planner {
           },
         ],
       })
+      if (!vite) {
+        chunkHmr(ctx, cfg, route.routeId, route.routerPackage)
+      }
       ctx.setFacts('route-hmr', {
         routeId: routerRouteId(route.routeId),
         unsplit: round.unsplit,
         style: cfg.hmr.style,
       })
     },
+  }
+}
+
+/**
+ * Webpack-style hosts: a split chunk holding a non-component option
+ * (`loader`, `beforeLoad`, …) asks the live route to refresh when it is
+ * evaluated again, so an edit of that option alone reaches the page. The
+ * chunk accepts nothing itself: its update bubbles to its importer (the
+ * route module, self-accepting, or Rspack's lazy-compilation proxy, which
+ * re-resolves the module), and the importer's re-import evaluates the chunk
+ * again. Vite re-runs the dynamic importer itself. Component-only chunks are
+ * the framework refresh runtime's.
+ */
+function chunkHmr(
+  ctx: PlanContext,
+  cfg: RouterPlannerConfig,
+  routeId: string,
+  routerPackage: string,
+): void {
+  const plan = splitPlanOf(ctx, cfg)
+  if (!plan) {
+    return
+  }
+  const groups = new Map<string, boolean>()
+  for (const d of plan.decisions) {
+    groups.set(
+      d.groupKey,
+      (groups.get(d.groupKey) ?? false) || !HMR_COMPONENT_KEYS.includes(d.key),
+    )
+  }
+  for (const [groupKey, hasNonComponent] of groups) {
+    if (!hasNonComponent) {
+      continue
+    }
+    const output = ctx.declareOutput({
+      kind: 'split',
+      key: groupKey,
+      derived: { kind: 'split', value: groupKey },
+    })
+    const helper = ctx.names.alloc('tsrChunkHmr')
+    ctx.rewrites.addGenerated({
+      body: [
+        {
+          k: 'text',
+          parts: [
+            'if (import.meta.webpackHot) {\n  ',
+            { sym: helper.sym, ctx: 'callee' },
+            `(${stringLiteral(routerRouteId(routeId), '"')}, ${stringLiteral(groupKey, '"')})\n}\n`,
+          ],
+        },
+      ],
+      declares: [],
+      effectful: true,
+      anchor: { k: 'end' },
+      home: output,
+      by: 'route-hmr',
+      imports: [
+        {
+          names: [{ imported: '__tsrRouteChunkHmr', local: helper.sym }],
+          spec: {
+            k: 'spec',
+            specifier: routerPackage,
+            edgeKey: ctx.edgeKey(routerPackage, 'static', 'runtime'),
+            provenance: { origin: 'runtime' },
+          },
+        },
+      ],
+    })
   }
 }

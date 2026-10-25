@@ -306,9 +306,11 @@ export const cleanup = ['__spreadWhen']`,
   // mismatch).
   // Plain text has nothing to hydrate: splitting it or leaving it in place
   // are both accepted, so the chunks are not asserted.
+  // (`idleHead`: `boundaryRendering` finds the boundary by the hydration id
+  // it renders; a `load()` boundary renders none.)
   // Source: #8504 hydrate-split-modules.test.ts (exact JSX-text equality, red
   // on main)
-  test.fails.each([
+  test.each([
     {
       name: 'multi-line text with entities',
       text: '\n      Fish &amp;\n      Chips &copy;\n    ',
@@ -324,8 +326,8 @@ export const cleanup = ['__spreadWhen']`,
     async ({ text, rendered }) => {
       const { source } = await expectRendersLikeSource(
         await hosts(),
-        `${head}export function Page() {
-  return <Hydrate when={load()}>${text}</Hydrate>
+        `${idleHead}export function Page() {
+  return <Hydrate when={idle()}>${text}</Hydrate>
 }`,
         { split: false },
       )
@@ -340,20 +342,17 @@ export const cleanup = ['__spreadWhen']`,
   // Impact: the client renders other text than the server (a hydration
   // mismatch).
   // Source: hydrate-when-transform.ts getMeaningfulChildren (mutation
-  // testing).
-  test.fails(
-    'client: spaces around a single child on one line render like on the server',
-    async () => {
-      const { source } = await expectRendersLikeSource(
-        await hosts(),
-        `${head}export function Page() {
-  return <Hydrate when={load()}> <p>x</p> </Hydrate>
+  // testing). (`idleHead`: see the text-only rows above.)
+  test('client: spaces around a single child on one line render like on the server', async () => {
+    const { source } = await expectRendersLikeSource(
+      await hosts(),
+      `${idleHead}export function Page() {
+  return <Hydrate when={idle()}> <p>x</p> </Hydrate>
 }`,
-        { split: false },
-      )
-      expect(boundaryRendering(source.html, ' <p>x</p> ')).toBeDefined()
-    },
-  )
+      { split: false },
+    )
+    expect(boundaryRendering(source.html, ' <p>x</p> ')).toBeDefined()
+  })
 
   // Bug: the Hydrate plugin numbers boundaries after the other Start
   // transforms removed environment-specific code (`<ClientOnly>` children on
@@ -383,14 +382,17 @@ export function Page() {
 }`,
     },
     {
+      // (`panel` is exported, not rendered: its two implementations render
+      // different trees, a hydration mismatch React reports whatever the
+      // compiler does)
       name: 'a boundary in an isomorphic .server() (removed on the client)',
       code: `import { Hydrate, createIsomorphicFn } from '@tanstack/react-start'
 import { idle } from '@tanstack/react-start/hydration'
-const panel = createIsomorphicFn()
+export const panel = createIsomorphicFn()
   .server(() => <Hydrate when={idle()}><p>a</p></Hydrate>)
   .client(() => <i>client</i>)
 export function Page() {
-  return <div>{panel()}<Hydrate when={idle()}><p>b</p></Hydrate></div>
+  return <div><Hydrate when={idle()}><p>b</p></Hydrate></div>
 }`,
     },
     {
@@ -412,14 +414,15 @@ export function Page() {
 }`,
     },
     {
+      // (`panel` exported, not rendered: see the `.server()` row)
       name: 'a boundary in an isomorphic .client() (removed on the server)',
       code: `import { Hydrate, createIsomorphicFn } from '@tanstack/react-start'
 import { idle } from '@tanstack/react-start/hydration'
-const panel = createIsomorphicFn()
+export const panel = createIsomorphicFn()
   .server(() => <i>server</i>)
   .client(() => <Hydrate when={idle()}><p>a</p></Hydrate>)
 export function Page() {
-  return <div>{panel()}<Hydrate when={idle()}><p>b</p></Hydrate></div>
+  return <div><Hydrate when={idle()}><p>b</p></Hydrate></div>
 }`,
     },
     {
@@ -446,13 +449,6 @@ export function Page() {
 }`,
     },
   ]
-  // The rows whose removed code is a client-only construct pass with the
-  // Yuku Hydrate planner (boundary ids are offset-based); a boundary inside
-  // server-only code the client compile removes is still pinned.
-  const laterBoundaryPasses = new Set([
-    'a boundary in <ClientOnly> children (removed on the server)',
-    'a boundary in a createClientOnlyFn (a stub on the server)',
-  ])
   const laterBoundaryKeepsItsId = async ({ code }: { code: string }) => {
     // The rest of the page may differ between the environments (that is
     // the code they remove): the later boundary renders the same markup,
@@ -464,15 +460,7 @@ export function Page() {
     expect(boundaryRendering(client.html, '<p>b</p>')).toBe(later)
     expectRenderedThroughChunks(client)
   }
-  test.each(
-    laterBoundaryRows.filter((row) => laterBoundaryPasses.has(row.name)),
-  )(
-    'a later boundary keeps its id and its children next to $name',
-    laterBoundaryKeepsItsId,
-  )
-  test.fails.each(
-    laterBoundaryRows.filter((row) => !laterBoundaryPasses.has(row.name)),
-  )(
+  test.each(laterBoundaryRows)(
     'a later boundary keeps its id and its children next to $name',
     laterBoundaryKeepsItsId,
   )

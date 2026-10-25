@@ -1,6 +1,7 @@
 import { normalizePath } from 'vite'
 import { join } from 'pathe'
 import { escapePath } from 'tinyglobby'
+import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import {
   DEV_CLIENT_ENTRY,
   ENTRY_POINTS,
@@ -239,4 +240,49 @@ function getRequiredBuilderEnvironment(
   }
 
   return environment
+}
+
+/** A Rolldown warning as `build.rolldownOptions.onwarn` receives it (structural). */
+export interface RolldownWarningLike {
+  code?: string
+  message: string
+}
+
+/** `build.rolldownOptions.onwarn`: the warning and Rolldown's default handler. */
+export type OnwarnLike = (
+  warning: RolldownWarningLike,
+  defaultHandler: (warning: RolldownWarningLike) => void,
+) => void
+
+/**
+ * Rolldown's chunking hint for the server-fn resolver: the resolver imports
+ * every provider module lazily (`import()`), and a server bundle usually
+ * imports the same module statically, so Rolldown notes that the dynamic
+ * import "will not move module into another chunk". That is the intended
+ * shape (one instance of the module, loaded when first called or imported);
+ * the hint names nothing the app can fix.
+ */
+export function isResolverChunkingHint(warning: RolldownWarningLike): boolean {
+  // (the message prints the id URL-encoded: `\0%23tanstack-start-…`)
+  return (
+    warning.code === 'INEFFECTIVE_DYNAMIC_IMPORT' &&
+    warning.message.includes(VIRTUAL_MODULES.serverFnResolver.replace(/^#/, ''))
+  )
+}
+
+/**
+ * The app's `onwarn` with the resolver's chunking hint dropped; every other
+ * warning goes to the app's own handler, else to Rolldown's default.
+ */
+export function composeOnwarn(appOnwarn: OnwarnLike | undefined): OnwarnLike {
+  return (warning, defaultHandler) => {
+    if (isResolverChunkingHint(warning)) {
+      return
+    }
+    if (appOnwarn) {
+      appOnwarn(warning, defaultHandler)
+    } else {
+      defaultHandler(warning)
+    }
+  }
 }

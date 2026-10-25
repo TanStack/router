@@ -29,3 +29,30 @@ describe('RawFactsCache (lane B)', () => {
     expect(cache.peekRevision('/app/a.ts')?.stale).toBe(false)
   })
 })
+
+describe('target facts of a marked module (lane P)', () => {
+  it('counts a marker import neither as an evaluation edge nor as an effect', async () => {
+    const files: Record<string, string> = {
+      '/app/marked.ts': `import '@tanstack/react-start/server-only'\nexport const secret = () => 'MARK_SECRET'\n`,
+      '/app/effects.ts': `import './side-effect'\nexport const x = 1\n`,
+    }
+    const cache = new RawFactsCache({
+      readFile: (p) => Promise.resolve(files[p] ?? null),
+      loadVirtual: () => Promise.resolve(null),
+      markerSpecifiers: {
+        '@tanstack/react-start/server-only': 'server-only',
+        '@tanstack/react-start/client-only': 'client-only',
+      },
+    })
+    const marked = await cache.get('/app/marked.ts')
+    expect(marked.targetFacts.marker).toBe('server-only')
+    expect(marked.targetFacts.imports).toEqual([])
+    expect(marked.targetFacts.effectful).toBe(false)
+    expect(marked.targetFacts.effectProvenance).toBe(null)
+    // a bare import of anything else still is
+    const effects = await cache.get('/app/effects.ts')
+    expect(effects.targetFacts.imports).toEqual(['./side-effect'])
+    expect(effects.targetFacts.effectful).toBe(true)
+    expect(effects.targetFacts.effectProvenance).toBe('own')
+  })
+})
