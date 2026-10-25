@@ -40,7 +40,6 @@ import type {
 export const MAX_ATTEMPTS = 3
 
 /** An attempt whose snapshot moved: compile again. */
-const RETRY = Symbol('retry')
 
 /** The caches of one compiler session; `label` names them in `compilerStats()`. */
 export function createCompilerCaches(
@@ -112,6 +111,8 @@ export async function compileModule(
     : 'env'
   const verdictMemo = new Map<string, Promise<unknown>>()
   const keyString = `${key.env}\u0000${key.canonicalId}\u0000${key.configKey}`
+  // the plan of the last overtaken attempt: served (unpublished) when every attempt was overtaken
+  let overtaken: CacheEntry | null = null
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     cache.noteRevision(key, rev)
@@ -136,6 +137,7 @@ export async function compileModule(
       }
       cache.delete(key)
       cache.bump(key)
+      overtaken = hit
       continue
     }
     const inflight = cache.inFlight.get(keyString)
@@ -149,10 +151,10 @@ export async function compileModule(
     }
     // the key's generation and latest revision stay meaningful until the attempt ends
     cache.begin(key)
-    let outcome: CompileOutput | null | typeof RETRY
+    let outcome: CompileOutput | null | { retry: CacheEntry }
     try {
       outcome = await (async (): Promise<
-        CompileOutput | null | typeof RETRY
+        CompileOutput | null | { retry: CacheEntry }
       > => {
         const generation = cache.generation(key)
         const ledger = new DependencyLedger(key, generation, cache.dependents)
@@ -171,6 +173,10 @@ export async function compileModule(
         let result: AttemptResult
         try {
           result = await promise
+        } catch (error) {
+          // a throwing attempt (a planner error) leaves no in-flight dependents rows behind
+          ledger.discard()
+          throw error
         } finally {
           if (cache.inFlight.get(keyString) === record) {
             cache.inFlight.delete(keyString)
@@ -210,18 +216,18 @@ export async function compileModule(
         const snapshotOk = await ledger.validateSnapshot(src)
         if (!snapshotOk || cache.generation(key) !== generation) {
           ledger.discard()
+          const entry: CacheEntry = {
+            key,
+            revision: rev,
+            generation,
+            plan,
+            emitted: new Map(),
+          }
           if (cache.latestRevision(key) !== rev) {
             // superseded by a newer save: this text is stale; never publish, but answer this request
-            const entry: CacheEntry = {
-              key,
-              revision: rev,
-              generation,
-              plan,
-              emitted: new Map(),
-            }
             return emitFrom(entry, requested, input, caches, cache)
           }
-          return RETRY
+          return { retry: entry }
         }
         const entry: CacheEntry = {
           key,
@@ -240,13 +246,33 @@ export async function compileModule(
     } finally {
       cache.end(key)
     }
-    if (outcome !== RETRY) {
+    if (outcome === null || !('retry' in outcome)) {
       return outcome
     }
+    overtaken = outcome.retry
   }
-  throw new Error(
-    `dependencies of ${input.id} changed repeatedly during compilation (${MAX_ATTEMPTS} attempts)`,
-  )
+  // Every attempt was overtaken (a save storm, a checkout touching several
+  // dependencies): the last plan answers this request without being
+  // published, so the next request compiles afresh; the host sees a warning
+  // instead of a transform error for a transient condition.
+  if (overtaken === null) {
+    throw new Error(
+      `dependencies of ${input.id} changed repeatedly during compilation (${MAX_ATTEMPTS} attempts)`,
+    )
+  }
+  const served = emitFrom(overtaken, requested, input, caches, cache)
+  return {
+    ...served,
+    diagnostics: [
+      ...served.diagnostics,
+      {
+        severity: 'warning',
+        code: 'compile-overtaken',
+        by: 'core',
+        message: `dependencies of ${input.id} changed repeatedly during compilation (${MAX_ATTEMPTS} attempts); served from the last attempt and not cached`,
+      },
+    ],
+  }
 }
 
 function emitFrom(

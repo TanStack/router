@@ -126,6 +126,24 @@ describe('copyable clusters (impl-notes #6, lane router)', () => {
     expect(r.chunks.component).not.toContain('createFileRoute')
     expect(r.env).toContain("import { fetchPosts } from './api'")
   })
+  it('does not duplicate a regex literal: its identity and lastIndex are state', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      const re = /x/g
+      export const Route = createFileRoute('/')({
+        loader: () => re.lastIndex,
+        component: () => re.test('x'),
+        errorComponent: () => re.test('y'),
+      })
+    `)
+    const r = await split(code, { keys: ['component', 'errorComponent'] })
+    expect(r.env).toContain('const re = /x/g')
+    expect(r.chunks.component).not.toContain('/x/g')
+    expect(r.chunks.component).toContain("import { re } from './route.tsx'")
+    expect(r.chunks.errorComponent).toContain(
+      "import { re } from './route.tsx'",
+    )
+  })
 })
 
 describe('glue and renames (lane router)', () => {
@@ -421,6 +439,29 @@ describe('extracted-export outputs (§3.5.3)', () => {
     expect(e?.code).not.toContain('export function Card')
     expect(e?.code).toContain('export { Card }')
     expect(e?.sideEffectFree).toBe(true)
+  })
+
+  it('re-exports every exported symbol of an extracted cluster (a let and the function writing it)', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      export let theme = 'light'
+      export const setTheme = (t) => { theme = t }
+      function Page() { return theme }
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await extract(code)
+    expect(r.env).toContain(
+      "export { theme, setTheme } from './route.tsx?tsr-split=export~setTheme'",
+    )
+    expect(r.env).not.toContain('let theme')
+    expect(r.env).not.toContain('const setTheme')
+    const e = await r.extracted('setTheme')
+    expect(e?.code).toContain("let theme = 'light'")
+    expect(e?.code).toContain('const setTheme = (t) => { theme = t }')
+    expect(e?.code).toContain('export { theme, setTheme }')
+    expect(r.chunk).toContain(
+      "import { theme } from './route.tsx?tsr-split=export~setTheme'",
+    )
   })
 
   it('keeps an exported declaration the env module reads, and an unread one', async () => {
@@ -1300,5 +1341,162 @@ describe('clusters an env root reads after homing', () => {
     expect(main?.code).toContain(
       "import { stub as tsrStub } from 'toy-runtime'",
     )
+  })
+})
+
+describe('overridden placeholders (lane H1)', () => {
+  it('counts the reads of an edit overriding a claimed placeholder for the enclosing region of that output', async () => {
+    // a nested server fn chain is claimed for the provider output (hoisted
+    // there); the env output keeps the chain in place with an edit on exactly
+    // the claimed region: what that edit renders (the chain's head, its
+    // options, the stub) is read by the enclosing function in the env output
+    const code = dedent(`
+      import { wrapServer } from 'toy-start'
+      import { secret } from './db'
+      import { opt } from './opt'
+      const METHOD = 'POST'
+      export function make() {
+        const fn = wrapServer(opt(METHOD), () => secret())
+        return fn
+      }
+    `)
+    const host = new MemoryHost({
+      files: {
+        '/app/fns.ts': code,
+        '/app/db.ts': 'export const secret = () => 1\n',
+        '/app/opt.ts': 'export const opt = (m) => ({ m })\n',
+      },
+    })
+    const call = 'wrapServer(opt(METHOD), () => secret())'
+    const handler = '() => secret()'
+    const provider: Planner = {
+      name: 'toy-provider',
+      tier: 1,
+      gate: () => true,
+      plan(ctx) {
+        const out = ctx.declareOutput({
+          kind: 'provider',
+          key: 'provider',
+          derived: { kind: 'provider', value: '' },
+        })
+        const start = code.indexOf(call)
+        const range = { start, end: start + call.length }
+        const hStart = code.indexOf(handler, start)
+        const stub = ctx.names.alloc('tsrStub')
+        ctx.rewrites.addGenerated({
+          body: [],
+          declares: [],
+          effectful: false,
+          anchor: { k: 'after-header' },
+          home: 'auto',
+          by: 'toy-provider',
+          imports: [
+            {
+              names: [{ imported: 'stub', local: stub.sym }],
+              spec: {
+                k: 'spec',
+                specifier: 'toy-runtime',
+                edgeKey: ctx.edgeKey('toy-runtime', 'static', 'runtime'),
+                provenance: { origin: 'runtime' },
+              },
+            },
+          ],
+        })
+        const hoisted = ctx.names.alloc('tsrServerFn')
+        const owner = ctx.rewrites.addGenerated({
+          body: [
+            { k: 'text', parts: [`const ${hoisted.name} = `] },
+            { k: 'slice', range },
+            { k: 'text', parts: ['\n'] },
+          ],
+          declares: [hoisted.sym],
+          effectful: false,
+          anchor: { k: 'after-header' },
+          home: out,
+          by: 'toy-provider',
+        })
+        ctx.rewrites.claim({
+          region: ctx.region(range, 'nested-chain'),
+          owner,
+          placeholder: [{ k: 'text', parts: [{ sym: hoisted.sym }] }],
+          by: 'toy-provider',
+        })
+        ctx.rewrites.add({
+          range,
+          body: [
+            { k: 'slice', range: { start, end: hStart } },
+            { k: 'text', parts: [{ sym: stub.sym }, "('id')"] },
+            {
+              k: 'slice',
+              range: { start: hStart + handler.length, end: range.end },
+            },
+          ],
+          scope: ['env'],
+          by: 'toy-provider',
+        })
+        const wrapper = ctx.names.alloc('fn_handler')
+        ctx.rewrites.addGenerated({
+          body: [
+            {
+              k: 'text',
+              parts: [
+                `export const ${wrapper.name} = () => `,
+                { sym: hoisted.sym },
+                '\n',
+              ],
+            },
+          ],
+          declares: [wrapper.sym],
+          effectful: false,
+          anchor: { k: 'end' },
+          home: out,
+          by: 'toy-provider',
+        })
+      },
+    }
+    const env = envInfo({ name: 'rsc', type: 'server', routerSplit: false })
+    const main = await host.compile('/app/fns.ts', [provider], { env })
+    expect(main?.code).toContain(
+      "const fn = wrapServer(opt(METHOD), tsrStub('id'))",
+    )
+    expect(main?.code).toContain("import { wrapServer } from 'toy-start'")
+    expect(main?.code).toContain("import { opt } from './opt'")
+    expect(main?.code).toContain("const METHOD = 'POST'")
+    expect(main?.code).toContain(
+      "import { stub as tsrStub } from 'toy-runtime'",
+    )
+    expect(main?.code).not.toContain('./db')
+    expect(main?.code).not.toContain('tsrServerFn')
+    const out = await host.compile(
+      '/app/fns.ts?tss-serverfn-split',
+      [provider],
+      {
+        env,
+      },
+    )
+    expect(out?.code).toContain(
+      'const tsrServerFn = wrapServer(opt(METHOD), () => secret())',
+    )
+    expect(out?.code).toContain("import { secret } from './db'")
+    expect(out?.code).toContain("const METHOD = 'POST'")
+    expect(out?.code).not.toContain('tsrStub')
+  })
+})
+
+describe('pre-existing dead code (G16, R56)', () => {
+  it('keeps a dead pure cycle like a dead self-recursive function', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { helper } from './helper'
+      function a() { return b() }
+      function b() { return a() }
+      function self() { return self() }
+      export const Route = createFileRoute('/')({ component: () => helper() })
+    `)
+    const r = await split(code)
+    expect(r.env).toContain('function self()')
+    expect(r.env).toContain('function a()')
+    expect(r.env).toContain('function b()')
+    expect(r.chunks.component).not.toContain('function a()')
   })
 })

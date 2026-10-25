@@ -356,8 +356,17 @@ export class RenderTree {
 
   /** Whether the claim's placeholder renders here (live and not overridden by an edit on exactly the region). */
   placeholderRenders(region: RegionId): boolean {
+    return this.claimRegions.has(region) && this.overrideOf(region) === null
+  }
+
+  /**
+   * The planner edit on exactly a live claimed region: it replaces the
+   * placeholder in this output (the region's text stays relocated to its
+   * owner), so what it renders is read where the placeholder would be.
+   */
+  overrideOf(region: RegionId): TreeEdit | null {
     if (!this.claimRegions.has(region)) {
-      return false
+      return null
     }
     const r = this.regions.get(region).range
     for (const e of this.edits) {
@@ -369,10 +378,10 @@ export class RenderTree {
         e.range.start === r.start &&
         e.range.end === r.end
       ) {
-        return false
+        return e
       }
     }
-    return true
+    return null
   }
 
   /**

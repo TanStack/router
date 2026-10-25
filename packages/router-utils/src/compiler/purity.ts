@@ -74,7 +74,8 @@ export function hasNoSideEffectsAnnotation(
 export function isPrimitiveLiteral(node: Node): boolean {
   switch (node.type) {
     case 'Literal':
-      return true
+      // a regex literal is an object: its identity and `lastIndex` are state
+      return !('regex' in node)
     case 'TemplateLiteral':
       return node.expressions.length === 0
     case 'UnaryExpression':

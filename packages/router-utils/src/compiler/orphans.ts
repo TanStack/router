@@ -183,12 +183,14 @@ function removeDeclarator(
   if (!statement || statement.type !== 'VariableDeclaration') {
     return false
   }
+  // an impure initialiser at function level stays as a statement whatever it
+  // reads: a hook call must keep running (hook order equal on both sides),
+  // and the import it reads stays with it
   const moduleLevel = !ctx.t1.isLazyAt(declarator.start)
   const effectsGo =
     declarator.init === null ||
     isPureExpression(ctx.analysis.purity, declarator.init) ||
-    moduleLevel ||
-    initReadsOnlyOrphanedImports(ctx, declarator.init, live)
+    moduleLevel
   if (statement.declarations.length === 1) {
     if (!isStatementPosition(file.parentOf(statement))) {
       return false
@@ -278,24 +280,18 @@ function orphanedPatternDeclarator(
 /**
  * `init;` in place of a declaration statement: parenthesised when its first
  * token would start a block, a declaration or a `let` declaration instead
- * (`{ a: f() };`, `function () {}();`), and after a `;` when that token
- * could continue the previous line (`(`, `[`, a template, an operator).
+ * (`{ a: f() };`, `function () {}();`). The renderer guards a statement
+ * start whose first token could continue the previous line.
  */
 function expressionStatement(code: string, init: Node): Array<Frag> {
   const first = code.slice(init.start, init.start + 16)
   const wrap = /^(?:\{|function\b|class\b|async\s+function\b|let\s*\[)/.test(
     first,
   )
-  const body: Array<Frag> = []
-  if (wrap || /^[([`+\-/<]/.test(first)) {
-    body.push(text(';'))
-  }
   if (wrap) {
-    body.push(text('('), slice(rangeOf(init)), text(');'))
-  } else {
-    body.push(slice(rangeOf(init)), text(';'))
+    return [text('('), slice(rangeOf(init)), text(');')]
   }
-  return body
+  return [slice(rangeOf(init)), text(';')]
 }
 
 /**
@@ -417,37 +413,6 @@ function removePatternProperties(
     }
     i = j
   }
-}
-
-/**
- * Whether an impure initialiser is server-only code the removal documents
- * (J4.12): it reads at least one import, and every import it reads has no
- * other live reference (the import leaves with it). Otherwise its effects
- * are kept as a statement (a hook call next to a removed implementation).
- */
-function initReadsOnlyOrphanedImports(
-  ctx: PlanContext,
-  init: Node,
-  live: ReturnType<PlanContext['liveness']>,
-): boolean {
-  const { t1, symbols } = ctx
-  const range = rangeOf(init)
-  let imports = 0
-  for (const r of t1.refs.refsIn(range)) {
-    if (!symbols.isImport(r.sym)) {
-      continue
-    }
-    imports++
-    const others = t1.refs
-      .valueRefsOf(r.sym)
-      .filter(
-        (o) => !(o.range.start >= range.start && o.range.end <= range.end),
-      )
-    if (others.some((o) => live.live(o))) {
-      return false
-    }
-  }
-  return imports > 0
 }
 
 /**

@@ -140,3 +140,34 @@ describe('function-local declarators only erased code read', () => {
     )
   })
 })
+
+describe('function-level call initialisers (hook calls)', () => {
+  // A hook call must keep running (hook order is the same on both sides)
+  // even when the import it reads has no other live reference: the call
+  // and its import stay.
+  it('keeps an orphaned hook call and the import it reads', async () => {
+    expect(
+      await client(`
+        import { wrapServer } from 'toy-start'
+        import { useRef, useState } from 'react'
+        import { secret } from './db'
+        export function Comp() {
+          const r = useRef(null)
+          const [s] = useState(0)
+          const run = wrapServer(() => secret() + r.current + s)
+          return run()
+        }
+      `),
+    ).toBe(
+      dedent(`
+        import { useRef, useState } from 'react'
+        export function Comp() {
+          useRef(null);
+          useState(0);
+          const run = tsrStub()
+          return run()
+        }
+      `),
+    )
+  })
+})

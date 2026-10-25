@@ -351,10 +351,17 @@ export function computePlacement(input: PlacementInput): Placement {
     for (const cid of r.children) {
       const claim = rewrites.claims.get(cid)
       if (claim) {
-        // the placeholder's reads belong to the enclosing region where it renders;
-        // an edit overriding the placeholder contributes its own SymRefs (edits loop below)
-        if (!live || treeOf(o).placeholderRenders(cid)) {
+        // the placeholder's reads belong to the enclosing region where it
+        // renders; an edit on exactly the claimed region replaces the
+        // placeholder in this output, and what it renders (its SymRefs and
+        // the parts of the region it keeps) is read by this region there
+        if (!live || tree.placeholderRenders(cid)) {
           into.syms.push(...symRefsOf(claim.placeholder))
+        } else {
+          const override = tree.overrideOf(cid)
+          if (override && tree.editRenders(override)) {
+            fragReads(override.body, o, live, into)
+          }
         }
       } else {
         into.children.push(cid)
@@ -963,7 +970,9 @@ export function computePlacement(input: PlacementInput): Placement {
     derivedReach.set(id, reach(id, roots))
   }
   // rule 5: a pure declaration cluster nobody reads (and no derived output roots) is harmless in the
-  // env module and keeps what it reads alive
+  // env module and keeps what it reads alive; clusters only read by each other (a dead pure cycle)
+  // are such dead code too: code that was dead before the transform is never removed (G16)
+  const deadCandidates = new Set<ClusterId>()
   for (const cl of clusters) {
     if (
       cl.kind !== 'declaration' ||
@@ -973,18 +982,39 @@ export function computePlacement(input: PlacementInput): Placement {
     ) {
       continue
     }
-    if (![...cl.declares].every((s) => refs.valueRefsOf(s).length === 0)) {
-      continue
-    }
     let derivedNeeds = false
     for (const set of derivedReach.values()) {
       if (set.has(cl.id)) {
         derivedNeeds = true
       }
     }
-    if (derivedNeeds) {
-      continue
+    if (!derivedNeeds) {
+      deadCandidates.add(cl.id)
     }
+  }
+  for (let changed = true; changed; ) {
+    changed = false
+    for (const c of deadCandidates) {
+      const read = [...clusters[c]!.declares].some((s) =>
+        refs.valueRefsOf(s).some((ref) => {
+          // a reader outside the candidates, or inside erased text (an
+          // orphan of ours, decided by provenance below), is a real reader
+          const owner = clusterOfRegion.get(t1.ownerOf(ref))
+          return (
+            owner === undefined ||
+            !deadCandidates.has(owner) ||
+            !isLive(ref, 'env')
+          )
+        }),
+      )
+      if (read) {
+        deadCandidates.delete(c)
+        changed = true
+      }
+    }
+  }
+  for (const c of deadCandidates) {
+    const cl = clusters[c]!
     // dead code that would keep a chunk's dependency in the env module (an
     // unused function rendering the split component) is dropped instead
     let pulls = false
@@ -1244,7 +1274,18 @@ export function computePlacement(input: PlacementInput): Placement {
         for (const k of e.companions) {
           deadClusters.add(k) // rendered as the env module's re-export glue
         }
-        extracted.push({ cluster: c, output: e.output, syms: [...e.syms] })
+        // every exported symbol of the cluster leaves with it (a `let` and
+        // the exported function writing it): the env module re-exports them all
+        const syms = new Set(e.syms)
+        for (const u of clusters[c]!.units) {
+          const unit = units[u]!
+          if (unit.exported.length > 0) {
+            for (const s of unit.declares) {
+              syms.add(s)
+            }
+          }
+        }
+        extracted.push({ cluster: c, output: e.output, syms: [...syms] })
       } else {
         envRoots.add(c)
         for (const k of e.companions) {

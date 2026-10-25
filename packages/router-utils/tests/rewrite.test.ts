@@ -764,3 +764,54 @@ describe('statement-level edits (R17)', () => {
     )
   })
 })
+
+describe('replacements at a statement start (lane H1)', () => {
+  // `const x = foo\n(() => 1)()` parses as a call of `foo`: a replacement
+  // whose first token could continue the previous statement is guarded with
+  // a `;` when it starts a statement of a list whose previous statement has
+  // no `;`, and only there (an `if` body is no list).
+  it('guards a replacement that could continue the previous statement', () => {
+    const code = dedent(`
+      import { wrap } from 'toy-start'
+      const x = foo
+      wrap(() => 1)()
+      export function f() {
+        const y = bar
+        wrap(() => 2)()
+        if (y)
+          wrap(() => 3)()
+        baz;
+        wrap(() => 4)()
+        wrap(() => 5)()
+      }
+      {
+        wrap(() => 6)()
+      }
+    `)
+    const e = engine(code)
+    for (let n = 1; n <= 6; n++) {
+      const call = `wrap(() => ${n})`
+      const start = code.indexOf(call)
+      const arg = {
+        start: start + 'wrap('.length,
+        end: start + call.length - 1,
+      }
+      e.ctx.rewrites.add({
+        range: { start, end: start + call.length },
+        body: [
+          { k: 'text', parts: ['('] },
+          { k: 'slice', range: arg },
+          { k: 'text', parts: [')'] },
+        ],
+        scope: 'all-outputs',
+        by: 'toy',
+      })
+    }
+    const out = e.render().code
+    expect(out).toContain('const x = foo\n;(() => 1)()\n')
+    expect(out).toContain('const y = bar\n  ;(() => 2)()\n')
+    expect(out).toContain('if (y)\n    (() => 3)()\n')
+    expect(out).toContain('baz;\n  (() => 4)()\n  ;(() => 5)()\n')
+    expect(out).toContain('{\n  (() => 6)()\n}')
+  })
+})

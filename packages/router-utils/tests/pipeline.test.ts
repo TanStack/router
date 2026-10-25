@@ -542,6 +542,90 @@ describe('slice gates: invalidation', () => {
   })
 })
 
+describe('attempts that are overtaken or throw (lane H1)', () => {
+  const key = {
+    env: 'client',
+    canonicalId: '/app/consumer.ts',
+    configKey: 'cfg',
+  }
+
+  it('(n) answers from the last plan, unpublished and with a warning, when dependencies keep changing', async () => {
+    let flips = 0
+    const host = new MemoryHost({
+      files: {
+        '/app/consumer.ts': CONSUMER,
+        '/app/factory-inner.ts': FACTORY('createServerOnlyFn'),
+      },
+      recognizer: RECOGNIZER,
+    })
+    const flipping: Planner = {
+      name: 'toy-flip',
+      tier: 1,
+      gate: () => true,
+      async prefetch(_t0, ctx) {
+        // the dependency flips after this attempt recorded its facts, on every attempt
+        const target = await ctx.resolve('./factory-inner')
+        await ctx.resolver.resolve(target!, 'make')
+        if (flips < 3) {
+          flips++
+          host.write(
+            '/app/factory-inner.ts',
+            FACTORY(flips % 2 ? 'createClientOnlyFn' : 'createServerOnlyFn'),
+          )
+          await invalidate(
+            host.caches,
+            { path: '/app/factory-inner.ts', kind: 'change' },
+            host,
+          )
+        }
+      },
+      plan() {},
+    }
+    const planners = [toySummaryPlanner(), flipping]
+    const out = await host.compile('/app/consumer.ts', planners)
+    expect(flips).toBe(3)
+    expect(out!.code).toContain('export const run')
+    expect(out!.diagnostics).toContainEqual(
+      expect.objectContaining({
+        severity: 'warning',
+        code: 'compile-overtaken',
+      }),
+    )
+    const cache = host.caches.plans.get('client')!
+    expect(cache.get(key)).toBeNull()
+    expect(cache.dependents.stats().entries).toBe(0)
+    // the next request compiles and publishes as usual
+    const next = await host.compile('/app/consumer.ts', planners)
+    expect(next!.diagnostics).toEqual([])
+    expect(cache.get(key)).not.toBeNull()
+  })
+
+  it('(o) discards the attempt ledger when a planner throws', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/consumer.ts': CONSUMER,
+        '/app/factory-inner.ts': FACTORY('createServerOnlyFn'),
+      },
+      recognizer: RECOGNIZER,
+    })
+    const boom: Planner = {
+      name: 'toy-boom',
+      tier: 1,
+      gate: () => true,
+      plan() {
+        throw new Error('boom')
+      },
+    }
+    await expect(
+      host.compile('/app/consumer.ts', [toySummaryPlanner(), boom]),
+    ).rejects.toThrow('boom')
+    const cache = host.caches.plans.get('client')!
+    expect(cache.get(key)).toBeNull()
+    expect(cache.dependents.stats()).toMatchObject({ entries: 0, keys: 0 })
+    expect(cache.inFlight.size).toBe(0)
+  })
+})
+
 describe('slice gates: claims and maps', () => {
   it('(k) a Hydrate boundary inside an erased server-only handler yields no chunk, edge or validation on the client', async () => {
     const code = dedent(`
