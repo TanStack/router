@@ -100,8 +100,9 @@ returned but not published.
   evicts the file's plans in every env, marks its raw facts stale, re-validates dependents' fingerprints with each
   environment's own resolver (add/unlink also retry failed resolutions) and returns `{ evicted, dependents }`, which
   the host hard-invalidates in the bundler. A summary change invalidates importers only when its export-facts digest changed.
-- Not cached (R54): resolutions (each compile records its answers in its ledger and validation asks the
-  environment's resolver again) and emitted outputs (emission from a frozen recipe costs microseconds).
+- Not cached (R54): resolutions (each compile records its answers in its ledger; validation asks the environment's
+  resolver again only once a file appeared or disappeared since the plan's resolutions were validated,
+  `CompilerCaches.fileSetVersion`) and emitted outputs (emission from a frozen recipe costs microseconds).
 - Invariants: no Yuku object is reachable from any cache (`tests/heap.test.ts`); every cache is bounded by the live
   module set; derived outputs are pure functions of (env, source, config, summaries).
 
