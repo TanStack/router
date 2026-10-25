@@ -37,10 +37,12 @@ export interface ManifestResolverOptions {
   providerModuleId: (entry: ServerFnEntry) => string
   /**
    * Only client-referenced functions are HTTP-callable in production (R44):
-   * the client built before the provider (the SSR provider). The RSC
-   * provider builds before the client (plugin-rsc's `buildApp`), so its
-   * manifest lists every server fn of its environment without the check.
-   * Development is permissive (every entry, no check).
+   * the manifest lists only them, so a function only server code references
+   * is "not found" by id (no per-entry flag or runtime check: the filter is
+   * the gate). The client built before the provider (the SSR provider). The
+   * RSC provider builds before the client (plugin-rsc's `buildApp`), so its
+   * manifest lists every server fn of its environment. Rsbuild development
+   * lists every entry.
    */
   clientReferencedOnly: boolean
   /** Import every provider module statically (Rsbuild RSC development). */
@@ -49,7 +51,7 @@ export interface ManifestResolverOptions {
   memoizeModules?: boolean
 }
 
-/** The production manifest: `id → { export, importer, isClientReferenced }` with the origin check. */
+/** The production manifest: `id → { export, importer }` of the HTTP-callable functions. */
 export function productionResolverModule(opts: {
   entries: ReadonlyArray<ServerFnEntry>
   providerModuleId: (entry: ServerFnEntry) => string
@@ -75,22 +77,12 @@ export function manifestResolverModule(opts: ManifestResolverOptions): string {
       const moduleAccess = opts.staticImports
         ? `module: ${moduleRef}`
         : `importer: () => import(${filename})`
-      const clientReferenced = opts.clientReferencedOnly
-        ? `,\n    isClientReferenced: ${e.clientReferenced}`
-        : ''
       return `${JSON.stringify(e.id)}: {
     functionName: ${JSON.stringify(e.exportName)},
-    ${moduleAccess}${clientReferenced}
+    ${moduleAccess}
   }`
     })
     .join(',\n  ')
-  const clientReferencedCheck = opts.clientReferencedOnly
-    ? `
-  if (access.origin === 'client' && !serverFnInfo.isClientReferenced) {
-    throw new Error('Server function not accessible from client: ' + id)
-  }
-`
-    : ''
   // Every import() goes through the ESM loader; a resolved production module
   // can be kept on the manifest entry instead.
   const resolveModule = opts.memoizeModules
@@ -102,12 +94,11 @@ const manifest = {
   ${manifest}
 }
 
-export async function getServerFnById(id, access) {
+export async function getServerFnById(id, _access) {
   const serverFnInfo = manifest[id]
   if (!serverFnInfo) {
     throw new Error('Server function info not found for ' + id)
   }
-${clientReferencedCheck}
   const fnModule = ${resolveModule}
   if (!fnModule) {
     throw new Error('Server function module not resolved for ' + id)
