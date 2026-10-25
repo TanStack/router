@@ -695,7 +695,14 @@ export class StartRsbuildCompilerSession {
       providerModuleId: (e) => this.providerModuleId(e),
       clientReferencedOnly: opts.mode === 'build' && opts.ssrIsProvider,
       warnUnreferenced: opts.mode === 'dev' && opts.ssrIsProvider,
-      staticImports: opts.rsc !== undefined && opts.mode === 'dev',
+      // Rsbuild bundles every provider module: a production manifest imports
+      // them statically (an `import()` of a module the router's async chunk
+      // holds too made Rspack copy it and its imports into the resolver's chunk,
+      // or share them through one more chunk); development keeps `import()`
+      // (handlers are hot-replaced).
+      staticImports:
+        (opts.rsc !== undefined && opts.mode === 'dev') ||
+        (opts.mode === 'build' && opts.ssrIsProvider),
       memoizeModules: opts.mode === 'build',
     })
   }
