@@ -49,17 +49,19 @@ export const Html = Vue.defineComponent({
         }
       }
 
-      const result: Array<Vue.VNode> = []
-
-      if (bodyVnode) {
-        result.push(bodyVnode)
+      if (!hydrated.value || headChildren.length === 0) {
+        return bodyVnode
       }
 
-      if (hydrated.value && headChildren.length > 0) {
-        result.push(Vue.h(Vue.Teleport, { to: 'head' }, headChildren))
+      const head = Vue.h(Vue.Teleport, { to: 'head' }, headChildren)
+      if (bodyVnode?.type !== Body) {
+        return Vue.h(Vue.Fragment, [bodyVnode, head])
       }
 
-      return result.length === 1 ? result[0] : Vue.h(Vue.Fragment, result)
+      const slot = (bodyVnode.children as Vue.Slots | null)?.default
+      return Vue.h(Body, bodyVnode.props, {
+        default: () => [...(slot?.() ?? []), head],
+      })
     }
   },
 })
