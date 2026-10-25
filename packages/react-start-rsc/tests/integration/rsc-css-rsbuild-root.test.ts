@@ -11,7 +11,7 @@ import { appFiles, rows, show } from './rsc-css-rsbuild-app'
 // resolve when the process runs elsewhere (`rsbuild dev --root <app>` from
 // a monorepo root).
 // Impact: the dev server (and build) fails with "Module not found".
-test.fails(
+test(
   'Rsbuild: the app compiles when the process does not run in the app directory',
   async () => {
     const server = await startRscRsbuildDevServer({

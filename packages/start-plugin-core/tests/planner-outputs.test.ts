@@ -507,6 +507,44 @@ export const d = () => renderToReadableStream(/* c */ <X />).then((v) => v)
   })
 })
 
+describe('derived providers of every server fn module (Rsbuild RSC)', () => {
+  // `alwaysDeriveProvider`: the provider module is the rsc layer's own
+  // instance of the file (`?tss-serverfn-split`), so it owns the server fn
+  // declaration with its handler in place and what the handler reads; the
+  // environment's own output keeps the SSR-caller stub
+  test('an exported server fn: the provider owns its declaration', async () => {
+    const files = {
+      '/app/module.tsx': `${head}import { render } from './render'
+import { useState } from 'react'
+export const fn = createServerFn().handler(async () => render())
+export function Page() {
+  const [n] = useState(0)
+  return n
+}
+`,
+      '/app/render.ts': `export const render = () => 'MARK'\n`,
+    }
+    const opts = { alwaysDeriveProvider: true, providerDirective: 'use server-entry' }
+    const env = (await compile(files, 'rsc', '/app/module.tsx', opts))!
+    const provider = (await compile(
+      files,
+      'rsc',
+      '/app/module.tsx?tss-serverfn-split',
+      opts,
+    ))!
+    expect(env.code).toContain('.handler(tsrSsrRpc(')
+    expect(env.code).not.toContain('fn_createServerFn_handler')
+    expect(provider.code).toMatch(/^'use server-entry'/)
+    expect(provider.code).toContain('.handler(fn_createServerFn_handler, async () => render())')
+    expect(provider.code).toContain("import { render } from './render'")
+    expect(provider.code).toContain('export { fn_createServerFn_handler }')
+    expect(provider.code).not.toContain("from './module.tsx")
+    expect(provider.code).not.toContain('useState')
+    const facts = env.facts.planners[START_ENV] as StartEnvFacts
+    expect(facts.serverFns[0]).toMatchObject({ providerDerived: true })
+  })
+})
+
 describe('route modules', () => {
   test('a private server fn of a route module: provider output', async () => {
     const out = (await compile(

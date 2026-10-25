@@ -367,11 +367,9 @@ export function tanStackStartRsbuild(
       //     patching emitted server assets afterwards.
       // ---------------------------------------------------------------
       if (api.context.action !== 'dev') {
-        const normalizedManifestPath = normalizePath(
-          virtualModuleState.manifestPath,
-        )
+        // (read when a module is transformed: the virtual paths need the resolved root)
         const matchesManifestPath = (id: string) =>
-          normalizePath(id) === normalizedManifestPath
+          normalizePath(id) === normalizePath(virtualModuleState.manifestPath)
 
         api.transform(
           {

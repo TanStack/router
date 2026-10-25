@@ -234,7 +234,7 @@ export function describeRscCssRows(mode: 'dev' | 'build') {
     // (rsc-css.test.ts, "two render helpers in one module each carry their
     // component CSS").
     // Source: SPEC J7.1, J7.2 (CSS is delivered wherever the render executes).
-    test.fails(
+    test(
       'a render call in a helper module styles the server component',
       async () => {
         expect(server.errors).toEqual([])

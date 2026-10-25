@@ -479,7 +479,7 @@ export class StartRsbuildCompilerSession {
   ): Promise<LoaderResult> {
     const env = this.env(options.environment)
     const passthrough: LoaderResult = { code: source, map: inputMap }
-    const id = normalizePath(ctx.resource)
+    const id = canonicalResource(ctx.resource)
     const identity = identify(id)
     const late = options.pass === 'late'
     if (late ? identity.lang !== null : identity.lang === null) {
@@ -500,7 +500,11 @@ export class StartRsbuildCompilerSession {
     const layer = ctx._module?.layer ?? undefined
     const rscLayer =
       this.opts.rscLayer !== undefined && layer === this.opts.rscLayer
-    const envInfo = this.envInfo(env, layer)
+    // the RSC layer renders server components: its route modules (the providers' twins of
+    // the SSR route modules) stay unsplit, so the router's lazy wrapper (a React hook in
+    // development) never resolves against the react-server build of React
+    const routerSplit = !rscLayer
+    const envInfo = { ...this.envInfo(env, layer), routerSplit }
     const config = this.configFor(env, rscLayer, layer)
     let parsedInputMap: InputSourceMap | null | undefined
     const readInputMap = (): InputSourceMap | null => {
@@ -727,6 +731,33 @@ function markerImportOf(
   }
   return best ?? { specifier: kind, line: 1 }
 }
+
+/**
+ * A module resource as a compiler id. Rspack's RSC plugin requests a
+ * `'use server-entry'` module's original content under its own query,
+ * appended with a second `?` (`file?tss-serverfn-split?rsc-server-entry-proxy=true`):
+ * the identity parser reads one query, so later `?` become `&`, and that
+ * query names no other source (the same text, the same plan: the server fn
+ * registry must point the resolver at `file?tss-serverfn-split`), so it is
+ * dropped.
+ */
+export function canonicalResource(resource: string): string {
+  const normalized = normalizePath(resource)
+  const q = normalized.indexOf('?')
+  if (q === -1) {
+    return normalized
+  }
+  const query = normalized
+    .slice(q + 1)
+    .replace(/\?/g, '&')
+    .split('&')
+    .filter((part) => part !== '' && !part.startsWith(RSC_PROXY_QUERY))
+    .join('&')
+  return query.length > 0 ? `${normalized.slice(0, q)}?${query}` : normalized.slice(0, q)
+}
+
+/** Rspack's RSC plugin's query on a server entry's original module. */
+const RSC_PROXY_QUERY = 'rsc-server-entry-proxy'
 
 const camelToDash = (name: string): string =>
   name

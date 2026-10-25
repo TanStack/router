@@ -31,7 +31,7 @@ export const Route = createFileRoute('/')({
 // G5 requires positions on errors, not on this warning; wording/channel are free.
 // Rsbuild (the previous compiler) still skips them: its row stays pinned.
 for (const bundler of ['vite', 'rsbuild'] as const) {
-  ;(bundler === 'vite' ? test : test.fails)(
+  test(
     `${bundler} dev warns about the CSS limitation once per source file, naming it`,
     async () => {
       const server = await (
