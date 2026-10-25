@@ -123,9 +123,10 @@ function findTypeOnlyProtectedImportHits(
 }
 
 test.use({
-  // The mock proxy returns undefined-ish values, which may cause
-  // React rendering warnings — whitelist those
-  whitelistErrors: [/mock/i, /Cannot read properties/i, /undefined/i],
+  // Mock mode: calling a mock logs the `mockAccess` runtime diagnostic in
+  // dev and production. (A list whose second item is an object would be
+  // read by Playwright as a `[value, options]` fixture tuple.)
+  whitelistErrors: [/^Error: \[import-protection\] Mocked import used/],
 })
 
 test.beforeEach(({}, testInfo) => {
