@@ -216,7 +216,7 @@ export const Route = createFileRoute('/')({
   component: App,
 })
 
-const App = () => {
+function App() {
   const jokes = Route.useLoaderData() || []
 
   return (
