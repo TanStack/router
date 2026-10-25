@@ -193,14 +193,17 @@ describe.each(startBundlers)('%s build', (bundler) => {
       }
     }
 
-    ;(fails.build.control ? test.fails : test)(
+    // (Rsbuild builds judge edges in the plan: nothing is pinned there)
+    const buildFails =
+      bundler === 'rsbuild' ? { exempt: false, control: false } : fails.build
+    ;(buildFails.control ? test.fails : test)(
       'an importer that is not exempt gets the mock and is reported',
       async () => {
         expectOtherGetsMock(await outcome())
       },
       timeout,
     )
-    ;(fails.build.exempt ? test.fails : test)(
+    ;(buildFails.exempt ? test.fails : test)(
       'the exempt importer gets the real module, and is not reported',
       async () => {
         expectExemptGetsRealModule(await outcome())

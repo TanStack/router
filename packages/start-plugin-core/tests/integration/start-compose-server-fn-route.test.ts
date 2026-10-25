@@ -177,7 +177,7 @@ describe.each(startBundlers)('%s production build, served', (bundler) => {
   // is initialised once and shares its state with SSR code": the SSR bundle
   // holds the route module twice (the SSR module and the server fn provider
   // module of the same file), so its top-level code runs twice.
-  ;(bundler === 'vite' ? test : test.fails)(
+  test(
     'the server runs the route module once',
     async () => {
       const { result } = await build.ssr.run(

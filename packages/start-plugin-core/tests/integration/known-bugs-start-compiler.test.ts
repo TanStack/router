@@ -161,7 +161,7 @@ export const fn = createServerFn().handler(async () => auth.get() as Session)
   // twice, handlers and SSR code of the file see different module state, and
   // `instanceof` fails for a class of the file passed to a server fn.
   // Source: PR #8656 (class identity).
-  ;(bundler === 'vite' ? test : test.fails)(
+  test(
     'SSR: a server fn module is initialised once and shares its state with SSR code',
     async () => {
       const { ssr } = await buildStart({
@@ -310,7 +310,7 @@ export { default } from '@tanstack/react-start/server-entry'
   // On Vite, when the SSR build loses the #7213 race (below), the server fn
   // is missing from the resolver: the call from SSR code fails too, so the
   // pin stays red (for #7213) and cannot pass by the missing server fn.
-  ;(bundler === 'vite' ? test : test.fails)(
+  test(
     'SSR: a server fn only server code references is not callable over HTTP',
     async () => {
       expect(await callClientAccess()).toEqual({
@@ -449,7 +449,7 @@ export function createLoggedServerFn(handler) {
 import { db } from './db'
 export const fn = createLoggedServerFn(async () => db.secret())
 `
-  ;(bundler === 'vite' ? test : test.fails)(
+  test(
     'a server fn created by a library function: the handler is not in the client bundle, or the build fails clearly',
     async () => {
       const outcome = await buildStart({
@@ -565,7 +565,7 @@ export const libFn = createServerFn().handler(async () => 'MARK_LIB_HANDLER')
   // `PackagePathNotExported(".")` (start-compiler-host.ts `resolveId`).
   // Impact: an app with a middleware and an isomorphic fn in one module
   // does not build with Rsbuild.
-  ;(bundler === 'rsbuild' ? test.fails : test)(
+  test(
     'a module with a middleware and an isomorphic fn builds, and its middleware runs on the server',
     async () => {
       const { client, ssr } = await buildStart({
@@ -619,7 +619,8 @@ ${callByIdExports}`,
   // code imports it, or SSR code with `noExternal`; Rsbuild: client or SSR).
   // SPEC J4.16. These apps replace the in-process compiler pin of this
   // name.
-  test.fails(
+  // (Rsbuild compiles only modules whose plan needs it; Vite's row stays pinned)
+  ;(bundler === 'rsbuild' ? test : test.fails)(
     'a CommonJS dependency with a top-level return builds and keeps its meaning',
     async () => {
       const { client, ssr } = await buildStart({
@@ -640,7 +641,7 @@ describe('rsbuild dev', () => {
   // same package without the `.handler(` text, and the page runs it.
   // Impact: the dev server fails to compile an app with such a dependency.
   // Source: as the build pin above.
-  test.fails(
+  test(
     'a CommonJS dependency with a top-level return compiles and keeps its meaning',
     async () => {
       const server = await startRsbuildStartDevServer({

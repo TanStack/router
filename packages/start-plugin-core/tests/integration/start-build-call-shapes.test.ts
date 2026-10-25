@@ -516,7 +516,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // Source: #8630 pins; SPEC J4.5, J4.6, J4.12.
   // Impact: the server implementation and its server-only module ship in
   // the client bundle and run in the browser.
-  ;(bundler === 'vite' ? test : test.fails).each(
+  test.each(
     shapes.filter(
       (shape) =>
         !recognisedForms.includes(shape.slug) &&
@@ -566,7 +566,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // Impact: the server-only implementation and its server-only module ship
   // in the client bundle and run in the browser; the client-only one runs
   // during SSR.
-  ;(bundler === 'vite' ? test : test.fails).each(
+  test.each(
     shapes.filter((shape) => pinnedForms.includes(shape.slug)),
   )(
     '$name are recognised: the client bundle holds no server code and the shape works',
@@ -588,7 +588,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // Source: TanStack/router#8446. The outcome (SPEC J4.1, J4.2, G5): the
   // server fn works, or the build fails with an error naming the file (a
   // warning alone does not count in a build).
-  ;(bundler === 'vite' ? test : test.fails).each(
+  test.each(
     shapes.filter((shape) => envFnHandlers.includes(shape.slug)),
   )(
     '$name: the server fn works, or the build fails naming the file',

@@ -106,7 +106,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // Impact: a denied module that a client-reachable module imports, but that
   // the client never uses, still fails the build.
   // Source: issue #8101 (closed without a reproduction).
-  test.fails(
+  ;(bundler === 'rsbuild' ? test : test.fails)(
     'a denied module the client bundle drops does not fail the build',
     async () => {
       const { client } = await buildStart({
@@ -133,7 +133,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // bundle; not by comparing the bundle's statements with another build's.
   // The live-denial controls show the same harness sees a used mock: its
   // report, its safe value, and the real value without protection.
-  test.fails(
+  ;(bundler === 'rsbuild' ? test : test.fails)(
     'in mock mode, an unused denied module leaves nothing in the client bundle and no warning',
     async () => {
       // (one build at a time: a Vite build runs in its app's directory)
@@ -193,8 +193,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // Impact: the real module ships to the client in a lazy chunk and runs
   // there, without any error or warning.
   // Source: mutation testing.
-  const dynamicImportTest = bundler === 'rsbuild' ? test.fails : test
-  dynamicImportTest(
+  test(
     'a client dynamic import of a denied specifier fails the build, reporting one client violation',
     async () => {
       const error = await rejection(
@@ -262,7 +261,7 @@ return describeValue(entry.read(), 'MARK_SECRET')`)
   // Impact: a mock-mode build ships the real content of a denied
   // `*.server.json` (e.g. server configuration or credentials) to the client.
   // Source: mutation testing.
-  test.fails(
+  ;(bundler === 'rsbuild' ? test : test.fails)(
     'in mock mode, a denied .server.json file is mocked, with a warning',
     async () => {
       expect(
@@ -287,7 +286,7 @@ const secret = data.secret`,
   // Impact: a mock-mode build of a project with a `*.server.cjs` the client
   // imports fails instead of mocking it.
   // Source: mutation testing.
-  test.fails(
+  ;(bundler === 'rsbuild' ? test : test.fails)(
     'in mock mode, a denied .server.cjs file is mocked, with a warning',
     async () => {
       expect(

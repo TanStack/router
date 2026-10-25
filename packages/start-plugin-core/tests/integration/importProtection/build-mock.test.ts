@@ -250,7 +250,7 @@ export const secret = () => 'MARK_SECRET'
   // Source: review (the rows above demanded silence with the default); the
   // server rows: SPEC J6.3 (mock mode always logs: client and server, dev
   // and build).
-  test.fails.each(
+  ;(bundler === 'rsbuild' ? test : test.fails).each(
     (
       [
         { mockAccess: undefined, severity: 'error' },
@@ -414,7 +414,7 @@ return describeValue(entry.v, 'MARK_SECRET')`)
   // it throws instead of reaching a mock.
   // Source: SPEC J6.8, the build row of the dev pin in
   // known-bugs-dev-server.test.ts.
-  ;(bundler === 'rsbuild' ? test.fails : test)(
+  test(
     'a name re-exported with `export *` from a denied specifier is a safe mock, or the build fails',
     () => expectStarReexportMockedOrBuildFails(starApp('a denied specifier')),
     timeout,

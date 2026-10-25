@@ -534,7 +534,7 @@ export const read = () => button()
   // Source: rsbuild/import-protection.ts resolveImporterLocation
   // (transformedSources lookup); mutation testing.
   // Impact: low; the code frame's caret points at the wrong column.
-  test.fails(
+  test(
     'the file rule denies the module it resolves to: the importer is reported at the import or the use',
     async () => {
       expect(reportedViolations(await fileRuleDenied())).toEqual([
@@ -573,7 +573,7 @@ export const read = () => button()
   // (`matchesAny(source, matchers.specifiers)` on the post-SWC imports).
   // Impact: a client.specifiers rule on a library the app also lists in
   // source.transformImport is silently bypassed.
-  test.fails(
+  test(
     'denied as written, the build fails on it, reporting the importer at the import or the use',
     async () => {
       expect(

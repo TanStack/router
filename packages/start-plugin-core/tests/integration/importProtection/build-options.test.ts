@@ -368,7 +368,7 @@ export const secret = () => 'MARK_SECRET'
     // Impact: on Rsbuild, a project cannot opt in to checking the
     // server-only markers of its dependencies.
     // Source: review (this row ran on Vite only; the docs decide).
-    ;(bundler === 'rsbuild' ? test.fails : test)(
+    test(
       '[] checks the markers of dependencies: a server-only-marked dependency fails the build',
       async () => {
         const error = await rejection(

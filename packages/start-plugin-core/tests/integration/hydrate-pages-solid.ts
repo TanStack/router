@@ -365,7 +365,7 @@ export function solidPageSuite(bundler: StartBundler) {
     // hydrates, and stay the server's HTML.
     // (A directive runs on the client only: its attribute shows that the
     // children hydrated.)
-    test.fails.each([
+    ;(bundler === 'rsbuild' ? test : test.fails).each([
       { where: 'module', fixture: 'directiveModule' },
       { where: 'component', fixture: 'directiveComponent' },
     ])(
@@ -398,7 +398,7 @@ export function solidPageSuite(bundler: StartBundler) {
       // boundary like a named import. On main it is left unsplit (it hydrates:
       // "namespace-imported Start.Hydrate boundaries" above), so the click
       // loads nothing.
-      test.fails(
+      ;(bundler === 'rsbuild' ? test : test.fails)(
         'a namespace-imported Start.Hydrate loads its children when it hydrates',
         async () => {
           const page = await app.hydrate('namespaceGated', {
@@ -526,7 +526,7 @@ export function solidPageSuite(bundler: StartBundler) {
     // SPEC J5.8 (extraction keeps legal `ref` behaviour).
     // Impact: silently, the parent never sees the element (`input` stays
     // `undefined`): focusing or reading it does nothing.
-    test.fails(
+    ;(bundler === 'rsbuild' ? test : test.fails)(
       'a ref in split children binds the let of their component',
       async () => {
         const script = `const counter = () => root.querySelector('button[data-label="child"]')
@@ -557,7 +557,7 @@ return root.querySelector('output').textContent`
     // Found with a context declared in the page module.
     // Impact: split children of a Solid page read another context than the
     // one their parent provides (here its default value).
-    test.fails(
+    ;(bundler === 'rsbuild' ? test : test.fails)(
       'split children read a context declared in the page module',
       async () => {
         const page = await app.hydrate('localContext')

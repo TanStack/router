@@ -116,7 +116,7 @@ describe.each(startBundlers)(
     // Vite builds the module of a marker violation into the bundle either
     // way (see the mock-mode pin above).
     const pinned: Array<DeniedModule> =
-      bundler === 'vite' ? ['a denied file'] : deniedModuleNames
+      bundler === 'vite' ? ['a denied file'] : []
     const passing = deniedModuleNames.filter(
       (denied) => !pinned.includes(denied),
     )
@@ -232,7 +232,7 @@ describe.each(startBundlers)('%s build, server-only marker', (bundler) => {
   // user looks at code the project ignores on purpose, and the real
   // importer is not named.
   // Source: review.
-  ;(bundler === 'rsbuild' ? test.fails : test)(
+  test(
     'imported by an ignored importer and, further from the entry, another importer: the violation blames the other importer',
     async () => {
       const seen: Array<ViolationInfo> = []
@@ -304,7 +304,7 @@ describe.each(startBundlers)('%s build, server-only marker', (bundler) => {
   // error mode the build fails.
   // Impact: code a project exempts on purpose silently gets a mock instead
   // of the module it imports.
-  test.fails(
+  ;(bundler === 'rsbuild' ? test : test.fails)(
     'imported only by an ignored importer: the ignored importer gets the real module',
     async () => {
       expect(
@@ -341,7 +341,7 @@ describe.each(startBundlers)('%s build, server-only marker', (bundler) => {
   // Impact: exemptions either stop working (Rsbuild) or leak the denied real
   // value to the importer that is not exempt (Vite).
   // Blame is read from onViolation/trace: marker-origin display is allowed.
-  test.fails(
+  ;(bundler === 'rsbuild' ? test : test.fails)(
     'in mock mode, an ignored importer gets the real module, another importer a safe mock, and only the other importer is reported',
     async () => {
       for (const entry of [

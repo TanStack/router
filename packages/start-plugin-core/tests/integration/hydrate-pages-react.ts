@@ -919,7 +919,7 @@ return [button('outer').textContent, button('inner').textContent]`,
       // HTML: "namespace-imported Start.Hydrate boundaries" above), so the
       // click loads nothing.
       // Replaces the in-process goal of known-bugs-hydrate.test.ts.
-      test.fails(
+      ;(bundler === 'rsbuild' ? test : test.fails)(
         'a namespace-imported Start.Hydrate loads its children when it hydrates',
         async () => {
           const page = await app.hydrate('namespaceGated', {

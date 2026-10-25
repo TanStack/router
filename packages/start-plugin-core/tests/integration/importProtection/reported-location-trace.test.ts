@@ -350,7 +350,11 @@ describe('the trace locates each import on its line after compiling moved it', (
 
   test.each([
     ...movedImportRows('rsbuild', true, Object.keys(movedImports)),
-    ...movedImportRows('rsbuild', false, ['a leading comment']),
+    ...movedImportRows('rsbuild', false, [
+      'a leading comment',
+      'a blank line',
+      'a type-only import',
+    ]),
   ])(
     '$build: after $name',
     async (row) => {
@@ -372,10 +376,6 @@ describe('the trace locates each import on its line after compiling moved it', (
   // Source: mutation testing.
   test.fails.each([
     ...movedImportRows('vite', false, Object.keys(movedImports)),
-    ...movedImportRows('rsbuild', false, [
-      'a blank line',
-      'a type-only import',
-    ]),
   ])(
     '$build: after $name',
     async (row) => {

@@ -602,7 +602,7 @@ export const read = () => [Color.Red, Util.x]
     // file has no `helpers`.
     // Impact: a mock-mode build fails [Vite MISSING_EXPORT, Rspack
     // ESModulesLinkingError 'helpers']. Vite dev passes.
-    'a denied file re-exporting a namespace': ['vite build', 'rsbuild build'],
+    'a denied file re-exporting a namespace': ['vite build'],
     // Bug: mock modules declare each mocked name as `export const <name>`,
     // and reserved words such as `delete` pass the identifier check
     // (`isValidExportName`, import-protection/analysis.ts); `eval` and
@@ -612,12 +612,10 @@ export const read = () => [Color.Red, Util.x]
     'a denied file exporting `delete`, used as `api.delete()`': [
       'vite dev',
       'vite build',
-      'rsbuild build',
     ],
     'a denied file exporting `eval` and `arguments`': [
       'vite dev',
       'vite build',
-      'rsbuild build',
     ],
     // Bug: namespace member reads are collected only after the import
     // declaration that binds the namespace, but imports are hoisted: a
@@ -654,7 +652,6 @@ export const read = () => [Color.Red, Util.x]
     // Impact: server-only values declared as enum members reach the client
     // bundle in mock mode (`behavior: { build: 'mock' }`), with only a
     // warning.
-    'a denied file exporting an enum and a namespace': ['rsbuild build'],
   }
 
   const twinTest = (channel: string, name: string) =>

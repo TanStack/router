@@ -414,7 +414,9 @@ export function hydrateBuildSuite(bundler: StartBundler) {
     // needed by extracted virtual modules".
     // Impact: the initializer's side effects run twice, and the children use
     // another instance than the module exports (e.g. another store).
-    test.fails(
+    // (Rsbuild: the Hydrate planner extracts the export into its own module, one instance;
+    // Vite still runs the interim Babel Hydrate transform)
+    ;(bundler === 'rsbuild' ? test : test.fails)(
       'an export only the children use, initialized by a call, is initialized once and hydrates',
       async () => {
         const build = await sharedApp()
