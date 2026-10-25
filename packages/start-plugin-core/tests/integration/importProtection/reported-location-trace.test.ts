@@ -229,31 +229,23 @@ test(
   timeout,
 )
 
-// Bug (Rsbuild): the trace stops at an entry only when it finds no importer
-// of the module: in a production build the entry module is a concatenated
-// module (scope hoisting), which has no `resourceResolveData`, so the
-// Rsbuild adapter registers it by its identifier, the loader request, read
-// as the path of the first loader (rsbuild/import-protection.ts
-// `addEntryModulesToGraph` → `getModuleResource`), and no module of the
-// graph is a registered entry. When a module imports the entry back, the
-// trace search finds no root, and the trace is the importer alone, tagged
-// as the entry. (A scratch registration of the concatenated module's
-// `rootModule` passes this pin.)
-// Impact: an Rsbuild build reports such a violation with a one-step trace
-// (low: diagnostics only, and an import of the app's entry is rare). Vite is
-// right.
-// Source: mutation testing (removing that registration changes nothing
-// while it registers the wrong path).
+// The trace stops at an entry. In a production build the entry module is a
+// concatenated module (scope hoisting) without a `resource` of its own; the
+// Rsbuild graph view reads the entry's resource from its root module
+// (import-protection/witness.ts `rspackGraphView`). When a module imports the
+// entry back, the search still finds that root.
 describe.each(startBundlers)('%s build', (bundler) => {
-  const entryBackTest = bundler === 'rsbuild' ? test.fails : test
-  entryBackTest(
+  test(
     'the trace starts at the entry when a module imports the entry back',
     async () => {
       const { importer, trace } = await buildReport(bundler, {
         ...leakingB,
-        // The app's client entry (Start's default `src/client.tsx`)
+        // The app's client entry (Start's default `src/client.tsx`); it
+        // calls `start` itself: Rspack drops an entry's unused exports
+        // (no library), and a dropped chain is no violation
         'src/client.tsx': `import { page } from './a'
 export const start = () => page()
+start()
 `,
         'src/back.ts': `import * as app from './client'\nexport const back = app\n`,
         'src/a.ts': `import { leak } from './b'
