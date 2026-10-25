@@ -142,6 +142,21 @@ describe('function-local declarators only erased code read', () => {
 })
 
 describe('function-level call initialisers (hook calls)', () => {
+  // A plain call reading only imports nothing else reads is server-only
+  // code: it leaves with its import (J4.12).
+  it('drops a server call whose imports only it reads, with the import', async () => {
+    expect(
+      await client(`
+        import { wrapServer } from 'toy-start'
+        import { connect } from './db'
+        export function f() {
+          const conn = connect()
+          return wrapServer(() => conn)
+        }
+      `),
+    ).toBe('export function f() {\n    return tsrStub()\n}\n')
+  })
+
   // A hook call must keep running (hook order is the same on both sides)
   // even when the import it reads has no other live reference: the call
   // and its import stay.

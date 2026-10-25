@@ -7,7 +7,7 @@
  * Module-level declarations, imports and their provenance are placement's
  * (`reach.ts`).
  */
-import { bindingIdentifiers } from 'yuku'
+import { bindingIdentifiers, walk } from 'yuku'
 import { extendOverTrailingLine } from './header'
 import { isPureExpression } from './purity'
 import type { Node } from 'yuku'
@@ -183,14 +183,13 @@ function removeDeclarator(
   if (!statement || statement.type !== 'VariableDeclaration') {
     return false
   }
-  // an impure initialiser at function level stays as a statement whatever it
-  // reads: a hook call must keep running (hook order equal on both sides),
-  // and the import it reads stays with it
   const moduleLevel = !ctx.t1.isLazyAt(declarator.start)
   const effectsGo =
     declarator.init === null ||
     isPureExpression(ctx.analysis.purity, declarator.init) ||
-    moduleLevel
+    moduleLevel ||
+    (!callsHook(declarator.init) &&
+      initReadsOnlyOrphanedImports(ctx, declarator.init, live))
   if (statement.declarations.length === 1) {
     if (!isStatementPosition(file.parentOf(statement))) {
       return false
@@ -413,6 +412,69 @@ function removePatternProperties(
     }
     i = j
   }
+}
+
+/**
+ * Whether an impure initialiser is server-only code the removal documents
+ * (J4.12): it reads at least one import, and every import it reads has no
+ * other live reference (the import leaves with it). Otherwise its effects
+ * are kept as a statement (a call next to a removed implementation).
+ */
+function initReadsOnlyOrphanedImports(
+  ctx: PlanContext,
+  init: Node,
+  live: LivenessView,
+): boolean {
+  const { t1, symbols } = ctx
+  const range = rangeOf(init)
+  let imports = 0
+  for (const r of t1.refs.refsIn(range)) {
+    if (!symbols.isImport(r.sym)) {
+      continue
+    }
+    imports++
+    const others = t1.refs
+      .valueRefsOf(r.sym)
+      .filter(
+        (o) => !(o.range.start >= range.start && o.range.end <= range.end),
+      )
+    if (others.some((o) => live.live(o))) {
+      return false
+    }
+  }
+  return imports > 0
+}
+
+const HOOK_NAME = /^use[A-Z0-9_]/
+
+/**
+ * Whether an initialiser calls a hook (`useX(...)`, `ns.useX(...)`): a hook
+ * call is never dropped, whatever it reads, so the hook order stays equal on
+ * both sides (the call stays as a statement with its import).
+ */
+function callsHook(init: Node): boolean {
+  let found = false
+  walk(init, {
+    enter: (n, wctx) => {
+      if (n.type !== 'CallExpression') {
+        return
+      }
+      const callee = n.callee
+      const name =
+        callee.type === 'Identifier'
+          ? callee.name
+          : callee.type === 'MemberExpression' &&
+              !callee.computed &&
+              callee.property.type === 'Identifier'
+            ? callee.property.name
+            : null
+      if (name !== null && HOOK_NAME.test(name)) {
+        found = true
+        wctx.stop()
+      }
+    },
+  })
+  return found
 }
 
 /**
