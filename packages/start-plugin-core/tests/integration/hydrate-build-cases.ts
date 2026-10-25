@@ -363,8 +363,10 @@ export function hydrateBuildSuite(bundler: StartBundler) {
 
     // The client parent declares the lazy component of each boundary with a
     // call marked pure, so the children of an unused exported component do
-    // not ship. Source: fuzzing. (Rsbuild, still on the previous compiler:
-    // the call is not marked pure, so the chunk ships.)
+    // not ship. Source: fuzzing. (Rsbuild: Rspack's inner graph drops the
+    // unused declaration (`/* unused pure expression */ null && (…)`) but
+    // still emits the async chunk of the `import()` inside it, so the chunk
+    // file ships, unreferenced; webpack behaves the same.)
     ;(bundler === 'rsbuild' ? test.fails : test)(
       'an unused exported component with a boundary is not in the client',
       async () => {
