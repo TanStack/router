@@ -91,6 +91,8 @@ export function createRsbuildRouteGenerator(opts: {
           ...(opts.startPluginOpts.prerender?.enabled === true
             ? [prerenderRoutesPlugin()]
             : []),
+          // (the app's own generator plugins run too, #7768)
+          ...(startConfig.router.plugins ?? []),
         ],
       },
       root,

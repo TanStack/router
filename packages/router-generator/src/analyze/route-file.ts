@@ -206,6 +206,33 @@ function classifyCallee(
   return { kind: 'foreign' }
 }
 
+/** A callee as written (`createFileRoute`, `R.createFileRoute`). */
+function calleeName(callee: Node): string {
+  if (callee.type === 'Identifier') {
+    return (callee as { name: string }).name
+  }
+  if (callee.type === 'MemberExpression') {
+    const { object, property } = callee as unknown as {
+      object: Node
+      property: Node
+    }
+    return `${calleeName(object)}.${calleeName(property)}`
+  }
+  return 'its constructor'
+}
+
+/** Whether `callee` is bound to an `import type` (or `import { type … }`). */
+function isTypeOnlyImport(file: SourceFile, callee: Node) {
+  const object =
+    callee.type === 'MemberExpression'
+      ? (callee as unknown as { object: Node }).object
+      : callee
+  return (
+    object.type === 'Identifier' &&
+    file.referenceOf(object)?.binding?.import?.typeOnly === true
+  )
+}
+
 /** The start of the first statement after the directive prologue. */
 function headerInsertOffset(file: SourceFile) {
   for (const statement of file.program.body) {
@@ -321,12 +348,19 @@ export function analyzeRouteFile(
     const inner = innerCallee.type === 'CallExpression' ? innerCallee : outer
     const idArg = inner.arguments[0]
     if (isStringLiteral(idArg) && idArg.value !== expected.routeId) {
+      const reason =
+        inner === outer
+          ? // `createFileRoute('/id')` without the options call
+            `calls ${calleeName(innerCallee)}(${JSON.stringify(idArg.value)}) without route options (\`${calleeName(innerCallee)}(${JSON.stringify(expected.routeId)})({ ... })\`)`
+          : isTypeOnlyImport(file, unwrap(inner.callee))
+            ? `uses ${calleeName(unwrap(inner.callee))}, imported as a type only`
+            : `is not created by createFileRoute/createLazyFileRoute of ${expected.routerPackage}`
       return notOurs([
         diagnosticAt(
           file,
           idArg.start,
           'warning',
-          `The Route of ${filePath} is not created by createFileRoute/createLazyFileRoute of ${expected.routerPackage}: its route id ${JSON.stringify(idArg.value)} is not updated to ${JSON.stringify(expected.routeId)}.`,
+          `The Route of ${filePath} ${reason}: its route id ${JSON.stringify(idArg.value)} is not updated to ${JSON.stringify(expected.routeId)}.`,
         ),
       ])
     }

@@ -3,7 +3,7 @@
  * the code splitter, the route tree) have their effect in real builds,
  * through Start's Vite and Rsbuild plugins (build-harness.ts).
  */
-import { writeFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import ts from 'typescript'
 import { describe, expect, test } from 'vitest'
@@ -317,6 +317,118 @@ export const getRouter = async () =>
       expect(
         typeCheck(ssr.root, ['src/routeTree.gen.ts', 'src/check.ts']),
       ).toEqual([])
+    },
+    timeout,
+  )
+
+  // Bug: Start's footer of the route tree (its Register augmentation) is
+  // printed with single quotes and no semicolons whatever router.quoteStyle
+  // and router.semicolons say, so the route tree mixes both styles.
+  // Source: src/start-router-plugin/route-tree-footer.ts (hardcoded quotes).
+  // Impact: a project formatting with double quotes and semicolons gets a
+  // route tree its formatter or linter rewrites (#8437's footer churn).
+  test(
+    'the route tree, Start footer included, follows router.quoteStyle and router.semicolons',
+    async () => {
+      const { ssr } = await buildStart({
+        bundler,
+        files: {
+          'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute()
+`,
+          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({ component: () => null })
+`,
+          'src/router.ts': `import { createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+export const getRouter = async () => createRouter({ routeTree })
+`,
+          'src/start.ts': `export const startInstance = { getOptions: async () => ({}) }
+`,
+        },
+        entry: 'src/router.ts',
+        start: { router: { quoteStyle: 'double', semicolons: true } },
+      })
+      const code = await readFile(
+        path.join(ssr.root, 'src/routeTree.gen.ts'),
+        'utf8',
+      )
+      const source = ts.createSourceFile(
+        'routeTree.gen.ts',
+        code,
+        ts.ScriptTarget.Latest,
+        true,
+      )
+      // The quotes of the string literals without quote characters in them,
+      // and the import and variable statements (which end with `;`)
+      const quotes = new Set<string>()
+      const statements: Array<string> = []
+      const visit = (node: ts.Node) => {
+        if (ts.isStringLiteral(node) && !/["']/.test(node.text)) {
+          quotes.add(node.getText(source)[0]!)
+        }
+        if (ts.isImportDeclaration(node) || ts.isVariableStatement(node)) {
+          statements.push(node.getText(source))
+        }
+        ts.forEachChild(node, visit)
+      }
+      visit(source)
+      expect([...quotes]).toEqual(['"'])
+      expect(statements.length).toBeGreaterThan(0)
+      expect(statements.filter((text) => !text.endsWith(';'))).toEqual([])
+    },
+    timeout,
+  )
+
+  // Bug: generator plugins given as router.plugins never run: Start's own
+  // generator plugins replace them.
+  // Source: src/vite/start-router-plugin/plugin.ts, src/rsbuild/
+  // router-generator.ts (`plugins` set after the user's router options).
+  // Impact: #7768: a generator plugin works with the router plugin but is
+  // silently ignored in a Start app.
+  test(
+    'generator plugins of router.plugins see the route tree',
+    async () => {
+      const seen = new Set<string>()
+      const { ssr } = await buildStart({
+        bundler,
+        files: {
+          'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute()
+`,
+          'src/routes/about.tsx': `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/about')({ component: () => 'MARK_ABOUT' })
+`,
+          'src/entry.ts': `import { createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+export const getRouter = () => createRouter({ routeTree })
+`,
+        },
+        entry: 'src/entry.ts',
+        start: {
+          router: {
+            plugins: [
+              {
+                name: 'probe',
+                onRouteTreeChanged: ({ model }) => {
+                  for (const route of model.routes) {
+                    seen.add(route.id)
+                  }
+                },
+              },
+            ],
+          },
+        },
+      })
+      // (the routes of the app's route tree, which Start's own generator
+      // plugins still make)
+      const routeIds = (
+        await ssr.run(`return Object.keys(entry.getRouter().routesById)`)
+      ).result as Array<string>
+      expect(routeIds).toContain('/about')
+      expect([...seen].sort()).toEqual(
+        routeIds.filter((id) => id !== '__root__').sort(),
+      )
     },
     timeout,
   )

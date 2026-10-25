@@ -521,6 +521,8 @@ function ownersLast(routes: Array<ModelRoute>) {
  * The error names the files.
  */
 export function checkRouteFullPathUniqueness(model: TreeModel) {
+  checkRouteIdUniqueness(model)
+
   const routes = model.routes.filter(
     (route) =>
       route.children.length === 0 && route.kind !== 'lazy' && !route.isNonPath,
@@ -554,6 +556,33 @@ Conflicting files: \n ${emptyPathRoutes.map(fileOf).join('\n ')}\n`,
         .join(', ')}.
 Please ensure each Route has a unique full path.
 Conflicting files: \n ${conflicting.map(fileOf).join('\n ')}\n`,
+    )
+  }
+}
+
+/**
+ * Two routes with one id (`posts.tsx` and `posts/route.tsx` once a child
+ * route nests under one of them) are an error naming their files: the
+ * router would reject the tree at startup without naming any (SPEC J1.7).
+ */
+function checkRouteIdUniqueness(model: TreeModel) {
+  const byId = new Map<string, Array<ModelRoute>>()
+  for (const route of model.routes) {
+    const list = byId.get(route.id) ?? []
+    list.push(route)
+    byId.set(route.id, list)
+  }
+  const duplicates = [...byId].filter(([, list]) => list.length > 1)
+  if (duplicates.length) {
+    throw new Error(
+      `Several route files were found for the route${duplicates.length > 1 ? 's' : ''} ${duplicates
+        .map(([id]) => `"${id}"`)
+        .join(', ')}. Please keep one route file per route.
+Conflicting files: \n ${duplicates
+        .flatMap(([, list]) =>
+          list.map((route) => path.normalize(route.file ?? route.routePath)),
+        )
+        .join('\n ')}\n`,
     )
   }
 }
