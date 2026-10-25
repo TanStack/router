@@ -2,7 +2,7 @@
 name: router-plugin
 description: >-
   TanStack Router bundler plugin for route generation and automatic
-  code splitting. Supports Vite, Webpack, Rspack, and esbuild.
+  code splitting. Supports Vite, Webpack, Rspack, and esbuild (route generation only).
   Configures autoCodeSplitting, routesDirectory, target framework,
   and code split groupings.
 metadata:
@@ -91,11 +91,12 @@ esbuild.build({
   plugins: [
     tanstackRouter({
       target: 'react',
-      autoCodeSplitting: true,
     }),
   ],
 })
 ```
+
+With esbuild the plugin generates the route tree only: `autoCodeSplitting: true` throws an error.
 
 ## Configuration Options
 
