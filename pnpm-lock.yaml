@@ -362,12 +362,21 @@ importers:
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../packages/react-start
+      '@tanstack/solid-router':
+        specifier: workspace:^
+        version: link:../../packages/solid-router
+      '@tanstack/solid-start':
+        specifier: workspace:*
+        version: link:../../packages/solid-start
       react:
         specifier: ^19.2.3
         version: 19.2.3
       react-dom:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
+      solid-js:
+        specifier: 1.9.12
+        version: 1.9.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.63.0
@@ -393,6 +402,9 @@ importers:
       vite:
         specifier: ^8.3.4
         version: 8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
+      vite-plugin-solid:
+        specifier: ^2.11.11
+        version: 2.11.11(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
 
   benchmarks/memory/client:
     dependencies:
