@@ -4,9 +4,9 @@
  * validation, and the dependents index. Only plain data is retained.
  */
 import { identify, planKeyString } from './identity'
+import { approxBytes, cacheDisabled } from './stats'
 import type { PlanKey } from './identity'
 import type { EmitPlan } from './plan'
-import { approxBytes, cacheDisabled } from './stats'
 import type { Emitted } from './emit'
 import type { TargetFacts } from './facts'
 

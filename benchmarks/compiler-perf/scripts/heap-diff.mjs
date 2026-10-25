@@ -188,6 +188,13 @@ function retainers(s) {
   queue[tail++] = 0
   while (head < tail) {
     const i = queue[head++]
+    // what only the snapshot's own call stack holds is no retention
+    if (
+      typeOf(s, i) === 'synthetic' &&
+      /Stack roots|Handle scope/.test(nameOf(s, i))
+    ) {
+      continue
+    }
     for (let e = s.firstEdge[i]; e < s.firstEdge[i + 1]; e += s.E) {
       const type = s.edgeTypes[s.edges[e + s.eType]]
       if (type === 'weak' || type === 'shortcut') {
@@ -225,6 +232,55 @@ function pathOf(s, tree, i, max = 14) {
   return parts.reverse().join(' ← ').slice(0, 1200)
 }
 
+/** Self size of every reachable object of a snapshot, by owner of its retaining path. */
+function ownerTotals(s) {
+  const tree = retainers(s)
+  const scriptCache = new Map()
+  const cache = new Map()
+  const totals = new Map()
+  const byGroup = new Map()
+  for (let i = 1; i < s.count; i++) {
+    if (tree.parent[i] === -1) {
+      continue
+    }
+    const seen = []
+    let cur = i
+    let owner = null
+    while (cur > 0) {
+      if (cache.has(cur)) {
+        owner = cache.get(cur)
+        break
+      }
+      seen.push(cur)
+      owner = codeOwner(s, cur, scriptCache)
+      if (owner) {
+        break
+      }
+      const p = tree.parent[cur]
+      if (p < 0 || p === cur) {
+        break
+      }
+      cur = p
+    }
+    owner ??= '(unattributed: root, system or builtins only)'
+    for (const n of seen) {
+      cache.set(n, owner)
+    }
+    totals.set(owner, (totals.get(owner) ?? 0) + sizeOf(s, i))
+    let groups = byGroup.get(owner)
+    if (!groups) {
+      groups = new Map()
+      byGroup.set(owner, groups)
+    }
+    const k = groupKey(s, i)
+    const g = groups.get(k) ?? { count: 0, size: 0 }
+    g.count++
+    g.size += sizeOf(s, i)
+    groups.set(k, g)
+  }
+  return { totals, byGroup }
+}
+
 export function diff(fileA, fileB) {
   const a = load(fileA)
   const byA = new Map()
@@ -240,9 +296,11 @@ export function diff(fileA, fileB) {
     byA.set(k, g)
   }
   const loadA = a.loadMs
+  const { totals: ownersA, byGroup: groupsA } = ownerTotals(a)
   // free A before loading B
   a.nodes = a.edges = a.strings = null
   const b = load(fileB)
+  const { byGroup: groupsB } = ownerTotals(b)
   const tree = retainers(b)
   const byB = new Map()
   const fresh = new Map()
@@ -367,6 +425,32 @@ export function diff(fileA, fileB) {
     retainedByOwnerB: [...ownersAll.entries()]
       .map(([owner, size]) => ({ owner, size }))
       .sort((x, y) => y.size - x.size),
+    ownerDelta: [...new Set([...ownersA.keys(), ...ownersAll.keys()])]
+      .map((owner) => ({
+        owner,
+        a: ownersA.get(owner) ?? 0,
+        b: ownersAll.get(owner) ?? 0,
+        delta: (ownersAll.get(owner) ?? 0) - (ownersA.get(owner) ?? 0),
+      }))
+      .sort((x, y) => y.delta - x.delta),
+    ownerGroupDelta: [...new Set([...groupsA.keys(), ...groupsB.keys()])].map(
+      (owner) => {
+        const ga = groupsA.get(owner) ?? new Map()
+        const gb = groupsB.get(owner) ?? new Map()
+        return {
+          owner,
+          groups: [...new Set([...ga.keys(), ...gb.keys()])]
+            .map((group) => ({
+              group,
+              countA: ga.get(group)?.count ?? 0,
+              countB: gb.get(group)?.count ?? 0,
+              delta: (gb.get(group)?.size ?? 0) - (ga.get(group)?.size ?? 0),
+            }))
+            .sort((x, y) => y.delta - x.delta)
+            .slice(0, 8),
+        }
+      },
+    ),
   }
 }
 
@@ -392,6 +476,32 @@ function markdown(r) {
         .join('; ')} |`,
     )
   }
+  out.push(
+    '',
+    '**Retained self size by owner, A → B** (every reachable object, attributed as above; sorted by growth):',
+    '',
+    '| owner | KB in A | KB in B | Δ KB |',
+    '|---|---:|---:|---:|',
+    ...r.ownerDelta
+      .slice(0, TOP)
+      .map((o) => `| ${o.owner} | ${kb(o.a)} | ${kb(o.b)} | ${kb(o.delta)} |`),
+  )
+  out.push(
+    '',
+    '**Growth by owner and constructor** (owners with growth, largest constructor deltas; count A → B, Δ KB):',
+    '',
+    ...r.ownerDelta
+      .filter((o) => o.delta > 1024)
+      .slice(0, 12)
+      .map((o) => {
+        const g = r.ownerGroupDelta.find((x) => x.owner === o.owner)
+        return `- ${o.owner} (+${kb(o.delta)} KB): ${g.groups
+          .filter((x) => x.delta > 0)
+          .slice(0, 6)
+          .map((x) => `${x.group} ${x.countA}→${x.countB} +${kb(x.delta)}`)
+          .join('; ')}`
+      }),
+  )
   out.push(
     '',
     '**All of B by owner** (same attribution, every reachable object; KB of self size):',

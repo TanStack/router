@@ -1508,20 +1508,26 @@ async function soakRun(variant, bundler, { replay } = {}) {
     const settlePages = async () => {
       await sleep(600)
       for (const p of pages) {
-        const deadline = Date.now() + 30_000
-        for (;;) {
-          try {
-            await p.page.waitForFunction(() => window.__PERF_HYDRATED__, null, {
-              timeout: Math.max(1, deadline - Date.now()),
+        const hydrated = (timeout) =>
+          p.page
+            .waitForFunction(() => window.__PERF_HYDRATED__, null, {
+              timeout,
               polling: 50,
             })
-            break
-          } catch (error) {
-            if (Date.now() > deadline) {
-              throw error
-            }
-            await sleep(100)
-          }
+            .then(
+              () => true,
+              () => false,
+            )
+        if (await hydrated(15_000)) {
+          continue
+        }
+        // a page stuck after a reload race: reload it once
+        out.stuckPages = [...(out.stuckPages ?? []), p.page.url()].slice(-20)
+        await p.page
+          .reload({ waitUntil: 'commit', timeout: 15_000 })
+          .catch(() => {})
+        if (!(await hydrated(30_000))) {
+          throw new Error(`page never hydrated again: ${p.page.url()}`)
         }
       }
     }
