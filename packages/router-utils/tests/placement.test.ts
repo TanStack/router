@@ -411,6 +411,22 @@ describe('extracted-export outputs (§3.5.3)', () => {
     )
   })
 
+  it('keeps a cluster that holds a written binding (a let its exported writer updates)', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      let clicks = 0
+      export function bump() { clicks++ }
+      function Page() { return clicks }
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await extract(code)
+    expect(r.env).toContain('let clicks = 0')
+    expect(r.env).toContain('export function bump()')
+    expect(r.env).toContain('export { clicks }')
+    expect(r.chunk).toContain("import { clicks } from './route.tsx'")
+    expect(await r.extracted('bump')).toMatchObject({ code: 'export {}\n' })
+  })
+
   it('does not extract a declaration that eagerly reads the env module', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'

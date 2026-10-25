@@ -255,6 +255,8 @@ export function computePlacement(input: PlacementInput): Placement {
   }
   // ---- 2. live writes and augmentations (env liveness) --------------------
   const writerConstraints = new Map<number, Set<RegionId>>() // decl member root → writer sub-regions
+  /** Module-level symbols with a live write anywhere (a cluster holding one is never an extracted export, §3.5.3). */
+  const writtenSyms = new Set<SymbolId>()
   for (const ref of refs.all) {
     if (
       ref.kind !== 'write' ||
@@ -267,6 +269,7 @@ export function computePlacement(input: PlacementInput): Placement {
     if (d === undefined) {
       continue
     }
+    writtenSyms.add(ref.sym)
     const owner = regions.innermostAt(ref.range.start, ref.range.end)
     if (owner === null) {
       continue
@@ -734,7 +737,15 @@ export function computePlacement(input: PlacementInput): Placement {
       continue
     }
     const cl = clusters[c]!
-    if (cl.kind !== 'declaration' || cl.effectful || cl.gens.length > 0) {
+    if (
+      cl.kind !== 'declaration' ||
+      cl.effectful ||
+      cl.gens.length > 0 ||
+      // a written binding travels with its unit writers (`let n; export
+      // function bump() { n++ }`): the cluster is state, not a pure export,
+      // and a region writer of it must meet the single-writer rule below
+      [...cl.declares].some((s) => writtenSyms.has(s))
+    ) {
       continue
     }
     let e = extractCandidates.get(c)
