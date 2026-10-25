@@ -7,7 +7,7 @@ One entry per root cause: the bug, the SPEC clause, the pins (`file` and test na
 `$name`, `%s` and `${…}` are table-row placeholders), and what a fix must achieve. The test comment (`Bug:`,
 `Impact:`) has the details. "Cause" files name today's implementation; a rewrite may have no such file.
 
-Totals: 380 pin sites in 106 test files (a table test counts once; Vitest counts each row).
+Totals: 381 pin sites in 106 test files (a table test counts once; Vitest counts each row).
 
 Pins whose input picks a name today's compiler generates (S6) flip with a compiler that generates other names. The
 adaptive pins next to them, which read the names a compiler actually generates, are the real check.
@@ -57,11 +57,12 @@ with its imports, and code only client-only code reads is gone from the server. 
 - `start-plugin-core/tests/createServerFn/caller-dead-code.test.ts`: "when client code uses its name in $name";
   "callers drop a handler-only function that declares a local of its own name".
 
-**S3. The printer drops required parentheses** (`@babel/generator`): `count as number++`, `a as any ? -x : y` do not
-parse. SPEC G12. Fix: printed code parses and means the same. 4 pins:
+**S3. The printer drops required parentheses** (`@babel/generator`): `count as number++`, `a as any ? -x : y`,
+`<Tag />.props` do not parse. SPEC G12. Fix: printed code parses and means the same. 5 pins:
 
 - `router-plugin/tests/integration/pages/known-bugs-code-splitter-bindings.test.ts`: "an asserted update operand keeps
-  its parentheses in a split component"; "an asserted conditional test keeps its parentheses in a split component".
+  its parentheses in a split component"; "an asserted conditional test keeps its parentheses in a split component";
+  "a JSX element read as an object keeps its parentheses in the route module".
 - `start-plugin-core/tests/start-compiler-preserves-user-code.test.ts`: "keeps the parentheses of asserted update
   operands"; "keeps the parentheses of an asserted conditional test".
 
@@ -184,7 +185,7 @@ SPEC G16, G1. Fix: both halves go together, or both stay; the module loads. 2 pi
   J1.10, G5. `router-plugin/tests/integration/known-bugs-rsbuild-generator.test.ts`: "a created route file the
   generator cannot parse is reported, and fixing it adds the route".
 
-## J2 Route code splitting (107 pins: 90 below, 17 in S1, S3–S7)
+## J2 Route code splitting (108 pins: 90 below, 18 in S1, S3–S7)
 
 Router-plugin paths below are under `router-plugin/tests/`; `pages/` means `integration/pages/`.
 
