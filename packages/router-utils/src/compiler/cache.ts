@@ -325,6 +325,10 @@ export class PlanCache {
   readonly dependents = new DependentsIndex()
   /** `TSR_COMPILER_NO_CACHE=plans`: nothing is published (measurement knob). */
   private readonly disabled = cacheDisabled('plans')
+  /** `TSR_COMPILER_NO_CACHE=emitted`: emitted outputs are not memoised on the plan (measurement knob). */
+  readonly memoiseEmits = !cacheDisabled('emitted')
+  /** Use counts for `compilerStats()`: validated plan hits, emit memo hits and misses. */
+  readonly counters = { planHits: 0, emitHits: 0, emitMisses: 0 }
 
   constructor(readonly env: string) {}
 
@@ -465,6 +469,7 @@ export class PlanCache {
       latest: this.latest.size,
       inFlight: this.inFlight.size,
       active: this.active.size,
+      ...this.counters,
       dependentPaths: d.paths,
       dependentKeys: d.keys,
       dependentEmptyPaths: d.emptyPaths,

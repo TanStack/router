@@ -18,7 +18,7 @@ import { DependencyLedger, PlanCache, fingerprintCurrent } from './cache'
 import { emitRecipe, substituteSpecifier } from './emit'
 import { SourceText } from './output-builder'
 import { ExportResolver } from './resolve'
-import { fingerprintSourceFor, resolveCached } from './host'
+import { fingerprintSourceFor, resolutionCounters, resolveCached } from './host'
 import { registerCompilerStats } from './stats'
 import type { CacheEntry } from './cache'
 import type { Emitted } from './emit'
@@ -67,7 +67,7 @@ export function createCompilerCaches(
     for (const m of c.resolutions.values()) {
       resolutions += m.size
     }
-    add({ resolutions })
+    add({ resolutions, ...resolutionCounters(c) })
     return out
   })
   return caches
@@ -131,7 +131,8 @@ export async function compileModule(
         }
       }
       if (valid && cache.lookup(key, rev) === hit) {
-        return emitFrom(hit, requested, input)
+        cache.counters.planHits++
+        return emitFrom(hit, requested, input, cache)
       }
       cache.delete(key)
       cache.bump(key)
@@ -218,7 +219,7 @@ export async function compileModule(
               plan,
               emitted: new Map(),
             }
-            return emitFrom(entry, requested, input)
+            return emitFrom(entry, requested, input, cache)
           }
           return RETRY
         }
@@ -234,7 +235,7 @@ export async function compileModule(
         } else {
           ledger.discard()
         }
-        return emitFrom(entry, requested, input)
+        return emitFrom(entry, requested, input, cache)
       })()
     } finally {
       cache.end(key)
@@ -252,18 +253,24 @@ function emitFrom(
   entry: CacheEntry,
   requested: OutputId,
   input: CompileInput,
+  cache: PlanCache,
 ): CompileOutput {
   const plan = entry.plan
   const memoKey = `${requested}|${input.wantMap ? 'map' : 'code'}`
   let emitted = entry.emitted.get(memoKey)
-  if (!emitted) {
+  if (emitted) {
+    cache.counters.emitHits++
+  } else {
+    cache.counters.emitMisses++
     const recipe = plan.outputs[requested]
     if (!recipe) {
       emitted = { code: 'export {}\n', map: null }
     } else {
       emitted = emitRecipe(recipe, new SourceText(input.code), input.wantMap)
     }
-    entry.emitted.set(memoKey, emitted)
+    if (cache.memoiseEmits) {
+      entry.emitted.set(memoKey, emitted)
+    }
   }
   const recipe = plan.outputs[requested]
   return {

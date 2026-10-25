@@ -330,6 +330,24 @@ export function isAnalyzableSpecifier(specifier: string): boolean {
   return scheme === null || scheme[1]!.toLowerCase() === 'virtual'
 }
 
+const RESOLUTION_COUNTERS = new WeakMap<
+  CompilerCaches,
+  { resolutionHits: number; resolutionMisses: number }
+>()
+
+/** Use counts of a session's resolution cache (`compilerStats()`). */
+export function resolutionCounters(caches: CompilerCaches): {
+  resolutionHits: number
+  resolutionMisses: number
+} {
+  let c = RESOLUTION_COUNTERS.get(caches)
+  if (!c) {
+    c = { resolutionHits: 0, resolutionMisses: 0 }
+    RESOLUTION_COUNTERS.set(caches, c)
+  }
+  return c
+}
+
 /** Resolution through the per-env cache; returns the canonical id of the target (or null). */
 export async function resolveCached(
   caches: CompilerCaches,
@@ -344,9 +362,12 @@ export async function resolveCached(
     caches.resolutions.set(env, m)
   }
   const k = `${importerCanonicalId}\u0000${specifier}`
+  const counters = resolutionCounters(caches)
   if (m.has(k)) {
+    counters.resolutionHits++
     return m.get(k)!
   }
+  counters.resolutionMisses++
   const remember = (id: string | null): string | null => {
     // `TSR_COMPILER_NO_CACHE=resolutions`: every resolution asks the host (measurement knob)
     if (!cacheDisabled('resolutions')) {

@@ -25,6 +25,8 @@ const { values: opts, positionals } = parseArgs({
     md: { type: 'string' },
     json: { type: 'string' },
     top: { type: 'string', default: '25' },
+    // list the largest objects of one owner (a substring) in A and B, with paths
+    'owner-detail': { type: 'string' },
   },
 })
 const TOP = Number(opts.top)
@@ -233,7 +235,7 @@ function pathOf(s, tree, i, max = 14) {
 }
 
 /** Self size of every reachable object of a snapshot, by owner of its retaining path. */
-function ownerTotals(s) {
+function ownerTotals(s, detail) {
   const tree = retainers(s)
   const scriptCache = new Map()
   const cache = new Map()
@@ -266,6 +268,9 @@ function ownerTotals(s) {
     for (const n of seen) {
       cache.set(n, owner)
     }
+    if (detail && owner.includes(detail) && sizeOf(s, i) >= 2048) {
+      detail.list.push({ size: sizeOf(s, i), group: groupKey(s, i), path: pathOf(s, tree, i, 10) })
+    }
     totals.set(owner, (totals.get(owner) ?? 0) + sizeOf(s, i))
     let groups = byGroup.get(owner)
     if (!groups) {
@@ -296,11 +301,29 @@ export function diff(fileA, fileB) {
     byA.set(k, g)
   }
   const loadA = a.loadMs
-  const { totals: ownersA, byGroup: groupsA } = ownerTotals(a)
+  const detailOf = () => {
+    if (!opts['owner-detail']) {
+      return undefined
+    }
+    const d = new String(opts['owner-detail'])
+    d.list = []
+    return d
+  }
+  const detailA = detailOf()
+  const { totals: ownersA, byGroup: groupsA } = ownerTotals(a, detailA)
   // free A before loading B
   a.nodes = a.edges = a.strings = null
   const b = load(fileB)
-  const { byGroup: groupsB } = ownerTotals(b)
+  const detailB = detailOf()
+  const { byGroup: groupsB } = ownerTotals(b, detailB)
+  if (detailA) {
+    for (const [name, d] of [['A', detailA], ['B', detailB]]) {
+      console.log(`--- ${name}: largest objects of ${d}`)
+      for (const o of d.list.sort((x, y) => y.size - x.size).slice(0, 25)) {
+        console.log(`${(o.size / 1024).toFixed(1)} KB ${o.group}: ${o.path}`)
+      }
+    }
+  }
   const tree = retainers(b)
   const byB = new Map()
   const fresh = new Map()

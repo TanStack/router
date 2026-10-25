@@ -6,7 +6,7 @@
 //
 // Usage: node cache-knobs.mjs --out <dir> [--rounds 3] [--knobs on,plans,facts,targets,resolutions]
 //        [--variants react-start,react-router] [--scenarios build,dev-compile,dev-cold,hmr]
-//        [--runs 2] [--hmr-iterations 6] [--max-busy 8] [--report-only]
+//        [--runs 2] [--hmr-iterations 6] [--max-busy 8] [--port 4810] [--report-only]
 
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
@@ -25,6 +25,7 @@ const { values: opts } = parseArgs({
     runs: { type: 'string', default: '2' },
     'hmr-iterations': { type: 'string', default: '6' },
     'max-busy': { type: 'string', default: '8' },
+    port: { type: 'string', default: '4810' },
     'report-only': { type: 'boolean', default: false },
   },
 })
@@ -63,6 +64,8 @@ if (!opts['report-only']) {
           '--max-busy',
           opts['max-busy'],
           '--skip-package-builds',
+          '--port',
+          opts.port,
         ],
         {
           stdio: 'inherit',

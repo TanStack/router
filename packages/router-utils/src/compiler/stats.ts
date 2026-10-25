@@ -7,12 +7,18 @@
  *   counts in a process-global registry (`compilerStats()`), held through a
  *   `WeakRef` so introspection never retains a cache.
  * - `TSR_COMPILER_NO_CACHE=<list>`: disables caches for an on/off
- *   comparison (`plans`, `facts`, `targets`, `resolutions`; `all`). Every
- *   cache stays correct when disabled (each request recomputes).
+ *   comparison (`plans`, `emitted` — the per-plan memo of emitted outputs —,
+ *   `facts`, `targets`, `resolutions`; `all`). Every cache stays correct
+ *   when disabled (each request recomputes).
  */
 import v8 from 'node:v8'
 
-export type CacheKnob = 'plans' | 'facts' | 'targets' | 'resolutions'
+export type CacheKnob =
+  | 'plans'
+  | 'emitted'
+  | 'facts'
+  | 'targets'
+  | 'resolutions'
 
 /** Whether `TSR_COMPILER_NO_CACHE` disables a cache (read at cache creation). */
 export function cacheDisabled(knob: CacheKnob): boolean {

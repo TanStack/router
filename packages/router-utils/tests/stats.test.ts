@@ -110,7 +110,7 @@ describe('compiler stats (TSR_COMPILER_STATS=1)', () => {
 })
 
 describe('cache knobs (TSR_COMPILER_NO_CACHE)', () => {
-  it.each(['plans', 'facts', 'targets', 'resolutions', 'all'])(
+  it.each(['plans', 'emitted', 'facts', 'targets', 'resolutions', 'all'])(
     '%s off: identical outputs, nothing retained by the disabled cache',
     async (knob) => {
       const reference = await compileAll(new MemoryHost({ files }))

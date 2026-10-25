@@ -86,6 +86,8 @@ export class RawFactsCache {
   /** `TSR_COMPILER_NO_CACHE=facts|targets`: every read rebuilds (measurement knobs). */
   private readonly noFacts = cacheDisabled('facts')
   private readonly noTargets = cacheDisabled('targets')
+  /** Use counts for `compilerStats()`: requests served from the cache, and reads. */
+  private readonly counters = { factsHits: 0, factsReads: 0 }
 
   constructor(private readonly opts: RawFactsOptions) {}
 
@@ -147,6 +149,7 @@ export class RawFactsCache {
     }
     let e = this.entries.get(canonicalId)
     if (e && e.facts && !e.stale) {
+      this.counters.factsHits++
       return e.facts
     }
     if (this.isKnownSpecifier(canonicalId)) {
@@ -236,6 +239,7 @@ export class RawFactsCache {
       rawFactsStale: stale,
       rawFactsPending: pending,
       rawFactsEmpty: empty,
+      ...this.counters,
       ...(withBytes && { rawFactsBytes: bytes }),
     }
   }
@@ -282,6 +286,7 @@ export class RawFactsCache {
   }
 
   private async read(canonicalId: string): Promise<string | null> {
+    this.counters.factsReads++
     if (canonicalId.startsWith('\0') || canonicalId.startsWith('virtual:')) {
       return this.opts.loadVirtual(canonicalId)
     }
