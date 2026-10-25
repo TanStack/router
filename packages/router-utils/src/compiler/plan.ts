@@ -1269,7 +1269,7 @@ export class AnalysisPlan implements PlanContext {
         specifier: dyn.specifier,
         locations: [{ range: dyn.specifierRange }],
         typeOnly: false,
-        names: [],
+        names: dyn.names,
         provenance: { origin: 'source' },
       })
     }

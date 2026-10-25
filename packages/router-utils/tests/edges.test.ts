@@ -95,6 +95,40 @@ describe('edge names (J6, DESIGN §3.14.1)', () => {
   })
 })
 
+describe('require edge names (J6.3, F3)', () => {
+  // a mock of a denied CommonJS or unknown target owns the names the
+  // importer reads: the keys it destructures, the members it reads of the
+  // binding or of the call; `'*'` when the result escapes
+  it('records the names a require() result is read by', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/m.ts': dedent(`
+          const { secret, token: t } = require('./a.server')
+          const b = require('./b.server')
+          const c = require('./c.server')
+          const d = require('./d.server').only
+          const e = require('./e.server')
+          export const run = () => secret + t + b.one + b['two'] + d + e()
+          export const leak = c
+          export const later = () => import('./f.server')
+        `),
+      },
+    })
+    const rec = edgeRecorder()
+    await host.compile('/app/m.ts', [rec])
+    const edges = byspec(rec.edges.env!)
+    expect(edges['require ./a.server']).toEqual([
+      'evaluation',
+      ['secret', 'token'],
+    ])
+    expect(edges['require ./b.server']).toEqual(['evaluation', ['one', 'two']])
+    expect(edges['require ./c.server']).toEqual(['evaluation', ['*']])
+    expect(edges['require ./d.server']).toEqual(['evaluation', ['only']])
+    expect(edges['require ./e.server']).toEqual(['evaluation', ['*']])
+    expect(edges['dynamic ./f.server']).toEqual(['evaluation', []])
+  })
+})
+
 describe('policy context', () => {
   it('gives the input text and reads the input map only when asked', async () => {
     const host = new MemoryHost({
