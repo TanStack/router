@@ -160,4 +160,72 @@ export function useThing() {
   })
 })
 
-void envInfo
+describe('a separate provider env with derived provider modules (Vite RSC, R50)', () => {
+  const rsc = envInfo({
+    name: 'rsc',
+    type: 'server',
+    isProvider: true,
+    conditions: ['react-server'],
+    routerSplit: false,
+  })
+  const config: Partial<StartEnvConfig> = {
+    providerSeparate: true,
+    alwaysDeriveProvider: true,
+  }
+  const files = {
+    '/app/src/db.server.ts': 'export const db = { q: () => 1 }\n',
+  }
+  const PROVIDER = `${FILE}?tss-serverfn-split`
+
+  // A nested site (export default, an object property, a class field) is
+  // hoisted into the provider module; the env module kept importing the
+  // hoisted binding from it, which evaluated the provider module (and what
+  // its handlers import) in this env and called in-process. Like a
+  // top-level site, the env module keeps the chain with its SSR RPC stub.
+  it.each([
+    [
+      'export default',
+      `export default createServerFn().handler(() => db.q())\n`,
+      /export default createServerFn\(\)\.handler\(tsrSsrRpc\(['"][^'"]+['"]\)\)/,
+    ],
+    [
+      'an object property',
+      `export const api = { get: createServerFn().handler(() => db.q()) }\n`,
+      /get: createServerFn\(\)\.handler\(tsrSsrRpc\(['"][^'"]+['"]\)\)/,
+    ],
+    [
+      'a class static field',
+      `export class Api { static get = createServerFn().handler(() => db.q()) }\n`,
+      /static get = createServerFn\(\)\.handler\(tsrSsrRpc\(['"][^'"]+['"]\)\)/,
+    ],
+  ])(
+    'stubs a server fn declared by %s in the env module',
+    async (_name, body, stub) => {
+      const r = await compile(
+        `import { createServerFn } from '@tanstack/react-start'\nimport { db } from './db.server'\n${body}`,
+        { env: rsc, config, files },
+      )
+      expectValid(r.code)
+      expect(r.code).toMatch(stub)
+      expect(r.code).not.toContain('tss-serverfn-split')
+      expect(r.code).not.toContain('db.q()')
+      expect(r.code).not.toContain('./db.server')
+      const provider = await r.derived(PROVIDER)
+      expectValid(provider)
+      expect(provider).toContain('db.q()')
+      expect(provider).toContain("from './db.server'")
+      expect(provider).toMatch(/createServerRpc|tsrServerRpc/)
+    },
+  )
+
+  it('stubs a top-level server fn in the env module (control)', async () => {
+    const r = await compile(
+      `import { createServerFn } from '@tanstack/react-start'\nimport { db } from './db.server'\nexport const fn = createServerFn().handler(() => db.q())\n`,
+      { env: rsc, config, files },
+    )
+    expect(r.code).toMatch(
+      /export const fn = createServerFn\(\)\.handler\(tsrSsrRpc\(['"][^'"]+['"]\)\)/,
+    )
+    expect(r.code).not.toContain('tss-serverfn-split')
+  })
+})

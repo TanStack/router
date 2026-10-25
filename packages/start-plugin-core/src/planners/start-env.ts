@@ -729,6 +729,26 @@ function planStartEnv(
         by,
         reason: 'ssr rpc stub',
       })
+      if (providerOut && site.nested) {
+        // the hoist claims the chain for the provider output; the env module
+        // keeps the chain in place with its stub (an edit on exactly the
+        // claimed region overrides the placeholder there) instead of
+        // importing the hoisted binding from the provider module, which
+        // would evaluate the provider (and what its handlers import) in
+        // this env (R50)
+        const chain = rangeOf(site.chain.terminal)
+        rewrites.add({
+          range: chain,
+          body: [
+            slice({ start: chain.start, end: h.start }),
+            text({ sym: rpc, ctx: 'callee' }, `(${stringLiteral(id)})`),
+            slice({ start: h.end, end: chain.end }),
+          ],
+          scope: ['env'],
+          by,
+          reason: 'nested server fn chain stays in place with its ssr rpc stub',
+        })
+      }
       if (role === 'ssr-caller') {
         facts.serverFns.push(
           serverFnFact(site, id, name, exportName, providerDerived, rootRel),
