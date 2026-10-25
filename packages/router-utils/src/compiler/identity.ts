@@ -46,15 +46,28 @@ export const OWNED_QUERY_KEYS = {
 
 const OWNED_KEY_SET = new Set<string>(Object.values(OWNED_QUERY_KEYS))
 
+/**
+ * Splits a host id into path, query and fragment. A project path may carry
+ * `#` (`C#`, `project #2`), and Vite and Rspack hand such ids with the `#`
+ * as it is: a `#` is a URL fragment only after the query. (`?` cannot be
+ * part of a Windows path; on other systems a `?` in the project path is not
+ * supported by the bundlers either.)
+ */
 function splitQuery(id: string): { base: string; query: string; hash: string } {
-  const hashAt = id.indexOf('#')
-  const hash = hashAt === -1 ? '' : id.slice(hashAt)
-  const noHash = hashAt === -1 ? id : id.slice(0, hashAt)
-  const q = noHash.indexOf('?')
+  const q = id.indexOf('?')
   if (q === -1) {
-    return { base: noHash, query: '', hash }
+    return { base: id, query: '', hash: '' }
   }
-  return { base: noHash.slice(0, q), query: noHash.slice(q + 1), hash }
+  const rest = id.slice(q + 1)
+  const hashAt = rest.indexOf('#')
+  if (hashAt === -1) {
+    return { base: id.slice(0, q), query: rest, hash: '' }
+  }
+  return {
+    base: id.slice(0, q),
+    query: rest.slice(0, hashAt),
+    hash: rest.slice(hashAt),
+  }
 }
 
 function parseDerived(key: string, value: string): DerivedQuery | null {

@@ -7,6 +7,12 @@
  * (`src/routeTree-gen.ts`) is the file it is, not the client route tree.
  * Built with Start's Vite plugin (Rsbuild as a control: it has no client
  * route tree of its own yet, see known-bugs-route-options.test.ts).
+ *
+ * An app under a directory whose name carries a `#` (`C#`, `project #2`)
+ * compiles like any other (SPEC J4.12, J2.15): its server function
+ * handlers stay out of the client bundle and its routes are code-split. A
+ * `#` read as a URL fragment would leave every module of the app
+ * untransformed, silently: the client would ship the handlers.
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../build-harness'
@@ -120,6 +126,60 @@ export { sibling } from './routeTree-gen'
       expect((await build.client.run(`return entry.sibling`)).result).toBe(
         'MARK_SIBLING',
       )
+    })
+  })
+})
+
+describe.each(startBundlers)('%s build', (bundler) => {
+  describe('of an app whose path has a #', () => {
+    let build: StartBuild
+    let dispose: (() => Promise<void>) | undefined
+    beforeAll(async () => {
+      build = await buildStart({
+        bundler,
+        prefix: `.start-build-harness-${bundler} C# project #2-`,
+        files: {
+          ...routes,
+          'src/routes/index.tsx': `${head}import { greet } from '../fns'
+export const Route = createFileRoute('/')({
+  loader: () => greet(),
+  component: () => 'MARK_INDEX',
+})
+`,
+          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+export const greet = createServerFn().handler(async () => 'MARK_SERVER_SECRET')
+`,
+          'src/entry.ts': `export { getRouter } from './router'
+export { greet } from './fns'
+export { renderPath } from '../harness/render'
+`,
+        },
+        entry: 'src/entry.ts',
+        registerCleanup: (cleanup) => {
+          dispose = cleanup
+        },
+      })
+    }, timeout)
+    afterAll(() => dispose?.())
+
+    test('builds under the directory, and the page renders', async () => {
+      expect(build.client.root).toMatch(/C# project #2/)
+      expect(
+        (
+          await build.ssr.run(
+            `return await entry.renderPath(entry.getRouter().routeTree, '/')`,
+          )
+        ).result,
+      ).toContain('MARK_INDEX')
+    })
+
+    test('the server function handler is not in the client bundle', () => {
+      expect(build.client.where('MARK_SERVER_SECRET')).toBe('nowhere')
+      expect(build.ssr.where('MARK_SERVER_SECRET')).not.toBe('nowhere')
+    })
+
+    test('the route component is code-split', () => {
+      expect(build.client.where('MARK_INDEX')).toBe('lazy')
     })
   })
 })

@@ -10,7 +10,10 @@
  * properties in the env output only; route CSS moves into the chunks when
  * every component option is split (R42).
  */
-import { stringLiteral } from '@tanstack/router-utils/compiler'
+import {
+  siblingSpecifier,
+  stringLiteral,
+} from '@tanstack/router-utils/compiler'
 import {
   identifierSymbol,
   pascal,
@@ -231,7 +234,7 @@ export function routeSplitPlanner(): Planner {
         const importer = names.alloc(
           `tsrImport${d.groupKey.split('~').map(pascal).join('')}`,
         )
-        const spec = siblingSpecifierOf(derivedId)
+        const spec = siblingSpecifier(derivedId)
         ctx.rewrites.addGenerated({
           body: [
             { k: 'text', parts: [`const ${importer.name} = () => import(`] },
@@ -483,18 +486,6 @@ export function routeSplitPlanner(): Planner {
       ctx.setFacts(ROUTE_SPLIT, facts)
     },
   }
-}
-
-/** `./<basename>?<query>` of a derived id (same directory as the route module). */
-function siblingSpecifierOf(targetId: string): string {
-  const hashAt = targetId.indexOf('#')
-  const noHash = hashAt === -1 ? targetId : targetId.slice(0, hashAt)
-  const q = noHash.indexOf('?')
-  const base = q === -1 ? noHash : noHash.slice(0, q)
-  const query = q === -1 ? '' : noHash.slice(q)
-  const slash = Math.max(base.lastIndexOf('/'), base.lastIndexOf('\\'))
-  const basename = slash === -1 ? base : base.slice(slash + 1)
-  return `./${basename}${query}`
 }
 
 export { routerRouteId }

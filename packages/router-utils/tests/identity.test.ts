@@ -75,6 +75,52 @@ describe('identity (R35)', () => {
     expect(langFromId('/a/comp.vue')).toBeNull()
   })
 
+  // A project path may carry `#`, spaces, `%` and non-ASCII characters;
+  // Vite and Rspack hand such ids with the characters as they are. A `#` is
+  // a URL fragment only after the query.
+  it('keeps a # of the path and reads a fragment only after the query', () => {
+    const plain = identify('/home/me/C#/project #2/src/routes/a.tsx')
+    expect(plain.path).toBe('/home/me/C#/project #2/src/routes/a.tsx')
+    expect(plain.canonicalId).toBe('/home/me/C#/project #2/src/routes/a.tsx')
+    expect(plain.lang).toBe('tsx')
+    expect(plain.derived).toBeNull()
+
+    const split = identify('/home/me/C#/src/a.tsx?tsr-split=component')
+    expect(split.path).toBe('/home/me/C#/src/a.tsx')
+    expect(split.canonicalId).toBe('/home/me/C#/src/a.tsx')
+    expect(split.derived).toEqual({ kind: 'split', value: 'component' })
+    expect(split.lang).toBe('tsx')
+    expect(
+      deriveId('/home/me/C#/src/a.tsx', { kind: 'split', value: 'component' }),
+    ).toBe('/home/me/C#/src/a.tsx?tsr-split=component')
+    expect(
+      siblingSpecifier('/home/me/C#/src/a#b.tsx?tsr-split=component'),
+    ).toBe('./a#b.tsx?tsr-split=component')
+
+    const fragment = identify(
+      '/app/page.tsx?flavour=b&tsr-split=component#frag',
+    )
+    expect(fragment.path).toBe('/app/page.tsx')
+    expect(fragment.canonicalId).toBe('/app/page.tsx?flavour=b#frag')
+    expect(fragment.derived).toEqual({ kind: 'split', value: 'component' })
+    expect(
+      deriveId('/app/page.tsx?flavour=b#frag', {
+        kind: 'split',
+        value: 'component',
+      }),
+    ).toBe('/app/page.tsx?flavour=b&tsr-split=component#frag')
+
+    for (const dir of [
+      '/home/me/my app (2)+',
+      '/home/me/caf\u00e9 \u65e5\u672c\u8a9e',
+      '/home/me/100%',
+    ]) {
+      const id = identify(`${dir}/src/a.tsx`)
+      expect(id.path).toBe(`${dir}/src/a.tsx`)
+      expect(id.lang).toBe('tsx')
+    }
+  })
+
   it('revision is stable and content-only', () => {
     expect(revision('a')).toBe(revision('a'))
     expect(revision('a')).not.toBe(revision('b'))

@@ -914,6 +914,11 @@ export function startCompilerPlugin(
           if (edge !== null) {
             return edge
           }
+          // an absolute derived id of the compiler's own making is resolved
+          // (Vite's file resolution would read a `#` of the path as a fragment)
+          if (identify(source).derived !== null && path.isAbsolute(source)) {
+            return source
+          }
           // a derived module of the compiler (`./route.tsx?tsr-split=…`): the
           // importer's sibling with the query verbatim, no file system (§3.5.4)
           if (!importer || !source.startsWith('./')) {
@@ -932,13 +937,37 @@ export function startCompilerPlugin(
         },
       },
       load: {
-        filter: { id: IP_SPECIFIER_RE },
-        handler(id) {
+        filter: { id: [IP_SPECIFIER_RE, OWNED_QUERY_RE] },
+        async handler(id) {
           const s = requireSession()
-          const load = s.ip?.load(id)
-          return load
-            ? { code: load.code, moduleSideEffects: load.moduleSideEffects }
-            : null
+          if (IP_SPECIFIER_RE.test(id)) {
+            const load = s.ip?.load(id)
+            return load
+              ? { code: load.code, moduleSideEffects: load.moduleSideEffects }
+              : null
+          }
+          // a derived id of a file of the project (`route.tsx?tsr-split=…`,
+          // `?tss-hydrate=…`, `?tss-serverfn-split`) is the file's own text,
+          // read here: Vite's load fallback cleans the id of its query and
+          // fragment, and a `#` of a project path (`C#`, `project #2`) would
+          // end the path there. A derived id with a foreign query
+          // (`.vue?vue&…`) or of a virtual module is its owner's to load.
+          const identity = identify(id)
+          if (
+            identity.derived === null ||
+            identity.foreignQuery !== '' ||
+            identity.path.startsWith('\0')
+          ) {
+            return null
+          }
+          const code = await fs
+            .readFile(identity.path, 'utf8')
+            .catch(() => null)
+          if (code === null) {
+            return null
+          }
+          this.addWatchFile(identity.path)
+          return code
         },
       },
       transform: {

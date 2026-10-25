@@ -341,7 +341,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             const treePath = normalizePath(tree.path())
             for (const m of compilation.modules) {
               const resource = (m as unknown as ModuleLike).resource
-              if (resource && normalizePath(resource) === treePath) {
+              if (resource && canonicalResource(resource) === treePath) {
                 await new Promise<void>((resolve, reject) => {
                   compilation.rebuildModule(m, (error) =>
                     error ? reject(error) : resolve(),

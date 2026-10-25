@@ -8,6 +8,7 @@
  * ledger to `this.warn`. Dev or build is the bundler's command, never
  * `process.env.NODE_ENV` (D8).
  */
+import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { SourceText, identify } from '@tanstack/router-utils/compiler'
 import { getConfig } from '../core/config'
@@ -306,6 +307,11 @@ export function createRouterCompilerVitePlugin(
     resolveId: {
       filter: { id: OWNED_QUERY_RE },
       handler(source, importer) {
+        // an absolute derived id of the compiler's own making is resolved
+        // (Vite's file resolution would read a `#` of the path as a fragment)
+        if (identify(source).derived !== null && path.isAbsolute(source)) {
+          return source
+        }
         if (!importer || !source.startsWith('./')) {
           return null
         }
@@ -319,6 +325,32 @@ export function createRouterCompilerVitePlugin(
         }
         const dir = path.posix.dirname(normalizePath(identify(importer).path))
         return `${dir}/${basename}${source.slice(q)}`
+      },
+    },
+
+    load: {
+      filter: { id: OWNED_QUERY_RE },
+      async handler(id) {
+        // a derived id of a file of the project (`route.tsx?tsr-split=…`) is
+        // the file's own text, read here: Vite's load fallback cleans the id
+        // of its query and fragment, and a `#` of a project path (`C#`,
+        // `project #2`) would end the path there. A derived id with a foreign
+        // query (`.vue?vue&…`) or of a virtual module is its owner's to load.
+        const identity = identify(id)
+        if (
+          identity.derived === null ||
+          identity.foreignQuery !== '' ||
+          identity.path.startsWith('\0') ||
+          !compiler.wants(id)
+        ) {
+          return null
+        }
+        const code = await readFile(identity.path, 'utf8').catch(() => null)
+        if (code === null) {
+          return null
+        }
+        this.addWatchFile(identity.path)
+        return code
       },
     },
 

@@ -628,7 +628,7 @@ export class StartRsbuildCompilerSession {
         ctx.addDependency(dep)
       }
     }
-    this.reportDiagnostics(ctx, out, identity.path, source)
+    this.reportDiagnostics(ctx, out, identity.path, source, env.type)
     const ipEnv = ip?.env(env.name)
     env.compiled.add(ctx.resource)
     if (ipEnv) {
@@ -830,7 +830,10 @@ export class StartRsbuildCompilerSession {
  * dropped.
  */
 export function canonicalResource(resource: string): string {
-  const normalized = normalizePath(resource)
+  // Rspack and webpack escape a `#` of the file path in `resource` (`\u200b#`
+  // and `\0#`; `resourcePath` is unescaped): a project path with a `#` (`C#`,
+  // `project #2`) must give the file's path
+  const normalized = normalizePath(resource.replace(/[\0\u200b]#/g, '#'))
   const q = normalized.indexOf('?')
   if (q === -1) {
     return normalized

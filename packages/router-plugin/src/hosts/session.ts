@@ -61,6 +61,17 @@ export { normalizePath }
 /** JS module ids the compiler may transform (query allowed). */
 export const JS_ID_RE = /\.[cm]?[jt]sx?(\?|$)/
 
+/**
+ * The module id of a webpack / Rspack `resource`, slashes normalized. The
+ * bundlers escape a `#` of the file path in `resource` (webpack as `\0#`,
+ * Rspack as `\u200b#`; `resourcePath` is unescaped), so that their request
+ * parsing reads it as a fragment only when meant as one: a project path with
+ * a `#` (`C#`, `project #2`) must match the registry's file paths.
+ */
+export function resourceId(resource: string): string {
+  return normalizePath(resource.replace(/[\0\u200b]#/g, '#'))
+}
+
 /** A query carrying one of the compiler-owned keys (derived module ids). */
 export const OWNED_QUERY_RE =
   /(?:^|[?&])(?:tsr-split|tss-hydrate|tss-serverfn-split)(?:=|&|$)/
