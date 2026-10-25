@@ -182,7 +182,7 @@ export function createRouterCompilerVitePlugin(
     },
 
     configResolved(config) {
-      firstEnvironment = Object.keys(config.environments ?? {})[0]
+      firstEnvironment = Object.keys(config.environments)[0]
       ROOT = config.root
       userConfig = resolveUserConfig()
       buildSourcemap = config.build.sourcemap !== false
