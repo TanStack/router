@@ -7,7 +7,7 @@ One entry per root cause: the bug, the SPEC clause, the pins (`file` and test na
 `$name`, `%s` and `${…}` are table-row placeholders), and what a fix must achieve. The test comment (`Bug:`,
 `Impact:`) has the details. "Cause" files name today's implementation; a rewrite may have no such file.
 
-Totals: 375 pin sites in 103 test files (a table test counts once; Vitest counts each row).
+Totals: 376 pin sites in 103 test files (a table test counts once; Vitest counts each row).
 
 Pins whose input picks a name today's compiler generates (S6) flip with a compiler that generates other names. The
 adaptive pins next to them, which read the names a compiler actually generates, are the real check.
@@ -170,7 +170,7 @@ user binding. 8 pins:
   J1.10, G5. `router-plugin/tests/integration/known-bugs-rsbuild-generator.test.ts`: "a created route file the
   generator cannot parse is reported, and fixing it adds the route".
 
-## J2 Route code splitting (105 pins: 89 below, 16 in S1, S3–S6)
+## J2 Route code splitting (106 pins: 90 below, 16 in S1, S3–S6)
 
 Router-plugin paths below are under `router-plugin/tests/`; `pages/` means `integration/pages/`.
 
@@ -326,8 +326,17 @@ Router-plugin paths below are under `router-plugin/tests/`; `pages/` means `inte
   "a namespace the split component reads keeps its body".
 - **A route module's CSS import loads on every page**: the code splitter keeps the bare import in the route module,
   which the route tree imports eagerly (in dev the CSS is injected once the client runs; a build merges it into the
-  entry's CSS). SPEC J2.22. `start-plugin-core/tests/integration/known-bugs-route-css.test.ts`: "the CSS of the /%s
-  route applies only once the route matches" (Vite dev and build). Fix: the CSS loads when its route matches.
+  entry's CSS). SPEC J2.22. `start-plugin-core/tests/integration/known-bugs-route-css.test.ts` (Vite) and
+  `known-bugs-route-css-rsbuild.test.ts` (Rsbuild), rows of `route-css-cases.ts`: "the CSS of the /${name} route
+  applies only once the route matches" (the five `shows-*` rows; dev and build). Fix: the CSS loads when its route
+  matches.
+- **Rsbuild: a route's manifest entry lists the chunks and CSS of a sibling route** when the routes share a module in
+  a chunk of its own: Start's Rsbuild manifest counts a chunk as available when any one of the importing chunk's groups
+  has it, not every one, so the shared chunk depends on each route's copy of the module it imports (#8780). SPEC J2.22.
+  `start-plugin-core/tests/integration/known-bugs-route-css-rsbuild.test.ts`, rows of `route-css-cases.ts`: "the CSS
+  of the /${name} route applies only once the route matches" (`shares-module-a`, `shares-module-c`; dev and build;
+  Vite passes). Cause: `computeStaticDependencyChunks`, `start-plugin-core/src/rsbuild/normalized-client-build.ts`.
+  Fix: the page of a route links only the CSS of the chunks that route loads.
 - **Vite dev: the maps of the split and shared modules name the route file with the splitter's query**
   (`index.tsx?tsr-split=component`), so a debugger sees another file than the route file. SPEC G6.
   `integration/dev-source-maps.test.ts`: "a throw in $name maps to its line in the route file, which its module names
