@@ -464,19 +464,32 @@ export class ImportProtectionEnv {
     const record = info as RspackImportProtectionBuildInfo | undefined
     if (record?.version === 1 && record.env === this.name) {
       this.register(importerId, record.violations, false)
+      // a module compiled in this process indexed its edges itself
+      if (record.edges && !this.edges.has(importerId)) {
+        this.edges.set(importerId, record.edges)
+      }
     }
   }
 
   /** What the Rspack loader stores in `buildInfo[RSPACK_BUILD_INFO_KEY]` for a compiled output (null: nothing). */
-  buildInfo(out: CompiledOutputLike): {
+  buildInfo(
+    importerId: string,
+    out: CompiledOutputLike,
+  ): {
     key: string
     value: RspackImportProtectionBuildInfo
   } | null {
     const violations = violationsOf(out)
-    return violations.length > 0
+    const edges = this.edges.edgesOf(importerId)
+    return violations.length > 0 || edges.length > 0
       ? {
           key: RSPACK_BUILD_INFO_KEY,
-          value: { version: 1, env: this.name, violations },
+          value: {
+            version: 1,
+            env: this.name,
+            violations,
+            ...(edges.length > 0 && { edges }),
+          },
         }
       : null
   }

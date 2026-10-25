@@ -724,7 +724,8 @@ export const read = () => secret() + other
 // Source: upstream #8798 (Rsbuild persistent cache: "Can't resolve" the
 // import-protection mock modules of restored importers).
 describe('Rsbuild build: restored from the persistent cache', () => {
-  const entry = `import { secret } from './secret.server'
+  // the importer is not the entry: its traces have a step through the entry
+  const page = `import { secret } from './secret.server'
 import { query } from './db'
 import './effect.server'
 export const read = () => [secret(), query()]
@@ -735,22 +736,23 @@ export const read = () => [secret(), query()]
 export const query = () => 'MARK_DB'
 `,
     'src/effect.server.ts': `;(globalThis as Record<string, unknown>).effect = 'MARK_EFFECT'\n`,
-    'src/entry.ts': entry,
+    'src/page.ts': page,
+    'src/entry.ts': `export { read } from './page'\n`,
   }
   const expected: Array<ExpectedViolation> = [
     {
       environment: 'client',
-      use: locationIn('src/entry.ts', entry, 4, 'secret()'),
-      also: ['src/entry.ts:1'],
+      use: locationIn('src/page.ts', page, 4, 'secret()'),
+      also: ['src/page.ts:1'],
     },
     {
       environment: 'client',
-      use: locationIn('src/entry.ts', entry, 4, 'query()'),
-      also: ['src/entry.ts:2', 'src/db.ts:1'],
+      use: locationIn('src/page.ts', page, 4, 'query()'),
+      also: ['src/page.ts:2', 'src/db.ts:1'],
     },
     {
       environment: 'client',
-      use: 'src/entry.ts:3',
+      use: 'src/page.ts:3',
     },
   ]
   const cached = (importProtection: ImportProtectionOptions, builds = 1) =>
@@ -762,6 +764,9 @@ export const query = () => 'MARK_DB'
       entry: 'src/entry.ts',
       start: { importProtection },
     })
+  /** Each distinct trace `onViolation` received, sorted. */
+  const tracesOf = (violations: Array<ViolationInfo>) =>
+    distinct(violations.map((info) => JSON.stringify(info.trace))).sort()
   /** The build's errors that are not violations (a module that does not resolve). */
   const unresolved = (diagnostics: Array<Diagnostic>) =>
     diagnostics
@@ -778,12 +783,15 @@ export const query = () => 'MARK_DB'
     const cold = await cached({ behavior: 'mock' })
     const coldWarnings = cold.client.warnings.map((w) => w.text).sort()
     const coldViolations = receivedViolations(cold.violations, cold.root)
+    const coldTraces = tracesOf(cold.violations)
     const warm = await cold.rebuild()
     expect(unresolved(warm.diagnostics)).toEqual([])
     expectViolationsAt(warm, expected)
     expect(receivedViolations(warm.violations, warm.root)).toEqual(
       coldViolations,
     )
+    // the same traces, with the same steps through the restored modules
+    expect(tracesOf(warm.violations)).toEqual(coldTraces)
     expect(warm.client.warnings.map((w) => w.text).sort()).toEqual(coldWarnings)
     expect(warm.client.where(/MARK_SECRET|MARK_DB|MARK_EFFECT/)).toBe('nowhere')
   }, 120_000)

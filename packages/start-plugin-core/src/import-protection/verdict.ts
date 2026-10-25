@@ -9,6 +9,7 @@
  * are those of the final pass; nothing is published before.
  */
 import type { EdgeViolation } from './violations'
+import type { IndexedEdge } from './graph-trace'
 
 export type EdgeState = 'mock' | 'allowed'
 
@@ -150,4 +151,6 @@ export interface RspackImportProtectionBuildInfo {
   env: string
   /** The violations of this module's output (with their edge modules). */
   violations: Array<EdgeViolation>
+  /** The module's resolved edges (the trace steps through a restored module). */
+  edges?: Array<IndexedEdge>
 }

@@ -67,6 +67,15 @@ export class EdgeIndex {
     this.forward.delete(importerId)
   }
 
+  has(importerId: string): boolean {
+    return this.forward.has(importerId)
+  }
+
+  /** The edges of an importer (Rspack: recorded in its `buildInfo` for a restored module's traces). */
+  edgesOf(importerId: string): Array<IndexedEdge> {
+    return [...(this.forward.get(importerId)?.values() ?? [])]
+  }
+
   edge(importerId: string, targetId: string): IndexedEdge | undefined {
     return this.forward.get(importerId)?.get(targetId)
   }

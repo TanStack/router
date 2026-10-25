@@ -588,7 +588,7 @@ export class StartRsbuildCompilerSession {
       }
     }
     if (ipEnv && buildInfo) {
-      const info = ipEnv.buildInfo(out)
+      const info = ipEnv.buildInfo(id, out)
       if (info) {
         buildInfo[info.key] = info.value
       }

@@ -15,7 +15,10 @@ import {
   rspackGraphView,
 } from '../import-protection/witness'
 import { normalizePath } from '../utils'
-import { SERVER_FN_BUILD_INFO_FIELD } from './compiler-session'
+import {
+  SERVER_FN_BUILD_INFO_FIELD,
+  canonicalResource,
+} from './compiler-session'
 import { LOADER_REGISTRY } from './loader-registry'
 import type { LoaderImpl } from './compiler-loader'
 import type {
@@ -367,7 +370,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             }
             const ip = info[RSPACK_BUILD_INFO_KEY]
             if (ipEnv && ip && module.resource) {
-              ipEnv.replay(normalizePath(module.resource), ip)
+              ipEnv.replay(canonicalResource(module.resource), ip)
             }
           }
           env.serverFns = snapshot
