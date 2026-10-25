@@ -34,6 +34,6 @@ Start's Vite and Rsbuild plugins run on the new compiler core instead of Babel: 
 
 - Generator plugins given as `router.plugins` run next to Start's (#7768); Start's route tree footer follows `quoteStyle` and `semicolons`.
 - Solid Start server environments split route components like the client, so hydration keys agree.
-- Require `exsolve` `^1.1.3`, so memory no longer grows across builds in one process.
+- Start's entries (`start`, `router`, `client`, `server`) are found by a direct file probe instead of `exsolve`, whose process-wide cache grew across builds in one process and kept a missing entry missing after a dev server restart.
 
 **Removed (experimental, Babel-typed):** the `compilerTransforms` and `serverFnProviderModuleDirectives` options and the `StartCompilerPlugin`, `StartCompilerImportTransform`, `StartCompilerTransformContext` and `StartCompilerTransformCandidate` types. RSC integrations pass `rsc: { loadCssExpression, providerDirective }` instead.
