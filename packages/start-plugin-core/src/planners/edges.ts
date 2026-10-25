@@ -142,8 +142,9 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
         if (fileRule !== null) {
           return fileRule
         }
-        const facts = await ctx.targetFacts(target)
-        return markerViolates(envType, facts.marker) ? { type: 'marker' } : null
+        // the marker only: an edit of the target's imports or exports does not re-plan its importers
+        const marker = await ctx.targetMarker(target)
+        return markerViolates(envType, marker) ? { type: 'marker' } : null
       }
 
       const judge = async (e: EdgeRecord): Promise<Judged | null> => {

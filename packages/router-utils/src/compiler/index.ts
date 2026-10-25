@@ -31,6 +31,7 @@ export * from './facts'
 export * from './cache'
 export * from './host'
 export * from './pipeline'
+export * from './stats'
 /** Yuku's walker and node type, for planners (the core owns the yuku dependency). */
 export { walk } from 'yuku'
 export type { Node as YukuNode, SourceFile as YukuSourceFile } from 'yuku'

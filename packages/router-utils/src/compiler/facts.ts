@@ -10,6 +10,7 @@ import { parseModule } from './source'
 import { DEFAULT_MARKERS, ModuleAnalysis } from './analysis'
 import { buildSummary } from './summary'
 import { EMPTY_RECOGNIZER, isKnownSpecifier } from './values'
+import { approxBytes, cacheDisabled } from './stats'
 import type { ModuleSummary, SummaryExtraHook } from './summary'
 import type { AbstractValue, RecognizerTable } from './values'
 
@@ -82,6 +83,9 @@ export class RawFactsCache {
       pending: Promise<RawFacts> | null
     }
   >()
+  /** `TSR_COMPILER_NO_CACHE=facts|targets`: every read rebuilds (measurement knobs). */
+  private readonly noFacts = cacheDisabled('facts')
+  private readonly noTargets = cacheDisabled('targets')
 
   constructor(private readonly opts: RawFactsOptions) {}
 
@@ -130,6 +134,11 @@ export class RawFactsCache {
   }
 
   async get(canonicalId: string): Promise<RawFacts> {
+    if (this.noFacts) {
+      return this.isKnownSpecifier(canonicalId)
+        ? this.knownFacts(canonicalId)
+        : this.build(canonicalId, await this.read(canonicalId), new Set())
+    }
     let e = this.entries.get(canonicalId)
     if (e && e.facts && !e.stale) {
       return e.facts
@@ -174,7 +183,9 @@ export class RawFactsCache {
       return e.facts
     }
     const facts = this.fromAnalysis(canonicalId, rawRevision, analysis, null)
-    this.entries.set(canonicalId, { stale: false, facts, pending: null })
+    if (!this.noFacts) {
+      this.entries.set(canonicalId, { stale: false, facts, pending: null })
+    }
     return facts
   }
 
@@ -183,9 +194,40 @@ export class RawFactsCache {
     return f.summary?.digest ?? null
   }
 
+  /** The facts J6 target facts are taken from (`get`, or a fresh read when the target-facts knob is off). */
+  async getTarget(canonicalId: string): Promise<RawFacts> {
+    if (this.noTargets && !this.isKnownSpecifier(canonicalId)) {
+      return this.build(canonicalId, await this.read(canonicalId), new Set())
+    }
+    return this.get(canonicalId)
+  }
+
   async targetDigestOf(canonicalId: string): Promise<string> {
-    const f = await this.get(canonicalId)
+    const f = await this.getTarget(canonicalId)
     return f.targetFacts.digest
+  }
+
+  /** Sizes for `compilerStats()`. */
+  stats(withBytes: boolean): Record<string, number> {
+    let stale = 0
+    let pending = 0
+    let empty = 0
+    let bytes = 0
+    for (const e of this.entries.values()) {
+      stale += e.stale ? 1 : 0
+      pending += e.pending ? 1 : 0
+      empty += e.facts ? 0 : 1
+      if (withBytes && e.facts) {
+        bytes += approxBytes(e.facts)
+      }
+    }
+    return {
+      rawFacts: this.entries.size,
+      rawFactsStale: stale,
+      rawFactsPending: pending,
+      rawFactsEmpty: empty,
+      ...(withBytes && { rawFactsBytes: bytes }),
+    }
   }
 
   /** The synthetic facts of a known package specifier: its factory exports, side-effect free. */

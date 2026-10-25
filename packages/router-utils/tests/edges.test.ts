@@ -194,6 +194,58 @@ describe('target facts (R36)', () => {
   })
 })
 
+describe('target markers', () => {
+  /** Reads the marker of every edge's target, as a marker-only file rule does. */
+  const markerPolicy = (): Planner => ({
+    name: 'marker-reader',
+    tier: 0,
+    gate: (t0) => t0.hasImportOrExport,
+    plan() {},
+    async policy(_plan, _output, edges, ctx) {
+      for (const e of edges) {
+        const id = await ctx.resolve(e.specifier)
+        if (id) {
+          await ctx.targetMarker(id)
+        }
+      }
+    },
+  })
+
+  it("re-plans an importer that read only a target's marker when the marker changes, not when its imports or exports do", async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/a.ts': `import { b } from './b'\nexport const a = () => b()\n`,
+        '/app/b.ts': `import { v } from './c'\nexport const b = () => v\n`,
+        '/app/c.ts': `export const v = 1\n`,
+        '/app/d.ts': `export const v = 2\n`,
+      },
+    })
+    const planners = [markerPolicy()]
+    const env = envInfo({ type: 'client' })
+    await host.compile('/app/a.ts', planners, { env })
+    const edit = async (code: string) => {
+      host.write('/app/b.ts', code)
+      const res = await invalidate(
+        host.caches,
+        { path: '/app/b.ts', kind: 'change' },
+        host,
+      )
+      return res.dependents.map((k) => k.canonicalId)
+    }
+
+    expect(
+      await edit(
+        `import { v } from './d'\nexport const b = () => v\nexport const more = 1\n`,
+      ),
+    ).toEqual([])
+    expect(
+      await edit(
+        `import 'server-only'\nimport { v } from './d'\nexport const b = () => v\n`,
+      ),
+    ).toEqual(['/app/a.ts'])
+  })
+})
+
 describe('markers', () => {
   it('a transform and a raw read of a module agree on its marker', async () => {
     const host = new MemoryHost({

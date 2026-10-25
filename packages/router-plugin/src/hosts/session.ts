@@ -8,11 +8,13 @@
 import fs from 'node:fs'
 import {
   RawFactsCache,
+  collectionSizes,
   compileModule,
   createCompilerCaches,
   digestOf,
   identify,
   invalidate,
+  registerCompilerStats,
 } from '@tanstack/router-utils/compiler'
 import { routerPlannerConfig, routerPlanners } from '../planners'
 import { RouteRegistryView, normalizePath } from '../planners/registry'
@@ -112,8 +114,14 @@ export class RouterCompiler {
       readFile: (p) => fs.promises.readFile(p, 'utf8').catch(() => null),
       loadVirtual: () => Promise.resolve(null),
     })
-    this.caches = createCompilerCaches(rawFacts)
+    this.caches = createCompilerCaches(
+      rawFacts,
+      `router-plugin:${opts.bundler}`,
+    )
     this.registry = new RouteRegistryView(opts.context)
+    registerCompilerStats(`router-plugin:${opts.bundler}:session`, this, (o) =>
+      collectionSizes({ warnings: o.warnings, registry: o.registry }, 3),
+    )
     this.host = {
       resolve: opts.resolve ?? (() => Promise.resolve(null)),
       readFile: (p) => fs.promises.readFile(p, 'utf8').catch(() => null),

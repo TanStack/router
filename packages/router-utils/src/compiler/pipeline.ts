@@ -19,6 +19,7 @@ import { emitRecipe, substituteSpecifier } from './emit'
 import { SourceText } from './output-builder'
 import { ExportResolver } from './resolve'
 import { fingerprintSourceFor, resolveCached } from './host'
+import { registerCompilerStats } from './stats'
 import type { CacheEntry } from './cache'
 import type { Emitted } from './emit'
 import type { EmitPlan, EnvInfo, FallbackRecord, PlanContext } from './plan'
@@ -38,10 +39,35 @@ import type {
 
 export const MAX_ATTEMPTS = 3
 
+/** The caches of one compiler session; `label` names them in `compilerStats()`. */
 export function createCompilerCaches(
   rawFacts: HostServices['rawFacts'],
+  label = 'compiler',
 ): CompilerCaches {
-  return { plans: new Map(), rawFacts, resolutions: new Map() }
+  const caches: CompilerCaches = {
+    plans: new Map(),
+    rawFacts,
+    resolutions: new Map(),
+  }
+  registerCompilerStats(label, caches, (c) => {
+    const withBytes = process.env.TSR_COMPILER_STATS_BYTES !== '0'
+    const out: Record<string, number> = c.rawFacts.stats(withBytes)
+    const add = (counts: Record<string, number>) => {
+      for (const [k, v] of Object.entries(counts)) {
+        out[k] = (out[k] ?? 0) + v
+      }
+    }
+    for (const plans of c.plans.values()) {
+      add(plans.stats(withBytes))
+    }
+    let resolutions = 0
+    for (const m of c.resolutions.values()) {
+      resolutions += m.size
+    }
+    add({ resolutions })
+    return out
+  })
+  return caches
 }
 
 type AttemptResult =
@@ -239,7 +265,11 @@ function emitFrom(
 function dependencyPaths(plan: EmitPlan): Array<string> {
   const out = new Set<string>()
   for (const fp of plan.dependencies) {
-    if (fp.kind === 'summary' || fp.kind === 'target-facts') {
+    if (
+      fp.kind === 'summary' ||
+      fp.kind === 'target-facts' ||
+      fp.kind === 'target-marker'
+    ) {
       out.add(identify(fp.canonicalId).path)
     } else if (fp.kind === 'route-registry') {
       out.add(fp.path)
@@ -321,13 +351,18 @@ async function runAttempt(
     return facts.summary
   }
   const targetFactsOf = async (canonicalId: string) => {
-    const facts = await host.rawFacts.get(canonicalId)
+    const facts = await host.rawFacts.getTarget(canonicalId)
     ledger.record({
       kind: 'target-facts',
       canonicalId,
       digest: facts.targetFacts.digest,
     })
     return facts.targetFacts
+  }
+  const targetMarkerOf = async (canonicalId: string) => {
+    const { marker } = (await host.rawFacts.getTarget(canonicalId)).targetFacts
+    ledger.record({ kind: 'target-marker', canonicalId, marker })
+    return marker
   }
   const resolver = new ExportResolver({
     summaryOf,
@@ -350,6 +385,7 @@ async function runAttempt(
         resolveFrom,
         summary: summaryOf,
         targetFacts: targetFactsOf,
+        targetMarker: targetMarkerOf,
         set: (data) => prefetched.set(p.name, data),
       }
       if ((await p.prefetch(t0, ctx)) === false) {
@@ -436,6 +472,7 @@ async function runAttempt(
         ledger,
         resolve: (spec, importer) => resolveFrom(spec, importer ?? importerId),
         targetFacts: targetFactsOf,
+        targetMarker: targetMarkerOf,
         substitute: (edgeKey, specifier) => {
           substituteSpecifier(recipe, edgeKey, specifier, input.code)
         },

@@ -6,11 +6,19 @@
 import { identify, planKeyString } from './identity'
 import type { PlanKey } from './identity'
 import type { EmitPlan } from './plan'
+import { approxBytes, cacheDisabled } from './stats'
 import type { Emitted } from './emit'
+import type { TargetFacts } from './facts'
 
 export type DependencyFingerprint =
   | { kind: 'summary'; canonicalId: string; digest: string | null }
   | { kind: 'target-facts'; canonicalId: string; digest: string }
+  /** Only the target's environment marker (a consumer that reads nothing else). */
+  | {
+      kind: 'target-marker'
+      canonicalId: string
+      marker: TargetFacts['marker']
+    }
   | { kind: 'route-registry'; path: string; digest: string | null }
   | {
       kind: 'resolution'
@@ -27,6 +35,8 @@ export function fingerprintId(fp: DependencyFingerprint): string {
       return `summary:${fp.canonicalId}`
     case 'target-facts':
       return `target:${fp.canonicalId}`
+    case 'target-marker':
+      return `marker:${fp.canonicalId}`
     case 'route-registry':
       return `route:${fp.path}`
     case 'resolution':
@@ -41,6 +51,7 @@ export function fingerprintPath(fp: DependencyFingerprint): string | null {
   switch (fp.kind) {
     case 'summary':
     case 'target-facts':
+    case 'target-marker':
       return identify(fp.canonicalId).path
     case 'route-registry':
       return fp.path
@@ -70,6 +81,7 @@ export function fingerprintIndexKey(fp: DependencyFingerprint): string | null {
 export interface FingerprintSource {
   summaryDigest: (canonicalId: string) => Promise<string | null>
   targetDigest: (canonicalId: string) => Promise<string | null>
+  targetMarker: (canonicalId: string) => Promise<TargetFacts['marker']>
   routeRegistryDigest: (path: string) => string | null
   resolution: (
     env: string,
@@ -88,6 +100,8 @@ export async function fingerprintCurrent(
       return (await src.summaryDigest(fp.canonicalId)) === fp.digest
     case 'target-facts':
       return (await src.targetDigest(fp.canonicalId)) === fp.digest
+    case 'target-marker':
+      return (await src.targetMarker(fp.canonicalId)) === fp.marker
     case 'route-registry':
       return src.routeRegistryDigest(fp.path) === fp.digest
     case 'resolution':
@@ -154,6 +168,19 @@ export class DependentsIndex {
     for (const m of this.byPath.values()) {
       m.delete(ks)
     }
+  }
+
+  /** Sizes for `compilerStats()`. */
+  stats(): { paths: number; emptyPaths: number; entries: number } {
+    let entries = 0
+    let emptyPaths = 0
+    for (const m of this.byPath.values()) {
+      entries += m.size
+      if (m.size === 0) {
+        emptyPaths++
+      }
+    }
+    return { paths: this.byPath.size, emptyPaths, entries }
   }
 }
 
@@ -237,6 +264,8 @@ export class PlanCache {
   private readonly latest = new Map<string, string>()
   readonly inFlight = new Map<string, InFlight>()
   readonly dependents = new DependentsIndex()
+  /** `TSR_COMPILER_NO_CACHE=plans`: nothing is published (measurement knob). */
+  private readonly disabled = cacheDisabled('plans')
 
   constructor(readonly env: string) {}
 
@@ -278,7 +307,7 @@ export class PlanCache {
     if ((this.generations.get(ks) ?? 0) !== entry.generation) {
       return false
     }
-    if (this.latest.get(ks) !== entry.revision) {
+    if (this.latest.get(ks) !== entry.revision || this.disabled) {
       return false
     }
     this.entries.set(ks, entry)
@@ -317,5 +346,36 @@ export class PlanCache {
 
   values(): IterableIterator<CacheEntry> {
     return this.entries.values()
+  }
+
+  /** Sizes for `compilerStats()` (bytes: plans and memoised emits, approximate). */
+  stats(withBytes: boolean): Record<string, number> {
+    let emitted = 0
+    let dependencies = 0
+    let planBytes = 0
+    let emittedBytes = 0
+    for (const e of this.entries.values()) {
+      emitted += e.emitted.size
+      dependencies += e.plan.dependencies.length
+      if (withBytes) {
+        planBytes += approxBytes(e.plan)
+        for (const out of e.emitted.values()) {
+          emittedBytes += approxBytes(out)
+        }
+      }
+    }
+    const d = this.dependents.stats()
+    return {
+      plans: this.entries.size,
+      emitted,
+      dependencies,
+      generations: this.generations.size,
+      latest: this.latest.size,
+      inFlight: this.inFlight.size,
+      dependentPaths: d.paths,
+      dependentEmptyPaths: d.emptyPaths,
+      dependentEntries: d.entries,
+      ...(withBytes && { planBytes, emittedBytes }),
+    }
   }
 }

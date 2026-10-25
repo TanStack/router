@@ -16,12 +16,14 @@ import {
   RawFactsCache,
   SourceText,
   WarningLedger,
+  collectionSizes,
   compileModule,
   createCompilerCaches,
   deriveId,
   digestOf,
   identify,
   invalidate,
+  registerCompilerStats,
 } from '@tanstack/router-utils/compiler'
 import { defaultCodeSplitGroupings } from '@tanstack/router-plugin'
 import {
@@ -219,7 +221,19 @@ export class StartRsbuildCompilerSession {
       // every analysis of the session agrees on the marker specifiers
       markerSpecifiers: this.ip?.markerSpecifiers,
     })
-    this.caches = createCompilerCaches(this.rawFacts)
+    this.caches = createCompilerCaches(this.rawFacts, 'start:rsbuild')
+    registerCompilerStats('start:rsbuild:session', this, (o) =>
+      collectionSizes(
+        {
+          envs: o.envs,
+          registry: o.registry,
+          warnings: o.warnings,
+          ip: o.ip,
+          missing: o.missing,
+        },
+        4,
+      ),
+    )
   }
 
   env(name: string): EnvState {
