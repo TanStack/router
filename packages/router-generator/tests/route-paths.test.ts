@@ -672,7 +672,12 @@ describe('conflicting routes', () => {
   // in parallel), src/publish/atomic.ts (one temporary file per destination).
   // Impact: a config mistake gives a broken app or a bare fs error instead
   // of an error naming the file.
-  test.each([
+  test.each<{
+    name: string
+    files: Record<string, string>
+    config: Config['virtualRouteConfig']
+    file: string
+  }>([
     {
       name: 'two route() entries',
       files: { 'src/routes/x.tsx': fileRoute('/a') },
