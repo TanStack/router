@@ -357,6 +357,9 @@ export function startCompilerPlugin(
         providerSeparate: !ssrIsProvider,
         idMode,
         providerDirective: opts.rsc?.providerDirective,
+        // the rsc env evaluates only what the server fns need (a route module's client-only
+        // module-level code, e.g. `createContext`, fails under `react-server`)
+        alwaysDeriveProvider: opts.rsc !== undefined,
         isOpaque,
       }
       const hydrate: HydratePlannerConfig = { root: config.root }
