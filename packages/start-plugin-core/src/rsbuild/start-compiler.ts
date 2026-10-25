@@ -144,6 +144,12 @@ export function registerStartCompiler(
           test: /[\\/]import-protection[\\/][^\\/]+[\\/]runtime\.mjs$/,
           sideEffects: false,
         },
+        // an edge module is JavaScript whatever the importer's import attributes say of the
+        // module it stands in for (`with { type: 'json' }` would make Rspack parse it as JSON)
+        {
+          test: /[\\/]import-protection[\\/][^\\/]+[\\/]edge\.[^\\/]+\.mjs$/,
+          type: 'javascript/esm',
+        },
       )
     }
     rules.unshift(...loaderRules)

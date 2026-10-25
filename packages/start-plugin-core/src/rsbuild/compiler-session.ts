@@ -36,6 +36,7 @@ import { FunctionIdAllocator } from '../server-fns/ids'
 import { ServerFnRegistry } from '../server-fns/registry'
 import { manifestResolverModule } from '../server-fns/resolver'
 import { createImportProtection } from '../import-protection/session'
+import { violationsOf } from '../import-protection/violations'
 import { rspackEdgeModuleIds } from '../import-protection/edge-modules'
 import { normalizePath } from '../utils'
 import type { ImportProtection } from '../import-protection/session'
@@ -147,6 +148,12 @@ export interface EnvState {
   /** The server-fn facts of this environment's modules, by module resource (the compiler's snapshot). */
   serverFns: Map<string, ServerFnBuildInfo>
   transformImport: Array<TransformImportRule>
+  /** The resources the loader compiled in the current compilation (host: cleared at `thisCompilation`). */
+  compiled: Set<string>
+  /** In-scope modules whose own marker denies them in this environment (an entry reports itself), by resource. */
+  selfMarked: Map<string, { specifier: string; line: number }>
+  /** The plan fingerprint of the last compile of each resource (a repeat is a cache hit). */
+  fingerprints: Map<string, string>
 }
 
 /** The session every compiler of one Rsbuild plugin shares. */
@@ -170,7 +177,7 @@ export class StartRsbuildCompilerSession {
   /** Import protection of the session (null: `enabled: false`). */
   readonly ip: ImportProtection | null
   private readonly plannersByKey = new Map<string, Array<Planner>>()
-  private routerCfg: RouterPlannerConfig | null = null
+  private readonly routerCfg = new Map<'client' | 'server', RouterPlannerConfig>()
 
   constructor(readonly opts: StartRsbuildSessionOptions) {
     this.allocator = opts.generateFunctionId
@@ -182,6 +189,9 @@ export class StartRsbuildCompilerSession {
         type: env.type,
         serverFns: new Map(),
         transformImport: [],
+        compiled: new Set(),
+        selfMarked: new Map(),
+        fingerprints: new Map(),
       })
     }
     const root = opts.root()
@@ -217,34 +227,72 @@ export class StartRsbuildCompilerSession {
     return env
   }
 
-  /** Reads a file: the compilers' input file systems first (Rspack's virtual modules), then the disk. */
+  /**
+   * Reads a file: our virtual modules through the compilers' input file
+   * systems (Rspack's virtual files), real files from the disk (the input
+   * file system caches across a watch compilation; the disk is the truth
+   * of an edited dependency).
+   */
   async readFile(file: string): Promise<string | null> {
-    for (const read of this.inputFileSystems.values()) {
-      const text = await read(file)
-      if (text !== null) {
-        return text
+    if (file.includes('/node_modules/.virtual/')) {
+      for (const read of this.inputFileSystems.values()) {
+        const text = await read(file)
+        if (text !== null) {
+          return text
+        }
       }
+      return null
     }
     try {
       return await fs.promises.readFile(file, 'utf8')
     } catch {
+      this.missing.add(file)
       return null
     }
   }
 
-  private routerPlannerConfig(): RouterPlannerConfig {
-    if (!this.routerCfg) {
+  /** Paths a read found missing (their raw facts say so until an event or `forgetMisses`). */
+  private readonly missing = new Set<string>()
+
+  /** Drops every failed resolution and missing-file fact (a watch compilation starts). */
+  forgetMisses(): void {
+    for (const m of this.caches.resolutions.values()) {
+      for (const [key, value] of m) {
+        if (value === null) {
+          m.delete(key)
+        }
+      }
+    }
+    for (const file of this.missing) {
+      this.rawFacts.markStale(file)
+    }
+    this.missing.clear()
+  }
+
+  /**
+   * The router planners' configuration of an environment type: the client
+   * splits with route HMR and without the server-only options; a server
+   * environment splits too (the same component nesting as the client, which
+   * Solid's hydration keys need; as the Vite path), without HMR.
+   */
+  private routerPlannerConfig(type: 'client' | 'server'): RouterPlannerConfig {
+    let cfg = this.routerCfg.get(type)
+    if (!cfg) {
       const cs = this.opts.routerConfig().codeSplittingOptions
-      this.routerCfg = {
+      cfg = {
         framework: this.opts.framework,
         split: true,
         defaultGroupings: cs?.defaultBehavior ?? defaultCodeSplitGroupings,
         splitBehavior: cs?.splitBehavior,
-        deleteNodes: ['ssr', 'server', 'headers'],
-        hmr: { enabled: cs?.addHmr ?? true, style: 'webpack' },
+        deleteNodes: type === 'client' ? ['ssr', 'server', 'headers'] : [],
+        hmr: {
+          enabled: type === 'client' && (cs?.addHmr ?? true),
+          style: 'webpack',
+        },
       }
+      this.routerCfg.set(type, cfg)
     }
-    return this.routerCfg
+    return cfg
   }
 
   private plannersFor(env: EnvState, rscLayer: boolean): Array<Planner> {
@@ -254,7 +302,7 @@ export class StartRsbuildCompilerSession {
       planners = startPlanners({
         hydrate: createHydratePlanner(),
         rscCss: rscLayer,
-        router: env.type === 'client' ? routerPlanners() : [],
+        router: routerPlanners(),
         importEdges: this.ip?.planner ?? null,
       })
       this.plannersByKey.set(key, planners)
@@ -271,7 +319,7 @@ export class StartRsbuildCompilerSession {
       bundler: 'rspack',
       framework: this.opts.framework,
       conditions: [],
-      routerSplit: env.type === 'client',
+      routerSplit: true,
       ...(layer ? { layer } : {}),
     }
   }
@@ -294,7 +342,7 @@ export class StartRsbuildCompilerSession {
       rscLayer && opts.rsc
         ? { loadCssExpression: opts.rsc.loadCssExpression }
         : undefined
-    const router = this.routerPlannerConfig()
+    const router = this.routerPlannerConfig(env.type)
     const ipKey = this.ip?.config.configKey ?? null
     return {
       configKey: digestOf({
@@ -490,10 +538,31 @@ export class StartRsbuildCompilerSession {
     }
     this.reportDiagnostics(ctx, out, identity.path, source)
     const ipEnv = ip?.env(env.name)
+    env.compiled.add(ctx.resource)
     if (ipEnv) {
       const { error } = ipEnv.afterCompile(id, out)
       if (error) {
         throw error
+      }
+      // dev `log: 'always'`: a compile the plan cache answered (the same plan again: an
+      // importer Rspack rebuilt for a dependency's edit) reports its violations again
+      if (
+        this.opts.mode === 'dev' &&
+        ip!.config.log === 'always' &&
+        env.fingerprints.get(ctx.resource) === out.fingerprint
+      ) {
+        await ipEnv.reportAgain(id, {
+          version: 1,
+          env: env.name,
+          violations: violationsOf(out),
+        })
+      }
+      env.fingerprints.set(ctx.resource, out.fingerprint)
+      const denying = env.type === 'client' ? 'server-only' : 'client-only'
+      if (out.facts.marker === denying && ip!.inScope(identity.path)) {
+        env.selfMarked.set(ctx.resource, markerImportOf(source, ip!, denying))
+      } else {
+        env.selfMarked.delete(ctx.resource)
       }
     }
     const buildInfo = ctx._module?.buildInfo
@@ -634,6 +703,29 @@ export class StartRsbuildCompilerSession {
     )
     return allocator
   }
+}
+
+/** The marker import of a module's text (its specifier and 1-based line), for an entry's own report. */
+function markerImportOf(
+  source: string,
+  ip: ImportProtection,
+  kind: 'server-only' | 'client-only',
+): { specifier: string; line: number } {
+  let best: { specifier: string; line: number } | null = null
+  for (const [specifier, k] of Object.entries(ip.markerSpecifiers)) {
+    if (k !== kind) {
+      continue
+    }
+    const at = source.indexOf(specifier)
+    if (at === -1) {
+      continue
+    }
+    const line = source.slice(0, at).split(/\r\n|\r|\n|\u2028|\u2029/).length
+    if (!best || line < best.line) {
+      best = { specifier, line }
+    }
+  }
+  return best ?? { specifier: kind, line: 1 }
 }
 
 const camelToDash = (name: string): string =>

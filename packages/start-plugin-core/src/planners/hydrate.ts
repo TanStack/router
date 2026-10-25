@@ -489,6 +489,9 @@ function plan(ctx: PlanContext): void {
       planned.set(b, result)
     }
   }
+  if (planned.size > 0) {
+    extractExports(ctx)
+  }
   // lazy consts and prefixes in source order
   for (const b of boundaries) {
     const p = planned.get(b)
@@ -522,6 +525,44 @@ function nestedRegions(
       (o) => o !== b && o.split && o.children && within(o.element, region),
     )
     .map((o) => o.children!.range)
+}
+
+/**
+ * DESIGN §3.5.3 for Hydrate chunks: every exported pure, unwritten
+ * declaration of the module may leave for an extracted-export output
+ * (`?tsr-split=export~<name>`, side-effect free); the core keeps it in the
+ * module when the module's own code reads it or no chunk needs it, and
+ * moves it, re-exported from the module, when only chunks do. So a
+ * component only the children render loads with them and stays one
+ * instance for every importer (a copy in the chunk would be a second one;
+ * an import from the parent keeps it eager on bundlers without
+ * statement-level splitting). The route splitter declares the same outputs
+ * for route modules (`declareOutput` is idempotent by id).
+ */
+function extractExports(ctx: PlanContext): void {
+  for (const e of ctx.analysis.exports) {
+    if (e.kind !== 'local' || e.local === null || e.typeOnly) {
+      continue
+    }
+    const sym = e.local
+    const declaring = ctx.t1.declaringUnits.get(sym) ?? []
+    if (
+      declaring.length === 0 ||
+      declaring.some((u) => ctx.t1.units[u]!.kind !== 'declaration') ||
+      declaring.some((u) => ctx.t1.units[u]!.effectful) ||
+      ctx.t1.refs.writesOf(sym).length > 0
+    ) {
+      continue
+    }
+    const name = ctx.symbols.name(sym)
+    const output = ctx.declareOutput({
+      kind: 'export',
+      key: `export~${name}`,
+      derived: { kind: 'export', value: name },
+      sideEffectFree: true,
+    })
+    ctx.extract(sym, output)
+  }
 }
 
 /** Names and symbols shared by every boundary of the file (allocated on first use). */

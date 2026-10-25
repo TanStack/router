@@ -24,6 +24,7 @@ import type {
   StartRsbuildEnvironment,
 } from './compiler-session'
 import type { RsbuildRouteGenerator } from './router-generator'
+import type { ImportGraphView } from '../import-protection/graph-trace'
 import type { Rspack, rspack as rspackNamespaceType } from '@rsbuild/core'
 
 type RspackNamespace = typeof rspackNamespaceType
@@ -42,6 +43,27 @@ export interface StartHostPluginOptions {
 }
 
 const PLUGIN_NAME = 'tanstack-start:compiler'
+
+/** The compilation's graph view; a compilation Rspack dropped (a stale read after a rebuild) answers nothing. */
+function guardedGraphView(compilation: Rspack.Compilation): ImportGraphView {
+  const view = rspackGraphView(compilation as never)
+  return {
+    importers(id) {
+      try {
+        return view.importers(id)
+      } catch {
+        return []
+      }
+    },
+    isEntry(id) {
+      try {
+        return view.isEntry(id)
+      } catch {
+        return false
+      }
+    },
+  }
+}
 
 interface ModuleLike {
   resource?: string
@@ -134,6 +156,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         const modified = [...(c.modifiedFiles ?? [])]
         const removed = [...(c.removedFiles ?? [])]
         ipEnv?.beginLogicalBuild()
+        // Rspack reports no event for a file created while nothing depended on it (a target
+        // deleted and recreated between edits): failed resolutions and missing-file facts are
+        // re-read by the compiles of this compilation
+        session.forgetMisses()
         for (const file of modified) {
           await session.invalidate(
             file,
@@ -155,9 +181,52 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         knownFiles = new Set<string>(deps as Iterable<string>)
       })
 
+      /** The entry modules' resources of a compilation. */
+      const entryResources = (compilation: Rspack.Compilation): Set<string> => {
+        const out = new Set<string>()
+        for (const entry of compilation.entries.values()) {
+          for (const dep of entry.dependencies) {
+            const resource = (
+              compilation.moduleGraph.getModule(dep) as unknown as
+                | ModuleLike
+                | null
+            )?.resource
+            if (resource) {
+              out.add(resource)
+            }
+          }
+        }
+        return out
+      }
+
+      /** The reports of this environment's self-marked entry modules (an entry has no importer to report it). */
+      const selfMarkedReports = async (compilation: Rspack.Compilation) => {
+        const reports: Array<{ severity: 'error' | 'warning'; message: string }> =
+          []
+        if (!ipEnv || env.selfMarked.size === 0) {
+          return reports
+        }
+        const entries = entryResources(compilation)
+        for (const [resource, marker] of env.selfMarked) {
+          if (entries.has(resource)) {
+            const report = await ipEnv.selfMarkedReport(
+              normalizePath(resource.split('?')[0]!),
+              marker,
+            )
+            if (report) {
+              reports.push(report)
+            }
+          }
+        }
+        return reports
+      }
+
       compiler.hooks.thisCompilation.tap(PLUGIN_NAME, (compilation) => {
         currentCompilation = compilation
+        env.compiled.clear()
         if (ipEnv) {
+          // the graph of THIS compilation (lazy: read when a trace is built)
+          ipEnv.graph = guardedGraphView(compilation)
           // every known edge module exists before the importers' dependencies resolve
           for (const { specifier, load } of ipEnv.edgeModules()) {
             opts.writeVirtualModule(specifier, load.code)
@@ -165,16 +234,46 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           if (session.opts.mode === 'dev') {
             if (!reporterInstalled) {
               reporterInstalled = true
-              ipEnv.useDevReporter({
-                warn: (message) => {
-                  currentCompilation?.warnings.push(new WebpackError(message))
+              // no timers: `finishModules` is the completion event (R21)
+              ipEnv.useDevReporter(
+                {
+                  warn: (message) => {
+                    currentCompilation?.warnings.push(new WebpackError(message))
+                  },
                 },
-              })
+                undefined,
+                { setTimer: () => null, clearTimer: () => {} },
+              )
             }
-            compilation.hooks.finishModules.tap(PLUGIN_NAME, () => {
-              ipEnv.graph = rspackGraphView(compilation as never)
-              ipEnv.reporter?.flush(true)
-            })
+            compilation.hooks.finishModules.tapPromise(
+              PLUGIN_NAME,
+              async (modules) => {
+                if (session.ip!.config.log === 'always') {
+                  // modules this compilation kept without compiling them report again
+                  for (const m of modules) {
+                    const module = m as unknown as ModuleLike
+                    const record = module.buildInfo?.[RSPACK_BUILD_INFO_KEY]
+                    if (
+                      record &&
+                      module.resource &&
+                      !env.compiled.has(module.resource)
+                    ) {
+                      await ipEnv.reportAgain(
+                        normalizePath(module.resource),
+                        record,
+                      )
+                    }
+                  }
+                }
+                for (const report of await selfMarkedReports(compilation)) {
+                  ;(report.severity === 'error'
+                    ? compilation.errors
+                    : compilation.warnings
+                  ).push(new WebpackError(report.message))
+                }
+                ipEnv.reporter?.flush(true)
+              },
+            )
           } else {
             compilation.hooks.processAssets.tapPromise(
               {
@@ -188,12 +287,16 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 )
                 const result = await ipEnv.decide(
                   live,
-                  rspackGraphView(compilation as never),
+                  guardedGraphView(compilation),
                 )
                 if (result.needPass) {
                   return
                 }
-                for (const report of ipEnv.buildReports()) {
+                const reports = [
+                  ...ipEnv.buildReports(),
+                  ...(await selfMarkedReports(compilation)),
+                ]
+                for (const report of reports) {
                   ;(report.severity === 'error'
                     ? compilation.errors
                     : compilation.warnings
