@@ -4,6 +4,14 @@
 
 Route code splitting and route HMR run on the new compiler core instead of Babel: faster dev startup, HMR and builds, with the same production output shape.
 
+**What changes for your app when you upgrade:**
+
+- **esbuild refuses `autoCodeSplitting: true`** with a clear error (route generation still works there); use Vite, Rspack or webpack for code splitting.
+- **CommonJS consumers need Node 20.19+ or 22.12+** (`engines`): a `webpack.config.js` / `rspack.config.js` that `require()`s the plugin loads the ESM-only parser through `require(esm)`, which Node 22.0–22.11 and 21 do not support.
+- **Routes the compiler cannot read statically stay unsplit with one warning per file per build** naming the file: route options built by a helper call (`createFileRoute('/x')(makeOptions())`), options that spread or compute, methods that read `this`, and route modules the compiler cannot parse. Main split some of these silently or crashed.
+- **`routeTree.gen.ts` formatting changes once** (`enableRouteTreeFormatting` now defaults to `false`; see the route generator's changeset).
+- **Removed:** `codeSplittingOptions.compilerPlugins` (the experimental Babel hook).
+
 - Any route option value splits: identifiers, inline functions, method shorthands (#8623), object-form loaders (#8753), casts, `satisfies`, calls such as `memo(Page)`, and options held in a module-level constant. Module state the route module and its chunks share exists once (#8754, #8505). Root routes split their `errorComponent` and `notFoundComponent`.
 - `createFileRoute` & co. are recognised by their import binding. Routes whose options cannot be read statically, and methods or function expressions that read `this` (#8688), stay in the route module with one warning naming the file.
 - A route's CSS import loads with its split component chunks when every component option the route defines is split; otherwise it stays in the route module.

@@ -127,7 +127,7 @@
     "!skills/_artifacts"
   ],
   "engines": {
-    "node": ">=20.19"
+    "node": "^20.19.0 || >=22.12.0"
   },
   "dependencies": {
     "@jridgewell/remapping": "^2.3.5",
