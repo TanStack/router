@@ -59,9 +59,9 @@ export const Html = Vue.defineComponent({
       }
 
       const slot = (bodyVnode.children as Vue.Slots | null)?.default
-      return Vue.h(Body, bodyVnode.props, {
-        default: () => [...(slot?.() ?? []), head],
-      })
+      const body = Vue.cloneVNode(bodyVnode)
+      body.children = { default: () => [...(slot?.() ?? []), head] }
+      return body
     }
   },
 })
