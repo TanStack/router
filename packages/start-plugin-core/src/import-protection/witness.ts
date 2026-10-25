@@ -118,6 +118,9 @@ export interface RspackChunkLike {
 
 export interface RspackConnectionLike {
   originModule: RspackModuleLike | null
+  /** The imported module as resolved (an inner module, when the connection moved to its ConcatenatedModule). */
+  resolvedModule?: RspackModuleLike | null
+  dependency?: unknown
 }
 
 export interface RspackCompilationLike {
@@ -135,6 +138,8 @@ export interface RspackCompilationLike {
       module: RspackModuleLike,
     ) => Iterable<RspackConnectionLike>
     getModule?: (dependency: unknown) => RspackModuleLike | null
+    /** The module a dependency belongs to (the inner module of a ConcatenatedModule). */
+    getParentModule?: (dependency: unknown) => RspackModuleLike | null
   }
   entries?: Map<string, { dependencies: Iterable<unknown> }>
 }
@@ -203,32 +208,53 @@ export function readRspackWitness(
 export function rspackGraphView(
   compilation: RspackCompilationLike,
 ): ImportGraphView {
-  let byResource: Map<string, RspackModuleLike> | null = null
+  // a production module can also be an inner module of a ConcatenatedModule (scope hoisting),
+  // which holds the connections from outside the concatenation
+  let byResource: Map<string, Array<RspackModuleLike>> | null = null
   let entries: Set<string> | null = null
-  const moduleOf = (id: string) => {
+  const modulesOf = (id: string) => {
     if (!byResource) {
       byResource = new Map()
       for (const m of compilation.modules) {
         for (const inner of [m, ...(m.modules ?? [])]) {
-          if (inner.resource && !byResource.has(inner.resource)) {
-            byResource.set(inner.resource, inner)
+          if (!inner.resource) {
+            continue
+          }
+          let list = byResource.get(inner.resource)
+          if (!list) {
+            list = []
+            byResource.set(inner.resource, list)
+          }
+          for (const holder of inner === m ? [m] : [inner, m]) {
+            if (!list.includes(holder)) {
+              list.push(holder)
+            }
           }
         }
       }
     }
-    return byResource.get(id) ?? null
+    return byResource.get(id) ?? []
   }
+  const { moduleGraph } = compilation
   return {
     importers(id) {
-      const m = moduleOf(id)
-      const incoming = m
-        ? compilation.moduleGraph.getIncomingConnections?.(m)
-        : undefined
       const out: Array<string> = []
-      for (const c of incoming ?? []) {
-        const res = c.originModule?.resource
-        if (res && res !== id && !out.includes(res)) {
-          out.push(res)
+      for (const m of modulesOf(id)) {
+        for (const c of moduleGraph.getIncomingConnections?.(m) ?? []) {
+          // a ConcatenatedModule holds the connections of each of its inner modules
+          const target = c.resolvedModule?.resource
+          if (target !== undefined && target !== id) {
+            continue
+          }
+          // the importing module itself, inside a ConcatenatedModule origin
+          const origin =
+            (c.dependency !== undefined
+              ? moduleGraph.getParentModule?.(c.dependency)
+              : null) ?? c.originModule
+          const res = origin?.resource
+          if (res && res !== id && !out.includes(res)) {
+            out.push(res)
+          }
         }
       }
       return out

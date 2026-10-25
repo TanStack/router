@@ -10,12 +10,14 @@
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import {
+  inEnvironment,
   isAt,
   rejection,
   violationsOf,
 } from '../../importProtection/start-apps'
 import type { StartBuildOptions, StartBundler } from '../../build-harness'
 import type { Violation } from '../../importProtection/start-apps'
+import type { ViolationInfo } from '../../importProtection/public-types'
 
 const timeout = 60_000
 
@@ -31,7 +33,19 @@ async function buildReport(
     viteConfig,
   }: Pick<StartBuildOptions, 'sourcemap' | 'viteConfig'> = {},
 ): Promise<Violation> {
-  const error = await rejection(
+  return reportOf(await buildFailure(bundler, files, { sourcemap, viteConfig }))
+}
+
+/** The failed build of `files` (client entry `src/entry.ts`, default rules). */
+function buildFailure(
+  bundler: StartBundler,
+  files: Record<string, string>,
+  {
+    sourcemap = false,
+    viteConfig,
+  }: Pick<StartBuildOptions, 'sourcemap' | 'viteConfig'> = {},
+) {
+  return rejection(
     buildStart({
       bundler,
       files,
@@ -40,6 +54,10 @@ async function buildReport(
       viteConfig,
     }),
   )
+}
+
+/** The report of the one violation of a failed build. */
+function reportOf(error: Awaited<ReturnType<typeof buildFailure>>): Violation {
   const [report, ...others] = violationsOf(error)
   expect(others).toEqual([])
   return report!
@@ -118,10 +136,11 @@ export const leak = () => secret()
 describe.each(startBundlers)(
   '%s build: the report of a violation',
   (bundler) => {
-    let chainReport: Promise<Violation> | undefined
-    /** The report of the `chain` build, built once. */
-    const reportOfChain = () =>
-      (chainReport ??= buildReport(bundler, chain, {}))
+    let chainFailure: ReturnType<typeof buildFailure> | undefined
+    /** The failed `chain` build, built once. */
+    const failureOfChain = () => (chainFailure ??= buildFailure(bundler, chain))
+    /** The report of the `chain` build. */
+    const reportOfChain = async () => reportOf(await failureOfChain())
 
     // The middle steps are located on the line of their import (which
     // column of the import statement is not specified).
@@ -145,6 +164,27 @@ describe.each(startBundlers)(
           },
           { at: importer, imports: './secret.server' },
         ])
+      },
+      timeout,
+    )
+
+    // The printed report shows the user's source where it locates the
+    // importer (SPEC J6.5 "a code frame"): read as the original text of that
+    // line in the build's error, not as wording. `src/b.ts` starts with a
+    // comment that compiling drops, so a frame of compiled code shows other
+    // lines.
+    test(
+      "the printed report shows the importer's original source at its location",
+      async () => {
+        const error = await failureOfChain()
+        const { importer } = reportOf(error)
+        expect(atChainImporter(importer), importer).toBe(true)
+        const line = Number(/^src\/b\.ts:(\d+)/.exec(importer)![1])
+        const original = chain['src/b.ts'].split('\n')[line - 1]!
+        expect(
+          error.errors.some((message) => message.includes(original)),
+          error.errors.join('\n'),
+        ).toBe(true)
       },
       timeout,
     )
@@ -197,6 +237,65 @@ export const page = () => leak()
           'src/entry.ts',
           'shared/a.ts',
           'src/b.ts',
+        ])
+      },
+      timeout,
+    )
+
+    // A route's split component is loaded by a dynamic import the router
+    // plugin generates, and a production build scope-hoists the component's
+    // chunk (and the route module into the entry's): a mock-mode build
+    // reports after that, and the chain still goes from the entry through
+    // the route tree and the route to the component's import.
+    // Source: the react-start/import-protection e2e app (Rsbuild mock build:
+    // the traces of split components stopped at the route file).
+    test(
+      'the trace of a mock-mode build reaches a split route component from the entry',
+      async () => {
+        // each violation as `onViolation` reads it when it is called (while
+        // the build runs, as the printed report does)
+        const snapshots: Array<ViolationInfo> = []
+        const build = await buildStart({
+          bundler,
+          files: {
+            ...secretServer,
+            'src/format.ts': `export const format = (s: string) => '[' + s + ']'\n`,
+            'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { secret } from '../secret.server'
+import { format } from '../format'
+export const Route = createFileRoute('/')({
+  component: () => format(secret()),
+})
+`,
+            'src/router.ts': `import { routeTree } from './routeTree.gen'
+export const getRouter = () => ({ routeTree })
+`,
+            'src/entry.ts': `export { getRouter } from './router'\n`,
+          },
+          entry: 'src/entry.ts',
+          start: {
+            importProtection: {
+              behavior: 'mock',
+              onViolation: (violation: unknown) => {
+                const info = violation as ViolationInfo
+                snapshots.push({ ...info, trace: [...info.trace] })
+              },
+            },
+          },
+        })
+        const reports = violationsOf(
+          inEnvironment({ root: build.root, violations: snapshots }, 'client'),
+        )
+        expect(reports).toHaveLength(1)
+        // (the route module and its chunk are two steps of one file)
+        const files = modulesOf(reports[0]!.trace).filter(
+          (file, i, all) => file !== all[i - 1],
+        )
+        expect(clientEntries).toContain(files[0])
+        expect(files.slice(-3)).toEqual([
+          'src/router.ts',
+          'src/routeTree.gen.ts',
+          'src/routes/index.tsx',
         ])
       },
       timeout,

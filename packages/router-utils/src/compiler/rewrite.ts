@@ -377,7 +377,9 @@ export class RenderTree {
 
   /**
    * The outermost edits inside `[start, end)`, optionally treating `exclude`
-   * as absent (rendering a claimed region inside its owner).
+   * as absent (rendering a claimed region inside its owner), and without the
+   * zero-width edits at `skipZeroWidthAt` (they precede the edit whose body
+   * is rendered: its siblings, rendered before it).
    */
   topLevelWithin(
     start: number,
@@ -385,6 +387,7 @@ export class RenderTree {
     exclude: TreeEdit | null = null,
     includeEnd = false,
     skipExact: Range | null = null,
+    skipZeroWidthAt: number | null = null,
   ): Array<TreeEdit> {
     const edits = this.edits
     let lo = 0
@@ -412,6 +415,12 @@ export class RenderTree {
         break
       }
       if (e === exclude) {
+        continue
+      }
+      if (
+        e.range.start === skipZeroWidthAt &&
+        e.range.end === skipZeroWidthAt
+      ) {
         continue
       }
       if (

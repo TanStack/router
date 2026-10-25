@@ -8,7 +8,7 @@ import { patternOf, rulesFor } from './rules'
 import type { EdgeModuleContent } from './edge-modules'
 import type { ImportProtectionConfig } from './config'
 import type { EnvType, RuleRef } from './rules'
-import type { OriginalLocation } from './locate'
+import type { CodeFrame, OriginalLocation } from './locate'
 import type { TraceStep, ViolationInfo } from './trace'
 
 export const IMPORT_EDGES_PLANNER = 'import-edges'
@@ -29,6 +29,8 @@ export interface EdgeViolation {
   resolved: string | null
   /** Where the import is, in the original source. */
   loc: OriginalLocation | null
+  /** The original source around `loc`, when the original text is known. */
+  snippet: CodeFrame | null
   behavior: 'error' | 'mock'
   /** The edge module the specifier was substituted with (null: not substituted, dev `error`). */
   module: { key: string; content: EdgeModuleContent } | null
@@ -89,6 +91,9 @@ export function violationInfo(
     specifier: v.specifier,
     importer: v.importer,
     ...(v.loc && { importerLoc: { ...v.loc } }),
+    ...(v.snippet && {
+      snippet: { ...v.snippet, lines: [...v.snippet.lines] },
+    }),
     ...(v.resolved !== null && { resolved: identify(v.resolved).path }),
   } as ViolationInfo & { freezeTrace: () => Array<TraceStep> }
   Object.defineProperty(info, 'trace', {

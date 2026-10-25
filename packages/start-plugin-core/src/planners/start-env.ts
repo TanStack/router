@@ -1114,6 +1114,8 @@ function cleanOrphanedLocals(
   for (let round = 0; round < 8; round++) {
     const live = ctx.liveness('env')
     let changed = false
+    // object pattern properties pruned this round, removed together per pattern
+    const prunedProps = new Map<Node, Set<Node>>()
     for (const b of file.bindings) {
       if (handled.has(b.id) || b.import) {
         continue
@@ -1157,7 +1159,7 @@ function cleanOrphanedLocals(
         parent.type === 'Property' ||
         parent.type === 'ArrayPattern'
       ) {
-        if (prunePatternElement(ctx, decl, scope, by)) {
+        if (prunePatternElement(ctx, decl, scope, by, prunedProps)) {
           handled.add(b.id)
           changed = true
         }
@@ -1266,9 +1268,58 @@ function cleanOrphanedLocals(
         })
       }
     }
+    for (const [pattern, props] of prunedProps) {
+      removePatternProperties(ctx, pattern, props, live, scope, by)
+    }
     if (!changed) {
       break
     }
+  }
+}
+
+/**
+ * Removes the properties `pruned` of an object pattern: each run of
+ * properties gone (pruned now, or erased by an earlier round) is one range
+ * with the separator to its next kept property (or from its previous one),
+ * so removals of neighbours never partially overlap.
+ */
+function removePatternProperties(
+  ctx: PlanContext,
+  pattern: Node,
+  pruned: ReadonlySet<Node>,
+  live: ReturnType<PlanContext['liveness']>,
+  scope: EditScope,
+  by: string,
+): void {
+  if (pattern.type !== 'ObjectPattern') {
+    return
+  }
+  const props = pattern.properties as ReadonlyArray<Node>
+  const gone = (p: Node) => pruned.has(p) || live.isErased(rangeOf(p))
+  for (let i = 0; i < props.length; i++) {
+    if (!gone(props[i]!)) {
+      continue
+    }
+    let j = i
+    while (j + 1 < props.length && gone(props[j + 1]!)) {
+      j++
+    }
+    if (props.slice(i, j + 1).some((p) => pruned.has(p))) {
+      const next = props[j + 1]
+      const prev = props[i - 1]
+      ctx.rewrites.add({
+        range: next
+          ? { start: props[i]!.start, end: next.start }
+          : prev
+            ? { start: prev.end, end: props[j]!.end }
+            : { start: props[i]!.start, end: props[j]!.end },
+        body: [],
+        scope,
+        by,
+        reason: 'orphaned pattern property',
+      })
+    }
+    i = j
   }
 }
 
@@ -1315,6 +1366,7 @@ function prunePatternElement(
   decl: Node,
   scope: EditScope,
   by: string,
+  prunedProps: Map<Node, Set<Node>>,
 ): boolean {
   const file = ctx.analysis.file
   let node: Node = decl
@@ -1334,22 +1386,12 @@ function prunePatternElement(
     if (pattern.properties.some((p) => p.type === 'RestElement')) {
       return false
     }
-    const props = pattern.properties as ReadonlyArray<Node>
-    const i = props.indexOf(parent)
-    const next = props[i + 1]
-    const prev = props[i - 1]
-    const range = next
-      ? { start: parent.start, end: next.start }
-      : prev
-        ? { start: prev.end, end: parent.end }
-        : { start: parent.start, end: parent.end }
-    ctx.rewrites.add({
-      range,
-      body: [],
-      scope,
-      by,
-      reason: 'orphaned pattern property',
-    })
+    let set = prunedProps.get(pattern)
+    if (!set) {
+      set = new Set()
+      prunedProps.set(pattern, set)
+    }
+    set.add(parent)
     return true
   }
   if (parent.type === 'ArrayPattern') {

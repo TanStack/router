@@ -122,6 +122,23 @@ function Page() {
     `const args = [<Card />] as const
   return new Response(renderToReadableStream(...args), { headers: { 'Content-Type': 'text/x-component' } })`,
   ),
+  // A route module that defines a server fn next to client-only module
+  // code (`createContext` is not in React's `react-server` build)
+  'src/routes/context.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
+import { createContext, useContext } from 'react'
+const Theme = createContext('MARK_THEME')
+const getData = createServerFn().handler(async () => 'MARK_DATA')
+export const Route = createFileRoute('/context')({
+  loader: () => getData(),
+  component: Page,
+})
+function Page() {
+  const data = Route.useLoaderData()
+  const theme = useContext(Theme)
+  return <p data-testid="label">{theme} {data}</p>
+}
+`,
   // A server fn whose only importer is a `'use client'` component that a
   // server component renders.
   'src/client-ref/update.ts': `import { createServerFn } from '@tanstack/react-start'
@@ -309,6 +326,17 @@ describe('Vite production build with RSC', () => {
         /MARK_REACT_SERVER|MARK_DEFAULT/.test(code),
       ),
     }).toEqual({ browser: true, server: false })
+    expect(page.errors).toEqual([])
+  })
+
+  // SPEC J4.1, J4.14: the provider runs what the server fn needs, not the
+  // route module's client-only code beside it.
+  // Source: the react-start/rsc e2e app (rsc-context, Vite).
+  test("a server fn runs in the provider next to its route module's client-only code", async () => {
+    const page = await open('/context')
+    await page.waitForText('MARK_THEME MARK_DATA', {
+      selector: '[data-testid=label]',
+    })
     expect(page.errors).toEqual([])
   })
 
