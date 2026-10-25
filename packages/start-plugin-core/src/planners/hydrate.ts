@@ -23,6 +23,7 @@
 import { hash } from 'node:crypto'
 import { relative } from 'node:path'
 import {
+  cleanOrphanedDeclarations,
   isPureExpression,
   siblingSpecifier,
 } from '@tanstack/router-utils/compiler'
@@ -463,7 +464,11 @@ function plan(ctx: PlanContext): void {
       }
       facts.boundaries.push({ id: b.id, chunk: null })
     }
-    removeOrphanedLocals(ctx, erased)
+    if (erased.length > 0) {
+      // function-scope orphans of the stripped fallbacks: the core's cleanup
+      // (pure initialisers go, impure ones stay as statements with what they read)
+      cleanOrphanedDeclarations(ctx, 'all-outputs', HYDRATE_PLANNER)
+    }
     ctx.setFacts(HYDRATE_PLANNER, facts)
     return
   }
@@ -1470,136 +1475,4 @@ function mayHaveProp(
         isNamedProperty(p, name),
     )
   })
-}
-
-/**
- * Function-scope orphans of the stripped fallbacks (DESIGN §3.4.2): a local
- * whose every reference lies in erased text is removed when its initialiser
- * is pure, or kept as an expression statement for its effects. Module-level
- * bindings are the core's (provenance-based orphans).
- */
-function removeOrphanedLocals(ctx: PlanContext, erased: Array<Range>): void {
-  if (erased.length === 0) {
-    return
-  }
-  const { t1, symbols, analysis } = ctx
-  const dead: Array<Range> = [...erased]
-  const isDead = (r: Range) => dead.some((d) => within(r, d))
-  const handled = new Set<SymbolId>()
-  /** Statement start → removed declarator starts. */
-  const byStatement = new Map<
-    number,
-    { statement: NodeOf<'VariableDeclaration'>; removed: Set<number> }
-  >()
-  for (let round = 0; round < 8; round++) {
-    let changed = false
-    const candidates = new Set<SymbolId>()
-    for (const d of dead) {
-      for (const ref of t1.refs.refsIn(d)) {
-        if (!symbols.isModuleLevel(ref.sym) && !handled.has(ref.sym)) {
-          candidates.add(ref.sym)
-        }
-      }
-    }
-    for (const sym of candidates) {
-      const binding = symbols.binding(sym)
-      if (!binding || binding.declarations.length !== 1) {
-        continue
-      }
-      const declName = binding.declarations[0]!
-      const declarator = t1.parentOf(declName)
-      if (
-        !declarator ||
-        declarator.type !== 'VariableDeclarator' ||
-        declarator.id.type !== 'Identifier' ||
-        declarator.id.start !== declName.start
-      ) {
-        continue
-      }
-      const statement = t1.parentOf(declarator)
-      const container = statement ? t1.parentOf(statement) : null
-      if (
-        !statement ||
-        statement.type !== 'VariableDeclaration' ||
-        (statement.kind !== 'const' && statement.kind !== 'let') ||
-        !container ||
-        (container.type !== 'BlockStatement' &&
-          container.type !== 'StaticBlock' &&
-          container.type !== 'SwitchCase')
-      ) {
-        continue
-      }
-      const own = { start: declarator.start, end: declarator.end }
-      if (
-        !t1.refs
-          .refsOf(sym)
-          .every((r) => isDead(r.range) || within(r.range, own))
-      ) {
-        continue
-      }
-      handled.add(sym)
-      changed = true
-      const pure = isPureExpression(analysis.purity, declarator.init)
-      if (pure) {
-        dead.push(own)
-        let entry = byStatement.get(statement.start)
-        if (!entry) {
-          entry = { statement, removed: new Set() }
-          byStatement.set(statement.start, entry)
-        }
-        entry.removed.add(declarator.start)
-      } else if (
-        statement.declarations.length === 1 &&
-        declarator.init !== null
-      ) {
-        // keep the initialiser's effects (a hook call runs on both sides)
-        ctx.rewrites.add({
-          range: { start: statement.start, end: statement.end },
-          body: [
-            { k: 'text', parts: ['('] },
-            {
-              k: 'slice',
-              range: { start: declarator.init.start, end: declarator.init.end },
-            },
-            { k: 'text', parts: [');'] },
-          ],
-          scope: 'all-outputs',
-          by: HYDRATE_PLANNER,
-          reason: 'hydrate-fallback-orphan',
-        })
-      }
-    }
-    if (!changed) {
-      break
-    }
-  }
-  // one edit per statement from the retained declarators (R17)
-  for (const { statement, removed } of byStatement.values()) {
-    const decls = statement.declarations
-    const kept = decls.filter((d) => !removed.has(d.start))
-    if (kept.length === 0) {
-      ctx.rewrites.add({
-        range: { start: statement.start, end: statement.end },
-        body: [],
-        scope: 'all-outputs',
-        by: HYDRATE_PLANNER,
-        reason: 'hydrate-fallback-orphan',
-      })
-      continue
-    }
-    const body: Array<Frag> = []
-    kept.forEach((d, i) => {
-      if (i > 0) {
-        body.push({ k: 'text', parts: [', '] })
-      }
-      body.push({ k: 'slice', range: { start: d.start, end: d.end } })
-    })
-    ctx.rewrites.add({
-      range: { start: decls[0]!.start, end: decls[decls.length - 1]!.end },
-      body,
-      scope: 'all-outputs',
-      by: HYDRATE_PLANNER,
-      reason: 'hydrate-fallback-orphan',
-    })
-  }
 }

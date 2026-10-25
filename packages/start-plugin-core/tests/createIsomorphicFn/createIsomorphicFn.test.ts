@@ -286,3 +286,47 @@ try {
     ).toEqual(['client', 'global'])
   })
 })
+
+// An environment's implementation replaces the whole call: where the call
+// started a statement after a line without `;`, the replacement must not
+// continue that line (`const x = foo` + `(() => 1)()` would call `foo`).
+describe('replacements after an unterminated statement', () => {
+  test('keep the previous statement intact at module and function level, in every environment', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `import { createIsomorphicFn, createServerOnlyFn, createClientOnlyFn } from '@tanstack/react-start'
+const foo = () => () => 'called'
+export const x = foo
+createIsomorphicFn().server(() => 's').client(() => 'c')()
+export function run() {
+  const y = foo
+  createIsomorphicFn().server(() => 's').client(() => 'c')()
+  const z = foo
+  createIsomorphicFn().server(() => 's')()
+  return [typeof y, typeof z]
+}
+export function server() {
+  const y = foo
+  createServerOnlyFn(() => 's')()
+  return typeof y
+}
+export function client() {
+  const y = foo
+  createClientOnlyFn(() => 'c')()
+  return typeof y
+}
+`,
+    })
+    expect(
+      await inPage(
+        served,
+        `return [typeof module.x, module.run(), module.client()]`,
+      ),
+    ).toEqual(['function', ['function', 'function'], 'function'])
+    const ssr = await served.ssr()
+    expect([typeof ssr.x, ssr.run(), ssr.server()]).toEqual([
+      'function',
+      ['function', 'function'],
+      'function',
+    ])
+  })
+})

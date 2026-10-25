@@ -67,6 +67,8 @@ export type NotSplitReason =
   | 'hydrate-writer'
   | 'env-declared'
   | 'this-reference'
+  | 'reassigned'
+  | 'loader-object'
 
 export interface NotSplit {
   key: string
@@ -164,23 +166,58 @@ function methodPrefixOf(fn: Node): string {
   return `${fn.async ? 'async ' : ''}function${fn.generator ? '*' : ''} `
 }
 
+/** The `handler` property of an object-form loader. */
+function handlerPropertyOf(object: Node): Node | null {
+  if (object.type !== 'ObjectExpression') {
+    return null
+  }
+  const handler = (object.properties as Array<Node>).find(
+    (p) =>
+      p.type === 'Property' &&
+      !p.computed &&
+      p.kind === 'init' &&
+      propertyKeyName(p) === 'handler',
+  )
+  return handler && handler.type === 'Property' ? handler : null
+}
+
+/** The `handler` property of an object-form loader as the option to split. */
+function handlerOption(
+  ctx: PlanContext,
+  object: Node,
+  handler: Node & { type: 'Property' },
+): RouteOption {
+  const code = ctx.analysis.source.code
+  return {
+    key: 'handler',
+    kind: handler.method ? 'method' : handler.shorthand ? 'shorthand' : 'init',
+    prop: handler,
+    value: handler.value,
+    propertyRange: propertyRangeWithComma(object, handler, code),
+    keyText: code.slice(handler.key.start, handler.key.end),
+  }
+}
+
 /** The option of a splittable key, or the `handler` of an object-form loader. */
 function splitTarget(
   ctx: PlanContext,
   option: RouteOption,
-): {
-  shape: SplitShape
-  region: Range
-  valueRange: Range
-  value: Node
-  keyText: string
-  wholeProperty: boolean
-  methodPrefix: string
-  exportName: string
-  container: Node | null
-  prop: RouteOption
-  member: string | null
-} | null {
+):
+  | {
+      shape: SplitShape
+      region: Range
+      valueRange: Range
+      value: Node
+      keyText: string
+      wholeProperty: boolean
+      methodPrefix: string
+      exportName: string
+      container: Node | null
+      prop: RouteOption
+      member: string | null
+    }
+  | { refused: NotSplitReason }
+  | null {
   if (option.value === null) {
     return null
   }
@@ -197,47 +234,31 @@ function splitTarget(
     const sym = identifierSymbol(ctx, option.value)
     const decl = sym !== null ? declaratorOf(ctx, sym) : null
     const init = decl ? unwrapTs(decl.init) : null
-    if (
-      init !== null &&
-      init.type === 'ObjectExpression' &&
-      (init.properties as Array<Node>).some(
-        (p) =>
-          p.type === 'Property' &&
-          !p.computed &&
-          p.kind === 'init' &&
-          propertyKeyName(p) === 'handler',
-      )
-    ) {
-      member = 'handler'
+    const handler =
+      init && init.type === 'ObjectExpression' ? handlerPropertyOf(init) : null
+    if (init?.type === 'ObjectExpression' && handler?.type === 'Property') {
+      if (init.properties.length === 1) {
+        member = 'handler'
+      } else if (ctx.t1.refs.refsOf(sym!).length === 1) {
+        // the object holds other options (`staleReloadMode`) the router
+        // reads from the route module: the handler is split inside the
+        // object, which stays as the route's loader
+        container = init
+        prop = handlerOption(ctx, init, handler)
+      } else {
+        return { refused: 'loader-object' }
+      }
     }
   }
   if (option.key === 'loader' && option.kind === 'init') {
     const v = unwrapTs(option.value)
     if (v.type === 'ObjectExpression') {
-      const code = ctx.analysis.source.code
-      const handler = (v.properties as Array<Node>).find(
-        (p) =>
-          p.type === 'Property' &&
-          !p.computed &&
-          p.kind === 'init' &&
-          propertyKeyName(p) === 'handler',
-      )
+      const handler = handlerPropertyOf(v)
       if (!handler || handler.type !== 'Property') {
         return null
       }
       container = v
-      prop = {
-        key: 'handler',
-        kind: handler.method
-          ? 'method'
-          : handler.shorthand
-            ? 'shorthand'
-            : 'init',
-        prop: handler,
-        value: handler.value,
-        propertyRange: propertyRangeWithComma(v, handler, code),
-        keyText: code.slice(handler.key.start, handler.key.end),
-      }
+      prop = handlerOption(ctx, v, handler)
     }
   }
   const value = prop.value!
@@ -454,6 +475,15 @@ function computeSplitPlan(
       if (!target) {
         continue
       }
+      if ('refused' in target) {
+        notSplit.push({
+          key,
+          reason: target.refused,
+          range: { start: option.value.start, end: option.value.end },
+          name: null,
+        })
+        continue
+      }
       if (isFallbackLiteral(target.value) || isAlreadyLazy(ctx, target.value)) {
         continue
       }
@@ -474,6 +504,21 @@ function computeSplitPlan(
           ? identifierSymbol(ctx, target.value)
           : null
       const valueSym = identifierSymbol(ctx, target.value)
+      if (
+        valueSym !== null &&
+        ctx.symbols.isModuleLevel(valueSym) &&
+        ctx.t1.refs.writesOf(valueSym).length > 0
+      ) {
+        // the options object holds the binding's value at route creation; a
+        // chunk re-exporting the live binding would render its latest value
+        notSplit.push({
+          key,
+          reason: 'reassigned',
+          range: target.region,
+          name: ctx.symbols.name(valueSym),
+        })
+        continue
+      }
       // the core reports a fallback at the option value, or at the
       // declaration of the binding the value names (its writes, its effects)
       const fallback =
@@ -550,6 +595,10 @@ function describeReason(reason: NotSplitReason): string {
       return 'its value stays in the route module (declared by a top-level call or destructuring, or one with an exported binding it writes); a split chunk could only import it.'
     case 'this-reference':
       return 'it reads `this`, the route options object it is called on, which a split chunk would not see. Write it as an arrow function or read the route instead.'
+    case 'reassigned':
+      return 'its value names a binding that is reassigned, and the route keeps the value it had when it was created; a split chunk would load the latest value. Assign the binding once.'
+    case 'loader-object':
+      return 'its value names an object with options next to `handler` that other code also reads; only the handler of an object-form loader is code-split, in an object nothing else reads.'
   }
 }
 

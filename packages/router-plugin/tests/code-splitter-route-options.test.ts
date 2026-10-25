@@ -666,3 +666,101 @@ describe('route callbacks reading this (#8688)', () => {
     expectNoProblems(await route.diagnostics())
   })
 })
+
+describe('option values the route module reassigns or shares', () => {
+  // The options object holds the value a binding had when the route was
+  // created; a split chunk could only re-export the live binding, which a
+  // later assignment changes. Such an option stays in the route module,
+  // with a warning.
+  it('render the component a reassigned binding held when the route was created', async () => {
+    const route = await loadRoute(`${head}const A = () => <a>A</a>
+const B = () => <b>B</b>
+let Page = A
+function swap() {
+  Page = B
+}
+export const Route = createFileRoute('/')({ component: Page })
+swap()
+`)
+    await expectValidModules(route)
+    expect(await route.run(`return render('component')`)).toBe('<a>A</a>')
+    expect(await route.isLazy('component')).toBe(false)
+    expectDiagnostic(await route.diagnostics(), {
+      severity: 'warning',
+      file: 'route.tsx',
+      root: route.host.root,
+    })
+  })
+
+  // `loader.staleReloadMode` is read from the route module's loader object;
+  // only the handler of an object-form loader is lazy.
+  it('split the handler of an object-form loader passed by reference and keep its other options', async () => {
+    const route = await loadRoute(`${head}const loader = {
+  handler: () => 'loaded',
+  staleReloadMode: 'blocking' as const,
+}
+export const Route = createFileRoute('/')({
+  codeSplitGroupings: [['loader'], ['component']],
+  loader,
+  component: () => <p>C</p>,
+})
+`)
+    await expectValidModules(route)
+    expect(await route.isLazy('loader')).toBe(true)
+    expect(
+      await route.run(
+        `return [options.loader.staleReloadMode, await options.loader.handler()]`,
+      ),
+    ).toEqual(['blocking', 'loaded'])
+  })
+
+  // A regex literal is an object with state (`lastIndex`): one instance,
+  // shared by the route module and the split options.
+  it('share one regex literal between the route module and a split component', async () => {
+    const route = await loadRoute(`${head}const re = /x/g
+export const Route = createFileRoute('/')({
+  loader: () => {
+    re.lastIndex = 5
+    return re.lastIndex
+  },
+  component: () => <p>{re.lastIndex}</p>,
+})
+`)
+    await expectValidModules(route)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(
+      await route.run(`options.loader()
+return render('component')`),
+    ).toBe('<p>5</p>')
+  })
+
+  // An exported `let` and the exported function assigning it leave the
+  // route module together when only a split option reads them; another
+  // module importing either name still gets the live binding.
+  it('keep an exported let and its setter importable when a split component reads them', async () => {
+    const route = await loadRoute(
+      `${head}export let theme = 'light'
+export const setTheme = (t: string) => {
+  theme = t
+}
+export const Route = createFileRoute('/')({ component: () => <p>{theme}</p> })
+`,
+      {
+        files: {
+          'theme-consumer.ts': `import { theme, setTheme } from './route'
+export const read = () => theme
+export { setTheme }
+`,
+        },
+      },
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(
+      await route.run(`const consumer = await app('theme-consumer.ts')
+const before = consumer.read()
+consumer.setTheme('dark')
+return [before, consumer.read(), await render('component')]`),
+    ).toEqual(['light', 'dark', '<p>dark</p>'])
+  })
+})

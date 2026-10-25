@@ -806,6 +806,22 @@ export const Page = () => <Hydrate><p>{clicks}</p></Hydrate>
     expect(client.code).not.toContain('let clicks')
   })
 
+  it('re-exports every exported binding of an extracted cluster (an exported let and its setter)', async () => {
+    const code = `${REACT}export let theme = 'light'
+export const setTheme = (t: string) => { theme = t }
+export const Page = () => <Hydrate><p>{theme}</p></Hydrate>
+`
+    const client = await compile(code)
+    const [b] = client.facts.boundaries
+    expect(client.chunks[b!.id]).toContain(
+      "import { theme } from './page.tsx?tsr-split=export~setTheme'",
+    )
+    expect(client.code).toContain(
+      "export { theme, setTheme } from './page.tsx?tsr-split=export~setTheme'",
+    )
+    expect(client.code).not.toContain('let theme')
+  })
+
   it('reads the classic JSX pragma’s factory in a fragment-wrapped chunk', async () => {
     const code = `/** @jsxRuntime classic */
 /** @jsx h */
@@ -1099,8 +1115,11 @@ export function Page({ a, b }) {
 }
 `
     const server = await compile(code, { env: ssrEnv })
-    expect(server.code).toContain(`export function Page({ a, b }) {
-  (useSpinner());
+    // (Adjusted: the core's orphan cleanup keeps the call as `useSpinner();`
+    // where the former Hydrate pass wrote `(useSpinner());`, and prunes the
+    // `a` prop only the fallback read from the parameter pattern.)
+    expect(server.code).toContain(`export function Page({ b }) {
+  useSpinner();
   const label = 'child'
   return <Hydrate h="${idAt(code)}"><p>{label}{b}</p></Hydrate>`)
   })
