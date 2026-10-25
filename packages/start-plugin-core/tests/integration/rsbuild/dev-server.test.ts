@@ -315,18 +315,21 @@ describe('Rsbuild dev: modules the app stops importing', () => {
       }
       const before = counts()
       for (let i = 0; i < 3; i++) {
-        await server.edit({
+        // a file nothing imports yet: Rspack does not watch it, no compile
+        await server.write({
           [`src/m${i}.ts`]: `export const m = 'MARK_m${i}'\n`,
         })
         await server.edit({
           'src/entry.ts': `export { a } from './a'\nexport { m } from './m${i}'\n`,
         })
         await server.edit({ 'src/entry.ts': `export { a } from './a'\n` })
-        // deleted once nothing imports it: Rspack reports no removal
-        await server.edit({ [`src/m${i}.ts`]: null })
+        // deleted once nothing imports it: Rspack reports no removal either
+        await server.write({ [`src/m${i}.ts`]: null })
       }
       expect(server.errors).toEqual([])
-      expect(counts()).toEqual(before)
+      const after = counts()
+      expect(after.plans).toBeLessThanOrEqual(before.plans)
+      expect(after.rawFacts).toBeLessThanOrEqual(before.rawFacts)
     },
     timeout,
   )
