@@ -19,9 +19,7 @@ import {
   createRsbuildResolvedEntryAliases,
   resolveRsbuildOutputDirectory,
 } from './planning'
-import { registerStartCompilerTransforms } from './start-compiler-host'
-import { createRscCssCompilerTransforms } from './rsc-css-babel'
-import { registerImportProtection } from './import-protection'
+import { registerStartCompiler } from './start-compiler'
 import {
   START_MANIFEST_PLACEHOLDER,
   registerVirtualModules,
@@ -29,10 +27,8 @@ import {
 import { createServerSetup } from './server-middleware'
 import { registerClientBuildCapture } from './normalized-client-build'
 import { tapServerFnResolverRebuild } from './server-fn-resolver-rebuild'
-import { registerRouterPlugins } from './start-router-plugin'
 import { postBuildWithRsbuild } from './post-build'
 import { enableSwcReactServerComponents } from './swc-rsc'
-import type { ServerFn } from '../start-compiler/types'
 import type { TanStackStartRsbuildPluginCoreOptions } from './types'
 import type {
   ModifyRspackConfigFn,
@@ -92,7 +88,6 @@ export function tanStackStartRsbuild(
 
   // Reference to the dev server for RSC HMR socket writes
   let devServerRef: Pick<RsbuildDevServer, 'sockWrite'> | null = null
-  const serverFnsById: Record<string, ServerFn> = {}
   let updateServerFnResolver: (() => void) | undefined
 
   return {
@@ -291,37 +286,21 @@ export function tanStackStartRsbuild(
       })
 
       // ---------------------------------------------------------------
-      // 2. StartCompiler transforms — server fns, isomorphic fns, etc.
+      // 2. The compiler: one compile per (environment, layer, module) of
+      //    every planner (server fns, env separation, Hydrate, RSC CSS,
+      //    route splitting and HMR, import protection), the route
+      //    generator, the client route tree
       // ---------------------------------------------------------------
-      registerStartCompilerTransforms(api, {
-        framework: corePluginOpts.framework,
-        // modifyRsbuildConfig copies rsbuildConfig.root into resolvedStartConfig.root,
-        // so defer this read until transform time instead of falling back to
-        // process.cwd() during plugin setup.
-        root: () => resolvedStartConfig.root || process.cwd(),
+      const compiler = registerStartCompiler(api, {
+        getConfig,
+        corePluginOpts,
+        startPluginOpts,
         environments: startCompilerEnvironments,
-        providerEnvName: serverFnProviderEnv,
-        generateFunctionId: startPluginOpts.serverFns?.generateFunctionId,
-        // INTERIM: the Babel RSC CSS transforms of the previous compiler, built from the RSC options
-        compilerTransforms: rscOpts
-          ? createRscCssCompilerTransforms({
-              loadCssExpression: rscOpts.loadCssExpression,
-              serverFnProviderOnly: true,
-            })
-          : undefined,
-        serverFnProviderModuleDirectives: rscOpts?.providerDirective
-          ? [rscOpts.providerDirective]
-          : undefined,
-        serverFnsById,
-        onServerFnsByIdChange: () => {
+        writeVirtualModule: (envName, file, content) =>
+          virtualModuleState.writeModule(envName, file, content),
+        onServerFnsChange: () => {
           updateServerFnResolver?.()
         },
-      })
-
-      registerImportProtection(api, {
-        getConfig,
-        framework: corePluginOpts.framework,
-        environments: startCompilerEnvironments,
       })
 
       // ---------------------------------------------------------------
@@ -329,9 +308,9 @@ export function tanStackStartRsbuild(
       //    RSC runtime, RSC HMR
       // ---------------------------------------------------------------
       const virtualModuleState = registerVirtualModules(api, {
-        root: resolvedStartConfig.root || process.cwd(),
+        getRoot: () => resolvedStartConfig.root,
         getConfig,
-        serverFnsById,
+        resolverModule: () => compiler.resolverModule(),
         providerEnvName: serverFnProviderEnv,
         ssrIsProvider,
         serializationAdapters: corePluginOpts.serializationAdapters,
@@ -419,15 +398,6 @@ export function tanStackStartRsbuild(
           },
         )
       }
-
-      // ---------------------------------------------------------------
-      // 5. Router plugin wiring (generator + code splitter)
-      // ---------------------------------------------------------------
-      registerRouterPlugins(api, {
-        getConfig,
-        corePluginOpts,
-        startPluginOpts,
-      })
 
       // ---------------------------------------------------------------
       // 6. Dev SSR middleware — registered via server.setup in
@@ -551,9 +521,7 @@ export function tanStackStartRsbuild(
                 tapServerFnResolverRebuild(compiler, {
                   name: 'TanStackStartRscServerFnResolverRebuild',
                   updateResolver: () => {
-                    virtualModuleState.tryUpdateServerFnResolver(
-                      virtualModuleState.generateCurrentResolverContent(true),
-                    )
+                    virtualModuleState.updateServerFnResolver()
                   },
                   getResolverWriteCount: () =>
                     virtualModuleState.getServerFnResolverWriteCount(

@@ -49,6 +49,18 @@ import type {
   ImportEdgesFacts,
 } from '../import-protection/violations'
 
+/**
+ * A host's import rewrite (`HostServices.services.importRewrite`, R46): the
+ * specifiers the bundler turns an import of `specifier` with `names` into
+ * (Rsbuild `source.transformImport`), or null when it leaves it alone. The
+ * specifier rule judges the raw specifier; file and marker rules judge the
+ * rewritten targets.
+ */
+export type ImportRewrite = (
+  specifier: string,
+  names: ReadonlyArray<string>,
+) => Array<string> | null
+
 /** Most modules an effect classification follows from one target (beyond: effectful). */
 const MAX_EFFECT_WALK = 256
 
@@ -113,6 +125,27 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
         !config.verbatimModuleSyntax &&
         (ctx.identity.lang === 'ts' || ctx.identity.lang === 'tsx')
 
+      const rewriter = (
+        ctx.host.services as
+          | { importRewrite?: ImportRewrite | undefined }
+          | undefined
+      )?.importRewrite
+      /** The file rule on the target's root-relative path, else its marker (`excludeFiles` skips both). */
+      const fileOrMarkerRule = async (
+        target: string,
+      ): Promise<RuleRef | null> => {
+        const rel = relativeTargetPath(config, target)
+        if (targetExcluded(rules, rel)) {
+          return null
+        }
+        const fileRule = matchFile(rules, rel)
+        if (fileRule !== null) {
+          return fileRule
+        }
+        const facts = await ctx.targetFacts(target)
+        return markerViolates(envType, facts.marker) ? { type: 'marker' } : null
+      }
+
       const judge = async (e: EdgeRecord): Promise<Judged | null> => {
         if (e.provenance.origin === 'runtime' || e.typeOnly) {
           return null
@@ -130,16 +163,22 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
           return null
         }
         let rule = matchSpecifier(rules, raw)
-        const resolved = await ctx.resolve(raw, from)
-        if (rule === null && resolved !== null) {
-          const rel = relativeTargetPath(config, resolved)
-          if (!targetExcluded(rules, rel)) {
-            rule = matchFile(rules, rel)
-            if (rule === null) {
-              const target = await ctx.targetFacts(resolved)
-              if (markerViolates(envType, target.marker)) {
-                rule = { type: 'marker' }
-              }
+        let resolved = await ctx.resolve(raw, from)
+        if (rule === null) {
+          // R46: a bundler rewrite of the import (Rsbuild `source.transformImport`)
+          // makes the file and marker rules judge the rewritten targets
+          const rewritten = rewriter?.(raw, e.names) ?? null
+          for (const spec of rewritten ?? [raw]) {
+            const target =
+              spec === raw ? resolved : await ctx.resolve(spec, from)
+            if (target === null) {
+              continue
+            }
+            const targetRule = await fileOrMarkerRule(target)
+            if (targetRule !== null) {
+              rule = targetRule
+              resolved = target
+              break
             }
           }
         }

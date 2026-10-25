@@ -53,6 +53,12 @@ export interface StartEnvConfig {
   idMode: 'dev' | 'default' | 'placeholder'
   /** The directive a derived provider module carries (RSC), if any. */
   providerDirective?: string
+  /**
+   * Every module defining server fns gets a derived provider module, not
+   * only `'use client'` ones (Rsbuild RSC: the provider is the `rsc` layer,
+   * selected by the `?tss-serverfn-split` query; DESIGN §3.10.5).
+   */
+  alwaysDeriveProvider?: boolean
   /** Whether resolved ids are opaque packages (never read for summaries). */
   isOpaque?: (resolvedCanonicalId: string) => boolean
 }
@@ -386,12 +392,9 @@ function planStartEnv(
   const serverFnChains = analysis.chains.filter(
     (c) => c.terminalValue.t === 'serverFn' && !c.unsupported,
   )
-  if (
-    role === 'provider' &&
-    config.providerSeparate &&
-    useClient &&
-    serverFnChains.length > 0
-  ) {
+  const derivesProvider =
+    config.providerSeparate && (useClient || config.alwaysDeriveProvider === true)
+  if (role === 'provider' && derivesProvider && serverFnChains.length > 0) {
     providerOut = ctx.declareOutput({
       kind: 'provider',
       key: 'provider',
@@ -701,7 +704,7 @@ function planStartEnv(
     }
     const rpcLocal = names.alloc(wrapperName)
     const exportName = names.allocExportName(wrapperName)
-    const providerDerived = config.providerSeparate && useClient
+    const providerDerived = derivesProvider
     if (role === 'client') {
       const rpc = glueImport(specs.clientRpc, 'createClientRpc', 'tsrClientRpc')
       rewrites.add({
