@@ -119,8 +119,10 @@ export function applyRouteHmr(
     // route added or renamed) holds this module's current export where the
     // router still holds an older evaluation: its parent's children no
     // longer include the router's route. Read the tree again first, so the
-    // tree's route is the one updated.
-    const siblings = (current.parentRoute as { children?: unknown }).children
+    // tree's route is the one updated. The root route has no parent, and a
+    // read starts from the router's own root, so a root is never re-read.
+    const siblings = (current.parentRoute as { children?: unknown } | undefined)
+      ?.children
     if (siblings && !Object.values(siblings).includes(current)) {
       router.setRoutes(router.buildRouteTree())
     }

@@ -95,4 +95,24 @@ describe('applyRouteHmr after a route tree rebuild', () => {
     expect(foreign.options.loader()).toBe('other')
     expect(router._refreshRoute).not.toHaveBeenCalled()
   })
+
+  it('updates an edited root route, which has no parent', () => {
+    const evaluateRoot = (token: string) =>
+      new BaseRootRoute({ loader: () => token }) as any
+    const first = evaluateRoot('v0')
+    const router = {
+      routesById: { __root__: first } as Record<string, any>,
+      buildRouteTree: () => ({ routesById: { __root__: first } }),
+      setRoutes(caches: { routesById: Record<string, any> }) {
+        this.routesById = caches.routesById
+      },
+      _refreshRoute: vi.fn(() => Promise.resolve()),
+    }
+    ;(window as any).__TSR_ROUTER__ = router
+    applyRouteHmr('__root__', first, {}, adapter)
+    applyRouteHmr('__root__', evaluateRoot('v1'), {}, adapter)
+    expect(router.routesById.__root__).toBe(first)
+    expect(first.options.loader()).toBe('v1')
+    expect(router._refreshRoute).toHaveBeenCalledTimes(1)
+  })
 })
