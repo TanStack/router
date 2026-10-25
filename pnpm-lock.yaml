@@ -12,9 +12,6 @@ catalogs:
     '@babel/core':
       specifier: ^7.29.7
       version: 7.29.7
-    '@babel/types':
-      specifier: ^7.29.8
-      version: 7.29.8
     '@eslint-react/eslint-plugin':
       specifier: ^1.26.2
       version: 1.26.2
@@ -14996,21 +14993,9 @@ importers:
 
   packages/router-utils:
     dependencies:
-      '@babel/generator':
-        specifier: ^7.29.8
-        version: 7.29.8
-      '@babel/parser':
-        specifier: ^7.29.8
-        version: 7.29.8
-      '@babel/types':
-        specifier: 'catalog:'
-        version: 7.29.8
       ansis:
         specifier: ^4.3.1
         version: 4.3.1
-      babel-dead-code-elimination:
-        specifier: ^1.0.12
-        version: 1.0.12(supports-color@10.2.2)
       diff:
         specifier: ^9.0.0
         version: 9.0.0
@@ -15032,10 +15017,7 @@ importers:
         version: 0.3.31
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
-      '@types/babel__generator':
-        specifier: ^7.27.0
-        version: 7.27.0
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@7.2.0)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
@@ -15440,15 +15422,6 @@ importers:
 
   packages/start-plugin-core:
     dependencies:
-      '@babel/code-frame':
-        specifier: 7.29.7
-        version: 7.29.7
-      '@babel/core':
-        specifier: 'catalog:'
-        version: 7.29.7(supports-color@10.2.2)
-      '@babel/types':
-        specifier: 'catalog:'
-        version: 7.29.8
       '@jridgewell/remapping':
         specifier: ^2.3.5
         version: 2.3.5
@@ -15482,9 +15455,6 @@ importers:
       seroval:
         specifier: ^1.6.7
         version: 1.6.7
-      source-map:
-        specifier: ^0.7.6
-        version: 0.7.6
       srvx:
         specifier: ^1.0.0
         version: 1.0.5
@@ -15534,12 +15504,6 @@ importers:
       '@tanstack/vite-config':
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
-      '@types/babel__code-frame':
-        specifier: ^7.0.6
-        version: 7.0.6
-      '@types/babel__core':
-        specifier: ^7.20.5
-        version: 7.20.5
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
@@ -22238,9 +22202,6 @@ packages:
   '@types/aria-query@5.0.4':
     resolution: {integrity: sha512-rfT93uj5s0PRL7EzccGMs3brplhcrghnDoV26NqKhCAS1hVo+WdNsPvE/yb6ilfr5hi2MEk6d5EWJTKdxg8jVw==}
 
-  '@types/babel__code-frame@7.0.6':
-    resolution: {integrity: sha512-Anitqkl3+KrzcW2k77lRlg/GfLZLWXBuNgbEcIOU6M92yw42vsd3xV/Z/yAHEj8m+KUjL6bWOVOFqX8PFPJ4LA==}
-
   '@types/babel__core@7.20.5':
     resolution: {integrity: sha512-qoQprZvz5wQFJwMDqeseRXWv3rqMvhgpbXFfVyWhbx9X47POIA6i/+dXefEmZKoAgOaTdaIgNSMqMIU61yRyzA==}
 
@@ -23445,9 +23406,6 @@ packages:
 
   b4a@1.6.7:
     resolution: {integrity: sha512-OnAYlL5b7LEkALw87fUVafQw5rVR9RjwGd4KUwNQ6DrrNmaVaUCgLipfVlzrPQ4tWOR9P0IXGNOx50jYCCdSJg==}
-
-  babel-dead-code-elimination@1.0.12:
-    resolution: {integrity: sha512-GERT7L2TiYcYDtYk1IpD+ASAYXjKbLTDPhBtYj7X1NuRMDTMtAx9kyBenub1Ev41lo91OHCKdmP+egTDmfQ7Ig==}
 
   babel-loader@10.0.0:
     resolution: {integrity: sha512-z8jt+EdS61AMw22nSfoNJAZ0vrtmhPRVi6ghL3rCeRZI8cdNYFiV5xeV3HbE7rlZZNmGH8BVccwWt8/ED0QOHA==}
@@ -36681,8 +36639,6 @@ snapshots:
 
   '@types/aria-query@5.0.4': {}
 
-  '@types/babel__code-frame@7.0.6': {}
-
   '@types/babel__core@7.20.5':
     dependencies:
       '@babel/parser': 7.29.8
@@ -38585,15 +38541,6 @@ snapshots:
       - supports-color
 
   b4a@1.6.7: {}
-
-  babel-dead-code-elimination@1.0.12(supports-color@10.2.2):
-    dependencies:
-      '@babel/core': 7.29.7(supports-color@10.2.2)
-      '@babel/parser': 7.29.8
-      '@babel/traverse': 7.29.8(supports-color@10.2.2)
-      '@babel/types': 7.29.8
-    transitivePeerDependencies:
-      - supports-color
 
   babel-loader@10.0.0(@babel/core@7.28.5(supports-color@10.2.2))(webpack@5.97.1):
     dependencies:
