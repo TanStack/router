@@ -1,15 +1,14 @@
 /**
- * Start's Vite host of the compiler core (DESIGN §4.1; D8, R3, R11, R35):
- * one `enforce: 'pre'` plugin per Start env compiling every id it is handed
- * text for through `compileModule` (env and derived ids alike), the one
+ * Start's Vite host of the compiler core (DESIGN §4.1; D1, D8, R3, R11,
+ * R35): one `enforce: 'pre'` plugin per Start env compiling every id it is
+ * handed text for through ONE `compileModule` (env and derived ids alike)
+ * with the planners in the core's fixed order — `start-env`, `hydrate`,
+ * `rsc-css`, `route-split`, `route-hmr`, `import-edges` — the one
  * invalidation operation on `hotUpdate`, the server-fn registry shared by
- * the envs, the dev lookup and production resolver modules, and the
- * custom-id patching at `renderChunk`.
- *
- * INTERIM composition (until the router and Hydrate planners land): the
- * router splitter's `?tsr-split=` ids compile as their source (the splitter
- * consumes this plugin's output as today), and the Babel `<Hydrate>`
- * transform runs as a post-pass (`hydrate-interim.ts`).
+ * the envs, the dev lookup and production resolver modules, the custom-id
+ * patching at `renderChunk`, and import protection's host side (edge
+ * modules, dev reports, build witness + fixed-point veto rebuild, the late
+ * pass for non-JS importers).
  */
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
@@ -26,12 +25,23 @@ import {
   identify,
   invalidate,
 } from '@tanstack/router-utils/compiler'
+import { defaultCodeSplitGroupings } from '@tanstack/router-plugin'
 import {
-  COMPILER_RESOLVE_CUSTOM_KEY,
+  changedRoutePaths,
+  onRoutesChanged,
+} from '@tanstack/router-plugin/context'
+import {
+  RouteRegistryView,
+  routerPlannerConfig,
+  routerPlanners,
+} from '@tanstack/router-plugin/planners'
+import {
+  DEV_CLIENT_ENTRY,
   TRANSFORM_ID_REGEX,
   VITE_ENVIRONMENT_NAMES,
 } from '../constants'
 import { startRecognizer } from '../compiler/recognizer'
+import { HYDRATE_PLANNER, createHydratePlanner } from '../planners/hydrate'
 import { START_ENV, startPlanners } from '../planners'
 import { FunctionIdAllocator, decodeDevFunctionId } from '../server-fns/ids'
 import { ServerFnRegistry } from '../server-fns/registry'
@@ -41,29 +51,47 @@ import {
   devResolverModule,
   productionResolverModule,
 } from '../server-fns/resolver'
-import { MissingHydrateSourceError } from '../hydrate-when-transform'
+import { createImportProtection } from '../import-protection/session'
+import {
+  EDGE_MODULE_PREFIX,
+  resolveViteEdgeModuleId,
+} from '../import-protection/edge-modules'
+import { viteDevGraphView } from '../import-protection/graph-trace'
+import {
+  discardBundle,
+  readRolldownWitness,
+  rolldownGraphView,
+} from '../import-protection/witness'
+import { resolveViteId } from '../utils'
 import { createVirtualModule } from './createVirtualModule'
-import { createInterimHydrate } from './hydrate-interim'
-import type { InterimHydrateEnv } from './hydrate-interim'
+import { readVerbatimModuleSyntax } from './tsconfig'
+import type { ImportProtection } from '../import-protection/session'
+import type { HydratePlannerConfig } from '../planners/hydrate'
 import type { GenerateFunctionId } from '../server-fns/ids'
 import type { ServerFnEntry } from '../server-fns/registry'
 import type { RscCssConfig, StartEnvConfig, StartEnvFacts } from '../planners'
-import type { CompileStartFrameworkOptions } from '../types'
+import type { CompileStartFrameworkOptions, GetConfigFn } from '../types'
+import type { RouterPluginContext } from '@tanstack/router-plugin/context'
+import type { RouterPlannerConfig } from '@tanstack/router-plugin/planners'
 import type {
+  CompileConfig,
   CompilerCaches,
   Diagnostic,
   EnvInfo,
   HostServices,
+  InputSourceMap,
   InvalidateChange,
   Planner,
-  RawSourceMap,
 } from '@tanstack/router-utils/compiler'
 import type {
+  BuildEnvironment,
   DevEnvironment,
   Environment,
   EnvironmentModuleNode,
   Plugin,
   PluginOption,
+  ViteBuilder,
+  ViteDevServer,
 } from 'vite'
 
 export interface StartRscCompilerOptions {
@@ -73,21 +101,43 @@ export interface StartRscCompilerOptions {
   providerDirective?: string
 }
 
+export interface StartCompilerEnvironment {
+  name: string
+  type: 'client' | 'server'
+  getServerFnById?: string
+}
+
 export interface StartCompilerPluginOptions {
   framework: CompileStartFrameworkOptions
-  environments: Array<{
-    name: string
-    type: 'client' | 'server'
-    getServerFnById?: string
-  }>
+  environments: Array<StartCompilerEnvironment>
   generateFunctionId?: GenerateFunctionId
   /** The Vite environment name of the server function provider. */
   providerEnvName: string
   rsc?: StartRscCompilerOptions | undefined
+  getConfig: GetConfigFn
+  /** The generator's registry (route modules by file), shared with the generator plugin. */
+  routerPluginContext: RouterPluginContext
+  /** The app's resolved entries (import protection's trace roots). */
+  resolveEntries: () => {
+    entryPaths: { client: string; server: string; start: string; router: string }
+  }
 }
 
 const PROVIDER_QUERY = 'tss-serverfn-split'
-const HYDRATE_INTERIM_KEY = 'tss-hydrate-interim'
+
+/** Specifiers of the compiler's own derived modules (`./x.tsx?tsr-split=…`, `?tss-hydrate=…`) and import protection's edge modules. */
+const OWNED_QUERY_RE =
+  /(?:^|[?&])(?:tsr-split|tss-hydrate|tss-serverfn-split)(?:=|&|$)/
+const IP_SPECIFIER_RE = /tanstack-start-ip:/
+
+/** Ids the late import-protection pass never compiles (not code, or served by the pre plugin). */
+const LATE_PASS_EXCLUDE: Array<RegExp> = [
+  ...TRANSFORM_ID_REGEX,
+  /^\0/,
+  /[\\/]node_modules[\\/]/,
+  /\.(?:css|scss|sass|less|styl|stylus|pcss|postcss|json|json5|yaml|yml|toml|html|svg|png|jpe?g|gif|webp|avif|ico|bmp|woff2?|ttf|otf|eot|mp[34]|webm|ogg|wav|flac|aac|pdf|txt|wasm|zip)(?:\?|$)/i,
+  /[?&](?:raw|url|inline|worker|sharedworker)(?:&|$)/,
+]
 
 /** The specifier of a module id for the dev module runner: root-relative, or `/@fs/` for files outside the root. */
 export function toDevSpecifier(id: string, root: string): string {
@@ -99,65 +149,271 @@ export function toDevSpecifier(id: string, root: string): string {
   return normalized.startsWith('/') ? `/@fs${normalized}` : `/@fs/${normalized}`
 }
 
+const normalizePath = (p: string): string => p.replace(/\\/g, '/')
+
+/** What one dev server or build shares across the Start environments (created at `configResolved`). */
+interface Session {
+  root: string
+  mode: 'dev' | 'build'
+  bundledDev: boolean
+  ip: ImportProtection | null
+  rawFacts: RawFactsCache
+  caches: CompilerCaches
+  registry: RouteRegistryView
+  warnings: WarningLedger
+  planners: Map<string, Array<Planner>>
+  configs: Map<string, CompileConfig>
+  /** The app's entry module ids (dev traces start there). */
+  entries: Set<string>
+}
+
 export function startCompilerPlugin(
   opts: StartCompilerPluginOptions,
 ): PluginOption {
   const recognizer = startRecognizer()
   const ssrIsProvider = opts.providerEnvName === VITE_ENVIRONMENT_NAMES.server
+  const envNames = new Set(opts.environments.map((e) => e.name))
   const resolverEnvironments = new Set(
     ssrIsProvider
       ? [opts.providerEnvName]
       : [VITE_ENVIRONMENT_NAMES.server, opts.providerEnvName],
   )
-  let root = process.cwd()
-  let bundledDev = false
+  const registry = new ServerFnRegistry()
+  const allocator = opts.generateFunctionId
+    ? new FunctionIdAllocator(opts.generateFunctionId)
+    : null
 
   /** Per-env loaders of genuinely virtual ids (the dev plugin container, or `this.load` in a build). */
   const virtualLoaders = new Map<
     string,
     (id: string) => Promise<string | null>
   >()
-  const rawFacts = new RawFactsCache({
-    readFile: async (file) => {
-      try {
-        return await fs.readFile(file, 'utf8')
-      } catch {
-        return null
-      }
-    },
-    loadVirtual: async (id) => {
-      for (const load of virtualLoaders.values()) {
-        const code = await load(id).catch(() => null)
-        if (code !== null) {
-          return code
-        }
-      }
-      return null
-    },
-    recognizer,
-  })
-  const caches: CompilerCaches = createCompilerCaches(rawFacts)
-  const registry = new ServerFnRegistry()
-  const warnings = new WarningLedger(() => {})
-  const allocator = opts.generateFunctionId
-    ? new FunctionIdAllocator(opts.generateFunctionId)
-    : null
-  const hydrate = createInterimHydrate({
-    framework: opts.framework,
-    root: () => root,
-    providerEnvName: opts.providerEnvName,
-  })
+  let session: Session | null = null
+  let server: ViteDevServer | null = null
+  let unsubscribeRoutes: (() => void) | null = null
   /** One compiler invalidation per watcher event, applied by every env's `hotUpdate`. */
   const invalidations = new Map<
     string,
     Promise<Awaited<ReturnType<typeof invalidate>>>
   >()
-
   /**
    * Per env: files whose plans an `unlink` evicted or made stale, to
    * re-transform when a file appears (see `applyInvalidation`).
    */
   const awaitingAdd = new Map<string, Set<string>>()
+
+  const requireSession = (): Session => {
+    if (!session) {
+      throw new Error(
+        '[tanstack-start] the compiler plugin is used before `configResolved`',
+      )
+    }
+    return session
+  }
+
+  /** Pre-bundled dependencies are opaque (a discovered Start library is never pre-bundled); everything else resolved is read. */
+  const isOpaque = (canonicalId: string): boolean =>
+    identify(canonicalId)
+      .path.replace(/\\/g, '/')
+      .includes('/node_modules/.vite/')
+
+  const envOf = (name: string): StartCompilerEnvironment | undefined =>
+    opts.environments.find((e) => e.name === name)
+
+  /** The router planners' configuration of an env (Start's wiring: split + HMR + `deleteNodes` on the client, `deleteNodes` only on servers; R24). */
+  const routerConfigFor = (
+    env: StartCompilerEnvironment,
+  ): RouterPlannerConfig => {
+    const cs = opts.getConfig().startConfig.router.codeSplittingOptions
+    return {
+      framework: opts.framework,
+      split: true,
+      defaultGroupings: cs?.defaultBehavior ?? defaultCodeSplitGroupings,
+      splitBehavior: cs?.splitBehavior,
+      deleteNodes:
+        env.type === 'client'
+          ? ['ssr', 'server', 'headers']
+          : (cs?.deleteNodes ?? []),
+      hmr: { enabled: env.type === 'client', style: 'vite' },
+    }
+  }
+
+  /** Whether the router planners run in an env: every Start env but a separate server-fn provider (RSC). */
+  const routerAppliesTo = (env: StartCompilerEnvironment): boolean =>
+    ssrIsProvider || env.name !== opts.providerEnvName
+
+  const createSession = (config: {
+    root: string
+    command: 'serve' | 'build'
+    bundledDev: boolean
+  }): Session => {
+    const { startConfig, resolvedStartConfig } = opts.getConfig()
+    const mode = config.command === 'build' ? 'build' : 'dev'
+    const ip = createImportProtection({
+      options: startConfig.importProtection,
+      root: config.root,
+      srcDirectory: resolvedStartConfig.srcDirectory,
+      mode,
+      verbatimModuleSyntax: readVerbatimModuleSyntax(config.root),
+    })
+    const rawFacts = new RawFactsCache({
+      readFile: (file) => fs.readFile(file, 'utf8').catch(() => null),
+      loadVirtual: async (id) => {
+        for (const load of virtualLoaders.values()) {
+          const code = await load(id).catch(() => null)
+          if (code !== null) {
+            return code
+          }
+        }
+        return null
+      },
+      recognizer,
+      ...(ip && { markerSpecifiers: ip.markerSpecifiers }),
+    })
+    const s: Session = {
+      root: config.root,
+      mode,
+      bundledDev: config.bundledDev,
+      ip,
+      rawFacts,
+      caches: createCompilerCaches(rawFacts),
+      registry: new RouteRegistryView(opts.routerPluginContext),
+      warnings: new WarningLedger(() => {}),
+      planners: new Map(),
+      configs: new Map(),
+      entries: new Set(),
+    }
+    for (const env of opts.environments) {
+      ip?.env(env.name, env.type)
+      const routerCfg = routerAppliesTo(env) ? routerConfigFor(env) : null
+      const rscCss = opts.rsc !== undefined && env.name === opts.providerEnvName
+      s.planners.set(
+        env.name,
+        startPlanners({
+          hydrate: createHydratePlanner(),
+          rscCss,
+          router: routerCfg ? routerPlanners() : undefined,
+          importEdges: ip?.planner ?? null,
+        }),
+      )
+      const idMode: StartEnvConfig['idMode'] =
+        mode === 'dev' ? 'dev' : allocator ? 'placeholder' : 'default'
+      const startEnv: StartEnvConfig = {
+        framework: opts.framework,
+        root: config.root,
+        providerSeparate: !ssrIsProvider,
+        idMode,
+        providerDirective: opts.rsc?.providerDirective,
+        isOpaque,
+      }
+      const hydrate: HydratePlannerConfig = { root: config.root }
+      const rscCssConfig: RscCssConfig | undefined = opts.rsc
+        ? { loadCssExpression: opts.rsc.loadCssExpression }
+        : undefined
+      s.configs.set(env.name, {
+        configKey: digestOf({
+          framework: opts.framework,
+          root: config.root,
+          provider: opts.providerEnvName,
+          ssrIsProvider,
+          idMode,
+          rsc: opts.rsc ?? null,
+          env: env.name,
+          router: routerCfg && {
+            split: routerCfg.split,
+            groupings: routerCfg.defaultGroupings,
+            splitBehavior: routerCfg.splitBehavior?.toString() ?? null,
+            deleteNodes: [...routerCfg.deleteNodes],
+            hmr: routerCfg.hmr,
+          },
+          ip: ip?.config.configKey ?? null,
+        }),
+        perPlanner: {
+          [START_ENV]: startEnv,
+          [HYDRATE_PLANNER]: hydrate,
+          'rsc-css': rscCssConfig,
+          ...(routerCfg && routerPlannerConfig(routerCfg)),
+        } as Record<string, unknown>,
+      })
+    }
+    return s
+  }
+
+  /** The app's entry ids: traces of dev reports start at them (lazily: the entries are resolved after `config`). */
+  const entriesOf = (s: Session): Set<string> => {
+    if (s.entries.size === 0) {
+      const { resolvedStartConfig } = opts.getConfig()
+      const { entryPaths } = opts.resolveEntries()
+      for (const p of [
+        resolvedStartConfig.routerFilePath,
+        resolvedStartConfig.startFilePath,
+        entryPaths.client,
+        entryPaths.server,
+        entryPaths.router,
+        entryPaths.start,
+      ]) {
+        if (p) {
+          s.entries.add(normalizePath(p))
+        }
+      }
+      s.entries.add(resolveViteId(DEV_CLIENT_ENTRY))
+      s.entries.add(DEV_CLIENT_ENTRY)
+    }
+    return s.entries
+  }
+
+  const envInfoOf = (
+    environment: Environment,
+    env: StartCompilerEnvironment,
+  ): EnvInfo => ({
+    name: env.name,
+    type: env.type,
+    isProvider: env.name === opts.providerEnvName,
+    mode: environment.mode === 'build' ? 'build' : 'dev',
+    bundler: 'vite',
+    framework: opts.framework,
+    conditions: environment.config.resolve.conditions,
+    routerSplit: env.type === 'client',
+  })
+
+  /** Host services bound to one hook context. */
+  const hostFor = (
+    s: Session,
+    envName: string,
+    resolve: (
+      source: string,
+      importer?: string,
+      options?: { skipSelf?: boolean },
+    ) => Promise<{ id: string; external?: boolean | string } | null>,
+  ): HostServices => ({
+    resolve: async (specifier, importer) => {
+      const r = await resolve(specifier, importer, { skipSelf: true })
+      if (!r) {
+        return null
+      }
+      return {
+        id: r.id,
+        external: r.external === true || typeof r.external === 'string',
+      }
+    },
+    readFile: (file) => fs.readFile(file, 'utf8').catch(() => null),
+    loadVirtual: (id) =>
+      virtualLoaders.get(envName)?.(id) ?? Promise.resolve(null),
+    rawFacts: s.rawFacts,
+    warnings: s.warnings,
+    routes: s.registry,
+    services: { routes: s.registry },
+  })
+
+  /** The host of the invalidation operation (a dev environment's own resolver). */
+  const invalidationHost = (
+    s: Session,
+    environment: DevEnvironment,
+  ): HostServices =>
+    hostFor(s, environment.name, async (specifier, importer) => {
+      const r = await environment.pluginContainer.resolveId(specifier, importer)
+      return r ? { id: r.id, external: r.external === true } : null
+    })
 
   /**
    * Applies one invalidation to an env's module graph: the nodes of the
@@ -205,6 +461,10 @@ export function startCompilerPlugin(
       }
       waiting.clear()
     }
+    if (change.kind === 'registry') {
+      // the changed file's own plans are evicted too: re-transform them
+      paths.add(change.path)
+    }
     const graph = (environment as DevEnvironment).moduleGraph
     const seen = new Set<EnvironmentModuleNode>()
     const nodes: Array<EnvironmentModuleNode> = []
@@ -217,97 +477,26 @@ export function startCompilerPlugin(
     return nodes
   }
 
-  /** Pre-bundled dependencies are opaque (a discovered Start library is never pre-bundled); everything else resolved is read. */
-  const isOpaque = (canonicalId: string): boolean =>
-    identify(canonicalId)
-      .path.replace(/\\/g, '/')
-      .includes('/node_modules/.vite/')
-
-  const envInfoOf = (
-    environment: Environment,
-    env: { name: string; type: 'client' | 'server' },
-  ): EnvInfo => ({
-    name: env.name,
-    type: env.type,
-    isProvider: env.name === opts.providerEnvName,
-    mode: environment.mode === 'build' ? 'build' : 'dev',
-    bundler: 'vite',
-    framework: opts.framework,
-    conditions: environment.config.resolve.conditions,
-    routerSplit: env.type === 'client',
-  })
-
-  const plannersByEnv = new Map<string, Array<Planner>>()
-  const plannersFor = (env: { name: string }): Array<Planner> => {
-    let p = plannersByEnv.get(env.name)
-    if (!p) {
-      p = startPlanners({
-        rscCss: opts.rsc !== undefined && env.name === opts.providerEnvName,
-      })
-      plannersByEnv.set(env.name, p)
+  /** Registry changes (the generator published a new `routesByFile`): route modules whose entry changed re-plan (`kind: 'registry'`). */
+  const invalidateRegistry = async (file: string): Promise<void> => {
+    const s = session
+    if (!s || !server) {
+      return
     }
-    return p
-  }
-
-  const configFor = (envInfo: EnvInfo) => {
-    const idMode: StartEnvConfig['idMode'] =
-      envInfo.mode === 'dev' ? 'dev' : allocator ? 'placeholder' : 'default'
-    const startEnv: StartEnvConfig = {
-      framework: opts.framework,
-      root,
-      providerSeparate: !ssrIsProvider,
-      idMode,
-      providerDirective: opts.rsc?.providerDirective,
-      isOpaque,
+    const environments = Object.values(server.environments)
+    const first = environments[0]
+    if (!first) {
+      return
     }
-    const rscCss: RscCssConfig | undefined = opts.rsc
-      ? { loadCssExpression: opts.rsc.loadCssExpression }
-      : undefined
-    return {
-      configKey: digestOf({
-        framework: opts.framework,
-        root,
-        provider: opts.providerEnvName,
-        ssrIsProvider,
-        idMode,
-        rsc: opts.rsc ?? null,
-        env: envInfo.name,
-      }),
-      perPlanner: { [START_ENV]: startEnv, 'rsc-css': rscCss } as Record<
-        string,
-        unknown
-      >,
+    const change: InvalidateChange = { path: normalizePath(file), kind: 'registry' }
+    const res = await invalidate(s.caches, change, invalidationHost(s, first))
+    const now = Date.now()
+    for (const environment of environments) {
+      if (envNames.has(environment.name)) {
+        applyInvalidation(environment, change, res, now)
+      }
     }
   }
-
-  /** Host services bound to one hook context. */
-  const hostFor = (ctx: {
-    resolve: (
-      source: string,
-      importer?: string,
-      options?: { skipSelf?: boolean; custom?: Record<string, unknown> },
-    ) => Promise<{ id: string; external?: boolean | string } | null>
-    environment: Environment
-  }): HostServices => ({
-    resolve: async (specifier, importer) => {
-      const r = await ctx.resolve(specifier, importer, {
-        skipSelf: true,
-        custom: { [COMPILER_RESOLVE_CUSTOM_KEY]: true },
-      })
-      if (!r) {
-        return null
-      }
-      return {
-        id: r.id,
-        external: r.external === true || typeof r.external === 'string',
-      }
-    },
-    readFile: (file) => fs.readFile(file, 'utf8').catch(() => null),
-    loadVirtual: (id) =>
-      virtualLoaders.get(ctx.environment.name)?.(id) ?? Promise.resolve(null),
-    rawFacts,
-    warnings,
-  })
 
   const providerModuleIdOf = (e: ServerFnEntry): string =>
     e.providerDerived
@@ -326,7 +515,13 @@ export function startCompilerPlugin(
     const { line, column } = source.locate(d.range.start)
     return { file: filePath, line: line + 1, column }
   }
+  /**
+   * Errors fail the module (every compile that produces them); warnings
+   * once per (file, reason and wording) per session: a transform that
+   * leaves a finding as it is does not repeat it, a new finding is reported.
+   */
   const reportDiagnostics = (
+    s: Session,
     ctx: {
       warn: (w: {
         message: string
@@ -360,7 +555,11 @@ export function startCompilerPlugin(
       }
     }
     for (const d of diagnostics) {
-      if (d.severity === 'warning' && warnings.once(filePath, d)) {
+      if (d.severity !== 'warning') {
+        continue
+      }
+      const keyed = d.code ? { ...d, code: `${d.code}\u0000${d.message}` } : d
+      if (s.warnings.once(filePath, keyed)) {
         const loc = locationOf(source, filePath, d)
         ctx.warn({
           message: loc
@@ -372,10 +571,33 @@ export function startCompilerPlugin(
     }
   }
 
-  function perEnvPlugin(env: {
-    name: string
-    type: 'client' | 'server'
-  }): Plugin {
+  /** Import protection's outcome of a compile: edge modules registered, dev reports queued; an `error`-behaviour violation fails the module. */
+  const afterCompile = (
+    s: Session,
+    env: StartCompilerEnvironment,
+    id: string,
+    out: { output: string; facts: { planners: Record<string, unknown> } },
+    fail: (error: Error) => never,
+  ): void => {
+    if (!s.ip) {
+      return
+    }
+    const ipEnv = s.ip.env(env.name, env.type)
+    const { error } = ipEnv.afterCompile(id, out)
+    if (error) {
+      fail(error)
+    }
+    // a host completion event (R21): print the reports whose importers the
+    // graph (or the judged edges) can reach now, before the module is served
+    ipEnv.reporter?.flush()
+  }
+
+  const changeKindOf = (
+    event: 'create' | 'update' | 'delete',
+  ): InvalidateChange['kind'] =>
+    event === 'delete' ? 'unlink' : event === 'create' ? 'add' : 'change'
+
+  function perEnvPlugin(env: StartCompilerEnvironment): Plugin {
     return {
       name: `tanstack-start:compiler:${env.name}`,
       enforce: 'pre',
@@ -384,13 +606,50 @@ export function startCompilerPlugin(
         return e.name === env.name
       },
       configResolved(config) {
-        root = config.root
-        bundledDev = !!config.experimental.bundledDev
+        if (!session) {
+          session = createSession({
+            root: config.root,
+            command: config.command,
+            bundledDev: !!config.experimental.bundledDev,
+          })
+          unsubscribeRoutes?.()
+          unsubscribeRoutes = onRoutesChanged(
+            opts.routerPluginContext,
+            (next, previous) => {
+              for (const file of changedRoutePaths(next, previous)) {
+                void invalidateRegistry(file)
+              }
+            },
+          )
+        }
+      },
+      configureServer(viteServer) {
+        server = viteServer
+        const s = requireSession()
+        const environment = viteServer.environments[env.name]
+        if (s.ip && environment) {
+          const ipEnv = s.ip.env(env.name, env.type)
+          const entries = entriesOf(s)
+          ipEnv.graph = viteDevGraphView(environment.moduleGraph, (id) =>
+            entries.has(id),
+          )
+          const reporter = ipEnv.useDevReporter({
+            warn: (message) => environment.logger.warn(message),
+          })
+          viteServer.httpServer?.once('close', () => reporter.close())
+        }
+        viteServer.httpServer?.once('close', () => {
+          unsubscribeRoutes?.()
+          unsubscribeRoutes = null
+        })
       },
       buildStart() {
+        const s = requireSession()
         if (this.environment.mode === 'build' && env.type === 'client') {
           // a new build: the registry of the previous one is gone (the client builds first)
           registry.clear()
+          // one warning per file per run
+          s.warnings.reset()
         }
         const environment = this.environment
         virtualLoaders.set(env.name, async (id) => {
@@ -405,6 +664,46 @@ export function startCompilerPlugin(
           return info.code
         })
       },
+      closeBundle() {
+        if (this.environment.mode === 'build') {
+          unsubscribeRoutes?.()
+          unsubscribeRoutes = null
+        }
+      },
+      resolveId: {
+        filter: { id: [OWNED_QUERY_RE, IP_SPECIFIER_RE] },
+        handler(source, importer) {
+          const edge = resolveViteEdgeModuleId(source)
+          if (edge !== null) {
+            return edge
+          }
+          // a derived module of the compiler (`./route.tsx?tsr-split=…`): the
+          // importer's sibling with the query verbatim, no file system (§3.5.4)
+          if (!importer || !source.startsWith('./')) {
+            return null
+          }
+          const q = source.indexOf('?')
+          if (q === -1 || !OWNED_QUERY_RE.test(source.slice(q))) {
+            return null
+          }
+          const basename = source.slice(2, q)
+          if (basename.includes('/')) {
+            return null
+          }
+          const dir = path.posix.dirname(normalizePath(identify(importer).path))
+          return `${dir}/${basename}${source.slice(q)}`
+        },
+      },
+      load: {
+        filter: { id: IP_SPECIFIER_RE },
+        handler(id) {
+          const s = requireSession()
+          const load = s.ip?.load(id)
+          return load
+            ? { code: load.code, moduleSideEffects: load.moduleSideEffects }
+            : null
+        },
+      },
       transform: {
         filter: { id: { include: TRANSFORM_ID_REGEX } },
         async handler(code, id) {
@@ -412,107 +711,65 @@ export function startCompilerPlugin(
           if (identity.lang === null) {
             return null
           }
+          const s = requireSession()
           const environment = this.environment
           const envInfo = envInfoOf(environment, env)
-          // INTERIM: router split ids compile as their source; Hydrate chunks as their own source
-          let compileId = id
-          if (identity.derived) {
-            if (identity.derived.kind === 'hydrate') {
-              compileId = id.replace(
-                /([?&])tss-hydrate=/,
-                `$1${HYDRATE_INTERIM_KEY}=`,
-              )
-            } else if (identity.derived.kind !== 'provider') {
-              compileId = identity.canonicalId
-            }
-          }
-          const host = hostFor(this)
           const out = await compileModule(
             {
-              id: compileId,
+              id,
               code,
               env: envInfo,
-              planners: plannersFor(env),
-              config: configFor(envInfo),
-              // always: downstream plugins read positions through the combined map (import
-              // protection's reported locations), whatever `build.sourcemap` says
+              planners: s.planners.get(env.name)!,
+              config: s.configs.get(env.name)!,
+              inputMap: () =>
+                this.getCombinedSourcemap() as unknown as InputSourceMap,
+              // always: downstream plugins read positions through the combined map, whatever `build.sourcemap` says
               wantMap: true,
             },
-            host,
-            caches,
+            hostFor(s, env.name, (source, imp, options) =>
+              this.resolve(source, imp, options),
+            ),
+            s.caches,
           )
-          let result: { code: string; map: RawSourceMap | null } | null = null
-          if (out) {
-            reportDiagnostics(this, out.diagnostics, identity.path, id, code)
-            const facts = out.facts.planners[START_ENV] as
-              | StartEnvFacts
-              | undefined
-            if (facts && facts.serverFns.length > 0) {
-              registry.record(identity.canonicalId, facts.serverFns, env.type)
-            }
-            if (out.code !== code) {
-              result = { code: out.code, map: out.map }
-            }
+          if (!out) {
+            return null
           }
-          // INTERIM: today's Hydrate transform on the output
-          const hydrateEnv: InterimHydrateEnv = {
-            type: env.type,
-            name: env.name,
-            mode: envInfo.mode,
+          reportDiagnostics(s, this, out.diagnostics, identity.path, id, code)
+          const facts = out.facts.planners[START_ENV] as
+            | StartEnvFacts
+            | undefined
+          if (facts && facts.serverFns.length > 0) {
+            registry.record(identity.canonicalId, facts.serverFns, env.type)
           }
-          const hydrated = hydrate.transform(
-            result?.code ?? code,
-            id,
-            hydrateEnv,
-            result?.map ?? null,
-          )
-          if (hydrated) {
-            result = hydrated
-          }
-          if (!result) {
+          afterCompile(s, env, id, out, (error) => this.error(error))
+          if (identity.derived === null && out.code === code) {
             return null
           }
           return {
-            code: result.code,
-            map: result.map as never,
-            moduleSideEffects: out?.sideEffectFree ? false : undefined,
+            code: out.code,
+            map: out.map as never,
+            moduleSideEffects: out.sideEffectFree ? false : undefined,
           }
         },
       },
       async hotUpdate(ctx) {
-        const change = {
+        const s = requireSession()
+        const change: InvalidateChange = {
           path: ctx.file,
-          kind:
-            ctx.type === 'delete'
-              ? ('unlink' as const)
-              : ctx.type === 'create'
-                ? ('add' as const)
-                : ('change' as const),
+          kind: changeKindOf(ctx.type),
         }
         const key = `${ctx.file}\u0000${ctx.timestamp}`
         let pending = invalidations.get(key)
         if (!pending) {
-          const environment = this.environment
-          pending = invalidate(caches, change, {
-            resolve: async (specifier, importer) => {
-              const r = await environment.pluginContainer.resolveId(
-                specifier,
-                importer,
-                { custom: { [COMPILER_RESOLVE_CUSTOM_KEY]: true } },
-              )
-              return r ? { id: r.id, external: r.external === true } : null
-            },
-            readFile: (file) => fs.readFile(file, 'utf8').catch(() => null),
-            loadVirtual: (id) =>
-              virtualLoaders.get(env.name)?.(id) ?? Promise.resolve(null),
-            rawFacts,
-            warnings,
-          })
+          pending = invalidate(
+            s.caches,
+            change,
+            invalidationHost(s, this.environment),
+          )
           invalidations.set(key, pending)
           setTimeout(() => invalidations.delete(key), 10_000).unref()
         }
         const res = await pending
-        hydrate.invalidate(ctx.file, env.name)
         if (ctx.type === 'delete') {
           registry.forget(ctx.file)
         }
@@ -525,36 +782,17 @@ export function startCompilerPlugin(
         return extra.length > 0 ? [...ctx.modules, ...extra] : undefined
       },
       async watchChange(id, change) {
-        if (!bundledDev || this.environment.mode !== 'dev') {
+        const s = requireSession()
+        if (!s.bundledDev || this.environment.mode !== 'dev') {
           return
         }
-        const kind =
-          change.event === 'delete'
-            ? 'unlink'
-            : change.event === 'create'
-              ? 'add'
-              : 'change'
         const environment = this.environment
+        const kind = changeKindOf(change.event)
         const res = await invalidate(
-          caches,
+          s.caches,
           { path: id, kind },
-          {
-            resolve: async (specifier, importer) => {
-              const r = await environment.pluginContainer.resolveId(
-                specifier,
-                importer,
-                { custom: { [COMPILER_RESOLVE_CUSTOM_KEY]: true } },
-              )
-              return r ? { id: r.id, external: r.external === true } : null
-            },
-            readFile: (file) => fs.readFile(file, 'utf8').catch(() => null),
-            loadVirtual: (vid) =>
-              virtualLoaders.get(env.name)?.(vid) ?? Promise.resolve(null),
-            rawFacts,
-            warnings,
-          },
+          invalidationHost(s, environment),
         )
-        hydrate.invalidate(id, env.name)
         applyInvalidation(environment, { path: id, kind }, res, Date.now())
       },
       renderChunk(code, chunk) {
@@ -589,7 +827,131 @@ export function startCompilerPlugin(
         const built = builder.finish()
         return { code: built.code, map: built.map as never }
       },
+      /**
+       * Import protection's build verdict (§3.14.4, R30, R33): the edge
+       * modules that survived tree-shaking → `onViolation` once per logical
+       * edge per logical build → a veto asks for another pass of this
+       * environment (`buildApp` below rebuilds it; this pass writes nothing);
+       * the settled pass reports.
+       */
+      async generateBundle(_options, bundle) {
+        const s = requireSession()
+        if (!s.ip || this.environment.mode !== 'build') {
+          return
+        }
+        const ipEnv = s.ip.env(env.name, env.type)
+        const live = readRolldownWitness(bundle as never, ipEnv.witness())
+        const result = await ipEnv.decide(
+          live,
+          rolldownGraphView((id) => this.getModuleInfo(id)),
+        )
+        if (result.needPass) {
+          discardBundle(bundle)
+          return
+        }
+        for (const report of ipEnv.buildReports()) {
+          if (report.severity === 'error') {
+            this.error(report.message)
+          }
+          this.warn(report.message)
+        }
+      },
     }
+  }
+
+  /**
+   * The fixed-point veto rebuild (R33): every `builder.build(env)` of a Start
+   * environment — Start's own `buildApp` loop or another driver's, such as
+   * `@vitejs/plugin-rsc` — is one logical build, repeated while its
+   * `generateBundle` asked for another pass.
+   */
+  const buildLoopPlugin: Plugin = {
+    name: 'tanstack-start:import-protection-build-loop',
+    apply: 'build',
+    buildApp: {
+      order: 'pre',
+      handler(builder: ViteBuilder) {
+        const s = requireSession()
+        if (!s.ip) {
+          return Promise.resolve()
+        }
+        const ip = s.ip
+        const original = builder.build.bind(builder)
+        builder.build = async (environment: BuildEnvironment) => {
+          const env = envOf(environment.name)
+          if (!env) {
+            return original(environment)
+          }
+          const ipEnv = ip.env(env.name, env.type)
+          ipEnv.beginLogicalBuild()
+          let output: Awaited<ReturnType<typeof original>> | undefined
+          await ipEnv.build.runToFixedPoint(async () => {
+            output = await original(environment)
+          })
+          return output!
+        }
+        return Promise.resolve()
+      },
+    },
+  }
+
+  /**
+   * The late import-protection pass (§3.14.5, R48): modules whose id is not
+   * JS/TS but whose code reaches us as JS through other plugins (`.mdx`, a
+   * compiled `.vue` module, custom types) are judged with the `import-edges`
+   * planner alone, after the framework plugins (`post`), their positions
+   * mapped through the combined source map.
+   */
+  const latePassPlugin: Plugin = {
+    name: 'tanstack-start:import-protection-late',
+    enforce: 'post',
+    applyToEnvironment(e) {
+      return envNames.has(e.name)
+    },
+    transform: {
+      filter: {
+        id: { exclude: LATE_PASS_EXCLUDE },
+        code: { include: /\b(?:import|export)\b|\brequire\s*\(/ },
+      },
+      async handler(code, id) {
+        const s = requireSession()
+        const env = envOf(this.environment.name)
+        if (!s.ip || !env || identify(id).lang !== null) {
+          return null
+        }
+        const ip = s.ip
+        const out = await compileModule(
+          {
+            id,
+            code,
+            lang: 'jsx',
+            env: envInfoOf(this.environment, env),
+            planners: [ip.planner],
+            config: {
+              configKey: `late:${ip.config.configKey}`,
+              perPlanner: {},
+            },
+            inputMap: () =>
+              this.getCombinedSourcemap() as unknown as InputSourceMap,
+            wantMap: true,
+          },
+          hostFor(s, env.name, (source, imp, options) =>
+            this.resolve(source, imp, options),
+          ),
+          s.caches,
+        )
+        if (!out || out.diagnostics.some((d) => d.by === 'parse')) {
+          // not JavaScript after all: nothing to judge
+          return null
+        }
+        reportDiagnostics(s, this, out.diagnostics, identify(id).path, id, code)
+        afterCompile(s, env, id, out, (error) => this.error(error))
+        if (out.code === code) {
+          return null
+        }
+        return { code: out.code, map: out.map as never }
+      },
+    },
   }
 
   const lookupPrefix = `\0${SERVER_FN_LOOKUP_VIRTUAL_ID}?`
@@ -609,6 +971,7 @@ export function startCompilerPlugin(
       if (!id.startsWith(lookupPrefix)) {
         return undefined
       }
+      const root = requireSession().root
       const fnId =
         new URLSearchParams(id.slice(lookupPrefix.length)).get('id') ?? ''
       let entry = registry.get(fnId)
@@ -636,9 +999,7 @@ export function startCompilerPlugin(
     applyToEnvironment: (e) => resolverEnvironments.has(e.name),
     load() {
       if (this.environment.name !== opts.providerEnvName) {
-        const mod = opts.environments.find(
-          (e) => e.name === this.environment.name,
-        )?.getServerFnById
+        const mod = envOf(this.environment.name)?.getServerFnById
         if (mod) {
           return mod
         }
@@ -657,55 +1018,13 @@ export function startCompilerPlugin(
     },
   })
 
-  const hydrateChunkPlugin: Plugin = {
-    name: 'tanstack-start:hydrate-chunk-interim',
-    enforce: 'pre',
-    applyToEnvironment(e) {
-      return opts.environments.some((env) => env.name === e.name)
-    },
-    load: {
-      filter: { id: hydrate.idPattern },
-      async handler(id) {
-        const env = opts.environments.find(
-          (e) => e.name === this.environment.name,
-        )
-        if (!env) {
-          return null
-        }
-        const hydrateEnv: InterimHydrateEnv = {
-          type: env.type,
-          name: env.name,
-          mode: this.environment.mode === 'build' ? 'build' : 'dev',
-        }
-        const tryLoad = () => hydrate.load(id, hydrateEnv)
-        try {
-          return tryLoad()
-        } catch (error) {
-          if (!(error instanceof MissingHydrateSourceError)) {
-            throw error
-          }
-        }
-        // the parent was not compiled yet in this env (a chunk requested first): compile it
-        const sourceId = identify(id).canonicalId
-        if (
-          this.environment.mode === 'dev' &&
-          !(bundledDev && env.type === 'client')
-        ) {
-          await this.environment.transformRequest(sourceId)
-        } else {
-          await this.load({ id: sourceId })
-        }
-        return tryLoad()
-      },
-    },
-  }
-
   return [
     ...opts.environments.map(perEnvPlugin),
+    buildLoopPlugin,
+    latePassPlugin,
     devLookupPlugin,
     resolverPlugin,
-    hydrateChunkPlugin,
   ]
 }
 
-export { PROVIDER_QUERY }
+export { PROVIDER_QUERY, EDGE_MODULE_PREFIX }

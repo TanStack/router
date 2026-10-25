@@ -251,9 +251,12 @@ describe.each(startBundlers)('%s build', (bundler) => {
     async () => {
       const { importer, trace } = await buildReport(bundler, {
         ...leakingB,
-        // The app's client entry (Start's default `src/client.tsx`)
+        // The app's client entry (Start's default `src/client.tsx`). Its code
+        // is kept alive (a build reports only edges that survive tree-shaking,
+        // SPEC J6.4, and Vite drops a client entry's unused exports).
         'src/client.tsx': `import { page } from './a'
 export const start = () => page()
+;(globalThis as any).start = start
 `,
         'src/back.ts': `import * as app from './client'\nexport const back = app\n`,
         'src/a.ts': `import { leak } from './b'

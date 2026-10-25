@@ -315,13 +315,10 @@ import { Widget } from './widget'`,
   },
 ]
 
-// Bug: the parent's Hydrate chunk loaders are inserted above the pragma
-// comment that leads the file.
-// Impact: with Vite 8 (Oxc only reads pragmas that lead the file), the
-// parent compiles its JSX with the default runtime: `css` props are ignored.
-// Source: #8504 start-compiler-jsx-pragma.test.ts (red on main); same root
-// cause as the server fn pin above.
-test.fails.each(hydrateParentImports)(
+// The parent's Hydrate chunk loaders are inserted below the pragma comment
+// that leads the file (with Vite 8, Oxc only reads pragmas that lead the
+// file). Source: #8504 start-compiler-jsx-pragma.test.ts.
+test.each(hydrateParentImports)(
   'client: the parent keeps selecting the pragma JSX runtime when the import it sits on $name',
   async ({ imports }) => {
     const served = await serveCase(await host(), {

@@ -25,17 +25,8 @@ export const ENTRY_POINTS = {
 
 export const DEV_CLIENT_ENTRY = 'virtual:tanstack-start-dev-client-entry'
 
-export const SERVER_FN_LOOKUP = 'server-fn-module-lookup'
-
 // matches
 // .ts, .tsx, .cts, .mts, .js, .jsx, .cjs, .mjs
 // with optional query params after
 // but not .json
 export const TRANSFORM_ID_REGEX = [/\.[cm]?[tj]sx?($|\?)/]
-
-/**
- * The `custom` key of the compiler's own `this.resolve` calls (resolving an
- * import to read its module's summary): plugins that treat resolutions as
- * import edges (import protection) ignore them.
- */
-export const COMPILER_RESOLVE_CUSTOM_KEY = 'tanstack-start:compiler-resolve'

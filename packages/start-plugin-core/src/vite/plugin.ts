@@ -1,4 +1,5 @@
 import { crawlFrameworkPkgs } from 'vitefu'
+import { createRouterPluginContext } from '@tanstack/router-plugin/context'
 import {
   applyResolvedBaseAndOutput,
   applyResolvedRouterBasepath,
@@ -10,7 +11,6 @@ import {
   normalizePublicBase,
   shouldRewriteDevBasepath,
 } from '../planning'
-import { importProtectionPlugin } from './import-protection-plugin/plugin'
 import { startCompilerPlugin } from './compiler-plugin'
 import { loadEnvPlugin } from './load-env-plugin/plugin'
 import {
@@ -54,6 +54,8 @@ export function tanStackStartVite(
     parseConfig: parseStartConfig,
   })
   const { getConfig, resolvedStartConfig } = configContext
+  // the generator's registry, read by the compiler's route planners
+  const routerPluginContext = createRouterPluginContext()
   const serverFnProviderEnv = corePluginOpts.providerEnvironmentName
   const ssrIsProvider = corePluginOpts.ssrIsProvider
 
@@ -209,12 +211,9 @@ export function tanStackStartVite(
       getConfig,
       postServerBuild,
     }),
-    // Server function plugin handles:
-    // 1. Identifying createServerFn().handler() calls
-    // 2. Extracting server functions to separate modules
-    // 3. Replacing call sites with RPC stubs
-    // 4. Generating the server function manifest
-    // Also handles createIsomorphicFn, createServerOnlyFn, createClientOnlyFn, createMiddleware
+    // The compiler: one compile per (environment, module) running Start's
+    // environment separation, server functions, <Hydrate>, RSC CSS, the
+    // router's splitting and HMR, and import protection (DESIGN §2, §4.1)
     startCompilerPlugin({
       framework: corePluginOpts.framework,
       environments,
@@ -222,14 +221,16 @@ export function tanStackStartVite(
         normalizedStartPluginOpts.serverFns?.generateFunctionId,
       rsc: corePluginOpts.rsc,
       providerEnvName: serverFnProviderEnv,
-    }),
-    importProtectionPlugin({
       getConfig,
-      framework: corePluginOpts.framework,
-      environments,
-      providerEnvName: serverFnProviderEnv,
+      routerPluginContext,
+      resolveEntries: () => configContext.resolveEntries(),
     }),
-    tanStackStartRouter(normalizedStartPluginOpts, getConfig, corePluginOpts),
+    tanStackStartRouter(
+      normalizedStartPluginOpts,
+      getConfig,
+      corePluginOpts,
+      routerPluginContext,
+    ),
     loadEnvPlugin(),
     createDevClientEntryPlugin({
       framework: corePluginOpts.framework,
