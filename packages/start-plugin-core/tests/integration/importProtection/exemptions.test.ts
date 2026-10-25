@@ -72,31 +72,29 @@ export { otherRead } from './app/b'
 
 /**
  * Each way to exempt `src/exempt/a.ts` but not `src/app/b.ts`, and which of
- * the tests below main fails (`.fails`): `exempt` in builds and dev,
- * `control` in builds and dev.
+ * the build tests below the Rsbuild path (still on the previous compiler)
+ * fails (`.fails`): `exempt` and `control`. (Vite dev and build passed every
+ * row once the Yuku host judged edges per importer.)
  */
 const exemptions: Array<{
   option: string
   importProtection: ImportProtectionOptions
   fails: {
-    build: { exempt: boolean; control: boolean }
-    dev: { exempt: boolean; control: boolean }
+    rsbuild: { exempt: boolean; control: boolean }
   }
 }> = [
   {
     option: 'ignoreImporters',
     importProtection: { ignoreImporters: ['**/exempt/*.ts'] },
     fails: {
-      build: { exempt: true, control: false },
-      dev: { exempt: true, control: false },
+      rsbuild: { exempt: true, control: false },
     },
   },
   {
     option: 'exclude',
     importProtection: { exclude: ['src/exempt/**'] },
     fails: {
-      build: { exempt: true, control: false },
-      dev: { exempt: true, control: false },
+      rsbuild: { exempt: true, control: false },
     },
   },
   {
@@ -104,8 +102,7 @@ const exemptions: Array<{
     option: 'an importer outside include',
     importProtection: { include: ['src/app/**'] },
     fails: {
-      build: { exempt: false, control: true },
-      dev: { exempt: true, control: true },
+      rsbuild: { exempt: false, control: true },
     },
   },
 ]
@@ -193,14 +190,15 @@ describe.each(startBundlers)('%s build', (bundler) => {
       }
     }
 
-    ;(fails.build.control ? test.fails : test)(
+    const pinned = bundler === 'rsbuild' ? fails.rsbuild : null
+    ;(pinned?.control ? test.fails : test)(
       'an importer that is not exempt gets the mock and is reported',
       async () => {
         expectOtherGetsMock(await outcome())
       },
       timeout,
     )
-    ;(fails.build.exempt ? test.fails : test)(
+    ;(pinned?.exempt ? test.fails : test)(
       'the exempt importer gets the real module, and is not reported',
       async () => {
         expectExemptGetsRealModule(await outcome())
@@ -210,42 +208,32 @@ describe.each(startBundlers)('%s build', (bundler) => {
   })
 })
 
-describe.each(exemptions)(
-  'vite dev: $option',
-  ({ importProtection, fails }) => {
-    /** Loads the entry as a browser would; what it reads, and the logs. */
-    async function outcome(): Promise<Outcome> {
-      const server = await startBrowserProtectedDevServer(
-        files,
-        importProtection,
-      )
-      const { result } = await runViteClient(
-        server,
-        '/src/entry.ts',
-        readScript,
-      )
-      return {
-        ...(result as Omit<Outcome, 'reported'>),
-        reported: reportedFiles(server),
-      }
+describe.each(exemptions)('vite dev: $option', ({ importProtection }) => {
+  /** Loads the entry as a browser would; what it reads, and the logs. */
+  async function outcome(): Promise<Outcome> {
+    const server = await startBrowserProtectedDevServer(files, importProtection)
+    const { result } = await runViteClient(server, '/src/entry.ts', readScript)
+    return {
+      ...(result as Omit<Outcome, 'reported'>),
+      reported: reportedFiles(server),
     }
+  }
 
-    ;(fails.dev.control ? test.fails : test)(
-      'an importer that is not exempt gets the mock and is reported',
-      async () => {
-        expectOtherGetsMock(await outcome())
-      },
-      timeout,
-    )
-    ;(fails.dev.exempt ? test.fails : test)(
-      'the exempt importer gets the real module, and is not reported',
-      async () => {
-        expectExemptGetsRealModule(await outcome())
-      },
-      timeout,
-    )
-  },
-)
+  test(
+    'an importer that is not exempt gets the mock and is reported',
+    async () => {
+      expectOtherGetsMock(await outcome())
+    },
+    timeout,
+  )
+  test(
+    'the exempt importer gets the real module, and is not reported',
+    async () => {
+      expectExemptGetsRealModule(await outcome())
+    },
+    timeout,
+  )
+})
 
 /**
  * `client.excludeFiles` / `server.excludeFiles` (SPEC J6.7): a

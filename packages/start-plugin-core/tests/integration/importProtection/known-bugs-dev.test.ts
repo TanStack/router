@@ -3,7 +3,8 @@
  * files, to keep each within the per-file time budget): Vite dev with
  * `behavior: 'error'`, Rsbuild dev, and the app-level twins of the mock
  * pins. Each test asserts correct behaviour for a bug on main and is marked
- * .fails; remove .fails when the bug is fixed. A mock is told by what it
+ * .fails where it still fails (the Rsbuild path is on the previous
+ * compiler); remove .fails when the bug is fixed. A mock is told by what it
  * does (`mock-helpers.ts`, `describeValue`: `a safe mock`), and a violation
  * by what `onViolation` receives.
  */
@@ -589,58 +590,25 @@ export const read = () => [Color.Red, Util.x]
    * available real plugins does, so it was removed.)
    */
   const failsOn: Record<string, Array<string>> = {
-    // Bug: the dev rewrite of the importer drops `export * as ns` (the
-    // rewrite pin "a denied namespace re-export keeps its exported name",
-    // import-protection/rewrite.ts).
-    // Impact: in dev, the page fails to load [SyntaxError: '/src/barrel.ts'
-    // does not provide an export named 'secrets']. Builds mock the denied
-    // file itself and pass.
-    'a module re-exporting a denied file as a namespace': ['vite dev'],
-    // Bug: the export names of a denied file skip namespace re-exports
-    // (`export * as ns from`; import-protection/analysis.ts collects only
-    // the names of `ExportSpecifier`s), so the self-contained mock of the
-    // file has no `helpers`.
-    // Impact: a mock-mode build fails [Vite MISSING_EXPORT, Rspack
-    // ESModulesLinkingError 'helpers']. Vite dev passes.
-    'a denied file re-exporting a namespace': ['vite build', 'rsbuild build'],
-    // Bug: mock modules declare each mocked name as `export const <name>`,
-    // and reserved words such as `delete` pass the identifier check
+    // (The Vite channels of the twins below passed with the Yuku host's
+    // edge modules, whose mock exports the target's export names; the
+    // Rsbuild path is still on the previous compiler.)
+    // Bug (Rsbuild): the export names of a denied file skip namespace
+    // re-exports (`export * as ns from`; import-protection/analysis.ts
+    // collects only the names of `ExportSpecifier`s), so the self-contained
+    // mock of the file has no `helpers`.
+    // Impact: a mock-mode build fails [Rspack ESModulesLinkingError
+    // 'helpers'].
+    'a denied file re-exporting a namespace': ['rsbuild build'],
+    // Bug (Rsbuild): mock modules declare each mocked name as `export const
+    // <name>`, and reserved words such as `delete` pass the identifier check
     // (`isValidExportName`, import-protection/analysis.ts); `eval` and
     // `arguments` cannot be bound in a module either.
-    // Impact: the dev page and mock-mode builds fail with a parse error
-    // [Unexpected token 'delete'; PARSE_ERROR; Expected ident].
+    // Impact: mock-mode builds fail with a parse error [Expected ident].
     'a denied file exporting `delete`, used as `api.delete()`': [
-      'vite dev',
-      'vite build',
       'rsbuild build',
     ],
-    'a denied file exporting `eval` and `arguments`': [
-      'vite dev',
-      'vite build',
-      'rsbuild build',
-    ],
-    // Bug: namespace member reads are collected only after the import
-    // declaration that binds the namespace, but imports are hoisted: a
-    // member read earlier in the file is not exported by the mock edge of
-    // a denied specifier (the mock edge exports only the members read
-    // after the import). Rsbuild mocks the whole namespace and passes.
-    // Impact: the read gets `undefined` [db.query is not a function; Vite
-    // build: (void 0) is not a function].
-    // Source: PR #8504 (analysis.exports.test.ts "collects namespace member
-    // usage that precedes the import").
-    'a namespace member read in a function declared before the import': [
-      'vite dev',
-      'vite build',
-    ],
-    // Bug: the mock edge of a denied specifier exports only the names the
-    // importer reads statically; a member read with a computed key is no
-    // export of it, so `ns[key]` is `undefined`. A denied file is mocked by
-    // its own exports and passes; Rsbuild mocks the whole namespace.
-    // Impact: the read gets `undefined` [ns[key] is not a function].
-    'a namespace member read with a computed key, of a denied specifier': [
-      'vite dev',
-      'vite build',
-    ],
+    'a denied file exporting `eval` and `arguments`': ['rsbuild build'],
     // NEW bug (Rsbuild), not the internal pin's cause (Vite passes): a
     // mock-mode Rsbuild production build ships the real value of an enum
     // member of a denied file [read 'MARK_SECRET', the bundle contains

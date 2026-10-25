@@ -157,6 +157,33 @@ export function toDevSpecifier(id: string, root: string): string {
 const normalizePath = (p: string): string => p.replace(/\\/g, '/')
 
 /**
+ * The source entry of a pre-bundled dependency, when `id` is the dependency
+ * optimizer's bundle (`node_modules/.vite/deps/x.js?v=…`): the optimizer
+ * resolves a dependency to its bundle before the bundle is written, so facts
+ * read through that path would see a missing module; the package's own entry
+ * is what the dependency is (deterministic, and stable across re-optimization).
+ */
+function unoptimizedDependency(environment: Environment, id: string): string {
+  const optimizer = (environment as DevEnvironment).depsOptimizer
+  if (!optimizer || !id.includes('/node_modules/.vite/')) {
+    return id
+  }
+  const file = id.split('?')[0]!
+  const { optimized, discovered } = optimizer.metadata as {
+    optimized: Record<string, { file: string; src?: string }>
+    discovered?: Record<string, { file: string; src?: string }>
+  }
+  for (const table of [optimized, discovered ?? {}]) {
+    for (const info of Object.values(table)) {
+      if (info.file === file && info.src) {
+        return info.src
+      }
+    }
+  }
+  return id
+}
+
+/**
  * The map of a transform's input, or null when the input is the original
  * source: Vite answers an empty sourcemap chain with an identity map over
  * the input (its positions are the source's own, and such a map counts
@@ -408,7 +435,7 @@ export function startCompilerPlugin(
   /** Host services bound to one hook context. */
   const hostFor = (
     s: Session,
-    envName: string,
+    environment: Environment,
     resolve: (
       source: string,
       importer?: string,
@@ -421,13 +448,13 @@ export function startCompilerPlugin(
         return null
       }
       return {
-        id: r.id,
+        id: unoptimizedDependency(environment, r.id),
         external: r.external === true || typeof r.external === 'string',
       }
     },
     readFile: (file) => fs.readFile(file, 'utf8').catch(() => null),
     loadVirtual: (id) =>
-      virtualLoaders.get(envName)?.(id) ?? Promise.resolve(null),
+      virtualLoaders.get(environment.name)?.(id) ?? Promise.resolve(null),
     rawFacts: s.rawFacts,
     warnings: s.warnings,
     routes: s.registry,
@@ -439,7 +466,7 @@ export function startCompilerPlugin(
     s: Session,
     environment: DevEnvironment,
   ): HostServices =>
-    hostFor(s, environment.name, async (specifier, importer) => {
+    hostFor(s, environment, async (specifier, importer) => {
       const r = await environment.pluginContainer.resolveId(specifier, importer)
       return r ? { id: r.id, external: r.external === true } : null
     })
@@ -757,7 +784,7 @@ export function startCompilerPlugin(
               // always: downstream plugins read positions through the combined map, whatever `build.sourcemap` says
               wantMap: true,
             },
-            hostFor(s, env.name, (source, imp, options) =>
+            hostFor(s, this.environment, (source, imp, options) =>
               this.resolve(source, imp, options),
             ),
             s.caches,
@@ -965,7 +992,7 @@ export function startCompilerPlugin(
             inputMap: () => inputMapOf(this, code),
             wantMap: true,
           },
-          hostFor(s, env.name, (source, imp, options) =>
+          hostFor(s, this.environment, (source, imp, options) =>
             this.resolve(source, imp, options),
           ),
           s.caches,

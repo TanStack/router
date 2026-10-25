@@ -352,7 +352,9 @@ export const secret = () => 'MARK_SECRET'
     // server-only fails the build although the defaults exclude it (and
     // `excludeFiles` cannot exempt it).
     // Source: review (replaces a row of rsbuild/import-protection.test.ts).
-    ;(bundler === 'vite' ? test.fails : test)(
+    // (Was a Vite pin: main's Vite adapter never applied `excludeFiles` to a
+    // marked module.)
+    test(
       'by default, the server-only marker of a dependency is not checked',
       async () => {
         expect(await outcome(markedDependency, {})).toBe('built')

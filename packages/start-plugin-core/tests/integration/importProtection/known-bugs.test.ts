@@ -106,7 +106,8 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // Impact: a denied module that a client-reachable module imports, but that
   // the client never uses, still fails the build.
   // Source: issue #8101 (closed without a reproduction).
-  test.fails(
+  // (Rsbuild, still on the previous compiler: pinned.)
+  ;(bundler === 'rsbuild' ? test.fails : test)(
     'a denied module the client bundle drops does not fail the build',
     async () => {
       const { client } = await buildStart({
@@ -262,7 +263,8 @@ return describeValue(entry.read(), 'MARK_SECRET')`)
   // Impact: a mock-mode build ships the real content of a denied
   // `*.server.json` (e.g. server configuration or credentials) to the client.
   // Source: mutation testing.
-  test.fails(
+  // (Rsbuild, still on the previous compiler: pinned.)
+  ;(bundler === 'rsbuild' ? test.fails : test)(
     'in mock mode, a denied .server.json file is mocked, with a warning',
     async () => {
       expect(
@@ -287,7 +289,8 @@ const secret = data.secret`,
   // Impact: a mock-mode build of a project with a `*.server.cjs` the client
   // imports fails instead of mocking it.
   // Source: mutation testing.
-  test.fails(
+  // (Rsbuild, still on the previous compiler: pinned.)
+  ;(bundler === 'rsbuild' ? test.fails : test)(
     'in mock mode, a denied .server.cjs file is mocked, with a warning',
     async () => {
       expect(

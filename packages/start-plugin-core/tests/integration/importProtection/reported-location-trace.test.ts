@@ -181,7 +181,8 @@ export const page = () => c() + s()
     // importer when the chain goes through a module outside `src` (a shared
     // directory of a monorepo, a dependency).
     // Source: mutation testing.
-    const outsideSrcTest = bundler === 'vite' ? test.fails : test
+    // (Was a Vite pin: the Yuku host's trace follows the bundler graph.)
+    const outsideSrcTest = test
     outsideSrcTest(
       'the trace goes through modules outside the source directory',
       async () => {
@@ -354,6 +355,8 @@ describe('the trace locates each import on its line after compiling moved it', (
   test.each([
     ...movedImportRows('rsbuild', true, Object.keys(movedImports)),
     ...movedImportRows('rsbuild', false, ['a leading comment']),
+    // (the Yuku host locates every step through the module's own map)
+    ...movedImportRows('vite', false, Object.keys(movedImports)),
   ])(
     '$build: after $name',
     async (row) => {
@@ -374,7 +377,6 @@ describe('the trace locates each import on its line after compiling moved it', (
   // entry and the importer.
   // Source: mutation testing.
   test.fails.each([
-    ...movedImportRows('vite', false, Object.keys(movedImports)),
     ...movedImportRows('rsbuild', false, [
       'a blank line',
       'a type-only import',

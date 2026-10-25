@@ -582,7 +582,7 @@ export { b } from './b'
   // Impact: every violation of a denied file appears twice in the dev server
   // output, the second time naming the resolved path as the import.
   // Source: found writing the `log` rows (review).
-  test.fails(
+  test(
     "'once' logs one warning for one import",
     async () => {
       const server = await startProtectedDevServer(deniedFileApp)
@@ -602,7 +602,7 @@ export { b } from './b'
   // Impact: with 'always', the dev server output repeats each violation of
   // a denied file three times per load of its module.
   // Source: mutation testing (the 'always' rows of the reload tests above).
-  test.fails(
+  test(
     "'always' logs one warning for one import each time its module is loaded",
     async () => {
       const server = await startProtectedDevServer(deniedFileApp, {
@@ -815,7 +815,7 @@ export const leak = () => secret()
   // pin above (src/import-protection/utils.ts:61, the dedupe key includes
   // the specifier), which this test also needs fixed.
   // Impact: the user cannot navigate to the offending original source.
-  test.fails(
+  test(
     'importing a denied file, the warning names the .mdx page, located in its original mapped source',
     async () => {
       const server = await startProtectedDevServer(
@@ -848,7 +848,7 @@ export const leak = () => secret()
   // specifier fails to load with that internal error, instead of getting
   // the mock and a warning.
   // Source: mutation testing.
-  test.fails(
+  test(
     'importing a denied specifier gets the mock, and the dev server logs a warning naming it',
     async () => {
       const server = await startBrowserProtectedDevServer(
@@ -914,7 +914,7 @@ describe('onViolation', () => {
   // mocks, without any warning.
   // Source: review (dev.test.ts "returning false silences the warning"
   // asserted the mock).
-  test.fails(
+  test(
     'returning false allows the import: the client gets the real module',
     async () => {
       const server = await startBrowserProtectedDevServer(deniedFileApp, {
@@ -966,7 +966,7 @@ export const read = () => getRequest()
   // Impact: an allowed import is a mock in the browser.
   // Source: review (dev.test.ts "with behavior "error", an import of $name
   // it allows loads" passed with the mock).
-  test.fails(
+  test(
     'with behavior "error", an import of a denied file it allows gets the real module',
     async () => {
       const server = await startBrowserProtectedDevServer(deniedFileApp, {
@@ -1123,7 +1123,7 @@ export const peek = () => other()
   // which fails; whether the client gets the mock depends on load order.
   // Source: found writing the pin "after an edit adds the marker, the
   // violation is logged" below (review).
-  test.fails(
+  test(
     'is mocked when the client loads the importer first',
     async () => {
       const server = await startProtectedDevServer(markedApp(serverOnly))
@@ -1182,7 +1182,7 @@ export const peek = () => other()
     timeout,
   )
 
-  test.fails(
+  test(
     'after an edit adds the marker, the importer gets the mock',
     async () => {
       const { realCodeIn } = await addMarkerByAnEdit()
@@ -1320,7 +1320,7 @@ export const read = () => query()
   // fails to load with an internal error, by default and with
   // `excludeFiles: []` alike.
   // Source: review (the dev row of SPEC J6.10 was missing).
-  test.fails(
+  test(
     'by default, is not logged, and the client gets the real module',
     async () => {
       const server = await startBrowserProtectedDevServer(app, {}, options)
@@ -1333,7 +1333,7 @@ export const read = () => query()
     timeout,
   )
 
-  test.fails(
+  test(
     'with excludeFiles: [], is logged, and the client gets a safe mock',
     async () => {
       const server = await startBrowserProtectedDevServer(
@@ -1477,7 +1477,7 @@ export const read = () => widget()
   // violation warning of the dev server is the only trace of it.
   // Source: review (the unit row demanded that silence); SPEC J6.3: mock
   // mode always logs.
-  test.fails.each([
+  test.each([
     { mockAccess: undefined, severity: 'error' },
     { mockAccess: 'error', severity: 'error' },
     { mockAccess: 'warn', severity: 'warning' },
@@ -1983,7 +1983,7 @@ export const read = () => secret()
   // imports of modules loaded after the first server request without any
   // warning (low: opt-in option).
   // Source: mutation testing (clearEnvState mutants).
-  test.fails(
+  test(
     'with perEnvironmentStartEndDuringDev, a denied import of a module the client loads after the server rendered is logged',
     async () => {
       expect(await logsOfALateModule(true)).toEqual([
@@ -2232,7 +2232,7 @@ export const read = () => secret()
   // route (unbundled dev and builds start at the router entry). Low:
   // diagnostics only.
   // Source: mutation testing.
-  test.fails(
+  test(
     'the trace of a denied file imported from a module of src/routes leads from the router entry',
     async () => {
       const server = await startProtectedDevServer(
@@ -2531,7 +2531,7 @@ export const Page = () => <div>{String(1)}</div>
   // in a JSX module points at a line that is not in the source (here 4:77
   // of a two-line module).
   // Source: mutation testing (that late source map capture).
-  test.fails(
+  test(
     'in a JSX module, a use of a denied file imported through a subpath import alias is located on its source line',
     async () => {
       const server = await startProtectedDevServer({
@@ -2641,7 +2641,7 @@ export const read = () => secret()
   // Impact: in dev, `maxTraceDepth` does not cut traces (low: diagnostics
   // only).
   // Source: mutation testing (module graph trace mutants).
-  test.fails(
+  test(
     'with maxTraceDepth, a deeper trace is cut, keeping the importer',
     async () => {
       // (which steps a cut keeps, besides the importer, is not specified)
