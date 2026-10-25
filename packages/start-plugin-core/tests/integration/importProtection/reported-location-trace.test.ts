@@ -31,7 +31,19 @@ async function buildReport(
     viteConfig,
   }: Pick<StartBuildOptions, 'sourcemap' | 'viteConfig'> = {},
 ): Promise<Violation> {
-  const error = await rejection(
+  return reportOf(await buildFailure(bundler, files, { sourcemap, viteConfig }))
+}
+
+/** The failed build of `files` (client entry `src/entry.ts`, default rules). */
+function buildFailure(
+  bundler: StartBundler,
+  files: Record<string, string>,
+  {
+    sourcemap = false,
+    viteConfig,
+  }: Pick<StartBuildOptions, 'sourcemap' | 'viteConfig'> = {},
+) {
+  return rejection(
     buildStart({
       bundler,
       files,
@@ -40,6 +52,10 @@ async function buildReport(
       viteConfig,
     }),
   )
+}
+
+/** The report of the one violation of a failed build. */
+function reportOf(error: Awaited<ReturnType<typeof buildFailure>>): Violation {
   const [report, ...others] = violationsOf(error)
   expect(others).toEqual([])
   return report!
@@ -118,10 +134,11 @@ export const leak = () => secret()
 describe.each(startBundlers)(
   '%s build: the report of a violation',
   (bundler) => {
-    let chainReport: Promise<Violation> | undefined
-    /** The report of the `chain` build, built once. */
-    const reportOfChain = () =>
-      (chainReport ??= buildReport(bundler, chain, {}))
+    let chainFailure: ReturnType<typeof buildFailure> | undefined
+    /** The failed `chain` build, built once. */
+    const failureOfChain = () => (chainFailure ??= buildFailure(bundler, chain))
+    /** The report of the `chain` build. */
+    const reportOfChain = async () => reportOf(await failureOfChain())
 
     // The middle steps are located on the line of their import (which
     // column of the import statement is not specified).
@@ -145,6 +162,27 @@ describe.each(startBundlers)(
           },
           { at: importer, imports: './secret.server' },
         ])
+      },
+      timeout,
+    )
+
+    // The printed report shows the user's source where it locates the
+    // importer (SPEC J6.5 "a code frame"): read as the original text of that
+    // line in the build's error, not as wording. `src/b.ts` starts with a
+    // comment that compiling drops, so a frame of compiled code shows other
+    // lines.
+    test(
+      "the printed report shows the importer's original source at its location",
+      async () => {
+        const error = await failureOfChain()
+        const { importer } = reportOf(error)
+        expect(atChainImporter(importer), importer).toBe(true)
+        const line = Number(/^src\/b\.ts:(\d+)/.exec(importer)![1])
+        const original = chain['src/b.ts'].split('\n')[line - 1]!
+        expect(
+          error.errors.some((message) => message.includes(original)),
+          error.errors.join('\n'),
+        ).toBe(true)
       },
       timeout,
     )
