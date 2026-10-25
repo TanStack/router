@@ -1,5 +1,6 @@
 ---
 '@tanstack/start-plugin-core': minor
+'@tanstack/router-core': minor
 '@tanstack/start-client-core': patch
 '@tanstack/react-start': patch
 '@tanstack/solid-start': patch
@@ -34,6 +35,7 @@ Start's Vite and Rsbuild plugins run on the new compiler core instead of Babel: 
 
 - Generator plugins given as `router.plugins` run next to Start's (#7768); Start's route tree footer follows `quoteStyle` and `semicolons`.
 - Solid Start server environments split route components like the client, so hydration keys agree.
-- Require `exsolve` `^1.1.3`, so memory no longer grows across builds in one process.
+- Require `exsolve` `^1.1.3`, so memory no longer grows across builds in one process. Entry lookups bypass its process-wide cache, so an entry file created after a dev server restart is found.
+- The plugins load the router-core helpers they need from the new `@tanstack/router-core/tooling` entry instead of the router runtime.
 
 **Removed (experimental, Babel-typed):** the `compilerTransforms` and `serverFnProviderModuleDirectives` options and the `StartCompilerPlugin`, `StartCompilerImportTransform`, `StartCompilerTransformContext` and `StartCompilerTransformCandidate` types. RSC integrations pass `rsc: { loadCssExpression, providerDirective }` instead.

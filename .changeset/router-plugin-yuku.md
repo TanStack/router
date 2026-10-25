@@ -11,4 +11,4 @@ Route code splitting and route HMR run on the new compiler core instead of Babel
 - Production output is decided by the bundler's mode and is identical with `addHmr: false`.
 - Rspack and webpack use the plugin's own loader: source maps compose with earlier loaders and name the route file (#6667, #3828); project paths with `'`, `#` or spaces work (#7754). Rspack/webpack no longer rebuild every environment once after the first watch build.
 - esbuild refuses `autoCodeSplitting` with a clear error; the route generator keeps working there.
-- Removed: `codeSplittingOptions.compilerPlugins` (the experimental Babel hook) and the `@babel/*` dependencies. New entry `@tanstack/router-plugin/planners` exposes the route planners to TanStack Start.
+- Removed: `codeSplittingOptions.compilerPlugins` (the experimental Babel hook), the `@babel/*` dependencies and the direct `chokidar` dependency (the route generator's watcher brings it). New entry `@tanstack/router-plugin/planners` exposes the route planners to TanStack Start.

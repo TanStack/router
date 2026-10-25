@@ -7,7 +7,7 @@
  * sources, and `page.tsx?flavour=b&tsr-split=component` plans with
  * `page.tsx?flavour=b`.
  */
-import { createHash } from 'node:crypto'
+import { hash } from 'node:crypto'
 
 export type DerivedKind = 'split' | 'shared' | 'export' | 'hydrate' | 'provider'
 
@@ -186,18 +186,12 @@ export function isCommonJsPath(path: string): boolean {
 
 /** Content revision of an input text (plan freshness; never consumer invalidation). */
 export function revision(code: string): string {
-  return createHash('sha1')
-    .update(code, 'utf8')
-    .digest('base64url')
-    .slice(0, 22)
+  return hash('sha1', code, 'base64url').slice(0, 22)
 }
 
 /** Stable digest of plain data (canonical JSON with sorted keys). */
 export function digestOf(value: unknown): string {
-  return createHash('sha1')
-    .update(canonicalJson(value), 'utf8')
-    .digest('base64url')
-    .slice(0, 22)
+  return hash('sha1', canonicalJson(value), 'base64url').slice(0, 22)
 }
 
 export function canonicalJson(value: unknown): string {

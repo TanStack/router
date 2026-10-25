@@ -4,7 +4,7 @@ import {
   rootRouteId,
   trimPathLeft,
   trimPathRight,
-} from '@tanstack/router-core'
+} from '@tanstack/router-core/tooling'
 import { rootPathId } from '../filesystem/physical/rootPathId'
 import {
   RoutePrefixMap,

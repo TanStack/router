@@ -68,6 +68,16 @@
         "default": "./dist/cjs/ssr/client.cjs"
       }
     },
+    "./tooling": {
+      "import": {
+        "types": "./dist/esm/tooling.d.ts",
+        "default": "./dist/esm/tooling.js"
+      },
+      "require": {
+        "types": "./dist/cjs/tooling.d.cts",
+        "default": "./dist/cjs/tooling.cjs"
+      }
+    },
     "./hmr": {
       "import": {
         "types": "./dist/esm/hmr.d.ts",
