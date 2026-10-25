@@ -267,6 +267,8 @@ export function routeHmrPlanner(): Planner {
         )
       }
       const hot = vite ? 'import.meta.hot' : 'import.meta.webpackHot'
+      // the dev-only runtime lives on its own subpath: production never loads it
+      const hmrSpecifier = `${route.routerPackage}/hmr`
       const body: Array<Frag> = [
         {
           k: 'text',
@@ -297,8 +299,8 @@ export function routeHmrPlanner(): Planner {
             names: [{ imported: '__tsrRouteHmr', local: hmr.sym }],
             spec: {
               k: 'spec',
-              specifier: route.routerPackage,
-              edgeKey: ctx.edgeKey(route.routerPackage, 'static', 'runtime'),
+              specifier: hmrSpecifier,
+              edgeKey: ctx.edgeKey(hmrSpecifier, 'static', 'runtime'),
               provenance: { origin: 'runtime' },
             },
           },
@@ -353,6 +355,7 @@ function chunkHmr(
       derived: { kind: 'split', value: groupKey },
     })
     const helper = ctx.names.alloc('tsrChunkHmr')
+    const hmrSpecifier = `${routerPackage}/hmr`
     ctx.rewrites.addGenerated({
       body: [
         {
@@ -374,8 +377,8 @@ function chunkHmr(
           names: [{ imported: '__tsrRouteChunkHmr', local: helper.sym }],
           spec: {
             k: 'spec',
-            specifier: routerPackage,
-            edgeKey: ctx.edgeKey(routerPackage, 'static', 'runtime'),
+            specifier: hmrSpecifier,
+            edgeKey: ctx.edgeKey(hmrSpecifier, 'static', 'runtime'),
             provenance: { origin: 'runtime' },
           },
         },

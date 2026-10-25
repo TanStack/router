@@ -156,6 +156,46 @@ describe('slice gates: loading', () => {
   })
 })
 
+describe('resolution for analysis', () => {
+  it('never asks the host about a Node builtin or a URL-scheme specifier (G16)', async () => {
+    const files = {
+      '/app/page.tsx': dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { readFileSync } from 'node:fs'
+        import { existsSync } from 'fs'
+        import { env } from 'cloudflare:workers'
+        import { service } from './service'
+        import { served } from 'virtual:served'
+        export const Route = createFileRoute('/')({
+          component: () => service(readFileSync, existsSync, env, served),
+        })
+      `),
+      '/app/service.ts': 'export const service = () => "a"\n',
+    }
+    const host = new MemoryHost({ files })
+    const planners: Array<Planner> = [
+      toySplitPlanner(),
+      {
+        ...toySummaryPlanner(),
+        async prefetch(t0, ctx) {
+          for (const imp of t0.imports) {
+            await ctx.resolve(imp.specifier)
+          }
+          ctx.set({})
+        },
+      },
+    ]
+    await host.compile('/app/page.tsx', planners)
+    // a package specifier (not a known one here), a project module and a
+    // bundler virtual module are asked; the builtins and the platform scheme never
+    expect(host.resolveCalls.map((c) => c.specifier)).toEqual([
+      'toy-router',
+      './service',
+      'virtual:served',
+    ])
+  })
+})
+
 describe('slice gates: edges and policy', () => {
   it('(c) judges a chunk-only denied import in the chunk output with async verdicts per importer', async () => {
     const files = {

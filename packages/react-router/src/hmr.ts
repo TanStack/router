@@ -1,4 +1,4 @@
-import { applyRouteChunkHmr, applyRouteHmr } from '@tanstack/router-core'
+import { applyRouteChunkHmr, applyRouteHmr } from '@tanstack/router-core/hmr'
 import { isServer } from '@tanstack/router-core/isServer'
 import type {
   AnyRoute,

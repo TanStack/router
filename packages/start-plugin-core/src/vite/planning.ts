@@ -70,6 +70,9 @@ export function createViteConfigPlan(opts: {
         },
         optimizeDeps: {
           exclude: opts.optimizeDepsExclude,
+          // the compiler's dev-only route HMR block imports this subpath (no
+          // source file does): pre-bundled, not discovered on the first route
+          include: [`@tanstack/${opts.framework}-router/hmr`],
           entries: escapeEntries([
             opts.entryAliases.client,
             opts.entryAliases.router,

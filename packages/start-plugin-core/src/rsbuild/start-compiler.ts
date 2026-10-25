@@ -40,6 +40,8 @@ export interface RegisterStartCompilerOptions {
   writeVirtualModule: (envName: string, file: string, content: string) => void
   /** The resolver virtual module content changed (after a `finishMake` replay). */
   onServerFnsChange: () => void
+  /** Whether a path is an app entry (import protection: a marked entry is its own violation). */
+  isEntry: (path: string) => boolean
 }
 
 export interface RegisteredStartCompiler {
@@ -88,6 +90,7 @@ export function registerStartCompiler(
       importProtection: () => opts.getConfig().startConfig.importProtection,
       routes: { lookup: (file) => generator.lookup(file) },
       verbatimModuleSyntax: readsVerbatimModuleSyntax(resolvedStartConfig.root),
+      isEntry: opts.isEntry,
     })
     return session
   }

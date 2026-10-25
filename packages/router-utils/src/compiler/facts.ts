@@ -22,6 +22,8 @@ export interface TargetFacts {
   stars: Array<string>
   /** Specifiers the module evaluates when it is evaluated (non-type imports and re-exports). */
   imports: Array<string>
+  /** Literal specifiers of `import()` and `require()` calls: loaded later, by a consumer following the module's whole reach. */
+  lazyImports: Array<string>
   /** An ES module (false: CommonJS, script or unparseable — exports unknown). */
   esm: boolean
   /** Own top-level effects or a bare import (transitive classification is the consumer's, R36). */
@@ -64,6 +66,7 @@ const MISSING_TARGET: Omit<TargetFacts, 'digest'> = {
   exportNames: [],
   stars: [],
   imports: [],
+  lazyImports: [],
   esm: false,
   effectful: true,
   codeEffects: true,
@@ -203,6 +206,7 @@ export class RawFactsCache {
       exportNames,
       stars: [],
       imports: [],
+      lazyImports: [],
       esm: true,
       effectful: false,
       codeEffects: false,
@@ -260,6 +264,7 @@ export class RawFactsCache {
         exportNames: [],
         stars: [],
         imports: [],
+        lazyImports: [],
         esm: false,
         effectful: true,
         codeEffects: true,
@@ -317,12 +322,19 @@ export class RawFactsCache {
     const bareImportEffect = analysis.imports.some(
       (i) => i.bare && !i.typeOnly && !isMarker(i.specifier),
     )
+    const lazyImports: Array<string> = []
+    for (const edge of analysis.dynamicEdges) {
+      if (!lazyImports.includes(edge.specifier) && !isMarker(edge.specifier)) {
+        lazyImports.push(edge.specifier)
+      }
+    }
     const tf: Omit<TargetFacts, 'digest'> = {
       exists: true,
       marker: analysis.markers,
       exportNames,
       stars: [...summary.stars],
       imports,
+      lazyImports,
       esm: analysis.sourceType === 'module',
       effectful: own || bareImportEffect,
       codeEffects: analysis.codeEffects,

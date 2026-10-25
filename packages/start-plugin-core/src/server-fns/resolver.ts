@@ -12,15 +12,25 @@ import type { ServerFnEntry } from './registry'
 export const SERVER_FN_LOOKUP_VIRTUAL_ID =
   'virtual:tanstack-start-server-fn-lookup'
 
-/** The dev resolver: every call imports the lookup module of the id (never memoised: handlers are hot-replaced). */
+/**
+ * The dev resolver: every call imports the lookup module of the id (never
+ * memoised: handlers are hot-replaced). A client-origin call (an HTTP
+ * request) imports the lookup under `origin=client`: the lookup warns once
+ * for a function no client module references (R44 in development).
+ */
 export function devResolverModule(): string {
   return `
-export async function getServerFnById(id, _access) {
-  const lookup = ${JSON.stringify(`/@id/__x00__${SERVER_FN_LOOKUP_VIRTUAL_ID}`)} + '?id=' + encodeURIComponent(id)
+export async function getServerFnById(id, access) {
+  const lookup = ${JSON.stringify(`/@id/__x00__${SERVER_FN_LOOKUP_VIRTUAL_ID}`)} + '?id=' + encodeURIComponent(id) + (access && access.origin === 'client' ? '&origin=client' : '')
   const mod = await import(/* @vite-ignore */ lookup)
   return mod.action
 }
 `
+}
+
+/** The development warning of a client call of a function no client module references (R44). */
+export function unreferencedWarning(entry: ServerFnEntry): string {
+  return `[tanstack-start] The server function ${entry.name} of ${entry.rootRel} was called from the client, but no client module this dev server compiled references it. A production build refuses such a call: only server functions client code references are callable over HTTP.`
 }
 
 /** The dev lookup module of one id: a re-export of the provider wrapper. */
@@ -37,19 +47,29 @@ export interface ManifestResolverOptions {
   providerModuleId: (entry: ServerFnEntry) => string
   /**
    * Only client-referenced functions are HTTP-callable in production (R44):
-   * the client built before the provider (the SSR provider). The RSC
-   * provider builds before the client (plugin-rsc's `buildApp`), so its
-   * manifest lists every server fn of its environment without the check.
-   * Development is permissive (every entry, no check).
+   * the manifest lists only them, so a function only server code references
+   * is "not found" by id (no per-entry flag or runtime check: the filter is
+   * the gate). The client built before the provider (the SSR provider). The
+   * RSC provider builds before the client (plugin-rsc's `buildApp`), so its
+   * manifest lists every server fn of its environment (the RSC build order,
+   * FOLLOW-UPS).
    */
   clientReferencedOnly: boolean
+  /**
+   * Development (R44): every function is listed; a client-origin call of a
+   * function no client module the dev server compiled references is
+   * answered, with one warning per function naming it and saying a
+   * production build refuses it (a stale page after a restart, an external
+   * caller, a serialized function).
+   */
+  warnUnreferenced?: boolean
   /** Import every provider module statically (Rsbuild RSC development). */
   staticImports?: boolean
   /** Keep each imported module on its manifest entry after the first call (production only: modules are never hot-replaced). */
   memoizeModules?: boolean
 }
 
-/** The production manifest: `id → { export, importer, isClientReferenced }` with the origin check. */
+/** The production manifest: `id → { export, importer }` of the HTTP-callable functions. */
 export function productionResolverModule(opts: {
   entries: ReadonlyArray<ServerFnEntry>
   providerModuleId: (entry: ServerFnEntry) => string
@@ -75,19 +95,21 @@ export function manifestResolverModule(opts: ManifestResolverOptions): string {
       const moduleAccess = opts.staticImports
         ? `module: ${moduleRef}`
         : `importer: () => import(${filename})`
-      const clientReferenced = opts.clientReferencedOnly
-        ? `,\n    isClientReferenced: ${e.clientReferenced}`
-        : ''
+      const unreferenced =
+        opts.warnUnreferenced && !e.clientReferenced
+          ? `,\n    unreferenced: ${JSON.stringify(unreferencedWarning(e))}`
+          : ''
       return `${JSON.stringify(e.id)}: {
     functionName: ${JSON.stringify(e.exportName)},
-    ${moduleAccess}${clientReferenced}
+    ${moduleAccess}${unreferenced}
   }`
     })
     .join(',\n  ')
-  const clientReferencedCheck = opts.clientReferencedOnly
+  const warnUnreferenced = opts.warnUnreferenced
     ? `
-  if (access.origin === 'client' && !serverFnInfo.isClientReferenced) {
-    throw new Error('Server function not accessible from client: ' + id)
+  if (access && access.origin === 'client' && serverFnInfo.unreferenced) {
+    console.warn(serverFnInfo.unreferenced)
+    serverFnInfo.unreferenced = undefined
   }
 `
     : ''
@@ -107,7 +129,7 @@ export async function getServerFnById(id, access) {
   if (!serverFnInfo) {
     throw new Error('Server function info not found for ' + id)
   }
-${clientReferencedCheck}
+${warnUnreferenced}
   const fnModule = ${resolveModule}
   if (!fnModule) {
     throw new Error('Server function module not resolved for ' + id)

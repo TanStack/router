@@ -317,7 +317,6 @@ export class ImportProtectionEnv {
   private readonly onceVerdicts = new Map<string, Promise<boolean | void>>()
   private buildInfos = new Map<string, ViolationInfo>()
   private runtimeEmitted = false
-  private selfReported = new Set<string>()
 
   constructor(
     private readonly ip: ImportProtection,
@@ -377,45 +376,6 @@ export class ImportProtectionEnv {
       if (verdict !== false) {
         this.reporter?.enqueue({ violation: v, info: vi })
       }
-    }
-  }
-
-  /**
-   * A module of this environment that imports the marker of the opposite
-   * environment and that nothing imports (an entry): it reports itself
-   * (J6.6; its importers would otherwise). `onViolation` is asked once per
-   * logical build / dev session per module; returns the report to publish
-   * (null: vetoed or already reported).
-   */
-  async selfMarkedReport(
-    file: string,
-    marker: { specifier: string; line: number },
-  ): Promise<{ severity: 'error' | 'warning'; message: string } | null> {
-    const key = `self\u0000${file}`
-    if (this.selfReported.has(key)) {
-      return null
-    }
-    this.selfReported.add(key)
-    const info: ViolationInfo = {
-      env: this.name,
-      envType: this.type,
-      type: 'marker',
-      behavior: this.ip.config.behavior,
-      specifier: marker.specifier,
-      importer: file,
-      importerLoc: { file, line: marker.line, column: 1 },
-      resolved: file,
-      trace: [
-        { file, line: marker.line, column: 1, specifier: marker.specifier },
-      ],
-    }
-    const verdict = await this.ip.config.onViolation?.(info)
-    if (verdict === false) {
-      return null
-    }
-    return {
-      severity: this.ip.config.behavior === 'error' ? 'error' : 'warning',
-      message: formatViolation(info, this.ip.config.root),
     }
   }
 
@@ -629,7 +589,6 @@ export class ImportProtectionEnv {
   beginLogicalBuild(): void {
     this.build.beginLogicalBuild()
     this.buildInfos = new Map()
-    this.selfReported.clear()
   }
 
   /**

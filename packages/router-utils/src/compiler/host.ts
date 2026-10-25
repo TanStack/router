@@ -2,6 +2,7 @@
  * Host contract (DESIGN §2.10; R3, R11, R25, R35) and the one invalidation
  * operation.
  */
+import { isBuiltin } from 'node:module'
 import { identify, planKeyString } from './identity'
 import {
   PlanCache,
@@ -297,6 +298,23 @@ export function fingerprintSourceFor(
   }
 }
 
+/**
+ * Whether a specifier can name a module the analysis reads (a project module
+ * or a package). A Node builtin and a URL-scheme specifier (`node:`, `bun:`,
+ * `cloudflare:`, `data:`, …) never do: the bundler resolves them for the
+ * bundle, and asking it only for the analysis surfaces its diagnostics for
+ * an import the output may not keep (Vite's "externalized for browser
+ * compatibility" warning for a builtin a deleted handler read, G16). A
+ * bundler's `virtual:` module passes: it may be a project module.
+ */
+export function isAnalyzableSpecifier(specifier: string): boolean {
+  if (isBuiltin(specifier)) {
+    return false
+  }
+  const scheme = /^([a-z][\w+.-]+):/i.exec(specifier)
+  return scheme === null || scheme[1]!.toLowerCase() === 'virtual'
+}
+
 /** Resolution through the per-env cache; returns the canonical id of the target (or null). */
 export async function resolveCached(
   caches: CompilerCaches,
@@ -318,6 +336,10 @@ export async function resolveCached(
     // D4: known packages are recognised by specifier, never resolved
     m.set(k, specifier)
     return specifier
+  }
+  if (!isAnalyzableSpecifier(specifier)) {
+    m.set(k, null)
+    return null
   }
   const r = await host.resolve(specifier, importerCanonicalId)
   const id = r && !r.external ? identify(r.id).canonicalId : null

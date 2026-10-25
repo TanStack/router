@@ -285,6 +285,28 @@ export function tanStackStartRsbuild(
         })
       })
 
+      /** The app's entries (import protection: a marked entry is its own violation), lazily: resolved after the config. */
+      let entries: Set<string> | null = null
+      const entryPaths = (): Set<string> => {
+        if (!entries) {
+          const { resolvedStartConfig: resolved } = getConfig()
+          const { entryPaths: paths } = configContext.resolveEntries()
+          entries = new Set(
+            [
+              resolved.routerFilePath,
+              resolved.startFilePath,
+              paths.client,
+              paths.server,
+              paths.router,
+              paths.start,
+            ]
+              .filter((p): p is string => typeof p === 'string')
+              .map((p) => normalizePath(p)),
+          )
+        }
+        return entries
+      }
+
       // ---------------------------------------------------------------
       // 2. The compiler: one compile per (environment, layer, module) of
       //    every planner (server fns, env separation, Hydrate, RSC CSS,
@@ -301,6 +323,7 @@ export function tanStackStartRsbuild(
         onServerFnsChange: () => {
           updateServerFnResolver?.()
         },
+        isEntry: (file) => entryPaths().has(normalizePath(file)),
       })
 
       // ---------------------------------------------------------------

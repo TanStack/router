@@ -1,6 +1,6 @@
 // Deterministic generator for the compiler performance workloads.
 //
-// Writes a large file-based app (React) into `apps/<variant>/`. The output only
+// Writes a large file-based app (React or Solid) into `apps/<variant>/`. The output only
 // depends on the variant name and SEED, so baseline and candidate checkouts get
 // byte-identical inputs. `workloadHash()` hashes the generated sources so the
 // results can prove that.
@@ -12,6 +12,8 @@
 //                 routes and `*.server.ts` modules.
 // - react-router: the same route tree as a plain Router SPA with
 //                 autoCodeSplitting, without any Start feature.
+// - solid-start, solid-router: the same apps written for Solid (signals,
+//                 <For>/<Show>, `class`, accessors for router hooks).
 
 import crypto from 'node:crypto'
 import fs from 'node:fs'
@@ -23,7 +25,13 @@ export const benchRoot = path.resolve(here, '..')
 export const appsRoot = path.join(benchRoot, 'apps')
 
 export const SEED = 20261024
+// Default variants. `ALL_VARIANTS` adds the Solid ones (`--variants`).
 export const VARIANTS = ['react-start', 'react-router']
+export const ALL_VARIANTS = [...VARIANTS, 'solid-start', 'solid-router']
+
+export const isStart = (variant) => variant.endsWith('-start')
+export const hasRsbuild = (variant) => variant === 'react-start'
+export const frameworkOf = (variant) => variant.split('-')[0]
 
 const SECTIONS = 10
 const GROUPS = 3
@@ -80,6 +88,9 @@ export const PROBES = {
     },
   },
 }
+
+PROBES['solid-start'] = PROBES['react-start']
+PROBES['solid-router'] = PROBES['react-router']
 
 function mulberry32(seed) {
   let a = seed >>> 0
@@ -185,7 +196,7 @@ function routeList(variant) {
     }
   }
 
-  if (variant === 'react-start') {
+  if (isStart(variant)) {
     for (const name of ['health', 'items', 'search', 'session', 'webhook']) {
       add(`api/${name}.ts`, `/api/${name}`, 'api')
     }
@@ -197,9 +208,52 @@ function routeList(variant) {
 // Shared modules
 // ---------------------------------------------------------------------------
 
-function widgetSource(n, rng) {
+function widgetSource(n, rng, fw) {
   const rows = rng.int(3, 7)
   const tone = rng.pick(['info', 'warn', 'ok', 'muted'])
+  if (fw === 'solid') {
+    return `import { For, Show, createMemo, createSignal } from 'solid-js'
+import { formatLabel, sumBy } from '../lib/format'
+
+export interface Widget${pad(n)}Props {
+  label: string
+  items?: Array<{ id: string; value: number }>
+  compact?: boolean
+}
+
+const TONE = '${tone}'
+
+export function Widget${pad(n)}(props: Widget${pad(n)}Props) {
+  const [open, setOpen] = createSignal(${rng.chance(0.5)})
+  const items = () => props.items ?? []
+  const total = createMemo(() => sumBy(items(), (item) => item.value))
+  const visible = () => (props.compact ? items().slice(0, ${rows}) : items())
+
+  return (
+    <section class={\`widget widget-\${TONE}\`} data-widget="${pad(n)}">
+      <header>
+        <h3>{formatLabel(props.label)}</h3>
+        <button type="button" onClick={() => setOpen((value) => !value)}>
+          {open() ? 'Hide' : 'Show'} ({total()})
+        </button>
+      </header>
+      <Show when={open()}>
+        <ul>
+          <For each={visible()}>
+            {(item) => (
+              <li>
+                <span>{item.id}</span>
+                <strong>{item.value.toFixed(${rng.int(0, 2)})}</strong>
+              </li>
+            )}
+          </For>
+        </ul>
+      </Show>
+    </section>
+  )
+}
+`
+  }
   return `import { useMemo, useState } from 'react'
 import { formatLabel, sumBy } from '../lib/format'
 
@@ -267,9 +321,9 @@ export function makeItems(prefix: string, count: number) {
 }
 `
 
-const probeWidgetSource = `export function ProbeWidget() {
+const probeWidgetSource = (fw) => `export function ProbeWidget() {
   return (
-    <aside className="probe-widget">
+    <aside ${fw === 'solid' ? 'class' : 'className'}="probe-widget">
       <span data-probe="shared-component">probe-widget-v0</span>
     </aside>
   )
@@ -336,7 +390,9 @@ const secretsServerSource = `export function readSecret(name: string) {
 }
 `
 
-const middlewareSource = `import { createMiddleware } from '@tanstack/react-start'
+const middlewareSource = (
+  fw,
+) => `import { createMiddleware } from '@tanstack/${fw}-start'
 import { readSecret } from './secrets.server'
 
 export const loggingMiddleware = createMiddleware({ type: 'function' }).server(
@@ -364,7 +420,7 @@ export const timingMiddleware = createMiddleware({ type: 'function' })
   })
 `
 
-function serverFnFileSource(n, rng) {
+function serverFnFileSource(n, rng, fw) {
   const id = pad(n)
   const mw = () =>
     rng.pick([
@@ -373,7 +429,7 @@ function serverFnFileSource(n, rng) {
       '[timingMiddleware]',
       '[authMiddleware, loggingMiddleware]',
     ])
-  return `import { createServerFn } from '@tanstack/react-start'
+  return `import { createServerFn } from '@tanstack/${fw}-start'
 import { db } from './db.server'
 import { authMiddleware, loggingMiddleware, timingMiddleware } from './middleware'
 
@@ -411,7 +467,9 @@ export const stats${id} = createServerFn().handler(async () => {
 `
 }
 
-const probeServerFnSource = `import { createServerFn } from '@tanstack/react-start'
+const probeServerFnSource = (
+  fw,
+) => `import { createServerFn } from '@tanstack/${fw}-start'
 import { db } from './db.server'
 
 export const getProbe = createServerFn({ method: 'GET' }).handler(async () => {
@@ -420,12 +478,12 @@ export const getProbe = createServerFn({ method: 'GET' }).handler(async () => {
 })
 `
 
-function isoSource(n) {
+function isoSource(n, fw) {
   return `import {
   createClientOnlyFn,
   createIsomorphicFn,
   createServerOnlyFn,
-} from '@tanstack/react-start'
+} from '@tanstack/${fw}-start'
 
 export const runtimeLabel${n} = createIsomorphicFn()
   .server(() => 'server-${n}')
@@ -445,15 +503,20 @@ export const readViewport${n} = createClientOnlyFn(() => window.innerWidth + ${n
 // ---------------------------------------------------------------------------
 
 function routeSource(route, variant, rng, ctx) {
-  const start = variant === 'react-start'
+  const start = isStart(variant)
+  const fw = frameworkOf(variant)
+  const solid = fw === 'solid'
+  // Solid: router hooks return accessors, JSX uses `class`.
+  const call = solid ? '()' : ''
+  const cls = solid ? 'class' : 'className'
   if (route.kind === 'api') {
-    return apiRouteSource(route)
+    return apiRouteSource(route, fw)
   }
   const file = route.file
   const imp = (to) => relImport(file, to)
   const name = componentName(route.routePath)
   const lines = []
-  const reactImports = new Set(['useState'])
+  const reactImports = new Set([solid ? 'createSignal' : 'useState'])
   const routerImports = new Set(['createFileRoute', 'Link'])
   const startImports = new Set()
   const extraImports = []
@@ -539,7 +602,7 @@ function routeSource(route, variant, rng, ctx) {
   if (hasPending) {
     options.push(`  pendingComponent: PendingView,`)
     helpers.push(`function PendingView() {
-  return <div className="pending">Loading ${name}…</div>
+  return <div ${cls}="pending">Loading ${name}…</div>
 }`)
   }
   if (hasError) {
@@ -597,7 +660,7 @@ function routeSource(route, variant, rng, ctx) {
   if (usesHydrate) {
     startImports.add('Hydrate')
     extraImports.push(
-      `import { visible } from '@tanstack/react-start/hydration'`,
+      `import { visible } from '@tanstack/${fw}-start/hydration'`,
     )
   }
   if (probeKind === 'shared-component') {
@@ -606,7 +669,7 @@ function routeSource(route, variant, rng, ctx) {
     )
   }
   if (probeKind === 'server-fn') {
-    reactImports.add('useEffect')
+    reactImports.add(solid ? 'onMount' : 'useEffect')
     extraImports.push(
       `import { getProbe } from '${imp('src/server/probe.ts')}'`,
     )
@@ -626,24 +689,34 @@ function routeSource(route, variant, rng, ctx) {
   if (route.kind === 'param') {
     body.push(`  const params = Route.useParams()`)
   }
-  body.push(`  const [count, setCount] = useState(0)`)
+  body.push(
+    solid
+      ? `  const [count, setCount] = createSignal(0)`
+      : `  const [count, setCount] = useState(0)`,
+  )
   if (inlineServerFn) {
     body.push(`  const bump = useServerFn(bump${name})`)
   }
   if (probeKind === 'server-fn') {
-    body.push(`  useEffect(() => {
+    body.push(
+      solid
+        ? `  onMount(() => {
     ;(window as any).__perfProbeServerFn = () => getProbe()
-  }, [])`)
+  })`
+        : `  useEffect(() => {
+    ;(window as any).__perfProbeServerFn = () => getProbe()
+  }, [])`,
+    )
   }
   body.push(`  const rows = makeItems('${route.routePath}', ${rng.int(3, 9)})`)
   body.push(`  return (`)
-  body.push(`    <div className="route" data-route="${route.routePath}">`)
+  body.push(`    <div ${cls}="route" data-route="${route.routePath}">`)
   body.push(`      <h2>{formatLabel('${name}')}</h2>`)
   if (probeKind === 'route-component') {
     body.push(`      <p data-probe="route-component">probe-component-v0</p>`)
   }
   if (probeKind === 'route-loader') {
-    body.push(`      <p data-probe="route-loader">{data.probe}</p>`)
+    body.push(`      <p data-probe="route-loader">{data${call}.probe}</p>`)
   }
   if (probeKind === 'shared-component') {
     body.push(`      <ProbeWidget />`)
@@ -652,21 +725,36 @@ function routeSource(route, variant, rng, ctx) {
     body.push(`      <p data-probe="server-fn-ready">ready</p>`)
   }
   if (hasLoader && probeKind !== 'route-loader') {
-    body.push(`      <p>Loaded {data.items.length} rows</p>`)
+    body.push(`      <p>Loaded {data${call}.items.length} rows</p>`)
   }
   if (hasSearch) {
     body.push(`      <p>
-        Page {search.page} ({search.sort})
+        Page {search${call}.page} ({search${call}.sort})
       </p>`)
   }
   if (route.kind === 'param') {
-    body.push(`      <p>Item {params.itemId}</p>`)
+    body.push(`      <p>Item {params${call}.itemId}</p>`)
   }
   body.push(`      <nav>
         <Link to="/">Home</Link>
         <Link to="/about">About</Link>
       </nav>`)
-  body.push(`      <table>
+  if (solid) {
+    reactImports.add('For')
+    body.push(`      <table>
+        <tbody>
+          <For each={rows}>
+            {(row) => (
+              <tr>
+                <td>{row.id}</td>
+                <td>{row.value > 50 ? <em>{row.value}</em> : row.value}</td>
+              </tr>
+            )}
+          </For>
+        </tbody>
+      </table>`)
+  } else {
+    body.push(`      <table>
         <tbody>
           {rows.map((row) => (
             <tr key={row.id}>
@@ -676,6 +764,7 @@ function routeSource(route, variant, rng, ctx) {
           ))}
         </tbody>
       </table>`)
+  }
   const widgetJsx = [...new Set(widgets)]
     .map(
       (w) =>
@@ -684,7 +773,7 @@ function routeSource(route, variant, rng, ctx) {
     .join('\n')
   if (usesHydrate) {
     body.push(`      <Hydrate when={visible()}>
-        <div className="deferred">
+        <div ${cls}="deferred">
 ${probeKind === 'hydrate' ? '          <p data-probe="hydrate">probe-hydrate-v0</p>\n' : ''}${widgetJsx.replace(/^ {6}/gm, '          ')}
         </div>
       </Hydrate>`)
@@ -702,12 +791,12 @@ ${probeKind === 'hydrate' ? '          <p data-probe="hydrate">probe-hydrate-v0<
       </button>`)
   }
   if (inlineServerFn) {
-    body.push(`      <button type="button" onClick={async () => setCount((await bump({ data: { amount: count + 1 } })).amount)}>
-        Bump {count}
+    body.push(`      <button type="button" onClick={async () => setCount((await bump({ data: { amount: count${call} + 1 } })).amount)}>
+        Bump {count${call}}
       </button>`)
   } else {
     body.push(`      <button type="button" onClick={() => setCount((value) => value + 1)}>
-        Clicked {count}
+        Clicked {count${call}}
       </button>`)
   }
   if (route.kind === 'layout' || route.kind === 'pathless') {
@@ -718,22 +807,24 @@ ${probeKind === 'hydrate' ? '          <p data-probe="hydrate">probe-hydrate-v0<
   body.push(`}`)
 
   // --- assemble ------------------------------------------------------------
-  lines.push(`import { ${[...reactImports].sort().join(', ')} } from 'react'`)
+  lines.push(
+    `import { ${[...reactImports].sort().join(', ')} } from '${solid ? 'solid-js' : 'react'}'`,
+  )
   const typeOnly = [...routerImports].filter((n) => n === 'ErrorComponentProps')
   const valueRouter = [...routerImports]
     .filter((n) => n !== 'ErrorComponentProps')
     .sort()
   lines.push(
-    `import { ${valueRouter.join(', ')} } from '@tanstack/react-router'`,
+    `import { ${valueRouter.join(', ')} } from '@tanstack/${fw}-router'`,
   )
   if (typeOnly.length) {
     lines.push(
-      `import type { ${typeOnly.join(', ')} } from '@tanstack/react-router'`,
+      `import type { ${typeOnly.join(', ')} } from '@tanstack/${fw}-router'`,
     )
   }
   if (startImports.size) {
     lines.push(
-      `import { ${[...startImports].sort().join(', ')} } from '@tanstack/react-start'`,
+      `import { ${[...startImports].sort().join(', ')} } from '@tanstack/${fw}-start'`,
     )
   }
   lines.push(...extraImports)
@@ -750,9 +841,9 @@ ${probeKind === 'hydrate' ? '          <p data-probe="hydrate">probe-hydrate-v0<
   return lines.join('\n') + '\n'
 }
 
-function apiRouteSource(route) {
+function apiRouteSource(route, fw) {
   const name = path.posix.basename(route.file, '.ts')
-  return `import { createFileRoute } from '@tanstack/react-router'
+  return `import { createFileRoute } from '@tanstack/${fw}-router'
 import { db } from '../../server/db.server'
 
 export const Route = createFileRoute('${route.routePath}')({
@@ -773,16 +864,16 @@ export const Route = createFileRoute('${route.routePath}')({
 `
 }
 
-function navSource() {
+function navSource(fw) {
   const links = []
   for (let s = 0; s < SECTIONS; s++) {
     links.push(`        <Link to="/s${pad(s)}">Section ${s}</Link>`)
   }
-  return `import { Link } from '@tanstack/react-router'
+  return `import { Link } from '@tanstack/${fw}-router'
 
 export function Nav() {
   return (
-    <nav className="top-nav">
+    <nav ${fw === 'solid' ? 'class' : 'className'}="top-nav">
       <Link to="/">Home</Link>
       <Link to="/docs">Docs</Link>
 ${links.join('\n')}
@@ -951,6 +1042,135 @@ export default defineConfig({
 })
 `
 
+const solidHydratedMarker = `  onMount(() => {
+    ;(window as any).__PERF_HYDRATED__ = performance.timeOrigin + performance.now()
+  })`
+
+const solidStartRootSource = `import { onMount } from 'solid-js'
+import type { JSX } from 'solid-js'
+import { HydrationScript } from 'solid-js/web'
+import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/solid-router'
+import { Nav } from '../components/Nav'
+
+export const Route = createRootRoute({
+  head: () => ({
+    meta: [{ charSet: 'utf-8' }, { title: 'Compiler perf app' }],
+  }),
+  component: RootComponent,
+  notFoundComponent: () => <p>Not found</p>,
+})
+
+function RootComponent() {
+  return (
+    <RootDocument>
+      <Outlet />
+    </RootDocument>
+  )
+}
+
+function RootDocument(props: { children: JSX.Element }) {
+${solidHydratedMarker}
+  return (
+    <html>
+      <head>
+        <HydrationScript />
+        <HeadContent />
+      </head>
+      <body>
+        <Nav />
+        {props.children}
+        <Scripts />
+      </body>
+    </html>
+  )
+}
+`
+
+const solidRouterRootSource = `import { onMount } from 'solid-js'
+import { Outlet, createRootRoute } from '@tanstack/solid-router'
+import { Nav } from '../components/Nav'
+
+export const Route = createRootRoute({
+  component: RootComponent,
+  notFoundComponent: () => <p>Not found</p>,
+})
+
+function RootComponent() {
+${solidHydratedMarker}
+  return (
+    <>
+      <Nav />
+      <Outlet />
+    </>
+  )
+}
+`
+
+const solidRouterMainSource = `import { render } from 'solid-js/web'
+import { RouterProvider, createRouter } from '@tanstack/solid-router'
+import { routeTree } from './routeTree.gen'
+
+const router = createRouter({ routeTree, defaultPreload: false })
+
+declare module '@tanstack/solid-router' {
+  interface Register {
+    router: typeof router
+  }
+}
+
+render(() => <RouterProvider router={router} />, document.getElementById('app')!)
+`
+
+const solidStartViteConfig = `import path from 'node:path'
+import { defineConfig } from 'vite'
+import solid from 'vite-plugin-solid'
+import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
+import { hookTimingPlugin } from '../../scripts/hook-timing.mjs'
+
+export default defineConfig({
+  cacheDir: path.resolve(import.meta.dirname, '.vite-cache'),
+  logLevel: 'warn',
+  clearScreen: false,
+  build: { outDir: process.env.COMPILER_PERF_OUT_DIR ?? 'dist' },
+  plugins: [tanstackStart(), solid({ ssr: true }), hookTimingPlugin()],
+})
+`
+
+const solidRouterViteConfig = `import path from 'node:path'
+import { defineConfig } from 'vite'
+import solid from 'vite-plugin-solid'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
+import { hookTimingPlugin } from '../../scripts/hook-timing.mjs'
+
+export default defineConfig({
+  cacheDir: path.resolve(import.meta.dirname, '.vite-cache'),
+  logLevel: 'warn',
+  clearScreen: false,
+  build: { outDir: process.env.COMPILER_PERF_OUT_DIR ?? 'dist' },
+  plugins: [
+    tanstackRouter({ target: 'solid', autoCodeSplitting: true }),
+    solid(),
+    hookTimingPlugin(),
+  ],
+})
+`
+
+const solidTsconfig = `{
+  "compilerOptions": {
+    "strict": true,
+    "esModuleInterop": true,
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+    "skipLibCheck": true,
+    "types": ["vite/client"]
+  },
+  "include": ["src"]
+}
+`
+
 const tsconfig = `{
   "compilerOptions": {
     "strict": true,
@@ -969,42 +1189,62 @@ const tsconfig = `{
 // ---------------------------------------------------------------------------
 
 export function generateFiles(variant) {
-  if (!VARIANTS.includes(variant)) {
+  if (!ALL_VARIANTS.includes(variant)) {
     throw new Error(`Unknown variant ${variant}`)
   }
-  const start = variant === 'react-start'
+  const start = isStart(variant)
+  const fw = frameworkOf(variant)
+  const solid = fw === 'solid'
   const rng = createRng(SEED)
   const files = new Map()
   const ctx = { inlineFns: 0 }
 
-  files.set('tsconfig.json', tsconfig)
+  files.set('tsconfig.json', solid ? solidTsconfig : tsconfig)
   if (start) {
-    files.set('vite.config.ts', startViteConfig)
-    files.set('rsbuild.config.ts', startRsbuildConfig)
-    files.set('src/router.tsx', startRouterSource)
-    files.set('src/routes/__root.tsx', startRootSource)
+    files.set('vite.config.ts', solid ? solidStartViteConfig : startViteConfig)
+    // Rsbuild needs @rsbuild/plugin-babel + plugin-solid for Solid; not set up.
+    if (!solid) {
+      files.set('rsbuild.config.ts', startRsbuildConfig)
+    }
+    files.set(
+      'src/router.tsx',
+      startRouterSource.replace(
+        '@tanstack/react-router',
+        `@tanstack/${fw}-router`,
+      ),
+    )
+    files.set(
+      'src/routes/__root.tsx',
+      solid ? solidStartRootSource : startRootSource,
+    )
     files.set('src/server/db.server.ts', dbServerSource())
     files.set('src/server/secrets.server.ts', secretsServerSource)
-    files.set('src/server/middleware.ts', middlewareSource)
-    files.set('src/server/probe.ts', probeServerFnSource)
+    files.set('src/server/middleware.ts', middlewareSource(fw))
+    files.set('src/server/probe.ts', probeServerFnSource(fw))
     for (let n = 0; n < SERVER_FN_FILES; n++) {
-      files.set(`src/server/fns-${pad(n)}.ts`, serverFnFileSource(n, rng))
+      files.set(`src/server/fns-${pad(n)}.ts`, serverFnFileSource(n, rng, fw))
     }
     for (let n = 0; n < 5; n++) {
-      files.set(`src/lib/iso-${n}.ts`, isoSource(n))
+      files.set(`src/lib/iso-${n}.ts`, isoSource(n, fw))
     }
   } else {
-    files.set('vite.config.ts', routerViteConfig)
+    files.set(
+      'vite.config.ts',
+      solid ? solidRouterViteConfig : routerViteConfig,
+    )
     files.set('index.html', routerIndexHtml)
-    files.set('src/main.tsx', routerMainSource)
-    files.set('src/routes/__root.tsx', routerRootSource)
+    files.set('src/main.tsx', solid ? solidRouterMainSource : routerMainSource)
+    files.set(
+      'src/routes/__root.tsx',
+      solid ? solidRouterRootSource : routerRootSource,
+    )
     files.set('src/data/api.ts', dataApiSource)
   }
   files.set('src/lib/format.ts', formatSource)
-  files.set('src/components/Nav.tsx', navSource())
-  files.set('src/components/ProbeWidget.tsx', probeWidgetSource)
+  files.set('src/components/Nav.tsx', navSource(fw))
+  files.set('src/components/ProbeWidget.tsx', probeWidgetSource(fw))
   for (let n = 0; n < WIDGETS; n++) {
-    files.set(`src/components/Widget${pad(n)}.tsx`, widgetSource(n, rng))
+    files.set(`src/components/Widget${pad(n)}.tsx`, widgetSource(n, rng, fw))
   }
   for (const route of routeList(variant)) {
     files.set(route.file, routeSource(route, variant, rng, ctx))
@@ -1041,10 +1281,9 @@ function findPackageDir(name, fromDir) {
  * would.
  */
 export function resolveSharedPackages(variant) {
-  const pluginPath =
-    variant === 'react-start'
-      ? ['@tanstack/react-start', '@tanstack/start-plugin-core']
-      : ['@tanstack/router-plugin']
+  const pluginPath = isStart(variant)
+    ? [`@tanstack/${frameworkOf(variant)}-start`, '@tanstack/start-plugin-core']
+    : ['@tanstack/router-plugin']
   let from = benchRoot
   for (const name of pluginPath) {
     from = findPackageDir(name, from) ?? from

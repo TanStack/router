@@ -141,7 +141,6 @@ export {
 export * from './history'
 
 export { lazyRouteComponent } from './lazyRouteComponent'
-export { __tsrRouteHmr, __tsrRouteChunkHmr } from './hmr'
 
 export { useLinkProps, createLink, Link, linkOptions } from './link'
 export type {

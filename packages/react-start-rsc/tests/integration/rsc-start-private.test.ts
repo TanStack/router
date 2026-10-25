@@ -7,12 +7,11 @@ describe('Vite dev: a separate RSC provider', () => {
   // callable over HTTP. `internal` is called by `greet`'s handler only
   // (server origin, allowed); a request by its id from the browser must be
   // refused.
-  // Bug: a server-environment caller reports every server fn it compiles as
-  // client-referenced (handleCreateServerFn.ts `isClientReferenced`), so the
-  // resolver's client-origin check never refuses anything with a separate
-  // provider.
-  // Impact: a server fn only server code uses is callable by anyone who
-  // learns its id.
+  // R44 in development: the dev server answers the call (the client
+  // graph is lazy, so reachability is unknown) and warns once that a
+  // production build refuses it; the refusal this test asserts is the
+  // production rule (known-bugs-start-compiler.test.ts "not callable over
+  // HTTP"). Pinned until the dev assertion accepts the warning.
   // Source: the compiler-level pin was in
   // start-plugin-core/tests/createServerFn/createServerFn.test.ts.
   test.fails(

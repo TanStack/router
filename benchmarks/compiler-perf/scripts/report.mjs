@@ -52,6 +52,15 @@ const fmt = (v) =>
       ? Math.round(v).toLocaleString('en-US')
       : String(v)
 
+const MEM_METRICS = [
+  'peakRssMb',
+  'heapUsedMb',
+  'externalMb',
+  'arrayBuffersMb',
+  'rssMb',
+  'childPeakRssMb',
+]
+
 // The metric each scenario is primarily judged by.
 export const PRIMARY = {
   build: ['buildMs'],
@@ -61,6 +70,62 @@ export const PRIMARY = {
   'rsbuild-build': ['buildMs'],
   'rsbuild-dev-cold': ['hydratedMs', 'listenMs'],
   hmr: ['updateMs'],
+  'floor-build': [
+    'buildMs',
+    'rawBuildMs',
+    'replayLoadMs',
+    'generatorMs',
+    'misses',
+    'outputMismatch',
+  ],
+  'floor-rsbuild-build': [
+    'buildMs',
+    'rawBuildMs',
+    'replayLoadMs',
+    'generatorMs',
+    'misses',
+    'outputMismatch',
+  ],
+  'floor-dev-compile': [
+    'compileAllMs',
+    'clientMs',
+    'ssrMs',
+    'listenMs',
+    'generatorMs',
+    'misses',
+    'outputMismatch',
+  ],
+  'floor-dev-cold': [
+    'hydratedMs',
+    'listenMs',
+    'replayLoadMs',
+    'generatorMs',
+    'misses',
+  ],
+  'floor-hmr': ['updateMs'],
+  'mem-build': MEM_METRICS,
+  'mem-rsbuild-build': MEM_METRICS,
+  'mem-dev-cold': MEM_METRICS,
+  'mem-dev-compile': MEM_METRICS,
+  leak: [
+    'heapGrowthMb',
+    'rssGrowthMb',
+    'externalGrowthMb',
+    'arrayBuffersGrowthMb',
+    'heapStartMb',
+    'heapEndMb',
+    'rssStartMb',
+    'rssEndMb',
+  ],
+}
+
+// Real scenario and metric each floor scenario is compared with.
+export const FLOOR_OF = {
+  'floor-build': ['build', 'buildMs'],
+  'floor-rsbuild-build': ['rsbuild-build', 'buildMs'],
+  'floor-dev-compile': ['dev-compile', 'compileAllMs'],
+  'floor-dev-cold': ['dev-cold', 'hydratedMs'],
+  'floor-hmr': ['hmr', 'updateMs'],
 }
 
 export function primaryMetrics(name, metrics) {
@@ -93,7 +158,7 @@ export function writeMarkdown(summary, file) {
   }
   lines.push('')
   lines.push(
-    '| scenario | metric | median ms | p90 | min | max | cv | n | flagged | max others busy (cores) |',
+    '| scenario | metric | median | p90 | min | max | cv | n | flagged | max others busy (cores) |',
   )
   lines.push('|---|---|---:|---:|---:|---:|---:|---:|---:|---:|')
   for (const [name, entry] of Object.entries(summary.scenarios)) {
@@ -109,6 +174,33 @@ export function writeMarkdown(summary, file) {
         `| ${name} | ${entry.metrics.fullReloads ? 'fullReloads' : 'reloads'} (count) | ${reloads.median} | | ${reloads.min} | ${reloads.max} | | ${reloads.n} | |`,
       )
     }
+  }
+  const floorRows = []
+  for (const [name, entry] of Object.entries(summary.scenarios)) {
+    const [variant, kind, ...rest] = name.split('/')
+    const of = FLOOR_OF[kind]
+    const real = of && summary.scenarios[[variant, of[0], ...rest].join('/')]
+    const f = entry.metrics[of?.[1]]
+    const r = real?.metrics[of[1]]
+    if (!f || !r) {
+      continue
+    }
+    const gen = entry.metrics.generatorMs?.median
+    floorRows.push(
+      `| ${[variant, of[0], ...rest].join('/')} | ${of[1]} | ${fmt(r.median)} | ${fmt(f.median)} | ${fmt(Math.round((r.median - f.median) * 10) / 10)} | ${((f.median / r.median) * 100).toFixed(0)}% | ${gen === undefined ? '' : fmt(gen)} | ${entry.metrics.misses?.max ?? ''} | ${entry.metrics.outputMismatch?.max ?? ''} |`,
+    )
+  }
+  if (floorRows.length) {
+    lines.push('')
+    lines.push(
+      '## Floor: replayed TanStack hook outputs (medians; floor = compiler transforms cost ~0, same output)',
+    )
+    lines.push('')
+    lines.push(
+      '| scenario | metric | real | floor | real − floor | floor / real | generator (in floor) | max misses | output mismatches |',
+    )
+    lines.push('|---|---|---:|---:|---:|---:|---:|---:|---:|')
+    lines.push(...floorRows)
   }
   if (Object.keys(summary.attribution ?? {}).length) {
     lines.push('')

@@ -341,9 +341,10 @@ export function routeSplitPlanner(): Planner {
           by: ROUTE_SPLIT,
         })
 
-        // the route module's placeholder
+        // the route module's placeholder (pure for the client's tree shaking;
+        // a server bundle keeps every route and the comment would only cost bytes)
         const call: Array<string | SymRef> = [
-          '/* @__PURE__ */ ',
+          ctx.env.type === 'client' ? '/* @__PURE__ */ ' : '',
           { sym: helperSym, ctx: 'callee' },
           '(',
           { sym: g.importer },

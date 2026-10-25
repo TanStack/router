@@ -1,5 +1,8 @@
 // Per-plugin hook timing for Vite (dev and build).
 //
+// The app configs include `hookTimingPlugin()`; it also installs the floor
+// scenarios' record/replay (replay.mjs) when COMPILER_PERF_REPLAY is set.
+//
 // Inert unless COMPILER_PERF_HOOKS_OUT names an output file. When enabled it
 // wraps the hooks of every resolved plugin (including Vite's own JS plugins;
 // Rolldown's native builtin plugins cannot be wrapped) and writes a summary on
@@ -14,6 +17,7 @@
 
 import fs from 'node:fs'
 import { performance } from 'node:perf_hooks'
+import { replayVitePlugin } from './replay.mjs'
 
 const HOOKS = [
   'buildStart',
@@ -131,7 +135,7 @@ function install(outFile) {
 export function hookTimingPlugin() {
   const outFile = process.env.COMPILER_PERF_HOOKS_OUT
   if (!outFile) {
-    return { name: 'compiler-perf:hook-timing' }
+    return replayVitePlugin() ?? { name: 'compiler-perf:hook-timing' }
   }
   install(outFile)
   return {

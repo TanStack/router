@@ -166,6 +166,19 @@ export function createRouterCompilerVitePlugin(
     name: CODE_SPLITTER_PLUGIN_NAME,
     enforce: 'pre',
 
+    config(userViteConfig) {
+      ROOT = path.resolve(userViteConfig.root ?? process.cwd())
+      // The dev-only route HMR block imports the framework's `/hmr` subpath,
+      // which no source file imports: pre-bundle it with the package rather
+      // than discovering it on the first route module (a re-optimization and
+      // a page reload).
+      return {
+        optimizeDeps: {
+          include: [`@tanstack/${resolveUserConfig().target}-router/hmr`],
+        },
+      }
+    },
+
     configResolved(config) {
       ROOT = config.root
       userConfig = resolveUserConfig()
