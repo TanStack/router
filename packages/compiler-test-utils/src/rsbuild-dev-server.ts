@@ -714,7 +714,9 @@ export interface CompileTracker {
   /**
    * Writes files (relative to `root`; `null` deletes a file) and waits for
    * the edit's outcome (see `trackCompiles`), then for the watcher
-   * (`watching`). `accept` takes the files no compile is expected for.
+   * (`watching`), until the attached watchers report nothing new and no
+   * compile started since. `accept` takes the files no compile is expected
+   * for.
    */
   edit: (
     root: string,
@@ -975,27 +977,31 @@ export function trackCompiles(): CompileTracker {
         resolve: () => {},
         reject: () => {},
       }
+      const deadline = Date.now() + timeout
+      /** Waits until the edit's compiles ended (`settled`), by the deadline. */
+      const compilesOfEdit = () =>
+        withTimeout(
+          Math.max(0, deadline - Date.now()),
+          () =>
+            `Rsbuild did not finish a compile of the edit of ${Object.keys(edits).join(', ')} within ${timeout} ms (${started - startedBefore} compiles started since the edit began, ${
+              !wait.written
+                ? 'the writes did not finish'
+                : lastReader(wait) !== undefined
+                  ? 'the compiles of the edit did not end'
+                  : `none read ${[...wait.owed]
+                      .filter(([, { seenBy }]) => seenBy === undefined)
+                      .map(([file]) => path.relative(root, file))
+                      .join(', ')} as edited`
+            })`,
+          (handlers) => {
+            wait.resolve = handlers.resolve
+            wait.reject = handlers.reject
+            waits.add(wait)
+            return () => waits.delete(wait)
+          },
+        )
       // Listens before writing: a compile may fail while the writes finish
-      const compiled = withTimeout(
-        timeout,
-        () =>
-          `Rsbuild did not finish a compile of the edit of ${Object.keys(edits).join(', ')} within ${timeout} ms (${started - startedBefore} compiles started since the edit began, ${
-            !wait.written
-              ? 'the writes did not finish'
-              : lastReader(wait) !== undefined
-                ? 'the compiles of the edit did not end'
-                : `none read ${[...wait.owed]
-                    .filter(([, { seenBy }]) => seenBy === undefined)
-                    .map(([file]) => path.relative(root, file))
-                    .join(', ')} as edited`
-          })`,
-        (handlers) => {
-          wait.resolve = handlers.resolve
-          wait.reject = handlers.reject
-          waits.add(wait)
-          return () => waits.delete(wait)
-        },
-      )
+      const compiled = compilesOfEdit()
       compiled.catch(() => {})
       try {
         for (const [relative, code] of Object.entries(edits)) {
@@ -1014,7 +1020,19 @@ export function trackCompiles(): CompileTracker {
         wait.resolve()
       }
       await compiled
-      await watching(root, timeout)
+      await watching(root, Math.max(0, deadline - Date.now()))
+      // Once the compiles ended, Rspack may still owe one for the edit,
+      // which it starts or announces (`invalid`) by the time its watchers
+      // are attached: one for a file written after a compile began (that
+      // compile builds only the files reported before it began; the next
+      // watcher reports the file when it attaches), or the compile of an
+      // environment that depends on another (`dependencies`), which Rspack
+      // runs again once that other one compiled the edit too. Rspack reports
+      // the end of the compiles (`done`) before either.
+      while (started !== startedBeforeDone || invalid.size > 0) {
+        await compilesOfEdit()
+        await watching(root, Math.max(0, deadline - Date.now()))
+      }
     },
   }
 }
