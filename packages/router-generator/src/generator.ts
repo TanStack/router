@@ -343,8 +343,11 @@ export class Generator {
       }
       named.add(event.path)
       if (event.path === this.treeKey) {
-        treeChanged = true
-      } else if (
+        // Mostly our own write coming back: the tree is printed again only
+        // when the file on disk is no longer the one published (below)
+        continue
+      }
+      if (
         event.type !== 'update' ||
         event.path === this.virtualConfigFile ||
         isVirtualConfigFile(path.basename(event.path)) ||
