@@ -34,6 +34,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import Module, { createRequire } from 'node:module'
 import { performance } from 'node:perf_hooks'
+import { pathToFileURL } from 'node:url'
 import v8 from 'node:v8'
 
 const env = process.env
@@ -536,6 +537,10 @@ function wrapLoaderFile(file) {
     return
   }
   wrappedLoaderFiles.add(file)
+  if (isEsmFile(file)) {
+    wrapEsmLoaderFile(file)
+    return
+  }
   let mod
   try {
     mod = require(file)
@@ -559,6 +564,78 @@ function wrapLoaderFile(file) {
   stats.wrappedLoaders.push(label)
 }
 
+function isEsmFile(file) {
+  if (file.endsWith('.mjs')) {
+    return true
+  }
+  if (!file.endsWith('.js')) {
+    return false
+  }
+  for (let dir = path.dirname(file); ; dir = path.dirname(dir)) {
+    const pkg = path.join(dir, 'package.json')
+    if (fs.existsSync(pkg)) {
+      try {
+        return JSON.parse(fs.readFileSync(pkg, 'utf8')).type === 'module'
+      } catch {
+        return false
+      }
+    }
+    if (path.dirname(dir) === dir) {
+      return false
+    }
+  }
+}
+
+/**
+ * ESM loaders (Rspack gives a loader in a `"type": "module"` package
+ * `type: 'module'` and `import()`s it): a module hook serves a wrapper module
+ * under the loader's own URL, which imports the real file under a query. The
+ * loader request stays unchanged. Must run before Rspack imports the loader.
+ */
+const ORIGINAL_QUERY = '?compiler-perf-original'
+const esmLoaderLabels = new Map()
+let esmHooksRegistered = false
+function wrapEsmLoaderFile(file) {
+  const url = pathToFileURL(file).href
+  const label = `loader:${packageNameOf(file)}/${path.basename(file)}`
+  esmLoaderLabels.set(url, label)
+  globalThis[Symbol.for('compiler-perf.replay.wrapEsmLoader')] ??= (
+    mod,
+    loaderLabel,
+  ) => {
+    const inner = mod.default
+    if (typeof inner !== 'function' || mod.pitch || inner.pitch) {
+      return inner
+    }
+    const wrapped = function (source, map, meta) {
+      runWrappedLoader(this, inner, loaderLabel, source, map, meta)
+    }
+    wrapped.raw = mod.raw ?? inner.raw
+    return wrapped
+  }
+  if (!esmHooksRegistered) {
+    esmHooksRegistered = true
+    Module.registerHooks({
+      load(target, context, nextLoad) {
+        const wrappedLabel = esmLoaderLabels.get(target)
+        if (wrappedLabel === undefined) {
+          return nextLoad(target, context)
+        }
+        return {
+          format: 'module',
+          shortCircuit: true,
+          source: `import * as mod from ${JSON.stringify(target + ORIGINAL_QUERY)}
+const wrap = globalThis[Symbol.for('compiler-perf.replay.wrapEsmLoader')]
+export default wrap(mod, ${JSON.stringify(wrappedLabel)})
+export const raw = mod.raw
+`,
+        }
+      },
+    })
+  }
+  stats.wrappedLoaders.push(label)
+}
+
 function wrapUse(use) {
   if (typeof use === 'string') {
     use = { loader: use }
@@ -571,7 +648,7 @@ function wrapUse(use) {
     wrapUnpluginPlugin(options.plugin)
     return use
   }
-  if (use.type !== 'module' && isTanstackLoader(use.loader)) {
+  if (isTanstackLoader(use.loader)) {
     wrapLoaderFile(loaderPathOf(use.loader))
   }
   return use
