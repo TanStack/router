@@ -128,35 +128,45 @@ describe.each(['dev', 'build'] as const)('Vite %s', (mode) => {
     }
   })
 
+  const expectCssOnlyOnMatch = async (name: string) => {
+    const page = await openPage(new URL('/', url).href, {
+      registerCleanup: onTestFinished,
+    })
+    await page.waitForText('hydrated', {
+      selector: '[data-testid=hydrated]',
+    })
+    await page.page.waitForLoadState('networkidle')
+    expect(await probeColor(page, name), 'at /').not.toBe(color)
+    await page.page.locator(`nav a[href="/${name}"]`).click()
+    await page.page.waitForURL(new URL(`/${name}`, url).href)
+    const { shows } = routes[name]!
+    if (shows !== undefined) {
+      await page.waitForText(shows, { selector: '#app' })
+    }
+    await expect
+      .poll(() => probeColor(page, name), { timeout: 5_000 })
+      .toBe(color)
+  }
+
   // SPEC J2.22: a route's CSS loads only when the route matches, whatever
-  // it mounts.
-  // Bug: the code splitter keeps the bare CSS import in the route module,
-  // which the route tree imports eagerly: in dev the CSS is injected on
-  // every page once the client runs, and in a build it is merged into the
-  // entry's CSS, which every page links.
-  // Source: #4396; src/core/code-splitter/compilers.ts (router-plugin).
-  // Impact: a route's styles apply on every page of the app.
-  test.fails.each(Object.keys(routes))(
+  // it mounts. The CSS import moves with a split component's chunk.
+  test.each(['shows-component', 'shows-error', 'shows-not-found'])(
     'the CSS of the /%s route applies only once the route matches',
-    async (name) => {
-      const page = await openPage(new URL('/', url).href, {
-        registerCleanup: onTestFinished,
-      })
-      await page.waitForText('hydrated', {
-        selector: '[data-testid=hydrated]',
-      })
-      await page.page.waitForLoadState('networkidle')
-      expect(await probeColor(page, name), 'at /').not.toBe(color)
-      await page.page.locator(`nav a[href="/${name}"]`).click()
-      await page.page.waitForURL(new URL(`/${name}`, url).href)
-      const { shows } = routes[name]!
-      if (shows !== undefined) {
-        await page.waitForText(shows, { selector: '#app' })
-      }
-      await expect
-        .poll(() => probeColor(page, name), { timeout: 5_000 })
-        .toBe(color)
-    },
+    expectCssOnlyOnMatch,
+    timeout,
+  )
+
+  // Bug: with no split component to carry it (a pending component, which
+  // the default groupings do not split, or no component), the code splitter
+  // keeps the bare CSS import in the route module, which the route tree
+  // imports eagerly: in dev the CSS is injected on every page once the
+  // client runs, and in a build it is merged into the entry's CSS, which
+  // every page links.
+  // Source: #4396.
+  // Impact: a route's styles apply on every page of the app.
+  test.fails.each(['shows-pending', 'shows-nothing'])(
+    'the CSS of the /%s route applies only once the route matches',
+    expectCssOnlyOnMatch,
     timeout,
   )
 })

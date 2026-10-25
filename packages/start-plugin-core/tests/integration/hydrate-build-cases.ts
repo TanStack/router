@@ -311,22 +311,13 @@ export function hydrateBuildSuite(bundler: StartBundler) {
       timeout,
     )
 
-    // Bug: a split component with a boundary that another route option
-    // reads (`head` reads `Page.name`) goes to a module the route module and
-    // the chunk share, without the lazy component of its boundary, which
-    // stays in the chunk: the shared module reads an undeclared name (the
-    // build harness rejects the client output). Root cause: the code
-    // splitter takes a JSX tag whose name starts with `_` for an intrinsic
-    // element and does not count it as a read of the binding, here a name
-    // the `<Hydrate>` transform generates (router-utils/src/
-    // compiler-helpers.ts:268; same root cause as the `_Widget` row in
-    // router-plugin/tests/code-splitter-jsx.test.ts).
+    // A split component with a boundary that another route option reads
+    // (`head` reads `Page.name`): the chunk and the route module agree on
+    // where the boundary's lazy component lives.
     // Control: the "in their own groupings" row above (same route shape,
     // without `head`).
     // Source: fuzzing (real Start builds, Vite and Rsbuild).
-    // Impact: the route's component throws a ReferenceError when it
-    // renders, so the page never renders.
-    test.fails(
+    test(
       'boundaries in split route options that another option reads hydrate in the boundaries the server renders',
       async () => {
         const build = await buildStart({

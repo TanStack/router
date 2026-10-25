@@ -97,35 +97,28 @@ return {
     })
   })
 
-  // Bug: the code splitter resolves route options only from an object
-  // literal in the route file (`resolveIdentifier`, compilers.ts), so for
-  // an imported options object it neither splits nor deletes anything, and
-  // says nothing: Start's client build keeps `server.handlers` and ships
-  // the helper they read.
-  // Impact: server code in the client bundle, silently.
+  // The compiler cannot read an imported options object: with Start's
+  // client deleteNodes it refuses the build, naming the file.
   // SPEC J2.8: "options the compiler cannot read statically ... never ships
   // their ssr/server/headers silently".
-  test.fails(
-    'the client build never ships the server handlers of imported route options silently',
-    () => {
-      if (failure) {
-        // A build that refuses the shape must name the route file (on any
-        // channel of the build; SPEC J2.8, §5.7).
-        expectDiagnostic(failure.diagnostics, {
-          severity: 'error',
-          file: 'src/routes/x.tsx',
-        })
-        return
-      }
-      // (every channel of the build; a warning that informs the user names
-      // the route file)
-      const reported = findDiagnostics(build!.diagnostics, {
-        severity: 'warning',
+  test('the client build never ships the server handlers of imported route options silently', () => {
+    if (failure) {
+      // A build that refuses the shape must name the route file (on any
+      // channel of the build; SPEC J2.8, §5.7).
+      expectDiagnostic(failure.diagnostics, {
+        severity: 'error',
         file: 'src/routes/x.tsx',
       })
-      if (reported.length === 0) {
-        expect(build!.client.where('MARK_HELPER_SECRET')).toBe('nowhere')
-      }
-    },
-  )
+      return
+    }
+    // (every channel of the build; a warning that informs the user names
+    // the route file)
+    const reported = findDiagnostics(build!.diagnostics, {
+      severity: 'warning',
+      file: 'src/routes/x.tsx',
+    })
+    if (reported.length === 0) {
+      expect(build!.client.where('MARK_HELPER_SECRET')).toBe('nowhere')
+    }
+  })
 })

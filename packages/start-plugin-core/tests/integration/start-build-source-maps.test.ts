@@ -193,16 +193,10 @@ test(
   timeout,
 )
 
-// Bug: the router plugin's code splitter returns a source map of each route
-// file it compiles, but unplugin's Rspack transform loader drops it when no
-// earlier loader passed one in (`map == null ? map : res.map || map` in
-// unplugin/dist/rspack/loaders/transform.mjs), so Rsbuild maps the chunk to
-// the code splitter's output. Same cause as the router plugin's Rspack and
-// webpack pins (router-plugin build-source-maps.test.ts).
-// Source: upstream (unplugin).
-// Impact: stack traces, devtools and error trackers of Rsbuild Start apps
-// point at lines of generated code for every route file.
-test.fails.each(builds)(
+// The router compiler's Rspack loader passes its source map on, so Rsbuild
+// maps the chunk to the route file (unplugin's transform loader dropped it
+// when no earlier loader passed one in).
+test.each(builds)(
   'rsbuild build: client: a throw in a split route component maps to its line in the route file ($name)',
   (options) => expectRouteThrowMapsToRouteFile('rsbuild', options),
   timeout,
