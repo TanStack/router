@@ -6,7 +6,8 @@
  * (`runViteClient`).
  */
 import react from '@vitejs/plugin-react'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, onTestFinished, test } from 'vitest'
+import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { describeHmr } from '@tanstack/compiler-test-utils/dev-server'
 import { requestsOfPrelude } from '../build-harness'
 import {
@@ -19,6 +20,20 @@ import {
   runViteClient,
   startBrowserStartDevServer,
 } from './importProtection/client-pages'
+import { reactApp } from './hydrate-dev-edits'
+
+/** Pre-bundled up front, as Vite does for an app that installed them (as hydrate-dev.test.ts). */
+const reactOptimizeDeps = {
+  include: [
+    'react',
+    'react/jsx-dev-runtime',
+    'react-dom',
+    'react-dom/client',
+    '@tanstack/react-router',
+    '@tanstack/react-router > @tanstack/router-core > seroval',
+    '@tanstack/react-router > @tanstack/router-core > seroval-plugins/web',
+  ],
+}
 
 const timeout = 30_000
 
@@ -213,6 +228,66 @@ export const greet = createServerFn().handler(() => db.x())
       expect(
         messages.filter((message) => message.includes('full-reload')),
       ).toEqual([])
+    },
+    timeout,
+  )
+})
+
+describe('Vite dev: editing what a route module imports', () => {
+  // Importers observe a module's exports and (import protection) its
+  // environment marker, not which modules it imports: an edit of a route
+  // module's imports updates that route alone. Before, the importers' plans
+  // depended on the module's whole J6 target facts (its import list
+  // included), so the route tree, the route module's importer, was
+  // re-transformed with it, and as no HMR boundary accepts the route tree,
+  // every page fully reloaded. Source: the compiler soak
+  // (benchmarks/compiler-perf `--scenarios soak`); SPEC G10.
+  test(
+    'the page updates in place, without a full reload',
+    async () => {
+      const route = (
+        from: string,
+      ) => `import { createFileRoute } from '@tanstack/react-router'
+import { label } from '${from}'
+export const Route = createFileRoute('/')({ component: Page })
+function Page() {
+  return <p data-testid="label">{label}</p>
+}
+`
+      const server = await startDevServer({
+        start: {},
+        browser: true,
+        config: { optimizeDeps: reactOptimizeDeps },
+        plugins: [react()],
+        files: {
+          ...reactApp,
+          'src/a.ts': `export const label = 'from-a'\n`,
+          'src/b.ts': `export const label = 'from-b'\n`,
+          'src/routes/index.tsx': route('../a'),
+        },
+      })
+      const browser = await openPage(server.url!, {
+        registerCleanup: onTestFinished,
+      })
+      await browser.waitForText('hydrated', {
+        selector: '[data-testid=hydrated]',
+      })
+      await server.idle()
+
+      await server.edit({ 'src/routes/index.tsx': route('../b') })
+
+      await browser.waitForText('from-b', { selector: '[data-testid=label]' })
+      expect(browser.loads()).toBe(1)
+      expect(
+        describeHmr(
+          server.hmr.filter(
+            (message) =>
+              message.environment === 'client' &&
+              message.type === 'full-reload',
+          ),
+        ),
+      ).toEqual([])
+      expect(browser.errors).toEqual([])
     },
     timeout,
   )

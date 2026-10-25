@@ -184,6 +184,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         }
         for (const file of removed) {
           await session.invalidate(file, 'unlink')
+          session.ip?.forget(normalizePath(file))
         }
         await opts.generator.watchRun(modified, removed)
       })
@@ -195,6 +196,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       compiler.hooks.done.tap(PLUGIN_NAME, (stats) => {
         const deps = stats.compilation.fileDependencies
         knownFiles = new Set<string>(deps as Iterable<string>)
+        if (session.opts.mode === 'dev') {
+          session.retain(environment.name, knownFiles)
+        }
       })
 
       /** The entry modules' resources of a compilation. */

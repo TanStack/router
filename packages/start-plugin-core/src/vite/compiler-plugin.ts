@@ -18,6 +18,7 @@ import {
   RawFactsCache,
   SourceText,
   WarningLedger,
+  collectionSizes,
   compileModule,
   createCompilerCaches,
   deriveId,
@@ -25,6 +26,7 @@ import {
   identify,
   invalidate,
   isAnalyzableSpecifier,
+  registerCompilerStats,
 } from '@tanstack/router-utils/compiler'
 import { defaultCodeSplitGroupings } from '@tanstack/router-plugin'
 import {
@@ -261,6 +263,15 @@ export function startCompilerPlugin(
    * re-transform when a file appears (see `applyInvalidation`).
    */
   const awaitingAdd = new Map<string, Set<string>>()
+  registerCompilerStats('start:vite:plugin', registry, (r) =>
+    collectionSizes(r),
+  )
+  registerCompilerStats('start:vite:invalidations', invalidations, (m) => ({
+    size: m.size,
+  }))
+  registerCompilerStats('start:vite:awaitingAdd', awaitingAdd, (m) =>
+    collectionSizes({ awaitingAdd: m }),
+  )
 
   const requireSession = (): Session => {
     if (!session) {
@@ -338,13 +349,24 @@ export function startCompilerPlugin(
       bundledDev: config.bundledDev,
       ip,
       rawFacts,
-      caches: createCompilerCaches(rawFacts),
+      caches: createCompilerCaches(rawFacts, 'start:vite'),
       registry: new RouteRegistryView(opts.routerPluginContext),
       warnings: new WarningLedger(() => {}),
       planners: new Map(),
       configs: new Map(),
       entries: new Set(),
     }
+    registerCompilerStats('start:vite:session', s, (o) =>
+      collectionSizes(
+        {
+          ip: o.ip,
+          warnings: o.warnings,
+          routes: o.registry,
+          entries: o.entries,
+        },
+        4,
+      ),
+    )
     for (const env of opts.environments) {
       ip?.env(env.name, env.type)
       const routerCfg = routerAppliesTo(env) ? routerConfigFor(env) : null
@@ -986,6 +1008,7 @@ export function startCompilerPlugin(
         const res = await pending
         if (ctx.type === 'delete') {
           registry.forget(ctx.file)
+          s.ip?.forget(normalizePath(ctx.file))
         }
         const extra = applyInvalidation(
           this.environment,
@@ -1002,6 +1025,9 @@ export function startCompilerPlugin(
         }
         const environment = this.environment
         const kind = changeKindOf(change.event)
+        if (kind === 'unlink') {
+          s.ip?.forget(normalizePath(id))
+        }
         const res = await invalidate(
           s.caches,
           { path: id, kind },

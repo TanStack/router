@@ -193,6 +193,58 @@ Memory runs are separate from timed runs (`--memory-runs`, default 3).
   snapshot every 10 cycles (`series`) and at the end. `heapGrowthMb` /
   `rssGrowthMb` are end − start.
 
+### Soak (`--scenarios soak`)
+
+`soakRun` in `scripts/run.mjs`: one dev server (`--soak-bundlers vite,rsbuild`;
+Rsbuild for `react-start` only), `--soak-cycles` (default 500) edit + revert
+cycles rotating over the kinds of `scripts/soak-files.mjs`: the HMR probes
+(route component, loader, shared module, server-fn handler, `<Hydrate>`),
+module adds and deletes (a new module imported by a soak route, then
+dropped and deleted), route adds and deletes (route tree regenerated), route
+renames, adding/removing a `*.server.ts` import (alternately read by a
+server-fn handler and by client code, an import-protection violation), and
+dependency-only factory flips (`src/soak/factory.ts` stops/starts exporting a
+server-fn builder; only its importer's output changes). Every name is a
+function of the cycle index (record/replay sees the same files).
+
+Every `--soak-every` cycles (default 25): forced GC, `heapUsed`, `external`,
+`arrayBuffers`, RSS, and the compiler's cache sizes (`TSR_COMPILER_STATS=1`,
+below); heap snapshots after the `--soak-snapshots` cycles (default
+`0,100,500`; the cycle-0 snapshot absorbs V8's one-time snapshot overhead).
+`--soak-modes`: `real`, `replay` (record run, then a run with our transform
+hooks replaced by the recorded outputs, see Floor), `transform-off` (Router
+app with splitting and HMR off: nothing reaches the compiler).
+
+- `scripts/soak-analyze.mjs <soak-*.json>`: OLS slope of each GC'd metric
+  (KB/edit, 95% CI) over the last 75% of the samples, and per cache counter
+  its values, slope per 100 cycles and whether it grows.
+- `scripts/heap-diff.mjs A.heapsnapshot B.heapsnapshot`: per-constructor
+  growth, new survivors, and retained self size by _owner_ (the first
+  function or class instance on the shortest retaining path whose script
+  belongs to a package), A → B (`--owner-detail <name>` lists one owner's
+  largest objects with their paths).
+
+### Compiler introspection and cache knobs (dev-only measurement aids)
+
+Environment variables read by `@tanstack/router-utils/compiler` (inert unless
+set; Node-side only, never in a bundle):
+
+- `TSR_COMPILER_STATS=1`: the compiler caches (`PlanCache`, dependents index,
+  `RawFactsCache`, resolution caches, with approximate bytes and hit/miss
+  counters), the hosts' sessions (import protection, server-fn registries,
+  Rsbuild per-resource records) and the route generator register size
+  readers in a process-global registry (`compilerStats()`; the dev driver
+  and `scripts/ipc-agent.mjs` answer `{ type: 'stats' }`).
+  `TSR_COMPILER_STATS_BYTES=0` skips the byte estimates.
+- `TSR_COMPILER_NO_CACHE=<list>`: disables caches for on/off measurements:
+  `plans` (no plan is published: every request, derived ids included,
+  plans again), `emitted` (the per-plan memo of emitted outputs), `facts`
+  (summaries and target facts re-read and re-parsed on every request),
+  `targets` (target facts only), `resolutions`, `all`. Outputs are
+  identical with any knob (`stats.test.ts`).
+- `scripts/cache-knobs.mjs --out <dir>`: runs the harness per (round, knob),
+  interleaved, and tabulates medians per knob against "all on".
+
 ### Attribution
 
 - **CPU profile** (`attribution.<run>.cpu.main`): `compilerInclusiveMs` is the

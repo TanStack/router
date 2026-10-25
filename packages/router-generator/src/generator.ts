@@ -66,6 +66,25 @@ function roleOf(node: RouteNode, isRoot: boolean) {
   return `${isRoot ? 'root' : node._fsRouteType}:${node.routePath ?? ''}`
 }
 
+/**
+ * `TSR_COMPILER_STATS=1` (measurement aid): registers the generator's
+ * per-file facts in the process-global registry `compilerStats()` of
+ * `@tanstack/router-utils/compiler` reads (held through a `WeakRef`).
+ */
+function registerStats(
+  generator: Generator,
+  read: (g: Generator) => Record<string, number>,
+): void {
+  const g = globalThis as Record<symbol, unknown>
+  const key = Symbol.for('tanstack.compiler.stats')
+  const registry = (g[key] ??= []) as Array<unknown>
+  registry.push({
+    label: 'router-generator',
+    owner: new WeakRef(generator),
+    read,
+  })
+}
+
 async function stampOf(file: string): Promise<FileStamp | null> {
   try {
     const { mtimeMs, size } = await fsp.stat(file)
@@ -191,6 +210,21 @@ export class Generator {
     this.plugins = [...(this.config.plugins ?? [])]
     for (const plugin of this.plugins) {
       plugin.init?.({ generator: this })
+    }
+    if (process.env.TSR_COMPILER_STATS === '1') {
+      registerStats(this, (g) => {
+        let contentBytes = 0
+        for (const f of g.files.values()) {
+          contentBytes += f.content.length * 2
+        }
+        return {
+          files: g.files.size,
+          contentBytes,
+          routesByFile: g.routesByFile.size,
+          queue: g.queue.length,
+          waiters: g.waiters.length,
+        }
+      })
     }
   }
 

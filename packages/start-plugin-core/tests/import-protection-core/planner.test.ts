@@ -5,6 +5,7 @@
  * modules, mock contents, marker conflicts and invalidation (J6.13).
  */
 import { describe, expect, test } from 'vitest'
+import { collectionSizes } from '@tanstack/router-utils/compiler'
 import { viteEdgeModuleIds } from '../../src/import-protection/edge-modules'
 import { violationsOf } from '../../src/import-protection/violations'
 import { MemoryApp, ROOT } from './memory-host'
@@ -361,6 +362,36 @@ describe('dev decisions', () => {
       },
     })
     await expect(a.compile('src/a.ts', 'client')).rejects.toThrow('nope')
+  })
+})
+
+describe('dev session records', () => {
+  // D12: a dev session's records are bounded by the live files. Found by the
+  // compiler soak (benchmarks/compiler-perf `--scenarios soak`): the edge
+  // index, the per-importer violation keys and the scope cache kept an entry
+  // for every deleted file.
+  test('a deleted importer is forgotten: its edges, violations and scope', async () => {
+    const a = app({
+      'src/secret.server.ts': SECRET,
+      'src/shared.ts': `export const x = 1\n`,
+    })
+    for (let i = 0; i < 20; i++) {
+      const rel = `src/unique-${i}.ts`
+      a.write(
+        rel,
+        `import { secret } from './secret.server'\nimport { x } from './shared'\nexport const read = () => secret() + x\n`,
+      )
+      await a.compile(rel, 'client')
+      await a.compile(rel, 'ssr')
+      a.remove(rel)
+      await a.invalidate(rel, 'unlink')
+      a.ip.forget(`${ROOT}/${rel}`)
+    }
+    const sizes = collectionSizes(a.ip, 4)
+    expect(sizes['envs[*].edges.forward']).toBe(0)
+    expect(sizes['envs[*].edges.reverse']).toBe(0)
+    expect(sizes['envs[*].byImporter']).toBe(0)
+    expect(sizes.scopeCache).toBe(0)
   })
 })
 

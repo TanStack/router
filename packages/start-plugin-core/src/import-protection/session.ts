@@ -17,7 +17,7 @@ import {
   mockRuntimeCode,
   viteEdgeModuleIds,
 } from './edge-modules'
-import { EdgeIndex, buildTrace } from './graph-trace'
+import { EdgeIndex, buildTrace, traceFile } from './graph-trace'
 import { DevReporter, devViolationError } from './report'
 import { importerInScope } from './rules'
 import { BuildVerdicts, RSPACK_BUILD_INFO_KEY } from './verdict'
@@ -152,6 +152,33 @@ export class ImportProtection {
   }
 
   /** Whether an importer path is checked (cached per path). */
+  /**
+   * A file was deleted (dev): forget what was recorded of it as an importer,
+   * so the session's records stay bounded by the live files.
+   */
+  forget(path: string): void {
+    this.scopeCache.delete(path)
+    for (const env of this.envs.values()) {
+      env.forget(path)
+    }
+  }
+
+  /** Keeps the importer records (and scope-cache entries) of the paths `keep` accepts (see `RawFactsCache.retain`). */
+  retain(keep: (path: string) => boolean, envName?: string): void {
+    if (envName === undefined) {
+      for (const path of [...this.scopeCache.keys()]) {
+        if (!keep(path)) {
+          this.scopeCache.delete(path)
+        }
+      }
+    }
+    for (const env of this.envs.values()) {
+      if (envName === undefined || env.name === envName) {
+        env.retain(keep)
+      }
+    }
+  }
+
   inScope(importerPath: string): boolean {
     return importerInScope(this.config, importerPath, this.scopeCache)
   }
@@ -590,6 +617,36 @@ export class ImportProtectionEnv {
     if (!this.runtimeEmitted) {
       this.runtimeEmitted = true
       this.ip.emit({ env: this.name, kind: 'runtime' }, this.ip.runtimeLoad())
+    }
+  }
+
+  /** Forgets the importer records of every path `keep` rejects. */
+  retain(keep: (path: string) => boolean): void {
+    const gone = new Set<string>()
+    for (const importerId of [
+      ...this.byImporter.keys(),
+      ...this.edges.importerIds(),
+    ]) {
+      const path = traceFile(importerId)
+      if (!keep(path)) {
+        gone.add(path)
+      }
+    }
+    for (const path of gone) {
+      this.forget(path)
+    }
+  }
+
+  /** Forgets a deleted file's importer records (edges, violations of its ids). */
+  forget(path: string): void {
+    this.edges.forget(path)
+    for (const [importerId, keys] of [...this.byImporter]) {
+      if (traceFile(importerId) === path) {
+        this.byImporter.delete(importerId)
+        for (const key of keys) {
+          this.release(importerId, key)
+        }
+      }
     }
   }
 

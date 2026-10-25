@@ -10,6 +10,7 @@ import { parseModule } from './source'
 import { DEFAULT_MARKERS, ModuleAnalysis } from './analysis'
 import { buildSummary } from './summary'
 import { EMPTY_RECOGNIZER, isKnownSpecifier } from './values'
+import { approxBytes, cacheDisabled } from './stats'
 import type { ModuleSummary, SummaryExtraHook } from './summary'
 import type { AbstractValue, RecognizerTable } from './values'
 
@@ -82,6 +83,11 @@ export class RawFactsCache {
       pending: Promise<RawFacts> | null
     }
   >()
+  /** `TSR_COMPILER_NO_CACHE=facts|targets`: every read rebuilds (measurement knobs). */
+  private readonly noFacts = cacheDisabled('facts')
+  private readonly noTargets = cacheDisabled('targets')
+  /** Use counts for `compilerStats()`: requests served from the cache, and reads. */
+  private readonly counters = { factsHits: 0, factsReads: 0 }
 
   constructor(private readonly opts: RawFactsOptions) {}
 
@@ -120,18 +126,44 @@ export class RawFactsCache {
     }
   }
 
-  /** Drops entries nobody depends on (host bookkeeping). */
-  prune(keep: (canonicalId: string) => boolean): void {
-    for (const id of [...this.entries.keys()]) {
+  /**
+   * Forgets the facts of a deleted file: entries are kept for files that
+   * exist only (a missing file's facts are not stored either), so the cache
+   * is bounded by the live files, not by every file a session saw.
+   */
+  forget(path: string): void {
+    for (const [id, e] of this.entries) {
+      if (identify(id).path === path || id === path) {
+        // a read in flight is not published
+        e.pending = null
+        this.entries.delete(id)
+      }
+    }
+  }
+
+  /**
+   * Keeps the entries `keep` accepts. For hosts whose watcher reports a
+   * deleted file only while something depends on it (Rspack): the entries
+   * of files no compilation depends on any more are dropped.
+   */
+  retain(keep: (canonicalId: string) => boolean): void {
+    for (const [id, e] of this.entries) {
       if (!keep(id)) {
+        e.pending = null
         this.entries.delete(id)
       }
     }
   }
 
   async get(canonicalId: string): Promise<RawFacts> {
+    if (this.noFacts) {
+      return this.isKnownSpecifier(canonicalId)
+        ? this.knownFacts(canonicalId)
+        : this.build(canonicalId, await this.read(canonicalId), new Set())
+    }
     let e = this.entries.get(canonicalId)
     if (e && e.facts && !e.stale) {
+      this.counters.factsHits++
       return e.facts
     }
     if (this.isKnownSpecifier(canonicalId)) {
@@ -156,6 +188,10 @@ export class RawFactsCache {
         entry.facts = facts
         entry.stale = false
         entry.pending = null
+        if (text === null && this.entries.get(canonicalId) === entry) {
+          // a missing file's facts are not kept (`forget`)
+          this.entries.delete(canonicalId)
+        }
       }
       return facts
     })()
@@ -174,7 +210,9 @@ export class RawFactsCache {
       return e.facts
     }
     const facts = this.fromAnalysis(canonicalId, rawRevision, analysis, null)
-    this.entries.set(canonicalId, { stale: false, facts, pending: null })
+    if (!this.noFacts) {
+      this.entries.set(canonicalId, { stale: false, facts, pending: null })
+    }
     return facts
   }
 
@@ -183,9 +221,41 @@ export class RawFactsCache {
     return f.summary?.digest ?? null
   }
 
+  /** The facts J6 target facts are taken from (`get`, or a fresh read when the target-facts knob is off). */
+  async getTarget(canonicalId: string): Promise<RawFacts> {
+    if (this.noTargets && !this.isKnownSpecifier(canonicalId)) {
+      return this.build(canonicalId, await this.read(canonicalId), new Set())
+    }
+    return this.get(canonicalId)
+  }
+
   async targetDigestOf(canonicalId: string): Promise<string> {
-    const f = await this.get(canonicalId)
+    const f = await this.getTarget(canonicalId)
     return f.targetFacts.digest
+  }
+
+  /** Sizes for `compilerStats()`. */
+  stats(withBytes: boolean): Record<string, number> {
+    let stale = 0
+    let pending = 0
+    let empty = 0
+    let bytes = 0
+    for (const e of this.entries.values()) {
+      stale += e.stale ? 1 : 0
+      pending += e.pending ? 1 : 0
+      empty += e.facts ? 0 : 1
+      if (withBytes && e.facts) {
+        bytes += approxBytes(e.facts)
+      }
+    }
+    return {
+      rawFacts: this.entries.size,
+      rawFactsStale: stale,
+      rawFactsPending: pending,
+      rawFactsEmpty: empty,
+      ...this.counters,
+      ...(withBytes && { rawFactsBytes: bytes }),
+    }
   }
 
   /** The synthetic facts of a known package specifier: its factory exports, side-effect free. */
@@ -230,6 +300,7 @@ export class RawFactsCache {
   }
 
   private async read(canonicalId: string): Promise<string | null> {
+    this.counters.factsReads++
     if (canonicalId.startsWith('\0') || canonicalId.startsWith('virtual:')) {
       return this.opts.loadVirtual(canonicalId)
     }

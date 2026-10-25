@@ -3,6 +3,7 @@
  * operation.
  */
 import { isBuiltin } from 'node:module'
+import { cacheDisabled } from './stats'
 import { identify, planKeyString } from './identity'
 import {
   PlanCache,
@@ -124,6 +125,10 @@ export interface PrefetchContext {
   summary: (canonicalId: string) => Promise<ModuleSummary | null>
   /** Target facts (records a target-facts fingerprint). */
   targetFacts: (canonicalId: string) => Promise<RawFacts['targetFacts']>
+  /** The target's environment marker only (records a marker fingerprint: no other target fact invalidates the plan). */
+  targetMarker: (
+    canonicalId: string,
+  ) => Promise<RawFacts['targetFacts']['marker']>
   /** Stores this planner's phase A result for `PlanContext.prefetched`. */
   set: (data: unknown) => void
 }
@@ -143,6 +148,10 @@ export interface PolicyContext {
     importerCanonicalId?: string,
   ) => Promise<string | null>
   targetFacts: (canonicalId: string) => Promise<RawFacts['targetFacts']>
+  /** The target's environment marker only (records a marker fingerprint: no other target fact invalidates the plan). */
+  targetMarker: (
+    canonicalId: string,
+  ) => Promise<RawFacts['targetFacts']['marker']>
   /** Replaces the specifier literal of an edge in this output's recipe. */
   substitute: (edgeKey: string, specifier: string) => void
   /** Per-request memo: a restart after a snapshot mismatch does not ask twice. */
@@ -228,7 +237,11 @@ export async function invalidate(
       cache.bump(key)
     }
   }
-  caches.rawFacts.markStale(change.path)
+  if (change.kind === 'unlink') {
+    caches.rawFacts.forget(change.path)
+  } else {
+    caches.rawFacts.markStale(change.path)
+  }
   if (change.kind === 'add' || change.kind === 'unlink') {
     for (const m of caches.resolutions.values()) {
       m.clear()
@@ -302,6 +315,8 @@ export function fingerprintSourceFor(
   return {
     summaryDigest: (id) => caches.rawFacts.digestOf(id),
     targetDigest: (id) => caches.rawFacts.targetDigestOf(id),
+    targetMarker: async (id) =>
+      (await caches.rawFacts.getTarget(id)).targetFacts.marker,
     routeRegistryDigest: (path) => host.routes?.digestFor(path) ?? null,
     resolution: (envName, importer, specifier) =>
       resolveCached(caches, host, envName, importer, specifier),
@@ -326,6 +341,24 @@ export function isAnalyzableSpecifier(specifier: string): boolean {
   return scheme === null || scheme[1]!.toLowerCase() === 'virtual'
 }
 
+const RESOLUTION_COUNTERS = new WeakMap<
+  CompilerCaches,
+  { resolutionHits: number; resolutionMisses: number }
+>()
+
+/** Use counts of a session's resolution cache (`compilerStats()`). */
+export function resolutionCounters(caches: CompilerCaches): {
+  resolutionHits: number
+  resolutionMisses: number
+} {
+  let c = RESOLUTION_COUNTERS.get(caches)
+  if (!c) {
+    c = { resolutionHits: 0, resolutionMisses: 0 }
+    RESOLUTION_COUNTERS.set(caches, c)
+  }
+  return c
+}
+
 /** Resolution through the per-env cache; returns the canonical id of the target (or null). */
 export async function resolveCached(
   caches: CompilerCaches,
@@ -340,20 +373,26 @@ export async function resolveCached(
     caches.resolutions.set(env, m)
   }
   const k = `${importerCanonicalId}\u0000${specifier}`
+  const counters = resolutionCounters(caches)
   if (m.has(k)) {
+    counters.resolutionHits++
     return m.get(k)!
+  }
+  counters.resolutionMisses++
+  const remember = (id: string | null): string | null => {
+    // `TSR_COMPILER_NO_CACHE=resolutions`: every resolution asks the host (measurement knob)
+    if (!cacheDisabled('resolutions')) {
+      m.set(k, id)
+    }
+    return id
   }
   if (caches.rawFacts.isKnownSpecifier(specifier)) {
     // D4: known packages are recognised by specifier, never resolved
-    m.set(k, specifier)
-    return specifier
+    return remember(specifier)
   }
   if (!isAnalyzableSpecifier(specifier)) {
-    m.set(k, null)
-    return null
+    return remember(null)
   }
   const r = await host.resolve(specifier, importerCanonicalId)
-  const id = r && !r.external ? identify(r.id).canonicalId : null
-  m.set(k, id)
-  return id
+  return remember(r && !r.external ? identify(r.id).canonicalId : null)
 }
