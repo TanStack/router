@@ -276,7 +276,8 @@ export const getRouter = () => ({ routeTree })
           start: {
             importProtection: {
               behavior: 'mock',
-              onViolation: (info: ViolationInfo) => {
+              onViolation: (violation: unknown) => {
+                const info = violation as ViolationInfo
                 snapshots.push({ ...info, trace: [...info.trace] })
               },
             },
