@@ -1,7 +1,9 @@
+import { promises as fs } from 'node:fs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { prerenderWithVite } from '../src/vite/prerender'
 
-const preview = vi.hoisted(() => vi.fn())
+const startPrerenderPreview = vi.hoisted(() => vi.fn())
+const closePreview = vi.hoisted(() => vi.fn())
 
 vi.mock('../src/utils', async () => {
   const actual = await vi.importActual<any>('../src/utils')
@@ -10,18 +12,7 @@ vi.mock('../src/utils', async () => {
     createLogger: () => ({ info: () => {}, warn: () => {}, error: () => {} }),
   }
 })
-vi.mock('vite', () => ({ preview }))
-
-const originalPrerendering = process.env.TSS_PRERENDERING
-const originalClientOutputDir = process.env.TSS_CLIENT_OUTPUT_DIR
-
-function restoreEnv(name: string, value: string | undefined) {
-  if (value === undefined) {
-    delete process.env[name]
-  } else {
-    process.env[name] = value
-  }
-}
+vi.mock('../src/vite/prerender-preview', () => ({ startPrerenderPreview }))
 
 function makeStartConfig() {
   return {
@@ -45,18 +36,27 @@ function makeStartConfig() {
   } as any
 }
 
+function makeBuilder() {
+  return {
+    environments: {
+      ssr: { config: { configFile: '/vite.config.ts' } },
+      client: { config: { build: { outDir: '/client' } } },
+    },
+  } as any
+}
+
 describe('Vite prerender network sink', () => {
   beforeEach(() => {
-    preview.mockReset().mockResolvedValue({
-      resolvedUrls: { local: ['http://127.0.0.1:4173/'] },
-      close: vi.fn(),
+    closePreview.mockReset()
+    startPrerenderPreview.mockReset().mockResolvedValue({
+      baseUrl: new URL('http://127.0.0.1:4173/'),
+      close: closePreview,
     })
   })
 
   afterEach(() => {
-    restoreEnv('TSS_PRERENDERING', originalPrerendering)
-    restoreEnv('TSS_CLIENT_OUTPUT_DIR', originalClientOutputDir)
     vi.unstubAllGlobals()
+    vi.restoreAllMocks()
   })
 
   it('does not fetch a raw redirect outside the preview origin', async () => {
@@ -68,14 +68,10 @@ describe('Vite prerender network sink', () => {
         }),
     )
     vi.stubGlobal('fetch', fetch)
-    const builder = {
-      environments: {
-        ssr: { config: { configFile: '/vite.config.ts' } },
-        client: { config: { build: { outDir: '/client' } } },
-      },
-    } as any
-
-    await prerenderWithVite({ startConfig: makeStartConfig(), builder })
+    await prerenderWithVite({
+      startConfig: makeStartConfig(),
+      builder: makeBuilder(),
+    })
 
     expect(fetch).toHaveBeenCalledOnce()
     const request = fetch.mock.calls[0]![0]
@@ -99,14 +95,10 @@ describe('Vite prerender network sink', () => {
       }),
     )
     vi.stubGlobal('fetch', fetch)
-    const builder = {
-      environments: {
-        ssr: { config: { configFile: '/vite.config.ts' } },
-        client: { config: { build: { outDir: '/client' } } },
-      },
-    } as any
-
-    await prerenderWithVite({ startConfig: makeStartConfig(), builder })
+    await prerenderWithVite({
+      startConfig: makeStartConfig(),
+      builder: makeBuilder(),
+    })
 
     expect(fetch).toHaveBeenCalledTimes(2)
     const requests = fetch.mock.calls.map(([request]) => {
@@ -121,5 +113,48 @@ describe('Vite prerender network sink', () => {
       'http://127.0.0.1:4173/about/',
       'http://127.0.0.1:4173/next/?from=about',
     ])
+  })
+
+  it('closes the preview after the output and onSuccess finish', async () => {
+    vi.spyOn(fs, 'mkdir').mockResolvedValue(undefined)
+    const writeFile = vi.spyOn(fs, 'writeFile').mockResolvedValue(undefined)
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('<html>page</html>')),
+    )
+    let finishSuccess!: () => void
+    const success = new Promise<void>((resolve) => {
+      finishSuccess = resolve
+    })
+    const onSuccess = vi.fn(() => success)
+    const startConfig = makeStartConfig()
+    startConfig.prerender.onSuccess = onSuccess
+
+    const rendering = prerenderWithVite({ startConfig, builder: makeBuilder() })
+    await vi.waitFor(() => expect(onSuccess).toHaveBeenCalledOnce())
+
+    expect(writeFile).toHaveBeenCalledOnce()
+    expect(closePreview).not.toHaveBeenCalled()
+    finishSuccess()
+    await rendering
+    expect(closePreview).toHaveBeenCalledOnce()
+  })
+
+  it('closes the preview if initial page validation fails', async () => {
+    const startConfig = makeStartConfig()
+    startConfig.pages = [{ path: 'https://outside.test/' }]
+
+    await expect(
+      prerenderWithVite({ startConfig, builder: makeBuilder() }),
+    ).rejects.toThrow(/prerender page path must be relative/i)
+    expect(closePreview).toHaveBeenCalledOnce()
+  })
+
+  it('closes the preview when a failed page is skipped', async () => {
+    const error = new Error('Failed to request page')
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(error))
+    const startConfig = makeStartConfig()
+    await prerenderWithVite({ startConfig, builder: makeBuilder() })
+    expect(closePreview).toHaveBeenCalledOnce()
   })
 })
