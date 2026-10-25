@@ -4,18 +4,16 @@
  */
 import { routeCssSuite } from './route-css-cases'
 
-// Bug: the code splitter keeps the bare CSS import in the route module,
-// which the route tree imports eagerly, so the CSS is in the entry's CSS
-// (see known-bugs-route-css.test.ts).
-// Source: #4396; src/core/code-splitter/compilers.ts (router-plugin).
+// The CSS import moves with a split component's chunk (`shows-component`,
+// `shows-error`, `shows-not-found` pass).
+// Bug: with no split component to carry it (a pending component, which the
+// default groupings do not split, or no component), the code splitter keeps
+// the bare CSS import in the route module, which the route tree imports
+// eagerly, so the CSS is in the entry's CSS (see
+// known-bugs-route-css.test.ts).
+// Source: #4396.
 // Impact: a route's styles apply on every page of the app.
-const routeModuleCss = [
-  'shows-component',
-  'shows-error',
-  'shows-not-found',
-  'shows-pending',
-  'shows-nothing',
-]
+const routeModuleCss = ['shows-pending', 'shows-nothing']
 
 // Bug: Start's Rsbuild client manifest counts a chunk as available to a
 // chunk when any one of its chunk groups has it, not every one: the chunk
