@@ -178,7 +178,7 @@ Now let's create a new component `JokesList` to render the jokes on the page wit
 
 ```tsx
 // src/components/JokesList.tsx
-import { Joke } from '../types'
+import type { Joke } from '../types'
 
 interface JokesListProps {
   jokes: Joke[]
@@ -211,8 +211,8 @@ Now let's call our server function inside `index.tsx` using TanStack Router whic
 ```jsx
 // src/routes/index.tsx
 import { createFileRoute } from '@tanstack/react-router'
-import { getJokes } from './serverActions/jokesActions'
-import { JokesList } from './JokesList'
+import { getJokes } from '../serverActions/jokesActions'
+import { JokesList } from '../components/JokesList'
 
 export const Route = createFileRoute('/')({
   loader: async () => {
