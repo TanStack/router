@@ -1116,6 +1116,9 @@ function cleanOrphanedLocals(
     let changed = false
     // object pattern properties pruned this round, removed together per pattern
     const prunedProps = new Map<Node, Set<Node>>()
+    // declarators of multi-declarator statements pruned this round, removed
+    // together per statement (R17: one edit per statement from the final set)
+    const prunedDecls = new Map<Node, Set<Node>>()
     for (const b of file.bindings) {
       if (handled.has(b.id) || b.import) {
         continue
@@ -1174,7 +1177,6 @@ function cleanOrphanedLocals(
         const pure =
           parent.init === null ||
           isPureExpression(ctx.analysis.purity, parent.init)
-        const declIndex = statement.declarations.indexOf(parent)
         handled.add(b.id)
         changed = true
         if (statement.declarations.length === 1) {
@@ -1225,17 +1227,12 @@ function cleanOrphanedLocals(
           changed = false
           continue
         }
-        const prev = statement.declarations[declIndex - 1]
-        const next = statement.declarations[declIndex + 1]
-        rewrites.add({
-          range: next
-            ? { start: parent.start, end: next.start }
-            : { start: prev!.end, end: parent.end },
-          body: [],
-          scope,
-          by,
-          reason: 'orphaned local declarator',
-        })
+        let set = prunedDecls.get(statement)
+        if (!set) {
+          set = new Set()
+          prunedDecls.set(statement, set)
+        }
+        set.add(parent)
         continue
       }
       if (
@@ -1271,9 +1268,87 @@ function cleanOrphanedLocals(
     for (const [pattern, props] of prunedProps) {
       removePatternProperties(ctx, pattern, props, live, scope, by)
     }
+    for (const [statement, decls] of prunedDecls) {
+      removeDeclarators(ctx, statement, decls, live, scope, by)
+    }
     if (!changed) {
       break
     }
+  }
+}
+
+/**
+ * Removes the declarators `pruned` of a multi-declarator statement (R17: the
+ * removals of one statement are computed from its final kept set): when
+ * every declarator is gone (pruned now, or erased by an earlier round) the
+ * statement goes with its line; otherwise each run of gone declarators is
+ * one range with the separator to its next kept declarator (or from its
+ * previous one), so removals of neighbours never partially overlap, and a
+ * later round's run encloses the earlier one it grew from.
+ */
+function removeDeclarators(
+  ctx: PlanContext,
+  statement: Node,
+  pruned: ReadonlySet<Node>,
+  live: ReturnType<PlanContext['liveness']>,
+  scope: EditScope,
+  by: string,
+): void {
+  if (statement.type !== 'VariableDeclaration') {
+    return
+  }
+  const code = ctx.analysis.source.code
+  const decls = statement.declarations as ReadonlyArray<Node>
+  const gone = (d: Node) => pruned.has(d) || live.isErased(rangeOf(d))
+  if (decls.every(gone)) {
+    const stmtParent = ctx.analysis.file.parentOf(statement)
+    const asStatement =
+      stmtParent !== null &&
+      (stmtParent.type === 'BlockStatement' ||
+        stmtParent.type === 'Program' ||
+        stmtParent.type === 'SwitchCase' ||
+        stmtParent.type === 'StaticBlock')
+    if (asStatement) {
+      ctx.rewrites.add({
+        range: {
+          start: statement.start,
+          end: extendOverTrailingLine(code, statement.end),
+        },
+        body: [],
+        scope,
+        by,
+        reason: 'orphaned local declaration',
+      })
+      return
+    }
+  }
+  // a declaration that is no statement (`for (const a = 1, b = 2;;)`) keeps
+  // its last declarator so the syntax stays
+  const last = decls[decls.length - 1]!
+  const keepLast = decls.every(gone)
+  const isGone = (d: Node) => gone(d) && !(keepLast && d === last)
+  for (let i = 0; i < decls.length; i++) {
+    if (!isGone(decls[i]!)) {
+      continue
+    }
+    let j = i
+    while (j + 1 < decls.length && isGone(decls[j + 1]!)) {
+      j++
+    }
+    if (decls.slice(i, j + 1).some((d) => pruned.has(d))) {
+      const next = decls[j + 1]
+      const prev = decls[i - 1]
+      ctx.rewrites.add({
+        range: next
+          ? { start: decls[i]!.start, end: next.start }
+          : { start: prev!.end, end: decls[j]!.end },
+        body: [],
+        scope,
+        by,
+        reason: 'orphaned local declarator',
+      })
+    }
+    i = j
   }
 }
 
