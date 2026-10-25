@@ -190,6 +190,34 @@ describe('deleted options', () => {
     expect(modules.reference).not.toContain('handlers')
     expectNoProblems(await route.diagnostics())
   })
+
+  // SPEC G16 through destructuring: a binding only the deleted option read
+  // leaves its pattern, and the module only its default reads is not
+  // requested; the binding the loader reads stays (loaders stay in the
+  // route module under the default groupings).
+  it('take with them a destructured binding only they read', async () => {
+    const route = await loadRoute(
+      `${head}import { secret } from './secret'
+const config: Record<string, string | undefined> = { label: 'page' }
+const { token = secret(), label } = config
+export const Route = createFileRoute('/')({
+  server: {
+    handlers: {
+      GET: () => new Response(String(token)),
+    },
+  },
+  loader: () => label,
+})
+`,
+      {
+        deleteNodes: ['server'],
+        files: { 'secret.ts': `export const secret = () => 'secret'\n` },
+      },
+    )
+    await expectValidModules(route)
+    expect(await route.run('return options.loader()')).toBe('page')
+    expect(await route.requested()).not.toContain('/secret.ts')
+  })
 })
 
 describe('route options given by reference', () => {

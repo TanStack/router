@@ -229,6 +229,30 @@ describe('function-local declarations only the removed code read', () => {
   return run()`,
       expected: 3,
     },
+    // An impure initialiser stays for its effects, as an expression: one
+    // that cannot start a statement (an object literal, a function or class
+    // expression) still parses.
+    {
+      name: 'an impure object literal',
+      body: `const options = { label: String(1), size: 2 }
+  const run = createServerOnlyFn(() => options.size)
+  return run()`,
+      expected: 2,
+    },
+    {
+      name: 'an impure function expression',
+      body: `const value = function () { return 3 }()
+  const run = createServerOnlyFn(() => value)
+  return run()`,
+      expected: 3,
+    },
+    {
+      name: 'an impure class expression',
+      body: `const Box = class { static value = String(4) }
+  const run = createServerOnlyFn(() => Box.value)
+  return run()`,
+      expected: '4',
+    },
   ])('$name', async ({ body, expected }) => {
     const served = await serveCase(await host(), {
       'module.tsx': `import { createServerOnlyFn } from '@tanstack/react-start'
@@ -241,5 +265,76 @@ export function fn() {
       await settled(served, 'client'),
       await settled(served, 'ssr'),
     ]).toEqual([throwsError, expected])
+  })
+})
+
+// A destructured binding only the removed code read goes with it, beside
+// bindings of the same pattern kept code reads (SPEC G16 "destructuring",
+// J4.12), however the pattern holds it: a rest element only the removed
+// code read goes too, so a sibling whose default reads the module only the
+// removed code needs can go; an array element leaves a hole, so the
+// iterator is still stepped as often as the source steps it (G3).
+describe('destructured bindings only the removed code read', () => {
+  test('an object pattern with a rest element', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `import { createServerOnlyFn } from '@tanstack/react-start'
+import { dep } from './dep.server'
+const source: Record<string, string | undefined> = { kept: 'kept', extra: 'extra' }
+const { picked = dep.value, kept, ...others } = source
+export const keptValue = kept
+export const fn = createServerOnlyFn(() => [picked, others.extra])
+`,
+      'dep.server.ts': depSource,
+    })
+    expect([
+      await settled(served, 'client'),
+      await settled(served, 'ssr'),
+    ]).toEqual([throwsError, ['dep', 'extra']])
+    expect(await read(served, 'client', 'module.keptValue')).toBe('kept')
+    expectNotLoaded(await served.loads(), ['./dep.server'])
+  })
+
+  test('a function-level pattern whose every binding the removed code read', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `import { createServerOnlyFn } from '@tanstack/react-start'
+import { dep } from './dep.server'
+export function fn() {
+  const { value, ...rest } = dep
+  const run = createServerOnlyFn(() => [value, Object.keys(rest).length])
+  return run()
+}
+`,
+      'dep.server.ts': depSource,
+    })
+    expect([
+      await settled(served, 'client'),
+      await settled(served, 'ssr'),
+    ]).toEqual([throwsError, ['dep', 0]])
+    expectNotLoaded(await served.loads(), ['./dep.server'])
+  })
+
+  test('an array pattern reading an iterator', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `import { createServerOnlyFn } from '@tanstack/react-start'
+export const steps: Array<number> = []
+function* sequence() {
+  steps.push(1)
+  yield 'kept'
+  steps.push(2)
+  yield 'dropped'
+  steps.push(3)
+}
+const [kept, dropped] = sequence()
+export const keptValue = kept
+export const fn = createServerOnlyFn(() => dropped)
+`,
+    })
+    expect([
+      await settled(served, 'client'),
+      await settled(served, 'ssr'),
+    ]).toEqual([throwsError, 'dropped'])
+    expect(
+      await read(served, 'client', '[module.keptValue, module.steps]'),
+    ).toEqual(['kept', [1, 2]])
   })
 })

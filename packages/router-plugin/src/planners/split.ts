@@ -10,7 +10,10 @@
  * properties in the env output only; route CSS moves into the chunks when
  * every component option is split (R42).
  */
-import { stringLiteral } from '@tanstack/router-utils/compiler'
+import {
+  cleanOrphanedDeclarations,
+  stringLiteral,
+} from '@tanstack/router-utils/compiler'
 import {
   identifierSymbol,
   pascal,
@@ -164,6 +167,8 @@ export function routeSplitPlanner(): Planner {
           })
           i = j + 1
         }
+        // destructured bindings only the deleted options read (G16)
+        cleanOrphanedDeclarations(ctx, ['env'], ROUTE_SPLIT)
       }
 
       const facts: SplitFacts = {
