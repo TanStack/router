@@ -944,11 +944,9 @@ export const Route = createFileRoute('/')({ component: Page })
   // workaround here).
   // Source: review.
   // Impact: the route module fails to compile (the dev server answers 500).
-  test.fails(
-    'a JSX element read as an object keeps its parentheses in the route module',
-    async () => {
-      const route =
-        await loadRoute(`${head}function Tag(props: { label: string }) {
+  test('a JSX element read as an object keeps its parentheses in the route module', async () => {
+    const route =
+      await loadRoute(`${head}function Tag(props: { label: string }) {
   return <p>{props.label}</p>
 }
 export const Route = createFileRoute('/')({
@@ -956,10 +954,9 @@ export const Route = createFileRoute('/')({
   component: () => <p>page</p>,
 })
 `)
-      await expectValidModules(route)
-      expect(await route.run(`return options.loader()`)).toBe('kept')
-    },
-  )
+    await expectValidModules(route)
+    expect(await route.run(`return options.loader()`)).toBe('kept')
+  })
 
   /**
    * Loads a route whose split component returns `expression`, checks that

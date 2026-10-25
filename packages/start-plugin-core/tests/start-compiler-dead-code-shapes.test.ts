@@ -145,67 +145,51 @@ export const fn = createIsomorphicFn().server(() => 'server').client(() => ${roo
   },
 ]
 
-/**
- * Cells main gets wrong (KNOWN-BUGS S7): the module keeps the class of a
- * class and const cycle only the removed code used, and drops the const its
- * static field reads (`ReferenceError` when the module loads, in the
- * environment the code left).
- */
-const failsToday = new Set(
-  removals.map(
-    (removal) => `${removal.name}: a class and a const that read each other`,
-  ),
-)
-
 describe.each(removals)('$name', (removal) => {
   // The module only the removed code needs is a `*.server.*` file where
   // server code leaves the client, and a neutral module where client code
   // leaves the server (J4.11: dropped whatever the file's name).
   const dep = removal.removedFrom === 'client' ? 'dep.server' : 'dep'
   for (const shape of deadCodeShapes) {
-    test(
-      `takes with it what only it uses through ${shape.name}`,
-      { fails: failsToday.has(`${removal.name}: ${shape.name}`) },
-      async () => {
-        const kept = shape.kept
-          ? `\nexport const kept = () => ${shape.kept.expression}
+    test(`takes with it what only it uses through ${shape.name}`, async () => {
+      const kept = shape.kept
+        ? `\nexport const kept = () => ${shape.kept.expression}
 export { ${shape.kept.binding} as aliased }`
-          : ''
-        const served = await serveCase(await host(), {
-          'module.tsx': `${shapeSetup(shape, `./${dep}`)}
+        : ''
+      const served = await serveCase(await host(), {
+        'module.tsx': `${shapeSetup(shape, `./${dep}`)}
 ${removal.code(shape.root)}${kept}`,
-          [`${dep}.ts`]: depSource,
-          ...recordFile,
-        })
-        await removal.check(served, shape.expected)
-        if (shape.kept) {
-          expect(
-            await read(
-              served,
-              removal.removedFrom,
-              '[module.kept(), module.aliased()]',
-            ),
-          ).toEqual([shape.kept.expected, 'dep'])
-        } else {
-          expectNotLoaded(
-            removal.removedFrom === 'client'
-              ? await served.loads()
-              : await served.serverLoads(),
-            [`./${dep}`],
-          )
-        }
-        if (shape.alreadyDead) {
-          expect(
-            removal.removedFrom === 'client'
-              ? await read(
-                  served,
-                  'client',
-                  `[...(await load('record.ts')).calls]`,
-                )
-              : (await served.ssr('record.ts')).calls,
-          ).toContain('dead')
-        }
-      },
-    )
+        [`${dep}.ts`]: depSource,
+        ...recordFile,
+      })
+      await removal.check(served, shape.expected)
+      if (shape.kept) {
+        expect(
+          await read(
+            served,
+            removal.removedFrom,
+            '[module.kept(), module.aliased()]',
+          ),
+        ).toEqual([shape.kept.expected, 'dep'])
+      } else {
+        expectNotLoaded(
+          removal.removedFrom === 'client'
+            ? await served.loads()
+            : await served.serverLoads(),
+          [`./${dep}`],
+        )
+      }
+      if (shape.alreadyDead) {
+        expect(
+          removal.removedFrom === 'client'
+            ? await read(
+                served,
+                'client',
+                `[...(await load('record.ts')).calls]`,
+              )
+            : (await served.ssr('record.ts')).calls,
+        ).toContain('dead')
+      }
+    })
   }
 })

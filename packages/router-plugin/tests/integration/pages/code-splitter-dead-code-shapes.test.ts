@@ -55,54 +55,40 @@ component: () => <p>page</p>,`,
   },
 ]
 
-/**
- * Cells main gets wrong (KNOWN-BUGS S7): the route module keeps the class of
- * a class and const cycle only the removed option used, and drops the const
- * its static field reads (`ReferenceError` when the route module loads).
- */
-const failsToday = new Set([
-  'a split component: a class and a const that read each other',
-  'server handlers deleteNodes removes: a class and a const that read each other',
-])
-
 describe.each(removals)('$name', (removal) => {
   for (const shape of deadCodeShapes) {
-    it(
-      `takes with it what only it uses through ${shape.name}`,
-      { fails: failsToday.has(`${removal.name}: ${shape.name}`) },
-      async () => {
-        // A kept loader reads the shared declaration (loaders stay in the
-        // route module under the default groupings).
-        const loader = shape.kept
-          ? `loader: () => ${shape.kept.expression},\n`
-          : ''
-        const route = await loadRoute(
-          `${head}${shapeSetup(shape, './dep')}
+    it(`takes with it what only it uses through ${shape.name}`, async () => {
+      // A kept loader reads the shared declaration (loaders stay in the
+      // route module under the default groupings).
+      const loader = shape.kept
+        ? `loader: () => ${shape.kept.expression},\n`
+        : ''
+      const route = await loadRoute(
+        `${head}${shapeSetup(shape, './dep')}
 export const Route = createFileRoute('/')({
 ${loader}${removal.options(shape.root)}
 })
 `,
-          {
-            ...removal.routeOptions,
-            files: { 'dep.ts': depSource, ...recordFile },
-          },
+        {
+          ...removal.routeOptions,
+          files: { 'dep.ts': depSource, ...recordFile },
+        },
+      )
+      await expectValidModules(route)
+      const { script, expected } = removal.check(shape.expected)
+      expect(await route.run(script)).toEqual(expected)
+      if (shape.kept) {
+        expect(await route.run(`return options.loader()`)).toEqual(
+          shape.kept.expected,
         )
-        await expectValidModules(route)
-        const { script, expected } = removal.check(shape.expected)
-        expect(await route.run(script)).toEqual(expected)
-        if (shape.kept) {
-          expect(await route.run(`return options.loader()`)).toEqual(
-            shape.kept.expected,
-          )
-        } else {
-          expect(await route.requested()).not.toContain('/dep.ts')
-        }
-        if (shape.alreadyDead) {
-          expect(
-            await route.run(`return [...(await app('record.ts')).calls]`),
-          ).toContain('dead')
-        }
-      },
-    )
+      } else {
+        expect(await route.requested()).not.toContain('/dep.ts')
+      }
+      if (shape.alreadyDead) {
+        expect(
+          await route.run(`return [...(await app('record.ts')).calls]`),
+        ).toContain('dead')
+      }
+    })
   }
 })

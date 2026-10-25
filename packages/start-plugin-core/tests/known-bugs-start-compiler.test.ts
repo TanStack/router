@@ -1618,16 +1618,13 @@ export const draw = createClientOnlyFn(() => chart.draw())`
   // code; a browser-only package that reads `window` when it loads crashes
   // SSR (Vite dev and build, Rsbuild build).
   // Source: review (dead-code investigation, server direction).
-  test.fails(
-    'ssr: a class only a client-only fn uses does not load its client-only import',
-    async () => {
-      const startCase =
-        await erasedCase(`import { createClientOnlyFn } from '@tanstack/react-start'
+  test('ssr: a class only a client-only fn uses does not load its client-only import', async () => {
+    const startCase =
+      await erasedCase(`import { createClientOnlyFn } from '@tanstack/react-start'
 import { createChart } from './chart.client'
 class Chart { draw() { return createChart().draw() } }
 export const draw = createClientOnlyFn(() => new Chart().draw())`)
-      expectNotLoaded(await startCase.serverLoads(), ['./chart.client'])
-      expect(await inPage(startCase, 'return module.draw()')).toBe('drawn')
-    },
-  )
+    expectNotLoaded(await startCase.serverLoads(), ['./chart.client'])
+    expect(await inPage(startCase, 'return module.draw()')).toBe('drawn')
+  })
 })
