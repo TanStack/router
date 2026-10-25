@@ -493,4 +493,92 @@ export const routes = rootRoute('__root.tsx', [route('${routePath}', 'posts.tsx'
       '/articles': 'routes/posts.tsx',
     })
   })
+
+  // Bug: a route file whose route the config moves (its content unchanged)
+  // keeps its old id: the file is skipped as unchanged although the id it
+  // must pass is not the one it was kept up for, while the route tree, its
+  // types and the registry already use the new id.
+  // Source: src/generator.ts `updateFile()` (the stamp and content early
+  // returns did not compare the route the file was analysed for).
+  // Impact: in dev, `FileRoutesByPath` and the file disagree after a virtual
+  // route config edit until the file is touched or the server restarts.
+  describe('a route file whose route the config moves without a content change gets its new id', () => {
+    test('route() path in the virtualRouteConfig file', async () => {
+      const routes = (routePath: string) =>
+        `import { rootRoute, route } from '@tanstack/virtual-file-routes'
+
+export const routes = rootRoute('__root.tsx', [route('${routePath}', 'posts.tsx')])
+`
+      const root = await createApp({
+        'routes.ts': routes('/posts'),
+        'src/routes/__root.tsx': rootRoute(),
+        'src/routes/posts.tsx': fileRoute('/posts'),
+      })
+      const { generator } = await startGenerator(root, {
+        virtualRouteConfig: './routes.ts',
+      })
+
+      const configFile = await save(root, 'routes.ts', routes('/articles'))
+      await generator.run({ type: 'update', path: configFile })
+
+      expect(await routeIdOf(await read(root, 'src/routes/posts.tsx'))).toBe(
+        '/articles',
+      )
+    })
+
+    test('physical() prefix in the virtualRouteConfig file', async () => {
+      const routes = (prefix: string) =>
+        `import { rootRoute, physical } from '@tanstack/virtual-file-routes'
+
+export const routes = rootRoute('__root.tsx', [physical('${prefix}', 'v')])
+`
+      const root = await createApp({
+        'routes.ts': routes('/v1'),
+        'src/routes/__root.tsx': rootRoute(),
+        'src/routes/v/users.tsx': fileRoute('/v1/users'),
+      })
+      const { generator } = await startGenerator(root, {
+        virtualRouteConfig: './routes.ts',
+      })
+
+      const configFile = await save(root, 'routes.ts', routes('/v2'))
+      await generator.run({ type: 'update', path: configFile })
+
+      expect(await routeIdOf(await read(root, 'src/routes/v/users.tsx'))).toBe(
+        '/v2/users',
+      )
+      expect(
+        [...generator.getRoutesByFileMap().values()].map((v) => v.routeId),
+      ).toContain('/v2/users')
+    })
+
+    test('route() path in a __virtual.ts subtree config', async () => {
+      const subtree = (routePath: string) =>
+        `import { route } from '@tanstack/virtual-file-routes'
+
+export default [route('${routePath}', 'x.tsx')]
+`
+      const root = await createApp({
+        'src/routes/__root.tsx': rootRoute(),
+        'src/routes/sub/__virtual.ts': subtree('/a'),
+        'src/routes/sub/x.tsx': fileRoute('/sub/a'),
+      })
+      const { config, generator } = await startGenerator(root)
+
+      const subtreeFile = await save(
+        root,
+        'src/routes/sub/__virtual.ts',
+        subtree('/b'),
+      )
+      await generator.run({ type: 'update', path: subtreeFile })
+
+      expect(await routesOf(config.generatedRouteTree)).toEqual({
+        __root__: 'routes/__root.tsx',
+        '/sub/b': 'routes/sub/x.tsx',
+      })
+      expect(await routeIdOf(await read(root, 'src/routes/sub/x.tsx'))).toBe(
+        '/sub/b',
+      )
+    })
+  })
 })

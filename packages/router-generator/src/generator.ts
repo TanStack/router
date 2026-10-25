@@ -54,6 +54,16 @@ interface FileState {
   readonly content: string
   readonly stamp?: FileStamp
   readonly facts: FileFacts
+  /**
+   * The route the file was kept up for (`roleOf`): a file is analysed again
+   * when the scan gives it another route, its content unchanged (SPEC J1.1).
+   */
+  readonly role: string
+}
+
+/** What a file's analysis depends on besides its content. */
+function roleOf(node: RouteNode, isRoot: boolean) {
+  return `${isRoot ? 'root' : node._fsRouteType}:${node.routePath ?? ''}`
 }
 
 async function stampOf(file: string): Promise<FileStamp | null> {
@@ -491,7 +501,9 @@ export class Generator {
   ) {
     const key = node.fullPath
     const file = node.fullPath
-    const previous = this.files.get(key)
+    const role = roleOf(node, isRoot)
+    const known = this.files.get(key)
+    const previous = known?.role === role ? known : undefined
     // (stamped before the read: a change after it shows in the next stamp)
     const stamp = await stampOf(file)
     if (
@@ -507,7 +519,7 @@ export class Generator {
       if (isRoot) {
         throw new Error(`⚠️ expected root route to exist at ${file}`)
       }
-      this.files.set(key, { content: '', facts: { included: false } })
+      this.files.set(key, { content: '', facts: { included: false }, role })
       return
     }
     if (previous && previous.content === content) {
@@ -515,9 +527,10 @@ export class Generator {
       return
     }
     try {
-      const state = await this.factsOf(node, isRoot, content, previous)
+      const state = await this.factsOf(node, isRoot, content, known)
       this.files.set(key, {
         ...state,
+        role,
         // (rewritten by the generator: the stamp of what it wrote)
         stamp:
           (state.content === content ? stamp : await stampOf(file)) ??
@@ -538,7 +551,7 @@ export class Generator {
     isRoot: boolean,
     content: string,
     previous: FileState | undefined,
-  ): Promise<FileState> {
+  ): Promise<Omit<FileState, 'role'>> {
     const file = node.fullPath
     const isVue = file.endsWith('.vue')
     const isPiece = pieceTypes.includes(node._fsRouteType)
