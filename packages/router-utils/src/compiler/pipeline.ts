@@ -49,6 +49,7 @@ export function createCompilerCaches(
   const caches: CompilerCaches = {
     plans: new Map(),
     rawFacts,
+    fileSetVersion: 0,
   }
   registerCompilerStats(label, caches, (c) => {
     const withBytes = process.env.TSR_COMPILER_STATS_BYTES !== '0'
@@ -111,14 +112,21 @@ export async function compileModule(
     const hit = cache.lookup(key, rev)
     if (hit) {
       const src = fingerprintSourceFor(caches, host, input.config.configKey)
+      // resolutions validated at the current file-set version stand (R54: no resolution cache, no re-asking either)
+      const fileSetVersion = caches.fileSetVersion
+      const resolutionsCurrent = hit.resolvedAt === fileSetVersion
       let valid = true
       for (const fp of hit.plan.dependencies) {
+        if (resolutionsCurrent && fp.kind === 'resolution') {
+          continue
+        }
         if (!(await fingerprintCurrent(fp, src))) {
           valid = false
           break
         }
       }
       if (valid && cache.lookup(key, rev) === hit) {
+        hit.resolvedAt = fileSetVersion
         cache.counters.planHits++
         return emitFrom(hit, requested, input, caches)
       }
@@ -143,6 +151,7 @@ export async function compileModule(
         CompileOutput | null | typeof RETRY
       > => {
         const generation = cache.generation(key)
+        const fileSetVersion = caches.fileSetVersion
         const ledger = new DependencyLedger(key, generation, cache.dependents)
         const promise = runAttempt(
           input,
@@ -190,17 +199,32 @@ export async function compileModule(
           deps: plan.dependencies,
         })
         const src = fingerprintSourceFor(caches, host, input.config.configKey)
-        const snapshotOk = await ledger.validateSnapshot(src)
+        const snapshotOk = await ledger.validateSnapshot(
+          src,
+          caches.fileSetVersion === fileSetVersion,
+        )
         if (!snapshotOk || cache.generation(key) !== generation) {
           ledger.discard()
           if (cache.latestRevision(key) !== rev) {
             // superseded by a newer save: this text is stale; never publish, but answer this request
-            const entry: CacheEntry = { key, revision: rev, generation, plan }
+            const entry: CacheEntry = {
+              key,
+              revision: rev,
+              generation,
+              plan,
+              resolvedAt: fileSetVersion,
+            }
             return emitFrom(entry, requested, input, caches)
           }
           return RETRY
         }
-        const entry: CacheEntry = { key, revision: rev, generation, plan }
+        const entry: CacheEntry = {
+          key,
+          revision: rev,
+          generation,
+          plan,
+          resolvedAt: fileSetVersion,
+        }
         if (cache.set(entry)) {
           ledger.publish()
         } else {

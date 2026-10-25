@@ -275,11 +275,12 @@ export class StartRsbuildCompilerSession {
   private readonly missing = new Set<string>()
 
   /**
-   * Drops every missing-file fact (a watch compilation starts). Failed
-   * resolutions are not cached (R54): a plan's recorded failure is
-   * re-resolved by its validation on the next compile.
+   * Drops every missing-file fact and lets the compiles of the starting
+   * watch compilation re-resolve recorded resolutions once (the file set
+   * may have changed without an event: `fileSetVersion`).
    */
   forgetMisses(): void {
+    this.caches.fileSetVersion++
     for (const file of this.missing) {
       this.rawFacts.markStale(file)
     }

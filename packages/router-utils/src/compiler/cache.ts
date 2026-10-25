@@ -276,8 +276,19 @@ export class DependencyLedger {
     return fp && fp.kind === 'resolution' ? fp.resolved : undefined
   }
 
-  async validateSnapshot(src: FingerprintSource): Promise<boolean> {
+  /**
+   * Whether every recorded fact is still current. Resolutions are skipped
+   * when `fileSetCurrent` (no file appeared or disappeared since the
+   * attempt started: the resolver's answers stand).
+   */
+  async validateSnapshot(
+    src: FingerprintSource,
+    fileSetCurrent = false,
+  ): Promise<boolean> {
     for (const fp of this.entries) {
+      if (fileSetCurrent && fp.kind === 'resolution') {
+        continue
+      }
       if (!(await fingerprintCurrent(fp, src))) {
         return false
       }
@@ -312,6 +323,8 @@ export interface CacheEntry {
   revision: string
   generation: number
   plan: EmitPlan
+  /** The `fileSetVersion` the plan's resolutions were last validated at. */
+  resolvedAt: number
 }
 
 export interface InFlight {

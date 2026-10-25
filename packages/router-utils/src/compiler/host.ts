@@ -184,11 +184,20 @@ export interface Planner {
 /**
  * The caches of a compiler session: plans per environment and raw facts.
  * Resolutions are not cached (R54): a compile records each answer in its
- * ledger, and validation asks the environment's resolver again.
+ * ledger, and validation asks the environment's resolver again once the
+ * file set may have changed (`fileSetVersion`).
  */
 export interface CompilerCaches {
   plans: Map<string, PlanCache>
   rawFacts: RawFactsCache
+  /**
+   * Bumped when a file appeared or disappeared (`invalidate` add/unlink; a
+   * host that gets no such events for files nothing imports bumps it per
+   * watch compilation). A plan's recorded resolutions are current while
+   * the version they were validated at is the current one: nothing a
+   * resolver answers changes without a file appearing or disappearing.
+   */
+  fileSetVersion: number
 }
 
 export function planCacheFor(caches: CompilerCaches, env: string): PlanCache {
@@ -242,6 +251,9 @@ export async function invalidate(
     caches.rawFacts.forget(change.path)
   } else {
     caches.rawFacts.markStale(change.path)
+  }
+  if (change.kind === 'add' || change.kind === 'unlink') {
+    caches.fileSetVersion++
   }
   const revalidate = async (
     cache: PlanCache,

@@ -188,13 +188,28 @@ describe('resolution for analysis', () => {
     await host.compile('/app/page.tsx', planners)
     // a package specifier (not a known one here), a project module and a
     // bundler virtual module are asked; the builtins and the platform scheme
-    // never. Each is asked once to acquire and once by the attempt's snapshot
-    // validation (resolutions are not cached, R54)
+    // never. Each is asked once: the attempt's snapshot validation and later
+    // hits do not re-ask while no file appeared or disappeared
     const asked = ['toy-router', './service', 'virtual:served']
+    expect(host.resolveCalls.map((c) => c.specifier)).toEqual(asked)
+    host.resolveCalls.length = 0
+    await host.compile('/app/page.tsx', planners)
+    await host.compile('/app/page.tsx?tsr-split=component', planners)
+    expect(host.resolveCalls).toEqual([])
+    // a file appeared: the failed resolutions are re-asked by the event (R47),
+    // then the next validation of the plan asks the resolver again, once
+    host.write('/app/other.ts', 'export {}\n')
+    await invalidate(host.caches, { path: '/app/other.ts', kind: 'add' }, host)
     expect(host.resolveCalls.map((c) => c.specifier)).toEqual([
-      ...asked,
-      ...asked,
+      'toy-router',
+      'virtual:served',
     ])
+    host.resolveCalls.length = 0
+    await host.compile('/app/page.tsx', planners)
+    expect(host.resolveCalls.map((c) => c.specifier)).toEqual(asked)
+    host.resolveCalls.length = 0
+    await host.compile('/app/page.tsx?tsr-split=component', planners)
+    expect(host.resolveCalls).toEqual([])
   })
 })
 
