@@ -135,12 +135,21 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         // no resolver outside loaders: the invalidation re-resolves nothing
       }
 
-      // import-protection edge modules are virtual files of this environment
+      // import-protection edge modules are virtual files of this environment, written when
+      // they are defined (the importer's compile) or change state (a build veto); an importer
+      // restored from the persistent cache in a new process requests a module nothing
+      // defined: the request carries its content, which defines it before it resolves
       if (session.ip && ipEnv) {
-        session.ip.onEdgeModule((file, load, ref) => {
+        const ip = session.ip
+        ip.onEdgeModule((file, load, ref) => {
           if (ref.env === environment.name) {
             opts.writeVirtualModule(file, load.code)
           }
+        })
+        compiler.hooks.normalModuleFactory.tap(PLUGIN_NAME, (factory) => {
+          factory.hooks.beforeResolve.tap(PLUGIN_NAME, (data) => {
+            ip.define(data.request)
+          })
         })
       }
 
@@ -194,10 +203,6 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           // trace would abort the process): no graph until `finishModules`, when the
           // compilation's complete graph replaces it (traces built before use the edge index)
           ipEnv.graph = null
-          // every known edge module exists before the importers' dependencies resolve
-          for (const { specifier, load } of ipEnv.edgeModules()) {
-            opts.writeVirtualModule(specifier, load.code)
-          }
           if (session.opts.mode === 'dev') {
             if (!reporterInstalled) {
               reporterInstalled = true

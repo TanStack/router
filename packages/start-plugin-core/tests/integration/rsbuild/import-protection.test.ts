@@ -440,6 +440,112 @@ console.log(secret(), other)
   )
 })
 
+// Dev edits reclassify (SPEC J6.13): an edit that makes a module the
+// client already bundles a violation is reported and mocked, without an
+// edit of the importer when the violation comes from the target.
+// Source: upstream #8801 (Rsbuild dev import protection after edits).
+describe('Rsbuild dev: an edit that makes an import a violation', () => {
+  const marker = `import '@tanstack/react-start/server-only'\n`
+  /** `src/a.ts` uses `widget` of `src/b.ts`, which starts with `head`. */
+  const markedApp = (head: string) => ({
+    'src/b.ts': `${head}export const widget = () => 'MARK_B_CODE'\n`,
+    'src/a.ts': `import { widget } from './b'
+export const read = () => widget()
+`,
+    'src/entry.ts': `import { read } from './a'\nconsole.log(read())\n`,
+  })
+  /** The use of `widget` in `src/a.ts`, its import, or the marker. */
+  const markerViolation: ExpectedViolation = {
+    environment: 'client',
+    use: 'src/a.ts:2:27',
+    also: ['src/a.ts:1', 'src/b.ts:1'],
+  }
+  const clientCode = async (server: RsbuildDevServer) =>
+    Object.values(await server.outputs()).join('\n')
+
+  test(
+    'a new import of a .server file in a module the client bundles is reported and mocked',
+    async () => {
+      const recorder = violationRecorder()
+      const server = await startRsbuildDevServer({
+        compileTimeout,
+        importProtection: recorder.importProtection,
+        files: {
+          'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+          'src/a.ts': `export const read = () => 'MARK_A'\n`,
+          'src/entry.ts': `import { read } from './a'\nconsole.log(read())\n`,
+        },
+      })
+      expect(server.errors).toEqual([])
+      expect(recorder.violations).toEqual([])
+      const a = `import { secret } from './secret.server'
+export const read = () => secret()
+`
+      await server.edit({ 'src/a.ts': a })
+      expect(server.errors).toEqual([])
+      expect(
+        relevantViolations({ root: server.root, ...recorder }, [
+          {
+            environment: 'client',
+            use: locationIn('src/a.ts', a, 2, 'secret()'),
+            also: ['src/a.ts:1'],
+          },
+        ]),
+      ).toEqual([`client ${locationIn('src/a.ts', a, 2, 'secret()')}`])
+      expect(await clientCode(server)).not.toContain('MARK_SECRET')
+    },
+    timeout,
+  )
+
+  test(
+    'an edit that marks an imported module server-only, the importer unchanged, is reported and the importer gets the mock',
+    async () => {
+      const recorder = violationRecorder()
+      const server = await startRsbuildDevServer({
+        compileTimeout,
+        importProtection: recorder.importProtection,
+        files: markedApp(''),
+      })
+      expect(server.errors).toEqual([])
+      expect(recorder.violations).toEqual([])
+      expect(await clientCode(server)).toContain('MARK_B_CODE')
+      await server.edit({ 'src/b.ts': markedApp(marker)['src/b.ts'] })
+      expect(server.errors).toEqual([])
+      expect(
+        relevantViolations({ root: server.root, ...recorder }, [
+          markerViolation,
+        ]),
+      ).toEqual([violationLabel(markerViolation)])
+      expect(await clientCode(server)).not.toContain('MARK_B_CODE')
+    },
+    timeout,
+  )
+
+  test(
+    'an edit that removes the marker, the importer unchanged, gives the importer the module',
+    async () => {
+      const recorder = violationRecorder()
+      const server = await startRsbuildDevServer({
+        compileTimeout,
+        importProtection: recorder.importProtection,
+        files: markedApp(marker),
+      })
+      expect(
+        relevantViolations({ root: server.root, ...recorder }, [
+          markerViolation,
+        ]),
+      ).toEqual([violationLabel(markerViolation)])
+      expect(await clientCode(server)).not.toContain('MARK_B_CODE')
+      const since = recorder.violations.length
+      await server.edit({ 'src/b.ts': markedApp('')['src/b.ts'] })
+      expect(server.errors).toEqual([])
+      expect(recorder.violations.slice(since)).toEqual([])
+      expect(await clientCode(server)).toContain('MARK_B_CODE')
+    },
+    timeout,
+  )
+})
+
 // Rsbuild's `source.transformImport` rewrites a library's named imports
 // into imports of its submodules (`import { button } from 'ui-lib'` ->
 // `import { button } from 'ui-lib/button'`) before import protection sees
@@ -608,6 +714,104 @@ export const read = () => secret() + other
     },
   ])
 }, 60_000)
+
+// With `performance.buildCache`, a new `rsbuild build` restores the modules
+// it built before from Rspack's persistent cache without compiling them
+// again: their imports of the per-edge modules that stand in for denied
+// imports (DESIGN §3.14.3) must still resolve, and the build reports the
+// same violations, in every behaviour and after an `onViolation` veto
+// (the additional pass, R33).
+// Source: upstream #8798 (Rsbuild persistent cache: "Can't resolve" the
+// import-protection mock modules of restored importers).
+describe('Rsbuild build: restored from the persistent cache', () => {
+  const entry = `import { secret } from './secret.server'
+import { query } from './db'
+import './effect.server'
+export const read = () => [secret(), query()]
+`
+  const app = {
+    'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+    'src/db.ts': `import '@tanstack/react-start/server-only'
+export const query = () => 'MARK_DB'
+`,
+    'src/effect.server.ts': `;(globalThis as Record<string, unknown>).effect = 'MARK_EFFECT'\n`,
+    'src/entry.ts': entry,
+  }
+  const expected: Array<ExpectedViolation> = [
+    {
+      environment: 'client',
+      use: locationIn('src/entry.ts', entry, 4, 'secret()'),
+      also: ['src/entry.ts:1'],
+    },
+    {
+      environment: 'client',
+      use: locationIn('src/entry.ts', entry, 4, 'query()'),
+      also: ['src/entry.ts:2', 'src/db.ts:1'],
+    },
+    {
+      environment: 'client',
+      use: 'src/entry.ts:3',
+    },
+  ]
+  const cached = (importProtection: ImportProtectionOptions, builds = 1) =>
+    buildStart({
+      bundler: 'rsbuild',
+      builds,
+      rsbuildConfig: { performance: { buildCache: true } },
+      files: app,
+      entry: 'src/entry.ts',
+      start: { importProtection },
+    })
+  /** The build's errors that are not violations (a module that does not resolve). */
+  const unresolved = (diagnostics: Array<Diagnostic>) =>
+    diagnostics
+      .filter((d) => /Can't resolve|Module not found/i.test(d.text))
+      .map((d) => d.text)
+
+  test('error behaviour: the build fails on the same violations', async () => {
+    const error = await rejection(cached({}, 2))
+    expect(unresolved(error.diagnostics)).toEqual([])
+    expectViolationsAt(error, expected)
+  }, 120_000)
+
+  test('mock behaviour: the build succeeds with the same warnings and mocks', async () => {
+    const cold = await cached({ behavior: 'mock' })
+    const coldWarnings = cold.client.warnings.map((w) => w.text).sort()
+    const coldViolations = receivedViolations(cold.violations, cold.root)
+    const warm = await cold.rebuild()
+    expect(unresolved(warm.diagnostics)).toEqual([])
+    expectViolationsAt(warm, expected)
+    expect(receivedViolations(warm.violations, warm.root)).toEqual(
+      coldViolations,
+    )
+    expect(warm.client.warnings.map((w) => w.text).sort()).toEqual(coldWarnings)
+    expect(warm.client.where(/MARK_SECRET|MARK_DB|MARK_EFFECT/)).toBe('nowhere')
+  }, 120_000)
+
+  test('onViolation -> false: the build bundles the real modules again', async () => {
+    // (the harness lists no violation the app's `onViolation` allows)
+    let asked: Array<ViolationInfo> = []
+    const veto: ImportProtectionOptions = {
+      onViolation: (info) => {
+        asked.push(info as ViolationInfo)
+        return false
+      },
+    }
+    const askedOf = (root: string) =>
+      relevantViolations({ root, violations: asked }, expected).sort()
+    const cold = await cached(veto)
+    expect(askedOf(cold.root)).toEqual(expected.map(violationLabel).sort())
+    asked = []
+    const warm = await cold.rebuild()
+    expect(unresolved(warm.diagnostics)).toEqual([])
+    // asked again, and allowed: nothing printed
+    expect(askedOf(warm.root)).toEqual(expected.map(violationLabel).sort())
+    expect(warm.violations).toEqual([])
+    for (const mark of ['MARK_SECRET', 'MARK_DB', 'MARK_EFFECT']) {
+      expect(warm.client.where(new RegExp(mark))).not.toBe('nowhere')
+    }
+  }, 120_000)
+})
 
 // Source: mutation testing.
 test(

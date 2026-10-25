@@ -267,10 +267,7 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
           const content = await edgeModuleContent(plan, j, ctx)
           const key = edgeModuleKey(content)
           base.module = { key, content }
-          ctx.substitute(
-            j.edge.edgeKey,
-            ip.ids.specifier({ env: ctx.env.name, kind: 'edge', key }),
-          )
+          ctx.substitute(j.edge.edgeKey, ip.ids.request(key, content))
         }
         violations.push(base)
       }
