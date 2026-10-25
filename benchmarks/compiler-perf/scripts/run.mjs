@@ -83,7 +83,7 @@ const { values: args } = parseArgs({
     'leak-cycles': { type: 'string', default: '50' },
     'soak-cycles': { type: 'string', default: '500' },
     'soak-every': { type: 'string', default: '25' },
-    'soak-snapshots': { type: 'string', default: '100,500' },
+    'soak-snapshots': { type: 'string', default: '0,100,500' },
     'soak-bundlers': { type: 'string', default: 'vite' },
     'soak-modes': { type: 'string', default: 'real' },
     'soak-heap-dir': { type: 'string' },
@@ -111,7 +111,8 @@ if (args.help) {
   --leak-cycles <n>         HMR edit+revert cycles in the leak check (default 50)
   --soak-cycles <n>         edit+revert cycles of the soak (default 500)
   --soak-every <n>          GC'd memory + compiler cache sample every n cycles (default 25)
-  --soak-snapshots <list>   cycles after which a heap snapshot is written (default 100,500)
+  --soak-snapshots <list>   cycles after which a heap snapshot is written (default 0,100,500;
+                            0 = before the first sample, so V8's one-time snapshot overhead is not growth)
   --soak-bundlers <list>    vite,rsbuild (rsbuild: react-start only; default vite)
   --soak-modes <list>       real (default), replay (record + replayed transforms)
   --soak-heap-dir <dir>     heap snapshot directory (default <out>/heap)
@@ -1425,13 +1426,15 @@ async function soakRun(variant, bundler, { replay } = {}) {
     out.snapshots.push({ cycle, file: r.file, ms: Math.round(r.ms) })
     log(`${name} heap snapshot after cycle ${cycle}: ${r.file}`)
   }
-  const visit = async (page, url, text, timeoutMs = 30_000) => {
+  const visit = async (page, url, text, timeoutMs = 45_000) => {
     const deadline = Date.now() + timeoutMs
     for (;;) {
       try {
+        // a full reload the dev server announced may race with this
+        // navigation (Chromium then never commits it): retry soon
         await page.goto(`http://127.0.0.1:${PORT}${url}`, {
           waitUntil: 'commit',
-          timeout: timeoutMs,
+          timeout: 8_000,
         })
         await page.waitForFunction(() => window.__PERF_HYDRATED__, null, {
           timeout: 10_000,
@@ -1629,6 +1632,12 @@ async function soakRun(variant, bundler, { replay } = {}) {
       throw new Error(`unknown soak kind ${kind}`)
     }
     await sleep(1000)
+    if (SOAK_SNAPSHOTS.has(0)) {
+      // A first heap snapshot makes V8 keep extra data (source positions of
+      // every function, the heap profiler's object ids): take it before the
+      // baseline sample so that step is not mistaken for growth.
+      await snapshot(0)
+    }
     await sample(0)
     for (let i = 0; i < SOAK_CYCLES; i++) {
       const kind = kinds[i % kinds.length]
@@ -1645,8 +1654,10 @@ async function soakRun(variant, bundler, { replay } = {}) {
         const message = String(error?.message ?? error).slice(0, 2000)
         out.failures.push({ cycle: i + 1, kind, message })
         log(`${name} cycle ${i + 1} (${kind}) failed: ${message.slice(0, 600)}`)
-        if (out.failures.length > 25) {
-          throw new Error(`${name}: too many failed cycles`)
+        if (out.failures.length > Math.max(25, SOAK_CYCLES / 10)) {
+          out.aborted = `too many failed cycles (${out.failures.length})`
+          log(`${name}: ${out.aborted}, stopping`)
+          break
         }
         restore(false)
         await sleep(3000)
