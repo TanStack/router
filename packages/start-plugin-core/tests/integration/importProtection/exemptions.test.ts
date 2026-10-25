@@ -70,40 +70,23 @@ export { otherRead } from './app/b'
 `,
 }
 
-/**
- * Each way to exempt `src/exempt/a.ts` but not `src/app/b.ts`, and which of
- * the build tests below the Rsbuild path (still on the previous compiler)
- * fails (`.fails`): `exempt` and `control`. (Vite dev and build passed every
- * row once the Yuku host judged edges per importer.)
- */
+/** Each way to exempt `src/exempt/a.ts` but not `src/app/b.ts`. */
 const exemptions: Array<{
   option: string
   importProtection: ImportProtectionOptions
-  fails: {
-    rsbuild: { exempt: boolean; control: boolean }
-  }
 }> = [
   {
     option: 'ignoreImporters',
     importProtection: { ignoreImporters: ['**/exempt/*.ts'] },
-    fails: {
-      rsbuild: { exempt: true, control: false },
-    },
   },
   {
     option: 'exclude',
     importProtection: { exclude: ['src/exempt/**'] },
-    fails: {
-      rsbuild: { exempt: true, control: false },
-    },
   },
   {
     // The denied file is outside `include` too: see the NEW bug below.
     option: 'an importer outside include',
     importProtection: { include: ['src/app/**'] },
-    fails: {
-      rsbuild: { exempt: false, control: true },
-    },
   },
 ]
 
@@ -164,7 +147,7 @@ const expectOtherGetsMock = (outcome: Outcome) =>
   })
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  describe.each(exemptions)('$option', ({ importProtection, fails }) => {
+  describe.each(exemptions)('$option', ({ importProtection }) => {
     // One build for both tests.
     let built: Promise<StartBuild> | undefined
     let dispose: (() => Promise<void>) | undefined
@@ -190,15 +173,14 @@ describe.each(startBundlers)('%s build', (bundler) => {
       }
     }
 
-    const pinned = bundler === 'rsbuild' ? fails.rsbuild : null
-    ;(pinned?.control ? test.fails : test)(
+    test(
       'an importer that is not exempt gets the mock and is reported',
       async () => {
         expectOtherGetsMock(await outcome())
       },
       timeout,
     )
-    ;(pinned?.exempt ? test.fails : test)(
+    test(
       'the exempt importer gets the real module, and is not reported',
       async () => {
         expectExemptGetsRealModule(await outcome())

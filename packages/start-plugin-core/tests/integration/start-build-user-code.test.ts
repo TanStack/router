@@ -208,7 +208,7 @@ ${callByIdExports}`,
   // defined).
   // Impact: the handler's class, and what its decorators and methods
   // reference, ship to the client and run their decorators there.
-  ;(bundler === 'vite' ? test : test.fails)(
+  test(
     'the decorated class only a server fn handler uses is not in the client bundle',
     async () => {
       const { client } = await decoratedApp()

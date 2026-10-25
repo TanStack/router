@@ -399,10 +399,8 @@ export function hydrateBuildSuite(bundler: StartBundler) {
     // An export only the children use, initialized by a call, moves with
     // the chunk (one instance, initialized once). Source:
     // hydrate-when-transform.test.ts "unwraps exported declarations needed
-    // by extracted virtual modules". (Rsbuild, still on the previous
-    // compiler: the chunk gets a copy of the declaration and the parent
-    // keeps the export, so the initializer runs twice.)
-    ;(bundler === 'rsbuild' ? test.fails : test)(
+    // by extracted virtual modules".
+    test(
       'an export only the children use, initialized by a call, is initialized once and hydrates',
       async () => {
         const build = await sharedApp()

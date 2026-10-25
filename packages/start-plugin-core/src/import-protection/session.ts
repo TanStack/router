@@ -36,7 +36,7 @@ import type {
   EdgeModuleRef,
 } from './edge-modules'
 import type { ImportGraphView } from './graph-trace'
-import type { ReportSink } from './report'
+import type { DevReporterOptions, ReportSink } from './report'
 import type { EnvType } from './rules'
 import type { DecideResult, RspackImportProtectionBuildInfo } from './verdict'
 import type { EdgeViolation } from './violations'
@@ -317,6 +317,7 @@ export class ImportProtectionEnv {
   private readonly onceVerdicts = new Map<string, Promise<boolean | void>>()
   private buildInfos = new Map<string, ViolationInfo>()
   private runtimeEmitted = false
+  private selfReported = new Set<string>()
 
   constructor(
     private readonly ip: ImportProtection,
@@ -339,14 +340,83 @@ export class ImportProtectionEnv {
   useDevReporter(
     sink: ReportSink,
     reachable?: (importerId: string) => boolean,
+    options?: Pick<DevReporterOptions, 'setTimer' | 'clearTimer' | 'maxWait'>,
   ): DevReporter {
     this.reporter?.close()
     this.reporter = new DevReporter({
       config: this.ip.config,
       sink,
       reachable: reachable ?? ((id) => this.reachable(id)),
+      ...options,
     })
     return this.reporter
+  }
+
+  /**
+   * Dev `log: 'always'` on a host whose compilation keeps modules it did not
+   * compile again (Rspack): the violations of such an importer's record are
+   * reported again (`onViolation` asked again, the report printed again),
+   * as every compilation bundling them reports them.
+   */
+  async reportAgain(importerId: string, info: unknown): Promise<void> {
+    const record = info as RspackImportProtectionBuildInfo | undefined
+    if (
+      record?.version !== 1 ||
+      record.env !== this.name ||
+      this.ip.config.mode !== 'dev' ||
+      this.ip.config.log !== 'always'
+    ) {
+      return
+    }
+    for (const v of record.violations) {
+      if (v.env !== this.name || v.behavior !== 'mock') {
+        continue
+      }
+      const vi = violationInfo(v, this.ip.config, () => this.trace(importerId))
+      const verdict = await this.ip.config.onViolation?.(vi)
+      if (verdict !== false) {
+        this.reporter?.enqueue({ violation: v, info: vi })
+      }
+    }
+  }
+
+  /**
+   * A module of this environment that imports the marker of the opposite
+   * environment and that nothing imports (an entry): it reports itself
+   * (J6.6; its importers would otherwise). `onViolation` is asked once per
+   * logical build / dev session per module; returns the report to publish
+   * (null: vetoed or already reported).
+   */
+  async selfMarkedReport(
+    file: string,
+    marker: { specifier: string; line: number },
+  ): Promise<{ severity: 'error' | 'warning'; message: string } | null> {
+    const key = `self\u0000${file}`
+    if (this.selfReported.has(key)) {
+      return null
+    }
+    this.selfReported.add(key)
+    const info: ViolationInfo = {
+      env: this.name,
+      envType: this.type,
+      type: 'marker',
+      behavior: this.ip.config.behavior,
+      specifier: marker.specifier,
+      importer: file,
+      importerLoc: { file, line: marker.line, column: 1 },
+      resolved: file,
+      trace: [
+        { file, line: marker.line, column: 1, specifier: marker.specifier },
+      ],
+    }
+    const verdict = await this.ip.config.onViolation?.(info)
+    if (verdict === false) {
+      return null
+    }
+    return {
+      severity: this.ip.config.behavior === 'error' ? 'error' : 'warning',
+      message: formatViolation(info, this.ip.config.root),
+    }
   }
 
   /** Whether the graph knows how `importerId` is reached. */
@@ -559,6 +629,7 @@ export class ImportProtectionEnv {
   beginLogicalBuild(): void {
     this.build.beginLogicalBuild()
     this.buildInfos = new Map()
+    this.selfReported.clear()
   }
 
   /**

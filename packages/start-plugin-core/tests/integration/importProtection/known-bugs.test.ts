@@ -106,20 +106,15 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // Impact: a denied module that a client-reachable module imports, but that
   // the client never uses, still fails the build.
   // Source: issue #8101 (closed without a reproduction).
-  // (Rsbuild, still on the previous compiler: pinned.)
-  ;(bundler === 'rsbuild' ? test.fails : test)(
-    'a denied module the client bundle drops does not fail the build',
-    async () => {
-      const { client } = await buildStart({
-        bundler,
-        files: droppedCorpusFiles,
-        entry: 'src/entry.ts',
-        start: denyToClient(['**/corpus.ts']),
-      })
-      expect(client.where('MARK_CORPUS')).toBe('nowhere')
-    },
-    60_000,
-  )
+  test('a denied module the client bundle drops does not fail the build', async () => {
+    const { client } = await buildStart({
+      bundler,
+      files: droppedCorpusFiles,
+      entry: 'src/entry.ts',
+      start: denyToClient(['**/corpus.ts']),
+    })
+    expect(client.where('MARK_CORPUS')).toBe('nowhere')
+  }, 60_000)
 
   // Bug: same as above, in mock mode: the mock of a denied module the client
   // never uses stays in the client bundle, and the build warns about it.
@@ -134,7 +129,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // bundle; not by comparing the bundle's statements with another build's.
   // The live-denial controls show the same harness sees a used mock: its
   // report, its safe value, and the real value without protection.
-  test.fails(
+  ;(bundler === 'rsbuild' ? test : test.fails)(
     'in mock mode, an unused denied module leaves nothing in the client bundle and no warning',
     async () => {
       // (one build at a time: a Vite build runs in its app's directory)
@@ -194,32 +189,27 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // Impact: the real module ships to the client in a lazy chunk and runs
   // there, without any error or warning.
   // Source: mutation testing.
-  const dynamicImportTest = bundler === 'rsbuild' ? test.fails : test
-  dynamicImportTest(
-    'a client dynamic import of a denied specifier fails the build, reporting one client violation',
-    async () => {
-      const error = await rejection(
-        buildStart({
-          bundler,
-          files: {
-            'node_modules/db-lib/package.json': JSON.stringify({
-              name: 'db-lib',
-              type: 'module',
-              exports: { '.': './index.js' },
-            }),
-            'node_modules/db-lib/index.js': `export const secret = () => 'MARK_SECRET'\n`,
-            'src/entry.ts': `export const read = () => import('db-lib').then((m) => m.secret())\n`,
-          },
-          entry: 'src/entry.ts',
-          start: { importProtection: { client: { specifiers: ['db-lib'] } } },
-        }),
-      )
-      expect(
-        reportedViolations(error).map(({ environment }) => environment),
-      ).toEqual(['client'])
-    },
-    60_000,
-  )
+  test('a client dynamic import of a denied specifier fails the build, reporting one client violation', async () => {
+    const error = await rejection(
+      buildStart({
+        bundler,
+        files: {
+          'node_modules/db-lib/package.json': JSON.stringify({
+            name: 'db-lib',
+            type: 'module',
+            exports: { '.': './index.js' },
+          }),
+          'node_modules/db-lib/index.js': `export const secret = () => 'MARK_SECRET'\n`,
+          'src/entry.ts': `export const read = () => import('db-lib').then((m) => m.secret())\n`,
+        },
+        entry: 'src/entry.ts',
+        start: { importProtection: { client: { specifiers: ['db-lib'] } } },
+      }),
+    )
+    expect(
+      reportedViolations(error).map(({ environment }) => environment),
+    ).toEqual(['client'])
+  }, 60_000)
 
   /**
    * What the client gets in a mock-mode build of an entry that imports
@@ -263,21 +253,16 @@ return describeValue(entry.read(), 'MARK_SECRET')`)
   // Impact: a mock-mode build ships the real content of a denied
   // `*.server.json` (e.g. server configuration or credentials) to the client.
   // Source: mutation testing.
-  // (Rsbuild, still on the previous compiler: pinned.)
-  ;(bundler === 'rsbuild' ? test.fails : test)(
-    'in mock mode, a denied .server.json file is mocked, with a warning',
-    async () => {
-      expect(
-        await mockModeOutcome(
-          'secret.server.json',
-          `{ "secret": "MARK_SECRET" }\n`,
-          `import data from './secret.server.json'
+  test('in mock mode, a denied .server.json file is mocked, with a warning', async () => {
+    expect(
+      await mockModeOutcome(
+        'secret.server.json',
+        `{ "secret": "MARK_SECRET" }\n`,
+        `import data from './secret.server.json'
 const secret = data.secret`,
-        ),
-      ).toEqual({ warned: true, hasRealCode: false, read: 'a safe mock' })
-    },
-    60_000,
-  )
+      ),
+    ).toEqual({ warned: true, hasRealCode: false, read: 'a safe mock' })
+  }, 60_000)
 
   // Bug: in mock mode, a denied CommonJS file (`.server.cjs`) fails the
   // build: the mock that replaces the file is an ES module, which Vite's
@@ -289,18 +274,13 @@ const secret = data.secret`,
   // Impact: a mock-mode build of a project with a `*.server.cjs` the client
   // imports fails instead of mocking it.
   // Source: mutation testing.
-  // (Rsbuild, still on the previous compiler: pinned.)
-  ;(bundler === 'rsbuild' ? test.fails : test)(
-    'in mock mode, a denied .server.cjs file is mocked, with a warning',
-    async () => {
-      expect(
-        await mockModeOutcome(
-          'secret.server.cjs',
-          `exports.secret = () => 'MARK_SECRET'\n`,
-          `import { secret } from './secret.server.cjs'`,
-        ),
-      ).toEqual({ warned: true, hasRealCode: false, read: 'a safe mock' })
-    },
-    60_000,
-  )
+  test('in mock mode, a denied .server.cjs file is mocked, with a warning', async () => {
+    expect(
+      await mockModeOutcome(
+        'secret.server.cjs',
+        `exports.secret = () => 'MARK_SECRET'\n`,
+        `import { secret } from './secret.server.cjs'`,
+      ),
+    ).toEqual({ warned: true, hasRealCode: false, read: 'a safe mock' })
+  }, 60_000)
 })

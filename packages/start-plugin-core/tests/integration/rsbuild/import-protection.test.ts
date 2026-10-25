@@ -534,15 +534,11 @@ export const read = () => button()
   // Source: rsbuild/import-protection.ts resolveImporterLocation
   // (transformedSources lookup); mutation testing.
   // Impact: low; the code frame's caret points at the wrong column.
-  test.fails(
-    'the file rule denies the module it resolves to: the importer is reported at the import or the use',
-    async () => {
-      expect(reportedViolations(await fileRuleDenied())).toEqual([
-        { environment: 'client', importer: atImportOrUse },
-      ])
-    },
-    60_000,
-  )
+  test('the file rule denies the module it resolves to: the importer is reported at the import or the use', async () => {
+    expect(reportedViolations(await fileRuleDenied())).toEqual([
+      { environment: 'client', importer: atImportOrUse },
+    ])
+  }, 60_000)
 
   test('the module it resolves to is marked server-only: the build fails, naming the module and the importer', async () => {
     const error = await rejection(
@@ -573,17 +569,13 @@ export const read = () => button()
   // (`matchesAny(source, matchers.specifiers)` on the post-SWC imports).
   // Impact: a client.specifiers rule on a library the app also lists in
   // source.transformImport is silently bypassed.
-  test.fails(
-    'denied as written, the build fails on it, reporting the importer at the import or the use',
-    async () => {
-      expect(
-        reportedViolations(
-          await rejection(build({ client: { specifiers: ['ui-lib'] } })),
-        ),
-      ).toEqual([{ environment: 'client', importer: atImportOrUse }])
-    },
-    60_000,
-  )
+  test('denied as written, the build fails on it, reporting the importer at the import or the use', async () => {
+    expect(
+      reportedViolations(
+        await rejection(build({ client: { specifiers: ['ui-lib'] } })),
+      ),
+    ).toEqual([{ environment: 'client', importer: atImportOrUse }])
+  }, 60_000)
 })
 
 // `rsbuild build --watch`: each build reports the violations it bundles,

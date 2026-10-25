@@ -991,3 +991,71 @@ describe('needers and homes (§3.5.2)', () => {
     expect(r.chunks.component).not.toContain('./t')
   })
 })
+
+describe('provider outputs (DESIGN §3.10.5, lane B)', () => {
+  it('copies the exported cluster its root reads instead of importing it from the env module', async () => {
+    // a provider output is the module's own instance in another layer: its
+    // generated wrapper reads the exported `fn`, which stays exported from
+    // the env module too (where it is a stub), so the provider owns a copy
+    const code = dedent(`
+      import { wrapServer } from 'toy-start'
+      import { helper } from './helper'
+      export const fn = wrapServer(() => helper())
+      export const other = 1
+    `)
+    const host = new MemoryHost({
+      files: {
+        '/app/fns.ts': code,
+        '/app/helper.ts': 'export const helper = () => 1\n',
+      },
+    })
+    const provider: Planner = {
+      name: 'toy-provider',
+      tier: 1,
+      gate: () => true,
+      plan(ctx) {
+        const out = ctx.declareOutput({
+          kind: 'provider',
+          key: 'provider',
+          derived: { kind: 'provider', value: '' },
+        })
+        const fn = ctx.analysis.exports.find(
+          (e) => e.kind === 'local' && e.name === 'fn',
+        )
+        const sym = (fn?.kind === 'local' ? fn.local : null) as never
+        const wrapper = ctx.names.alloc('fn_handler')
+        ctx.rewrites.addGenerated({
+          body: [
+            {
+              k: 'text',
+              parts: [`export const ${wrapper.name} = () => `, { sym }, '\n'],
+            },
+          ],
+          declares: [wrapper.sym],
+          effectful: false,
+          anchor: { k: 'end' },
+          home: out,
+          by: 'toy-provider',
+        })
+      },
+    }
+    const env = envInfo({ name: 'ssr', type: 'server', routerSplit: false })
+    const main = await host.compile(
+      '/app/fns.ts',
+      [toyEnvPlanner(), provider],
+      { env },
+    )
+    const out = await host.compile(
+      '/app/fns.ts?tss-serverfn-split',
+      [toyEnvPlanner(), provider],
+      { env },
+    )
+    expect(main?.code).toContain('export const fn = tsrRpc(() => helper())')
+    expect(main?.code).not.toContain('fn_handler')
+    expect(out?.code).toContain('const fn = tsrRpc(() => helper())')
+    expect(out?.code).toContain("import { helper } from './helper'")
+    expect(out?.code).toContain('export const fn_handler = () => fn')
+    expect(out?.code).not.toContain("from './fns.ts")
+    expect(out?.code).not.toContain('other')
+  })
+})

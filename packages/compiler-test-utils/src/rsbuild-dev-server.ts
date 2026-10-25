@@ -788,6 +788,18 @@ export function trackCompiles(): CompileTracker {
     return last
   }
 
+  /** The compilers each compiler depends on (`MultiCompiler.setDependencies`): run again after each of their compiles. */
+  const dependsOn = new Map<Rspack.Compiler, Array<Rspack.Compiler>>()
+  /** The sequence number of each compiler's last `done`. */
+  const lastDone = new Map<Rspack.Compiler, number>()
+  let doneSeq = 0
+  /** A compiler whose dependency compiled after it still owes a compile (the dependency's `done` runs it). */
+  const owesDependentRun = () =>
+    [...dependsOn].some(([compiler, deps]) =>
+      deps.some(
+        (dep) => (lastDone.get(dep) ?? 0) > (lastDone.get(compiler) ?? 0),
+      ),
+    )
   /** Whether the edit's outcome is in (see `trackCompiles`). */
   const settled = (wait: EditWait) => {
     const last = lastReader(wait)
@@ -796,7 +808,8 @@ export function trackCompiles(): CompileTracker {
       last !== undefined &&
       startedBeforeDone >= last &&
       startedBeforeDone === started &&
-      invalid.size === 0
+      invalid.size === 0 &&
+      !owesDependentRun()
     )
   }
 
@@ -879,12 +892,20 @@ export function trackCompiles(): CompileTracker {
   return {
     watching,
     track(compiler) {
-      for (const environmentCompiler of 'compilers' in compiler
-        ? compiler.compilers
-        : [compiler]) {
+      const all = 'compilers' in compiler ? compiler.compilers : [compiler]
+      if ('compilers' in compiler) {
+        for (const environmentCompiler of all) {
+          const names = compiler.dependencies.get(environmentCompiler) ?? []
+          const deps = all.filter((c) => c.name && names.includes(c.name))
+          if (deps.length > 0) {
+            dependsOn.set(environmentCompiler, deps)
+          }
+        }
+      }
+      for (const environmentCompiler of all) {
         compilers.push(environmentCompiler)
         const name = 'compile-tracker'
-        environmentCompiler.hooks.watchRun.tap(name, () => {
+        const onStart = () => {
           started++
           invalid.delete(environmentCompiler)
           for (const wait of waits) {
@@ -897,7 +918,13 @@ export function trackCompiles(): CompileTracker {
               }
             }
           }
-        })
+        }
+        environmentCompiler.hooks.watchRun.tap(name, onStart)
+        // A compiler another one depends on (`MultiCompiler.setDependencies`,
+        // Start's server after its client) is run again by that dependency
+        // after each of its compiles, as a run, not a watch run: it reads the
+        // edit then, and the edit's outcome includes its compile.
+        environmentCompiler.hooks.beforeRun.tap(name, onStart)
         environmentCompiler.hooks.invalid.tap(name, () => {
           invalid.add(environmentCompiler)
         })
@@ -905,6 +932,7 @@ export function trackCompiles(): CompileTracker {
         // compile: the next edit may begin right then.
         environmentCompiler.hooks.done.tap({ name, stage: -100 }, (stats) => {
           const { compilation } = stats
+          lastDone.set(environmentCompiler, ++doneSeq)
           dependencies.set(environmentCompiler, {
             files: new Set(compilation.fileDependencies),
             missing: new Set(compilation.missingDependencies),

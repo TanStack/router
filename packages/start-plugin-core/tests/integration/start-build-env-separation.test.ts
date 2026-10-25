@@ -484,7 +484,7 @@ const get = async (path) =>
     // Source: router-utils/src/ast.ts:190; fuzzing.
     // Impact: the validators and what they import load eagerly in the
     // client, which never runs them.
-    ;(bundler === 'vite' ? test : test.fails).each([
+    test.each([
       {
         construct: 'a server fn validator on a builder variable',
         marker: 'MARK_BUILDER_VALIDATOR',
@@ -538,7 +538,7 @@ const get = async (path) =>
     // Source: start-compiler/handleCreateIsomorphicFn.ts:17-25,
     // start-compiler/compiler.ts:1296-1330; fuzzing.
     // Impact: the server (or client) call silently returns undefined.
-    ;(bundler === 'vite' ? test : test.fails).each([
+    test.each([
       { name: '.server() link', run: `return entry.isoServerVar()` },
       { name: '.client() link', run: `return entry.isoClientVar()` },
     ])(

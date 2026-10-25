@@ -919,18 +919,14 @@ return [button('outer').textContent, button('inner').textContent]`,
       // HTML: "namespace-imported Start.Hydrate boundaries" above), so the
       // click loads nothing.
       // Replaces the in-process goal of known-bugs-hydrate.test.ts.
-      // (Rsbuild, still on the previous compiler: pinned.)
-      ;(bundler === 'rsbuild' ? test.fails : test)(
-        'a namespace-imported Start.Hydrate loads its children when it hydrates',
-        async () => {
-          const page = await app.hydrate('namespaceGated', {
-            script: loadedOnInteraction,
-          })
-          expect(page.result).toEqual({ beforeClick: 0, loadedByClick: true })
-          expect(page.recoverableErrors).toEqual([])
-          expect(page.consoleErrors).toEqual([])
-        },
-      )
+      test('a namespace-imported Start.Hydrate loads its children when it hydrates', async () => {
+        const page = await app.hydrate('namespaceGated', {
+          script: loadedOnInteraction,
+        })
+        expect(page.result).toEqual({ beforeClick: 0, loadedByClick: true })
+        expect(page.recoverableErrors).toEqual([])
+        expect(page.consoleErrors).toEqual([])
+      })
 
       // `const { Hydrate } = Start` is not analysed (SPEC 2.2): split or not,
       // the boundary keeps the server's HTML until its strategy fires (here:

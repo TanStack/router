@@ -170,7 +170,7 @@ describe('rsbuild dev', () => {
   // Impact: code a project exempts on purpose, or an import it allows with
   // `onViolation` (documented: "Return false (or Promise<false>) to allow
   // this specific import"), silently gets a mock whose calls return mocks.
-  test.fails.each(permitted)(
+  test.each(permitted)(
     'an importer $how gets the real module',
     async ({ name, file }) => {
       expect((await client(name, file)).value).toBe('MARK_SECRET')

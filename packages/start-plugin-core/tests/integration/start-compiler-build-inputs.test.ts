@@ -73,8 +73,6 @@ interface Row {
   absent?: { client?: Array<string>; ssr?: Array<string> }
   /** Default: every bundler. */
   bundlers?: Array<StartBundler>
-  /** Bundlers whose build of the row is a known bug (pinned below). */
-  pinnedOn?: Array<StartBundler>
 }
 
 /** The library package names of the app (`libraryPackages`). */
@@ -112,11 +110,6 @@ const rows: Array<Row> = [
   ...exportStarRows.map(
     (row): Row => ({
       name: `an export * chain with ${row.name}`,
-      pinnedOn: Object.values(row.files).some((code) =>
-        code.includes(`export * from '@tanstack/react-start'`),
-      )
-        ? ['rsbuild']
-        : [],
       files: { ...row.files, ...factoryDb, 'module.tsx': exportStarModule },
       serverFns: { fn: 'x' },
       reads: {
@@ -423,43 +416,20 @@ describe.each(startBundlers)('%s build', (bundler) => {
   const list = rows.filter((row) =>
     (row.bundlers ?? startBundlers).includes(bundler),
   )
-  const isPinned = (row: Row) => row.pinnedOn?.includes(bundler) ?? false
   const cleanups: Array<() => Promise<void>> = []
   afterAll(async () => {
     await Promise.all(cleanups.map((cleanup) => cleanup()))
   })
 
   let built: Promise<BuiltRows> | undefined
-  /** The app of every row not pinned on this bundler, built and run once. */
+  /** The app of every row, built and run once. */
   const shared = () =>
-    (built ??= buildRows(
-      bundler,
-      list.filter((row) => !isPinned(row)),
-      (cleanup) => cleanups.push(cleanup),
-    ))
+    (built ??= buildRows(bundler, list, (cleanup) => cleanups.push(cleanup)))
 
-  test.each(list.filter((row) => !isPinned(row)))(
+  test.each(list)(
     '$name',
     async (row) => {
       expectRowWorks(row, await shared())
-    },
-    timeout,
-  )
-
-  // Bug: on Rsbuild, the Start compiler resolves the module an `export *`
-  // names with the loader's resolver (rsbuild/start-compiler-host.ts
-  // `resolveId`), which does not resolve `@tanstack/react-start` (its
-  // `exports` have `import` and `react-server` conditions only):
-  // "PackagePathNotExported". A named re-export of the package is
-  // recognised by its name and never resolved.
-  // Impact: an Rsbuild build of an app whose module re-exports Start with
-  // `export * from '@tanstack/react-start'`, and through which another
-  // module imports a factory, fails. (Each row builds alone, so its failure
-  // is its own.)
-  test.fails.each(list.filter(isPinned))(
-    '$name',
-    async (row) => {
-      expectRowWorks(row, await buildRows(bundler, [row]))
     },
     timeout,
   )

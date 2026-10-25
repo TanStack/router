@@ -365,8 +365,7 @@ export function solidPageSuite(bundler: StartBundler) {
     // hydrates, and stay the server's HTML.
     // (A directive runs on the client only: its attribute shows that the
     // children hydrated.)
-    // (Rsbuild, still on the previous compiler: pinned.)
-    ;(bundler === 'rsbuild' ? test.fails : test).each([
+    test.each([
       { where: 'module', fixture: 'directiveModule' },
       { where: 'component', fixture: 'directiveComponent' },
     ])(
@@ -399,17 +398,13 @@ export function solidPageSuite(bundler: StartBundler) {
       // boundary like a named import. On main it is left unsplit (it hydrates:
       // "namespace-imported Start.Hydrate boundaries" above), so the click
       // loads nothing.
-      // (Rsbuild, still on the previous compiler: pinned.)
-      ;(bundler === 'rsbuild' ? test.fails : test)(
-        'a namespace-imported Start.Hydrate loads its children when it hydrates',
-        async () => {
-          const page = await app.hydrate('namespaceGated', {
-            script: loadedOnInteraction,
-          })
-          expect(page.result).toEqual({ beforeClick: 0, loadedByClick: true })
-          expect(page.consoleErrors).toEqual([])
-        },
-      )
+      test('a namespace-imported Start.Hydrate loads its children when it hydrates', async () => {
+        const page = await app.hydrate('namespaceGated', {
+          script: loadedOnInteraction,
+        })
+        expect(page.result).toEqual({ beforeClick: 0, loadedByClick: true })
+        expect(page.consoleErrors).toEqual([])
+      })
 
       // Not analysed (SPEC 2.2): split or not, it keeps the server's HTML until
       // its strategy fires (a focus, not a click).
@@ -528,30 +523,26 @@ export function solidPageSuite(bundler: StartBundler) {
     // SPEC J5.8 (extraction keeps legal `ref` behaviour).
     // Impact: silently, the parent never sees the element (`input` stays
     // `undefined`): focusing or reading it does nothing.
-    // (Rsbuild, still on the previous compiler: pinned.)
-    ;(bundler === 'rsbuild' ? test.fails : test)(
-      'a ref in split children binds the let of their component',
-      async () => {
-        const script = `const counter = () => root.querySelector('button[data-label="child"]')
+    test('a ref in split children binds the let of their component', async () => {
+      const script = `const counter = () => root.querySelector('button[data-label="child"]')
 await clickUntil(counter, () => counter().textContent === 'child:1')
 root.querySelector('button[data-read]').click()
 await settled()
 return root.querySelector('output').textContent`
-        const [split, reference] = await Promise.all([
-          app.hydrate('letRef', { script }),
-          app.hydrate('letRefReference', { script }),
-        ])
-        expect(
-          [split, reference].map((page) => ({
-            read: page.result,
-            consoleErrors: page.consoleErrors,
-          })),
-        ).toEqual([
-          { read: 'typed', consoleErrors: [] },
-          { read: 'typed', consoleErrors: [] },
-        ])
-      },
-    )
+      const [split, reference] = await Promise.all([
+        app.hydrate('letRef', { script }),
+        app.hydrate('letRefReference', { script }),
+      ])
+      expect(
+        [split, reference].map((page) => ({
+          read: page.result,
+          consoleErrors: page.consoleErrors,
+        })),
+      ).toEqual([
+        { read: 'typed', consoleErrors: [] },
+        { read: 'typed', consoleErrors: [] },
+      ])
+    })
 
     // Bug: the chunk re-declares the module-level bindings its children use
     // instead of using the parent module's (`createContext` runs again
@@ -560,15 +551,11 @@ return root.querySelector('output').textContent`
     // Found with a context declared in the page module.
     // Impact: split children of a Solid page read another context than the
     // one their parent provides (here its default value).
-    // (Rsbuild, still on the previous compiler: pinned.)
-    ;(bundler === 'rsbuild' ? test.fails : test)(
-      'split children read a context declared in the page module',
-      async () => {
-        const page = await app.hydrate('localContext')
-        expect(page.serverHtml).toContain('>dark<')
-        expect(page.html).toContain('>dark<')
-        expect(page.consoleErrors).toEqual([])
-      },
-    )
+    test('split children read a context declared in the page module', async () => {
+      const page = await app.hydrate('localContext')
+      expect(page.serverHtml).toContain('>dark<')
+      expect(page.html).toContain('>dark<')
+      expect(page.consoleErrors).toEqual([])
+    })
   })
 }

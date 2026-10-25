@@ -199,105 +199,11 @@ describe('the reported location of a violation is the leaking use or the import'
   test.each([
     ...rows(['afterHandler', 'loneCr', 'isomorphicClient'], channels),
     ...rows(['unicode', 'catchShadow', 'scopeShadow', 'reExport'], channels),
-    ...rows(['wrappedBoundary', 'dynamicImport'], ['vite dev', 'vite build']),
-    ...rows(['lookAlike'], ['vite dev', 'vite build']),
-    ...rows(['typePosition', 'jsxElement'], ['vite dev', 'vite build']),
-    ...rows(['memberProperty'], ['vite dev', 'vite build']),
+    ...rows(['wrappedBoundary', 'dynamicImport'], channels),
+    ...rows(['lookAlike'], channels),
+    ...rows(['typePosition', 'jsxElement'], channels),
+    ...rows(['memberProperty'], channels),
   ])(
-    '$channel: $name',
-    async ({ channel, code, expected }) => {
-      expectRelevantLocation(await reportedLocations(channel, code), expected)
-    },
-    timeout,
-  )
-
-  // Bug (Rsbuild; Vite passes with the Yuku host's semantic references):
-  // the usage lookup counts a member property named like a denied import
-  // (`db.eq`) as a use of the import (shared `findPostCompileUsagePos` /
-  // `findOriginalUnsafeUsagePos` in import-protection/analysis.ts).
-  // Impact: the violation points at an unrelated line, so the user looks for
-  // the leak in the wrong place.
-  // Source: PR #8504 (analysis.usage.test.ts "ignores a member property named
-  // like the import but still finds later usage"); moved from the pin on the
-  // internal helper (analysis.usage.test.ts).
-  test.fails.each(rows(['memberProperty'], ['rsbuild dev', 'rsbuild build']))(
-    '$channel: $name',
-    async ({ channel, code, expected }) => {
-      expectRelevantLocation(await reportedLocations(channel, code), expected)
-    },
-    timeout,
-  )
-
-  // NEW bug (Rsbuild): the original-source usage lookup, which the Rsbuild
-  // adapter tries first, takes any `<name>ServerFn.handler(...)` callback for
-  // a server fn handler by its name (`/ServerFn$/`, `isCompilerSafeBoundaryCall`
-  // in import-protection/analysis.ts) and skips the use inside it; the
-  // compiled-code lookup it then falls back to reports compiled-code
-  // coordinates (the same fallback as the pins below).
-  // Impact: on Rsbuild, a violation inside the callback of an object that
-  // is only named like a server fn points at a line/column that does not
-  // exist in the user's file (here 3:1 in dev, 5:42 in a build; in dev the
-  // file is also named by its source-map URL, `webpack:/src/a.tsx`, the bug
-  // pinned in "the reported importer is a file of the app").
-  // Source: review (moved from analysis.usage.test.ts, which followed the
-  // Vite order).
-  test.fails.each(rows(['lookAlike'], ['rsbuild dev', 'rsbuild build']))(
-    '$channel: $name',
-    async ({ channel, code, expected }) => {
-      expectRelevantLocation(await reportedLocations(channel, code), expected)
-    },
-    timeout,
-  )
-
-  // Bug: the original-source usage lookup, which the Rsbuild adapter tries
-  // first, counts uses in type positions (`typeof secret`), which TypeScript
-  // erases, and does not count a JSX element (`<Secret />`) as a use; the
-  // compiled-code lookup it then falls back to reports compiled-code
-  // coordinates when the module has no column source map (production builds,
-  // and Rsbuild's default `cheap-module-source-map` in development).
-  // Impact: on Rsbuild, the violation points at a type annotation, or at a
-  // line/column that does not exist in the user's file (the JSX element in
-  // dev: `webpack:/src/a.tsx:2:1`, also named by its source-map URL).
-  // Source: PR #8504 (analysis.usage.test.ts "ignores type positions, which
-  // TypeScript erases", "finds $name usage"); moved from the pins on the
-  // internal helper (analysis.usage.test.ts).
-  test.fails.each(
-    rows(['typePosition', 'jsxElement'], ['rsbuild dev', 'rsbuild build']),
-  )(
-    '$channel: $name',
-    async ({ channel, code, expected }) => {
-      expectRelevantLocation(await reportedLocations(channel, code), expected)
-    },
-    timeout,
-  )
-
-  // Bug (Rsbuild): the original-source usage lookup, which the Rsbuild
-  // adapter tries first, skips only functions passed directly to a
-  // compiler-safe boundary call (`isInsideCompilerSafeBoundaryNodes`,
-  // import-protection/analysis.ts), but the client compile removes the
-  // whole `createServerOnlyFn(...)` call, whatever its argument (here a
-  // function wrapped in `wrap(...)`), so the use inside it never runs in
-  // the client; the lookup reports it (src/a.tsx:5:48) instead of the leak
-  // on line 6.
-  // Impact: on Rsbuild, the violation points at code the client never runs,
-  // not at the leak (location only).
-  // Source: mutation testing, reproduced on a real app (the internal pin on
-  // the lookup is removed).
-  //
-  // Bug (Rsbuild): a dynamic import of a denied module is reported neither
-  // on the line of the `import()` nor at a static import: the dev server
-  // reports the first column of the module (`webpack:/src/a.tsx:1:1`, also
-  // named by its source-map URL), a build compiled-code coordinates
-  // (src/a.tsx:1:33, a column line 1 does not have).
-  // Impact: on Rsbuild, the violation of a lazily loaded denied module
-  // points at the wrong line.
-  // Source: review (an input shape the internal index tests had).
-  test.fails.each(
-    rows(
-      ['wrappedBoundary', 'dynamicImport'],
-      ['rsbuild dev', 'rsbuild build'],
-    ),
-  )(
     '$channel: $name',
     async ({ channel, code, expected }) => {
       expectRelevantLocation(await reportedLocations(channel, code), expected)
@@ -342,7 +248,7 @@ describe('the reported importer is a file of the app, whatever source maps it ha
     timeout,
   )
 
-  test.fails.each([
+  test.each([
     {
       channel: 'rsbuild dev' as const,
       name: "Rsbuild's default development source maps",

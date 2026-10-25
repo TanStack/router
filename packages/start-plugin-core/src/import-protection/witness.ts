@@ -108,6 +108,8 @@ export interface RspackModuleLike {
   resource?: string
   /** Inner modules of a ConcatenatedModule. */
   modules?: Iterable<RspackModuleLike>
+  /** The module a ConcatenatedModule stands in for (it has no `resource` of its own). */
+  rootModule?: RspackModuleLike
 }
 
 export interface RspackChunkLike {
@@ -236,7 +238,9 @@ export function rspackGraphView(
         entries = new Set()
         for (const entry of compilation.entries?.values() ?? []) {
           for (const dep of entry.dependencies) {
-            const res = compilation.moduleGraph.getModule?.(dep)?.resource
+            // a production entry is usually a ConcatenatedModule (scope hoisting)
+            const m = compilation.moduleGraph.getModule?.(dep)
+            const res = m?.resource ?? m?.rootModule?.resource
             if (res) {
               entries.add(res)
             }

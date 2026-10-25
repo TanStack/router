@@ -111,6 +111,8 @@ export class RawFactsCache {
     for (const [id, e] of this.entries) {
       if (identify(id).path === path || id === path) {
         e.stale = true
+        // a read in flight may hold the text from before the event: it is not published
+        e.pending = null
       }
     }
   }

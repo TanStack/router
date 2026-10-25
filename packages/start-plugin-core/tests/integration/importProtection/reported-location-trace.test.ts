@@ -230,34 +230,24 @@ test(
   timeout,
 )
 
-// Bug (Rsbuild): the trace stops at an entry only when it finds no importer
-// of the module: in a production build the entry module is a concatenated
-// module (scope hoisting), which has no `resourceResolveData`, so the
-// Rsbuild adapter registers it by its identifier, the loader request, read
-// as the path of the first loader (rsbuild/import-protection.ts
-// `addEntryModulesToGraph` → `getModuleResource`), and no module of the
-// graph is a registered entry. When a module imports the entry back, the
-// trace search finds no root, and the trace is the importer alone, tagged
-// as the entry. (A scratch registration of the concatenated module's
-// `rootModule` passes this pin.)
-// Impact: an Rsbuild build reports such a violation with a one-step trace
-// (low: diagnostics only, and an import of the app's entry is rare). Vite is
-// right.
-// Source: mutation testing (removing that registration changes nothing
-// while it registers the wrong path).
+// The trace stops at an entry. In a production build the entry module is a
+// concatenated module (scope hoisting) without a `resource` of its own; the
+// Rsbuild graph view reads the entry's resource from its root module
+// (import-protection/witness.ts `rspackGraphView`). When a module imports the
+// entry back, the search still finds that root.
 describe.each(startBundlers)('%s build', (bundler) => {
-  const entryBackTest = bundler === 'rsbuild' ? test.fails : test
-  entryBackTest(
+  test(
     'the trace starts at the entry when a module imports the entry back',
     async () => {
       const { importer, trace } = await buildReport(bundler, {
         ...leakingB,
-        // The app's client entry (Start's default `src/client.tsx`). Its code
-        // is kept alive (a build reports only edges that survive tree-shaking,
-        // SPEC J6.4, and Vite drops a client entry's unused exports).
+        // The app's client entry (Start's default `src/client.tsx`); it
+        // calls `start` itself: a build reports only edges that survive
+        // tree-shaking (SPEC J6.4), and both bundlers drop a client entry's
+        // unused exports
         'src/client.tsx': `import { page } from './a'
 export const start = () => page()
-;(globalThis as any).start = start
+start()
 `,
         'src/back.ts': `import * as app from './client'\nexport const back = app\n`,
         'src/a.ts': `import { leak } from './b'
@@ -354,33 +344,9 @@ describe('the trace locates each import on its line after compiling moved it', (
 
   test.each([
     ...movedImportRows('rsbuild', true, Object.keys(movedImports)),
-    ...movedImportRows('rsbuild', false, ['a leading comment']),
+    ...movedImportRows('rsbuild', false, Object.keys(movedImports)),
     // (the Yuku host locates every step through the module's own map)
     ...movedImportRows('vite', false, Object.keys(movedImports)),
-  ])(
-    '$build: after $name',
-    async (row) => {
-      expect(await stepLine(row)).toBe(row.line)
-    },
-    timeout,
-  )
-
-  // Bug: a trace step's location is the import's position in the compiled
-  // code of the module unless import protection captured a source map of
-  // it: the Vite adapter captures one only for modules whose code names a
-  // denied file or specifier pattern or a marker
-  // (`shouldCaptureDiagnosticSourceMap` in
-  // vite/import-protection-plugin/plugin.ts), the Rsbuild adapter only when
-  // the build emits source maps. Compiling drops comments (Vite), blank
-  // lines and type-only imports, which moves the imports after them up.
-  // Impact: the trace points at the wrong line of the modules between the
-  // entry and the importer.
-  // Source: mutation testing.
-  test.fails.each([
-    ...movedImportRows('rsbuild', false, [
-      'a blank line',
-      'a type-only import',
-    ]),
   ])(
     '$build: after $name',
     async (row) => {

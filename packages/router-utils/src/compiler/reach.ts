@@ -1469,6 +1469,20 @@ export function computePlacement(input: PlacementInput): Placement {
     }
     included.get(h)!.add(cl.id)
   }
+  // a provider output is the module's own instance in another layer or environment
+  // (DESIGN §3.10.5, J4.14): it includes every cluster its roots reach, the env-homed ones
+  // as copies, instead of importing them from the env module (whose server fns are stubs)
+  for (const [o, decl] of outputs) {
+    if (decl.kind !== 'provider') {
+      continue
+    }
+    const inc = included.get(o)!
+    for (const c of derivedReach.get(o) ?? []) {
+      if (home.get(c) !== 'removed') {
+        inc.add(c)
+      }
+    }
+  }
   // duplicated clusters follow their readers into every output that includes a reader
   for (let round = 0; round < 4; round++) {
     let changed = false

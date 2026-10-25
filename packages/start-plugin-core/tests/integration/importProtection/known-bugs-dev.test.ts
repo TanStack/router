@@ -581,100 +581,45 @@ export const read = () => [Color.Red, Util.x]
     },
   }
 
-  /**
-   * The channels on which main fails each twin (`.fails`, red reason in
-   * brackets). The JSX pragma twins pass everywhere: Vite (Oxc) and Rsbuild
-   * (SWC) compile JSX before import protection rewrites the import. (A
-   * former in-process pin, "a JSX pragma that leads a denied import stays in
-   * effect", needed a JSX plugin that runs after the rewrite; none of the
-   * available real plugins does, so it was removed.)
-   */
-  const failsOn: Record<string, Array<string>> = {
-    // (The Vite channels of the twins below passed with the Yuku host's
-    // edge modules, whose mock exports the target's export names; the
-    // Rsbuild path is still on the previous compiler.)
-    // Bug (Rsbuild): the export names of a denied file skip namespace
-    // re-exports (`export * as ns from`; import-protection/analysis.ts
-    // collects only the names of `ExportSpecifier`s), so the self-contained
-    // mock of the file has no `helpers`.
-    // Impact: a mock-mode build fails [Rspack ESModulesLinkingError
-    // 'helpers'].
-    'a denied file re-exporting a namespace': ['rsbuild build'],
-    // Bug (Rsbuild): mock modules declare each mocked name as `export const
-    // <name>`, and reserved words such as `delete` pass the identifier check
-    // (`isValidExportName`, import-protection/analysis.ts); `eval` and
-    // `arguments` cannot be bound in a module either.
-    // Impact: mock-mode builds fail with a parse error [Expected ident].
-    'a denied file exporting `delete`, used as `api.delete()`': [
-      'rsbuild build',
-    ],
-    'a denied file exporting `eval` and `arguments`': ['rsbuild build'],
-    // NEW bug (Rsbuild), not the internal pin's cause (Vite passes): a
-    // mock-mode Rsbuild production build ships the real value of an enum
-    // member of a denied file [read 'MARK_SECRET', the bundle contains
-    // MARK_SECRET]; the namespace member is mocked.
-    // Cause: Rsbuild's production SWC config collects exported enums
-    // (`collectTypeScriptInfo.exportedEnum: isProd`), and Rspack inlines
-    // `Color.Red` into the importer (`"MARK_SECRET"`) from the
-    // denied file's own source; the import-protection loader's mock (which
-    // does export `Color`) is never read. A scratch build with
-    // `exportedEnum: false` mocks it.
-    // Impact: server-only values declared as enum members reach the client
-    // bundle in mock mode (`behavior: { build: 'mock' }`), with only a
-    // warning.
-    'a denied file exporting an enum and a namespace': ['rsbuild build'],
-  }
-
-  const twinTest = (channel: string, name: string) =>
-    (failsOn[name] ?? []).includes(channel) ? test.fails : test
-
   for (const [name, twin] of Object.entries(twins)) {
     const { files, importProtection = {}, expected = [mock] } = twin
-    twinTest('vite dev', name)(
-      `vite dev: ${name}`,
-      async () => {
-        const server = await startBrowserProtectedDevServer(
-          files,
-          importProtection,
-        )
-        // The mock reports each use in the browser console.
-        vi.spyOn(console, 'error').mockImplementation(() => {})
-        const { result } = await runViteClient(
-          server,
-          '/src/entry.ts',
-          `${describeValuePrelude}
-return entry.read().map((value) => describeValue(value, 'MARK_SECRET'))`,
-        )
-        expect(result).toEqual(expected)
-      },
-      30_000,
-    )
-    for (const bundler of startBundlers) {
-      twinTest(`${bundler} build`, name)(
-        `${bundler} build, mock mode: ${name}`,
-        async () => {
-          const { client } = await buildStart({
-            bundler,
-            files,
-            entry: 'src/entry.ts',
-            start: {
-              importProtection: {
-                ...importProtection,
-                behavior: 'mock',
-                mockAccess: 'off',
-              },
-            },
-          })
-          expect({
-            read: (
-              await client.run(`${describeValuePrelude}
-return entry.read().map((value) => describeValue(value, 'MARK_SECRET'))`)
-            ).result,
-            hasRealCode: client.where('MARK_SECRET') !== 'nowhere',
-          }).toEqual({ read: expected, hasRealCode: false })
-        },
-        60_000,
+    test(`vite dev: ${name}`, async () => {
+      const server = await startBrowserProtectedDevServer(
+        files,
+        importProtection,
       )
+      // The mock reports each use in the browser console.
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      const { result } = await runViteClient(
+        server,
+        '/src/entry.ts',
+        `${describeValuePrelude}
+return entry.read().map((value) => describeValue(value, 'MARK_SECRET'))`,
+      )
+      expect(result).toEqual(expected)
+    }, 30_000)
+    for (const bundler of startBundlers) {
+      test(`${bundler} build, mock mode: ${name}`, async () => {
+        const { client } = await buildStart({
+          bundler,
+          files,
+          entry: 'src/entry.ts',
+          start: {
+            importProtection: {
+              ...importProtection,
+              behavior: 'mock',
+              mockAccess: 'off',
+            },
+          },
+        })
+        expect({
+          read: (
+            await client.run(`${describeValuePrelude}
+return entry.read().map((value) => describeValue(value, 'MARK_SECRET'))`)
+          ).result,
+          hasRealCode: client.where('MARK_SECRET') !== 'nowhere',
+        }).toEqual({ read: expected, hasRealCode: false })
+      }, 60_000)
     }
   }
 })
