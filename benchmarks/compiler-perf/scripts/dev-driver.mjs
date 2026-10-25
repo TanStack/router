@@ -7,6 +7,7 @@
 //   -> { type: 'compile-all', result }
 //   <- { type: 'mem' }                      GC (with --expose-gc), then
 //   -> { type: 'mem', result }              heap/RSS snapshot (memory.mjs)
+//   <- { type: 'stats' | 'heap-snapshot' }  see ipc-agent.mjs
 //   <- { type: 'stop' }                     close the server and exit
 
 import crypto from 'node:crypto'
@@ -15,7 +16,7 @@ import module from 'node:module'
 import path from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { pathToFileURL } from 'node:url'
-import { memorySnapshot } from './memory.mjs'
+import { installIpcAgent } from './ipc-agent.mjs'
 
 const [appDir, portArg] = process.argv.slice(2)
 const send = (msg) => process.send?.(msg)
@@ -164,6 +165,7 @@ async function compileEnvironment(env) {
   }
 }
 
+installIpcAgent()
 process.on('message', async (msg) => {
   if (msg?.type === 'compile-all') {
     const result = { envs: {} }
@@ -176,8 +178,6 @@ process.on('message', async (msg) => {
     }
     result.totalMs = performance.now() - t0
     send({ type: 'compile-all', result })
-  } else if (msg?.type === 'mem') {
-    send({ type: 'mem', result: memorySnapshot() })
   } else if (msg?.type === 'stop') {
     await server.close()
     process.exit(0)

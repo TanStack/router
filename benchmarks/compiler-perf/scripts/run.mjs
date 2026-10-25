@@ -26,6 +26,16 @@ import {
   writeApp,
 } from './generate.mjs'
 import { descendantsRssMb } from './memory.mjs'
+import {
+  SOAK_FACTORY,
+  SOAK_RENAMED,
+  SOAK_ROUTE,
+  soakChildRoute,
+  soakFactorySource,
+  soakKinds,
+  soakRouteSource,
+  soakSetupFiles,
+} from './soak-files.mjs'
 import { summarize, writeMarkdown } from './report.mjs'
 
 const repoRoot = path.resolve(benchRoot, '../..')
@@ -43,13 +53,14 @@ const ALL_SCENARIOS = [
   'rsbuild',
 ]
 // Not in the default set: `rsbuild-build`, `rsbuild-dev` (the halves of
-// `rsbuild`), `floor`, `memory`, `leak`.
+// `rsbuild`), `floor`, `memory`, `leak`, `soak`.
 const EXTRA_SCENARIOS = [
   'rsbuild-build',
   'rsbuild-dev',
   'floor',
   'memory',
   'leak',
+  'soak',
 ]
 const FLOOR_KINDS = ['build', 'dev-compile', 'dev-cold', 'hmr', 'rsbuild-build']
 const { values: args } = parseArgs({
@@ -70,6 +81,13 @@ const { values: args } = parseArgs({
     floor: { type: 'string', default: FLOOR_KINDS.join(',') },
     'memory-runs': { type: 'string', default: '3' },
     'leak-cycles': { type: 'string', default: '50' },
+    'soak-cycles': { type: 'string', default: '500' },
+    'soak-every': { type: 'string', default: '25' },
+    'soak-snapshots': { type: 'string', default: '100,500' },
+    'soak-bundlers': { type: 'string', default: 'vite' },
+    'soak-modes': { type: 'string', default: 'real' },
+    'soak-heap-dir': { type: 'string' },
+    'soak-kinds': { type: 'string' },
     help: { type: 'boolean', default: false },
   },
 })
@@ -91,6 +109,13 @@ if (args.help) {
   --floor <list>            floor (record/replay) scenarios, default ${FLOOR_KINDS.join(',')}
   --memory-runs <n>         runs per memory scenario (default 3)
   --leak-cycles <n>         HMR edit+revert cycles in the leak check (default 50)
+  --soak-cycles <n>         edit+revert cycles of the soak (default 500)
+  --soak-every <n>          GC'd memory + compiler cache sample every n cycles (default 25)
+  --soak-snapshots <list>   cycles after which a heap snapshot is written (default 100,500)
+  --soak-bundlers <list>    vite,rsbuild (rsbuild: react-start only; default vite)
+  --soak-modes <list>       real (default), replay (record + replayed transforms)
+  --soak-heap-dir <dir>     heap snapshot directory (default <out>/heap)
+  --soak-kinds <list>       only these edit kinds (debugging; default all, see soak-files.mjs)
   --skip-package-builds     do not run the Nx package builds first`)
   process.exit(0)
 }
@@ -105,6 +130,13 @@ const RETRIES = Number(args.retries)
 const PORT = Number(args.port)
 const MEMORY_RUNS = Number(args['memory-runs'])
 const LEAK_CYCLES = Number(args['leak-cycles'])
+const SOAK_CYCLES = Number(args['soak-cycles'])
+const SOAK_EVERY = Number(args['soak-every'])
+const SOAK_SNAPSHOTS = new Set(
+  args['soak-snapshots'].split(',').filter(Boolean).map(Number),
+)
+const SOAK_BUNDLERS = args['soak-bundlers'].split(',').filter(Boolean)
+const SOAK_MODES = args['soak-modes'].split(',').filter(Boolean)
 const variants = args.variants.split(',').filter(Boolean)
 for (const variant of variants) {
   if (!ALL_VARIANTS.includes(variant)) {
@@ -464,13 +496,55 @@ function startViteDev(dir, { profileDir, inst = instrumentation() } = {}) {
       stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
     },
   )
+  return devHandle(child, spawnedAt)
+}
+
+const ipcAgentUrl = pathToFileURL(
+  path.join(benchRoot, 'scripts/ipc-agent.mjs'),
+).href
+
+/**
+ * `rsbuild dev` with the IPC agent preloaded (memory, compiler stats, heap
+ * snapshots); `listening` is posted once the port opens.
+ */
+function startRsbuildDev(dir, { inst = instrumentation(), replay } = {}) {
+  const spawnedAt = now()
+  const cliArgs = ['dev', '--port', String(PORT), '--host', '127.0.0.1']
+  if (replay) {
+    fs.writeFileSync(
+      path.join(dir, 'rsbuild.perf.config.mjs'),
+      RSBUILD_REPLAY_CONFIG,
+    )
+    cliArgs.push('-c', 'rsbuild.perf.config.mjs')
+  }
+  const child = fork(binPath('@rsbuild/core', 'rsbuild', dir), cliArgs, {
+    cwd: dir,
+    execArgv: [...inst.execArgv, '--import', ipcAgentUrl],
+    env: {
+      ...process.env,
+      ...inst.env,
+      NODE_ENV: 'development',
+      COMPILER_PERF_IPC_AGENT: '1',
+    },
+    stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+  })
+  const handle = devHandle(child, spawnedAt, { stopMessage: false })
+  waitForPort(PORT).then(
+    (at) => handle.post({ type: 'listening', epochMs: at }),
+    () => {},
+  )
+  return handle
+}
+
+/** Message plumbing of a forked dev server process. */
+function devHandle(child, spawnedAt, { stopMessage = true } = {}) {
   const output = []
   child.stdout.on('data', (d) => output.push(String(d)))
   child.stderr.on('data', (d) => output.push(String(d)))
   const messages = []
   const waiters = []
   // Each message is delivered to one waitFor() call.
-  child.on('message', (msg) => {
+  const post = (msg) => {
     const w = waiters.find((w) => w.type === msg.type)
     if (w) {
       waiters.splice(waiters.indexOf(w), 1)
@@ -478,7 +552,8 @@ function startViteDev(dir, { profileDir, inst = instrumentation() } = {}) {
     } else {
       messages.push(msg)
     }
-  })
+  }
+  child.on('message', post)
   const exited = new Promise((resolve) => child.on('exit', resolve))
   const waitFor = (type, timeoutMs = 300_000) => {
     const found = messages.findIndex((m) => m.type === type)
@@ -505,19 +580,28 @@ function startViteDev(dir, { profileDir, inst = instrumentation() } = {}) {
       )
     })
   }
+  const request = async (msg, timeoutMs = 60_000) => {
+    child.send(msg)
+    return waitFor(msg.type, timeoutMs)
+  }
   return {
     spawnedAt,
     pid: child.pid,
     output,
     waitFor,
+    post,
+    request,
     async memory() {
-      child.send({ type: 'mem' })
-      return (await waitFor('mem', 60_000)).result
+      return (await request({ type: 'mem' })).result
     },
     send: (msg) => child.send(msg),
     async stop() {
       if (child.exitCode === null) {
-        child.send({ type: 'stop' })
+        if (stopMessage) {
+          child.send({ type: 'stop' })
+        } else {
+          child.kill('SIGTERM')
+        }
         const timer = setTimeout(() => child.kill('SIGKILL'), 20_000)
         await exited
         clearTimeout(timer)
@@ -696,6 +780,8 @@ const results = {
   attribution: {},
   // Record-run details of the floor scenarios (the replay runs are in `scenarios`).
   floor: {},
+  // Soak series (see soakRun); also written to soak-<name>.json.
+  soak: {},
 }
 
 function scenarioEntry(name) {
@@ -1207,6 +1293,433 @@ async function leakRun(variant) {
   }
 }
 
+/**
+ * Soak: SOAK_CYCLES edit + revert cycles on one dev server (Vite or
+ * Rsbuild), rotating over the kinds of soak-files.mjs (probe edits, module
+ * and route adds/deletes, renames, `*.server.ts` imports, dependency-only
+ * factory flips). Every SOAK_EVERY cycles: forced GC, heap/external/RSS and
+ * the compiler's cache sizes (TSR_COMPILER_STATS=1); heap snapshots after
+ * the SOAK_SNAPSHOTS cycles. `replay` (floor): our transform hooks return
+ * recorded outputs (record run first, same deterministic edits).
+ */
+async function soakRun(variant, bundler, { replay } = {}) {
+  const dir = appDir(variant)
+  clean(dir)
+  const name = `${variant}/soak-${bundler}${replay ? `-${replay.mode}` : ''}`
+  const probes = PROBES[variant]
+  const kinds = soakKinds(variant, probes).filter(
+    (k) => !args['soak-kinds'] || args['soak-kinds'].split(',').includes(k),
+  )
+  const abs = (rel) => path.join(dir, rel)
+  // Files the soak writes, with their content before the soak (null: absent).
+  const originals = new Map()
+  const remember = (rel) => {
+    if (!originals.has(rel)) {
+      originals.set(
+        rel,
+        fs.existsSync(abs(rel)) ? fs.readFileSync(abs(rel), 'utf8') : null,
+      )
+    }
+  }
+  const write = (rel, content) => {
+    remember(rel)
+    fs.mkdirSync(path.dirname(abs(rel)), { recursive: true })
+    fs.writeFileSync(abs(rel), content)
+  }
+  const unlink = (rel) => {
+    remember(rel)
+    fs.rmSync(abs(rel), { force: true })
+  }
+  const setup = soakSetupFiles(variant)
+  for (const [rel, content] of setup) {
+    write(rel, content)
+  }
+  for (const probe of Object.values(probes)) {
+    remember(probe.file)
+  }
+  // The soak's own files stay in place for the dev server; restore() puts every
+  // file back to its setup state (after a failed cycle) or removes it (at the end).
+  const restore = (final) => {
+    for (const [rel, before] of originals) {
+      const target = setup.has(rel) && !final ? setup.get(rel) : before
+      if (target === null) {
+        fs.rmSync(abs(rel), { force: true })
+      } else if (
+        !fs.existsSync(abs(rel)) ||
+        fs.readFileSync(abs(rel), 'utf8') !== target
+      ) {
+        fs.mkdirSync(path.dirname(abs(rel)), { recursive: true })
+        fs.writeFileSync(abs(rel), target)
+      }
+    }
+    if (final) {
+      fs.rmSync(abs('src/soak'), { recursive: true, force: true })
+      fs.rmSync(abs('src/routes/soak'), { recursive: true, force: true })
+    }
+  }
+  const inst = instrumentation({ replay, mem: 'ipc' })
+  inst.env.TSR_COMPILER_STATS = '1'
+  const dev =
+    bundler === 'rsbuild'
+      ? startRsbuildDev(dir, { inst, replay: Boolean(replay) })
+      : startViteDev(dir, { inst })
+  const stopPoll = pollChildrenRss(dev.pid)
+  const heapDir = path.resolve(
+    args['soak-heap-dir'] ?? path.join(outDir, 'heap'),
+  )
+  fs.mkdirSync(heapDir, { recursive: true })
+  const pages = []
+  const out = {
+    variant,
+    bundler,
+    mode: replay?.mode ?? 'real',
+    kinds,
+    cycles: SOAK_CYCLES,
+    series: [],
+    cycleMs: {},
+    failures: [],
+    snapshots: [],
+  }
+  const t0 = now()
+  const countFiles = (rel) => {
+    let n = 0
+    const walk = (d) => {
+      for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+        if (e.isDirectory()) {
+          walk(path.join(d, e.name))
+        } else {
+          n++
+        }
+      }
+    }
+    walk(abs(rel))
+    return n
+  }
+  const sample = async (cycle) => {
+    const mem = await dev.memory()
+    const stats = await dev.request({ type: 'stats' })
+    const entry = {
+      cycle,
+      atS: Math.round((now() - t0) / 100) / 10,
+      ...pickMem(mem),
+      statsMs: Math.round(stats.ms),
+      stats: stats.result,
+      live: {
+        srcFiles: countFiles('src'),
+        routeFiles: countFiles('src/routes'),
+      },
+      failures: out.failures.length,
+    }
+    out.series.push(entry)
+    log(
+      `${name} cycle ${cycle}: heap ${entry.heapUsedMb} MB, external ${entry.externalMb} MB, rss ${entry.rssMb} MB, src files ${entry.live.srcFiles}`,
+    )
+    return entry
+  }
+  const snapshot = async (cycle) => {
+    const file = path.join(
+      heapDir,
+      `${name.replace(/\//g, '-')}-c${cycle}.heapsnapshot`,
+    )
+    const r = await dev.request({ type: 'heap-snapshot', file }, 900_000)
+    out.snapshots.push({ cycle, file: r.file, ms: Math.round(r.ms) })
+    log(`${name} heap snapshot after cycle ${cycle}: ${r.file}`)
+  }
+  const visit = async (page, url, text, timeoutMs = 30_000) => {
+    const deadline = Date.now() + timeoutMs
+    for (;;) {
+      try {
+        await page.goto(`http://127.0.0.1:${PORT}${url}`, {
+          waitUntil: 'commit',
+          timeout: timeoutMs,
+        })
+        await page.waitForFunction(() => window.__PERF_HYDRATED__, null, {
+          timeout: 10_000,
+          polling: 20,
+        })
+        await page.waitForFunction(
+          (t) => document.body?.textContent?.includes(t),
+          text,
+          { timeout: 3_000, polling: 20 },
+        )
+        return
+      } catch (error) {
+        if (Date.now() > deadline) {
+          throw new Error(`${url} never showed ${text}: ${error.message}`)
+        }
+        await sleep(300)
+      }
+    }
+  }
+  const SETTLE = 250
+  const routeTree = abs('src/routeTree.gen.ts')
+  const treeHas = (routePath) =>
+    fs.existsSync(routeTree) &&
+    fs.readFileSync(routeTree, 'utf8').includes(`'${routePath}'`)
+  const waitUntil = async (cond, what, timeoutMs = 30_000) => {
+    const deadline = Date.now() + timeoutMs
+    while (!cond()) {
+      if (Date.now() > deadline) {
+        throw new Error(`timeout: ${what}`)
+      }
+      await sleep(50)
+    }
+  }
+  try {
+    await dev.waitFor('listening')
+    const home = await newPage()
+    pages.push(home)
+    await loadUntilHydrated(home.page, `http://127.0.0.1:${PORT}/`)
+    const byKind = {}
+    const addPage = async () => {
+      const p = await newPage()
+      pages.push(p)
+      return p
+    }
+    const openPages = async () => {
+      for (const kind of kinds) {
+        if (probes[kind]) {
+          byKind[kind] ??= await addPage()
+          await openProbe(byKind[kind].page, kind, probes[kind])
+        }
+      }
+      byKind.soak ??= await addPage()
+      await loadUntilHydrated(
+        byKind.soak.page,
+        `http://127.0.0.1:${PORT}/soak/`,
+        { quietMs: 500 },
+      )
+      await byKind.soak.page.waitForSelector('[data-probe="soak-module"]', {
+        timeout: 30_000,
+      })
+      byKind.visit ??= await addPage()
+      await loadUntilHydrated(byKind.visit.page, `http://127.0.0.1:${PORT}/`, {
+        quietMs: 300,
+      })
+    }
+    await openPages()
+    const soakTarget = () => ({ ...byKind.soak, dev })
+    // Vite fully reloads open pages when a file they once loaded is deleted
+    // (a module with no importer left is a dead end of its HMR propagation):
+    // let every page finish such a reload before the next edit.
+    const settlePages = async () => {
+      await sleep(600)
+      for (const p of pages) {
+        const deadline = Date.now() + 30_000
+        for (;;) {
+          try {
+            await p.page.waitForFunction(() => window.__PERF_HYDRATED__, null, {
+              timeout: Math.max(1, deadline - Date.now()),
+              polling: 50,
+            })
+            break
+          } catch (error) {
+            if (Date.now() > deadline) {
+              throw error
+            }
+            await sleep(100)
+          }
+        }
+      }
+    }
+    const ui = {}
+    const runKind = async (kind, i, occurrence) => {
+      const n = i + 1
+      if (probes[kind]) {
+        const probe = probes[kind]
+        const original = originals.get(probe.file)
+        const token = probe.token.replace(/-v0$/, `-soak${n}`)
+        const target = { ...byKind[kind], dev }
+        await editAndWait(target, kind, probe, token, () =>
+          write(probe.file, original.replace(probe.token, token)),
+        )
+        await sleep(SETTLE)
+        await editAndWait(target, kind, probe, probe.token, () =>
+          write(probe.file, original),
+        )
+        return
+      }
+      if (kind === 'module-add') {
+        const mod = `src/soak/added-${n}.ts`
+        write(mod, `export const soakValue = 'soak-added-${n}'\n`)
+        await editAndWait(
+          soakTarget(),
+          'soak-module',
+          ui,
+          `soak-added-${n}`,
+          () =>
+            write(
+              SOAK_ROUTE,
+              soakRouteSource(variant, { importFrom: `../../soak/added-${n}` }),
+            ),
+        )
+        await sleep(SETTLE)
+        await editAndWait(
+          soakTarget(),
+          'soak-module',
+          ui,
+          'soak-value-v0',
+          () => write(SOAK_ROUTE, soakRouteSource(variant)),
+        )
+        await sleep(SETTLE)
+        unlink(mod)
+        return
+      }
+      if (kind === 'route-add') {
+        const routePath = `/soak/r${n}`
+        const rel = `src/routes/soak/r${n}.tsx`
+        write(rel, soakChildRoute(routePath, `soak-route-${n}`))
+        await waitUntil(() => treeHas(routePath), `${routePath} in the tree`)
+        await visit(byKind.visit.page, routePath, `soak-route-${n}`)
+        unlink(rel)
+        await waitUntil(() => !treeHas(routePath), `${routePath} removed`)
+        await visit(byKind.visit.page, '/soak/', 'soak-value-v0')
+        return
+      }
+      if (kind === 'route-rename') {
+        const renamed = `src/routes/soak/renamed-${n}.tsx`
+        remember(renamed)
+        fs.renameSync(abs(SOAK_RENAMED), abs(renamed))
+        await waitUntil(
+          () => treeHas(`/soak/renamed-${n}`),
+          `/soak/renamed-${n} in the tree`,
+        )
+        await visit(byKind.visit.page, `/soak/renamed-${n}`, 'soak-renamed')
+        fs.renameSync(abs(renamed), abs(SOAK_RENAMED))
+        await waitUntil(
+          () => !treeHas(`/soak/renamed-${n}`) && treeHas('/soak/renamed'),
+          '/soak/renamed back in the tree',
+        )
+        await visit(byKind.visit.page, '/soak/renamed', 'soak-renamed')
+        return
+      }
+      if (kind === 'server-import') {
+        const server = occurrence % 2 === 0 ? 'handler' : 'client'
+        await editAndWait(
+          soakTarget(),
+          'soak-label',
+          ui,
+          `soak-server-${n}`,
+          () =>
+            write(
+              SOAK_ROUTE,
+              soakRouteSource(variant, { server, label: `soak-server-${n}` }),
+            ),
+        )
+        await sleep(SETTLE)
+        await editAndWait(soakTarget(), 'soak-label', ui, 'soak-label-v0', () =>
+          write(SOAK_ROUTE, soakRouteSource(variant)),
+        )
+        return
+      }
+      if (kind === 'factory-flip') {
+        await editAndWait(
+          soakTarget(),
+          'soak-factory',
+          ui,
+          'factory-plain',
+          () => write(SOAK_FACTORY, soakFactorySource(false)),
+        )
+        await sleep(SETTLE)
+        await editAndWait(soakTarget(), 'soak-factory', ui, 'factory-rpc', () =>
+          write(SOAK_FACTORY, soakFactorySource(true)),
+        )
+        return
+      }
+      throw new Error(`unknown soak kind ${kind}`)
+    }
+    await sleep(1000)
+    await sample(0)
+    for (let i = 0; i < SOAK_CYCLES; i++) {
+      const kind = kinds[i % kinds.length]
+      const occurrence = Math.floor(i / kinds.length)
+      const c0 = now()
+      try {
+        await runKind(kind, i, occurrence)
+        await sleep(SETTLE)
+        if (['module-add', 'route-add', 'route-rename'].includes(kind)) {
+          await settlePages()
+        }
+        ;(out.cycleMs[kind] ??= []).push(Math.round(now() - c0))
+      } catch (error) {
+        const message = String(error?.message ?? error).slice(0, 2000)
+        out.failures.push({ cycle: i + 1, kind, message })
+        log(`${name} cycle ${i + 1} (${kind}) failed: ${message.slice(0, 600)}`)
+        if (out.failures.length > 25) {
+          throw new Error(`${name}: too many failed cycles`)
+        }
+        restore(false)
+        await sleep(3000)
+        await openPages()
+      }
+      if ((i + 1) % SOAK_EVERY === 0 || i === SOAK_CYCLES - 1) {
+        await sample(i + 1)
+      }
+      if (SOAK_SNAPSHOTS.has(i + 1)) {
+        await snapshot(i + 1)
+      }
+    }
+    out.pageErrors = pages.reduce((sum, p) => sum + p.errors.length, 0)
+    out.pageErrorSamples = pages.flatMap((p) => p.errors).slice(0, 10)
+    out.childPeakRssMb = stopPoll()
+    out.cycleMsMedian = Object.fromEntries(
+      Object.entries(out.cycleMs).map(([k, v]) => [
+        k,
+        [...v].sort((a, b) => a - b)[v.length >> 1],
+      ]),
+    )
+    out.devOutputTail = dev.output.join('').slice(-6000)
+  } finally {
+    stopPoll()
+    restore(true)
+    for (const p of pages) {
+      await p.context.close().catch(() => {})
+    }
+    await dev.stop()
+  }
+  results.soak[name] = out
+  fs.writeFileSync(
+    path.join(outDir, `soak-${name.replace(/\//g, '-')}.json`),
+    JSON.stringify(out, null, 2),
+  )
+  if (replay) {
+    const stats = inst.readReplayStats()
+    out.replay = {
+      hits: stats.hits,
+      misses: stats.misses,
+      missesByHook: stats.missesByHook,
+      missSamples: stats.missSamples?.slice(0, 5),
+      loadMs: stats.loadMs,
+    }
+    log(`${name} replay: ${JSON.stringify(out.replay)}`)
+  }
+  saveResults()
+  return out
+}
+
+async function soakScenario(variant) {
+  for (const bundler of SOAK_BUNDLERS) {
+    if (bundler === 'rsbuild' && !hasRsbuild(variant)) {
+      continue
+    }
+    for (const mode of SOAK_MODES) {
+      await waitForQuiet()
+      if (mode === 'replay') {
+        const replayName = `${variant}-soak-${bundler}`
+        log(`${variant}/soak-${bundler} record run`)
+        await soakRun(variant, bundler, {
+          replay: { mode: 'record', name: replayName },
+        })
+        await soakRun(variant, bundler, {
+          replay: { mode: 'replay', name: replayName },
+        })
+      } else {
+        await soakRun(variant, bundler)
+      }
+    }
+  }
+}
+
 async function memoryScenario(variant) {
   const opts = { runs: MEMORY_RUNS, warmup: 0 }
   await repeat(
@@ -1382,6 +1895,8 @@ async function main() {
       maxBusy: MAX_BUSY,
       memoryRuns: MEMORY_RUNS,
       leakCycles: LEAK_CYCLES,
+      soakCycles: SOAK_CYCLES,
+      soakEvery: SOAK_EVERY,
     },
   }
   log(
@@ -1478,6 +1993,9 @@ async function main() {
         runs: 1,
         warmup: 0,
       })
+    }
+    if (scenarios.has('soak')) {
+      await soakScenario(variant)
     }
     if (scenarios.has('profile')) {
       await profileScenario(variant)
