@@ -260,8 +260,24 @@ function profilingEnv(profileDir) {
   }
 }
 
-function readAttribution(profileDir, wallMs) {
-  const cpu = analyzeCpuProfileDir(profileDir)
+/**
+ * Node writes a `--cpu-prof` file while its process exits, so a profile of the
+ * tree (e.g. `vite build`'s) can still be incomplete when the run resolves:
+ * retry while one does not parse yet.
+ */
+async function readAttribution(profileDir, wallMs) {
+  let cpu
+  for (let attempt = 1; ; attempt++) {
+    try {
+      cpu = analyzeCpuProfileDir(profileDir)
+      break
+    } catch (error) {
+      if (!(error instanceof SyntaxError) || attempt === 50) {
+        throw error
+      }
+      await new Promise((resolve) => setTimeout(resolve, 200))
+    }
+  }
   const hooksFile = path.join(profileDir, 'hooks.json')
   const hooks = fs.existsSync(hooksFile)
     ? JSON.parse(fs.readFileSync(hooksFile, 'utf8')).hooks
@@ -1317,7 +1333,7 @@ async function profileScenario(variant) {
     log(`${variant}/${name} profiled run (others busy ${quiet.busyCores})`)
     const metrics = await run(profileDir)
     results.attribution[`${variant}/${name}`] = {
-      ...readAttribution(profileDir, wall(metrics)),
+      ...(await readAttribution(profileDir, wall(metrics))),
       metrics,
       quiet,
     }
