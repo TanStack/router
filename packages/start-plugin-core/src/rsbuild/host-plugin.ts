@@ -171,6 +171,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async (c) => {
         const modified = [...(c.modifiedFiles ?? [])]
         const removed = [...(c.removedFiles ?? [])]
+        // one warning per file per compilation: a module this compilation
+        // rebuilds reports its compiler warnings again (each compilation's
+        // `warnings` starts empty)
+        session.warnings.reset()
         ipEnv?.beginLogicalBuild()
         // Rspack reports no event for a file created while nothing depended on it (a target
         // deleted and recreated between edits): failed resolutions and missing-file facts are
@@ -235,7 +239,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                       !env.compiled.has(module.resource)
                     ) {
                       await ipEnv.reportAgain(
-                        normalizePath(module.resource),
+                        canonicalResource(module.resource),
                         record,
                       )
                     }
@@ -270,9 +274,12 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 }
               },
             )
+            // a bail hook stops at the first tap answering anything but
+            // `undefined`: `false` would silence later taps asking for a pass
+            // (Rspack types the answer `boolean`; `undefined` is "no vote")
             compilation.hooks.needAdditionalPass.tap(
               PLUGIN_NAME,
-              () => ipEnv.build.needPass,
+              () => (ipEnv.build.needPass || undefined) as unknown as boolean,
             )
           }
         }
