@@ -1120,9 +1120,13 @@ function cleanOrphanedLocals(
       }
       const decl = b.declarations[0]
       const declParent = decl ? file.parentOf(decl) : null
+      // a `var` hoisted out of a nested block is declared by the effect unit
+      // (statement) holding it: its declarator is cleaned here, like before
+      const declaring = t1.declaringUnits.get(sym)
       if (
         symbols.isModuleLevel(sym) &&
-        t1.declaringUnits.has(sym) &&
+        declaring !== undefined &&
+        declaring.some((u) => t1.units[u]!.kind !== 'effect') &&
         declParent?.type !== 'AssignmentPattern' &&
         declParent?.type !== 'Property' &&
         declParent?.type !== 'ArrayPattern'

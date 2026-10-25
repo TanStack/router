@@ -718,7 +718,9 @@ export function TsrHydrate0(props) { const local = props.local; return (<p use:t
 })
 
 describe('module-level code the children use (R9, §3.5.2)', () => {
-  it('imports exported declarations, Route and augmented components from the parent; moves what only the chunk uses', async () => {
+  // A component only the chunk reads moves with its own property writes
+  // (`Card.Title = …`, R29 (b): nothing outside its cluster augments it).
+  it('imports exported declarations and Route from the parent; moves what only the chunk uses, augmented components included', async () => {
     const code = `${REACT}import { createFileRoute } from '@tanstack/react-router'
 import { makeStore } from './store'
 export const Route = createFileRoute('/')({ component: Page })
@@ -738,16 +740,19 @@ function Page() {
     const [b] = client.facts.boundaries
     expect(client.errors).toEqual([])
     expect(client.chunks[b!.id]).toBe(
-      `import { Route, store, helper, Card } from './page.tsx'
+      `import { Route, store, helper } from './page.tsx'
 let renders = 0
 const label = 'Ada'
+function Card({ children }) { return <div>{children}</div> }
+Card.Title = () => <h1>t</h1>
 function Widget() { return <i>{label}</i> }
 export function TsrHydrate0() { return <><Card><Card.Title /></Card>{++renders}<Widget />{store.id}{Route.options.id}{helper(2)}</> }
 `,
     )
     expect(client.code).not.toContain('let renders')
     expect(client.code).not.toContain('function Widget')
-    expect(client.code).toContain('export { helper, Card }')
+    expect(client.code).not.toContain('function Card')
+    expect(client.code).toContain('export { helper }')
   })
 
   it('moves a let the children only assign into the chunk', async () => {

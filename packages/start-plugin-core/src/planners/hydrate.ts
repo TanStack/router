@@ -943,21 +943,21 @@ function extract(
       found.push({ sym: p.sym, pos: e.b.element.start })
     }
   }
-  // Solid: `use:x` reads `x` (a directive is no reference in the semantic model)
+  // Solid: `use:x` reads `x` (a core value ref, captured above); a directive
+  // names an identifier, so a captured local stays a local: `const x = props.x`
   const directiveLocals: Array<{ name: string; sym: SymbolId }> = []
-  const directiveReads: Array<{ range: Range; sym: SymbolId }> = []
   if (solid) {
     for (const d of scan.directives) {
-      if (d.sym === null || declaredInside(d.sym)) {
+      if (
+        d.sym === null ||
+        declaredInside(d.sym) ||
+        symbols.isModuleLevel(d.sym)
+      ) {
         continue
       }
-      if (symbols.isModuleLevel(d.sym)) {
-        directiveReads.push({ range: d.nameRange, sym: d.sym })
-      } else {
-        found.push({ sym: d.sym, pos: d.nameRange.start })
-        if (!directiveLocals.some((l) => l.sym === d.sym)) {
-          directiveLocals.push({ name: symbols.name(d.sym), sym: d.sym })
-        }
+      found.push({ sym: d.sym, pos: d.nameRange.start })
+      if (!directiveLocals.some((l) => l.sym === d.sym)) {
+        directiveLocals.push({ name: symbols.name(d.sym), sym: d.sym })
       }
     }
   }
@@ -999,7 +999,9 @@ function extract(
   const props = solid ? shared.props : null
   if (props !== null) {
     for (const c of captures) {
-      env.set(c, { member: [props, propOf.get(c)!] })
+      if (!directiveLocals.some((l) => l.sym === c)) {
+        env.set(c, { member: [props, propOf.get(c)!] })
+      }
     }
   }
   if (args) {
@@ -1030,23 +1032,13 @@ function extract(
       reason: 'hydrate-ref-setter',
     })
   }
-  for (const d of directiveReads) {
-    // a module binding a directive names: an explicit read, so the chunk imports or moves it
-    ctx.rewrites.add({
-      range: d.range,
-      body: [{ k: 'text', parts: [{ sym: d.sym }], mapTo: d.range.start }],
-      scope: scopeChunk,
-      by: HYDRATE_PLANNER,
-      reason: 'hydrate-directive',
-    })
-  }
 
   // ---- the chunk component: a fixed-home generated unit owning the children (R37)
   const head: Array<string | SymRef> = ['export function ', { sym: comp.sym }]
   if (props !== null) {
     head.push('(', { sym: props }, ') { ')
     for (const l of directiveLocals) {
-      head.push(`const ${l.name} = `, { sym: l.sym }, '; ')
+      head.push(`const ${l.name} = `, { sym: props }, `.${propOf.get(l.sym)}; `)
     }
   } else {
     const params: Array<string> = []
