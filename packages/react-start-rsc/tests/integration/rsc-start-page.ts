@@ -25,34 +25,6 @@ export const where = () => 'MARK_REACT_SERVER:' + globalThis.__envMarkerInits
   'node_modules/env-marker/default.js': `export const where = () => 'MARK_DEFAULT'\n`,
 }
 
-/**
- * The page's text for `MARK_...` markers: `label` the loader's result, and
- * `called` what the last call from the browser returned.
- */
-export const page = (
-  fns: string,
-) => `import { createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
-import { greet } from '../fns'
-export const Route = createFileRoute('/')({
-  loader: () => greet(),
-  component: Page,
-})
-function Page() {
-  const label = Route.useLoaderData()
-  const [called, setCalled] = useState('')
-  const [count, setCount] = useState(0)
-  return (
-    <main>
-      <p data-testid="label">label {label}</p>
-      <p data-testid="called">called {called}</p>
-      <button data-testid="call" onClick={() => greet().then(setCalled)}>call</button>
-      <button data-testid="count" onClick={() => setCount(count + 1)}>count {count}</button>
-    </main>
-  )
-}
-${fns}`
-
 /** Clicks the page's call button and waits for the answer. */
 export async function callFromPage(browser: BrowserPage, expected: string) {
   await browser.page.locator('[data-testid=call]').click()

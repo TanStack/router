@@ -7,7 +7,7 @@ One entry per root cause: the bug, the SPEC clause, the pins (`file` and test na
 `$name`, `%s` and `${…}` are table-row placeholders), and what a fix must achieve. The test comment (`Bug:`,
 `Impact:`) has the details. "Cause" files name today's implementation; a rewrite may have no such file.
 
-Totals: 381 pin sites in 106 test files (a table test counts once; Vitest counts each row).
+Totals: 380 pin sites in 105 test files (a table test counts once; Vitest counts each row).
 
 Pins whose input picks a name today's compiler generates (S6) flip with a compiler that generates other names. The
 adaptive pins next to them, which read the names a compiler actually generates, are the real check.
@@ -430,7 +430,7 @@ Paths under `router-plugin/tests/`.
 - **With options in a variable, the HMR transform declares the component binding after the object that reads it.**
   SPEC G1. `known-bugs-route-hmr.test.ts`: "route options in a variable ($name) evaluate to a route with a component".
 
-## J4 Start environment separation (87 pins: 67 below, 20 in S1–S7)
+## J4 Start environment separation (86 pins: 66 below, 20 in S1–S7)
 
 Paths under `start-plugin-core/tests/` unless noted.
 
@@ -510,10 +510,9 @@ Paths under `start-plugin-core/tests/` unless noted.
 - **With SSR as the provider, a module is two instances in the SSR bundle**, so its top-level code runs twice. SPEC
   J4.14, G3. `integration/known-bugs-start-compiler.test.ts`: "SSR: a server fn module is initialised once and shares
   its state with SSR code"; `integration/start-compose-server-fn-route.test.ts`: "the server runs the route module once".
-- **Server fns no client code references answer HTTP calls by id.** SPEC J4.2.
+- **Production builds: server fns no client code references answer HTTP calls by id.** SPEC J4.2.
   `integration/known-bugs-start-compiler.test.ts`: "SSR: a server fn only server code references is not callable over
-  HTTP"; `react-start-rsc/tests/integration/rsc-start-private.test.ts`: "a server function only server code calls is not
-  callable from the browser".
+  HTTP".
 - **Vite: the production server-fn resolver is generated before the SSR build found every server fn** (#7213). SPEC
   J4.2, G4. `integration/known-bugs-start-compiler.test.ts`: "is callable, the app files written %s"; "its caller only
   client code imports: the caller is callable over HTTP, the app files written %s".
