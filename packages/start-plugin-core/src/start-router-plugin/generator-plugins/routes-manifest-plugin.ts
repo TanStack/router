@@ -1,4 +1,4 @@
-import { rootRouteId } from '@tanstack/router-core'
+import { rootRouteId } from '@tanstack/router-core/tooling'
 
 import type { GeneratorPlugin, ModelRoute } from '@tanstack/router-generator'
 

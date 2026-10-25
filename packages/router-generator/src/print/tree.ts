@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { rootRouteId } from '@tanstack/router-core'
+import { rootRouteId } from '@tanstack/router-core/tooling'
 import { removeExt, replaceBackslash } from '../utils'
 import { key, lit } from './style'
 import type { CodeStyle } from './style'
