@@ -3,7 +3,7 @@
  * server fn, the default production id, the dev id, the custom-id
  * placeholder and the global occupied-id allocator.
  */
-import { createHash } from 'node:crypto'
+import { hash } from 'node:crypto'
 
 export interface ServerFnKey {
   /** Root-relative path of the defining file (forward slashes). */
@@ -14,10 +14,10 @@ export interface ServerFnKey {
 
 /** The default production id: base64url of a sha256 prefix (no path leak, ~22 chars). */
 export function defaultFunctionId(key: ServerFnKey): string {
-  return createHash('sha256')
-    .update(`${key.rootRel}#${key.stableKey}`, 'utf8')
-    .digest('base64url')
-    .slice(0, 22)
+  return hash('sha256', `${key.rootRel}#${key.stableKey}`, 'base64url').slice(
+    0,
+    22,
+  )
 }
 
 /** The dev id: an opaque encoding of the defining file and key the dev resolver decodes. */

@@ -20,7 +20,7 @@
  *   first and include the reads of nested placeholders, so a Solid chunk
  *   forwards them through its substitution environment.
  */
-import { createHash } from 'node:crypto'
+import { hash } from 'node:crypto'
 import { relative } from 'node:path'
 import {
   isPureExpression,
@@ -258,10 +258,10 @@ function findBoundaries(
       }
     }
   }
-  const hash = createHash('sha1')
-    .update(relative(cfg.root, analysis.path).replaceAll('\\', '/'))
-    .digest('hex')
-    .slice(0, 10)
+  const fileHash = hash(
+    'sha1',
+    relative(cfg.root, analysis.path).replaceAll('\\', '/'),
+  ).slice(0, 10)
   const out: Array<Boundary> = []
   let index = 0
   // the id's ordinal counts every boundary of the pristine source (the
@@ -275,7 +275,7 @@ function findBoundaries(
       element,
       opening,
       framework: fw,
-      id: `${(ordinal++).toString(36)}_${hash}`,
+      id: `${(ordinal++).toString(36)}_${fileHash}`,
       split,
       children,
       insertAt: insertPoint(opening),
