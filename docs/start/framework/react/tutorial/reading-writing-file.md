@@ -97,13 +97,7 @@ Let's start by creating a file-based storage system for our jokes.
 
 ### Step 1.1: Create a JSON File with Jokes
 
-Let's set up a list of jokes that we can use to render on the page. Create a `jokes.json` file within `src/data`:
-
-```bash
-touch src/data/jokes.json
-```
-
-Now, let's add some sample jokes to this file:
+Let's set up a list of jokes that we can use to render on the page. Create `src/data/jokes.json` and add some sample jokes to this file:
 
 ```json
 [
@@ -178,7 +172,7 @@ Now let's create a new component `JokesList` to render the jokes on the page wit
 
 ```tsx
 // src/components/JokesList.tsx
-import { Joke } from '../types'
+import type { Joke } from '../types'
 
 interface JokesListProps {
   jokes: Joke[]
@@ -211,8 +205,8 @@ Now let's call our server function inside `index.tsx` using TanStack Router whic
 ```jsx
 // src/routes/index.tsx
 import { createFileRoute } from '@tanstack/react-router'
-import { getJokes } from './serverActions/jokesActions'
-import { JokesList } from './JokesList'
+import { getJokes } from '../serverActions/jokesActions'
+import { JokesList } from '../components/JokesList'
 
 export const Route = createFileRoute('/')({
   loader: async () => {
@@ -222,7 +216,7 @@ export const Route = createFileRoute('/')({
   component: App,
 })
 
-const App = () => {
+function App() {
   const jokes = Route.useLoaderData() || []
 
   return (
