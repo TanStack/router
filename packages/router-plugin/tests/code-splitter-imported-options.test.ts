@@ -282,6 +282,8 @@ export const Route = createFileRoute('/x')({
           'page-component.tsx': `export const page = Object.freeze(() => <p>MARK_X_PAGE</p>)\n`,
         },
         routeId: '/x',
+        // route HMR on: the development markers of the route's components
+        hmr: true,
       },
     )
     await expectValidModules(route)

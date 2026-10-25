@@ -4,6 +4,7 @@
  * once and shared by the `route-split` planner (which applies them) and the
  * `route-hmr` planner (which hoists only what stays).
  */
+import { walk } from '@tanstack/router-utils/compiler'
 import { splitGroupingsSchema } from '../core/config'
 import { defaultCodeSplitGroupings } from '../core/constants'
 import {
@@ -65,6 +66,7 @@ export type NotSplitReason =
   | 'ordered-effect'
   | 'hydrate-writer'
   | 'env-declared'
+  | 'this-reference'
 
 export interface NotSplit {
   key: string
@@ -455,6 +457,18 @@ function computeSplitPlan(
       if (isFallbackLiteral(target.value) || isAlreadyLazy(ctx, target.value)) {
         continue
       }
+      if (readsOwnThis(unwrapTs(target.value))) {
+        // #8688: the router calls a method or function-expression callback as
+        // a method of the options object; a split chunk's detached call would
+        // change its `this` (J2.8: informed, never broken)
+        notSplit.push({
+          key,
+          reason: 'this-reference',
+          range: target.region,
+          name: null,
+        })
+        continue
+      }
       const shorthandSym =
         target.shape === 'shorthand'
           ? identifierSymbol(ctx, target.value)
@@ -534,7 +548,45 @@ function describeReason(reason: NotSplitReason): string {
       return 'it writes a binding captured by a hydration boundary.'
     case 'env-declared':
       return 'its value stays in the route module (declared by a top-level call or destructuring, or one with an exported binding it writes); a split chunk could only import it.'
+    case 'this-reference':
+      return 'it reads `this`, the route options object it is called on, which a split chunk would not see. Write it as an arrow function or read the route instead.'
   }
+}
+
+/**
+ * Whether a function expression's own body (or parameters) reads `this`,
+ * not that of a nested function, class or object method inside it (#8688).
+ * Arrow functions have the module's `this` wherever they evaluate.
+ */
+function readsOwnThis(fn: Node): boolean {
+  if (fn.type !== 'FunctionExpression') {
+    return false
+  }
+  let found = false
+  walk(fn, {
+    enter: (n, wctx) => {
+      if (found) {
+        wctx.stop()
+        return
+      }
+      if (n === fn) {
+        return
+      }
+      if (
+        n.type === 'FunctionExpression' ||
+        n.type === 'FunctionDeclaration' ||
+        n.type === 'ClassBody'
+      ) {
+        wctx.skip()
+        return
+      }
+      if (n.type === 'ThisExpression') {
+        found = true
+        wctx.stop()
+      }
+    },
+  })
+  return found
 }
 
 /** The ranges of the module-level units declaring a symbol. */
