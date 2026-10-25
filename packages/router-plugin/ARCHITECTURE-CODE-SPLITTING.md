@@ -870,6 +870,12 @@ Components use `lazyRouteComponent` (framework-provided). In React this
 integrates with Suspense-compatible lazy loading. Loaders use `lazyFn` which
 wraps the async function for deferred loading.
 
+A loader in object form (`{ handler, staleReloadMode }`) splits only its
+`handler`: the router reads the other keys from the route options, so they
+stay in the reference file. The loader stays whole in the reference file when
+a spread or computed key after `handler` may replace it, when there is no
+plain `handler`, or when a `handler() {}` method uses `super`.
+
 ### 11. Source Maps Are Preserved
 
 All three compilers pass `sourceMaps: true` and `sourceFileName` to

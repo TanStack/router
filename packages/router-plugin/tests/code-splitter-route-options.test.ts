@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildAndRun,
   compileRouteModules,
   declarationOf,
   expectValidModules,
+  exportedNames,
   head,
   importSources,
   importedNames,
 } from './regression-helpers'
+import type { CodeSplitGroupings } from '../src/core/constants'
 
 describe('route options', () => {
   it('are split when declared in a variable', async () => {
@@ -111,6 +114,117 @@ export const Route = createFileRoute('/')({
     // depend on `Route` are never shared, so each module that reads `cache`
     // creates its own copy.
     expect(sharedBindings).toEqual([])
+    await expectValidModules(modules)
+  })
+})
+
+describe('a loader in object form', () => {
+  const groupings: CodeSplitGroupings = [['loader'], ['component']]
+
+  /** Loads `/` with a real router and returns each match's loader data. */
+  const routerEntry = `import { createMemoryHistory, createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+export { Route } from './routes/index'
+export async function load() {
+  const router = createRouter({
+    routeTree,
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+  await router.load()
+  return router.state.matches.map((match) => match.loaderData ?? null)
+}`
+
+  it.each([
+    { name: 'an arrow handler', handler: `handler: async () => 'loaded'` },
+    {
+      name: 'a method handler',
+      handler: `async handler() {
+      return 'loaded'
+    }`,
+    },
+    {
+      name: 'an imported handler',
+      imports: `import { load } from '../load'\n`,
+      handler: `handler: load`,
+    },
+  ])(
+    'loads route data and keeps its options with $name split',
+    async ({ imports = '', handler }) => {
+      const result = await buildAndRun(
+        `${head}${imports}export const Route = createFileRoute('/')({
+  loader: {
+    staleReloadMode: 'blocking',
+    ${handler},
+  },
+  component: () => <p>index</p>,
+})`,
+        `return [await entry.load(), entry.Route.options.loader.staleReloadMode]`,
+        {
+          files: {
+            'entry.ts': routerEntry,
+            'load.ts': `export const load = async () => 'loaded'`,
+          },
+          groupings,
+        },
+      )
+      expect(result).toEqual([[null, 'loaded'], 'blocking'])
+    },
+    30_000,
+  )
+
+  it.each([
+    {
+      name: 'a spread after the handler',
+      loader: `{ handler: () => 1, ...defaults }`,
+    },
+    {
+      name: 'a computed key after the handler',
+      loader: `{ handler: () => 1, [key]: () => 2 }`,
+    },
+    { name: 'no handler', loader: `{ ...defaults }` },
+    {
+      name: 'a getter handler',
+      loader: `{ get handler() { return () => 1 } }`,
+    },
+    {
+      name: 'a method handler that uses super',
+      loader: `{ handler() { return super.valueOf() } }`,
+    },
+  ])('stays in the route file with $name', async ({ loader }) => {
+    const { modules } = compileRouteModules(
+      `${head}import { defaults, key } from './defaults'
+export const Route = createFileRoute('/')({
+  loader: ${loader},
+  component: () => <p>index</p>,
+})
+`,
+      { groupings },
+    )
+    expect(modules.reference).not.toContain('tsr-split=loader')
+    expect(exportedNames(modules['virtual loader']!)).toEqual([])
+    await expectValidModules(modules)
+  })
+
+  it('shares what its other options and a split option in the same chunk read', async () => {
+    const { modules, sharedBindings } = compileRouteModules(
+      `${head}const settings = { mode: 'blocking' as const }
+export const Route = createFileRoute('/')({
+  loader: {
+    staleReloadMode: settings.mode,
+    handler: () => settings,
+  },
+  component: () => <p>index</p>,
+})
+`,
+      { groupings: [['loader', 'component']] },
+    )
+    // The handler moves to the chunk while `staleReloadMode` stays in the
+    // route file, so both read one `settings` object from the shared module.
+    expect(sharedBindings).toEqual(['settings'])
+    expect(modules.reference).not.toMatch(declarationOf('settings'))
+    expect(modules['virtual loader-component']).not.toMatch(
+      declarationOf('settings'),
+    )
     await expectValidModules(modules)
   })
 })
