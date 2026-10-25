@@ -6,16 +6,12 @@ describe('Vite dev: a separate RSC provider', () => {
   // J4.2: only server functions client code references are
   // callable over HTTP. `internal` is called by `greet`'s handler only
   // (server origin, allowed); a request by its id from the browser must be
-  // refused.
-  // Bug: a server-environment caller reports every server fn it compiles as
-  // client-referenced (handleCreateServerFn.ts `isClientReferenced`), so the
-  // resolver's client-origin check never refuses anything with a separate
-  // provider.
-  // Impact: a server fn only server code uses is callable by anyone who
-  // learns its id.
+  // refused (R44 in development: the client environment never compiled
+  // `internal`'s module, not even when the lookup compiles the client graph
+  // on demand).
   // Source: the compiler-level pin was in
   // start-plugin-core/tests/createServerFn/createServerFn.test.ts.
-  test.fails(
+  test(
     'a server function only server code calls is not callable from the browser',
     async () => {
       const server = await startRscDevServer({
