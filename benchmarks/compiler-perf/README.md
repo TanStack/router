@@ -12,7 +12,9 @@ transforms, `<Hydrate>` handling, import protection) affects what users wait for
    `rsbuild build`.
 
 and attributes main-thread time to our plugins (CPU profiles plus per-plugin
-hook timing).
+hook timing). Optional scenarios measure the **floor** (the same scenarios
+with the compiler's outputs replayed, i.e. what they would cost with a
+zero-cost compiler) and **memory** (peak RSS, heap after GC, HMR leak check).
 
 ## Workloads
 
@@ -44,7 +46,9 @@ Without `--out`, results go to `benchmarks/compiler-perf/results/<label>/`.
 Useful options (`--help` lists all):
 
 - `--variants react-start,react-router`
-- `--scenarios build,dev-compile,dev-cold,dev-warm,hmr,rsbuild,profile`
+- `--scenarios build,dev-compile,dev-cold,dev-warm,hmr,rsbuild,profile` (the
+  default set); also `rsbuild-build`/`rsbuild-dev` (the halves of `rsbuild`),
+  `floor`, `memory`, `leak` (see below)
 - `--runs 5 --warmup 1` (startup/build), `--hmr-iterations 20 --hmr-warmup 3`
 - `--skip-package-builds` when the packages are already built
 - `--max-busy 1.5`: before every run (and every HMR edit) the harness samples
@@ -119,6 +123,70 @@ Dev servers run through `scripts/dev-driver.mjs` (`vite.createServer` + `listen`
 with Node's compile cache enabled like the Vite CLI). The Node compile cache and
 the OS file cache stay warm between runs; "cold" means no Vite dependency cache
 and no build output.
+
+### Floor (`--scenarios floor`)
+
+How fast each scenario would be if the TanStack compiler cost nothing while
+producing exactly the same output. `scripts/replay.mjs`:
+
+- **record** (one unmeasured run per scenario): every hook of a plugin whose
+  name matches `tanstack` (`COMPILER_PERF_REPLAY_PLUGINS` overrides the regex)
+  that returns code (`transform`, `load`, `renderChunk`; Rsbuild
+  `api.transform` handlers; unplugin `transform`/`load` hooks under Rspack;
+  Rspack loaders shipped by `@tanstack/*` packages, wrapped in Node's require
+  cache so module ids do not change; Rspack `VirtualModulesPlugin` writes) runs
+  for real and its result is stored by (environment, plugin, hook, id with
+  `v=`/`t=` queries stripped, hash of the input code), plus the call's
+  occurrence index.
+- **replay** (the measured `<variant>/floor-<scenario>` runs): the store is
+  deserialized when the config loads, and those hooks return the stored
+  result without running. A miss runs the real hook (`misses`; should be 0).
+  The load time (`replayLoadMs`) is subtracted from the times (`raw*` keeps
+  the unadjusted values).
+
+It works on any compiler implementation because it keys on plugin names, hook
+identity and loader packages, not on compiler internals. `--floor` selects the
+scenarios (default `build,dev-compile,dev-cold,hmr,rsbuild-build`); run the
+real scenarios in the same invocation so `summary.md` can put real and floor
+side by side.
+
+Checks and limits:
+
+- Build output is hashed (`outputHash`); dev compile-all hashes every served
+  module per environment (`clientOutputHash`, `ssrOutputHash`, with
+  per-session queries and Vite's run-dependent CJS interop order
+  normalized). `outputMismatch` counts hashes that differ from the record
+  run; `results.floor.<scenario>.realMatches` compares the record run with
+  the real run.
+- The other hooks of the same plugins still run (`otherTanstackHookSyncMs`):
+  `resolveId`, `hotUpdate`, `generateBundle`, and the **route generator**
+  (Vite `configResolved`, Rspack `beforeRun`), reported as `generatorMs`
+  (settled time; on the startup critical path, so `floor − generatorMs`
+  estimates a floor without the generator). `routeTree.gen.ts` is kept
+  between runs, so the generator only checks and does not rewrite it.
+- Side effects of replayed hooks do not happen (`this.addWatchFile`, extra
+  `this.load` calls of the server-fn lookup, compiler caches). The output
+  checks catch side effects that change output.
+- Floor HMR uses deterministic edit tokens; the record run makes extra edits
+  to cover the replay run's retries.
+
+### Memory (`--scenarios memory,leak`)
+
+`scripts/memory.mjs` takes snapshots with `--expose-gc` (two full GCs first):
+V8 `heapUsedMb`, `externalMb`, `arrayBuffersMb`, `rssMb`, `peakRssMb` (VmHWM)
+and the RSS of descendant processes (`childPeakRssMb`, sampled every 200 ms).
+Memory runs are separate from timed runs (`--memory-runs`, default 3).
+
+- `mem-build`, `mem-rsbuild-build`: CLI build preloaded with
+  `--import memory.mjs`; the snapshot is taken at process exit.
+- `mem-dev-cold`: dev server after `/` hydrated; `mem-dev-compile`: after
+  compile-all.
+- `leak`: dev server after a cold start with `/` and one page per probe open,
+  snapshot, then `--leak-cycles` (default 50) edit + revert cycles rotating
+  over route component, route loader, server function handler and shared
+  module, each waiting for the edit and for the revert to show up; a
+  snapshot every 10 cycles (`series`) and at the end. `heapGrowthMb` /
+  `rssGrowthMb` are end − start.
 
 ### Attribution
 

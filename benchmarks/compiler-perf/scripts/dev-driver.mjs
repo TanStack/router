@@ -5,13 +5,17 @@
 //   -> { type: 'listening', ... }           once the server listens
 //   <- { type: 'compile-all' }              transform every app module
 //   -> { type: 'compile-all', result }
+//   <- { type: 'mem' }                      GC (with --expose-gc), then
+//   -> { type: 'mem', result }              heap/RSS snapshot (memory.mjs)
 //   <- { type: 'stop' }                     close the server and exit
 
+import crypto from 'node:crypto'
 import fs from 'node:fs'
 import module from 'node:module'
 import path from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { pathToFileURL } from 'node:url'
+import { memorySnapshot } from './memory.mjs'
 
 const [appDir, portArg] = process.argv.slice(2)
 const send = (msg) => process.send?.(msg)
@@ -90,9 +94,22 @@ function shouldCrawl(mod) {
   return id.startsWith(appDir)
 }
 
+// Strips the per-session parts of served code (dependency optimizer and HMR
+// timestamps) so record/replay runs can be compared. Vite emits its CommonJS
+// interop bindings in resolve-completion order, which varies between runs.
+const CJS_INTEROP_RE = /const [\w$]+ = __vite__cjsImport\d+_[\w$]+\["[^"]+"\];/g
+const normalizeServed = (code) => {
+  code = code.replace(/([?&])(v|t)=[\w-]+/g, '$1$2=*')
+  const interop = code.match(CJS_INTEROP_RE)
+  return interop
+    ? code.replace(CJS_INTEROP_RE, '') + '\n' + interop.sort().join('')
+    : code
+}
+
 async function compileEnvironment(env) {
   const seen = new Set()
   const errors = []
+  const outputs = new Map()
   let wave = seedUrls()
   const t0 = performance.now()
   while (wave.length) {
@@ -104,7 +121,8 @@ async function compileEnvironment(env) {
         }
         seen.add(url)
         try {
-          await env.transformRequest(url)
+          const result = await env.transformRequest(url)
+          outputs.set(url, result?.code ?? '')
         } catch (error) {
           errors.push({
             url,
@@ -122,7 +140,28 @@ async function compileEnvironment(env) {
     )
     wave = [...new Set(next)].filter((url) => !seen.has(url))
   }
-  return { ms: performance.now() - t0, modules: seen.size, errors }
+  const ms = performance.now() - t0
+  // Debugging aid for output mismatches between runs.
+  if (process.env.COMPILER_PERF_DUMP_OUTPUTS) {
+    fs.writeFileSync(
+      `${process.env.COMPILER_PERF_DUMP_OUTPUTS}.${env.name}.json`,
+      JSON.stringify(
+        Object.fromEntries(
+          [...outputs].map(([url, code]) => [url, normalizeServed(code)]),
+        ),
+      ),
+    )
+  }
+  const hash = crypto.createHash('sha256')
+  for (const url of [...outputs.keys()].sort()) {
+    hash.update(url + '\0' + normalizeServed(outputs.get(url)) + '\0')
+  }
+  return {
+    ms,
+    modules: seen.size,
+    errors,
+    outputHash: hash.digest('hex').slice(0, 16),
+  }
 }
 
 process.on('message', async (msg) => {
@@ -137,6 +176,8 @@ process.on('message', async (msg) => {
     }
     result.totalMs = performance.now() - t0
     send({ type: 'compile-all', result })
+  } else if (msg?.type === 'mem') {
+    send({ type: 'mem', result: memorySnapshot() })
   } else if (msg?.type === 'stop') {
     await server.close()
     process.exit(0)
