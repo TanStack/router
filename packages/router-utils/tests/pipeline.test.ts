@@ -435,6 +435,21 @@ describe('slice gates: invalidation', () => {
     })
   })
 
+  it('watches only files: a known package an export resolves to is no dependency path', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/consumer.ts': CONSUMER,
+        '/app/factory-inner.ts': `export { createServerOnlyFn as make } from 'toy-start'\n`,
+      },
+      recognizer: RECOGNIZER,
+    })
+    const out = await host.compile('/app/consumer.ts', [toySummaryPlanner()])
+    expect(out!.facts.planners['toy-summary']).toEqual({
+      './factory-inner': { t: 'factory', kind: 'serverOnly' },
+    })
+    expect(out!.dependencies).toEqual(['/app/factory-inner.ts'])
+  })
+
   it('(d) overlapping save: a slow r1 compile never publishes over r2', async () => {
     const gate = deferred<void>()
     let suspendOnce = true
