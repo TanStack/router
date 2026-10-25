@@ -57,3 +57,33 @@ test('keeps a directive on Body after hydration', async () => {
   expect(updated).toBe(1)
   app.unmount()
 })
+
+test.each([
+  [
+    'array children',
+    '<h1>Hello</h1>',
+    () => Vue.h(Body, null, [Vue.h('h1', null, 'Hello')]),
+  ],
+  ['no children', '', () => Vue.h(Body)],
+])('adds the head to a Body with %s', async (_, html, body) => {
+  const container = document.createElement('div')
+  container.innerHTML = `<div data-allow-mismatch="">${html}</div>`
+  document.body.append(container)
+  const heading = container.querySelector('h1')
+
+  const app = Vue.createSSRApp({
+    render: () =>
+      Vue.h(Html, null, {
+        default: () => [
+          Vue.h('head', null, [Vue.h('title', null, 'Hello')]),
+          body(),
+        ],
+      }),
+  })
+  app.mount(container)
+  await Vue.nextTick()
+
+  expect(document.head.querySelector('title')?.textContent).toBe('Hello')
+  expect(container.querySelector('h1')).toBe(heading)
+  app.unmount()
+})
