@@ -540,7 +540,9 @@ describe('renderRouterToStream - renderer selection and pipeable errors', () => 
 
     try {
       await Promise.resolve()
-      expect(routerTransformMocks.readableOptions).toHaveBeenCalledOnce()
+      expect(routerTransformMocks.readableOptions).toHaveBeenCalledWith(
+        expect.objectContaining({ highWaterMark: 0 }),
+      )
       expect(rejected).not.toHaveBeenCalled()
       await vi.advanceTimersByTimeAsync(120_000)
 
