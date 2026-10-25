@@ -128,6 +128,56 @@ describe('rules', () => {
     ])
   })
 
+  test("an entry's own marker denies it: the marker import is the violation, located at the marker, and its mock keeps the witness", async () => {
+    const rec = recorder()
+    const files = {
+      'src/client.ts': `import '@tanstack/react-start/server-only'\nconsole.log('client')\n`,
+      'src/marked.ts': `import '@tanstack/react-start/server-only'\nexport const secret = 1\n`,
+    }
+    const isEntry = (p: string) => p === `${ROOT}/src/client.ts`
+    const a = new MemoryApp({
+      files,
+      options: { onViolation: rec.onViolation },
+      isEntry,
+    })
+    // a marked module that is no entry is judged through its importers only
+    const { out: marked } = await a.compile('src/marked.ts', 'client')
+    expect(edgeImports(marked!.code)).toHaveLength(0)
+    expect(rec.calls).toHaveLength(0)
+    const { out } = await a.compile('src/client.ts', 'client')
+    expect(
+      rec.calls.map((c) => [
+        c.env,
+        c.type,
+        c.specifier,
+        c.importer,
+        c.importerLoc,
+      ]),
+    ).toEqual([
+      [
+        'client',
+        'marker',
+        '@tanstack/react-start/server-only',
+        `${ROOT}/src/client.ts`,
+        { file: `${ROOT}/src/client.ts`, line: 1, column: 8 },
+      ],
+    ])
+    expect(edgeImports(out!.code)).toHaveLength(1)
+    // the server is not denied its own marker
+    const { out: server } = await a.compile('src/client.ts', 'ssr')
+    expect(edgeImports(server!.code)).toHaveLength(0)
+    expect(rec.calls).toHaveLength(1)
+    // build: the bare edge's mock carries the effect witness (the marker module is empty)
+    const b = new MemoryApp({ files, options: {}, mode: 'build', isEntry })
+    const { out: built } = await b.compile('src/client.ts', 'client')
+    const specifier = edgeImports(built!.code)[0]!
+    expect(b.ip.load(specifier)!.code).toContain('__fx(m);')
+    expect(b.ip.env('client').witness()(`\0${specifier}`)).toEqual({
+      key: specifier.split('/edge.')[1],
+      effectful: true,
+    })
+  })
+
   test('excludeFiles skips file and marker rules of node_modules targets; [] turns them on', async () => {
     const files = {
       'node_modules/lib/package.json': `{"name":"lib","main":"lib.server.js"}`,

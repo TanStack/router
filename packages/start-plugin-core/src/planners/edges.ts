@@ -130,6 +130,19 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
           return null
         }
         let rule = matchSpecifier(rules, raw)
+        // an entry's own marker denies it here (a server-only-marked client
+        // entry): its marker import is the violating edge, located at the
+        // marker. A marked non-entry module is judged through its importers
+        // (an exempt importer gets it, J6.7).
+        const ownMarker = ip.markerSpecifiers[raw]
+        if (
+          rule === null &&
+          ownMarker !== undefined &&
+          markerViolates(envType, ownMarker) &&
+          ip.isEntry(importerPath)
+        ) {
+          rule = { type: 'marker' }
+        }
         const resolved = await ctx.resolve(raw, from)
         if (rule === null && resolved !== null) {
           const rel = relativeTargetPath(config, resolved)
@@ -235,8 +248,14 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
     j: Judged,
     ctx: PolicyContext,
   ): Promise<EdgeModuleContent> {
+    // the module's own marker: the marker module is empty, but the edge must
+    // survive with the module (its witness tells whether the marked module is
+    // in the bundle), so the mock keeps the effect witness
+    const ownMarker = ip.markerSpecifiers[j.raw] !== undefined
     const target =
-      j.resolved !== null ? await describeTarget(j.resolved, ctx) : null
+      j.resolved !== null && !ownMarker
+        ? await describeTarget(j.resolved, ctx)
+        : null
     const names = new Set<string>(target?.names ?? [])
     // every name any output of this plan reads through the same logical edge
     for (const list of Object.values(plan.edges)) {
@@ -257,11 +276,11 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
       specifier: j.raw,
       importer: relativizePath(j.importerPath, config.root),
       file:
-        j.rule?.type !== 'specifier' && j.resolved !== null
+        j.rule?.type !== 'specifier' && j.resolved !== null && !ownMarker
           ? relativeTargetPath(config, j.resolved)
           : null,
       names: [...names].sort(),
-      effectful: target?.effectful ?? true,
+      effectful: ownMarker || (target?.effectful ?? true),
       resolved: j.resolved,
       hasDefault: importsDefault || (target?.hasDefault ?? true),
       bare: j.edge.form === 'bare',

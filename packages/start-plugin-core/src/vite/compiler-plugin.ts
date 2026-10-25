@@ -119,7 +119,12 @@ export interface StartCompilerPluginOptions {
   routerPluginContext: RouterPluginContext
   /** The app's resolved entries (import protection's trace roots). */
   resolveEntries: () => {
-    entryPaths: { client: string; server: string; start: string; router: string }
+    entryPaths: {
+      client: string
+      server: string
+      start: string
+      router: string
+    }
   }
 }
 
@@ -150,6 +155,25 @@ export function toDevSpecifier(id: string, root: string): string {
 }
 
 const normalizePath = (p: string): string => p.replace(/\\/g, '/')
+
+/**
+ * The map of a transform's input, or null when the input is the original
+ * source: Vite answers an empty sourcemap chain with an identity map over
+ * the input (its positions are the source's own, and such a map counts
+ * lines by LF only, unlike ECMAScript).
+ */
+function inputMapOf(
+  ctx: { getCombinedSourcemap: () => unknown },
+  code: string,
+): InputSourceMap | null {
+  const map = ctx.getCombinedSourcemap() as InputSourceMap & {
+    sourcesContent?: Array<string | null>
+  }
+  if (map.sourcesContent?.length === 1 && map.sourcesContent[0] === code) {
+    return null
+  }
+  return map
+}
 
 /** What one dev server or build shares across the Start environments (created at `configResolved`). */
 interface Session {
@@ -255,6 +279,8 @@ export function startCompilerPlugin(
       srcDirectory: resolvedStartConfig.srcDirectory,
       mode,
       verbatimModuleSyntax: readVerbatimModuleSyntax(config.root),
+      isEntry: (p) =>
+        session !== null && entriesOf(session).has(normalizePath(p)),
     })
     const rawFacts = new RawFactsCache({
       readFile: (file) => fs.readFile(file, 'utf8').catch(() => null),
@@ -373,7 +399,10 @@ export function startCompilerPlugin(
     bundler: 'vite',
     framework: opts.framework,
     conditions: environment.config.resolve.conditions,
-    routerSplit: env.type === 'client',
+    // R24: no SSR splitting; except Solid, whose hydration keys follow the
+    // component tree: the server must render the same lazy wrappers as the
+    // client or every split route's hydration mismatches
+    routerSplit: env.type === 'client' || opts.framework === 'solid',
   })
 
   /** Host services bound to one hook context. */
@@ -488,7 +517,10 @@ export function startCompilerPlugin(
     if (!first) {
       return
     }
-    const change: InvalidateChange = { path: normalizePath(file), kind: 'registry' }
+    const change: InvalidateChange = {
+      path: normalizePath(file),
+      kind: 'registry',
+    }
     const res = await invalidate(s.caches, change, invalidationHost(s, first))
     const now = Date.now()
     for (const environment of environments) {
@@ -721,8 +753,7 @@ export function startCompilerPlugin(
               env: envInfo,
               planners: s.planners.get(env.name)!,
               config: s.configs.get(env.name)!,
-              inputMap: () =>
-                this.getCombinedSourcemap() as unknown as InputSourceMap,
+              inputMap: () => inputMapOf(this, code),
               // always: downstream plugins read positions through the combined map, whatever `build.sourcemap` says
               wantMap: true,
             },
@@ -931,8 +962,7 @@ export function startCompilerPlugin(
               configKey: `late:${ip.config.configKey}`,
               perPlanner: {},
             },
-            inputMap: () =>
-              this.getCombinedSourcemap() as unknown as InputSourceMap,
+            inputMap: () => inputMapOf(this, code),
             wantMap: true,
           },
           hostFor(s, env.name, (source, imp, options) =>

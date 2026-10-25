@@ -237,6 +237,23 @@ describe('positions', () => {
     })
   })
 
+  test('through an input map, generated lines are counted by LF only (a lone CR breaks no line)', () => {
+    // line 0 → src line 1; line 1 → src line 2; line 2 → src line 3 (all column 0)
+    const map = {
+      version: 3,
+      sources: ['page.mdx'],
+      names: [],
+      mappings: 'AAAA;AACA;AACA',
+    }
+    const code = `a\rb\nimport x from './x'\nc`
+    const at = new Locator(code, '/app/src/page.mdx.js', () => map)
+    expect(at.at(code.indexOf('import'))).toEqual({
+      file: '/app/src/page.mdx',
+      line: 2,
+      column: 1,
+    })
+  })
+
   test('through an input map: the original file and position; uncovered positions are none', () => {
     // line 0 col 0 → src 0 (../docs/page.mdx) line 4 col 2; line 1 col 4 → line 9 col 0
     const map = {

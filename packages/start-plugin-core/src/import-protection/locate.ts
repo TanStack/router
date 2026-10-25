@@ -165,7 +165,10 @@ function resolveSource(
  * is none).
  */
 export class Locator {
-  private text: SourceText | null = null
+  /** Lines by every ECMAScript terminator (positions of the input itself). */
+  private ecma: SourceText | null = null
+  /** Lines by LF only: how a map's producer counts the generated lines (a lone CR breaks no line). */
+  private lf: SourceText | null = null
 
   constructor(
     private readonly code: string,
@@ -177,12 +180,14 @@ export class Locator {
     if (offset < 0 || offset > this.code.length) {
       return null
     }
-    this.text ??= new SourceText(this.code)
-    const { line, column } = this.text.locate(offset)
     const map = this.inputMap()
     if (map === null) {
+      this.ecma ??= new SourceText(this.code)
+      const { line, column } = this.ecma.locate(offset)
       return { file: this.file, line: line + 1, column: column + 1 }
     }
+    this.lf ??= new SourceText(this.code, { lines: 'lf' })
+    const { line, column } = this.lf.locate(offset)
     return originalPositionFor(map, line, column, this.file)
   }
 }

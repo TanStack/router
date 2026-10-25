@@ -93,6 +93,7 @@ export class MemoryApp {
       ids: opts.ids,
       verbatimModuleSyntax: opts.verbatimModuleSyntax,
       readFile: (file) => Promise.resolve(this.files[file] ?? null),
+      isEntry: opts.isEntry,
     })
     if (!ip) {
       throw new Error('import protection is disabled')
