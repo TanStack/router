@@ -247,11 +247,12 @@ describe('Rsbuild dev', () => {
     },
   }
 
-  // The same bug through the real `@mdx-js/loader`: the page is
-  // compiled from MDX, with the loader's source map; a report names the page
-  // at the import (line 3) or the use (4:27) in the .mdx
-  // source (SPEC J6.5).
-  test.fails.each<{ name: string; files: Record<string, string> }>([
+  // Through the real `@mdx-js/loader`: the page is compiled from MDX, with
+  // the loader's source map; a report names the page at the import (line 3)
+  // or the use (4:27) in the .mdx source (SPEC J6.5). With behavior "error"
+  // the importing module fails to build (J6.3), so the page throws that
+  // denial instead of running the real code (as for a JS importer).
+  test.each<{ name: string; files: Record<string, string> }>([
     {
       name: 'a denied file',
       files: {
@@ -295,7 +296,12 @@ export const page = () => secret()
           'src/entry.ts': `import { page } from './home.mdx'\nconsole.log(page())\n`,
         },
       })
-      const messages = await runRsbuildClient(server)
+      // (the denied page fails to build: the page throws the denial)
+      const messages = await runRsbuildClient(server).catch((error: unknown) =>
+        String(error).includes('[import-protection] Import denied')
+          ? []
+          : Promise.reject(error as Error),
+      )
       expect({
         reported: reportedViolations({
           root: server.root,
