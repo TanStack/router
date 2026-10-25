@@ -21,9 +21,11 @@ describe('applyRouteHmr after a route tree rebuild', () => {
     keepUnsplit: () => false,
   }
 
+  const root = new BaseRootRoute({})
   /** A fresh evaluation of the route module `/page` whose loader returns `token`. */
   const evaluate = (token: string) =>
     new BaseRoute({
+      getParentRoute: () => root,
       path: '/page',
       loader: () => token,
     }) as any
@@ -34,8 +36,6 @@ describe('applyRouteHmr after a route tree rebuild', () => {
    * execution imported for `/page`.
    */
   const routerOf = (page: any) => {
-    const root = new BaseRootRoute({})
-    page.options.getParentRoute = () => root
     const tree = { page }
     const router = {
       routesById: { '/page': page } as Record<string, any>,

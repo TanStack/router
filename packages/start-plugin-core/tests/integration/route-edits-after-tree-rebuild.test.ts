@@ -6,8 +6,8 @@
  */
 import react from '@vitejs/plugin-react'
 import { describe, onTestFinished, test } from 'vitest'
-import { startDevServer } from '../dev-server'
 import { settlePage } from '@tanstack/compiler-test-utils/hmr-sync'
+import { startDevServer } from '../dev-server'
 import {
   editLoaderAroundTreeRebuilds,
   treeRebuildApp,
