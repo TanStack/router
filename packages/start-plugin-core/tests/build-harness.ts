@@ -328,6 +328,16 @@ export interface StartBuild {
    * build's results need before rebuilding.
    */
   rebuild: (edits?: Record<string, string | null>) => Promise<StartBuild>
+  /**
+   * Rsbuild builds: serves the build as `rsbuild preview` does in the app's
+   * directory (the same plugins; Start's own middleware runs the built
+   * server entry). `registerCleanup` receives the server's `close` (default:
+   * when the current test finishes). Vite builds: `createStartHost({ serve:
+   * false })` and its `preview()`.
+   */
+  preview: (
+    registerCleanup?: (cleanup: () => Promise<void>) => void,
+  ) => Promise<{ url: string }>
 }
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
@@ -605,6 +615,14 @@ async function buildAt(
         }
       }
       return buildAt(app, bundler, target, 1)
+    },
+    preview: (registerCleanup = onTestFinished) => {
+      if (bundler !== 'rsbuild') {
+        throw new Error(
+          'preview() serves Rsbuild builds: use createStartHost({ serve: false }) for Vite',
+        )
+      }
+      return previewWithRsbuild(target, registerCleanup)
     },
   }
 }
@@ -922,23 +940,7 @@ async function buildWithRsbuild(
             sourceMap: target.sourcemap ? { js: 'source-map' } : false,
             cleanDistPath: true,
           },
-          plugins: [
-            // A React app's own Rsbuild plugin, as in every React Start app,
-            // unless the test configures it
-            ...(target.framework === 'react' &&
-            !pluginNames(target.rsbuildConfig?.plugins).includes(
-              'rsbuild:react',
-            )
-              ? [pluginReact()]
-              : []),
-            startRsbuildPlugin(
-              target.framework,
-              target.root,
-              target.start,
-              harnessEntries(target.root),
-            ),
-            outputPlugin,
-          ],
+          plugins: [...rsbuildAppPlugins(target), outputPlugin],
         },
         target.rsbuildConfig ?? {},
       ),
@@ -973,6 +975,60 @@ async function buildWithRsbuild(
     throw new BuildError('rspack', errors, warnings.client)
   }
   return checkOutputs(outputs)
+}
+
+/** The plugins of the app's `rsbuild.config.ts`. */
+function rsbuildAppPlugins(target: BuildTarget) {
+  return [
+    // A React app's own Rsbuild plugin, as in every React Start app,
+    // unless the test configures it
+    ...(target.framework === 'react' &&
+    !pluginNames(target.rsbuildConfig?.plugins).includes('rsbuild:react')
+      ? [pluginReact()]
+      : []),
+    startRsbuildPlugin(
+      target.framework,
+      target.root,
+      target.start,
+      harnessEntries(target.root),
+    ),
+  ]
+}
+
+/**
+ * Serves the last Rsbuild build of the app as `rsbuild preview` does in the
+ * app's directory, with the app's configuration of the build.
+ */
+async function previewWithRsbuild(
+  target: BuildTarget,
+  registerCleanup: (cleanup: () => Promise<void>) => void,
+): Promise<{ url: string }> {
+  const { createRsbuild, mergeRsbuildConfig } = await import('@rsbuild/core')
+  const rsbuild = await createRsbuild({
+    cwd: target.root,
+    loadEnv: false,
+    rsbuildConfig: mergeRsbuildConfig(
+      {
+        root: target.root,
+        mode: target.mode,
+        logLevel: 'silent',
+        server: { host: '127.0.0.1' },
+        // Absolute: Start's preview middleware imports the server build
+        // from the output directory, which it resolves against the
+        // process's working directory when the first request comes
+        output: { distPath: { root: path.join(target.root, 'dist') } },
+        plugins: rsbuildAppPlugins(target),
+      },
+      target.rsbuildConfig ?? {},
+    ),
+  })
+  const { server, urls } = await rsbuild.preview({ getPortSilently: true })
+  registerCleanup(() => server.close())
+  const url = urls[0]
+  if (!url) {
+    throw new Error('the preview server does not listen')
+  }
+  return { url }
 }
 
 /**
