@@ -1,4 +1,4 @@
-import { applyRouteHmr } from '@tanstack/router-core'
+import { applyRouteChunkHmr, applyRouteHmr } from '@tanstack/router-core'
 import type {
   AnyRoute,
   RouteHmrAdapter,
@@ -25,5 +25,18 @@ export function __tsrRouteHmr(
 ): void {
   if (process.env.NODE_ENV !== 'production') {
     applyRouteHmr(routeId, Route, meta, adapter)
+  }
+}
+
+/**
+ * Dev-only entry point called by the router plugin's output at the top level
+ * of every evaluation of a split chunk of a route module on webpack-style
+ * hosts (the chunk accepts its own hot updates).
+ *
+ * Called only by compiler output; not a public API.
+ */
+export function __tsrRouteChunkHmr(routeId: string, chunk: string): void {
+  if (process.env.NODE_ENV !== 'production') {
+    applyRouteChunkHmr(routeId, chunk)
   }
 }

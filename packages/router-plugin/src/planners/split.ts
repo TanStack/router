@@ -260,7 +260,14 @@ export function routeSplitPlanner(): Planner {
         const g = groupOf(d)
         const isComponent = d.key !== 'loader'
         const helperSym = helper(isComponent ? 'lazyRouteComponent' : 'lazyFn')
-        const split = names.alloc(`TsrSplit${pascal(d.key)}`)
+        // a component's binding is capitalised for the refresh runtimes; a
+        // non-component option's is not, so a chunk holding only such options
+        // is no React Refresh boundary and its hot updates reach its importers
+        const split = names.alloc(
+          COMPONENT_KEYS.includes(d.key)
+            ? `TsrSplit${pascal(d.key)}`
+            : `tsrSplit${pascal(d.key)}`,
+        )
         facts.chunkExports[d.key] = d.exportName
 
         // the chunk's unit: declares the export from the option's value. An

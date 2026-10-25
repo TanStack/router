@@ -426,7 +426,7 @@ export {
   parseRedirect,
 } from './redirect'
 
-export { applyRouteHmr } from './hmr'
+export { applyRouteHmr, applyRouteChunkHmr } from './hmr'
 export type {
   LazyRouteComponentHot,
   RouteHmrAdapter,
