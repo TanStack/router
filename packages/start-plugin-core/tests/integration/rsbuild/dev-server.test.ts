@@ -310,7 +310,7 @@ describe('Rsbuild dev: modules the app stops importing', () => {
         },
       })
       const counts = () => {
-        const s = compilerStats()['start:rsbuild'] ?? {}
+        const s: Record<string, number> = compilerStats()['start:rsbuild'] ?? {}
         return { plans: s.plans ?? 0, rawFacts: s.rawFacts ?? 0 }
       }
       const before = counts()
