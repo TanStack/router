@@ -7,7 +7,7 @@
  */
 import { digestOf, identify, isCommonJsPath, revision } from './identity'
 import { parseModule } from './source'
-import { ModuleAnalysis } from './analysis'
+import { DEFAULT_MARKERS, ModuleAnalysis } from './analysis'
 import { buildSummary } from './summary'
 import { EMPTY_RECOGNIZER, isKnownSpecifier } from './values'
 import type { ModuleSummary, SummaryExtraHook } from './summary'
@@ -294,9 +294,13 @@ export class RawFactsCache {
     )
     const exportNames = Object.keys(summary.exports).sort()
     const own = analysis.ownEffects
+    // a marker import (`import '@tanstack/react-start/server-only'`) declares
+    // the module's environment: it evaluates nothing and is no effect
+    const markers = this.opts.markerSpecifiers ?? DEFAULT_MARKERS
+    const isMarker = (spec: string) => markers[spec] !== undefined
     const imports: Array<string> = []
     const evaluates = (spec: string) => {
-      if (!imports.includes(spec)) {
+      if (!imports.includes(spec) && !isMarker(spec)) {
         imports.push(spec)
       }
     }
@@ -310,6 +314,9 @@ export class RawFactsCache {
         evaluates(r.specifier)
       }
     }
+    const bareImportEffect = analysis.imports.some(
+      (i) => i.bare && !i.typeOnly && !isMarker(i.specifier),
+    )
     const tf: Omit<TargetFacts, 'digest'> = {
       exists: true,
       marker: analysis.markers,
@@ -317,13 +324,9 @@ export class RawFactsCache {
       stars: [...summary.stars],
       imports,
       esm: analysis.sourceType === 'module',
-      effectful: own || analysis.imports.some((i) => i.bare && !i.typeOnly),
+      effectful: own || bareImportEffect,
       codeEffects: analysis.codeEffects,
-      effectProvenance: own
-        ? 'own'
-        : analysis.imports.some((i) => i.bare && !i.typeOnly)
-          ? 'import'
-          : null,
+      effectProvenance: own ? 'own' : bareImportEffect ? 'import' : null,
     }
     return {
       canonicalId,

@@ -354,14 +354,10 @@ export const read = () => secret() + '|' + d()
 // re-exported through a mixed barrel that the client never uses).
 // Source: mutation testing (generateBundle's survival check).
 describe.each(startBundlers)('%s build, tree-shaken imports', (bundler) => {
-  // Bug (Rsbuild): same as the pins "a denied module the client bundle drops
-  // does not fail the build" (known-bugs.test.ts): the Rsbuild report step
-  // walks every module of the module graph, used or not, so the marked
-  // module the client bundle drops still fails the build.
-  // Impact: on Rsbuild, a mixed barrel re-exporting a server-only-marked
-  // module fails the build even when the client only uses its other exports.
-  const barrelTest = bundler === 'rsbuild' ? test.fails : test
-  barrelTest(
+  // (Rsbuild: the marker import made the marked module effectful, so the
+  // mock's effect witness kept it alive wherever the barrel evaluated; a
+  // marker import is no evaluation edge.)
+  test(
     'a server-only-marked module re-exported by a barrel the client uses other exports of builds without any report',
     async () => {
       const build = await buildStart({
