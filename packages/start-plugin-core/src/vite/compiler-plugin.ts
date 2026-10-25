@@ -426,10 +426,13 @@ export function startCompilerPlugin(
     bundler: 'vite',
     framework: opts.framework,
     conditions: environment.config.resolve.conditions,
-    // R24: no SSR splitting; except Solid, whose hydration keys follow the
-    // component tree: the server must render the same lazy wrappers as the
-    // client or every split route's hydration mismatches
-    routerSplit: env.type === 'client' || opts.framework === 'solid',
+    // Every router env splits (as main did): the server must render the tree
+    // the client hydrates. Solid's hydration keys follow the component tree
+    // (the lazy wrapper's components), and React wraps a match in Suspense
+    // when its error component is lazy (`errorComponent.preload`), so an
+    // unsplit server (R24) mismatches every split route with an
+    // errorComponent and no pendingComponent.
+    routerSplit: true,
   })
 
   /** Host services bound to one hook context. */
