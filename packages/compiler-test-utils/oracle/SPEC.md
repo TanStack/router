@@ -221,7 +221,8 @@ srcDirectory, … })`. Which clauses a switch turns on or off: J2.21, J3.7, J6.3
   produced or changed: user and route modules after our transforms, split chunks, virtual and support modules, and
   dependency modules our plugins transformed. Inside that scope every free name counts, unless the module's
   original source already reads it free. What a bundler does inside modules no compiler touched is out of scope.
-  (A compiler that drops a local whose name is also a global is not caught by this check.)
+  (A compiler that drops a local whose name is also a global is not caught by this check.) A leftover import of a
+  module the environment cannot or must not load is not such dead code (G16).
 - **G9 Exported bindings: one instance, free export lists, black-box names.** Every export something actually
   imports (another module, a test file, another route) keeps working with the same value and instance the owning
   module uses; the export list may otherwise grow or shrink. Generated identifier names, virtual-module ids and query
@@ -259,6 +260,18 @@ srcDirectory, … })`. Which clauses a switch turns on or off: J2.21, J3.7, J6.3
   left untouched; generated names never collide with user bindings. Exception for route-file upkeep: the generator
   may repair the designated `Route` declaration's missing factory import (J1.1) without existing import provenance;
   this does not allow rewriting unrelated or shadowed user bindings.
+- **G16 Removed code takes what only it used.** Whatever a transform removes from a module (a handler, validator or
+  `.server()` on the client; a client-only implementation or `<ClientOnly>` children on the server; a split option;
+  a `deleteNodes` option; `<Hydrate>` children) takes with it, in that module, every declaration and import only the
+  removed code used, before the bundler sees the module, in dev and build. This holds through any shape: chains,
+  fan-in (diamonds), cycles (mutual recursion, a class and a const that read each other), destructuring,
+  re-assignment, objects and arrays that hold a binding, closures and factory calls, default parameters, namespace
+  members, top-level `await`. It never removes what kept code reads (also through `typeof`, JSX, a shorthand
+  property or `export { a as b }`), and never code that was already dead before the transform. It is per module: a
+  neutral module whose export only removed code uses is the user's (J4.12). A leftover import of a server-only or
+  unresolvable module on the client, or of a client-only module on the server, is not dead code that may dangle
+  (G8): it never reaches the bundler, so no browser stub, externalization warning or polyfill stands in for it. On
+  the server, J4.11 keeps its allowance for neutral file names.
 
 ---
 
@@ -551,8 +564,10 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   `onViolation` returning `false`, an exempt importer or `excludeFiles` target, J6.6, J6.7) gets the real module. This
   also covers imports the client cannot resolve: a platform module only removed code uses (`cloudflare:workers` read
   in a handler or `.server()`, `node:*`, `bun:*`) does not fail the client build and is absent from client output,
-  while the server build keeps it; how the compiler avoids resolving it is free. A dynamic `import()` inside a handler
-  is an import only removed code uses: no client chunk is emitted for its target.
+  while the server build keeps it; how the compiler avoids resolving it is free (G16). "Only removed code uses" is
+  judged per module: a neutral module imported for an export only removed code uses is the user's, and server-only
+  helpers belong in `*.server.*` files. A dynamic `import()` inside a handler is an import only removed code uses: no
+  client chunk is emitted for its target.
 - **J4.13 Client/SSR agreement.** The bindings each environment consumes satisfy their public contract in both: a
   server function imported in client and ssr is callable in both with the same id and `.url`; values the environment
   APIs make differ on purpose (`createIsomorphicFn`, `createServerOnlyFn`/`createClientOnlyFn`, `<ClientOnly>`) differ
@@ -741,7 +756,8 @@ A compiler may do any of these and still be correct; tests must not fail on them
 - **§5.8 Where helpers live**: runtime helpers inlined, imported from the framework package or in a virtual module;
   which lazy helper builds a lazy boundary (`lazyRouteComponent`, `lazyFn`, a wrapper or an intermediate module).
 - **§5.9 Which dead code is left** (G8): unreferenced functions, unused imports in never-executed code, unused import
-  specifiers, as long as unused code does not reach the production bundle (J2.5).
+  specifiers, as long as unused code does not reach the production bundle (J2.5). What only removed code used is not
+  free (G16).
 - **§5.10 Root `component` split or not**; root `errorComponent`/`notFoundComponent` split preferred (J2.7).
 - **§5.11 Dev-only extras**: HMR accept code shape, hot-data layout, Refresh registration mechanics, dev diagnostics.
 - **§5.12 Dropping client-only-guarded declarations on the server for neutral file names** (preferred, J4.11).
