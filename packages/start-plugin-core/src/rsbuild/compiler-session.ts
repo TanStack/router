@@ -681,16 +681,19 @@ export class StartRsbuildCompilerSession {
 
   /**
    * The resolver module of an environment: the registry's manifest, gated
-   * to client-referenced entries in production builds whose SSR
-   * environment is the provider (R44); every entry otherwise (development
-   * is permissive; the RSC provider lists its environment's functions).
+   * to client-referenced entries when the SSR environment is the provider
+   * (R44), in development too: Rsbuild compiles the whole client graph, the
+   * client compilation's replay rewrites the resolver (`onServerFnsReplayed`,
+   * invalidating the server compiler before the dev middleware answers), so
+   * the manifest knows every function the client references. The RSC
+   * provider lists its environment's functions (the RSC build order).
    */
   resolverModule(): string {
     const { opts } = this
     return manifestResolverModule({
       entries: this.registry.entries(),
       providerModuleId: (e) => this.providerModuleId(e),
-      clientReferencedOnly: opts.mode === 'build' && opts.ssrIsProvider,
+      clientReferencedOnly: opts.ssrIsProvider,
       staticImports: opts.rsc !== undefined && opts.mode === 'dev',
       memoizeModules: opts.mode === 'build',
     })

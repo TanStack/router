@@ -5,18 +5,24 @@
  * through the normal transform, also on a fresh server); in production a
  * manifest of the client-referenced functions (the HTTP-callable set),
  * importing each provider module. Rsbuild uses the manifest in both modes
- * (`manifestResolverModule`): its bundles hold every provider module.
+ * (`manifestResolverModule`): its bundles hold every provider module, and
+ * its client compiles whole, so the manifest gates development too.
  */
 import type { ServerFnEntry } from './registry'
 
 export const SERVER_FN_LOOKUP_VIRTUAL_ID =
   'virtual:tanstack-start-server-fn-lookup'
 
-/** The dev resolver: every call imports the lookup module of the id (never memoised: handlers are hot-replaced). */
+/**
+ * The dev resolver: every call imports the lookup module of the id (never
+ * memoised: handlers are hot-replaced). A client-origin call (an HTTP
+ * request) imports the lookup under `origin=client`, which the lookup
+ * refuses for a function no client module references (R44 in development).
+ */
 export function devResolverModule(): string {
   return `
-export async function getServerFnById(id, _access) {
-  const lookup = ${JSON.stringify(`/@id/__x00__${SERVER_FN_LOOKUP_VIRTUAL_ID}`)} + '?id=' + encodeURIComponent(id)
+export async function getServerFnById(id, access) {
+  const lookup = ${JSON.stringify(`/@id/__x00__${SERVER_FN_LOOKUP_VIRTUAL_ID}`)} + '?id=' + encodeURIComponent(id) + (access && access.origin === 'client' ? '&origin=client' : '')
   const mod = await import(/* @vite-ignore */ lookup)
   return mod.action
 }
@@ -41,8 +47,8 @@ export interface ManifestResolverOptions {
    * is "not found" by id (no per-entry flag or runtime check: the filter is
    * the gate). The client built before the provider (the SSR provider). The
    * RSC provider builds before the client (plugin-rsc's `buildApp`), so its
-   * manifest lists every server fn of its environment. Rsbuild development
-   * lists every entry.
+   * manifest lists every server fn of its environment (the RSC build order,
+   * FOLLOW-UPS).
    */
   clientReferencedOnly: boolean
   /** Import every provider module statically (Rsbuild RSC development). */

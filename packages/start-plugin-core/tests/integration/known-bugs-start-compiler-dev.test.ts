@@ -283,6 +283,13 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
       for (const [file, code] of Object.entries({
         ...startAppFiles,
         'src/fns.ts': `${head}export const greet = createServerFn().handler(() => 'hello')\n`,
+        // The page that was loaded before the restart imports `greet`: only
+        // a server fn client code references is callable by id (J4.2, in
+        // development too).
+        'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { greet } from '../fns'
+export const Route = createFileRoute('/')({ loader: () => greet() })
+`,
       })) {
         await mkdir(path.dirname(path.join(root, file)), { recursive: true })
         await writeFile(path.join(root, file), code)
