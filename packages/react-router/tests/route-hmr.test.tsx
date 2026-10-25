@@ -355,6 +355,50 @@ describe('route HMR (React)', () => {
     expect(secondImporter).toHaveBeenCalledOnce()
   })
 
+  test('Vite bundled dev: a chunk the page never loaded is imported through the first importer', async () => {
+    // Rolldown's dev runtime throws this from an HMR patch's `import()` of a
+    // chunk the page never loaded.
+    class MissingFactoryError extends Error {}
+    const firstImporter = vi.fn(
+      (): Promise<Module> =>
+        Promise.resolve({ component: makeComponent('v1') }),
+    )
+    const wrapper = lazyRouteComponent(firstImporter, 'component')
+    const { router, evaluate } = setup(() => ({ component: wrapper }))
+    const patchImporter = vi.fn((): Promise<Module> => {
+      throw new MissingFactoryError(
+        'No factory registered for module src/routes/page.tsx?tsr-split=component',
+      )
+    })
+    // Two saves while the route is not shown, then a preload in flight
+    // (a pending navigation) during a third save.
+    evaluate({ component: lazyRouteComponent(patchImporter, 'component') })
+    evaluate({ component: lazyRouteComponent(patchImporter, 'component') })
+    const preload = wrapper.preload!()
+    evaluate({ component: lazyRouteComponent(patchImporter, 'component') })
+    await preload
+
+    render(<RouterProvider router={router} />)
+    expect(
+      await screen.findByRole('button', { name: 'v1 0' }),
+    ).toBeInTheDocument()
+    // Every import through the patch fell back to the first importer.
+    expect(patchImporter).toHaveBeenCalled()
+    expect(firstImporter).toHaveBeenCalledTimes(patchImporter.mock.calls.length)
+    const firstImporterCalls = firstImporter.mock.calls.length
+
+    // Any other failure of the new importer is not covered up.
+    evaluate({
+      component: lazyRouteComponent(
+        (): Promise<Module> => Promise.reject(new Error('syntax error')),
+        'component',
+      ),
+    })
+    await act(async () => {})
+    expect(firstImporter).toHaveBeenCalledTimes(firstImporterCalls)
+    expect(screen.queryByRole('button', { name: /v1/ })).not.toBeInTheDocument()
+  })
+
   test('an update for a route another router holds leaves both routers alone', () => {
     const firstLoader = () => 'v1'
     const { router, evaluate, path } = setup(() => ({ loader: firstLoader }))

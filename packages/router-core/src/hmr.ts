@@ -69,6 +69,15 @@ const generatedOptionKeys = ['id', 'path', 'getParentRoute']
 // that the live route currently reflects. Bounded by the number of routes.
 const hotRoutes = new Map<string, { route: AnyRoute; meta: RouteHmrMeta }>()
 
+// The importer each held lazy wrapper was created with. Vite bundled dev
+// without lazy compilation (Rolldown) turns a patch's `import()` of a chunk the
+// page never loaded into a lookup that throws `MissingFactoryError`; only the
+// first importer loads that chunk.
+const firstImporters = new WeakMap<
+  LazyRouteComponentHot,
+  LazyRouteComponentHot['importer']
+>()
+
 /**
  * Applies one evaluation of a route module to the live route of
  * `window.__TSR_ROUTER__`. The first evaluation only records the route.
@@ -113,7 +122,29 @@ export function applyRouteHmr(
         const valueHot: LazyRouteComponentHot | undefined = value.__tsrHot
         if (heldHot && valueHot) {
           // Keep the live wrapper; it re-imports and decides keep or swap.
-          heldHot.update(valueHot.importer, valueHot.exportName, adapter.keep)
+          const firstImporter = firstImporters.get(heldHot) ?? heldHot.importer
+          firstImporters.set(heldHot, firstImporter)
+          const importer = valueHot.importer
+          const onError = (err: unknown) => {
+            if (
+              err instanceof Error &&
+              err.constructor.name === 'MissingFactoryError'
+            ) {
+              return firstImporter()
+            }
+            throw err
+          }
+          heldHot.update(
+            () => {
+              try {
+                return importer().catch(onError)
+              } catch (err) {
+                return onError(err)
+              }
+            },
+            valueHot.exportName,
+            adapter.keep,
+          )
           nextOptions[key] = held
         } else if (
           !held.__tsrHot &&
