@@ -524,7 +524,10 @@ export function Page() {
 `,
       '/app/render.ts': `export const render = () => 'MARK'\n`,
     }
-    const opts = { alwaysDeriveProvider: true, providerDirective: 'use server-entry' }
+    const opts = {
+      alwaysDeriveProvider: true,
+      providerDirective: 'use server-entry',
+    }
     const env = (await compile(files, 'rsc', '/app/module.tsx', opts))!
     const provider = (await compile(
       files,
@@ -535,7 +538,9 @@ export function Page() {
     expect(env.code).toContain('.handler(tsrSsrRpc(')
     expect(env.code).not.toContain('fn_createServerFn_handler')
     expect(provider.code).toMatch(/^'use server-entry'/)
-    expect(provider.code).toContain('.handler(fn_createServerFn_handler, async () => render())')
+    expect(provider.code).toContain(
+      '.handler(fn_createServerFn_handler, async () => render())',
+    )
     expect(provider.code).toContain("import { render } from './render'")
     expect(provider.code).toContain('export { fn_createServerFn_handler }')
     expect(provider.code).not.toContain("from './module.tsx")

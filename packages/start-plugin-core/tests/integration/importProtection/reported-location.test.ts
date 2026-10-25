@@ -227,9 +227,6 @@ describe('the reported location of a violation is the leaking use or the import'
     },
     timeout,
   )
-
-
-
 })
 
 // Bug (Rsbuild): when the app has source maps, a location import protection

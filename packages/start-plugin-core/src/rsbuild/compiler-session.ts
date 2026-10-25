@@ -177,7 +177,10 @@ export class StartRsbuildCompilerSession {
   /** Import protection of the session (null: `enabled: false`). */
   readonly ip: ImportProtection | null
   private readonly plannersByKey = new Map<string, Array<Planner>>()
-  private readonly routerCfg = new Map<'client' | 'server', RouterPlannerConfig>()
+  private readonly routerCfg = new Map<
+    'client' | 'server',
+    RouterPlannerConfig
+  >()
 
   constructor(readonly opts: StartRsbuildSessionOptions) {
     this.allocator = opts.generateFunctionId
@@ -324,7 +327,11 @@ export class StartRsbuildCompilerSession {
     }
   }
 
-  private configFor(env: EnvState, rscLayer: boolean, layer: string | undefined) {
+  private configFor(
+    env: EnvState,
+    rscLayer: boolean,
+    layer: string | undefined,
+  ) {
     const { opts } = this
     const root = opts.root()
     const idMode: StartEnvConfig['idMode'] =
@@ -703,7 +710,9 @@ export class StartRsbuildCompilerSession {
     }
     const entries = this.registry.entries()
     allocator.allocate(
-      envType === 'client' ? entries.filter((e) => e.clientReferenced) : entries,
+      envType === 'client'
+        ? entries.filter((e) => e.clientReferenced)
+        : entries,
     )
     return allocator
   }
@@ -753,7 +762,9 @@ export function canonicalResource(resource: string): string {
     .split('&')
     .filter((part) => part !== '' && !part.startsWith(RSC_PROXY_QUERY))
     .join('&')
-  return query.length > 0 ? `${normalized.slice(0, q)}?${query}` : normalized.slice(0, q)
+  return query.length > 0
+    ? `${normalized.slice(0, q)}?${query}`
+    : normalized.slice(0, q)
 }
 
 /** Rspack's RSC plugin's query on a server entry's original module. */

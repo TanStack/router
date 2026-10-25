@@ -566,9 +566,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // Impact: the server-only implementation and its server-only module ship
   // in the client bundle and run in the browser; the client-only one runs
   // during SSR.
-  test.each(
-    shapes.filter((shape) => pinnedForms.includes(shape.slug)),
-  )(
+  test.each(shapes.filter((shape) => pinnedForms.includes(shape.slug)))(
     '$name are recognised: the client bundle holds no server code and the shape works',
     async (shape) => {
       await expectRecognised(shape)
@@ -588,9 +586,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // Source: TanStack/router#8446. The outcome (SPEC J4.1, J4.2, G5): the
   // server fn works, or the build fails with an error naming the file (a
   // warning alone does not count in a build).
-  test.each(
-    shapes.filter((shape) => envFnHandlers.includes(shape.slug)),
-  )(
+  test.each(shapes.filter((shape) => envFnHandlers.includes(shape.slug)))(
     '$name: the server fn works, or the build fails naming the file',
     async (shape) => {
       await expectWorksOrRejected(shape)

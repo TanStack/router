@@ -193,31 +193,27 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // Impact: the real module ships to the client in a lazy chunk and runs
   // there, without any error or warning.
   // Source: mutation testing.
-  test(
-    'a client dynamic import of a denied specifier fails the build, reporting one client violation',
-    async () => {
-      const error = await rejection(
-        buildStart({
-          bundler,
-          files: {
-            'node_modules/db-lib/package.json': JSON.stringify({
-              name: 'db-lib',
-              type: 'module',
-              exports: { '.': './index.js' },
-            }),
-            'node_modules/db-lib/index.js': `export const secret = () => 'MARK_SECRET'\n`,
-            'src/entry.ts': `export const read = () => import('db-lib').then((m) => m.secret())\n`,
-          },
-          entry: 'src/entry.ts',
-          start: { importProtection: { client: { specifiers: ['db-lib'] } } },
-        }),
-      )
-      expect(
-        reportedViolations(error).map(({ environment }) => environment),
-      ).toEqual(['client'])
-    },
-    60_000,
-  )
+  test('a client dynamic import of a denied specifier fails the build, reporting one client violation', async () => {
+    const error = await rejection(
+      buildStart({
+        bundler,
+        files: {
+          'node_modules/db-lib/package.json': JSON.stringify({
+            name: 'db-lib',
+            type: 'module',
+            exports: { '.': './index.js' },
+          }),
+          'node_modules/db-lib/index.js': `export const secret = () => 'MARK_SECRET'\n`,
+          'src/entry.ts': `export const read = () => import('db-lib').then((m) => m.secret())\n`,
+        },
+        entry: 'src/entry.ts',
+        start: { importProtection: { client: { specifiers: ['db-lib'] } } },
+      }),
+    )
+    expect(
+      reportedViolations(error).map(({ environment }) => environment),
+    ).toEqual(['client'])
+  }, 60_000)
 
   /**
    * What the client gets in a mock-mode build of an entry that imports

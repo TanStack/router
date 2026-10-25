@@ -31,24 +31,21 @@ export const Route = createFileRoute('/')({
 // G5 requires positions on errors, not on this warning; wording/channel are free.
 // Rsbuild (the previous compiler) still skips them: its row stays pinned.
 for (const bundler of ['vite', 'rsbuild'] as const) {
-  test(
-    `${bundler} dev warns about the CSS limitation once per source file, naming it`,
-    async () => {
-      const server = await (
-        bundler === 'vite' ? startRscDevServer : startRscRsbuildDevServer
-      )({
-        files,
-        browser: true,
-      })
-      const response = await fetch(server.url!)
-      expect(response.ok).toBe(true)
-      expect(await response.text()).toContain('MARK_STREAMS_RENDERED')
-      expectDiagnostic(server.diagnostics, {
-        severity: 'warning',
-        file: 'src/stream.tsx',
-        root: server.root,
-        times: 1,
-      })
-    },
-  )
+  test(`${bundler} dev warns about the CSS limitation once per source file, naming it`, async () => {
+    const server = await (
+      bundler === 'vite' ? startRscDevServer : startRscRsbuildDevServer
+    )({
+      files,
+      browser: true,
+    })
+    const response = await fetch(server.url!)
+    expect(response.ok).toBe(true)
+    expect(await response.text()).toContain('MARK_STREAMS_RENDERED')
+    expectDiagnostic(server.diagnostics, {
+      severity: 'warning',
+      file: 'src/stream.tsx',
+      root: server.root,
+      times: 1,
+    })
+  })
 }

@@ -393,7 +393,8 @@ function planStartEnv(
     (c) => c.terminalValue.t === 'serverFn' && !c.unsupported,
   )
   const derivesProvider =
-    config.providerSeparate && (useClient || config.alwaysDeriveProvider === true)
+    config.providerSeparate &&
+    (useClient || config.alwaysDeriveProvider === true)
   if (role === 'provider' && derivesProvider && serverFnChains.length > 0) {
     providerOut = ctx.declareOutput({
       kind: 'provider',

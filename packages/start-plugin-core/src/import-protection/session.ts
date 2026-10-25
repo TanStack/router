@@ -396,7 +396,9 @@ export class ImportProtectionEnv {
       importer: file,
       importerLoc: { file, line: marker.line, column: 1 },
       resolved: file,
-      trace: [{ file, line: marker.line, column: 1, specifier: marker.specifier }],
+      trace: [
+        { file, line: marker.line, column: 1, specifier: marker.specifier },
+      ],
     }
     const verdict = await this.ip.config.onViolation?.(info)
     if (verdict === false) {

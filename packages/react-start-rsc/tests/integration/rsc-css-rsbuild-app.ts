@@ -234,27 +234,24 @@ export function describeRscCssRows(mode: 'dev' | 'build') {
     // (rsc-css.test.ts, "two render helpers in one module each carry their
     // component CSS").
     // Source: SPEC J7.1, J7.2 (CSS is delivered wherever the render executes).
-    test(
-      'a render call in a helper module styles the server component',
-      async () => {
-        expect(server.errors).toEqual([])
-        const page = await show(server, helperRow.path, helperRow.marker)
-        await waitForStyle(
+    test('a render call in a helper module styles the server component', async () => {
+      expect(server.errors).toEqual([])
+      const page = await show(server, helperRow.path, helperRow.marker)
+      await waitForStyle(
+        page,
+        '[data-testid=helper-card]',
+        'background-color',
+        HELPER_CARD_BACKGROUND,
+        5_000,
+      )
+      expect(
+        await computedStyle(
           page,
           '[data-testid=helper-card]',
           'background-color',
-          HELPER_CARD_BACKGROUND,
-          5_000,
-        )
-        expect(
-          await computedStyle(
-            page,
-            '[data-testid=helper-card]',
-            'background-color',
-          ),
-        ).toBe(HELPER_CARD_BACKGROUND)
-        expect(page.errors).toEqual([])
-      },
-    )
+        ),
+      ).toBe(HELPER_CARD_BACKGROUND)
+      expect(page.errors).toEqual([])
+    })
   })
 }

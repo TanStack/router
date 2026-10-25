@@ -48,7 +48,11 @@ export interface VirtualModuleState {
   /** Get the virtual path for a given module ID */
   getVirtualPath: (moduleId: string) => string
   /** Writes a virtual module file of an environment (queued until its compiler is ready). */
-  writeModule: (environmentName: string, filePath: string, content: string) => void
+  writeModule: (
+    environmentName: string,
+    filePath: string,
+    content: string,
+  ) => void
   /** The absolute virtual path of the server fn resolver module */
   serverFnResolverPath: string
   /** The absolute virtual path of the manifest module */
@@ -273,7 +277,10 @@ export function registerVirtualModules(
           ? {
               rscRuntime: virtualPath(root, RSC_RUNTIME_VIRTUAL_ID),
               rscHmr: virtualPath(root, RSC_HMR_VIRTUAL_ID),
-              rscBrowserDecode: virtualPath(root, RSC_BROWSER_DECODE_VIRTUAL_ID),
+              rscBrowserDecode: virtualPath(
+                root,
+                RSC_BROWSER_DECODE_VIRTUAL_ID,
+              ),
               rscSsrDecode: virtualPath(root, RSC_SSR_DECODE_VIRTUAL_ID),
             }
           : null,

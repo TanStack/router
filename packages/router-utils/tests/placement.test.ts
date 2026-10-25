@@ -968,7 +968,10 @@ describe('provider outputs (DESIGN §3.10.5, lane B)', () => {
       export const other = 1
     `)
     const host = new MemoryHost({
-      files: { '/app/fns.ts': code, '/app/helper.ts': 'export const helper = () => 1\n' },
+      files: {
+        '/app/fns.ts': code,
+        '/app/helper.ts': 'export const helper = () => 1\n',
+      },
     })
     const provider: Planner = {
       name: 'toy-provider',
@@ -987,7 +990,10 @@ describe('provider outputs (DESIGN §3.10.5, lane B)', () => {
         const wrapper = ctx.names.alloc('fn_handler')
         ctx.rewrites.addGenerated({
           body: [
-            { k: 'text', parts: [`export const ${wrapper.name} = () => `, { sym }, '\n'] },
+            {
+              k: 'text',
+              parts: [`export const ${wrapper.name} = () => `, { sym }, '\n'],
+            },
           ],
           declares: [wrapper.sym],
           effectful: false,
@@ -998,8 +1004,16 @@ describe('provider outputs (DESIGN §3.10.5, lane B)', () => {
       },
     }
     const env = envInfo({ name: 'ssr', type: 'server', routerSplit: false })
-    const main = await host.compile('/app/fns.ts', [toyEnvPlanner(), provider], { env })
-    const out = await host.compile('/app/fns.ts?tss-serverfn-split', [toyEnvPlanner(), provider], { env })
+    const main = await host.compile(
+      '/app/fns.ts',
+      [toyEnvPlanner(), provider],
+      { env },
+    )
+    const out = await host.compile(
+      '/app/fns.ts?tss-serverfn-split',
+      [toyEnvPlanner(), provider],
+      { env },
+    )
     expect(main?.code).toContain('export const fn = tsrRpc(() => helper())')
     expect(main?.code).not.toContain('fn_handler')
     expect(out?.code).toContain('const fn = tsrRpc(() => helper())')

@@ -158,7 +158,9 @@ export function createRsbuildRouteGenerator(opts: {
       const gen = instance()
       if (opts.dev && !watcher) {
         watcher = watchRouteFiles(gen, (run) => void settle(run))
-        await (await watcher).ready
+        await (
+          await watcher
+        ).ready
         await settle(gen.run())
         return
       }

@@ -125,7 +125,11 @@ export function registerStartCompiler(
       },
       // extracted-export outputs of the route splitter are side-effect free (spike E1: the
       // regex is matched against the query with its leading `?`)
-      { test: JS_FILE_RE, resourceQuery: /tsr-split=export~/, sideEffects: false },
+      {
+        test: JS_FILE_RE,
+        resourceQuery: /tsr-split=export~/,
+        sideEffects: false,
+      },
     ]
     if (s.ip) {
       loaderRules.push(
@@ -162,9 +166,7 @@ export function registerStartCompiler(
           opts.writeVirtualModule(environment.name, file, content),
         generator,
         clientRouteTree:
-          environment.type === 'client'
-            ? generator.clientRouteTree
-            : undefined,
+          environment.type === 'client' ? generator.clientRouteTree : undefined,
         onServerFnsReplayed: opts.onServerFnsChange,
       }),
     )
@@ -177,16 +179,16 @@ export function registerStartCompiler(
 }
 
 /** The array form of `source.transformImport` (a function form is applied to no imports). */
-function transformImportRules(
-  value: unknown,
-): Array<TransformImportRule> {
+function transformImportRules(value: unknown): Array<TransformImportRule> {
   const list = typeof value === 'function' ? value([]) : value
   if (!Array.isArray(list)) {
     return []
   }
   return list.filter(
     (rule): rule is TransformImportRule =>
-      !!rule && typeof rule === 'object' && typeof rule.libraryName === 'string',
+      !!rule &&
+      typeof rule === 'object' &&
+      typeof rule.libraryName === 'string',
   )
 }
 

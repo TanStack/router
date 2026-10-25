@@ -641,18 +641,14 @@ describe('rsbuild dev', () => {
   // same package without the `.handler(` text, and the page runs it.
   // Impact: the dev server fails to compile an app with such a dependency.
   // Source: as the build pin above.
-  test(
-    'a CommonJS dependency with a top-level return compiles and keeps its meaning',
-    async () => {
-      const server = await startRsbuildStartDevServer({
-        ...clientPage,
-        files: { ...commonJsPackage, 'src/entry.ts': commonJsImporter },
-      })
-      expect(server.errors).toEqual([])
-      expect(
-        await runInClient(server, 'return globalThis.legacyResult'),
-      ).toEqual({ result: ['handled', 1] })
-    },
-    60_000,
-  )
+  test('a CommonJS dependency with a top-level return compiles and keeps its meaning', async () => {
+    const server = await startRsbuildStartDevServer({
+      ...clientPage,
+      files: { ...commonJsPackage, 'src/entry.ts': commonJsImporter },
+    })
+    expect(server.errors).toEqual([])
+    expect(await runInClient(server, 'return globalThis.legacyResult')).toEqual(
+      { result: ['handled', 1] },
+    )
+  }, 60_000)
 })
