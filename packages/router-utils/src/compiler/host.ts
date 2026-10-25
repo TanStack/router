@@ -3,7 +3,6 @@
  * operation.
  */
 import { isBuiltin } from 'node:module'
-import { cacheDisabled } from './stats'
 import { identify, planKeyString } from './identity'
 import {
   PlanCache,
@@ -182,11 +181,14 @@ export interface Planner {
   ) => Promise<void>
 }
 
+/**
+ * The caches of a compiler session: plans per environment and raw facts.
+ * Resolutions are not cached (R54): a compile records each answer in its
+ * ledger, and validation asks the environment's resolver again.
+ */
 export interface CompilerCaches {
   plans: Map<string, PlanCache>
   rawFacts: RawFactsCache
-  /** Per env: `${importer}\0${specifier}` → resolved id (null = unresolved). */
-  resolutions: Map<string, Map<string, string | null>>
 }
 
 export function planCacheFor(caches: CompilerCaches, env: string): PlanCache {
@@ -218,8 +220,7 @@ export type InvalidationHosts = HostServices | ((env: string) => HostServices)
  * `evicted ∪ dependents` in the same operation. File `add`/`unlink` events
  * also re-resolve every failed resolution of every env (R47): a plan whose
  * unresolved specifier now resolves is a dependent. Each environment's
- * fingerprints are checked with that environment's host (its resolver fills
- * its own resolution cache).
+ * fingerprints are checked with that environment's host (its own resolver).
  */
 export async function invalidate(
   caches: CompilerCaches,
@@ -242,18 +243,13 @@ export async function invalidate(
   } else {
     caches.rawFacts.markStale(change.path)
   }
-  if (change.kind === 'add' || change.kind === 'unlink') {
-    for (const m of caches.resolutions.values()) {
-      m.clear()
-    }
-  }
   const revalidate = async (
     cache: PlanCache,
     indexKey: string,
     relevant: (fp: DependencyFingerprint) => boolean,
   ): Promise<void> => {
     const seen = new Set<string>()
-    const src = fingerprintSourceFor(caches, hostOf(cache.env), cache.env, '')
+    const src = fingerprintSourceFor(caches, hostOf(cache.env), '')
     for (const entry of cache.dependents.get(indexKey)) {
       const ks = `${cache.env}|${planKeyString(entry.key)}`
       if (seen.has(ks)) {
@@ -309,7 +305,6 @@ export async function invalidate(
 export function fingerprintSourceFor(
   caches: CompilerCaches,
   host: HostServices,
-  env: string,
   configKey: string,
 ): FingerprintSource {
   return {
@@ -318,8 +313,8 @@ export function fingerprintSourceFor(
     targetMarker: async (id) =>
       (await caches.rawFacts.getTarget(id)).targetFacts.marker,
     routeRegistryDigest: (path) => host.routes?.digestFor(path) ?? null,
-    resolution: (envName, importer, specifier) =>
-      resolveCached(caches, host, envName, importer, specifier),
+    resolution: (importer, specifier) =>
+      resolveForAnalysis(caches, host, importer, specifier),
     configKey,
   }
 }
@@ -341,58 +336,25 @@ export function isAnalyzableSpecifier(specifier: string): boolean {
   return scheme === null || scheme[1]!.toLowerCase() === 'virtual'
 }
 
-const RESOLUTION_COUNTERS = new WeakMap<
-  CompilerCaches,
-  { resolutionHits: number; resolutionMisses: number }
->()
-
-/** Use counts of a session's resolution cache (`compilerStats()`). */
-export function resolutionCounters(caches: CompilerCaches): {
-  resolutionHits: number
-  resolutionMisses: number
-} {
-  let c = RESOLUTION_COUNTERS.get(caches)
-  if (!c) {
-    c = { resolutionHits: 0, resolutionMisses: 0 }
-    RESOLUTION_COUNTERS.set(caches, c)
-  }
-  return c
-}
-
-/** Resolution through the per-env cache; returns the canonical id of the target (or null). */
-export async function resolveCached(
+/**
+ * Resolves a specifier for the analysis through the host's resolver (the
+ * environment's own, R35); returns the canonical id of the target, or null
+ * when nothing readable is behind it. Not cached (R54): the caller records
+ * the answer in its ledger.
+ */
+export async function resolveForAnalysis(
   caches: CompilerCaches,
   host: HostServices,
-  env: string,
   importerCanonicalId: string,
   specifier: string,
 ): Promise<string | null> {
-  let m = caches.resolutions.get(env)
-  if (!m) {
-    m = new Map()
-    caches.resolutions.set(env, m)
-  }
-  const k = `${importerCanonicalId}\u0000${specifier}`
-  const counters = resolutionCounters(caches)
-  if (m.has(k)) {
-    counters.resolutionHits++
-    return m.get(k)!
-  }
-  counters.resolutionMisses++
-  const remember = (id: string | null): string | null => {
-    // `TSR_COMPILER_NO_CACHE=resolutions`: every resolution asks the host (measurement knob)
-    if (!cacheDisabled('resolutions')) {
-      m.set(k, id)
-    }
-    return id
-  }
   if (caches.rawFacts.isKnownSpecifier(specifier)) {
     // D4: known packages are recognised by specifier, never resolved
-    return remember(specifier)
+    return specifier
   }
   if (!isAnalyzableSpecifier(specifier)) {
-    return remember(null)
+    return null
   }
   const r = await host.resolve(specifier, importerCanonicalId)
-  return remember(r && !r.external ? identify(r.id).canonicalId : null)
+  return r && !r.external ? identify(r.id).canonicalId : null
 }

@@ -274,15 +274,12 @@ export class StartRsbuildCompilerSession {
   /** Paths a read found missing (their raw facts say so until an event or `forgetMisses`). */
   private readonly missing = new Set<string>()
 
-  /** Drops every failed resolution and missing-file fact (a watch compilation starts). */
+  /**
+   * Drops every missing-file fact (a watch compilation starts). Failed
+   * resolutions are not cached (R54): a plan's recorded failure is
+   * re-resolved by its validation on the next compile.
+   */
   forgetMisses(): void {
-    for (const m of this.caches.resolutions.values()) {
-      for (const [key, value] of m) {
-        if (value === null) {
-          m.delete(key)
-        }
-      }
-    }
     for (const file of this.missing) {
       this.rawFacts.markStale(file)
     }

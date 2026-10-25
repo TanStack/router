@@ -4,7 +4,7 @@
 // configuration sees the same machine conditions, then reports the median of
 // each metric per knob and its change against "on".
 //
-// Usage: node cache-knobs.mjs --out <dir> [--rounds 3] [--knobs on,plans,facts,targets,resolutions]
+// Usage: node cache-knobs.mjs --out <dir> [--rounds 3] [--knobs on,plans,facts,targets]
 //        [--variants react-start,react-router] [--scenarios build,dev-compile,dev-cold,hmr]
 //        [--runs 2] [--hmr-iterations 6] [--max-busy 8] [--port 4810] [--report-only]
 
@@ -19,7 +19,7 @@ const { values: opts } = parseArgs({
   options: {
     out: { type: 'string' },
     rounds: { type: 'string', default: '3' },
-    knobs: { type: 'string', default: 'on,plans,facts,targets,resolutions' },
+    knobs: { type: 'string', default: 'on,plans,facts,targets' },
     variants: { type: 'string', default: 'react-start,react-router' },
     scenarios: { type: 'string', default: 'build,dev-compile,dev-cold,hmr' },
     runs: { type: 'string', default: '2' },

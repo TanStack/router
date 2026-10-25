@@ -7,7 +7,6 @@ import { identify, planKeyString } from './identity'
 import { approxBytes, cacheDisabled } from './stats'
 import type { PlanKey } from './identity'
 import type { EmitPlan } from './plan'
-import type { Emitted } from './emit'
 import type { TargetFacts } from './facts'
 
 export type DependencyFingerprint =
@@ -83,11 +82,8 @@ export interface FingerprintSource {
   targetDigest: (canonicalId: string) => Promise<string | null>
   targetMarker: (canonicalId: string) => Promise<TargetFacts['marker']>
   routeRegistryDigest: (path: string) => string | null
-  resolution: (
-    env: string,
-    importer: string,
-    specifier: string,
-  ) => Promise<string | null>
+  /** Resolves through the environment's own resolver (the source is per environment, R35). */
+  resolution: (importer: string, specifier: string) => Promise<string | null>
   configKey: string
 }
 
@@ -105,10 +101,7 @@ export async function fingerprintCurrent(
     case 'route-registry':
       return src.routeRegistryDigest(fp.path) === fp.digest
     case 'resolution':
-      return (
-        (await src.resolution(fp.env, fp.importer, fp.specifier)) ===
-        fp.resolved
-      )
+      return (await src.resolution(fp.importer, fp.specifier)) === fp.resolved
     case 'config':
       return src.configKey === fp.configKey
   }
@@ -234,11 +227,14 @@ export class DependentsIndex {
 
 /**
  * Records the facts a compile acquires, registers them as in-flight
- * dependencies and validates the complete snapshot before publication.
+ * dependencies and validates the complete snapshot before publication. A
+ * fact is recorded once per compile: a resolution asked again in the same
+ * attempt reads the recorded answer (`resolved`), so one attempt sees one
+ * answer and the snapshot validation decides whether it is still current.
  */
 export class DependencyLedger {
   readonly entries: Array<DependencyFingerprint> = []
-  private readonly ids = new Set<string>()
+  private readonly byId = new Map<string, DependencyFingerprint>()
   /** The dependents-index buckets of `entries`. */
   private readonly indexKeys = new Set<string>()
 
@@ -250,16 +246,34 @@ export class DependencyLedger {
 
   record(fp: DependencyFingerprint): void {
     const id = fingerprintId(fp)
-    if (this.ids.has(id)) {
+    if (this.byId.has(id)) {
       return
     }
-    this.ids.add(id)
+    this.byId.set(id, fp)
     this.entries.push(fp)
     const indexKey = fingerprintIndexKey(fp)
     if (indexKey !== null) {
       this.indexKeys.add(indexKey)
       this.index.add(indexKey, this.key, true)
     }
+  }
+
+  /** The answer of a resolution this compile recorded (undefined: not asked yet). */
+  resolved(
+    env: string,
+    importer: string,
+    specifier: string,
+  ): string | null | undefined {
+    const fp = this.byId.get(
+      fingerprintId({
+        kind: 'resolution',
+        env,
+        importer,
+        specifier,
+        resolved: null,
+      }),
+    )
+    return fp && fp.kind === 'resolution' ? fp.resolved : undefined
   }
 
   async validateSnapshot(src: FingerprintSource): Promise<boolean> {
@@ -298,7 +312,6 @@ export interface CacheEntry {
   revision: string
   generation: number
   plan: EmitPlan
-  emitted: Map<string, Emitted>
 }
 
 export interface InFlight {
@@ -325,10 +338,8 @@ export class PlanCache {
   readonly dependents = new DependentsIndex()
   /** `TSR_COMPILER_NO_CACHE=plans`: nothing is published (measurement knob). */
   private readonly disabled = cacheDisabled('plans')
-  /** `TSR_COMPILER_NO_CACHE=emitted`: emitted outputs are not memoised on the plan (measurement knob). */
-  readonly memoiseEmits = !cacheDisabled('emitted')
-  /** Use counts for `compilerStats()`: validated plan hits, emit memo hits and misses. */
-  readonly counters = { planHits: 0, emitHits: 0, emitMisses: 0 }
+  /** Use counts for `compilerStats()`: validated plan hits. */
+  readonly counters = { planHits: 0 }
 
   constructor(readonly env: string) {}
 
@@ -444,26 +455,19 @@ export class PlanCache {
     return this.entries.values()
   }
 
-  /** Sizes for `compilerStats()` (bytes: plans and memoised emits, approximate). */
+  /** Sizes for `compilerStats()` (bytes: plans, approximate). */
   stats(withBytes: boolean): Record<string, number> {
-    let emitted = 0
     let dependencies = 0
     let planBytes = 0
-    let emittedBytes = 0
     for (const e of this.entries.values()) {
-      emitted += e.emitted.size
       dependencies += e.plan.dependencies.length
       if (withBytes) {
         planBytes += approxBytes(e.plan)
-        for (const out of e.emitted.values()) {
-          emittedBytes += approxBytes(out)
-        }
       }
     }
     const d = this.dependents.stats()
     return {
       plans: this.entries.size,
-      emitted,
       dependencies,
       generations: this.generations.size,
       latest: this.latest.size,
@@ -474,7 +478,7 @@ export class PlanCache {
       dependentKeys: d.keys,
       dependentEmptyPaths: d.emptyPaths,
       dependentEntries: d.entries,
-      ...(withBytes && { planBytes, emittedBytes }),
+      ...(withBytes && { planBytes }),
     }
   }
 }

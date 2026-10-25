@@ -238,10 +238,10 @@ set; Node-side only, never in a bundle):
   `TSR_COMPILER_STATS_BYTES=0` skips the byte estimates.
 - `TSR_COMPILER_NO_CACHE=<list>`: disables caches for on/off measurements:
   `plans` (no plan is published: every request, derived ids included,
-  plans again), `emitted` (the per-plan memo of emitted outputs), `facts`
-  (summaries and target facts re-read and re-parsed on every request),
-  `targets` (target facts only), `resolutions`, `all`. Outputs are
-  identical with any knob (`stats.test.ts`).
+  plans again), `facts` (summaries and target facts re-read and re-parsed
+  on every request), `targets` (target facts only), `all`. Outputs are
+  identical with any knob (`stats.test.ts`). Resolutions and emitted
+  outputs are not cached (R54): nothing to switch off.
 - `scripts/cache-knobs.mjs --out <dir>`: runs the harness per (round, knob),
   interleaved, and tabulates medians per knob against "all on".
 

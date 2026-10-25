@@ -67,7 +67,6 @@ describe('compiler stats (TSR_COMPILER_STATS=1)', () => {
     expect(stats.instances).toBeGreaterThanOrEqual(1)
     expect(stats.plans).toBeGreaterThanOrEqual(1)
     expect(stats.planBytes).toBeGreaterThan(0)
-    expect(stats.emitted).toBeGreaterThanOrEqual(2)
   })
 
   it('does not register without the variable', async () => {
@@ -110,7 +109,7 @@ describe('compiler stats (TSR_COMPILER_STATS=1)', () => {
 })
 
 describe('cache knobs (TSR_COMPILER_NO_CACHE)', () => {
-  it.each(['plans', 'emitted', 'facts', 'targets', 'resolutions', 'all'])(
+  it.each(['plans', 'facts', 'targets', 'all'])(
     '%s off: identical outputs, nothing retained by the disabled cache',
     async (knob) => {
       const reference = await compileAll(new MemoryHost({ files }))
@@ -119,10 +118,6 @@ describe('cache knobs (TSR_COMPILER_NO_CACHE)', () => {
       expect(await compileAll(host)).toEqual(reference)
       const plans = host.caches.plans.get('client')!.stats(false)
       const facts = host.rawFacts.stats(false)
-      const resolutions = [...host.caches.resolutions.values()].reduce(
-        (n, m) => n + m.size,
-        0,
-      )
       if (knob === 'plans' || knob === 'all') {
         expect(plans.plans).toBe(0)
         expect(plans.dependentEntries).toBe(0)
@@ -131,11 +126,6 @@ describe('cache knobs (TSR_COMPILER_NO_CACHE)', () => {
       }
       if (knob === 'facts' || knob === 'all') {
         expect(facts.rawFacts).toBe(0)
-      }
-      if (knob === 'resolutions' || knob === 'all') {
-        expect(resolutions).toBe(0)
-      } else {
-        expect(resolutions).toBeGreaterThan(0)
       }
     },
   )
