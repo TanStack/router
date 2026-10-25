@@ -55,6 +55,25 @@ function createClientAssetDistPath(root: string): RsbuildDistPathObject {
   }
 }
 
+/**
+ * Chunk splitting of a non-RSC server environment. Rsbuild's server default
+ * is no splitting at all, which makes Rspack copy every module two async
+ * chunks share into both: the server-fn resolver `import()`s the route
+ * modules that define server functions (D6), which the router's chunk holds
+ * too, so each such module and its imports were emitted twice. A module two
+ * or more async chunks share goes to one shared chunk instead (Rspack's
+ * default groups are off: nothing else moves).
+ */
+const SERVER_SPLIT_CHUNKS = {
+  preset: 'none',
+  chunks: 'async',
+  cacheGroups: {
+    default: false,
+    defaultVendors: false,
+    shared: { minChunks: 2, minSize: 0, reuseExistingChunk: true },
+  },
+} as const satisfies EnvironmentConfig['splitChunks']
+
 export interface RsbuildResolvedEntryAliases {
   client: string
   server: string
@@ -184,13 +203,9 @@ export function createRsbuildEnvironmentPlan(opts: {
           resolve: {
             alias,
           },
-          ...(opts.rsc
-            ? {
-                splitChunks: {
-                  preset: 'single-vendor',
-                },
-              }
-            : {}),
+          splitChunks: opts.rsc
+            ? { preset: 'single-vendor' }
+            : SERVER_SPLIT_CHUNKS,
         },
         environmentOverrides.all,
         environmentOverrides.server,
@@ -222,6 +237,7 @@ export function createRsbuildEnvironmentPlan(opts: {
                 resolve: {
                   alias,
                 },
+                splitChunks: SERVER_SPLIT_CHUNKS,
               },
               environmentOverrides.all,
               environmentOverrides.provider,
