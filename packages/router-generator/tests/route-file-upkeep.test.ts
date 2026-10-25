@@ -699,6 +699,32 @@ export const Route = createFileRoute(\`/\${x}\`)({})
     },
   )
 
+  // Never-fail-silently controls: a Route that is not a route (the options
+  // call forgotten) or whose constructor is imported as a type only (the
+  // type checker rejects both) is reported by name.
+  test.each([
+    {
+      name: 'a createFileRoute call without the options call',
+      source: `import { createFileRoute } from ${router}
+export const Route = createFileRoute('/old')
+`,
+    },
+    {
+      name: 'createFileRoute imported as a type only',
+      source: `import type { createFileRoute } from ${router}
+export const Route = createFileRoute('/old')({})
+`,
+    },
+  ])('a route file with $name is reported by name', async ({ source }) => {
+    const { root, file, diagnostics, error } = await upkeep('new.tsx', source)
+
+    expectDiagnostic([...diagnosticsOf(error), ...diagnostics], {
+      severity: ['warning', 'error'],
+      file,
+      root,
+    })
+  })
+
   // A malformed route call (a never-fail-silently control, not a supported
   // input: the router's types reject options passed to the constructor
   // directly, TS2345). Either the user is told which file, by a failed run
