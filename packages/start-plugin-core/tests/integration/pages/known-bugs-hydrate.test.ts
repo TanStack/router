@@ -1,6 +1,8 @@
 /**
  * Known `<Hydrate>` split bugs. Each test asserts correct behaviour for a bug
- * on main and is marked .fails; remove .fails when the bug is fixed.
+ * on main and is marked .fails while it still fails (the Yuku Hydrate planner
+ * fixed most of them: those are kept as regression tests); remove .fails when
+ * the bug is fixed.
  *
  * The modules are compiled by the public Start plugin on a dev server and
  * rendered through it (`render.ts`): the server render (React's server
@@ -101,22 +103,19 @@ describe('boundaries and ids', () => {
   // Bug: the server and the client number boundaries without the Hydrate
   // inside a `fallback`, but the chunk loader counts it.
   // Impact: the boundary after it hydrates with the fallback's children.
-  test.fails(
-    'a Hydrate inside a fallback does not shift the chunks of later boundaries',
-    async () => {
-      const { client } = await expectRendersLikeSource(
-        await hosts(),
-        `${idleHead}export function Page() {
+  test('a Hydrate inside a fallback does not shift the chunks of later boundaries', async () => {
+    const { client } = await expectRendersLikeSource(
+      await hosts(),
+      `${idleHead}export function Page() {
   return <div>
     <Hydrate when={idle()} fallback={<Hydrate when={idle()}><p>inner</p></Hydrate>}><p>outer</p></Hydrate>
     <Hydrate when={idle()}><p>second</p></Hydrate>
   </div>
 }`,
-      )
-      expect(client.html).toContain('<p>outer</p>')
-      expect(client.html).toContain('<p>second</p>')
-    },
-  )
+    )
+    expect(client.html).toContain('<p>outer</p>')
+    expect(client.html).toContain('<p>second</p>')
+  })
 
   // Bug: a component that declares a boundary and is rendered inside a
   // boundary (its own, or another one) is copied into the chunk, and
@@ -127,7 +126,7 @@ describe('boundaries and ids', () => {
   // emitted and lazy-load boundaries that do not exist.
   // Source: Qwik optimizer root_level_self_referential_qrl,
   // example_self_referential_component_migration
-  test.fails.each([
+  test.each([
     {
       name: 'a self-recursive component',
       code: `export function Tree({ node }) {
@@ -176,34 +175,28 @@ export function Page() {
 
   // Bug: Hydrate elements are matched by name instead of by binding.
   // Impact: a local component named `Hydrate` is split into a lazy chunk.
-  test.fails(
-    'client: a local component named Hydrate is left alone',
-    async () => {
-      const code = `${head}export function Page() {
+  test('client: a local component named Hydrate is left alone', async () => {
+    const code = `${head}export function Page() {
   return <Hydrate when={load()}><p>real</p></Hydrate>
 }
 export function Local() {
   const Hydrate = (props: { children: unknown }) => props.children
   return <Hydrate><p>local</p></Hydrate>
 }`
-      const { client: page } = await expectRendersLikeSource(
-        await hosts(),
-        code,
-      )
-      expect(page.html).toContain('<p>real</p>')
-      // The local component renders its children in place: nothing loads.
-      const { client: local } = await expectRendersLikeSource(
-        await hosts(),
-        code,
-        {
-          render: 'h(m.Local)',
-          split: false,
-        },
-      )
-      expect(local.html).toBe('<p>local</p>')
-      expect(local.lazy).toEqual([])
-    },
-  )
+    const { client: page } = await expectRendersLikeSource(await hosts(), code)
+    expect(page.html).toContain('<p>real</p>')
+    // The local component renders its children in place: nothing loads.
+    const { client: local } = await expectRendersLikeSource(
+      await hosts(),
+      code,
+      {
+        render: 'h(m.Local)',
+        split: false,
+      },
+    )
+    expect(local.html).toBe('<p>local</p>')
+    expect(local.lazy).toEqual([])
+  })
 
   // The goal that a namespace-imported `<Start.Hydrate>` is split like a
   // named import (SPEC J5.1) is pinned on real hydration:
@@ -234,7 +227,7 @@ export function Page() {
   // `split`: JSX passed as the `children` prop is split like JSX children.
   // Children that only exist at run time (a spread) or plain text have no
   // code to load lazily, so leaving them in place is accepted.
-  test.fails.each([
+  test.each([
     {
       name: 'a spread on a self-closing element',
       code: `export function Page(props) {
@@ -297,18 +290,15 @@ export const cleanup = ['__spreadWhen']`,
   // e2e/react-start/deferred-hydration EnhancedNestedWidget.tsx).
   // Impact: the nested boundary hydrates without its id (a hydration
   // mismatch).
-  test.fails(
-    'client: a boundary nested in a children prop hydrates with the id the server renders',
-    async () => {
-      const { client } = await expectRendersLikeSource(
-        await hosts(),
-        `${idleHead}export function Page() {
+  test('client: a boundary nested in a children prop hydrates with the id the server renders', async () => {
+    const { client } = await expectRendersLikeSource(
+      await hosts(),
+      `${idleHead}export function Page() {
   return <Hydrate when={idle()} children={<section><Hydrate when={idle()}><p>inner</p></Hydrate></section>} />
 }`,
-      )
-      expect(client.html).toContain('<p>inner</p>')
-    },
-  )
+    )
+    expect(client.html).toContain('<p>inner</p>')
+  })
 
   // Bug: a multi-line text-only child moves into the chunk as a string
   // literal of the raw text, without the line collapsing of JSX text.
@@ -377,7 +367,7 @@ export const cleanup = ['__spreadWhen']`,
   // (built-in handlers, `<ClientOnly>` removal and dead-code elimination run
   // before the AST plugins) vs hydrate-when-transform.ts
   // `loadHydrateVirtualModule`.
-  test.fails.each([
+  const laterBoundaryRows = [
     {
       // `<ClientOnly>` renders its fallback on the server and, before
       // hydration, on the client.
@@ -455,19 +445,36 @@ export function Page() {
   return <div><Hydrate when={idle()}><p>b</p></Hydrate></div>
 }`,
     },
-  ])(
+  ]
+  // The rows whose removed code is a client-only construct pass with the
+  // Yuku Hydrate planner (boundary ids are offset-based); a boundary inside
+  // server-only code the client compile removes is still pinned.
+  const laterBoundaryPasses = new Set([
+    'a boundary in <ClientOnly> children (removed on the server)',
+    'a boundary in a createClientOnlyFn (a stub on the server)',
+  ])
+  const laterBoundaryKeepsItsId = async ({ code }: { code: string }) => {
+    // The rest of the page may differ between the environments (that is
+    // the code they remove): the later boundary renders the same markup,
+    // id included, through split code on the client.
+    const client = await renderClient(await hosts(), code)
+    expectHydratedCleanly(client)
+    const later = boundaryRendering(client.server.html, '<p>b</p>')
+    expect(later).toBeDefined()
+    expect(boundaryRendering(client.html, '<p>b</p>')).toBe(later)
+    expectRenderedThroughChunks(client)
+  }
+  test.each(
+    laterBoundaryRows.filter((row) => laterBoundaryPasses.has(row.name)),
+  )(
     'a later boundary keeps its id and its children next to $name',
-    async ({ code }) => {
-      // The rest of the page may differ between the environments (that is
-      // the code they remove): the later boundary renders the same markup,
-      // id included, through split code on the client.
-      const client = await renderClient(await hosts(), code)
-      expectHydratedCleanly(client)
-      const later = boundaryRendering(client.server.html, '<p>b</p>')
-      expect(later).toBeDefined()
-      expect(boundaryRendering(client.html, '<p>b</p>')).toBe(later)
-      expectRenderedThroughChunks(client)
-    },
+    laterBoundaryKeepsItsId,
+  )
+  test.fails.each(
+    laterBoundaryRows.filter((row) => !laterBoundaryPasses.has(row.name)),
+  )(
+    'a later boundary keeps its id and its children next to $name',
+    laterBoundaryKeepsItsId,
   )
 })
 
@@ -475,20 +482,17 @@ describe('values captured by the children', () => {
   // Bug: captured locals are passed to the lazy chunk component as props of
   // the same name, so locals named `key` or `ref` become React's `key`/`ref`.
   // Impact: the split children render without those values.
-  test.fails(
-    'client: captured locals named key and ref reach the split children',
-    async () => {
-      const { client } = await expectRendersLikeSource(
-        await hosts(),
-        `${head}export function Page() {
+  test('client: captured locals named key and ref reach the split children', async () => {
+    const { client } = await expectRendersLikeSource(
+      await hosts(),
+      `${head}export function Page() {
   const key = 'k'
   const ref = 'r'
   return <Hydrate when={load()}><p>{key}{ref}</p></Hydrate>
 }`,
-      )
-      expect(client.html).toContain('<p>kr</p>')
-    },
-  )
+    )
+    expect(client.html).toContain('<p>kr</p>')
+  })
 
   // Bug: a JSX tag is only taken for a read of a local when its name starts
   // with an ASCII capital letter, so a local component named `_Local`,
@@ -497,7 +501,7 @@ describe('values captured by the children', () => {
   // Source: Qwik optimizer jsx_underscore_component_tag; React Compiler
   // fixture jsx-underscore-prefix-component.js (#8504
   // hydrate-captures.test.ts, red on main)
-  test.fails.each(['_Local', '$Local', 'ÉLocal', '组件'])(
+  test.each(['_Local', '$Local', 'ÉLocal', '组件'])(
     'client: the split children render a local component named %s',
     async (name) => {
       const { client } = await expectRendersLikeSource(
@@ -518,7 +522,7 @@ describe('values captured by the children', () => {
   // Source: Qwik optimizer jsx_member_tag_object_is_captured,
   // destructured_prop_used_as_member_tag (#8504 hydrate-captures.test.ts, red
   // on main); hydrate-when-transform.ts captureVisitors.JSXIdentifier
-  test.fails.each([
+  test.each([
     {
       name: 'a lowercase local object',
       code: `function Home() { return <i>home</i> }
@@ -586,12 +590,10 @@ export function Icons({ ids }) {
   // declared-inside check of :426-434); fuzzing.
   // Impact: the parent throws "Icon is not defined" when it renders, so the
   // page fails on the client.
-  test.fails(
-    'client: the split children render a component bound inside them',
-    async () => {
-      const { client } = await expectRendersLikeSource(
-        await hosts(),
-        `${head}import { icons } from './icons'
+  test('client: the split children render a component bound inside them', async () => {
+    const { client } = await expectRendersLikeSource(
+      await hosts(),
+      `${head}import { icons } from './icons'
 export function Icons({ ids }) {
   return (
     <Hydrate when={load()}>
@@ -604,13 +606,10 @@ export function Icons({ ids }) {
     </Hydrate>
   )
 }`,
-        renderIcons,
-      )
-      expect(client.html).toContain(
-        '<ul><li><i>a</i></li><li><i>b</i></li></ul>',
-      )
-    },
-  )
+      renderIcons,
+    )
+    expect(client.html).toContain('<ul><li><i>a</i></li><li><i>b</i></li></ul>')
+  })
 
   // Bug: property names, method keys and optional member names in the
   // children are taken for reads of the local of the same name, which the
@@ -619,29 +618,26 @@ export function Icons({ ids }) {
   // "Cannot access 'later' before initialization".
   // Source: Qwik optimizer jsx_tag_names_are_not_segment_uses (non-reference
   // identifiers) (#8504 hydrate-captures.test.ts, red on main)
-  test.fails(
-    'client: property names, method keys and optional members are no reads of a local',
-    async () => {
-      const { client } = await expectRendersLikeSource(
-        await hosts(),
-        `${head}export function Page({ obj }) {
+  test('client: property names, method keys and optional members are no reads of a local', async () => {
+    const { client } = await expectRendersLikeSource(
+      await hosts(),
+      `${head}export function Page({ obj }) {
   const el = <Hydrate when={load()}><p>{obj?.later + ({ later() { return '!' } }).later()}</p></Hydrate>
   const later = 1
   console.log(later)
   return el
 }`,
-        { props: { obj: { later: 'L' } } },
-      )
-      expect(client.html).toContain('<p>L!</p>')
-    },
-  )
+      { props: { obj: { later: 'L' } } },
+    )
+    expect(client.html).toContain('<p>L!</p>')
+  })
 
   // Bug: a TypeScript enum declared in the component is not passed to the
   // chunk.
   // Impact: the boundary throws "Color is not defined" when it hydrates.
   // Source: Qwik optimizer example_ts_enums (component-local enum) (#8504
   // hydrate-captures.test.ts, red on main)
-  test.fails('client: the split children read a local enum', async () => {
+  test('client: the split children read a local enum', async () => {
     const { client } = await expectRendersLikeSource(
       await hosts(),
       `${head}export function Page() {
@@ -661,35 +657,32 @@ export function Icons({ ids }) {
   // rendered. Rejecting it at compile time is a valid fix.
   // Source: SolidStart compile.spec.ts "rejects `arguments` in an arrow
   // inside a function"
-  test.fails(
-    "client: split children reading the component's arguments render its props",
-    async () => {
-      const code = `${head}export function Page() {
+  test("client: split children reading the component's arguments render its props", async () => {
+    const code = `${head}export function Page() {
   return <Hydrate when={load()}><p>{arguments[0].title}</p></Hydrate>
 }`
-      const startCase = await (
-        await hosts()
-      ).start.case({
-        'module.tsx': code,
-      })
-      const failure = await compileError(startCase, 'client')
-      if (failure !== undefined) {
-        expectRejection(failure, code)
-        return
-      }
-      const { client } = await expectRendersLikeSource(await hosts(), code, {
-        props: { title: 'Hello' },
-      })
-      expect(client.html).toContain('<p>Hello</p>')
-    },
-  )
+    const startCase = await (
+      await hosts()
+    ).start.case({
+      'module.tsx': code,
+    })
+    const failure = await compileError(startCase, 'client')
+    if (failure !== undefined) {
+      expectRejection(failure, code)
+      return
+    }
+    const { client } = await expectRendersLikeSource(await hosts(), code, {
+      props: { title: 'Hello' },
+    })
+    expect(client.html).toContain('<p>Hello</p>')
+  })
 
   // Bug: a `this` owned by a function, class or method in the children is
   // rejected, on the client and the server.
   // Impact: valid code fails to build.
   // Source: SolidStart compile.spec.ts "allows `this` and `arguments` in a
   // function expression"
-  test.fails.each([
+  test.each([
     {
       name: 'a function expression',
       children: `<ul>{items.map(function (this: { prefix: string }, item: string) { return <li>{this.prefix + item}</li> }, { prefix: '>' })}</ul>`,
@@ -727,32 +720,29 @@ export function Icons({ ids }) {
   // the client build fails without saying why. A clear compile-time error is
   // a valid fix (React client components cannot be async), and so is valid
   // output that renders the awaited value.
-  test.fails(
-    'client: await in split children is rejected at the boundary or renders',
-    async () => {
-      const code = `${head}import { loadData } from './data'
+  test('client: await in split children is rejected at the boundary or renders', async () => {
+    const code = `${head}import { loadData } from './data'
 export async function Page() {
   return <Hydrate when={load()}><p>{await loadData()}</p></Hydrate>
 }`
-      const startCase = await (
-        await hosts()
-      ).start.case({
-        'module.tsx': code,
-        'data.ts': `export const loadData = async () => 'data'`,
-      })
-      const failure = await compileError(startCase, 'client')
-      if (failure !== undefined) {
-        expectRejection(failure, code)
-        return
-      }
-      // Every emitted module is valid, and the client renders like the
-      // server.
-      const { client } = await expectRendersLikeSource(await hosts(), code, {
-        files: { './data': `export const loadData = async () => 'data'` },
-      })
-      expect(client.html).toContain('<p>data</p>')
-    },
-  )
+    const startCase = await (
+      await hosts()
+    ).start.case({
+      'module.tsx': code,
+      'data.ts': `export const loadData = async () => 'data'`,
+    })
+    const failure = await compileError(startCase, 'client')
+    if (failure !== undefined) {
+      expectRejection(failure, code)
+      return
+    }
+    // Every emitted module is valid, and the client renders like the
+    // server.
+    const { client } = await expectRendersLikeSource(await hosts(), code, {
+      files: { './data': `export const loadData = async () => 'data'` },
+    })
+    expect(client.html).toContain('<p>data</p>')
+  })
 })
 
 describe('source maps of the split code', () => {
@@ -809,19 +799,16 @@ describe('source maps of the split code', () => {
   // Impact: the split code of such a boundary maps to nothing (SPEC G6):
   // devtools show it as generated code, not as the user's file, and its
   // component's frames in stacks resolve nowhere.
-  test.fails(
-    'client: the split text of a text-only boundary maps to its line and column',
-    async () => {
-      await expectSplitTextMapped(
-        `${head}export function Page() {
+  test('client: the split text of a text-only boundary maps to its line and column', async () => {
+    await expectSplitTextMapped(
+      `${head}export function Page() {
   return (
     <main>
       <Hydrate when={load()}>MARK_SPLIT_TEXT</Hydrate>
     </main>
   )
 }`,
-        'MARK_SPLIT_TEXT',
-      )
-    },
-  )
+      'MARK_SPLIT_TEXT',
+    )
+  })
 })

@@ -250,7 +250,8 @@ export const secret = () => 'MARK_SECRET'
   // Source: review (the rows above demanded silence with the default); the
   // server rows: SPEC J6.3 (mock mode always logs: client and server, dev
   // and build).
-  test.fails.each(
+  // (Rsbuild, still on the previous compiler: pinned.)
+  ;(bundler === 'rsbuild' ? test.fails : test).each(
     (
       [
         { mockAccess: undefined, severity: 'error' },
@@ -293,7 +294,8 @@ export const secret = () => 'MARK_SECRET'
   // the bundle of the environment it is denied to, and runs it (only a
   // warning is logged).
   // Source: review; client-only row: mutation testing.
-  const markerMockTest = bundler === 'vite' ? test.fails : test
+  // (Was a Vite pin; the Yuku host substitutes every importer's edge.)
+  const markerMockTest = test
   markerMockTest.each(Object.keys(markedModules))(
     '%s is mocked, with a warning',
     async (name) => {

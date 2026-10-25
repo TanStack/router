@@ -113,23 +113,25 @@ describe.each(startBundlers)(
     const allowed = { hasRealCode: true, ranReal: true, warnings: [] }
     const allowAll = { importProtection: { onViolation: () => false } }
 
-    // Vite builds the module of a marker violation into the bundle either
-    // way (see the mock-mode pin above).
+    // Rsbuild (still on the previous compiler) mocks the module whatever
+    // `onViolation` returns (see the mock-mode pin above).
     const pinned: Array<DeniedModule> =
-      bundler === 'vite' ? ['a denied file'] : deniedModuleNames
+      bundler === 'vite' ? [] : deniedModuleNames
     const passing = deniedModuleNames.filter(
       (denied) => !pinned.includes(denied),
     )
 
-    test.fails.each(pinned)(
-      'allows the import of %s: the build succeeds and the client gets the real module',
-      async (denied) => {
-        expect(await clientRead(bundler, appUsing(denied), allowAll)).toEqual(
-          allowed,
-        )
-      },
-      timeout,
-    )
+    if (pinned.length > 0) {
+      test.fails.each(pinned)(
+        'allows the import of %s: the build succeeds and the client gets the real module',
+        async (denied) => {
+          expect(await clientRead(bundler, appUsing(denied), allowAll)).toEqual(
+            allowed,
+          )
+        },
+        timeout,
+      )
+    }
 
     if (passing.length > 0) {
       test.each(passing)(
@@ -144,18 +146,20 @@ describe.each(startBundlers)(
     }
 
     // Control for the pins above (same harness): the build succeeds.
-    test.each(pinned)(
-      'allows the import of %s: the build succeeds',
-      async (denied) => {
-        const { warnings } = await clientRead(
-          bundler,
-          appUsing(denied),
-          allowAll,
-        )
-        expect(warnings).toEqual([])
-      },
-      timeout,
-    )
+    if (pinned.length > 0) {
+      test.each(pinned)(
+        'allows the import of %s: the build succeeds',
+        async (denied) => {
+          const { warnings } = await clientRead(
+            bundler,
+            appUsing(denied),
+            allowAll,
+          )
+          expect(warnings).toEqual([])
+        },
+        timeout,
+      )
+    }
   },
 )
 
@@ -261,17 +265,13 @@ describe.each(startBundlers)('%s build, server-only marker', (bundler) => {
     timeout,
   )
 
-  // Bug (Vite): the Vite adapter reports a marker violation for the marked
-  // module itself (`importer` is the module importing the marker) and does
-  // not look at which modules import it, so `ignoreImporters` cannot exempt
-  // them (vite/import-protection-plugin/plugin.ts, marker handling in
-  // `resolveId`). The Rsbuild adapter checks the marked module's importers.
-  // Impact: on Vite, `ignoreImporters` (documented: "Ignore violations from
-  // these importers") does not apply to server-only-marked modules; a build
-  // fails for an import the project ignores.
+  // (Was a Vite pin: main's Vite adapter reported a marker violation for the
+  // marked module itself, so `ignoreImporters` could not exempt its
+  // importers. The Yuku host judges a marked module through its importers;
+  // only a marked entry is its own violation.)
   // Source: found replacing the Rsbuild marker-scope test "skips marker
   // violations imported only by an ignored importer".
-  const ignoredTest = bundler === 'vite' ? test.fails : test
+  const ignoredTest = test
 
   /** Only the exempt `src/ignored.ts` imports the marked module. */
   const ignoredOnly = {
@@ -304,7 +304,8 @@ describe.each(startBundlers)('%s build, server-only marker', (bundler) => {
   // error mode the build fails.
   // Impact: code a project exempts on purpose silently gets a mock instead
   // of the module it imports.
-  test.fails(
+  // (Rsbuild, still on the previous compiler: pinned.)
+  ;(bundler === 'rsbuild' ? test.fails : test)(
     'imported only by an ignored importer: the ignored importer gets the real module',
     async () => {
       expect(
@@ -341,7 +342,8 @@ describe.each(startBundlers)('%s build, server-only marker', (bundler) => {
   // Impact: exemptions either stop working (Rsbuild) or leak the denied real
   // value to the importer that is not exempt (Vite).
   // Blame is read from onViolation/trace: marker-origin display is allowed.
-  test.fails(
+  // (Rsbuild, still on the previous compiler: pinned.)
+  ;(bundler === 'rsbuild' ? test.fails : test)(
     'in mock mode, an ignored importer gets the real module, another importer a safe mock, and only the other importer is reported',
     async () => {
       for (const entry of [

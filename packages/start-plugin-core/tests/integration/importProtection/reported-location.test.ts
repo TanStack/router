@@ -202,6 +202,7 @@ describe('the reported location of a violation is the leaking use or the import'
     ...rows(['wrappedBoundary', 'dynamicImport'], ['vite dev', 'vite build']),
     ...rows(['lookAlike'], ['vite dev', 'vite build']),
     ...rows(['typePosition', 'jsxElement'], ['vite dev', 'vite build']),
+    ...rows(['memberProperty'], ['vite dev', 'vite build']),
   ])(
     '$channel: $name',
     async ({ channel, code, expected }) => {
@@ -210,16 +211,16 @@ describe('the reported location of a violation is the leaking use or the import'
     timeout,
   )
 
-  // Bug: the usage lookup counts a member property named like a denied import
+  // Bug (Rsbuild; Vite passes with the Yuku host's semantic references):
+  // the usage lookup counts a member property named like a denied import
   // (`db.eq`) as a use of the import (shared `findPostCompileUsagePos` /
-  // `findOriginalUnsafeUsagePos` in import-protection/analysis.ts, used by
-  // both adapters).
+  // `findOriginalUnsafeUsagePos` in import-protection/analysis.ts).
   // Impact: the violation points at an unrelated line, so the user looks for
   // the leak in the wrong place.
   // Source: PR #8504 (analysis.usage.test.ts "ignores a member property named
   // like the import but still finds later usage"); moved from the pin on the
   // internal helper (analysis.usage.test.ts).
-  test.fails.each(rows(['memberProperty'], channels))(
+  test.fails.each(rows(['memberProperty'], ['rsbuild dev', 'rsbuild build']))(
     '$channel: $name',
     async ({ channel, code, expected }) => {
       expectRelevantLocation(await reportedLocations(channel, code), expected)

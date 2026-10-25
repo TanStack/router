@@ -57,6 +57,12 @@ export interface CreateImportProtectionOptions {
   verbatimModuleSyntax?: boolean
   /** Reads a file (a package's `package.json` for `sideEffects`); default `node:fs`. */
   readFile?: (file: string) => Promise<string | null>
+  /**
+   * Whether a path is an entry of the app (router, start, client and server
+   * entries): a marked entry compiled in the env its marker denies is its
+   * own violation (nothing else explains its presence). Default: none.
+   */
+  isEntry?: (path: string) => boolean
 }
 
 /** The code of one of our modules, for a host's `load` (or virtual file). */
@@ -87,6 +93,7 @@ export function createImportProtection(
         config,
         opts.ids ?? viteEdgeModuleIds,
         opts.readFile ?? readFileOrNull,
+        opts.isEntry ?? (() => false),
       )
     : null
 }
@@ -114,6 +121,8 @@ export class ImportProtection {
     readonly config: ImportProtectionConfig,
     readonly ids: EdgeModuleIds,
     private readonly readFile: (file: string) => Promise<string | null>,
+    /** Whether a path is an app entry (`CreateImportProtectionOptions.isEntry`). */
+    readonly isEntry: (path: string) => boolean,
   ) {
     this.planner = importEdgesPlanner(this)
   }

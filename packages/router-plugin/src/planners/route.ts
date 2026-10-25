@@ -146,7 +146,11 @@ export function propertyKeyName(prop: Node): string | null {
 }
 
 /** The range of a property including its separating comma (R17 hygiene for options). */
-export function propertyRangeWithComma(options: Node, prop: Node): Range {
+export function propertyRangeWithComma(
+  options: Node,
+  prop: Node,
+  code?: string,
+): Range {
   if (options.type !== 'ObjectExpression') {
     return { start: prop.start, end: prop.end }
   }
@@ -160,7 +164,19 @@ export function propertyRangeWithComma(options: Node, prop: Node): Range {
   if (prev) {
     return { start: prev.end, end: prop.end }
   }
-  return { start: prop.start, end: prop.end }
+  // the only property: its trailing comma goes with it (`{ server: {…}, }`
+  // erased to `{ , }` is a syntax error)
+  let end = prop.end
+  if (code !== undefined) {
+    let i = end
+    while (i < options.end && /\s/.test(code[i]!)) {
+      i++
+    }
+    if (code[i] === ',') {
+      end = i + 1
+    }
+  }
+  return { start: prop.start, end }
 }
 
 function describeOptions(ctx: PlanContext, options: Node): Array<RouteOption> {
@@ -170,7 +186,7 @@ function describeOptions(ctx: PlanContext, options: Node): Array<RouteOption> {
     return out
   }
   for (const prop of options.properties as Array<Node>) {
-    const propertyRange = propertyRangeWithComma(options, prop)
+    const propertyRange = propertyRangeWithComma(options, prop, code)
     if (prop.type === 'SpreadElement') {
       out.push({
         key: null,

@@ -257,7 +257,7 @@ describe('excludeFiles: [] checks the files of a dependency', () => {
   // Fix-agnostic: the import is reported at its place only, and the client
   // loads no code of the denied file.
   // Source: review (the default `excludeFiles` had no reachable contrast).
-  test.fails(
+  test(
     'the client reports the dependency file it denies, and does not load it',
     async () => {
       const server = await startProtectedDevServer(files, {
@@ -293,7 +293,7 @@ describe('excludeFiles: [] checks the files of a dependency', () => {
   // app loads.
   // Source: review (the server's default `excludeFiles` had no reachable
   // contrast).
-  test.fails(
+  test(
     'the server reports the dependency file it denies',
     async () => {
       const server = await startProtectedDevServer(files, {

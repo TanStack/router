@@ -541,16 +541,13 @@ export const useThing = () => (useId(), idle())`,
   // server (`useId` mismatches, hydration errors).
   // Source: Qwik optimizer example_use_optimization. #8504 has no test for
   // it and still moves `React.useId()` into the chunk.
-  test.fails(
-    'client: a hook called through a namespace is rejected at the boundary',
-    async () => {
-      await expectExtractionRejected(
-        await hosts(),
-        `import * as React from 'react'
+  test('client: a hook called through a namespace is rejected at the boundary', async () => {
+    await expectExtractionRejected(
+      await hosts(),
+      `import * as React from 'react'
 ${childrenPage('<p id={React.useId()}>x</p>')}`,
-      )
-    },
-  )
+    )
+  })
 
   // The client rejects children reading `this` or `super` at the boundary.
   test.each([

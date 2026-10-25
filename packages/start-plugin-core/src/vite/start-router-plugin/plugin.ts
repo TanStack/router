@@ -1,8 +1,4 @@
-import { createRouterPluginContext } from '@tanstack/router-plugin/context'
-import {
-  tanStackRouterCodeSplitter,
-  tanstackRouterGenerator,
-} from '@tanstack/router-plugin/vite'
+import { tanstackRouterGenerator } from '@tanstack/router-plugin/vite'
 import path from 'pathe'
 import { normalizePath } from 'vite'
 import { VITE_ENVIRONMENT_NAMES } from '../../constants'
@@ -11,6 +7,7 @@ import { prerenderRoutesPlugin } from '../../start-router-plugin/generator-plugi
 import { buildRouteTreeFileFooterFromConfig } from '../../start-router-plugin/route-tree-footer'
 import { createClientRouteTree } from '../../start-router-plugin/client-route-tree'
 import type { GetConfigFn } from '../../types'
+import type { RouterPluginContext } from '@tanstack/router-plugin/context'
 import type { TanStackStartVitePluginCoreOptions } from '../types'
 import type { DevEnvironment, Plugin, PluginOption } from 'vite'
 import type { TanStackStartInputConfig } from '../../schema'
@@ -19,13 +16,17 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
+/**
+ * The route generator (and the client's route tree); route splitting and
+ * HMR run inside Start's compiler plugin, on the registry the generator
+ * publishes through `routerPluginContext`.
+ */
 export function tanStackStartRouter(
   startPluginOpts: TanStackStartInputConfig,
   getConfig: GetConfigFn,
   corePluginOpts: TanStackStartVitePluginCoreOptions,
+  routerPluginContext: RouterPluginContext,
 ): Array<PluginOption> {
-  const routerPluginContext = createRouterPluginContext()
-
   const getGeneratedRouteTreePath = () => {
     const { startConfig } = getConfig()
     return path.resolve(startConfig.router.generatedRouteTree)
@@ -123,33 +124,6 @@ export function tanStackStartRouter(
         target: corePluginOpts.framework,
         routeTreeFileFooter: getRouteTreeFileFooter,
         plugins,
-      }
-    }, routerPluginContext),
-    tanStackRouterCodeSplitter(() => {
-      const routerConfig = getConfig().startConfig.router
-      return {
-        ...routerConfig,
-        codeSplittingOptions: {
-          ...routerConfig.codeSplittingOptions,
-          deleteNodes: ['ssr', 'server', 'headers'],
-          addHmr: true,
-        },
-        plugin: {
-          vite: { environmentName: VITE_ENVIRONMENT_NAMES.client },
-        },
-      }
-    }, routerPluginContext),
-    tanStackRouterCodeSplitter(() => {
-      const routerConfig = getConfig().startConfig.router
-      return {
-        ...routerConfig,
-        codeSplittingOptions: {
-          ...routerConfig.codeSplittingOptions,
-          addHmr: false,
-        },
-        plugin: {
-          vite: { environmentName: VITE_ENVIRONMENT_NAMES.server },
-        },
       }
     }, routerPluginContext),
   ]

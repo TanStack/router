@@ -46,6 +46,11 @@ export function startManifestPlugin(opts: {
             `Unexpected environment for client build capture: ${this.environment.name}`,
           )
         }
+        if (Object.keys(bundle).length === 0) {
+          // a pass of import protection's veto rebuild writes nothing (the
+          // compiler plugin discarded it); the final pass is captured
+          return
+        }
 
         clientBuild = normalizeViteClientBuild(
           bundle,

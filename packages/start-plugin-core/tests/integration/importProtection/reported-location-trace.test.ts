@@ -181,7 +181,8 @@ export const page = () => c() + s()
     // importer when the chain goes through a module outside `src` (a shared
     // directory of a monorepo, a dependency).
     // Source: mutation testing.
-    const outsideSrcTest = bundler === 'vite' ? test.fails : test
+    // (Was a Vite pin: the Yuku host's trace follows the bundler graph.)
+    const outsideSrcTest = test
     outsideSrcTest(
       'the trace goes through modules outside the source directory',
       async () => {
@@ -251,9 +252,12 @@ describe.each(startBundlers)('%s build', (bundler) => {
     async () => {
       const { importer, trace } = await buildReport(bundler, {
         ...leakingB,
-        // The app's client entry (Start's default `src/client.tsx`)
+        // The app's client entry (Start's default `src/client.tsx`). Its code
+        // is kept alive (a build reports only edges that survive tree-shaking,
+        // SPEC J6.4, and Vite drops a client entry's unused exports).
         'src/client.tsx': `import { page } from './a'
 export const start = () => page()
+;(globalThis as any).start = start
 `,
         'src/back.ts': `import * as app from './client'\nexport const back = app\n`,
         'src/a.ts': `import { leak } from './b'
@@ -351,6 +355,8 @@ describe('the trace locates each import on its line after compiling moved it', (
   test.each([
     ...movedImportRows('rsbuild', true, Object.keys(movedImports)),
     ...movedImportRows('rsbuild', false, ['a leading comment']),
+    // (the Yuku host locates every step through the module's own map)
+    ...movedImportRows('vite', false, Object.keys(movedImports)),
   ])(
     '$build: after $name',
     async (row) => {
@@ -371,7 +377,6 @@ describe('the trace locates each import on its line after compiling moved it', (
   // entry and the importer.
   // Source: mutation testing.
   test.fails.each([
-    ...movedImportRows('vite', false, Object.keys(movedImports)),
     ...movedImportRows('rsbuild', false, [
       'a blank line',
       'a type-only import',

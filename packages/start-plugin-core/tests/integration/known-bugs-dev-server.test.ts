@@ -381,7 +381,7 @@ export const read = () => secret() + '!'
   // that imported it keep a mock in dev until they are edited or the server
   // restarts: the client calls mocks and logs "Mocked import used in dev
   // client" errors.
-  test.fails(
+  test(
     'client: the importer of a module whose server-only marker was removed loads the module',
     async () => {
       expect(await removeMarker()).toBe('MARK_B_CODE')
@@ -469,32 +469,38 @@ export const values = [getRequest, getHeader, server.setCookie]
   // the page does not hydrate.
   // The rewrite of the same form (Rsbuild) also only removes the
   // `export *` (today's `rewriteDeniedImports`).
-  test.fails.each(starReexportApps)(
-    'client: a name re-exported with `export *` from $name is a mock, or the server warns at the `export *`',
-    async ({ files, importProtection: protection }) => {
-      const { result, server } = await inClientOf(
-        files,
-        `const secretIn = []
+  // (Both pass with the Yuku host: the mock of a denied module exports the
+  // target's names, following `export *`; a denied specifier's target is
+  // the package's own entry, also while the dependency optimizer bundles it.)
+  for (const app of starReexportApps) {
+    test(
+      `client: a name re-exported with \`export *\` from ${app.name} is a mock, or the server warns at the \`export *\``,
+      async () => {
+        const { files, importProtection: protection } = app
+        const { result, server } = await inClientOf(
+          files,
+          `const secretIn = []
 for (const { name } of performance.getEntriesByType('resource')) {
   if ((await (await fetch(name)).text()).includes('MARK_SECRET')) {
     secretIn.push(new URL(name).pathname)
   }
 }
 return { mock: isSafeMock(entry.v), secretIn }`,
-        protection,
-      )
-      // The importer loads (or the reason it did not), and nothing the page
-      // loaded holds the denied module's value
-      const run = result as { mock: boolean; secretIn: Array<string> }
-      expect(typeof result === 'string' ? result : run.secretIn).toEqual([])
-      if (!run.mock) {
-        expectDiagnostic(server.diagnostics, {
-          file: 'src/b.ts',
-          root: server.root,
-          position: { line: 1 },
-        })
-      }
-    },
-    timeout,
-  )
+          protection,
+        )
+        // The importer loads (or the reason it did not), and nothing the page
+        // loaded holds the denied module's value
+        const run = result as { mock: boolean; secretIn: Array<string> }
+        expect(typeof result === 'string' ? result : run.secretIn).toEqual([])
+        if (!run.mock) {
+          expectDiagnostic(server.diagnostics, {
+            file: 'src/b.ts',
+            root: server.root,
+            position: { line: 1 },
+          })
+        }
+      },
+      timeout,
+    )
+  }
 })

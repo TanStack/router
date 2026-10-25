@@ -151,7 +151,7 @@ return describeValue(window.leaked(), 'MARK_SECRET')
   // client entry (`src/client.tsx`) is mocked without any warning (the build
   // reports it).
   // Source: mutation testing (looking for edges without transform data).
-  test.fails(
+  test(
     'a denied import of a module the client entry imports is logged',
     async () => {
       const { server } = await openApp(clientEntryApp)
@@ -220,7 +220,7 @@ export default { fetch: () => new Response(String(handler())) }
   // custom server entry (`src/server.ts`) is mocked on the server without
   // any warning (the request returns the mock's value).
   // Source: mutation testing.
-  test.fails(
+  test(
     'a client-only import of a module the server entry imports is mocked on the server and logged',
     async () => {
       const { server, response } = await request(serverEntryApp(handler))

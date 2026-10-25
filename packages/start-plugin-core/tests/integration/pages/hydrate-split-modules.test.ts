@@ -528,7 +528,7 @@ export function Page() {
   // the parent does not need their modules before the split code loads.
   // Source: #8504 hydrate-split-modules.test.ts "a children prop moves into
   // the chunk"
-  test.fails.each([
+  test.each([
     { name: 'last', attributes: 'when={idle()} children={<Chart />}' },
     { name: 'first', attributes: 'children={<Chart />} when={idle()}' },
   ])(

@@ -50,7 +50,10 @@ function idAt(code: string, needle = '<Hydrate', nth = 0): string {
   if (at === -1) {
     throw new Error(`no ${needle} in the code`)
   }
-  return `${at.toString(36)}_${HASH}`
+  // the id's ordinal counts the boundaries before this one (`<Hydrate`
+  // openings; the recognition rows have one boundary each)
+  const ordinal = (code.slice(0, at).match(/<Hydrate\b/g) ?? []).length
+  return `${ordinal.toString(36)}_${HASH}`
 }
 
 interface Compiled {
@@ -165,7 +168,7 @@ describe('recognition (J5.1)', () => {
       `${open.slice(0, -1)} h="${id}"><TsrHydrate0/>${close}`,
     )
     expect(client.chunks[id]).toBe(
-      `import { Chart } from './chart'\nexport function TsrHydrate0() { return (<Chart />) }\n`,
+      `import { Chart } from './chart'\nfunction TsrHydrate0() { return (<Chart />) }\nexport { TsrHydrate0 as H0 }\n`,
     )
     expect(server.code).toContain(
       `${open.slice(0, -1)} h="${id}"><Chart />${close}`,
@@ -277,7 +280,7 @@ export function Page({ label }) {
     const client = await compile(code)
     expect(client.code).toBe(
       `import { lazyRouteComponent as tsrLazy } from '@tanstack/react-router'
-const TsrHydrate0 = /* @__PURE__ */ tsrLazy(() => import('./page.tsx?tss-hydrate=${id}'), 'TsrHydrate0')
+const TsrHydrate0 = /* @__PURE__ */ tsrLazy(() => import('./page.tsx?tss-hydrate=${id}'), 'H0')
 import { Hydrate } from '@tanstack/react-start'
 import { load } from '@tanstack/react-start/hydration'
 export function Page({ label }) {
@@ -290,7 +293,8 @@ export function Page({ label }) {
       `import { Chart } from './chart'
 import { formatValue } from './format'
 const title = formatValue('Revenue')
-export function TsrHydrate0({ label }) { return (<Chart title={title} label={label} />) }
+function TsrHydrate0({ label }) { return (<Chart title={title} label={label} />) }
+export { TsrHydrate0 as H0 }
 `,
     )
   })
@@ -309,13 +313,13 @@ export function TsrHydrate0({ label }) { return (<Chart title={title} label={lab
     const client = await compile(code)
     const ids = client.facts.boundaries.map((b) => b.id)
     expect(client.chunks[ids[0]!]).toBe(
-      'export function TsrHydrate0() { return <> <p>x</p> </> }\n',
+      'function TsrHydrate0() { return <> <p>x</p> </> }\nexport { TsrHydrate0 as H0 }\n',
     )
     expect(client.chunks[ids[1]!]).toBe(
-      'export function TsrHydrate1() { return <>\n      Fish &amp;\n      Chips &copy;\n    </> }\n',
+      'function TsrHydrate1() { return <>\n      Fish &amp;\n      Chips &copy;\n    </> }\nexport { TsrHydrate1 as H1 }\n',
     )
     expect(client.chunks[ids[2]!]).toBe(
-      'export function TsrHydrate2() { return <><a />\n      <b /></> }\n',
+      'function TsrHydrate2() { return <><a />\n      <b /></> }\nexport { TsrHydrate2 as H2 }\n',
     )
     // whitespace lines around the region stay in the parent, where JSX drops them
     expect(client.code).toContain(
@@ -334,7 +338,7 @@ export function TsrHydrate0({ label }) { return (<Chart title={title} label={lab
       `<Hydrate h="${b!.id}">{<TsrHydrate0 label={label}/>}</Hydrate>`,
     )
     expect(client.chunks[b!.id]).toBe(
-      'export function TsrHydrate0({ label }) { return (label) }\n',
+      'function TsrHydrate0({ label }) { return (label) }\nexport { TsrHydrate0 as H0 }\n',
     )
   })
 
@@ -355,7 +359,7 @@ export function Page() {
       `return (<section><Chart /><Hydrate h="${inner}"><TsrHydrate1/></Hydrate></section>)`,
     )
     expect(client.chunks[inner]).toBe(
-      'export function TsrHydrate1() { return (<p>inner</p>) }\n',
+      'function TsrHydrate1() { return (<p>inner</p>) }\nexport { TsrHydrate1 as H1 }\n',
     )
     // text order: the nested boundary sits inside the outer opening tag
     expect(prefixes(server.code)).toEqual([inner, outer])
@@ -418,13 +422,14 @@ export function Page({ props }) {
       "import { lazyRouteComponent as tsrLazy$1 } from '@tanstack/react-router'",
     )
     expect(client.code).toContain(
-      `const TsrHydrate0$1 = /* @__PURE__ */ tsrLazy$1(() => import('./page.tsx?tss-hydrate=${b!.id}'), 'TsrHydrate0$1')`,
+      `const TsrHydrate0$1 = /* @__PURE__ */ tsrLazy$1(() => import('./page.tsx?tss-hydrate=${b!.id}'), 'H0')`,
     )
     expect(client.code).toContain('<TsrHydrate0$1 props={props}/>')
     expect(client.chunks[b!.id]).toBe(
       `const TsrHydrate0 = 'mine'
 const tsrLazy = 'mine'
-export function TsrHydrate0$1({ props }) { return (<p>{TsrHydrate0}{tsrLazy}{props}</p>) }
+function TsrHydrate0$1({ props }) { return (<p>{TsrHydrate0}{tsrLazy}{props}</p>) }
+export { TsrHydrate0$1 as H0 }
 `,
     )
   })
@@ -502,7 +507,7 @@ export function Page({ a: [b = 1], ...rest }) {
       '<TsrHydrate0 b={b} rest={rest} value={value} latest={latest} error={error}/>',
     )
     expect(chunk).toContain(
-      'export function TsrHydrate0({ b, rest, value, latest, error }) {',
+      'function TsrHydrate0({ b, rest, value, latest, error }) {',
     )
   })
 
@@ -524,7 +529,8 @@ export function Page() {
       `import { label } from './labels'
 const value = 'module'
 function Show() { return <b>{value + ':' + label}</b> }
-export function TsrHydrate0({ label, value }) { return <><Show /><i>{label}{value}</i></> }
+function TsrHydrate0({ label, value }) { return <><Show /><i>{label}{value}</i></> }
+export { TsrHydrate0 as H0 }
 `,
     )
   })
@@ -596,13 +602,13 @@ export function Page({ v }: { v: unknown }) {
     const [, inner] = client.facts.boundaries
     expect(code).toContain('<TsrHydrate0 tsrArguments={arguments}/>')
     expect(chunk).toContain(
-      'export function TsrHydrate0({ tsrArguments }) { return <><p>{tsrArguments[0].title}{(() => tsrArguments.length)()}</p>',
+      'function TsrHydrate0({ tsrArguments }) { return <><p>{tsrArguments[0].title}{(() => tsrArguments.length)()}</p>',
     )
     expect(chunk).toContain(
       `<Hydrate h="${inner!.id}">{<TsrHydrate1 tsrArguments={tsrArguments}/>}</Hydrate>`,
     )
     expect(client.chunks[inner!.id]).toBe(
-      'export function TsrHydrate1({ tsrArguments }) { return (tsrArguments.length) }\n',
+      'function TsrHydrate1({ tsrArguments }) { return (tsrArguments.length) }\nexport { TsrHydrate1 as H1 }\n',
     )
   })
 
@@ -620,12 +626,13 @@ export function Page({ v }: { v: unknown }) {
     expect(client.chunks[outer!.id]).toBe(
       `import { lazyRouteComponent as tsrLazy$1 } from '@tanstack/react-router'
 import { Hydrate } from '@tanstack/react-start'
-const TsrHydrate1 = /* @__PURE__ */ tsrLazy$1(() => import('./page.tsx?tss-hydrate=${inner!.id}'), 'TsrHydrate1')
-export function TsrHydrate0({ label, isOpen, fee }) { return (<section><Hydrate h="${inner!.id}"><TsrHydrate1 label={label} isOpen={isOpen} fee={fee}/></Hydrate></section>) }
+const TsrHydrate1 = /* @__PURE__ */ tsrLazy$1(() => import('./page.tsx?tss-hydrate=${inner!.id}'), 'H1')
+function TsrHydrate0({ label, isOpen, fee }) { return (<section><Hydrate h="${inner!.id}"><TsrHydrate1 label={label} isOpen={isOpen} fee={fee}/></Hydrate></section>) }
+export { TsrHydrate0 as H0 }
 `,
     )
     expect(client.chunks[inner!.id]).toBe(
-      "export function TsrHydrate1({ label, isOpen, fee }) { return (<p>{label + ':' + (isOpen ? fee : 0)}</p>) }\n",
+      "function TsrHydrate1({ label, isOpen, fee }) { return (<p>{label + ':' + (isOpen ? fee : 0)}</p>) }\nexport { TsrHydrate1 as H1 }\n",
     )
   })
 })
@@ -646,10 +653,10 @@ describe('Solid (J5.2, R38, R39)', () => {
       '<TsrHydrate0 read={read} value={value} Local={Local} label={label} props={props}/>',
     )
     expect(client.chunks[outer!.id]).toContain(
-      `export function TsrHydrate0(props$1) { return (<section>{(0, props$1.read)()}{ { value: props$1.value }.value }<props$1.Local></props$1.Local><Hydrate h="${inner!.id}"><TsrHydrate1 label={props$1.label} props={props$1.props}/></Hydrate></section>) }`,
+      `function TsrHydrate0(props$1) { return (<section>{(0, props$1.read)()}{ { value: props$1.value }.value }<props$1.Local></props$1.Local><Hydrate h="${inner!.id}"><TsrHydrate1 label={props$1.label} props={props$1.props}/></Hydrate></section>) }`,
     )
     expect(client.chunks[inner!.id]).toBe(
-      'export function TsrHydrate1(props$1) { return (<b>{props$1.label}{props$1.props.count}</b>) }\n',
+      'function TsrHydrate1(props$1) { return (<b>{props$1.label}{props$1.props.count}</b>) }\nexport { TsrHydrate1 as H1 }\n',
     )
   })
 
@@ -695,7 +702,8 @@ export function Page() {
     expect(client.code).toContain('<TsrHydrate0 local={local}/>')
     expect(client.chunks[b!.id]).toBe(
       `import { tip } from './tip'
-export function TsrHydrate0(props) { const local = props.local; return (<p use:tip={1} use:local />) }
+function TsrHydrate0(props) { const local = props.local; return (<p use:tip={1} use:local />) }
+export { TsrHydrate0 as H0 }
 `,
     )
   })
@@ -746,7 +754,8 @@ const label = 'Ada'
 function Card({ children }) { return <div>{children}</div> }
 Card.Title = () => <h1>t</h1>
 function Widget() { return <i>{label}</i> }
-export function TsrHydrate0() { return <><Card><Card.Title /></Card>{++renders}<Widget />{store.id}{Route.options.id}{helper(2)}</> }
+function TsrHydrate0() { return <><Card><Card.Title /></Card>{++renders}<Widget />{store.id}{Route.options.id}{helper(2)}</> }
+export { TsrHydrate0 as H0 }
 `,
     )
     expect(client.code).not.toContain('let renders')
@@ -778,6 +787,9 @@ export const Page = () => <Hydrate><p onClick={() => clicks++}>{clicks}</p></Hyd
     expect(client.chunks).toEqual({})
   })
 
+  // (Adjusted: the exported writer and its state are an extracted export
+  // only the chunk needs, §3.5.3, so the live binding's home is that
+  // output, not the parent; main kept it in the parent.)
   it('lets the children read a let the parent reassigns through the live binding', async () => {
     const code = `${REACT}let clicks = 0
 export function bump() { clicks++ }
@@ -786,9 +798,12 @@ export const Page = () => <Hydrate><p>{clicks}</p></Hydrate>
     const client = await compile(code)
     const [b] = client.facts.boundaries
     expect(client.chunks[b!.id]).toContain(
-      "import { clicks } from './page.tsx'",
+      "import { clicks } from './page.tsx?tsr-split=export~bump'",
     )
-    expect(client.code).toContain('export { clicks }')
+    expect(client.code).toContain(
+      "export { bump } from './page.tsx?tsr-split=export~bump'",
+    )
+    expect(client.code).not.toContain('let clicks')
   })
 
   it('reads the classic JSX pragma’s factory in a fragment-wrapped chunk', async () => {
@@ -803,7 +818,8 @@ ${REACT}export const Page = () => <div><Hydrate>text only</Hydrate></div>
       `/** @jsxRuntime classic */
 /** @jsx h */
 import { h } from './h'
-export function TsrHydrate0() { return /* h */ <>text only</> }
+function TsrHydrate0() { return /* h */ <>text only</> }
+export { TsrHydrate0 as H0 }
 `,
     )
     expect(client.code).toContain("import { h } from './h'")
@@ -1241,7 +1257,7 @@ export const Page = () => <div><Hydrate><p>b</p></Hydrate></div>
     ])
     expect(client.code).not.toContain(removed)
     expect(client.code).not.toContain('./heavy')
-    expect(client.code).not.toContain('TsrHydrate0')
+    expect(client.code).not.toContain('H0')
     expect(client.out.edges.map((e) => e.specifier)).not.toContain('./heavy')
     const dead = await client.host.compile(
       `${FILE}?tss-hydrate=${removed}`,
@@ -1285,7 +1301,7 @@ export const Page = () => <Hydrate><p>b</p></Hydrate>
     })
     const later = idAt(code, '<Hydrate', 1)
     expect(client.code).not.toContain('ServerPanel')
-    expect(client.code).not.toContain('TsrHydrate0')
+    expect(client.code).not.toContain('H0')
     expect(prefixes(client.code)).toEqual([later])
     // nothing loads the orphaned boundary's chunk any more
     expect(client.code).not.toContain(`tss-hydrate=${idAt(code)}`)
@@ -1423,7 +1439,7 @@ export const Route = createFileRoute('/')({
     const planners = [hydrate, toySplitPlanner()]
     const client = await compile(code, { planners })
     const [b] = client.facts.boundaries
-    expect(client.code).not.toContain('TsrHydrate0')
+    expect(client.code).not.toContain('H0')
     expect(client.code).not.toContain('./chart')
     const component = await client.host.compile(
       `${FILE}?tsr-split=component`,
@@ -1436,7 +1452,7 @@ export const Route = createFileRoute('/')({
     expect(component!.code).toBe(
       `import { lazyRouteComponent as tsrLazy } from '@tanstack/react-router'
 import { Hydrate } from '@tanstack/react-start'
-const TsrHydrate0 = /* @__PURE__ */ tsrLazy(() => import('./page.tsx?tss-hydrate=${b!.id}'), 'TsrHydrate0')
+const TsrHydrate0 = /* @__PURE__ */ tsrLazy(() => import('./page.tsx?tss-hydrate=${b!.id}'), 'H0')
 const TsrSplitComponent = () => <div><Hydrate h="${b!.id}"><TsrHydrate0/></Hydrate></div>
 export { TsrSplitComponent as component }
 `,
@@ -1444,7 +1460,8 @@ export { TsrSplitComponent as component }
     expect(client.chunks[b!.id]).toBe(
       `import { Route } from './page.tsx'
 import { Chart } from './chart'
-export function TsrHydrate0() { return <><Chart />{Route.id}</> }
+function TsrHydrate0() { return <><Chart />{Route.id}</> }
+export { TsrHydrate0 as H0 }
 `,
     )
   })

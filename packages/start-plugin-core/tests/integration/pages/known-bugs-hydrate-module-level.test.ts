@@ -1,9 +1,9 @@
 /**
  * Known `<Hydrate>` split bugs of module-level code the split children use
  * (the other pins are in known-bugs-hydrate.test.ts; two files, to keep
- * each within the per-file time budget). Each test asserts correct
- * behaviour for a bug on main and is marked .fails; remove .fails when the
- * bug is fixed.
+ * each within the per-file time budget). Each test asserts the correct
+ * behaviour for a bug of main's Babel transform; the Yuku Hydrate planner
+ * fixes every one of them (former `.fails` pins, kept as regression tests).
  *
  * The modules are compiled by the public Start plugin on a dev server and
  * rendered through it (`render.ts`): the server render (React's server
@@ -36,7 +36,7 @@ describe('module-level code used by the children', () => {
   // collides with it.
   // Impact: compiling the chunk fails ("Duplicate declaration"), so the
   // build fails.
-  test.fails.each([
+  test.each([
     {
       name: 'helpers the children call',
       module: (name: string) =>
@@ -86,7 +86,7 @@ export function Page() {
   // initial value of a `let` the parent reassigns.
   // Source: Qwik optimizer should_keep_module_level_var_used_in_both_main_and_qrl,
   // should_auto_export_shared_let_kept_in_parent
-  test.fails.each([
+  test.each([
     {
       name: 'context',
       code: `import { createContext, useContext } from 'react'
@@ -128,29 +128,26 @@ export function Page() {
   // (e.g. another store), and the initializer's side effects run twice.
   // Goal of hydrate-when-transform.test.ts "unwraps exported declarations
   // needed by extracted virtual modules" (the copy is not required).
-  test.fails(
-    'client: an exported declaration the children use has one instance, initialized once',
-    async () => {
-      const { client } = await expectRendersLikeSource(
-        await hosts(),
-        `${head}import { makeStore } from './store'
+  test('client: an exported declaration the children use has one instance, initialized once', async () => {
+    const { client } = await expectRendersLikeSource(
+      await hosts(),
+      `${head}import { makeStore } from './store'
 export const store = makeStore()
 export function Page() {
   return <Hydrate when={load()}><p>{store.id}</p></Hydrate>
 }`,
-        {
-          // Each store gets the next id: a second instance renders 2.
-          files: {
-            './store': `let stores = 0
+      {
+        // Each store gets the next id: a second instance renders 2.
+        files: {
+          './store': `let stores = 0
 export const makeStore = () => ({ id: ++stores })`,
-          },
-          script: 'return m.store.id',
         },
-      )
-      expect(client.result).toBe(1)
-      expect(client.html).toContain('<p>1</p>')
-    },
-  )
+        script: 'return m.store.id',
+      },
+    )
+    expect(client.result).toBe(1)
+    expect(client.html).toContain('<p>1</p>')
+  })
 
   // Bug: the client chunk removes the module's `Route`
   // (`removeModuleLevelBindings(ast, new Set(['Route']))`) without importing
@@ -159,7 +156,7 @@ export const makeStore = () => ({ id: ++stores })`,
   // Impact: the boundary throws "Route is not defined" when it hydrates.
   // Source: #8504 hydrate-split-modules.test.ts (rows directly, through a
   // module helper and exported under a specifier; red on main)
-  test.fails.each([
+  test.each([
     {
       name: 'directly',
       code: `export const Route = createFileRoute('/posts')({ component: Page })
@@ -212,21 +209,18 @@ ${code}`,
   // the route and removes it (the removal of the pins above), even when the
   // module does not export it and it is a plain component.
   // Impact: the boundary throws "Route is not defined" when it hydrates.
-  test.fails(
-    'client: an unexported component named Route that the children render reaches the chunk',
-    async () => {
-      const { client } = await expectRendersLikeSource(
-        await hosts(),
-        `${head}function Route() {
+  test('client: an unexported component named Route that the children render reaches the chunk', async () => {
+    const { client } = await expectRendersLikeSource(
+      await hosts(),
+      `${head}function Route() {
   return <p>local</p>
 }
 export function Page() {
   return <Hydrate when={load()}><Route /></Hydrate>
 }`,
-      )
-      expect(client.html).toContain('<p>local</p>')
-    },
-  )
+    )
+    expect(client.html).toContain('<p>local</p>')
+  })
 
   // Bug: only declarations move into the chunk; the top-level statements that
   // complete them (member assignments, registrations) are dropped.
@@ -234,7 +228,7 @@ export function Page() {
   // the chunk ("Element type is invalid") and registries are empty.
   // Source: Qwik optimizer should_not_move_over_side_effects,
   // example_drop_side_effects
-  test.fails.each([
+  test.each([
     {
       name: 'a compound component member assignment',
       setup: `function Card({ children }) { return <div>{children}</div> }
@@ -275,33 +269,28 @@ export function Page() {
   // in a nested block is dropped from the chunk. Same root cause as the
   // nested `var` pins in router-plugin/tests/known-bugs-code-splitter.test.ts.
   // Impact: the boundary throws "label is not defined" when it hydrates.
-  test.fails(
-    'client: a var declared in a nested block that the children read reaches the chunk',
-    async () => {
-      const { client } = await expectRendersLikeSource(
-        await hosts(),
-        `${head}try {
+  test('client: a var declared in a nested block that the children read reaches the chunk', async () => {
+    const { client } = await expectRendersLikeSource(
+      await hosts(),
+      `${head}try {
   var label = JSON.parse('"nested"')
 } catch {}
 export function Page() {
   return <Hydrate when={load()}><p>{label}</p></Hydrate>
 }`,
-      )
-      expect(client.html).toContain('<p>nested</p>')
-    },
-  )
+    )
+    expect(client.html).toContain('<p>nested</p>')
+  })
 
   // Bug: a TypeScript import alias (`import Card = ui.Card`) used only by the
   // split children is not declared in the client chunk.
   // Impact: the chunk throws "Card is not defined" when the boundary
   // hydrates.
   // Source: React Compiler fixture ts-import-equals-declaration.ts
-  test.fails(
-    'client: a TypeScript import alias used by the split children is declared in the chunk',
-    async () => {
-      const { client } = await expectRendersLikeSource(
-        await hosts(),
-        `${head}import { visible } from '@tanstack/react-start/hydration'
+  test('client: a TypeScript import alias used by the split children is declared in the chunk', async () => {
+    const { client } = await expectRendersLikeSource(
+      await hosts(),
+      `${head}import { visible } from '@tanstack/react-start/hydration'
 import * as ui from './ui'
 import Card = ui.Card
 function Panel() {
@@ -310,15 +299,14 @@ function Panel() {
 export function Page() {
   return <Hydrate when={visible()}><Panel /></Hydrate>
 }`,
-        {
-          files: {
-            './ui': `export const Card = (props: { title: string }) => <b>{props.title}</b>`,
-          },
+      {
+        files: {
+          './ui': `export const Card = (props: { title: string }) => <b>{props.title}</b>`,
         },
-      )
-      expect(client.html).toContain('<b>hi</b>')
-    },
-  )
+      },
+    )
+    expect(client.html).toContain('<b>hi</b>')
+  })
 
   // Bug: module-level declarations the children use are only moved into the
   // chunk for some declaration forms and uses: a default-exported function,
@@ -330,7 +318,7 @@ export function Page() {
   // should_preserve_let_when_migrated_into_segment; React Compiler fixture
   // should-bailout-without-compilation-annotation-mode.js (#8504
   // hydrate-split-modules.test.ts, red on main)
-  test.fails.each([
+  test.each([
     {
       name: 'a default-exported function',
       code: `export default function DefaultFn() { return 'default' }
@@ -413,18 +401,14 @@ export function h(type, props, ...children) {
   // the server (a hydration mismatch), or throws "h is not defined". In a
   // project whose default JSX runtime is classic, Oxc then compiles the
   // parent's JSX to `React.createElement` without `React` in scope.
-  test.fails(
-    'client: a module with a classic JSX pragma renders through its factory',
-    async () => {
-      const { client } = await expectRendersLikeSource(
-        await hosts(),
-        pragmaModule,
-        {
-          files: pragmaFiles,
-        },
-      )
-      expect(client.html).toContain('<div data-h="">')
-    },
-    20_000,
-  )
+  test('client: a module with a classic JSX pragma renders through its factory', async () => {
+    const { client } = await expectRendersLikeSource(
+      await hosts(),
+      pragmaModule,
+      {
+        files: pragmaFiles,
+      },
+    )
+    expect(client.html).toContain('<div data-h="">')
+  }, 20_000)
 })

@@ -361,14 +361,11 @@ export function hydrateBuildSuite(bundler: StartBundler) {
       timeout,
     )
 
-    // Bug: the client parent declares the lazy component of each boundary
-    // with a module-level call (`lazyRouteComponent(() => import(...))`)
-    // that bundlers must keep (it is not marked pure), so the children of an
-    // unused exported component still ship: the call stays in the eager
-    // code, and its chunk is emitted.
-    // Source: hydrate-when-transform.ts:653-690 (the call at :676); fuzzing.
-    // Impact: the code of components nothing renders loads in the client.
-    test.fails(
+    // The client parent declares the lazy component of each boundary with a
+    // call marked pure, so the children of an unused exported component do
+    // not ship. Source: fuzzing. (Rsbuild, still on the previous compiler:
+    // the call is not marked pure, so the chunk ships.)
+    ;(bundler === 'rsbuild' ? test.fails : test)(
       'an unused exported component with a boundary is not in the client',
       async () => {
         const build = await sharedApp()
@@ -399,22 +396,13 @@ export function hydrateBuildSuite(bundler: StartBundler) {
       timeout,
     )
 
-    // Bug: an initializer with side effects may keep the export in the eager
-    // code (no warning is required), but it must run once, and the children
-    // must render the one `Widget` it made, while the boundary's own children
-    // still load lazily. Today the client chunk gets its own copy of the
-    // declaration (hydrate-when-transform.ts:850-851, the module-level
-    // declarations the children read are kept in the chunk), and the parent
-    // keeps the export (its initializer has a side effect), so the
-    // initializer runs twice: once in the parent, again when the chunk loads
-    // (both bundlers). Same root cause as known-bugs-hydrate.test.ts "client:
-    // an exported declaration the children use has one instance, initialized
-    // once" (compiler level); this is its production-build row.
-    // Source: hydrate-when-transform.test.ts "unwraps exported declarations
-    // needed by extracted virtual modules".
-    // Impact: the initializer's side effects run twice, and the children use
-    // another instance than the module exports (e.g. another store).
-    test.fails(
+    // An export only the children use, initialized by a call, moves with
+    // the chunk (one instance, initialized once). Source:
+    // hydrate-when-transform.test.ts "unwraps exported declarations needed
+    // by extracted virtual modules". (Rsbuild, still on the previous
+    // compiler: the chunk gets a copy of the declaration and the parent
+    // keeps the export, so the initializer runs twice.)
+    ;(bundler === 'rsbuild' ? test.fails : test)(
       'an export only the children use, initialized by a call, is initialized once and hydrates',
       async () => {
         const build = await sharedApp()

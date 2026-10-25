@@ -411,6 +411,42 @@ describe('extracted-export outputs (§3.5.3)', () => {
     )
   })
 
+  it('moves an exported function with the module state it writes, when only the chunk reads it', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      let clicks = 0
+      export function bump() { clicks++ }
+      function Page() { return clicks }
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await extract(code)
+    expect(r.env).not.toContain('let clicks')
+    expect(r.env).toContain(
+      "export { bump } from './route.tsx?tsr-split=export~bump'",
+    )
+    expect(r.chunk).toContain(
+      "import { clicks } from './route.tsx?tsr-split=export~bump'",
+    )
+    const e = await r.extracted('bump')
+    expect(e?.code).toContain('let clicks = 0')
+    expect(e?.code).toContain('function bump() { clicks++ }')
+  })
+
+  it('keeps a cluster a split region writes in the env module (the single-writer rule, not an extraction)', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      let clicks = 0
+      export function bump() { clicks++ }
+      export const Route = createFileRoute('/')({ component: () => { clicks++; return clicks } })
+    `)
+    const r = await extract(code)
+    expect(r.env).toContain('let clicks = 0')
+    expect(r.env).toContain('export function bump()')
+    expect(r.env).toContain('clicks++; return clicks')
+    expect(r.chunk).toBe('export {}\n')
+    expect(await r.extracted('bump')).toMatchObject({ code: 'export {}\n' })
+  })
+
   it('does not extract a declaration that eagerly reads the env module', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'

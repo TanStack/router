@@ -15,7 +15,7 @@ import {
   invalidate,
 } from '@tanstack/router-utils/compiler'
 import { routerPlannerConfig, routerPlanners } from '../planners'
-import { routeEntryDigest } from '../planners/route'
+import { RouteRegistryView, normalizePath } from '../planners/registry'
 import { defaultCodeSplitGroupings } from '../core/constants'
 import { contextInternals } from '../core/router-plugin-context'
 import type { RouterPluginContext } from '../core/router-plugin-context'
@@ -54,9 +54,7 @@ export interface CompileRequest {
   wantMap: boolean
 }
 
-export function normalizePath(p: string): string {
-  return p.replace(/\\/g, '/')
-}
+export { normalizePath }
 
 /** JS module ids the compiler may transform (query allowed). */
 export const JS_ID_RE = /\.[cm]?[jt]sx?(\?|$)/
@@ -80,11 +78,7 @@ export class RouterCompiler {
   readonly mode: 'dev' | 'build'
   readonly bundler: Bundler
   private readonly perPlanner: Record<string, unknown>
-  /** The registry's entries by the real path of their (symlinked) files, per registry. */
-  private realPaths: {
-    registry: RouterPluginContext['routesByFile']
-    byRealPath: Map<string, { routeId: string }>
-  } | null = null
+  private readonly registry: RouteRegistryView
 
   constructor(opts: RouterCompilerOptions) {
     this.context = opts.context
@@ -119,45 +113,20 @@ export class RouterCompiler {
       loadVirtual: () => Promise.resolve(null),
     })
     this.caches = createCompilerCaches(rawFacts)
-    const lookup = (path: string) => this.routeEntry(path)
+    this.registry = new RouteRegistryView(opts.context)
     this.host = {
       resolve: opts.resolve ?? (() => Promise.resolve(null)),
       readFile: (p) => fs.promises.readFile(p, 'utf8').catch(() => null),
       loadVirtual: () => Promise.resolve(null),
       rawFacts,
-      routes: { digestFor: (path) => routeEntryDigest(lookup(path)) },
-      services: { routes: { lookup } },
+      routes: this.registry,
+      services: { routes: this.registry },
     }
   }
 
-  /**
-   * The registry entry of a file, by its normalized path: the path the
-   * generator scanned, or the real path of a symlinked route file (bundlers
-   * resolve modules to their real path; DESIGN §3.5.1).
-   */
+  /** The registry entry of a file (the scanned path or the real path of a symlink). */
   routeEntry(path: string): RouteEntryFacts | null {
-    const p = normalizePath(path)
-    const registry = this.context.routesByFile
-    let entry: { routeId: string } | undefined = registry.get(p)
-    if (!entry) {
-      if (this.realPaths?.registry !== registry) {
-        const byRealPath = new Map<string, { routeId: string }>()
-        for (const [file, e] of registry) {
-          let real: string
-          try {
-            real = normalizePath(fs.realpathSync.native(file))
-          } catch {
-            continue
-          }
-          if (real !== file && !registry.has(real)) {
-            byRealPath.set(real, { routeId: e.routeId })
-          }
-        }
-        this.realPaths = { registry, byRealPath }
-      }
-      entry = this.realPaths.byRealPath.get(p)
-    }
-    return entry ? { routeId: entry.routeId } : null
+    return this.registry.lookup(path)
   }
 
   /** Whether the host should transform an id at all. */

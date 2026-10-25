@@ -255,6 +255,8 @@ export function computePlacement(input: PlacementInput): Placement {
   }
   // ---- 2. live writes and augmentations (env liveness) --------------------
   const writerConstraints = new Map<number, Set<RegionId>>() // decl member root → writer sub-regions
+  /** Module-level symbols a sub-region writes (a cluster holding one is never an extracted export, §3.5.3: the single-writer rule decides). */
+  const regionWrittenSyms = new Set<SymbolId>()
   for (const ref of refs.all) {
     if (
       ref.kind !== 'write' ||
@@ -275,6 +277,7 @@ export function computePlacement(input: PlacementInput): Placement {
     if (region.kind === 'unit') {
       uf.union(owner, d)
     } else {
+      regionWrittenSyms.add(ref.sym)
       let set = writerConstraints.get(d)
       if (!set) {
         set = new Set()
@@ -734,7 +737,15 @@ export function computePlacement(input: PlacementInput): Placement {
       continue
     }
     const cl = clusters[c]!
-    if (cl.kind !== 'declaration' || cl.effectful || cl.gens.length > 0) {
+    if (
+      cl.kind !== 'declaration' ||
+      cl.effectful ||
+      cl.gens.length > 0 ||
+      // a binding a sub-region writes (Hydrate children, a split option
+      // value) must meet the single-writer rule below: pinning its cluster
+      // to an extracted output would let the writer assign an import
+      [...cl.declares].some((s) => regionWrittenSyms.has(s))
+    ) {
       continue
     }
     let e = extractCandidates.get(c)

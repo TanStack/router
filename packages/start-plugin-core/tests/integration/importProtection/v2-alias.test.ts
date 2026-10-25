@@ -124,8 +124,6 @@ const viteAliases: Array<{
   viteConfig: object
   devPlugins: (start: PluginOption) => Array<PluginOption>
   devConfig: object
-  /** Whether main reports another specifier (the pins below). */
-  reportPinned: boolean
 }> = [
   {
     alias: 'vite-tsconfig-paths before Start',
@@ -139,7 +137,6 @@ export default { plugins: [tsconfigPaths()] }
     viteConfig: { configFile: 'vite.config.ts' },
     devPlugins: (start) => [tsconfigPaths(), start],
     devConfig: {},
-    reportPinned: true,
   },
   {
     alias: 'vite-tsconfig-paths after Start',
@@ -147,7 +144,6 @@ export default { plugins: [tsconfigPaths()] }
     viteConfig: { plugins: [tsconfigPaths()] },
     devPlugins: (start) => [start, tsconfigPaths()],
     devConfig: {},
-    reportPinned: false,
   },
   {
     alias: 'resolve.tsconfigPaths',
@@ -155,7 +151,6 @@ export default { plugins: [tsconfigPaths()] }
     viteConfig: { resolve: { tsconfigPaths: true } },
     devPlugins: (start) => [start],
     devConfig: { resolve: { tsconfigPaths: true } },
-    reportPinned: false,
   },
 ]
 
@@ -199,19 +194,12 @@ function expectAliasFailure(recorded: Recorded) {
   }
 }
 
-// Bug (the `.fails` rows): with vite-tsconfig-paths, in either order, the
-// report names the specifier `src/secret.server` (and no location) instead
-// of `~/secret.server`. vite-tsconfig-paths maps the alias and resolves the
-// mapped absolute path again through the plugins (`this.resolve`, its
-// `resolveId`), and import protection reports the specifier of that nested
-// resolution (vite/import-protection-plugin/plugin.ts `resolveId`), shown
-// relative to the root; Vite's own `resolve.tsconfigPaths` resolves inside
-// Vite's resolver and is reported as written.
-// Impact: the report names an import that is nowhere in the user's code
-// (SPEC J6.1, J6.5: the specifier the user wrote), and has no location; 72
-// of 165 surveyed Start configs use vite-tsconfig-paths.
+// (Was a pin for vite-tsconfig-paths before Start: main reported the
+// specifier of the nested resolution, `src/secret.server`, and no location.
+// The Yuku host judges the raw specifier of the user's edge, whatever
+// resolves it.)
 describe.each(viteAliases)('vite: $alias', (alias) => {
-  const reportTest = alias.reportPinned ? test.fails : test
+  const reportTest = test
 
   reportTest(
     'the build fails, reporting the aliased specifier at its original line',

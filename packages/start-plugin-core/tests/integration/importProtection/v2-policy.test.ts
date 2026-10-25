@@ -264,7 +264,7 @@ export const getRouter = () => undefined
   // silences the report (the control above).
   // Impact: an import allowed by an async `onViolation` (the form the docs
   // show) is a mock in the browser, without any warning.
-  test.fails(
+  test(
     'the client gets the real module',
     async () => {
       expect((await outcome()).value).toBe('MARK_SECRET')
