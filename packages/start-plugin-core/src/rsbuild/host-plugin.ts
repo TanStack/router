@@ -225,8 +225,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         currentCompilation = compilation
         env.compiled.clear()
         if (ipEnv) {
-          // the graph of THIS compilation (lazy: read when a trace is built)
-          ipEnv.graph = guardedGraphView(compilation)
+          // Rspack's module graph is not readable while modules build (a loader asking for a
+          // trace would abort the process): no graph until `finishModules`, when the
+          // compilation's complete graph replaces it (traces built before use the edge index)
+          ipEnv.graph = null
           // every known edge module exists before the importers' dependencies resolve
           for (const { specifier, load } of ipEnv.edgeModules()) {
             opts.writeVirtualModule(specifier, load.code)
@@ -248,6 +250,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             compilation.hooks.finishModules.tapPromise(
               PLUGIN_NAME,
               async (modules) => {
+                ipEnv.graph = guardedGraphView(compilation)
                 if (session.ip!.config.log === 'always') {
                   // modules this compilation kept without compiling them report again
                   for (const m of modules) {
