@@ -648,6 +648,31 @@ describe('route-module specifics (lane router)', () => {
   })
 })
 
+describe('generated units at the header', () => {
+  it('renders them once when the import statement the core rewrites starts with a leading comment', async () => {
+    // the import loses `useThing` (only the split component reads it): its
+    // recipe keeps the comment before it, where after-header units render
+    // (the react-start and solid-start e2e apps: root routes starting with
+    // `/// <reference types="vite/client" />`)
+    const code = `/// <reference types="vite/client" />
+import { createFileRoute, useThing } from 'toy-router'
+export const Route = createFileRoute('/')({
+  component: Page,
+})
+function Page() {
+  return useThing()
+}
+`
+    const r = await split(code)
+    expect(r.env.split('const tsrImportComponent =')).toHaveLength(2)
+    expect(
+      r.env.split("import { lazyRouteComponent } from 'toy-router'"),
+    ).toHaveLength(2)
+    expect(r.env).toContain('/// <reference types="vite/client" />')
+    expect(r.env).toContain("import { createFileRoute } from 'toy-router'")
+  })
+})
+
 describe('provenance-based orphans (R6)', () => {
   it('keeps a pre-existing disconnected effectful cycle (A6)', async () => {
     const code = ROUTE(

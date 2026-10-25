@@ -1346,6 +1346,7 @@ class Renderer {
     out: Array<Segment>,
     exclude: TreeEdit | null = null,
     includeEnd = false,
+    skipZeroWidthAt: number | null = null,
   ): void {
     const cuts: Array<{
       start: number
@@ -1353,7 +1354,14 @@ class Renderer {
       edit: TreeEdit | null
       ref: ClassifiedRef | null
     }> = []
-    for (const e of this.tree.topLevelWithin(start, end, exclude, includeEnd)) {
+    for (const e of this.tree.topLevelWithin(
+      start,
+      end,
+      exclude,
+      includeEnd,
+      null,
+      skipZeroWidthAt,
+    )) {
       cuts.push({ start: e.range.start, end: e.range.end, edit: e, ref: null })
     }
     if (env && env.size > 0) {
@@ -1404,6 +1412,7 @@ class Renderer {
           nextEnv,
           out,
           gen !== undefined ? this.plan.rewrites.generated[gen]! : null,
+          e,
         )
       } else {
         const ref = cut.ref!
@@ -1433,6 +1442,7 @@ class Renderer {
     env: SubstEnv | null,
     out: Array<Segment>,
     entering: GeneratedUnit | null = null,
+    within: TreeEdit | null = null,
   ): void {
     const unit = entering ?? owner
     const mergedEnv = mergeEnv(env, unit?.env)
@@ -1463,6 +1473,8 @@ class Renderer {
             mergedEnv,
             out,
             exclude,
+            false,
+            within?.range.start ?? null,
           )
           break
         }
