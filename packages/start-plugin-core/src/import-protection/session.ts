@@ -177,6 +177,30 @@ export class ImportProtection {
       : unknownEdgeLoad(ref.env, ref.key, this.ids)
   }
 
+  /**
+   * Rspack: defines the module a request names before it resolves, when its
+   * environment does not know it (an importer restored from the persistent
+   * cache in a new process: nothing compiled it). The runtime, or an edge
+   * module from the content its request carries (`EdgeModuleIds.content`),
+   * in its current state; its violations come with the importer's replayed
+   * record. Emits what it defines (`onEdgeModule`).
+   */
+  define(request: string): void {
+    const ref = this.ids.parse(request)
+    const env = ref && this.envs.get(ref.env)
+    if (!env) {
+      return
+    }
+    if (ref.kind === 'runtime') {
+      env.defineRuntime()
+      return
+    }
+    const content = this.ids.content?.(request)
+    if (content) {
+      env.defineModule(ref.key, content)
+    }
+  }
+
   /** @internal */
   runtimeLoad(): EdgeModuleLoad {
     return {
@@ -440,19 +464,48 @@ export class ImportProtectionEnv {
     const record = info as RspackImportProtectionBuildInfo | undefined
     if (record?.version === 1 && record.env === this.name) {
       this.register(importerId, record.violations, false)
+      // a module compiled in this process indexed its edges itself
+      if (record.edges && !this.edges.has(importerId)) {
+        this.edges.set(importerId, record.edges)
+      }
     }
   }
 
+  /**
+   * Dev: whether an Rspack module's record holds violations this session
+   * did not judge (a module restored from the persistent cache: another
+   * session's `onViolation` verdicts decided its output and its reports).
+   */
+  unjudged(importerId: string, info: unknown): boolean {
+    const record = info as RspackImportProtectionBuildInfo | undefined
+    return (
+      this.ip.config.mode === 'dev' &&
+      record?.version === 1 &&
+      record.env === this.name &&
+      record.violations.length > 0 &&
+      !this.byImporter.has(importerId)
+    )
+  }
+
   /** What the Rspack loader stores in `buildInfo[RSPACK_BUILD_INFO_KEY]` for a compiled output (null: nothing). */
-  buildInfo(out: CompiledOutputLike): {
+  buildInfo(
+    importerId: string,
+    out: CompiledOutputLike,
+  ): {
     key: string
     value: RspackImportProtectionBuildInfo
   } | null {
     const violations = violationsOf(out)
-    return violations.length > 0
+    const edges = this.edges.edgesOf(importerId)
+    return violations.length > 0 || edges.length > 0
       ? {
           key: RSPACK_BUILD_INFO_KEY,
-          value: { version: 1, env: this.name, violations },
+          value: {
+            version: 1,
+            env: this.name,
+            violations,
+            ...(edges.length > 0 && { edges }),
+          },
         }
       : null
   }
@@ -468,23 +521,10 @@ export class ImportProtectionEnv {
         continue
       }
       keys.add(v.module.key)
-      let m = this.modules.get(v.module.key)
-      if (!m) {
-        m = { content: v.module.content, violations: new Map() }
-        this.modules.set(v.module.key, m)
-        if (!this.runtimeEmitted) {
-          this.runtimeEmitted = true
-          this.ip.emit(
-            { env: this.name, kind: 'runtime' },
-            this.ip.runtimeLoad(),
-          )
-        }
-        this.ip.emit(
-          { env: this.name, kind: 'edge', key: v.module.key },
-          this.edgeLoad(v.module.key)!,
-        )
-      }
-      m.violations.set(`${v.importerId}\u0000${v.edgeKey}`, v)
+      this.defineModule(v.module.key, v.module.content).violations.set(
+        `${v.importerId}\u0000${v.edgeKey}`,
+        v,
+      )
     }
     const previous = this.byImporter.get(importerId)
     this.byImporter.set(importerId, keys)
@@ -525,6 +565,26 @@ export class ImportProtectionEnv {
         .join('\n')
     }
     return { error }
+  }
+
+  /** An edge module of this environment: registered (and emitted, the runtime first) unless it is known. @internal */
+  defineModule(key: string, content: EdgeModuleContent): RegisteredModule {
+    let m = this.modules.get(key)
+    if (!m) {
+      m = { content, violations: new Map() }
+      this.modules.set(key, m)
+      this.defineRuntime()
+      this.ip.emit({ env: this.name, kind: 'edge', key }, this.edgeLoad(key)!)
+    }
+    return m
+  }
+
+  /** The environment's mock runtime, emitted once. @internal */
+  defineRuntime(): void {
+    if (!this.runtimeEmitted) {
+      this.runtimeEmitted = true
+      this.ip.emit({ env: this.name, kind: 'runtime' }, this.ip.runtimeLoad())
+    }
   }
 
   private release(importerId: string, key: string): void {
@@ -569,20 +629,6 @@ export class ImportProtectionEnv {
       const m = this.modules.get(key)
       return m ? m.content.effectful : null
     })
-  }
-
-  /** Every registered edge module (Rspack: write the virtual files of a fresh compiler). */
-  *edgeModules(): Iterable<{ specifier: string; load: EdgeModuleLoad }> {
-    for (const key of this.modules.keys()) {
-      yield {
-        specifier: this.ip.ids.specifier({
-          env: this.name,
-          kind: 'edge',
-          key,
-        }),
-        load: this.edgeLoad(key)!,
-      }
-    }
   }
 
   /** A fresh logical build of this environment (Vite `buildApp`, Rspack `run`/`watchRun`). */

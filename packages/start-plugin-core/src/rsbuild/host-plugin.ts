@@ -15,7 +15,10 @@ import {
   rspackGraphView,
 } from '../import-protection/witness'
 import { normalizePath } from '../utils'
-import { SERVER_FN_BUILD_INFO_FIELD } from './compiler-session'
+import {
+  SERVER_FN_BUILD_INFO_FIELD,
+  canonicalResource,
+} from './compiler-session'
 import { LOADER_REGISTRY } from './loader-registry'
 import type { LoaderImpl } from './compiler-loader'
 import type {
@@ -135,12 +138,21 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         // no resolver outside loaders: the invalidation re-resolves nothing
       }
 
-      // import-protection edge modules are virtual files of this environment
+      // import-protection edge modules are virtual files of this environment, written when
+      // they are defined (the importer's compile) or change state (a build veto); an importer
+      // restored from the persistent cache in a new process requests a module nothing
+      // defined: the request carries its content, which defines it before it resolves
       if (session.ip && ipEnv) {
-        session.ip.onEdgeModule((file, load, ref) => {
+        const ip = session.ip
+        ip.onEdgeModule((file, load, ref) => {
           if (ref.env === environment.name) {
             opts.writeVirtualModule(file, load.code)
           }
+        })
+        compiler.hooks.normalModuleFactory.tap(PLUGIN_NAME, (factory) => {
+          factory.hooks.beforeResolve.tap(PLUGIN_NAME, (data) => {
+            ip.define(data.request)
+          })
         })
       }
 
@@ -194,10 +206,6 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           // trace would abort the process): no graph until `finishModules`, when the
           // compilation's complete graph replaces it (traces built before use the edge index)
           ipEnv.graph = null
-          // every known edge module exists before the importers' dependencies resolve
-          for (const { specifier, load } of ipEnv.edgeModules()) {
-            opts.writeVirtualModule(specifier, load.code)
-          }
           if (session.opts.mode === 'dev') {
             if (!reporterInstalled) {
               reporterInstalled = true
@@ -340,12 +348,32 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       }
 
       // the replay of this compilation's modules (built now or restored from the persistent
-      // cache): the environment's server-fn snapshot and the import-protection records
-      compiler.hooks.finishMake.tap(
+      // cache): the environment's server-fn snapshot and the import-protection records. In dev,
+      // a module restored with violations was judged by another session (its `onViolation`
+      // verdicts decided its output; its reports were printed there): compiled again first
+      compiler.hooks.finishMake.tapPromise(
         { name: `${PLUGIN_NAME}:replay`, stage: -20 },
-        (compilation) => {
+        async (compilation) => {
           if (compilation.compiler !== compiler) {
             return
+          }
+          if (ipEnv && session.opts.mode === 'dev') {
+            for (const m of compilation.modules) {
+              const module = m as unknown as ModuleLike
+              const ip = module.buildInfo?.[RSPACK_BUILD_INFO_KEY]
+              if (
+                ip &&
+                module.resource &&
+                !env.compiled.has(module.resource) &&
+                ipEnv.unjudged(canonicalResource(module.resource), ip)
+              ) {
+                await new Promise<void>((resolve, reject) => {
+                  compilation.rebuildModule(m, (error) =>
+                    error ? reject(error) : resolve(),
+                  )
+                })
+              }
+            }
           }
           const snapshot = new Map<string, ServerFnBuildInfo>()
           for (const m of compilation.modules) {
@@ -362,7 +390,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             }
             const ip = info[RSPACK_BUILD_INFO_KEY]
             if (ipEnv && ip && module.resource) {
-              ipEnv.replay(normalizePath(module.resource), ip)
+              ipEnv.replay(canonicalResource(module.resource), ip)
             }
           }
           env.serverFns = snapshot

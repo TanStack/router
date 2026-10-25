@@ -398,7 +398,7 @@ describe('Rspack persistent cache', () => {
     }
     const first = app(files, {}, 'build')
     const { out } = await first.compile('src/a.ts', 'client')
-    const record = first.ip.env('client').buildInfo(out!)
+    const record = first.ip.env('client').buildInfo(`${ROOT}/src/a.ts`, out!)
     expect(record?.key).toBe('tanstack.start.ip')
     const json = JSON.parse(JSON.stringify(record!.value)) as unknown
     // a later build restores the module without running the loader

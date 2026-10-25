@@ -271,9 +271,10 @@ export interface StartBuildOptions {
   registerCleanup?: (cleanup: () => Promise<void>) => void
   /**
    * Builds the app this many times in a row, in the same directory and with
-   * a new plugin instance each time (default 1). The results describe the
-   * last build, e.g. one Rsbuild restores from its persistent cache
-   * (`rsbuildConfig: { performance: { buildCache: true } }`).
+   * a new plugin instance each time (default 1). The results (or the
+   * rejection) describe the last build, e.g. one Rsbuild restores from its
+   * persistent cache (`rsbuildConfig: { performance: { buildCache: true } }`);
+   * an earlier build may fail.
    */
   builds?: number
   /** Rsbuild configuration merged over the harness's (Rsbuild builds). */
@@ -570,22 +571,34 @@ async function buildAt(
     }
   }
   let started = performance.now()
-  let outputs = await build()
-  for (let index = 1; index < builds; index++) {
+  let outputs: Outputs | undefined
+  for (let index = 0; index < builds; index++) {
     started = performance.now()
-    outputs = await build()
+    try {
+      outputs = await build()
+    } catch (error) {
+      // an earlier build may fail (a build failing on an import-protection
+      // error, built again from its persistent cache): the last one decides
+      if (index === builds - 1 || !(error instanceof StartBuildError)) {
+        throw error
+      }
+    }
   }
+  if (!outputs) {
+    throw new Error('buildAt: no build')
+  }
+  const built = outputs
   const duration = performance.now() - started
   const describe = (env: Env) =>
     describeBuild({
       bundler: bundler === 'vite' ? 'vite' : 'rspack',
       env,
       mode,
-      esModules: outputs[env].esModules,
-      parsedModules: outputs[env].parsedModules,
+      esModules: built[env].esModules,
+      parsedModules: built[env].parsedModules,
       root: app.root,
-      outDir: outputs[env].outDir,
-      chunks: outputs[env].chunks,
+      outDir: built[env].outDir,
+      chunks: built[env].chunks,
       sourcemap: target.sourcemap,
       warnings: warnings[env],
       consoleMessages,

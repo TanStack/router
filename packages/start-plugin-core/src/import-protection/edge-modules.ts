@@ -16,6 +16,7 @@
  *   mode (J6.3).
  */
 import {
+  canonicalJson,
   digestOf,
   isValidIdentifier,
   stringLiteral,
@@ -31,13 +32,17 @@ export type EdgeModuleRef =
   | { env: string; kind: 'runtime' }
 
 /**
- * How a host names our modules: the specifier written into importers and
- * edge modules, and the module a bundler id or resource names (any query,
- * `\0` or `/@id/__x00__` prefix; null when it is not ours).
+ * How a host names our modules: the module's id (the runtime specifier
+ * edge modules import; Rspack: the virtual file), the request an importer
+ * imports an edge module by, and the module a bundler id or resource names
+ * (any query, `\0` or `/@id/__x00__` prefix; null when it is not ours).
  */
 export interface EdgeModuleIds {
   specifier: (ref: EdgeModuleRef) => string
+  request: (key: string, content: EdgeModuleContent) => string
   parse: (idOrResource: string) => EdgeModuleRef | null
+  /** The content a request carries (Rspack), checked against its key; null otherwise. */
+  content?: (request: string) => EdgeModuleContent | null
 }
 
 /** `<env>/edge.<key>` or `<env>/runtime`. */
@@ -79,6 +84,8 @@ function stripQuery(id: string): string {
  */
 export const viteEdgeModuleIds: EdgeModuleIds = {
   specifier: (ref) => `${EDGE_MODULE_PREFIX}${edgeModuleName(ref)}`,
+  request: (key, content) =>
+    viteEdgeModuleIds.specifier({ env: content.env, kind: 'edge', key }),
   parse(id) {
     let s = stripQuery(id)
     if (s.startsWith('\0')) {
@@ -107,18 +114,50 @@ export function resolveViteEdgeModuleId(specifier: string): string | null {
   return `\0${specifier}`
 }
 
+/** The query of an Rspack edge module request that carries its content. */
+const CONTENT_QUERY = 'tss-ip='
+
 /**
  * Rspack ids: virtual files under `dir` (e.g.
  * `<root>/node_modules/.virtual/tanstack-start/import-protection`), one
  * directory per environment; the host writes their content
  * (`ImportProtection.onEdgeModule`) before the importer's dependencies
  * resolve. The resource is the module's identity (persistent cache).
+ * An importer's request carries the module's content
+ * (`<file>?tss-ip=<base64url>`): an importer Rspack restores from its
+ * persistent cache in a new process requests a module nothing registered,
+ * which the host defines from the request before it resolves
+ * (`ImportProtection.define`).
  */
 export function rspackEdgeModuleIds(dir: string): EdgeModuleIds {
   const base = dir.replace(/\\/g, '/').replace(/\/$/, '')
   const prefix = `${base}/`
-  return {
+  const ids: EdgeModuleIds = {
     specifier: (ref) => `${prefix}${edgeModuleName(ref)}.mjs`,
+    request: (key, content) =>
+      `${ids.specifier({ env: content.env, kind: 'edge', key })}?${CONTENT_QUERY}${Buffer.from(canonicalJson(content)).toString('base64url')}`,
+    content(request) {
+      const ref = ids.parse(request)
+      const q = request.indexOf(`?${CONTENT_QUERY}`)
+      if (ref?.kind !== 'edge' || q === -1) {
+        return null
+      }
+      let content: EdgeModuleContent
+      try {
+        content = JSON.parse(
+          Buffer.from(
+            request.slice(q + 1 + CONTENT_QUERY.length),
+            'base64url',
+          ).toString('utf8'),
+        ) as EdgeModuleContent
+      } catch {
+        return null
+      }
+      // the key digests the content: a request whose content is not its key's is not ours
+      return content.env === ref.env && edgeModuleKey(content) === ref.key
+        ? content
+        : null
+    },
     parse(resource) {
       const s = stripQuery(resource).replace(/\\/g, '/')
       if (!s.startsWith(prefix) || !s.endsWith('.mjs')) {
@@ -127,6 +166,7 @@ export function rspackEdgeModuleIds(dir: string): EdgeModuleIds {
       return parseEdgeModuleName(s.slice(prefix.length, -'.mjs'.length))
     },
   }
+  return ids
 }
 
 /** What an edge module needs, in either state. Plain data (part of plan facts and Rspack buildInfo). */

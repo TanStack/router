@@ -163,4 +163,33 @@ describe('Rspack ids', () => {
     })
     expect(ids.parse(path.join(dir, '../other.mjs'))).toBeNull()
   })
+
+  // An importer restored from the persistent cache in a new process
+  // requests an edge module nothing registered: its request defines it.
+  test('a request names its file and carries its content, checked against its key', () => {
+    const c = content({ names: ['secret', 'a:b'], resolved: '/x/secret.ts' })
+    const key = edgeModuleKey(c)
+    const request = ids.request(key, c)
+    expect(request).toBe(ids.request(key, { ...c }))
+    expect(ids.parse(request)).toEqual({ env: 'client', kind: 'edge', key })
+    expect(request.startsWith(`${ids.specifier(ids.parse(request)!)}?`)).toBe(
+      true,
+    )
+    expect(ids.content!(request)).toEqual(c)
+    // another key, environment or a content that is not the key's: not ours
+    const other = content({ names: ['other'] })
+    const forged = request.replace(
+      /\?.*$/,
+      ids.request(key, other).slice(request.indexOf('?')),
+    )
+    expect(ids.content!(forged)).toBeNull()
+    expect(
+      ids.content!(ids.specifier({ env: 'client', kind: 'edge', key })),
+    ).toBeNull()
+    expect(
+      ids.content!(
+        `${ids.specifier({ env: 'client', kind: 'edge', key })}?tss-ip=%%%`,
+      ),
+    ).toBeNull()
+  })
 })
