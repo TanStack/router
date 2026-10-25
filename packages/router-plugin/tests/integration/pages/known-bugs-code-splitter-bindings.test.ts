@@ -936,6 +936,31 @@ export const Route = createFileRoute('/')({ component: Page })
     expect(await route.run(`return render('component')`)).toBe('<p>-1</p>')
   })
 
+  // Bug: the route module prints a JSX element whose member is read without
+  // its parentheses (`(<Tag />).props` becomes `<Tag />.props`), which
+  // Vite's transform does not parse. The root cause is upstream:
+  // @babel/generator 7.29.8 drops the parentheses (parse+generate of
+  // `f = (<X a="1" />).props.a` gives `f = <X a="1" />.props.a;`; no
+  // workaround here).
+  // Source: review.
+  // Impact: the route module fails to compile (the dev server answers 500).
+  test.fails(
+    'a JSX element read as an object keeps its parentheses in the route module',
+    async () => {
+      const route =
+        await loadRoute(`${head}function Tag(props: { label: string }) {
+  return <p>{props.label}</p>
+}
+export const Route = createFileRoute('/')({
+  loader: () => (<Tag label="kept" />).props.label,
+  component: () => <p>page</p>,
+})
+`)
+      await expectValidModules(route)
+      expect(await route.run(`return options.loader()`)).toBe('kept')
+    },
+  )
+
   /**
    * Loads a route whose split component returns `expression`, checks that
    * every module the page loads for it is valid and returns what the

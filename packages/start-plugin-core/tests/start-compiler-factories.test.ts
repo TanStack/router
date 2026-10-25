@@ -148,6 +148,40 @@ export { serverValue as exposed }`,
     ])
   })
 
+  // An installed browser-only package (it reads `window` when it loads)
+  // that only client-only code reads, through a diamond and a cycle of
+  // helpers, never loads on the server, where it would crash (SPEC J4.11,
+  // G16). The production twin: integration/start-build-client-only-imports.test.ts.
+  test('dev: the SSR environment does not load a browser-only package only client-only code reads', async () => {
+    const served = await serve(
+      `import { createClientOnlyFn, createIsomorphicFn } from '@tanstack/react-start'
+import { measure } from 'browser-lib'
+const measured = () => measure()
+const left = () => measured()
+const right = () => measured()
+function ping(n: number): string { return n > 0 ? pong(n - 1) : left() + right() }
+function pong(n: number): string { return n > 0 ? ping(n - 1) : '' }
+export const size = createClientOnlyFn(() => measure())
+export const resize = createIsomorphicFn().server(() => 'server').client(() => ping(2))`,
+      {
+        'node_modules/browser-lib/package.json': JSON.stringify({
+          name: 'browser-lib',
+          type: 'module',
+          exports: './index.js',
+        }),
+        'node_modules/browser-lib/index.js': `const width = window.innerWidth
+export const measure = () => 'measure:' + typeof width
+`,
+      },
+    )
+    expectNotLoaded(await served.serverLoads(), ['browser-lib'])
+    expect(
+      await inPage(served, 'return [module.size(), module.resize()]'),
+    ).toEqual(['measure:number', 'measure:numbermeasure:number'])
+    const ssr = await served.ssr()
+    expect([settle(ssr.size), ssr.resize()]).toEqual([throwsError, 'server'])
+  })
+
   // Source: Waku vite-plugin-allow-server.test.ts "handles default allowServer
   // export", "stubs default exports while preserving allowServer dependencies"
   test.each([
@@ -882,11 +916,12 @@ describe('factories resolved through project modules', () => {
 
   // Only createServerOnlyFn appears in the source text; on the server, the
   // client-only fn imported through an aliased re-export throws and the
-  // server-only fn runs. (Which of its imports the SSR environment keeps is
-  // left open for neutral file names: SPEC J4.11, §5.12.)
+  // server-only fn runs. The SSR environment does not load the neutral
+  // module only the client-only fn reads (SPEC J4.11, G16).
   test('ssr: an aliased re-export of createClientOnlyFn next to createServerOnlyFn', async () => {
     const { 'module.tsx': code, ...files } = aliasedClientOnlyFiles
     const served = await serve(code, files)
+    expectNotLoaded(await served.serverLoads(), ['./browser'])
     const module = await served.ssr()
     expect([module.serverValue(), settle(module.clientValue)]).toEqual([
       'secret',

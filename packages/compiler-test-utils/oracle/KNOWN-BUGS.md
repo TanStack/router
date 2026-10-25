@@ -7,7 +7,7 @@ One entry per root cause: the bug, the SPEC clause, the pins (`file` and test na
 `$name`, `%s` and `${…}` are table-row placeholders), and what a fix must achieve. The test comment (`Bug:`,
 `Impact:`) has the details. "Cause" files name today's implementation; a rewrite may have no such file.
 
-Totals: 376 pin sites in 103 test files (a table test counts once; Vitest counts each row).
+Totals: 381 pin sites in 106 test files (a table test counts once; Vitest counts each row).
 
 Pins whose input picks a name today's compiler generates (S6) flip with a compiler that generates other names. The
 adaptive pins next to them, which read the names a compiler actually generates, are the real check.
@@ -40,13 +40,15 @@ compiles its JSX under the runtime the untouched file has, and keeps the factory
 **S2. Dead-code elimination keeps what only types or non-reads mention, and never removes some declaration kinds.**
 babel-dead-code-elimination counts `typeof x` type queries, TypeScript-only positions (enum members, overload and
 constructor parameters) and a local of a function's own name as reads, and never removes classes, enums, namespaces,
-overloaded functions or redeclared `var`s. Server-only imports then stay on the client. SPEC J4.12, J2.5. Fix: code
-only server code (or only types) reads is gone from the client, with its imports. 9 pins:
+overloaded functions or redeclared `var`s. Server-only imports then stay on the client (and client-only imports on
+the server). SPEC J4.12, J4.11, J2.5, G16. Fix: code only server code (or only types) reads is gone from the client,
+with its imports, and code only client-only code reads is gone from the server. 10 pins:
 
 - `start-plugin-core/tests/known-bugs-start-compiler.test.ts`: "client: $name does not load its server-only import";
   "client: a server-only import last mentioned by a type alias is not loaded with verbatimModuleSyntax"; "client: a
   validator schema that a type alias reads with typeof is not loaded"; "ssr: a declaration a client-only fn reads and
-  a type alias reads with typeof is not loaded".
+  a type alias reads with typeof is not loaded"; "ssr: a class only a client-only fn uses does not load its
+  client-only import".
 - `start-plugin-core/tests/integration/known-bugs-start-compiler.test.ts`: "client: the server-only module of a class
   only server code uses is not bundled"; "client: a server-only module a type mentions is not bundled with
   verbatimModuleSyntax".
@@ -55,11 +57,12 @@ only server code (or only types) reads is gone from the client, with its imports
 - `start-plugin-core/tests/createServerFn/caller-dead-code.test.ts`: "when client code uses its name in $name";
   "callers drop a handler-only function that declares a local of its own name".
 
-**S3. The printer drops required parentheses** (`@babel/generator`): `count as number++`, `a as any ? -x : y` do not
-parse. SPEC G12. Fix: printed code parses and means the same. 4 pins:
+**S3. The printer drops required parentheses** (`@babel/generator`): `count as number++`, `a as any ? -x : y`,
+`<Tag />.props` do not parse. SPEC G12. Fix: printed code parses and means the same. 5 pins:
 
 - `router-plugin/tests/integration/pages/known-bugs-code-splitter-bindings.test.ts`: "an asserted update operand keeps
-  its parentheses in a split component"; "an asserted conditional test keeps its parentheses in a split component".
+  its parentheses in a split component"; "an asserted conditional test keeps its parentheses in a split component";
+  "a JSX element read as an object keeps its parentheses in the route module".
 - `start-plugin-core/tests/start-compiler-preserves-user-code.test.ts`: "keeps the parentheses of asserted update
   operands"; "keeps the parentheses of an asserted conditional test".
 
@@ -98,6 +101,18 @@ user binding. 8 pins:
   binding or a server fn of that name" (adaptive).
 - `start-plugin-core/tests/integration/pages/known-bugs-hydrate-module-level.test.ts`: "client: module-level $name,
   named like the generated bindings, do not collide".
+
+**S7. Dead-code elimination removes the const half of a class and const cycle.** When only removed code used a
+class whose static field reads a const that points back to the class (`const registry = { make: () => new Repo() };
+class Repo { static registry = registry }`), babel-dead-code-elimination takes the pair for one removable cycle and
+deletes the const, but it never removes a class (S2), so the class stays and its static field reads a deleted name.
+SPEC G16, G1. Fix: both halves go together, or both stay; the module loads. 2 pins, one cell per removal:
+
+- `start-plugin-core/tests/start-compiler-dead-code-shapes.test.ts`: "takes with it what only it uses through a class
+  and a const that read each other" (server fn handler, `createServerOnlyFn`, isomorphic `.server()` on the client;
+  `createClientOnlyFn`, isomorphic `.client()` on the server: `ReferenceError` when the module loads there).
+- `router-plugin/tests/integration/pages/code-splitter-dead-code-shapes.test.ts`: the same name (a split component and
+  a `deleteNodes` server handler: the route module throws when it loads).
 
 ## J1 Route file upkeep (30 pins)
 
@@ -170,7 +185,7 @@ user binding. 8 pins:
   J1.10, G5. `router-plugin/tests/integration/known-bugs-rsbuild-generator.test.ts`: "a created route file the
   generator cannot parse is reported, and fixing it adds the route".
 
-## J2 Route code splitting (106 pins: 90 below, 16 in S1, S3–S6)
+## J2 Route code splitting (108 pins: 90 below, 18 in S1, S3–S7)
 
 Router-plugin paths below are under `router-plugin/tests/`; `pages/` means `integration/pages/`.
 
@@ -415,7 +430,7 @@ Paths under `router-plugin/tests/`.
 - **With options in a variable, the HMR transform declares the component binding after the object that reads it.**
   SPEC G1. `known-bugs-route-hmr.test.ts`: "route options in a variable ($name) evaluate to a route with a component".
 
-## J4 Start environment separation (85 pins: 67 below, 18 in S1–S6)
+## J4 Start environment separation (87 pins: 67 below, 20 in S1–S7)
 
 Paths under `start-plugin-core/tests/` unless noted.
 
@@ -538,7 +553,7 @@ Paths under `start-plugin-core/tests/` unless noted.
   `react-start-rsc/tests/integration/rsc-start-build.test.ts`: "a server fn only a 'use client' component of a server
   component imports runs when clicked". Fix: every server fn the client references is callable by id.
 
-## J5 Deferred hydration `<Hydrate>` (39 pins: 36 below, 3 in S1, S6)
+## J5 Deferred hydration `<Hydrate>` (40 pins: 37 below, 3 in S1, S6)
 
 Paths under `start-plugin-core/tests/integration/`; `pages/` means `integration/pages/`.
 
@@ -549,6 +564,13 @@ Paths under `start-plugin-core/tests/integration/`; `pages/` means `integration/
   still ship. SPEC J5.6. `hydrate-build-cases.ts`: "an unused exported component with a boundary is not in the client".
 - **An export only the children use, initialised by a call, must run once.** SPEC J5.6, G3. `hydrate-build-cases.ts`:
   "an export only the children use, initialized by a call, is initialized once and hydrates".
+- **The parent of a boundary keeps a declaration only the children use when another removed declaration reads it
+  too.** The parent prunes with its own walk (`stripBindingsOnlyReferencedByNodes` in `hydrate-when-transform.ts`),
+  which drops a binding only when every reference lies in the one node it is pruning: the shared end of a diamond and
+  both halves of a cycle (mutual recursion, a class and a const) stay, with their imports. SPEC G16, J5.6. Fix: the
+  parent drops everything only the children used, whatever the shape. `pages/hydrate-dead-code-shapes.test.ts`:
+  "client: the parent drops what only the children use through a diamond" (and "… mutually recursive functions",
+  "… a class and a const that read each other").
 - **A namespace member `<Start.Hydrate>` is not a boundary.** SPEC J5.1. `hydrate-pages-react.ts` and
   `hydrate-pages-solid.ts`: "a namespace-imported Start.Hydrate loads its children when it hydrates".
 - **The chunk re-declares module-level bindings and exports instead of using the parent's.** SPEC J5.8, G3, J2.4.
@@ -745,3 +767,4 @@ None is filed upstream yet. "Remove when" says when a harness change can go.
 | unplugin 3.3                                              | webpack and Rspack loaders drop the plugin's source map                                                                                                                                       | pinned (S4): unplugin is today's integration layer.                                                                                                                                                                                                                  |
 | `@babel/generator` 7.29                                   | drops required parentheses                                                                                                                                                                    | pinned (S3): Babel is today's printer.                                                                                                                                                                                                                               |
 | babel-dead-code-elimination 1.0.12                        | counts `typeof` type queries as references (pcattori/babel-dead-code-elimination#50)                                                                                                          | pinned (S2): today's dead-code elimination.                                                                                                                                                                                                                          |
+| babel-dead-code-elimination 1.0.12                        | removes the const of a class and const cycle and keeps the class, whose static field then reads a deleted name (no class visitor)                                                             | pinned (S7): today's dead-code elimination.                                                                                                                                                                                                                          |

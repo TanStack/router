@@ -9,6 +9,7 @@
     "./browser": "./src/browser.ts",
     "./budget-reporter": "./src/budget-reporter.ts",
     "./build-harness": "./src/build-harness.ts",
+    "./dead-code-shapes": "./src/dead-code-shapes.ts",
     "./determinism": "./src/determinism.ts",
     "./dev-server": "./src/dev-server.ts",
     "./diagnostic-channel": "./src/diagnostic-channel.ts",

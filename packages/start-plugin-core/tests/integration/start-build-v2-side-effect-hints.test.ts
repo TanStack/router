@@ -109,9 +109,10 @@ export const viaMiddleware = createServerFn()
   'src/fns/server-only.ts': `import { createServerOnlyFn } from '@tanstack/react-start'
 ${dependencyImports}export const serverOnlyMarks = createServerOnlyFn(() => ${marksOf('ServerOnly')})
 `,
-  // Top-level initializers next to a server fn: one annotated pure, one
-  // not; the client reads one of them, the handler both and a server-only
-  // store (a neutral file name: the compiler alone decides its absence).
+  // Top-level initializers next to a server fn: one annotated pure, two
+  // not; the client reads one of them, the handler all three and a
+  // server-only store (a neutral file name: the compiler alone decides its
+  // absence).
   'src/registry.ts': `export function createRegistry(name: string) {
   ;((globalThis as Record<string, unknown>).__registries ??= []) as Array<string>
   ;((globalThis as Record<string, unknown>).__registries as Array<string>).push(name)
@@ -124,10 +125,12 @@ import { createRegistry } from './registry'
 import { secretStore } from './secret-store'
 const pureRegistry = /*#__PURE__*/ createRegistry('MARK_PURE_REGISTRY')
 const registry = createRegistry('MARK_REGISTRY')
+const handlerOnly = createRegistry('MARK_HANDLER_ONLY_REGISTRY')
 export const countSecrets = createServerFn().handler(async () => [
   registry.name,
   pureRegistry.name,
   secretStore.count(),
+  handlerOnly.name,
 ])
 export const registryName = () => registry.name
 `,
@@ -307,9 +310,14 @@ describe.each(startBundlers)('%s build', (bundler) => {
 
     // The initializer the client reads runs once there; the pure one may
     // go (SPEC G3: eager vs lazy initialization of a server-only binding is
-    // not pinned); the server-only store never reaches the client.
+    // not pinned); the server-only store, and the unannotated initializer
+    // only the handler reads, never reach the client (G16: a bundler must
+    // keep a call it cannot prove pure).
     test('top-level initializers with and without @__PURE__ next to a server fn', async () => {
-      expect(build.client.where('MARK_SECRET_STORE')).toBe('nowhere')
+      expect([
+        build.client.where('MARK_SECRET_STORE'),
+        build.client.where('MARK_HANDLER_ONLY_REGISTRY'),
+      ]).toEqual(['nowhere', 'nowhere'])
       const client = (
         await build.client.run(
           `return { name: entry.registryName(), registries: globalThis.__registries }`,
@@ -338,6 +346,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
         'MARK_REGISTRY',
         'MARK_PURE_REGISTRY',
         'MARK_SECRET_STORE',
+        'MARK_HANDLER_ONLY_REGISTRY',
       ])
       expect(ssr.name).toBe('MARK_REGISTRY')
       // (How many times the SSR bundle initialises the module is the pin

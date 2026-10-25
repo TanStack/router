@@ -9,7 +9,10 @@
  * subtree, so client-side navigation reaches the pages and finds nothing at
  * the server-only routes; the server keeps every route: each handler
  * answers and each page renders; and the generated route tree's types know
- * every route (tsc).
+ * every route (tsc). The page under the server-only ancestor has a server
+ * handler of its own, reading a Node builtin through a helper: Start's
+ * client `deleteNodes` takes both with the handler, so the client build
+ * neither resolves nor warns about it (SPEC J2.14, J4.12, G16).
  */
 import { writeFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -21,6 +24,7 @@ import {
   onTestFinished,
   test,
 } from 'vitest'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../build-harness'
 import { probeRoutePath } from '../request-probe'
 import {
@@ -53,7 +57,13 @@ const files = {
   // A server-only route with a page under it (its handler answers POST, so
   // nothing renders at its own path).
   'src/routes/admin.tsx': `${head}export const Route = createFileRoute('/admin')({ ${handler('POST', 'MARK_ADMIN_HANDLER')} })\n`,
-  'src/routes/admin/users.tsx': `${head}export const Route = createFileRoute('/admin/users')({ component: () => <p>MARK_ADMIN_PAGE</p> })\n`,
+  'src/routes/admin/users.tsx': `${head}import { Buffer } from 'node:buffer'
+const encode = (value: string) => Buffer.from(value).toString('base64')
+export const Route = createFileRoute('/admin/users')({
+  server: { handlers: { POST: () => new Response(encode('admin users')) } },
+  component: () => <p>MARK_ADMIN_PAGE</p>,
+})
+`,
   // A server-only subtree.
   'src/routes/api/route.tsx': `${head}export const Route = createFileRoute('/api')({ ${handler('GET', 'MARK_API_HANDLER')} })\n`,
   'src/routes/api/users.ts': `${head}export const Route = createFileRoute('/api/users')({ ${handler('GET', 'MARK_USERS_HANDLER')} })\n`,
@@ -63,6 +73,12 @@ const files = {
 export const Route = createFileRoute('/spread')({ ${handler('POST', 'MARK_SPREAD_HANDLER')}, ...page })
 `,
   'src/router.ts': routerFile,
+  // The types of the builtin the handler above reads, as @types/node gives
+  // them to a real app (the type check below loads no `@types`).
+  'src/node-buffer.d.ts': `declare module 'node:buffer' {
+  export const Buffer: { from(value: string): { toString(encoding: string): string } }
+}
+`,
   ...pageEntries,
 }
 
@@ -158,6 +174,7 @@ describe.each(startBundlers)('%s build, served', (bundler) => {
       (await served.fetch(pathname, { method })).text()
     expect({
       admin: await text('/admin', 'POST'),
+      adminUsers: await text('/admin/users', 'POST'),
       spread: await text('/spread', 'POST'),
       api: await text('/api'),
       users: await text('/api/users'),
@@ -165,6 +182,7 @@ describe.each(startBundlers)('%s build, served', (bundler) => {
       spreadPage: await text('/spread'),
     }).toEqual({
       admin: 'MARK_ADMIN_HANDLER',
+      adminUsers: Buffer.from('admin users').toString('base64'),
       spread: 'MARK_SPREAD_HANDLER',
       api: 'MARK_API_HANDLER',
       users: 'MARK_USERS_HANDLER',
@@ -173,10 +191,24 @@ describe.each(startBundlers)('%s build, served', (bundler) => {
     })
   })
 
+  test('the client build neither bundles nor warns about the builtin only a deleted handler reads', () => {
+    expect(build.client.where('node:buffer')).toBe('nowhere')
+    expect(
+      findDiagnostics(build.client.warnings, {
+        file: 'src/routes/admin/users.tsx',
+        root: build.root,
+      }),
+    ).toEqual([])
+  })
+
   test('the generated route tree types every route', async () => {
     await writeFile(path.join(build.ssr.root, 'src/check.ts'), typeChecks)
     expect(
-      typeCheck(build.ssr.root, ['src/routeTree.gen.ts', 'src/check.ts']),
+      typeCheck(build.ssr.root, [
+        'src/routeTree.gen.ts',
+        'src/check.ts',
+        'src/node-buffer.d.ts',
+      ]),
     ).toEqual([])
   })
 

@@ -17,7 +17,7 @@ today's bugs.
   build.
 - **J7** RSC CSS injection (react-start-rsc): CSS of server components reaches the client.
 
-Clause ids: `G1`–`G15` are cross-cutting rules, `J<job>.<n>` job clauses, `§5.N` freedoms, `§8` how tests check,
+Clause ids: `G1`–`G16` are cross-cutting rules, `J<job>.<n>` job clauses, `§5.N` freedoms, `§8` how tests check,
 `§9` what is not tested.
 
 ## What is the oracle

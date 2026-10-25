@@ -4,16 +4,15 @@ import { renderServer, renderSource, useHydrateHost } from '../render'
 const hosts = useHydrateHost()
 
 // On the server, `<ClientOnly>` (of a TanStack router package) renders its
-// fallback: the server output drops its children, so the server never
-// evaluates them (in the Start app, the libraries the children use throw
-// when called, here even while the children's elements are created).
+// fallback: the server output drops its children and the imports only they
+// use, whatever the imported module is (packages and neutral project
+// modules here), so the server never loads them (SPEC J4.11, G16): in the
+// Start app, the libraries the children use throw when they load.
 // Rendered by the SSR environment of the public Start plugin with React's
 // server renderer and the real `ClientOnly` of `@tanstack/react-router`
 // (which renders its fallback whenever it renders on a server), the server
 // output renders what the uncompiled source renders there (a plain Vite
-// host, `render.ts`). Whether the SSR
-// output keeps the children's imports is left open for neutral file names
-// (SPEC J4.11, §5.12). The client keeps the children: it renders them once
+// host, `render.ts`). The client keeps the children: it renders them once
 // the page hydrated (integration/clientOnlyJSX.test.ts). Other components
 // named ClientOnly are left alone.
 // Replaces the former snapshot fixtures of this directory.
@@ -36,19 +35,18 @@ describe('<ClientOnly> children', () => {
   /**
    * The app files of the libraries: a package of the case's own
    * `node_modules` for a bare specifier, a project module otherwise. The
-   * libraries of `childModules` throw when called, as the server must never
-   * run them.
+   * libraries of `childModules` throw when they load, as the server must
+   * never load them.
    */
   const libraryFiles = (childModules: Array<string> = []) =>
     Object.fromEntries(
       Object.entries(libraries).flatMap(([specifier, exports]) => {
-        const source = Object.entries(exports)
-          .map(([name, value]) =>
-            childModules.includes(specifier)
-              ? `export const ${name} = () => {\n  throw new Error('client-only code ran during SSR: ${name}')\n}\n`
-              : `export const ${name} = ${value}\n`,
-          )
+        const exported = Object.entries(exports)
+          .map(([name, value]) => `export const ${name} = ${value}\n`)
           .join('')
+        const source = childModules.includes(specifier)
+          ? `throw new Error('client-only module loaded during SSR: ${specifier}')\n${exported}`
+          : exported
         if (specifier.startsWith('./')) {
           return [[`${specifier}.ts`, source]]
         }
@@ -167,7 +165,7 @@ export function MyComponent() {
       ssr: '<div><div>Loading...</div></div>',
     },
   ])(
-    'a boundary with $name renders its fallback on the server without running its children',
+    'a boundary with $name renders its fallback on the server without loading its children',
     async ({ code, childModules, ssr }) => {
       const started = await hosts()
       const source = await renderSource(started, code, {
