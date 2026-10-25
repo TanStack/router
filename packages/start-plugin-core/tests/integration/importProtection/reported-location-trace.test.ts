@@ -10,12 +10,14 @@
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import {
+  inEnvironment,
   isAt,
   rejection,
   violationsOf,
 } from '../../importProtection/start-apps'
 import type { StartBuildOptions, StartBundler } from '../../build-harness'
 import type { Violation } from '../../importProtection/start-apps'
+import type { ViolationInfo } from '../../importProtection/public-types'
 
 const timeout = 60_000
 
@@ -235,6 +237,64 @@ export const page = () => leak()
           'src/entry.ts',
           'shared/a.ts',
           'src/b.ts',
+        ])
+      },
+      timeout,
+    )
+
+    // A route's split component is loaded by a dynamic import the router
+    // plugin generates, and a production build scope-hoists the component's
+    // chunk (and the route module into the entry's): a mock-mode build
+    // reports after that, and the chain still goes from the entry through
+    // the route tree and the route to the component's import.
+    // Source: the react-start/import-protection e2e app (Rsbuild mock build:
+    // the traces of split components stopped at the route file).
+    test(
+      'the trace of a mock-mode build reaches a split route component from the entry',
+      async () => {
+        // each violation as `onViolation` reads it when it is called (while
+        // the build runs, as the printed report does)
+        const snapshots: Array<ViolationInfo> = []
+        const build = await buildStart({
+          bundler,
+          files: {
+            ...secretServer,
+            'src/format.ts': `export const format = (s: string) => '[' + s + ']'\n`,
+            'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { secret } from '../secret.server'
+import { format } from '../format'
+export const Route = createFileRoute('/')({
+  component: () => format(secret()),
+})
+`,
+            'src/router.ts': `import { routeTree } from './routeTree.gen'
+export const getRouter = () => ({ routeTree })
+`,
+            'src/entry.ts': `export { getRouter } from './router'\n`,
+          },
+          entry: 'src/entry.ts',
+          start: {
+            importProtection: {
+              behavior: 'mock',
+              onViolation: (info: ViolationInfo) => {
+                snapshots.push({ ...info, trace: [...info.trace] })
+              },
+            },
+          },
+        })
+        const reports = violationsOf(
+          inEnvironment({ root: build.root, violations: snapshots }, 'client'),
+        )
+        expect(reports).toHaveLength(1)
+        // (the route module and its chunk are two steps of one file)
+        const files = modulesOf(reports[0]!.trace).filter(
+          (file, i, all) => file !== all[i - 1],
+        )
+        expect(clientEntries).toContain(files[0])
+        expect(files.slice(-3)).toEqual([
+          'src/router.ts',
+          'src/routeTree.gen.ts',
+          'src/routes/index.tsx',
         ])
       },
       timeout,
