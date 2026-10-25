@@ -257,6 +257,9 @@ function findBoundaries(
   const code = analysis.source.code
   const out: Array<Boundary> = []
   let index = 0
+  // the id's ordinal counts every boundary of the pristine source (the
+  // same in every env, D5); shorter than an offset in the client's markup
+  let ordinal = 0
   for (const start of [...found.keys()].sort((a, b) => a - b)) {
     const { element, opening, fw } = found.get(start)!
     const split = !isLiteralSplitFalse(opening)
@@ -265,7 +268,7 @@ function findBoundaries(
       element,
       opening,
       framework: fw,
-      id: `${opening.start.toString(36)}_${hash}`,
+      id: `${(ordinal++).toString(36)}_${hash}`,
       split,
       children,
       insertAt: insertPoint(code, opening),
@@ -591,6 +594,11 @@ class SharedNames {
     this.elName ??= this.ctx.names.alloc('el').name
     return this.elName
   }
+}
+
+/** The chunk's export name of a boundary's component: `H<n>` (short: production bytes in the chunk and the parent). */
+function chunkExportName(b: Boundary): string {
+  return `H${b.index}`
 }
 
 /** Inserts ` h="<id>"` (both envs) and, on the client, ` p={TsrHydrate<n>.preload}`. */
@@ -1074,9 +1082,16 @@ function extract(
   }
 
   // ---- the chunk component: a fixed-home generated unit owning the children (R37)
-  const head: Array<string | SymRef> = ['export function ', { sym: comp.sym }]
+  // exported under the short name `H<n>` (the parent's lazy wrapper reads it;
+  // the name is production bytes, twice per boundary)
+  const head: Array<string | SymRef> = ['function ', { sym: comp.sym }]
   if (props !== null) {
-    head.push('(', { sym: props }, ') { ')
+    // Solid: the one `props` parameter, when the chunk reads it
+    const readsProps = captures.length > 0 || args || setterProps.length > 0
+    head.push(readsProps ? '(' : '() { ')
+    if (readsProps) {
+      head.push({ sym: props }, ') { ')
+    }
     for (const l of directiveLocals) {
       head.push(`const ${l.name} = `, { sym: props }, `.${propOf.get(l.sym)}; `)
     }
@@ -1111,7 +1126,14 @@ function extract(
     body: [
       { k: 'text', parts: head, mapTo: b.element.start },
       { k: 'slice', range: region },
-      { k: 'text', parts: [shape.wrap ? '</> }\n' : ') }\n'] },
+      {
+        k: 'text',
+        parts: [
+          shape.wrap ? '</> }\nexport { ' : ') }\nexport { ',
+          { sym: comp.sym },
+          ` as ${chunkExportName(b)} }\n`,
+        ],
+      },
     ],
     declares: [comp.sym],
     effectful: false,
@@ -1194,7 +1216,7 @@ function addLazyConst(
         provenance: { origin: 'runtime' },
         form: 'dynamic',
       },
-      { k: 'text', parts: [`), '${comp.name}')\n`] },
+      { k: 'text', parts: [`), '${chunkExportName(b)}')\n`] },
     ],
     declares: [lazy],
     effectful: false,
