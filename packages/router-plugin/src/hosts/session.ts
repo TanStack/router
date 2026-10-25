@@ -65,6 +65,9 @@ export const JS_ID_RE = /\.[cm]?[jt]sx?(\?|$)/
 export const OWNED_QUERY_RE =
   /(?:^|[?&])(?:tsr-split|tss-hydrate|tss-serverfn-split)(?:=|&|$)/
 
+/** The derived outputs the router planners declare (`?tsr-split=`). */
+const ROUTER_DERIVED_KINDS = new Set(['split', 'shared', 'export'])
+
 export class RouterCompiler {
   readonly caches: CompilerCaches
   readonly host: HostServices
@@ -159,7 +162,13 @@ export class RouterCompiler {
 
   /** Whether the host should transform an id at all. */
   wants(id: string): boolean {
-    return JS_ID_RE.test(id)
+    if (!JS_ID_RE.test(id)) {
+      return false
+    }
+    // a derived id another compiler owns (Start's `?tss-hydrate=`, server fn
+    // providers) is that compiler's output: not a module of this session
+    const derived = identify(id).derived
+    return derived === null || ROUTER_DERIVED_KINDS.has(derived.kind)
   }
 
   /** Whether any planner can apply in an env of this type (else the host skips the parse). */
