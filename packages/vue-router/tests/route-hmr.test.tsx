@@ -4,13 +4,13 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
 import { createControlledPromise } from '@tanstack/router-core'
 import {
   RouterProvider,
-  __tsrRouteHmr,
   createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
   lazyRouteComponent,
 } from '../src'
+import { __tsrRouteHmr } from '../src/hmr'
 import type { AnyRoute, RouteHmrMeta } from '@tanstack/router-core'
 
 // Each test uses its own route id: route HMR remembers routes by id for the

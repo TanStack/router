@@ -90,6 +90,20 @@
         "default": "./dist/cjs/ssr/client.cjs"
       }
     },
+    "./hmr": {
+      "solid": {
+        "types": "./dist/source/hmr.d.ts",
+        "default": "./dist/source/hmr.js"
+      },
+      "import": {
+        "types": "./dist/esm/hmr.d.ts",
+        "default": "./dist/esm/hmr.js"
+      },
+      "require": {
+        "types": "./dist/cjs/hmr.d.cts",
+        "default": "./dist/cjs/hmr.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
