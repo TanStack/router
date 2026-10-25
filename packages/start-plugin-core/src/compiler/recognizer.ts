@@ -97,3 +97,20 @@ export function runtimeSpecifiers(framework: CompileStartFrameworkOptions) {
     serverRpc: `@tanstack/${framework}-start/server-rpc`,
   }
 }
+
+let specifierPattern: RegExp | null = null
+
+/**
+ * Whether a module's text names a package of the recognizer table (a Start
+ * or router package): the cheap gate of a module the compiler must never
+ * leave untransformed. Over-inclusive on purpose (a subpath or a string
+ * mentioning the package counts).
+ */
+export function namesStartSpecifier(code: string): boolean {
+  specifierPattern ??= new RegExp(
+    Object.keys(startRecognizer().factories)
+      .map((spec) => spec.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&'))
+      .join('|'),
+  )
+  return specifierPattern.test(code)
+}

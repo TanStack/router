@@ -43,7 +43,7 @@ import {
   TRANSFORM_ID_REGEX,
   VITE_ENVIRONMENT_NAMES,
 } from '../constants'
-import { startRecognizer } from '../compiler/recognizer'
+import { namesStartSpecifier, startRecognizer } from '../compiler/recognizer'
 import { HYDRATE_PLANNER, createHydratePlanner } from '../planners/hydrate'
 import { START_ENV, startPlanners } from '../planners'
 import { FunctionIdAllocator, decodeDevFunctionId } from '../server-fns/ids'
@@ -753,6 +753,7 @@ export function startCompilerPlugin(
     filePath: string,
     id: string,
     code: string,
+    envType: 'client' | 'server',
   ) => {
     if (diagnostics.length === 0) {
       return
@@ -760,10 +761,25 @@ export function startCompilerPlugin(
     const source = new SourceText(code)
     for (const d of diagnostics) {
       if (d.by === 'parse') {
-        // the module is left as it is: the bundler's own parser reports a
-        // syntax error at the user's position, and a script no ESM parse
-        // accepts (a CommonJS dependency with a top-level `return`) is
-        // nothing the compiler touches (J4.16, §5.15)
+        // A module the compiler cannot parse is left as it is when it names
+        // no Start package: the bundler's own parser reports a syntax error
+        // at the user's position, and a script no ESM parse accepts (a
+        // CommonJS dependency with a top-level `return`) is nothing the
+        // compiler touches (J4.16, §5.15). One that names a Start package
+        // may define server code (a handler, a server-only route option):
+        // the client build fails naming the file (never shipped
+        // untransformed, J4.12); a server build warns once.
+        if (!namesStartSpecifier(code)) {
+          continue
+        }
+        const loc = locationOf(source, filePath, d)
+        const message = `[tanstack-start] The compiler cannot parse "${filePath}", which uses a TanStack Start or Router API, so it cannot compile its server code: ${d.message}${loc ? ` (${filePath}:${loc.line}:${loc.column + 1})` : ''}`
+        if (envType === 'client') {
+          ctx.error({ message, id, loc })
+        }
+        if (s.warnings.once(filePath, { ...d, code: 'parse' })) {
+          ctx.warn({ message, loc })
+        }
         continue
       }
       if (d.severity === 'error') {
@@ -999,7 +1015,15 @@ export function startCompilerPlugin(
           if (!out) {
             return null
           }
-          reportDiagnostics(s, this, out.diagnostics, identity.path, id, code)
+          reportDiagnostics(
+            s,
+            this,
+            out.diagnostics,
+            identity.path,
+            id,
+            code,
+            env.type,
+          )
           const facts = out.facts.planners[START_ENV] as
             | StartEnvFacts
             | undefined
@@ -1212,7 +1236,15 @@ export function startCompilerPlugin(
           // not JavaScript after all: nothing to judge
           return null
         }
-        reportDiagnostics(s, this, out.diagnostics, identify(id).path, id, code)
+        reportDiagnostics(
+          s,
+          this,
+          out.diagnostics,
+          identify(id).path,
+          id,
+          code,
+          env.type,
+        )
         afterCompile(s, env, id, out, (error) => this.error(error))
         if (out.code === code) {
           return null

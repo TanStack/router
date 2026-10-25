@@ -204,6 +204,18 @@ export class RouterCompiler {
   ): void {
     for (const d of out.diagnostics) {
       if (d.by === 'parse') {
+        // a route module the compiler cannot parse is left as it is (J2.8:
+        // a correct split, or unsplit plus a warning naming the file)
+        const warning: Diagnostic = {
+          severity: 'warning',
+          message: `[tanstack-router] The compiler cannot parse the route module "${path}", so it is not code-split or hot-updated: ${d.message}`,
+          range: d.range,
+          by: 'parse',
+          code: 'parse',
+        }
+        if (this.warnings.once(normalizePath(path), warning)) {
+          report(warning)
+        }
         continue
       }
       // an error refuses every compile that produces it; a warning once per

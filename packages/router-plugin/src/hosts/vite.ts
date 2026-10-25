@@ -125,6 +125,7 @@ export function createRouterCompilerVitePlugin(
   let server: ViteDevServer | null = null
   let unsubscribe: (() => void) | null = null
   let buildSourcemap = true
+  let firstEnvironment: string | undefined
 
   const resolveUserConfig = () =>
     typeof options === 'function' ? options() : getConfig(options, ROOT)
@@ -181,6 +182,7 @@ export function createRouterCompilerVitePlugin(
     },
 
     configResolved(config) {
+      firstEnvironment = Object.keys(config.environments ?? {})[0]
       ROOT = config.root
       userConfig = resolveUserConfig()
       buildSourcemap = config.build.sourcemap !== false
@@ -247,8 +249,16 @@ export function createRouterCompilerVitePlugin(
     },
 
     buildStart() {
-      if (compiler.mode === 'build') {
-        // one warning per file per run
+      // one warning per file per run (J2.19): a build of several environments
+      // (Vite's builder) starts each in turn; the first configured
+      // environment starts the run
+      const environment = (
+        this as unknown as { environment?: { name: string } }
+      ).environment
+      if (
+        compiler.mode === 'build' &&
+        (environment === undefined || environment.name === firstEnvironment)
+      ) {
         compiler.warnings.reset()
       }
     },
