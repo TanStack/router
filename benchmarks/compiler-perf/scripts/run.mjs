@@ -1153,13 +1153,19 @@ async function leakRun(variant) {
       const original = originals.get(kind)
       const token = probe.token.replace(/-v0$/, `-leak${i + 1}`)
       const t0 = now()
-      await editAndWait(byKind[kind], kind, probe, token, () =>
-        fs.writeFileSync(file, original.replace(probe.token, token)),
-      )
-      await sleep(200)
-      await editAndWait(byKind[kind], kind, probe, probe.token, () =>
-        fs.writeFileSync(file, original),
-      )
+      const target = { ...byKind[kind], dev }
+      try {
+        await editAndWait(target, kind, probe, token, () =>
+          fs.writeFileSync(file, original.replace(probe.token, token)),
+        )
+        await sleep(200)
+        await editAndWait(target, kind, probe, probe.token, () =>
+          fs.writeFileSync(file, original),
+        )
+      } catch (error) {
+        error.message = `leak cycle ${i + 1}: ${error.message}`
+        throw error
+      }
       await sleep(200)
       cycleMs.push(now() - t0)
       if ((i + 1) % 10 === 0 || i === LEAK_CYCLES - 1) {
