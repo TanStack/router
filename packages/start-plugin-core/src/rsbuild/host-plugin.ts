@@ -348,12 +348,32 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       }
 
       // the replay of this compilation's modules (built now or restored from the persistent
-      // cache): the environment's server-fn snapshot and the import-protection records
-      compiler.hooks.finishMake.tap(
+      // cache): the environment's server-fn snapshot and the import-protection records. In dev,
+      // a module restored with violations was judged by another session (its `onViolation`
+      // verdicts decided its output; its reports were printed there): compiled again first
+      compiler.hooks.finishMake.tapPromise(
         { name: `${PLUGIN_NAME}:replay`, stage: -20 },
-        (compilation) => {
+        async (compilation) => {
           if (compilation.compiler !== compiler) {
             return
+          }
+          if (ipEnv && session.opts.mode === 'dev') {
+            for (const m of compilation.modules) {
+              const module = m as unknown as ModuleLike
+              const ip = module.buildInfo?.[RSPACK_BUILD_INFO_KEY]
+              if (
+                ip &&
+                module.resource &&
+                !env.compiled.has(module.resource) &&
+                ipEnv.unjudged(canonicalResource(module.resource), ip)
+              ) {
+                await new Promise<void>((resolve, reject) => {
+                  compilation.rebuildModule(m, (error) =>
+                    error ? reject(error) : resolve(),
+                  )
+                })
+              }
+            }
           }
           const snapshot = new Map<string, ServerFnBuildInfo>()
           for (const m of compilation.modules) {

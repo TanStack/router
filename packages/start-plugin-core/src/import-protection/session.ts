@@ -471,6 +471,22 @@ export class ImportProtectionEnv {
     }
   }
 
+  /**
+   * Dev: whether an Rspack module's record holds violations this session
+   * did not judge (a module restored from the persistent cache: another
+   * session's `onViolation` verdicts decided its output and its reports).
+   */
+  unjudged(importerId: string, info: unknown): boolean {
+    const record = info as RspackImportProtectionBuildInfo | undefined
+    return (
+      this.ip.config.mode === 'dev' &&
+      record?.version === 1 &&
+      record.env === this.name &&
+      record.violations.length > 0 &&
+      !this.byImporter.has(importerId)
+    )
+  }
+
   /** What the Rspack loader stores in `buildInfo[RSPACK_BUILD_INFO_KEY]` for a compiled output (null: nothing). */
   buildInfo(
     importerId: string,

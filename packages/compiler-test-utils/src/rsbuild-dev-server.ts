@@ -36,7 +36,7 @@ import { createApp } from './build-harness'
 import { scopeMethods } from './console-hook'
 import { openDiagnosticChannel } from './diagnostic-channel'
 import { saveAppFile } from './save-file'
-import type { AppOptions } from './build-harness'
+import type { App, AppOptions } from './build-harness'
 import type { ChannelDiagnostic, DiagnosticChannel } from './diagnostic-channel'
 import type { AddressInfo, Socket } from 'node:net'
 import type {
@@ -206,6 +206,14 @@ export interface RsbuildDevServer {
    * removes the directory later.
    */
   stop: () => Promise<void>
+  /**
+   * Stops the dev server and starts a new one on the same app directory, as
+   * `rsbuild dev` run again: the same options, new plugin instances (a
+   * `plugins` function is called again), what the first server left in the
+   * directory kept (e.g. Rspack's persistent cache). Resolves after its
+   * first compile; the new server owns the directory.
+   */
+  restart: () => Promise<RsbuildDevServer>
   /** Stops the dev server and removes the app directory. */
   close: () => Promise<void>
 }
@@ -216,12 +224,20 @@ export interface RsbuildDevServer {
  * first compile. `close()`, which `registerCleanup` also receives, stops the
  * server and removes the directory.
  */
-export async function createRsbuildDevServer(
+export function createRsbuildDevServer(
   options: RsbuildDevServerOptions,
+): Promise<RsbuildDevServer> {
+  return openServer(options)
+}
+
+/** A dev server on a new app, or on `app` (`restart`). */
+async function openServer(
+  options: RsbuildDevServerOptions,
+  app?: App,
 ): Promise<RsbuildDevServer> {
   const channel = openDiagnosticChannel()
   try {
-    return await channel.run(() => startServer(options, channel))
+    return await channel.run(() => startServer(options, channel, app))
   } catch (error) {
     channel.close()
     throw error
@@ -231,6 +247,7 @@ export async function createRsbuildDevServer(
 async function startServer(
   options: RsbuildDevServerOptions,
   channel: DiagnosticChannel,
+  reused?: App,
 ): Promise<RsbuildDevServer> {
   const {
     plugins = [],
@@ -239,10 +256,12 @@ async function startServer(
     browser = false,
   } = options
   const compileTimeout = options.compileTimeout ?? 20_000
-  const app = await createApp({
-    ...options,
-    prefix: options.prefix ?? '.rsbuild-dev-server-',
-  })
+  const app =
+    reused ??
+    (await createApp({
+      ...options,
+      prefix: options.prefix ?? '.rsbuild-dev-server-',
+    }))
   const root = app.root
   channel.claim(root)
   try {
@@ -674,6 +693,10 @@ async function startServer(
     diagnostics,
     devServer: server,
     stop,
+    restart: async () => {
+      await stop()
+      return openServer(options, app)
+    },
     close,
   })
 }

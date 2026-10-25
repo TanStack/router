@@ -440,6 +440,53 @@ console.log(secret(), other)
   )
 })
 
+// `rsbuild dev` started again on its persistent cache restores the modules
+// the last server built without compiling them: their imports of the edge
+// modules standing in for denied imports must still resolve, to the mocks,
+// and a new dev server reports the violations its compile bundles.
+// Source: upstream #8798 (a warm `rsbuild dev` restart fails like the build).
+test(
+  'Rsbuild dev restarted on its persistent cache: the client still gets the mock, and the violation is reported',
+  async () => {
+    const page = `import { secret } from './secret.server'
+export const read = () => secret()
+`
+    const recorder = violationRecorder()
+    const first = await startRsbuildDevServer({
+      compileTimeout,
+      config: { performance: { buildCache: true } },
+      importProtection: recorder.importProtection,
+      files: {
+        'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+        'src/page.ts': page,
+        'src/entry.ts': `import { read } from './page'\nconsole.log(read())\n`,
+      },
+    })
+    const violation: ExpectedViolation = {
+      environment: 'client',
+      use: locationIn('src/page.ts', page, 2, 'secret()'),
+      also: ['src/page.ts:1'],
+    }
+    expect(first.errors).toEqual([])
+    expect(
+      relevantViolations({ root: first.root, ...recorder }, [violation]),
+    ).toEqual([violationLabel(violation)])
+    const since = recorder.violations.length
+    const server = await first.restart()
+    expect(server.errors).toEqual([])
+    expect(Object.values(await server.outputs()).join('\n')).not.toContain(
+      'MARK_SECRET',
+    )
+    expect(
+      relevantViolations(
+        { root: server.root, violations: recorder.violations.slice(since) },
+        [violation],
+      ),
+    ).toEqual([violationLabel(violation)])
+  },
+  timeout,
+)
+
 // Dev edits reclassify (SPEC J6.13): an edit that makes a module the
 // client already bundles a violation is reported and mocked, without an
 // edit of the importer when the violation comes from the target.
