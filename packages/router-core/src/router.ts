@@ -2476,8 +2476,13 @@ export class RouterCore<
         startViewTransitionParams = fn
       }
 
-      return (document as any).startViewTransition(startViewTransitionParams)
-        .updateCallbackDone
+      const transition = (document as any).startViewTransition(
+        startViewTransitionParams,
+      )
+      // Skipped transitions reject these promises without failing the update.
+      transition.ready?.catch(() => {})
+      transition.finished?.catch(() => {})
+      return transition.updateCallbackDone
     }
     return fn()
   }
