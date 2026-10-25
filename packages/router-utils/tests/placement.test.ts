@@ -12,10 +12,20 @@ import type { Planner, SymbolId } from '../src/compiler'
 
 async function split(
   code: string,
-  opts: { keys?: Array<string>; env?: 'client' | 'server' } = {},
+  opts: {
+    keys?: Array<string>
+    env?: 'client' | 'server'
+    identifierEdits?: boolean
+    files?: Record<string, string>
+  } = {},
 ) {
-  const host = new MemoryHost({ files: { '/app/route.tsx': code } })
-  const planners = [toyEnvPlanner(), toySplitPlanner({ keys: opts.keys })]
+  const host = new MemoryHost({
+    files: { '/app/route.tsx': code, ...opts.files },
+  })
+  const planners = [
+    toyEnvPlanner(),
+    toySplitPlanner({ keys: opts.keys, identifierEdits: opts.identifierEdits }),
+  ]
   const env = envInfo(
     opts.env === 'server'
       ? { name: 'ssr', type: 'server', routerSplit: false }
@@ -161,6 +171,54 @@ describe('glue and renames (lane router)', () => {
       "import { TsrPendingComponent } from './route.tsx'",
     )
     expect(chunk?.code).not.toContain('page')
+  })
+
+  it('keeps the other declarators of a multi-declarator export exported when one is renamed (R38)', async () => {
+    // `export const a = 1, page = …`: renaming `page` drops the statement's
+    // `export` keyword (R38 re-exports the renamed binding under its public
+    // name); `a` must stay exported too
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      export const a = 1, page = () => 'x'
+      export const Route = createFileRoute('/')({
+        component: page,
+        pendingComponent: page,
+      })
+    `)
+    const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+    const rename: Planner = {
+      name: 'toy-rename',
+      tier: 1,
+      gate: () => true,
+      prepare(ctx) {
+        const unit = ctx.t1.units.find(
+          (u) =>
+            u.kind === 'declaration' &&
+            ctx.symbols.name(u.declares[0]!) === 'page',
+        )!
+        const next = ctx.names.alloc('TsrPendingComponent')
+        ctx.renameRefs(
+          unit.declares[0]!,
+          { sym: next.sym },
+          'all-outputs',
+          'toy-rename',
+        )
+      },
+      plan() {},
+    }
+    const planners = [toySplitPlanner(), rename]
+    const main = await host.compile('/app/route.tsx', planners)
+    expect(main?.code).toContain('const a = 1, TsrPendingComponent = ')
+    expect(main?.code).not.toMatch(/export const a\b/)
+    const glue = [...(main?.code ?? '').matchAll(/export \{ ([^}]*) \}/g)]
+      .flatMap((m) => m[1]!.split(',').map((p) => p.trim()))
+      .sort()
+    // the chunk's own import glue (`TsrPendingComponent`), the R38 re-export, the sibling
+    expect(glue).toEqual([
+      'TsrPendingComponent',
+      'TsrPendingComponent as page',
+      'a',
+    ])
   })
 
   it('renames an exported overloaded function with one export specifier', async () => {
@@ -887,6 +945,26 @@ describe('ordered evaluation and movable effects (R7, R29, R31)', () => {
     expect(r.env).not.toContain('export { Page')
   })
 
+  it('imports an exported pure component the route module also reads (no env-declared report for the export itself)', async () => {
+    // R-27's "exported" pattern is a value merged with an exported binding
+    // it writes; the value being the export is the §3.5.2 import case
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      export function page() { return 'x' }
+      export const Route = createFileRoute('/')({
+        component: page,
+        loader: () => page.name,
+      })
+    `)
+    const r = await split(code, { identifierEdits: true })
+    expect(r.main?.facts.planners['toy-split']).toBeUndefined()
+    expect(r.env).toContain('export function page()')
+    expect(r.env).toContain(
+      "lazyRouteComponent(tsrImportComponent, 'component')",
+    )
+    expect(r.chunks.component).toContain("import { page } from './route.tsx'")
+  })
+
   it('reports a split value that writes an exported binding (one cluster with it, kept by the export: env-declared)', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -948,6 +1026,34 @@ describe('needers and homes (§3.5.2)', () => {
       export { shape }
     `),
     )
+  })
+
+  it('evaluates the reads of an env-homed cluster in the env module when a chunk imports it (an identifier option is no shared need)', async () => {
+    // the splitter replaces `component: Page` in the env output only; a
+    // chunk importing `Route` reads what Route evaluates there (no `Page`),
+    // so `Page` lands in the component chunk, not in a shared module
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { fmt } from './util'
+      function Page() { return fmt(1) }
+      export const Route = createFileRoute('/')({
+        loader: () => Route.id,
+        component: Page,
+      })
+    `)
+    const r = await split(code, {
+      keys: ['loader', 'component'],
+      identifierEdits: true,
+      files: { '/app/util.ts': 'export const fmt = String\n' },
+    })
+    expect(r.chunks.component).toContain('function Page()')
+    expect(r.chunks.component).toContain("import { fmt } from './util'")
+    expect(r.chunks.loader).toContain("import { Route } from './route.tsx'")
+    expect(r.chunks.loader).not.toContain('Page')
+    const outputs = [
+      ...r.host.caches.plans.get(r.env ? 'client' : 'client')!.values(),
+    ].flatMap((e) => Object.keys(e.plan.outputs))
+    expect(outputs.some((o) => o.includes('shared~'))).toBe(false)
   })
 
   it('copies an import only into outputs that read it, not into one importing its reader', async () => {
