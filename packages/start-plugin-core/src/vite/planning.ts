@@ -1,12 +1,12 @@
 import { normalizePath } from 'vite'
 import { join } from 'pathe'
 import { escapePath } from 'tinyglobby'
+import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import {
   DEV_CLIENT_ENTRY,
   ENTRY_POINTS,
   START_ENVIRONMENT_NAMES,
 } from '../constants'
-import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import { getBundlerOptions } from '../utils'
 import type { CompileStartFrameworkOptions } from '../types'
 import type { ResolvedStartEntryPlan } from '../planning'

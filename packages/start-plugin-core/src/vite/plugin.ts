@@ -20,7 +20,6 @@ import {
   createViteDefineConfig,
   createViteResolvedEntryAliases,
 } from './planning'
-import type { OnwarnLike } from './planning'
 import { devServerPlugin } from './dev-server-plugin/plugin'
 import { previewServerPlugin } from './preview-server-plugin/plugin'
 import {
@@ -37,6 +36,7 @@ import {
 } from './output-directory'
 import { postServerBuild } from './post-server-build'
 import { serializationAdaptersPlugin } from './serialization-adapters-plugin'
+import type { OnwarnLike } from './planning'
 import type {
   TanStackStartVitePluginCoreOptions,
   ViteRscForwardSsrResolverStrategy,

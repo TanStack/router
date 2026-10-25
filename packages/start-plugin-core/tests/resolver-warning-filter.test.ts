@@ -26,7 +26,7 @@ describe("Rolldown's chunking hint for the server-fn resolver", () => {
 
   test("is dropped; every other warning reaches the app's handler, else Rolldown's", () => {
     const seen: Array<string> = []
-    const defaultHandler = (w: { message: string }) =>
+    const defaultHandler = (w: { message: string; code?: string }) =>
       seen.push(`default ${w.code}`)
     const withApp = composeOnwarn((w, next) => {
       seen.push(`app ${w.code}`)
