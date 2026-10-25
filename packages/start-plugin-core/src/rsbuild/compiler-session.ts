@@ -34,9 +34,11 @@ import { HYDRATE_PLANNER, createHydratePlanner } from '../planners/hydrate'
 import { RSC_CSS } from '../planners/rsc-css'
 import { FunctionIdAllocator } from '../server-fns/ids'
 import { ServerFnRegistry } from '../server-fns/registry'
-import { manifestResolverModule } from '../server-fns/resolver'
+import {
+  CLIENT_REFERENCED_IDS_PLACEHOLDER,
+  manifestResolverModule,
+} from '../server-fns/resolver'
 import { createImportProtection } from '../import-protection/session'
-import { violationsOf } from '../import-protection/violations'
 import { rspackEdgeModuleIds } from '../import-protection/edge-modules'
 import { normalizePath } from '../utils'
 import type { ImportProtection } from '../import-protection/session'
@@ -694,7 +696,27 @@ export class StartRsbuildCompilerSession {
       warnUnreferenced: opts.mode === 'dev' && opts.ssrIsProvider,
       staticImports: opts.rsc !== undefined && opts.mode === 'dev',
       memoizeModules: opts.mode === 'build',
+      // RSC build (R44): the RSC coordinator interleaves the server and client
+      // compilations, so the manifest is generated before the client's
+      // references are known; it lists every function (server-origin calls
+      // reach the provider through it) and gates client-origin calls on a
+      // set the server asset pipeline fills in once the client build exists
+      clientOriginGate:
+        opts.mode === 'build' && !opts.ssrIsProvider
+          ? JSON.stringify(CLIENT_REFERENCED_IDS_PLACEHOLDER)
+          : undefined,
     })
+  }
+
+  /** The JSON array of client-referenced function ids (the gate's set, R44). */
+  clientReferencedIdsLiteral(): string {
+    return JSON.stringify(
+      this.registry
+        .entries()
+        .filter((e) => e.clientReferenced)
+        .map((e) => e.id)
+        .sort(),
+    )
   }
 
   /** The entries of a rank for the custom-id allocation (R40): client-referenced first, the rest after. */

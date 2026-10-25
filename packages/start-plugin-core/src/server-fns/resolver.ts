@@ -67,6 +67,15 @@ export interface ManifestResolverOptions {
   staticImports?: boolean
   /** Keep each imported module on its manifest entry after the first call (production only: modules are never hot-replaced). */
   memoizeModules?: boolean
+  /**
+   * Production with a separate provider (RSC): every function is listed
+   * (server-origin calls reach the provider through this manifest), and a
+   * client-origin call of a function not in this set is refused (R44). A
+   * JavaScript expression evaluating to the client-referenced ids: a JSON
+   * array literal, or a placeholder literal the host replaces once the
+   * client build is known.
+   */
+  clientOriginGate?: string
 }
 
 /** The production manifest: `id → { export, importer }` of the HTTP-callable functions. */
@@ -118,15 +127,21 @@ export function manifestResolverModule(opts: ManifestResolverOptions): string {
   const resolveModule = opts.memoizeModules
     ? 'serverFnInfo.module ??= await serverFnInfo.importer()'
     : 'serverFnInfo.module ?? (await serverFnInfo.importer())'
+  const gate = opts.clientOriginGate
+    ? `\nconst clientCallable = new Set(${opts.clientOriginGate})`
+    : ''
+  const gated = opts.clientOriginGate
+    ? ` || (access && access.origin === 'client' && !clientCallable.has(id))`
+    : ''
   return `
 ${staticImports.join('\n')}
 const manifest = {
   ${manifest}
-}
+}${gate}
 
 export async function getServerFnById(id, access) {
   const serverFnInfo = manifest[id]
-  if (!serverFnInfo) {
+  if (!serverFnInfo${gated}) {
     throw new Error('Server function info not found for ' + id)
   }
 ${warnUnreferenced}
@@ -143,3 +158,30 @@ ${warnUnreferenced}
 
 `
 }
+
+/**
+ * The caller environment's resolver of a separate provider's production
+ * build (R44, Vite RSC): the provider built before the client, so its
+ * manifest lists every function (server-origin calls need them all); this
+ * environment builds after the client and refuses a client-origin call of
+ * a function no client module referenced, then forwards to the provider's
+ * `getServerFnById` (the module `forwardSpecifier` exports).
+ */
+export function callerGateModule(
+  forwardSpecifier: string,
+  clientReferencedIds: ReadonlyArray<string>,
+): string {
+  const ids = [...clientReferencedIds].sort()
+  return `import { getServerFnById as forward } from ${JSON.stringify(forwardSpecifier)}
+const clientCallable = new Set(${JSON.stringify(ids)})
+export async function getServerFnById(id, access) {
+  if (access && access.origin === 'client' && !clientCallable.has(id)) {
+    throw new Error('Server function info not found for ' + id)
+  }
+  return forward(id, access)
+}
+`
+}
+
+/** Replaced in the server bundle by the JSON array of client-referenced ids (Rsbuild RSC builds, after the client compiled). */
+export const CLIENT_REFERENCED_IDS_PLACEHOLDER = '__TSS_CLIENT_REFERENCED_IDS__'

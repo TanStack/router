@@ -48,6 +48,7 @@ import { FunctionIdAllocator, decodeDevFunctionId } from '../server-fns/ids'
 import { ServerFnRegistry } from '../server-fns/registry'
 import {
   SERVER_FN_LOOKUP_VIRTUAL_ID,
+  callerGateModule,
   devLookupModule,
   devResolverModule,
   productionResolverModule,
@@ -131,6 +132,9 @@ export interface StartCompilerPluginOptions {
 }
 
 const PROVIDER_QUERY = 'tss-serverfn-split'
+
+/** A caller environment's forward to the provider's resolver (behind the production gate, R44). */
+const SERVER_FN_FORWARD_VIRTUAL_ID = 'virtual:tanstack-start-server-fn-forward'
 
 /** A module naming no server-fn factory nor `.handler(` defines no server function (the Rsbuild session's text gate, D14). */
 const SERVER_FN_TEXT_RE = /createServerFn|\.handler\s*\(/
@@ -504,13 +508,7 @@ export function startCompilerPlugin(
     return (name) => {
       let h = hosts.get(name)
       if (!h) {
-        const environment = viteServer?.environments[name]
-        h = invalidationHost(
-          s,
-          environment && environment.mode === 'dev'
-            ? (environment as DevEnvironment)
-            : own,
-        )
+        h = invalidationHost(s, viteServer?.environments[name] ?? own)
         hosts.set(name, h)
       }
       return h
@@ -597,7 +595,7 @@ export function startCompilerPlugin(
     const res = await invalidate(
       s.caches,
       change,
-      invalidationHosts(s, server, first as DevEnvironment),
+      invalidationHosts(s, server, first),
     )
     const now = Date.now()
     for (const environment of environments) {
@@ -1226,6 +1224,18 @@ export function startCompilerPlugin(
     },
   }
 
+  /** A caller environment's own `getServerFnById` module (the forward to the provider), behind the production gate. */
+  const forwardPlugin = createVirtualModule({
+    name: 'tanstack-start:server-fn-forward',
+    moduleId: SERVER_FN_FORWARD_VIRTUAL_ID,
+    enforce: 'pre',
+    applyToEnvironment: (e) =>
+      resolverEnvironments.has(e.name) && e.name !== opts.providerEnvName,
+    load() {
+      return envOf(this.environment.name)?.getServerFnById ?? null
+    },
+  })
+
   const resolverPlugin = createVirtualModule({
     name: 'tanstack-start:server-fn-resolver',
     moduleId: VIRTUAL_MODULES.serverFnResolver,
@@ -1235,6 +1245,19 @@ export function startCompilerPlugin(
       if (this.environment.name !== opts.providerEnvName) {
         const mod = envOf(this.environment.name)?.getServerFnById
         if (mod) {
+          if (this.environment.mode === 'build' && !ssrIsProvider) {
+            // R44 with a separate provider (RSC): the provider built before
+            // the client, so its manifest lists every function; this
+            // environment builds last (plugin-rsc: rsc, client, ssr) and
+            // gates client-origin calls on the client build's references
+            return callerGateModule(
+              SERVER_FN_FORWARD_VIRTUAL_ID,
+              registry
+                .entries()
+                .filter((e) => e.clientReferenced)
+                .map((e) => e.id),
+            )
+          }
           return mod
         }
         this.error(
@@ -1257,6 +1280,7 @@ export function startCompilerPlugin(
     buildLoopPlugin,
     latePassPlugin,
     devLookupPlugin,
+    forwardPlugin,
     resolverPlugin,
   ]
 }
