@@ -5,11 +5,11 @@
  * absolute path as the map source. The static loader file
  * (`loader/index.cjs`) finds this implementation on the compiler.
  */
-import remapping from '@jridgewell/remapping'
 import { SourceText, identify } from '@tanstack/router-utils/compiler'
 import { normalizePath } from './session'
 import type { RouterCompiler } from './session'
 import type { Diagnostic } from '@tanstack/router-utils/compiler'
+import type remapping from '@jridgewell/remapping'
 
 /** What the loader uses of the webpack / Rspack loader context. */
 export interface LoaderContextLike {
@@ -102,6 +102,8 @@ export function createLoaderImpl(
     }
     let map: unknown = out.map ?? undefined
     if (out.map && inputMap) {
+      // only another loader's input map needs composing: load it on first use
+      const { default: remap } = await import('@jridgewell/remapping')
       const input =
         typeof inputMap === 'string'
           ? (JSON.parse(inputMap) as Parameters<typeof remapping>[0])
@@ -110,7 +112,7 @@ export function createLoaderImpl(
         ...out.map,
         sources: [ctx.resourcePath],
       } as unknown as Parameters<typeof remapping>[0]
-      const composed = remapping([ours, input] as never, () => null)
+      const composed = remap([ours, input] as never, () => null)
       map = JSON.parse(composed.toString())
     } else if (out.map) {
       map = { ...out.map, sources: [ctx.resourcePath] }

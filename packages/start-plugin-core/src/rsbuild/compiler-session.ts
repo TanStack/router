@@ -11,7 +11,6 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import remapping from '@jridgewell/remapping'
 import {
   RawFactsCache,
   SourceText,
@@ -52,6 +51,7 @@ import type { ImportProtectionOptions } from '../schema'
 import type { CompileStartFrameworkOptions, StartRscOptions } from '../types'
 import type { Config as RouterConfig } from '@tanstack/router-plugin'
 import type { RouterPlannerConfig } from '@tanstack/router-plugin/planners'
+import type remapping from '@jridgewell/remapping'
 import type {
   CompileOutput,
   CompilerCaches,
@@ -612,14 +612,17 @@ export class StartRsbuildCompilerSession {
     if (identity.derived === null && out.code === source) {
       return passthrough
     }
-    return { code: out.code, map: this.composeMap(ctx, out.map, inputMap) }
+    return {
+      code: out.code,
+      map: await this.composeMap(ctx, out.map, inputMap),
+    }
   }
 
-  private composeMap(
+  private async composeMap(
     ctx: LoaderContextLike,
     map: RawSourceMap | null,
     inputMap: unknown,
-  ): unknown {
+  ): Promise<unknown> {
     if (!map) {
       return undefined
     }
@@ -627,11 +630,13 @@ export class StartRsbuildCompilerSession {
     if (!inputMap) {
       return ours
     }
+    // only another loader's input map needs composing: load it on first use
+    const { default: remap } = await import('@jridgewell/remapping')
     const input =
       typeof inputMap === 'string'
         ? (JSON.parse(inputMap) as Parameters<typeof remapping>[0])
         : (inputMap as Parameters<typeof remapping>[0])
-    const composed = remapping(
+    const composed = remap(
       [ours as unknown as Parameters<typeof remapping>[0], input] as never,
       () => null,
     )
