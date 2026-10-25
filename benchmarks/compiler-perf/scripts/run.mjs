@@ -1141,8 +1141,12 @@ async function hmrScenario(variant, { replay } = {}) {
           throw new Error(`${probe.file} does not contain ${current}`)
         }
         const stopWatch = startCpuWatch()
-        const hitAt = await editAndWait(probePage, kind, probe, next, () =>
-          fs.writeFileSync(file, source.replace(current, next)),
+        const hitAt = await editAndWait(
+          { ...probePage, dev },
+          kind,
+          probe,
+          next,
+          () => fs.writeFileSync(file, source.replace(current, next)),
         )
         current = next
         const fullReloads = loads() - loadsBefore
