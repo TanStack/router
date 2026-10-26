@@ -51,7 +51,12 @@ export function mayHaveReResolvedImports(
   }
   for (const file of compiler.modifiedFiles) {
     // An imported package.json is rebuilt, but it still configures resolution.
-    if (!rebuiltFiles.has(file) || resolutionConfigFileRegex.test(file)) {
+    if (resolutionConfigFileRegex.test(file)) {
+      return true
+    }
+    // A watched directory, such as a Tailwind content path, changes with any
+    // file inside it; resolution only reads files, which are listed too.
+    if (!rebuiltFiles.has(file) && !compilation.contextDependencies.has(file)) {
       return true
     }
   }

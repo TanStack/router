@@ -144,7 +144,9 @@ eligibility filter. It falls back to the full scan when it finds an unreported
 violation, when the previous compilation skipped the report stage, or when a
 changed or removed file is not the resource of a rebuilt module. Such files,
 for example `package.json` import maps or `tsconfig.json` paths, can re-resolve
-imports in modules that were not rebuilt.
+imports in modules that were not rebuilt. Changed watched directories
+(`compilation.contextDependencies`, such as Tailwind content paths) are ignored
+because the changed files inside them are listed too.
 
 Diagnostic enrichment is lazy. The transform-result provider reads
 `module.originalSource().sourceAndMap()` when available. It gets original code
