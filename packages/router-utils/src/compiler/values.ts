@@ -11,6 +11,7 @@
  * transfer function on already-known values; `stampSites` gives links from
  * another module their owner).
  */
+import { unwrapExpression } from './source'
 import type { Node, SourceFile } from 'yuku'
 import type { Range } from './header'
 
@@ -103,27 +104,6 @@ export function isKnownSpecifier(
 
 export function isSymbolicValue(v: AbstractValue): boolean {
   return v.t === 'importRef' || v.t === 'member' || v.t === 'call'
-}
-
-function unwrap(node: Node): Node {
-  let n = node
-  for (;;) {
-    switch (n.type) {
-      case 'ParenthesizedExpression':
-      case 'TSAsExpression':
-      case 'TSSatisfiesExpression':
-      case 'TSNonNullExpression':
-      case 'TSTypeAssertion':
-      case 'TSInstantiationExpression':
-        n = n.expression
-        continue
-      case 'ChainExpression':
-        n = n.expression
-        continue
-      default:
-        return n
-    }
-  }
 }
 
 export type ImportResolver = (specifier: string, name: string) => AbstractValue
@@ -386,7 +366,7 @@ export class ValueAnalysis {
   }
 
   private compute(expr: Node): AbstractValue {
-    const node = unwrap(expr)
+    const node = unwrapExpression(expr)
     switch (node.type) {
       case 'Identifier': {
         const ref = this.file.referenceOf(node)
@@ -463,7 +443,7 @@ export class ValueAnalysis {
     if (!ret) {
       return { t: 'function', returns: UNKNOWN }
     }
-    const u = unwrap(ret)
+    const u = unwrapExpression(ret)
     if (u.type === 'Identifier') {
       const ref = this.file.referenceOf(u)
       const b = ref?.binding

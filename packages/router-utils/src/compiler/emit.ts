@@ -33,24 +33,6 @@ export function emitRecipe(
   return b.finish()
 }
 
-export function emitOutput(
-  plan: EmitPlan,
-  output: OutputId,
-  code: string,
-  wantMap: boolean,
-): Emitted | null {
-  const recipe = plan.outputs[output]
-  if (!recipe) {
-    return null
-  }
-  if (code.length !== plan.sourceLength) {
-    throw new Error(
-      'emitOutput: the source text does not match the plan revision',
-    )
-  }
-  return emitRecipe(recipe, new SourceText(code), wantMap)
-}
-
 /** Replaces the segment(s) carrying `edgeKey` with a new specifier literal (phase C substitution). */
 export function substituteSpecifier(
   recipe: OutputRecipe,

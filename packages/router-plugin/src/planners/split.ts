@@ -20,7 +20,6 @@ import {
   pascal,
   recognizeRoute,
   routeEntryDigest,
-  routerRouteId,
 } from './route'
 import { COMPONENT_KEYS, splitPlanOf } from './decisions'
 import { renamedSymbol } from './round'
@@ -490,5 +489,3 @@ export function routeSplitPlanner(): Planner {
     },
   }
 }
-
-export { routerRouteId }

@@ -17,6 +17,7 @@ import {
   OutputBuilder,
   RawFactsCache,
   SourceText,
+  OWNED_QUERY_RE,
   WarningLedger,
   collectionSizes,
   compileModule,
@@ -27,6 +28,7 @@ import {
   invalidate,
   isAnalyzableSpecifier,
   registerCompilerStats,
+  resolveDerivedSibling,
 } from '@tanstack/router-utils/compiler'
 import { defaultCodeSplitGroupings } from '@tanstack/router-plugin'
 import {
@@ -57,10 +59,7 @@ import {
   unreferencedWarning,
 } from '../server-fns/resolver'
 import { createImportProtection } from '../import-protection/session'
-import {
-  EDGE_MODULE_PREFIX,
-  resolveViteEdgeModuleId,
-} from '../import-protection/edge-modules'
+import { resolveViteEdgeModuleId } from '../import-protection/edge-modules'
 import { viteDevGraphView } from '../import-protection/graph-trace'
 import {
   discardBundle,
@@ -133,17 +132,13 @@ export interface StartCompilerPluginOptions {
   }
 }
 
-const PROVIDER_QUERY = 'tss-serverfn-split'
-
 /** A caller environment's forward to the provider's resolver (behind the production gate, R44). */
 const SERVER_FN_FORWARD_VIRTUAL_ID = 'virtual:tanstack-start-server-fn-forward'
 
 /** A module naming no server-fn factory nor `.handler(` defines no server function (the Rsbuild session's text gate, D14). */
 const SERVER_FN_TEXT_RE = /createServerFn|\.handler\s*\(/
 
-/** Specifiers of the compiler's own derived modules (`./x.tsx?tsr-split=…`, `?tss-hydrate=…`) and import protection's edge modules. */
-const OWNED_QUERY_RE =
-  /(?:^|[?&])(?:tsr-split|tss-hydrate|tss-serverfn-split)(?:=|&|$)/
+/** Specifiers of import protection's edge modules. */
 const IP_SPECIFIER_RE = /tanstack-start-ip:/
 
 /** Ids the late import-protection pass never compiles (not code, or served by the pre plugin). */
@@ -930,21 +925,7 @@ export function startCompilerPlugin(
           if (edge !== null) {
             return edge
           }
-          // a derived module of the compiler (`./route.tsx?tsr-split=…`): the
-          // importer's sibling with the query verbatim, no file system (§3.5.4)
-          if (!importer || !source.startsWith('./')) {
-            return null
-          }
-          const q = source.indexOf('?')
-          if (q === -1 || !OWNED_QUERY_RE.test(source.slice(q))) {
-            return null
-          }
-          const basename = source.slice(2, q)
-          if (basename.includes('/')) {
-            return null
-          }
-          const dir = path.posix.dirname(normalizePath(identify(importer).path))
-          return `${dir}/${basename}${source.slice(q)}`
+          return resolveDerivedSibling(source, importer)
         },
       },
       load: {
@@ -1366,5 +1347,3 @@ export function startCompilerPlugin(
     resolverPlugin,
   ]
 }
-
-export { PROVIDER_QUERY, EDGE_MODULE_PREFIX }

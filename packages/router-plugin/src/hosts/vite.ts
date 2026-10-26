@@ -10,18 +10,18 @@
  */
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
-import { SourceText, identify } from '@tanstack/router-utils/compiler'
+import {
+  OWNED_QUERY_RE,
+  SourceText,
+  identify,
+  resolveDerivedSibling,
+} from '@tanstack/router-utils/compiler'
 import { getConfig } from '../core/config'
 import {
   changedRoutePaths,
   onRoutesChanged,
 } from '../core/router-plugin-context'
-import {
-  JS_ID_RE,
-  OWNED_QUERY_RE,
-  RouterCompiler,
-  normalizePath,
-} from './session'
+import { JS_ID_RE, RouterCompiler, normalizePath } from './session'
 import type { RouterPluginContext } from '../core/router-plugin-context'
 import type { Config } from '../core/config'
 import type { Diagnostic, PlanKey } from '@tanstack/router-utils/compiler'
@@ -317,19 +317,7 @@ export function createRouterCompilerVitePlugin(
     resolveId: {
       filter: { id: OWNED_QUERY_RE },
       handler(source, importer) {
-        if (!importer || !source.startsWith('./')) {
-          return null
-        }
-        const q = source.indexOf('?')
-        if (q === -1 || !OWNED_QUERY_RE.test(source.slice(q))) {
-          return null
-        }
-        const basename = source.slice(2, q)
-        if (basename.includes('/')) {
-          return null
-        }
-        const dir = path.posix.dirname(normalizePath(identify(importer).path))
-        return `${dir}/${basename}${source.slice(q)}`
+        return resolveDerivedSibling(source, importer)
       },
     },
 

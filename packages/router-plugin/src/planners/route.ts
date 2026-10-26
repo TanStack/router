@@ -7,7 +7,7 @@
  * it with its kind and source ranges. Computed once per planning round and
  * shared by both planners through a memo keyed by the round's rewrite set.
  */
-import { digestOf } from '@tanstack/router-utils/compiler'
+import { digestOf, unwrapExpression } from '@tanstack/router-utils/compiler'
 import type {
   Diagnostic,
   ModuleAnalysis,
@@ -103,25 +103,6 @@ export interface RouteEntryFacts {
 }
 
 const infoMemo = new WeakMap<object, RouteRecognition>()
-
-/** Unwraps parentheses and TypeScript expression wrappers. */
-export function unwrapTs(node: Node): Node {
-  let n = node
-  for (;;) {
-    switch (n.type) {
-      case 'ParenthesizedExpression':
-      case 'TSAsExpression':
-      case 'TSSatisfiesExpression':
-      case 'TSNonNullExpression':
-      case 'TSTypeAssertion':
-      case 'TSInstantiationExpression':
-        n = n.expression
-        continue
-      default:
-        return n
-    }
-  }
-}
 
 export function propertyKeyName(prop: Node): string | null {
   if (prop.type !== 'Property') {
@@ -253,7 +234,7 @@ function readGroupings(
   value: Node,
   fail: (message: string) => never,
 ): CodeSplitGroupings {
-  let node = unwrapTs(value)
+  let node = unwrapExpression(value)
   if (node.type === 'Identifier') {
     const b = ctx.analysis.file.referenceOf(node)?.binding ?? null
     const decl = b ? declaratorOf(ctx, ctx.symbols.ofBinding(b)) : null
@@ -262,7 +243,7 @@ function readGroupings(
         'You must provide an array of arrays for the codeSplitGroupings.',
       )
     }
-    node = unwrapTs(decl.init)
+    node = unwrapExpression(decl.init)
   }
   if (node.type !== 'ArrayExpression') {
     return fail(
@@ -274,7 +255,7 @@ function readGroupings(
       return fail('You must provide arrays with codeSplitGroupings options.')
     }
     return group.elements.map((item) => {
-      const el = item ? unwrapTs(item) : null
+      const el = item ? unwrapExpression(item) : null
       if (!el || el.type !== 'Literal' || typeof el.value !== 'string') {
         return fail(
           'You must provide a string literal for the codeSplitGroupings',
@@ -326,7 +307,7 @@ function recognize(ctx: PlanContext): RouteRecognition {
   ) {
     return { route: null, reason: 'unrecognized', warnings }
   }
-  const outer = unwrapTs(routeUnit.node.init)
+  const outer = unwrapExpression(routeUnit.node.init)
   if (outer.type !== 'CallExpression') {
     if (importsFactory(analysis)) {
       warn(
@@ -337,11 +318,11 @@ function recognize(ctx: PlanContext): RouteRecognition {
     }
     return { route: null, reason: 'unrecognized', warnings }
   }
-  const callee = unwrapTs(outer.callee)
+  const callee = unwrapExpression(outer.callee)
   let factoryNode: Node
   let curried: boolean
   if (callee.type === 'CallExpression') {
-    factoryNode = unwrapTs(callee.callee)
+    factoryNode = unwrapExpression(callee.callee)
     curried = true
   } else {
     factoryNode = callee
@@ -389,14 +370,14 @@ function recognize(ctx: PlanContext): RouteRecognition {
   if (!argument) {
     options = { kind: 'none' }
   } else {
-    const arg = unwrapTs(argument)
+    const arg = unwrapExpression(argument)
     if (arg.type === 'ObjectExpression') {
       options = { kind: 'object', node: arg, unit: routeUnit }
     } else if (arg.type === 'Identifier') {
       const b = file.referenceOf(arg)?.binding ?? null
       const sym = b ? symbols.ofBinding(b) : null
       const decl = sym !== null ? declaratorOf(ctx, sym) : null
-      const init = decl ? unwrapTs(decl.init) : null
+      const init = decl ? unwrapExpression(decl.init) : null
       if (decl && init && init.type === 'ObjectExpression') {
         options = { kind: 'object', node: init, unit: decl.unit }
         optionsUnit = decl.unit
@@ -479,7 +460,7 @@ function resolveFactory(
     }
   }
   if (node.type === 'MemberExpression' && !node.computed) {
-    const obj = unwrapTs(node.object as Node)
+    const obj = unwrapExpression(node.object as Node)
     const prop = node.property
     if (obj.type !== 'Identifier' || prop.type !== 'Identifier') {
       return null
@@ -513,7 +494,7 @@ export function routeEntryDigest(entry: RouteEntryFacts | null): string | null {
 
 /** Whether `value` means "fall back to the parent" (`undefined`, `null`, a boolean): kept as written. */
 export function isFallbackLiteral(value: Node): boolean {
-  const v = unwrapTs(value)
+  const v = unwrapExpression(value)
   if (v.type === 'Identifier') {
     return v.name === 'undefined'
   }
@@ -524,11 +505,11 @@ export function isFallbackLiteral(value: Node): boolean {
 
 /** Whether `value` is already a lazy wrapper of the router (`lazyRouteComponent(...)`, `lazyFn(...)`), left alone (OQ13). */
 export function isAlreadyLazy(ctx: PlanContext, value: Node): boolean {
-  const v = unwrapTs(value)
+  const v = unwrapExpression(value)
   if (v.type !== 'CallExpression') {
     return false
   }
-  const callee = unwrapTs(v.callee as Node)
+  const callee = unwrapExpression(v.callee as Node)
   if (callee.type !== 'Identifier') {
     return false
   }
@@ -547,7 +528,7 @@ export function identifierSymbol(
   ctx: PlanContext,
   value: Node,
 ): SymbolId | null {
-  const v = unwrapTs(value)
+  const v = unwrapExpression(value)
   if (v.type !== 'Identifier') {
     return null
   }

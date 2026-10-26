@@ -44,46 +44,6 @@ export function specifierLiteral(specifier: string, original?: string): string {
   return stringLiteral(specifier, quote)
 }
 
-/** Reads the value of a string literal's raw source text (quotes included). */
-export function readStringLiteral(raw: string): string {
-  const q = raw[0]
-  if ((q !== "'" && q !== '"') || raw[raw.length - 1] !== q) {
-    throw new Error(`not a string literal: ${raw}`)
-  }
-  // Specifier literals in practice never contain escapes; handle the common ones.
-  return raw
-    .slice(1, -1)
-    .replace(/\\u\{([0-9a-fA-F]+)\}/g, (_, h: string) =>
-      String.fromCodePoint(parseInt(h, 16)),
-    )
-    .replace(/\\u([0-9a-fA-F]{4})/g, (_, h: string) =>
-      String.fromCharCode(parseInt(h, 16)),
-    )
-    .replace(/\\x([0-9a-fA-F]{2})/g, (_, h: string) =>
-      String.fromCharCode(parseInt(h, 16)),
-    )
-    .replace(/\\(.)/g, (_, c: string) => {
-      switch (c) {
-        case 'n':
-          return '\n'
-        case 'r':
-          return '\r'
-        case 't':
-          return '\t'
-        case 'b':
-          return '\b'
-        case 'f':
-          return '\f'
-        case 'v':
-          return '\v'
-        case '0':
-          return '\0'
-        default:
-          return c
-      }
-    })
-}
-
 const RESERVED = new Set([
   'await',
   'break',
@@ -147,15 +107,4 @@ export function isValidIdentifier(name: string): boolean {
 export function identifierBase(raw: string): string {
   const cleaned = raw.replace(/[^\p{ID_Continue}$_]/gu, '_')
   return /^[\p{ID_Start}$_]/u.test(cleaned) ? cleaned : `_${cleaned}`
-}
-
-/** Whether a JSX tag name denotes a component (not an intrinsic element). */
-export function isComponentTagName(name: string): boolean {
-  const c = name.charCodeAt(0)
-  return (c >= 65 && c <= 90) || name.includes('.') || c > 127
-}
-
-/** Escapes text that goes into JSX children (`<`, `>`, `{`, `}`). */
-export function jsxText(text: string): string {
-  return text.replace(/[<>{}]/g, (c) => `{${stringLiteral(c, "'")}}`)
 }

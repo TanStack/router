@@ -42,13 +42,3 @@ export class WarningLedger {
     }
   }
 }
-
-export class CompilerError extends Error {
-  constructor(
-    message: string,
-    readonly range?: { start: number; end: number },
-  ) {
-    super(message)
-    this.name = 'CompilerError'
-  }
-}

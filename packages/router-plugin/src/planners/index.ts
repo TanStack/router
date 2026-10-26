@@ -9,11 +9,7 @@ import type { RouterPlannerConfig } from './config'
 import type { Planner } from '@tanstack/router-utils/compiler'
 
 export type { RouterPlannerConfig, HmrStyle } from './config'
-export type { RouteEntryFacts } from './route'
-export type { RouteRegistryService, SplitFacts } from './split'
-export { ROUTE_SPLIT, ROUTE_HMR } from './split'
 export { RouteRegistryView } from './registry'
-export { routeEntryDigest } from './route'
 
 /**
  * The router planners in their fixed order. Pass the same

@@ -25,6 +25,7 @@ import { relative } from 'node:path'
 import {
   cleanOrphanedDeclarations,
   siblingSpecifier,
+  unwrapExpression,
 } from '@tanstack/router-utils/compiler'
 import type {
   ClassifiedRef,
@@ -80,9 +81,6 @@ export interface HydratePlanFacts {
 }
 
 export const HYDRATE_PLANNER = 'hydrate'
-
-/** The query key of chunk ids: the manifest builders find Hydrate chunks by it. */
-export const HYDRATE_QUERY_KEY = 'tss-hydrate'
 
 const DEFAULT_PACKAGES: Readonly<Record<string, HydrateFramework>> = {
   '@tanstack/react-start': 'react',
@@ -292,7 +290,7 @@ function isLiteralSplitFalse(opening: JSXOpeningElement): boolean {
       a.name.name === 'split' &&
       a.value?.type === 'JSXExpressionContainer'
     ) {
-      const e = unwrap(a.value.expression)
+      const e = unwrapExpression(a.value.expression)
       return e.type === 'Literal' && e.value === false
     }
   }
@@ -352,7 +350,7 @@ function childrenShape(element: JSXElement): ChildrenShape | null {
       if (e.type === 'JSXEmptyExpression') {
         return null
       }
-      const inner = unwrap(e)
+      const inner = unwrapExpression(e)
       if (
         (inner.type === 'Literal' && typeof inner.value === 'string') ||
         (inner.type === 'TemplateLiteral' && inner.expressions.length === 0)
@@ -372,7 +370,7 @@ function childrenShape(element: JSXElement): ChildrenShape | null {
     (c) =>
       c.type === 'JSXExpressionContainer' &&
       c.expression.type !== 'JSXEmptyExpression' &&
-      isFunction(unwrap(c.expression)),
+      isFunction(unwrapExpression(c.expression)),
   )
   if (meaningful.length === 1) {
     const c = meaningful[0]!
@@ -403,23 +401,6 @@ function childrenShape(element: JSXElement): ChildrenShape | null {
     wrap: true,
     nodes: element.children.filter((c) => c.start >= start && c.end <= end),
     functionChild,
-  }
-}
-
-function unwrap(node: Node): Node {
-  let n = node
-  for (;;) {
-    switch (n.type) {
-      case 'ParenthesizedExpression':
-      case 'TSAsExpression':
-      case 'TSSatisfiesExpression':
-      case 'TSNonNullExpression':
-      case 'TSTypeAssertion':
-        n = n.expression
-        continue
-      default:
-        return n
-    }
   }
 }
 
@@ -904,7 +885,7 @@ function declaredWithin(ctx: PlanContext, s: SymbolId, region: Range): boolean {
 
 /** The hook a callee names (`useX`, `NS.useX`, `(useX)`), or null. */
 function hookName(callee: Node): string | null {
-  const c = unwrap(callee)
+  const c = unwrapExpression(callee)
   if (c.type === 'Identifier') {
     return HOOK_RE.test(c.name) ? c.name : null
   }
@@ -1371,7 +1352,7 @@ function spreadObject(
   ctx: PlanContext,
   argument: Node,
 ): ObjectExpression | null {
-  const arg = unwrap(argument)
+  const arg = unwrapExpression(argument)
   if (arg.type === 'ObjectExpression') {
     return arg
   }
@@ -1411,7 +1392,7 @@ function spreadObject(
   ) {
     return null
   }
-  const init = unwrap(declarator.init)
+  const init = unwrapExpression(declarator.init)
   return init.type === 'ObjectExpression' ? init : null
 }
 

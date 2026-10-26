@@ -9,6 +9,7 @@
  */
 import { BindingFlags, bindingIdentifiers } from 'yuku'
 import { extendOverTrailingLine, isLicenseComment } from './header'
+import { unwrapExpression } from './source'
 import {
   hasNoSideEffectsAnnotation,
   isPrimitiveLiteral,
@@ -209,19 +210,6 @@ export class RegionTable {
     }
   }
 
-  /** Whether `inner` is `outer` or nested below it. */
-  isWithin(inner: RegionId, outer: RegionId): boolean {
-    let cur: RegionId | null = inner
-    while (cur !== null) {
-      if (cur === outer) {
-        return true
-      }
-      const r: Region = this.regions[cur]!
-      cur = r.parent
-    }
-    return false
-  }
-
   /** The unit region at the root of a region's chain. */
   unitOf(id: RegionId): UnitId | null {
     let cur: RegionId | null = id
@@ -253,33 +241,12 @@ const MUTATORS = new Set([
   'copyWithin',
 ])
 
-function unwrapTs(node: Node): Node {
-  let n = node
-  for (;;) {
-    switch (n.type) {
-      case 'ParenthesizedExpression':
-      case 'TSAsExpression':
-      case 'TSSatisfiesExpression':
-      case 'TSNonNullExpression':
-      case 'TSTypeAssertion':
-      case 'TSInstantiationExpression':
-        n = n.expression
-        continue
-      case 'ChainExpression':
-        n = n.expression
-        continue
-      default:
-        return n
-    }
-  }
-}
-
 /** The root identifier of `a.b.c` / `a?.b[c]`, or the identifier itself. */
 export function rootIdentifier(node: Node): Node | null {
-  let n = unwrapTs(node)
+  let n = unwrapExpression(node)
   for (;;) {
     if (n.type === 'MemberExpression') {
-      n = unwrapTs(n.object)
+      n = unwrapExpression(n.object)
       continue
     }
     return n.type === 'Identifier' ? n : null
@@ -766,7 +733,7 @@ export function buildUnits(
   }
 
   function augmentationsOf(expr: Node): Array<SymbolId> {
-    const e = unwrapTs(expr)
+    const e = unwrapExpression(expr)
     const out: Array<SymbolId> = []
     const push = (s: SymbolId | null) => {
       if (s !== null && !out.includes(s)) {
@@ -775,7 +742,7 @@ export function buildUnits(
     }
     switch (e.type) {
       case 'AssignmentExpression': {
-        const left = unwrapTs(e.left)
+        const left = unwrapExpression(e.left)
         if (left.type === 'ArrayPattern' || left.type === 'ObjectPattern') {
           for (const id of bindingIdentifiers(left as never)) {
             push(moduleSymOf(id))
@@ -789,10 +756,10 @@ export function buildUnits(
         push(moduleSymOf(e.argument))
         break
       case 'CallExpression': {
-        const callee = unwrapTs(e.callee)
+        const callee = unwrapExpression(e.callee)
         if (callee.type === 'MemberExpression' && !callee.computed) {
           const prop = callee.property
-          const obj = unwrapTs(callee.object)
+          const obj = unwrapExpression(callee.object)
           const propName = prop.type === 'Identifier' ? prop.name : null
           if (
             obj.type === 'Identifier' &&

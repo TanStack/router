@@ -5,7 +5,7 @@
  */
 import { parse } from 'yuku'
 import { SourceText } from './output-builder'
-import type { SourceFile } from 'yuku'
+import type { Node, SourceFile } from 'yuku'
 import type { Lang } from './identity'
 import type { Diagnostic } from './diagnostics'
 
@@ -52,4 +52,45 @@ export function parseModule(
     }
   }
   return { ok: true, file, source }
+}
+
+/**
+ * Whether `node` is transparent to the value it wraps: parentheses, the
+ * TypeScript expression wrappers (`x as T`, `x satisfies T`, `x!`, `<T>x`,
+ * `f<T>`) and the `ChainExpression` around an optional chain. Yuku's own
+ * `unwrap` stops at instantiation expressions and chains.
+ */
+export function isExpressionWrapper(node: Node): boolean {
+  switch (node.type) {
+    case 'ParenthesizedExpression':
+    case 'TSAsExpression':
+    case 'TSSatisfiesExpression':
+    case 'TSNonNullExpression':
+    case 'TSTypeAssertion':
+    case 'TSInstantiationExpression':
+    case 'ChainExpression':
+      return true
+    default:
+      return false
+  }
+}
+
+/** The expression inside every wrapper (`isExpressionWrapper`) around `node`, or `node` itself. */
+export function unwrapExpression(node: Node): Node {
+  let n = node
+  for (;;) {
+    switch (n.type) {
+      case 'ParenthesizedExpression':
+      case 'TSAsExpression':
+      case 'TSSatisfiesExpression':
+      case 'TSNonNullExpression':
+      case 'TSTypeAssertion':
+      case 'TSInstantiationExpression':
+      case 'ChainExpression':
+        n = n.expression
+        continue
+      default:
+        return n
+    }
+  }
 }

@@ -72,10 +72,6 @@ export function resourceId(resource: string): string {
   return normalizePath(resource.replace(/[\0\u200b]#/g, '#'))
 }
 
-/** A query carrying one of the compiler-owned keys (derived module ids). */
-export const OWNED_QUERY_RE =
-  /(?:^|[?&])(?:tsr-split|tss-hydrate|tss-serverfn-split)(?:=|&|$)/
-
 /** The derived outputs the router planners declare (`?tsr-split=`). */
 const ROUTER_DERIVED_KINDS = new Set(['split', 'shared', 'export'])
 

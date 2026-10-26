@@ -13,7 +13,6 @@ import type { Planner } from '@tanstack/router-utils/compiler'
 
 export { START_ENV, startEnvPlanner } from './start-env'
 export type { StartEnvConfig, StartEnvFacts } from './start-env'
-export { RSC_CSS, rscCssPlanner } from './rsc-css'
 export type { RscCssConfig } from './rsc-css'
 
 export interface StartPlannerSlots {

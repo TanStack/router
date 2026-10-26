@@ -15,11 +15,12 @@ import {
   identifierBase,
   isPureExpression,
   stringLiteral,
+  unwrapExpression,
   walk,
 } from '@tanstack/router-utils/compiler'
 import { runtimeSpecifiers, startRecognizer } from '../compiler/recognizer'
 import { prefetchStartValues } from '../compiler/prefetch'
-import { startAnalysisOf, unwrapNode } from '../compiler/start-analysis'
+import { startAnalysisOf } from '../compiler/start-analysis'
 import {
   defaultFunctionId,
   devFunctionId,
@@ -578,7 +579,7 @@ function planStartEnv(
         continue
       }
       const parens = needsParens(
-        unwrapNode(link.arg),
+        unwrapExpression(link.arg),
         chain.wrapped,
         chain.parent,
       )
@@ -632,7 +633,7 @@ function planStartEnv(
         )
         continue
       }
-      const parens = needsParens(unwrapNode(c.arg), wrapped, parent)
+      const parens = needsParens(unwrapExpression(c.arg), wrapped, parent)
       rewrites.add({
         range: rangeOf(c.call),
         body: parens
@@ -854,28 +855,6 @@ function planStartEnv(
 
   // ---- 7. function-local declarators only removed code read
   cleanOrphanedDeclarations(ctx, envScope, by)
-
-  // ---- 8. `assert` import attributes keep working (G12): the keyword browsers dropped becomes `with`
-  for (const imp of ma.imports) {
-    if (!imp.attributesRange) {
-      continue
-    }
-    const between = ma.source.code.slice(
-      imp.specifierRange.end,
-      imp.attributesRange.start,
-    )
-    const m = /\bassert\b/.exec(between)
-    if (m) {
-      const start = imp.specifierRange.end + m.index
-      rewrites.add({
-        range: { start, end: start + 'assert'.length },
-        body: [text('with')],
-        scope: 'all-outputs',
-        by,
-        reason: 'import attributes keyword',
-      })
-    }
-  }
 
   ctx.setFacts(START_ENV, facts)
 }

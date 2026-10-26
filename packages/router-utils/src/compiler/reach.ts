@@ -1663,11 +1663,3 @@ export function computePlacement(input: PlacementInput): Placement {
     readsIn: (o, c) => clusterReads(c, o, true).syms,
   }
 }
-
-/** Generated units of a cluster, for diagnostics. */
-export function describeCluster(
-  cl: Cluster,
-  gens: ReadonlyArray<GeneratedUnit>,
-): string {
-  return `cluster#${cl.id}[${cl.kind}; units ${cl.units.join(',')}; gens ${cl.gens.map((g) => gens[g]!.by).join(',')}]`
-}
