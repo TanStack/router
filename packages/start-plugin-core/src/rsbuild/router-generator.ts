@@ -1,6 +1,6 @@
 /**
- * The route generator session of Start's Rsbuild plugin (DESIGN §4.6,
- * J1.10, J2.15): one `Generator` per plugin, run as a precondition of
+ * The route generator session of Start's Rsbuild plugin (J1.10,
+ * J2.15): one `Generator` per plugin, run as a precondition of
  * every environment compiler (`beforeRun`, `watchRun` with the compiler's
  * modified and removed files) and, in development, fed by its own watcher
  * for the files outside the bundle (created route files, `physical()`

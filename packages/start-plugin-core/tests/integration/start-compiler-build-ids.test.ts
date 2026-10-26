@@ -112,7 +112,7 @@ afterAll(async () => {
 })
 
 describe('production builds', () => {
-  // Dev-only code never reaches production (R7). The code the build emits for
+  // Dev-only code never reaches production (SPEC R7). The code the build emits for
   // the module's server fn, on the client and the server, holds no HMR code,
   // and the server fn works. The module's code is found by the chunks that hold
   // nothing but the case's modules (their layout is free: wherever the bundler

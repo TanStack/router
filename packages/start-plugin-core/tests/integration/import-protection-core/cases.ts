@@ -1,6 +1,5 @@
 /**
- * The survival-witness case matrix of the J6 spike (spike-j6-witness.md,
- * C1–C9, S1–S2): tiny apps, each with the verdict expected per violating
+ * The survival-witness case matrix (cases C1–C9, S1–S2): tiny apps, each with the verdict expected per violating
  * edge (`importer -> specifier`): `true` reported (the edge survives
  * tree-shaking), `false` not, `null` a policy row (either verdict). Where a
  * bundler's real output differs, `rspack` overrides the expectation.

@@ -1,9 +1,8 @@
 /**
- * Original positions of a compile's offsets (J6.5, G6; DESIGN §3.14.4
- * enrichment): an offset of the input text → its 1-based line and column,
- * through the input map when the input is another plugin's output (MDX,
- * Vue, an alias transform). A position the map does not cover is no
- * position (never compiled coordinates).
+ * Original positions of a compile's offsets (J6.5, G6): an offset of the input
+ * text → its 1-based line and column, through the input map when the input is
+ * another plugin's output (MDX, Vue, an alias transform). A position the map
+ * does not cover is no position (never compiled coordinates).
  */
 import path from 'node:path'
 import { SourceText } from '@tanstack/router-utils/compiler'

@@ -68,7 +68,7 @@ export interface TanStackStartCoreOptions {
   rsc?: StartRscOptions | undefined
 }
 
-/** What an RSC integration passes the compiler (DESIGN §3.12, §7). */
+/** What an RSC integration passes the compiler (J7). */
 export interface StartRscOptions {
   /** The RSC host's CSS loader expression, emitted as source text in the modules that render server components. */
   loadCssExpression: string

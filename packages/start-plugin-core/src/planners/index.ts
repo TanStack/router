@@ -1,9 +1,9 @@
 /**
- * The Start planners in the core's fixed order (DESIGN §2.6):
+ * The Start planners in the core's fixed order:
  * `start-env` → `hydrate` → `rsc-css` → `route-hmr.prepare` → `route-split`
  * → `route-hmr.plan` → `import-edges`. Hosts compose one array per env.
  *
- * Hooks for the planners other lanes build: `hydrate` (J5), the router
+ * The planners built elsewhere: `hydrate` (J5), the router
  * planners (`route-split`, `route-hmr`, J2/J3) and `import-edges` (J6) are
  * taken as given planner instances and slotted at their position.
  */

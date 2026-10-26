@@ -1,5 +1,5 @@
 /**
- * The `rsc-css` planner (DESIGN §3.12, J7): in the env that runs the RSC
+ * The `rsc-css` planner (J7): in the env that runs the RSC
  * render, `renderServerComponent(x)` / `createCompositeComponent(fn)` with
  * one argument get the CSS loader as a second argument; a
  * `renderToReadableStream(e)` whose argument is JSX (through parens and

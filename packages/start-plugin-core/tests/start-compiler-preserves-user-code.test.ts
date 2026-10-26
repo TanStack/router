@@ -461,7 +461,7 @@ export function html() {
 // checked through a real production build
 // (integration/start-build-user-code.test.ts).
 
-// Source maps point to the user's code (R6): the map each environment
+// Source maps point to the user's code (SPEC R6): the map each environment
 // serves with the module (Vite's composed map of every plugin's transform).
 // Source: #8504 start-compiler-preserves-user-code.test.ts
 test.each(['client', 'ssr'] as const)(

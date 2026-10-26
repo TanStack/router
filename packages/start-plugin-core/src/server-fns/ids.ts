@@ -1,5 +1,5 @@
 /**
- * Server-function ids (DESIGN §3.13.1; D6, R13, R40): the stable key of a
+ * Server-function ids: the stable key of a
  * server fn, the default production id, the dev id, the custom-id
  * placeholder and the global occupied-id allocator.
  */
@@ -63,8 +63,8 @@ export type GenerateFunctionId = (opts: {
 }) => string | undefined
 
 /**
- * One immutable allocation of final ids against a global occupied set
- * (R40): the client rank first (sorted stable keys, frozen), then server-only
+ * One immutable allocation of final ids against a global occupied set:
+ * the client rank first (sorted stable keys, frozen), then server-only
  * entries appended; custom bases and suffix candidates are both checked.
  */
 export class FunctionIdAllocator {

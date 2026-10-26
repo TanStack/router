@@ -1,5 +1,5 @@
 /**
- * Edge rules (J6.1, J6.7, J6.10; DESIGN §3.14.2): importer scope on the
+ * Edge rules (J6.1, J6.7, J6.10): importer scope on the
  * importer's path, the specifier rule on the raw specifier as written, then
  * on the resolved target `excludeFiles`, the file rule (root-relative
  * resolved path) and the target's marker. Pure functions of the config and

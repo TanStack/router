@@ -1,5 +1,5 @@
 /**
- * The server-function resolver modules (DESIGN §3.13.3, R44): in development
+ * The server-function resolver modules (J4.2): in development
  * a lookup by id through a per-id virtual module that re-exports the
  * provider's `createServerRpc` wrapper from the defining module (compiled
  * through the normal transform, also on a fresh server); in production a
@@ -16,7 +16,8 @@ export const SERVER_FN_LOOKUP_VIRTUAL_ID =
  * The dev resolver: every call imports the lookup module of the id (never
  * memoised: handlers are hot-replaced). A client-origin call (an HTTP
  * request) imports the lookup under `origin=client`: the lookup warns once
- * for a function no client module references (R44 in development).
+ * for a function no client module references (J4.2 in development: the dev
+ * server compiles lazily, so it cannot know every client reference).
  */
 export function devResolverModule(): string {
   return `
@@ -28,7 +29,7 @@ export async function getServerFnById(id, access) {
 `
 }
 
-/** The development warning of a client call of a function no client module references (R44). */
+/** The development warning of a client call of a function no client module references. */
 export function unreferencedWarning(entry: ServerFnEntry): string {
   return `[tanstack-start] The server function ${entry.name} of ${entry.rootRel} was called from the client, but no client module this dev server compiled references it. A production build refuses such a call: only server functions client code references are callable over HTTP.`
 }
@@ -46,17 +47,17 @@ export interface ManifestResolverOptions {
   /** The provider module id of an entry (the original module or its derived provider id). */
   providerModuleId: (entry: ServerFnEntry) => string
   /**
-   * Only client-referenced functions are HTTP-callable in production (R44):
+   * Only client-referenced functions are HTTP-callable in production (J4.2):
    * the manifest lists only them, so a function only server code references
    * is "not found" by id (no per-entry flag or runtime check: the filter is
    * the gate). The client built before the provider (the SSR provider). The
    * RSC provider builds before the client (plugin-rsc's `buildApp`), so its
-   * manifest lists every server fn of its environment (the RSC build order,
-   * FOLLOW-UPS).
+   * manifest lists every server fn of its environment (a known limitation of
+   * the RSC build order).
    */
   clientReferencedOnly: boolean
   /**
-   * Development (R44): every function is listed; a client-origin call of a
+   * Development: every function is listed; a client-origin call of a
    * function no client module the dev server compiled references is
    * answered, with one warning per function naming it and saying a
    * production build refuses it (a stale page after a restart, an external
@@ -70,7 +71,7 @@ export interface ManifestResolverOptions {
   /**
    * Production with a separate provider (RSC): every function is listed
    * (server-origin calls reach the provider through this manifest), and a
-   * client-origin call of a function not in this set is refused (R44). A
+   * client-origin call of a function not in this set is refused (J4.2). A
    * JavaScript expression evaluating to the client-referenced ids: a JSON
    * array literal, or a placeholder literal the host replaces once the
    * client build is known.
@@ -161,7 +162,7 @@ ${warnUnreferenced}
 
 /**
  * The caller environment's resolver of a separate provider's production
- * build (R44, Vite RSC): the provider built before the client, so its
+ * build (J4.2, Vite RSC): the provider built before the client, so its
  * manifest lists every function (server-origin calls need them all); this
  * environment builds after the client and refuses a client-origin call of
  * a function no client module referenced, then forwards to the provider's

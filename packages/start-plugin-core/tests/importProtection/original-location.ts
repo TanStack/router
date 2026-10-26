@@ -3,7 +3,7 @@
  * import-protection tests compare violations in: the genuine surviving use,
  * any line of the original import, or the places the test writes out
  * (`others`); no coordinates only where the location is unavailable
- * (`unavailable`, §5.14: an import a tool rewrote), never as a blanket
+ * (`unavailable`, SPEC §5.14: an import a tool rewrote), never as a blanket
  * escape.
  */
 import { expect } from 'vitest'
@@ -25,7 +25,7 @@ export function originalLocation(
   importLines: number | Array<number>,
   options: {
     /**
-     * Also no coordinates: where the location is unavailable (§5.14: an
+     * Also no coordinates: where the location is unavailable (SPEC §5.14: an
      * import a tool rewrote), or where a pin checks that it is there.
      */
     unavailable?: boolean

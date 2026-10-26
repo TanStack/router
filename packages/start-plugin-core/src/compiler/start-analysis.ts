@@ -1,5 +1,5 @@
 /**
- * Start candidates of one module (DESIGN §3.10.2–§3.10.3): the value analysis
+ * Start candidates of one module: the value analysis
  * over the module's bindings (imports resolved by `prefetch.ts`) and the
  * candidates enumerated from every Start-valued binding by climbing its
  * references through call and member chains (`parentOf`, never a walk).

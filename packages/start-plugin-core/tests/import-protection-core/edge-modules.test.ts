@@ -1,5 +1,5 @@
 /**
- * Edge modules evaluated in Node (DESIGN §3.14.3; J6.3, J6.8): the mock
+ * Edge modules evaluated in Node (J6.3, J6.8): the mock
  * owns every export (any spelling), each a safe mock; the runtime reports
  * uses by `mockAccess`; the effect witness is silent; the allowed state is
  * the real module.

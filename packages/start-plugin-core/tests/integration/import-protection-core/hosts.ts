@@ -1,7 +1,7 @@
 /**
  * Minimal build hosts for the import-protection witness tests: a Vite
  * (Rolldown) plugin and an Rspack plugin + loader that wire the session
- * the way the integration contract says (impl-notes-import-protection.md):
+ * the way a Start host does:
  * compile every in-scope module with the `import-edges` planner,
  * `afterCompile`, serve edge modules, read the survival witness after
  * tree-shaking, `decide`, and rebuild to the fixed point on a veto.

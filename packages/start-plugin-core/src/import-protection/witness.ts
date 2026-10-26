@@ -1,9 +1,8 @@
 /**
- * Survival witness readers (DESIGN §3.14.4, R30; spike-j6-witness.md §5):
- * which edge modules survived tree-shaking, read from the bundler after
- * linking, and the bundler's graph for traces. An edge module survives
- * when it owns a used export (`renderedExports` on Rolldown, used exports
- * on Rspack) or, when its target is effectful, when it is in a chunk at
+ * Survival witness readers: which edge modules survived tree-shaking, read from
+ * the bundler after linking, and the bundler's graph for traces. An edge module
+ * survives when it owns a used export (`renderedExports` on Rolldown, used
+ * exports on Rspack) or, when its target is effectful, when it is in a chunk at
  * all (the `__fx` effect witness is kept iff its importer is evaluated).
  *
  * Structural types only: the readers take what Vite's `generateBundle` and

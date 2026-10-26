@@ -1,6 +1,6 @@
 /**
  * Import protection options → the resolved configuration the `import-edges`
- * planner, the edge modules and the hosts share (DESIGN §3.14, J6.1–J6.3).
+ * planner, the edge modules and the hosts share (J6.1–J6.3).
  * Pure: no bundler, no file system.
  */
 import { digestOf } from '@tanstack/router-utils/compiler'

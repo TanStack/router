@@ -1,8 +1,8 @@
 /**
- * Registers Start's compiler on Rsbuild (DESIGN §4.2): the shared session,
+ * Registers Start's compiler on Rsbuild: the shared session,
  * one `pre` loader rule per Start environment (every JS/TS id, env and
  * derived alike), the late `post` pass over the JS output of other module
- * types (import protection only, R48), the `sideEffects: false` rules for
+ * types (import protection only), the `sideEffects: false` rules for
  * extracted-export outputs and the import-protection runtime, the host
  * plugin of each environment compiler, the generator session and the
  * client route tree transform.
@@ -126,8 +126,8 @@ export function registerStartCompiler(
           { loader: loaderPath, options: { environment: environment.name } },
         ],
       },
-      // extracted-export outputs of the route splitter are side-effect free (spike E1: the
-      // regex is matched against the query with its leading `?`)
+      // extracted-export outputs of the route splitter are side-effect free (Rspack
+      // matches the regex against the query with its leading `?`)
       {
         test: JS_FILE_RE,
         resourceQuery: /tsr-split=export~/,

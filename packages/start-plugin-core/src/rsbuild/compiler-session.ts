@@ -1,6 +1,6 @@
 /**
- * Start's Rspack host of the compiler core on Rsbuild (DESIGN §4.2; D8,
- * R3, R11, R30, R35, R46): one compile per (environment, layer, module)
+ * Start's Rspack host of the compiler core on Rsbuild (see the core's
+ * README.md, "Hosts"): one compile per (environment, layer, module)
  * running every planner — `start-env`, `hydrate`, `rsc-css` (the RSC
  * layer), `route-split`/`route-hmr` (client), `import-edges` — from one
  * `pre` loader per environment (`compiler-loader.ts`), the shared caches,
@@ -82,7 +82,8 @@ export interface StartRsbuildEnvironment {
   type: 'client' | 'server'
 }
 
-/** Rsbuild `source.transformImport` entries (the array form) the host predicts for R46. */
+/** Rsbuild `source.transformImport` entries (the array form) the host predicts, so the file and
+ * marker rules judge the rewritten import's target. */
 export interface TransformImportRule {
   libraryName: string
   libraryDirectory?: string
@@ -135,7 +136,8 @@ export interface LoaderResult {
 
 export interface LoaderOptions {
   environment: string
-  /** `late`: the J6-only pass over the JS output of a non-JS module (R48). */
+  /** `late`: the J6-only pass over the JS output of a non-JS module
+   * (`.vue`, `.mdx`: Tier 0 only, with a host-supplied language). */
   pass?: 'late'
 }
 
@@ -143,8 +145,8 @@ const NODE_MODULES_RE = /[\\/]node_modules[\\/]/
 /**
  * The cheap text gate of a dependency module (not an importer import
  * protection checks): a module naming no Start, router or RSC API and no
- * builder step cannot need a plan, so it is not parsed (D14; the Start
- * libraries an app depends on name them).
+ * builder step cannot need a plan, so it is not parsed (a cheap gate
+ * before parsing; the Start libraries an app depends on name them).
  */
 const START_TEXT_RE =
   /createServerFn|createMiddleware|createIsomorphicFn|createServerOnlyFn|createClientOnlyFn|createStart|ClientOnly|Hydrate|createFileRoute|createRootRoute|createLazyFileRoute|\.handler\(|\.server\(|\.client\(|renderServerComponent|createCompositeComponent|renderToReadableStream/
@@ -403,7 +405,7 @@ export class StartRsbuildCompilerSession {
     }
   }
 
-  /** The import rewrite of an environment (`source.transformImport`, R46), when it has one. */
+  /** The import rewrite of an environment (`source.transformImport`), when it has one. */
   private importRewrite(env: EnvState): ImportRewrite | undefined {
     const rules = env.transformImport
     if (rules.length === 0) {
@@ -462,7 +464,7 @@ export class StartRsbuildCompilerSession {
 
   /**
    * The host of the invalidation operation for an environment: its own
-   * resolver (per-environment aliases and conditions, R35); an environment
+   * resolver (per-environment aliases and conditions); an environment
    * without a registered resolver yet asks the others in turn.
    */
   private invalidationHost(env?: string): HostServices {
@@ -496,8 +498,8 @@ export class StartRsbuildCompilerSession {
    * protection's importer records, the per-resource fingerprints and server-fn
    * records). Rspack reports a deleted file only while a module depends on it,
    * so a module the app stopped importing and then deleted never gets its
-   * `unlink`; without this its state stayed for the session (D12: bounded by
-   * the live modules).
+   * `unlink`; without this its state stayed for the session (every cache
+   * must stay bounded by the live modules).
    */
   retain(envName: string, files: Iterable<string>): void {
     const live = new Set<string>()
@@ -541,7 +543,7 @@ export class StartRsbuildCompilerSession {
     }
   }
 
-  /** The one invalidation operation (R3): the host's bundler rebuilds through the loader's `addDependency` set. */
+  /** The one invalidation operation (compiler plans and bundler transforms together): the host's bundler rebuilds through the loader's `addDependency` set. */
   invalidate(
     file: string,
     kind: InvalidateChange['kind'],
@@ -553,8 +555,9 @@ export class StartRsbuildCompilerSession {
 
   /**
    * The loader implementation: compiles every id (env and derived) of a
-   * JS/TS module of an environment from the text Rspack hands it (R11),
-   * composes maps with the input map (S4), records dependencies, server-fn
+   * JS/TS module of an environment from the text Rspack hands it (never
+   * from a path-only "latest plan", so upstream loaders and maps compose),
+   * composes maps with the input map, records dependencies, server-fn
    * facts and import-protection records, and reports diagnostics.
    */
   async compile(
@@ -780,7 +783,7 @@ export class StartRsbuildCompilerSession {
   /**
    * The resolver module of an environment: the registry's manifest, gated
    * to client-referenced entries in production builds whose SSR
-   * environment is the provider (R44); in development every entry, with a
+   * environment is the provider (J4.2); in development every entry, with a
    * warning for a client call of a function no client module references
    * (the client compilation's replay rewrites the resolver, so the flags
    * follow the client graph). The RSC provider lists its environment's
@@ -795,7 +798,7 @@ export class StartRsbuildCompilerSession {
       warnUnreferenced: opts.mode === 'dev' && opts.ssrIsProvider,
       staticImports: opts.rsc !== undefined && opts.mode === 'dev',
       memoizeModules: opts.mode === 'build',
-      // RSC build (R44): the RSC coordinator interleaves the server and client
+      // RSC build (J4.2): the RSC coordinator interleaves the server and client
       // compilations, so the manifest is generated before the client's
       // references are known; it lists every function (server-origin calls
       // reach the provider through it) and gates client-origin calls on a
@@ -807,7 +810,7 @@ export class StartRsbuildCompilerSession {
     })
   }
 
-  /** The JSON array of client-referenced function ids (the gate's set, R44). */
+  /** The JSON array of client-referenced function ids (the gate's set, J4.2). */
   clientReferencedIdsLiteral(): string {
     return JSON.stringify(
       this.registry
@@ -818,7 +821,7 @@ export class StartRsbuildCompilerSession {
     )
   }
 
-  /** The entries of a rank for the custom-id allocation (R40): client-referenced first, the rest after. */
+  /** The entries of a rank for the custom-id allocation: client-referenced first, the rest after. */
   allocateIds(envType: 'client' | 'server'): FunctionIdAllocator | null {
     const allocator = this.allocator
     if (!allocator) {

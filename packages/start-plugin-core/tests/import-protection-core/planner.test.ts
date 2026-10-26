@@ -1,5 +1,5 @@
 /**
- * The `import-edges` planner on an in-memory host (DESIGN §3.14.1–§3.14.3):
+ * The `import-edges` planner on an in-memory host:
  * rules, scope, type-only and TypeScript-erased edges, substitution of the
  * specifier literal only, dev `onViolation` timing and memo, build edge
  * modules, mock contents, marker conflicts and invalidation (J6.13).
@@ -366,7 +366,7 @@ describe('dev decisions', () => {
 })
 
 describe('dev session records', () => {
-  // D12: a dev session's records are bounded by the live files. Found by the
+  // A dev session's records are bounded by the live files. Found by the
   // compiler soak (benchmarks/compiler-perf `--scenarios soak`): the edge
   // index, the per-importer violation keys and the scope cache kept an entry
   // for every deleted file.
@@ -521,7 +521,8 @@ describe('forwarded glue and markers', () => {
    * A toy tier-1 planner that removes the user's `import { secret } from
    * './secret.server'` and emits glue standing in for it (an effectful
    * generated unit importing `secret` through a `spec` fragment with
-   * forwarded provenance), like an isomorphic-impl import (R32).
+   * forwarded provenance), like an isomorphic-impl import: glue that replaces
+   * a user import carries its provenance and is policy-checked.
    */
   const forwardingPlanner = (): Planner => ({
     name: 'toy-forward',

@@ -59,7 +59,7 @@ function createClientAssetDistPath(root: string): RsbuildDistPathObject {
  * Chunk splitting of a non-RSC server environment. Rsbuild's server default
  * is no splitting at all, which makes Rspack copy every module two async
  * chunks share into both: the server-fn resolver `import()`s the route
- * modules that define server functions (D6), which the router's chunk holds
+ * modules that define server functions, which the router's chunk holds
  * too, so each such module and its imports were emitted twice. A module two
  * or more async chunks share goes to one shared chunk instead (Rspack's
  * default groups are off: nothing else moves).

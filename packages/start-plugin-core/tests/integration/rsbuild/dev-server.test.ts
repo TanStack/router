@@ -288,7 +288,7 @@ export const ${name} = createServerFn().handler(async () => 'MARK_${name}')
 })
 
 describe('Rsbuild dev: modules the app stops importing', () => {
-  // D12: the compiler's caches are bounded by the live modules. Rspack
+  // The compiler's caches are bounded by the live modules. Rspack
   // reports a deleted file only while a module depends on it: a module the
   // app stopped importing and then deleted got no invalidation, and its plans
   // and raw facts stayed for the session (found by the compiler soak,

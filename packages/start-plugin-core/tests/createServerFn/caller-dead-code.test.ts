@@ -761,7 +761,7 @@ export const clientB = clientCopy`,
       ['value', 2],
     ])
     // Server code runs the handler too, in that instance or its own
-    // (where the handler lives on the server is free, §5.4).
+    // (where the handler lives on the server is free, SPEC §5.4).
     const fromServer = (await callOnServer(served, 'module.fn')) as [
       string,
       number,

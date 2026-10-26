@@ -765,9 +765,9 @@ export const read = () => secret() + other
 // With `performance.buildCache`, a new `rsbuild build` restores the modules
 // it built before from Rspack's persistent cache without compiling them
 // again: their imports of the per-edge modules that stand in for denied
-// imports (DESIGN §3.14.3) must still resolve, and the build reports the
+// imports must still resolve, and the build reports the
 // same violations, in every behaviour and after an `onViolation` veto
-// (the additional pass, R33).
+// (the additional pass).
 // Source: upstream #8798 (Rsbuild persistent cache: "Can't resolve" the
 // import-protection mock modules of restored importers).
 describe('Rsbuild build: restored from the persistent cache', () => {

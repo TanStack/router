@@ -1,12 +1,12 @@
 /**
- * The `<Hydrate>` deferred-hydration planner (J5; DESIGN §3.11, §3.17; R9,
- * R10, R14, R37, R38, R39) on the shared compiler core.
+ * The `<Hydrate>` deferred-hydration planner (J5) on the shared compiler core.
  *
  * A boundary is a JSX element whose tag is the `Hydrate` import of a Start
  * package, by binding (a named or renamed import, or `<NS.Hydrate>` on a
  * namespace import). Its id is computed from the pristine source (the base36
  * offset of its `<` and a hash of the root-relative path), so every env and
- * every output of one build agree whatever other planners erase (R10).
+ * every output of one build agree whatever other planners erase: server and
+ * client must emit the same prefix for every boundary.
  *
  * - Every env inserts ` h="<id>"` into the opening tag of each boundary the
  *   client extracts (anything but a literal `split={false}` with children to
@@ -64,7 +64,8 @@ export interface HydratePlannerConfig {
   rejectEverywhere?: boolean
   /**
    * React development: the chunk component carries the route-HMR identity
-   * marker (`$$tsrRefreshId`, R41), so an update of a boundary's chunk is
+   * marker (`$$tsrRefreshId`: chunk id + name, compared by the route-HMR runtime
+   * when the reloaded chunk arrives), so an update of a boundary's chunk is
    * kept by React Refresh instead of swapped. Default false.
    */
   refreshMarkers?: boolean
@@ -168,7 +169,7 @@ interface Boundary {
   opening: JSXOpeningElement
   framework: HydrateFramework
   id: string
-  /** False for a literal `split={false}`: neither extracted nor prefixed (R10). */
+  /** False for a literal `split={false}`: neither extracted nor prefixed, on the server and the client alike. */
   split: boolean
   children: ChildrenShape | null
   /** Where the prefix (and `p`) attributes are inserted. */
@@ -262,7 +263,7 @@ function findBoundaries(
   const out: Array<Boundary> = []
   let index = 0
   // the id's ordinal counts every boundary of the pristine source (the
-  // same in every env, D5); shorter than an offset in the client's markup
+  // same in every env, as ids derive from the pristine source); shorter than an offset in the client's markup
   let ordinal = 0
   for (const start of [...found.keys()].sort((a, b) => a - b)) {
     const { element, opening, fw } = found.get(start)!
@@ -453,7 +454,8 @@ function plan(ctx: PlanContext): void {
   }
 
   // client: generated names in source order, then planning innermost first, so an
-  // enclosing boundary sees its nested placeholders (R39)
+  // enclosing boundary sees its nested placeholders (closure interfaces are
+  // computed bottom-up, including the reads of generated placeholders)
   const names = new Map<Boundary, BoundaryNames>()
   for (const b of boundaries) {
     if (b.split && b.children) {
@@ -505,14 +507,14 @@ function plan(ctx: PlanContext): void {
 }
 
 /**
- * §3.5.3 for Hydrate chunks (J5.4 "an export only the children use loads
- * lazily"): every exported pure, unwritten declaration may leave for an
- * extracted-export output (`?tsr-split=export~<name>`, side-effect free),
- * which the parent re-exports; the core moves it there only when the parent
- * itself does not read it and a chunk needs it, so a component a boundary
- * renders and nothing else imports is not in the eager code. The same
- * outputs the route splitter declares for a route module (one output per
- * name: `declareOutput` is idempotent).
+ * Extracted-export outputs for Hydrate chunks, as for split routes (J5.4 "an
+ * export only the children use loads lazily"): every exported pure, unwritten
+ * declaration may leave for an extracted-export output
+ * (`?tsr-split=export~<name>`, side-effect free), which the parent re-exports;
+ * the core moves it there only when the parent itself does not read it and a
+ * chunk needs it, so a component a boundary renders and nothing else imports is
+ * not in the eager code. The same outputs the route splitter declares for a
+ * route module (one output per name: `declareOutput` is idempotent).
  */
 function extractExports(ctx: PlanContext): void {
   const symbols = ctx.symbols
@@ -990,7 +992,7 @@ function extract(
     return null
   }
 
-  // ---- captures: own reads declared outside, then nested placeholders' reads (R39)
+  // ---- captures: own reads declared outside, then nested placeholders' reads
   const liveEnv = ctx.liveness('env')
   const declaredInside = (sym: SymbolId) => declaredWithin(ctx, sym, region)
   const solid = b.framework === 'solid'
@@ -1078,7 +1080,8 @@ function extract(
   })
   const chunkId = out.slice('derived:'.length)
   // the parent's lazy const: same name as the chunk component, its own symbol
-  // (D10, impl-notes-core 29), unless the children reach the unexported
+  // (one name per meaning in every output of the file; the chunk component
+  // is a fixed-home generated unit pinned to its chunk), unless the children reach the unexported
   // declaration holding the boundary (a recursive component): that
   // declaration then moves into the chunk with the lazy const, next to the
   // chunk component, and the two need distinct names
@@ -1098,7 +1101,9 @@ function extract(
     prop: ctx.names.alloc(`tsrRef$${symbols.name(s.sym)}`).name,
   }))
 
-  // ---- substitution environment of the chunk component (R39)
+  // ---- substitution environment of the chunk component (generated text is
+  // structured: each output renders its symbols through this map, so outer
+  // Solid rewrites reach inner placeholders)
   const env = new Map<SymbolId, RefTarget>()
   const props = solid ? shared.props : null
   if (props !== null) {
@@ -1137,7 +1142,9 @@ function extract(
     })
   }
 
-  // ---- the chunk component: a fixed-home generated unit owning the children (R37)
+  // ---- the chunk component: a fixed-home generated unit owning the children
+  // (ownership is separate from final placement: an erased ancestor region
+  // suppresses it)
   // exported under the short name `H<n>` (the parent's lazy wrapper reads it;
   // the name is production bytes, twice per boundary)
   const head: Array<string | SymRef> = ['function ', { sym: comp.sym }]
@@ -1180,7 +1187,8 @@ function extract(
   }
   const tail: Array<string | SymRef> = [shape.wrap ? '</> }\n' : ') }\n']
   if (cfg.refreshMarkers && b.framework === 'react') {
-    // identity = chunk id + the binding React Refresh registers (R41, as the
+    // identity = chunk id + the binding React Refresh registers (the identity
+    // the route-HMR runtime compares to keep or swap, as the
     // route splitter marks its component chunks)
     tail.push(
       { sym: comp.sym },
@@ -1418,7 +1426,7 @@ function isNamedProperty(p: Node, name: string): boolean {
   return false
 }
 
-/** A property's range with its separating comma (one edit per removed property, R17). */
+/** A property's range with its separating comma (one edit per removed property). */
 function propertyRange(obj: ObjectExpression, prop: Node): Range {
   const props = obj.properties as ReadonlyArray<Node>
   const i = props.findIndex((p) => p.start === prop.start)

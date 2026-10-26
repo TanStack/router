@@ -1,5 +1,5 @@
 /**
- * The `start-env` planner (J4, DESIGN §3.10) on the compiler core, through
+ * The `start-env` planner (J4) on the compiler core, through
  * `compileModule` and an in-memory host: what each env serves for a module
  * whose removals leave function-local declarations orphaned, and what the
  * separate provider env (Vite RSC) serves for nested server functions.
@@ -79,7 +79,7 @@ function expectValid(code: string): void {
 
 const HEAD = `import { createServerOnlyFn, createIsomorphicFn } from '@tanstack/react-start'\n`
 
-describe('function-local declarators only removed code read (J4.12, R17)', () => {
+describe('function-local declarators only removed code read (J4.12)', () => {
   // Two neighbouring declarators of one statement orphaned by one erasure
   // were two overlapping removal ranges (the compile threw "partially
   // overlaps"); one statement gets one removal edit from its final kept set.
@@ -199,7 +199,7 @@ export function Comp() {
   })
 })
 
-describe('a separate provider env with derived provider modules (Vite RSC, R50)', () => {
+describe('a separate provider env with derived provider modules (Vite RSC)', () => {
   const rsc = envInfo({
     name: 'rsc',
     type: 'server',
