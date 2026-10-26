@@ -1,7 +1,5 @@
 cleanupUnusedCatalogs: true
 minimumReleaseAge: 1440
-minimumReleaseAgeExclude:
-  - 'yuku' # compiler-test-utils needs the semantic API first released 2026-10-22 (0.22.x); remove once older than the release-age window
 linkWorkspacePackages: true
 preferWorkspacePackages: true
 blockExoticSubdeps: true

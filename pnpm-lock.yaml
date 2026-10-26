@@ -14004,8 +14004,8 @@ importers:
         specifier: 25.0.9
         version: 25.0.9
       yuku:
-        specifier: ^0.22.1
-        version: 0.22.1
+        specifier: 0.23.0
+        version: 0.23.0
 
   packages/compiler-vite-versions:
     dependencies:
@@ -14942,9 +14942,6 @@ importers:
       babel-loader:
         specifier: ^10.0.0
         version: 10.0.0(@babel/core@7.29.7(supports-color@10.2.2))(webpack@5.110.3)
-      babel-plugin-react-compiler:
-        specifier: ^1.0.0
-        version: 1.0.0
       babel-preset-solid:
         specifier: ^1.9.10
         version: 1.9.10(@babel/core@7.29.7(supports-color@10.2.2))(solid-js@1.9.12)
@@ -15534,9 +15531,6 @@ importers:
       '@vitejs/plugin-vue-jsx':
         specifier: 'catalog:'
         version: 4.2.0(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
-      miniflare:
-        specifier: 4.20260317.0
-        version: 4.20260317.0
       publint:
         specifier: 'catalog:'
         version: 0.3.17
@@ -30088,10 +30082,6 @@ packages:
 
   youch@4.1.0-beta.10:
     resolution: {integrity: sha512-rLfVLB4FgQneDr0dv1oddCVZmKjcJ6yX6mS4pU82Mq/Dt9a3cLZQ62pDBL4AUO+uVrCvtWz3ZFUL2HFAFJ/BXQ==}
-
-  yuku@0.22.1:
-    resolution: {integrity: sha512-aY9bJiNKR46RyulhwZxh1L6DlXuRWEub9uXjvrjhP/AKQFC5DwGdri4mJaQH9Jmv+ijnsduWoBTXtEfKy2aehw==}
-    engines: {node: '>=16.4.0'}
 
   yuku@0.23.0:
     resolution: {integrity: sha512-L1guAjVqrpaGxd5teaa9SMjPvdX/jYHqZ1jKBulIC9Op4afzJ3ZU1ASzREZetJ2XDwL4hqtJi4l3fJgXds6IiA==}
@@ -46271,8 +46261,6 @@ snapshots:
       '@speed-highlight/core': 1.2.14
       cookie: 1.1.1
       youch-core: 0.3.3
-
-  yuku@0.22.1: {}
 
   yuku@0.23.0: {}
 

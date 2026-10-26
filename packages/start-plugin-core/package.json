@@ -157,7 +157,6 @@
     "@rsbuild/plugin-solid": "^1.2.2",
     "@types/node": ">=20",
     "@types/picomatch": "^4.0.2",
-    "miniflare": "4.20260317.0",
     "vite": "*",
     "vite-plugin-solid": "catalog:",
     "@tanstack/compiler-test-utils": "workspace:*",
