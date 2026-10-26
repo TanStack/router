@@ -17,8 +17,8 @@ import {
   changedRoutePaths,
   createRouterPluginContext,
   onRoutesChanged,
-} from '@tanstack/router-plugin/context'
-import { tanstackRouterGenerator } from '@tanstack/router-plugin/vite'
+} from '../src/context'
+import { tanstackRouterGenerator } from '../src/vite'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 
