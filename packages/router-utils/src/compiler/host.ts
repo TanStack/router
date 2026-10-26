@@ -6,7 +6,6 @@ import { isBuiltin } from 'node:module'
 import { posix } from 'node:path'
 import { OWNED_QUERY_KEYS, identify, planKeyString } from './identity'
 import {
-  PlanCache,
   UNRESOLVED_DEPENDENCY,
   fingerprintCurrent,
   fingerprintPath,
@@ -15,6 +14,7 @@ import type {
   DependencyFingerprint,
   DependencyLedger,
   FingerprintSource,
+  PlanCache,
 } from './cache'
 import type { ModuleAnalysis } from './analysis'
 import type { Diagnostic, WarningLedger } from './diagnostics'

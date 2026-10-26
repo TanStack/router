@@ -3,11 +3,10 @@
  * source text and drives the `OutputBuilder`. Emission is on demand and the
  * module never ends inside a line comment.
  */
-import { OutputBuilder, SourceText } from './output-builder'
+import { OutputBuilder } from './output-builder'
 import { specifierLiteral } from './strings'
-import type { RawSourceMap } from './output-builder'
-import type { EmitPlan, OutputRecipe, Segment } from './plan'
-import type { OutputId } from './rewrite'
+import type { RawSourceMap, SourceText } from './output-builder'
+import type { OutputRecipe, Segment } from './plan'
 
 export interface Emitted {
   code: string

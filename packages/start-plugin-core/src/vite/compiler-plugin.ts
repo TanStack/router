@@ -14,10 +14,10 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import {
+  OWNED_QUERY_RE,
   OutputBuilder,
   RawFactsCache,
   SourceText,
-  OWNED_QUERY_RE,
   WarningLedger,
   collectionSizes,
   compileModule,

@@ -12,7 +12,6 @@ import type { Region, RegionId, Unit, UnitId } from './units'
 import type {
   Frag,
   GenUnitId,
-  GeneratedUnit,
   OutputId,
   RenderTree,
   RewriteSet,

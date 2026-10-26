@@ -11,7 +11,6 @@ import {
   isExpressionWrapper,
   isKnownSpecifier,
   recognizeImport,
-  unwrapExpression,
 } from '@tanstack/router-utils/compiler'
 import { START_KINDS } from './recognizer'
 import { importResolverOf, isStartValue } from './prefetch'
