@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readdir, rm, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { promisify } from 'node:util'
 import { rspack } from '@rsbuild/core'
@@ -679,6 +679,24 @@ describe('registerClientBuildCapture development rebuilds', () => {
       await write('alpha.css', '.alpha { color: red; }')
       await write('hydrated.js', `export const hydrated = () => 'hydrated'`)
       await write('lazy.js', `export const lazy = 'lazy'`)
+      const importMap = (a: string, b: string) =>
+        JSON.stringify({ imports: { '#a': `./${a}.js`, '#b': `./${b}.js` } })
+      await write('package.json', importMap('one', 'two'))
+      for (const [name, value] of [
+        ['a', 'one'],
+        ['b', 'two'],
+      ]) {
+        await write(`${value}.js`, `export const value = '${value}'`)
+        await write(
+          `swap-${name}.js`,
+          `import { value } from '#${name}'\nexport const run = () => value`,
+        )
+      }
+      // The watcher reports files written just before it starts as modified.
+      const past = new Date(Date.now() - 10_000)
+      for (const file of await readdir(directory)) {
+        await utimes(join(directory, file), past, past)
+      }
 
       const processAssets = vi.fn<RsbuildPluginAPI['processAssets']>()
       const modifyRspackConfig =
@@ -819,6 +837,13 @@ describe('registerClientBuildCapture development rebuilds', () => {
         expect(
           builds.at(-1)!.captured.chunksByFileName.get('beta.js'),
         ).toMatchObject({ routeFilePaths: [join(directory, 'gamma.js')] })
+
+        const swaps = `${other}\nglobalThis.swaps = [() => import(/* webpackChunkName: "swap-a" */ './swap-a.js'), () => import(/* webpackChunkName: "swap-b" */ './swap-b.js')]`
+        expect(await rebuild('index.js', index('gamma', swaps))).toBe(false)
+        // Swapping the import map rebuilds no module and keeps every chunk's size.
+        expect(await rebuild('package.json', importMap('two', 'one'))).toBe(
+          false,
+        )
       } finally {
         await promisify(watching.close.bind(watching))()
         await rm(directory, { recursive: true, force: true })

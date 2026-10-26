@@ -3,7 +3,10 @@ import { tsrSplit } from '@tanstack/router-plugin'
 import { tssHydrate } from '../hydration-constants'
 import { getCssAssetSource } from '../start-manifest-plugin/inlineCss'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
-import { getRebuiltModulesAndImporters } from './rebuilt-modules'
+import {
+  getRebuiltModulesAndImporters,
+  mayHaveReResolvedImports,
+} from './rebuilt-modules'
 import type { RsbuildPluginAPI, Rspack } from '@rsbuild/core'
 import type {
   GetConfigFn,
@@ -523,9 +526,8 @@ export function registerClientBuildCapture(
 
       const { compilation, compiler } = context
       const chunkGraph = getChunkGraphFingerprint(compilation)
-      // Removing a file can re-resolve imports in modules that are not rebuilt.
       const previous =
-        snapshot?.previous && !compiler.removedFiles?.size
+        snapshot?.previous && !mayHaveReResolvedImports(compiler, compilation)
           ? snapshot
           : undefined
       const edgesByModule =
