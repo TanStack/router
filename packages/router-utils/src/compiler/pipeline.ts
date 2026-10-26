@@ -7,6 +7,7 @@
 import {
   deriveId,
   digestOf,
+  edgeKeyOf,
   identify,
   isCommonJsPath,
   revision,
@@ -21,7 +22,13 @@ import { ExportResolver } from './resolve'
 import { fingerprintSourceFor, resolveForAnalysis } from './host'
 import { registerCompilerStats } from './stats'
 import type { CacheEntry } from './cache'
-import type { EmitPlan, EnvInfo, FallbackRecord, PlanContext } from './plan'
+import type {
+  EmitPlan,
+  EnvInfo,
+  FallbackRecord,
+  OutputRecipe,
+  PlanContext,
+} from './plan'
 import type { PlanKey, SourceIdentity } from './identity'
 import type { OutputId } from './rewrite'
 import type { Diagnostic } from './diagnostics'
@@ -116,16 +123,15 @@ export async function compileModule(
       // resolutions validated at the current file-set version stand (R54: no resolution cache, no re-asking either)
       const fileSetVersion = caches.fileSetVersion
       const resolutionsCurrent = hit.resolvedAt === fileSetVersion
-      let valid = true
+      // every fingerprint at once: the checks are independent reads
+      const checks: Array<Promise<boolean>> = []
       for (const fp of hit.plan.dependencies) {
         if (resolutionsCurrent && fp.kind === 'resolution') {
           continue
         }
-        if (!(await fingerprintCurrent(fp, src))) {
-          valid = false
-          break
-        }
+        checks.push(fingerprintCurrent(fp, src))
       }
+      const valid = (await Promise.all(checks)).every((ok) => ok)
       if (valid && cache.lookup(key, rev) === hit) {
         hit.resolvedAt = fileSetVersion
         cache.counters.planHits++
@@ -164,6 +170,7 @@ export async function compileModule(
           cache,
           ledger,
           verdictMemo,
+          rev,
         )
         const record = { key, revision: rev, generation, promise, ledger }
         cache.inFlight.set(keyString, record)
@@ -199,11 +206,6 @@ export async function compileModule(
         }
         const plan = result.plan
         plan.dependencies = [...ledger.entries]
-        plan.fingerprint = digestOf({
-          rev,
-          configKey: input.config.configKey,
-          deps: plan.dependencies,
-        })
         const src = fingerprintSourceFor(caches, host, input.config.configKey)
         const snapshotOk = await ledger.validateSnapshot(
           src,
@@ -280,7 +282,11 @@ function emitFrom(
   const plan = entry.plan
   const recipe = plan.outputs[requested]
   const emitted = recipe
-    ? emitRecipe(recipe, new SourceText(input.code), input.wantMap)
+    ? requested === 'env' && isIdentityRecipe(recipe, input.code)
+      ? // every host passes an unchanged env module through (no map read):
+        // no builder run and no word-level map over the whole text
+        { code: input.code, map: null }
+      : emitRecipe(recipe, new SourceText(input.code), input.wantMap)
     : { code: 'export {}\n', map: null }
   return {
     code: emitted.code,
@@ -290,9 +296,37 @@ function emitFrom(
     facts: plan.facts,
     diagnostics: plan.diagnostics,
     dependencies: dependencyPaths(plan, caches),
-    fingerprint: plan.fingerprint,
+    // only the Rsbuild session reads it, once per compile: computed on demand
+    get fingerprint() {
+      return planFingerprint(entry)
+    },
     output: requested,
   }
+}
+
+/** Whether emitting `recipe` over `code` yields `code` itself (slices covering the whole text, ending in a line feed). */
+function isIdentityRecipe(recipe: OutputRecipe, code: string): boolean {
+  let at = 0
+  for (const seg of recipe.segments) {
+    if (seg.k !== 'slice' || seg.start !== at) {
+      return false
+    }
+    at = seg.end
+  }
+  return at === code.length && code.charCodeAt(code.length - 1) === 10
+}
+
+/** The plan's fingerprint (its text, configuration and dependencies), computed on first use. */
+function planFingerprint(entry: CacheEntry): string {
+  const plan = entry.plan
+  if (plan.fingerprint === '') {
+    plan.fingerprint = digestOf({
+      rev: entry.revision,
+      configKey: entry.key.configKey,
+      deps: plan.dependencies,
+    })
+  }
+  return plan.fingerprint
 }
 
 /** The files a plan read (a known package is recognised by its specifier, never read: D4). */
@@ -331,6 +365,7 @@ async function runAttempt(
   cache: PlanCache,
   ledger: DependencyLedger,
   verdictMemo: Map<string, Promise<unknown>>,
+  rev: string,
 ): Promise<AttemptResult> {
   const env = input.env
   const key = ledger.key
@@ -443,7 +478,6 @@ async function runAttempt(
   // ---- B: planning (sync) ------------------------------------------------------
   const tier1Needed = planners.some((p) => p.tier === 1)
   let emitPlan: EmitPlan
-  const rev = revision(input.code)
   if (!tier1Needed) {
     emitPlan = tier0Plan(t0, identity, env, key, rev)
   } else {
@@ -548,13 +582,7 @@ function tier0Plan(
     { k: 'slice', start: 0, end: code.length },
   ]
   const edgeKey = (raw: string, form: string) =>
-    digestOf({
-      env: env.name,
-      layer: env.layer ?? null,
-      importer: identity.canonicalId,
-      rawSpecifier: raw,
-      form,
-    })
+    edgeKeyOf(env.name, env.layer, identity.canonicalId, raw, form)
   const mark = (range: { start: number; end: number }, k: string) => {
     for (let i = 0; i < segments.length; i++) {
       const s = segments[i]!

@@ -6,7 +6,7 @@
  * edits, per-output edges) and `freeze()` renders everything into a plain
  * `EmitPlan` from which no Yuku object is reachable.
  */
-import { deriveId, digestOf, siblingSpecifier } from './identity'
+import { deriveId, edgeKeyOf, siblingSpecifier } from './identity'
 import { NameAllocator } from './names'
 import { computePlacement } from './reach'
 import { RewriteSet } from './rewrite'
@@ -325,14 +325,14 @@ export class AnalysisPlan implements PlanContext {
     form: EdgeForm,
     origin: EdgeProvenance['origin'] = 'source',
   ): string {
-    return digestOf({
-      env: this.env.name,
-      layer: this.env.layer ?? null,
-      importer: this.identity.canonicalId,
+    return edgeKeyOf(
+      this.env.name,
+      this.env.layer,
+      this.identity.canonicalId,
       rawSpecifier,
       form,
-      ...(origin === 'source' ? {} : { origin }),
-    })
+      origin,
+    )
   }
 
   /** Renames every reference and declaration of `sym` (R14, R38, §3.17). */

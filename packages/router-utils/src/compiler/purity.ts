@@ -189,7 +189,7 @@ export function isPureExpression(
       }
       if (node.type === 'CallExpression') {
         const callee = unwrapTs(node.callee)
-        if (callee.type === 'Identifier') {
+        if (callee.type === 'Identifier' && ctx.noSideEffectCallees.size > 0) {
           const b = ctx.file.referenceOf(callee)?.binding
           if (b && ctx.noSideEffectCallees.has(b.id)) {
             return node.arguments.every((a) =>

@@ -4,8 +4,14 @@
  * only LF in glue, and the escaper keeps every other line terminator out.
  */
 
+/** A character `stringLiteral` escapes (the common specifier or name has none). */
+const NEEDS_ESCAPE = /[\\\n\r\u2028\u2029'"]/
+
 /** Prints a JavaScript string literal with the given quote. */
 export function stringLiteral(value: string, quote: "'" | '"' = "'"): string {
+  if (!NEEDS_ESCAPE.test(value)) {
+    return quote + value + quote
+  }
   let out = quote
   for (let i = 0; i < value.length; i++) {
     const c = value.charCodeAt(i)
