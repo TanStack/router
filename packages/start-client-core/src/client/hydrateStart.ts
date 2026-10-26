@@ -1,3 +1,4 @@
+import { markDevStylesStale } from '@tanstack/router-core'
 import { hydrate } from '@tanstack/router-core/ssr/client'
 import { startInstance } from '#tanstack-start-entry'
 import {
@@ -12,6 +13,8 @@ import type { AnyStartInstanceOptions } from '../createStart'
 type HotContext = {
   data?: Record<string, unknown>
   dispose?: (cb: (data: Record<string, unknown>) => void) => void
+  // Vite (Rsbuild dev does not emit the dev styles link)
+  on?: (event: string, cb: (payload?: unknown) => void) => void
 }
 
 declare global {
@@ -65,6 +68,9 @@ function hydrateStartWithHmr(): Promise<AnyRouter> {
   if (!hot) {
     return hydrateStart()
   }
+
+  // Tell HeadContent that the SSR dev styles snapshot is outdated.
+  hot.on?.('vite:afterUpdate', markDevStylesStale)
 
   const key = 'tss-hydrate-start-promise'
   const hotData = (hot.data ??= {})
