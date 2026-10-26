@@ -23,6 +23,7 @@ import { onTestFinished } from 'vitest'
 import { startRuntimeLinks } from './build-harness'
 import { inProbeRequest, requestFiles } from './request-probe'
 import { startPlugins } from './start-plugins'
+import type { StartFramework } from './start-plugins'
 import type { TanStackStartViteInputConfig } from '../src/vite'
 import type { PluginOption } from 'vite'
 import type {
@@ -54,12 +55,13 @@ export interface StartDevServerOptions extends Omit<
   start?: TanStackStartViteInputConfig
   /**
    * The Start framework package of the app (default `react`): Start's
-   * plugin is that package's `tanstackStart()`, and `solid` links the built
-   * `@tanstack/solid-start` and `@tanstack/solid-router` (a Solid app's
-   * dependencies; its JSX plugin, `vite-plugin-solid`, comes from
-   * `plugins`).
+   * plugin is that package's `tanstackStart()`, and `solid` / `vue` link the
+   * built `@tanstack/solid-start` and `@tanstack/solid-router` /
+   * `@tanstack/vue-start` and `@tanstack/vue-router` (the app's
+   * dependencies; the framework's own Vite plugin, `vite-plugin-solid` or
+   * `@vitejs/plugin-vue(-jsx)`, comes from `plugins`).
    */
-  framework?: 'react' | 'solid'
+  framework?: StartFramework
 }
 
 /**
@@ -176,7 +178,7 @@ export const Route = createRootRoute()
 export function startPlugin(
   root: string,
   start: TanStackStartViteInputConfig,
-  framework: 'react' | 'solid' = 'react',
+  framework: StartFramework = 'react',
 ) {
   const entries = {
     client: path.join(root, 'harness/client-entry.ts'),

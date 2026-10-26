@@ -46,11 +46,13 @@
  * Import protection is on, with Start's defaults unless the test configures
  * it; it checks the modules of the source directory (`src`) only.
  */
+import { realpathSync } from 'node:fs'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import {
   linkWorkspacePackages,
+  workspacePackage,
   workspacePackageLinks,
 } from '@tanstack/compiler-test-utils/workspace-packages'
 import {
@@ -79,6 +81,7 @@ import { pluginReact } from '@rsbuild/plugin-react'
 import { onTestFinished } from 'vitest'
 import { inProbeRequest, requestFiles } from './request-probe'
 import { startPlugins, startRsbuildPlugin } from './start-plugins'
+import type { StartFramework } from './start-plugins'
 import type {
   BuildMode,
   BuildResult,
@@ -105,14 +108,31 @@ import type { InlineConfig, Plugin } from 'vite'
  * gets the built `@tanstack/solid-start` and `@tanstack/solid-router`.
  */
 export function startRuntimeLinks(
-  framework: 'react' | 'solid' = 'react',
+  framework: StartFramework = 'react',
 ): Record<string, string> {
-  return workspacePackageLinks([
-    '@tanstack/react-start',
-    ...(framework === 'solid'
-      ? ['@tanstack/solid-start', '@tanstack/solid-router']
-      : []),
-  ])
+  return {
+    ...workspacePackageLinks([
+      '@tanstack/react-start',
+      ...(framework === 'solid'
+        ? ['@tanstack/solid-start', '@tanstack/solid-router']
+        : []),
+      ...(framework === 'vue'
+        ? ['@tanstack/vue-start', '@tanstack/vue-router']
+        : []),
+    ]),
+    // A Vue app depends on `vue` itself (its JSX runtime and renderers):
+    // linked as installed, the copy Start's Vue packages use
+    ...(framework === 'vue'
+      ? {
+          'node_modules/vue': realpathSync(
+            path.join(
+              workspacePackage('@tanstack/vue-start'),
+              'node_modules/vue',
+            ),
+          ),
+        }
+      : {}),
+  }
 }
 
 /** Creates the `startRuntimeLinks()` of an app made without `createApp`. */

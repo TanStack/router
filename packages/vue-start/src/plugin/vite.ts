@@ -39,6 +39,14 @@ export function tanstackStart(
                     '@tanstack/vue-router',
                     '@tanstack/start-static-server-functions',
                   ],
+                  include: [
+                    // `@tanstack/vue-router` is excluded, so the scanner never
+                    // sees its `@tanstack/vue-store` import; discovered while
+                    // crawling, it imports `vue` and re-chunks the already
+                    // optimized `vue`, which forces a full page reload on
+                    // every cold start (and loses an in-flight page load).
+                    '@tanstack/vue-router > @tanstack/vue-store',
+                  ],
                 }
               : undefined,
         }
