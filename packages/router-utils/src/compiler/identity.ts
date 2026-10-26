@@ -242,9 +242,11 @@ export function canonicalJson(value: unknown): string {
 
 /**
  * The key of an import edge: unique per (environment, importer, specifier,
- * form, origin) within a request. A digest of the joined fields: cheaper
- * than `digestOf` of a record (one key per edge per output on every
- * compile), and no consumer parses it.
+ * form, origin) within a request. The digest of the record
+ * `{ env, layer, importer, rawSpecifier, form, origin? }` (`digestOf`, and
+ * `origin` only when it is not `'source'`), spelled out: one key per edge
+ * per output on every compile, so the canonical JSON is written directly
+ * instead of through `canonicalJson` (same bytes, same digest).
  */
 export function edgeKeyOf(
   env: string,
@@ -254,11 +256,12 @@ export function edgeKeyOf(
   form: string,
   origin = 'source',
 ): string {
-  return hash(
-    'sha1',
-    `${env}\0${layer ?? ''}\0${importer}\0${rawSpecifier}\0${form}\0${origin}`,
-    'base64url',
-  ).slice(0, 22)
+  // keys in sorted order: env, form, importer, layer, origin, rawSpecifier
+  const json =
+    `{"env":${JSON.stringify(env)},"form":${JSON.stringify(form)},"importer":${JSON.stringify(importer)},"layer":${layer == null ? 'null' : JSON.stringify(layer)},` +
+    (origin === 'source' ? '' : `"origin":${JSON.stringify(origin)},`) +
+    `"rawSpecifier":${JSON.stringify(rawSpecifier)}}`
+  return hash('sha1', json, 'base64url').slice(0, 22)
 }
 
 export function planKeyString(key: PlanKey): string {
