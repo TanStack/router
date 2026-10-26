@@ -17,7 +17,12 @@
  *   closes.
  */
 import { chromium } from '@playwright/test'
-import type { Browser, BrowserContext, Page } from '@playwright/test'
+import type {
+  Browser,
+  BrowserContext,
+  ConsoleMessage,
+  Page,
+} from '@playwright/test'
 
 export interface BrowserPage {
   /** The Playwright page. */
@@ -95,6 +100,19 @@ function semaphore(limit: number) {
         held--
       }
     }
+  }
+}
+
+/**
+ * Whether a console error is the 404 of the browser's own `/favicon.ico`
+ * request, which no test app serves (full Chromium requests it, e.g.
+ * Alpine's; Playwright's headless shell does not): not the page's error.
+ */
+function faviconMiss(message: ConsoleMessage) {
+  try {
+    return new URL(message.location().url).pathname === '/favicon.ico'
+  } catch {
+    return false
   }
 }
 
@@ -182,9 +200,9 @@ export async function runInPage<T = unknown>(input: {
   const onError = (error: Error) => {
     errors.push(error.stack ?? error.message)
   }
-  const onConsole = (message: { type: () => string; text: () => string }) => {
+  const onConsole = (message: ConsoleMessage) => {
     messages.push(`${message.type()}: ${message.text()}`)
-    if (message.type() === 'error') {
+    if (message.type() === 'error' && !faviconMiss(message)) {
       errors.push(message.text())
     }
   }
@@ -311,7 +329,7 @@ export async function openPage(
   })
   page.on('console', (message) => {
     messages.push(`${message.type()}: ${message.text()}`)
-    if (message.type() === 'error') {
+    if (message.type() === 'error' && !faviconMiss(message)) {
       errors.push(message.text())
     }
   })

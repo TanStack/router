@@ -989,22 +989,22 @@ export const serverOnly = createServerOnlyFn(() => 'server-only-marker')`,
 
     /**
      * Imports an app module in the host's page and runs `script` with it as
-     * `module` (again, on the new document, when an edit reloaded the page).
+     * `module` (again, on the new document, when an edit reloaded the page;
+     * `fresh`: on a new document). Through the host's page runs, which
+     * bound a run and report the page's errors and console when it fails.
      */
-    async function inEditPage(url: string, script: string) {
-      const opened = await (await editHost()).page()
-      for (let attempt = 0; ; attempt++) {
-        try {
-          return await opened.page.evaluate(
-            `(async () => { const module = await import(${JSON.stringify(url)}); ${script} })()`,
-          )
-        } catch (error) {
-          if (attempt === 2) {
-            throw error
-          }
-          await opened.page.waitForLoadState()
-        }
-      }
+    async function inEditPage(
+      url: string,
+      script: string,
+      runOptions?: { fresh?: boolean },
+    ) {
+      const run = await (
+        await editHost()
+      ).run(
+        `(async () => { const module = await import(${JSON.stringify(url)}); ${script} })()`,
+        runOptions,
+      )
+      return run.result
     }
 
     // Bug: after a dev edit of a module a server fn builder comes from, the
@@ -1045,7 +1045,6 @@ export const fn = base.handler(async () => db.x())`,
       await started.edit({
         [`${dir}/b.ts`]: `export const base = { handler: (fn: unknown) => fn }`,
       })
-      await (await started.page()).page.reload()
       expect(
         await inEditPage(
           `/${dir}/a.tsx`,
@@ -1054,6 +1053,7 @@ export const fn = base.handler(async () => db.x())`,
 } catch (error) {
   return { url: typeof module.fn.url, threw: String(error && error.message) }
 }`,
+          { fresh: true },
         ),
       ).toEqual({ url: 'undefined', result: 'x' })
     }, 30_000)

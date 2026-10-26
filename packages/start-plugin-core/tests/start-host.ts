@@ -812,7 +812,8 @@ export async function createStartHost(
     try {
       const { opened, requests } = held
       if (runOptions.fresh) {
-        await opened.page.reload()
+        // A document that never loads fails the run, not the test's timeout
+        await opened.page.reload({ timeout: pageRunTimeout })
       }
       let lastError: unknown
       for (let attempt = 0; attempt < 3; attempt++) {
