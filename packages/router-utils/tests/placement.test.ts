@@ -732,6 +732,25 @@ describe('route-module specifics (lane router)', () => {
     expect(r.env).not.toContain('assert')
   })
 
+  it('rewrites the import assertion keyword, not a comment naming it', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import a from './a.json' /* assert */ assert { type: 'json' }
+      import b from './b.json' /* assert */ with { type: 'json' }
+      export const Route = createFileRoute('/')({
+        loader: () => 'data',
+        component: () => a.title + b.title,
+      })
+    `)
+    const r = await split(code)
+    expect(r.chunks.component).toContain(
+      "import a from './a.json' /* assert */ with { type: 'json' }",
+    )
+    expect(r.chunks.component).toContain(
+      "import b from './b.json' /* assert */ with { type: 'json' }",
+    )
+  })
+
   it('keeps a React binding JSX may compile to when the runtime is unknown', async () => {
     const code = dedent(`
       import * as React from 'react'

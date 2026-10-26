@@ -238,15 +238,14 @@ export class AnalysisPlan implements PlanContext {
       if (!imp.attributesRange) {
         continue
       }
-      const from = imp.specifierRange.end
-      const between = code.slice(from, imp.attributesRange.start)
-      const m = /\bassert\b/.exec(between)
-      if (m) {
+      const start = attributesKeywordStart(
+        code,
+        imp.specifierRange.end,
+        imp.attributesRange.start,
+      )
+      if (code.startsWith('assert', start)) {
         this.rewrites.add({
-          range: {
-            start: from + m.index,
-            end: from + m.index + 'assert'.length,
-          },
+          range: { start, end: start + 'assert'.length },
           body: [{ k: 'text', parts: ['with'] }],
           scope: 'all-outputs',
           by: 'core:attributes',
@@ -1721,3 +1720,27 @@ function mergeEnv(
 }
 
 export type { GlueImport }
+
+/** The start of the first word between `from` and `to`, skipping whitespace and comments. */
+function attributesKeywordStart(
+  code: string,
+  from: number,
+  to: number,
+): number {
+  let i = from
+  while (i < to) {
+    const c = code.charCodeAt(i)
+    if (c === 47 /* / */ && code.charCodeAt(i + 1) === 42 /* * */) {
+      const end = code.indexOf('*/', i + 2)
+      i = end === -1 ? to : end + 2
+    } else if (c === 47 && code.charCodeAt(i + 1) === 47) {
+      const end = code.indexOf('\n', i + 2)
+      i = end === -1 ? to : end + 1
+    } else if (/\s/.test(code[i]!)) {
+      i++
+    } else {
+      return i
+    }
+  }
+  return to
+}
