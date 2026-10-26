@@ -75,6 +75,14 @@ async function withModule<T>(
       },
     )
   }
+  // Vite ids have forward slashes whatever the platform; the recorded
+  // inputs are native paths (Windows: backslashes)
+  const posix = (file: string) => file.replaceAll(path.sep, '/')
+  const inputByPosix = new Map(
+    Object.keys(files).map((file) => [posix(file), file] as const),
+  )
+  const inputOf = (id: string) => inputByPosix.get(id.split('?')[0]!)
+  const posixRoot = posix(root)
   const requested = new Set<string>()
   const printedRequests = new Map<string, Set<string>>()
   const imports: Array<{ file: string; specifier: string; importer: string }> =
@@ -94,22 +102,21 @@ async function withModule<T>(
           skipSelf: true,
         })
         if (resolved) {
-          const file = resolved.id.split('?')[0]!
-          if (
-            file in files &&
-            printedRequests.get(importer.split('?')[0]!)?.has(specifier)
-          ) {
-            imports.push({ file, specifier, importer: importer.split('?')[0]! })
+          const file = inputOf(resolved.id)
+          const from = importer.split('?')[0]!
+          if (file && printedRequests.get(from)?.has(specifier)) {
+            imports.push({ file, specifier, importer: from })
           }
         }
         return resolved
       },
       transform(code, id) {
+        const input = inputOf(id)
         const file = id.split('?')[0]!
-        if (file in files) {
-          requested.add(file)
+        if (input) {
+          requested.add(input)
         } else if (
-          file.startsWith(root + path.sep) &&
+          file.startsWith(posixRoot + '/') &&
           !file.includes('/node_modules/') &&
           /\.[cm]?[jt]sx?$/.test(file)
         ) {
