@@ -150,6 +150,15 @@ export class ImportProtection {
     return this.envs.values()
   }
 
+  /**
+   * Releases an environment's state once its build is finished (edges,
+   * edge modules, verdicts): nothing later reads it, and a later compile in
+   * the environment starts over (`env(name, type)`).
+   */
+  release(name: string): void {
+    this.envs.delete(name)
+  }
+
   /** Whether an importer path is checked (cached per path). */
   /**
    * A file was deleted (dev): forget what was recorded of it as an importer,

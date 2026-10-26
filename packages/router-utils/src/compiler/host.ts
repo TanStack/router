@@ -342,6 +342,19 @@ export async function invalidate(
   return { evicted, dependents }
 }
 
+/**
+ * Releases what the caches hold for one environment: its plans, their
+ * generations and dependents index. A host calls it once the environment
+ * can compile nothing more (a production build of the environment is
+ * finished); everything else in the caches is shared by the environments
+ * and stays. A later compile in the environment starts from an empty plan
+ * cache, so a host that builds the environment again gets the same output,
+ * only slower.
+ */
+export function releaseEnvironment(caches: CompilerCaches, env: string): void {
+  caches.plans.delete(env)
+}
+
 export function fingerprintSourceFor(
   caches: CompilerCaches,
   host: HostServices,

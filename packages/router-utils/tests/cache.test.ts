@@ -4,7 +4,7 @@
  * edits that change import targets, nor with unique files that come and go.
  */
 import { describe, expect, it } from 'vitest'
-import { invalidate } from '../src/compiler'
+import { invalidate, releaseEnvironment } from '../src/compiler'
 import { PlanCache } from '../src/compiler/cache'
 import { planKeyString } from '../src/compiler/identity'
 import { MemoryHost, envInfo, toySummaryPlanner } from './helpers'
@@ -213,5 +213,41 @@ describe('plan cache bookkeeping', () => {
     const host = new MemoryHost({ files: { '/app/plain.ts': 'export {}\n' } })
     await host.compile('/app/plain.ts', planners())
     expect(stats(host)).toMatchObject({ generations: 0, latest: 0 })
+  })
+})
+
+describe('releasing an environment', () => {
+  const server = envInfo({ name: 'ssr', type: 'server', conditions: [] })
+  const files = {
+    '/app/a.ts': `import { make } from './t'\nexport const a = make\n`,
+    '/app/t.ts': `export const make = 1\n`,
+  }
+
+  it('drops its plans only: the other environments keep theirs, and it compiles again the same', async () => {
+    const host = new MemoryHost({ files })
+    const client = await host.compile('/app/a.ts', planners())
+    await host.compile('/app/a.ts', planners(), { env: server })
+    releaseEnvironment(host.caches, env.name)
+    expect([...host.caches.plans.keys()]).toEqual([server.name])
+    // the other environment's plan is still a validated hit
+    await host.compile('/app/a.ts', planners(), { env: server })
+    expect(host.caches.plans.get(server.name)!.counters.planHits).toBe(1)
+    // compiling in the released environment starts over, with the same output
+    const again = await host.compile('/app/a.ts', planners())
+    expect(again!.code).toBe(client!.code)
+    expect(again!.facts).toEqual(client!.facts)
+    expect(stats(host)).toMatchObject({ plans: 1, planHits: 0 })
+  })
+
+  it('leaves nothing of the released plans reachable from the caches', async () => {
+    const gc = (globalThis as { gc?: () => void }).gc
+    expect(gc).toBeTypeOf('function')
+    const host = new MemoryHost({ files })
+    await host.compile('/app/a.ts', planners())
+    const released = new WeakRef(host.caches.plans.get(env.name)!)
+    releaseEnvironment(host.caches, env.name)
+    await new Promise((r) => setImmediate(r))
+    gc!()
+    expect(released.deref()).toBeUndefined()
   })
 })

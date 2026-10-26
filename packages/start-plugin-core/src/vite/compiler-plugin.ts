@@ -28,6 +28,7 @@ import {
   invalidate,
   isAnalyzableSpecifier,
   registerCompilerStats,
+  releaseEnvironment,
   resolveDerivedSibling,
 } from '@tanstack/router-utils/compiler'
 import { defaultCodeSplitGroupings } from '@tanstack/router-plugin'
@@ -1129,34 +1130,45 @@ export function startCompilerPlugin(
   }
 
   /**
-   * The fixed-point veto rebuild: every `builder.build(env)` of a Start
-   * environment — Start's own `buildApp` loop or another driver's, such as
-   * `@vitejs/plugin-rsc` — is one logical build, repeated while its
-   * `generateBundle` asked for another pass.
+   * One logical build per `builder.build(env)` of a Start environment —
+   * Start's own `buildApp` loop or another driver's, such as
+   * `@vitejs/plugin-rsc` — repeated while its `generateBundle` asked for
+   * another pass (import protection's fixed-point veto rebuild). A logical
+   * build that writes its bundle (not a scan: plugin-rsc analyses the rsc
+   * and ssr environments with `write: false` first and builds them again)
+   * outside watch mode is the environment's last: its compiler state is
+   * released before the next environment builds. What later environments
+   * read stays in the session: the server-fn registry and id allocator,
+   * the raw facts, the warnings ledger.
    */
   const buildLoopPlugin: Plugin = {
-    name: 'tanstack-start:import-protection-build-loop',
+    name: 'tanstack-start:build-loop',
     apply: 'build',
     buildApp: {
       order: 'pre',
       handler(builder: ViteBuilder) {
         const s = requireSession()
-        if (!s.ip) {
-          return Promise.resolve()
-        }
-        const ip = s.ip
         const original = builder.build.bind(builder)
         builder.build = async (environment: BuildEnvironment) => {
           const env = envOf(environment.name)
           if (!env) {
             return original(environment)
           }
-          const ipEnv = ip.env(env.name, env.type)
-          ipEnv.beginLogicalBuild()
           let output: Awaited<ReturnType<typeof original>> | undefined
-          await ipEnv.build.runToFixedPoint(async () => {
+          if (s.ip) {
+            const ipEnv = s.ip.env(env.name, env.type)
+            ipEnv.beginLogicalBuild()
+            await ipEnv.build.runToFixedPoint(async () => {
+              output = await original(environment)
+            })
+          } else {
             output = await original(environment)
-          })
+          }
+          const { write, watch } = environment.config.build
+          if (write !== false && !watch) {
+            releaseEnvironment(s.caches, env.name)
+            s.ip?.release(env.name)
+          }
           return output!
         }
         return Promise.resolve()

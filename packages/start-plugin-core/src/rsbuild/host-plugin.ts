@@ -79,7 +79,13 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
 } {
   const { session, environment, rspack } = opts
   const env = session.env(environment.name)
-  const ipEnv = session.ip?.env(environment.name) ?? null
+  /**
+   * This environment's import protection, looked up when a hook runs (not
+   * held by the hooks): the session releases it once the environment's
+   * build is finished.
+   */
+  const ipEnvOf = () =>
+    session.ip?.env(environment.name, environment.type) ?? null
   return {
     apply(compiler) {
       const { Compilation, WebpackError } = rspack
@@ -142,7 +148,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       // they are defined (the importer's compile) or change state (a build veto); an importer
       // restored from the persistent cache in a new process requests a module nothing
       // defined: the request carries its content, which defines it before it resolves
-      if (session.ip && ipEnv) {
+      if (session.ip) {
         const ip = session.ip
         ip.onEdgeModule((file, load, ref) => {
           if (ref.env === environment.name) {
@@ -169,14 +175,14 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         if (environment.type === 'client') {
           session.warnings.reset()
         }
-        ipEnv?.beginLogicalBuild()
+        ipEnvOf()?.beginLogicalBuild()
         await opts.generator.beforeRun()
       })
 
       compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async (c) => {
         const modified = [...(c.modifiedFiles ?? [])]
         const removed = [...(c.removedFiles ?? [])]
-        ipEnv?.beginLogicalBuild()
+        ipEnvOf()?.beginLogicalBuild()
         // Rspack reports no event for a file created while nothing depended on it (a target
         // deleted and recreated between edits): failed resolutions and missing-file facts are
         // re-read by the compiles of this compilation
@@ -203,6 +209,14 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         knownFiles = new Set<string>(deps as Iterable<string>)
         if (session.opts.mode === 'dev') {
           session.retain(environment.name, knownFiles)
+        } else if (
+          !compiler.watchMode &&
+          !stats.compilation.needAdditionalPass
+        ) {
+          // the last pass of a production build (an import-protection veto
+          // asks for another one, and `done` runs after each pass): nothing
+          // compiles in this environment any more
+          session.release(environment.name)
         }
       })
 
@@ -210,6 +224,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       compiler.hooks.thisCompilation.tap(PLUGIN_NAME, (compilation) => {
         currentCompilation = compilation
         env.compiled.clear()
+        const ipEnv = ipEnvOf()
         if (ipEnv) {
           // Rspack's module graph is not readable while modules build (a loader asking for a
           // trace would abort the process): no graph until `finishModules`, when the
@@ -260,18 +275,19 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 stage: Compilation.PROCESS_ASSETS_STAGE_ADDITIONAL,
               },
               async () => {
+                const buildEnv = ipEnvOf()!
                 const live = readRspackWitness(
                   compilation as never,
-                  ipEnv.witness(),
+                  buildEnv.witness(),
                 )
-                const result = await ipEnv.decide(
+                const result = await buildEnv.decide(
                   live,
                   guardedGraphView(compilation),
                 )
                 if (result.needPass) {
                   return
                 }
-                for (const report of ipEnv.buildReports()) {
+                for (const report of buildEnv.buildReports()) {
                   ;(report.severity === 'error'
                     ? compilation.errors
                     : compilation.warnings
@@ -284,7 +300,8 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             // (Rspack types the answer `boolean`; `undefined` is "no vote")
             compilation.hooks.needAdditionalPass.tap(
               PLUGIN_NAME,
-              () => (ipEnv.build.needPass || undefined) as unknown as boolean,
+              () =>
+                (ipEnvOf()!.build.needPass || undefined) as unknown as boolean,
             )
           }
         }
@@ -369,6 +386,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           if (compilation.compiler !== compiler) {
             return
           }
+          const ipEnv = ipEnvOf()
           if (ipEnv && session.opts.mode === 'dev') {
             for (const m of compilation.modules) {
               const module = m as unknown as ModuleLike

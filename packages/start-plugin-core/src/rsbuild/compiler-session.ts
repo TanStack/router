@@ -24,6 +24,7 @@ import {
   identify,
   invalidate,
   registerCompilerStats,
+  releaseEnvironment,
 } from '@tanstack/router-utils/compiler'
 import { defaultCodeSplitGroupings } from '@tanstack/router-plugin'
 import {
@@ -543,6 +544,23 @@ export class StartRsbuildCompilerSession {
     }
   }
 
+  /**
+   * After the last pass of an environment's production build: releases
+   * its plans, its import protection and its per-resource fingerprints.
+   * Its server-fn snapshot stays (the registry is rebuilt from every
+   * environment's snapshot), and so does what the environments share (raw
+   * facts, registry, id allocator, warnings).
+   */
+  release(envName: string): void {
+    releaseEnvironment(this.caches, envName)
+    this.ip?.release(envName)
+    const env = this.envs.get(envName)
+    if (env) {
+      env.fingerprints = new Map()
+      env.compiled = new Set()
+    }
+  }
+
   /** The one invalidation operation (compiler plans and bundler transforms together): the host's bundler rebuilds through the loader's `addDependency` set. */
   invalidate(
     file: string,
@@ -630,7 +648,7 @@ export class StartRsbuildCompilerSession {
       }
     }
     this.reportDiagnostics(ctx, out, identity.path, source, env.type)
-    const ipEnv = ip?.env(env.name)
+    const ipEnv = ip?.env(env.name, env.type)
     env.compiled.add(ctx.resource)
     if (ipEnv) {
       // registers the edges and, in development, reports the violations of

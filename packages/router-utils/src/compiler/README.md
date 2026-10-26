@@ -101,6 +101,9 @@ returned but not published.
   evicts the file's plans in every env, marks its raw facts stale, re-validates dependents' fingerprints with each
   environment's own resolver (add/unlink also retry failed resolutions) and returns `{ evicted, dependents }`, which
   the host hard-invalidates in the bundler. A summary change invalidates importers only when its export-facts digest changed.
+- `releaseEnvironment(caches, env)` is the end of an environment's lifetime: a production build releases an
+  environment's plans as soon as that environment's build is finished (several environments build one after the
+  other in one process). Raw facts are shared by the environments and stay.
 - Not cached: resolutions (storing them cost more than it saved; each compile records its answers in its ledger; validation asks the environment's
   resolver again only once a file appeared or disappeared since the plan's resolutions were validated,
   `CompilerCaches.fileSetVersion`) and emitted outputs (emission from a frozen recipe costs microseconds).

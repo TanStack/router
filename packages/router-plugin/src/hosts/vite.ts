@@ -15,6 +15,7 @@ import {
   OWNED_QUERY_RE,
   SourceText,
   identify,
+  releaseEnvironment,
   resolveDerivedSibling,
 } from '@tanstack/router-utils/compiler'
 import { getConfig } from '../core/config'
@@ -89,7 +90,10 @@ interface ModuleGraphLike {
 
 interface TransformEnvironment {
   name: string
-  config: { consumer: 'client' | 'server'; build?: { sourcemap?: unknown } }
+  config: {
+    consumer: 'client' | 'server'
+    build?: { sourcemap?: unknown; write?: boolean; watch?: unknown }
+  }
 }
 
 interface DiagnosticLog {
@@ -271,9 +275,20 @@ export function createRouterCompilerVitePlugin(
     },
 
     closeBundle() {
-      if (compiler.mode === 'build') {
-        unsubscribe?.()
-        unsubscribe = null
+      if (compiler.mode !== 'build') {
+        return
+      }
+      unsubscribe?.()
+      unsubscribe = null
+      // the environment's build is finished (a written bundle outside watch
+      // mode; a `write: false` build may be a scan that builds it again):
+      // its plans go before the next environment builds
+      const environment = (
+        this as unknown as { environment?: TransformEnvironment }
+      ).environment
+      const build = environment?.config.build
+      if (environment && build?.write !== false && !build?.watch) {
+        releaseEnvironment(compiler.caches, environment.name)
       }
     },
 
