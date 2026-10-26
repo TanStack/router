@@ -112,8 +112,10 @@ It reconstructs the final view of the compilation from Rspack data by:
    connections
 2. collecting specifier and file violations plus possible marker modules
 3. deduplicating marker modules and validating their persisted metadata
-4. returning early when no violations remain
-5. snapshotting the remaining modules and building the `ImportGraph` and
+4. with `log: 'once'`, dropping violations this environment already reported,
+   because reporting would discard them after enrichment
+5. returning early when no violations remain
+6. snapshotting the remaining modules and building the `ImportGraph` and
    diagnostic indexes only when needed
 
 Each `RspackModuleGraphNode` stores a module and its imported modules. Missing and
@@ -133,12 +135,16 @@ entry-to-violation traces pass through them, and replays the full snapshot in
 module order to build `ImportGraph`. A clean compilation avoids entry
 traversal, graph indexes, and module-source loading.
 
-In development, a compilation that directly follows a clean scan of the same
-environment first scans only `compilation.builtModules`, their direct importers
-(a rebuilt dependency can gain a marker without its importer changing), and
-entry modules, with the same eligibility filter. Any candidate, a removed file,
-or a skipped compilation falls back to the full scan, so violations are always
-reported from complete data.
+A scan is clean when it leaves no violation to report: none were found, or, with
+`log: 'once'`, every one was already reported. In development, a compilation
+that directly follows a clean scan of the same environment first scans only
+`compilation.builtModules`, their direct importers (a rebuilt dependency can
+gain a marker without its importer changing), and entry modules, with the same
+eligibility filter. It falls back to the full scan when it finds an unreported
+violation, when the previous compilation skipped the report stage, or when a
+changed or removed file is not the resource of a rebuilt module. Such files,
+for example `package.json` import maps or `tsconfig.json` paths, can re-resolve
+imports in modules that were not rebuilt.
 
 Diagnostic enrichment is lazy. The transform-result provider reads
 `module.originalSource().sourceAndMap()` when available. It gets original code
