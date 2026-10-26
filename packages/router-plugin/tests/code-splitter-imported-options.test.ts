@@ -166,6 +166,10 @@ export const options = {
       hmr: true,
       deleteNodes: nodes,
       files,
+      // A dev server of its own: the compiler reports an unsplit route once
+      // per dev server, so a shared host that compiled this route for an
+      // earlier test would say nothing more (the Alpine runner reuses it)
+      fresh: true,
     })
     const file = route.host.file('routes/x.tsx')
     let error: unknown

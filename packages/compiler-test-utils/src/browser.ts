@@ -52,10 +52,20 @@ export const runPageLimit = 4
 /** Pages `openPage` keeps open in one test process at once, at most. */
 export const openPageLimit = 16
 
+/**
+ * The Chromium executable to launch, when Playwright's own build cannot run
+ * on the platform (Alpine Linux: Playwright ships no musl build; the CI job
+ * installs the distribution's Chromium and names it here).
+ */
+const chromiumExecutable = process.env.TANSTACK_COMPILER_TESTS_CHROMIUM
+
 let browser: Promise<Browser> | undefined
 
 function launch() {
-  browser ??= chromium.launch({ headless: true })
+  browser ??= chromium.launch({
+    headless: true,
+    ...(chromiumExecutable ? { executablePath: chromiumExecutable } : {}),
+  })
   return browser
 }
 

@@ -201,7 +201,13 @@ export function createRouterCompilerVitePlugin(
         }
       })
 
-      // Validate plugin order - router must come before JSX transformation plugins
+      // Validate plugin order - router must come before JSX transformation
+      // plugins. Only route splitting needs the route file's source: without
+      // it (`autoCodeSplitting: false`) the route HMR block is appended to
+      // whatever the framework plugin emitted, so the order is free.
+      if (!userConfig.autoCodeSplitting) {
+        return
+      }
       const routerPluginIndex = config.plugins.findIndex(
         (p) => p.name === CODE_SPLITTER_PLUGIN_NAME,
       )
@@ -288,11 +294,14 @@ export function createRouterCompilerVitePlugin(
       const queue = chunks.filter((c) => c.isEntry).map((c) => c.fileName)
       while (queue.length > 0) {
         const name = queue.pop()!
-        if (eager.has(name)) {
+        // a chunk's imports also name what the build leaves external
+        // (`build.rolldownOptions.external`, a library build): not chunks
+        const chunk = byName.get(name)
+        if (!chunk || eager.has(name)) {
           continue
         }
         eager.add(name)
-        queue.push(...(byName.get(name)?.imports ?? []))
+        queue.push(...chunk.imports)
       }
       const seen = new Set<string>()
       for (const name of eager) {

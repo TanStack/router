@@ -1,7 +1,22 @@
 /** Fixture-owned files, recorded before generation; generated support is free. */
-import { existsSync } from 'node:fs'
+import { existsSync, realpathSync } from 'node:fs'
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
+
+/**
+ * The canonical form of a path: the native real path (Windows: long names
+ * for 8.3 short names such as `RUNNER~1`, the drive letter's case; symlinks
+ * resolved everywhere), as the generator and the module loader report files.
+ * A path that does not exist yet is resolved as given.
+ */
+function canonical(file: string) {
+  const resolved = path.resolve(file)
+  try {
+    return realpathSync.native(resolved)
+  } catch {
+    return resolved
+  }
+}
 
 const apps = new Map<
   string,
@@ -13,11 +28,11 @@ export function recordInputs(
   files: Record<string, string>,
   target?: string,
 ) {
-  const absolute = path.resolve(root)
+  const absolute = canonical(root)
   const app = apps.get(absolute) ?? { files: {}, target: 'react' }
   const inputs = app.files
   for (const [file, source] of Object.entries(files)) {
-    inputs[path.resolve(root, file)] = source
+    inputs[path.resolve(absolute, file)] = source
   }
   app.target = target ?? app.target
   apps.set(absolute, app)
@@ -46,8 +61,9 @@ export async function recordDirectoryInputs(root: string, excluded: string) {
 }
 
 export function inputsOf(file: string) {
+  const canonicalFile = canonical(file)
   const entry = [...apps]
-    .filter(([root]) => file.startsWith(root + path.sep))
+    .filter(([root]) => canonicalFile.startsWith(root + path.sep))
     .sort(([a], [b]) => b.length - a.length)[0]
   if (!entry) {
     throw new Error(`No fixture inputs recorded for ${file}`)

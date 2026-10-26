@@ -4,10 +4,11 @@
  * real exports; no dependency layout or runner module inventory is inspected.
  * A public Vite transform hook observes requests for fixture-owned files only.
  */
-import { mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises'
+import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { createServer, createServerModuleRunner, parseSync } from 'vite'
+import { linkDirectory } from '@tanstack/compiler-test-utils/app-directory'
 import { openDiagnosticChannel } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import { inputsOf, recordInputs } from './consumer-inputs'
@@ -66,16 +67,22 @@ async function withModule<T>(
   // their parent. Only standalone temporary apps need their own link.
   const fromPackage = path.relative(path.dirname(nodeModules), root)
   if (fromPackage.startsWith('..') || path.isAbsolute(fromPackage)) {
-    await symlink(
-      nodeModules,
-      path.join(root, 'node_modules'),
-      'junction',
-    ).catch((error: NodeJS.ErrnoException) => {
-      if (error.code !== 'EEXIST') {
-        throw error
-      }
-    })
+    await linkDirectory(nodeModules, path.join(root, 'node_modules')).catch(
+      (error: NodeJS.ErrnoException) => {
+        if (error.code !== 'EEXIST') {
+          throw error
+        }
+      },
+    )
   }
+  // Vite ids have forward slashes whatever the platform; the recorded
+  // inputs are native paths (Windows: backslashes)
+  const posix = (file: string) => file.replaceAll(path.sep, '/')
+  const inputByPosix = new Map(
+    Object.keys(files).map((file) => [posix(file), file] as const),
+  )
+  const inputOf = (id: string) => inputByPosix.get(id.split('?')[0]!)
+  const posixRoot = posix(root)
   const requested = new Set<string>()
   const printedRequests = new Map<string, Set<string>>()
   const imports: Array<{ file: string; specifier: string; importer: string }> =
@@ -95,22 +102,21 @@ async function withModule<T>(
           skipSelf: true,
         })
         if (resolved) {
-          const file = resolved.id.split('?')[0]!
-          if (
-            file in files &&
-            printedRequests.get(importer.split('?')[0]!)?.has(specifier)
-          ) {
-            imports.push({ file, specifier, importer: importer.split('?')[0]! })
+          const file = inputOf(resolved.id)
+          const from = importer.split('?')[0]!
+          if (file && printedRequests.get(from)?.has(specifier)) {
+            imports.push({ file, specifier, importer: from })
           }
         }
         return resolved
       },
       transform(code, id) {
+        const input = inputOf(id)
         const file = id.split('?')[0]!
-        if (file in files) {
-          requested.add(file)
+        if (input) {
+          requested.add(input)
         } else if (
-          file.startsWith(root + path.sep) &&
+          file.startsWith(posixRoot + '/') &&
           !file.includes('/node_modules/') &&
           /\.[cm]?[jt]sx?$/.test(file)
         ) {

@@ -578,9 +578,11 @@ export async function trigger(route: any, option: string) {
  * away from the run instead of failing it.
  */
 export function assertNoFailedRequests() {
+  // A full Chromium (not Playwright's headless shell) also requests the
+  // page's favicon, which no app serves: the browser's request, not a module
   const failed = performance
     .getEntriesByType('resource')
-    .filter((entry: any) => entry.responseStatus >= 400)
+    .filter((entry: any) => entry.responseStatus >= 400 && new URL(entry.name).pathname !== '/favicon.ico')
     .map((entry: any) => \`\${new URL(entry.name).pathname}\${new URL(entry.name).search} (HTTP \${entry.responseStatus})\`)
   if (failed.length > 0) throw new Error(\`a module of the app failed to load: \${failed.join(', ')}\`)
 }
