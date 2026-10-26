@@ -103,7 +103,12 @@ export function createRsbuildRouteGenerator(opts: {
 
   const publish = () => {
     const previous = routesByFile
-    routesByFile = instance().getRoutesByFileMap()
+    const next = instance().getRoutesByFileMap()
+    // the generator replaces its registry when a route changed
+    if (next === previous) {
+      return
+    }
+    routesByFile = next
     byRealPath = null
     const changed: Array<string> = []
     for (const [file, entry] of routesByFile) {
