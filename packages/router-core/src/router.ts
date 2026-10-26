@@ -2280,6 +2280,8 @@ export class RouterCore<
             __tempLocation: {
               ...nextHistory,
               search: nextHistory.searchStr,
+              // parsed back as a history location, whose hash keeps its '#'
+              hash: nextHistory.hash ? `#${nextHistory.hash}` : '',
               state: {
                 ...nextHistory.state,
                 __tempKey: undefined!,

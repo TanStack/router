@@ -53,3 +53,23 @@ describe('masked location remnants in history state', () => {
     expect(history.location.state.__tempLocation).toBeUndefined()
   })
 })
+
+describe('masked location hash', () => {
+  test('keeps the hash of the location under the mask', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const routeTree = rootRoute.addChildren([
+      new BaseRoute({ getParentRoute: () => rootRoute, path: '/real' }),
+      new BaseRoute({ getParentRoute: () => rootRoute, path: '/pretty' }),
+    ])
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+    await router.load()
+
+    await router.navigate({ to: '/real', hash: 'tab', mask: { to: '/pretty' } })
+
+    expect(router.latestLocation.href).toBe('/real#tab')
+    expect(router.latestLocation.hash).toBe('tab')
+  })
+})
