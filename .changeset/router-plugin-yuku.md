@@ -6,6 +6,7 @@ Route code splitting and route HMR run on the new compiler core instead of Babel
 
 **What changes for your app when you upgrade:**
 
+- **Vite 6 or later is required** (the `vite` peer range is now `>=6`): the plugin is tested on Vite 6, 7 and 8; Vite 5 is no longer supported.
 - **esbuild refuses `autoCodeSplitting: true`** with a clear error (route generation still works there); use Vite, Rspack or webpack for code splitting.
 - **CommonJS consumers need Node 20.19+ or 22.12+** (`engines`): a `webpack.config.js` / `rspack.config.js` that `require()`s the plugin loads the ESM-only parser through `require(esm)`, which Node 22.0–22.11 and 21 do not support.
 - **Routes the compiler cannot read statically stay unsplit with one warning per file per build** naming the file: route options built by a helper call (`createFileRoute('/x')(makeOptions())`), options that spread or compute, methods that read `this`, and route modules the compiler cannot parse. Main split some of these silently or crashed.
