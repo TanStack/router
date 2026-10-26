@@ -28,6 +28,14 @@ function HydrationBoundary(props: {
 }) {
   const { g, o } = props
 
+  // Hooks must run before the gate: if the gate resolves while React replays
+  // a mount that suspended on it, the replay has to call the same hooks as
+  // the attempt that suspended, or React throws "Update hook called on
+  // initial render".
+  React.useEffect(() => {
+    o?.()
+  }, [o])
+
   if (!g.r) {
     if (!reactUse) {
       throw g.p
@@ -35,10 +43,6 @@ function HydrationBoundary(props: {
 
     reactUse(g.p)
   }
-
-  React.useEffect(() => {
-    o?.()
-  }, [o])
 
   return props.children as React.JSX.Element
 }
