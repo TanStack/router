@@ -185,37 +185,37 @@ export const label = () => \`${label} \${marked()} \${value}\`
       }
     ).counters[name] ?? 0
 
-  await fs.promises.mkdir(sourceDir, { recursive: true })
-  await fs.promises.writeFile(packageFile, importMap('./safe.ts'))
-  await fs.promises.writeFile(targetFile, target('safe'))
-  await fs.promises.writeFile(
-    markedFile,
-    `export const marked = () => 'plain'\n`,
-  )
-  await fs.promises.writeFile(
-    path.join(sourceDir, 'safe.ts'),
-    `export const value = 'safe'\n`,
-  )
-  await fs.promises.writeFile(
-    path.join(sourceDir, 'secret.server.ts'),
-    `export const value = 'secret'\n`,
-  )
-  await editor.replaceText(
-    'index',
-    `import { createFileRoute, useHydrated } from '@tanstack/react-router'`,
-    `import { createFileRoute, useHydrated } from '@tanstack/react-router'
+  try {
+    await fs.promises.mkdir(sourceDir, { recursive: true })
+    await fs.promises.writeFile(packageFile, importMap('./safe.ts'))
+    await fs.promises.writeFile(targetFile, target('safe'))
+    await fs.promises.writeFile(
+      markedFile,
+      `export const marked = () => 'plain'\n`,
+    )
+    await fs.promises.writeFile(
+      path.join(sourceDir, 'safe.ts'),
+      `export const value = 'safe'\n`,
+    )
+    await fs.promises.writeFile(
+      path.join(sourceDir, 'secret.server.ts'),
+      `export const value = 'secret'\n`,
+    )
+    await editor.replaceText(
+      'index',
+      `import { createFileRoute, useHydrated } from '@tanstack/react-router'`,
+      `import { createFileRoute, useHydrated } from '@tanstack/react-router'
 import { label } from '../import-protection-hmr/target'
 import '../import-protection-hmr/secret.server'`,
-  )
-  await editor.replaceText(
-    'index',
-    '<h1 data-testid="heading">Import Protection E2E</h1>',
-    '<h1 data-testid="heading">Import Protection E2E</h1>\n      <p>{label()}</p>',
-  )
-  process.env.TSR_IMPORT_PROTECTION_PERF = '1'
-  process.env.TSR_IMPORT_PROTECTION_PERF_FILE = perfFile
+    )
+    await editor.replaceText(
+      'index',
+      '<h1 data-testid="heading">Import Protection E2E</h1>',
+      '<h1 data-testid="heading">Import Protection E2E</h1>\n      <p>{label()}</p>',
+    )
+    process.env.TSR_IMPORT_PROTECTION_PERF = '1'
+    process.env.TSR_IMPORT_PROTECTION_PERF_FILE = perfFile
 
-  try {
     const rsbuild = await createRsbuild({
       cwd: fixtureRoot,
       rsbuildConfig: {
