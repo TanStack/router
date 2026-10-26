@@ -288,11 +288,14 @@ export function createRouterCompilerVitePlugin(
       const queue = chunks.filter((c) => c.isEntry).map((c) => c.fileName)
       while (queue.length > 0) {
         const name = queue.pop()!
-        if (eager.has(name)) {
+        // a chunk's imports also name what the build leaves external
+        // (`build.rolldownOptions.external`, a library build): not chunks
+        const chunk = byName.get(name)
+        if (!chunk || eager.has(name)) {
           continue
         }
         eager.add(name)
-        queue.push(...(byName.get(name)?.imports ?? []))
+        queue.push(...chunk.imports)
       }
       const seen = new Set<string>()
       for (const name of eager) {
