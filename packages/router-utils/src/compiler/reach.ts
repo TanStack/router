@@ -1123,21 +1123,10 @@ export function computePlacement(input: PlacementInput): Placement {
   let liveEnv = new Set<ClusterId>()
   for (let round = 0; round < 10; round++) {
     liveEnv = reach('env', envRoots)
+    decideMovable()
     let added = false
     for (const cl of clusters) {
-      if (
-        liveEnv.has(cl.id) ||
-        cl.kind !== 'declaration' ||
-        !cl.effectful ||
-        cl.exported
-      ) {
-        continue
-      }
-      if (envRoots.has(cl.id)) {
-        continue
-      }
-      if (isMovable(cl)) {
-        movable.add(cl.id)
+      if (!undecided(cl) || movable.has(cl.id)) {
         continue
       }
       if (fromErased.has(cl.id)) {
@@ -1150,7 +1139,41 @@ export function computePlacement(input: PlacementInput): Placement {
       break
     }
   }
-  function isMovable(cl: Cluster): boolean {
+  /** An effectful, unexported declaration cluster the env module does not keep (yet): it moves, is orphaned or becomes an env root. */
+  function undecided(cl: Cluster): boolean {
+    return (
+      !liveEnv.has(cl.id) &&
+      cl.kind === 'declaration' &&
+      cl.effectful &&
+      !cl.exported &&
+      !envRoots.has(cl.id)
+    )
+  }
+  /**
+   * The effectful clusters that move with their only needer (R29/R31),
+   * computed from the current env liveness: (a)–(c) per cluster, then (d)
+   * over the final placement, decided last item first. A cluster's (d)
+   * only looks at units after its last item, whose clusters end after it
+   * and are decided already: a later effect moving to the same output
+   * evaluates after it there (source order); one staying in the env module,
+   * or moving to another output, blocks it.
+   */
+  function decideMovable(): void {
+    movable.clear()
+    const target = new Map<ClusterId, OutputId>()
+    const candidates = clusters
+      .filter(undecided)
+      .sort((x, y) => y.lastItem - x.lastItem)
+    for (const cl of candidates) {
+      const to = movableTo(cl)
+      if (to !== undefined && !laterEffectStays(cl, to, target)) {
+        target.set(cl.id, to)
+        movable.add(cl.id)
+      }
+    }
+  }
+  /** The only needer `cl` may move to by R29 (a)–(c), if any. */
+  function movableTo(cl: Cluster): OutputId | undefined {
     // (a) exactly one derived needer
     const needs: Array<OutputId> = []
     for (const [id, set] of derivedReach) {
@@ -1159,14 +1182,14 @@ export function computePlacement(input: PlacementInput): Placement {
       }
     }
     if (needs.length !== 1) {
-      return false
+      return undefined
     }
     // (b) no ordered-evaluation constraint: nothing outside the cluster
     // mutates it (its own top-level augmentations, `X.p = …`, travel with
     // it: a binding and its writers are one cluster), and it reads nothing
     // mutated
     if (externallyMutated.has(cl.id)) {
-      return false
+      return undefined
     }
     for (const u of cl.units) {
       const unit = units[u]!
@@ -1179,7 +1202,7 @@ export function computePlacement(input: PlacementInput): Placement {
       ) {
         continue
       }
-      return false
+      return undefined
     }
     for (const r of cl.regions) {
       for (const ref of ownedRefs.get(r) ?? []) {
@@ -1196,43 +1219,53 @@ export function computePlacement(input: PlacementInput): Placement {
           continue
         }
         if (mutatedClusters.has(d)) {
-          return false
+          return undefined
         }
         const dc = clusters[d]!
         // (c) imports used by no other output, or pure module clusters
         if (dc.kind === 'import') {
           for (const [id, set] of derivedReach) {
             if (id !== needs[0] && set.has(d)) {
-              return false
+              return undefined
             }
           }
           if (liveEnv.has(d)) {
-            return false
+            return undefined
           }
         } else if (!pure(d)) {
-          return false
+          return undefined
         }
       }
     }
-    // (d) no surviving effectful unit after it in the env module (benign ones excepted)
+    return needs[0]
+  }
+  /**
+   * R31 (d): a surviving effectful unit after `cl` (benign ones excepted)
+   * that does not move to `to` with it (`target`: the later clusters
+   * moving, by output).
+   */
+  function laterEffectStays(
+    cl: Cluster,
+    to: OutputId,
+    target: ReadonlyMap<ClusterId, OutputId>,
+  ): boolean {
     for (const u of units) {
       if (
         u.item <= cl.lastItem ||
         !u.effectful ||
         benignEffects.has(u.id) ||
-        !unitSurvives(u.id)
+        !unitSurvives(u.id) ||
+        u.kind === 'type'
       ) {
         continue
       }
-      if (clusterOfRegion.get(u.region) === cl.id) {
+      const uc = clusterOfRegion.get(u.region)
+      if (uc === cl.id || (uc !== undefined && target.get(uc) === to)) {
         continue
       }
-      if (u.kind === 'type') {
-        continue
-      }
-      return false
+      return true
     }
-    return true
+    return false
   }
 
   // ---- extracted exports: decide ----------------------------------------------
@@ -1318,6 +1351,10 @@ export function computePlacement(input: PlacementInput): Placement {
         derivedReach.set(e.output, reach(e.output, [e.cluster], others))
       }
     }
+    // a cancelled candidate's reads and the extracted outputs change what
+    // stays and where the rest goes: moves are decided again (a cluster
+    // that no longer moves is homed in env and becomes an env root below)
+    decideMovable()
   }
 
   // ---- orphans: erased-only clusters the final env liveness does not reach ------

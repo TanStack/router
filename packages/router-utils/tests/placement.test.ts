@@ -922,6 +922,66 @@ describe('ordered evaluation and movable effects', () => {
     )
   })
 
+  it('moves consecutive effectful initialisers one chunk needs together, in source order', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { make } from './make'
+      const a = make('a')
+      const b = make('b')
+      const c = make('c')
+      export const Route = createFileRoute('/')({
+        component: () => a + b + c,
+      })
+    `)
+    const r = await split(code)
+    expect(r.env).not.toContain('make(')
+    expect(r.chunks.component).toContain(
+      "const a = make('a')\nconst b = make('b')\nconst c = make('c')",
+    )
+  })
+
+  it('keeps the initialisers before a surviving effect eager and moves the ones after it', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { make } from './make'
+      import { advance } from './clock'
+      import { build } from './build'
+      const a = make('a')
+      advance()
+      const b = build('b')
+      const c = build('c')
+      export const Route = createFileRoute('/')({
+        component: () => a + b + c,
+      })
+    `)
+    const r = await split(code)
+    expect(r.env).toContain("const a = make('a')\nadvance()")
+    expect(r.env).not.toContain('build(')
+    expect(r.chunks.component).toContain("import { a } from './route.tsx'")
+    expect(r.chunks.component).toContain(
+      "const b = build('b')\nconst c = build('c')",
+    )
+  })
+
+  it('keeps an initialiser eager when a later one moves to another chunk', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { make } from './make'
+      import { other } from './other'
+      const a = make('a')
+      const b = other('b')
+      export const Route = createFileRoute('/')({
+        component: () => a,
+        errorComponent: () => b,
+      })
+    `)
+    const r = await split(code, { keys: ['component', 'errorComponent'] })
+    expect(r.env).toContain("const a = make('a')")
+    expect(r.env).not.toContain("other('b')")
+    expect(r.chunks.component).toContain("import { a } from './route.tsx'")
+    expect(r.chunks.errorComponent).toContain("const b = other('b')")
+  })
+
   it('a /* @__PURE__ */ initialiser simply moves', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
