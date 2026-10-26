@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { findRouteMatch, processRouteTree } from '../src/new-process-route-tree'
+import { findRouteMatch } from '../src/new-process-route-tree'
 import { BaseRootRoute, BaseRoute, PathParamError } from '../src'
-import { createTestRouter } from './routerTestUtils'
+import {
+  createTestRouter,
+  processTestRouteTree as processRouteTree,
+} from './routerTestUtils'
 
 type TestRoute = {
   id: string

@@ -39,7 +39,7 @@ const config = defineConfig(({ mode }) => {
       watch: false,
       environment: 'jsdom',
       typecheck: { enabled: true },
-      setupFiles: ['./tests/setupTests.tsx'],
+      setupFiles: ['./tests/jest-dom.setup.ts', './tests/setupTests.tsx'],
       server: {
         deps: {
           inline: [/@solidjs/, /@tanstack\/solid-store/],

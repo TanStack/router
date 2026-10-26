@@ -8,7 +8,6 @@ import {
   createRouter,
 } from '@tanstack/solid-router'
 import * as v from 'valibot'
-import '@testing-library/jest-dom/vitest'
 
 test('can navigate to the route', async () => {
   const rootRoute = createRootRoute()

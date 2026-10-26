@@ -24,6 +24,14 @@ const router = createRouter({
   defaultStaleTime: 5000,
   scrollRestoration: true,
   routeMasks: [mask],
+  rewrite: {
+    output: ({ url }) => {
+      if (url.pathname === '/document-navigation-target') {
+        return new URL(`http://127.0.0.1:${window.location.port}/external.html`)
+      }
+      return url
+    },
+  },
 })
 
 // Register things for typesafety

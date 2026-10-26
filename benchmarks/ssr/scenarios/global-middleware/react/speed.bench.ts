@@ -1,10 +1,8 @@
-import { bench, describe } from 'vitest'
+import { test } from 'vitest'
 import {
   assertGlobalMiddlewareScenario,
   globalMiddlewareBenchOptions,
   runGlobalMiddlewareDocumentLoop,
-  runGlobalMiddlewareServerFnLoop,
-  runGlobalMiddlewareServerRouteLoop,
   setupGlobalMiddlewareBench,
 } from '../bench'
 import type { StartRequestHandler } from '../bench'
@@ -16,27 +14,12 @@ const { default: handler } = (await import(
 )) as {
   default: StartRequestHandler
 }
-
 const context = await setupGlobalMiddlewareBench(handler)
 
 await assertGlobalMiddlewareScenario(handler, context)
 
-describe('ssr', () => {
-  bench(
-    'ssr global-mw document (react)',
-    () => runGlobalMiddlewareDocumentLoop(handler),
-    globalMiddlewareBenchOptions,
-  )
-
-  bench(
-    'ssr global-mw server-fn (react)',
-    () => runGlobalMiddlewareServerFnLoop(handler, context),
-    globalMiddlewareBenchOptions,
-  )
-
-  bench(
-    'ssr global-mw server-route (react)',
-    () => runGlobalMiddlewareServerRouteLoop(handler),
-    globalMiddlewareBenchOptions,
-  )
+test('ssr', async ({ bench }) => {
+  await bench('ssr global-mw document (react)', async () =>
+    runGlobalMiddlewareDocumentLoop(handler),
+  ).run(globalMiddlewareBenchOptions)
 })

@@ -1,4 +1,25 @@
+import { defineComponent } from 'vue'
 import { Outlet, createFileRoute } from '@tanstack/vue-router'
+
+const RouteComponent = defineComponent({
+  setup() {
+    const loaderData = Route.useLoaderData()
+    const context = Route.useRouteContext()
+    return () => (
+      <div data-testid="posts-container">
+        <h3 data-testid="posts-heading">posts</h3>
+        <div>
+          loader: <b data-testid="posts-loader">{loaderData.value.posts}</b>
+        </div>
+        <div>
+          context: <b data-testid="posts-context">{context.value.posts}</b>
+        </div>
+        <hr />
+        <Outlet />
+      </div>
+    )
+  },
+})
 
 export const Route = createFileRoute('/posts')({
   beforeLoad: () => {
@@ -16,22 +37,6 @@ export const Route = createFileRoute('/posts')({
 
     return { posts: typeof window === 'undefined' ? 'server' : 'client' }
   },
-  component: () => {
-    const loaderData = Route.useLoaderData()
-    const context = Route.useRouteContext()
-    return (
-      <div data-testid="posts-container">
-        <h3 data-testid="posts-heading">posts</h3>
-        <div>
-          loader: <b data-testid="posts-loader">{loaderData.value.posts}</b>
-        </div>
-        <div>
-          context: <b data-testid="posts-context">{context.value.posts}</b>
-        </div>
-        <hr />
-        <Outlet />
-      </div>
-    )
-  },
+  component: RouteComponent,
   pendingComponent: () => <div>posts Loading...</div>,
 })

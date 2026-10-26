@@ -7,8 +7,9 @@ import {
   applyResolvedRouterBasepath,
   createStartConfigContext,
 } from '../config-context'
-import { escapeRegExp, normalizePath } from '../utils'
+import { normalizePath } from '../utils'
 import { createServerFnBasePath, normalizePublicBase } from '../planning'
+import { addWorkspaceWatchIgnored } from './watch-ignored'
 import { parseStartConfig, rsbuildClientOutputSchema } from './schema'
 import {
   RSBUILD_CLIENT_ASSETS_DIR,
@@ -26,6 +27,7 @@ import {
 } from './virtual-modules'
 import { createServerSetup } from './server-middleware'
 import { registerClientBuildCapture } from './normalized-client-build'
+import { tapServerFnResolverRebuild } from './server-fn-resolver-rebuild'
 import { registerRouterPlugins } from './start-router-plugin'
 import { postBuildWithRsbuild } from './post-build'
 import { enableSwcReactServerComponents } from './swc-rsc'
@@ -342,22 +344,24 @@ export function tanStackStartRsbuild(
             return
           }
 
+          const environmentName = utils.environment.name
           config.plugins.push({
             apply(compiler: RspackCompiler) {
-              compiler.hooks.finishMake.tapPromise(
-                {
-                  name: 'TanStackStartServerFnResolverRebuild',
-                  stage: -10,
-                },
-                async (compilation: RspackCompilationExtended) => {
+              tapServerFnResolverRebuild(compiler, {
+                name: 'TanStackStartServerFnResolverRebuild',
+                updateResolver: () => {
                   virtualModuleState.updateServerFnResolver()
-
-                  await rebuildModulesContaining(
+                },
+                getResolverWriteCount: () =>
+                  virtualModuleState.getServerFnResolverWriteCount(
+                    environmentName,
+                  ),
+                rebuildResolver: (compilation) =>
+                  rebuildModulesContaining(
                     compilation,
                     virtualModuleState.serverFnResolverPath,
-                  )
-                },
-              )
+                  ),
+              })
             },
           })
         })
@@ -366,7 +370,7 @@ export function tanStackStartRsbuild(
       // ---------------------------------------------------------------
       // 4. Client build stats capture via processAssets
       // ---------------------------------------------------------------
-      const { getClientBuild } = registerClientBuildCapture(api)
+      const { getClientBuild } = registerClientBuildCapture(api, getConfig)
 
       // ---------------------------------------------------------------
       // 4b. Server manifest module generation (build only)
@@ -444,27 +448,12 @@ export function tanStackStartRsbuild(
           const workspaceDistRealpaths = resolveWorkspacePackageDistRealpaths()
           if (workspaceDistRealpaths.length === 0) return
 
-          const workspaceDistIgnored = new RegExp(
-            workspaceDistRealpaths
-              .map((path) => `^${escapeRegExp(path)}(?:[\\\\/]|$)`)
-              .join('|'),
-          )
-          const ignored = config.watchOptions?.ignored
-
           config.watchOptions = {
             ...(config.watchOptions ?? {}),
-            ignored:
-              ignored == null
-                ? new RegExp(
-                    `${defaultRspackWatchIgnored.source}|${workspaceDistIgnored.source}`,
-                  )
-                : typeof ignored === 'string'
-                  ? [ignored, ...workspaceDistRealpaths]
-                  : Array.isArray(ignored)
-                    ? [...ignored, ...workspaceDistRealpaths]
-                    : new RegExp(
-                        `${ignored.source}|${workspaceDistIgnored.source}`,
-                      ),
+            ignored: addWorkspaceWatchIgnored(
+              config.watchOptions?.ignored,
+              workspaceDistRealpaths,
+            ),
           }
         })
       }
@@ -551,24 +540,23 @@ export function tanStackStartRsbuild(
 
             config.plugins.push({
               apply(compiler: RspackCompiler) {
-                compiler.hooks.finishMake.tapPromise(
-                  {
-                    name: 'TanStackStartRscServerFnResolverRebuild',
-                    stage: -10,
-                  },
-                  async (compilation: RspackCompilationExtended) => {
-                    const resolverContent =
-                      virtualModuleState.generateCurrentResolverContent(true)
+                tapServerFnResolverRebuild(compiler, {
+                  name: 'TanStackStartRscServerFnResolverRebuild',
+                  updateResolver: () => {
                     virtualModuleState.tryUpdateServerFnResolver(
-                      resolverContent,
+                      virtualModuleState.generateCurrentResolverContent(true),
                     )
-
-                    await rebuildModulesContaining(
+                  },
+                  getResolverWriteCount: () =>
+                    virtualModuleState.getServerFnResolverWriteCount(
+                      RSBUILD_ENVIRONMENT_NAMES.server,
+                    ),
+                  rebuildResolver: (compilation) =>
+                    rebuildModulesContaining(
                       compilation,
                       virtualModuleState.serverFnResolverPath,
-                    )
-                  },
-                )
+                    ),
+                })
               },
             })
 
@@ -789,8 +777,6 @@ export function tanStackStartRsbuild(
     },
   }
 }
-
-const defaultRspackWatchIgnored = /[\\/](?:\.git|node_modules)[\\/]/
 
 function seedResolveModules(
   config: RspackConfig,

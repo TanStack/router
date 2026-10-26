@@ -13,9 +13,12 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as AnchorRouteImport } from './routes/anchor'
 import { Route as ComponentTypesTestRouteImport } from './routes/component-types-test'
+import { Route as DocumentNavigationRouteImport } from './routes/document-navigation'
+import { Route as DocumentNavigationTargetRouteImport } from './routes/document-navigation-target'
 import { Route as EditingARouteImport } from './routes/editing-a'
 import { Route as EditingBRouteImport } from './routes/editing-b'
 import { Route as FullpathTestRouteRouteImport } from './routes/fullpath-test/route'
+import { Route as HistoryBlockingRouteImport } from './routes/history-blocking'
 import { Route as HoverPreloadHashRouteImport } from './routes/hover-preload-hash'
 import { Route as LazyErrorRouteImport } from './routes/lazy-error'
 import { Route as MasksRouteImport } from './routes/masks'
@@ -149,6 +152,17 @@ const ComponentTypesTestRoute = ComponentTypesTestRouteImport.update({
   path: '/component-types-test',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DocumentNavigationRoute = DocumentNavigationRouteImport.update({
+  id: '/document-navigation',
+  path: '/document-navigation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocumentNavigationTargetRoute =
+  DocumentNavigationTargetRouteImport.update({
+    id: '/document-navigation-target',
+    path: '/document-navigation-target',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const EditingARoute = EditingARouteImport.update({
   id: '/editing-a',
   path: '/editing-a',
@@ -162,6 +176,11 @@ const EditingBRoute = EditingBRouteImport.update({
 const FullpathTestRouteRoute = FullpathTestRouteRouteImport.update({
   id: '/fullpath-test',
   path: '/fullpath-test',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoryBlockingRoute = HistoryBlockingRouteImport.update({
+  id: '/history-blocking',
+  path: '/history-blocking',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HoverPreloadHashRoute = HoverPreloadHashRouteImport.update({
@@ -787,8 +806,11 @@ export interface FileRoutesByFullPath {
   '/대한민국': typeof Char45824Char54620Char48124Char44397RouteRouteWithChildren
   '/anchor': typeof AnchorRoute
   '/component-types-test': typeof ComponentTypesTestRoute
+  '/document-navigation': typeof DocumentNavigationRoute
+  '/document-navigation-target': typeof DocumentNavigationTargetRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
+  '/history-blocking': typeof HistoryBlockingRoute
   '/hover-preload-hash': typeof HoverPreloadHashRoute
   '/lazy-error': typeof LazyErrorRoute
   '/masks': typeof MasksRouteWithChildren
@@ -903,8 +925,11 @@ export interface FileRoutesByTo {
   '/대한민국': typeof Char45824Char54620Char48124Char44397RouteRouteWithChildren
   '/anchor': typeof AnchorRoute
   '/component-types-test': typeof ComponentTypesTestRoute
+  '/document-navigation': typeof DocumentNavigationRoute
+  '/document-navigation-target': typeof DocumentNavigationTargetRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
+  '/history-blocking': typeof HistoryBlockingRoute
   '/hover-preload-hash': typeof HoverPreloadHashRoute
   '/lazy-error': typeof LazyErrorRoute
   '/masks': typeof MasksRouteWithChildren
@@ -1011,8 +1036,11 @@ export interface FileRoutesById {
   '/_layout': typeof LayoutRouteWithChildren
   '/anchor': typeof AnchorRoute
   '/component-types-test': typeof ComponentTypesTestRoute
+  '/document-navigation': typeof DocumentNavigationRoute
+  '/document-navigation-target': typeof DocumentNavigationTargetRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
+  '/history-blocking': typeof HistoryBlockingRoute
   '/hover-preload-hash': typeof HoverPreloadHashRoute
   '/lazy-error': typeof LazyErrorRoute
   '/masks': typeof MasksRouteWithChildren
@@ -1134,8 +1162,11 @@ export interface FileRouteTypes {
     | '/대한민국'
     | '/anchor'
     | '/component-types-test'
+    | '/document-navigation'
+    | '/document-navigation-target'
     | '/editing-a'
     | '/editing-b'
+    | '/history-blocking'
     | '/hover-preload-hash'
     | '/lazy-error'
     | '/masks'
@@ -1250,8 +1281,11 @@ export interface FileRouteTypes {
     | '/대한민국'
     | '/anchor'
     | '/component-types-test'
+    | '/document-navigation'
+    | '/document-navigation-target'
     | '/editing-a'
     | '/editing-b'
+    | '/history-blocking'
     | '/hover-preload-hash'
     | '/lazy-error'
     | '/masks'
@@ -1357,8 +1391,11 @@ export interface FileRouteTypes {
     | '/_layout'
     | '/anchor'
     | '/component-types-test'
+    | '/document-navigation'
+    | '/document-navigation-target'
     | '/editing-a'
     | '/editing-b'
+    | '/history-blocking'
     | '/hover-preload-hash'
     | '/lazy-error'
     | '/masks'
@@ -1480,8 +1517,11 @@ export interface RootRouteChildren {
   LayoutRoute: typeof LayoutRouteWithChildren
   AnchorRoute: typeof AnchorRoute
   ComponentTypesTestRoute: typeof ComponentTypesTestRoute
+  DocumentNavigationRoute: typeof DocumentNavigationRoute
+  DocumentNavigationTargetRoute: typeof DocumentNavigationTargetRoute
   EditingARoute: typeof EditingARoute
   EditingBRoute: typeof EditingBRoute
+  HistoryBlockingRoute: typeof HistoryBlockingRoute
   HoverPreloadHashRoute: typeof HoverPreloadHashRoute
   LazyErrorRoute: typeof LazyErrorRoute
   MasksRoute: typeof MasksRouteWithChildren
@@ -1549,6 +1589,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ComponentTypesTestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/document-navigation': {
+      id: '/document-navigation'
+      path: '/document-navigation'
+      fullPath: '/document-navigation'
+      preLoaderRoute: typeof DocumentNavigationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/document-navigation-target': {
+      id: '/document-navigation-target'
+      path: '/document-navigation-target'
+      fullPath: '/document-navigation-target'
+      preLoaderRoute: typeof DocumentNavigationTargetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/editing-a': {
       id: '/editing-a'
       path: '/editing-a'
@@ -1568,6 +1622,13 @@ declare module '@tanstack/react-router' {
       path: '/fullpath-test'
       fullPath: '/fullpath-test'
       preLoaderRoute: typeof FullpathTestRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/history-blocking': {
+      id: '/history-blocking'
+      path: '/history-blocking'
+      fullPath: '/history-blocking'
+      preLoaderRoute: typeof HistoryBlockingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/hover-preload-hash': {
@@ -2878,8 +2939,11 @@ const rootRouteChildren: RootRouteChildren = {
   LayoutRoute: LayoutRouteWithChildren,
   AnchorRoute: AnchorRoute,
   ComponentTypesTestRoute: ComponentTypesTestRoute,
+  DocumentNavigationRoute: DocumentNavigationRoute,
+  DocumentNavigationTargetRoute: DocumentNavigationTargetRoute,
   EditingARoute: EditingARoute,
   EditingBRoute: EditingBRoute,
+  HistoryBlockingRoute: HistoryBlockingRoute,
   HoverPreloadHashRoute: HoverPreloadHashRoute,
   LazyErrorRoute: LazyErrorRoute,
   MasksRoute: MasksRouteWithChildren,

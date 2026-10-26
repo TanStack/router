@@ -1,4 +1,4 @@
-import { createApp } from 'vue'
+import { createApp, defineComponent } from 'vue'
 import {
   ErrorComponent,
   Link,
@@ -102,6 +102,20 @@ function PostsIndexComponent() {
   return <div>Select a post.</div>
 }
 
+const PostComponent = defineComponent({
+  setup() {
+    const post = postRoute.useLoaderData()
+
+    return () => (
+      <div class="space-y-2">
+        <h4 class="text-xl font-bold">{post.value.title}</h4>
+        <hr class="opacity-20" />
+        <div class="text-sm">{post.value.body}</div>
+      </div>
+    )
+  },
+})
+
 const postRoute = createRoute({
   getParentRoute: () => postsLayoutRoute,
   path: '$postId',
@@ -116,18 +130,6 @@ function PostErrorComponent({ error }: ErrorComponentProps) {
   }
 
   return <ErrorComponent error={error} />
-}
-
-function PostComponent() {
-  const post = postRoute.useLoaderData()
-
-  return (
-    <div class="space-y-2">
-      <h4 class="text-xl font-bold">{post.value.title}</h4>
-      <hr class="opacity-20" />
-      <div class="text-sm">{post.value.body}</div>
-    </div>
-  )
 }
 
 const pathlessLayoutRoute = createRoute({

@@ -35,18 +35,14 @@ type PreloadRouter = {
   subscribe: (event: 'onRendered', listener: () => void) => () => void
 }
 
-// Fixed id for the eviction navigations interleaved into the bench loop; its
-// payload is a constant-size steady-state resident, never part of the signal.
+// Reuse one navigation target while evicting the distinct preloaded routes.
 const evictionItemId = 'nav-evict'
 const preloadChurnIterations = 200
 // A navigation commit is what triggers the router's clearExpiredCache --
 // preloaded matches (defaultPreloadGcTime: 0) are only evicted then, never
-// during a preload-only loop. Interleaving a navigation every few preloads is
-// what makes the flat floor assert "eviction releases preloaded payloads".
+// during a preload-only loop. Interleave navigation to exercise eviction.
 const preloadsPerEvictionNavigation = 10
-// Module-level so ids stay unique across runner invocations on one mount; a
-// per-invocation LCG would replay identical ids, and every preload after the
-// first invocation would dedupe against cachedMatches instead of doing work.
+// Keep generated URLs unique across warmup and measured invocations.
 const benchmarkRandom = createDeterministicRandom(0x706c6f61)
 let preloadCounter = 0
 

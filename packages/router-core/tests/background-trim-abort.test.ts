@@ -8,6 +8,67 @@ import {
 } from '../src'
 import { createTestRouter } from './routerTestUtils'
 
+test.each(['success', 'error', 'notFound'] as const)(
+  'departure after a background %s preserves lifecycle membership and current data',
+  async (outcome) => {
+    let revision = 0
+    const onLeave = vi.fn()
+    const childOnLeave = vi.fn()
+    const rootRoute = new BaseRootRoute({})
+    const parentRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      loader: () => {
+        revision++
+        if (revision > 1 && outcome !== 'success') {
+          throw outcome === 'error' ? new Error('reload failed') : notFound()
+        }
+        return revision
+      },
+      errorComponent: () => null,
+      notFoundComponent: () => null,
+      onLeave,
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      onLeave: childOnLeave,
+    })
+    const otherRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/other',
+    })
+    const history = createMemoryHistory({ initialEntries: ['/parent/child'] })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([
+        parentRoute.addChildren([childRoute]),
+        otherRoute,
+      ]),
+      history,
+    })
+    try {
+      await router.load()
+      await router.invalidate()
+      await expect.poll(() => router.state.matches[1]?.status).toBe(outcome)
+      if (outcome === 'success') {
+        await expect.poll(() => router.state.matches[1]?.loaderData).toBe(2)
+      }
+      expect(childOnLeave).not.toHaveBeenCalled()
+      await router.navigate({ to: '/other' })
+      expect(childOnLeave).toHaveBeenCalledOnce()
+      expect(onLeave).toHaveBeenCalledOnce()
+      expect(onLeave.mock.calls[0]![0]).toMatchObject({
+        status: outcome,
+        ...(outcome === 'success' && { loaderData: 2 }),
+      })
+      await router.invalidate()
+      expect(childOnLeave).toHaveBeenCalledOnce()
+    } finally {
+      history.destroy()
+    }
+  },
+)
+
 test('a background boundary keeps the matched branch and its lifecycle stable', async () => {
   let parentLoads = 0
   const parentError = new Error('parent background reload failed')

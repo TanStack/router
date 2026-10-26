@@ -3,6 +3,7 @@ import type { MakeRouteMatch } from '../Matches'
 
 export interface DehydratedMatch {
   i: MakeRouteMatch['id']
+  /** @internal */
   b?: MakeRouteMatch['__beforeLoadContext']
   l?: MakeRouteMatch['loaderData']
   e?: MakeRouteMatch['error']

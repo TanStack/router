@@ -38,16 +38,13 @@ export function normalizeViteClientChunks(
 
 export function normalizeViteClientBuild(
   clientBundle: Rollup.OutputBundle,
+  inlineCssEnabled = false,
 ): NormalizedClientBuild {
   let entryChunkFileName: string | undefined
   const chunksByFileName = normalizeViteClientChunks(clientBundle)
-  const chunkFileNamesByRouteFilePath = new Map<string, Array<string>>()
-  const cssFilesBySourcePath = new Map<string, Array<string>>()
-  const cssContentByFileName = new Map<string, string>()
+  let cssContentByFileName: Map<string, string> | undefined
 
   for (const chunk of chunksByFileName.values()) {
-    const bundleEntry = clientBundle[chunk.fileName] as Rollup.OutputChunk
-
     if (chunk.isEntry) {
       if (entryChunkFileName) {
         throw new Error(
@@ -56,45 +53,24 @@ export function normalizeViteClientBuild(
       }
       entryChunkFileName = chunk.fileName
     }
-
-    for (const routeFilePath of chunk.routeFilePaths) {
-      let chunkFileNames = chunkFileNamesByRouteFilePath.get(routeFilePath)
-      if (chunkFileNames === undefined) {
-        chunkFileNames = []
-        chunkFileNamesByRouteFilePath.set(routeFilePath, chunkFileNames)
-      }
-      chunkFileNames.push(chunk.fileName)
-    }
-
-    for (const moduleId of bundleEntry.moduleIds) {
-      const queryIndex = moduleId.indexOf('?')
-      const sourcePath =
-        queryIndex >= 0 ? moduleId.slice(0, queryIndex) : moduleId
-      if (!sourcePath) continue
-
-      const existing = cssFilesBySourcePath.get(sourcePath)
-      cssFilesBySourcePath.set(
-        sourcePath,
-        existing
-          ? Array.from(new Set([...existing, ...chunk.css]))
-          : chunk.css.slice(),
-      )
-    }
   }
 
-  for (const fileName in clientBundle) {
-    if (!fileName.endsWith('.css')) {
-      continue
-    }
+  if (inlineCssEnabled) {
+    cssContentByFileName = new Map()
+    for (const fileName in clientBundle) {
+      if (!fileName.endsWith('.css')) {
+        continue
+      }
 
-    const bundleEntry = clientBundle[fileName]!
-    if (bundleEntry.type !== 'asset') {
-      continue
-    }
+      const bundleEntry = clientBundle[fileName]!
+      if (bundleEntry.type !== 'asset') {
+        continue
+      }
 
-    const css = getCssAssetSource(bundleEntry.source)
-    if (css !== undefined) {
-      cssContentByFileName.set(fileName, css)
+      const css = getCssAssetSource(bundleEntry.source)
+      if (css !== undefined) {
+        cssContentByFileName.set(fileName, css)
+      }
     }
   }
 
@@ -105,8 +81,6 @@ export function normalizeViteClientBuild(
   return {
     entryChunkFileName,
     chunksByFileName,
-    chunkFileNamesByRouteFilePath,
-    cssFilesBySourcePath,
     cssContentByFileName,
   }
 }

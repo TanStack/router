@@ -1,37 +1,41 @@
 import { defineConfig, devices } from '@playwright/test'
-import { getTestServerPort } from '@tanstack/router-e2e-utils'
-import packageJson from './package.json' with { type: 'json' }
+import { appServerReady } from '@tanstack/router-e2e-utils'
 
 const mode = process.env.MODE ?? 'prod'
 const isDev = mode === 'dev'
+const distDir = process.env.E2E_DIST_DIR
 const viteConfig = process.env.VITE_CONFIG // 'nitro' | 'basepath' | 'cloudflare' | undefined
-const PORT = await getTestServerPort(
-  viteConfig ? `${packageJson.name}-${viteConfig}` : packageJson.name,
-)
+const PORT = Number(process.env.E2E_APP_PORT ?? 0)
 
 // When using basepath config, the app is served at /my-app
 const basePath = viteConfig === 'basepath' ? '/my-app' : ''
 const baseURL = `http://localhost:${PORT}${basePath}`
 
 // Select the appropriate dev command based on VITE_CONFIG
-const devCommand = viteConfig ? `pnpm dev:e2e:${viteConfig}` : 'pnpm dev:e2e'
+const devCommand = viteConfig
+  ? `pnpm dev:e2e:${viteConfig}`
+  : 'pnpm dev:e2e --port 0'
 
 export default defineConfig({
   testDir: './tests',
+  testMatch: isDev ? '**/*.dev.spec.ts' : '**/*.prod.spec.ts',
   workers: 1,
   reporter: [['line']],
 
   globalSetup: './tests/setup/global.setup.ts',
-  globalTeardown: './tests/setup/global.teardown.ts',
 
   use: {
     baseURL,
   },
 
   webServer: {
-    command: isDev ? devCommand : `pnpm build && PORT=${PORT} pnpm start`,
-    url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    command: isDev
+      ? devCommand
+      : distDir
+        ? `pnpm exec srvx --prod --dir=. -s ${distDir}/client --entry ${distDir}/server/server.js`
+        : `pnpm build && PORT=${PORT} pnpm start`,
+    wait: appServerReady,
+    reuseExistingServer: false,
     stdout: 'pipe',
     env: {
       VITE_NODE_ENV: 'test',

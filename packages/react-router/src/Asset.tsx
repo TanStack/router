@@ -42,6 +42,11 @@ export function Asset(
   },
 ): React.ReactElement | null {
   const { attrs, children, nonce, preventScriptHoist } = asset
+  // React 19 compares this object by reference before assigning innerHTML.
+  const innerHTML = React.useMemo(
+    () => (children === undefined ? undefined : { __html: children }),
+    [children],
+  )
 
   switch (asset.tag) {
     case 'title':
@@ -78,11 +83,7 @@ export function Asset(
       }
 
       return (
-        <style
-          {...attrs}
-          dangerouslySetInnerHTML={{ __html: children as string }}
-          nonce={nonce}
-        />
+        <style {...attrs} dangerouslySetInnerHTML={innerHTML} nonce={nonce} />
       )
     case 'script':
       return (
@@ -119,12 +120,13 @@ function InlineCssStyle({
   const html = isInlineCssPlaceholder
     ? (hydratedInlineCss ?? '')
     : (children ?? '')
+  const innerHTML = React.useMemo(() => ({ __html: html }), [html])
 
   return (
     <style
       {...attrs}
       {...{ [INLINE_CSS_HYDRATION_ATTR]: '' }}
-      dangerouslySetInnerHTML={{ __html: html }}
+      dangerouslySetInnerHTML={innerHTML}
       nonce={nonce}
       suppressHydrationWarning
     />
@@ -142,6 +144,10 @@ function Script({
 }) {
   const router = useRouter()
   const hydrated = useHydrated()
+  const innerHTML = React.useMemo(
+    () => (children === undefined ? undefined : { __html: children }),
+    [children],
+  )
   const dataScript =
     typeof attrs?.type === 'string' &&
     attrs.type !== '' &&
@@ -160,19 +166,17 @@ function Script({
   }
 
   React.useEffect(() => {
-    if (dataScript) return
+    if (dataScript) {
+      return
+    }
 
     if (attrs?.src) {
-      const normSrc = (() => {
-        try {
-          const base = document.baseURI || window.location.href
-          return new URL(attrs.src, base).href
-        } catch {
-          return attrs.src
-        }
-      })()
-      for (const el of document.querySelectorAll('script[src]')) {
-        if ((el as HTMLScriptElement).src === normSrc) {
+      // Anchors resolve relative URLs and preserve invalid URLs without throwing.
+      const link = document.createElement('a')
+      link.href = attrs.src
+      const normSrc = link.href
+      for (const el of document.scripts) {
+        if (el.src === normSrc) {
           return
         }
       }
@@ -191,8 +195,8 @@ function Script({
         typeof attrs?.type === 'string' ? attrs.type : 'text/javascript'
       const nonceAttr =
         typeof attrs?.nonce === 'string' ? attrs.nonce : undefined
-      for (const el of document.querySelectorAll('script:not([src])')) {
-        if (!(el instanceof HTMLScriptElement)) {
+      for (const el of document.scripts) {
+        if (el.hasAttribute('src')) {
           continue
         }
 
@@ -242,7 +246,7 @@ function Script({
       return (
         <script
           {...attrs}
-          dangerouslySetInnerHTML={{ __html: children }}
+          dangerouslySetInnerHTML={innerHTML}
           suppressHydrationWarning
         />
       )
@@ -260,7 +264,7 @@ function Script({
       <script
         {...attrs}
         suppressHydrationWarning
-        dangerouslySetInnerHTML={{ __html: children }}
+        dangerouslySetInnerHTML={innerHTML}
       />
     )
   }
@@ -277,7 +281,7 @@ function Script({
       return (
         <script
           {...attrs}
-          dangerouslySetInnerHTML={{ __html: children }}
+          dangerouslySetInnerHTML={innerHTML}
           suppressHydrationWarning
         />
       )

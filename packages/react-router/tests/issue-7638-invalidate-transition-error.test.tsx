@@ -95,7 +95,14 @@ function setup({ failVia }: { failVia: 'render' | 'loader' }) {
     history: createMemoryHistory({ initialEntries: ['/test'] }),
     defaultErrorComponent: (props: ErrorComponentProps) => {
       errorRenders++
-      return <div data-testid="error-ui">error: {props.error.message}</div>
+      return (
+        <div data-testid="error-ui">
+          error:{' '}
+          {props.error instanceof Error
+            ? props.error.message
+            : String(props.error)}
+        </div>
+      )
     },
   })
 

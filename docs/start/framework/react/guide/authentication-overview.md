@@ -1,7 +1,10 @@
 ---
 id: authentication-overview
-title: Authentication
+title: Choose Authentication for React Apps
+description: Compare hosted services, auth libraries, and custom authentication for React apps built with TanStack Start. Choose an approach before implementing sessions and authorization.
 ---
+
+Choose how your React app will handle identity, sessions, and permissions. This page compares approaches and providers. Once you have chosen an approach, use [Implement Authentication in React](./authentication.md) for the application workflow.
 
 ## Authentication vs Authorization
 
@@ -113,7 +116,7 @@ Build your own authentication system using TanStack Start's server functions and
 
 - **Full Control**: Complete customization over authentication flow
 - **Server Primitives**: Sessions, OAuth, CSRF, rate limiting — see [Authentication Server Primitives](./authentication-server-primitives.md)
-- **Session Management**: HTTP-only cookies via `setResponseHeader`, read with `getRequestHeader`
+- **Session Management**: HTTP-only cookies written with `setCookie`, read with `getCookie`
 - **Type Safety**: End-to-end type safety for authentication state
 
 ### 🌐 Other Excellent Options
