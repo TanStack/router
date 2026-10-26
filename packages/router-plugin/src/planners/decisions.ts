@@ -365,7 +365,10 @@ function computeSplitPlan(
   const deleted: Array<RouteOption> = []
   const componentOptions = new Map<string, SplitDecision | null>()
   const deleteNodes = new Set(cfg.deleteNodes)
-  const splitting = cfg.split && ctx.env.routerSplit && route.kind !== 'lazy'
+  // root routes are never split: their components render on every page or on
+  // error and not-found responses, where a lazy chunk only adds a round trip
+  // (and the manifest preloads it on every page anyway)
+  const splitting = cfg.split && ctx.env.routerSplit && route.kind === 'file'
   const groupings = splitting ? effectiveGroupings(ctx, cfg, route) : []
 
   if (route.options.kind === 'opaque') {
@@ -456,9 +459,6 @@ function computeSplitPlan(
     for (const key of new Set(group)) {
       if (!SPLITTABLE_KEYS.includes(key) || deleteNodes.has(key)) {
         continue
-      }
-      if (route.kind === 'root' && key === 'component') {
-        continue // SPEC §5.10: the root component always renders
       }
       const option = route.props.find(
         (p) =>

@@ -13,7 +13,7 @@ Route code splitting and route HMR run on the new compiler core instead of Babel
 - **`routeTree.gen.ts` formatting changes once** (`enableRouteTreeFormatting` now defaults to `false`; see the route generator's changeset).
 - **Removed:** `codeSplittingOptions.compilerPlugins` (the experimental Babel hook).
 
-- Any route option value splits: identifiers, inline functions, method shorthands (#8623), object-form loaders (#8753), casts, `satisfies`, calls such as `memo(Page)`, and options held in a module-level constant. Module state the route module and its chunks share exists once (#8754, #8505). Root routes split their `errorComponent` and `notFoundComponent`.
+- Any route option value splits: identifiers, inline functions, method shorthands (#8623), object-form loaders (#8753), casts, `satisfies`, calls such as `memo(Page)`, and options held in a module-level constant. Module state the route module and its chunks share exists once (#8754, #8505).
 - `createFileRoute` & co. are recognised by their import binding. Routes whose options cannot be read statically, and methods or function expressions that read `this` (#8688), stay in the route module with one warning naming the file.
 - A route's CSS import loads with its split component chunks when every component option the route defines is split; otherwise it stays in the route module.
 - Route HMR keeps split components' lazy wrappers across updates in React, Solid and Vue, refreshes edits of split loaders and other non-component options on Rspack and webpack, and needs no framework plugin for `.ts` route modules.
