@@ -186,3 +186,108 @@ describe('function-level call initialisers (hook calls)', () => {
     )
   })
 })
+
+describe('function-local declarations only erased code read', () => {
+  it('drops a pure function and class declaration, keeps a class whose evaluation has effects', async () => {
+    expect(
+      await client(`
+        import { wrapServer } from 'toy-start'
+        export function Comp() {
+          function helper() {
+            return 1
+          }
+          class Pure {}
+          class Impure extends make() {}
+          const fn = wrapServer(() => helper() + new Pure() + new Impure())
+          return fn
+        }
+      `),
+    ).toBe(
+      // the removed declarations' indentation stays (whitespace is free)
+      'export function Comp() {\n      class Impure extends make() {}\n  const fn = tsrStub()\n  return fn\n}\n',
+    )
+  })
+
+  it('prunes the orphaned declarators of one statement as runs, keeping the rest', async () => {
+    expect(
+      await client(`
+        import { wrapServer } from 'toy-start'
+        export function Comp() {
+          const a = 1, b = 2, c = 3
+          const d = 4, e = 5
+          const fn = wrapServer(() => [a, b, e])
+          return [fn, c, d]
+        }
+      `),
+    ).toBe(
+      dedent(`
+        export function Comp() {
+          const c = 3
+          const d = 4
+          const fn = tsrStub()
+          return [fn, c, d]
+        }
+      `),
+    )
+  })
+
+  it('drops a statement whose every declarator is orphaned, with its line', async () => {
+    expect(
+      await client(`
+        import { wrapServer } from 'toy-start'
+        export function Comp() {
+          const a = 1, b = 2
+          const fn = wrapServer(() => [a, b])
+          return fn
+        }
+      `),
+    ).toBe(
+      // the removed statement's indentation stays (whitespace is free)
+      'export function Comp() {\n    const fn = tsrStub()\n  return fn\n}\n',
+    )
+  })
+
+  it('keeps the last declarator of a loop head so the syntax stays', async () => {
+    expect(
+      await client(`
+        import { wrapServer } from 'toy-start'
+        export function Comp() {
+          for (let i = 0, j = 0; ; ) {
+            wrapServer(() => [i, j])
+            break
+          }
+        }
+      `),
+    ).toBe(
+      dedent(`
+        export function Comp() {
+          for (let j = 0; ; ) {
+            tsrStub()
+            break
+          }
+        }
+      `),
+    )
+  })
+
+  it('keeps the effects of an impure declarator pruned from a multi-declarator statement', async () => {
+    expect(
+      await client(`
+        import { wrapServer } from 'toy-start'
+        export function Comp() {
+          const a = useThing(), b = 2
+          const fn = wrapServer(() => [a])
+          return [fn, b]
+        }
+      `),
+    ).toBe(
+      dedent(`
+        export function Comp() {
+          const a = useThing(), b = 2
+          const fn = tsrStub()
+          return [fn, b]
+        }
+      `),
+    )
+  })
+})

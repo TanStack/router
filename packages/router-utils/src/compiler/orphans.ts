@@ -9,7 +9,7 @@
  */
 import { bindingIdentifiers, walk } from 'yuku'
 import { extendOverTrailingLine } from './header'
-import { isPureExpression } from './purity'
+import { isPureClass, isPureExpression } from './purity'
 import type { Node } from 'yuku'
 import type { Range } from './header'
 import type { PlanContext } from './plan'
@@ -130,7 +130,7 @@ export function cleanOrphanedDeclarations(
         }
         if (
           parent.type === 'ClassDeclaration' &&
-          !isPureExpression(ctx.analysis.purity, parent)
+          !isPureClass(ctx.analysis.purity, parent)
         ) {
           continue
         }
