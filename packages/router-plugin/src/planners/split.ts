@@ -7,9 +7,7 @@
  * `lazyRouteComponent` / `lazyFn` with one importer const per group. The
  * core places everything else by needers (what both sides read lives in
  * the route module and is imported by the chunk). `deleteNodes` erases
- * properties in the env output only; route CSS moves into the chunks when
- * every component option is split (so it still loads with whichever
- * component renders).
+ * properties in the env output only.
  */
 import {
   cleanOrphanedDeclarations,
@@ -423,68 +421,6 @@ export function routeSplitPlanner(): Planner {
           by: ROUTE_SPLIT,
           imports: helperImports,
         })
-      }
-
-      // route CSS moves into the component chunks when every component option
-      // is split; if one stays in the route module, the CSS stays there too
-      const componentOptions = [...plan.componentOptions.values()]
-      const componentDecisions = componentOptions.filter(
-        (d): d is SplitDecision => d !== null,
-      )
-      if (
-        componentDecisions.length > 0 &&
-        componentDecisions.length === componentOptions.length
-      ) {
-        const chunkOutputs = new Set<OutputId>()
-        for (const d of componentDecisions) {
-          if (COMPONENT_KEYS.includes(d.key)) {
-            chunkOutputs.add(groups.get(d.groupKey)!.output)
-          }
-        }
-        for (const unit of ctx.t1.units) {
-          if (unit.kind !== 'import-effect' || !unit.isStyleImport) {
-            continue
-          }
-          const imp =
-            unit.importIndex !== null
-              ? ctx.analysis.imports[unit.importIndex]
-              : undefined
-          if (!imp) {
-            continue
-          }
-          const item = ctx.t1.items[unit.item]!
-          ctx.rewrites.add({
-            range: item.range,
-            body: [],
-            scope: ['env'],
-            by: ROUTE_SPLIT,
-            reason: 'route-css',
-          })
-          for (const output of chunkOutputs) {
-            ctx.rewrites.addGenerated({
-              body: [
-                { k: 'text', parts: ['import '] },
-                {
-                  k: 'spec',
-                  specifier: imp.specifier,
-                  edgeKey: ctx.edgeKey(imp.specifier, 'bare'),
-                  provenance: {
-                    origin: 'forwarded',
-                    importerId: ctx.identity.canonicalId,
-                    span: imp.specifierRange,
-                    rawSpecifier: imp.specifier,
-                  },
-                },
-                { k: 'text', parts: ['\n'] },
-              ],
-              declares: [],
-              effectful: true,
-              anchor: { k: 'after-header' },
-              home: output,
-              by: ROUTE_SPLIT,
-            })
-          }
-        }
       }
 
       ctx.setFacts(ROUTE_SPLIT, facts)

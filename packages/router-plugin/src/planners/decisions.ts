@@ -85,8 +85,6 @@ export interface SplitPlan {
   warnings: Array<Diagnostic>
   /** Options the splitter deletes in the env output (`deleteNodes`). */
   deleted: Array<RouteOption>
-  /** Component options defined on the route, by key, and whether each is split (route CSS moves only when all are). */
-  componentOptions: Map<string, SplitDecision | null>
 }
 
 export const SPLITTABLE_KEYS: ReadonlyArray<string> = [
@@ -363,7 +361,6 @@ function computeSplitPlan(
   const decisions: Array<SplitDecision> = []
   const notSplit: Array<NotSplit> = []
   const deleted: Array<RouteOption> = []
-  const componentOptions = new Map<string, SplitDecision | null>()
   const deleteNodes = new Set(cfg.deleteNodes)
   // root routes are never split: their components render on every page or on
   // error and not-found responses, where a lazy chunk only adds a round trip
@@ -408,7 +405,6 @@ function computeSplitPlan(
       notSplit,
       warnings,
       deleted,
-      componentOptions,
     }
   }
 
@@ -436,12 +432,6 @@ function computeSplitPlan(
     }
   }
 
-  for (const key of COMPONENT_KEYS) {
-    if (route.props.some((p) => p.key === key && p.kind !== 'spread')) {
-      componentOptions.set(key, null)
-    }
-  }
-
   if (!splitting) {
     return {
       route,
@@ -450,7 +440,6 @@ function computeSplitPlan(
       notSplit,
       warnings,
       deleted,
-      componentOptions,
     }
   }
 
@@ -553,9 +542,6 @@ function computeSplitPlan(
         member: target.member,
       }
       decisions.push(decision)
-      if (componentOptions.has(key)) {
-        componentOptions.set(key, decision)
-      }
     }
   }
 
@@ -576,7 +562,6 @@ function computeSplitPlan(
     notSplit,
     warnings,
     deleted,
-    componentOptions,
   }
 }
 

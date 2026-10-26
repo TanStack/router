@@ -71,7 +71,7 @@ Where you import the CSS controls when it is loaded:
 
 - Import in the root route or app shell to apply it to every page.
 - Import in a layout route to apply it to that layout and its child routes.
-- Import in a leaf route to load it only when that route is matched. On the client, it loads with the route's code-split components when every component option the route defines (`component`, `errorComponent`, `pendingComponent`, `notFoundComponent`) is split; otherwise it loads with the route file, before the route matches.
+- Import in a leaf route to load it only when that route is matched.
 - Import from a component loaded with `import()` or `React.lazy` only when the CSS is not needed for the initial route render.
 
 CSS imported from an async component loads with that async chunk. It is not part of Start's static route manifest for the initial route match, so `HeadContent` does not render it as an initial SSR stylesheet link, and it is not available for static Early Hints or CSS inlining.
