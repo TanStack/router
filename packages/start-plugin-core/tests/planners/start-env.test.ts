@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest'
 import { parseSync } from 'vite'
 import { startRecognizer } from '../../src/compiler/recognizer'
 import { START_ENV, startEnvPlanner } from '../../src/planners'
-import { MemoryHost, clientEnv, envInfo } from './memory-host'
+import { MemoryHost, clientEnv, envInfo, ssrEnv } from './memory-host'
 import type { StartEnvConfig } from '../../src/planners'
 import type { CompileOutput, EnvInfo } from '@tanstack/router-utils/compiler'
 
@@ -148,6 +148,45 @@ export function useThing() {
     expect(r.code).toContain('const x = useX(), y = useY()')
   })
 
+  // Hook calls are never dropped: the call stays as a statement with the
+  // import it reads, even when nothing else reads that import, so the hook
+  // order stays equal between the server and the client.
+  it('keeps orphaned hook calls and their imports (client)', async () => {
+    const r = await compile(`${HEAD}import { useRef, useState } from 'react'
+import { secret } from './db.server'
+export function Comp() {
+  const r = useRef(null)
+  const [s] = useState(0)
+  const run = createServerOnlyFn(() => secret() + r.current + s)
+  return run()
+}
+`)
+    expectValid(r.code)
+    expect(r.code).toContain("import { useRef, useState } from 'react'")
+    expect(r.code).toContain('  useRef(null);\n  useState(0);\n')
+    expect(r.code).not.toContain('./db.server')
+    expect(r.code).not.toContain('secret')
+  })
+
+  it('keeps an orphaned hook call only <ClientOnly> children read (server)', async () => {
+    const r = await compile(
+      `import { ClientOnly } from '@tanstack/react-router'
+import { useId } from 'react'
+import { useChartData, Chart } from './chart'
+export function Comp() {
+  const id = useId()
+  const chart = useChartData()
+  return <div id={id}><ClientOnly><Chart data={chart} /></ClientOnly></div>
+}
+`,
+      { env: ssrEnv },
+    )
+    expectValid(r.code)
+    expect(r.code).toContain('const id = useId()\n  useChartData();\n')
+    expect(r.code).toContain("import { useChartData } from './chart'")
+    expect(r.code).toContain('<ClientOnly/>')
+  })
+
   it('cascades: a declarator read only by an orphaned sibling goes with it', async () => {
     const r = await compile(`${HEAD}export function Comp() {
   const a = 1, b = a + 1, c = 3
@@ -218,6 +257,66 @@ describe('a separate provider env with derived provider modules (Vite RSC, R50)'
     },
   )
 
+  // The hoist claims the chain for the provider output; the env module keeps
+  // the chain in place with its stub, so everything the chain reads outside
+  // the handler (the factory, its options, the middleware) stays with it.
+  it.each([
+    [
+      'a function',
+      `export function make() {
+  const fn = createServerFn({ method: METHOD }).middleware([mw]).handler(() => db.q())
+  return fn
+}
+`,
+    ],
+    [
+      'a top-level block',
+      `export let fn
+if (globalThis.flag) {
+  fn = createServerFn({ method: METHOD }).middleware([mw]).handler(() => db.q())
+}
+`,
+    ],
+    [
+      'a class method',
+      `export class Api {
+  make() {
+    return createServerFn({ method: METHOD }).middleware([mw]).handler(() => db.q())
+  }
+}
+`,
+    ],
+  ])(
+    'keeps what a server fn nested in %s reads in the env module',
+    async (_name, body) => {
+      const code = `import { createServerFn, createMiddleware } from '@tanstack/react-start'
+import { db } from './db.server'
+const METHOD = 'POST'
+const mw = createMiddleware().server(({ next }) => next())
+${body}`
+      const r = await compile(code, { env: rsc, config, files })
+      expectValid(r.code)
+      expect(r.out.diagnostics).toEqual([])
+      expect(r.code).toContain(
+        "import { createServerFn, createMiddleware } from '@tanstack/react-start'",
+      )
+      expect(r.code).toContain("const METHOD = 'POST'")
+      expect(r.code).toContain(
+        'const mw = createMiddleware().server(({ next }) => next())',
+      )
+      expect(r.code).toMatch(
+        /createServerFn\(\{ method: METHOD \}\)\.middleware\(\[mw\]\)\.handler\(tsrSsrRpc\(['"][^'"]+['"]\)\)/,
+      )
+      expect(r.code).toContain('tsrSsrRpc } from')
+      expect(r.code).not.toContain('db.q()')
+      expect(r.code).not.toContain('./db.server')
+      const provider = await r.derived(PROVIDER)
+      expectValid(provider)
+      expect(provider).toContain('db.q()')
+      expect(provider).toContain("from './db.server'")
+    },
+  )
+
   it('stubs a top-level server fn in the env module (control)', async () => {
     const r = await compile(
       `import { createServerFn } from '@tanstack/react-start'\nimport { db } from './db.server'\nexport const fn = createServerFn().handler(() => db.q())\n`,
@@ -227,5 +326,117 @@ describe('a separate provider env with derived provider modules (Vite RSC, R50)'
       /export const fn = createServerFn\(\)\.handler\(tsrSsrRpc\(['"][^'"]+['"]\)\)/,
     )
     expect(r.code).not.toContain('tss-serverfn-split')
+  })
+})
+
+describe('a server fn nested in a function (J4.6): hoisted when it captures nothing', () => {
+  const rsc = envInfo({
+    name: 'rsc',
+    type: 'server',
+    isProvider: true,
+    conditions: ['react-server'],
+    routerSplit: false,
+  })
+  const rscConfig: Partial<StartEnvConfig> = {
+    providerSeparate: true,
+    alwaysDeriveProvider: true,
+  }
+  const files = {
+    '/app/src/db.server.ts': 'export const db = { q: (x) => x }\n',
+  }
+  const envs: Array<[string, EnvInfo, Partial<StartEnvConfig>]> = [
+    ['client', clientEnv, {}],
+    ['ssr', ssrEnv, {}],
+    ['rsc', rsc, rscConfig],
+  ]
+  const head = `import { createServerFn } from '@tanstack/react-start'
+import { useState } from 'react'
+import { db } from './db.server'
+`
+
+  // Every binding of the enclosing function the chain reads (in the
+  // handler, the middleware, the validator, the options, the factory
+  // arguments) is a positioned compile error naming it, in every env.
+  it.each([
+    [
+      'a parameter',
+      `export function make(id: string) {
+  const fn = createServerFn().handler(() => db.q(id))
+  return fn
+}
+`,
+      'id))',
+      'id',
+    ],
+    [
+      'a local const',
+      `export function make() {
+  const scope = 'x'
+  const fn = createServerFn().handler(() => db.q(scope))
+  return fn
+}
+`,
+      'scope))',
+      'scope',
+    ],
+    [
+      'a hook result',
+      `export function Comp() {
+  const [count] = useState(0)
+  const fn = createServerFn().handler(() => db.q(count))
+  return fn
+}
+`,
+      'count))',
+      'count',
+    ],
+    [
+      'a local read by the options',
+      `export function make(method: 'GET' | 'POST') {
+  const fn = createServerFn({ method }).handler(() => db.q(1))
+  return fn
+}
+`,
+      'method }',
+      'method',
+    ],
+  ])(
+    'refuses a nested server fn capturing %s in every env',
+    async (_name, body, at, name) => {
+      const code = `${head}${body}`
+      for (const [envName, env, config] of envs) {
+        const r = await compile(code, { env, config, files })
+        const errors = r.out.diagnostics.filter((d) => d.severity === 'error')
+        expect(
+          errors.map((d) => d.range?.start),
+          envName,
+        ).toEqual([code.indexOf(at)])
+        expect(errors[0]!.message, envName).toContain(`\`${name}\``)
+      }
+    },
+  )
+
+  it('hoists a nested server fn capturing nothing in every env', async () => {
+    const code = `${head}export function make() {
+  const fn = createServerFn().handler(() => db.q(1))
+  return fn
+}
+`
+    for (const [envName, env, config] of envs) {
+      const r = await compile(code, { env, config, files })
+      expectValid(r.code)
+      expect(r.out.diagnostics, envName).toEqual([])
+      expect(r.code, envName).toContain('export function make()')
+      if (env.type === 'client') {
+        expect(r.code).toContain('tsrClientRpc')
+        expect(r.code).not.toContain('db.q(1)')
+        expect(r.code).not.toContain('./db.server')
+      } else if (env.isProvider) {
+        expect(r.code).toContain('tsrSsrRpc')
+        expect(r.code).not.toContain('db.q(1)')
+      } else {
+        expect(r.code).toContain('db.q(1)')
+      }
+    }
   })
 })

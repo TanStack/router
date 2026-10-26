@@ -1353,6 +1353,8 @@ class Renderer {
   private importerId!: string
   private edges!: Array<EdgeRecord>
   private readonly refByStart = new Map<number, ClassifiedRef>()
+  /** Offsets starting a statement whose previous statement of the list has no `;`. */
+  private readonly unterminatedBefore = new Map<number, boolean>()
 
   constructor(
     private readonly plan: AnalysisPlan,
@@ -1443,6 +1445,7 @@ class Renderer {
           gen !== undefined
             ? mergeEnv(env, this.plan.rewrites.generated[gen]!.env)
             : env
+        const at = out.length
         this.renderFrags(
           e.body,
           unit,
@@ -1451,6 +1454,7 @@ class Renderer {
           gen !== undefined ? this.plan.rewrites.generated[gen]! : null,
           e,
         )
+        this.guardStatementStart(e.range.start, out, at)
       } else {
         const ref = cut.ref!
         const to = env!.get(ref.sym)!
@@ -1569,6 +1573,75 @@ class Renderer {
         }
       }
     }
+  }
+
+  /**
+   * A `;` before text rendered at `offset` when it starts a statement of a
+   * list whose previous statement has no `;` and its first token could
+   * continue that statement (`const x = foo` + `(() => 1)()` would be a call
+   * of `foo`): an edit replacing a call with a parenthesised function, an
+   * orphaned initialiser kept as a statement, a placeholder.
+   */
+  private guardStatementStart(
+    offset: number,
+    out: Array<Segment>,
+    from: number,
+  ): void {
+    let first = ''
+    for (let i = from; i < out.length && first === ''; i++) {
+      const seg = out[i]!
+      const text =
+        seg.k === 'slice' ? this.code.slice(seg.start, seg.end) : seg.text
+      const m = /\S/.exec(text)
+      if (m) {
+        first = m[0]
+      }
+    }
+    if (first === '' || !'([`+-/<'.includes(first)) {
+      return
+    }
+    let guard = this.unterminatedBefore.get(offset)
+    if (guard === undefined) {
+      guard = this.unterminatedStatementBefore(offset)
+      this.unterminatedBefore.set(offset, guard)
+    }
+    if (guard) {
+      out.splice(from, 0, { k: 'text', text: ';' })
+    }
+  }
+
+  /** Whether a statement of a statement list starts at `offset` after a statement without `;`. */
+  private unterminatedStatementBefore(offset: number): boolean {
+    const file = this.plan.analysis.file
+    let node = file.nodeAt(offset)
+    if (!node || node.start !== offset) {
+      return false
+    }
+    let parent = file.parentOf(node)
+    while (parent && parent.start === offset) {
+      node = parent
+      parent = file.parentOf(node)
+    }
+    if (!parent) {
+      return false
+    }
+    const list =
+      parent.type === 'Program' ||
+      parent.type === 'BlockStatement' ||
+      parent.type === 'StaticBlock'
+        ? parent.body
+        : parent.type === 'SwitchCase'
+          ? parent.consequent
+          : null
+    if (!list) {
+      return false
+    }
+    const index = (list as ReadonlyArray<Node>).indexOf(node)
+    if (index <= 0) {
+      return false
+    }
+    const prev = (list as ReadonlyArray<Node>)[index - 1]!
+    return this.code[prev.end - 1] !== ';'
   }
 
   private targetText(to: RefTarget, env: SubstEnv | null): string {

@@ -200,6 +200,80 @@ test.each<PlacementHead>(['createServerFn alone', 'another Start factory'])(
   },
 )
 
+// SPEC J4.6: a server fn nested in a function is hoisted only when its
+// whole chain captures nothing of the enclosing function. A capture (by the
+// handler, the options, the middleware or the validator) is a positioned
+// compile error naming the binding, in every environment: never a silent
+// leak or a handler running with another closure.
+describe('a nested server fn capturing a binding of its function', () => {
+  const captures = [
+    {
+      name: 'a parameter in the handler',
+      code: `export function make(id: string) {
+  const fn = createServerFn().handler(async () => db.inner(id))
+  return fn
+}`,
+      at: 'id))',
+    },
+    {
+      name: 'a local const in the handler',
+      code: `export function make() {
+  const scope = 'a'
+  const fn = createServerFn().handler(async () => db.inner(scope))
+  return fn
+}`,
+      at: 'scope))',
+    },
+    {
+      name: 'a hook result in the handler',
+      code: `export function Comp() {
+  const [count] = useState(1)
+  const fn = createServerFn().handler(async () => db.inner(String(count)))
+  return fn
+}`,
+      at: 'count)))',
+    },
+    {
+      name: 'a parameter in the options',
+      code: `export function make(method: 'GET' | 'POST') {
+  const fn = createServerFn({ method }).handler(async () => db.inner('a'))
+  return fn
+}`,
+      at: 'method }',
+    },
+  ]
+
+  test.each(captures)(
+    'is a compile error at the capture in every environment: $name',
+    async ({ code, at }) => {
+      const source = `${head}import { useState } from 'react'\nimport { db } from './db.server'\n${code}`
+      const startCase = await (
+        await host()
+      ).case({ 'module.tsx': source, ...dbFiles })
+      for (const environment of ['client', 'ssr'] as const) {
+        const failure = await compileError(startCase, environment)
+        expect(failure, `${environment} serves the module`).toBeDefined()
+        expectCompileError(failure, { source, at, column: true })
+      }
+    },
+  )
+
+  test('is hoisted, and runs on the server, when it captures nothing', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `${head}import { db } from './db.server'
+export function make() {
+  const fn = createServerFn().handler(async () => db.inner())
+  return fn
+}`,
+      ...dbFiles,
+    })
+    expectNotLoaded(await served.loads(), ['./db.server'])
+    expect(await callServerFnThroughCallers(served, 'module.make()')).toBe(
+      'inner',
+    )
+  })
+})
+
 // Malformed-input diagnostic control (SPEC §8, G5): `.validator()` without
 // a validator is a type error (tsc against the real declarations: TS2554
 // "Expected 1 arguments, but got 0"). It only has to fail; a position is

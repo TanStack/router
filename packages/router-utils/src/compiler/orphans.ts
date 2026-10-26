@@ -7,7 +7,7 @@
  * Module-level declarations, imports and their provenance are placement's
  * (`reach.ts`).
  */
-import { bindingIdentifiers } from 'yuku'
+import { bindingIdentifiers, walk } from 'yuku'
 import { extendOverTrailingLine } from './header'
 import { isPureExpression } from './purity'
 import type { Node } from 'yuku'
@@ -188,7 +188,8 @@ function removeDeclarator(
     declarator.init === null ||
     isPureExpression(ctx.analysis.purity, declarator.init) ||
     moduleLevel ||
-    initReadsOnlyOrphanedImports(ctx, declarator.init, live)
+    (!callsHook(declarator.init) &&
+      initReadsOnlyOrphanedImports(ctx, declarator.init, live))
   if (statement.declarations.length === 1) {
     if (!isStatementPosition(file.parentOf(statement))) {
       return false
@@ -278,24 +279,18 @@ function orphanedPatternDeclarator(
 /**
  * `init;` in place of a declaration statement: parenthesised when its first
  * token would start a block, a declaration or a `let` declaration instead
- * (`{ a: f() };`, `function () {}();`), and after a `;` when that token
- * could continue the previous line (`(`, `[`, a template, an operator).
+ * (`{ a: f() };`, `function () {}();`). The renderer guards a statement
+ * start whose first token could continue the previous line.
  */
 function expressionStatement(code: string, init: Node): Array<Frag> {
   const first = code.slice(init.start, init.start + 16)
   const wrap = /^(?:\{|function\b|class\b|async\s+function\b|let\s*\[)/.test(
     first,
   )
-  const body: Array<Frag> = []
-  if (wrap || /^[([`+\-/<]/.test(first)) {
-    body.push(text(';'))
-  }
   if (wrap) {
-    body.push(text('('), slice(rangeOf(init)), text(');'))
-  } else {
-    body.push(slice(rangeOf(init)), text(';'))
+    return [text('('), slice(rangeOf(init)), text(');')]
   }
-  return body
+  return [slice(rangeOf(init)), text(';')]
 }
 
 /**
@@ -423,12 +418,12 @@ function removePatternProperties(
  * Whether an impure initialiser is server-only code the removal documents
  * (J4.12): it reads at least one import, and every import it reads has no
  * other live reference (the import leaves with it). Otherwise its effects
- * are kept as a statement (a hook call next to a removed implementation).
+ * are kept as a statement (a call next to a removed implementation).
  */
 function initReadsOnlyOrphanedImports(
   ctx: PlanContext,
   init: Node,
-  live: ReturnType<PlanContext['liveness']>,
+  live: LivenessView,
 ): boolean {
   const { t1, symbols } = ctx
   const range = rangeOf(init)
@@ -448,6 +443,38 @@ function initReadsOnlyOrphanedImports(
     }
   }
   return imports > 0
+}
+
+const HOOK_NAME = /^use[A-Z0-9_]/
+
+/**
+ * Whether an initialiser calls a hook (`useX(...)`, `ns.useX(...)`): a hook
+ * call is never dropped, whatever it reads, so the hook order stays equal on
+ * both sides (the call stays as a statement with its import).
+ */
+function callsHook(init: Node): boolean {
+  let found = false
+  walk(init, {
+    enter: (n, wctx) => {
+      if (n.type !== 'CallExpression') {
+        return
+      }
+      const callee = n.callee
+      const name =
+        callee.type === 'Identifier'
+          ? callee.name
+          : callee.type === 'MemberExpression' &&
+              !callee.computed &&
+              callee.property.type === 'Identifier'
+            ? callee.property.name
+            : null
+      if (name !== null && HOOK_NAME.test(name)) {
+        found = true
+        wctx.stop()
+      }
+    },
+  })
+  return found
 }
 
 /**
