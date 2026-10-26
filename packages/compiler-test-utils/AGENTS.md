@@ -66,7 +66,9 @@ CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-plugin:test:unit --outputStyle
   `until [ "$(pgrep -fc '[v]itest --project integration')" -lt 2 ]; do sleep 30; done`.
 - Tiers: `test:unit` (in process, the inner loop); `test:integration` (`tests/integration/`: real builds, dev servers,
   browser pages; `tests/integration/pages/` is the `integration-pages` project). `integration` projects keep modules
-  across files (`isolate: false`): a file leaves nothing behind but what the harness owns.
+  across files (`isolate: false`): a file leaves nothing behind but what the harness owns. A file that reads
+  process-global state (`compilerStats()`) runs in a process of its own (start-plugin-core `integration-alone`):
+  Rspack keeps a closed compiler's last compilation alive.
 
 ## Budgets
 

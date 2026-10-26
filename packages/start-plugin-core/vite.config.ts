@@ -20,6 +20,15 @@ if (process.env.VITEST) {
   )
 }
 
+/**
+ * Slow-tier tests that read process-global state (the compiler's stats knob,
+ * `TSR_COMPILER_STATS`): each runs in a process of its own (project
+ * `integration-alone`), as a state an earlier file left in a shared process
+ * would count too (Rspack keeps a closed compiler's last compilation, and
+ * so its Start session, alive).
+ */
+const aloneTests = ['integration/start-build-environment-release.test.ts']
+
 /** This package's build output (`dist`), as its `exports` name it. */
 const builtPackage = new RegExp(
   `^${path.join(path.dirname(fileURLToPath(import.meta.url)), 'dist').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/`,
@@ -83,7 +92,11 @@ const config = defineConfig({
           // started with (see `test-scope-setup`)
           isolate: false,
           include: ['integration/**/*.test.ts'],
-          exclude: [...configDefaults.exclude, 'integration/pages/**'],
+          exclude: [
+            ...configDefaults.exclude,
+            'integration/pages/**',
+            ...aloneTests,
+          ],
           testTimeout: 30_000,
           hookTimeout: 30_000,
           // The tests import this package's built public entries
@@ -91,6 +104,18 @@ const config = defineConfig({
           // them, as it loads an installed package, so the plugin and the
           // loaders Rspack loads from the same `dist` share one module
           // instance.
+          server: { deps: { external: [builtPackage] } },
+        },
+      },
+      {
+        // Slow tier too (`test:integration` runs it): `aloneTests`, each
+        // file in a new process (`isolate: true`).
+        extends: true,
+        test: {
+          name: 'integration-alone',
+          include: aloneTests,
+          testTimeout: 30_000,
+          hookTimeout: 30_000,
           server: { deps: { external: [builtPackage] } },
         },
       },

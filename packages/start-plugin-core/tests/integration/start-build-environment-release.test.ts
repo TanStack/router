@@ -6,8 +6,8 @@
  * SSR environment (build-harness.ts): when the SSR build starts, the client's
  * plans and import-protection state are gone, and the SSR build has its own.
  * Measured through the documented stats knob (TSR_COMPILER_STATS=1, read in
- * the build's process by a plugin of the app); this file runs alone in its
- * worker, so the counts are this build's.
+ * the build's process by a plugin of the app); this file runs in a process
+ * of its own (project `integration-alone`), so the counts are this build's.
  */
 import { describe, expect, onTestFinished, test, vi } from 'vitest'
 import { compilerStats } from '@tanstack/router-utils/compiler'
