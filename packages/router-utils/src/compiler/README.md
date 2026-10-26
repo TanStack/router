@@ -100,7 +100,7 @@ returned but not published.
   evicts the file's plans in every env, marks its raw facts stale, re-validates dependents' fingerprints with each
   environment's own resolver (add/unlink also retry failed resolutions) and returns `{ evicted, dependents }`, which
   the host hard-invalidates in the bundler. A summary change invalidates importers only when its export-facts digest changed.
-- Not cached (R54): resolutions (each compile records its answers in its ledger; validation asks the environment's
+- Not cached: resolutions (storing them cost more than it saved; each compile records its answers in its ledger; validation asks the environment's
   resolver again only once a file appeared or disappeared since the plan's resolutions were validated,
   `CompilerCaches.fileSetVersion`) and emitted outputs (emission from a frozen recipe costs microseconds).
 - Invariants: no Yuku object is reachable from any cache (`tests/heap.test.ts`); every cache is bounded by the live
@@ -158,6 +158,27 @@ Composition: `startPlanners()` in `start-plugin-core/src/planners/index.ts`; rou
   bundlers, dev servers and browsers, public entry points only, no output snapshots. Known bugs are `.fails` pins;
   `COMPILER_TESTS_PINS=run` runs them as ordinary tests. Harness rules: [AGENTS.md](../../../compiler-test-utils/AGENTS.md).
 - Planner-level tests: `start-plugin-core/tests/planners/` (with a memory host) and the router-plugin unit tier.
+
+## Debugging knobs
+
+Environment variables read by the bundler's Node process (never by a bundle). They are diagnostics, not a supported
+API: names and output may change. Unset, they cost one `process.env` read when a cache or session is created and
+nothing per compile.
+
+- `TSR_COMPILER_NO_CACHE=<list>`: disables caches, comma-separated: `plans` (no plan is published, every request
+  compiles again), `facts` (every raw-facts read of a file re-reads and re-analyses it), `targets` (target facts of
+  imported modules are rebuilt on every read), or `all`. Output must be identical with any combination; only speed
+  changes. Use it on a report of stale or wrong output after an edit (HMR serving old code, a split that ignores a
+  changed dependency, a dev/build mismatch): if `all` fixes it, an invalidation is missing; bisect with the single
+  names to find the cache, then reproduce in `tests/cache.test.ts` or `tests/pipeline.test.ts`.
+- `TSR_COMPILER_STATS=1`: every cache owner (the compiler caches, the router and Start host sessions with their
+  import-protection and server-function state, the route generator) registers a reader of its entry counts and
+  approximate bytes in a process-global registry, held through a `WeakRef` so it retains nothing. Read it in the same
+  process with `compilerStats()` from `@tanstack/router-utils/compiler` (e.g. a temporary
+  `setInterval(() => console.log(compilerStats()), 10_000)` in the bundler config); the raw registry is
+  `globalThis[Symbol.for('tanstack.compiler.stats')]` when the package is not importable from the app. Use it on a
+  report of dev-server memory growth: counts that grow with edits rather than with the module set point at the leaking
+  cache. `TSR_COMPILER_STATS_BYTES=0` skips the byte estimates (structured-clone sizes, slow on large caches).
 
 ## Performance and bytes
 
