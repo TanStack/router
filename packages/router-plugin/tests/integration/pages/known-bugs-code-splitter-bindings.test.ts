@@ -368,9 +368,15 @@ export const { component: Page, loader } = createBits()`,
   ])(
     'an exported component ($name) that is the only split candidate is split or reported as not code-split',
     async ({ declaration, binding, options = '' }) => {
-      const route = await loadRoute(`${head}${declaration}
+      // A host of its own: the compiler reports an unsplit option once per
+      // (file, reason) and dev server, and the shared hosts' routes share
+      // one file (another test's report would hide this one's)
+      const route = await loadRoute(
+        `${head}${declaration}
 export const Route = createFileRoute('/')({ ${options}component: ${binding} })
-`)
+`,
+        { fresh: true },
+      )
       expect(await route.run(`return render('component')`)).toBe('<p>page</p>')
       expect({
         split: await route.isLazy('component'),
