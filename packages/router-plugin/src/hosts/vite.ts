@@ -201,7 +201,13 @@ export function createRouterCompilerVitePlugin(
         }
       })
 
-      // Validate plugin order - router must come before JSX transformation plugins
+      // Validate plugin order - router must come before JSX transformation
+      // plugins. Only route splitting needs the route file's source: without
+      // it (`autoCodeSplitting: false`) the route HMR block is appended to
+      // whatever the framework plugin emitted, so the order is free.
+      if (!userConfig.autoCodeSplitting) {
+        return
+      }
       const routerPluginIndex = config.plugins.findIndex(
         (p) => p.name === CODE_SPLITTER_PLUGIN_NAME,
       )

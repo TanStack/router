@@ -14,8 +14,8 @@ export default defineConfig({
       entryRoot: 'src',
       tsconfigPath: path.join(__dirname, 'tsconfig.json'),
     }),
-    tanstackRouter({ target: 'solid' }),
     solid(),
+    tanstackRouter({ target: 'solid' }),
   ],
   build: {
     outDir: './dist',

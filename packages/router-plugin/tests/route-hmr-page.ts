@@ -155,6 +155,12 @@ export interface RouteHmrPageOptions {
    */
   frameworkPlugin?: boolean
   /**
+   * Vite: adds the framework's plugin before the router plugin, as an app
+   * whose config lists `react()` (or `solid()`, `vueJsx()`) first does.
+   * Default: after it.
+   */
+  frameworkPluginFirst?: boolean
+  /**
    * Rsbuild: `@rsbuild/plugin-react`'s `fastRefresh` (default `true`); a
    * React app on Rsbuild without React Refresh sets it to `false`.
    */
@@ -512,18 +518,23 @@ async function viteServer(
       ...files,
     },
     config: { optimizeDeps: { include: prebundled[target] } },
-    plugins: ({ root }) => [
-      options.pluginOptions === null
-        ? tanstackRouter()
-        : options.pluginOptionsAsFunction
-          ? tanstackRouter(() =>
-              getConfig(routerPluginOptions(target, root, options), root),
-            )
-          : tanstackRouter(routerPluginOptions(target, root, options)),
-      ...(options.frameworkPlugin === false
-        ? []
-        : [frameworkVitePlugins[target]()]),
-    ],
+    plugins: ({ root }) => {
+      const router =
+        options.pluginOptions === null
+          ? tanstackRouter()
+          : options.pluginOptionsAsFunction
+            ? tanstackRouter(() =>
+                getConfig(routerPluginOptions(target, root, options), root),
+              )
+            : tanstackRouter(routerPluginOptions(target, root, options))
+      const framework =
+        options.frameworkPlugin === false
+          ? []
+          : [frameworkVitePlugins[target]()]
+      return options.frameworkPluginFirst
+        ? [...framework, router]
+        : [router, ...framework]
+    },
   })
   const fullReloads = () =>
     server.hmr.filter(
