@@ -7,3 +7,10 @@
 export function dehydrateSsrMatchId(id: string): string {
   return id.replaceAll('/', '#')
 }
+
+// Manifest route ids are looked up by their original id on the client, so they
+// are decoded on hydration. A key from an older server is still raw and starts
+// with '/' or is the root id, so only encoded keys are decoded.
+export function hydrateSsrManifestRouteId(id: string): string {
+  return id.startsWith('#') ? id.replaceAll('#', '/') : id
+}
