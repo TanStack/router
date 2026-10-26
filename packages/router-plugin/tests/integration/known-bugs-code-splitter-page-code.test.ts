@@ -513,7 +513,8 @@ export const Route = createFileRoute('/imports-exported')({ component: Page })
         timeout,
       )
 
-      test.each(['errorComponent', 'notFoundComponent'] as const)(
+      // Kept unsplit on purpose, like main (SPEC J2.7: acceptable, not preferred).
+      test.fails.each(['errorComponent', 'notFoundComponent'] as const)(
         "a root route's %s loads lazily",
         async (option) => {
           expect((await app()).where(rootMarkers[option])).toBe('lazy')
