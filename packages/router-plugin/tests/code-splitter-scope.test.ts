@@ -8,7 +8,7 @@
  */
 import { parseSync, transformWithOxc } from 'vite'
 import { describe, expect, it } from 'vitest'
-import { expectValidModules, head, loadRoute } from './route-app'
+import { expectValidModules, head, holdsMarker, loadRoute } from './route-app'
 import type { Plugin } from 'vite'
 
 const pageRoute = (body: string) => `${head}${body}
@@ -626,5 +626,35 @@ export const Route = createFileRoute('/')({
     expect(
       await route.run(`return [options.loader(), await render('component')]`),
     ).toEqual([1, 'page'])
+  })
+
+  // Source: TanStack/router#8818. A loader typed by the component's props
+  // (`(): Page.Props`) reads no value: the component stays in its chunk,
+  // out of what loads with the route.
+  it('a type annotation naming the split component does not share it', async () => {
+    const route =
+      await loadRoute(`${head}export const Route = createFileRoute('/')({
+  component: Page,
+  loader: (): Page.Props => ({ title: 'Hello' }),
+})
+
+function Page(props: Page.Props) {
+  return <h1 data-mark="MARK_PAGE">{props.title}</h1>
+}
+
+declare namespace Page {
+  type Props = { title: string }
+}
+`)
+    await expectValidModules(route)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(
+      (await route.eagerModules()).filter((code) =>
+        holdsMarker(code, 'MARK_PAGE'),
+      ),
+    ).toEqual([])
+    expect(
+      await route.run(`return render('component', options.loader())`),
+    ).toBe('<h1 data-mark="MARK_PAGE">Hello</h1>')
   })
 })
