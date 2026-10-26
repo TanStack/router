@@ -48,8 +48,8 @@ module and the chunk imports it.
 - Single writer and evaluation order: a split that would make two outputs write one binding, or reorder a module
   effect, is a core _fallback_; the option stays in the route module.
 - `deleteNodes` removes options (every property form) from the env output and what only they imported.
-- Route CSS (`import './x.css'` and other style extensions) moves into the split component chunks only when every
-  component option the route defines is split; otherwise it stays in the route module.
+- Route CSS (`import './x.css'` and other bare style imports) stays in the route module, which the route tree imports
+  eagerly, whether or not the route's components are split (fully lazy route CSS needs a router-core asset loader).
 
 ## Route HMR
 

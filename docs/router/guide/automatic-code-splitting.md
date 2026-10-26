@@ -106,10 +106,6 @@ function PostsNotFoundComponent() {
 
 A route option written as a method or a function expression whose body reads `this` stays in the route file, and the build warns once, naming the file. Write such callbacks as arrow functions (or without `this`) to have them split.
 
-#### Route CSS loads with the split components
-
-A style import in a route file (`import './posts.css'`) moves into the route's split component chunks only when every component option the route defines (`component`, `errorComponent`, `pendingComponent`, `notFoundComponent`) is split. Otherwise it stays in the route file and loads with it, because the compiler cannot tell which component needs it.
-
 **That's it!** There are no other restrictions. You can use any other JavaScript or TypeScript features in your route files as you normally would. If you run into any issues, please [open an issue](https://github.com/tanstack/router/issues) on GitHub.
 
 ## Granular control
