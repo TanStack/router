@@ -1589,6 +1589,12 @@ export function registerImportProtection(
             flushPendingWrites(shared, envName)
           },
         )
+        // A JS beforeResolve tap runs on every resolve; only a cache that
+        // outlives the process can restore importers whose mocks are missing.
+        const { cache } = compiler.options
+        if (typeof cache !== 'object' || cache.type === 'memory') {
+          return
+        }
         compiler.hooks.normalModuleFactory.tap(
           'TanStackStartImportProtectionVirtualModulesRestore',
           (normalModuleFactory) => {
