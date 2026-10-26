@@ -7,7 +7,12 @@
  * which record what ran, and the page reads them.
  */
 import { describe, expect, it } from 'vitest'
-import { expectValidModules, head, loadRoute } from '../../route-app'
+import {
+  expectValidModules,
+  head,
+  holdsMarker,
+  loadRoute,
+} from '../../route-app'
 
 /**
  * An app module `init.ts` (or another name) whose `init` counts its calls
@@ -941,4 +946,50 @@ export const Route = createFileRoute('/')({ component: withAuth(Page) })
     })
     expect(await route.run(`return render('component')`)).toBe('<h1>Posts</h1>')
   })
+})
+
+// Effectful declarations only the split component reads move with it, each
+// one, as on main (DESIGN R29/R31: no surviving effect follows them in the
+// route module once the later ones moved too; G3 allows the lazy
+// initialisation). Found by the real-app differential corpus: a route file
+// with `const A = import.meta.env.X || ''` and `const B = …` kept every one
+// but the last in the route module (exported there, imported back by the
+// chunk), so the eager bundle grew.
+describe('effectful declarations only the split component reads', () => {
+  it.each([1, 2, 3])(
+    '%i of them load with the component, not with the route module',
+    async (count) => {
+      const names = ['first', 'second', 'third'].slice(0, count)
+      const route = await loadRoute(
+        `${head}import { register } from './state'
+export const Route = createFileRoute('/')({ component: Page })
+${names.map((name) => `const ${name} = register('MARK_${name}')`).join('\n')}
+function Page() {
+  return <p>{${names.join(' + ')}}</p>
+}
+`,
+        {
+          files: {
+            'state.ts': `export const ran: Array<string> = []
+export const register = (name: string) => {
+  ran.push(name)
+  return name
+}
+`,
+          },
+        },
+      )
+      await expectValidModules(route)
+      const eager = await route.eagerModules()
+      expect({
+        html: await route.run(`return render('component')`),
+        eagerHolds: names.filter((name) =>
+          eager.some((code) => holdsMarker(code, `MARK_${name}`)),
+        ),
+      }).toEqual({
+        html: `<p>${names.map((name) => `MARK_${name}`).join('')}</p>`,
+        eagerHolds: [],
+      })
+    },
+  )
 })
