@@ -206,6 +206,26 @@ To create a route, create a new file that corresponds to the path of the route y
 
 To define a route, use the `createFileRoute` function to export the route as the `Route` variable.
 
+If a route file is used as a layout route (like `posts.tsx`), update its component to render an `<Outlet />` so matching child routes can be displayed:
+
+```tsx
+// src/routes/posts.tsx
+import { createFileRoute, Outlet } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/posts')({
+  component: RouteComponent,
+})
+
+function RouteComponent() {
+  return (
+    <div>
+      <div>Posts</div>
+      <Outlet />
+    </div>
+  )
+}
+```
+
 For example, to handle the `/posts/:postId` route, you would create a file named `posts/$postId.tsx` here:
 
 ```
