@@ -198,5 +198,18 @@
     "webpack": {
       "optional": true
     }
+  },
+  "nx": {
+    "targets": {
+      "test:unit": {
+        "parallelism": false
+      },
+      "test:integration": {
+        "parallelism": false
+      },
+      "test:integration:smoke": {
+        "parallelism": false
+      }
+    }
   }
 }

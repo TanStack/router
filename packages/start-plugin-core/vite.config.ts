@@ -30,11 +30,16 @@ const config = defineConfig({
     name: packageJson.name,
     dir: './tests',
     watch: false,
-    // At most 4 test processes per Vitest run (measured): each
-    // runs real bundlers, dev servers and its own browser, and Nx runs several
-    // packages' tiers at once. More workers add swap and load flakes, not
-    // speed. `--maxWorkers` on the command line still overrides it.
-    maxWorkers: 4,
+    // At most 4 test processes per Vitest run (measured), fewer on a small
+    // machine (half its logical CPUs, at least one): each runs real bundlers,
+    // dev servers and its own browser. Nx runs this tier alone on its machine
+    // (`parallelism: false` in package.json), but more workers still add swap
+    // and load flakes, not speed, and on a CI agent with 2 or 4 CPUs four of
+    // them time out. `--maxWorkers` on the command line still overrides it.
+    maxWorkers: Math.min(
+      4,
+      Math.max(1, Math.floor(os.availableParallelism() / 2)),
+    ),
     reporters: ['default', '@tanstack/compiler-test-utils/budget-reporter'],
     globalSetup: ['@tanstack/compiler-test-utils/run-directory'],
     setupFiles: [
