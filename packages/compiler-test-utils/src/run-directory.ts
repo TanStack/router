@@ -11,6 +11,10 @@
  *   a pinned bug). Not the generator's default
  *   (`.tanstack/tmp` in the working directory: the package's own directory).
  *
+ * The run directory is the native real path (Windows: long names, not the
+ * 8.3 short names `os.tmpdir()` can return, so that paths the tools report
+ * for files in it compare equal to paths built from it).
+ *
  * The test processes inherit the directories through their environment
  * (`runDirectoryVariable`). Without this setup, the apps go to the system's
  * temporary directory itself.
@@ -32,7 +36,7 @@ export function runDirectory(): string {
 
 export default function setup() {
   const dir = mkdtempSync(
-    path.join(realpathSync(os.tmpdir()), 'tanstack-compiler-tests-'),
+    path.join(realpathSync.native(os.tmpdir()), 'tanstack-compiler-tests-'),
   )
   const variables = {
     [runDirectoryVariable]: dir,
