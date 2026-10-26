@@ -19,7 +19,7 @@ export function dedupePatterns(patterns: Array<Pattern>): Array<Pattern> {
  * Strip the `?query` and `#hash` of a module ID. A project path may carry a
  * `#` (`C#`, `project #2`): a `#` is a fragment only after the query.
  */
-function stripQueryAndHash(id: string): string {
+export function stripQueryAndHash(id: string): string {
   const q = id.indexOf('?')
   if (q === -1) {
     return id
