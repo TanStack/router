@@ -36,6 +36,9 @@ const config = defineConfig({
         test: {
           name: 'unit',
           exclude: [...configDefaults.exclude, 'integration/**'],
+          // A test runs the generator and loads its tree in a Vite server:
+          // seconds on a slow CI runner (macOS arm64 timed out at 5 s)
+          testTimeout: 15_000,
         },
       },
       {
