@@ -1,5 +1,5 @@
 /**
- * Dev reporting (DESIGN §4.1.3, R21): a violation is decided when its
+ * Dev reporting: a violation is decided when its
  * importer is compiled (`onViolation` already ran); the report is printed
  * once the bundler's graph knows how the importer is reached, so its trace
  * is a real chain from an entry. No microtask polling: one yielding timer

@@ -1,5 +1,5 @@
 /**
- * One numeric id space for source and generated bindings (DESIGN §2.3, R25).
+ * One numeric id space for source and generated bindings.
  * Source symbols are Yuku binding ids; generated symbols are appended. The
  * `Binding → id` map is the binding's own id, so no Yuku object is retained
  * by anything that stores a `SymbolId`.

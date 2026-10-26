@@ -1,5 +1,5 @@
 /**
- * The `<Hydrate>` planner (J5, DESIGN §3.11) on the compiler core, through
+ * The `<Hydrate>` planner (J5) on the compiler core, through
  * `compileModule` and an in-memory host: what each env serves for a module
  * and for its `?tss-hydrate=<id>` chunks.
  */
@@ -267,7 +267,7 @@ export const Deeper = () => <Start.X.Hydrate><p>local</p></Start.X.Hydrate>
 })
 
 describe('the client output (J5.2)', () => {
-  it('moves the children into a chunk loaded by a pure lazy component, with child-only code (R9, R29)', async () => {
+  it('moves the children into a chunk loaded by a pure lazy component, with child-only code', async () => {
     const code = `${REACT}import { load } from '@tanstack/react-start/hydration'
 import { Chart } from './chart'
 import { formatValue } from './format'
@@ -288,7 +288,9 @@ export function Page({ label }) {
 }
 `,
     )
-    // an effectful initialiser only the chunk needs, with nothing effectful after it, moves (R29, R31)
+    // an effectful initialiser only the chunk needs, with nothing effectful after it, moves
+    // (its only needer is the chunk, nothing else writes it and no later effect
+    // could observe the deferred initialisation)
     expect(client.chunks[id]).toBe(
       `import { Chart } from './chart'
 import { formatValue } from './format'
@@ -408,8 +410,8 @@ export const Page = (props) => <Hydrate ${attrs}><b /></Hydrate>
     expect(server.code).not.toContain('preload')
   })
 
-  it('names generated bindings away from the file universe and starts tag names uppercase (D10)', async () => {
-    // (the user's primitives are copied into the chunk: copyable, §3.5.2)
+  it('names generated bindings away from the file universe and starts tag names uppercase', async () => {
+    // (the user's primitives are copied into the chunk: copyable)
     const code = `${REACT}const TsrHydrate0 = 'mine'
 const tsrLazy = 'mine'
 export function Page({ props }) {
@@ -434,7 +436,7 @@ export { TsrHydrate0$1 as H0 }
     )
   })
 
-  it('keeps a foreign query on the chunk id and its specifier (R35)', async () => {
+  it('keeps a foreign query on the chunk id and its specifier', async () => {
     const code = `${REACT}export const Page = () => <Hydrate><p>x</p></Hydrate>\n`
     const client = await compile(code, { id: `${FILE}?flavour=b` })
     const [b] = client.facts.boundaries
@@ -485,7 +487,7 @@ export const Page = ({ a }) => <Hydrate><Chart a={a} /></Hydrate>
   })
 })
 
-describe('captures (J5.2, R39)', () => {
+describe('captures (J5.2)', () => {
   const capturesOf = async (body: string, env: EnvInfo = clientEnv) => {
     const head = env.framework === 'solid' ? SOLID : REACT
     const client = await compile(`${head}${body}`, { env })
@@ -637,7 +639,7 @@ export { TsrHydrate0 as H0 }
   })
 })
 
-describe('Solid (J5.2, R38, R39)', () => {
+describe('Solid (J5.2)', () => {
   it('reads captures through props, context-aware, and forwards them to nested boundaries', async () => {
     const code = `${SOLID}export function Page(props) {
   const label = 'x'
@@ -725,9 +727,9 @@ export { TsrHydrate0 as H0 }
   })
 })
 
-describe('module-level code the children use (R9, §3.5.2)', () => {
+describe('module-level code the children use', () => {
   // A component only the chunk reads moves with its own property writes
-  // (`Card.Title = …`, R29 (b): nothing outside its cluster augments it).
+  // (`Card.Title = …`: nothing outside its cluster augments it).
   it('imports exported declarations and Route from the parent; moves what only the chunk uses, augmented components included', async () => {
     const code = `${REACT}import { createFileRoute } from '@tanstack/react-router'
 import { makeStore } from './store'
@@ -788,7 +790,7 @@ export const Page = () => <Hydrate><p onClick={() => clicks++}>{clicks}</p></Hyd
   })
 
   // (Adjusted: the exported writer and its state are an extracted export
-  // only the chunk needs, §3.5.3, so the live binding's home is that
+  // only the chunk needs, so the live binding's home is that
   // output, not the parent; main kept it in the parent.)
   it('lets the children read a let the parent reassigns through the live binding', async () => {
     const code = `${REACT}let clicks = 0
@@ -1162,7 +1164,7 @@ export function Page({ a, b }) {
   })
 })
 
-describe('hydration ids (J5.4, R10)', () => {
+describe('hydration ids (J5.4)', () => {
   it('derives ids from the pristine offset and the root-relative path, identically in both envs', async () => {
     const code = `${REACT}export const Page = () => <>${Array.from(
       { length: 11 },
@@ -1257,7 +1259,7 @@ function toyEnvPlanner(): Planner {
   }
 }
 
-describe('ancestor erasure (R37)', () => {
+describe('ancestor erasure', () => {
   it('a boundary inside code the client erases yields no chunk, edge, lazy const or rejection there', async () => {
     const code = `${REACT}import { serverOnly } from 'toy-start'
 import { useThing } from './hooks'
@@ -1536,7 +1538,7 @@ describe('source maps (G6)', () => {
   })
 })
 
-describe('placement and markup edge cases (J5.2, R41)', () => {
+describe('placement and markup edge cases (J5.2)', () => {
   // A recursive component rendering itself inside its own boundary: the
   // unexported component moves into the chunk with the lazy const only it
   // reads, next to the chunk component. Their names differ (two
@@ -1626,7 +1628,7 @@ function Tree({ n }) {
   })
 
   // React development with route HMR: the chunk component carries the
-  // identity marker the route-HMR runtime compares (R41), as split
+  // identity marker the route-HMR runtime compares, as split
   // component chunks do, so an update of the chunk is kept, not swapped.
   it('marks the chunk component with its refresh identity when the host asks for markers', async () => {
     const code = `${REACT}export function Page() { return <Hydrate><p>x</p></Hydrate> }

@@ -1,8 +1,8 @@
 /**
- * Gate (l): retained heap over the package-source corpus. Compiles every
+ * Retained heap over the package-source corpus. Compiles every
  * `packages/*\/src/**\/*.ts{,x}` file with the toy planners, keeps only the
  * caches, forces GC and asserts the heap and ArrayBuffer deltas stay within
- * the plain-data envelope (no Yuku SourceFile/buffer retained, R19).
+ * the plain-data envelope (no Yuku SourceFile/buffer retained).
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
@@ -112,7 +112,7 @@ async function runCorpus(
   return stats
 }
 
-describe('retained heap (gate l)', () => {
+describe('retained heap', () => {
   it.skipIf(!gc)(
     'keeps only plain data after compiling the package corpus',
     async () => {
@@ -165,7 +165,7 @@ describe('retained heap (gate l)', () => {
           files.length
         ).toFixed(1),
       }
-      console.log(`gate (l) report: ${JSON.stringify(report)}`)
+      console.log(`retained heap report: ${JSON.stringify(report)}`)
       expect(heapDelta).toBeLessThanOrEqual(5 * 1048576)
       expect(abDelta).toBeLessThanOrEqual(0)
     },

@@ -1,7 +1,7 @@
 /**
- * Module summaries and the export-facts digest (DESIGN §2.9.1; R20, R23,
- * R36). A summary is a function of the module's raw text, env-independent,
- * holds no AST, and its digest covers only what importers can observe.
+ * Module summaries and the export-facts digest. A summary is a function of the
+ * module's raw text, env-independent, holds no AST, and its digest covers only
+ * what importers can observe.
  */
 import { digestOf } from './identity'
 import { ValueAnalysis, stripSites } from './values'

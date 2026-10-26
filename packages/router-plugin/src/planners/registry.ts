@@ -3,7 +3,7 @@
  * on `HostServices.services.routes`, `HostServices.routes.digestFor`): the
  * generator's `routesByFile` by normalized path, with a lookup by the real
  * path of a symlinked route file (bundlers resolve modules to their real
- * path, the generator scans the link; DESIGN §3.5.1). Shared by the
+ * path, the generator scans the link). Shared by the
  * standalone router hosts and Start's hosts.
  */
 import fs from 'node:fs'

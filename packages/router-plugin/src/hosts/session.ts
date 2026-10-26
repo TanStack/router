@@ -1,5 +1,5 @@
 /**
- * The router compiler session of a host (DESIGN §4): the compiler caches,
+ * The router compiler session of a host (see the compiler README, "Hosts"): the compiler caches,
  * the host services the core needs, the planner configuration, the warning
  * ledger (once per file per run) and the route registry view. One session
  * per plugin instance; the registry and the ledger are shared through the
@@ -71,10 +71,6 @@ export const JS_ID_RE = /\.[cm]?[jt]sx?(\?|$)/
 export function resourceId(resource: string): string {
   return normalizePath(resource.replace(/[\0\u200b]#/g, '#'))
 }
-
-/** A query carrying one of the compiler-owned keys (derived module ids). */
-export const OWNED_QUERY_RE =
-  /(?:^|[?&])(?:tsr-split|tss-hydrate|tss-serverfn-split)(?:=|&|$)/
 
 /** The derived outputs the router planners declare (`?tsr-split=`). */
 const ROUTER_DERIVED_KINDS = new Set(['split', 'shared', 'export'])

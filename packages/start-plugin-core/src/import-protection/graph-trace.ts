@@ -1,5 +1,5 @@
 /**
- * Violation traces (J6.5; DESIGN §3.14.4): a real import chain from an
+ * Violation traces (J6.5): a real import chain from an
  * entry of the environment to the importer, found by a breadth-first walk
  * up the bundler's own module graph (Vite `moduleGraph` importers in dev,
  * Rollup `getModuleInfo().importers` / Rspack incoming connections in

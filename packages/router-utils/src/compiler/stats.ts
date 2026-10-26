@@ -1,7 +1,7 @@
 /**
- * Measurement aids for the compiler's caches (D12), inert unless their
- * environment variables are set. They run in the bundler's Node process
- * only and never reach a bundle.
+ * Measurement and debugging aids for the compiler's caches (see "Debugging
+ * knobs" in README.md), inert unless their environment variables are set.
+ * They run in the bundler's Node process only and never reach a bundle.
  *
  * - `TSR_COMPILER_STATS=1`: every cache owner registers a reader of its entry
  *   counts in a process-global registry (`compilerStats()`), held through a

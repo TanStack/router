@@ -64,9 +64,11 @@ chunks, mock modules, server-fn provider modules); and the order of the compiler
 - Router runtime semantics (matching, loaders, `ssr` inheritance): the compilers only preserve them (G1).
 - esbuild: no work; the only requirement is J2.18.
 - Unused exported router-generator helpers; `server.build.staticNodeEnv` on Rsbuild (C10).
-- Runtime bugs. A pin's cause is in a compiler: the J1–J7 sources or their bundler integrations. Babel,
-  babel-dead-code-elimination and unplugin are today's implementation choices, so their bugs count as compiler
-  bugs. A bug caused by a runtime package (for example a hydration boundary in `react-start-client`) is out of scope.
+- Runtime bugs. A pin's cause is in a compiler: the J1–J7 sources or their bundler integrations. The libraries a
+  compiler is built on (the parser, printer, dead-code elimination and bundler integration: Babel,
+  babel-dead-code-elimination and unplugin before the Yuku rewrite) are its implementation choices, so their bugs
+  count as compiler bugs. A bug caused by a runtime package (for example a hydration boundary in `react-start-client`)
+  is out of scope.
 - Exported compiler internals and raw factory exports (router-utils and Start-compiler helpers, unplugin factories,
   compiler extension callbacks, directive options): not user contracts, not tested.
 - The generator's filesystem metadata policy (file mode/owner retention, `chown` failures).

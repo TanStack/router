@@ -27,7 +27,7 @@ const byspec = (edges: Array<EdgeRecord>) =>
     edges.map((e) => [`${e.form} ${e.specifier}`, [e.kind, e.names]]),
   )
 
-describe('edge names (J6, DESIGN §3.14.1)', () => {
+describe('edge names (J6)', () => {
   const source = dedent(`
     import { used, typeOnlyUse, unused } from './a'
     import * as ns from './b'
@@ -95,7 +95,7 @@ describe('edge names (J6, DESIGN §3.14.1)', () => {
   })
 })
 
-describe('require edge names (J6.3, F3)', () => {
+describe('require edge names (J6.3)', () => {
   // a mock of a denied CommonJS or unknown target owns the names the
   // importer reads: the keys it destructures, the members it reads of the
   // binding or of the call; `'*'` when the result escapes
@@ -184,7 +184,7 @@ describe('policy context', () => {
   })
 })
 
-describe('target facts (R36)', () => {
+describe('target facts', () => {
   it('list evaluated imports, star re-exports and the module format', async () => {
     const host = new MemoryHost({
       files: {
@@ -331,7 +331,7 @@ function denyServer(verdicts: Array<string>): Planner {
   }
 }
 
-describe('unresolved resolutions (R47, J6.13)', () => {
+describe('unresolved resolutions (J6.13)', () => {
   const importer = `import { s } from './secret.server'\nexport const x = s\n`
   const key = (canonicalId: string, env = 'client') => ({
     env,
@@ -476,7 +476,7 @@ describe('unresolved resolutions (R47, J6.13)', () => {
   })
 })
 
-describe('language override (R48)', () => {
+describe('language override (non-JS ids compiled as JS)', () => {
   const vueJs = `import { s } from './secret.server'\nconst n: number = 1\nexport default { s, n }\n`
 
   function tier1Probe(runs: Array<string>): Planner {

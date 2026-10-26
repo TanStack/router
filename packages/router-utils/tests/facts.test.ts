@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { RawFactsCache } from '../src/compiler'
 
-describe('RawFactsCache (lane B)', () => {
+describe('RawFactsCache', () => {
   it('does not publish a read in flight when the file changes meanwhile', async () => {
     let text = 'export const a = 1\n'
     let release: (() => void) | null = null
@@ -30,7 +30,7 @@ describe('RawFactsCache (lane B)', () => {
   })
 })
 
-describe('target facts of a marked module (lane P)', () => {
+describe('target facts of a marked module', () => {
   it('counts a marker import neither as an evaluation edge nor as an effect', async () => {
     const files: Record<string, string> = {
       '/app/marked.ts': `import '@tanstack/react-start/server-only'\nexport const secret = () => 'MARK_SECRET'\n`,
@@ -57,7 +57,7 @@ describe('target facts of a marked module (lane P)', () => {
   })
 })
 
-describe('target facts: lazy imports (lane C2)', () => {
+describe('target facts: lazy imports', () => {
   it('lists the literal specifiers of import() and require() apart from the evaluation edges', async () => {
     const files: Record<string, string> = {
       '/app/a.ts': `import { b } from './b'

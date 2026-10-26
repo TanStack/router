@@ -1,5 +1,5 @@
 /**
- * The Rspack loader of Start's compiler (DESIGN §4.2.1). A static file so
+ * The Rspack loader of Start's compiler. A static file so
  * that Rspack loads it by path (and the persistent cache keys it); the
  * implementation lives on the environment's compiler, installed by the
  * host plugin (`host-plugin.ts`), so this file imports nothing stateful of

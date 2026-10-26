@@ -3,9 +3,10 @@
 Each bug is pinned by `.fails` tests that assert the correct outcome and accept any correct fix. When your compiler
 fixes a bug, its pins fail with "Expect test to fail": remove the `.fails` and keep the test.
 
-One entry per root cause: the bug, the SPEC clause, the pins (`file` and test names; paths under `packages/`;
-`$name`, `%s` and `${…}` are table-row placeholders), and what a fix must achieve. The test comment (`Bug:`,
-`Impact:`) has the details. "Cause" files name today's implementation; a rewrite may have no such file.
+One entry per root cause: the bug, the SPEC clause, the pins (`file` and test names; paths under `packages/`; `$name`,
+`%s` and `${…}` are table-row placeholders), and what a fix must achieve. The test comment (`Bug:`, `Impact:`) has the
+details. "Cause" files name the implementation the pin was written against (the Babel-based compilers); a rewrite may
+have no such file.
 
 Totals: 380 pin sites in 105 test files (a table test counts once; Vitest counts each row).
 
@@ -37,12 +38,12 @@ compiles its JSX under the runtime the untouched file has, and keeps the factory
 - `start-plugin-core/tests/integration/pages/known-bugs-hydrate-module-level.test.ts`: "client: a module with a
   classic JSX pragma renders through its factory".
 
-**S2. Dead-code elimination keeps what only types or non-reads mention, and never removes some declaration kinds.**
-babel-dead-code-elimination counts `typeof x` type queries, TypeScript-only positions (enum members, overload and
-constructor parameters) and a local of a function's own name as reads, and never removes classes, enums, namespaces,
-overloaded functions or redeclared `var`s. Server-only imports then stay on the client (and client-only imports on
-the server). SPEC J4.12, J4.11, J2.5, G16. Fix: code only server code (or only types) reads is gone from the client,
-with its imports, and code only client-only code reads is gone from the server. 10 pins:
+**S2. Dead-code elimination keeps what only types or non-reads mention, and never removes some declaration kinds.** The
+Babel-based compilers' babel-dead-code-elimination counted `typeof x` type queries, TypeScript-only positions (enum
+members, overload and constructor parameters) and a local of a function's own name as reads, and never removed classes,
+enums, namespaces, overloaded functions or redeclared `var`s. Server-only imports then stay on the client (and
+client-only imports on the server). SPEC J4.12, J4.11, J2.5, G16. Fix: code only server code (or only types) reads is
+gone from the client, with its imports, and code only client-only code reads is gone from the server. 10 pins:
 
 - `start-plugin-core/tests/known-bugs-start-compiler.test.ts`: "client: $name does not load its server-only import";
   "client: a server-only import last mentioned by a type alias is not loaded with verbatimModuleSyntax"; "client: a
@@ -57,8 +58,8 @@ with its imports, and code only client-only code reads is gone from the server. 
 - `start-plugin-core/tests/createServerFn/caller-dead-code.test.ts`: "when client code uses its name in $name";
   "callers drop a handler-only function that declares a local of its own name".
 
-**S3. The printer drops required parentheses** (`@babel/generator`): `count as number++`, `a as any ? -x : y`,
-`<Tag />.props` do not parse. SPEC G12. Fix: printed code parses and means the same. 5 pins:
+**S3. The printer drops required parentheses** (`@babel/generator` in the Babel-based compilers): `count as number++`,
+`a as any ? -x : y`, `<Tag />.props` do not parse. SPEC G12. Fix: printed code parses and means the same. 5 pins:
 
 - `router-plugin/tests/integration/pages/known-bugs-code-splitter-bindings.test.ts`: "an asserted update operand keeps
   its parentheses in a split component"; "an asserted conditional test keeps its parentheses in a split component";
@@ -66,9 +67,9 @@ with its imports, and code only client-only code reads is gone from the server. 
 - `start-plugin-core/tests/start-compiler-preserves-user-code.test.ts`: "keeps the parentheses of asserted update
   operands"; "keeps the parentheses of an asserted conditional test".
 
-**S4. Source maps are lost on webpack and Rspack.** unplugin's webpack and Rspack transform loaders drop the map a
-plugin returns when no earlier loader passed one in. SPEC G6. Fix: a throw in a split chunk maps to the route file's
-line (and column). 4 pins:
+**S4. Source maps are lost on webpack and Rspack.** unplugin's webpack and Rspack transform loaders (the former
+integration layer) drop the map a plugin returns when no earlier loader passed one in. SPEC G6. Fix: a throw in a
+split chunk maps to the route file's line (and column). 4 pins:
 
 - `router-plugin/tests/integration/build-source-maps.test.ts`: "a throw in a split component maps to its line in the
   route file ($name)"; "a throw in $name maps to its line and column in the route file".
@@ -102,11 +103,12 @@ user binding. 8 pins:
 - `start-plugin-core/tests/integration/pages/known-bugs-hydrate-module-level.test.ts`: "client: module-level $name,
   named like the generated bindings, do not collide".
 
-**S7. Dead-code elimination removes the const half of a class and const cycle.** When only removed code used a
-class whose static field reads a const that points back to the class (`const registry = { make: () => new Repo() };
-class Repo { static registry = registry }`), babel-dead-code-elimination takes the pair for one removable cycle and
-deletes the const, but it never removes a class (S2), so the class stays and its static field reads a deleted name.
-SPEC G16, G1. Fix: both halves go together, or both stay; the module loads. 2 pins, one cell per removal:
+**S7. Dead-code elimination removes the const half of a class and const cycle.** When only removed code used a class
+whose static field reads a const that points back to the class (`const registry = { make: () => new Repo() }; class
+Repo { static registry = registry }`), babel-dead-code-elimination (Babel-based compilers) takes the pair for one
+removable cycle and deletes the const, but it never removes a class (S2), so the class stays and its static field
+reads a deleted name. SPEC G16, G1. Fix: both halves go together, or both stay; the module loads. 2 pins, one cell per
+removal:
 
 - `start-plugin-core/tests/start-compiler-dead-code-shapes.test.ts`: "takes with it what only it uses through a class
   and a const that read each other" (server fn handler, `createServerOnlyFn`, isomorphic `.server()` on the client;
@@ -763,7 +765,7 @@ None is filed upstream yet. "Remove when" says when a harness change can go.
 | Node 24/26 `fs.rmSync`                                    | returns without an error and leaves files behind when another process removes part of the tree meanwhile                                                                                      | only the run's teardown removes the run's temp directory (`compiler-test-utils/src/run-directory.ts`).                                                                                                                                                               |
 | Rspack 2.2, webpack 5                                     | unminified production output keeps reads of dropped bindings in dead code of modules no compiler touched                                                                                      | the dangling-name check covers only modules the compilers produced or changed (SPEC G8; `checkDanglingNames` in `compiler-test-utils/src/build-harness.ts`).                                                                                                         |
 | Chromium (Playwright, `--disable-dev-shm-usage`)          | shared memory lives in files in `TMPDIR`; a full router-plugin `test:integration` holds up to about 2.2 GB; with little room, module requests fail (`net::ERR_INSUFFICIENT_RESOURCES`)        | the browser helpers bound open pages (`runPageLimit`, `openPageLimit` in `compiler-test-utils/src/browser.ts`). Use a `TMPDIR` with room, or re-run the file alone.                                                                                                  |
-| unplugin 3.3                                              | webpack and Rspack loaders drop the plugin's source map                                                                                                                                       | pinned (S4): unplugin is today's integration layer.                                                                                                                                                                                                                  |
-| `@babel/generator` 7.29                                   | drops required parentheses                                                                                                                                                                    | pinned (S3): Babel is today's printer.                                                                                                                                                                                                                               |
-| babel-dead-code-elimination 1.0.12                        | counts `typeof` type queries as references (pcattori/babel-dead-code-elimination#50)                                                                                                          | pinned (S2): today's dead-code elimination.                                                                                                                                                                                                                          |
-| babel-dead-code-elimination 1.0.12                        | removes the const of a class and const cycle and keeps the class, whose static field then reads a deleted name (no class visitor)                                                             | pinned (S7): today's dead-code elimination.                                                                                                                                                                                                                          |
+| unplugin 3.3                                              | webpack and Rspack loaders drop the plugin's source map                                                                                                                                       | pinned (S4): unplugin was the former integration layer.                                                                                                                                                                                                              |
+| `@babel/generator` 7.29                                   | drops required parentheses                                                                                                                                                                    | pinned (S3): Babel was the former printer.                                                                                                                                                                                                                           |
+| babel-dead-code-elimination 1.0.12                        | counts `typeof` type queries as references (pcattori/babel-dead-code-elimination#50)                                                                                                          | pinned (S2): the former dead-code elimination.                                                                                                                                                                                                                       |
+| babel-dead-code-elimination 1.0.12                        | removes the const of a class and const cycle and keeps the class, whose static field then reads a deleted name (no class visitor)                                                             | pinned (S7): the former dead-code elimination.                                                                                                                                                                                                                       |

@@ -1,5 +1,6 @@
 /**
- * `route-hmr` planner (J3; DESIGN §3.15.1, impl-notes-runtime §1).
+ * `route-hmr` planner (SPEC J3; the runtime side is `hmr.ts` of router-core
+ * and the framework routers).
  *
  * `prepare` (React only, before `route-split`): every component option that
  * stays in the route module becomes a registrable binding — inline values
@@ -12,7 +13,10 @@
  * and, for React on Vite, the refresh anchor export. Production output
  * never sees this planner (the host registers it for dev client envs only).
  */
-import { stringLiteral } from '@tanstack/router-utils/compiler'
+import {
+  stringLiteral,
+  unwrapExpression,
+} from '@tanstack/router-utils/compiler'
 import {
   identifierSymbol,
   isAlreadyLazy,
@@ -20,7 +24,6 @@ import {
   pascal,
   recognizeRoute,
   routerRouteId,
-  unwrapTs,
 } from './route'
 import { splitPlanOf } from './decisions'
 import { prefetchRouteEntry, routeGate } from './split'
@@ -182,7 +185,7 @@ export function routeHmrPlanner(): Planner {
         } else {
           // casts and parentheses around the value are dropped from the hoist
           // (`(() => …) as any`): React Refresh registers a bare function
-          const inner = unwrapTs(value)
+          const inner = unwrapExpression(value)
           body.push({ k: 'text', parts: [`const ${hoisted.name} = `] })
           body.push({
             k: 'slice',

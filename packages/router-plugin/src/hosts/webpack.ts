@@ -1,5 +1,5 @@
 /**
- * Rspack / webpack host of the router compiler (DESIGN §4.2): `apply`
+ * Rspack / webpack host of the router compiler: `apply`
  * installs the loader rule for route modules (env and derived ids), the
  * `sideEffects: false` rule for extracted-export outputs, the one
  * invalidation operation on `watchRun`, and the mode from the compiler's

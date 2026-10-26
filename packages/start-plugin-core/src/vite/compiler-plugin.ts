@@ -1,6 +1,6 @@
 /**
- * Start's Vite host of the compiler core (DESIGN §4.1; D1, D8, R3, R11,
- * R35): one `enforce: 'pre'` plugin per Start env compiling every id it is
+ * Start's Vite host of the compiler core (see the core's README.md,
+ * "Hosts"): one `enforce: 'pre'` plugin per Start env compiling every id it is
  * handed text for through ONE `compileModule` (env and derived ids alike)
  * with the planners in the core's fixed order — `start-env`, `hydrate`,
  * `rsc-css`, `route-split`, `route-hmr`, `import-edges` — the one
@@ -14,6 +14,7 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import {
+  OWNED_QUERY_RE,
   OutputBuilder,
   RawFactsCache,
   SourceText,
@@ -27,6 +28,7 @@ import {
   invalidate,
   isAnalyzableSpecifier,
   registerCompilerStats,
+  resolveDerivedSibling,
 } from '@tanstack/router-utils/compiler'
 import { defaultCodeSplitGroupings } from '@tanstack/router-plugin'
 import {
@@ -57,10 +59,7 @@ import {
   unreferencedWarning,
 } from '../server-fns/resolver'
 import { createImportProtection } from '../import-protection/session'
-import {
-  EDGE_MODULE_PREFIX,
-  resolveViteEdgeModuleId,
-} from '../import-protection/edge-modules'
+import { resolveViteEdgeModuleId } from '../import-protection/edge-modules'
 import { viteDevGraphView } from '../import-protection/graph-trace'
 import {
   discardBundle,
@@ -133,17 +132,13 @@ export interface StartCompilerPluginOptions {
   }
 }
 
-const PROVIDER_QUERY = 'tss-serverfn-split'
-
-/** A caller environment's forward to the provider's resolver (behind the production gate, R44). */
+/** A caller environment's forward to the provider's resolver (behind the production gate, J4.2). */
 const SERVER_FN_FORWARD_VIRTUAL_ID = 'virtual:tanstack-start-server-fn-forward'
 
-/** A module naming no server-fn factory nor `.handler(` defines no server function (the Rsbuild session's text gate, D14). */
+/** A module naming no server-fn factory nor `.handler(` defines no server function (the Rsbuild session's text gate). */
 const SERVER_FN_TEXT_RE = /createServerFn|\.handler\s*\(/
 
-/** Specifiers of the compiler's own derived modules (`./x.tsx?tsr-split=…`, `?tss-hydrate=…`) and import protection's edge modules. */
-const OWNED_QUERY_RE =
-  /(?:^|[?&])(?:tsr-split|tss-hydrate|tss-serverfn-split)(?:=|&|$)/
+/** Specifiers of import protection's edge modules. */
 const IP_SPECIFIER_RE = /tanstack-start-ip:/
 
 /** Ids the late import-protection pass never compiles (not code, or served by the pre plugin). */
@@ -291,7 +286,7 @@ export function startCompilerPlugin(
   const envOf = (name: string): StartCompilerEnvironment | undefined =>
     opts.environments.find((e) => e.name === name)
 
-  /** The router planners' configuration of an env (Start's wiring: split + HMR + `deleteNodes` on the client, `deleteNodes` only on servers; R24). */
+  /** The router planners' configuration of an env (Start's wiring: split + HMR + `deleteNodes` on the client, `deleteNodes` only on servers: SSR route splitting is off, SPEC §5.3). */
   const routerConfigFor = (
     env: StartCompilerEnvironment,
   ): RouterPlannerConfig => {
@@ -471,7 +466,7 @@ export function startCompilerPlugin(
     // the client hydrates. Solid's hydration keys follow the component tree
     // (the lazy wrapper's components), and React wraps a match in Suspense
     // when its error component is lazy (`errorComponent.preload`), so an
-    // unsplit server (R24) mismatches every split route with an
+    // unsplit server mismatches every split route with an
     // errorComponent and no pendingComponent.
     routerSplit: true,
   })
@@ -518,7 +513,7 @@ export function startCompilerPlugin(
   /**
    * The hosts of one invalidation, per environment: each environment's
    * fingerprints are re-validated with its own resolver (per-environment
-   * aliases and conditions, R35); an environment the dev server does not
+   * aliases and conditions); an environment the dev server does not
    * know falls back to the hook's own.
    */
   const invalidationHosts = (
@@ -672,7 +667,7 @@ export function startCompilerPlugin(
       }
       if (!registry.definedIn(identity.canonicalId)) {
         const code = await fs.readFile(identity.path, 'utf8').catch(() => null)
-        // the cheap text gate of a module that may define a server function (D14)
+        // the cheap text gate of a module that may define a server function
         if (code !== null && SERVER_FN_TEXT_RE.test(code)) {
           const out = await compileModule(
             {
@@ -765,7 +760,7 @@ export function startCompilerPlugin(
         // no Start package: the bundler's own parser reports a syntax error
         // at the user's position, and a script no ESM parse accepts (a
         // CommonJS dependency with a top-level `return`) is nothing the
-        // compiler touches (J4.16, §5.15). One that names a Start package
+        // compiler touches (J4.16, SPEC §5.15). One that names a Start package
         // may define server code (a handler, a server-only route option):
         // the client build fails naming the file (never shipped
         // untransformed, J4.12); a server build warns once.
@@ -826,7 +821,7 @@ export function startCompilerPlugin(
     if (error) {
       fail(error)
     }
-    // a host completion event (R21): print the reports whose importers the
+    // a host completion event (no microtask polling): print the reports whose importers the
     // graph (or the judged edges) can reach now, before the module is served
     ipEnv.reporter?.flush()
   }
@@ -930,21 +925,7 @@ export function startCompilerPlugin(
           if (edge !== null) {
             return edge
           }
-          // a derived module of the compiler (`./route.tsx?tsr-split=…`): the
-          // importer's sibling with the query verbatim, no file system (§3.5.4)
-          if (!importer || !source.startsWith('./')) {
-            return null
-          }
-          const q = source.indexOf('?')
-          if (q === -1 || !OWNED_QUERY_RE.test(source.slice(q))) {
-            return null
-          }
-          const basename = source.slice(2, q)
-          if (basename.includes('/')) {
-            return null
-          }
-          const dir = path.posix.dirname(normalizePath(identify(importer).path))
-          return `${dir}/${basename}${source.slice(q)}`
+          return resolveDerivedSibling(source, importer)
         },
       },
       load: {
@@ -1116,7 +1097,7 @@ export function startCompilerPlugin(
         return { code: built.code, map: built.map as never }
       },
       /**
-       * Import protection's build verdict (§3.14.4, R30, R33): the edge
+       * Import protection's build verdict: the edge
        * modules that survived tree-shaking → `onViolation` once per logical
        * edge per logical build → a veto asks for another pass of this
        * environment (`buildApp` below rebuilds it; this pass writes nothing);
@@ -1148,7 +1129,7 @@ export function startCompilerPlugin(
   }
 
   /**
-   * The fixed-point veto rebuild (R33): every `builder.build(env)` of a Start
+   * The fixed-point veto rebuild: every `builder.build(env)` of a Start
    * environment — Start's own `buildApp` loop or another driver's, such as
    * `@vitejs/plugin-rsc` — is one logical build, repeated while its
    * `generateBundle` asked for another pass.
@@ -1184,7 +1165,7 @@ export function startCompilerPlugin(
   }
 
   /**
-   * The late import-protection pass (§3.14.5, R48): modules whose id is not
+   * The late import-protection pass: modules whose id is not
    * JS/TS but whose code reaches us as JS through other plugins (`.mdx`, a
    * compiled `.vue` module, custom types) are judged with the `import-edges`
    * planner alone, after the framework plugins (`post`), their positions
@@ -1252,7 +1233,7 @@ export function startCompilerPlugin(
   const lookupPrefix = `\0${SERVER_FN_LOOKUP_VIRTUAL_ID}?`
 
   /**
-   * R44 in development: a client-origin call of a function whose defining
+   * J4.2 in development: a client-origin call of a function whose defining
    * module the client environment has not compiled (no client module in the
    * dev server's graph references it: a stale page after a restart, an
    * external caller, a serialized function) is answered, with one warning
@@ -1328,7 +1309,7 @@ export function startCompilerPlugin(
         const mod = envOf(this.environment.name)?.getServerFnById
         if (mod) {
           if (this.environment.mode === 'build' && !ssrIsProvider) {
-            // R44 with a separate provider (RSC): the provider built before
+            // J4.2 with a separate provider (RSC): the provider built before
             // the client, so its manifest lists every function; this
             // environment builds last (plugin-rsc: rsc, client, ssr) and
             // gates client-origin calls on the client build's references
@@ -1366,5 +1347,3 @@ export function startCompilerPlugin(
     resolverPlugin,
   ]
 }
-
-export { PROVIDER_QUERY, EDGE_MODULE_PREFIX }

@@ -1,5 +1,5 @@
 /**
- * Recognition of the Start packages by specifier (DESIGN §3.10.1, D4): the
+ * Recognition of the Start packages by specifier: the
  * `RecognizerTable` the core's value analysis and summaries use. Known
  * packages are never resolved; their exports map to kinds.
  */

@@ -1,7 +1,7 @@
 /**
  * The expectations shared by the Vite and Rsbuild witness tests: the case
- * matrix (which violating edges a build reports) and the veto scenarios of
- * the spike (`onViolation` → false: the real module, to a fixed point).
+ * matrix (which violating edges a build reports) and the veto scenarios
+ * (`onViolation` → false: the real module, to a fixed point).
  */
 import { expect } from 'vitest'
 import { cases } from './cases'

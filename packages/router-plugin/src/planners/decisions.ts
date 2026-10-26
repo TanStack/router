@@ -4,7 +4,7 @@
  * once and shared by the `route-split` planner (which applies them) and the
  * `route-hmr` planner (which hoists only what stays).
  */
-import { walk } from '@tanstack/router-utils/compiler'
+import { unwrapExpression, walk } from '@tanstack/router-utils/compiler'
 import { splitGroupingsSchema } from '../core/config'
 import { defaultCodeSplitGroupings } from '../core/constants'
 import {
@@ -16,7 +16,6 @@ import {
   propertyKeyName,
   propertyRangeWithComma,
   recognizeRoute,
-  unwrapTs,
 } from './route'
 import type { RouteModuleInfo, RouteOption } from './route'
 import type { RouterPlannerConfig } from './config'
@@ -86,7 +85,7 @@ export interface SplitPlan {
   warnings: Array<Diagnostic>
   /** Options the splitter deletes in the env output (`deleteNodes`). */
   deleted: Array<RouteOption>
-  /** Component options defined on the route, by key, and whether each is split (R42). */
+  /** Component options defined on the route, by key, and whether each is split (route CSS moves only when all are). */
   componentOptions: Map<string, SplitDecision | null>
 }
 
@@ -233,7 +232,7 @@ function splitTarget(
     // `lazyFn` calls what the chunk exports)
     const sym = identifierSymbol(ctx, option.value)
     const decl = sym !== null ? declaratorOf(ctx, sym) : null
-    const init = decl ? unwrapTs(decl.init) : null
+    const init = decl ? unwrapExpression(decl.init) : null
     const handler =
       init && init.type === 'ObjectExpression' ? handlerPropertyOf(init) : null
     if (init?.type === 'ObjectExpression' && handler?.type === 'Property') {
@@ -251,7 +250,7 @@ function splitTarget(
     }
   }
   if (option.key === 'loader' && option.kind === 'init') {
-    const v = unwrapTs(option.value)
+    const v = unwrapExpression(option.value)
     if (v.type === 'ObjectExpression') {
       const handler = handlerPropertyOf(v)
       if (!handler || handler.type !== 'Property') {
@@ -266,7 +265,7 @@ function splitTarget(
     case 'init': {
       // the chunk declares the bare value (casts and parentheses dropped, so
       // React Refresh registers a function); the placeholder replaces it all
-      const inner = unwrapTs(value)
+      const inner = unwrapExpression(value)
       return {
         shape: 'init',
         region: { start: value.start, end: value.end },
@@ -333,7 +332,7 @@ function hidesNoDeletedOption(
   if (!decl) {
     return false
   }
-  const init = unwrapTs(decl.init)
+  const init = unwrapExpression(decl.init)
   if (option.kind !== 'spread') {
     return (
       init.type === 'Literal' &&
@@ -459,7 +458,7 @@ function computeSplitPlan(
         continue
       }
       if (route.kind === 'root' && key === 'component') {
-        continue // §5.10: the root component always renders
+        continue // SPEC §5.10: the root component always renders
       }
       const option = route.props.find(
         (p) =>
@@ -487,7 +486,7 @@ function computeSplitPlan(
       if (isFallbackLiteral(target.value) || isAlreadyLazy(ctx, target.value)) {
         continue
       }
-      if (readsOwnThis(unwrapTs(target.value))) {
+      if (readsOwnThis(unwrapExpression(target.value))) {
         // #8688: the router calls a method or function-expression callback as
         // a method of the options object; a split chunk's detached call would
         // change its `this` (J2.8: informed, never broken)

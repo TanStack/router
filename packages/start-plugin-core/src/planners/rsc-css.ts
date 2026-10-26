@@ -1,5 +1,5 @@
 /**
- * The `rsc-css` planner (DESIGN §3.12, J7): in the env that runs the RSC
+ * The `rsc-css` planner (J7): in the env that runs the RSC
  * render, `renderServerComponent(x)` / `createCompositeComponent(fn)` with
  * one argument get the CSS loader as a second argument; a
  * `renderToReadableStream(e)` whose argument is JSX (through parens and
@@ -9,8 +9,9 @@
  * host's (`import.meta.viteRsc.loadCss()`, `import.meta.rspackRsc.loadCss()`),
  * emitted as plain source text in the module that imports the CSS.
  */
+import { unwrapExpression } from '@tanstack/router-utils/compiler'
 import { startRecognizer } from '../compiler/recognizer'
-import { startAnalysisOf, unwrapNode } from '../compiler/start-analysis'
+import { startAnalysisOf } from '../compiler/start-analysis'
 import type {
   Frag,
   YukuNode as Node,
@@ -107,7 +108,7 @@ function wrapJsxLeaves(
   if (expr.type === 'SpreadElement') {
     return false
   }
-  const inner = unwrapNode(expr)
+  const inner = unwrapExpression(expr)
   switch (inner.type) {
     case 'JSXElement':
     case 'JSXFragment': {

@@ -1,6 +1,6 @@
 /**
  * The Rspack (Rsbuild) survival witness and veto fixed point on real
- * production builds (DESIGN §3.14.4, R30, R33; the spike's matrix): an edge
+ * production builds (the matrix of `cases.ts`): an edge
  * is reported (and `onViolation` asked) iff it survives tree-shaking; a veto
  * gives the real module after one more pass of the environment.
  */

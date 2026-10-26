@@ -1,6 +1,6 @@
 /**
- * `compileModule()` — phases A–D with the restart loop (DESIGN §2.6; R25,
- * R34). A: identify, validated cache lookup, parse (Tier 0), gates,
+ * `compileModule()` — phases A–D with the restart loop (README.md,
+ * "Pipeline"). A: identify, validated cache lookup, parse (Tier 0), gates,
  * prefetch. B: synchronous planning and freeze. C: per-output edge policy,
  * snapshot validation, publication. D: emission on demand.
  */
@@ -82,7 +82,7 @@ export async function compileModule(
   caches: CompilerCaches,
 ): Promise<CompileOutput | null> {
   const own = identify(input.id)
-  // R48: a non-JS id whose code reaches us as JS compiles with Tier 0 only
+  // a non-JS id whose code reaches us as JS (`.vue`, `.mdx`) compiles with Tier 0 only
   const tier0Only = own.lang === null
   const identity = tier0Only && input.lang ? { ...own, lang: input.lang } : own
   if (identity.lang === null) {
@@ -113,7 +113,7 @@ export async function compileModule(
     const hit = cache.lookup(key, rev)
     if (hit) {
       const src = fingerprintSourceFor(caches, host, input.config.configKey)
-      // resolutions validated at the current file-set version stand (R54: no resolution cache, no re-asking either)
+      // resolutions validated at the current file-set version stand (no resolution cache, no re-asking either)
       const fileSetVersion = caches.fileSetVersion
       const resolutionsCurrent = hit.resolvedAt === fileSetVersion
       let valid = true
@@ -270,7 +270,7 @@ export async function compileModule(
   }
 }
 
-/** Emits the requested output from a frozen plan (never memoised, R54: emission costs microseconds). */
+/** Emits the requested output from a frozen plan (never memoised: emission costs microseconds). */
 function emitFrom(
   entry: CacheEntry,
   requested: OutputId,
@@ -295,7 +295,7 @@ function emitFrom(
   }
 }
 
-/** The files a plan read (a known package is recognised by its specifier, never read: D4). */
+/** The files a plan read (a known package is recognised by its specifier, never read). */
 function dependencyPaths(
   plan: EmitPlan,
   caches: CompilerCaches,
@@ -367,7 +367,7 @@ async function runAttempt(
     specifier: string,
     importer: string,
   ): Promise<string | null> => {
-    // one answer per attempt: the ledger's recorded resolution is reused (R54: no resolution cache)
+    // one answer per attempt: the ledger's recorded resolution is reused (no resolution cache)
     const known = ledger.resolved(env.name, importer, specifier)
     if (known !== undefined) {
       return known

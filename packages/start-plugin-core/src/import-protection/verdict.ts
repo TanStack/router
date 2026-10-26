@@ -1,5 +1,5 @@
 /**
- * Build verdicts (DESIGN §3.14.4; R5, R30, R33): every violating edge of a
+ * Build verdicts: every violating edge of a
  * build is substituted by its mock edge module; after tree-shaking the host
  * reads which edge modules survived (`witness.ts`) and `decide` asks
  * `onViolation` once per surviving logical edge per logical build. A veto

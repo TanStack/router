@@ -99,7 +99,7 @@ describe('slice gates: loading', () => {
     expect(b.caches.plans.get('client')!.size).toBe(1)
   })
 
-  it('(g) identity-preserving derived request with a foreign query (N5)', async () => {
+  it('(g) identity-preserving derived request with a foreign query', async () => {
     const files = {
       '/app/page.tsx': dedent(`
         import { createFileRoute } from 'toy-router'
@@ -196,7 +196,7 @@ describe('resolution for analysis', () => {
     await host.compile('/app/page.tsx', planners)
     await host.compile('/app/page.tsx?tsr-split=component', planners)
     expect(host.resolveCalls).toEqual([])
-    // a file appeared: the failed resolutions are re-asked by the event (R47),
+    // a file appeared: the failed resolutions are re-asked by the event,
     // then the next validation of the plan asks the resolver again, once
     host.write('/app/other.ts', 'export {}\n')
     await invalidate(host.caches, { path: '/app/other.ts', kind: 'add' }, host)
@@ -309,7 +309,7 @@ const CONSUMER = dedent(`
 `)
 
 describe('slice gates: invalidation', () => {
-  it('(e) consumer invalidation through the export-facts digest (A3); handler-body edits do not invalidate (S4)', async () => {
+  it('(e) consumer invalidation through the export-facts digest; handler-body edits do not invalidate', async () => {
     const host = new MemoryHost({
       files: {
         '/app/consumer.ts': CONSUMER,
@@ -356,7 +356,7 @@ describe('slice gates: invalidation', () => {
     })
   })
 
-  it('re-validates each environment with its own resolver on add/unlink (R35: no cross-env resolution contamination)', async () => {
+  it('re-validates each environment with its own resolver on add/unlink (no cross-env resolution contamination)', async () => {
     // the client resolves `./dep` to the browser file, the server to the node
     // file, and only the server resolves `./maybe`: an `add` checked with the
     // server's resolver would find the client's failed `./maybe` resolving
@@ -497,7 +497,7 @@ describe('slice gates: invalidation', () => {
     expect(hit!.code).toBe(fresh!.code)
   })
 
-  it('(f) in-flight dependency-only edit restarts the compile; onViolation is asked once (N4)', async () => {
+  it('(f) in-flight dependency-only edit restarts the compile; onViolation is asked once', async () => {
     const verdict = deferred<boolean>()
     const host = new MemoryHost({
       files: {
@@ -541,7 +541,7 @@ describe('slice gates: invalidation', () => {
   })
 })
 
-describe('attempts that are overtaken or throw (lane H1)', () => {
+describe('attempts that are overtaken or throw', () => {
   const key = {
     env: 'client',
     canonicalId: '/app/consumer.ts',

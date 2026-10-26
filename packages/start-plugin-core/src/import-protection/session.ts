@@ -3,8 +3,7 @@
  * server or a build): the resolved config, the `import-edges` planner, one
  * `ImportProtectionEnv` per Start environment (edge modules, dev reports,
  * build verdicts, traces), and the edge modules' code. Host-agnostic: the
- * Vite and Rspack hosts call it from their hooks (integration contract:
- * impl-notes-import-protection.md).
+ * Vite and Rspack hosts call it from their hooks.
  */
 import fs from 'node:fs/promises'
 import path from 'node:path'
@@ -701,7 +700,7 @@ export class ImportProtectionEnv {
   }
 
   /**
-   * One build pass's verdict (R33): the surviving edge modules (`liveKeys`,
+   * One build pass's verdict: the surviving edge modules (`liveKeys`,
    * from `readRolldownWitness`/`readRspackWitness`) → `onViolation` once per
    * new logical edge (with its trace in `graph`) → veto → `needPass`.
    */

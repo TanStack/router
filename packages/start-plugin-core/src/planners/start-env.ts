@@ -1,5 +1,5 @@
 /**
- * The `start-env` planner (DESIGN §3.10; D6, R12, R44): Start's environment
+ * The `start-env` planner (J4): Start's environment
  * separation on the core's plan. Server fns become client/SSR stubs or keep
  * their handler in place next to a generated `createServerRpc` export;
  * middleware links, isomorphic implementations and env-only fns are
@@ -15,11 +15,12 @@ import {
   identifierBase,
   isPureExpression,
   stringLiteral,
+  unwrapExpression,
   walk,
 } from '@tanstack/router-utils/compiler'
 import { runtimeSpecifiers, startRecognizer } from '../compiler/recognizer'
 import { prefetchStartValues } from '../compiler/prefetch'
-import { startAnalysisOf, unwrapNode } from '../compiler/start-analysis'
+import { startAnalysisOf } from '../compiler/start-analysis'
 import {
   defaultFunctionId,
   devFunctionId,
@@ -57,7 +58,7 @@ export interface StartEnvConfig {
   /**
    * Every module defining server fns gets a derived provider module, not
    * only `'use client'` ones (Rsbuild RSC: the provider is the `rsc` layer,
-   * selected by the `?tss-serverfn-split` query; DESIGN §3.10.5).
+   * selected by the `?tss-serverfn-split` query).
    */
   alwaysDeriveProvider?: boolean
   /** Whether resolved ids are opaque packages (never read for summaries). */
@@ -578,7 +579,7 @@ function planStartEnv(
         continue
       }
       const parens = needsParens(
-        unwrapNode(link.arg),
+        unwrapExpression(link.arg),
         chain.wrapped,
         chain.parent,
       )
@@ -632,7 +633,7 @@ function planStartEnv(
         )
         continue
       }
-      const parens = needsParens(unwrapNode(c.arg), wrapped, parent)
+      const parens = needsParens(unwrapExpression(c.arg), wrapped, parent)
       rewrites.add({
         range: rangeOf(c.call),
         body: parens
@@ -736,7 +737,7 @@ function planStartEnv(
         // claimed region overrides the placeholder there) instead of
         // importing the hoisted binding from the provider module, which
         // would evaluate the provider (and what its handlers import) in
-        // this env (R50)
+        // this env
         const chain = rangeOf(site.chain.terminal)
         rewrites.add({
           range: chain,
@@ -855,28 +856,6 @@ function planStartEnv(
   // ---- 7. function-local declarators only removed code read
   cleanOrphanedDeclarations(ctx, envScope, by)
 
-  // ---- 8. `assert` import attributes keep working (G12): the keyword browsers dropped becomes `with`
-  for (const imp of ma.imports) {
-    if (!imp.attributesRange) {
-      continue
-    }
-    const between = ma.source.code.slice(
-      imp.specifierRange.end,
-      imp.attributesRange.start,
-    )
-    const m = /\bassert\b/.exec(between)
-    if (m) {
-      const start = imp.specifierRange.end + m.index
-      rewrites.add({
-        range: { start, end: start + 'assert'.length },
-        body: [text('with')],
-        scope: 'all-outputs',
-        by,
-        reason: 'import attributes keyword',
-      })
-    }
-  }
-
   ctx.setFacts(START_ENV, facts)
 }
 
@@ -916,7 +895,7 @@ function relativeRoot(root: string, path: string): string {
 }
 
 /**
- * Hoists a nested server-fn chain to module level on the server (R12): the
+ * Hoists a nested server-fn chain to module level on the server (J4.6): the
  * chain region is claimed by a generated `const`, the occurrence becomes a
  * reference to it. Refuses, positioned, when the chain captures a local,
  * `this`/`arguments`/`super`/`new.target`/`await`/`yield` of an enclosing

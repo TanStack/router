@@ -225,7 +225,7 @@ export function tanStackStartVite(
     }),
     // The compiler: one compile per (environment, module) running Start's
     // environment separation, server functions, <Hydrate>, RSC CSS, the
-    // router's splitting and HMR, and import protection (DESIGN §2, §4.1)
+    // router's splitting and HMR, and import protection
     startCompilerPlugin({
       framework: corePluginOpts.framework,
       environments,

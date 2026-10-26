@@ -1,8 +1,9 @@
 /**
- * Phase A of the Start planners (DESIGN §3.10.1, §2.9.3): the abstract value
+ * Phase A of the Start planners: the abstract value
  * of every import this module may use as a Start value, resolved through
  * the raw-domain summaries of the modules it imports (never through the
- * bundler's transform pipeline, D4). Known packages answer by specifier.
+ * bundler's transform pipeline, so an upstream plugin's output never changes
+ * what a module exports). Known packages answer by specifier.
  * Symbolic terms of a summary (`importRef`, `member`, `call`) are reduced
  * with the core's transfer function once their imports are known.
  */
@@ -85,7 +86,8 @@ export async function prefetchStartValues(
   ): Promise<AbstractValue> => {
     const key = importKey(canonicalId, name)
     if (active.has(key)) {
-      // a cycle: the result is unknown here and never memoised (R18)
+      // a cycle: the result is unknown here and never memoised (a cut cycle edge may
+      // answer differently from another entry point)
       return Promise.resolve(UNKNOWN)
     }
     let p = memo.get(key)

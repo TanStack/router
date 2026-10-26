@@ -111,7 +111,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
       })
       // No stub either: a bundler that resolves a leftover import for the
       // browser (Vite's empty module for a Node builtin) warns about the
-      // module that imports it (G16; by file and severity, §5.7).
+      // module that imports it (G16; by file and severity, SPEC §5.7).
       expect(
         ['src/platform.ts', 'src/encoding.ts'].flatMap((file) =>
           findDiagnostics(client.warnings, { file, root }),

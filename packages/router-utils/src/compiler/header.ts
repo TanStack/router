@@ -1,6 +1,6 @@
 /**
  * Header: hashbang, leading comments (pragmas, license), directive prologue
- * and the insertion offset after them (DESIGN §3.8).
+ * and the insertion offset after them.
  */
 import type { Comment, SourceFile } from 'yuku'
 

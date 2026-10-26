@@ -4,7 +4,7 @@ import { engine, rangeOf } from './engine'
 import type { OutputId } from '../src/compiler'
 
 describe('rewrite tree', () => {
-  it('nests an inner edit inside a retained child slice and drops one inside erased text (A2)', () => {
+  it('nests an inner edit inside a retained child slice and drops one inside erased text', () => {
     const code = dedent(`
       import { wrapServer, clientOnly } from 'toy-start'
       export const fn = wrapServer(() => { const inner = clientOnly(() => 1); return inner })
@@ -169,12 +169,12 @@ describe('rewrite tree', () => {
       reason: 'deleteNodes',
     })
     expect(e.render('env').code).toBe('export const Route = { component: 1 }\n')
-    // exported clusters stay in the env module; the chunk imports them (§3.5.2)
+    // exported clusters stay in the env module; the chunk imports them
     expect(e.render(chunk).code).toBe("import { Route } from './route.tsx'\n")
   })
 })
 
-describe('context-aware reference rewrites (§3.17)', () => {
+describe('context-aware reference rewrites', () => {
   it('renames across plain, callee, shorthand, export specifier, JSX and assignment contexts', () => {
     const code = dedent(`
       let page = () => <div/>
@@ -228,7 +228,7 @@ describe('context-aware reference rewrites (§3.17)', () => {
     )
   })
 
-  it('rewrites a bare callee to a member target as an unbound call (N8-B)', () => {
+  it('rewrites a bare callee to a member target as an unbound call', () => {
     const code = dedent(`
       function read() { return 1 }
       const x = read() + read?.() + read\`t\`
@@ -250,7 +250,7 @@ describe('context-aware reference rewrites (§3.17)', () => {
     )
   })
 
-  it('renames a directly exported declaration via the statement-level recipe (R38)', () => {
+  it('renames a directly exported declaration via the statement-level recipe', () => {
     const code = dedent(`
       export function page() { return null }
       export const other = 1
@@ -283,7 +283,7 @@ describe('context-aware reference rewrites (§3.17)', () => {
   })
 })
 
-describe('claims, homes and substitution (R37, R39)', () => {
+describe('claims, homes and substitution', () => {
   it('relocates a claimed region into its owner and renders the placeholder at the occurrence', () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -326,7 +326,7 @@ describe('claims, homes and substitution (R37, R39)', () => {
     )
   })
 
-  it('homes the hoist in the chunk when only the chunk roots the placeholder (N7 composition)', () => {
+  it('homes the hoist in the chunk when only the chunk roots the placeholder', () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { useThing } from './thing'
@@ -414,7 +414,7 @@ describe('claims, homes and substitution (R37, R39)', () => {
     )
   })
 
-  it('kills a claim whose ancestor is erased (gate k, ancestor erasure)', () => {
+  it('kills a claim whose ancestor is erased (ancestor erasure)', () => {
     const code = dedent(`
       import { wrapServer } from 'toy-start'
       import { Hydrate } from 'toy-start'
@@ -473,7 +473,7 @@ describe('claims, homes and substitution (R37, R39)', () => {
     )
   })
 
-  it('moves an import only generated text reads out of a non-route env module (R39)', () => {
+  it('moves an import only generated text reads out of a non-route env module', () => {
     // a Solid `use:tip` directive is no reference in the semantic model: the planner's edit reads `tip`
     const code = dedent(`
       import { tip } from './tip'
@@ -535,7 +535,7 @@ describe('claims, homes and substitution (R37, R39)', () => {
     )
   })
 
-  it('forwards captures through nested placeholders with a substitution environment (N9)', () => {
+  it('forwards captures through nested placeholders with a substitution environment', () => {
     const code = dedent(`
       import { Hydrate } from 'toy-start'
       export function Comp() {
@@ -594,7 +594,7 @@ describe('claims, homes and substitution (R37, R39)', () => {
         env: env as never,
         by: 'hydrate',
       })
-      // the parent's lazy const has the same name (D10: same name, same thing) but is its own symbol
+      // the parent's lazy const has the same name (the same name denotes the same thing) but is its own symbol
       const lazy = ctx.symbols.declare(`TsrHydrate${n}`)
       ctx.rewrites.addGenerated({
         body: [
@@ -656,7 +656,7 @@ describe('claims, homes and substitution (R37, R39)', () => {
   })
 })
 
-describe('statement-level edits (R17)', () => {
+describe('statement-level edits (one edit per statement)', () => {
   it('cuts declarators, import specifiers and export lists from the retained set', () => {
     const code = dedent(`
       import d, { a, b as bb } from './x'
@@ -765,7 +765,7 @@ describe('statement-level edits (R17)', () => {
   })
 })
 
-describe('replacements at a statement start (lane H1)', () => {
+describe('replacements at a statement start', () => {
   // `const x = foo\n(() => 1)()` parses as a call of `foo`: a replacement
   // whose first token could continue the previous statement is guarded with
   // a `;` when it starts a statement of a list whose previous statement has

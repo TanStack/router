@@ -1,12 +1,12 @@
 /**
- * Edge modules (DESIGN §3.14.3; R30, J6.3, J6.8): the per-edge module a
+ * Edge modules (J6.3, J6.8): the per-edge module a
  * violating import is substituted with, its two states, the mock runtime of
  * an environment, and the ids hosts serve them under.
  *
  * - `mock`: a pure module that owns its exports (string export names: any
  *   spelling), each a `/* @__PURE__ *\/` mock creation, plus one `__fx(…)`
  *   call (the effect witness) when the denied target has top-level effects.
- *   It is the survival witness in builds (R30): bundlers keep an owned
+ *   It is the survival witness in builds: bundlers keep an owned
  *   export only where the importer's binding survives, and keep `__fx` only
  *   where the importer is evaluated.
  * - `allowed` (a build veto, `onViolation` → false): a transparent

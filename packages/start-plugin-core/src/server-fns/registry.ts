@@ -1,5 +1,5 @@
 /**
- * The server-function registry (DESIGN §3.13.2): one entry per server fn a
+ * The server-function registry: one entry per server fn a
  * compile reported, shared by every env of a build or dev session.
  * `clientReferenced` is set only by client-env compiles.
  */

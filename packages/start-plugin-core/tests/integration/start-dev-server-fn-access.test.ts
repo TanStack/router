@@ -1,5 +1,5 @@
 /**
- * SPEC J4.2 in development (R44): the dev server compiles lazily, so a
+ * SPEC J4.2 in development: the dev server compiles lazily, so a
  * server function no client module in its graph references is answered,
  * with one warning per function naming it and saying a production build
  * refuses it (known-bugs-start-compiler.test.ts "not callable over HTTP").

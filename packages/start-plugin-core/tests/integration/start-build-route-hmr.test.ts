@@ -202,7 +202,7 @@ function Root() {
 
 describe.each(startBundlers)('%s production build', (bundler) => {
   // Source: review (only router-plugin's
-  // build-production.test.ts checked R7, without Start's forced `addHmr`).
+  // build-production.test.ts checked SPEC R7, without Start's forced `addHmr`).
   test(
     'the client and server outputs use no HMR API, and the page renders',
     async () => {

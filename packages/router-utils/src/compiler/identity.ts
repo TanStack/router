@@ -1,5 +1,5 @@
 /**
- * Source identity, derived ids and revisions (DESIGN §2.1, R3, R35).
+ * Source identity, derived ids and revisions.
  *
  * The canonical id is the host id minus only the compiler-owned query keys.
  * Foreign query keys (order, values), `\0` prefixes and virtual ids stay

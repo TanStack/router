@@ -1,10 +1,9 @@
 /**
- * The `import-edges` planner (J6; DESIGN §3.14.1–§3.14.3; D7, R4, R30,
- * R32, R36): phase C policy over every output's surviving edges (the core
- * extracts them per output, with provenance). Per edge: importer scope →
- * specifier rule on the raw specifier → resolution with the env's resolver
- * → `excludeFiles` → file rule → the target's marker (raw-domain target
- * facts). A violation is substituted by its edge module (the specifier
+ * The `import-edges` planner (J6): phase C policy over every output's surviving
+ * edges (the core extracts them per output, with provenance). Per edge:
+ * importer scope → specifier rule on the raw specifier → resolution with the
+ * env's resolver → `excludeFiles` → file rule → the target's marker (raw-domain
+ * target facts). A violation is substituted by its edge module (the specifier
  * literal only):
  *
  * - dev: `onViolation` decides now (memoised per request, or per session
@@ -50,7 +49,7 @@ import type {
 } from '../import-protection/violations'
 
 /**
- * A host's import rewrite (`HostServices.services.importRewrite`, R46): the
+ * A host's import rewrite (`HostServices.services.importRewrite`): the
  * specifiers the bundler turns an import of `specifier` with `names` into
  * (Rsbuild `source.transformImport`), or null when it leaves it alone. The
  * specifier rule judges the raw specifier; file and marker rules judge the
@@ -179,7 +178,7 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
         }
         let resolved = await ctx.resolve(raw, from)
         if (rule === null) {
-          // R46: a bundler rewrite of the import (Rsbuild `source.transformImport`)
+          // a bundler rewrite of the import (Rsbuild `source.transformImport`)
           // makes the file and marker rules judge the rewritten targets
           const rewritten = rewriter?.(raw, e.names) ?? null
           for (const spec of rewritten ?? [raw]) {
@@ -327,7 +326,7 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
 
   /**
    * What a mock of `resolved` must export (its export names, following
-   * `export *`) and whether evaluating it has effects (R36: own top-level
+   * `export *`) and whether evaluating it has effects (own top-level
    * effects, an effectful module it evaluates, a package without
    * `sideEffects: false`; unknown → effectful). Every consulted module is a
    * target-facts/resolution fingerprint of this plan (J6.13).

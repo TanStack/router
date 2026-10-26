@@ -1,13 +1,12 @@
 /**
- * Recipe renderer (DESIGN §2.7, §3.7): walks an `OutputRecipe` against the
+ * Recipe renderer: walks an `OutputRecipe` against the
  * source text and drives the `OutputBuilder`. Emission is on demand and the
  * module never ends inside a line comment.
  */
-import { OutputBuilder, SourceText } from './output-builder'
+import { OutputBuilder } from './output-builder'
 import { specifierLiteral } from './strings'
-import type { RawSourceMap } from './output-builder'
-import type { EmitPlan, OutputRecipe, Segment } from './plan'
-import type { OutputId } from './rewrite'
+import type { RawSourceMap, SourceText } from './output-builder'
+import type { OutputRecipe, Segment } from './plan'
 
 export interface Emitted {
   code: string
@@ -31,24 +30,6 @@ export function emitRecipe(
   }
   b.newline()
   return b.finish()
-}
-
-export function emitOutput(
-  plan: EmitPlan,
-  output: OutputId,
-  code: string,
-  wantMap: boolean,
-): Emitted | null {
-  const recipe = plan.outputs[output]
-  if (!recipe) {
-    return null
-  }
-  if (code.length !== plan.sourceLength) {
-    throw new Error(
-      'emitOutput: the source text does not match the plan revision',
-    )
-  }
-  return emitRecipe(recipe, new SourceText(code), wantMap)
 }
 
 /** Replaces the segment(s) carrying `edgeKey` with a new specifier literal (phase C substitution). */

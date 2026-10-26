@@ -1,11 +1,12 @@
 /**
- * Purity model (DESIGN §3.3): literals, function/class expressions without
+ * Purity model: literals, function/class expressions without
  * decorators/static effects, pure object/array literals, all-literal
  * templates, `/*#__PURE__*\/` calls with pure arguments, `#__NO_SIDE_EFFECTS__`
  * callee declarations, JSX with bound/intrinsic tags and pure attributes and
  * children. `import()` is impure. The same classification yields Tier 0's
- * `ownEffects` at statement granularity (R36).
+ * `ownEffects` at statement granularity.
  */
+import { unwrapExpression } from './source'
 import type {
   Comment,
   Expression,
@@ -93,26 +94,6 @@ export function isPrimitiveLiteral(node: Node): boolean {
   }
 }
 
-function unwrapTs(node: Node): Node {
-  let n = node
-  for (;;) {
-    switch (n.type) {
-      case 'ParenthesizedExpression':
-        n = n.expression
-        continue
-      case 'TSAsExpression':
-      case 'TSSatisfiesExpression':
-      case 'TSNonNullExpression':
-      case 'TSTypeAssertion':
-      case 'TSInstantiationExpression':
-        n = n.expression
-        continue
-      default:
-        return n
-    }
-  }
-}
-
 export function isPureExpression(
   ctx: PurityContext,
   expr: Node | null,
@@ -120,7 +101,7 @@ export function isPureExpression(
   if (expr === null) {
     return true
   }
-  const node = unwrapTs(expr)
+  const node = unwrapExpression(expr)
   switch (node.type) {
     case 'Literal':
     case 'Identifier':
@@ -139,7 +120,7 @@ export function isPureExpression(
         (e) =>
           e === null ||
           (e.type === 'SpreadElement'
-            ? unwrapTs(e.argument).type === 'ArrayExpression' &&
+            ? unwrapExpression(e.argument).type === 'ArrayExpression' &&
               isPureExpression(ctx, e.argument)
             : isPureExpression(ctx, e)),
       )
@@ -147,7 +128,7 @@ export function isPureExpression(
       return node.properties.every((p) => {
         if (p.type === 'SpreadElement') {
           return (
-            unwrapTs(p.argument).type === 'ObjectExpression' &&
+            unwrapExpression(p.argument).type === 'ObjectExpression' &&
             isPureExpression(ctx, p.argument)
           )
         }
@@ -188,7 +169,7 @@ export function isPureExpression(
         )
       }
       if (node.type === 'CallExpression') {
-        const callee = unwrapTs(node.callee)
+        const callee = unwrapExpression(node.callee)
         if (callee.type === 'Identifier') {
           const b = ctx.file.referenceOf(callee)?.binding
           if (b && ctx.noSideEffectCallees.has(b.id)) {
@@ -267,7 +248,7 @@ export function isPureClass(
     return false
   }
   if (node.superClass !== null) {
-    const sc = unwrapTs(node.superClass)
+    const sc = unwrapExpression(node.superClass)
     if (sc.type !== 'Identifier') {
       return false
     }

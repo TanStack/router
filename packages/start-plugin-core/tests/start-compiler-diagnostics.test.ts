@@ -3,7 +3,7 @@
  * control), through the public Start plugin: the dev server's client
  * environment refuses to serve the module with a compile error that points
  * at the offending line. Prose, frame layout and
- * context length are free (§5.7).
+ * context length are free (SPEC §5.7).
  */
 import { test } from 'vitest'
 import {

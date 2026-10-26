@@ -1,7 +1,8 @@
 /**
- * The webpack-family loader of the router compiler (DESIGN §4.2.1): runs
+ * The webpack-family loader of the router compiler: runs
  * for every id of a route module (env and derived `NormalModule`s hit the
- * same plan), composes its map with the input map (S4) and names the
+ * same plan), composes its map with the input map (an earlier
+ * loader's map is not lost) and names the
  * absolute path as the map source. The static loader file
  * (`loader/index.cjs`) finds this implementation on the compiler.
  */

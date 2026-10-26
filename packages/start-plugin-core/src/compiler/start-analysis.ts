@@ -1,5 +1,5 @@
 /**
- * Start candidates of one module (DESIGN §3.10.2–§3.10.3): the value analysis
+ * Start candidates of one module: the value analysis
  * over the module's bindings (imports resolved by `prefetch.ts`) and the
  * candidates enumerated from every Start-valued binding by climbing its
  * references through call and member chains (`parentOf`, never a walk).
@@ -8,6 +8,7 @@
  */
 import {
   ValueAnalysis,
+  isExpressionWrapper,
   isKnownSpecifier,
   recognizeImport,
 } from '@tanstack/router-utils/compiler'
@@ -87,40 +88,6 @@ export interface StartAnalysis {
 }
 
 const cache = new WeakMap<ModuleAnalysis, StartAnalysis>()
-
-function isWrapper(n: Node): boolean {
-  switch (n.type) {
-    case 'ParenthesizedExpression':
-    case 'TSAsExpression':
-    case 'TSSatisfiesExpression':
-    case 'TSNonNullExpression':
-    case 'TSTypeAssertion':
-    case 'TSInstantiationExpression':
-    case 'ChainExpression':
-      return true
-    default:
-      return false
-  }
-}
-
-export function unwrapNode(n: Node): Node {
-  let cur = n
-  for (;;) {
-    switch (cur.type) {
-      case 'ParenthesizedExpression':
-      case 'TSAsExpression':
-      case 'TSSatisfiesExpression':
-      case 'TSNonNullExpression':
-      case 'TSTypeAssertion':
-      case 'TSInstantiationExpression':
-      case 'ChainExpression':
-        cur = cur.expression
-        continue
-      default:
-        return cur
-    }
-  }
-}
 
 function isRscKind(kind: string): kind is RscCall['kind'] {
   return (
@@ -214,7 +181,7 @@ export function startAnalysisOf(
     for (;;) {
       outer = node
       p = parentOf(outer)
-      while (p && isWrapper(p)) {
+      while (p && isExpressionWrapper(p)) {
         outer = p
         p = parentOf(p)
       }
@@ -286,7 +253,7 @@ export function startAnalysisOf(
         }
         let mOuter: Node = member
         let pp = parentOf(member)
-        while (pp && isWrapper(pp)) {
+        while (pp && isExpressionWrapper(pp)) {
           mOuter = pp
           pp = parentOf(pp)
         }

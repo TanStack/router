@@ -94,9 +94,3 @@ vite.config.ts.timestamp_*
 
 # local memory flame profiles
 benchmarks/memory/**/.profiles/
-
-# Temporary apps the Start compiler test harnesses created here before they
-# moved to the system's temporary directory (compiler-test-utils
-# `app-directory`): what a Vite dev server wrote after it closed (upstream Vite
-# bug #34) can be left in older checkouts.
-packages/*/tests/**/.start-*/

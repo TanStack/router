@@ -7,7 +7,7 @@ import {
   siblingSpecifier,
 } from '../src/compiler'
 
-describe('identity (R35)', () => {
+describe('identity', () => {
   it('canonicalises only owned keys and keeps foreign queries verbatim', () => {
     const id = identify('/app/page.tsx?flavour=b&tsr-split=component')
     expect(id.canonicalId).toBe('/app/page.tsx?flavour=b')

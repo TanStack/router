@@ -99,7 +99,7 @@ const FIXTURE_LS = [
   '',
 ].join('\n')
 
-describe('OutputBuilder (gate m)', () => {
+describe('OutputBuilder', () => {
   it('maps every token of an env-style output with nested edits, raw U+2028 included', () => {
     const code = FIXTURE_LS
     const src = new SourceText(code)

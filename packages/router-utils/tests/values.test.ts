@@ -36,7 +36,7 @@ function analyse(code: string) {
   return new ModuleAnalysis(parsed.file, parsed.source, { path: '/app/m.ts' })
 }
 
-describe('symbolic value terms (§2.9.2)', () => {
+describe('symbolic value terms', () => {
   it('keeps calls and members of unresolved imports symbolic, in summaries too', () => {
     const a = analyse(`
       import { csf } from './factory'

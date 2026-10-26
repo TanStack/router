@@ -1,6 +1,6 @@
 /**
  * Traces, dev report flushing, original positions and the build verdict
- * fixed point (DESIGN §3.14.4, §4.1.3; R21, R33), on hand-made graphs.
+ * fixed point, on hand-made graphs.
  */
 import { describe, expect, test } from 'vitest'
 import { resolveImportProtectionConfig } from '../../src/import-protection/config'
@@ -278,7 +278,7 @@ describe('positions', () => {
   })
 })
 
-describe('build verdicts (R33)', () => {
+describe('build verdicts', () => {
   test('onViolation once per surviving logical edge; a veto asks for a pass; reports are the final pass', async () => {
     const state = new BuildVerdicts()
     const asked: Array<string> = []

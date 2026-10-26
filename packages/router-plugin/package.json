@@ -162,7 +162,6 @@
     "@vitejs/plugin-react": "catalog:",
     "@vitejs/plugin-vue-jsx": "catalog:",
     "babel-loader": "^10.0.0",
-    "babel-plugin-react-compiler": "^1.0.0",
     "babel-preset-solid": "^1.9.10",
     "publint": "catalog:",
     "react": "catalog:",
@@ -179,7 +178,7 @@
   "peerDependencies": {
     "@rsbuild/core": ">=1.0.2 || ^2.0.0",
     "@tanstack/react-router": "workspace:^",
-    "vite": ">=5.0.0 || >=6.0.0 || >=7.0.0 || >=8.0.0",
+    "vite": ">=6.0.0 || >=7.0.0 || >=8.0.0",
     "vite-plugin-solid": "^2.11.10 || ^3.0.0-0",
     "webpack": ">=5.92.0"
   },

@@ -1,10 +1,10 @@
 /**
- * The Rspack plugin of one Start environment compiler (DESIGN §4.2.3–4.2.5;
- * R30, R33, R47): installs the loader implementation on the compiler, the
- * generator as a precondition of the compilation (`beforeRun`/`watchRun`),
- * the one invalidation operation on `watchRun`, the `finishMake` replay of
- * server-fn and import-protection `buildInfo` (persistent cache), the
- * import-protection build verdict (`processAssets` witness, `decide`,
+ * The Rspack plugin of one Start environment compiler: installs the loader
+ * implementation on the compiler, the generator as a precondition of the
+ * compilation (`beforeRun`/`watchRun`), the one invalidation operation on
+ * `watchRun`, the `finishMake` replay of server-fn and import-protection
+ * `buildInfo` (persistent cache), the import-protection build verdict
+ * (`processAssets` witness, `decide`,
  * `needAdditionalPass` to the fixed point) and dev reports (`finishModules`),
  * the custom server-fn id patching, and the client route tree rebuild when
  * its pruned routes change without the tree file changing.
@@ -156,7 +156,8 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         })
       }
 
-      /** The files of the last compilation (a modified file outside them is a created one: R47 `add`). */
+      /** The files of the last compilation (a modified file outside them is a created one: an `add`, which re-resolves
+       * imports that failed to resolve before). */
       let knownFiles: ReadonlySet<string> | null = null
       let currentCompilation: Rspack.Compilation | null = null
       let reporterInstalled = false
@@ -217,7 +218,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           if (session.opts.mode === 'dev') {
             if (!reporterInstalled) {
               reporterInstalled = true
-              // no timers: `finishModules` is the completion event (R21)
+              // no timers: `finishModules` is the completion event
               ipEnv.useDevReporter(
                 {
                   warn: (message) => {
@@ -298,7 +299,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         }
       })
 
-      /** Custom server-fn ids (R40): this environment's rank, patched before minification. */
+      /** Custom server-fn ids: this environment's rank, patched before minification. */
       function patchFunctionIds(compilation: Rspack.Compilation): void {
         const allocator = session.allocateIds(environment.type)
         if (!allocator) {

@@ -747,7 +747,7 @@ export function tanStackStartRsbuild(
                         virtualModuleState.generateManifestValueLiteral(
                           clientBuild,
                         )
-                      // the server fn resolver's client-origin gate (R44): the
+                      // the server fn resolver's client-origin gate (J4.2): the
                       // client compiled, so its references are known
                       const clientIdsLiteral = clientReferencedIdsLiteral()
 
