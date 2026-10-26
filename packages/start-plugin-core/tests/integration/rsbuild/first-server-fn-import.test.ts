@@ -119,8 +119,8 @@ export const Route = createFileRoute('/')({ component: () => <p>index</p> })
   // The outcome: the page shows the result; an error of the page ends the
   // wait at once (SPEC G10).
   const shown = () =>
-    page.page.evaluate<string>(
-      (selector) => document.querySelector(selector)?.textContent ?? '',
+    page.page.evaluate(
+      (selector: string) => document.querySelector(selector)?.textContent ?? '',
       shows,
     )
   await waitForOutcome({
