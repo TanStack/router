@@ -83,6 +83,8 @@ export class RawFactsCache {
       pending: Promise<RawFacts> | null
     }
   >()
+  /** Path → canonical ids of `entries` at it (`markStale`/`forget` without a scan). */
+  private readonly byPath = new Map<string, Set<string>>()
   /** `TSR_COMPILER_NO_CACHE=facts|targets`: every read rebuilds (measurement knobs). */
   private readonly noFacts = cacheDisabled('facts')
   private readonly noTargets = cacheDisabled('targets')
@@ -117,12 +119,11 @@ export class RawFactsCache {
   }
 
   markStale(path: string): void {
-    for (const [id, e] of this.entries) {
-      if (identify(id).path === path || id === path) {
-        e.stale = true
-        // a read in flight may hold the text from before the event: it is not published
-        e.pending = null
-      }
+    for (const id of this.byPath.get(path) ?? []) {
+      const e = this.entries.get(id)!
+      e.stale = true
+      // a read in flight may hold the text from before the event: it is not published
+      e.pending = null
     }
   }
 
@@ -132,11 +133,43 @@ export class RawFactsCache {
    * is bounded by the live files, not by every file a session saw.
    */
   forget(path: string): void {
-    for (const [id, e] of this.entries) {
-      if (identify(id).path === path || id === path) {
-        // a read in flight is not published
-        e.pending = null
-        this.entries.delete(id)
+    for (const id of [...(this.byPath.get(path) ?? [])]) {
+      // a read in flight is not published
+      this.entries.get(id)!.pending = null
+      this.deleteEntry(id)
+    }
+  }
+
+  private setEntry(
+    canonicalId: string,
+    e: {
+      stale: boolean
+      facts: RawFacts | null
+      pending: Promise<RawFacts> | null
+    },
+  ): void {
+    if (!this.entries.has(canonicalId)) {
+      const path = identify(canonicalId).path
+      let ids = this.byPath.get(path)
+      if (!ids) {
+        ids = new Set()
+        this.byPath.set(path, ids)
+      }
+      ids.add(canonicalId)
+    }
+    this.entries.set(canonicalId, e)
+  }
+
+  private deleteEntry(canonicalId: string): void {
+    if (!this.entries.delete(canonicalId)) {
+      return
+    }
+    const path = identify(canonicalId).path
+    const ids = this.byPath.get(path)
+    if (ids) {
+      ids.delete(canonicalId)
+      if (ids.size === 0) {
+        this.byPath.delete(path)
       }
     }
   }
@@ -150,7 +183,7 @@ export class RawFactsCache {
     for (const [id, e] of this.entries) {
       if (!keep(id)) {
         e.pending = null
-        this.entries.delete(id)
+        this.deleteEntry(id)
       }
     }
   }
@@ -168,7 +201,7 @@ export class RawFactsCache {
     }
     if (this.isKnownSpecifier(canonicalId)) {
       const facts = this.knownFacts(canonicalId)
-      this.entries.set(canonicalId, { stale: false, facts, pending: null })
+      this.setEntry(canonicalId, { stale: false, facts, pending: null })
       return facts
     }
     if (e?.pending) {
@@ -176,7 +209,7 @@ export class RawFactsCache {
     }
     if (!e) {
       e = { stale: false, facts: null, pending: null }
-      this.entries.set(canonicalId, e)
+      this.setEntry(canonicalId, e)
     }
     const entry = e
     const holder: { p: Promise<RawFacts> | null } = { p: null }
@@ -190,7 +223,7 @@ export class RawFactsCache {
         entry.pending = null
         if (text === null && this.entries.get(canonicalId) === entry) {
           // a missing file's facts are not kept (`forget`)
-          this.entries.delete(canonicalId)
+          this.deleteEntry(canonicalId)
         }
       }
       return facts
@@ -211,7 +244,7 @@ export class RawFactsCache {
     }
     const facts = this.fromAnalysis(canonicalId, rawRevision, analysis, null)
     if (!this.noFacts) {
-      this.entries.set(canonicalId, { stale: false, facts, pending: null })
+      this.setEntry(canonicalId, { stale: false, facts, pending: null })
     }
     return facts
   }
@@ -250,6 +283,7 @@ export class RawFactsCache {
     }
     return {
       rawFacts: this.entries.size,
+      rawFactPaths: this.byPath.size,
       rawFactsStale: stale,
       rawFactsPending: pending,
       rawFactsEmpty: empty,

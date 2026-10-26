@@ -346,6 +346,13 @@ export class PlanCache {
   private readonly latest = new Map<string, string>()
   /** Attempts in flight per key (an overlapping attempt may have replaced the key's `inFlight` record). */
   private readonly active = new Map<string, number>()
+  /**
+   * Path → live keys (`keysAt`): a key is indexed from its first attempt or
+   * publication until it is retired, so an invalidation of a path never
+   * scans the cache. `pathOf` is the reverse (key → its row's path).
+   */
+  private readonly byPath = new Map<string, Map<string, PlanKey>>()
+  private readonly pathOf = new Map<string, string>()
   readonly inFlight = new Map<string, InFlight>()
   readonly dependents = new DependentsIndex()
   /** `TSR_COMPILER_NO_CACHE=plans`: nothing is published (measurement knob). */
@@ -385,6 +392,37 @@ export class PlanCache {
   begin(key: PlanKey): void {
     const ks = planKeyString(key)
     this.active.set(ks, (this.active.get(ks) ?? 0) + 1)
+    this.track(ks, key)
+  }
+
+  /** Indexes a live key under its path (idempotent). */
+  private track(ks: string, key: PlanKey): void {
+    if (this.pathOf.has(ks)) {
+      return
+    }
+    const path = identify(key.canonicalId).path
+    this.pathOf.set(ks, path)
+    let keys = this.byPath.get(path)
+    if (!keys) {
+      keys = new Map()
+      this.byPath.set(path, keys)
+    }
+    keys.set(ks, key)
+  }
+
+  private untrack(ks: string): void {
+    const path = this.pathOf.get(ks)
+    if (path === undefined) {
+      return
+    }
+    this.pathOf.delete(ks)
+    const keys = this.byPath.get(path)
+    if (keys) {
+      keys.delete(ks)
+      if (keys.size === 0) {
+        this.byPath.delete(path)
+      }
+    }
   }
 
   /** An attempt for `key` ended (published or not). */
@@ -406,6 +444,7 @@ export class PlanCache {
     }
     this.generations.delete(ks)
     this.latest.delete(ks)
+    this.untrack(ks)
     return true
   }
 
@@ -429,6 +468,7 @@ export class PlanCache {
       return false
     }
     this.entries.set(ks, entry)
+    this.track(ks, entry.key)
     return true
   }
 
@@ -440,23 +480,9 @@ export class PlanCache {
     return had
   }
 
-  /** Keys whose canonical id lives at `path`. */
+  /** Live keys (published, or with an attempt active) whose canonical id lives at `path`. */
   keysAt(path: string): Array<PlanKey> {
-    const out: Array<PlanKey> = []
-    for (const e of this.entries.values()) {
-      if (identify(e.key.canonicalId).path === path) {
-        out.push(e.key)
-      }
-    }
-    for (const f of this.inFlight.values()) {
-      if (
-        identify(f.key.canonicalId).path === path &&
-        !out.some((k) => planKeyString(k) === planKeyString(f.key))
-      ) {
-        out.push(f.key)
-      }
-    }
-    return out
+    return [...(this.byPath.get(path)?.values() ?? [])]
   }
 
   get size(): number {
@@ -485,6 +511,8 @@ export class PlanCache {
       latest: this.latest.size,
       inFlight: this.inFlight.size,
       active: this.active.size,
+      keyPaths: this.byPath.size,
+      trackedKeys: this.pathOf.size,
       ...this.counters,
       dependentPaths: d.paths,
       dependentKeys: d.keys,

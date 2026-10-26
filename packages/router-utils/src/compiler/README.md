@@ -93,7 +93,8 @@ returned but not published.
 ## Caches and invalidation (`cache.ts`, `host.ts`)
 
 - `PlanCache`: one plan per (env, file), the latest revision only. A hit is _validated_ (same canonical identity,
-  input hash, config/env digest, and every dependency fingerprint still current).
+  input hash, config/env digest, and every dependency fingerprint still current). Live keys (published, or with an
+  attempt active) are indexed by path, so `invalidate()` finds a changed file's plans without scanning.
 - `DependencyLedger`: dependencies are recorded as facts are acquired (resolutions, summary digests, target facts,
   route registry digests, failed resolutions), and a `DependentsIndex` maps them back to plans.
 - `invalidate(caches, change, hosts)` is **the** invalidation operation: hosts call it per file change/add/unlink; it
