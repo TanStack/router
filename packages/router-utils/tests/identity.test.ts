@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   deriveId,
+  digestOf,
+  edgeKeyOf,
   identify,
   langFromId,
   revision,
@@ -125,5 +127,30 @@ describe('identity', () => {
     expect(revision('a')).toBe(revision('a'))
     expect(revision('a')).not.toBe(revision('b'))
     expect(revision('a')).toHaveLength(22)
+  })
+
+  it('spells an edge key as the digest of its record', () => {
+    const cases: Array<
+      [string, string | null | undefined, string, string, string, string?]
+    > = [
+      ['client', null, '/app/a.tsx', './b', 'static'],
+      ['client', undefined, '/app/a.tsx', './b', 'static'],
+      ['ssr', 'rsc', '/app/a.tsx?flavour=b', '@scope/pkg', 'dynamic'],
+      ['client', null, '/app/a.tsx', './it\'s "quoted" \u2028', 'bare'],
+      ['client', null, '/app/a.tsx', './b', 'reexport', 'runtime'],
+      ['client', 'x', '/app/a.tsx', './b', 'static', 'forwarded'],
+    ]
+    for (const [env, layer, importer, rawSpecifier, form, origin] of cases) {
+      expect(edgeKeyOf(env, layer, importer, rawSpecifier, form, origin)).toBe(
+        digestOf({
+          env,
+          layer: layer ?? null,
+          importer,
+          rawSpecifier,
+          form,
+          ...(origin === undefined || origin === 'source' ? {} : { origin }),
+        }),
+      )
+    }
   })
 })

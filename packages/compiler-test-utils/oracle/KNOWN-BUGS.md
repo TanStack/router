@@ -8,7 +8,7 @@ One entry per root cause: the bug, the SPEC clause, the pins (`file` and test na
 details. "Cause" files name the implementation the pin was written against (the Babel-based compilers); a rewrite may
 have no such file.
 
-Totals: 380 pin sites in 105 test files (a table test counts once; Vitest counts each row).
+Totals: 381 pin sites in 106 test files (a table test counts once; Vitest counts each row).
 
 Pins whose input picks a name today's compiler generates (S6) flip with a compiler that generates other names. The
 adaptive pins next to them, which read the names a compiler actually generates, are the real check.
@@ -385,9 +385,9 @@ Paths under `start-plugin-core/tests/integration/`.
   `start-compose-project-path.test.ts`: "the client route tree leaves out the server-only route"; "the client gets the
   file, not the client route tree".
 
-## J3 Route HMR (28 pins: 22 below, 2 in S6, 4 in J2)
+## J3 Route HMR (29 pins: 23 below, 2 in S6, 4 in J2)
 
-Paths under `router-plugin/tests/`.
+Paths under `router-plugin/tests/` unless given.
 
 - **Inline components that are not plain functions** (`memo`, `forwardRef`, method shorthand, `as`/`satisfies`), and
   components inside a route helper function, **are not registered for React Refresh**, so edits do not show. SPEC J3.2,
@@ -431,6 +431,11 @@ Paths under `router-plugin/tests/`.
   data in place".
 - **With options in a variable, the HMR transform declares the component binding after the object that reads it.**
   SPEC G1. `known-bugs-route-hmr.test.ts`: "route options in a variable ($name) evaluate to a route with a component".
+- **Rsbuild: a route module's first server fn breaks the hot update of its loaded component chunk** when Rspack's
+  `splitChunks` puts the modules the chunk gained into a new async chunk: the re-executed module requires them before
+  anything loads that chunk. Upstream, Rspack's HMR runtime (see "Upstream issues"); a plain Rsbuild app fails the
+  same way. SPEC J3.3, G10. `start-plugin-core/tests/integration/rsbuild/first-server-fn-import.test.ts`: "an edit
+  that adds a server fn to the component shows its result on the open page".
 
 ## J4 Start environment separation (86 pins: 66 below, 20 in S1–S7)
 
@@ -753,6 +758,7 @@ None is filed upstream yet. "Remove when" says when a harness change can go.
 | Tool                                                      | Symptom                                                                                                                                                                                       | What the suite does                                                                                                                                                                                                                                                  |
 | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Rspack 2.2 (vendored watchpack 2.5.2)                     | a file removal that lands while a compile runs is lost (fixed in watchpack 2.6.0, webpack/watchpack#345)                                                                                      | Rsbuild tests delete or recreate one file per edit and settle before the next write (`start-plugin-core/tests/integration/importProtection/v2-edits*.test.ts`, `v2-hosts.ts`, `integration/rsbuild/dev-server.test.ts`). Remove when Rspack bundles watchpack ≥ 2.6. |
+| Rspack 2.2.7 HMR runtime (webpack 5.110 has the same gap) | a hot update whose module gained imports that `splitChunks` moved to a new async chunk re-executes it before that chunk loads: `Cannot read properties of undefined (reading 'call')`         | pinned (J3): `start-plugin-core/tests/integration/rsbuild/first-server-fn-import.test.ts`; rspack#11324/#11922 call it expected (a React Refresh reload 2.2.7's bare `TypeError` never triggers). Remove when Rspack loads an updated chunk's new siblings first.    |
 | Rspack 2.2 (vendored watchpack 2.5.2)                     | a file deleted during the watcher's first scan is never reported                                                                                                                              | the Rsbuild dev harness resolves once every compiler's watcher has scanned the app, and writes the initial files with past modification times (`compiler-test-utils/src/rsbuild-dev-server.ts`). This is what "the server is up" means; it may stay.                 |
 | Vite 8 `experimental.bundledDev`                          | closing the server during its initial build leaves a rejection unhandled ("Failed to get bundle state"); no public API to await it (vitejs/vite#22991)                                        | before `close()` the harness waits for the initial build, reading one Vite internal (`compiler-test-utils/src/dev-server.ts`). Remove when Vite handles the rejection.                                                                                               |
 | Vite 8.3.4 dependency optimizer                           | keeps writing `node_modules/.vite/deps_temp_*` after `close()` resolved: removing the app fails with `ENOTEMPTY`, or a write into the removed app is an unhandled rejection                   | before `close()` the Vite dev harnesses wait until each environment's optimizer has scanned and no `deps*_temp_*` directory is left (`closeViteServer` in `compiler-test-utils/src/dev-server.ts`). Remove when Vite awaits its optimizer on close.                  |

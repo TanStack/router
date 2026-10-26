@@ -645,21 +645,29 @@ export function computePlacement(input: PlacementInput): Placement {
   }
 
   // ---- reads per (cluster, output) -----------------------------------------
-  const clusterReadsCache = new Map<string, Set<SymbolId>>()
-  const clusterChildren = new Map<string, Set<ClusterId>>()
+  interface ClusterReads {
+    syms: Set<SymbolId>
+    children: Set<ClusterId>
+  }
+  // per output (or `*` for the dead walk), an array indexed by cluster id
+  const clusterReadsCache = new Map<string, Array<ClusterReads | undefined>>()
   function clusterReads(
     c: ClusterId,
     o: OutputId,
     live: boolean,
-  ): { syms: Set<SymbolId>; children: Set<ClusterId> } {
-    const key = `${c}|${live ? o : '*'}`
-    let syms = clusterReadsCache.get(key)
-    let children = clusterChildren.get(key)
-    if (syms && children) {
-      return { syms, children }
+  ): ClusterReads {
+    const outputKey = live ? o : '*'
+    let byCluster = clusterReadsCache.get(outputKey)
+    if (!byCluster) {
+      byCluster = []
+      clusterReadsCache.set(outputKey, byCluster)
     }
-    syms = new Set()
-    children = new Set()
+    const hit = byCluster[c]
+    if (hit) {
+      return hit
+    }
+    const syms = new Set<SymbolId>()
+    const children = new Set<ClusterId>()
     const cl = clusters[c]!
     for (const r of cl.regions) {
       const reads = memberReads(r, o, live)
@@ -679,9 +687,9 @@ export function computePlacement(input: PlacementInput): Placement {
         children.add(clusterOfRegion.get(ch)!)
       }
     }
-    clusterReadsCache.set(key, syms)
-    clusterChildren.set(key, children)
-    return { syms, children }
+    const reads: ClusterReads = { syms, children }
+    byCluster[c] = reads
+    return reads
   }
   /**
    * The output whose tree decides the live reads of cluster `c` reached from

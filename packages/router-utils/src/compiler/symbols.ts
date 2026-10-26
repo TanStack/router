@@ -7,6 +7,9 @@
 import { BindingFlags } from 'yuku'
 import type { Binding, SourceFile } from 'yuku'
 
+/** Runs in the bundler's process only: the environment is read once, not per binding. */
+const DEV = process.env.NODE_ENV !== 'production'
+
 export type SymbolId = number & { __sym: true }
 
 export type SymbolKind = 'source' | 'generated' | 'ambient' | 'synthetic'
@@ -50,11 +53,7 @@ export class SymbolTable {
   }
 
   ofBinding(b: Binding): SymbolId {
-    if (
-      process.env.NODE_ENV !== 'production' &&
-      this.file &&
-      b.file !== this.file
-    ) {
+    if (DEV && this.file && b.file !== this.file) {
       throw new Error('SymbolTable.ofBinding: binding of another file')
     }
     return b.id as SymbolId

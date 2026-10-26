@@ -12,6 +12,9 @@
  *   character; whitespace never starts one. The scan is syntax-agnostic.
  */
 
+/** Runs in the bundler's process only: the environment is read once, not per copy. */
+const DEV = process.env.NODE_ENV !== 'production'
+
 const SPACE = 0
 const WORD = 1
 const PUNCT = 2
@@ -204,7 +207,7 @@ export class OutputBuilder {
   copy(start: number, end: number, edits?: ReadonlyArray<BuilderEdit>): void {
     let pos = start
     if (edits !== undefined) {
-      if (process.env.NODE_ENV !== 'production') {
+      if (DEV) {
         assertSortedEdits(edits, start, end)
       }
       for (const ed of edits) {

@@ -285,15 +285,14 @@ export class DependencyLedger {
     src: FingerprintSource,
     fileSetCurrent = false,
   ): Promise<boolean> {
+    const checks: Array<Promise<boolean>> = []
     for (const fp of this.entries) {
       if (fileSetCurrent && fp.kind === 'resolution') {
         continue
       }
-      if (!(await fingerprintCurrent(fp, src))) {
-        return false
-      }
+      checks.push(fingerprintCurrent(fp, src))
     }
-    return true
+    return (await Promise.all(checks)).every((ok) => ok)
   }
 
   /** The plan is published: its rows replace the key's previous plan's. */

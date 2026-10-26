@@ -304,6 +304,23 @@ export class ModuleAnalysis {
     let marker: Marker = null
     let ownEffects = false
     let codeEffects = false
+    // the bindings import specifiers declare and exports name, from Yuku's
+    // module records by node position: a node lookup (`bindingOf`) would
+    // build the file's node index, which a Tier-0-only module never needs
+    const importLocals = new Map<number, SymbolId>()
+    for (const record of file.imports) {
+      const local = record.local
+      if (local) {
+        importLocals.set(record.node.start, local.id as SymbolId)
+      }
+    }
+    const exportLocals = new Map<number, SymbolId>()
+    for (const record of file.exports) {
+      const local = record.local
+      if (local) {
+        exportLocals.set(record.node.start, local.id as SymbolId)
+      }
+    }
     const body = file.program.body
     for (let i = this.header.directiveCount; i < body.length; i++) {
       const stmt = body[i]!
@@ -325,10 +342,9 @@ export class ModuleAnalysis {
             typeOnly: stmt.importKind === 'type',
             phase: stmt.phase,
             specifiers: stmt.specifiers.map((spec) => {
-              const b = file.bindingOf(spec.local)
               return {
                 range: { start: spec.start, end: spec.end },
-                local: (b ? b.id : -1) as SymbolId,
+                local: importLocals.get(spec.start) ?? (-1 as SymbolId),
                 imported:
                   spec.type === 'ImportDefaultSpecifier'
                     ? 'default'
@@ -431,11 +447,10 @@ export class ModuleAnalysis {
             })
           } else if (stmt.declaration !== null) {
             for (const id of declaredNames(stmt.declaration)) {
-              const b = file.bindingOf(id)
               exportEntries.push({
                 kind: 'local',
                 name: id.name,
-                local: b ? (b.id as SymbolId) : null,
+                local: exportLocals.get(id.start) ?? null,
                 typeOnly: typeOnly || isTypeDeclaration(stmt.declaration),
                 range: { start: id.start, end: id.end },
               })
@@ -443,14 +458,10 @@ export class ModuleAnalysis {
           } else {
             for (const spec of stmt.specifiers) {
               const exported = moduleExportNameOf(spec.exported)
-              const b =
-                spec.local.type === 'Identifier'
-                  ? (file.referenceOf(spec.local)?.binding ?? null)
-                  : null
               exportEntries.push({
                 kind: 'local',
                 name: exported,
-                local: b ? (b.id as SymbolId) : null,
+                local: exportLocals.get(spec.start) ?? null,
                 typeOnly: typeOnly || spec.exportKind === 'type',
                 range: { start: spec.start, end: spec.end },
               })
@@ -465,20 +476,18 @@ export class ModuleAnalysis {
               d.type === 'ClassDeclaration') &&
             d.id !== null
           ) {
-            const b = file.bindingOf(d.id)
             exportEntries.push({
               kind: 'local',
               name: 'default',
-              local: b ? (b.id as SymbolId) : null,
+              local: exportLocals.get(stmt.start) ?? null,
               typeOnly: false,
               range: { start: stmt.start, end: stmt.end },
             })
           } else if (d.type === 'Identifier') {
-            const b = file.referenceOf(d)?.binding ?? null
             exportEntries.push({
               kind: 'local',
               name: 'default',
-              local: b ? (b.id as SymbolId) : null,
+              local: exportLocals.get(stmt.start) ?? null,
               typeOnly: false,
               range: { start: stmt.start, end: stmt.end },
             })

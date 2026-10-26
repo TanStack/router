@@ -214,16 +214,54 @@ export function canonicalJson(value: unknown): string {
   if (value === null || typeof value !== 'object') {
     return JSON.stringify(value)
   }
+  let out: string
   if (Array.isArray(value)) {
-    return `[${value.map(canonicalJson).join(',')}]`
+    out = '['
+    for (let i = 0; i < value.length; i++) {
+      if (i > 0) {
+        out += ','
+      }
+      out += canonicalJson(value[i])
+    }
+    return out + ']'
   }
-  const keys = Object.keys(value as Record<string, unknown>).sort()
-  return `{${keys
-    .map(
-      (k) =>
-        `${JSON.stringify(k)}:${canonicalJson((value as Record<string, unknown>)[k])}`,
-    )
-    .join(',')}}`
+  const record = value as Record<string, unknown>
+  const keys = Object.keys(record)
+  if (keys.length > 1) {
+    keys.sort()
+  }
+  out = '{'
+  for (let i = 0; i < keys.length; i++) {
+    if (i > 0) {
+      out += ','
+    }
+    out += JSON.stringify(keys[i]) + ':' + canonicalJson(record[keys[i]!])
+  }
+  return out + '}'
+}
+
+/**
+ * The key of an import edge: unique per (environment, importer, specifier,
+ * form, origin) within a request. The digest of the record
+ * `{ env, layer, importer, rawSpecifier, form, origin? }` (`digestOf`, and
+ * `origin` only when it is not `'source'`), spelled out: one key per edge
+ * per output on every compile, so the canonical JSON is written directly
+ * instead of through `canonicalJson` (same bytes, same digest).
+ */
+export function edgeKeyOf(
+  env: string,
+  layer: string | null | undefined,
+  importer: string,
+  rawSpecifier: string,
+  form: string,
+  origin = 'source',
+): string {
+  // keys in sorted order: env, form, importer, layer, origin, rawSpecifier
+  const json =
+    `{"env":${JSON.stringify(env)},"form":${JSON.stringify(form)},"importer":${JSON.stringify(importer)},"layer":${layer == null ? 'null' : JSON.stringify(layer)},` +
+    (origin === 'source' ? '' : `"origin":${JSON.stringify(origin)},`) +
+    `"rawSpecifier":${JSON.stringify(rawSpecifier)}}`
+  return hash('sha1', json, 'base64url').slice(0, 22)
 }
 
 export function planKeyString(key: PlanKey): string {
