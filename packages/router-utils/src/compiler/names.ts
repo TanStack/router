@@ -1,9 +1,9 @@
 /**
- * Deterministic, collision-free name allocator per source file (DESIGN §2.8,
- * D10). The universe is every binding name in every scope, every free
- * reference name and every export name; generated names are `base` if free,
- * else `base$n` with the smallest n ≥ 1. JSX tag bases are capitalised and
- * prefixed with `Tsr` when not uppercase-initial.
+ * Deterministic, collision-free name allocator per source file (the same
+ * name always denotes the same thing). The universe is every binding name in
+ * every scope, every free reference name and every export name; generated names
+ * are `base` if free, else `base$n` with the smallest n ≥ 1. JSX tag bases are
+ * capitalised and prefixed with `Tsr` when not uppercase-initial.
  */
 import { isValidIdentifier } from './strings'
 import type { SymbolId, SymbolTable } from './symbols'

@@ -42,7 +42,7 @@ export function cleanOrphanedDeclarations(
     // object pattern properties pruned this round, removed together per pattern
     const prunedProps = new Map<Node, Set<Node>>()
     // declarators of multi-declarator statements pruned this round, removed
-    // together per statement (R17: one edit per statement from the final set)
+    // together per statement (one edit per statement from the final set)
     const prunedDecls = new Map<Node, Set<Node>>()
     // declarators removed whole this round (every binding of a pattern)
     const removedDeclarators = new Set<Node>()
@@ -294,7 +294,7 @@ function expressionStatement(code: string, init: Node): Array<Frag> {
 }
 
 /**
- * Removes the declarators `pruned` of a multi-declarator statement (R17: the
+ * Removes the declarators `pruned` of a multi-declarator statement (the
  * removals of one statement are computed from its final kept set): when
  * every declarator is gone (pruned now, or erased by an earlier round) the
  * statement goes with its line; otherwise each run of gone declarators is

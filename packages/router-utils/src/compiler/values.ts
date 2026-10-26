@@ -1,8 +1,8 @@
 /**
- * Abstract value domain and the callable-builder transition (DESIGN §2.9.2,
- * R8). The same transfer function serves local analysis and summaries.
- * Recognition is by specifier through a pluggable `RecognizerTable` (Start
- * supplies its kinds; the core ships an empty table).
+ * Abstract value domain and the callable-builder transition. The same transfer
+ * function serves local analysis and summaries. Recognition is by specifier
+ * through a pluggable `RecognizerTable` (Start supplies its kinds; the core
+ * ships an empty table).
  *
  * Values a module cannot evaluate on its own (a call of an imported function,
  * a member of an imported value) stay **symbolic terms** (`importRef`,
@@ -94,7 +94,7 @@ export function recognizeImport(
   return { t: 'factory', kind }
 }
 
-/** Whether `specifier` is a known package of the table (recognised by specifier, never resolved — D4). */
+/** Whether `specifier` is a known package of the table (recognised by specifier, never resolved: its exports are known by name). */
 export function isKnownSpecifier(
   table: RecognizerTable,
   specifier: string,
@@ -214,7 +214,7 @@ export function applyCall(
       return UNKNOWN
     }
     case 'builder':
-      // R8: calling a configured builder keeps links/provenance
+      // calling a configured builder keeps links/provenance
       return {
         t: 'builder',
         kind: fn.kind,
@@ -460,7 +460,7 @@ export class ValueAnalysis {
   }
 }
 
-/** Strips link sites to method names (export-facts digest input, R20). */
+/** Strips link sites to method names (export-facts digest input: importers observe the methods, not the arguments). */
 export function stripSites(
   v: AbstractValue | { t: 'param'; index: number },
 ): unknown {

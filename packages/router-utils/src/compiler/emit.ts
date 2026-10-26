@@ -1,5 +1,5 @@
 /**
- * Recipe renderer (DESIGN §2.7, §3.7): walks an `OutputRecipe` against the
+ * Recipe renderer: walks an `OutputRecipe` against the
  * source text and drives the `OutputBuilder`. Emission is on demand and the
  * module never ends inside a line comment.
  */

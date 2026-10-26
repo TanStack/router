@@ -1,6 +1,6 @@
 /**
- * Caches (DESIGN §4.5; D12, R3, R19, R34): `PlanCache` with validated hits,
- * the `DependencyLedger` with in-flight registration and snapshot
+ * Caches (see README.md, "Caches and invalidation"): `PlanCache` with validated
+ * hits, the `DependencyLedger` with in-flight registration and snapshot
  * validation, and the dependents index. Only plain data is retained.
  */
 import { identify, planKeyString } from './identity'
@@ -62,7 +62,7 @@ export function fingerprintPath(fp: DependencyFingerprint): string | null {
 }
 
 /**
- * Dependents-index bucket of failed resolutions (R47). An unresolved
+ * Dependents-index bucket of failed resolutions. An unresolved
  * resolution has no path to watch: file add/unlink events re-resolve every
  * entry of this bucket instead (`invalidate`).
  */
@@ -82,7 +82,7 @@ export interface FingerprintSource {
   targetDigest: (canonicalId: string) => Promise<string | null>
   targetMarker: (canonicalId: string) => Promise<TargetFacts['marker']>
   routeRegistryDigest: (path: string) => string | null
-  /** Resolves through the environment's own resolver (the source is per environment, R35). */
+  /** Resolves through the environment's own resolver (the source is per environment: aliases and conditions differ). */
   resolution: (importer: string, specifier: string) => Promise<string | null>
   configKey: string
 }

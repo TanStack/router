@@ -1,10 +1,10 @@
 /**
- * Purity model (DESIGN §3.3): literals, function/class expressions without
+ * Purity model: literals, function/class expressions without
  * decorators/static effects, pure object/array literals, all-literal
  * templates, `/*#__PURE__*\/` calls with pure arguments, `#__NO_SIDE_EFFECTS__`
  * callee declarations, JSX with bound/intrinsic tags and pure attributes and
  * children. `import()` is impure. The same classification yields Tier 0's
- * `ownEffects` at statement granularity (R36).
+ * `ownEffects` at statement granularity.
  */
 import { unwrapExpression } from './source'
 import type {

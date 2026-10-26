@@ -1,8 +1,8 @@
 /**
- * `RawFacts`: the one owner of raw module text per canonical id (DESIGN
- * §2.9.1, §4.5; R23, R36). Serves summaries (raw domain) and J6 target
- * facts (marker, export names, effect classification) from the same read.
- * Content-addressed, lazily built, invalidated by the watcher through
+ * `RawFacts`: the one owner of raw module text per canonical id (see
+ * README.md, "Caches and invalidation"). Serves summaries (raw domain) and J6
+ * target facts (marker, export names, effect classification) from the same
+ * read. Content-addressed, lazily built, invalidated by the watcher through
  * `markStale`.
  */
 import { digestOf, identify, isCommonJsPath, revision } from './identity'
@@ -27,7 +27,7 @@ export interface TargetFacts {
   lazyImports: Array<string>
   /** An ES module (false: CommonJS, script or unparseable — exports unknown). */
   esm: boolean
-  /** Own top-level effects or a bare import (transitive classification is the consumer's, R36). */
+  /** Own top-level effects or a bare import (transitive classification is the consumer's). */
   effectful: boolean
   /** Its own statements have effects, module loading (`imports`) aside. */
   codeEffects: boolean
@@ -91,7 +91,7 @@ export class RawFactsCache {
 
   constructor(private readonly opts: RawFactsOptions) {}
 
-  /** Whether `specifier` is a known package of the recognizer: it is never read or resolved (D4). */
+  /** Whether `specifier` is a known package of the recognizer: it is never read or resolved: its exports are known by name. */
   isKnownSpecifier(specifier: string): boolean {
     return isKnownSpecifier(this.opts.recognizer ?? EMPTY_RECOGNIZER, specifier)
   }
@@ -199,7 +199,7 @@ export class RawFactsCache {
     return holder.p
   }
 
-  /** Publishes facts from a transform's own parse (only when its input equals the raw text, R36). */
+  /** Publishes facts from a transform's own parse (only when its input equals the raw text: a summary describes the module as importers load it, not as an upstream plugin rewrote it). */
   publish(
     canonicalId: string,
     rawRevision: string,

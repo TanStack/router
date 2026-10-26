@@ -1,10 +1,12 @@
 /**
- * `ModuleAnalysis` — tiered, read-only (DESIGN §2.2, R23).
+ * `ModuleAnalysis` — tiered, read-only: modules that only need their edges
+ * never pay for the rest.
  *
  * Tier 0 (always): import/export tables, evaluation edges, header, markers,
  * own effects. Tier 1 (on demand): items, units, regions, symbols, classified
  * references, JSX info, name universe. Both are views over one Yuku parse
- * that lives for the compile attempt only (R19).
+ * that lives for the compile attempt only (nothing cached may reach a Yuku
+ * object).
  */
 import { BindingFlags, walk } from 'yuku'
 import { analyzeHeader } from './header'
@@ -273,7 +275,7 @@ export class ModuleAnalysis {
   readonly dynamicEdges: ReadonlyArray<DynamicEdge>
   readonly markers: Marker
   readonly ownEffects: boolean
-  /** Whether the module's own statements have effects, module loading aside (bare imports and re-exports are followed by consumers, R36). */
+  /** Whether the module's own statements have effects, module loading aside (bare imports and re-exports are followed by consumers). */
   readonly codeEffects: boolean
   readonly sourceType: 'module' | 'script' | 'commonjs'
   readonly hasImportOrExport: boolean
@@ -621,11 +623,11 @@ export class ModuleAnalysis {
   }
 
   /**
-   * How an import binding is used as a value (J6 edge names, DESIGN
-   * §3.14.1): `live` when a value-space reference (a read, a JSX tag, an
-   * `export { x }`) starts where `keep` holds; for a namespace binding, the
-   * member names read statically (`ns.x`, `ns['x']`, `<ns.X/>`), `opaque`
-   * when the namespace is used any other way. A semantic query over the
+   * How an import binding is used as a value (J6 edge names): `live` when a
+   * value-space reference (a read, a JSX tag, an `export { x }`) starts where
+   * `keep` holds; for a namespace binding, the member names read statically
+   * (`ns.x`, `ns['x']`, `<ns.X/>`), `opaque` when the namespace is used any
+   * other way. A semantic query over the
    * binding's references, no walk.
    */
   importUses(
@@ -664,7 +666,7 @@ export class ModuleAnalysis {
   }
 
   /**
-   * The names an import edge binds and reads (DESIGN §3.14.1): each live
+   * The names an import edge binds and reads (J6): each live
    * named/default specifier by its imported name; a live namespace by its
    * static member reads, plus '*' when opaque. Type-only specifiers and
    * specifiers `include` rejects are skipped.

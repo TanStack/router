@@ -1,5 +1,5 @@
 /**
- * Cross-module export resolution over summaries (DESIGN §2.9.3, R18): DFS
+ * Cross-module export resolution over summaries: DFS
  * with an active stack; explicit exports beat stars; two stars resolving to
  * different origins are ambiguous; results computed across a cut cycle edge
  * are tainted and not memoised; untainted results are memoised per batch.

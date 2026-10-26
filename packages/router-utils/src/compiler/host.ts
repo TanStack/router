@@ -1,5 +1,5 @@
 /**
- * Host contract (DESIGN §2.10; R3, R11, R25, R35) and the one invalidation
+ * Host contract (see README.md, "Hosts") and the one invalidation
  * operation.
  */
 import { isBuiltin } from 'node:module'
@@ -57,7 +57,7 @@ export interface CompileInput {
   inputMap?: InputSourceMap | null | (() => InputSourceMap | null)
   /**
    * Language of `code` when the id itself is not JS/TS but the bundler hands
-   * us JS (`.vue`, `.mdx`, custom module types; R48). Such ids run Tier 0
+   * us JS (`.vue`, `.mdx`, custom module types). Such ids run Tier 0
    * planners only. Must be a function of the id. Ignored for JS/TS ids.
    */
   lang?: Lang
@@ -87,7 +87,7 @@ export interface RouteRegistry {
 }
 
 export interface HostServices {
-  /** Full importer identity, passed to the bundler's resolver unchanged (R35). */
+  /** Full importer identity, passed to the bundler's resolver unchanged (a path alone would lose foreign queries and conditions). */
   resolve: (
     specifier: string,
     importerCanonicalId: string,
@@ -184,7 +184,8 @@ export interface Planner {
 
 /**
  * The caches of a compiler session: plans per environment and raw facts.
- * Resolutions are not cached (R54): a compile records each answer in its
+ * Resolutions are not cached (a cache measured no faster and complicated
+ * invalidation): a compile records each answer in its
  * ledger, and validation asks the environment's resolver again once the
  * file set may have changed (`fileSetVersion`).
  */
@@ -240,16 +241,16 @@ export interface InvalidateChange {
  * The host of each environment for an invalidation: one host for every
  * environment, or a function of the environment name (an environment's
  * resolutions are re-validated with its own resolver: per-environment
- * aliases and conditions resolve a specifier differently, R35).
+ * aliases and conditions resolve a specifier differently).
  */
 export type InvalidationHosts = HostServices | ((env: string) => HostServices)
 
 /**
- * The ONE invalidation operation (R3). Evicts the plans of the changed file
+ * The ONE invalidation operation. Evicts the plans of the changed file
  * in every env, bumps generations (published and in-flight), marks raw facts
  * stale and re-validates dependents' fingerprints; the host hard-invalidates
  * `evicted ∪ dependents` in the same operation. File `add`/`unlink` events
- * also re-resolve every failed resolution of every env (R47): a plan whose
+ * also re-resolve every failed resolution of every env: a plan whose
  * unresolved specifier now resolves is a dependent. Each environment's
  * fingerprints are checked with that environment's host (its own resolver).
  */
@@ -325,7 +326,7 @@ export async function invalidate(
       (fp) => fingerprintPath(fp) === change.path,
     )
     if (change.kind === 'add' || change.kind === 'unlink') {
-      // R47: failed resolutions have no path; re-resolve them all (one host resolve per distinct entry)
+      // failed resolutions have no path; re-resolve them all (one host resolve per distinct entry)
       await revalidate(
         cache,
         UNRESOLVED_DEPENDENCY,
@@ -372,8 +373,8 @@ export function isAnalyzableSpecifier(specifier: string): boolean {
 
 /**
  * Resolves a specifier for the analysis through the host's resolver (the
- * environment's own, R35); returns the canonical id of the target, or null
- * when nothing readable is behind it. Not cached (R54): the caller records
+ * environment's own); returns the canonical id of the target, or null
+ * when nothing readable is behind it. Not cached: the caller records
  * the answer in its ledger.
  */
 export async function resolveForAnalysis(
@@ -383,7 +384,7 @@ export async function resolveForAnalysis(
   specifier: string,
 ): Promise<string | null> {
   if (caches.rawFacts.isKnownSpecifier(specifier)) {
-    // D4: known packages are recognised by specifier, never resolved
+    // known packages are recognised by specifier, never resolved
     return specifier
   }
   if (!isAnalyzableSpecifier(specifier)) {

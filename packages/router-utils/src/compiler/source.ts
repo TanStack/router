@@ -1,7 +1,7 @@
 /**
- * Parsing (DESIGN §1.2 `source.ts`). One Yuku parse with the semantic model
+ * Parsing. One Yuku parse with the semantic model
  * per (env, module id, input text); the `SourceFile` lives only for the
- * compile attempt (R19).
+ * compile attempt (nothing cached may reach a Yuku object).
  */
 import { parse } from 'yuku'
 import { SourceText } from './output-builder'

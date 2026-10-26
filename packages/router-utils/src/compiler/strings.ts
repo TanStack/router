@@ -1,5 +1,5 @@
 /**
- * String helpers for generated code (DESIGN §1.2 `strings.ts`). Generated
+ * String helpers for generated code. Generated
  * glue never contains a raw CR, U+2028 or U+2029: the OutputBuilder counts
  * only LF in glue, and the escaper keeps every other line terminator out.
  */

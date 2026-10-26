@@ -1,5 +1,5 @@
 /**
- * The rewrite tree (DESIGN §2.4, §3.2, §3.17; R2, R14, R17, R37, R38, R39).
+ * The rewrite tree (see README.md, "Units, regions, edits").
  *
  * Planners emit `Edit`s against original ranges whose bodies are fragments:
  * retained slices (rendered with their own nested edits), structured text
@@ -50,7 +50,7 @@ export type Frag =
       k: 'spec'
       specifier: string
       edgeKey: string
-      /** Policy-relevant facts of the glue edge (R32). Default: runtime (exempt). */
+      /** Policy-relevant facts of the glue edge (glue replacing a user import is policy-checked). Default: runtime (exempt). */
       provenance?: EdgeProvenance
       names?: ReadonlyArray<string>
       /** Edge form of the glue literal (default 'static'). */
@@ -152,7 +152,7 @@ export class RewriteSet {
     this.bump()
   }
 
-  /** Rewrites one reference, context-aware (§3.17). */
+  /** Rewrites one reference, context-aware (shorthand properties, import/export names, JSX tags, assignment targets). */
   ref(ref: ClassifiedRef, to: RefTarget, scope: EditScope, by: string): void {
     this.add({
       range: ref.range,
@@ -219,7 +219,7 @@ export class RewriteSet {
       edits.push(x)
     }
     // Claims: live iff the region's occurrence is not erased by an edit strictly enclosing it
-    // (an edit on exactly the region replaces the placeholder in this output, R37).
+    // (an edit on exactly the region replaces the placeholder in this output).
     const base = new RenderTree(edits, this.regions)
     for (const claim of this.claims.values()) {
       const region = this.regions.get(claim.region)
@@ -242,7 +242,7 @@ export class RewriteSet {
     return tree
   }
 
-  /** Whether a claim is live in `output` (its region's occurrence renders there, R37 ancestor erasure). */
+  /** Whether a claim is live in `output` (its region's occurrence renders there: an erased ancestor suppresses it). */
   claimLive(region: RegionId, output: OutputId): boolean {
     return this.tree(output).hasClaim(region)
   }
@@ -452,7 +452,7 @@ export class RenderTree {
 
   /**
    * The chain of edits containing `offset`, outermost first. Claim
-   * placeholders are transparent: relocation is not erasure (R6/R37) — the
+   * placeholders are transparent: relocation is not erasure — the
    * region's text renders inside its owner.
    */
   private containing(offset: number): Array<TreeEdit> {

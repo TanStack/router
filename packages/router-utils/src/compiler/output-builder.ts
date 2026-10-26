@@ -1,6 +1,6 @@
 /**
- * The splice engine and v3 source-map builder (DESIGN §2.7, R28). Typed port
- * of `spike-code/maps-lib/output-builder.js`.
+ * The splice engine and v3 source-map builder (direct VLQ; no magic-string on
+ * the emit path).
  *
  * - `SourceText`: one per input revision, shared by every output of a plan.
  *   Lines are ECMAScript line terminators by default (LF, CRLF, lone CR,

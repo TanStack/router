@@ -1,5 +1,5 @@
 /**
- * D12: the plan cache's bookkeeping (generations, latest revisions, the
+ * The plan cache's bookkeeping (generations, latest revisions, the
  * dependents index) is bounded by the live plans: it does not grow with
  * edits that change import targets, nor with unique files that come and go.
  */
@@ -12,7 +12,7 @@ const env = envInfo()
 const stats = (host: MemoryHost) =>
   host.caches.plans.get(env.name)!.stats(false)
 
-describe('plan cache bookkeeping (D12)', () => {
+describe('plan cache bookkeeping', () => {
   it('a plan re-published with other import targets keeps only its current dependency rows', async () => {
     const files: Record<string, string> = { '/app/a.ts': '' }
     for (let i = 0; i < 20; i++) {

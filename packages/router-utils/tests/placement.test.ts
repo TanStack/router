@@ -52,7 +52,7 @@ const ROUTE = (opts: string, rest = '') =>
     })
   `)
 
-describe('clusters and the single-writer rule (A1)', () => {
+describe('clusters and the single-writer rule', () => {
   it('lets the sole writing group own a module binding it writes', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -106,7 +106,7 @@ describe('clusters and the single-writer rule (A1)', () => {
   })
 })
 
-describe('copyable clusters (impl-notes #6, lane router)', () => {
+describe('copyable clusters', () => {
   it('duplicates an import specifier only where an included cluster reads it, not through an env-homed cluster', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -191,10 +191,10 @@ describe('glue and renames (lane router)', () => {
     expect(chunk?.code).not.toContain('page')
   })
 
-  it('keeps the other declarators of a multi-declarator export exported when one is renamed (R38)', async () => {
+  it('keeps the other declarators of a multi-declarator export exported when one is renamed', async () => {
     // `export const a = 1, page = …`: renaming `page` drops the statement's
-    // `export` keyword (R38 re-exports the renamed binding under its public
-    // name); `a` must stay exported too
+    // `export` keyword (the glue re-exports the renamed binding under its
+    // public name); `a` must stay exported too
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       export const a = 1, page = () => 'x'
@@ -231,7 +231,7 @@ describe('glue and renames (lane router)', () => {
     const glue = [...(main?.code ?? '').matchAll(/export \{ ([^}]*) \}/g)]
       .flatMap((m) => m[1]!.split(',').map((p) => p.trim()))
       .sort()
-    // the chunk's own import glue (`TsrPendingComponent`), the R38 re-export, the sibling
+    // the chunk's own import glue (`TsrPendingComponent`), the renamed binding's re-export, the sibling
     expect(glue).toEqual([
       'TsrPendingComponent',
       'TsrPendingComponent as page',
@@ -403,7 +403,7 @@ describe('glue and renames (lane router)', () => {
   })
 })
 
-describe('extracted-export outputs (§3.5.3)', () => {
+describe('extracted-export outputs', () => {
   async function extract(code: string, keys = ['component']) {
     const host = new MemoryHost({ files: { '/app/route.tsx': code } })
     const planners = [toySplitPlanner({ keys, extractExports: true })]
@@ -816,8 +816,8 @@ function Page() {
   })
 })
 
-describe('provenance-based orphans (R6)', () => {
-  it('keeps a pre-existing disconnected effectful cycle (A6)', async () => {
+describe('provenance-based orphans', () => {
+  it('keeps a pre-existing disconnected effectful cycle', async () => {
     const code = ROUTE(
       '  component: () => null,',
       'const b = register(() => b)',
@@ -853,7 +853,7 @@ describe('provenance-based orphans (R6)', () => {
     )
   })
 
-  it('keeps an import still referenced by an export specifier (S5)', async () => {
+  it('keeps an import still referenced by an export specifier', async () => {
     const code = dedent(`
       import { wrapServer } from 'toy-start'
       import { helper } from './helper'
@@ -866,8 +866,8 @@ describe('provenance-based orphans (R6)', () => {
   })
 })
 
-describe('ordered evaluation and movable effects (R7, R29, R31)', () => {
-  it('co-locates an eager reader between two augmentations with the route module (A7)', async () => {
+describe('ordered evaluation and movable effects', () => {
+  it('co-locates an eager reader between two augmentations with the route module', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { init, a, b } from './store'
@@ -886,7 +886,7 @@ describe('ordered evaluation and movable effects (R7, R29, R31)', () => {
     expect(r.chunks.component).not.toContain('init(')
   })
 
-  it('moves an effectful initialiser followed only by the route factory chain (R29)', async () => {
+  it('moves an effectful initialiser followed only by the route factory chain', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { createStore } from './store'
@@ -903,7 +903,7 @@ describe('ordered evaluation and movable effects (R7, R29, R31)', () => {
     expect(r.chunks.component).toContain('const store = createStore()')
   })
 
-  it('keeps the initialiser eager when a surviving effect follows it (N3 counterexample, R31 (d))', async () => {
+  it('keeps the initialiser eager when a surviving effect follows it', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { snapshot, advance } from './clock'
@@ -937,7 +937,7 @@ describe('ordered evaluation and movable effects (R7, R29, R31)', () => {
     expect(r.chunks.component).toContain('const thing = /* @__PURE__ */ make()')
   })
 
-  it('moves a component with its own top-level property write (R29 (b): a binding and its augmentations are one cluster)', async () => {
+  it('moves a component with its own top-level property write (a binding and its augmentations are one cluster)', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       function Page() { return Page.displayName }
@@ -971,7 +971,7 @@ describe('ordered evaluation and movable effects (R7, R29, R31)', () => {
     expect(r.chunks.component).not.toContain('displayName')
   })
 
-  it('moves a destructured call result only one chunk needs (R29)', async () => {
+  it('moves a destructured call result only one chunk needs', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { make } from './make'
@@ -1006,8 +1006,8 @@ describe('ordered evaluation and movable effects (R7, R29, R31)', () => {
   })
 
   it('imports an exported pure component the route module also reads (no env-declared report for the export itself)', async () => {
-    // R-27's "exported" pattern is a value merged with an exported binding
-    // it writes; the value being the export is the §3.5.2 import case
+    // J2.8's "exported" pattern is a value merged with an exported binding
+    // it writes; the value being the export itself is imported from the env module
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       export function page() { return 'x' }
@@ -1043,7 +1043,7 @@ describe('ordered evaluation and movable effects (R7, R29, R31)', () => {
   })
 })
 
-describe('needers and homes (§3.5.2)', () => {
+describe('needers and homes', () => {
   it('duplicates imports and copyable primitives, shares pure clusters, imports exported ones', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -1139,7 +1139,7 @@ describe('needers and homes (§3.5.2)', () => {
     expect(r.env).not.toContain("from './other'")
   })
 
-  it('allocates collision-free names from the file universe (D10)', async () => {
+  it('allocates collision-free names from the file universe', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       const TsrSplitComponent = 1
@@ -1163,7 +1163,7 @@ describe('needers and homes (§3.5.2)', () => {
     )
   })
 
-  it('drops a type-only-used value import in route modules and keeps it elsewhere (J2.5, §9.1)', async () => {
+  it('drops a type-only-used value import in route modules and keeps it elsewhere (J2.5)', async () => {
     const route = dedent(`
       import { createFileRoute } from 'toy-router'
       import { Thing } from './thing'
@@ -1208,7 +1208,7 @@ describe('needers and homes (§3.5.2)', () => {
   })
 })
 
-describe('provider outputs (DESIGN §3.10.5, lane B)', () => {
+describe('provider outputs (J4.14)', () => {
   it('copies the exported cluster its root reads instead of importing it from the env module', async () => {
     // a provider output is the module's own instance in another layer: its
     // generated wrapper reads the exported `fn`, which stays exported from
@@ -1363,7 +1363,7 @@ describe('clusters an env root reads after homing', () => {
   })
 })
 
-describe('overridden placeholders (lane H1)', () => {
+describe('overridden placeholders', () => {
   it('counts the reads of an edit overriding a claimed placeholder for the enclosing region of that output', async () => {
     // a nested server fn chain is claimed for the provider output (hoisted
     // there); the env output keeps the chain in place with an edit on exactly
@@ -1502,7 +1502,7 @@ describe('overridden placeholders (lane H1)', () => {
   })
 })
 
-describe('pre-existing dead code (G16, R56)', () => {
+describe('pre-existing dead code (G16)', () => {
   it('keeps a dead pure cycle like a dead self-recursive function', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'

@@ -1,11 +1,10 @@
 /**
- * Top-level items, units, regions and statement-level recipes (DESIGN §3.1,
- * R17). A unit is the smallest thing placement reasons about (one import
- * specifier, one declarator, one function/class/enum/namespace, one export
- * specifier, every other statement). A region is a range planned as one
- * thing that owns the references inside it; every unit is a region and
- * planners register sub-regions (option values, Hydrate children, nested
- * chains).
+ * Top-level items, units, regions and statement-level recipes. A unit is the
+ * smallest thing placement reasons about (one import specifier, one declarator,
+ * one function/class/enum/namespace, one export specifier, every other
+ * statement). A region is a range planned as one thing that owns the references
+ * inside it; every unit is a region and planners register sub-regions (option
+ * values, Hydrate children, nested chains).
  */
 import { BindingFlags, bindingIdentifiers } from 'yuku'
 import { extendOverTrailingLine, isLicenseComment } from './header'
@@ -85,7 +84,7 @@ export interface Unit {
   /** For import specifiers: the imported name ('default', '*' or a name). */
   importedName: string | null
   isStyleImport: boolean
-  /** The declaration name node ranges (for renames, R38). */
+  /** The declaration name node ranges (for renames of directly exported declarations). */
   declNameRanges: Array<Range>
   /** Ephemeral node (phase B only). */
   node: Node
@@ -846,7 +845,8 @@ function itemAt(
 export type StatementRecipe = 'keep' | 'drop' | Array<Frag>
 
 /**
- * One edit per statement from the final retained set (R17). `keepExport`
+ * One edit per statement from the final retained set (not per-unit comma
+ * ranges, which overlap). `keepExport`
  * is false in derived outputs (the `export` keyword of included exported
  * declarations is excluded).
  */

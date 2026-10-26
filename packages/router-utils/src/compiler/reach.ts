@@ -1,8 +1,9 @@
 /**
  * Clusters, reachability, provenance-based orphans, the movable-effect test,
- * ordered evaluation and needers/homes (DESIGN §3.1, §3.4, §3.5.2; R1, R6,
- * R7, R29, R31). A generic service: planners supply roots and derived
- * outputs; the core decides what each output contains and what it imports.
+ * ordered evaluation and needers/homes (see README.md, "Reachability =
+ * splitting = dead-code removal"). A generic service: planners supply roots and
+ * derived outputs; the core decides what each output contains and what it
+ * imports.
  */
 import { deriveId } from './identity'
 import type { ClassifiedRef, Tier1 } from './analysis'
@@ -21,7 +22,7 @@ export type RootRef =
   | { t: 'unit'; id: UnitId }
   | { t: 'region'; id: RegionId }
   | { t: 'gen'; id: GenUnitId }
-  /** A module binding a derived output's root reads as its value (J2.8 R-27: reported when its effects keep it in the env module). */
+  /** A module binding a derived output's root reads as its value (J2.8: reported when its effects keep it in the env module). */
   | { t: 'sym'; id: SymbolId }
 
 export type OutputKind =
@@ -63,7 +64,7 @@ export interface Cluster {
   exported: boolean
   /** Source position for ordering (min start of members). */
   start: number
-  /** Index of the last item of the cluster (for R31 (d)); -1 for generated-only clusters. */
+  /** Index of the last item of the cluster (an effectful cluster followed by a surviving effect stays eager); -1 for generated-only clusters. */
   lastItem: number
   kind:
     | 'import'
@@ -98,7 +99,7 @@ export interface PlacementInput {
   canonicalId: string
   routeModule: boolean
   benignEffects: ReadonlySet<UnitId>
-  /** Exported symbols a planner allows into an extracted-export output (§3.5.3). */
+  /** Exported symbols a planner allows into an extracted-export output. */
   extractions?: ReadonlyMap<SymbolId, OutputId>
 }
 
@@ -255,7 +256,7 @@ export function computePlacement(input: PlacementInput): Placement {
   }
   // ---- 2. live writes and augmentations (env liveness) --------------------
   const writerConstraints = new Map<number, Set<RegionId>>() // decl member root → writer sub-regions
-  /** Module-level symbols a sub-region writes (a cluster holding one is never an extracted export, §3.5.3: the single-writer rule decides). */
+  /** Module-level symbols a sub-region writes (a cluster holding one is never an extracted export: the single-writer rule decides). */
   const regionWrittenSyms = new Set<SymbolId>()
   for (const ref of refs.all) {
     if (
@@ -326,7 +327,7 @@ export function computePlacement(input: PlacementInput): Placement {
       }
       into.syms.push(ref.sym)
     }
-    // generated text inside the region declares its reads structurally (R39)
+    // generated text inside the region declares its reads structurally (symbol fragments)
     const tree = treeOf(o)
     for (const e of tree.edits) {
       if (e.range.start >= r.range.end) {
@@ -421,7 +422,7 @@ export function computePlacement(input: PlacementInput): Placement {
     return into
   }
 
-  // ---- 5. ordered evaluation (R7): eager readers of mutated clusters join them ----
+  // ---- 5. ordered evaluation: eager readers of mutated clusters join them (a reader cannot move after the writes that follow it) ----
   const fallbacks: Array<Fallback> = []
   const orderedEffectRegions = new Set<RegionId>()
   for (let round = 0; round < 8; round++) {
@@ -496,7 +497,7 @@ export function computePlacement(input: PlacementInput): Placement {
     }
   }
 
-  // symbols generated text reads (R39): uses the semantic model does not see (a Solid `use:x`)
+  // symbols generated text reads: uses the semantic model does not see (a Solid `use:x`)
   const generatedReads = new Set<SymbolId>()
   for (const frags of [
     ...rewrites.edits.map((e) => e.body),
@@ -567,13 +568,13 @@ export function computePlacement(input: PlacementInput): Placement {
   /**
    * Whether an effect unit only augments bindings its own cluster declares
    * (`Page.displayName = …` after `function Page`): the binding and its
-   * writers are one cluster (A1), moved or kept together (R29 (b)).
+   * writers are one cluster, moved or kept together.
    */
   const ownAugmentation = (u: Unit, cl: Cluster): boolean => {
     if (u.kind !== 'effect' || u.augments.length === 0) {
       return false
     }
-    // an effectful initialiser among the augmentations (A7: `init()` between
+    // an effectful initialiser among the augmentations (`init()` between
     // two `plugins.push`) keeps the whole cluster an effect root
     if (
       cl.units.some(
@@ -751,7 +752,7 @@ export function computePlacement(input: PlacementInput): Placement {
     return included
   }
 
-  // ---- extracted exports (§3.5.3): candidates and their export companions -------
+  // ---- extracted exports: candidates and their export companions -------
   // A candidate is a pure, unwritten exported declaration cluster a planner
   // allowed out; its companions are the export-specifier / `export default x`
   // clusters that only read it. Neither is an env root for now: the decision
@@ -823,7 +824,7 @@ export function computePlacement(input: PlacementInput): Placement {
     }
   }
 
-  // ---- dead claims (ancestor erasure, R37): the owner contributes nothing ----
+  // ---- dead claims (ancestor erasure): the owner contributes nothing ----
   const deadGens = new Set<GenUnitId>()
   for (const claim of rewrites.claims.values()) {
     const g = gens[claim.owner]!
@@ -1477,7 +1478,7 @@ export function computePlacement(input: PlacementInput): Placement {
     }
   }
 
-  // ---- sym roots the env module keeps by their effects (J2.8 R-27) -------------
+  // ---- sym roots the env module keeps by their effects (J2.8) -------------
   // A derived output whose root value is a binding declared by an effect the
   // route module keeps (destructured from a call, written at the top level
   // where the route module needs it) would only import it: the planner is
@@ -1498,10 +1499,10 @@ export function computePlacement(input: PlacementInput): Placement {
       if (declaring.length === 0) {
         continue
       }
-      // R-27's two patterns: the declaration itself has effects (a call
+      // the two user-fixable patterns of J2.8: the declaration itself has effects (a call
       // result, a destructuring) or travels with an exported binding (a
       // writer of module state the route module exports); the value being
-      // the exported declaration itself is the §3.5.2 import (no report)
+      // the exported declaration itself is imported from the env module (no report)
       const decl = units[declaring[0]!]!
       if (
         decl.kind === 'declaration' &&
@@ -1547,7 +1548,7 @@ export function computePlacement(input: PlacementInput): Placement {
     included.get(h)!.add(cl.id)
   }
   // a provider output is the module's own instance in another layer or environment
-  // (DESIGN §3.10.5, J4.14): it includes every cluster its roots reach, the env-homed ones
+  // (J4.14): it includes every cluster its roots reach, the env-homed ones
   // as copies, instead of importing them from the env module (whose server fns are stubs)
   for (const [o, decl] of outputs) {
     if (decl.kind !== 'provider') {

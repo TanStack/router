@@ -1,5 +1,5 @@
 /**
- * The two-layer plan (DESIGN §2.5, R19): the ephemeral `AnalysisPlan` holds
+ * The two-layer plan: the ephemeral `AnalysisPlan` holds
  * the analysis, the rewrite set, the declared outputs and the planners'
  * facts for one compile attempt; `resolve()` runs the core phase (claims,
  * clusters, movable effects, roots, homes, inclusion, glue, statement-level
@@ -164,7 +164,7 @@ export interface PlanContext {
   markBenignEffect: (unit: UnitId) => void
   /**
    * Allows an exported, pure, unwritten declaration into `output` (an
-   * extracted-export output, §3.5.3): the core moves it there when only
+   * extracted-export output): the core moves it there when only
    * derived outputs need it, and the env module re-exports it.
    */
   extract: (sym: SymbolId, output: OutputId) => void
@@ -200,7 +200,7 @@ export class AnalysisPlan implements PlanContext {
   readonly extractions = new Map<SymbolId, OutputId>()
   routeModule = false
   placement: Placement | null = null
-  /** Renamed directly-exported declarations: sym → export names (R38). */
+  /** Renamed directly-exported declarations: sym → export names. */
   private readonly exportedRenames = new Map<
     SymbolId,
     { to: RefTarget; names: Array<string>; units: Array<UnitId> }
@@ -334,7 +334,7 @@ export class AnalysisPlan implements PlanContext {
     })
   }
 
-  /** Renames every reference and declaration of `sym` (R14, R38, §3.17). */
+  /** Renames every reference and declaration of `sym` (context-aware; exports keep their public names). */
   /** The binding name a symbol renders as (after module-wide renames). */
   nameOf(sym: SymbolId): string {
     const to = this.renames.get(sym)
@@ -615,8 +615,8 @@ export class AnalysisPlan implements PlanContext {
     }
     // Type units stay in the env module, except the inline type-only specifiers of an import
     // statement with no included value specifier: `import { type X } from './m'` would keep
-    // loading the module (`import {} from './m'`), and type positions keep nothing alive (S2,
-    // J4.12). A whole-declaration `import type` is erased downstream anyway and stays.
+    // loading the module (`import {} from './m'`), and type positions keep nothing alive
+    // (J4.12). A whole-declaration `import type` is erased downstream anyway and stays.
     const dropTypes =
       item.shape === 'import' &&
       includedValueUnits === 0 &&
@@ -702,7 +702,7 @@ export class AnalysisPlan implements PlanContext {
       }
       if (!keepExport && item.exportKeyword !== null) {
         // the statement loses its `export` keyword for the renamed binding
-        // (R38: re-exported under its public name by the glue); the other
+        // (re-exported under its public name by the glue); the other
         // exported declarators of the statement stay exported through the
         // same glue
         for (const uid of item.units) {
@@ -1106,7 +1106,7 @@ export class AnalysisPlan implements PlanContext {
       })
     }
     pieces.sort((x, y) => x.pos - y.pos || x.order - y.order)
-    // leadingness (§3.8, J2.16): a pragma comment the source wrote after its
+    // leadingness (J2.16): a pragma comment the source wrote after its
     // first statement (ineffective for a transform that reads leading
     // comments only) must not open this output; a token keeps it where the
     // source had it
