@@ -55,7 +55,7 @@ describe('masked location remnants in history state', () => {
 })
 
 describe('masked location hash', () => {
-  test('keeps the hash of the location under the mask', async () => {
+  const navigateFromRoot = async (hash: string, masked: boolean) => {
     const rootRoute = new BaseRootRoute({})
     const routeTree = rootRoute.addChildren([
       new BaseRoute({ getParentRoute: () => rootRoute, path: '/real' }),
@@ -66,10 +66,26 @@ describe('masked location hash', () => {
       history: createMemoryHistory({ initialEntries: ['/'] }),
     })
     await router.load()
+    if (masked) {
+      await router.navigate({ to: '/real', hash, mask: { to: '/pretty' } })
+    } else {
+      await router.navigate({ to: '/real', hash })
+    }
+    return router.latestLocation
+  }
 
-    await router.navigate({ to: '/real', hash: 'tab', mask: { to: '/pretty' } })
+  test('keeps the hash of the location under the mask', async () => {
+    const location = await navigateFromRoot('tab', true)
 
-    expect(router.latestLocation.href).toBe('/real#tab')
-    expect(router.latestLocation.hash).toBe('tab')
+    expect(location.href).toBe('/real#tab')
+    expect(location.hash).toBe('tab')
+  })
+
+  test('encodes the hash under the mask like an unmasked href', async () => {
+    const unmasked = await navigateFromRoot('my tab', false)
+    const masked = await navigateFromRoot('my tab', true)
+
+    expect(masked.href).toBe(unmasked.href)
+    expect(masked.hash).toBe('my tab')
   })
 })
