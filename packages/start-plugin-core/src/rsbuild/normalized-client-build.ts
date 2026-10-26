@@ -1,7 +1,12 @@
+import { hash } from 'node:crypto'
 import { tsrSplit } from '@tanstack/router-plugin'
 import { tssHydrate } from '../hydration-constants'
 import { getCssAssetSource } from '../start-manifest-plugin/inlineCss'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
+import {
+  getRebuiltModulesAndImporters,
+  mayHaveReResolvedImports,
+} from './rebuilt-modules'
 import type { RsbuildPluginAPI, Rspack } from '@rsbuild/core'
 import type {
   GetConfigFn,
@@ -17,6 +22,7 @@ type RspackCompilationChunk = Rspack.Chunk
 type RspackModule = Rspack.Module
 
 const backslashRegex = /\\/g
+const dependencyPathRegex = /[\\/]node_modules[\\/]/
 
 /**
  * Convert an OS native path to the POSIX form used by the generated route tree.
@@ -479,6 +485,30 @@ export function registerClientBuildCapture(
   getClientBuild: () => NormalizedClientBuild | undefined
 } {
   let clientBuild: NormalizedClientBuild | undefined
+  // `previous` is only reusable by the compilation that directly follows it.
+  let snapshot: (DevClientBuildSnapshot & { previous: boolean }) | undefined
+
+  if (api.context.action === 'dev') {
+    api.modifyRspackConfig((config, utils) => {
+      if (utils.environment.name !== RSBUILD_ENVIRONMENT_NAMES.client) {
+        return
+      }
+      config.plugins.push({
+        apply(compiler: Rspack.Compiler) {
+          compiler.hooks.thisCompilation.tap(
+            'TanStackStartClientBuildSnapshot',
+            () => {
+              if (snapshot) {
+                snapshot = snapshot.previous
+                  ? undefined
+                  : { ...snapshot, previous: true }
+              }
+            },
+          )
+        },
+      })
+    })
+  }
 
   api.processAssets(
     {
@@ -486,15 +516,203 @@ export function registerClientBuildCapture(
       environments: [RSBUILD_ENVIRONMENT_NAMES.client],
     },
     (context: ProcessAssetsContext) => {
-      clientBuild = normalizeRspackClientBuild(
-        context.compilation,
-        api.context.action !== 'dev' &&
+      if (api.context.action !== 'dev') {
+        clientBuild = normalizeRspackClientBuild(
+          context.compilation,
           getConfig().startConfig.server.build.inlineCss.enabled,
-      )
+        )
+        return
+      }
+
+      const { compilation, compiler } = context
+      const chunkGraph = getChunkGraphFingerprint(compilation)
+      const previous =
+        snapshot?.previous && !mayHaveReResolvedImports(compiler, compilation)
+          ? snapshot
+          : undefined
+      const edgesByModule =
+        previous?.edgesByModule ?? getModuleEdgeSignatures(compilation)
+      const edgesChanged =
+        !previous || updateRebuiltEdgeSignatures(compilation, edgesByModule)
+
+      if (previous && !edgesChanged && chunkGraph === previous.chunkGraph) {
+        snapshot = { ...previous, previous: false }
+        clientBuild = previous.clientBuild
+        return
+      }
+
+      snapshot = undefined
+      clientBuild = normalizeRspackClientBuild(compilation, false)
+      snapshot = { clientBuild, chunkGraph, edgesByModule, previous: false }
     },
   )
 
   return {
     getClientBuild: () => clientBuild,
   }
+}
+
+interface DevClientBuildSnapshot {
+  clientBuild: NormalizedClientBuild
+  chunkGraph: string
+  // Digests: identifiers include loader chains hundreds of characters long.
+  edgesByModule: Map<string, string>
+}
+
+/**
+ * Every chunk-graph input to normalization other than module edges. Order
+ * within a line is kept; lines are sorted because HMR rebuilds can reorder
+ * chunks without changing them. Only the files normalization reads count, so
+ * HMR updates and other assets don't.
+ */
+function getChunkGraphFingerprint(compilation: RspackCompilation): string {
+  const getChunkKey = (chunk: RspackCompilationChunk) =>
+    `${chunk.id ?? ''}:${chunk.name ?? ''}`
+  const getGroupKey = (group: Rspack.ChunkGroup) =>
+    group.chunks.map(getChunkKey).join(',')
+  const lines: Array<string> = []
+
+  for (const chunk of compilation.chunks) {
+    lines.push(
+      [
+        getChunkKey(chunk),
+        Array.from(chunk.runtime).join(','),
+        getChunkJsFiles(chunk).join(','),
+        getChunkCssFiles(chunk).join(','),
+        compilation.chunkGraph.getChunkModules(chunk).length,
+      ].join('|'),
+    )
+  }
+  for (const group of compilation.chunkGroups) {
+    lines.push(
+      [
+        getGroupKey(group),
+        group.getParents().map(getGroupKey).join(';'),
+        Array.from(group.childrenIterable, getGroupKey).join(';'),
+      ].join('|'),
+    )
+  }
+  for (const [name, entrypoint] of compilation.entrypoints) {
+    lines.push(`${name}|${getGroupKey(entrypoint)}`)
+  }
+
+  return lines.sort().join('\n')
+}
+
+/**
+ * Reads, per module, the identifiers of its active static imports for each
+ * runtime it is emitted in, and of its dynamic imports; identifiers carry the
+ * queries that hold route metadata. Dependency modules are not rebuilt in
+ * development, so their signatures are neither recorded nor reusable.
+ */
+function createEdgeSignatureReader(compilation: RspackCompilation) {
+  const identifiers = new Map<RspackModule, string>()
+  const runtimes = new Map<
+    RspackCompilationChunk,
+    { runtime: Array<string>; key: string }
+  >()
+  const getIdentifier = (module: RspackModule) => {
+    let identifier = identifiers.get(module)
+    if (identifier === undefined) {
+      identifier = module.identifier()
+      identifiers.set(module, identifier)
+    }
+    return identifier
+  }
+
+  return {
+    getKey(module: RspackModule) {
+      return hash('sha1', getIdentifier(module), 'base64')
+    },
+    isDependency(module: RspackModule) {
+      const identifier = getIdentifier(module)
+      return dependencyPathRegex.test(
+        identifier.slice(identifier.lastIndexOf('!') + 1),
+      )
+    },
+    getSignature(module: RspackModule) {
+      const parts: Array<string> = []
+      const seenRuntimes = new Set<string>()
+
+      for (const chunk of compilation.chunkGraph.getModuleChunksIterable(
+        module,
+      )) {
+        let entry = runtimes.get(chunk)
+        if (!entry) {
+          const runtime = Array.from(chunk.runtime)
+          entry = { runtime, key: runtime.join(',') }
+          runtimes.set(chunk, entry)
+        }
+        if (seenRuntimes.has(entry.key)) {
+          continue
+        }
+        seenRuntimes.add(entry.key)
+        parts.push(entry.key)
+
+        for (const dependency of module.dependencies) {
+          const connection = compilation.moduleGraph.getConnection(dependency)
+          const importedModule = connection?.module
+          if (
+            importedModule &&
+            connection.getActiveState(entry.runtime) !== false
+          ) {
+            parts.push(getIdentifier(importedModule))
+          }
+        }
+      }
+
+      // A new dynamic import target can keep the chunk's name and module count.
+      const blocks = [...module.blocks]
+      for (const block of blocks) {
+        blocks.push(...block.blocks)
+        for (const dependency of block.dependencies) {
+          const importedModule =
+            compilation.moduleGraph.getConnection(dependency)?.module
+          if (importedModule) {
+            parts.push(`async:${getIdentifier(importedModule)}`)
+          }
+        }
+      }
+
+      return hash('sha1', parts.join('\n'), 'base64')
+    },
+  }
+}
+
+function getModuleEdgeSignatures(
+  compilation: RspackCompilation,
+): Map<string, string> {
+  const reader = createEdgeSignatureReader(compilation)
+  const signatures = new Map<string, string>()
+  for (const module of compilation.modules) {
+    if (!reader.isDependency(module)) {
+      signatures.set(reader.getKey(module), reader.getSignature(module))
+    }
+  }
+  return signatures
+}
+
+/**
+ * Only rebuilt modules and their importers can change edges between directly
+ * consecutive development compilations.
+ */
+function updateRebuiltEdgeSignatures(
+  compilation: RspackCompilation,
+  edgesByModule: Map<string, string>,
+): boolean {
+  const reader = createEdgeSignatureReader(compilation)
+  let changed = false
+  for (const module of getRebuiltModulesAndImporters(compilation)) {
+    if (reader.isDependency(module)) {
+      changed = true
+      continue
+    }
+    const key = reader.getKey(module)
+    const signature = reader.getSignature(module)
+    if (edgesByModule.get(key) !== signature) {
+      edgesByModule.set(key, signature)
+      changed = true
+    }
+  }
+  return changed
 }

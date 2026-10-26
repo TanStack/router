@@ -276,6 +276,7 @@ export function registerVirtualModules(
   const pendingWrites = new Map<string, Map<string, string>>()
 
   let clientBuild: NormalizedClientBuild | undefined
+  let devManifestRoutes: typeof globalThis.TSS_ROUTES_MANIFEST | undefined
   const lastResolverContentByEnvironment: Record<string, string | undefined> =
     {}
   const resolverWriteCountByEnvironment: Record<string, number> = {}
@@ -560,10 +561,18 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
     },
 
     updateManifest(newClientBuild: NormalizedClientBuild) {
+      if (
+        isDev &&
+        newClientBuild === clientBuild &&
+        globalThis.TSS_ROUTES_MANIFEST === devManifestRoutes
+      ) {
+        return
+      }
       clientBuild = newClientBuild
       // Safe to call getConfig() here — runs after client build
       const { resolvedStartConfig } = opts.getConfig()
       if (isDev) {
+        devManifestRoutes = globalThis.TSS_ROUTES_MANIFEST
         ;(
           globalThis as typeof globalThis & {
             [DEV_START_MANIFEST_GLOBAL]?: ReturnType<typeof buildStartManifest>
