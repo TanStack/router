@@ -45,7 +45,7 @@ import {
   symlinkSync,
   writeFileSync,
 } from 'node:fs'
-import { mkdtemp } from 'node:fs/promises'
+import { mkdtemp, symlink } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { runDirectoryVariable } from './run-directory'
@@ -106,10 +106,9 @@ function standIn(dir: string): StandIn {
     mkdirSync(apps, { recursive: true })
     for (const level of levels) {
       mkdirSync(mirrored(level), { recursive: true })
-      symlinkSync(
+      linkDirectorySync(
         path.join(level, 'node_modules'),
         path.join(mirrored(level), 'node_modules'),
-        'junction',
       )
     }
     const tsconfig = nearest(resolved, 'tsconfig.json')
@@ -133,6 +132,61 @@ function standIn(dir: string): StandIn {
     registry.set(resolved, found)
   }
   return found
+}
+
+/**
+ * The kind of link `linkDirectory` makes on this platform: a symbolic link
+ * where the process may create one, else (Windows without the privilege)
+ * a junction. Windows resolves a relative symbolic link reached through a
+ * junction against the junction's own path, not its target's, so a
+ * junction to a `node_modules` whose package links are relative (pnpm's
+ * workspace links, where it could create symbolic links) leads nowhere:
+ * `existsSync`, Node's and Vite's resolvers all miss the packages. A
+ * symbolic link is followed like the package manager's own. pnpm picks the
+ * same way (a symbolic link, a junction when it cannot), so what the app
+ * links matches what the links below it need.
+ */
+let linkType: 'dir' | 'junction' = 'dir'
+
+function withoutPrivilege(error: unknown): boolean {
+  return (
+    process.platform === 'win32' &&
+    (error as NodeJS.ErrnoException).code === 'EPERM' &&
+    linkType === 'dir'
+  )
+}
+
+/**
+ * Links directory `target` at `link` the way the package manager links
+ * packages (see `linkType`): the app resolves its bare imports through it
+ * as from `target`'s place.
+ */
+export function linkDirectorySync(target: string, link: string): void {
+  try {
+    symlinkSync(target, link, linkType)
+  } catch (error) {
+    if (!withoutPrivilege(error)) {
+      throw error
+    }
+    linkType = 'junction'
+    symlinkSync(target, link, linkType)
+  }
+}
+
+/** `linkDirectorySync`, asynchronously. */
+export async function linkDirectory(
+  target: string,
+  link: string,
+): Promise<void> {
+  try {
+    await symlink(target, link, linkType)
+  } catch (error) {
+    if (!withoutPrivilege(error)) {
+      throw error
+    }
+    linkType = 'junction'
+    await symlink(target, link, linkType)
+  }
 }
 
 /** `dir` and the directories above it, innermost first. */

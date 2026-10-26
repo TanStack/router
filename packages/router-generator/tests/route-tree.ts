@@ -4,10 +4,11 @@
  * real exports; no dependency layout or runner module inventory is inspected.
  * A public Vite transform hook observes requests for fixture-owned files only.
  */
-import { mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises'
+import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { createServer, createServerModuleRunner, parseSync } from 'vite'
+import { linkDirectory } from '@tanstack/compiler-test-utils/app-directory'
 import { openDiagnosticChannel } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import { inputsOf, recordInputs } from './consumer-inputs'
@@ -66,15 +67,13 @@ async function withModule<T>(
   // their parent. Only standalone temporary apps need their own link.
   const fromPackage = path.relative(path.dirname(nodeModules), root)
   if (fromPackage.startsWith('..') || path.isAbsolute(fromPackage)) {
-    await symlink(
-      nodeModules,
-      path.join(root, 'node_modules'),
-      'junction',
-    ).catch((error: NodeJS.ErrnoException) => {
-      if (error.code !== 'EEXIST') {
-        throw error
-      }
-    })
+    await linkDirectory(nodeModules, path.join(root, 'node_modules')).catch(
+      (error: NodeJS.ErrnoException) => {
+        if (error.code !== 'EEXIST') {
+          throw error
+        }
+      },
+    )
   }
   const requested = new Set<string>()
   const printedRequests = new Map<string, Set<string>>()

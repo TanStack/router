@@ -2,9 +2,10 @@
  * Shared test helper: type-checks an app with the real TypeScript compiler
  * and the real router package types, like `tsc --noEmit` in a project.
  */
-import { symlink, writeFile } from 'node:fs/promises'
+import { writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import ts from 'typescript'
+import { linkDirectory } from '@tanstack/compiler-test-utils/app-directory'
 
 /** The packages this package's tests may use (the router packages, React). */
 const nodeModules = path.resolve(import.meta.dirname, '../node_modules')
@@ -52,7 +53,7 @@ function messageOf(diagnostic: ts.Diagnostic) {
  * Returns the type errors, each as `<file>: <message>`.
  */
 export async function typeErrorsOf(root: string, file: string, code: string) {
-  await symlink(nodeModules, path.join(root, 'node_modules'), 'junction').catch(
+  await linkDirectory(nodeModules, path.join(root, 'node_modules')).catch(
     (error: NodeJS.ErrnoException) => {
       if (error.code !== 'EEXIST') {
         throw error

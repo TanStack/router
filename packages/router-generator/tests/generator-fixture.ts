@@ -16,6 +16,7 @@ import {
   rootRoute,
   route,
 } from '@tanstack/virtual-file-routes'
+import { linkDirectory } from '@tanstack/compiler-test-utils/app-directory'
 import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import { getConfig } from '../src'
 import { recordInputs } from './consumer-inputs'
@@ -51,10 +52,9 @@ export async function copyFixture(name: string) {
       path.basename(source) !== 'node_modules' &&
       !/[\\/]routeTree\.gen\.[jt]s$/.test(source),
   })
-  await fs.symlink(
+  await linkDirectory(
     path.resolve(import.meta.dirname, '../node_modules'),
     join(dir, 'node_modules'),
-    'junction',
   )
   return dir
 }
