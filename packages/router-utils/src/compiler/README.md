@@ -126,7 +126,7 @@ Fixed order per env (an array the host passes): `start-env` → `hydrate` → `r
 
 | planner        | job                                                                   | file                                                                                                                |
 | -------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `route-split`  | route option splitting, `deleteNodes`, route CSS placement            | `router-plugin/src/planners/split.ts` (recognition `route.ts`, decisions `decisions.ts`, registry `registry.ts`)    |
+| `route-split`  | route option splitting, `deleteNodes`                                 | `router-plugin/src/planners/split.ts` (recognition `route.ts`, decisions `decisions.ts`, registry `registry.ts`)    |
 | `route-hmr`    | route HMR block, React Refresh registration names                     | `router-plugin/src/planners/hmr.ts`; runtime in `router-core/src/hmr.ts` and `{react,solid,vue}-router/src/hmr.ts`  |
 | `start-env`    | server functions, middleware, isomorphic/env-only fns, `<ClientOnly>` | `start-plugin-core/src/planners/start-env.ts`; recognition `src/compiler/`; ids/registry/resolver `src/server-fns/` |
 | `hydrate`      | `<Hydrate>` extraction into chunks                                    | `start-plugin-core/src/planners/hydrate.ts`                                                                         |

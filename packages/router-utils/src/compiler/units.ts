@@ -83,7 +83,6 @@ export interface Unit {
   importIndex: number | null
   /** For import specifiers: the imported name ('default', '*' or a name). */
   importedName: string | null
-  isStyleImport: boolean
   /** The declaration name node ranges (for renames of directly exported declarations). */
   declNameRanges: Array<Range>
   /** Ephemeral node (phase B only). */
@@ -223,7 +222,6 @@ export class RegionTable {
   }
 }
 
-const STYLE_RE = /\.(css|scss|sass|less|styl|pcss)(\?|$)/
 const MUTATORS = new Set([
   'push',
   'unshift',
@@ -387,7 +385,6 @@ export function buildUnits(
     copyable: false,
     importIndex: null,
     importedName: null,
-    isStyleImport: false,
     declNameRanges: [],
     node,
   })
@@ -406,7 +403,6 @@ export function buildUnits(
           )
           u.effectful = node.importKind !== 'type'
           u.importIndex = importIndex
-          u.isStyleImport = STYLE_RE.test(node.source.value)
           add(item, u)
           break
         }

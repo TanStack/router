@@ -461,6 +461,30 @@ export const Route = createFileRoute('/posts')({
     ).toEqual(['false-loader', 'false'])
   })
 
+  // A CSS module import is a value import like any other: it follows the
+  // split component that reads it (only a bare `import './x.css'` stays in
+  // the route module).
+  it('take the CSS module only the split component reads with the component', async () => {
+    const route = await loadRoute(
+      `${head}import styles from './page.module.css'
+export const Route = createFileRoute('/')({
+  component: () => <p className={styles.title}>page</p>,
+})
+`,
+      { files: { 'page.module.css': '.title { color: rgb(1, 2, 3); }\n' } },
+    )
+    await expectValidModules(route)
+    expect(await route.requested()).not.toContain('/page.module.css')
+    expect(
+      (await route.loadedBy('component')).some((code) =>
+        readsImport(code, '/page.module.css'),
+      ),
+    ).toBe(true)
+    expect(await route.run(`return render('component')`)).toMatch(
+      /^<p class="[^"]*title[^"]*">page<\/p>$/,
+    )
+  })
+
   // TypeScript erases the cast: the value is the component.
   it('split a component wrapped in `as`', async () => {
     const route = await loadRoute(`${head}function Page() {
