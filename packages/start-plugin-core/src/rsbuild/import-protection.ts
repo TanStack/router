@@ -1476,6 +1476,14 @@ export function registerImportProtection(
     })
   }
 
+  // The scanner ignores every other importer, so skip reading its connections.
+  function canReportViolation(module: RspackModule): boolean {
+    const importer = getModuleResource(module)
+    return (
+      isImportProtectionSourceFile(importer) && shouldCheckImporter(importer)
+    )
+  }
+
   api.onBeforeBuild(() => {
     const startedAt = perf ? performance.now() : 0
     applyUserConfig()
@@ -1607,7 +1615,7 @@ export function registerImportProtection(
           })
           const changedModules = getRebuiltModulesAndImporters(
             context.compilation,
-          )
+          ).filter(canReportViolation)
           forEachModules({
             compilation: context.compilation,
             modules: changedModules,
@@ -1641,25 +1649,23 @@ export function registerImportProtection(
           visitModule: violationScanner.visitEntry,
         })
         const forEachStartedAt = perf ? performance.now() : 0
-        const moduleGraphNodes: Array<RspackModuleGraphNode> = []
+        const nodesByModule = new Map<RspackModule, RspackModuleGraphNode>()
         forEachModules({
           compilation: context.compilation,
-          modules: allModules,
+          modules: allModules.filter(canReportViolation),
           visitNode(node) {
-            moduleGraphNodes.push(node)
+            nodesByModule.set(node.module, node)
             violationScanner.visitNode(node)
           },
         })
         if (perf) {
           perf.time('processAssets.forEachModules', forEachStartedAt)
-          perf.count('processAssets.modules.collected', moduleGraphNodes.length)
-          perf.count(
-            'processAssets.imports.collected',
-            moduleGraphNodes.reduce(
-              (total, node) => total + node.imports.length,
-              0,
-            ),
-          )
+          perf.count('processAssets.modules.collected', nodesByModule.size)
+          let imports = 0
+          for (const node of nodesByModule.values()) {
+            imports += node.imports.length
+          }
+          perf.count('processAssets.imports.collected', imports)
         }
 
         const candidateStartedAt = perf ? performance.now() : 0
@@ -1675,9 +1681,19 @@ export function registerImportProtection(
         }
 
         const graphStartedAt = perf ? performance.now() : 0
+        // Traces run from entries through modules the scan skipped.
+        forEachModules({
+          compilation: context.compilation,
+          modules: allModules.filter((module) => !nodesByModule.has(module)),
+          visitNode(node) {
+            nodesByModule.set(node.module, node)
+          },
+        })
         const { importGraph, edgeIndex } = buildCompilationImportGraph({
           compilation: context.compilation,
-          nodes: moduleGraphNodes,
+          nodes: allModules.flatMap(
+            (module) => nodesByModule.get(module) ?? [],
+          ),
         })
         if (perf) {
           perf.time('processAssets.importGraph.build', graphStartedAt)

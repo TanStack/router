@@ -2,4 +2,4 @@
 '@tanstack/start-plugin-core': patch
 ---
 
-Speed up Rsbuild development rebuilds by checking import protection only for rebuilt modules and their importers when the previous scan was clean.
+Speed up Rsbuild import protection. Scans read the imports of only those modules that can report a violation, and development rebuilds after a clean scan check only rebuilt modules and their importers.

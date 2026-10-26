@@ -108,11 +108,13 @@ adapter queues them and flushes during compilation setup.
 
 It reconstructs the final view of the compilation from Rspack data by:
 
-1. snapshotting each module and its outgoing connections
+1. snapshotting each module that can report a violation and its outgoing
+   connections
 2. collecting specifier and file violations plus possible marker modules
 3. deduplicating marker modules and validating their persisted metadata
 4. returning early when no violations remain
-5. building the `ImportGraph` and diagnostic indexes only when needed
+5. snapshotting the remaining modules and building the `ImportGraph` and
+   diagnostic indexes only when needed
 
 Each `RspackModuleGraphNode` stores a module and its imported modules. Missing and
 errored target modules are skipped.
@@ -120,20 +122,23 @@ Connections are not filtered by `getActiveState()` because inactive connections
 can still carry diagnostic evidence. Duplicate connections to the same target
 module collapse to one.
 
-Snapshotting does not apply source-file eligibility. Intermediate modules remain
-available for entry-to-violation traces, while the scanner applies importer and
-rule checks. Normalized resource ids are used for rules, traces, and diagnostics;
-`resourceResolveData.path` is preferred for original-source lookup.
+Detection snapshots only modules that can report a violation: parseable source
+files that pass the importer checks. In large apps most modules live in
+`node_modules` and fail them, so a clean compilation never reads their
+connections. Normalized resource ids are used for rules, traces, and
+diagnostics; `resourceResolveData.path` is preferred for original-source lookup.
 
-When violations exist, the adapter replays the snapshot to build `ImportGraph`;
-it does not query outgoing connections again. A clean compilation avoids entry
+When violations exist, the adapter snapshots the remaining modules, because
+entry-to-violation traces pass through them, and replays the full snapshot in
+module order to build `ImportGraph`. A clean compilation avoids entry
 traversal, graph indexes, and module-source loading.
 
 In development, a compilation that directly follows a clean scan of the same
 environment first scans only `compilation.builtModules`, their direct importers
 (a rebuilt dependency can gain a marker without its importer changing), and
-entry modules. Any candidate, a removed file, or a skipped compilation falls
-back to the full scan, so violations are always reported from complete data.
+entry modules, with the same eligibility filter. Any candidate, a removed file,
+or a skipped compilation falls back to the full scan, so violations are always
+reported from complete data.
 
 Diagnostic enrichment is lazy. The transform-result provider reads
 `module.originalSource().sourceAndMap()` when available. It gets original code
