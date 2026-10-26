@@ -380,31 +380,6 @@ export default store`,
       render: '<ui.Box />',
       html: '<p><b>box</b></p>',
     },
-  ])(
-    'module state that the reference module keeps for $name is initialized once',
-    async ({ declaration, options = '', render, html }) => {
-      const route = await loadRoute(
-        `${head}import { init, register } from './state'
-${declaration}
-export const Route = createFileRoute('/')({
-${options}  component: () => <p>${render}</p>,
-})`,
-        { files: { 'state.ts': stateFile } },
-      )
-      expect(
-        await route.run(
-          `return [await render('component'), (await app('state.ts')).calls]`,
-        ),
-      ).toEqual([html, 1])
-    },
-  )
-
-  // The row below compiles like the rows above (the initializer moves to the
-  // chunk, SPEC G3) and passes alone and under COMPILER_TESTS_PINS=run, but
-  // in this file's order the page's `app('state.ts')` and the chunk get two
-  // instances of `state.ts` (a timestamped URL on one side): a harness
-  // sequencing issue to resolve, kept pinned until then.
-  test.fails.each([
     {
       name: 'a type alias that reads it',
       // Source: real apps: route files that derive a type with
