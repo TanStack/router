@@ -26,19 +26,16 @@ function toPosixPath(filePath: string): string {
 }
 
 /**
- * Extract route file paths and hydration IDs from rspack module identifiers.
+ * Extract route file paths from rspack module identifiers.
  *
  * In rspack, module identifiers contain query params similar to Vite's moduleIds.
  * We look for the `tsr-split` query to identify route-split chunks.
  */
-function getChunkMetadataFromModules(modules: Array<RspackModule>): {
-  routeFilePaths: Array<string>
-  hydrationIds: Array<string>
-} {
-  const routeFilePaths: Array<string> = []
-  const hydrationIds: Array<string> = []
-  let seenRouteFilePaths: Set<string> | undefined
-  let seenHydrationIds: Set<string> | undefined
+function getRouteFilePathsFromModules(
+  modules: Array<RspackModule>,
+): Array<string> {
+  let routeFilePaths: Array<string> | undefined
+  let seen: Set<string> | undefined
 
   for (const mod of modules) {
     const identifier = mod.identifier()
@@ -51,40 +48,67 @@ function getChunkMetadataFromModules(modules: Array<RspackModule>): {
       lastBangIndex >= 0 ? identifier.slice(lastBangIndex + 1) : identifier
 
     const queryIndex = resourcePart.indexOf('?')
-    if (queryIndex < 0) {
-      continue
-    }
+    if (queryIndex < 0) continue
 
     const query = resourcePart.slice(queryIndex + 1)
-    const hasRouteMetadata = query.includes(tsrSplit)
-    const hasHydrationMetadata = query.includes(tssHydrate)
-    if (!hasRouteMetadata && !hasHydrationMetadata) {
-      continue
+    if (!query.includes(tsrSplit)) continue
+    if (!new URLSearchParams(query).has(tsrSplit)) continue
+
+    const nameForCondition = mod.nameForCondition()
+
+    // rspack reports module paths using the OS separator, while the generated route
+    // tree records every route `filePath` with POSIX separators. Normalize before the
+    // path becomes a manifest key, otherwise no route matches its chunk on Windows and
+    // every route loses its stylesheets and preloads.
+    const routeFilePath = toPosixPath(
+      nameForCondition ?? resourcePart.slice(0, queryIndex),
+    )
+
+    if (seen?.has(routeFilePath)) continue
+
+    if (!routeFilePaths || !seen) {
+      routeFilePaths = []
+      seen = new Set()
     }
 
-    const params = new URLSearchParams(query)
-    if (hasRouteMetadata && params.has(tsrSplit)) {
-      // rspack reports module paths using the OS separator, while the generated route
-      // tree records every route `filePath` with POSIX separators. Normalize before the
-      // path becomes a manifest key, otherwise no route matches its chunk on Windows and
-      // every route loses its stylesheets and preloads.
-      const routeFilePath = toPosixPath(
-        mod.nameForCondition() ?? resourcePart.slice(0, queryIndex),
-      )
-      if (!seenRouteFilePaths?.has(routeFilePath)) {
-        routeFilePaths.push(routeFilePath)
-        ;(seenRouteFilePaths ??= new Set()).add(routeFilePath)
-      }
-    }
-
-    const hydrationId = hasHydrationMetadata ? params.get(tssHydrate) : null
-    if (hydrationId && !seenHydrationIds?.has(hydrationId)) {
-      hydrationIds.push(hydrationId)
-      ;(seenHydrationIds ??= new Set()).add(hydrationId)
-    }
+    routeFilePaths.push(routeFilePath)
+    seen.add(routeFilePath)
   }
 
-  return { routeFilePaths, hydrationIds }
+  return routeFilePaths ?? []
+}
+
+function getHydrationIdsFromModules(
+  modules: Array<RspackModule>,
+): Array<string> {
+  let hydrationIds: Array<string> | undefined
+  let seen: Set<string> | undefined
+
+  for (const mod of modules) {
+    const identifier = mod.identifier()
+    const lastBangIndex = identifier.lastIndexOf('!')
+    const resourcePart =
+      lastBangIndex >= 0 ? identifier.slice(lastBangIndex + 1) : identifier
+
+    const queryIndex = resourcePart.indexOf('?')
+    if (queryIndex < 0) continue
+
+    const query = resourcePart.slice(queryIndex + 1)
+    if (!query.includes(tssHydrate)) continue
+
+    const hydrationId = new URLSearchParams(query).get(tssHydrate)
+    if (!hydrationId || seen?.has(hydrationId)) continue
+
+    if (!hydrationIds || !seen) {
+      hydrationIds = []
+      seen = new Set()
+    }
+
+    hydrationIds.push(hydrationId)
+    seen.add(hydrationId)
+  }
+
+  return hydrationIds ?? []
 }
 
 /**
@@ -341,8 +365,8 @@ export function normalizeRspackClientBuild(
     const modules = getModulesIncludingConcatenated(
       compilation.chunkGraph.getChunkModules(chunk),
     )
-    const { routeFilePaths, hydrationIds } =
-      getChunkMetadataFromModules(modules)
+    const routeFilePaths = getRouteFilePathsFromModules(modules)
+    const hydrationIds = getHydrationIdsFromModules(modules)
     const cssFiles = getChunkCssFiles(chunk)
 
     // The entry chunk is the one named 'index' in the 'index' entrypoint
