@@ -216,6 +216,39 @@ export const fn = createServerFn().handler(async () => 1)`,
   expect(await recordClientSideEffects(startCase, run)).toEqual(calls)
 })
 
+// Effectful declarations only a server fn's handler reads: the server
+// evaluates them once, in source order, wherever the handler lives there;
+// the client, where the handler is erased, runs none of them.
+test('effectful declarations only a handler reads run once on the server, in source order', async () => {
+  const startCase = await effectCase(
+    await host(),
+    `import { createServerFn } from '@tanstack/react-start'
+import { register } from './registry'
+const first = register('first')
+const second = register('second')
+const third = register('third')
+export const fn = createServerFn().handler(async () => [first, second, third])`,
+  )
+  const global = globalThis as Record<string, unknown>
+  global[effectsKey] = []
+  try {
+    expect(await callFromClient(startCase, 'module.fn')).toEqual([
+      'registered',
+      'registered',
+      'registered',
+    ])
+    await callFromClient(startCase, 'module.fn')
+    expect(global[effectsKey]).toEqual([
+      'register:first',
+      'register:second',
+      'register:third',
+    ])
+  } finally {
+    delete global[effectsKey]
+  }
+  expect(await recordClientSideEffects(startCase)).toEqual([])
+})
+
 // TypeScript erases type positions, so a declaration whose binding only
 // appears in a type is still live JavaScript: its initializer runs once at
 // import time.

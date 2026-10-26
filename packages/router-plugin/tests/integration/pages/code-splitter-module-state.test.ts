@@ -949,47 +949,167 @@ export const Route = createFileRoute('/')({ component: withAuth(Page) })
 })
 
 // Effectful declarations only the split component reads move with it, each
-// one, as on main (DESIGN R29/R31: no surviving effect follows them in the
-// route module once the later ones moved too; G3 allows the lazy
-// initialisation). Found by the real-app differential corpus: a route file
-// with `const A = import.meta.env.X || ''` and `const B = …` kept every one
-// but the last in the route module (exported there, imported back by the
-// chunk), so the eager bundle grew.
+// one, as on main (DESIGN R29/R31: no effect that stays in the route module
+// follows them once the later ones moved too; G3 allows the lazy
+// initialisation). Their effects still run in source order: an effect that
+// stays in the route module, or moves to another chunk, keeps the ones
+// before it in the route module. Found by the real-app differential corpus:
+// a route file with `const A = import.meta.env.X || ''` and `const B = …`
+// kept every one but the last in the route module (exported there, imported
+// back by the chunk), so the eager bundle grew.
 describe('effectful declarations only the split component reads', () => {
+  /**
+   * `state.ts`: `register(name)` records `name` in `ran` and returns it;
+   * `recordFirst`, `recordSecond`, … are the same function under the names
+   * the cases below import, one per declaration (an import the route
+   * module or another chunk also reads keeps its readers in the route
+   * module by itself, R29 (c)).
+   */
+  const files = {
+    'state.ts': `export const ran: Array<string> = []
+export const register = (name: string) => {
+  ran.push(name)
+  return name
+}
+export {
+  register as recordFirst,
+  register as recordSecond,
+  register as recordThird,
+  register as recordMiddle,
+  register as recordShared,
+}
+`,
+  }
+  const recorders = `import { recordFirst, recordSecond, recordThird, recordMiddle, recordShared } from './state'\n`
+  /** `const <name> = record<Name>('MARK_<name>')`. */
+  const record = (name: string) =>
+    `const ${name} = record${name[0]!.toUpperCase()}${name.slice(1)}('MARK_${name}')`
+
+  /**
+   * Loads `body` (after the route's imports), then returns what ran once
+   * the route module loaded and once `options` rendered, in that order,
+   * the HTML they rendered, and which of `lazy` the eager modules hold.
+   */
+  async function observe(
+    body: string,
+    options: Array<string>,
+    lazy: Array<string>,
+  ) {
+    const route = await loadRoute(
+      `${head}import { register } from './state'\n${recorders}${body}`,
+      { files },
+    )
+    await expectValidModules(route)
+    const eager = await route.eagerModules()
+    return {
+      ...(await route.run<
+        Record<string, unknown>
+      >(`const state = await app('state.ts')
+const loaded = [...state.ran]
+const html = []
+for (const option of ${JSON.stringify(options)}) {
+  html.push(await render(option))
+}
+return { loaded, rendered: [...state.ran], html }`)),
+      eagerHolds: lazy.filter((name) =>
+        eager.some((code) => holdsMarker(code, `MARK_${name}`)),
+      ),
+    }
+  }
+
   it.each([1, 2, 3])(
-    '%i of them load with the component, not with the route module',
+    '%i of them load with the component, not with the route module, in source order',
     async (count) => {
       const names = ['first', 'second', 'third'].slice(0, count)
-      const route = await loadRoute(
-        `${head}import { register } from './state'
-export const Route = createFileRoute('/')({ component: Page })
+      const marks = names.map((name) => `MARK_${name}`)
+      expect(
+        await observe(
+          `export const Route = createFileRoute('/')({ component: Page })
 ${names.map((name) => `const ${name} = register('MARK_${name}')`).join('\n')}
 function Page() {
   return <p>{${names.join(' + ')}}</p>
 }
 `,
-        {
-          files: {
-            'state.ts': `export const ran: Array<string> = []
-export const register = (name: string) => {
-  ran.push(name)
-  return name
-}
-`,
-          },
-        },
-      )
-      await expectValidModules(route)
-      const eager = await route.eagerModules()
-      expect({
-        html: await route.run(`return render('component')`),
-        eagerHolds: names.filter((name) =>
-          eager.some((code) => holdsMarker(code, `MARK_${name}`)),
+          ['component'],
+          names,
         ),
-      }).toEqual({
-        html: `<p>${names.map((name) => `MARK_${name}`).join('')}</p>`,
+      ).toEqual({
+        loaded: [],
+        rendered: marks,
+        html: [`<p>${marks.join('')}</p>`],
         eagerHolds: [],
       })
     },
   )
+
+  it('keeps the ones before an effect that stays in the route module', async () => {
+    expect(
+      await observe(
+        `export const Route = createFileRoute('/')({ component: Page })
+${record('first')}
+recordMiddle('MARK_middle')
+${record('second')}
+${record('third')}
+function Page() {
+  return <p>{first + second + third}</p>
+}
+`,
+        ['component'],
+        ['second', 'third'],
+      ),
+    ).toEqual({
+      loaded: ['MARK_first', 'MARK_middle'],
+      rendered: ['MARK_first', 'MARK_middle', 'MARK_second', 'MARK_third'],
+      html: ['<p>MARK_firstMARK_secondMARK_third</p>'],
+      eagerHolds: [],
+    })
+  })
+
+  it('keeps one the route module also reads, once, and the ones before it', async () => {
+    expect(
+      await observe(
+        `${record('first')}
+${record('shared')}
+${record('third')}
+export const Route = createFileRoute('/')({
+  component: Page,
+  staticData: { label: shared },
+})
+function Page() {
+  return <p>{first + shared + third}</p>
+}
+`,
+        ['component'],
+        ['third'],
+      ),
+    ).toEqual({
+      loaded: ['MARK_first', 'MARK_shared'],
+      rendered: ['MARK_first', 'MARK_shared', 'MARK_third'],
+      html: ['<p>MARK_firstMARK_sharedMARK_third</p>'],
+      eagerHolds: [],
+    })
+  })
+
+  it('keeps one before an effect that moves to another chunk', async () => {
+    // the error component's chunk loads first: `second` still runs after
+    // `first`
+    expect(
+      await observe(
+        `export const Route = createFileRoute('/')({
+  component: () => <p>{first}</p>,
+  errorComponent: () => <p>{second}</p>,
+})
+${record('first')}
+${record('second')}
+`,
+        ['errorComponent', 'component'],
+        ['second'],
+      ),
+    ).toEqual({
+      loaded: ['MARK_first'],
+      rendered: ['MARK_first', 'MARK_second'],
+      html: ['<p>MARK_second</p>', '<p>MARK_first</p>'],
+      eagerHolds: [],
+    })
+  })
 })
