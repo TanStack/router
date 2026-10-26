@@ -9,6 +9,7 @@
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { normalizePath } from 'vite'
 import { expect, test } from 'vitest'
 import { createAppDirectory } from '@tanstack/compiler-test-utils/app-directory'
 import { onTestFinished } from '@tanstack/compiler-test-utils/test-scope'
@@ -25,6 +26,8 @@ test('a watcher event that changes no route notifies no registry subscriber', as
   const root = await createAppDirectory(harnessDir, '.registry-publication-')
   onTestFinished(() => rm(root, { recursive: true, force: true }))
   const file = (relative: string) => path.join(root, relative)
+  // The registry is keyed by the generator's posix-form paths.
+  const registryKey = (relative: string) => normalizePath(file(relative))
   await mkdir(file('src/routes'), { recursive: true })
   await mkdir(file('src/components'), { recursive: true })
   await writeFile(
@@ -59,7 +62,7 @@ export const Route = createFileRoute('/')({ component: () => 'index' })
   ) as any
   await plugin.configResolved({ root })
   expect(notified).toEqual([
-    [file('src/routes/__root.tsx'), file('src/routes/index.tsx')],
+    [registryKey('src/routes/__root.tsx'), registryKey('src/routes/index.tsx')],
   ])
 
   await writeFile(
@@ -86,7 +89,7 @@ export const Route = createFileRoute('/about')({ component: () => 'about' })
   )
   await plugin.watchChange(file('src/routes/about.tsx'), { event: 'create' })
   expect(notified).toEqual([
-    [file('src/routes/__root.tsx'), file('src/routes/index.tsx')],
-    [file('src/routes/about.tsx')],
+    [registryKey('src/routes/__root.tsx'), registryKey('src/routes/index.tsx')],
+    [registryKey('src/routes/about.tsx')],
   ])
 })
