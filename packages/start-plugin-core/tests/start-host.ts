@@ -435,7 +435,7 @@ export interface StartCase {
     script: string,
     options?: {
       file?: string
-      /** Reload the run's page first: a fresh document, no module instance kept. */
+      /** On a new page: a fresh document, no module instance kept. */
       fresh?: boolean
     },
   ) => Promise<ClientRun<T>>
@@ -484,7 +484,7 @@ export interface StartHost {
    * Evaluates page code (an expression, e.g. an async function called at
    * once) on a page of the host, as `StartCase.client` runs a case's: on a
    * page the run holds alone, again on a fresh document if the page
-   * reloaded meanwhile. `fresh`: reload the page first.
+   * reloaded meanwhile. `fresh`: on a new page.
    */
   run: <T = unknown>(
     source: string,
@@ -784,6 +784,23 @@ export async function createStartHost(
       next(openCounted())
     }
   }
+  /** Closes a page and opens a new one in its place, for the same run. */
+  const renewPage = async (page: HostPage): Promise<HostPage> => {
+    allPages.delete(page)
+    void page.opened.close()
+    try {
+      const opened = await openHostPage()
+      allPages.add(opened)
+      return opened
+    } catch (error) {
+      pageCount--
+      const next = waitingForPage.shift()
+      if (next) {
+        next(openCounted())
+      }
+      throw error
+    }
+  }
   /** Closes every page of the host. */
   const closePages = async () => {
     const all = [...allPages]
@@ -799,22 +816,28 @@ export async function createStartHost(
   /**
    * Runs page code on a page of the host the run holds alone (concurrent
    * runs run on different pages), again on a fresh document if the page
-   * reloaded. `fresh`: reload the page first (a new document, no module
-   * instance kept).
+   * reloaded. `fresh`: on a new page (a new document, no module instance
+   * kept).
    */
   const runInHostPage = async <T>(
     source: string,
     runOptions: { fresh?: boolean } = {},
   ): Promise<ClientRun<T>> => {
-    const held = await takePage()
+    let held = await takePage()
     /** Whether the run's page was closed (a script that never settled). */
     const run = { dropped: false }
     try {
-      const { opened, requests } = held
       if (runOptions.fresh) {
-        // A document that never loads fails the run, not the test's timeout
-        await opened.page.reload({ timeout: pageRunTimeout })
+        // A new page, not a reload of this one: after an edit, the dev
+        // server may have sent this page a full reload, which Vite's HMR
+        // client applies a moment later (debounced). A reload of ours
+        // racing it was aborted, detached, or left a document whose import
+        // never settled (Alpine under load)
+        run.dropped = true
+        held = await renewPage(held)
+        run.dropped = false
       }
+      const { opened, requests } = held
       let lastError: unknown
       for (let attempt = 0; attempt < 3; attempt++) {
         const loads = opened.loads()
