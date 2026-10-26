@@ -104,7 +104,7 @@ describe.each(startBundlers)(
             ? { viteConfig: { plugins: [viteProbe(probe)] } }
             : { rsbuildConfig: { plugins: [rsbuildProbe(probe)] } }),
         })
-          expect(ssr.where('MARK_GREETING')).not.toBe('nowhere')
+        expect(ssr.where('MARK_GREETING')).not.toBe('nowhere')
         // the client built first: nothing of it is left
         expect(probe.start).toEqual({ plans: 0, importProtectionEnvs: 1 })
         // the SSR build compiles with its own state, released after it
