@@ -43,13 +43,14 @@ function diagnosticError(
   source: SourceText,
   file: string,
 ): Error {
+  // the position in the Vite host's form, `message (file:line:col)`
   const where = d.range
     ? (() => {
         const at = source.locate(d.range.start)
-        return `${file}:${at.line + 1}:${at.column + 1}`
+        return ` (${file}:${at.line + 1}:${at.column + 1})`
       })()
-    : file
-  const error = new Error(`${d.message}\n    at ${where}`)
+    : ''
+  const error = new Error(`${d.message}${where}`)
   error.name = 'TanStackRouterCompilerWarning'
   return error
 }

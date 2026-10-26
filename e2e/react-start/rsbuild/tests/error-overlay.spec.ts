@@ -249,11 +249,13 @@ function getErrorFile(lines: Array<string>): string | null {
 
 // The error's line, from a `(line:column)` message suffix or a code frame
 // header `[file:line:column]`, after the block's `File:` line.
+// A position in the message: SWC's `(line:col)`, Rspack's `[file:line:col]`
+// or the TanStack compilers' `(file:line:col)`.
 function getErrorLine(lines: Array<string>): number | null {
   const match = lines
     .slice(1)
     .join('\n')
-    .match(/\((\d+):\d+\)|\[[^\]\s]+:(\d+):\d+\]/)
+    .match(/\((?:[^()\s]+:)?(\d+):\d+\)|\[[^\]\s]+:(\d+):\d+\]/)
   const line = match?.[1] ?? match?.[2]
 
   return line === undefined ? null : Number(line)

@@ -719,13 +719,14 @@ export class StartRsbuildCompilerSession {
       return
     }
     let text: SourceText | null = null
+    // the position in the Vite host's form, `message (file:line:col)`
     const where = (d: Diagnostic): string => {
       if (!d.range) {
-        return file
+        return ''
       }
       text ??= new SourceText(code)
       const at = text.locate(d.range.start)
-      return `${file}:${at.line + 1}:${at.column + 1}`
+      return ` (${file}:${at.line + 1}:${at.column + 1})`
     }
     const errors: Array<string> = []
     for (const d of out.diagnostics) {
@@ -738,7 +739,7 @@ export class StartRsbuildCompilerSession {
         if (!namesStartSpecifier(code)) {
           continue
         }
-        const message = `[tanstack-start] The compiler cannot parse "${file}", which uses a TanStack Start or Router API, so it cannot compile its server code: ${d.message}\n    at ${where(d)}`
+        const message = `[tanstack-start] The compiler cannot parse "${file}", which uses a TanStack Start or Router API, so it cannot compile its server code: ${d.message}${where(d)}`
         if (envType === 'client') {
           errors.push(message)
         } else if (this.warnings.once(file, { ...d, code: 'parse' })) {
@@ -749,9 +750,9 @@ export class StartRsbuildCompilerSession {
         continue
       }
       if (d.severity === 'error') {
-        errors.push(`${d.message}\n    at ${where(d)}`)
+        errors.push(`${d.message}${where(d)}`)
       } else if (this.warnings.once(file, d)) {
-        const warning = new Error(`${d.message}\n    at ${where(d)}`)
+        const warning = new Error(`${d.message}${where(d)}`)
         warning.name = 'TanStackStartCompilerWarning'
         ctx.emitWarning(warning)
       }
