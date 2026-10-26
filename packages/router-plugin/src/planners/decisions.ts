@@ -85,7 +85,7 @@ export interface SplitPlan {
   warnings: Array<Diagnostic>
   /** Options the splitter deletes in the env output (`deleteNodes`). */
   deleted: Array<RouteOption>
-  /** Component options defined on the route, by key, and whether each is split (R42). */
+  /** Component options defined on the route, by key, and whether each is split (route CSS moves only when all are). */
   componentOptions: Map<string, SplitDecision | null>
 }
 
@@ -458,7 +458,7 @@ function computeSplitPlan(
         continue
       }
       if (route.kind === 'root' && key === 'component') {
-        continue // §5.10: the root component always renders
+        continue // SPEC §5.10: the root component always renders
       }
       const option = route.props.find(
         (p) =>

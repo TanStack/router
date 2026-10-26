@@ -1,6 +1,6 @@
 /**
  * Route recognition and option resolution shared by the `route-split` and
- * `route-hmr` planners (DESIGN §3.5.1, dossier J2 §4.1.1–4.1.2): the
+ * `route-hmr` planners: the
  * binding exported as `Route`, its factory call (recognised by the callee's
  * import binding, never by spelling: G15), the options object (inline, in a
  * module-level constant, through TypeScript wrappers) and every property of
@@ -54,7 +54,7 @@ export interface RouteOption {
   prop: Node
   /** The value node (the function of a method, the identifier of a shorthand). */
   value: Node | null
-  /** The property including its separating comma (for deletion, R17). */
+  /** The property including its separating comma (for deletion). */
   propertyRange: Range
   /** The source text of the key as written (`component`, `'component'`). */
   keyText: string
@@ -126,7 +126,7 @@ export function propertyKeyName(prop: Node): string | null {
   return null
 }
 
-/** The range of a property including its separating comma (R17 hygiene for options). */
+/** The range of a property including its separating comma, so deleting it leaves a well-formed object. */
 export function propertyRangeWithComma(
   options: Node,
   prop: Node,

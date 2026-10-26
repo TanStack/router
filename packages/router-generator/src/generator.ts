@@ -453,7 +453,7 @@ export class Generator {
     }
 
     if (!changes.routes && !treeChanged) {
-      // The tree's routes are as before (R27: no rebuild, no print), unless
+      // The tree's routes are as before (no tree rebuild, no print), unless
       // the tree on disk is no longer the one published.
       if (!(await this.treeOnDiskIsPublished())) {
         treeChanged = true

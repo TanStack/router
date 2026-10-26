@@ -1,5 +1,6 @@
 /**
- * `route-hmr` planner (J3; DESIGN §3.15.1, impl-notes-runtime §1).
+ * `route-hmr` planner (SPEC J3; the runtime side is `hmr.ts` of router-core
+ * and the framework routers).
  *
  * `prepare` (React only, before `route-split`): every component option that
  * stays in the route module becomes a registrable binding — inline values

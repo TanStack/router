@@ -1,5 +1,5 @@
 /**
- * The router compiler session of a host (DESIGN §4): the compiler caches,
+ * The router compiler session of a host (see the compiler README, "Hosts"): the compiler caches,
  * the host services the core needs, the planner configuration, the warning
  * ledger (once per file per run) and the route registry view. One session
  * per plugin instance; the registry and the ledger are shared through the

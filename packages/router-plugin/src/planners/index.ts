@@ -1,7 +1,8 @@
 /**
  * The router planners (J2 route splitting, J3 route HMR) for hosts: the
  * standalone router hosts of this package and Start's hosts, which compose
- * them with the Start planners in one `compileModule` per module (D8).
+ * them with the Start planners in one `compileModule` per module (one parse and plan
+ * per module for both).
  */
 import { routeSplitPlanner } from './split'
 import { routeHmrPlanner } from './hmr'

@@ -1,5 +1,5 @@
 /**
- * `route-split` planner (J2; DESIGN §3.5–3.6, §3.15.1 chunk markers, R42).
+ * `route-split` planner (SPEC J2).
  *
  * Per split option: a derived output `?tsr-split=<group>`, a generated
  * unit homed there that declares the chunk's export from the option's
@@ -8,7 +8,8 @@
  * core places everything else by needers (what both sides read lives in
  * the route module and is imported by the chunk). `deleteNodes` erases
  * properties in the env output only; route CSS moves into the chunks when
- * every component option is split (R42).
+ * every component option is split (so it still loads with whichever
+ * component renders).
  */
 import {
   cleanOrphanedDeclarations,
@@ -190,7 +191,7 @@ export function routeSplitPlanner(): Planner {
         ctx.env.mode === 'dev' &&
         ctx.env.type === 'client'
 
-      // helper imports, declared once per file (D10)
+      // helper imports, declared once per file (one name allocator per file)
       let lazyComponent: SymbolId | null = null
       let lazyFn: SymbolId | null = null
       const helperImports: Array<GlueImport> = []
@@ -382,7 +383,7 @@ export function routeSplitPlanner(): Planner {
         }
       }
 
-      // §3.5.3: every exported pure, unwritten declaration may leave for an
+      // every exported pure, unwritten declaration may leave for an
       // extracted-export output; the core keeps it in the route module when
       // other route-module code reads it or no chunk needs it
       for (const e of ctx.analysis.exports) {
@@ -424,7 +425,8 @@ export function routeSplitPlanner(): Planner {
         })
       }
 
-      // R42: route CSS moves into the component chunks when every component option is split
+      // route CSS moves into the component chunks when every component option
+      // is split; if one stays in the route module, the CSS stays there too
       const componentOptions = [...plan.componentOptions.values()]
       const componentDecisions = componentOptions.filter(
         (d): d is SplitDecision => d !== null,

@@ -1,12 +1,13 @@
 /**
- * Vite host of the router compiler (DESIGN §4.1): one native plugin per
+ * Vite host of the router compiler (see the compiler README, "Hosts"): one native plugin per
  * compiler instance with hook filters. `transform` compiles every id of a
  * route module it is handed text for (the env id and the derived
- * `?tsr-split=` ids alike, R11); `resolveId` resolves the owned-query
+ * `?tsr-split=` ids alike, from the text the bundler hands it, so upstream
+ * transforms and maps apply to every id); `resolveId` resolves the owned-query
  * specifiers of the glue without touching the file system; `watchChange`
  * is the one invalidation operation; diagnostics go through the warning
  * ledger to `this.warn`. Dev or build is the bundler's command, never
- * `process.env.NODE_ENV` (D8).
+ * `process.env.NODE_ENV`, which is unset or wrong in many setups.
  */
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'

@@ -439,7 +439,7 @@ describe('Vite production build with RSC', () => {
     ).toBe('counter MARK_UPDATED')
   })
 
-  // SPEC J4.2, R44: in a production build only server functions client code
+  // SPEC J4.2: in a production build only server functions client code
   // references are callable over HTTP. `internal` is called by `greet`'s
   // handler only (a server-origin call, which works); a request by its URL
   // from the browser is refused, while the same request to `greet` answers.
