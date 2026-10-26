@@ -60,7 +60,7 @@ import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic
 import type { PageRun } from '@tanstack/compiler-test-utils/browser'
 import type { BuildResult } from '@tanstack/compiler-test-utils/build-harness'
 import type { PluginHost } from '@tanstack/compiler-test-utils/plugin-host'
-import type { ESTree, Plugin, PluginOption } from 'vite'
+import type { ESTree, Plugin, PluginOption, ViteDevServer } from 'vite'
 import type { Config, DeletableNodes } from '../src'
 
 /** A framework the router plugin targets. */
@@ -204,6 +204,12 @@ const entrySource = (filename: string) =>
 const emittedEndpoint = '/__route-app__/emitted'
 
 /**
+ * The dev server's answer to the page: the URL the app's own modules import
+ * each request by now (see `emittedEndpointPlugin`).
+ */
+const stampedEndpoint = '/__route-app__/stamped'
+
+/**
  * The modules the compilers emitted code for, by environment and module id:
  * for each, the hooks that gave it its code (see `observeEmitted`).
  */
@@ -333,51 +339,74 @@ function servedId(url: string) {
 }
 
 /**
- * Answers the page's question (`emittedEndpoint`: a JSON list of requests,
- * path and query) from what `observeEmitted` saw: for each, whether the
- * module the client environment serves for it got its code from the
- * compilers.
+ * Answers the page's questions, each a JSON list of requests (path and
+ * query) posted to an endpoint:
+ * - `emittedEndpoint`, from what `observeEmitted` saw: for each, whether the
+ *   module the client environment serves for it got its code from the
+ *   compilers;
+ * - `stampedEndpoint`: for each, the URL the app's own modules import it by
+ *   now. Vite's import analysis adds the time of a module's last hot update
+ *   or prune (`t=`) to the imports of it, so a page importing the plain URL
+ *   would get a second instance. Asked at import time, never ahead of the
+ *   run: a module the previous route imported and the new one does not is
+ *   pruned when the page loads the module that dropped the import (the
+ *   route module, a chunk), which gives it a new time once the run started.
  */
 function emittedEndpointPlugin(emitted: EmittedModules): Plugin {
   return {
     name: 'route-app:emitted-modules',
     configureServer(server) {
-      server.middlewares.use(emittedEndpoint, (request, response) => {
-        let body = ''
-        request.on('data', (chunk) => {
-          body += chunk
-        })
-        request.on('end', () => {
-          const graph = server.environments.client.moduleGraph
-          // (answered whatever happens: a request left open would hold one
-          // of the page's connections to the dev server)
-          Promise.resolve()
-            .then(() =>
-              Promise.all(
-                (JSON.parse(body) as Array<string>).map(async (url) => {
-                  const module = await graph.getModuleByUrl(servedId(url))
-                  return (
-                    module?.id != null &&
-                    (emitted.get(emittedKey('client', module.id))?.size ?? 0) >
-                      0
-                  )
-                }),
-              ),
-            )
-            .then(
-              (answers) => {
-                response.setHeader('content-type', 'application/json')
-                response.end(JSON.stringify(answers))
-              },
-              (error: unknown) => {
-                response.statusCode = 500
-                response.end(String(error))
-              },
-            )
-        })
+      const moduleOf = (url: string) =>
+        server.environments.client.moduleGraph.getModuleByUrl(servedId(url))
+      answerPosts(server, emittedEndpoint, async (url) => {
+        const module = await moduleOf(url)
+        return (
+          module?.id != null &&
+          (emitted.get(emittedKey('client', module.id))?.size ?? 0) > 0
+        )
+      })
+      answerPosts(server, stampedEndpoint, async (url) => {
+        const module = await moduleOf(url)
+        return module && module.lastHMRTimestamp > 0
+          ? `${url}${url.includes('?') ? '&' : '?'}t=${module.lastHMRTimestamp}`
+          : url
       })
     },
   }
+}
+
+/**
+ * Serves `endpoint`: a JSON list posted to it is answered with `answer` of
+ * each item, as a JSON list (answered whatever happens: a request left open
+ * would hold one of the page's connections to the dev server).
+ */
+function answerPosts(
+  server: ViteDevServer,
+  endpoint: string,
+  answer: (item: string) => Promise<unknown>,
+) {
+  server.middlewares.use(endpoint, (request, response) => {
+    let body = ''
+    request.on('data', (chunk) => {
+      body += chunk
+    })
+    request.on('end', () => {
+      Promise.resolve()
+        .then(() =>
+          Promise.all((JSON.parse(body) as Array<string>).map(answer)),
+        )
+        .then(
+          (answers) => {
+            response.setHeader('content-type', 'application/json')
+            response.end(JSON.stringify(answers))
+          },
+          (error: unknown) => {
+            response.statusCode = 500
+            response.end(String(error))
+          },
+        )
+    })
+  })
 }
 
 /**
@@ -502,7 +531,7 @@ function requestUrls(): Map<string, string> {
     const actual = url.pathname + url.search
     url.searchParams.delete('t')
     const request = url.pathname + url.search
-    if (url.pathname === '/${probeFile}' || url.pathname === '/${entryFile}' || url.pathname === '${emittedEndpoint}') continue
+    if (url.pathname === '/${probeFile}' || url.pathname === '/${entryFile}' || url.pathname === '${emittedEndpoint}' || url.pathname === '${stampedEndpoint}') continue
     if (!seen.has(request)) seen.set(request, actual)
   }
   return seen
@@ -510,12 +539,22 @@ function requestUrls(): Map<string, string> {
 
 /**
  * The URL to import an app module by to get the instance the page's other
- * modules share: the URL they requested, or the plain one. (The import
- * itself happens in the page's script: Vite rewrites the dynamic imports
- * of the modules it serves.)
+ * modules share: the URL they requested it by, or else the URL they would
+ * import it by now, asked of the dev server at import time
+ * (\`${stampedEndpoint}\`). (The import itself happens in the page's
+ * script: Vite rewrites the dynamic imports of the modules it serves.)
  */
-export function requestUrl(request: string) {
-  return requestUrls().get(request) ?? request
+export async function importUrl(request: string): Promise<string> {
+  const requested = requestUrls().get(request)
+  if (requested !== undefined) {
+    return requested
+  }
+  const response = await fetch('${stampedEndpoint}', { method: 'POST', body: JSON.stringify([request]) })
+  if (!response.ok) {
+    throw new Error('the dev server could not tell the URL to import ' + request + ' by: ' + (await response.text()))
+  }
+  const [url]: Array<string> = await response.json()
+  return url
 }
 
 /** Starts loading a route option as the router does (errors ignored). */
@@ -885,39 +924,16 @@ async function writeRoute(
   state.used = true
 }
 
-/**
- * The URL each request is imported by from the app's modules: Vite's import
- * analysis adds the time of a file's last hot update (`t=`) to the imports
- * of that file, so that a page importing the plain URL would get a second
- * instance. The page's own script imports by these URLs.
- */
-async function stampedUrls(host: PluginHost, requests: Array<string>) {
-  const graph = host.dev.vite.environments.client.moduleGraph
-  const stamped: Record<string, string> = {}
-  for (const request of requests) {
-    const module = await graph.getModuleByUrl(request)
-    if (module && module.lastHMRTimestamp > 0) {
-      stamped[request] =
-        `${request}${request.includes('?') ? '&' : '?'}t=${module.lastHMRTimestamp}`
-    }
-  }
-  return stamped
-}
-
 /** The page-side names a script runs with (see `RouteApp.run`). */
 function prelude(
   routeUrl: string,
   own: Array<string>,
   at: string,
   before: string,
-  stamped: Record<string, string>,
 ) {
   return `const probe = module
 const own = new Set(${JSON.stringify(own)})
 const routeUrl = ${JSON.stringify(routeUrl)}
-/** The URLs the app's own modules import these by (see \`stampedUrls\`). */
-const stamped = ${JSON.stringify(stamped)}
-const importUrl = (request) => stamped[request] ?? probe.requestUrl(request)
 /** Modules the compilers emitted that the page requested so far (path and query; async). */
 const compiled = () => probe.compiledRequests(routeUrl, [...own])
 /**
@@ -926,8 +942,8 @@ const compiled = () => probe.compiledRequests(routeUrl, [...own])
  * a compiler requests it with; async).
  */
 const requested = async () => [...new Set((await probe.appRequests(routeUrl, [...own])).map((request) => request.split('?')[0]))]
-/** An app file the test wrote, as the page imports it (the instance the route gets). */
-const app = (file) => import(importUrl('/' + file.replace(/^\\.?\\//, '')))
+/** An app file the test wrote, as the page imports it (the instance the route gets: \`probe.importUrl\`). */
+const app = async (file) => import(await probe.importUrl('/' + file.replace(/^\\.?\\//, '')))
 ${before}
 const exports = (await import(${JSON.stringify(`/${entryFile}`)})).route
 const Route = exports.Route
@@ -1075,7 +1091,7 @@ export async function loadRoute(
     try {
       return await state.host.runClient<T>(
         appUrl(probeFile),
-        `${prelude(url, [...own], at, `${options.pageScript ?? ''}\n${runOptions.before ?? ''}`, await stampedUrls(state.host, [...own]))}
+        `${prelude(url, [...own], at, `${options.pageScript ?? ''}\n${runOptions.before ?? ''}`)}
 // A run that never settles (e.g. a page left suspended while a navigation
 // is pending) fails at a bound, instead of holding its page
 return await Promise.race([
