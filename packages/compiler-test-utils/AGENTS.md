@@ -86,6 +86,9 @@ moving page tests to `integration-pages`), not re-budgeted or sharded.
 - Framework packages and tools are test-only devDependencies (`solid-js`, `vite-plugin-solid`, `@rsbuild/plugin-react`,
   `@rsbuild/plugin-solid` ≥ 1.2.2, `@vitejs/plugin-react`, `@vitejs/plugin-vue`, `miniflare`, …).
 - The integration targets build `@tanstack/react-start` first (linked at test time).
+- `@tanstack/compiler-vite-versions` (private, test-only) holds the other Vite majors the router plugin supports as
+  aliased packages (`vite6`, `vite7`) for router-plugin's `integration/vite-versions.test.ts`. They live in their own
+  package because each ships a `vite` binary that would shadow the workspace's in a package that builds with Vite.
 - Harness servers listen on `127.0.0.1` and never pass port 0 to Vite or Rsbuild (Rsbuild runs in middleware mode on
   the harness's own server).
 - The Rsbuild hosts stay silent (`logLevel` and `dev.client.logLevel` `silent`); read output through the diagnostic

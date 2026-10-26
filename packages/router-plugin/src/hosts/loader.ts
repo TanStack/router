@@ -7,7 +7,7 @@
  */
 import remapping from '@jridgewell/remapping'
 import { SourceText, identify } from '@tanstack/router-utils/compiler'
-import { normalizePath } from './session'
+import { normalizePath, resourceId } from './session'
 import type { RouterCompiler } from './session'
 import type { Diagnostic } from '@tanstack/router-utils/compiler'
 
@@ -58,7 +58,7 @@ export function createLoaderImpl(
   env: { name: string; type: 'client' | 'server' },
 ): LoaderImpl {
   return async (ctx, source, inputMap) => {
-    const id = normalizePath(ctx.resource)
+    const id = resourceId(ctx.resource)
     const identity = identify(id)
     if (identity.lang === null || !compiler.wants(id)) {
       return { code: source, map: inputMap }

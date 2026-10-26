@@ -2,9 +2,11 @@ name: Compiler Platforms
 
 # The main PR workflow only runs on Linux x64 (glibc). The compilers load a
 # native Yuku binary per platform and handle platform-specific paths, so run
-# their fast test tier (test:unit), a small integration smoke set without a
-# browser (test:integration:smoke: real Vite and Rsbuild builds) and a Vite and
-# Rsbuild production build on the other platforms we ship to. The rest of the
+# their fast test tier (test:unit, the compiler core's included), a small
+# integration smoke set without a browser (test:integration:smoke: real Vite,
+# Rspack, webpack and Rsbuild builds, including apps under paths with `#`,
+# `%`, spaces and non-ASCII characters, and modules the compiler cannot parse)
+# and a Vite and Rsbuild production build on the other platforms we ship to. The rest of the
 # slow tier (test:integration, including the Chromium tests) runs on Linux x64
 # in the main PR workflow.
 
@@ -98,7 +100,7 @@ jobs:
       - name: Unit tests (fast tier)
         run: >-
           pnpm nx run-many --targets=test:unit
-          --projects=@tanstack/router-generator,@tanstack/router-plugin,@tanstack/start-plugin-core
+          --projects=@tanstack/router-utils,@tanstack/router-generator,@tanstack/router-plugin,@tanstack/start-plugin-core
           --skip-nx-cache --outputStyle=static
       - name: Noncompiler tests (runtime and build plumbing)
         run: >-

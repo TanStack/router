@@ -30,7 +30,7 @@ import {
   routerPlannerConfig,
   routerPlanners,
 } from '@tanstack/router-plugin/planners'
-import { startRecognizer } from '../compiler/recognizer'
+import { namesStartSpecifier, startRecognizer } from '../compiler/recognizer'
 import { START_ENV, startPlanners } from '../planners'
 import { HYDRATE_PLANNER, createHydratePlanner } from '../planners/hydrate'
 import { RSC_CSS } from '../planners/rsc-css'
@@ -626,7 +626,7 @@ export class StartRsbuildCompilerSession {
         ctx.addDependency(dep)
       }
     }
-    this.reportDiagnostics(ctx, out, identity.path, source)
+    this.reportDiagnostics(ctx, out, identity.path, source, env.type)
     const ipEnv = ip?.env(env.name)
     env.compiled.add(ctx.resource)
     if (ipEnv) {
@@ -710,6 +710,7 @@ export class StartRsbuildCompilerSession {
     out: CompileOutput,
     file: string,
     code: string,
+    envType: 'client' | 'server',
   ): void {
     if (out.diagnostics.length === 0) {
       return
@@ -726,7 +727,22 @@ export class StartRsbuildCompilerSession {
     const errors: Array<string> = []
     for (const d of out.diagnostics) {
       if (d.by === 'parse') {
-        // the bundler's own parser reports the error at the user's position
+        // a module naming no Start package is left as it is (the bundler's
+        // own parser reports the error at the user's position); one that
+        // names a Start package may define server code: the client build
+        // fails naming the file (never shipped untransformed, J4.12), a
+        // server build warns once (as the Vite host)
+        if (!namesStartSpecifier(code)) {
+          continue
+        }
+        const message = `[tanstack-start] The compiler cannot parse "${file}", which uses a TanStack Start or Router API, so it cannot compile its server code: ${d.message}\n    at ${where(d)}`
+        if (envType === 'client') {
+          errors.push(message)
+        } else if (this.warnings.once(file, { ...d, code: 'parse' })) {
+          const warning = new Error(message)
+          warning.name = 'TanStackStartCompilerWarning'
+          ctx.emitWarning(warning)
+        }
         continue
       }
       if (d.severity === 'error') {
@@ -828,7 +844,10 @@ export class StartRsbuildCompilerSession {
  * dropped.
  */
 export function canonicalResource(resource: string): string {
-  const normalized = normalizePath(resource)
+  // Rspack and webpack escape a `#` of the file path in `resource` (`\u200b#`
+  // and `\0#`; `resourcePath` is unescaped): a project path with a `#` (`C#`,
+  // `project #2`) must give the file's path
+  const normalized = normalizePath(resource.replace(/[\0\u200b]#/g, '#'))
   const q = normalized.indexOf('?')
   if (q === -1) {
     return normalized

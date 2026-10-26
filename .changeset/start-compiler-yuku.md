@@ -9,6 +9,15 @@
 
 Start's Vite and Rsbuild plugins run on the new compiler core instead of Babel: each module compiles once per environment, with server functions, environment separation, `<Hydrate>`, RSC CSS, route code splitting and HMR, and import protection in one pass. Builds and dev startup are 2–4× faster on a 340-route benchmark app.
 
+**What changes for your app when you upgrade:**
+
+- **Every server function id changes** (a shorter hash of the file and the function's name). Update CDN rules, WAF allowlists, analytics keyed by id and native clients that call `/_serverFn/<id>` directly. Browser tabs loaded before a deploy fail their next server-function call after it: plan a reload or a blue/green window.
+- **`serverFns.generateFunctionId` receives the function's stable name** (`greetUser`) as `functionName`, not the generated handler name (`greetUser_createServerFn_handler`). Custom generators keyed on the old names must be updated.
+- **Production builds answer HTTP calls only for server functions that some client module imports.** A function only server code calls, or one returned to the client as data, gets a 404 over HTTP. The dev server still answers and warns once per function, so this shows up only after deploying: check the dev warnings before you ship.
+- **A module the compiler cannot parse fails the client build** with an error naming the file, instead of shipping untransformed (its server code included).
+- **`routeTree.gen.ts` formatting changes once**: `enableRouteTreeFormatting` now defaults to `false` and the tree is printed in your `quoteStyle` and `semicolons`; commit the one-time diff.
+- **Removed (experimental, Babel-typed):** the `compilerTransforms` and `serverFnProviderModuleDirectives` options and the `StartCompilerPlugin`, `StartCompilerImportTransform`, `StartCompilerTransformContext` and `StartCompilerTransformCandidate` types. RSC integrations pass `rsc: { loadCssExpression, providerDirective }` instead.
+
 **Server functions**
 
 - **Production builds answer HTTP calls only for server functions that client code imports.** A function only server code calls (another server function, a server route), or one returned to the client as data, is refused when called over HTTP. The dev server still answers such a call and warns once per function.

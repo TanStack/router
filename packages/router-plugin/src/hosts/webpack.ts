@@ -13,7 +13,7 @@ import {
   changedRoutePaths,
   onRoutesChanged,
 } from '../core/router-plugin-context'
-import { RouterCompiler, normalizePath } from './session'
+import { RouterCompiler, normalizePath, resourceId } from './session'
 import { LOADER_REGISTRY, createLoaderImpl } from './loader'
 import type { LoaderImpl } from './loader'
 import type { RouterPluginContext } from '../core/router-plugin-context'
@@ -90,7 +90,7 @@ export function warnEagerExports(
       modules.push(m, ...(m.modules ?? []))
     }
     for (const m of modules) {
-      const id = m.resource ?? m.identifier?.() ?? ''
+      const id = resourceId(m.resource ?? m.identifier?.() ?? '')
       const match = EXTRACTED_EXPORT_RE.exec(id)
       if (!match) {
         continue
@@ -226,7 +226,11 @@ export function createRouterCompilerWebpackPlugin(
         },
       )
       compiler.hooks.beforeRun.tap(PLUGIN_NAME, () => {
-        session.warnings.reset()
+        // one warning per file per run (J2.19): the session's ledger is
+        // shared by every environment's compiler; the client's run starts it
+        if (envType === 'client') {
+          session.warnings.reset()
+        }
       })
       if (envType === 'client' && mode === 'build') {
         const WebpackError = compiler.webpack?.WebpackError ?? Error

@@ -61,14 +61,16 @@ export function dedupeViolationKey(info: {
   return `${info.type}:${info.importer}:${info.specifier}:${info.resolved ?? ''}`
 }
 
-/** Strip both `?query` and `#hash` from a module ID. */
+/**
+ * Strip the `?query` and `#hash` of a module ID. A project path may carry a
+ * `#` (`C#`, `project #2`): a `#` is a fragment only after the query.
+ */
 export function stripQueryAndHash(id: string): string {
   const q = id.indexOf('?')
-  const h = id.indexOf('#')
-  if (q === -1 && h === -1) return id
-  if (q === -1) return id.slice(0, h)
-  if (h === -1) return id.slice(0, q)
-  return id.slice(0, Math.min(q, h))
+  if (q === -1) {
+    return id
+  }
+  return id.slice(0, q)
 }
 
 /**
