@@ -5,6 +5,7 @@
  * does not cover is no position (never compiled coordinates).
  */
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { SourceText } from '@tanstack/router-utils/compiler'
 import type { InputSourceMap } from '@tanstack/router-utils/compiler'
 
@@ -146,7 +147,7 @@ function resolveSource(
 ): string {
   if (source.startsWith('file://')) {
     try {
-      return decodeURIComponent(new URL(source).pathname)
+      return fileURLToPath(source).replace(/\\/g, '/')
     } catch {
       return source
     }

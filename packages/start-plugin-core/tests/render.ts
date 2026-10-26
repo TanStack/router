@@ -33,6 +33,7 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
+import { normalizePath } from 'vite'
 import { afterAll, beforeAll, expect } from 'vitest'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
@@ -943,7 +944,8 @@ export async function caseCode(
   file: string,
   urls: Array<string>,
 ): Promise<Array<string>> {
-  const caseDir = `${path.join(hosts.start.root, dir)}${path.sep}`
+  // Vite's module ids, files and map sources are forward-slash paths (Windows too)
+  const caseDir = `${normalizePath(path.join(hosts.start.root, dir))}/`
   const servedUrls = new Map<
     string,
     { mapped: boolean; empty: boolean } | undefined
@@ -959,7 +961,9 @@ export async function caseCode(
     servedUrls.set(
       url,
       served && {
-        mapped: sources.some((source) => source.startsWith(caseDir)),
+        mapped: sources.some((source) =>
+          normalizePath(source).startsWith(caseDir),
+        ),
         empty: sources.length === 0,
       },
     )
@@ -1005,9 +1009,11 @@ function caseGraph(
   mapped: Set<string>,
 ): Set<string> {
   const graph = hosts.start.host.dev.vite.environments.client.moduleGraph
-  const root = `${hosts.start.root}${path.sep}`
+  const root = `${normalizePath(hosts.start.root)}/`
   const start = [
-    ...(graph.getModulesByFile(path.join(hosts.start.root, url)) ?? []),
+    ...(graph.getModulesByFile(
+      normalizePath(path.join(hosts.start.root, url)),
+    ) ?? []),
   ].filter((node) => node.url === url)
   const isCaseModule = (node: (typeof start)[number]) =>
     (node.file !== null && node.file.startsWith(caseDir)) ||

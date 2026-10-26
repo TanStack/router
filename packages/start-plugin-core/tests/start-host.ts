@@ -47,7 +47,7 @@ import react from '@vitejs/plugin-react'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import solid from 'vite-plugin-solid'
-import { mergeConfig, preview as vitePreview } from 'vite'
+import { mergeConfig, normalizePath, preview as vitePreview } from 'vite'
 import { afterAll, beforeAll } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { globalTrapSource } from '@tanstack/compiler-test-utils/global-trap'
@@ -929,7 +929,9 @@ export async function createStartHost(
           optimized.set(path.resolve(info.file), name)
         }
       }
-      const start = graph.getModulesByFile(caseFile(file))
+      // Vite's module files are forward-slash paths (Windows too)
+      const appRoot = normalizePath(root)
+      const start = graph.getModulesByFile(normalizePath(caseFile(file)))
       const seen = new Set<unknown>()
       const names = new Set<string>()
       const queue = [...(start ?? [])]
@@ -941,8 +943,8 @@ export async function createStartHost(
         seen.add(module)
         for (const imported of module.importedModules) {
           const id = imported.id ?? imported.url
-          const appFile = imported.file?.startsWith(root)
-            ? `/${path.relative(root, imported.file).split(path.sep).join('/')}`
+          const appFile = imported.file?.startsWith(appRoot)
+            ? `/${path.posix.relative(appRoot, imported.file)}`
             : undefined
           if (appFile) {
             for (const name of caseNames(appFile)) {

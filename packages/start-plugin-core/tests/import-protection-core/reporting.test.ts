@@ -2,6 +2,8 @@
  * Traces, dev report flushing, original positions and the build verdict
  * fixed point, on hand-made graphs.
  */
+import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { describe, expect, test } from 'vitest'
 import { resolveImportProtectionConfig } from '../../src/import-protection/config'
 import { EdgeIndex, buildTrace } from '../../src/import-protection/graph-trace'
@@ -238,6 +240,9 @@ describe('positions', () => {
     })
   })
 
+  /** An absolute app root in the form of a host's ids (`D:/app` on Windows). */
+  const APP = path.resolve('/app').replace(/\\/g, '/')
+
   test('through an input map, generated lines are counted by LF only (a lone CR breaks no line)', () => {
     // line 0 → src line 1; line 1 → src line 2; line 2 → src line 3 (all column 0)
     const map = {
@@ -247,9 +252,9 @@ describe('positions', () => {
       mappings: 'AAAA;AACA;AACA',
     }
     const code = `a\rb\nimport x from './x'\nc`
-    const at = new Locator(code, '/app/src/page.mdx.js', () => map)
+    const at = new Locator(code, `${APP}/src/page.mdx.js`, () => map)
     expect(at.at(code.indexOf('import'))).toEqual({
-      file: '/app/src/page.mdx',
+      file: `${APP}/src/page.mdx`,
       line: 2,
       column: 1,
     })
@@ -263,18 +268,32 @@ describe('positions', () => {
       names: [],
       mappings: 'AAIE;IAKF',
     }
-    expect(originalPositionFor(map, 0, 3, '/app/src/page.mdx.js')).toEqual({
-      file: '/app/docs/page.mdx',
+    expect(originalPositionFor(map, 0, 3, `${APP}/src/page.mdx.js`)).toEqual({
+      file: `${APP}/docs/page.mdx`,
       line: 5,
       column: 3,
     })
-    expect(originalPositionFor(map, 1, 6, '/app/src/page.mdx.js')).toEqual({
-      file: '/app/docs/page.mdx',
+    expect(originalPositionFor(map, 1, 6, `${APP}/src/page.mdx.js`)).toEqual({
+      file: `${APP}/docs/page.mdx`,
       line: 10,
       column: 1,
     })
-    expect(originalPositionFor(map, 1, 2, '/app/src/page.mdx.js')).toBeNull()
-    expect(originalPositionFor(map, 5, 0, '/app/src/page.mdx.js')).toBeNull()
+    expect(originalPositionFor(map, 1, 2, `${APP}/src/page.mdx.js`)).toBeNull()
+    expect(originalPositionFor(map, 5, 0, `${APP}/src/page.mdx.js`)).toBeNull()
+  })
+
+  test('through an input map: a file URL source is its file path', () => {
+    const map = {
+      version: 3,
+      sources: [pathToFileURL(`${APP}/docs/my page.mdx`).href],
+      names: [],
+      mappings: 'AAIE',
+    }
+    expect(originalPositionFor(map, 0, 0, `${APP}/src/page.mdx.js`)).toEqual({
+      file: `${APP}/docs/my page.mdx`,
+      line: 5,
+      column: 3,
+    })
   })
 })
 

@@ -154,7 +154,8 @@ describe('Rspack ids', () => {
   test('resources round-trip; foreign files are not ours', () => {
     const ref = { env: 'ssr', kind: 'edge', key: 'abc.def' } as const
     const file = ids.specifier(ref)
-    expect(file.startsWith(dir)).toBe(true)
+    // ids are forward-slash paths (Windows too)
+    expect(file.startsWith(`${dir.replace(/\\/g, '/')}/`)).toBe(true)
     expect(ids.parse(file)).toEqual(ref)
     expect(ids.parse(`${file}?query`)).toEqual(ref)
     expect(ids.parse(ids.specifier({ env: 'ssr', kind: 'runtime' }))).toEqual({

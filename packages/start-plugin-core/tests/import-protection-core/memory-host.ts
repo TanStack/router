@@ -92,7 +92,9 @@ export class MemoryApp {
       mode: opts.mode ?? 'dev',
       ids: opts.ids,
       verbatimModuleSyntax: opts.verbatimModuleSyntax,
-      readFile: (file) => Promise.resolve(this.files[file] ?? null),
+      // package.json lookups join native paths (backslashes on Windows)
+      readFile: (file) =>
+        Promise.resolve(this.files[file.replace(/\\/g, '/')] ?? null),
       isEntry: opts.isEntry,
     })
     if (!ip) {
