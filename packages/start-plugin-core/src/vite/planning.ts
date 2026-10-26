@@ -70,9 +70,15 @@ export function createViteConfigPlan(opts: {
         },
         optimizeDeps: {
           exclude: opts.optimizeDepsExclude,
-          // the compiler's dev-only route HMR block imports this subpath (no
-          // source file does): pre-bundled, not discovered on the first route
-          include: [`@tanstack/${opts.framework}-router/hmr`],
+          // The compiler's dev-only route HMR block imports
+          // `@tanstack/<framework>-router/hmr`. The framework plugins exclude
+          // the router package from optimization, so the subpath is served
+          // from source with the rest of the package (one instance of the
+          // HMR state); it must not be pre-bundled on its own: route modules
+          // import an optimized chunk late in the client entry's graph, and
+          // a post-scan re-optimization invalidates its URL before the
+          // browser fetches it (504, the graph never evaluates, the dev
+          // client never connects, the buffered reload is lost).
           entries: escapeEntries([
             opts.entryAliases.client,
             opts.entryAliases.router,

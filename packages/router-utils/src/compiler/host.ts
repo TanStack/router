@@ -323,7 +323,12 @@ export async function invalidate(
     await revalidate(
       cache,
       change.path,
-      (fp) => fingerprintPath(fp) === change.path,
+      // a change keeps the file set: the resolver's answers stand (as for
+      // plan validation at an unchanged `fileSetVersion`); the file's new
+      // facts are what its dependents are checked against
+      (fp) =>
+        fingerprintPath(fp) === change.path &&
+        !(change.kind === 'change' && fp.kind === 'resolution'),
     )
     if (change.kind === 'add' || change.kind === 'unlink') {
       // failed resolutions have no path; re-resolve them all (one host resolve per distinct entry)

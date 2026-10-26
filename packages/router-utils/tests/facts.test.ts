@@ -28,6 +28,34 @@ describe('RawFactsCache', () => {
     expect(cache.peekRevision('/app/a.ts')?.revision).toBe(facts.rawRevision)
     expect(cache.peekRevision('/app/a.ts')?.stale).toBe(false)
   })
+
+  it('a change or deletion of a file reaches every identity at its path, and the bookkeeping is bounded by the live files', async () => {
+    const files: Record<string, string> = {
+      '/app/a.ts': 'export const a = 1\n',
+      '/app/b.ts': 'export const b = 1\n',
+    }
+    const cache = new RawFactsCache({
+      readFile: (p) => Promise.resolve(files[p.split('?')[0]!] ?? null),
+      loadVirtual: () => Promise.resolve(null),
+    })
+    await cache.get('/app/a.ts')
+    await cache.get('/app/a.ts?flavour=b')
+    await cache.get('/app/b.ts')
+    expect(cache.stats(false)).toMatchObject({ rawFacts: 3, rawFactPaths: 2 })
+    cache.markStale('/app/a.ts')
+    expect(cache.peekRevision('/app/a.ts')?.stale).toBe(true)
+    expect(cache.peekRevision('/app/a.ts?flavour=b')?.stale).toBe(true)
+    expect(cache.peekRevision('/app/b.ts')?.stale).toBe(false)
+    cache.forget('/app/a.ts')
+    expect(cache.has('/app/a.ts')).toBe(false)
+    expect(cache.has('/app/a.ts?flavour=b')).toBe(false)
+    expect(cache.stats(false)).toMatchObject({ rawFacts: 1, rawFactPaths: 1 })
+    // a missing file's facts are not kept either
+    await cache.get('/app/missing.ts')
+    expect(cache.stats(false)).toMatchObject({ rawFacts: 1, rawFactPaths: 1 })
+    cache.retain(() => false)
+    expect(cache.stats(false)).toMatchObject({ rawFacts: 0, rawFactPaths: 0 })
+  })
 })
 
 describe('target facts of a marked module', () => {
