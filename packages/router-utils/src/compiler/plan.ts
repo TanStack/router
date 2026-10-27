@@ -686,7 +686,11 @@ export class AnalysisPlan implements PlanContext {
     /** Exported declarators of statements whose `export` keyword a sibling's rename drops. */
     const siblingExports: Array<{ sym: SymbolId; name: string }> = []
     // statement-level DCE edits
+    /** Whether the previous statement renders as the source wrote it (with the `;` that may end it). */
+    let previousIntact = false
     for (const item of items) {
+      const followsIntact = previousIntact
+      previousIntact = false
       if (baseTree.isErasedAt(item.nodeRange.start)) {
         continue
       }
@@ -722,7 +726,23 @@ export class AnalysisPlan implements PlanContext {
         }
       }
       const recipe = statementRecipe(item, units, retained, keepExport, code)
+      if (
+        recipe !== 'drop' &&
+        item.index > 0 &&
+        !followsIntact &&
+        continuesPrevious(code, item)
+      ) {
+        extra.push({
+          range: { start: item.nodeRange.start, end: item.nodeRange.start },
+          body: [{ k: 'text', parts: [';'] }],
+          by: 'core:dce',
+          seq: seq++,
+          claim: null,
+          internal: true,
+        })
+      }
       if (recipe === 'keep') {
+        previousIntact = true
         continue
       }
       extra.push({
@@ -1045,6 +1065,8 @@ export class AnalysisPlan implements PlanContext {
       pos: number
       order: number
       item?: TopLevelItem
+      /** The statement renders as the source wrote it. */
+      intact?: boolean
       render: () => void
     }
     const pieces: Array<Piece> = []
@@ -1061,6 +1083,7 @@ export class AnalysisPlan implements PlanContext {
         pos: item.range.start,
         order: 1,
         item,
+        intact: recipe === 'keep',
         render: () => {
           if (recipe === 'keep') {
             renderer.renderRange(
@@ -1118,8 +1141,17 @@ export class AnalysisPlan implements PlanContext {
     ) {
       out.push({ k: 'text', text: 'export {}\n' })
     }
+    let previous: Piece | undefined
     for (const p of pieces) {
+      if (
+        p.item !== undefined &&
+        continuesPrevious(code, p.item) &&
+        !(previous?.intact && previous.item!.index === p.item.index - 1)
+      ) {
+        out.push({ k: 'text', text: ';' })
+      }
       p.render()
+      previous = p
     }
     const exportGlue = this.exportGlue(decl.id, placement, exportNameOf, null)
     renderer.renderFrags(exportGlue, null, null, out)
@@ -1743,4 +1775,16 @@ function attributesKeywordStart(
     }
   }
   return to
+}
+
+/**
+ * Whether a statement's first token would continue a statement before it
+ * that has no `;` (a parenthesis, a bracket, a template, a sign, a regular
+ * expression, JSX or a type assertion). Its source predecessor ended with
+ * the `;` it relies on (semicolon-free code writes `;(x as any).y = 1`):
+ * once that statement is dropped, or the statement follows another one in a
+ * derived output, it gets a `;` of its own.
+ */
+function continuesPrevious(code: string, item: TopLevelItem): boolean {
+  return '([`+-/<'.includes(code[item.nodeRange.start]!)
 }

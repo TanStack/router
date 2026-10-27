@@ -631,6 +631,59 @@ describe('extracted-export outputs', () => {
   })
 })
 
+describe('a statement relying on the `;` that ends the one before it', () => {
+  // `;(x as any).y = 1` in semicolon-free code: the `;` ends the previous
+  // statement, so the statement needs one of its own once that statement is
+  // dropped or it follows another statement in a derived output
+  it('keeps its `;` when the statement before it is dropped', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { wrapServer } from 'toy-start'
+      import { see } from './see'
+      export const serverFn = wrapServer(() => secret)
+      const secret = see('secret')
+      ;[1, 2].forEach(see)
+      export const Route = createFileRoute('/')({ component: () => 1 })
+    `)
+    const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+    const env =
+      (await host.compile('/app/route.tsx', [toyEnvPlanner()]))?.code ?? ''
+    expect(env).not.toContain('secret')
+    expect(env).toContain(
+      'export const serverFn = tsrStub()\n;[1, 2].forEach(see)',
+    )
+  })
+
+  it('gets a `;` when it moves after another statement', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { see } from './see'
+      const Page = () => Page.title
+      see('between')
+      ;(Page as any).title = 'title'
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await split(code)
+    expect(r.env).toContain("see('between')\n")
+    expect(r.chunks.component).toContain(
+      "const Page = () => Page.title\n;(Page as any).title = 'title'",
+    )
+  })
+
+  it('keeps the source unchanged where the statement before it stays', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { see } from './see'
+      see('first')
+      ;[1, 2].forEach(see)
+      export const Route = createFileRoute('/')({ component: () => 1 })
+    `)
+    const r = await split(code)
+    expect(r.env).toContain("see('first')\n;[1, 2].forEach(see)")
+    expect(r.env).not.toContain(';;')
+  })
+})
+
 describe('route-module specifics (lane router)', () => {
   it('drops `export { X }` of an inline type-only import with the import (route module)', async () => {
     const code = dedent(`

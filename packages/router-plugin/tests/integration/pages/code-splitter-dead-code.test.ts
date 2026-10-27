@@ -912,3 +912,52 @@ return [
     ).toEqual([true, '<div>schema</div>', { builder: 1, add: 200 }])
   })
 })
+
+// Semicolon-free code ends a statement with a `;` on the next line when the
+// next statement starts with a token that would continue it
+// (`;(Page as any).title = …`). That statement keeps working when the one
+// before it goes, or when it moves into a chunk after another statement.
+describe('a statement starting with `;` in semicolon-free code', () => {
+  it('runs after a declaration only a deleted option read', async () => {
+    const route = await loadRoute(
+      `${head}import { see } from './see'
+see('first')
+const headers = () => ({})
+;(globalThis as any).marker = 'kept'
+export const Route = createFileRoute('/')({
+  headers,
+  component: () => <p>{String((globalThis as any).marker)}</p>,
+})
+`,
+      {
+        files: { 'see.ts': 'export const see = (value: unknown) => value\n' },
+        deleteNodes: ['headers'],
+      },
+    )
+    await expectValidModules(route)
+    expect(await route.run(`return await render('component')`)).toBe(
+      '<p>kept</p>',
+    )
+  })
+
+  it('moves with the split component it augments, after another augmentation', async () => {
+    const route = await loadRoute(
+      `${head}import { see } from './see'
+function Page() {
+  return <p>{(Page as any).title + (Page as any).suffix}</p>
+}
+;(Page as any).title = 'title'
+see('between')
+;(Page as any).suffix = '!'
+export const Route = createFileRoute('/')({ component: Page })
+`,
+      {
+        files: { 'see.ts': 'export const see = (value: unknown) => value\n' },
+      },
+    )
+    await expectValidModules(route)
+    expect(await route.run(`return await render('component')`)).toBe(
+      '<p>title!</p>',
+    )
+  })
+})
