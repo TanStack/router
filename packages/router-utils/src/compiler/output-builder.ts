@@ -156,7 +156,6 @@ export type BuilderEdit =
 
 export interface OutputBuilderOptions {
   map?: boolean
-  tokenStarts?: Int32Array
 }
 
 export interface RawSourceMap {
@@ -171,7 +170,6 @@ export class OutputBuilder {
   private readonly src: SourceText
   private readonly mapSource: string
   private readonly withMap: boolean
-  private readonly tokenStarts: Int32Array | null
   private code = ''
   private genCol = 0
   // VLQ state
@@ -195,7 +193,6 @@ export class OutputBuilder {
     this.src = source
     this.mapSource = mapSource
     this.withMap = opts.map !== false
-    this.tokenStarts = opts.tokenStarts ?? null
   }
 
   /** Length of the generated code so far. */
@@ -371,76 +368,17 @@ export class OutputBuilder {
     pc = s - lineStart
     has = true
 
-    const ts = this.tokenStarts
-    if (ts !== null) {
-      const ls = this.src.lineStarts
-      for (let k = lowerBound(ts, s + 1); k < ts.length; k++) {
-        const t = ts[k]!
-        if (t >= e) {
-          break
-        }
-        while (ls[line + 1]! <= t) {
-          if (p > cap) {
-            ;({ buf, cap } = this._grow(p))
-          }
-          buf[p++] = SEMI
-          pgc = 0
-          has = false
-          lineStart = ls[++line]!
-          base = -lineStart
-        }
-        if (p > cap) {
-          ;({ buf, cap } = this._grow(p))
-        }
-        if (has) {
-          buf[p++] = COMMA
-        }
-        p = vlq(buf, p, base + t - pgc)
-        buf[p++] = 65
-        p = vlq(buf, p, line - pl)
-        p = vlq(buf, p, t - lineStart - pc)
-        pgc = base + t
-        pl = line
-        pc = t - lineStart
-        has = true
-      }
-      while (ls[line + 1]! <= e) {
-        if (p > cap) {
-          ;({ buf, cap } = this._grow(p))
-        }
-        buf[p++] = SEMI
-        pgc = 0
-        has = false
-        lineStart = ls[++line]!
-        base = -lineStart
-      }
-    } else {
-      const ecma = this.src.ecma
-      let prev = -1
-      for (let i = s; i < e; i++) {
-        const c = code.charCodeAt(i)
-        let k: number
-        if (c < 128) {
-          k = CLS[c]!
-          if (k >= LF) {
-            if (k === CR && (!ecma || code.charCodeAt(i + 1) === 10)) {
-              k = SPACE
-            } else {
-              if (p > cap) {
-                ;({ buf, cap } = this._grow(p))
-              }
-              buf[p++] = SEMI
-              pgc = 0
-              has = false
-              line++
-              lineStart = i + 1
-              base = -lineStart
-              prev = SPACE
-              continue
-            }
-          }
-        } else if (c === 0x2028 || c === 0x2029) {
-          if (ecma) {
+    const ecma = this.src.ecma
+    let prev = -1
+    for (let i = s; i < e; i++) {
+      const c = code.charCodeAt(i)
+      let k: number
+      if (c < 128) {
+        k = CLS[c]!
+        if (k >= LF) {
+          if (k === CR && (!ecma || code.charCodeAt(i + 1) === 10)) {
+            k = SPACE
+          } else {
             if (p > cap) {
               ;({ buf, cap } = this._grow(p))
             }
@@ -453,28 +391,42 @@ export class OutputBuilder {
             prev = SPACE
             continue
           }
-          k = SPACE
-        } else {
-          k = isUnicodeSpace(c) ? SPACE : WORD
         }
-        if (k !== SPACE && (k === PUNCT || k !== prev) && i !== s) {
+      } else if (c === 0x2028 || c === 0x2029) {
+        if (ecma) {
           if (p > cap) {
             ;({ buf, cap } = this._grow(p))
           }
-          if (has) {
-            buf[p++] = COMMA
-          }
-          p = vlq(buf, p, base + i - pgc)
-          buf[p++] = 65
-          p = vlq(buf, p, line - pl)
-          p = vlq(buf, p, i - lineStart - pc)
-          pgc = base + i
-          pl = line
-          pc = i - lineStart
-          has = true
+          buf[p++] = SEMI
+          pgc = 0
+          has = false
+          line++
+          lineStart = i + 1
+          base = -lineStart
+          prev = SPACE
+          continue
         }
-        prev = k
+        k = SPACE
+      } else {
+        k = isUnicodeSpace(c) ? SPACE : WORD
       }
+      if (k !== SPACE && (k === PUNCT || k !== prev) && i !== s) {
+        if (p > cap) {
+          ;({ buf, cap } = this._grow(p))
+        }
+        if (has) {
+          buf[p++] = COMMA
+        }
+        p = vlq(buf, p, base + i - pgc)
+        buf[p++] = 65
+        p = vlq(buf, p, line - pl)
+        p = vlq(buf, p, i - lineStart - pc)
+        pgc = base + i
+        pl = line
+        pc = i - lineStart
+        has = true
+      }
+      prev = k
     }
     this.len = p
     this.prevGenCol = pgc
@@ -559,20 +511,6 @@ function vlq(buf: Uint8Array, p: number, v: number): number {
     buf[p++] = B64[d]!
   } while (n > 0)
   return p
-}
-
-function lowerBound(a: Int32Array, x: number): number {
-  let lo = 0
-  let hi = a.length
-  while (lo < hi) {
-    const m = (lo + hi) >> 1
-    if (a[m]! < x) {
-      lo = m + 1
-    } else {
-      hi = m
-    }
-  }
-  return lo
 }
 
 function assertSortedEdits(
