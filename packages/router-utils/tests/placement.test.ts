@@ -1574,6 +1574,29 @@ describe('needers and homes', () => {
     )
   })
 
+  it('keeps the imports a route module never read, and drops the ones only a moved option read', async () => {
+    const r = await split(
+      dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { Unused } from './unused'
+        import * as ns from './ns'
+        import Comp, { Named } from './comp'
+        import Moved from './moved'
+        export const Route = createFileRoute('/')({
+          component: () => [Comp, Moved],
+        })
+      `),
+    )
+    expect(r.env).toContain("import { Unused } from './unused'")
+    expect(r.env).toContain("import * as ns from './ns'")
+    expect(r.env).toContain("import { Named } from './comp'")
+    expect(r.env).not.toContain("'./moved'")
+    expect(r.chunks.component).toContain("import Comp from './comp'")
+    expect(r.chunks.component).toContain("import Moved from './moved'")
+    expect(r.chunks.component).not.toContain('Unused')
+    expect(r.chunks.component).not.toContain('Named')
+  })
+
   it('drops a type-only-used value import in route modules and keeps it elsewhere (J2.5)', async () => {
     const route = dedent(`
       import { createFileRoute } from 'toy-router'

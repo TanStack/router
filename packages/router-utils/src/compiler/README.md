@@ -52,8 +52,10 @@ units that output contains. The same computation decides:
 - **placement**: a cluster only one split group needs goes to that chunk; one the route module needs stays there and
   chunks import it; one several groups need goes to a lazy shared module; copyable primitives and import specifiers
   are duplicated;
-- **dead code, by provenance**: a declaration is removed only if _our_ edits orphaned it (its readers disappeared
-  because a planner removed or moved them). Code already unreferenced in the source keeps running;
+- **dead code, by provenance**: a declaration or import specifier is removed only if _our_ edits orphaned it (its
+  readers disappeared because a planner removed or moved them). Code already unreferenced in the source keeps
+  running: an import nothing reads stays in the env module, so its module still evaluates there (a value import a
+  route module uses only in type positions leaves it: TypeScript erases it anyway);
 - **effects**: expression statements and impure, still-referenced declarations are effect roots of the env module,
   never duplicated or lost; an effectful cluster may move with its only needer under strict conditions (unexported,
   no surviving later effect, …; DECISIONS R29/R31/R64/R65/R67). The env roots, the moving set and the extracted

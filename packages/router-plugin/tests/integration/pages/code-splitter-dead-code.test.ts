@@ -137,6 +137,67 @@ return { calls: [...(await app('calls.ts')).calls], html: await render('componen
     )
   })
 
+  // An import the route file never reads was dead before splitting: its
+  // module still runs when the route module loads, as it does without the
+  // plugin (the app's tsconfig sets `verbatimModuleSyntax`, so TypeScript
+  // keeps the import too). An import only the split component reads is the
+  // component's: it loads with the component.
+  describe.each(hmrModes)('imports, with hmr: $hmr', ({ hmr }) => {
+    const sideModule = {
+      ...callsModule,
+      'side.tsx': `import { calls } from './calls'
+calls.push('side')
+export default function Side() { return <b>side</b> }
+export const Named = () => 'named'
+`,
+    }
+    /** What ran when the route module loaded, then the split component. */
+    async function loadThenRender(code: string) {
+      const route = await loadRoute(code, { hmr, files: sideModule })
+      const run =
+        await route.runPage(`const loaded = [...(await app('calls.ts')).calls]
+return { loaded, html: await render('component'), calls: [...(await app('calls.ts')).calls] }`)
+      expect(uncaughtErrors(run)).toEqual([])
+      await expectValidModules(route)
+      return run.result
+    }
+
+    it.each([
+      { name: 'a named import', imports: `import { Named } from './side'` },
+      { name: 'a default import', imports: `import Side from './side'` },
+      { name: 'a namespace import', imports: `import * as side from './side'` },
+    ])(
+      'runs the module of $name nothing reads when the route module loads',
+      async ({ imports }) => {
+        expect(
+          await loadThenRender(`${head}${imports}
+export const Route = createFileRoute('/')({ component: () => <p>page</p> })
+`),
+        ).toEqual({ loaded: ['side'], html: '<p>page</p>', calls: ['side'] })
+      },
+    )
+
+    it('runs the module of an import statement whose other specifier only the split component reads when the route module loads', async () => {
+      expect(
+        await loadThenRender(`${head}import Side, { Named } from './side'
+export const Route = createFileRoute('/')({ component: () => <p><Side /></p> })
+`),
+      ).toEqual({
+        loaded: ['side'],
+        html: '<p><b>side</b></p>',
+        calls: ['side'],
+      })
+    })
+
+    it('runs the module of an import only the split component reads when the component loads', async () => {
+      expect(
+        await loadThenRender(`${head}import Side from './side'
+export const Route = createFileRoute('/')({ component: () => <p><Side /></p> })
+`),
+      ).toEqual({ loaded: [], html: '<p><b>side</b></p>', calls: ['side'] })
+    })
+  })
+
   // A declaration that only an unused local inside it, or an uncalled
   // function, reads is still live code: its initializer runs when the route
   // module loads. Source: #8504 (regressions of the Yuku migration); inputs
