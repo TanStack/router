@@ -60,11 +60,8 @@ export function Asset(
     case 'link':
       return (
         <link
+          precedence={attrs?.rel === 'stylesheet' ? 'default' : undefined}
           {...attrs}
-          precedence={
-            attrs?.precedence ??
-            (attrs?.rel === 'stylesheet' ? 'default' : undefined)
-          }
           nonce={nonce}
           suppressHydrationWarning
         />
