@@ -1,7 +1,4 @@
-import {
-  RSBUILD_ENVIRONMENT_NAMES,
-  tanStackStartRsbuild,
-} from '@tanstack/start-plugin-core/rsbuild'
+import { tanStackStartRsbuild } from '@tanstack/start-plugin-core/rsbuild'
 import { reactStartDefaultEntryPaths } from './shared'
 import type {
   TanStackStartRsbuildInputConfig,
@@ -17,7 +14,6 @@ export function tanstackStart(
   let corePluginOpts: TanStackStartRsbuildPluginCoreOptions = {
     framework: 'react',
     defaultEntryPaths: reactStartDefaultEntryPaths,
-    providerEnvironmentName: RSBUILD_ENVIRONMENT_NAMES.server,
     ssrIsProvider: true,
   }
 
@@ -25,7 +21,6 @@ export function tanstackStart(
     const rscConfig = configureRscRsbuild()
     corePluginOpts = {
       ...corePluginOpts,
-      providerEnvironmentName: rscConfig.providerEnvironmentName,
       ssrIsProvider: false,
       serializationAdapters: rscConfig.serializationAdapters,
       rsc: rscConfig.rsc,
@@ -38,19 +33,17 @@ export function tanstackStart(
 /**
  * Configure RSC options for the rsbuild adapter.
  *
- * Returns provider env, serialization adapters, and core RSC options.
+ * Returns serialization adapters and core RSC options.
  *
  * The SSR resolver strategy is intentionally NOT changed from 'default' —
  * in the rspack layered model, SSR and RSC live in the same
  * compilation so they share the same resolver file. No forwarding needed.
  */
 function configureRscRsbuild(): {
-  providerEnvironmentName: TanStackStartRsbuildPluginCoreOptions['providerEnvironmentName']
   serializationAdapters: TanStackStartRsbuildPluginCoreOptions['serializationAdapters']
   rsc: NonNullable<TanStackStartRsbuildPluginCoreOptions['rsc']>
 } {
   return {
-    providerEnvironmentName: RSBUILD_ENVIRONMENT_NAMES.server,
     serializationAdapters: [
       {
         client: {

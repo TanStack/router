@@ -78,7 +78,6 @@ export function tanStackStartRsbuild(
     parseConfig: parseStartConfig,
   })
   const { getConfig, resolvedStartConfig } = configContext
-  const serverFnProviderEnv = corePluginOpts.providerEnvironmentName
   const ssrIsProvider = corePluginOpts.ssrIsProvider
   const scriptFormat = rsbuildClientOutputSchema.parse(
     startPluginOpts.rsbuild?.client?.output ?? 'module',
@@ -97,10 +96,6 @@ export function tanStackStartRsbuild(
       const startCompilerEnvironments = [
         { name: RSBUILD_ENVIRONMENT_NAMES.client, type: 'client' as const },
         { name: RSBUILD_ENVIRONMENT_NAMES.server, type: 'server' as const },
-        ...(serverFnProviderEnv !== RSBUILD_ENVIRONMENT_NAMES.server &&
-        !rscEnabled
-          ? [{ name: serverFnProviderEnv, type: 'server' as const }]
-          : []),
       ]
       const startCompilerServerEnvironmentNames = startCompilerEnvironments
         .filter((env) => env.type === 'server')
@@ -170,7 +165,6 @@ export function tanStackStartRsbuild(
           clientOutputDirectory: resolvedStartConfig.outputDirectories.client,
           serverOutputDirectory: resolvedStartConfig.outputDirectories.server,
           publicBase: resolvedStartConfig.basePaths.publicBase,
-          serverFnProviderEnv,
           environmentOverrides: corePluginOpts.rsbuild?.environments,
           scriptFormat,
           rsc: rscEnabled,
@@ -351,7 +345,6 @@ export function tanStackStartRsbuild(
         getRoot: () => resolvedStartConfig.root,
         getConfig,
         resolverModule: () => compiler.resolverModule(),
-        providerEnvName: serverFnProviderEnv,
         ssrIsProvider,
         serializationAdapters: corePluginOpts.serializationAdapters,
         getDevClientEntryUrl: (publicBase: string) =>
@@ -655,17 +648,9 @@ export function tanStackStartRsbuild(
                 (c) => c.name === environmentName,
               )
               if (serverCompiler) {
-                const dependencies: Array<string> = [
+                compiler.setDependencies(serverCompiler, [
                   RSBUILD_ENVIRONMENT_NAMES.client,
-                ]
-                if (
-                  environmentName === RSBUILD_ENVIRONMENT_NAMES.server &&
-                  serverFnProviderEnv !== RSBUILD_ENVIRONMENT_NAMES.server
-                ) {
-                  dependencies.push(serverFnProviderEnv)
-                }
-
-                compiler.setDependencies(serverCompiler, dependencies)
+                ])
               }
             }
           }

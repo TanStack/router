@@ -79,7 +79,6 @@ describe('createRsbuildEnvironmentPlan client output', () => {
     clientOutputDirectory: 'dist/client',
     serverOutputDirectory: 'dist/server',
     publicBase: '/_build/',
-    serverFnProviderEnv: 'ssr',
   }
 
   test('sets client output.module from scriptFormat', () => {

@@ -115,7 +115,6 @@ export function createRsbuildEnvironmentPlan(opts: {
   clientOutputDirectory: string
   serverOutputDirectory: string
   publicBase: string
-  serverFnProviderEnv: string
   environmentOverrides?: RsbuildEnvironmentOverrides
   scriptFormat?: ScriptFormat
   rsc?: boolean | undefined
@@ -210,40 +209,6 @@ export function createRsbuildEnvironmentPlan(opts: {
         environmentOverrides.all,
         environmentOverrides.server,
       ),
-      // When provider is a separate environment (not layered RSC),
-      // create a third environment. With the layered RSC setup this branch
-      // is not taken because provider maps to the same `ssr` environment.
-      ...(opts.serverFnProviderEnv !== RSBUILD_ENVIRONMENT_NAMES.server &&
-      !opts.rsc
-        ? {
-            [opts.serverFnProviderEnv]: mergeRsbuildConfig(
-              {
-                source: {
-                  entry: {
-                    index: {
-                      import: opts.entryAliases.server,
-                      html: false,
-                    },
-                  },
-                },
-                output: {
-                  target: 'node',
-                  ...(opts.dev ? { module: false } : {}),
-                  distPath: createPublicAssetDistPath(
-                    `${opts.serverOutputDirectory}/${opts.serverFnProviderEnv}`,
-                  ),
-                  assetPrefix: opts.publicBase,
-                },
-                resolve: {
-                  alias,
-                },
-                splitChunks: SERVER_SPLIT_CHUNKS,
-              },
-              environmentOverrides.all,
-              environmentOverrides.provider,
-            ),
-          }
-        : {}),
     },
     alias,
   }

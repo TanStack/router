@@ -227,7 +227,6 @@ export interface RegisterVirtualModulesOptions {
   getConfig: GetConfigFn
   /** The server fn resolver module content of the current registry. */
   resolverModule: () => string
-  providerEnvName: string
   ssrIsProvider: boolean
   serializationAdapters: Array<SerializationAdapterConfig> | undefined
   /**
@@ -298,20 +297,10 @@ export function registerVirtualModules(
   const lastResolverContentByEnvironment: Record<string, string | undefined> =
     {}
   const resolverWriteCountByEnvironment: Record<string, number> = {}
-  const hasSeparateProviderEnvironment =
-    !opts.rscEnabled &&
-    opts.providerEnvName !== RSBUILD_ENVIRONMENT_NAMES.server
   const hasSerializationAdapters = Boolean(opts.serializationAdapters?.length)
 
-  function isProviderEnvironment(environmentName: string): boolean {
-    return environmentName === opts.providerEnvName
-  }
-
   function needsServerFnResolver(environmentName: string): boolean {
-    return (
-      environmentName === RSBUILD_ENVIRONMENT_NAMES.server ||
-      (hasSeparateProviderEnvironment && isProviderEnvironment(environmentName))
-    )
+    return environmentName === RSBUILD_ENVIRONMENT_NAMES.server
   }
 
   function generateResolverContent(_environmentName: string): string {
@@ -606,9 +595,6 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
       }
 
       updateEnvironment(RSBUILD_ENVIRONMENT_NAMES.server)
-      if (hasSeparateProviderEnvironment) {
-        updateEnvironment(opts.providerEnvName)
-      }
     },
 
     getServerFnResolverWriteCount(environmentName: string): number {

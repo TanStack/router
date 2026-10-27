@@ -31,6 +31,7 @@ import {
   routerPlannerConfig,
   routerPlanners,
 } from '@tanstack/router-plugin/planners'
+import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import { namesStartSpecifier, startRecognizer } from '../compiler/recognizer'
 import { START_ENV, startPlanners } from '../planners'
 import { HYDRATE_PLANNER, createHydratePlanner } from '../planners/hydrate'
@@ -101,7 +102,6 @@ export interface StartRsbuildSessionOptions {
   root: () => string
   srcDirectory: () => string
   environments: Array<StartRsbuildEnvironment>
-  providerEnvName: string
   ssrIsProvider: boolean
   rsc: StartRscOptions | undefined
   /** The Rspack layer running the RSC render (RSC on). */
@@ -335,7 +335,7 @@ export class StartRsbuildCompilerSession {
     return {
       name: env.name,
       type: env.type,
-      isProvider: env.name === this.opts.providerEnvName,
+      isProvider: env.name === RSBUILD_ENVIRONMENT_NAMES.server,
       mode: this.opts.mode,
       bundler: 'rspack',
       framework: this.opts.framework,
@@ -382,7 +382,6 @@ export class StartRsbuildCompilerSession {
         mode: opts.mode,
         framework: opts.framework,
         root,
-        provider: opts.providerEnvName,
         ssrIsProvider: opts.ssrIsProvider,
         idMode,
         rsc: opts.rsc ?? null,

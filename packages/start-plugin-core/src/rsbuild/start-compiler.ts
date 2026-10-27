@@ -81,7 +81,6 @@ export function registerStartCompiler(
       root: () => opts.getConfig().resolvedStartConfig.root,
       srcDirectory: () => opts.getConfig().resolvedStartConfig.srcDirectory,
       environments: opts.environments,
-      providerEnvName: opts.corePluginOpts.providerEnvironmentName,
       ssrIsProvider: opts.corePluginOpts.ssrIsProvider,
       rsc: opts.corePluginOpts.rsc,
       rscLayer: rscEnabled ? RSBUILD_RSC_LAYERS.rsc : undefined,

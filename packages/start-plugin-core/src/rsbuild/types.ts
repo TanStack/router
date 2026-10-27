@@ -5,7 +5,6 @@ export interface RsbuildEnvironmentOverrides {
   all?: EnvironmentConfig | undefined
   client?: EnvironmentConfig | undefined
   server?: EnvironmentConfig | undefined
-  provider?: EnvironmentConfig | undefined
 }
 
 export interface RsbuildCoreOptions {
@@ -13,7 +12,6 @@ export interface RsbuildCoreOptions {
 }
 
 export type TanStackStartRsbuildPluginCoreOptions = TanStackStartCoreOptions & {
-  providerEnvironmentName: string
   ssrIsProvider: boolean
   rsbuild?: RsbuildCoreOptions | undefined
 }
