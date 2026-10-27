@@ -876,6 +876,11 @@ export function Page({ flag }) {
       'hydrate-hook',
     ],
     ['this in an arrow', '<p>{(() => this)()}</p>', 'hydrate-this'],
+    [
+      'new.target of the component',
+      '<p>{String(new.target === undefined)}</p>',
+      'hydrate-this',
+    ],
   ])(
     '%s is rejected at the boundary, in both envs',
     async (_, children, code) => {

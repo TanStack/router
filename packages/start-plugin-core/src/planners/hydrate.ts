@@ -735,14 +735,6 @@ function validate(
           )
         }
         break
-      case 'ForOfStatement':
-        if (node.await && !fn) {
-          fail(
-            'hydrate-await',
-            'Hydrate cannot code-split JSX containing `await`: the split children render in a synchronous component. Compute the value before the boundary, or use split={false}.',
-          )
-        }
-        break
       case 'CallExpression':
         if (!fn) {
           const hook = hookName(node.callee)

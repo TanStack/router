@@ -191,6 +191,65 @@ export const Route = createFileRoute('/old')({
   })
 })
 
+describe('route files using the router package through a namespace import or without an id', () => {
+  // SPEC J1.1, J1.2: the id is kept up whatever binding the constructor
+  // is called through, and a call without an id gets it.
+  test.each([
+    {
+      name: 'a constructor call without an id',
+      file: 'new.tsx',
+      source: `import { createFileRoute } from ${router}
+
+export const Route = createFileRoute()({})
+`,
+      createdWith: 'createFileRoute' as const,
+      // (owned edits are judged against the same file with an id: the
+      // inserted id is the one owned edit)
+      withId: (source: string) =>
+        source.replace('createFileRoute()', "createFileRoute('/old')"),
+    },
+    {
+      name: 'a namespace import, with another id',
+      file: 'new.tsx',
+      source: `import * as Router from ${router}
+
+export const Route = Router.createFileRoute('/old')({})
+`,
+      createdWith: 'createFileRoute' as const,
+    },
+    {
+      name: 'a namespace import, the lazy constructor in a route file',
+      file: 'new.tsx',
+      source: `import * as Router from ${router}
+
+export const Route = Router.createLazyFileRoute('/new')({})
+`,
+      createdWith: 'createFileRoute' as const,
+    },
+    {
+      name: 'a namespace import, the eager constructor in a lazy route file',
+      file: 'new.lazy.tsx',
+      source: `import * as Router from ${router}
+
+export const Route = Router.createFileRoute('/old')({})
+`,
+      createdWith: 'createLazyFileRoute' as const,
+    },
+  ])(
+    'a route file with $name gets its id and constructor',
+    async ({ file, source, createdWith, withId }) => {
+      const { written, error } = await upkeep(file, source)
+
+      expect(error).toBeUndefined()
+      await expectRouteFile(written, {
+        id: '/new',
+        createdWith,
+        source: withId ? withId(source) : source,
+      })
+    },
+  )
+})
+
 describe('root route files', () => {
   test.each([
     {

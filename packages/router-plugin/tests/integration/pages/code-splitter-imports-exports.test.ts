@@ -324,6 +324,30 @@ export const Route = createFileRoute('/')({ component: () => <p>classic</p> })
   })
 })
 
+// A route created through a namespace import of the router package
+// (`Router.createFileRoute`) is a route like one created through a named
+// import (SPEC J2.1, G15): its options split and work.
+it('splits a route created through a namespace import of the router package', async () => {
+  const route = await loadRoute(
+    `import * as Router from '@tanstack/react-router'
+export const Route = Router.createFileRoute('/')({
+  loader: () => 'data',
+  component: () => <p>MARK_NAMESPACE_COMPONENT</p>,
+})
+`,
+  )
+  await expectValidModules(route)
+  expect(await route.isLazy('component')).toBe(true)
+  expect(
+    (await route.eagerModules()).some((code) =>
+      code.includes('MARK_NAMESPACE_COMPONENT'),
+    ),
+  ).toBe(false)
+  expect(
+    await route.run(`return [options.loader(), await render('component')]`),
+  ).toEqual(['data', '<p>MARK_NAMESPACE_COMPONENT</p>'])
+})
+
 describe('exports of the route file', () => {
   it.each([
     { name: 'as-is', exports: 'export { Foo }', exported: 'Foo' },

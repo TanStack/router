@@ -435,3 +435,202 @@ export const fn = createServerFn()?.handler(async () => db.inner() ?? 'MARK_INNE
 // TypeScript" is in integration/start-compiler-build-ids.test.ts: Vite's dev
 // server serves no module under a `#` directory (a plain Vite app fails the
 // same way), so a production build is where the input is reachable.
+
+// SPEC J4.6: a server fn nested in a function whose chain needs what only
+// the enclosing function's call provides (its `this`, `arguments`,
+// `new.target`, an `await` of it), whose options run code with effects,
+// that reads a module binding other code reassigns, or that sits in a
+// top-level block above a declaration its chain reads, either keeps its
+// semantics (the client gets an RPC, server code and the client get the
+// enclosing call's result) or is a compile error at that code, in every
+// environment. Never a handler that ships to the client or runs with
+// other values.
+describe('a nested server fn whose chain cannot move out of its function', () => {
+  const cases = [
+    {
+      name: '`this` of the function',
+      code: `export function make(this: { label: string }) {
+  const fn = createServerFn().handler(async () => this.label)
+  return fn
+}`,
+      at: 'this.label',
+      read: "module.make.call({ label: 'this' })",
+      result: 'this',
+    },
+    {
+      name: '`arguments` of the function',
+      code: `export function make(..._labels: Array<string>) {
+  const fn = createServerFn().handler(async () => arguments.length)
+  return fn
+}`,
+      at: 'arguments.length',
+      read: "module.make('a', 'b')",
+      result: 2,
+    },
+    {
+      name: '`new.target` of the function',
+      code: `export function make() {
+  const fn = createServerFn().handler(async () => new.target === undefined)
+  return fn
+}`,
+      at: 'new.target',
+      read: 'module.make()',
+      result: true,
+    },
+    {
+      name: 'an `await` of the function in its options',
+      code: `const pick = async () => 'GET' as const
+export async function make() {
+  const fn = createServerFn({ method: await pick() }).handler(async () => 'awaited')
+  return fn
+}`,
+      at: 'await pick()',
+      read: 'await module.make()',
+      result: 'awaited',
+    },
+    {
+      name: 'options calling a function with effects',
+      code: `export let picked = 0
+const pick = () => {
+  picked++
+  return 'GET' as const
+}
+export function make() {
+  const fn = createServerFn({ method: pick() }).handler(async () => 'effect')
+  return fn
+}`,
+      at: '{ method: pick() }',
+      read: 'module.make()',
+      result: 'effect',
+    },
+    {
+      name: 'options reading a module binding other code reassigns',
+      code: `let method: 'GET' | 'POST' = 'GET'
+export const usePost = () => {
+  method = 'POST'
+}
+export function make() {
+  const fn = createServerFn({ method }).handler(async () => 'reassigned')
+  return fn
+}`,
+      at: 'method }',
+      read: 'module.make()',
+      result: 'reassigned',
+    },
+    {
+      name: 'a top-level block above a declaration its chain reads',
+      code: `export const registry: Array<unknown> = []
+{
+  const inner = createServerFn()
+    .validator(check)
+    .handler(async ({ data }) => \`checked \${data}\`)
+  registry.push(inner)
+}
+function check(value: unknown) {
+  return String(value)
+}`,
+      at: 'createServerFn()\n',
+      read: 'module.registry[0]',
+      result: 'checked undefined',
+    },
+  ]
+
+  test.each(cases)(
+    'works or is a compile error at it in every environment: $name',
+    async ({ code, at, read, result }) => {
+      const source = `${head}${code}`
+      const startCase = await (await host()).case({ 'module.tsx': source })
+      const failures = {
+        client: await compileError(startCase, 'client'),
+        ssr: await compileError(startCase, 'ssr'),
+      }
+      for (const failure of Object.values(failures)) {
+        if (failure !== undefined) {
+          expectCompileError(failure, { source, at, column: true })
+        }
+      }
+      if (failures.client === undefined && failures.ssr === undefined) {
+        const served = await serveCase(await host(), { 'module.tsx': source })
+        expect(await callServerFnThroughCallers(served, read)).toEqual(result)
+      }
+    },
+  )
+})
+
+// SPEC J4.6, G1: server fns at many declaration sites of one module (in
+// arrow functions, object methods and properties, function expressions,
+// class methods, default exports, two blocks of one function, two objects
+// with the same key) each get their own id: every call, from the client
+// (an RPC) and from server code, runs its own handler, and no handler
+// reaches the client.
+test('server fns at many declaration sites of one module each run their own handler', async () => {
+  const sites = {
+    arrow: `export const arrow = () => {
+  const fn = createServerFn().handler(async () => 'SITE_arrow')
+  return fn
+}`,
+    method: `export const object = {
+  method() {
+    const fn = createServerFn().handler(async () => 'SITE_method')
+    return fn
+  },
+  property: () => {
+    const fn = createServerFn().handler(async () => 'SITE_property')
+    return fn
+  },
+}`,
+    named: `export const callbacks = [
+  function named() {
+    const fn = createServerFn().handler(async () => 'SITE_named')
+    return fn
+  },
+]`,
+    static: `export class Api {
+  static make() {
+    const fn = createServerFn().handler(async () => 'SITE_static')
+    return fn
+  }
+}`,
+    default: `export default function () {
+  const fn = createServerFn().handler(async () => 'SITE_default')
+  return fn
+}`,
+    blocks: `export function both() {
+  const made: Array<unknown> = []
+  {
+    const fn = createServerFn().handler(async () => 'SITE_first')
+    made.push(fn)
+  }
+  {
+    const fn = createServerFn().handler(async () => 'SITE_second')
+    made.push(fn)
+  }
+  return made
+}`,
+    keys: `export const a = { get: createServerFn().handler(async () => 'SITE_a') }
+export const b = { get: createServerFn().handler(async () => 'SITE_b') }
+export const quoted = { 'get-it': createServerFn().handler(async () => 'SITE_quoted') }`,
+  }
+  const reads = {
+    'module.arrow()': 'SITE_arrow',
+    'module.object.method()': 'SITE_method',
+    'module.object.property()': 'SITE_property',
+    'module.callbacks[0]()': 'SITE_named',
+    'module.Api.make()': 'SITE_static',
+    'module.default()': 'SITE_default',
+    'module.both()[0]': 'SITE_first',
+    'module.both()[1]': 'SITE_second',
+    'module.a.get': 'SITE_a',
+    'module.b.get': 'SITE_b',
+    "module.quoted['get-it']": 'SITE_quoted',
+  }
+  const served = await serveCase(await host(), {
+    'module.tsx': `${head}${Object.values(sites).join('\n')}\n`,
+  })
+  expect(served.code.client).not.toContain('SITE_')
+  const results: Record<string, unknown> = {}
+  for (const read of Object.keys(reads)) {
+    results[read] = await callServerFnThroughCallers(served, read)
+  }
+  expect(results).toEqual(reads)
+})

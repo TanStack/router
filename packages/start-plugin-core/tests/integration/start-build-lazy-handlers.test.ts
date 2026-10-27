@@ -41,6 +41,7 @@ const files = {
 export const value = 'unreachable'
 `,
   'tla-dep.server.ts': counted('MARK_TLA_DEP'),
+  'tla-for-dep.server.ts': counted('MARK_TLA_FOR_DEP'),
   // a module whose own code and handlers share state
   'fns.ts': `${head}import { value as heavy } from './heavy.server'
 import { value as slow } from './slow.server'
@@ -73,9 +74,19 @@ export const prefix = ['tla', ''].join(':')
 export const tlaFn = createServerFn().handler(async () => prefix + value)
 export const ready = await tlaFn()
 `,
+  // the same, awaiting it in a top-level `for await` loop
+  'tla-for.ts': `${head}import { value } from './tla-for-dep.server'
+export const prefix = ['tla-for', ''].join(':')
+export const tlaForFn = createServerFn().handler(async () => prefix + value)
+export const results: Array<string> = []
+for await (const result of [tlaForFn()]) {
+  results.push(result)
+}
+`,
   'client-entry.ts': `export * from './fns'
 export { callBroken } from './broken'
 export const loadTla = () => import('./tla')
+export const loadTlaFor = () => import('./tla-for')
 `,
   'ssr-entry.ts': `export * from './client-entry'
 ${callByIdExports}`,
@@ -209,6 +220,21 @@ return { ready: tla.ready, again: await tla.tlaFn(), dep: globalThis.MARK_TLA_DE
       expect(result).toEqual({
         ready: 'tla:MARK_TLA_DEP',
         again: 'tla:MARK_TLA_DEP',
+        dep: 1,
+      })
+    },
+    timeout,
+  )
+
+  test(
+    'SSR: a module that awaits one of its own server fns in a top-level for await loop evaluates',
+    async () => {
+      const { result } = await build.ssr
+        .run(`const tla = await entry.loadTlaFor()
+return { results: tla.results, again: await tla.tlaForFn(), dep: globalThis.MARK_TLA_FOR_DEP }`)
+      expect(result).toEqual({
+        results: ['tla-for:MARK_TLA_FOR_DEP'],
+        again: 'tla-for:MARK_TLA_FOR_DEP',
         dep: 1,
       })
     },

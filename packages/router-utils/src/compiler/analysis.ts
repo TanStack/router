@@ -208,14 +208,6 @@ export class RefIndex {
     )
   }
 
-  isSelfRef(r: ClassifiedRef): boolean {
-    const decls = this.declRanges.get(r.sym)
-    return (
-      decls !== undefined &&
-      decls.some((d) => r.range.start >= d.start && r.range.end <= d.end)
-    )
-  }
-
   writesOf(sym: SymbolId): Array<ClassifiedRef> {
     return this.refsOf(sym).filter((r) => r.kind === 'write')
   }
@@ -225,7 +217,6 @@ export interface JsxInfo {
   runtime: 'automatic' | 'classic' | 'unknown'
   factory: SymbolId | null
   fragment: SymbolId | null
-  hasJsx: () => boolean
 }
 
 export interface Tier1 {
@@ -244,13 +235,10 @@ export interface Tier1 {
   declaringUnits: ReadonlyMap<SymbolId, ReadonlyArray<UnitId>>
   /** Whether `offset` sits inside a function (lazy evaluation). */
   isLazyAt: (offset: number) => boolean
-  functionOwning: (offset: number) => Node | null
   parentOf: (node: Node) => Node | null
   nodeAt: (offset: number) => Node | null
   /** The innermost region owning a reference. */
   ownerOf: (ref: ClassifiedRef) => RegionId
-  /** Symbols whose scope is a function containing `range` and all of whose value refs lie inside `range`. */
-  orphanedLocals: (range: Range) => Array<SymbolId>
   /** Non-module symbols read inside `range` whose declaring scope lies outside it (captures). */
   capturesOf: (range: Range) => Array<SymbolId>
 }
@@ -715,10 +703,6 @@ export class ModuleAnalysis {
     return names
   }
 
-  get hasTier1(): boolean {
-    return this.tier1 !== null
-  }
-
   t1(): Tier1 {
     if (this.tier1) {
       return this.tier1
@@ -844,23 +828,6 @@ export class ModuleAnalysis {
         : runtime === 'unknown'
           ? factory
           : null
-    let jsxSeen: boolean | null = null
-    const hasJsx = (): boolean => {
-      if (jsxSeen === null) {
-        jsxSeen = false
-        walk(file.program, {
-          JSXElement: (_n, ctx) => {
-            jsxSeen = true
-            ctx.stop()
-          },
-          JSXFragment: (_n, ctx) => {
-            jsxSeen = true
-            ctx.stop()
-          },
-        })
-      }
-      return jsxSeen
-    }
     if (factory !== null) {
       walk(file.program, {
         JSXElement: (n) => {
@@ -929,27 +896,11 @@ export class ModuleAnalysis {
       symbols,
       refs: refIndex,
       freeRefs,
-      jsx: { runtime, factory, fragment, hasJsx },
+      jsx: { runtime, factory, fragment },
       names,
       exportNames,
       declaringUnits,
       isLazyAt,
-      functionOwning: (offset) => {
-        const n = file.nodeAt(offset)
-        if (!n) {
-          return null
-        }
-        for (const a of file.ancestors(n)) {
-          if (
-            a.type === 'FunctionDeclaration' ||
-            a.type === 'FunctionExpression' ||
-            a.type === 'ArrowFunctionExpression'
-          ) {
-            return a
-          }
-        }
-        return null
-      },
       parentOf: (node) => file.parentOf(node),
       nodeAt: (offset) => file.nodeAt(offset),
       ownerOf: (ref) => {
@@ -960,29 +911,6 @@ export class ModuleAnalysis {
           )
         }
         return id
-      },
-      orphanedLocals: (range) => {
-        const out: Array<SymbolId> = []
-        const seen = new Set<SymbolId>()
-        for (const r of refIndex.refsIn(range)) {
-          if (seen.has(r.sym) || symbols.isModuleLevel(r.sym)) {
-            continue
-          }
-          seen.add(r.sym)
-          const scope = symbols.scopeRange(r.sym)
-          if (!scope || scope.start >= range.start) {
-            continue
-          }
-          const all = refIndex.refsOf(r.sym)
-          if (
-            all.every(
-              (x) => x.range.start >= range.start && x.range.end <= range.end,
-            )
-          ) {
-            out.push(r.sym)
-          }
-        }
-        return out
       },
       capturesOf: (range) => {
         const out: Array<SymbolId> = []
