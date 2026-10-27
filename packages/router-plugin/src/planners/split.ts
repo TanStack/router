@@ -26,6 +26,7 @@ import type { RouteEntryFacts } from './route'
 import type { SplitDecision } from './decisions'
 import type { RouterPlannerConfig } from './config'
 import type {
+  Anchor,
   Frag,
   GateContext,
   GlueImport,
@@ -34,6 +35,7 @@ import type {
   PrefetchContext,
   SymRef,
   SymbolId,
+  Unit,
 } from '@tanstack/router-utils/compiler'
 
 export const ROUTE_SPLIT = 'route-split'
@@ -216,6 +218,29 @@ export function routeSplitPlanner(): Planner {
         return sym
       }
 
+      // each importer right before the statement holding its group's first
+      // placeholder (the options object, or an option's object declared by
+      // itself): no effects between them, so a minifier inlines it there
+      const firstReader = new Map<string, Unit>()
+      const { regions, units } = ctx.t1
+      for (const d of plan.decisions) {
+        const region = regions.innermostAt(d.region.start, d.region.end)
+        const unit = region === null ? null : regions.unitOf(region)
+        const prev = firstReader.get(d.groupKey)
+        if (
+          unit !== null &&
+          (!prev || units[unit]!.range.start < prev.range.start)
+        ) {
+          firstReader.set(d.groupKey, units[unit]!)
+        }
+      }
+      const anchorOf = (groupKey: string): Anchor => {
+        const unit = firstReader.get(groupKey)
+        return unit
+          ? { k: 'before-unit', unit: unit.id }
+          : { k: 'after-header' }
+      }
+
       // one importer const and one output per group
       const groups = new Map<
         string,
@@ -250,7 +275,7 @@ export function routeSplitPlanner(): Planner {
           ],
           declares: [importer.sym],
           effectful: false,
-          anchor: { k: 'after-header' },
+          anchor: anchorOf(d.groupKey),
           home: 'auto',
           by: ROUTE_SPLIT,
         })
