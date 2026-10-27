@@ -115,6 +115,17 @@ export function applyRouteHmr(
     if (!router || !current) {
       return
     }
+    // A router catch boundary holds a render error the framework cannot
+    // recover from in place: the global boundary's reset re-renders the
+    // document a root route renders (Solid cannot client-render a hydratable
+    // `<html>`; React and Vue lose the root after an error during
+    // hydration), and Solid's and Vue's route boundaries do not reset when
+    // the fixed component swaps in. Reload, as a route edit without route
+    // HMR does.
+    if (router._hmrReload) {
+      window.location.reload()
+      return
+    }
     // A route tree module that re-executed since the router last read it (a
     // route added or renamed) holds this module's current export where the
     // router still holds an older evaluation: its parent's children no
@@ -232,6 +243,11 @@ export function applyRouteChunkHmr(routeId: string, chunk: string): void {
     }
     const router = window.__TSR_ROUTER__
     if (!router?.routesById?.[routeId]) {
+      return
+    }
+    // See `applyRouteHmr`.
+    if (router._hmrReload) {
+      window.location.reload()
       return
     }
     void router._refreshRoute?.()

@@ -125,6 +125,7 @@ export const Match = (props: { routeId: string }) => {
                 throw notFoundError
               }
               if (process.env.NODE_ENV !== 'production') {
+                ;(router as { _hmrReload?: true })._hmrReload = true
                 console.warn(
                   `Warning: Error in route match: ${currentMatch().routeId}`,
                 )
