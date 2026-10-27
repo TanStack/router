@@ -441,6 +441,15 @@ export function createRouterCompilerVitePlugin(
       },
     },
 
+    hotUpdate({ modules }) {
+      // Derived modules of a layout the file no longer has (an extracted
+      // export once the export went, a split chunk once the file stopped
+      // splitting) stay in Vite's module graph without importers: nothing on
+      // the page holds them, and an update of theirs can only dead-end into a
+      // full reload. The update is of the live modules.
+      return liveModules(modules)
+    },
+
     async watchChange(id, { event }) {
       const kind =
         event === 'update' ? 'change' : event === 'create' ? 'add' : 'unlink'
@@ -448,4 +457,23 @@ export function createRouterCompilerVitePlugin(
     },
   }
   return plugin
+}
+
+/**
+ * The modules of a file's hot update that something still imports: a
+ * derived module (`?tsr-split=…`) without importers is of a layout the file
+ * no longer has (Vite's module graph keeps it). `undefined` when all are live.
+ */
+export function liveModules<
+  T extends { id: string | null; importers: ReadonlySet<unknown> },
+>(modules: Array<T>): Array<T> | undefined {
+  const live = modules.filter(
+    (m) =>
+      !(
+        m.id !== null &&
+        identify(m.id).derived !== null &&
+        m.importers.size === 0
+      ),
+  )
+  return live.length === modules.length ? undefined : live
 }
