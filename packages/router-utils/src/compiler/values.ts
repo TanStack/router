@@ -299,15 +299,6 @@ export class ValueAnalysis {
     private readonly opts: ValueAnalysisOptions,
   ) {}
 
-  /** The value of a module-level binding's name node. */
-  valueOfBindingNode(nameNode: Node): AbstractValue {
-    const b = this.file.bindingOf(nameNode)
-    if (!b) {
-      return UNKNOWN
-    }
-    return this.valueOfBinding(b.id)
-  }
-
   valueOfBinding(bindingId: number): AbstractValue {
     const b = this.file.bindings[bindingId]
     if (!b) {

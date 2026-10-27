@@ -632,8 +632,4 @@ export class RenderTree {
     visit(start, end, NO_EDITS)
     return out
   }
-
-  get regionTable(): RegionTable {
-    return this.regions
-  }
 }

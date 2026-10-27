@@ -309,9 +309,6 @@ function describeServerFn(
           base = p.left.property.name
         }
         break
-      case 'JSXAttribute':
-        base = p.name.type === 'JSXIdentifier' ? p.name.name : ''
-        break
       default:
         break
     }
