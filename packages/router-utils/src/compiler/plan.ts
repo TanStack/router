@@ -476,15 +476,14 @@ export class AnalysisPlan implements PlanContext {
       return false
     }
     const env = this.rewrites.tree('env')
+    // the claimed regions by start offset (few per module)
+    const claimedEnd = new Map<number, number>()
+    for (const claim of this.rewrites.claims.values()) {
+      const r = this.t1.regions.get(claim.region).range
+      claimedEnd.set(r.start, r.end)
+    }
     const benignValue = (v: Node): boolean => {
-      const region = this.t1.regions.innermostAt(v.start, v.end)
-      if (
-        (region !== null &&
-          this.rewrites.claims.has(region) &&
-          this.t1.regions.get(region).range.start === v.start &&
-          this.t1.regions.get(region).range.end === v.end) ||
-        env.isErasedAt(v.start)
-      ) {
+      if (claimedEnd.get(v.start) === v.end || env.isErasedAt(v.start)) {
         return true
       }
       const n = unwrapExpression(v)

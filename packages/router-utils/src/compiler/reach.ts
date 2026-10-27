@@ -1112,11 +1112,12 @@ export function computePlacement(input: PlacementInput): Placement {
    * next to `function inc() { n++ }` keeps the source's `[0]`): it is an
    * env root like an effectful cluster, and derived outputs import it.
    */
-  const readsMutable = new Map<ClusterId, boolean>()
+  let readsMutable: Map<ClusterId, boolean> | null = null
   function readsMutableState(c: ClusterId): boolean {
     if (writes.length === 0) {
       return false
     }
+    readsMutable ??= new Map()
     let hit = readsMutable.get(c)
     if (hit === undefined) {
       hit = false
