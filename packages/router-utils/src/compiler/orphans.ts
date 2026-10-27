@@ -36,7 +36,9 @@ export function cleanOrphanedDeclarations(
   const file = ctx.analysis.file
   const code = ctx.analysis.source.code
   const handled = new Set<number>()
-  for (let round = 0; round < 8; round++) {
+  // each round handles at least one more binding: a chain of declarations
+  // each only the next one reads is cleaned however long it is
+  for (;;) {
     const live = ctx.liveness('env')
     let changed = false
     // object pattern properties pruned this round, removed together per pattern

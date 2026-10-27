@@ -266,6 +266,32 @@ export function fn() {
       await settled(served, 'ssr'),
     ]).toEqual([throwsError, expected])
   })
+
+  // Each declaration of the chain is orphaned once the next one goes: the
+  // first one, ten steps away from the removed code, goes too, with the
+  // module only it read.
+  test('a chain of declarations, each read only by the next', async () => {
+    const chain = Array.from(
+      { length: 10 },
+      (_, i) => `const step${i} = ${i === 0 ? 'dep.value' : `step${i - 1}`}`,
+    ).join('\n  ')
+    const served = await serveCase(await host(), {
+      'module.tsx': `import { createServerOnlyFn } from '@tanstack/react-start'
+import { dep } from './dep.server'
+export function fn() {
+  ${chain}
+  const run = createServerOnlyFn(() => step9)
+  return run()
+}
+`,
+      'dep.server.ts': depSource,
+    })
+    expect([
+      await settled(served, 'client'),
+      await settled(served, 'ssr'),
+    ]).toEqual([throwsError, 'dep'])
+    expectNotLoaded(await served.loads(), ['./dep.server'])
+  })
 })
 
 // A destructured binding only the removed code read goes with it, beside
