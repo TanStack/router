@@ -129,8 +129,8 @@ export interface ClassifiedRef {
   eager: boolean
   /** `export { a }` (true) vs `export { a as b }` (false); only for exportSpec. */
   exportShorthand?: boolean
-  /** The root of a member write (`a.p = …`, `a.p.q++`, `delete a.p`, `a.list.push(…)`, `Object.assign(a, …)`). */
-  memberWrite?: true
+  /** The root of a member write (`a.p = …`, `a.p.q++`, `delete a.p`, `a.list.push(…)`, `Object.assign(a, …)`); always present (one object shape for every reference). */
+  memberWrite: boolean
 }
 
 export interface FreeRef {
@@ -782,9 +782,7 @@ export class ModuleAnalysis {
         ctx: c.ctx,
         eager: !isLazyAt(node.start),
         exportShorthand: c.exportShorthand,
-        ...(c.kind === 'value' && writesMember(file, node)
-          ? { memberWrite: true as const }
-          : {}),
+        memberWrite: c.kind === 'value' && writesMember(file, node),
       })
     }
 
@@ -838,6 +836,7 @@ export class ModuleAnalysis {
             kind: 'implicitJsxFactory',
             ctx: 'plain',
             eager: !isLazyAt(n.start),
+            memberWrite: false,
           })
         },
         JSXFragment: (n) => {
@@ -847,6 +846,7 @@ export class ModuleAnalysis {
             kind: 'implicitJsxFactory',
             ctx: 'plain',
             eager: !isLazyAt(n.start),
+            memberWrite: false,
           })
         },
       })
@@ -873,6 +873,7 @@ export class ModuleAnalysis {
             kind: 'value',
             ctx: 'plain',
             eager: !isLazyAt(n.start),
+            memberWrite: false,
           })
         },
       })

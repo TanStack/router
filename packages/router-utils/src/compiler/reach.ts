@@ -1115,39 +1115,34 @@ export function computePlacement(input: PlacementInput): Placement {
    * next to `function inc() { n++ }` keeps the source's `[0]`): it is an
    * env root like an effectful cluster, and derived outputs import it.
    */
-  let readsMutable: Map<ClusterId, boolean> | null = null
+  let mutableReaders: Set<ClusterId> | null = null
   function readsMutableState(c: ClusterId): boolean {
     if (writes.length === 0) {
       return false
     }
-    readsMutable ??= new Map()
-    let hit = readsMutable.get(c)
-    if (hit === undefined) {
-      hit = false
-      const root = uf.find(
-        clusters[c]!.regions[0] ?? memberOfGen(clusters[c]!.gens[0]!),
-      )
-      for (const r of clusters[c]!.regions) {
-        for (const ref of ownedRefs.get(r) ?? []) {
-          if (
-            ref.eager &&
-            writesOfSym.has(ref.sym) &&
-            READ_KINDS.has(ref.kind) &&
-            clusterOfSym.get(ref.sym) !== c &&
-            isLive(ref, 'env') &&
-            mutatedOutside(ref.sym, ref.range.start, root)
-          ) {
-            hit = true
-            break
-          }
+    if (mutableReaders === null) {
+      // over the eager live reads of written bindings (few), not over every
+      // reference of every cluster asked about
+      mutableReaders = new Set()
+      for (const ref of eagerReads) {
+        const owner = regions.innermostAt(ref.range.start, ref.range.end)
+        if (owner === null) {
+          continue
         }
-        if (hit) {
-          break
+        const reader = clusterOfRegion.get(owner)!
+        if (
+          clusterOfSym.get(ref.sym) !== reader &&
+          mutatedOutside(
+            ref.sym,
+            ref.range.start,
+            uf.find(memberOfWriter(owner)),
+          )
+        ) {
+          mutableReaders.add(reader)
         }
       }
-      readsMutable.set(c, hit)
     }
-    return hit
+    return mutableReaders.has(c)
   }
   // the surviving effects a moving cluster is ordered against (asked only
   // when one could move: most modules never need the benign check)
@@ -1360,7 +1355,7 @@ export function computePlacement(input: PlacementInput): Placement {
       cl.kind === 'declaration' &&
       !cl.exported &&
       !envRoots.has(cl.id) &&
-      (cl.effectful || readsMutableState(cl.id))
+      (cl.effectful || (writes.length > 0 && readsMutableState(cl.id)))
     )
   }
   /**
