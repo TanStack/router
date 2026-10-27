@@ -122,4 +122,27 @@ describe('Vite prerender network sink', () => {
       'http://127.0.0.1:4173/next/?from=about',
     ])
   })
+
+  it('uses the Vite root for the preview server and client output directory', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(null, { status: 404 })),
+    )
+    const builder = {
+      environments: {
+        ssr: { config: { configFile: '/app/vite.config.ts', root: '/app' } },
+        client: { config: { root: '/app', build: { outDir: 'dist/client' } } },
+      },
+    } as any
+
+    await prerenderWithVite({ startConfig: makeStartConfig(), builder })
+
+    expect(preview).toHaveBeenCalledWith(
+      expect.objectContaining({
+        configFile: '/app/vite.config.ts',
+        root: '/app',
+      }),
+    )
+    expect(process.env.TSS_CLIENT_OUTPUT_DIR).toBe('/app/dist/client')
+  })
 })

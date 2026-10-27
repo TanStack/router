@@ -1,3 +1,4 @@
+import { resolve } from 'pathe'
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import { prerender } from '../prerender'
 import type { PrerenderHandler } from '../prerender'
@@ -26,7 +27,11 @@ export async function prerenderWithVite({
     )
   }
 
-  const outputDir = clientEnv.config.build.outDir
+  // `build.outDir` is relative to Vite's `root`, not to the process cwd
+  const outputDir = resolve(
+    clientEnv.config.root,
+    clientEnv.config.build.outDir,
+  )
 
   process.env.TSS_PRERENDERING = 'true'
   process.env.TSS_CLIENT_OUTPUT_DIR = outputDir
@@ -67,6 +72,7 @@ async function startPreviewServer(
   try {
     return await vite.preview({
       configFile: viteConfig.configFile,
+      root: viteConfig.root,
       preview: {
         port: 0,
         open: false,
