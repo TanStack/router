@@ -12,7 +12,12 @@ import { openRouteHmrPage } from '../route-hmr-page'
 
 const timeout = 60_000
 
-const route = (text: string, exported = false, nosplit = false) =>
+const route = (
+  text: string,
+  exported = false,
+  nosplit = false,
+  written = false,
+) =>
   `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({${nosplit ? '\n  codeSplitGroupings: [],' : ''}
   component: Page,
@@ -20,7 +25,7 @@ export const Route = createFileRoute('/')({${nosplit ? '\n  codeSplitGroupings: 
 ${exported ? 'export ' : ''}function Page() {
   return <p data-probe="page">${text}</p>
 }
-`
+${written ? "Page.displayName = 'Page'\n" : ''}`
 
 describe('Vite dev: route edits after the split layout changed and changed back', () => {
   test(
@@ -66,6 +71,36 @@ describe('Vite dev: route edits after the split layout changed and changed back'
       ).toEqual(inPlace)
       expect(
         await app.edit({ 'routes/index.tsx': route('text-v4') }, 'text-v4'),
+      ).toEqual(inPlace)
+    },
+    timeout,
+  )
+
+  test(
+    'the exported component written, then not: each edit applies in place',
+    async ({ onTestFinished }) => {
+      const app = await openRouteHmrPage({
+        onTestFinished,
+        files: { 'routes/index.tsx': route('text-v1', true) },
+        ready: 'text-v1',
+      })
+      expect(
+        await app.edit(
+          { 'routes/index.tsx': route('text-v2', true, false, true) },
+          'text-v2',
+        ),
+      ).toEqual(inPlace)
+      expect(
+        await app.edit(
+          { 'routes/index.tsx': route('text-v3', true, false, true) },
+          'text-v3',
+        ),
+      ).toEqual(inPlace)
+      expect(
+        await app.edit(
+          { 'routes/index.tsx': route('text-v4', true) },
+          'text-v4',
+        ),
       ).toEqual(inPlace)
     },
     timeout,

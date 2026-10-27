@@ -11,7 +11,6 @@
  */
 import {
   cleanOrphanedDeclarations,
-  deriveId,
   siblingSpecifier,
   stringLiteral,
 } from '@tanstack/router-utils/compiler'
@@ -286,33 +285,6 @@ export function routeSplitPlanner(): Planner {
         return g
       }
 
-      // every exported binding but the route may leave for an
-      // extracted-export output (declared below, after the chunks); the core
-      // decides (a pure, unwritten declaration only chunks need moves, the
-      // route module re-exports it)
-      const extractable: Array<{ sym: SymbolId; name: string }> = []
-      for (const e of ctx.analysis.exports) {
-        if (e.kind !== 'local' || e.local === null || e.typeOnly) {
-          continue
-        }
-        const sym = e.local
-        if (sym === route.routeSym) {
-          continue
-        }
-        extractable.push({ sym, name: symbols.name(renamedSymbol(ctx, sym)) })
-      }
-      // where React Refresh will register an extracted component: its
-      // extracted-export module, not the chunk that re-exports it (the
-      // core may still keep it in the route module; the planner cannot see
-      // that placement)
-      const refreshHome = new Map<SymbolId, string>()
-      for (const { sym, name } of extractable) {
-        refreshHome.set(
-          sym,
-          deriveId(ctx.identity.canonicalId, { kind: 'export', value: name }),
-        )
-      }
-
       for (const d of plan.decisions) {
         const g = groupOf(d)
         const isComponent = d.key !== 'loader'
@@ -378,22 +350,24 @@ export function routeSplitPlanner(): Planner {
           !(valueSym !== null && symbols.isImport(valueSym))
         ) {
           // identity = the module React Refresh registers the binding in
-          // (this chunk, or the extracted-export module of an exported
-          // component: a move is a new family) + the binding: the user's
-          // component when the value names one (a rename is a new family),
-          // else the chunk's own declaration
-          const registered =
-            valueSym !== null
-              ? symbols.name(renamedSymbol(ctx, valueSym))
-              : split.name
-          const home =
-            (valueSym !== null && refreshHome.get(valueSym)) || g.derivedId
+          // (where placement puts the user's component: this chunk, the
+          // route module or its extracted-export module; a move is a new
+          // family) + the binding: the user's component when the value names
+          // one (a rename is a new family), else the chunk's own declaration
           body.push({
             k: 'text',
-            parts: [
-              exported,
-              `.$$tsrRefreshId = ${stringLiteral(`${home} ${registered}`, '"')}\n`,
-            ],
+            parts:
+              valueSym !== null
+                ? [
+                    exported,
+                    '.$$tsrRefreshId = ',
+                    { sym: valueSym, ctx: 'homeId' },
+                    ` + ${stringLiteral(` ${symbols.name(renamedSymbol(ctx, valueSym))}`, '"')}\n`,
+                  ]
+                : [
+                    exported,
+                    `.$$tsrRefreshId = ${stringLiteral(`${g.derivedId} ${split.name}`, '"')}\n`,
+                  ],
           })
         }
         body.push({
@@ -438,7 +412,18 @@ export function routeSplitPlanner(): Planner {
         }
       }
 
-      for (const { sym, name } of extractable) {
+      // every exported binding but the route may leave for an
+      // extracted-export output; the core decides (a pure, unwritten
+      // declaration only chunks need moves, the route module re-exports it)
+      for (const e of ctx.analysis.exports) {
+        if (e.kind !== 'local' || e.local === null || e.typeOnly) {
+          continue
+        }
+        const sym = e.local
+        if (sym === route.routeSym) {
+          continue
+        }
+        const name = symbols.name(renamedSymbol(ctx, sym))
         const output = ctx.declareOutput({
           kind: 'export',
           key: `export~${name}`,

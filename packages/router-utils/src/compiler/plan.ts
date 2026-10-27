@@ -10,7 +10,7 @@ import { deriveId, edgeKeyOf, siblingSpecifier } from './identity'
 import { NameAllocator } from './names'
 import { computePlacement } from './reach'
 import { RewriteSet } from './rewrite'
-import { specifierLiteral } from './strings'
+import { specifierLiteral, stringLiteral } from './strings'
 import { statementRecipe } from './units'
 import { isLineTerminator, pragmasOf } from './header'
 import type {
@@ -43,6 +43,7 @@ import type {
   RefTarget,
   RenderTree,
   SubstEnv,
+  SymRefContext,
   TreeEdit,
 } from './rewrite'
 import type { DependencyFingerprint } from './cache'
@@ -504,8 +505,14 @@ export class AnalysisPlan implements PlanContext {
     }
 
     const renderer = new Renderer(this, code)
+    const extractedOutputs = new Set(placement.extracted.map((e) => e.output))
 
     for (const [id, decl] of this.outputs) {
+      // an extracted export the core kept in the env module produces no
+      // module: a request for it (a stale importer) emits `export {}`
+      if (decl.kind === 'export' && !extractedOutputs.has(id)) {
+        continue
+      }
       const included = placement.included.get(id) ?? new Set()
       const recipeEdges: Array<EdgeRecord> = []
       const importerId = decl.derivedId ?? this.identity.canonicalId
@@ -1593,6 +1600,20 @@ class Renderer {
     return this.code[prev.end - 1] !== ';'
   }
 
+  /** The id of the module the current output takes `sym` from: the home it imports it from, else its own. */
+  private homeIdOf(sym: SymbolId): string {
+    for (const [home, syms] of this.plan.placement?.imports.get(this.output) ??
+      []) {
+      if (syms.has(sym)) {
+        return (
+          this.plan.outputs.get(home)?.derivedId ??
+          this.plan.identity.canonicalId
+        )
+      }
+    }
+    return this.importerId
+  }
+
   private targetText(to: RefTarget, env: SubstEnv | null): string {
     if ('sym' in to) {
       const sub = env?.get(to.sym)
@@ -1606,9 +1627,12 @@ class Renderer {
 
   private renderSymRef(
     sym: SymbolId,
-    ctx: 'expr' | 'callee' | 'jsxTag',
+    ctx: SymRefContext,
     env: SubstEnv | null,
   ): string {
+    if (ctx === 'homeId') {
+      return stringLiteral(this.homeIdOf(sym), '"')
+    }
     const t = this.targetText({ sym }, env)
     if (ctx === 'callee' && t.includes('.')) {
       return `(0, ${t})`

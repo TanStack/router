@@ -22,7 +22,12 @@ export type EditScope = 'all-outputs' | ReadonlyArray<OutputId>
 export type RefTarget =
   | { sym: SymbolId }
   | { member: [SymbolId, ...Array<string>] }
-export type SymRefContext = 'expr' | 'callee' | 'jsxTag'
+/**
+ * How a `SymRef` renders: the binding's name (`expr`, `callee`, `jsxTag`),
+ * or `homeId`: a string literal of the id of the module the output takes the
+ * binding from (its own id when it holds the binding), decided by placement.
+ */
+export type SymRefContext = 'expr' | 'callee' | 'jsxTag' | 'homeId'
 export interface SymRef {
   sym: SymbolId
   ctx?: SymRefContext
