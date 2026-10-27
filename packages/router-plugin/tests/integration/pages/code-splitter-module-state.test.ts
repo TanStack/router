@@ -1088,28 +1088,6 @@ function Page() {
     })
   })
 
-  it('keeps one before an effect that moves to another chunk', async () => {
-    // the error component's chunk loads first: `second` still runs after
-    // `first`
-    expect(
-      await observe(
-        `export const Route = createFileRoute('/')({
-  component: () => <p>{first}</p>,
-  errorComponent: () => <p>{second}</p>,
-})
-${record('first')}
-${record('second')}
-`,
-        ['errorComponent', 'component'],
-        ['second'],
-      ),
-    ).toEqual({
-      loaded: ['MARK_first'],
-      rendered: ['MARK_first', 'MARK_second'],
-      html: ['<p>MARK_second</p>', '<p>MARK_first</p>'],
-      eagerHolds: [],
-    })
-  })
   it('keeps a component whose augmentations an effect separates, and the effect, in source order', async () => {
     // moving `Page` with its augmentations would run `middle` before `first`
     expect(
@@ -1279,6 +1257,9 @@ ${record('third')}
   })
 
   it('keeps the ones before one that moves to another chunk, and moves the last', async () => {
+    // the error component's chunk loads first: `second` still runs after
+    // `first` (core: "keeps an initialiser eager when a later one moves to
+    // another chunk")
     expect(
       await observe(
         `export const Route = createFileRoute('/')({

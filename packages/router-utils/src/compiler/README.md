@@ -36,7 +36,10 @@ emits its own output. Nothing depends on transform order.
   with symbol references (`SymRef`), glue specifiers and context-aware reference rewrites (shorthand properties
   expand, export names stay). A _generated unit_ can claim a region: the region renders inside its owner, wherever the
   owner is placed, and a placeholder renders at the original position. Edits nest, so a range moved into a chunk
-  carries the env edits inside it.
+  carries the env edits inside it; an edit addressed to every output on exactly a claimed region travels with the
+  region (a server-only handler that is itself an isomorphic call is rewritten inside the handler module), while
+  an edit scoped to one output on exactly the region replaces the placeholder there (the env module keeps a
+  nested server-fn chain in place with its stub).
 - **Generated code declares its reads** (`SymRef`s); nothing is re-parsed to find them. Names come from one
   allocator per file over every name in every scope (`names.ts`), so a name means the same thing in every output.
 
@@ -53,8 +56,16 @@ units that output contains. The same computation decides:
   because a planner removed or moved them). Code already unreferenced in the source keeps running;
 - **effects**: expression statements and impure, still-referenced declarations are effect roots of the env module,
   never duplicated or lost; an effectful cluster may move with its only needer under strict conditions (unexported,
-  no surviving later effect, …). When a split would break single-writer or evaluation-order rules, the core reports a
-  _fallback_ and `compileModule` re-runs the planners once more with that region kept in place (at most 3 rounds).
+  no surviving later effect, …; DECISIONS R29/R31/R64/R65/R67). The env roots, the moving set and the extracted
+  exports are one monotone fixed point: every round recomputes derived reach, env liveness and the moving set (R31
+  (d) is a greatest fixed point over it, R65: the earlier one-pass "last item" argument is superseded), roots the
+  effectful clusters that stay and that some output needs, then cancels extraction candidates the env module keeps.
+  Nothing is rooted after homes are assigned (a dev-only check enforces it). When a split would break single-writer
+  or evaluation-order rules, the core reports a _fallback_ (`ctx.fallbackAt(range)` on the next round) and
+  `compileModule` re-runs the planners once more with that region kept in place (at most 3 rounds);
+- **pre-existing dead code**: a pure declaration cluster nothing reads is kept (code dead before the transform is
+  never removed), including a dead pure cycle; the one exception is a dead pure cluster whose reads would pull a
+  chunk's dependency into the env module (an unused function rendering the split component): it is dropped.
 
 ### Emit and source maps (`emit.ts`, `output-builder.ts`)
 
@@ -183,6 +194,9 @@ nothing per compile.
   `globalThis[Symbol.for('tanstack.compiler.stats')]` when the package is not importable from the app. Use it on a
   report of dev-server memory growth: counts that grow with edits rather than with the module set point at the leaking
   cache. `TSR_COMPILER_STATS_BYTES=0` skips the byte estimates (structured-clone sizes, slow on large caches).
+  Test contract: the owner names `start:<bundler>` / `start:<bundler>:session` and their `plans` / `ip.envs` counts
+  are the only observable of the per-environment release in a production build
+  (`start-plugin-core/tests/integration/start-build-environment-release.test.ts`); rename them there too.
 
 ## Performance and bytes
 
