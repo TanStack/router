@@ -47,7 +47,12 @@ export interface OutputDecl {
   derivedId: string | null
   roots: Array<RootRef>
   header?: HeaderPolicy
-  /** Whether this output is side-effect free (host hint). Default false. */
+  /**
+   * Whether the output may be flagged side-effect free to the bundler
+   * (`moduleSideEffects: false`). The plan flags it only when no effectful
+   * cluster is placed in it: the flag is computed from the content, the
+   * declaration opts the output in. Default false.
+   */
   sideEffectFree?: boolean
 }
 
@@ -113,8 +118,6 @@ export interface Placement {
   clusters: Array<Cluster>
   clusterOfRegion: Map<RegionId, ClusterId>
   clusterOfGen: Map<GenUnitId, ClusterId>
-  clusterOfSym: Map<SymbolId, ClusterId>
-  needers: Map<ClusterId, Set<OutputId>>
   home: Map<ClusterId, Home>
   /** Clusters each output contains (homed or duplicated). */
   included: Map<OutputId, Set<ClusterId>>
@@ -122,15 +125,11 @@ export interface Placement {
   imports: Map<OutputId, Map<OutputId, Set<SymbolId>>>
   /** Symbols each output must export for other outputs. */
   exportsNeeded: Map<OutputId, Set<SymbolId>>
-  orphaned: Set<ClusterId>
-  movable: Set<ClusterId>
   fallbacks: Array<Fallback>
   /** Outputs created by placement (lazy shared modules). */
   created: Array<OutputDecl>
   /** Exported clusters homed in an extracted-export output (the env module re-exports them). */
   extracted: Array<ExtractedExport>
-  /** Live reads per (output, cluster) — syms read by the cluster's members in that output. */
-  readsIn: (output: OutputId, cluster: ClusterId) => Set<SymbolId>
 }
 
 class UnionFind {
@@ -253,51 +252,81 @@ export function computePlacement(input: PlacementInput): Placement {
   for (const claim of rewrites.claims.values()) {
     uf.union(memberOfRegion(claim.region), memberOfGen(claim.owner))
   }
-  // ---- 2. live writes and augmentations (env liveness) --------------------
-  const writerConstraints = new Map<number, Set<RegionId>>() // decl member root → writer sub-regions
-  /** Module-level symbols a sub-region writes (a cluster holding one is never an extracted export: the single-writer rule decides). */
-  const regionWrittenSyms = new Set<SymbolId>()
+  // ---- writes: every top-level write of a module binding, one table ------
+  /**
+   * A write of a module-level binding by top-level code: an assignment,
+   * update, delete or destructuring target (a `write` reference), or an
+   * augmentation unit (`X.p = …`, `X.push(…)`: `augment`, whose `sym` is the
+   * augmented binding). `live`: not inside a range the env module erases;
+   * `eager`: evaluated at module level, not inside a function (an
+   * augmentation always is); `owner`: the innermost region holding it (the
+   * unit's own region for an augmentation). The four rules that read
+   * writes derive from this table: clustering (a writer joins what it
+   * writes), ordered evaluation (eager readers of mutated bindings), the
+   * movable test's "nothing mutates it" and "it reads nothing mutated".
+   */
+  interface Write {
+    sym: SymbolId
+    at: number
+    eager: boolean
+    live: boolean
+    owner: RegionId | null
+    augment: boolean
+  }
+  const writes: Array<Write> = []
   for (const ref of refs.all) {
     if (
       ref.kind !== 'write' ||
-      !isLive(ref, 'env') ||
-      !symbols.isModuleLevel(ref.sym)
+      !symbols.isModuleLevel(ref.sym) ||
+      !declMember.has(ref.sym)
     ) {
       continue
     }
-    const d = declMember.get(ref.sym)
-    if (d === undefined) {
+    writes.push({
+      sym: ref.sym,
+      at: ref.range.start,
+      eager: ref.eager,
+      live: isLive(ref, 'env'),
+      owner: regions.innermostAt(ref.range.start, ref.range.end),
+      augment: false,
+    })
+  }
+  for (const u of units) {
+    if (u.augments.length === 0) {
       continue
     }
-    const owner = regions.innermostAt(ref.range.start, ref.range.end)
-    if (owner === null) {
+    const live = !envTree.isErasedAt(items[u.item]!.nodeRange.start)
+    for (const s of u.augments) {
+      writes.push({
+        sym: s,
+        at: u.range.start,
+        eager: true,
+        live,
+        owner: u.region,
+        augment: true,
+      })
+    }
+  }
+
+  // ---- 2. live writes and augmentations join the cluster they write -----
+  const writerConstraints = new Map<number, Set<RegionId>>() // decl member root → writer sub-regions
+  /** Module-level symbols a sub-region writes (a cluster holding one is never an extracted export: the single-writer rule decides). */
+  const regionWrittenSyms = new Set<SymbolId>()
+  for (const w of writes) {
+    const d = declMember.get(w.sym)
+    if (!w.live || d === undefined || w.owner === null) {
       continue
     }
-    const region = regions.get(owner)
-    if (region.kind === 'unit') {
-      uf.union(owner, d)
+    if (w.augment || regions.get(w.owner).kind === 'unit') {
+      uf.union(w.owner, d)
     } else {
-      regionWrittenSyms.add(ref.sym)
+      regionWrittenSyms.add(w.sym)
       let set = writerConstraints.get(d)
       if (!set) {
         set = new Set()
         writerConstraints.set(d, set)
       }
-      set.add(owner)
-    }
-  }
-  for (const u of units) {
-    if (
-      u.augments.length === 0 ||
-      envTree.isErasedAt(items[u.item]!.nodeRange.start)
-    ) {
-      continue
-    }
-    for (const s of u.augments) {
-      const d = declMember.get(s)
-      if (d !== undefined) {
-        uf.union(u.region, d)
-      }
+      set.add(w.owner)
     }
   }
 
@@ -422,43 +451,25 @@ export function computePlacement(input: PlacementInput): Placement {
   }
 
   // ---- 5. ordered evaluation: eager readers of mutated clusters join them (a reader cannot move after the writes that follow it) ----
+  // Every round that changes something merges two clusters, so the rounds
+  // end (the union-find only grows) once no eager reader is left outside the
+  // cluster it reads.
   const fallbacks: Array<Fallback> = []
   const orderedEffectRegions = new Set<RegionId>()
-  for (let round = 0; round < 8; round++) {
+  for (;;) {
     let changed = false
     // mutated roots: clusters with an eager live top-level write/augmentation,
     // and the position of their last mutation
     const mutated = new Set<number>()
     const lastMutation = new Map<number, number>()
-    const mutate = (root: number, at: number) => {
+    for (const w of writes) {
+      const d = declMember.get(w.sym)
+      if (!w.live || !w.eager || d === undefined) {
+        continue
+      }
+      const root = uf.find(d)
       mutated.add(root)
-      lastMutation.set(root, Math.max(lastMutation.get(root) ?? -1, at))
-    }
-    for (const ref of refs.all) {
-      if (
-        ref.kind === 'write' &&
-        ref.eager &&
-        isLive(ref, 'env') &&
-        symbols.isModuleLevel(ref.sym)
-      ) {
-        const d = declMember.get(ref.sym)
-        if (d !== undefined) {
-          mutate(uf.find(d), ref.range.start)
-        }
-      }
-    }
-    for (const u of units) {
-      if (
-        u.augments.length > 0 &&
-        !envTree.isErasedAt(items[u.item]!.nodeRange.start)
-      ) {
-        for (const s of u.augments) {
-          const d = declMember.get(s)
-          if (d !== undefined) {
-            mutate(uf.find(d), u.range.start)
-          }
-        }
-      }
+      lastMutation.set(root, Math.max(lastMutation.get(root) ?? -1, w.at))
     }
     if (mutated.size === 0) {
       break
@@ -623,22 +634,6 @@ export function computePlacement(input: PlacementInput): Placement {
     if (cl.kind === 'type') {
       cl.envPinned = true
     }
-    // an import the source never reads was dead before the transform: it
-    // stays in the env module as written (its module still evaluates there);
-    // only an import our edits orphaned leaves. A value import used only in
-    // type positions (TS erases it) stays in plain modules and leaves route
-    // modules
-    if (
-      cl.kind === 'import' &&
-      [...cl.declares].every(
-        (s) =>
-          refs.valueRefsOf(s).length === 0 &&
-          !generatedReads.has(s) &&
-          (!routeModule || symbols.binding(s)?.references.length === 0),
-      )
-    ) {
-      cl.envPinned = true
-    }
   }
   const clusterOfSym = new Map<SymbolId, ClusterId>()
   for (const [s, m] of declMember) {
@@ -768,10 +763,11 @@ export function computePlacement(input: PlacementInput): Placement {
   }
 
   // ---- extracted exports: candidates and their export companions -------
-  // A candidate is a pure, unwritten exported declaration cluster a planner
-  // allowed out; its companions are the export-specifier / `export default x`
-  // clusters that only read it. Neither is an env root for now: the decision
-  // (extract, or keep in the env module) is taken once env liveness is known.
+  // Planners allow every local value export out; a candidate is one whose
+  // cluster is a pure, unwritten declaration (the one filter). Its
+  // companions are the export-specifier / `export default x` clusters that
+  // only read it. Neither is an env root for now: the decision (extract, or
+  // keep in the env module) is taken once env liveness is known.
   const extractCandidates = new Map<
     ClusterId,
     { output: OutputId; syms: Set<SymbolId>; companions: Set<ClusterId> }
@@ -786,6 +782,8 @@ export function computePlacement(input: PlacementInput): Placement {
       cl.kind !== 'declaration' ||
       cl.effectful ||
       cl.gens.length > 0 ||
+      // a reassigned export stays: its writers would assign an import
+      refs.writesOf(sym).length > 0 ||
       // a binding a sub-region writes (Hydrate children, a split option
       // value) must meet the single-writer rule below: pinning its cluster
       // to an extracted output would let the writer assign an import
@@ -1049,77 +1047,45 @@ export function computePlacement(input: PlacementInput): Placement {
   const movable = new Set<ClusterId>()
   const orphaned = new Set<ClusterId>()
   const pure = (c: ClusterId) => !clusters[c]!.effectful
-  // Clusters mutated by top-level code: an augmentation unit, or a live write
-  // owned by a unit region of the cluster other than a declaration unit.
+  // Clusters mutated by their own top-level code: holding an augmentation
+  // unit (live or not), or a live write of one of their bindings by one of
+  // their units other than its declaring unit.
   const mutatedClusters = new Set<ClusterId>()
-  for (const cl of clusters) {
-    let hasMutator = cl.units.some((u) => units[u]!.augments.length > 0)
-    if (!hasMutator) {
-      for (const r of cl.regions) {
-        const region = regions.get(r)
-        if (region.kind !== 'unit' || region.unit === null) {
-          continue
-        }
-        const unit = units[region.unit]!
-        for (const ref of ownedRefs.get(r) ?? []) {
-          if (
-            ref.kind === 'write' &&
-            isLive(ref, 'env') &&
-            cl.declares.has(ref.sym) &&
-            !unit.declares.includes(ref.sym)
-          ) {
-            hasMutator = true
-            break
-          }
-        }
-        if (hasMutator) {
-          break
-        }
+  // Clusters mutated by surviving top-level code outside themselves: an
+  // eager live write or augmentation whose region belongs to another cluster
+  // (a claimed option value, a unit the clustering did not merge).
+  const externallyMutated = new Set<ClusterId>()
+  for (const w of writes) {
+    const region = w.owner === null ? null : regions.get(w.owner)
+    if (region !== null && region.kind === 'unit' && region.unit !== null) {
+      const oc = clusterOfRegion.get(region.id)!
+      if (w.augment) {
+        mutatedClusters.add(oc)
+      } else if (
+        w.live &&
+        clusters[oc]!.declares.has(w.sym) &&
+        !units[region.unit]!.declares.includes(w.sym)
+      ) {
+        mutatedClusters.add(oc)
       }
     }
-    if (hasMutator) {
-      mutatedClusters.add(cl.id)
-    }
-  }
-  // Clusters mutated by surviving top-level code outside themselves: a live
-  // write or augmentation whose region belongs to another cluster (a claimed
-  // option value, a unit the clustering did not merge).
-  const externallyMutated = new Set<ClusterId>()
-  for (const ref of refs.all) {
-    if (
-      ref.kind !== 'write' ||
-      !ref.eager ||
-      !isLive(ref, 'env') ||
-      !symbols.isModuleLevel(ref.sym)
-    ) {
+    if (!w.live || !w.eager) {
       continue
     }
-    const d = clusterOfSym.get(ref.sym)
+    const d = clusterOfSym.get(w.sym)
     if (d === undefined) {
       continue
     }
-    const owner = regions.innermostAt(ref.range.start, ref.range.end)
-    const claim = owner === null ? undefined : rewrites.claims.get(owner)
+    const claim =
+      w.owner === null || w.augment ? undefined : rewrites.claims.get(w.owner)
     const oc =
-      owner === null
+      w.owner === null
         ? undefined
         : claim
           ? clusterOfGen.get(claim.owner)
-          : clusterOfRegion.get(owner)
+          : clusterOfRegion.get(w.owner)
     if (oc !== d) {
       externallyMutated.add(d)
-    }
-  }
-  for (const u of units) {
-    if (u.augments.length === 0 || !unitSurvives(u.id)) {
-      continue
-    }
-    const uc = clusterOfRegion.get(u.region)
-    for (const s of u.augments) {
-      const d = clusterOfSym.get(s)
-      if (d !== undefined && d !== uc) {
-        externallyMutated.add(d)
-      }
     }
   }
   const survivingEffects = units.filter(
@@ -1138,46 +1104,24 @@ export function computePlacement(input: PlacementInput): Placement {
       needed.add(c)
     }
   }
-  const extractable = (c: ClusterId): boolean => {
-    if (liveEnv.has(c) || !needed.has(c)) {
-      return false
-    }
-    // an eager read of something the env module keeps would evaluate in a
-    // cycle (the env module re-exports the extracted module): stay
-    for (const r of clusters[c]!.regions) {
-      for (const ref of ownedRefs.get(r) ?? []) {
-        if (
-          !ref.eager ||
-          !READ_KINDS.has(ref.kind) ||
-          !symbols.isModuleLevel(ref.sym)
-        ) {
-          continue
-        }
-        const d = clusterOfSym.get(ref.sym)
-        if (d === undefined || d === c) {
-          continue
-        }
-        if (liveEnv.has(d) || clusters[d]!.envPinned) {
-          return false
-        }
-      }
-    }
-    return true
-  }
+  /** A candidate still leaves: a derived output needs it, the env module does not keep it and it reads nothing kept at its evaluation. */
+  const extractable = (c: ClusterId): boolean =>
+    !liveEnv.has(c) && needed.has(c) && !readsKeptEagerly(c)
 
   // ---- env roots and extraction: one fixed point -------------------------
   // The env module's roots and the extracted outputs are decided together,
   // over the final placement. Each round: derived reach with the candidates
   // still extracted (chunks import an extracted cluster from its output, so
   // their reach stops there, and that output reaches what its cluster
-  // reads), env liveness, the moving set (R29/R31). An effectful cluster
-  // that does not move is an env root, which makes what it reads live in
-  // the env module: a cluster read by it no longer moves, nor one that only
-  // could because that one moved with it (d). A candidate the env module
-  // now keeps, or that reads what it keeps eagerly, is cancelled: it and
-  // its export companions are env roots. Monotone (roots only grow,
-  // candidates only cancel): repeat until nothing changes, so every
-  // decision was taken over the final env roots.
+  // reads), env liveness, the moving set (`decideMovable`). An effectful
+  // cluster that does not move is an env root, which makes what it reads
+  // live in the env module: a cluster read by it no longer moves, nor one
+  // that only could because that one moved with it (no surviving effect
+  // after it stays behind). A candidate the env module now keeps, or that
+  // reads what it keeps eagerly, is cancelled: it and its export companions
+  // are env roots. Monotone (roots only grow, candidates only cancel):
+  // repeat until nothing changes, so every decision was taken over the
+  // final env roots.
   const remaining = new Map(extractCandidates)
   let liveEnv = new Set<ClusterId>()
   // derived reach changes only with the candidates still extracted, or when
@@ -1226,15 +1170,14 @@ export function computePlacement(input: PlacementInput): Placement {
       derivedStale ||= needed
       changed = true
     }
-    // static outputs: the env module re-exports an extracted export's module
-    // (`export { X } from …`), so that module and what it imports evaluate
-    // before the env module's body. A cluster such an output needs that
-    // reads, at its evaluation, a module binding the env module keeps would
-    // read it before its initialisation (a TDZ the user never wrote): it
-    // stays in the env module, an env root, and the extracted module imports
-    // it. (R29/R64/R67's "the chunk loads after the route module" holds for
-    // lazily imported outputs only; an effectful cluster moves to such an
-    // output only when no surviving effect precedes it: `earlierEffectStays`.)
+    // static outputs: a cluster an extracted export's module needs that
+    // reads, at its evaluation, a binding the env module keeps stays in the
+    // env module, an env root, and the extracted module imports it
+    // (`readsKeptEagerly`; a candidate itself is cancelled below, with its
+    // companions). The "chunk loads after the route module" argument of the
+    // movable test holds for lazily imported outputs only; an effectful
+    // cluster moves to a static output only when no other surviving effect
+    // remains at all (`effectStays`).
     for (const cl of clusters) {
       if (
         cl.kind !== 'declaration' ||
@@ -1243,7 +1186,7 @@ export function computePlacement(input: PlacementInput): Placement {
         envRoots.has(cl.id) ||
         remaining.has(cl.id) ||
         !neededByStaticOutput(cl.id) ||
-        !eagerlyReadsKept(cl.id)
+        !readsKeptEagerly(cl.id)
       ) {
         continue
       }
@@ -1297,8 +1240,16 @@ export function computePlacement(input: PlacementInput): Placement {
     }
     return false
   }
-  /** Whether `c` reads, at its evaluation, a non-copyable module binding the env module keeps. */
-  function eagerlyReadsKept(c: ClusterId): boolean {
+  /**
+   * Whether `c` reads, at its evaluation, a non-copyable module binding the
+   * env module keeps (live, rooted or pinned there). The env module
+   * re-exports an extracted export's module (`export { X } from …`), a
+   * static dependency that evaluates with its imports before the env
+   * module's body: such a read there would run before the binding's
+   * initialisation, a TDZ the user never wrote. A copyable cluster is
+   * duplicated into the reading output instead and is no such read.
+   */
+  function readsKeptEagerly(c: ClusterId): boolean {
     for (const r of clusters[c]!.regions) {
       for (const ref of ownedRefs.get(r) ?? []) {
         if (
@@ -1339,11 +1290,13 @@ export function computePlacement(input: PlacementInput): Placement {
     )
   }
   /**
-   * The effectful clusters that move with their only needer (R29/R31),
-   * computed from the current env liveness: (a)–(c) per cluster, then (d)
-   * as a greatest fixed point over the moving set: a cluster blocked by a
-   * later effect that does not move with it to the same output (where it
-   * evaluates after it, source order) stays, which can block others.
+   * The effectful clusters that move with their only needer (README,
+   * "effects"), computed from the current env liveness: `movableTo` per
+   * cluster (one needer, nothing mutates it, it reads nothing mutated or
+   * kept-and-impure), then the evaluation-order condition as a greatest
+   * fixed point over the moving set: a cluster blocked by a surviving
+   * effect that does not move with it to the same output (`effectStays`)
+   * stays, which can block others.
    */
   function decideMovable(): void {
     const target = new Map<ClusterId, OutputId>()
@@ -1356,11 +1309,7 @@ export function computePlacement(input: PlacementInput): Placement {
     for (let dropped = true; dropped; ) {
       dropped = false
       for (const [c, to] of target) {
-        if (
-          laterEffectStays(clusters[c]!, to, target) ||
-          (outputs.get(to)?.kind === 'export' &&
-            earlierEffectStays(clusters[c]!, to, target))
-        ) {
+        if (effectStays(clusters[c]!, to, target)) {
           target.delete(c)
           dropped = true
         }
@@ -1371,7 +1320,7 @@ export function computePlacement(input: PlacementInput): Placement {
       movable.add(c)
     }
   }
-  /** The only needer `cl` may move to by R29 (a)–(c), if any. */
+  /** The only needer `cl` may move to, if any: one derived output, and no ordered-evaluation constraint. */
   function movableTo(cl: Cluster): OutputId | undefined {
     // (a) exactly one derived needer
     const needs: Array<OutputId> = []
@@ -1421,9 +1370,9 @@ export function computePlacement(input: PlacementInput): Placement {
           return undefined
         }
         // (c) imports (read lazily: the chunk loads after the route module,
-        // whoever else reads them, R64), pure module clusters, or a const
-        // the env module keeps whose members nothing writes (R67: evaluated
-        // before the chunk loads, which imports that one instance)
+        // whoever else reads them), pure module clusters, or a const the
+        // env module keeps whose members nothing writes (evaluated before
+        // the chunk loads, which imports that one instance)
         if (
           clusters[d]!.kind !== 'import' &&
           !pure(d) &&
@@ -1440,42 +1389,22 @@ export function computePlacement(input: PlacementInput): Placement {
     return symbols.isConst(sym) && !refs.refsOf(sym).some((r) => r.memberWrite)
   }
   /**
-   * R31 (d): a surviving effectful unit after the first effect of `cl`
-   * (R65; benign ones excepted) that does not move to `to` with it
-   * (`target`: the clusters moving, by output).
+   * Whether a surviving effectful unit (benign ones excepted) that does not
+   * move to `to` with `cl` (`target`: the clusters moving, by output) would
+   * change order with `cl`'s first effect. A lazily imported output (a
+   * chunk) evaluates after the env module's body: an effect after `cl`'s
+   * in the source would then run before it. A static output (an extracted
+   * export's module, re-exported by the env module) evaluates before the
+   * env module's body: every other surviving effect is on the wrong side.
    */
-  function laterEffectStays(
+  function effectStays(
     cl: Cluster,
     to: OutputId,
     target: ReadonlyMap<ClusterId, OutputId>,
   ): boolean {
+    const staticOutput = outputs.get(to)?.kind === 'export'
     for (const u of survivingEffects) {
-      if (u.range.start <= cl.firstEffect) {
-        continue
-      }
-      const uc = clusterOfRegion.get(u.region)
-      if (uc === cl.id || (uc !== undefined && target.get(uc) === to)) {
-        continue
-      }
-      return true
-    }
-    return false
-  }
-
-  /**
-   * The static-output counterpart of (d): an extracted export's module
-   * evaluates before the env module's body, so an effect moved there runs
-   * before every surviving effect of the env module. A surviving effectful
-   * unit before the first effect of `cl` that does not move to `to` with it
-   * keeps it in the env module.
-   */
-  function earlierEffectStays(
-    cl: Cluster,
-    to: OutputId,
-    target: ReadonlyMap<ClusterId, OutputId>,
-  ): boolean {
-    for (const u of survivingEffects) {
-      if (u.range.start >= cl.firstEffect) {
+      if (!staticOutput && u.range.start <= cl.firstEffect) {
         continue
       }
       const uc = clusterOfRegion.get(u.region)
@@ -1494,6 +1423,69 @@ export function computePlacement(input: PlacementInput): Placement {
     if (!liveEnv.has(cl.id) && fromErased.has(cl.id) && !cl.envPinned) {
       orphaned.add(cl.id)
     }
+  }
+  /**
+   * Whether an import specifier no output needs stays in the env module.
+   * Imports follow provenance like declarations: an import the source never
+   * read was dead before the transform and stays as written (its module
+   * still evaluates there); one our edits orphaned leaves with its readers,
+   * and so does one read only by a dead pure cluster we dropped (it would
+   * pull a chunk's dependency into the route module). A value import a
+   * route module uses only in type positions leaves (TypeScript erases it;
+   * the module is not loaded for types); plain modules keep it as written.
+   * The TypeScript-only forms (an inline `type` specifier, an `export { X }`
+   * of a type-only binding) follow the value specifiers of their statement
+   * and are decided after inclusion, below.
+   */
+  function importStays(cl: Cluster): boolean {
+    const unit = units[cl.units[0]!]!
+    if (unit.kind === 'type') {
+      if (routeModule) {
+        // the statement leaves with its value specifiers (an inline `type`
+        // specifier alone keeps loading the module under
+        // verbatimModuleSyntax); a type-only `export { X }` names nothing at
+        // run time
+        return false
+      }
+      if (unit.importIndex !== null) {
+        return items[unit.item]!.units.some((sibling) => {
+          const su = units[sibling]!
+          const c = clusterOfRegion.get(su.region)
+          return (
+            su.kind !== 'type' && c !== undefined && included.get('env')!.has(c)
+          )
+        })
+      }
+      // `export { X }` of a type-only binding: leaves with the inline type
+      // import specifiers declaring `X` when they left
+      const ref = refs
+        .refsIn(unit.range)
+        .find((r) => r.kind === 'exportSpecifier')
+      const decls =
+        ref === undefined ? [] : (t1.declaringUnits.get(ref.sym) ?? [])
+      return (
+        decls.length === 0 ||
+        decls.some((d) => {
+          const du = units[d]!
+          const c = clusterOfRegion.get(du.region)
+          return (
+            du.kind !== 'type' ||
+            du.importIndex === null ||
+            (c !== undefined && included.get('env')!.has(c))
+          )
+        })
+      )
+    }
+    if (orphaned.has(cl.id)) {
+      return false
+    }
+    if (!routeModule) {
+      return true
+    }
+    return [...cl.declares].every(
+      (s) =>
+        !generatedReads.has(s) && symbols.binding(s)?.references.length === 0,
+    )
   }
 
   // ---- needers and homes -----------------------------------------------------
@@ -1538,14 +1530,13 @@ export function computePlacement(input: PlacementInput): Placement {
     }
     const derived = [...S].filter((o) => o !== 'env')
     if (derived.length === 0) {
-      // nobody needs it: a gen unit disappears; an import of a route module
-      // whose readers our edits removed is dropped; a pure unexported
-      // declaration that was not rooted (dead code that would pull a chunk's
-      // dependency) is dropped; other source stays in the env module
-      // (harmless) unless orphaned
+      // nobody needs it: a gen unit disappears; an import stays or leaves
+      // by `importStays`; a pure unexported declaration that was not
+      // rooted (dead code that would pull a chunk's dependency) is dropped;
+      // other source stays in the env module (harmless)
       const dead =
         cl.kind === 'gen' ||
-        (cl.kind === 'import' && routeModule) ||
+        (cl.kind === 'import' && !importStays(cl)) ||
         (cl.kind === 'declaration' && !cl.effectful && !cl.exported)
       home.set(cl.id, dead ? 'removed' : 'env')
       continue
@@ -1726,8 +1717,9 @@ export function computePlacement(input: PlacementInput): Placement {
       }
     }
   }
-  // duplicated clusters follow their readers into every output that includes a reader
-  for (let round = 0; round < 4; round++) {
+  // duplicated clusters follow their readers into every output that includes
+  // a reader (each round adds a copy somewhere, so the rounds end)
+  for (;;) {
     let changed = false
     for (const o of allOutputs) {
       const inc = included.get(o)!
@@ -1744,6 +1736,61 @@ export function computePlacement(input: PlacementInput): Placement {
     }
     if (!changed) {
       break
+    }
+  }
+  // ---- TypeScript-only specifiers: they follow their statement's value specifiers ----
+  for (const cl of clusters) {
+    if (cl.kind !== 'type' || cl.units.length !== 1 || cl.gens.length > 0) {
+      continue
+    }
+    const unit = units[cl.units[0]!]!
+    const inlineImportSpecifier =
+      unit.importIndex !== null &&
+      (items[unit.item]!.node as { importKind?: string }).importKind !== 'type'
+    const typeOnlyExportSpecifier =
+      unit.node.type === 'ExportSpecifier' && unit.node.exportKind !== 'type'
+    if (
+      (inlineImportSpecifier || typeOnlyExportSpecifier) &&
+      !importStays(cl)
+    ) {
+      home.set(cl.id, 'removed')
+      included.get('env')!.delete(cl.id)
+    }
+  }
+  if (process.env.NODE_ENV !== 'production') {
+    // a static output (an extracted export's module) never reads, at its
+    // evaluation, a non-copyable binding the env module keeps: the fixed
+    // point above roots such readers in the env module (`readsKeptEagerly`)
+    for (const [o, decl] of outputs) {
+      if (decl.kind !== 'export') {
+        continue
+      }
+      for (const c of included.get(o)!) {
+        for (const r of clusters[c]!.regions) {
+          for (const ref of ownedRefs.get(r) ?? []) {
+            if (
+              !ref.eager ||
+              !READ_KINDS.has(ref.kind) ||
+              !symbols.isModuleLevel(ref.sym) ||
+              !isLive(ref, o)
+            ) {
+              continue
+            }
+            const d = clusterOfSym.get(ref.sym)
+            if (
+              d !== undefined &&
+              d !== c &&
+              !clusters[d]!.copyable &&
+              clusters[d]!.kind !== 'import' &&
+              home.get(d) === 'env'
+            ) {
+              throw new Error(
+                `placement: cluster ${c} in static output ${o} reads cluster ${d} of the env module at its evaluation`,
+              )
+            }
+          }
+        }
+      }
     }
   }
   const imports = new Map<OutputId, Map<OutputId, Set<SymbolId>>>()
@@ -1815,17 +1862,12 @@ export function computePlacement(input: PlacementInput): Placement {
     clusters,
     clusterOfRegion,
     clusterOfGen,
-    clusterOfSym,
-    needers,
     home,
     included,
     imports,
     exportsNeeded,
-    orphaned,
-    movable,
     fallbacks,
     created,
     extracted,
-    readsIn: (o, c) => clusterReads(c, o, true).syms,
   }
 }

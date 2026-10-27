@@ -508,13 +508,13 @@ function plan(ctx: PlanContext): void {
 
 /**
  * Extracted-export outputs for Hydrate chunks, as for split routes (J5.4 "an
- * export only the children use loads lazily"): every exported pure, unwritten
- * declaration may leave for an extracted-export output
- * (`?tsr-split=export~<name>`, side-effect free), which the parent re-exports;
- * the core moves it there only when the parent itself does not read it and a
- * chunk needs it, so a component a boundary renders and nothing else imports is
- * not in the eager code. The same outputs the route splitter declares for a
- * route module (one output per name: `declareOutput` is idempotent).
+ * export only the children use loads lazily"): every exported binding may
+ * leave for an extracted-export output (`?tsr-split=export~<name>`, side-effect
+ * free), which the parent re-exports; the core moves a pure, unwritten
+ * declaration there only when the parent itself does not read it and a chunk
+ * needs it, so a component a boundary renders and nothing else imports is not
+ * in the eager code. The same outputs the route splitter declares for a route
+ * module (one output per name: `declareOutput` is idempotent).
  */
 function extractExports(ctx: PlanContext): void {
   const symbols = ctx.symbols
@@ -523,15 +523,6 @@ function extractExports(ctx: PlanContext): void {
       continue
     }
     const sym = e.local
-    const declaring = ctx.t1.declaringUnits.get(sym) ?? []
-    if (
-      declaring.length === 0 ||
-      declaring.some((u) => ctx.t1.units[u]!.kind !== 'declaration') ||
-      declaring.some((u) => ctx.t1.units[u]!.effectful) ||
-      ctx.t1.refs.writesOf(sym).length > 0
-    ) {
-      continue
-    }
     const name = symbols.name(sym)
     const output = ctx.declareOutput({
       kind: 'export',

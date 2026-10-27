@@ -223,7 +223,7 @@ export class RegionTable {
 }
 
 /** Method names that mutate their receiver (arrays, maps, sets). */
-export const MUTATORS = new Set([
+const MUTATORS = new Set([
   'push',
   'unshift',
   'splice',
@@ -240,7 +240,7 @@ export const MUTATORS = new Set([
 ])
 
 /** `Object.assign`, `Object.defineProperty`, … (they mutate their first argument). */
-export function isObjectMutator(callee: Node): boolean {
+function isObjectMutator(callee: Node): boolean {
   const c = unwrapExpression(callee)
   if (c.type !== 'MemberExpression' || c.computed) {
     return false
@@ -261,8 +261,9 @@ export function isObjectMutator(callee: Node): boolean {
  * update or `delete` operand, a for-in/of target, the elements of a
  * destructuring pattern, the receiver of a mutating method (`push`, `set`,
  * …) or the first argument of `Object.assign`-style calls. The one table
- * behind the member-write classification of references (R67) and the
- * top-level augmentation units (`X.p = …` clusters with `X`).
+ * behind the member-write classification of references (a `const` whose
+ * members nothing writes may be read by code that moves) and the top-level
+ * augmentation units (`X.p = …` clusters with `X`).
  */
 export function writeTargets(node: Node): ReadonlyArray<Node> {
   switch (node.type) {

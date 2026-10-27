@@ -129,7 +129,13 @@ export interface TreeModel {
 }
 
 export type GetRoutesByFileMapResultValue = { routeId: string }
-export type GetRoutesByFileMapResult = Map<
+/**
+ * The route files of the tree (scanned and real paths) and their route ids:
+ * a snapshot. The generator replaces it (a new object) only when a
+ * generation changed the tree's routes; the same object again is the same
+ * registry, which is how the plugins dedupe publications. Never mutated.
+ */
+export type GetRoutesByFileMapResult = ReadonlyMap<
   string,
   GetRoutesByFileMapResultValue
 >

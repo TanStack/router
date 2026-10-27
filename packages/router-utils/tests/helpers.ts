@@ -154,15 +154,6 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
             continue
           }
           const sym = e.local
-          const declaring = ctx.t1.declaringUnits.get(sym) ?? []
-          if (
-            declaring.length === 0 ||
-            declaring.some((u) => ctx.t1.units[u]!.kind !== 'declaration') ||
-            declaring.some((u) => ctx.t1.units[u]!.effectful) ||
-            ctx.t1.refs.writesOf(sym).length > 0
-          ) {
-            continue
-          }
           const name = ctx.symbols.name(sym)
           const out = ctx.declareOutput({
             kind: 'export',
