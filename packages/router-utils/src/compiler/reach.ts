@@ -623,11 +623,18 @@ export function computePlacement(input: PlacementInput): Placement {
     if (cl.kind === 'type') {
       cl.envPinned = true
     }
+    // an import the source never reads was dead before the transform: it
+    // stays in the env module as written (its module still evaluates there);
+    // only an import our edits orphaned leaves. A value import used only in
+    // type positions (TS erases it) stays in plain modules and leaves route
+    // modules
     if (
       cl.kind === 'import' &&
-      !routeModule &&
       [...cl.declares].every(
-        (s) => refs.valueRefsOf(s).length === 0 && !generatedReads.has(s),
+        (s) =>
+          refs.valueRefsOf(s).length === 0 &&
+          !generatedReads.has(s) &&
+          (!routeModule || symbols.binding(s)?.references.length === 0),
       )
     ) {
       cl.envPinned = true
@@ -1531,10 +1538,11 @@ export function computePlacement(input: PlacementInput): Placement {
     }
     const derived = [...S].filter((o) => o !== 'env')
     if (derived.length === 0) {
-      // nobody needs it: a gen unit disappears; an unread import of a route
-      // module is dropped (J2.5); a pure unexported declaration that was not
-      // rooted (dead code that would pull a chunk's dependency) is dropped;
-      // other source stays in the env module (harmless) unless orphaned
+      // nobody needs it: a gen unit disappears; an import of a route module
+      // whose readers our edits removed is dropped; a pure unexported
+      // declaration that was not rooted (dead code that would pull a chunk's
+      // dependency) is dropped; other source stays in the env module
+      // (harmless) unless orphaned
       const dead =
         cl.kind === 'gen' ||
         (cl.kind === 'import' && routeModule) ||

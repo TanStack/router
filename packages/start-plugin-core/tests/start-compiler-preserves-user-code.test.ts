@@ -79,6 +79,14 @@ const effectFiles = {
   'registry.ts': recorder('register', "'registered'"),
   'analytics.ts': recorder('registerAnalytics', '{}'),
   'store.ts': recorder('createStore', '{}'),
+  // modules recording that they ran
+  'side.ts': `;((globalThis as any).${effectsKey} ??= []).push('side')
+export const unused = 'unused'
+`,
+  'side-too.ts': `;((globalThis as any).${effectsKey} ??= []).push('side-too')
+export const label = 'label'
+export const unusedToo = 'unused'
+`,
   'recorder.ts': `const original = { setInterval: globalThis.setInterval, clearInterval: globalThis.clearInterval }
 ;(globalThis as any).${effectsKey} = []
 ;(globalThis as any).setInterval = (...args: Array<unknown>) => {
@@ -208,6 +216,17 @@ export function Page() {
 export const fn = createServerFn().handler(async () => 1)`,
     run: 'm.Page()',
     calls: ['register:nested-effect'],
+  },
+  {
+    // An import nothing reads was dead before the compiler ran: its module
+    // still runs, as it does when the statement keeps a specifier only the
+    // erased handler read.
+    name: 'the modules of an import nothing reads and of an import statement whose other specifier only the handler reads',
+    code: `import { createServerFn } from '@tanstack/react-start'
+import { unused } from './side'
+import { label, unusedToo } from './side-too'
+export const fn = createServerFn().handler(async () => label)`,
+    calls: ['side', 'side-too'],
   },
 ])('keeps $name', async ({ code, run, calls }) => {
   const startCase = await effectCase(await host(), code)
