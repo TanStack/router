@@ -1082,6 +1082,96 @@ describe('ordered evaluation and movable effects', () => {
     expect(r.chunks.errorComponent).toContain("const b = other('b')")
   })
 
+  it('moves an initialiser whose import the route module also reads (R64)', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { make } from './make'
+      const kept = make('kept')
+      const page = make('page')
+      export const Route = createFileRoute('/')({
+        loader: () => kept,
+        component: () => kept + page,
+      })
+    `)
+    const r = await split(code)
+    expect(r.env).toContain("const kept = make('kept')")
+    expect(r.env).not.toContain("make('page')")
+    expect(r.chunks.component).toContain("import { make } from './make'")
+    expect(r.chunks.component).toContain("const page = make('page')")
+  })
+
+  it('keeps an initialiser reading an effectful binding eager, with that binding', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { make } from './make'
+      const store = make('store')
+      const view = store.read()
+      export const Route = createFileRoute('/')({
+        component: () => view,
+      })
+    `)
+    const r = await split(code)
+    expect(r.env).toContain(
+      "const store = make('store')\nconst view = store.read()",
+    )
+    expect(r.chunks.component).toContain("import { view } from './route.tsx'")
+    expect(r.chunks.component).not.toContain('make(')
+  })
+
+  it('keeps a cluster eager when an effect follows its first effectful item (R65)', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { first, second } from './make'
+      import { log } from './log'
+      function Page() { return Page.a + Page.b }
+      Page.a = first()
+      log()
+      Page.b = second()
+      export const Route = createFileRoute('/')({
+        component: Page,
+      })
+    `)
+    const r = await split(code)
+    expect(r.env).toContain('Page.a = first()\nlog()\nPage.b = second()')
+    expect(r.chunks.component).toContain("import { Page } from './route.tsx'")
+    expect(r.chunks.component).not.toContain('first()')
+  })
+
+  it('moves a cluster when the effect before its first effectful item stays', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { first, second } from './make'
+      import { log } from './log'
+      function Page() { return Page.a + Page.b }
+      log()
+      Page.a = first()
+      Page.b = second()
+      export const Route = createFileRoute('/')({
+        component: Page,
+      })
+    `)
+    const r = await split(code)
+    expect(r.env).toContain('log()')
+    expect(r.env).not.toContain('first()')
+    expect(r.chunks.component).toContain('Page.a = first()\nPage.b = second()')
+  })
+
+  it('keeps an initialiser eager when a later declarator of its statement stays', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { make } from './make'
+      import { log } from './log'
+      const page = make('page'), logged = log('logged')
+      export const Route = createFileRoute('/')({
+        component: () => page,
+      })
+    `)
+    const r = await split(code)
+    expect(r.env).toContain("make('page')")
+    expect(r.env).toContain("log('logged')")
+    expect(r.chunks.component).toContain("import { page } from './route.tsx'")
+  })
+
   it('a /* @__PURE__ */ initialiser simply moves', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'

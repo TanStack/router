@@ -63,8 +63,8 @@ export interface Cluster {
   exported: boolean
   /** Source position for ordering (min start of members). */
   start: number
-  /** Index of the last item of the cluster (an effectful cluster followed by a surviving effect stays eager); -1 for generated-only clusters. */
-  lastItem: number
+  /** Source position of the cluster's first effectful unit (an effectful cluster with a surviving effect after it stays eager); Infinity when none (generated units are compiler code). */
+  firstEffect: number
   kind:
     | 'import'
     | 'import-effect'
@@ -526,7 +526,7 @@ export function computePlacement(input: PlacementInput): Placement {
         effectful: false,
         exported: false,
         start: Infinity,
-        lastItem: -1,
+        firstEffect: Infinity,
         kind: 'region',
         copyable: false,
         envPinned: false,
@@ -548,10 +548,11 @@ export function computePlacement(input: PlacementInput): Placement {
       for (const s of u.declares) {
         cl.declares.add(s)
       }
-      cl.effectful ||=
-        u.effectful && !envTree.isErasedAt(items[u.item]!.nodeRange.start)
+      if (u.effectful && !envTree.isErasedAt(items[u.item]!.nodeRange.start)) {
+        cl.effectful = true
+        cl.firstEffect = Math.min(cl.firstEffect, u.range.start)
+      }
       cl.exported ||= u.exported.length > 0
-      cl.lastItem = Math.max(cl.lastItem, u.item)
     }
   }
   for (const g of gens) {
@@ -1120,8 +1121,19 @@ export function computePlacement(input: PlacementInput): Placement {
       }
     }
   }
+  const survivingEffects = units.filter(
+    (u) =>
+      u.effectful &&
+      !benignEffects.has(u.id) &&
+      unitSurvives(u.id) &&
+      u.kind !== 'type',
+  )
+  // An effectful cluster that does not move is an env root, which makes
+  // what it reads live in the env module: a cluster read by it no longer
+  // moves, nor one that only could because that one moved with it (d).
+  // Monotone (roots only grow): repeat until no root is added.
   let liveEnv = new Set<ClusterId>()
-  for (let round = 0; round < 10; round++) {
+  for (;;) {
     liveEnv = reach('env', envRoots)
     decideMovable()
     let added = false
@@ -1152,24 +1164,30 @@ export function computePlacement(input: PlacementInput): Placement {
   /**
    * The effectful clusters that move with their only needer (R29/R31),
    * computed from the current env liveness: (a)–(c) per cluster, then (d)
-   * over the final placement, decided last item first. A cluster's (d)
-   * only looks at units after its last item, whose clusters end after it
-   * and are decided already: a later effect moving to the same output
-   * evaluates after it there (source order); one staying in the env module,
-   * or moving to another output, blocks it.
+   * as a greatest fixed point over the moving set: a cluster blocked by a
+   * later effect that does not move with it to the same output (where it
+   * evaluates after it, source order) stays, which can block others.
    */
   function decideMovable(): void {
-    movable.clear()
     const target = new Map<ClusterId, OutputId>()
-    const candidates = clusters
-      .filter(undecided)
-      .sort((x, y) => y.lastItem - x.lastItem)
-    for (const cl of candidates) {
-      const to = movableTo(cl)
-      if (to !== undefined && !laterEffectStays(cl, to, target)) {
+    for (const cl of clusters) {
+      const to = undecided(cl) ? movableTo(cl) : undefined
+      if (to !== undefined) {
         target.set(cl.id, to)
-        movable.add(cl.id)
       }
+    }
+    for (let dropped = true; dropped; ) {
+      dropped = false
+      for (const [c, to] of target) {
+        if (laterEffectStays(clusters[c]!, to, target)) {
+          target.delete(c)
+          dropped = true
+        }
+      }
+    }
+    movable.clear()
+    for (const c of target.keys()) {
+      movable.add(c)
     }
   }
   /** The only needer `cl` may move to by R29 (a)–(c), if any. */
@@ -1221,18 +1239,9 @@ export function computePlacement(input: PlacementInput): Placement {
         if (mutatedClusters.has(d)) {
           return undefined
         }
-        const dc = clusters[d]!
-        // (c) imports used by no other output, or pure module clusters
-        if (dc.kind === 'import') {
-          for (const [id, set] of derivedReach) {
-            if (id !== needs[0] && set.has(d)) {
-              return undefined
-            }
-          }
-          if (liveEnv.has(d)) {
-            return undefined
-          }
-        } else if (!pure(d)) {
+        // (c) imports (read lazily: the chunk loads after the route module,
+        // whoever else reads them, R64) or pure module clusters
+        if (clusters[d]!.kind !== 'import' && !pure(d)) {
           return undefined
         }
       }
@@ -1240,23 +1249,17 @@ export function computePlacement(input: PlacementInput): Placement {
     return needs[0]
   }
   /**
-   * R31 (d): a surviving effectful unit after `cl` (benign ones excepted)
-   * that does not move to `to` with it (`target`: the later clusters
-   * moving, by output).
+   * R31 (d): a surviving effectful unit after the first effect of `cl`
+   * (R65; benign ones excepted) that does not move to `to` with it
+   * (`target`: the clusters moving, by output).
    */
   function laterEffectStays(
     cl: Cluster,
     to: OutputId,
     target: ReadonlyMap<ClusterId, OutputId>,
   ): boolean {
-    for (const u of units) {
-      if (
-        u.item <= cl.lastItem ||
-        !u.effectful ||
-        benignEffects.has(u.id) ||
-        !unitSurvives(u.id) ||
-        u.kind === 'type'
-      ) {
+    for (const u of survivingEffects) {
+      if (u.range.start <= cl.firstEffect) {
         continue
       }
       const uc = clusterOfRegion.get(u.region)
