@@ -215,7 +215,16 @@ export class RawFactsCache {
     const holder: { p: Promise<RawFacts> | null } = { p: null }
     holder.p = (async () => {
       const text = await this.read(canonicalId)
-      const facts = this.build(canonicalId, text, new Set())
+      const built = this.build(canonicalId, text, new Set())
+      // A file that stops parsing (saved mid-edit) keeps the last facts it
+      // parsed to: its importers' decisions stand until it parses again (a
+      // changed digest would evict their plans and hot-update modules that
+      // cannot accept, e.g. a route tree, into a full reload). A file that
+      // never parsed is unknown.
+      const facts =
+        text !== null && built.summary === null && entry.facts?.summary
+          ? entry.facts
+          : built
       // a newer read may have superseded this one
       if (entry.pending === holder.p) {
         entry.facts = facts

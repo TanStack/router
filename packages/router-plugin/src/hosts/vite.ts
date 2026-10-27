@@ -14,6 +14,7 @@ import path from 'node:path'
 import {
   OWNED_QUERY_RE,
   SourceText,
+  deriveId,
   identify,
   isFinalBuild,
   releaseEnvironment,
@@ -27,7 +28,11 @@ import {
 import { JS_ID_RE, RouterCompiler, normalizePath } from './session'
 import type { RouterPluginContext } from '../core/router-plugin-context'
 import type { Config } from '../core/config'
-import type { Diagnostic, PlanKey } from '@tanstack/router-utils/compiler'
+import type {
+  CompilerCaches,
+  Diagnostic,
+  PlanKey,
+} from '@tanstack/router-utils/compiler'
 import type { Plugin, Rollup, ViteDevServer } from 'vite'
 
 export const CODE_SPLITTER_PLUGIN_NAME =
@@ -441,6 +446,11 @@ export function createRouterCompilerVitePlugin(
       },
     },
 
+    hotUpdate({ file, modules }) {
+      // the update is of the modules the file's current plan produces
+      return liveModules(this.environment, compiler.caches, file, modules)
+    },
+
     async watchChange(id, { event }) {
       const kind =
         event === 'update' ? 'change' : event === 'create' ? 'add' : 'unlink'
@@ -448,4 +458,73 @@ export function createRouterCompilerVitePlugin(
     },
   }
   return plugin
+}
+
+/**
+ * The modules of a file's hot update that the file's current plan still
+ * produces: the file's own modules, and its derived modules
+ * (`?tsr-split=…`) whose output the plan declares. A derived module of a
+ * layout the file no longer has (an extracted export once the export went,
+ * a split chunk once the file stopped splitting) stays in Vite's module
+ * graph, imported by the chunk or route module until those re-import: nothing
+ * on the page holds its next evaluation, and an update of it either
+ * dead-ends into a full reload or, as a React Refresh boundary, invalidates
+ * itself ("export removed") against the route update. The file's own module
+ * is transformed first, so its plan is current (Vite invalidated it before
+ * the hooks ran); without a plan (the file does not parse, or is not the
+ * compiler's), a derived module without importers is stale.
+ * `undefined` when every module is live.
+ */
+export async function liveModules<
+  T extends {
+    id: string | null
+    url: string
+    importers: ReadonlySet<unknown>
+  },
+>(
+  environment: {
+    name: string
+    transformRequest: (url: string) => Promise<unknown>
+  },
+  caches: CompilerCaches,
+  file: string,
+  modules: Array<T>,
+): Promise<Array<T> | undefined> {
+  const identities = modules.map((m) => (m.id === null ? null : identify(m.id)))
+  if (!identities.some((i) => i !== null && i.derived !== null)) {
+    return undefined
+  }
+  for (const [i, identity] of identities.entries()) {
+    if (identity !== null && identity.derived === null) {
+      await environment.transformRequest(modules[i]!.url).catch(() => null)
+    }
+  }
+  let produced: Set<string> | null = null
+  for (const cache of caches.plans.values()) {
+    if (cache.env !== environment.name) {
+      continue
+    }
+    for (const key of cache.keysAt(file)) {
+      const entry = cache.get(key)
+      if (entry) {
+        produced ??= new Set()
+        for (const output of Object.keys(entry.plan.outputs)) {
+          produced.add(output)
+        }
+      }
+    }
+  }
+  const live = modules.filter((m, i) => {
+    const identity = identities[i] ?? null
+    if (identity === null || identity.derived === null) {
+      return true
+    }
+    if (produced !== null) {
+      return produced.has(
+        `derived:${deriveId(identity.canonicalId, identity.derived)}`,
+      )
+    }
+    return m.importers.size > 0
+  })
+  return live.length === modules.length ? undefined : live
 }

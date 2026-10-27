@@ -33,6 +33,7 @@ import {
   resolveDerivedSibling,
 } from '@tanstack/router-utils/compiler'
 import { defaultCodeSplitGroupings } from '@tanstack/router-plugin'
+import { liveModules } from '@tanstack/router-plugin/vite'
 import {
   changedRoutePaths,
   onRoutesChanged,
@@ -552,7 +553,7 @@ export function startCompilerPlugin(
     change: InvalidateChange,
     res: Awaited<ReturnType<typeof invalidate>>,
     timestamp: number,
-  ): Array<EnvironmentModuleNode> => {
+  ): Array<{ node: EnvironmentModuleNode }> => {
     const paths = new Set<string>()
     for (const k of [...res.evicted, ...res.dependents]) {
       if (k.env !== environment.name) {
@@ -586,14 +587,51 @@ export function startCompilerPlugin(
     }
     const graph = (environment as DevEnvironment).moduleGraph
     const seen = new Set<EnvironmentModuleNode>()
-    const nodes: Array<EnvironmentModuleNode> = []
+    const nodes: Array<{ node: EnvironmentModuleNode }> = []
     for (const p of paths) {
       for (const m of graph.getModulesByFile(p) ?? []) {
         graph.invalidateModule(m, seen, timestamp, true, false)
-        nodes.push(m)
+        nodes.push({ node: m })
       }
     }
     return nodes
+  }
+
+  /** Digest of the compiler's last output per environment and module id (the transform hook records it). Bounded by the modules compiled. */
+  const outputDigests = new Map<string, string>()
+
+  /**
+   * The dependents whose output the change altered: a dependent re-plans
+   * (its plan was evicted), and the one the compiler emits again as the
+   * page holds it is no update (D8: hard-invalidate where decisions
+   * changed). Propagating it would only send the page a module it cannot
+   * hot-apply (a route tree, accepted by nothing) and so a full reload,
+   * e.g. after a route file gained an export. The comparison is of the
+   * compiler's output, not Vite's (import analysis stamps `?t=` on the
+   * imports of changed modules).
+   */
+  const changedDependents = async (
+    environment: DevEnvironment,
+    dependents: Array<{ node: EnvironmentModuleNode }>,
+  ): Promise<Array<EnvironmentModuleNode>> => {
+    const changed: Array<EnvironmentModuleNode> = []
+    for (const { node } of dependents) {
+      if (node.id !== null) {
+        // Vite's own propagation of the file change may have cleared the
+        // node's transform result already; the compiler's last output is
+        // what the page holds
+        const key = `${environment.name}\0${node.id}`
+        const previous = outputDigests.get(key)
+        if (previous !== undefined) {
+          await environment.transformRequest(node.url).catch(() => null)
+          if (outputDigests.get(key) === previous) {
+            continue
+          }
+        }
+      }
+      changed.push(node)
+    }
+    return changed
   }
 
   /** Registry changes (the generator published a new `routesByFile`): route modules whose entry changed re-plan (`kind: 'registry'`). */
@@ -1009,6 +1047,7 @@ export function startCompilerPlugin(
             registry.record(identity.canonicalId, facts.serverFns, env.type)
           }
           afterCompile(s, env, id, out, (error) => this.error(error))
+          outputDigests.set(`${environment.name}\0${id}`, digestOf(out.code))
           if (identity.derived === null && out.code === code) {
             return null
           }
@@ -1047,7 +1086,21 @@ export function startCompilerPlugin(
           res,
           ctx.timestamp,
         )
-        return extra.length > 0 ? [...ctx.modules, ...extra] : undefined
+        const changed = await changedDependents(
+          this.environment as DevEnvironment,
+          extra,
+        )
+        // see router-plugin's Vite host: the file's modules its current plan produces
+        const live =
+          (await liveModules(
+            this.environment as DevEnvironment,
+            s.caches,
+            ctx.file,
+            ctx.modules,
+          )) ?? ctx.modules
+        return changed.length > 0 || live !== ctx.modules
+          ? [...live, ...changed]
+          : undefined
       },
       async watchChange(id, change) {
         const s = requireSession()
