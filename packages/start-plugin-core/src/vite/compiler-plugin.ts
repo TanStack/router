@@ -1090,8 +1090,14 @@ export function startCompilerPlugin(
           this.environment as DevEnvironment,
           extra,
         )
-        // see router-plugin's Vite host: stale derived modules never hot-update
-        const live = liveModules(ctx.modules) ?? ctx.modules
+        // see router-plugin's Vite host: the file's modules its current plan produces
+        const live =
+          (await liveModules(
+            this.environment as DevEnvironment,
+            s.caches,
+            ctx.file,
+            ctx.modules,
+          )) ?? ctx.modules
         return changed.length > 0 || live !== ctx.modules
           ? [...live, ...changed]
           : undefined
