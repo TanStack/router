@@ -414,6 +414,69 @@ describe('claims, homes and substitution', () => {
     )
   })
 
+  it('nests an edit addressed to every output on exactly a claimed region inside the claim: it travels with the region', () => {
+    // an environment rewrite of exactly the hoisted value (the value is
+    // itself an env-only call) renders where the value does, in the chunk;
+    // the env output keeps the placeholder
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { serverOnly } from 'toy-start'
+      export const Route = createFileRoute('/')({
+        component: serverOnly(() => <p>hi</p>),
+      })
+    `)
+    const e = engine(code)
+    const { ctx } = e
+    ctx.setRouteModule()
+    const value = rangeOf(code, 'serverOnly(() => <p>hi</p>)')
+    const impl = rangeOf(code, '() => <p>hi</p>')
+    const region = ctx.region(value, 'option-value')
+    const chunk = ctx.declareOutput({
+      kind: 'split',
+      key: 'component',
+      derived: { kind: 'split', value: 'component' },
+    })
+    const hoisted = ctx.names.alloc('TsrComponent')
+    const owner = ctx.rewrites.addGenerated({
+      body: [
+        { k: 'text', parts: ['const ', { sym: hoisted.sym }, ' = '] },
+        { k: 'slice', range: value },
+        { k: 'text', parts: ['\nexport { ', { sym: hoisted.sym }, ' }\n'] },
+      ],
+      declares: [hoisted.sym],
+      effectful: false,
+      anchor: { k: 'end' },
+      home: chunk,
+      by: 'split',
+    })
+    ctx.rewrites.claim({
+      region,
+      owner,
+      placeholder: [{ k: 'text', parts: ['tsrLazy()'] }],
+      by: 'split',
+    })
+    ctx.rewrites.add({
+      range: value,
+      body: [{ k: 'slice', range: impl }],
+      scope: 'all-outputs',
+      by: 'env',
+    })
+    expect(e.render('env').code).toBe(
+      dedent(`
+      import { createFileRoute } from 'toy-router'
+      export const Route = createFileRoute('/')({
+        component: tsrLazy(),
+      })
+    `),
+    )
+    expect(e.render(chunk).code).toBe(
+      dedent(`
+      const TsrComponent = () => <p>hi</p>
+      export { TsrComponent }
+    `),
+    )
+  })
+
   it('kills a claim whose ancestor is erased (ancestor erasure)', () => {
     const code = dedent(`
       import { wrapServer } from 'toy-start'

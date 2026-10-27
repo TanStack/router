@@ -107,6 +107,8 @@ export interface RegionClaim {
   by: string
 }
 
+const NO_EDITS: ReadonlySet<TreeEdit> = new Set()
+
 /** An internal edit of a render tree: a planner edit or a claim placeholder. */
 export interface TreeEdit {
   range: Range
@@ -203,34 +205,52 @@ export class RewriteSet {
       }
     }
     const edits: Array<TreeEdit> = []
+    /** Edits addressed to every output: on exactly a claimed region, they travel with it. */
+    const unscoped = new Set<TreeEdit>()
     for (const e of this.edits) {
       if (RewriteSet.inScope(e.scope, output)) {
-        edits.push({
+        const edit: TreeEdit = {
           range: e.range,
           body: e.body,
           by: e.by,
           seq: e.seq,
           claim: null,
           internal: false,
-        })
+        }
+        edits.push(edit)
+        if (e.scope === 'all-outputs') {
+          unscoped.add(edit)
+        }
       }
     }
     for (const x of extra) {
       edits.push(x)
     }
-    // Claims: live iff the region's occurrence is not erased by an edit strictly enclosing it
-    // (an edit on exactly the region replaces the placeholder in this output).
+    // Claims: live iff the region's occurrence is not erased by an edit
+    // strictly enclosing it. An edit scoped to this output on exactly the
+    // region replaces the placeholder here (it sorts before the claim); one
+    // addressed to every output nests inside the claim and renders where the
+    // region does, inside its owner.
     const base = new RenderTree(edits, this.regions)
     for (const claim of this.claims.values()) {
       const region = this.regions.get(claim.region)
       if (base.isErasedAt(region.range.start, null, region.range)) {
         continue
       }
+      const seq = 1e9 + claim.region
+      for (const e of unscoped) {
+        if (
+          e.range.start === region.range.start &&
+          e.range.end === region.range.end
+        ) {
+          e.seq = seq + 0.5
+        }
+      }
       edits.push({
         range: region.range,
         body: claim.placeholder,
         by: claim.by,
-        seq: 1e9 + claim.region,
+        seq,
         claim: claim.region,
         internal: false,
       })
@@ -343,12 +363,12 @@ export class RenderTree {
     return this.claimRegions.has(region)
   }
 
-  /** Whether a non-claim edit sits on exactly a live claimed region (it replaces the placeholder, not the region). */
+  /** Whether `e` replaces the placeholder of a live claimed region (an edit on exactly the region, outside the claim). */
   private overridesClaim(e: TreeEdit): boolean {
     for (const region of this.claimRegions) {
       const r = this.regions.get(region).range
       if (r.start === e.range.start && r.end === e.range.end) {
-        return true
+        return this.overrideOf(region) === e
       }
     }
     return false
@@ -360,9 +380,11 @@ export class RenderTree {
   }
 
   /**
-   * The planner edit on exactly a live claimed region: it replaces the
-   * placeholder in this output (the region's text stays relocated to its
-   * owner), so what it renders is read where the placeholder would be.
+   * The planner edit on exactly a live claimed region that encloses the
+   * claim (scoped to this output): it replaces the placeholder here (the
+   * region's text stays relocated to its owner), so what it renders is read
+   * where the placeholder would be. An edit nested inside the claim (one
+   * addressed to every output) travels with the region instead.
    */
   overrideOf(region: RegionId): TreeEdit | null {
     if (!this.claimRegions.has(region)) {
@@ -373,29 +395,28 @@ export class RenderTree {
       if (e.range.start > r.start) {
         break
       }
-      if (
-        e.claim === null &&
-        e.range.start === r.start &&
-        e.range.end === r.end
-      ) {
-        return e
+      if (e.range.start !== r.start || e.range.end !== r.end) {
+        continue
       }
+      if (e.claim !== null) {
+        return null
+      }
+      return e
     }
     return null
   }
 
   /**
    * The outermost edits inside `[start, end)`, optionally treating `exclude`
-   * as absent (rendering a claimed region inside its owner), and without the
-   * zero-width edits at `skipZeroWidthAt` (they precede the edit whose body
+   * as absent (rendering a claimed region inside its owner, or the edits
+   * inside one), and without the zero-width edits at `skipZeroWidthAt` (they precede the edit whose body
    * is rendered: its siblings, rendered before it).
    */
   topLevelWithin(
     start: number,
     end: number,
-    exclude: TreeEdit | null = null,
+    exclude: TreeEdit | ReadonlySet<TreeEdit> | null = null,
     includeEnd = false,
-    skipExact: Range | null = null,
     skipZeroWidthAt: number | null = null,
   ): Array<TreeEdit> {
     const edits = this.edits
@@ -423,19 +444,12 @@ export class RenderTree {
       if (e.range.end > end) {
         break
       }
-      if (e === exclude) {
+      if (e === exclude || (exclude instanceof Set && exclude.has(e))) {
         continue
       }
       if (
         e.range.start === skipZeroWidthAt &&
         e.range.end === skipZeroWidthAt
-      ) {
-        continue
-      }
-      if (
-        skipExact !== null &&
-        e.range.start === skipExact.start &&
-        e.range.end === skipExact.end
       ) {
         continue
       }
@@ -564,14 +578,17 @@ export class RenderTree {
   /** The erased parts of this tree inside `[start, end)` (for provenance). */
   erasedParts(start: number, end: number): Array<Range> {
     const out: Array<Range> = []
-    const visit = (s: number, e: number, skipExact: Range | null) => {
-      for (const ed of this.topLevelWithin(s, e, null, false, skipExact)) {
+    // `excluded`: the edits on exactly the visited range already looked
+    // through (a claim, its override, an edit whose slice keeps its whole
+    // range), so that the edits nested under them are found
+    const visit = (s: number, e: number, excluded: ReadonlySet<TreeEdit>) => {
+      for (const ed of this.topLevelWithin(s, e, excluded)) {
         if (ed.range.start === ed.range.end) {
           continue
         }
         if (ed.claim !== null || this.overridesClaim(ed)) {
           // relocation, not erasure: look for erasing edits inside the region
-          visit(ed.range.start, ed.range.end, ed.range)
+          visit(ed.range.start, ed.range.end, new Set([...excluded, ed]))
           continue
         }
         let pos = ed.range.start
@@ -599,14 +616,14 @@ export class RenderTree {
               f.range.start,
               f.range.end,
               f.range.start === ed.range.start && f.range.end === ed.range.end
-                ? ed.range
-                : null,
+                ? new Set([...excluded, ed])
+                : NO_EDITS,
             )
           }
         }
       }
     }
-    visit(start, end, null)
+    visit(start, end, NO_EDITS)
     return out
   }
 
