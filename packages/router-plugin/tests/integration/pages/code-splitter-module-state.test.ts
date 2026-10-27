@@ -1113,3 +1113,43 @@ ${record('second')}
     })
   })
 })
+
+// A page-only effectful declaration moves even when the import it calls is
+// also read by a declaration the route module keeps. Found by the real-app
+// differential corpus (thenishantsapkota/streamly, routes/index.tsx:
+// `SERIES_ROWS`/`ANIME_ROWS`, arrays of `apiQuery(…)` read only by the page,
+// next to `FILM_ROWS`/`q`, also `apiQuery(…)`, read by the loader too): main
+// moves the page-only ones into the chunk, the PR keeps them in the route
+// module (+~1 KB initial). DESIGN §3.4.2 R31 (c) only lets the move happen
+// for "import specifiers used by no other output".
+describe('a page-only effectful declaration calling an import the route module also uses', () => {
+  it('loads with the component', async () => {
+    const route = await loadRoute(
+      `${head}import { register } from './state'
+const kept = register('MARK_kept')
+const page = register('MARK_page')
+export const Route = createFileRoute('/')({
+  loader: () => kept,
+  component: Page,
+})
+function Page() {
+  return <p>{kept + page}</p>
+}
+`,
+      {
+        files: {
+          'state.ts': `export const register = (name: string) => name
+`,
+        },
+      },
+    )
+    await expectValidModules(route)
+    const eager = await route.eagerModules()
+    expect({
+      html: await route.run(`return render('component')`),
+      eagerHolds: ['kept', 'page'].filter((name) =>
+        eager.some((code) => holdsMarker(code, `MARK_${name}`)),
+      ),
+    }).toEqual({ html: '<p>MARK_keptMARK_page</p>', eagerHolds: ['kept'] })
+  })
+})
