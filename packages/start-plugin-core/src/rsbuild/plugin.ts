@@ -97,9 +97,6 @@ export function tanStackStartRsbuild(
         { name: RSBUILD_ENVIRONMENT_NAMES.client, type: 'client' as const },
         { name: RSBUILD_ENVIRONMENT_NAMES.server, type: 'server' as const },
       ]
-      const startCompilerServerEnvironmentNames = startCompilerEnvironments
-        .filter((env) => env.type === 'server')
-        .map((env) => env.name)
 
       // ---------------------------------------------------------------
       // 1. modifyRsbuildConfig — resolve config, set up environments
@@ -356,11 +353,7 @@ export function tanStackStartRsbuild(
 
       if (!rscEnabled) {
         api.modifyRspackConfig((config, utils) => {
-          if (
-            !startCompilerServerEnvironmentNames.includes(
-              utils.environment.name,
-            )
-          ) {
+          if (utils.environment.name !== RSBUILD_ENVIRONMENT_NAMES.server) {
             return
           }
 
@@ -643,15 +636,13 @@ export function tanStackStartRsbuild(
         api.onAfterCreateCompiler(({ compiler }) => {
           // MultiCompiler has a `compilers` array; single compiler does not
           if ('compilers' in compiler) {
-            for (const environmentName of startCompilerServerEnvironmentNames) {
-              const serverCompiler = compiler.compilers.find(
-                (c) => c.name === environmentName,
-              )
-              if (serverCompiler) {
-                compiler.setDependencies(serverCompiler, [
-                  RSBUILD_ENVIRONMENT_NAMES.client,
-                ])
-              }
+            const serverCompiler = compiler.compilers.find(
+              (c) => c.name === RSBUILD_ENVIRONMENT_NAMES.server,
+            )
+            if (serverCompiler) {
+              compiler.setDependencies(serverCompiler, [
+                RSBUILD_ENVIRONMENT_NAMES.client,
+              ])
             }
           }
         })
