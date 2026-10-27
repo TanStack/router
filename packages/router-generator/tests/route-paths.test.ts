@@ -561,6 +561,26 @@ describe('layouts and groups', () => {
   })
 })
 
+describe('the root route', () => {
+  // Bug: next to the root route file `__root.tsx`, a `__root/` directory
+  // with a `route.tsx` makes that file the root route of the tree:
+  // `__root.tsx` (the app's root layout, context, error components) is left
+  // out of the tree without a diagnostic (an empty `__root/route.tsx` is
+  // even scaffolded with the root template). Main keeps `__root.tsx`.
+  // Source: src/filesystem/physical/getRouteNodes.ts (the root route is the
+  // first node with the route path `/__root`; the scan now lists entries by
+  // name, and the directory `__root` sorts before `__root.tsx`).
+  // Impact: the app silently loses its root route.
+  test('a __root directory next to the root route file keeps __root.tsx the root route', async () => {
+    const root = await appWithRoutes(['__root/route.tsx', 'about.tsx'])
+    const { generatedRouteTree } = await generate(root)
+
+    expect((await routesOf(generatedRouteTree)).__root__).toBe(
+      'routes/__root.tsx',
+    )
+  })
+})
+
 describe('conflicting routes', () => {
   // (Files are named absolute or project-relative, telling same-named files
   // apart, SPEC J1.7, §5.7.)
