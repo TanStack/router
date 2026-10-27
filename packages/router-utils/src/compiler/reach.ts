@@ -1271,90 +1271,120 @@ export function computePlacement(input: PlacementInput): Placement {
   // ---- extracted exports: decide ----------------------------------------------
   const extracted: Array<ExtractedExport> = []
   if (extractCandidates.size > 0) {
-    let cancelled = false
-    for (const [c, e] of extractCandidates) {
-      let ok = !liveEnv.has(c)
-      if (ok) {
-        let derivedNeeds = false
-        for (const set of derivedReach.values()) {
-          if (set.has(c)) {
-            derivedNeeds = true
-            break
-          }
-        }
-        ok = derivedNeeds
+    // what derived outputs need before any extraction (a chunk may reach a
+    // candidate through another one)
+    const needed = new Set<ClusterId>()
+    for (const set of derivedReach.values()) {
+      for (const c of set) {
+        needed.add(c)
       }
-      if (ok) {
-        // an eager read of something the env module keeps would evaluate in a
-        // cycle (the env module re-exports the extracted module): stay
-        for (const r of clusters[c]!.regions) {
-          for (const ref of ownedRefs.get(r) ?? []) {
-            if (
-              !ref.eager ||
-              !READ_KINDS.has(ref.kind) ||
-              !symbols.isModuleLevel(ref.sym)
-            ) {
-              continue
-            }
-            const d = clusterOfSym.get(ref.sym)
-            if (d === undefined || d === c) {
-              continue
-            }
-            if (liveEnv.has(d) || clusters[d]!.envPinned) {
-              ok = false
-              break
-            }
+    }
+    const extractable = (
+      c: ClusterId,
+      kept: ReadonlySet<ClusterId>,
+    ): boolean => {
+      if (kept.has(c) || !needed.has(c)) {
+        return false
+      }
+      // an eager read of something the env module keeps would evaluate in a
+      // cycle (the env module re-exports the extracted module): stay
+      for (const r of clusters[c]!.regions) {
+        for (const ref of ownedRefs.get(r) ?? []) {
+          if (
+            !ref.eager ||
+            !READ_KINDS.has(ref.kind) ||
+            !symbols.isModuleLevel(ref.sym)
+          ) {
+            continue
           }
-          if (!ok) {
-            break
+          const d = clusterOfSym.get(ref.sym)
+          if (d === undefined || d === c) {
+            continue
+          }
+          if (kept.has(d) || clusters[d]!.envPinned) {
+            return false
           }
         }
       }
-      if (ok) {
-        pinned.set(c, e.output)
-        for (const k of e.companions) {
-          deadClusters.add(k) // rendered as the env module's re-export glue
+      return true
+    }
+    // Decided over the final placement: chunks import an extracted cluster
+    // from its output (their reach stops there, the extracted output reaches
+    // what its cluster reads), moves are decided again with those outputs,
+    // and an effectful cluster a derived output needs that does not move is
+    // homed in the env module, where it is a root (below). A cancelled
+    // candidate is an env root too. Each can make what another candidate
+    // reads eagerly live in the env module: decide again until none is
+    // cancelled.
+    const remaining = new Map(extractCandidates)
+    for (;;) {
+      const stop = new Set(remaining.keys())
+      for (const [c, e] of extractCandidates) {
+        if (remaining.has(c)) {
+          pinned.set(c, e.output)
+          derivedRoots.set(e.output, new Set([c]))
+        } else {
+          pinned.delete(c)
+          derivedRoots.set(e.output, new Set())
         }
-        // every exported symbol of the cluster leaves with it (a `let` and
-        // the exported function writing it): the env module re-exports them all
-        const syms = new Set(e.syms)
-        for (const u of clusters[c]!.units) {
-          const unit = units[u]!
-          if (unit.exported.length > 0) {
-            for (const s of unit.declares) {
-              syms.add(s)
-            }
-          }
+      }
+      for (const [id, roots] of derivedRoots) {
+        const own = [...roots].find((c) => remaining.get(c)?.output === id)
+        derivedReach.set(
+          id,
+          reach(
+            id,
+            roots,
+            own === undefined
+              ? stop
+              : new Set([...stop].filter((c) => c !== own)),
+          ),
+        )
+      }
+      decideMovable()
+      const homedInEnv = clusters
+        .filter(
+          (cl) =>
+            undecided(cl) &&
+            !movable.has(cl.id) &&
+            [...derivedReach.values()].some((set) => set.has(cl.id)),
+        )
+        .map((cl) => cl.id)
+      const kept = reach('env', [...envRoots, ...homedInEnv])
+      let cancelled = false
+      for (const [c, e] of remaining) {
+        if (extractable(c, kept)) {
+          continue
         }
-        extracted.push({ cluster: c, output: e.output, syms: [...syms] })
-      } else {
+        remaining.delete(c)
         envRoots.add(c)
         for (const k of e.companions) {
           envRoots.add(k)
         }
         cancelled = true
       }
-    }
-    if (cancelled) {
+      if (!cancelled) {
+        break
+      }
       liveEnv = reach('env', envRoots)
     }
-    if (extracted.length > 0) {
-      // chunks import an extracted cluster from its output: their reach stops
-      // there; the extracted output reaches what its cluster reads
-      const stop = new Set(extracted.map((e) => e.cluster))
-      for (const [id, roots] of derivedRoots) {
-        derivedReach.set(id, reach(id, roots, stop))
+    for (const [c, e] of remaining) {
+      for (const k of e.companions) {
+        deadClusters.add(k) // rendered as the env module's re-export glue
       }
-      for (const e of extracted) {
-        const others = new Set([...stop].filter((c) => c !== e.cluster))
-        derivedRoots.set(e.output, new Set([e.cluster]))
-        derivedReach.set(e.output, reach(e.output, [e.cluster], others))
+      // every exported symbol of the cluster leaves with it (a `let` and
+      // the exported function writing it): the env module re-exports them all
+      const syms = new Set(e.syms)
+      for (const u of clusters[c]!.units) {
+        const unit = units[u]!
+        if (unit.exported.length > 0) {
+          for (const s of unit.declares) {
+            syms.add(s)
+          }
+        }
       }
+      extracted.push({ cluster: c, output: e.output, syms: [...syms] })
     }
-    // a cancelled candidate's reads and the extracted outputs change what
-    // stays and where the rest goes: moves are decided again (a cluster
-    // that no longer moves is homed in env and becomes an env root below)
-    decideMovable()
   }
 
   // ---- orphans: erased-only clusters the final env liveness does not reach ------

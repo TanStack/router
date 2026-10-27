@@ -1159,3 +1159,55 @@ export const Route = createFileRoute('/')({
     await expectValidModules(modules)
   })
 })
+
+// The route module re-exports an exported declaration that moves into a
+// module of its own; one that eagerly reads a binding the route module keeps
+// would read it before the route module created it (a circular import), so
+// it stays. What the route module keeps is decided with every other export
+// and every effect: another export the route module keeps, or an effectful
+// declaration a chunk needs that stays in the route module, keeps what it
+// reads there.
+describe('an exported declaration reading what the route module keeps', () => {
+  it('stays when another export reads the same binding', async () => {
+    const route = await loadRoute(
+      `${head}const Shared = () => <p>shared</p>
+export const Page = Shared
+export const Alias = Shared
+export const Route = createFileRoute('/')({ component: Page })
+`,
+    )
+    await expectValidModules(route)
+    expect(
+      await route.run(
+        `return [exports.Page === exports.Alias, await render('component')]`,
+      ),
+    ).toEqual([true, '<p>shared</p>'])
+  })
+
+  it('stays when an effectful declaration the error component reads keeps it', async () => {
+    const route = await loadRoute(
+      `${head}import { see } from './see'
+const Shared = () => <p>shared</p>
+const store = see(Shared)
+see('after')
+export const Page = Shared
+const headers = () => ({ store: String(store) })
+export const Route = createFileRoute('/')({
+  headers,
+  component: Page,
+  errorComponent: () => <p>{String(store === Shared)}</p>,
+})
+`,
+      {
+        files: { 'see.ts': 'export const see = <T,>(value: T): T => value\n' },
+        deleteNodes: ['headers'],
+      },
+    )
+    await expectValidModules(route)
+    expect(
+      await route.run(
+        `return [await render('component'), await render('errorComponent')]`,
+      ),
+    ).toEqual(['<p>shared</p>', '<p>true</p>'])
+  })
+})

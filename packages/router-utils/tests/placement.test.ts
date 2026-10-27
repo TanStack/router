@@ -582,6 +582,53 @@ describe('extracted-export outputs', () => {
     expect(r.env).toContain('export const id = Route.id')
     expect(r.chunk).toContain("import { id } from './route.tsx'")
   })
+
+  // The env module re-exports an extracted declaration, so one reading
+  // eagerly what the env module keeps would evaluate before it (a cycle).
+  // What the env module keeps is known once every candidate and every move
+  // is decided: a candidate kept for another reason, and an effectful
+  // declaration a chunk needs that cannot move, make what they read stay.
+  it('does not extract a declaration reading what another kept candidate reads', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      const Shared = () => 'shared'
+      export const Page = Shared
+      export const Alias = Shared
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await extract(code)
+    expect(r.env).toContain("const Shared = () => 'shared'")
+    expect(r.env).toContain('export const Page = Shared')
+    expect(r.env).toContain('export const Alias = Shared')
+    expect(r.env).not.toContain('export~')
+  })
+
+  it('does not extract a declaration reading what an effectful declaration a chunk needs reads', async () => {
+    // `store` is only read by the chunk and by code the env planner erases;
+    // the effect after it keeps it in the env module, with `Shared`
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { wrapServer } from 'toy-start'
+      import { see } from './see'
+      const Shared = () => 'shared'
+      const store = see(Shared)
+      see('after')
+      export const Page = Shared
+      export const serverFn = wrapServer(() => store)
+      export const Route = createFileRoute('/')({
+        component: () => [Page(), store],
+      })
+    `)
+    const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+    const planners = [
+      toyEnvPlanner(),
+      toySplitPlanner({ keys: ['component'], extractExports: true }),
+    ]
+    const env = (await host.compile('/app/route.tsx', planners))?.code ?? ''
+    expect(env).toContain('const store = see(Shared)')
+    expect(env).toContain('export const Page = Shared')
+    expect(env).not.toContain('export~')
+  })
 })
 
 describe('route-module specifics (lane router)', () => {
