@@ -1118,6 +1118,71 @@ describe('ordered evaluation and movable effects', () => {
     expect(r.chunks.component).not.toContain('make(')
   })
 
+  it('moves an initialiser reading a const the route module keeps (R67)', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { make } from './make'
+      const q = { kept: make('kept'), tv: make('tv') }
+      const page = [make('page'), q.tv]
+      export const Route = createFileRoute('/')({
+        loader: () => q.kept,
+        component: () => page,
+      })
+    `)
+    const r = await split(code)
+    expect(r.env).toContain("const q = { kept: make('kept'), tv: make('tv') }")
+    expect(r.env).not.toContain("make('page')")
+    expect(r.chunks.component).toContain("import { q } from './route.tsx'")
+    expect(r.chunks.component).toContain("const page = [make('page'), q.tv]")
+  })
+
+  it.each([
+    ['reassigned', 'let', 'q = { tv: 1 }'],
+    ['a let', 'let', 'q.tv'],
+    ['member-written', 'const', 'q.tv = 1'],
+    ['nested-member-written', 'const', 'q.tv.x++'],
+    ['member-deleted', 'const', 'delete q.tv'],
+    ['member-destructured into', 'const', '[q.tv] = [1]'],
+    ['mutated by a method', 'const', 'q.list.push(1)'],
+    ['mutated by Object.assign', 'const', 'Object.assign(q, {})'],
+  ])(
+    'keeps an initialiser reading a kept binding that is %s eager (R67)',
+    async (_, kind, loader) => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { make } from './make'
+        ${kind} q = { tv: make('tv'), list: [] }
+        const page = [make('page'), q.tv]
+        export const Route = createFileRoute('/')({
+          loader: () => { ${loader} },
+          component: () => page,
+        })
+      `)
+      const r = await split(code)
+      expect(r.env).toContain("const page = [make('page'), q.tv]")
+      expect(r.chunks.component).toContain("import { page } from './route.tsx'")
+    },
+  )
+
+  it('keeps an initialiser reading a kept const eager when a later effect stays (R67)', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { make } from './make'
+      const q = make('q')
+      const page = [make('page'), q]
+      const later = make('later')
+      export const Route = createFileRoute('/')({
+        loader: () => q + later,
+        component: () => page,
+      })
+    `)
+    const r = await split(code)
+    expect(r.env).toContain(
+      "const q = make('q')\nconst page = [make('page'), q]\nconst later = make('later')",
+    )
+    expect(r.chunks.component).toContain("import { page } from './route.tsx'")
+  })
+
   it('keeps a cluster eager when an effect follows its first effectful item (R65)', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'

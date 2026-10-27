@@ -1240,13 +1240,23 @@ export function computePlacement(input: PlacementInput): Placement {
           return undefined
         }
         // (c) imports (read lazily: the chunk loads after the route module,
-        // whoever else reads them, R64) or pure module clusters
-        if (clusters[d]!.kind !== 'import' && !pure(d)) {
+        // whoever else reads them, R64), pure module clusters, or a const
+        // the env module keeps whose members nothing writes (R67: evaluated
+        // before the chunk loads, which imports that one instance)
+        if (
+          clusters[d]!.kind !== 'import' &&
+          !pure(d) &&
+          !(liveEnv.has(d) && unwrittenConst(ref.sym))
+        ) {
           return undefined
         }
       }
     }
     return needs[0]
+  }
+  /** A `const` binding no code in the module writes a member of. */
+  function unwrittenConst(sym: SymbolId): boolean {
+    return symbols.isConst(sym) && !refs.refsOf(sym).some((r) => r.memberWrite)
   }
   /**
    * R31 (d): a surviving effectful unit after the first effect of `cl`

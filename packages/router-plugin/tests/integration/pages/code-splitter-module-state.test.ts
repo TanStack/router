@@ -1174,6 +1174,88 @@ function Page() {
     })
   })
 
+  // R67: a const the route module keeps (the loader reads it) evaluated
+  // before the chunk loads; the chunk imports that one instance
+  it('moves one reading a const the route module keeps, which runs once', async () => {
+    expect(
+      await observe(
+        `export const Route = createFileRoute('/')({
+  loader: () => first.value,
+  component: Page,
+})
+const first = { value: recordFirst('MARK_first') }
+const second = [recordSecond('MARK_second'), first.value]
+function Page() {
+  return <p>{second.join(' ')}</p>
+}
+`,
+        ['component'],
+        ['second'],
+      ),
+    ).toEqual({
+      loaded: ['MARK_first'],
+      rendered: ['MARK_first', 'MARK_second'],
+      html: ['<p>MARK_second MARK_first</p>'],
+      eagerHolds: [],
+    })
+  })
+
+  it.each([
+    ['whose member the loader writes', 'const', 'first.value = 1'],
+    ['whose member the loader mutates', 'const', 'first.list.push(1)'],
+    ['that the loader reassigns', 'let', 'first = { value: 1, list: [] }'],
+  ])(
+    'keeps one reading a binding the route module keeps %s, in source order',
+    async (_, kind, write) => {
+      expect(
+        await observe(
+          `export const Route = createFileRoute('/')({
+  loader: () => { ${write} },
+  component: Page,
+})
+${kind} first = { value: recordFirst('MARK_first'), list: [] }
+const second = [recordSecond('MARK_second'), first.value]
+function Page() {
+  return <p>{second.join(' ')}</p>
+}
+`,
+          ['component'],
+          [],
+        ),
+      ).toEqual({
+        loaded: ['MARK_first', 'MARK_second'],
+        rendered: ['MARK_first', 'MARK_second'],
+        html: ['<p>MARK_second MARK_first</p>'],
+        eagerHolds: [],
+      })
+    },
+  )
+
+  it('keeps one reading a const the route module keeps before a later one it keeps, in source order', async () => {
+    expect(
+      await observe(
+        `export const Route = createFileRoute('/')({
+  loader: () => first.value + third.value,
+  component: Page,
+})
+const first = { value: recordFirst('MARK_first') }
+const second = [recordSecond('MARK_second'), first.value]
+const third = { value: recordThird('MARK_third') }
+function Page() {
+  return <p>{second.join(' ')}</p>
+}
+`,
+        ['component'],
+        [],
+      ),
+    ).toEqual({
+      loaded: ['MARK_first', 'MARK_second', 'MARK_third'],
+      rendered: ['MARK_first', 'MARK_second', 'MARK_third'],
+      html: ['<p>MARK_second MARK_first</p>'],
+      eagerHolds: [],
+    })
+  })
+
   it('moves interleaved declarations and augmentations together, in source order', async () => {
     expect(
       await observe(
@@ -1256,5 +1338,56 @@ function Page() {
         eager.some((code) => holdsMarker(code, `MARK_${name}`)),
       ),
     }).toEqual({ html: '<p>MARK_keptMARK_page</p>', eagerHolds: ['kept'] })
+  })
+})
+
+// The same app file: `SERIES_ROWS` also reads `q.popularTv`, where `q` is an
+// object of `apiQuery(…)` calls the loader keeps in the route module. Main
+// moves `q` into a shared module both import (one evaluation) and
+// `SERIES_ROWS` into the page chunk; the PR kept `SERIES_ROWS` in the route
+// module (+727 B initial). R67: the chunk imports `q` from the route module.
+describe('a page-only effectful declaration reading a const object the loader keeps', () => {
+  it('loads with the component, and the object is created once', async () => {
+    const route = await loadRoute(
+      `${head}import { apiQuery, calls } from './api'
+const q = {
+  week: apiQuery('MARK_week'),
+  tv: apiQuery('MARK_tv'),
+}
+const FILM_ROWS = [apiQuery('MARK_film'), q.week]
+const SERIES_ROWS = [apiQuery('MARK_series'), q.tv] as const
+export const Route = createFileRoute('/')({
+  loader: () => {
+    FILM_ROWS.forEach((row) => row)
+    return q.week
+  },
+  component: Page,
+})
+function Page() {
+  return <p>{SERIES_ROWS.join(' ')} {FILM_ROWS.length} {calls.join(' ')}</p>
+}
+`,
+      {
+        files: {
+          'api.ts': `export const calls: Array<string> = []
+export const apiQuery = (name: string) => {
+  calls.push(name)
+  return name
+}
+`,
+        },
+      },
+    )
+    await expectValidModules(route)
+    const eager = await route.eagerModules()
+    expect({
+      html: await route.run(`return render('component')`),
+      eagerHolds: ['week', 'tv', 'film', 'series'].filter((name) =>
+        eager.some((code) => holdsMarker(code, `MARK_${name}`)),
+      ),
+    }).toEqual({
+      html: '<p>MARK_series MARK_tv 2 MARK_week MARK_tv MARK_film MARK_series</p>',
+      eagerHolds: ['week', 'tv', 'film'],
+    })
   })
 })

@@ -222,7 +222,8 @@ export class RegionTable {
   }
 }
 
-const MUTATORS = new Set([
+/** Method names that mutate their receiver (arrays, maps, sets). */
+export const MUTATORS = new Set([
   'push',
   'unshift',
   'splice',
@@ -237,6 +238,23 @@ const MUTATORS = new Set([
   'fill',
   'copyWithin',
 ])
+
+/** `Object.assign`, `Object.defineProperty`, … (they mutate their first argument). */
+export function isObjectMutator(callee: Node): boolean {
+  const c = unwrapExpression(callee)
+  if (c.type !== 'MemberExpression' || c.computed) {
+    return false
+  }
+  const obj = unwrapExpression(c.object)
+  return (
+    obj.type === 'Identifier' &&
+    obj.name === 'Object' &&
+    c.property.type === 'Identifier' &&
+    /^(assign|defineProperty|defineProperties|freeze|seal|setPrototypeOf)$/.test(
+      c.property.name,
+    )
+  )
+}
 
 /** The root identifier of `a.b.c` / `a?.b[c]`, or the identifier itself. */
 export function rootIdentifier(node: Node): Node | null {
@@ -754,17 +772,8 @@ export function buildUnits(
         const callee = unwrapExpression(e.callee)
         if (callee.type === 'MemberExpression' && !callee.computed) {
           const prop = callee.property
-          const obj = unwrapExpression(callee.object)
           const propName = prop.type === 'Identifier' ? prop.name : null
-          if (
-            obj.type === 'Identifier' &&
-            obj.name === 'Object' &&
-            propName !== null &&
-            /^(assign|defineProperty|defineProperties|freeze|seal|setPrototypeOf)$/.test(
-              propName,
-            ) &&
-            e.arguments.length > 0
-          ) {
+          if (isObjectMutator(callee) && e.arguments.length > 0) {
             push(moduleSymOf(e.arguments[0]!))
           } else if (propName !== null && MUTATORS.has(propName)) {
             push(moduleSymOf(callee.object))

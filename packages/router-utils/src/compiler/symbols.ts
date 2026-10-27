@@ -23,6 +23,8 @@ interface SymbolInfo {
   scopeRange: { start: number; end: number } | null
   /** Whether a source binding is a `let`/`var`/parameter (reassignable). */
   reassignable: boolean
+  /** Whether a source binding is declared `const`. */
+  constant: boolean
 }
 
 export class SymbolTable {
@@ -47,6 +49,7 @@ export class SymbolTable {
           !b.has(BindingFlags.Function) &&
           !b.has(BindingFlags.Class) &&
           !b.has(BindingFlags.Import),
+        constant: b.has(BindingFlags.Const),
       })
     }
     this.sourceCount = this.infos.length
@@ -78,6 +81,7 @@ export class SymbolTable {
       isImport: false,
       scopeRange: null,
       reassignable: false,
+      constant: false,
     })
     return (this.infos.length - 1) as SymbolId
   }
@@ -100,6 +104,10 @@ export class SymbolTable {
 
   isReassignable(s: SymbolId): boolean {
     return this.infos[s]!.reassignable
+  }
+
+  isConst(s: SymbolId): boolean {
+    return this.infos[s]!.constant
   }
 
   /** The range of the scope node declaring a non-module-level source symbol. */
