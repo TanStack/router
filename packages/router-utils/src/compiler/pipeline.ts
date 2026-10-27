@@ -493,25 +493,25 @@ async function runAttempt(
     // place, which is always correct, and a warning says so.
     let fallbacks: Array<FallbackRecord> = []
     let plan!: AnalysisPlan
-    const replan = () => {
-      plan = new AnalysisPlan(t0, identity, env, prefetched, fallbacks)
-      for (const p of planners) {
-        if (p.prepare) {
-          p.prepare(withConfig(plan, input.config.perPlanner[p.name]))
-        }
-      }
-      for (const p of planners) {
-        p.plan(withConfig(plan, input.config.perPlanner[p.name]))
-      }
-      plan.resolve()
-    }
-    const kept = (f: FallbackRecord) =>
-      fallbacks.some(
-        (g) => g.range.start === f.range.start && g.range.end === f.range.end,
-      )
     for (let round = 0; ; round++) {
-      replan()
-      const fresh = plan.fallbackRecords().filter((f) => !kept(f))
+      plan = planRound(
+        t0,
+        identity,
+        env,
+        prefetched,
+        fallbacks,
+        planners,
+        input,
+      )
+      const fresh = plan
+        .fallbackRecords()
+        .filter(
+          (f) =>
+            !fallbacks.some(
+              (g) =>
+                g.range.start === f.range.start && g.range.end === f.range.end,
+            ),
+        )
       if (fresh.length === 0) {
         break
       }
@@ -519,7 +519,15 @@ async function runAttempt(
         fallbacks = plan.t1.regions.regions
           .filter((r) => r.kind !== 'unit')
           .map((r) => ({ range: r.range, kind: r.kind, reason: 'exhausted' }))
-        replan()
+        plan = planRound(
+          t0,
+          identity,
+          env,
+          prefetched,
+          fallbacks,
+          planners,
+          input,
+        )
         plan.diagnostic({
           severity: 'warning',
           message:
@@ -715,6 +723,29 @@ function tier0Plan(
     sideEffects: { env: false },
     fallbacks: [],
   }
+}
+
+/** One planning round: every planner's `prepare` and `plan` on a fresh plan, then placement. */
+function planRound(
+  t0: ModuleAnalysis,
+  identity: SourceIdentity,
+  env: EnvInfo,
+  prefetched: ReadonlyMap<string, unknown>,
+  fallbacks: ReadonlyArray<FallbackRecord>,
+  planners: ReadonlyArray<Planner>,
+  input: CompileInput,
+): AnalysisPlan {
+  const plan = new AnalysisPlan(t0, identity, env, prefetched, fallbacks)
+  for (const p of planners) {
+    if (p.prepare) {
+      p.prepare(withConfig(plan, input.config.perPlanner[p.name]))
+    }
+  }
+  for (const p of planners) {
+    p.plan(withConfig(plan, input.config.perPlanner[p.name]))
+  }
+  plan.resolve()
+  return plan
 }
 
 /** A planner's view of the plan with its own config. */

@@ -6,6 +6,7 @@
  * imports.
  */
 import { deriveId } from './identity'
+import { writeKind } from './mutation'
 import type { ClassifiedRef, Tier1 } from './analysis'
 import type { SymbolId } from './symbols'
 import type { Region, RegionId, Unit, UnitId } from './units'
@@ -104,7 +105,8 @@ export interface PlacementInput {
   outputs: Map<OutputId, OutputDecl>
   canonicalId: string
   routeModule: boolean
-  benignEffects: ReadonlySet<UnitId>
+  /** Whether an effect unit is a recognised framework call known not to touch user state (asked only when a cluster could move past it). */
+  isBenign: (unit: UnitId) => boolean
   /** Exported symbols a planner allows into an extracted-export output. */
   extractions?: ReadonlyMap<SymbolId, OutputId>
 }
@@ -190,7 +192,7 @@ export function symRefsOf(frags: ReadonlyArray<Frag>): Array<SymbolId> {
 }
 
 export function computePlacement(input: PlacementInput): Placement {
-  const { t1, rewrites, outputs, routeModule, benignEffects } = input
+  const { t1, rewrites, outputs, routeModule, isBenign } = input
   const extractions = input.extractions ?? new Map<SymbolId, OutputId>()
   const { units, regions, refs, symbols, items } = t1
   const regionCount = regions.regions.length
@@ -290,18 +292,19 @@ export function computePlacement(input: PlacementInput): Placement {
     }
     list.push(w)
   }
-  for (const site of t1.mutation.all) {
-    if (!symbols.isModuleLevel(site.sym) || !declMember.has(site.sym)) {
+  for (const ref of refs.all) {
+    const kind = writeKind(ref)
+    if (kind === null || !declMember.has(ref.sym)) {
       continue
     }
     addWrite({
-      sym: site.sym,
-      at: site.range.start,
-      eager: site.eager,
-      live: !envTree.isErasedAt(site.range.start),
-      owner: regions.innermostAt(site.range.start, site.range.end),
+      sym: ref.sym,
+      at: ref.range.start,
+      eager: ref.eager,
+      live: isLive(ref, 'env'),
+      owner: regions.innermostAt(ref.range.start, ref.range.end),
       augment: false,
-      member: site.kind === 'member',
+      member: kind === 'member',
     })
   }
   for (const u of units) {
@@ -1146,13 +1149,17 @@ export function computePlacement(input: PlacementInput): Placement {
     }
     return hit
   }
-  const survivingEffects = units.filter(
-    (u) =>
-      u.effectful &&
-      !benignEffects.has(u.id) &&
-      unitSurvives(u.id) &&
-      u.kind !== 'type',
-  )
+  // the surviving effects a moving cluster is ordered against (asked only
+  // when one could move: most modules never need the benign check)
+  let survivingEffects: Array<Unit> | null = null
+  const effectsSurviving = (): Array<Unit> =>
+    (survivingEffects ??= units.filter(
+      (u) =>
+        u.effectful &&
+        u.kind !== 'type' &&
+        unitSurvives(u.id) &&
+        !isBenign(u.id),
+    ))
   // ---- extracted exports: what may leave ------------------------------------
   // what derived outputs need before any extraction (a chunk may reach a
   // candidate through another one)
@@ -1404,14 +1411,16 @@ export function computePlacement(input: PlacementInput): Placement {
     // with it: a binding and its writers are one cluster), and it reads
     // nothing something else writes
     const root = uf.find(cl.regions[0] ?? memberOfGen(cl.gens[0]!))
-    for (const s of cl.declares) {
-      for (const w of writesOfSym.get(s) ?? []) {
-        if (
-          w.live &&
-          w.eager &&
-          (w.owner === null || uf.find(memberOfWriter(w.owner)) !== root)
-        ) {
-          return undefined
+    if (writes.length > 0) {
+      for (const s of cl.declares) {
+        for (const w of writesOfSym.get(s) ?? []) {
+          if (
+            w.live &&
+            w.eager &&
+            (w.owner === null || uf.find(memberOfWriter(w.owner)) !== root)
+          ) {
+            return undefined
+          }
         }
       }
     }
@@ -1475,7 +1484,7 @@ export function computePlacement(input: PlacementInput): Placement {
     target: ReadonlyMap<ClusterId, OutputId>,
   ): boolean {
     const staticOutput = outputs.get(to)?.kind === 'export'
-    for (const u of survivingEffects) {
+    for (const u of effectsSurviving()) {
       if (!staticOutput && u.range.start <= cl.firstEffect) {
         continue
       }

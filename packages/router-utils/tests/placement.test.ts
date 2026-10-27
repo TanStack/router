@@ -2110,6 +2110,52 @@ describe('one mutation model: eager reads of state something writes', () => {
     )
   })
 
+  it.each([
+    ['the callee of a call', 'const initial = (() => n)()', true],
+    ['an element computed by a call', 'const initial = [(() => n)()]', true],
+    [
+      'called through .call',
+      'const initial = (function () { return n }).call(null)',
+      true,
+    ],
+    [
+      'a branch of a conditional',
+      'const initial = cond ? (() => n)() : 0',
+      true,
+    ],
+    ['negated and called', 'const initial = !function () { return n }()', true],
+    [
+      'an argument of a call whose result is called',
+      'const initial = wrap(() => n)()',
+      false,
+    ],
+    ['an argument of a call', 'const initial = wrap(() => n)', false],
+  ])(
+    'classifies a function that is %s as %s',
+    async (_, declaration, eager) => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { wrap } from './state'
+        const cond = true
+        let n = 0
+        export function inc() { n++ }
+        ${declaration}
+        export const Route = createFileRoute('/')({
+          component: () => initial,
+        })
+      `)
+      const r = await split(code, {
+        files: {
+          '/app/state.ts': 'export const wrap = (f: () => number) => f\n',
+        },
+      })
+      // an eager read of a binding a function writes keeps the declaration
+      // in the route module; a lazy one lets it move with the component
+      expect(r.env.includes(declaration)).toBe(eager)
+      expect((r.chunks.component ?? '').includes(declaration)).toBe(!eager)
+    },
+  )
+
   it('still moves an immediately invoked function reading a const nothing writes', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'

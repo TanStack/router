@@ -728,18 +728,31 @@ export class ModuleAnalysis {
     // declaration inside is local to it), and the lazily evaluated ones
     // (an immediately invoked function runs where it is written). Each
     // set is reduced to its outermost ranges and searched by offset.
-    const fnRanges: Array<{ start: number; end: number; node: Node }> = []
+    const code = file.source
+    const fnRanges: Array<Range> = []
+    const lazyRanges: Array<Range> = []
     for (const scope of file.scopes) {
-      if (scope.kind === 'function') {
-        const n = scope.node
-        fnRanges.push({ start: n.start, end: n.end, node: n })
+      if (scope.kind !== 'function') {
+        continue
+      }
+      const n = scope.node
+      const r = { start: n.start, end: n.end }
+      fnRanges.push(r)
+      if (!isImmediatelyInvoked(file, code, n)) {
+        lazyRanges.push(r)
       }
     }
-    fnRanges.sort((a, b) => a.start - b.start || b.end - a.end)
-    const inFunctionAt = offsetTest(outermost(fnRanges))
-    const isLazyAt = offsetTest(
-      outermost(fnRanges.filter((r) => !isImmediatelyInvoked(file, r.node))),
-    )
+    lazyRanges.sort((a, b) => a.start - b.start || b.end - a.end)
+    const isLazyAt = offsetTest(outermost(lazyRanges))
+    // the scope question is asked for function-local orphans only
+    let inFunction: ((offset: number) => boolean) | null = null
+    const inFunctionAt = (offset: number): boolean => {
+      if (inFunction === null) {
+        fnRanges.sort((a, b) => a.start - b.start || b.end - a.end)
+        inFunction = offsetTest(outermost(fnRanges))
+      }
+      return inFunction(offset)
+    }
 
     const refs: Array<ClassifiedRef> = []
     const freeRefs: Array<FreeRef> = []
@@ -868,7 +881,7 @@ export class ModuleAnalysis {
       (a, b) => a.range.start - b.range.start || a.range.end - b.range.end,
     )
     const refIndex = new RefIndex(refs, units)
-    const mutation = new MutationModel(refs)
+    const mutation = new MutationModel(refIndex)
 
     const exportNames = new Set<string>()
     for (const e of this.exports) {
@@ -966,9 +979,125 @@ function offsetTest(outer: ReadonlyArray<Range>): (offset: number) => boolean {
  * call (`(() => …)()`, `(function () { … })()`, `(async () => …)()`), also
  * through `.call`/`.apply`. Its body evaluates with the surrounding code
  * (the part of an async one after its first `await` later, but nothing can
- * be known about that: eager is the safe classification).
+ * be known about that: eager is the safe classification). The text around
+ * the function decides without a parent lookup wherever it can: a callee
+ * is followed by `(`, or is the whole content of parentheses followed by
+ * `(` / `.call(` / `.apply(`, and those parentheses group (they follow a
+ * punctuator, an operator or a keyword) rather than pass arguments (they
+ * follow a name). Only a comment, or a `)`, `]` or `}` before the opening
+ * parenthesis, asks the parents.
  */
-function isImmediatelyInvoked(file: SourceFile, fn: Node): boolean {
+function isImmediatelyInvoked(
+  file: SourceFile,
+  code: string,
+  fn: Node,
+): boolean {
+  if (
+    fn.type !== 'ArrowFunctionExpression' &&
+    fn.type !== 'FunctionExpression'
+  ) {
+    return false // a declaration or a method is never the callee of a call
+  }
+  const after = skipSpace(code, fn.end)
+  const ch = code.charCodeAt(after)
+  if (ch === 40 /* ( */) {
+    return true
+  }
+  if (ch !== 41 /* ) */) {
+    return ch === 47 /* a comment */ ? isCalleeByParents(file, fn) : false
+  }
+  // `( fn )`: the parentheses must hold the function alone and be called
+  const open = skipSpaceBack(code, fn.start)
+  if (code.charCodeAt(open) !== 40) {
+    return false // an argument among others, an operand, …
+  }
+  const call = skipSpace(code, after + 1)
+  const cc = code.charCodeAt(call)
+  const called =
+    cc === 40 ||
+    (cc === 46 /* . */ &&
+      /^\.\s*(?:call|apply)\s*\(/.test(code.slice(call, call + 24)))
+  if (!called) {
+    return cc === 47 ? isCalleeByParents(file, fn) : false
+  }
+  // grouping parentheses, or a call's argument list?
+  const before = skipSpaceBack(code, open)
+  if (before < 0) {
+    return true
+  }
+  const bc = code.charCodeAt(before)
+  if (bc === 41 || bc === 93 || bc === 125 || bc === 47) {
+    return isCalleeByParents(file, fn) // `)` `]` `}` or a comment: ambiguous
+  }
+  if (isIdentifierChar(bc)) {
+    let w = before
+    while (w > 0 && isIdentifierChar(code.charCodeAt(w - 1))) {
+      w--
+    }
+    return GROUPING_KEYWORDS.has(code.slice(w, before + 1))
+  }
+  return true // an operator or punctuator: the parentheses group
+}
+
+/** Keywords after which `(` opens a grouping, not an argument list. */
+const GROUPING_KEYWORDS = new Set([
+  'return',
+  'await',
+  'yield',
+  'typeof',
+  'void',
+  'delete',
+  'throw',
+  'case',
+  'in',
+  'of',
+  'instanceof',
+  'else',
+  'do',
+  'new',
+  'default',
+  'export',
+  'extends',
+])
+
+function isIdentifierChar(c: number): boolean {
+  return (
+    (c >= 97 && c <= 122) ||
+    (c >= 65 && c <= 90) ||
+    (c >= 48 && c <= 57) ||
+    c === 95 ||
+    c === 36 ||
+    c > 127
+  )
+}
+
+/** The offset of the first non-whitespace character at or after `i` (`code.length` when none). */
+function skipSpace(code: string, i: number): number {
+  while (i < code.length) {
+    const c = code.charCodeAt(i)
+    if (c !== 32 && c !== 9 && c !== 10 && c !== 13) {
+      break
+    }
+    i++
+  }
+  return i
+}
+
+/** The offset of the last non-whitespace character before `i` (-1 when none). */
+function skipSpaceBack(code: string, i: number): number {
+  i--
+  while (i >= 0) {
+    const c = code.charCodeAt(i)
+    if (c !== 32 && c !== 9 && c !== 10 && c !== 13) {
+      break
+    }
+    i--
+  }
+  return i
+}
+
+/** The exact answer, from the parents: the function is the callee of a call, through wrappers and `.call`/`.apply`. */
+function isCalleeByParents(file: SourceFile, fn: Node): boolean {
   let n: Node = fn
   let parent = file.parentOf(n)
   while (parent !== null && WRAPPER_TYPES.has(parent.type)) {

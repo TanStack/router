@@ -434,19 +434,24 @@ export class AnalysisPlan implements PlanContext {
 
   /** The core phase after all planners: placement over the live rewrite tree. */
   resolve(): Placement {
-    const benignEffects = new Set<UnitId>()
-    for (const u of this.benignEffects) {
-      if (this.benignUnit(this.t1.units[u]!)) {
-        benignEffects.add(u)
-      }
-    }
+    const benign = new Map<UnitId, boolean>()
     const placement = computePlacement({
       t1: this.t1,
       rewrites: this.rewrites,
       outputs: this.outputs,
       canonicalId: this.identity.canonicalId,
       routeModule: this.routeModule,
-      benignEffects,
+      isBenign: (u) => {
+        if (!this.benignEffects.has(u)) {
+          return false
+        }
+        let hit = benign.get(u)
+        if (hit === undefined) {
+          hit = this.benignUnit(this.t1.units[u]!)
+          benign.set(u, hit)
+        }
+        return hit
+      },
       extractions: this.extractions,
     })
     for (const created of placement.created) {
@@ -477,17 +482,29 @@ export class AnalysisPlan implements PlanContext {
       return false
     }
     const env = this.rewrites.tree('env')
-    // the claimed regions by start offset (few per module)
-    const claimedEnd = new Map<number, number>()
-    for (const claim of this.rewrites.claims.values()) {
-      const r = this.t1.regions.get(claim.region).range
-      claimedEnd.set(r.start, r.end)
+    const claimed = (v: Node): boolean => {
+      for (const claim of this.rewrites.claims.values()) {
+        const r = this.t1.regions.get(claim.region).range
+        if (r.start === v.start && r.end === v.end) {
+          return true
+        }
+      }
+      return false
     }
     const benignValue = (v: Node): boolean => {
-      if (claimedEnd.get(v.start) === v.end || env.isErasedAt(v.start)) {
+      const n = unwrapExpression(v)
+      // the common values: a function, an identifier, a literal
+      if (
+        n.type === 'ArrowFunctionExpression' ||
+        n.type === 'FunctionExpression' ||
+        n.type === 'Identifier' ||
+        n.type === 'Literal'
+      ) {
         return true
       }
-      const n = unwrapExpression(v)
+      if (claimed(v) || env.isErasedAt(v.start)) {
+        return true
+      }
       if (n.type === 'ObjectExpression') {
         return n.properties.every((p) =>
           p.type === 'SpreadElement'
