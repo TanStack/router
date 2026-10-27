@@ -137,18 +137,23 @@ export interface Placement {
 }
 
 class UnionFind {
-  private parent: Array<number>
+  private parent: Int32Array
   constructor(n: number) {
-    this.parent = Array.from({ length: n }, (_, i) => i)
+    const parent = new Int32Array(n)
+    for (let i = 0; i < n; i++) {
+      parent[i] = i
+    }
+    this.parent = parent
   }
   find(x: number): number {
+    const parent = this.parent
     let r = x
-    while (this.parent[r] !== r) {
-      r = this.parent[r]!
+    while (parent[r] !== r) {
+      r = parent[r]!
     }
-    while (this.parent[x] !== r) {
-      const next = this.parent[x]!
-      this.parent[x] = r
+    while (parent[x] !== r) {
+      const next = parent[x]!
+      parent[x] = r
       x = next
     }
     return r
@@ -348,13 +353,27 @@ export function computePlacement(input: PlacementInput): Placement {
   }
 
   // ---- member reads -----------------------------------------------------
-  const readsCache = new Map<
-    string,
-    { syms: Array<SymbolId>; children: Array<RegionId> }
+  interface MemberReads {
+    syms: Array<SymbolId>
+    children: Array<RegionId>
+  }
+  // per output (live reads) or for the dead walk, an array indexed by member
+  const memberReadsByOutput = new Map<
+    OutputId,
+    Array<MemberReads | undefined>
   >()
-  const regionByRange = new Map<string, Region>()
-  for (const r of regions.regions) {
-    regionByRange.set(`${r.range.start}:${r.range.end}`, r)
+  const deadMemberReads: Array<MemberReads | undefined> = []
+  // regions by range, for the slices generated code retains (built on the first slice)
+  const rangeKey = (start: number, end: number) => start * 0x4000000 + end
+  let regionByRange: Map<number, Region> | null = null
+  const regionOfRange = (start: number, end: number): Region | undefined => {
+    if (regionByRange === null) {
+      regionByRange = new Map()
+      for (const r of regions.regions) {
+        regionByRange.set(rangeKey(r.range.start, r.range.end), r)
+      }
+    }
+    return regionByRange.get(rangeKey(start, end))
   }
 
   function regionReads(
@@ -430,7 +449,7 @@ export function computePlacement(input: PlacementInput): Placement {
       } else if (f.k === 'ref') {
         into.syms.push('sym' in f.to ? f.to.sym : f.to.member[0])
       } else if (f.k === 'slice') {
-        const region = regionByRange.get(`${f.range.start}:${f.range.end}`)
+        const region = regionOfRange(f.range.start, f.range.end)
         if (region) {
           regionReads(region, o, live, into)
         } else {
@@ -443,27 +462,31 @@ export function computePlacement(input: PlacementInput): Placement {
       }
     }
   }
-  function memberReads(
-    m: number,
-    o: OutputId,
-    live: boolean,
-  ): { syms: Array<SymbolId>; children: Array<RegionId> } {
-    const key = `${m}|${live ? o : '*'}`
-    const hit = readsCache.get(key)
+  function memberReads(m: number, o: OutputId, live: boolean): MemberReads {
+    let byMember: Array<MemberReads | undefined>
+    if (live) {
+      const hit = memberReadsByOutput.get(o)
+      if (hit) {
+        byMember = hit
+      } else {
+        byMember = []
+        memberReadsByOutput.set(o, byMember)
+      }
+    } else {
+      byMember = deadMemberReads
+    }
+    const hit = byMember[m]
     if (hit) {
       return hit
     }
-    const into = {
-      syms: [] as Array<SymbolId>,
-      children: [] as Array<RegionId>,
-    }
+    const into: MemberReads = { syms: [], children: [] }
     if (m < regionCount) {
       regionReads(regions.get(m), o, live, into)
     } else {
       const g = gens[m - regionCount]!
       fragReads(g.body, o, live, into)
     }
-    readsCache.set(key, into)
+    byMember[m] = into
     return into
   }
 
@@ -711,18 +734,28 @@ export function computePlacement(input: PlacementInput): Placement {
     syms: Set<SymbolId>
     children: Set<ClusterId>
   }
-  // per output (or `*` for the dead walk), an array indexed by cluster id
-  const clusterReadsCache = new Map<string, Array<ClusterReads | undefined>>()
+  // per output (live reads) or for the dead walk, an array indexed by cluster id
+  const clusterReadsByOutput = new Map<
+    OutputId,
+    Array<ClusterReads | undefined>
+  >()
+  const deadClusterReads: Array<ClusterReads | undefined> = []
   function clusterReads(
     c: ClusterId,
     o: OutputId,
     live: boolean,
   ): ClusterReads {
-    const outputKey = live ? o : '*'
-    let byCluster = clusterReadsCache.get(outputKey)
-    if (!byCluster) {
-      byCluster = []
-      clusterReadsCache.set(outputKey, byCluster)
+    let byCluster: Array<ClusterReads | undefined>
+    if (live) {
+      const hit = clusterReadsByOutput.get(o)
+      if (hit) {
+        byCluster = hit
+      } else {
+        byCluster = []
+        clusterReadsByOutput.set(o, byCluster)
+      }
+    } else {
+      byCluster = deadClusterReads
     }
     const hit = byCluster[c]
     if (hit) {
@@ -771,31 +804,55 @@ export function computePlacement(input: PlacementInput): Placement {
     }
     return envRoots.has(c) ? 'env' : o
   }
+  // the clusters a cluster's reads lead to, per output whose tree decided
+  // them (a pure function of the cluster and that output: cached as such,
+  // whatever output asked)
+  const successorsByOutput = new Map<
+    OutputId,
+    Array<ReadonlyArray<ClusterId> | undefined>
+  >()
+  const deadSuccessors: Array<ReadonlyArray<ClusterId> | undefined> = []
   function successors(
     c: ClusterId,
     o: OutputId,
     live: boolean,
-  ): Set<ClusterId> {
-    const out = new Set<ClusterId>()
-    const { syms, children } = clusterReads(
-      c,
-      live ? readsOutput(c, o) : o,
-      live,
-    )
+  ): ReadonlyArray<ClusterId> {
+    let byCluster: Array<ReadonlyArray<ClusterId> | undefined>
+    let reads: OutputId
+    if (live) {
+      reads = readsOutput(c, o)
+      const hit = successorsByOutput.get(reads)
+      if (hit) {
+        byCluster = hit
+      } else {
+        byCluster = []
+        successorsByOutput.set(reads, byCluster)
+      }
+    } else {
+      reads = o
+      byCluster = deadSuccessors
+    }
+    const hit = byCluster[c]
+    if (hit) {
+      return hit
+    }
+    const out: Array<ClusterId> = []
+    const { syms, children } = clusterReads(c, reads, live)
     for (const s of syms) {
       if (!symbols.isModuleLevel(s)) {
         continue
       }
       const d = clusterOfSym.get(s)
-      if (d !== undefined && d !== c) {
-        out.add(d)
+      if (d !== undefined && d !== c && !out.includes(d)) {
+        out.push(d)
       }
     }
     for (const ch of children) {
-      if (ch !== c) {
-        out.add(ch)
+      if (ch !== c && !out.includes(ch)) {
+        out.push(ch)
       }
     }
+    byCluster[c] = out
     return out
   }
   function reach(
@@ -814,8 +871,9 @@ export function computePlacement(input: PlacementInput): Placement {
       if (stopAt !== null && stopAt.has(c)) {
         continue // imported from its own output: its dependencies are that output's
       }
-      for (const d of successors(c, o, true)) {
-        work.push(d)
+      const next = successors(c, o, true)
+      for (let i = 0; i < next.length; i++) {
+        work.push(next[i]!)
       }
     }
     return included
