@@ -7,12 +7,25 @@
  * which record what ran, and the page reads them.
  */
 import { describe, expect, it } from 'vitest'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   expectValidModules,
   head,
   holdsMarker,
   loadRoute,
 } from '../../route-app'
+import type { RouteApp } from '../../route-app'
+
+/** Whether the run reported an option of the route file as not code-split. */
+async function reportsNotSplit(route: RouteApp) {
+  return (
+    findDiagnostics(await route.diagnostics(), {
+      severity: 'warning',
+      file: 'route.tsx',
+      root: route.host.root,
+    }).length > 0
+  )
+}
 
 /**
  * An app module `init.ts` (or another name) whose `init` counts its calls
@@ -410,6 +423,109 @@ return [...results, config.created, config.seen.size]`),
       ])
     },
   )
+
+  // A module binding the loader (route module) reads and the split
+  // component reassigns is one binding: the loader sees the component's
+  // writes (SPEC G3, J2.4); a component that cannot be split for it stays
+  // working in the route module, and the run says so (J2.8).
+  it('keeps a binding the loader reads and the split component reassigns one binding', async () => {
+    const route = await loadRoute(
+      `${head}let count = 0
+export const Route = createFileRoute('/')({
+  loader: () => count,
+  component: () => <p>{\`component \${++count}\`}</p>,
+})
+`,
+      { fresh: true },
+    )
+    await expectValidModules(route)
+    expect(
+      await route.run(`return [
+  options.loader(),
+  await render('component'),
+  options.loader(),
+]`),
+    ).toEqual([0, '<p>component 1</p>', 1])
+    expect({
+      split: await route.isLazy('component'),
+      warned: await reportsNotSplit(route),
+    }).not.toEqual({ split: false, warned: false })
+  })
+
+  // Two split options writing one module binding share it, in one chunk or
+  // in two (SPEC G3, J2.4): an option that cannot be split for it stays
+  // working in the route module, and the run says so (J2.8).
+  it.each([
+    { name: 'from two chunks', groupings: [['component'], ['errorComponent']] },
+    { name: 'from one chunk', groupings: [['component', 'errorComponent']] },
+  ])(
+    'keeps one binding that two split options write $name',
+    async ({ groupings }) => {
+      // A host of its own: a not-split warning is reported once per (file,
+      // reason) and dev server
+      const route = await loadRoute(
+        `${head}let count = 0
+export const Route = createFileRoute('/')({
+  codeSplitGroupings: ${JSON.stringify(groupings)},
+  loader: () => 'data',
+  component: () => <p>{\`component \${++count}\`}</p>,
+  errorComponent: () => <p>{\`error \${++count}\`}</p>,
+})
+`,
+        { fresh: true },
+      )
+      await expectValidModules(route)
+      expect(
+        await route.run(`return [
+  options.loader(),
+  await render('component'),
+  await render('errorComponent'),
+  await render('component'),
+]`),
+      ).toEqual([
+        'data',
+        '<p>component 1</p>',
+        '<p>error 2</p>',
+        '<p>component 3</p>',
+      ])
+      expect({
+        split: (await route.isLazy('component'))
+          ? await route.isLazy('errorComponent')
+          : false,
+        warned: await reportsNotSplit(route),
+      }).not.toEqual({ split: false, warned: false })
+    },
+  )
+
+  // A split option evaluated when the route is created reads a module
+  // binding that top-level code reassigns after it: wherever it evaluates,
+  // it reads the value it had then (SPEC G3, J2.4, J2.8).
+  it('keeps an option value reading a binding later top-level code reassigns at its value then', async () => {
+    const route = await loadRoute(
+      `${head}let label = 'first'
+const withLabel = (text: string) => () => <p>{text}</p>
+export const Route = createFileRoute('/')({
+  loader: () => 'data',
+  component: withLabel(label),
+})
+label = 'second'
+export const current = () => label
+`,
+      { fresh: true },
+    )
+    await expectValidModules(route)
+    expect(
+      await route.run(`return [
+  options.loader(),
+  await render('component'),
+  exports.current(),
+]`),
+    ).toEqual(['data', '<p>first</p>', 'second'])
+    expect({
+      split: await route.isLazy('component'),
+      warned: await reportsNotSplit(route),
+    }).not.toEqual({ split: false, warned: false })
+  })
 
   // A const only the split component reads works with the module-level
   // statements that write to it. Enums and namespaces do not: pinned in
