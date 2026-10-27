@@ -157,6 +157,8 @@ export interface PlanContext {
   readonly prefetched: ReadonlyMap<string, unknown>
   /** Fallbacks reported by the core in a previous planning round. */
   readonly fallbacks: ReadonlyArray<FallbackRecord>
+  /** The core's fallback of a previous round on exactly `range` (of `kind`, when given). */
+  fallbackAt: (range: Range, kind?: RegionKind) => FallbackRecord | undefined
   region: (range: Range, kind: Exclude<RegionKind, 'unit'>) => RegionId
   declareOutput: (spec: OutputSpec) => OutputId
   outputIdFor: (derived: DerivedQuery) => OutputId
@@ -438,6 +440,15 @@ export class AnalysisPlan implements PlanContext {
     return placement
   }
 
+  fallbackAt(range: Range, kind?: RegionKind): FallbackRecord | undefined {
+    return this.fallbacks.find(
+      (f) =>
+        f.range.start === range.start &&
+        f.range.end === range.end &&
+        (kind === undefined || f.kind === kind),
+    )
+  }
+
   /** Fallbacks of the last `resolve()`, keyed by range (planners re-plan with them). */
   fallbackRecords(): Array<FallbackRecord> {
     const out: Array<FallbackRecord> = []
@@ -686,11 +697,9 @@ export class AnalysisPlan implements PlanContext {
     /** Exported declarators of statements whose `export` keyword a sibling's rename drops. */
     const siblingExports: Array<{ sym: SymbolId; name: string }> = []
     // statement-level DCE edits
-    /** Whether the previous statement renders as the source wrote it (with the `;` that may end it). */
-    let previousIntact = false
+    /** The statement rendered before the current one (as the source wrote it, or rewritten). */
+    let previous: RenderedStatement | undefined
     for (const item of items) {
-      const followsIntact = previousIntact
-      previousIntact = false
       if (baseTree.isErasedAt(item.nodeRange.start)) {
         continue
       }
@@ -729,8 +738,7 @@ export class AnalysisPlan implements PlanContext {
       if (
         recipe !== 'drop' &&
         item.index > 0 &&
-        !followsIntact &&
-        continuesPrevious(code, item)
+        needsLeadingSemicolon(code, item, previous)
       ) {
         extra.push({
           range: { start: item.nodeRange.start, end: item.nodeRange.start },
@@ -741,8 +749,8 @@ export class AnalysisPlan implements PlanContext {
           internal: true,
         })
       }
+      previous = { item, intact: recipe === 'keep' }
       if (recipe === 'keep') {
-        previousIntact = true
         continue
       }
       extra.push({
@@ -1061,12 +1069,9 @@ export class AnalysisPlan implements PlanContext {
     )
     renderer.renderFrags(glue, null, null, out)
     // pieces in order: generated units by anchor, items by position
-    type Piece = {
+    type Piece = Partial<RenderedStatement> & {
       pos: number
       order: number
-      item?: TopLevelItem
-      /** The statement renders as the source wrote it. */
-      intact?: boolean
       render: () => void
     }
     const pieces: Array<Piece> = []
@@ -1145,8 +1150,7 @@ export class AnalysisPlan implements PlanContext {
     for (const p of pieces) {
       if (
         p.item !== undefined &&
-        continuesPrevious(code, p.item) &&
-        !(previous?.intact && previous.item!.index === p.item.index - 1)
+        needsLeadingSemicolon(code, p.item, previous)
       ) {
         out.push({ k: 'text', text: ';' })
       }
@@ -1429,7 +1433,6 @@ class Renderer {
       end,
       exclude,
       includeEnd,
-      null,
       skipZeroWidthAt,
     )) {
       cuts.push({ start: e.range.start, end: e.range.end, edit: e, ref: null })
@@ -1777,14 +1780,26 @@ function attributesKeywordStart(
   return to
 }
 
+/** A statement an output rendered: as the source wrote it (`intact`, with the `;` that may end it) or rewritten. */
+interface RenderedStatement {
+  item: TopLevelItem
+  intact: boolean
+}
+
 /**
- * Whether a statement's first token would continue a statement before it
- * that has no `;` (a parenthesis, a bracket, a template, a sign, a regular
- * expression, JSX or a type assertion). Its source predecessor ended with
- * the `;` it relies on (semicolon-free code writes `;(x as any).y = 1`):
- * once that statement is dropped, or the statement follows another one in a
- * derived output, it gets a `;` of its own.
+ * Whether a statement gets a `;` of its own: its first token would continue
+ * a statement before it that has no `;` (a parenthesis, a bracket, a
+ * template, a sign, a regular expression, JSX or a type assertion), and what
+ * renders before it is not its intact source predecessor, which ended with
+ * the `;` it relies on (semicolon-free code writes `;(x as any).y = 1`).
  */
-function continuesPrevious(code: string, item: TopLevelItem): boolean {
-  return '([`+-/<'.includes(code[item.nodeRange.start]!)
+function needsLeadingSemicolon(
+  code: string,
+  item: TopLevelItem,
+  previous: Partial<RenderedStatement> | undefined,
+): boolean {
+  return (
+    '([`+-/<'.includes(code[item.nodeRange.start]!) &&
+    !(previous?.intact && previous.item?.index === item.index - 1)
+  )
 }

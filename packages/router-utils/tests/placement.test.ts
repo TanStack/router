@@ -629,6 +629,31 @@ describe('extracted-export outputs', () => {
     expect(env).toContain('export const Page = Shared')
     expect(env).not.toContain('export~')
   })
+
+  it('moves an effectful declaration two chunks reach only through an extracted export into that output', async () => {
+    // before extraction both chunks reach `theme` through `Card` (R29 (a)
+    // fails); the chunks import `Card` from its output, which alone needs
+    // `theme`: decided over the final placement, `theme` moves with it
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { createTheme } from './theme'
+      const theme = createTheme()
+      export function Card() { return theme.card }
+      export const Route = createFileRoute('/')({
+        component: () => Card(),
+        errorComponent: () => Card(),
+      })
+    `)
+    const r = await extract(code, ['component', 'errorComponent'])
+    expect(r.env).not.toContain('createTheme')
+    expect(r.env).toContain(
+      "export { Card } from './route.tsx?tsr-split=export~Card'",
+    )
+    const e = await r.extracted('Card')
+    expect(e?.code).toContain("import { createTheme } from './theme'")
+    expect(e?.code).toContain('const theme = createTheme()')
+    expect(e?.code).toContain('function Card() { return theme.card }')
+  })
 })
 
 describe('a statement relying on the `;` that ends the one before it', () => {
@@ -1355,6 +1380,38 @@ describe('ordered evaluation and movable effects', () => {
     })
     expect(r.env).toContain('component: Page,')
     expect(r.env).toContain('function Page()')
+  })
+
+  it('keeps an initialiser eager when a later one is kept for an orphaned-by-us effectful reader (d over the final roots)', async () => {
+    // `Y` is read only by the erased server fn and the component; it is
+    // effectful and reads `let kept`, so it cannot move: it stays in the
+    // route module for the component, and so does `X`, which it reads lazily.
+    // `Z` precedes `X` in source order, so it may not move to the chunk
+    // (where it would evaluate after `X`): the root decision must see `X`
+    // staying before (d) is decided for `Z`.
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { wrapServer } from 'toy-start'
+      import { make } from './make'
+      import { eff } from './eff'
+      let kept = make('kept')
+      const Y = eff(() => X, kept)
+      export const serverFn = wrapServer(() => Y)
+      const Z = eff('z')
+      const X = eff('x')
+      export const Route = createFileRoute('/')({
+        loader: () => kept,
+        component: () => [Z, X, Y],
+      })
+    `)
+    const r = await split(code)
+    expect(r.env).toContain('const Y = eff(() => X, kept)')
+    expect(r.env).toContain("const X = eff('x')")
+    expect(r.env).toContain("const Z = eff('z')")
+    expect(r.chunks.component).not.toContain('eff(')
+    expect(r.chunks.component).toContain(
+      "import { Y, Z, X } from './route.tsx'",
+    )
   })
 })
 

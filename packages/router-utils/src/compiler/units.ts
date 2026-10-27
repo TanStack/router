@@ -256,6 +256,102 @@ export function isObjectMutator(callee: Node): boolean {
   )
 }
 
+/**
+ * The operands `node` writes, as the source wrote them: an assignment,
+ * update or `delete` operand, a for-in/of target, the elements of a
+ * destructuring pattern, the receiver of a mutating method (`push`, `set`,
+ * …) or the first argument of `Object.assign`-style calls. The one table
+ * behind the member-write classification of references (R67) and the
+ * top-level augmentation units (`X.p = …` clusters with `X`).
+ */
+export function writeTargets(node: Node): ReadonlyArray<Node> {
+  switch (node.type) {
+    case 'AssignmentExpression':
+    case 'AssignmentPattern':
+    case 'ForInStatement':
+    case 'ForOfStatement':
+      return [node.left]
+    case 'UpdateExpression':
+      return [node.argument]
+    case 'RestElement':
+      return [node.argument]
+    case 'UnaryExpression':
+      return node.operator === 'delete' ? [node.argument] : NO_TARGETS
+    case 'ArrayPattern':
+      return node.elements.filter((e) => e !== null)
+    case 'ObjectPattern':
+      return node.properties.map((p) => (p.type === 'Property' ? p.value : p))
+    case 'CallExpression': {
+      const callee = unwrapExpression(node.callee)
+      if (isObjectMutator(callee)) {
+        return node.arguments.length > 0 ? [node.arguments[0]!] : NO_TARGETS
+      }
+      if (
+        callee.type === 'MemberExpression' &&
+        !callee.computed &&
+        callee.property.type === 'Identifier' &&
+        MUTATORS.has(callee.property.name)
+      ) {
+        // the receiver, as the callee names it (`x.push`: the root is `x`)
+        return [node.callee]
+      }
+      return NO_TARGETS
+    }
+    default:
+      return NO_TARGETS
+  }
+}
+
+const NO_TARGETS: ReadonlyArray<Node> = []
+
+/**
+ * Whether `node` (an identifier) is the root object of a member expression
+ * some code writes (`writeTargets`), or the first argument of an
+ * `Object.assign`-style call: the object it names is mutated.
+ */
+export function writesMember(file: SourceFile, node: Node): boolean {
+  // climb the member chain (and wrappers) grown on `node`
+  let member = false
+  let n = node
+  let parent = file.parentOf(n)
+  for (; parent !== null; n = parent, parent = file.parentOf(n)) {
+    if (parent.type === 'MemberExpression' && parent.object === n) {
+      member = true
+    } else if (!WRAPPERS.has(parent.type)) {
+      break
+    }
+  }
+  if (parent === null) {
+    return false
+  }
+  if (parent.type === 'CallExpression') {
+    // the receiver of a mutating method, or the first argument of an
+    // `Object.assign`-style call (the common argument position is neither)
+    if (parent.callee !== n && parent.arguments[0] !== n) {
+      return false
+    }
+  } else if (!member) {
+    return false // a plain write of the binding, not of a member
+  }
+  // a destructuring property's target is written by the pattern around it
+  const construct =
+    parent.type === 'Property' && parent.value === n
+      ? file.parentOf(parent)
+      : parent
+  return construct !== null && writeTargets(construct).includes(n)
+}
+
+/** The node types `unwrapExpression` looks through. */
+const WRAPPERS = new Set([
+  'ParenthesizedExpression',
+  'TSAsExpression',
+  'TSSatisfiesExpression',
+  'TSNonNullExpression',
+  'TSTypeAssertion',
+  'TSInstantiationExpression',
+  'ChainExpression',
+])
+
 /** The root identifier of `a.b.c` / `a?.b[c]`, or the identifier itself. */
 export function rootIdentifier(node: Node): Node | null {
   let n = unwrapExpression(node)
@@ -745,44 +841,30 @@ export function buildUnits(
     return symbols.ofBinding(b)
   }
 
+  /** The module bindings a top-level expression statement writes (`writeTargets`), through destructuring patterns. */
   function augmentationsOf(expr: Node): Array<SymbolId> {
-    const e = unwrapExpression(expr)
     const out: Array<SymbolId> = []
-    const push = (s: SymbolId | null) => {
-      if (s !== null && !out.includes(s)) {
-        out.push(s)
+    const visit = (target: Node) => {
+      const t = unwrapExpression(target)
+      switch (t.type) {
+        case 'ArrayPattern':
+        case 'ObjectPattern':
+        case 'RestElement':
+        case 'AssignmentPattern':
+          for (const inner of writeTargets(t)) {
+            visit(inner)
+          }
+          return
+        default: {
+          const s = moduleSymOf(t)
+          if (s !== null && !out.includes(s)) {
+            out.push(s)
+          }
+        }
       }
     }
-    switch (e.type) {
-      case 'AssignmentExpression': {
-        const left = unwrapExpression(e.left)
-        if (left.type === 'ArrayPattern' || left.type === 'ObjectPattern') {
-          for (const id of bindingIdentifiers(left as never)) {
-            push(moduleSymOf(id))
-          }
-        } else {
-          push(moduleSymOf(left))
-        }
-        break
-      }
-      case 'UpdateExpression':
-        push(moduleSymOf(e.argument))
-        break
-      case 'CallExpression': {
-        const callee = unwrapExpression(e.callee)
-        if (callee.type === 'MemberExpression' && !callee.computed) {
-          const prop = callee.property
-          const propName = prop.type === 'Identifier' ? prop.name : null
-          if (isObjectMutator(callee) && e.arguments.length > 0) {
-            push(moduleSymOf(e.arguments[0]!))
-          } else if (propName !== null && MUTATORS.has(propName)) {
-            push(moduleSymOf(callee.object))
-          }
-        }
-        break
-      }
-      default:
-        break
+    for (const target of writeTargets(unwrapExpression(expr))) {
+      visit(target)
     }
     return out
   }

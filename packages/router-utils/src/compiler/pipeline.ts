@@ -705,6 +705,7 @@ function withConfig(plan: AnalysisPlan, config: unknown): PlanContext {
     symbols: plan.symbols,
     prefetched: plan.prefetched,
     fallbacks: plan.fallbacks,
+    fallbackAt: (range, kind) => plan.fallbackAt(range, kind),
     region: (range, kind) => plan.region(range, kind),
     declareOutput: (spec) => plan.declareOutput(spec),
     outputIdFor: (derived) => plan.outputIdFor(derived),

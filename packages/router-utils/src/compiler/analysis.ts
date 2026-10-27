@@ -11,7 +11,7 @@
 import { BindingFlags, walk } from 'yuku'
 import { analyzeHeader } from './header'
 import { SymbolTable } from './symbols'
-import { MUTATORS, buildItems, buildUnits, isObjectMutator } from './units'
+import { buildItems, buildUnits, writesMember } from './units'
 import { statementHasEffects } from './purity'
 import type { PurityContext } from './purity'
 import type { Header, Range } from './header'
@@ -1105,73 +1105,6 @@ function isTypeDeclaration(decl: Node): boolean {
     decl.type === 'TSDeclareFunction'
   )
 }
-
-/**
- * Whether `node` is the root object of a member expression some code writes:
- * an assignment, update, `delete` or destructuring target, a for-in/of
- * target, the receiver of a mutating method (`push`, `set`, …) or the first
- * argument of `Object.assign`-style calls.
- */
-function writesMember(file: SourceFile, node: Node): boolean {
-  let n = node
-  let parent = file.parentOf(n)
-  let member: string | null | undefined
-  for (; parent !== null; n = parent, parent = file.parentOf(n)) {
-    if (parent.type === 'MemberExpression' && parent.object === n) {
-      member =
-        !parent.computed && parent.property.type === 'Identifier'
-          ? parent.property.name
-          : null
-    } else if (!WRAPPERS.has(parent.type)) {
-      break
-    }
-  }
-  if (parent === null) {
-    return false
-  }
-  if (member === undefined) {
-    return (
-      parent.type === 'CallExpression' &&
-      parent.arguments[0] === n &&
-      isObjectMutator(parent.callee)
-    )
-  }
-  switch (parent.type) {
-    case 'AssignmentExpression':
-    case 'AssignmentPattern':
-    case 'ForInStatement':
-    case 'ForOfStatement':
-      return parent.left === n
-    case 'UpdateExpression':
-    case 'ArrayPattern':
-    case 'RestElement':
-      return true
-    case 'UnaryExpression':
-      return parent.operator === 'delete'
-    case 'Property':
-      return (
-        parent.value === n && file.parentOf(parent)?.type === 'ObjectPattern'
-      )
-    case 'CallExpression':
-      return (
-        (parent.callee === n && member !== null && MUTATORS.has(member)) ||
-        (parent.arguments[0] === n && isObjectMutator(parent.callee))
-      )
-    default:
-      return false
-  }
-}
-
-/** The node types `unwrapExpression` looks through. */
-const WRAPPERS = new Set([
-  'ParenthesizedExpression',
-  'TSAsExpression',
-  'TSSatisfiesExpression',
-  'TSNonNullExpression',
-  'TSTypeAssertion',
-  'TSInstantiationExpression',
-  'ChainExpression',
-])
 
 function classify(
   file: SourceFile,

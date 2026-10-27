@@ -15,6 +15,7 @@ import {
   OWNED_QUERY_RE,
   SourceText,
   identify,
+  isFinalBuild,
   releaseEnvironment,
   resolveDerivedSibling,
 } from '@tanstack/router-utils/compiler'
@@ -280,14 +281,12 @@ export function createRouterCompilerVitePlugin(
       }
       unsubscribe?.()
       unsubscribe = null
-      // the environment's build is finished (a written bundle outside watch
-      // mode; a `write: false` build may be a scan that builds it again):
-      // its plans go before the next environment builds
+      // the environment's build is finished: its plans go before the next
+      // environment builds
       const environment = (
         this as unknown as { environment?: TransformEnvironment }
       ).environment
-      const build = environment?.config.build
-      if (environment && build?.write !== false && !build?.watch) {
+      if (environment && isFinalBuild(environment.config.build)) {
         releaseEnvironment(compiler.caches, environment.name)
       }
     },

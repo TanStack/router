@@ -977,12 +977,7 @@ function extract(
   if (!scan.ok) {
     return null
   }
-  const fallback = ctx.fallbacks.find(
-    (f) =>
-      f.kind === 'hydrate-children' &&
-      f.range.start === region.start &&
-      f.range.end === region.end,
-  )
+  const fallback = ctx.fallbackAt(region, 'hydrate-children')
   if (fallback) {
     const reason = FALLBACK_REASONS[fallback.reason] ?? {
       code: `hydrate-${fallback.reason}`,

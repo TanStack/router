@@ -605,14 +605,11 @@ function planStartEnv(
     }
   }
 
-  // Handlers that move to the lazy handler module (in-place provider). An env
-  // rewrite of exactly such a handler range (the handler is itself a
-  // createServerOnlyFn / createIsomorphicFn call) renders inside the
-  // handler module's unit instead of overriding the claim's placeholder.
-  const rangeKey = (r: Range) => `${r.start}:${r.end}`
+  // Handlers that move to the lazy handler module (in-place provider). An
+  // all-outputs rewrite of exactly such a handler (the handler is itself a
+  // createServerOnlyFn / createIsomorphicFn call) travels with it into the
+  // handler module (the core nests it inside the claim).
   const lazySites = new Set<ServerFnSite>()
-  const lazyRanges = new Set<string>()
-  const lazyEdits = new Map<string, { body: Array<Frag>; reason: string }>()
   if (
     role === 'provider' &&
     !providerOut &&
@@ -622,28 +619,14 @@ function planStartEnv(
     !hasTopLevelAwait(ctx)
   ) {
     for (const site of sites) {
-      const h = site.handler
       // a core fallback (the handler writes module state other code reads) keeps it in place
-      if (
-        !ctx.fallbacks.some(
-          (f) =>
-            f.kind === 'custom' &&
-            f.range.start === h.start &&
-            f.range.end === h.end,
-        )
-      ) {
+      if (ctx.fallbackAt(rangeOf(site.handler), 'custom') === undefined) {
         lazySites.add(site)
-        lazyRanges.add(rangeKey(rangeOf(h)))
       }
     }
   }
-  /** Adds an env rewrite, unless it replaces exactly a lazy handler (then it applies in the handler module only). */
+  /** An environment rewrite: it applies in every output, inside a moved handler too. */
   const envEdit = (range: Range, body: Array<Frag>, reason: string) => {
-    const k = rangeKey(range)
-    if (lazyRanges.has(k)) {
-      lazyEdits.set(k, { body, reason })
-      return
-    }
     rewrites.add({ range, body, scope: 'all-outputs', by, reason })
   }
 
@@ -876,17 +859,6 @@ function planStartEnv(
         by,
       })
       ctx.addRoot(out, { t: 'gen', id: owner })
-      const rewritten = lazyEdits.get(rangeKey(rangeOf(h)))
-      if (rewritten) {
-        // the handler is itself an env-only / isomorphic call: rewritten in the handler module only
-        rewrites.add({
-          range: rangeOf(h),
-          body: rewritten.body,
-          scope: [out],
-          by,
-          reason: rewritten.reason,
-        })
-      }
       rewrites.claim({
         region: ctx.region(rangeOf(h), 'custom'),
         owner,

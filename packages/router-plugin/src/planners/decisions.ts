@@ -510,11 +510,11 @@ function computeSplitPlan(
       // the core reports a fallback at the option value, or at the
       // declaration of the binding the value names (its writes, its effects)
       const fallback =
-        ctx.fallbacks.find((f) => sameRange(f.range, target.region)) ??
+        ctx.fallbackAt(target.region) ??
         (valueSym !== null
-          ? ctx.fallbacks.find((f) =>
-              declaringRanges(ctx, valueSym).some((r) => sameRange(r, f.range)),
-            )
+          ? declaringRanges(ctx, valueSym)
+              .map((r) => ctx.fallbackAt(r))
+              .find((f) => f !== undefined)
           : undefined)
       if (fallback) {
         notSplit.push({
@@ -628,8 +628,4 @@ function declaringRanges(ctx: PlanContext, sym: SymbolId): Array<Range> {
   return (t1.declaringUnits.get(sym) ?? []).map(
     (u) => t1.regions.get(t1.units[u]!.region).range,
   )
-}
-
-function sameRange(a: Range, b: Range): boolean {
-  return a.start === b.start && a.end === b.end
 }

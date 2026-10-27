@@ -991,13 +991,7 @@ export function computePlacement(input: PlacementInput): Placement {
     ) {
       continue
     }
-    let derivedNeeds = false
-    for (const set of derivedReach.values()) {
-      if (set.has(cl.id)) {
-        derivedNeeds = true
-      }
-    }
-    if (!derivedNeeds) {
+    if (!derivedNeeds(cl.id)) {
       deadCandidates.add(cl.id)
     }
   }
@@ -1128,28 +1122,148 @@ export function computePlacement(input: PlacementInput): Placement {
       unitSurvives(u.id) &&
       u.kind !== 'type',
   )
-  // An effectful cluster that does not move is an env root, which makes
-  // what it reads live in the env module: a cluster read by it no longer
-  // moves, nor one that only could because that one moved with it (d).
-  // Monotone (roots only grow): repeat until no root is added.
+  // ---- extracted exports: what may leave ------------------------------------
+  // what derived outputs need before any extraction (a chunk may reach a
+  // candidate through another one)
+  const needed = new Set<ClusterId>()
+  for (const set of derivedReach.values()) {
+    for (const c of set) {
+      needed.add(c)
+    }
+  }
+  const extractable = (c: ClusterId): boolean => {
+    if (liveEnv.has(c) || !needed.has(c)) {
+      return false
+    }
+    // an eager read of something the env module keeps would evaluate in a
+    // cycle (the env module re-exports the extracted module): stay
+    for (const r of clusters[c]!.regions) {
+      for (const ref of ownedRefs.get(r) ?? []) {
+        if (
+          !ref.eager ||
+          !READ_KINDS.has(ref.kind) ||
+          !symbols.isModuleLevel(ref.sym)
+        ) {
+          continue
+        }
+        const d = clusterOfSym.get(ref.sym)
+        if (d === undefined || d === c) {
+          continue
+        }
+        if (liveEnv.has(d) || clusters[d]!.envPinned) {
+          return false
+        }
+      }
+    }
+    return true
+  }
+
+  // ---- env roots and extraction: one fixed point -------------------------
+  // The env module's roots and the extracted outputs are decided together,
+  // over the final placement. Each round: derived reach with the candidates
+  // still extracted (chunks import an extracted cluster from its output, so
+  // their reach stops there, and that output reaches what its cluster
+  // reads), env liveness, the moving set (R29/R31). An effectful cluster
+  // that does not move is an env root, which makes what it reads live in
+  // the env module: a cluster read by it no longer moves, nor one that only
+  // could because that one moved with it (d). A candidate the env module
+  // now keeps, or that reads what it keeps eagerly, is cancelled: it and
+  // its export companions are env roots. Monotone (roots only grow,
+  // candidates only cancel): repeat until nothing changes, so every
+  // decision was taken over the final env roots.
+  const remaining = new Map(extractCandidates)
   let liveEnv = new Set<ClusterId>()
+  // derived reach changes only with the candidates still extracted, or when
+  // a cluster a derived output reaches becomes an env root (it then reads
+  // what it evaluates in the env module)
+  let derivedStale = remaining.size > 0
   for (;;) {
+    if (derivedStale) {
+      derivedStale = false
+      const stop = new Set(remaining.keys())
+      for (const [c, e] of extractCandidates) {
+        if (remaining.has(c)) {
+          pinned.set(c, e.output)
+          derivedRoots.set(e.output, new Set([c]))
+        } else {
+          pinned.delete(c)
+          derivedRoots.set(e.output, new Set())
+        }
+      }
+      for (const [id, roots] of derivedRoots) {
+        const own = [...roots].find((c) => remaining.get(c)?.output === id)
+        derivedReach.set(
+          id,
+          reach(
+            id,
+            roots,
+            own === undefined
+              ? stop
+              : new Set([...stop].filter((c) => c !== own)),
+          ),
+        )
+      }
+    }
     liveEnv = reach('env', envRoots)
     decideMovable()
-    let added = false
+    let changed = false
     for (const cl of clusters) {
       if (!undecided(cl) || movable.has(cl.id)) {
         continue
       }
-      if (fromErased.has(cl.id)) {
+      const needed = derivedNeeds(cl.id)
+      if (fromErased.has(cl.id) && !needed) {
         continue // orphaned by us: removable with its initialiser effects
       }
       envRoots.add(cl.id)
-      added = true
+      derivedStale ||= needed
+      changed = true
     }
-    if (!added) {
+    if (changed) {
+      continue
+    }
+    for (const [c, e] of remaining) {
+      if (extractable(c)) {
+        continue
+      }
+      remaining.delete(c)
+      envRoots.add(c)
+      for (const k of e.companions) {
+        envRoots.add(k)
+      }
+      derivedStale = true
+      changed = true
+    }
+    if (!changed) {
       break
     }
+  }
+  const extracted: Array<ExtractedExport> = []
+  for (const [c, e] of remaining) {
+    for (const k of e.companions) {
+      deadClusters.add(k) // rendered as the env module's re-export glue
+    }
+    // every exported symbol of the cluster leaves with it (a `let` and
+    // the exported function writing it): the env module re-exports them all
+    const syms = new Set(e.syms)
+    for (const u of clusters[c]!.units) {
+      const unit = units[u]!
+      if (unit.exported.length > 0) {
+        for (const s of unit.declares) {
+          syms.add(s)
+        }
+      }
+    }
+    extracted.push({ cluster: c, output: e.output, syms: [...syms] })
+  }
+  /** Whether a derived output reaches `c` (it cannot be removed). */
+  function derivedNeeds(c: ClusterId): boolean {
+    for (const set of derivedReach.values()) {
+      if (set.has(c)) {
+        return true
+      }
+    }
+    return false
   }
   /** An effectful, unexported declaration cluster the env module does not keep (yet): it moves, is orphaned or becomes an env root. */
   function undecided(cl: Cluster): boolean {
@@ -1281,125 +1395,6 @@ export function computePlacement(input: PlacementInput): Placement {
     return false
   }
 
-  // ---- extracted exports: decide ----------------------------------------------
-  const extracted: Array<ExtractedExport> = []
-  if (extractCandidates.size > 0) {
-    // what derived outputs need before any extraction (a chunk may reach a
-    // candidate through another one)
-    const needed = new Set<ClusterId>()
-    for (const set of derivedReach.values()) {
-      for (const c of set) {
-        needed.add(c)
-      }
-    }
-    const extractable = (
-      c: ClusterId,
-      kept: ReadonlySet<ClusterId>,
-    ): boolean => {
-      if (kept.has(c) || !needed.has(c)) {
-        return false
-      }
-      // an eager read of something the env module keeps would evaluate in a
-      // cycle (the env module re-exports the extracted module): stay
-      for (const r of clusters[c]!.regions) {
-        for (const ref of ownedRefs.get(r) ?? []) {
-          if (
-            !ref.eager ||
-            !READ_KINDS.has(ref.kind) ||
-            !symbols.isModuleLevel(ref.sym)
-          ) {
-            continue
-          }
-          const d = clusterOfSym.get(ref.sym)
-          if (d === undefined || d === c) {
-            continue
-          }
-          if (kept.has(d) || clusters[d]!.envPinned) {
-            return false
-          }
-        }
-      }
-      return true
-    }
-    // Decided over the final placement: chunks import an extracted cluster
-    // from its output (their reach stops there, the extracted output reaches
-    // what its cluster reads), moves are decided again with those outputs,
-    // and an effectful cluster a derived output needs that does not move is
-    // homed in the env module, where it is a root (below). A cancelled
-    // candidate is an env root too. Each can make what another candidate
-    // reads eagerly live in the env module: decide again until none is
-    // cancelled.
-    const remaining = new Map(extractCandidates)
-    for (;;) {
-      const stop = new Set(remaining.keys())
-      for (const [c, e] of extractCandidates) {
-        if (remaining.has(c)) {
-          pinned.set(c, e.output)
-          derivedRoots.set(e.output, new Set([c]))
-        } else {
-          pinned.delete(c)
-          derivedRoots.set(e.output, new Set())
-        }
-      }
-      for (const [id, roots] of derivedRoots) {
-        const own = [...roots].find((c) => remaining.get(c)?.output === id)
-        derivedReach.set(
-          id,
-          reach(
-            id,
-            roots,
-            own === undefined
-              ? stop
-              : new Set([...stop].filter((c) => c !== own)),
-          ),
-        )
-      }
-      decideMovable()
-      const homedInEnv = clusters
-        .filter(
-          (cl) =>
-            undecided(cl) &&
-            !movable.has(cl.id) &&
-            [...derivedReach.values()].some((set) => set.has(cl.id)),
-        )
-        .map((cl) => cl.id)
-      const kept = reach('env', [...envRoots, ...homedInEnv])
-      let cancelled = false
-      for (const [c, e] of remaining) {
-        if (extractable(c, kept)) {
-          continue
-        }
-        remaining.delete(c)
-        envRoots.add(c)
-        for (const k of e.companions) {
-          envRoots.add(k)
-        }
-        cancelled = true
-      }
-      if (!cancelled) {
-        break
-      }
-      liveEnv = reach('env', envRoots)
-    }
-    for (const [c, e] of remaining) {
-      for (const k of e.companions) {
-        deadClusters.add(k) // rendered as the env module's re-export glue
-      }
-      // every exported symbol of the cluster leaves with it (a `let` and
-      // the exported function writing it): the env module re-exports them all
-      const syms = new Set(e.syms)
-      for (const u of clusters[c]!.units) {
-        const unit = units[u]!
-        if (unit.exported.length > 0) {
-          for (const s of unit.declares) {
-            syms.add(s)
-          }
-        }
-      }
-      extracted.push({ cluster: c, output: e.output, syms: [...syms] })
-    }
-  }
-
   // ---- orphans: erased-only clusters the final env liveness does not reach ------
   // (after the extraction decision: a cancelled candidate is an env root again,
   // and what it reads is live, however an erased range also read it)
@@ -1429,8 +1424,8 @@ export function computePlacement(input: PlacementInput): Placement {
   const keyOf = (o: OutputId) => outputs.get(o)?.key ?? o
   for (const cl of clusters) {
     const S = needers.get(cl.id)!
-    const derivedNeeds = [...S].some((o) => o !== 'env')
-    if (deadClusters.has(cl.id) || (orphaned.has(cl.id) && !derivedNeeds)) {
+    const neededByDerived = [...S].some((o) => o !== 'env')
+    if (deadClusters.has(cl.id) || (orphaned.has(cl.id) && !neededByDerived)) {
       // orphaned by an env erasure and needed by no derived output: gone;
       // still needed by a chunk (an erased option value named it): homed below
       home.set(cl.id, 'removed')
@@ -1499,26 +1494,16 @@ export function computePlacement(input: PlacementInput): Placement {
     }
     home.set(cl.id, shared)
   }
-  // effectful clusters homed in env because a derived output needs them become env roots (table rows 4/7)
-  for (const cl of clusters) {
-    if (home.get(cl.id) === 'env' && !liveEnv.has(cl.id) && cl.effectful) {
-      envRoots.add(cl.id)
-    }
-  }
-  liveEnv = reach('env', envRoots)
-  for (const cl of clusters) {
-    if (!liveEnv.has(cl.id)) {
-      continue
-    }
-    const S = needers.get(cl.id)!
-    if (S.has('env')) {
-      continue
-    }
-    S.add('env')
-    // what those roots read in the env module was homed as if the env module did not need it
-    // (an orphan removed, a chunk's own import): it is homed like any env-needed cluster
-    if (!deadClusters.has(cl.id) && !pinned.has(cl.id)) {
-      home.set(cl.id, cl.copyable && S.size > 1 ? 'duplicate' : 'env')
+  if (process.env.NODE_ENV !== 'production') {
+    // an effectful cluster the env module keeps for a derived output is an
+    // env root (table rows 4/7): decided in the fixed point above, so that
+    // what it reads was live when the moving set was decided
+    for (const cl of clusters) {
+      if (home.get(cl.id) === 'env' && cl.effectful && !liveEnv.has(cl.id)) {
+        throw new Error(
+          `placement: effectful cluster ${cl.id} homed in the env module is not live there`,
+        )
+      }
     }
   }
 

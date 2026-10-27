@@ -14,6 +14,11 @@ import {
   getConfig as getGeneratorConfig,
   watchRouteFiles,
 } from '@tanstack/router-generator'
+import {
+  changedRoutePaths,
+  createRouterPluginContext,
+  onRoutesChanged,
+} from '@tanstack/router-plugin/context'
 import { routesManifestPlugin } from '../start-router-plugin/generator-plugins/routes-manifest-plugin'
 import { prerenderRoutesPlugin } from '../start-router-plugin/generator-plugins/prerender-routes-plugin'
 import { buildRouteTreeFileFooterFromConfig } from '../start-router-plugin/route-tree-footer'
@@ -21,10 +26,7 @@ import { createClientRouteTree } from '../start-router-plugin/client-route-tree'
 import { normalizePath } from '../utils'
 import type { GetConfigFn, TanStackStartCoreOptions } from '../types'
 import type { TanStackStartRsbuildInputConfig } from './schema'
-import type {
-  GetRoutesByFileMapResult,
-  RouteFileWatcher,
-} from '@tanstack/router-generator'
+import type { RouteFileWatcher } from '@tanstack/router-generator'
 
 export interface RsbuildRouteGenerator {
   /** The registry entry of a route file (its scanned or real path). */
@@ -55,11 +57,14 @@ export function createRsbuildRouteGenerator(opts: {
   dev: boolean
 }): RsbuildRouteGenerator {
   let generator: Generator | undefined
-  let routesByFile: GetRoutesByFileMapResult = new Map()
+  // the published registry (the context dedupes an unchanged publication)
+  const context = createRouterPluginContext()
   let byRealPath: Map<string, { routeId: string }> | null = null
+  onRoutesChanged(context, () => {
+    byRealPath = null
+  })
   let watcher: Promise<RouteFileWatcher> | undefined
   let version = 0
-  const listeners = new Set<(files: Array<string>) => void>()
 
   const treePath = () =>
     path.resolve(opts.getConfig().startConfig.router.generatedRouteTree)
@@ -102,30 +107,7 @@ export function createRsbuildRouteGenerator(opts: {
   }
 
   const publish = () => {
-    const previous = routesByFile
-    const next = instance().getRoutesByFileMap()
-    // the generator replaces its registry when a route changed
-    if (next === previous) {
-      return
-    }
-    routesByFile = next
-    byRealPath = null
-    const changed: Array<string> = []
-    for (const [file, entry] of routesByFile) {
-      if (previous.get(file)?.routeId !== entry.routeId) {
-        changed.push(file)
-      }
-    }
-    for (const file of previous.keys()) {
-      if (!routesByFile.has(file)) {
-        changed.push(file)
-      }
-    }
-    if (changed.length > 0) {
-      for (const listener of listeners) {
-        listener(changed)
-      }
-    }
+    context.routesByFile = instance().getRoutesByFileMap()
   }
 
   const settle = async (run: Promise<void>) => {
@@ -140,6 +122,7 @@ export function createRsbuildRouteGenerator(opts: {
   return {
     lookup(file) {
       const p = normalizePath(file)
+      const { routesByFile } = context
       const entry = routesByFile.get(p)
       if (entry) {
         return { routeId: entry.routeId }
@@ -189,7 +172,12 @@ export function createRsbuildRouteGenerator(opts: {
       await (await w)?.close()
     },
     onRoutesChanged(listener) {
-      listeners.add(listener)
+      onRoutesChanged(context, (next, previous) => {
+        const changed = changedRoutePaths(next, previous)
+        if (changed.length > 0) {
+          listener(changed)
+        }
+      })
     },
     clientRouteTree: {
       path: treePath,

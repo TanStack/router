@@ -27,6 +27,7 @@ import {
   identify,
   invalidate,
   isAnalyzableSpecifier,
+  isFinalBuild,
   registerCompilerStats,
   releaseEnvironment,
   resolveDerivedSibling,
@@ -1164,8 +1165,7 @@ export function startCompilerPlugin(
           } else {
             output = await original(environment)
           }
-          const { write, watch } = environment.config.build
-          if (write !== false && !watch) {
+          if (isFinalBuild(environment.config.build)) {
             releaseEnvironment(s.caches, env.name)
             s.ip?.release(env.name)
           }
