@@ -413,7 +413,7 @@ describe('extracted-export outputs', () => {
         ?.code ?? ''
     const extracted = async (name: string) =>
       await host.compile(`/app/route.tsx?tsr-split=export~${name}`, planners)
-    return { env, chunk, extracted }
+    return { host, env, chunk, extracted }
   }
 
   it('moves an exported pure declaration only a chunk needs and re-exports it', async () => {
@@ -555,6 +555,64 @@ describe('extracted-export outputs', () => {
     const page = await r.extracted('Page')
     expect(page?.code).toContain("import { Card } from './route.tsx'")
     expect(page?.code).toContain('function Page() { return Card() }')
+  })
+
+  it('an export the env module keeps is no output of the plan (a stale request gets an empty module)', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      export function Card() { return 'card' }
+      export function Page() { return Card() }
+      export const Route = createFileRoute('/')({
+        loader: () => Card(),
+        component: Page,
+      })
+    `)
+    const r = await extract(code)
+    const outputs = r.host.caches.plans.get(envInfo().name)!
+    const [key] = outputs.keysAt('/app/route.tsx')
+    expect(Object.keys(outputs.get(key!)!.plan.outputs).sort()).toEqual([
+      'derived:/app/route.tsx?tsr-split=component',
+      'derived:/app/route.tsx?tsr-split=export~Page',
+      'env',
+    ])
+    expect((await r.extracted('Card'))?.code).toBe('export {}\n')
+  })
+
+  it('renders a homeId ref as the id of the module the chunk takes the binding from', async () => {
+    const homeOf = async (code: string) => {
+      const files = { '/app/route.tsx': dedent(code) }
+      const planners = [
+        toySplitPlanner({
+          extractExports: true,
+          identifierEdits: true,
+          homeIds: true,
+        }),
+      ]
+      const chunk = await new MemoryHost({ files }).compile(
+        '/app/route.tsx?tsr-split=component',
+        planners,
+      )
+      return /export const home = (".*")/.exec(chunk?.code ?? '')?.[1]
+    }
+    const route = (page: string, loader = '') => `
+      import { createFileRoute } from 'toy-router'
+      ${page}
+      export const Route = createFileRoute('/')({${loader}
+        component: Page,
+      })
+    `
+    // in the chunk, extracted, kept in the route module (its loader reads it)
+    expect(await homeOf(route('function Page() { return 1 }'))).toBe(
+      '"/app/route.tsx?tsr-split=component"',
+    )
+    expect(await homeOf(route('export function Page() { return 1 }'))).toBe(
+      '"/app/route.tsx?tsr-split=export~Page"',
+    )
+    expect(
+      await homeOf(
+        route('export function Page() { return 1 }', ' loader: () => Page,'),
+      ),
+    ).toBe('"/app/route.tsx"')
   })
 
   it('re-exports under every public name and drops the export companions', async () => {

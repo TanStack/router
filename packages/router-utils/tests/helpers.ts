@@ -126,6 +126,8 @@ export interface ToySplitOptions {
    * it as a symbol) instead of a claim.
    */
   identifierEdits?: boolean
+  /** Export the id of the module each chunk takes an identifier value from (`export const home = …`, a `homeId` ref). */
+  homeIds?: boolean
 }
 
 /**
@@ -261,6 +263,18 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
             { k: 'text', parts: [`const ${split.name} = `] },
             { k: 'slice', range: valueRange },
             { k: 'text', parts: [`\nexport { ${split.name} as ${key} }\n`] },
+            ...(opts.homeIds && valueSym !== null
+              ? [
+                  {
+                    k: 'text' as const,
+                    parts: [
+                      'export const home = ',
+                      { sym: valueSym, ctx: 'homeId' as const },
+                      '\n',
+                    ],
+                  },
+                ]
+              : []),
           ],
           declares: [split.sym],
           effectful: false,

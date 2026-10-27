@@ -109,3 +109,40 @@ export const value = b
     ])
   })
 })
+
+describe('facts of a file that stops parsing', () => {
+  it('keeps the last facts the file parsed to, until it parses again', async () => {
+    const files: Record<string, string> = {
+      '/app/a.ts': 'export const a = 1\n',
+    }
+    const cache = new RawFactsCache({
+      readFile: (p) => Promise.resolve(files[p] ?? null),
+      loadVirtual: () => Promise.resolve(null),
+    })
+    const parsed = await cache.get('/app/a.ts')
+    expect(parsed.targetFacts.exportNames).toEqual(['a'])
+    // the file is saved half-written: it does not parse
+    files['/app/a.ts'] = 'export const a = 1\nconst = ;\n'
+    cache.markStale('/app/a.ts')
+    const broken = await cache.get('/app/a.ts')
+    expect(broken.targetFacts.digest).toBe(parsed.targetFacts.digest)
+    expect(broken.summary?.digest).toBe(parsed.summary?.digest)
+    expect(cache.peekRevision('/app/a.ts')?.stale).toBe(false)
+    // parsing again with other exports: the facts follow the file
+    files['/app/a.ts'] = 'export const b = 1\n'
+    cache.markStale('/app/a.ts')
+    const fixed = await cache.get('/app/a.ts')
+    expect(fixed.targetFacts.exportNames).toEqual(['b'])
+    expect(fixed.targetFacts.digest).not.toBe(parsed.targetFacts.digest)
+  })
+
+  it('a file that never parsed has unknown facts', async () => {
+    const cache = new RawFactsCache({
+      readFile: () => Promise.resolve('const = ;\n'),
+      loadVirtual: () => Promise.resolve(null),
+    })
+    const facts = await cache.get('/app/a.ts')
+    expect(facts.summary).toBeNull()
+    expect(facts.targetFacts.esm).toBe(false)
+  })
+})

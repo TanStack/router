@@ -349,19 +349,25 @@ export function routeSplitPlanner(): Planner {
           // where it is declared, and the object may be frozen
           !(valueSym !== null && symbols.isImport(valueSym))
         ) {
-          // identity = chunk id + the binding React Refresh registers: the
-          // user's component when the value names one (a rename is a new
-          // family), else the chunk's own declaration
-          const registered =
-            valueSym !== null
-              ? symbols.name(renamedSymbol(ctx, valueSym))
-              : split.name
+          // identity = the module React Refresh registers the binding in
+          // (where placement puts the user's component: this chunk, the
+          // route module or its extracted-export module; a move is a new
+          // family) + the binding: the user's component when the value names
+          // one (a rename is a new family), else the chunk's own declaration
           body.push({
             k: 'text',
-            parts: [
-              exported,
-              `.$$tsrRefreshId = ${stringLiteral(`${g.derivedId} ${registered}`, '"')}\n`,
-            ],
+            parts:
+              valueSym !== null
+                ? [
+                    exported,
+                    '.$$tsrRefreshId = ',
+                    { sym: valueSym, ctx: 'homeId' },
+                    ` + ${stringLiteral(` ${symbols.name(renamedSymbol(ctx, valueSym))}`, '"')}\n`,
+                  ]
+                : [
+                    exported,
+                    `.$$tsrRefreshId = ${stringLiteral(`${g.derivedId} ${split.name}`, '"')}\n`,
+                  ],
           })
         }
         body.push({
