@@ -1177,9 +1177,11 @@ function hoist(
     if (!symbols.isModuleLevel(r.sym)) {
       continue
     }
-    if (symbols.isReassignable(r.sym) && t1.refs.writesOf(r.sym).length > 0) {
+    if (t1.mutation.isMutated(r.sym)) {
+      // hoisted, the read runs when the module loads instead of when the
+      // enclosing function runs: a binding something writes may differ
       return refuse(
-        `A server function nested in a function cannot be hoisted: it reads \`${symbols.name(r.sym)}\`, a module binding that is reassigned. Move the server function to the module top level.`,
+        `A server function nested in a function cannot be hoisted: it reads \`${symbols.name(r.sym)}\`, a module binding that is reassigned or mutated. Move the server function to the module top level.`,
         r.range,
       )
     }

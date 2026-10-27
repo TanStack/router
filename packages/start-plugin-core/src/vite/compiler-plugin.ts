@@ -289,7 +289,7 @@ export function startCompilerPlugin(
   const envOf = (name: string): StartCompilerEnvironment | undefined =>
     opts.environments.find((e) => e.name === name)
 
-  /** The router planners' configuration of an env (Start's wiring: split + HMR + `deleteNodes` on the client, `deleteNodes` only on servers: SSR route splitting is off, SPEC §5.3). */
+  /** The router planners' configuration of an env (Start's wiring: splitting in every env, HMR and the client `deleteNodes` on the client, the server `deleteNodes` on servers). */
   const routerConfigFor = (
     env: StartCompilerEnvironment,
   ): RouterPlannerConfig => {

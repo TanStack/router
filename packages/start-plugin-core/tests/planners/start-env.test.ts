@@ -327,6 +327,36 @@ ${body}`
     )
     expect(r.code).not.toContain('tss-serverfn-split')
   })
+
+  // The provider module copies every declaration its handlers reach; the
+  // env module, where the handlers are stubs, keeps nothing only they read,
+  // whether or not a later effect keeps the initialiser eager.
+  it('drops an initialiser only a handler reads from the env module, before a later effect', async () => {
+    const r = await compile(
+      `import { createServerFn } from '@tanstack/react-start'
+import { connect, register } from './db.server'
+const db = connect()
+export const fn = createServerFn().handler(() => db.q())
+register('fn')
+`,
+      {
+        env: rsc,
+        config,
+        files: {
+          '/app/src/db.server.ts': `export const connect = () => ({ q: () => 1 })
+export const register = (name: string) => name
+`,
+        },
+      },
+    )
+    expectValid(r.code)
+    expect(r.code).not.toContain('connect()')
+    expect(r.code).toContain("register('fn')")
+    const provider = await r.derived(PROVIDER)
+    expectValid(provider)
+    expect(provider).toContain('const db = connect()')
+    expect(provider).toContain('db.q()')
+  })
 })
 
 describe('a server fn nested in a function (J4.6): hoisted when it captures nothing', () => {

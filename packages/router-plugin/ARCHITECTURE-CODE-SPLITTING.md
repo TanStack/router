@@ -45,8 +45,11 @@ module and the chunk imports it.
   module, built by a call), and methods/function expressions whose own body reads `this` (`not-split:this-reference`:
   the router calls them as methods; a lazy wrapper would call them detached). When the limitation is ours, it is a
   bug, not a warning.
-- Single writer and evaluation order: a split that would make two outputs write one binding, or reorder a module
-  effect, is a core _fallback_; the option stays in the route module.
+- Single writer and evaluation order: a split that would make two outputs write one binding, or move a read of
+  state something writes (an option value reading a binding a function assigns, or one written below it), is a core
+  _fallback_; the option stays in the route module. The core re-plans with each fallback kept in place until no new
+  one appears (keeping one option can free the next: a chain of writers); if that never settles, nothing of the route
+  is split and one warning (`fallback-rounds-exhausted`) says so.
 - `deleteNodes` removes options (every property form) from the env output and what only they imported.
 - Route CSS (`import './x.css'` and other bare style imports) stays in the route module, which the route tree imports
   eagerly, whether or not the route's components are split (fully lazy route CSS needs a router-core asset loader).

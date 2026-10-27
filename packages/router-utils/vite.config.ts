@@ -11,6 +11,9 @@ const config = defineConfig({
     // The retained-heap gate forces GC; the workers get the flag.
     pool: 'forks',
     execArgv: ['--expose-gc'],
+    // the compiler's invariant checker (`src/compiler/verify.ts`) is on for
+    // every compile of the tests
+    env: { TSR_COMPILER_VERIFY: process.env.TSR_COMPILER_VERIFY ?? '1' },
   },
 })
 

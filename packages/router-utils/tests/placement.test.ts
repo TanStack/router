@@ -2039,3 +2039,231 @@ describe('pre-existing dead code (G16)', () => {
     expect(r.chunks.component).not.toContain('function a()')
   })
 })
+
+describe('one mutation model: eager reads of state something writes', () => {
+  it('keeps every writer in place when single-writer fallbacks cascade past three rounds', async () => {
+    // each component writes a module `let` the previous one reads; the
+    // route module reads only `a`, so every round frees one more writer
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      let a = 0, b = 0, c = 0
+      export const Route = createFileRoute('/')({
+        loader: () => a,
+        component: () => { a = 1; return b },
+        errorComponent: () => { b = 1; return c },
+        notFoundComponent: () => { c = 1; return null },
+      })
+    `)
+    const keys = ['component', 'errorComponent', 'notFoundComponent']
+    const r = await split(code, { keys })
+    for (const key of keys) {
+      // a chunk never assigns a binding it imports
+      expect(r.chunks[key]).not.toMatch(/import \{[^}]*\b[abc]\b[^}]*\} from/)
+      expect(r.chunks[key]).toBe('export {}\n')
+    }
+    expect(r.env).toContain('component: () => { a = 1; return b }')
+    expect(r.env).toContain('errorComponent: () => { b = 1; return c }')
+    expect(r.env).toContain('notFoundComponent: () => { c = 1; return null }')
+  })
+
+  it.each([
+    ['an array literal', 'const initial = [n]', 'initial[0]'],
+    ['an object literal', 'const initial = { n }', 'initial.n'],
+    ['a template literal', 'const initial = `${n}`', 'initial'],
+    ['a static class field', 'class Snap { static value = n }', 'Snap.value'],
+  ])(
+    'keeps %s that reads a binding a function writes in the route module',
+    async (_, declaration, read) => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        let n = 0
+        export function inc() { n++ }
+        ${declaration}
+        export const Route = createFileRoute('/')({
+          component: () => ${read},
+        })
+      `)
+      const r = await split(code)
+      expect(r.env).toContain(declaration)
+      expect(r.chunks.component).not.toContain(declaration)
+      expect(r.chunks.component).toMatch(
+        /import \{[^}]*\b(initial|Snap)\b[^}]*\} from '\.\/route\.tsx'/,
+      )
+    },
+  )
+
+  it('treats an immediately invoked function as eager: its read of a member something writes pins it', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      export const cfg = { n: 1 }
+      export function bump() { cfg.n++ }
+      const snapshot = (() => cfg.n)()
+      export const Route = createFileRoute('/')({
+        component: () => snapshot,
+      })
+    `)
+    const r = await split(code)
+    expect(r.env).toContain('const snapshot = (() => cfg.n)()')
+    expect(r.chunks.component).not.toContain('(() => cfg.n)()')
+    expect(r.chunks.component).toContain(
+      "import { snapshot } from './route.tsx'",
+    )
+  })
+
+  it.each([
+    ['the callee of a call', 'const initial = (() => n)()', true],
+    ['an element computed by a call', 'const initial = [(() => n)()]', true],
+    [
+      'called through .call',
+      'const initial = (function () { return n }).call(null)',
+      true,
+    ],
+    [
+      'a branch of a conditional',
+      'const initial = cond ? (() => n)() : 0',
+      true,
+    ],
+    ['negated and called', 'const initial = !function () { return n }()', true],
+    [
+      'an argument of a call whose result is called',
+      'const initial = wrap(() => n)()',
+      false,
+    ],
+    ['an argument of a call', 'const initial = wrap(() => n)', false],
+  ])(
+    'classifies a function that is %s as %s',
+    async (_, declaration, eager) => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { wrap } from './state'
+        const cond = true
+        let n = 0
+        export function inc() { n++ }
+        ${declaration}
+        export const Route = createFileRoute('/')({
+          component: () => initial,
+        })
+      `)
+      const r = await split(code, {
+        files: {
+          '/app/state.ts': 'export const wrap = (f: () => number) => f\n',
+        },
+      })
+      // an eager read of a binding a function writes keeps the declaration
+      // in the route module; a lazy one lets it move with the component
+      expect(r.env.includes(declaration)).toBe(eager)
+      expect((r.chunks.component ?? '').includes(declaration)).toBe(!eager)
+    },
+  )
+
+  it('still moves an immediately invoked function reading a const nothing writes', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      export const cfg = { n: 1 }
+      const snapshot = (() => cfg.n)()
+      export const Route = createFileRoute('/')({
+        component: () => snapshot,
+      })
+    `)
+    const r = await split(code)
+    expect(r.env).not.toContain('const snapshot')
+    expect(r.chunks.component).toContain('const snapshot = (() => cfg.n)()')
+    expect(r.chunks.component).toContain("import { cfg } from './route.tsx'")
+  })
+
+  it('pins an effectful initialiser that reads a pure object a function mutates', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { read } from './state'
+      export const cfg = { n: 1 }
+      export function bump() { cfg.n++ }
+      const snapshot = read(cfg.n)
+      export const Route = createFileRoute('/')({
+        component: () => snapshot,
+      })
+    `)
+    const r = await split(code, {
+      files: { '/app/state.ts': 'export const read = (v: number) => v\n' },
+    })
+    expect(r.env).toContain('const snapshot = read(cfg.n)')
+    expect(r.chunks.component).not.toContain('read(cfg.n)')
+    expect(r.chunks.component).toContain(
+      "import { snapshot } from './route.tsx'",
+    )
+  })
+
+  it('keeps an option value that reads a binding a function writes in place (ordered-effect)', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { makeComp } from './state'
+      let n = 0
+      export function inc() { n++ }
+      export const Route = createFileRoute('/')({
+        component: makeComp(n),
+      })
+    `)
+    const r = await split(code, {
+      files: {
+        '/app/state.ts': 'export const makeComp = (v: number) => () => v\n',
+      },
+    })
+    expect(r.main?.facts.planners['toy-split']).toMatchObject({
+      notSplittable: 'component',
+      reasons: { component: 'ordered-effect' },
+    })
+    expect(r.env).toContain('component: makeComp(n)')
+    expect(r.chunks.component).toBe('export {}\n')
+  })
+
+  it('declares the route unit benign only when its option values are pure', async () => {
+    const state =
+      'export const createStore = () => ({ get: () => 1 })\nexport const makeSchema = () => ({})\n'
+    const impure = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { createStore, makeSchema } from './state'
+      const store = createStore()
+      function Page() { return store.get() }
+      export const Route = createFileRoute('/')({
+        component: Page,
+        validateSearch: makeSchema(),
+      })
+    `)
+    const r = await split(impure, { files: { '/app/state.ts': state } })
+    // `makeSchema()` runs at route creation, after `createStore()` in the
+    // source: the store stays eager in the route module, the chunk imports it
+    expect(r.env).toContain('const store = createStore()')
+    expect(r.chunks.component).not.toContain('createStore()')
+    expect(r.chunks.component).toContain("import { store } from './route.tsx'")
+
+    const pure = impure.replace(
+      'validateSearch: makeSchema(),',
+      'validateSearch: (s) => s,',
+    )
+    const p = await split(pure, { files: { '/app/state.ts': state } })
+    expect(p.env).not.toContain('const store = createStore()')
+    expect(p.chunks.component).toContain('const store = createStore()')
+  })
+
+  it('removes a server-only initialiser only an erased handler writes from the client', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { wrapServer } from 'toy-start'
+      import { connect } from './db.server'
+      let socket = connect()
+      export const ping = wrapServer(() => { socket = connect() })
+      export const Route = createFileRoute('/')({
+        component: () => null,
+      })
+    `)
+    const r = await split(code, {
+      files: { '/app/db.server.ts': 'export const connect = () => ({})\n' },
+    })
+    expect(r.env).not.toContain('connect()')
+    expect(r.env).not.toContain('db.server')
+    const s = await split(code, {
+      env: 'server',
+      files: { '/app/db.server.ts': 'export const connect = () => ({})\n' },
+    })
+    expect(s.env).toContain('let socket = connect()')
+  })
+})

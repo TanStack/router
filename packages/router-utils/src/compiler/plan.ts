@@ -12,6 +12,8 @@ import { computePlacement } from './reach'
 import { RewriteSet } from './rewrite'
 import { specifierLiteral, stringLiteral } from './strings'
 import { statementRecipe } from './units'
+import { isPureExpression } from './purity'
+import { unwrapExpression } from './source'
 import { isLineTerminator, pragmasOf } from './header'
 import type {
   Fallback,
@@ -164,6 +166,13 @@ export interface PlanContext {
   declareOutput: (spec: OutputSpec) => OutputId
   outputIdFor: (derived: DerivedQuery) => OutputId
   addRoot: (output: OutputId, root: RootRef) => void
+  /**
+   * Names a recognised framework call known not to touch user state (the
+   * route factory chain): the core treats the unit as no effect for the
+   * evaluation-order rules when its option values are pure expressions,
+   * claimed regions (relocated: a lazy wrapper replaces them) or values the
+   * env output erases; an impure option value keeps it an effect.
+   */
   markBenignEffect: (unit: UnitId) => void
   /**
    * Allows an exported, pure, unwritten declaration into `output` (an
@@ -425,13 +434,24 @@ export class AnalysisPlan implements PlanContext {
 
   /** The core phase after all planners: placement over the live rewrite tree. */
   resolve(): Placement {
+    const benign = new Map<UnitId, boolean>()
     const placement = computePlacement({
       t1: this.t1,
       rewrites: this.rewrites,
       outputs: this.outputs,
       canonicalId: this.identity.canonicalId,
       routeModule: this.routeModule,
-      benignEffects: this.benignEffects,
+      isBenign: (u) => {
+        if (!this.benignEffects.has(u)) {
+          return false
+        }
+        let hit = benign.get(u)
+        if (hit === undefined) {
+          hit = this.benignUnit(this.t1.units[u]!)
+          benign.set(u, hit)
+        }
+        return hit
+      },
       extractions: this.extractions,
     })
     for (const created of placement.created) {
@@ -439,6 +459,84 @@ export class AnalysisPlan implements PlanContext {
     }
     this.placement = placement
     return placement
+  }
+
+  /**
+   * Whether a unit a planner named benign is: its expression is a call
+   * chain (`f(a)(b)`, `f(a).g(b)`) whose every argument is a pure value. An
+   * object literal argument is judged per property; a value that is a
+   * claimed region evaluates in another output through a pure wrapper, and
+   * one the env output erases not at all.
+   */
+  private benignUnit(unit: Unit): boolean {
+    const node = unit.node
+    const expr =
+      node.type === 'VariableDeclarator'
+        ? node.init
+        : node.type === 'ExpressionStatement'
+          ? node.expression
+          : node.type === 'ExportDefaultDeclaration'
+            ? node.declaration
+            : null
+    if (expr === null) {
+      return false
+    }
+    const env = this.rewrites.tree('env')
+    const claimed = (v: Node): boolean => {
+      for (const claim of this.rewrites.claims.values()) {
+        const r = this.t1.regions.get(claim.region).range
+        if (r.start === v.start && r.end === v.end) {
+          return true
+        }
+      }
+      return false
+    }
+    const benignValue = (v: Node): boolean => {
+      const n = unwrapExpression(v)
+      // the common values: a function, an identifier, a literal
+      if (
+        n.type === 'ArrowFunctionExpression' ||
+        n.type === 'FunctionExpression' ||
+        n.type === 'Identifier' ||
+        n.type === 'Literal'
+      ) {
+        return true
+      }
+      if (claimed(v) || env.isErasedAt(v.start)) {
+        return true
+      }
+      if (n.type === 'ObjectExpression') {
+        return n.properties.every((p) =>
+          p.type === 'SpreadElement'
+            ? isPureExpression(this.analysis.purity, p)
+            : (!p.computed ||
+                isPureExpression(this.analysis.purity, p.key as Node)) &&
+              (p.kind !== 'init' ||
+                env.isErasedAt(p.start) ||
+                benignValue(p.value as Node)),
+        )
+      }
+      return isPureExpression(this.analysis.purity, v)
+    }
+    let n: Node = unwrapExpression(expr)
+    let calls = 0
+    for (;;) {
+      if (n.type === 'CallExpression') {
+        calls++
+        if (
+          !n.arguments.every(
+            (a) => a.type !== 'SpreadElement' && benignValue(a),
+          )
+        ) {
+          return false
+        }
+        n = unwrapExpression(n.callee)
+      } else if (n.type === 'MemberExpression' && !n.computed) {
+        n = unwrapExpression(n.object)
+      } else {
+        return calls > 0
+      }
+    }
   }
 
   fallbackAt(range: Range, kind?: RegionKind): FallbackRecord | undefined {
