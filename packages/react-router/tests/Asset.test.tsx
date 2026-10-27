@@ -1,8 +1,11 @@
 import { afterEach, expect, test, vi } from 'vitest'
 import { cleanup, render } from '@testing-library/react'
+import { renderToString } from 'react-dom/server'
 import {
   Asset,
+  HeadContent,
   RouterContextProvider,
+  RouterProvider,
   createMemoryHistory,
   createRootRoute,
   createRouter,
@@ -12,6 +15,66 @@ import type { RouterManagedTag } from '@tanstack/router-core'
 afterEach(() => {
   cleanup()
   vi.unstubAllEnvs()
+})
+
+test.each([
+  ['absent', {}, 'default'],
+  ['explicit undefined', { precedence: undefined }, null],
+  ['explicit string', { precedence: 'custom' }, 'custom'],
+])('renders stylesheet precedence when %s', (_name, attrs, expected) => {
+  const html = renderToString(
+    <Asset
+      tag="link"
+      attrs={{ rel: 'stylesheet', href: '/app.css', ...attrs }}
+    />,
+  )
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  const stylesheet = doc.querySelector('link[rel="stylesheet"]')
+
+  expect(stylesheet).not.toBeNull()
+  expect(stylesheet?.getAttribute('data-precedence')).toBe(expected)
+})
+
+test('keeps an opted-out route stylesheet after a classic inline theme script during SSR', async () => {
+  const rootRoute = createRootRoute({
+    head: () => ({
+      links: [{ rel: 'stylesheet', href: '/theme.css', precedence: undefined }],
+    }),
+    component: () => (
+      <html>
+        <head>
+          <Asset tag="script">
+            {'document.documentElement.dataset.theme="dark"'}
+          </Asset>
+          <HeadContent />
+        </head>
+        <body />
+      </html>
+    ),
+  })
+  const router = createRouter({
+    routeTree: rootRoute,
+    history: createMemoryHistory(),
+    isServer: true,
+  })
+  await router.load()
+
+  const html = renderToString(<RouterProvider router={router} />)
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+
+  expect(Array.from(doc.head.children, (element) => element.tagName)).toEqual([
+    'SCRIPT',
+    'LINK',
+  ])
+  expect(doc.head.querySelector('script')?.textContent).toBe(
+    'document.documentElement.dataset.theme="dark"',
+  )
+  expect(doc.head.querySelector('link')?.getAttribute('href')).toBe(
+    '/theme.css',
+  )
+  expect(
+    doc.head.querySelector('link')?.getAttribute('data-precedence'),
+  ).toBeNull()
 })
 
 test.each([
