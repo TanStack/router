@@ -382,4 +382,66 @@ export const read = () => label()
     },
     timeout,
   )
+
+  // A denied file a barrel re-exports, which the client uses other exports
+  // of, evaluates in the client only for its effects: those of the package
+  // files it imports, as the package's `sideEffects` list declares them.
+  // It is reported when it imports a file the list names (by file name or
+  // by path), and not when it imports one the list does not name.
+  test.each([
+    {
+      name: 'a package file its `sideEffects` list does not name',
+      imports: `import { b } from 'listed-effects'\n`,
+      reported: false,
+    },
+    {
+      name: 'a package file its `sideEffects` list names by file name',
+      imports: `import { b } from 'listed-effects/setup.js'\n`,
+      reported: true,
+    },
+    {
+      name: 'a package file its `sideEffects` list names by path',
+      imports: `import { b } from 'listed-effects/lib/polyfill.js'\n`,
+      reported: true,
+    },
+  ])(
+    'a denied file importing $name, re-exported by a barrel the client uses other exports of, is reported only for effects',
+    async ({ imports, reported }) => {
+      const build = buildStart({
+        bundler,
+        files: {
+          'node_modules/listed-effects/package.json': JSON.stringify({
+            name: 'listed-effects',
+            type: 'module',
+            main: 'index.js',
+            sideEffects: ['setup.js', './lib/*.js'],
+          }),
+          'node_modules/listed-effects/index.js': `export const b = 1\n`,
+          'node_modules/listed-effects/setup.js': `globalThis.setUp = true\nexport const b = 1\n`,
+          'node_modules/listed-effects/lib/polyfill.js': `globalThis.polyfilled = true\nexport const b = 1\n`,
+          'src/secret.server.ts': `${imports}export const secret = () => 'MARK_SECRET' + b\n`,
+          'src/barrel.ts': `export { secret } from './secret.server'
+export const label = () => 'client'
+`,
+          'src/entry.ts': `import { label } from './barrel'
+export const read = () => label()
+`,
+        },
+        entry: 'src/entry.ts',
+      })
+      if (reported) {
+        const report = await failureReport(build)
+        expect(report.environment).toBe('client')
+        expect(report.importer).toMatch(/^src\/barrel\.ts/)
+        return
+      }
+      const { client } = await build
+      expect({
+        reported: reportedViolations(await build),
+        hasRealCode: client.where('MARK_SECRET') !== 'nowhere',
+        read: (await client.run(`return entry.read()`)).result,
+      }).toEqual({ reported: [], hasRealCode: false, read: 'client' })
+    },
+    timeout,
+  )
 })
