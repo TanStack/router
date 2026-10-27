@@ -139,6 +139,25 @@ function Page() {
   return <p data-testid="label">{theme} {data}</p>
 }
 `,
+  // A route module whose server fn is created inside a function only the
+  // split component calls.
+  'src/routes/nested.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
+import { useState } from 'react'
+function makeFn() {
+  return createServerFn().handler(async () => 'MARK_NESTED_FN')
+}
+export const Route = createFileRoute('/nested')({ component: Page })
+function Page() {
+  const [called, setCalled] = useState('')
+  return (
+    <main>
+      <p data-testid="called">called {called}</p>
+      <button data-testid="call" onClick={() => makeFn()().then(setCalled)}>MARK_NESTED_PAGE</button>
+    </main>
+  )
+}
+`,
   // A server fn whose only importer is a `'use client'` component that a
   // server component renders.
   'src/client-ref/update.ts': `import { createServerFn } from '@tanstack/react-start'
@@ -389,6 +408,36 @@ describe('Vite production build with RSC', () => {
     await page.waitForText('MARK_THEME MARK_DATA', {
       selector: '[data-testid=label]',
     })
+    expect(page.errors).toEqual([])
+  })
+
+  // SPEC J4.1, J4.12, J4.14: a server fn created inside a function only the
+  // split component calls runs in the provider when the browser calls it;
+  // the handler's body is in no client file. The rsc build holds the
+  // provider outputs the resolver reaches, not the route module or its
+  // split chunk (the chunk would import the provider module, see the
+  // `start-env` planner's nested-chain override): a route's component code
+  // is in no file of the rsc environment.
+  test('a server fn nested in a function only the split component calls', async () => {
+    const page = await open('/nested')
+    await waitForHydration(page)
+    await page.page.locator('[data-testid=call]').click()
+    await page.waitForText('called MARK_NESTED_FN', {
+      selector: '[data-testid=called]',
+    })
+    const read = async (dir: string) =>
+      Promise.all(
+        (await filesOf(path.join(server.root, dir))).map((file) =>
+          readFile(file, 'utf8'),
+        ),
+      )
+    const client = await read('dist/client')
+    const rsc = await read('dist/server/rsc')
+    expect({
+      handlerInClient: client.some((code) => code.includes('MARK_NESTED_FN')),
+      handlerInRsc: rsc.some((code) => code.includes('MARK_NESTED_FN')),
+      pageInRsc: rsc.some((code) => code.includes('MARK_NESTED_PAGE')),
+    }).toEqual({ handlerInClient: false, handlerInRsc: true, pageInRsc: false })
     expect(page.errors).toEqual([])
   })
 

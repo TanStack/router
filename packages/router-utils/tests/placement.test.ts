@@ -463,6 +463,32 @@ describe('extracted-export outputs', () => {
     expect(e?.code).toContain('function Page() { return config.model.label }')
   })
 
+  it('extracts an exported declaration that reads a copyable constant the route module keeps (the extracted module gets its own copy)', async () => {
+    // `SIZE` is duplicated into every output that reads it: the extracted
+    // module reads its own copy, not the route module's (no cycle, no TDZ)
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      const SIZE = 3
+      export const Page = { size: SIZE, render: () => SIZE }
+      export const Route = createFileRoute('/')({
+        loader: () => SIZE,
+        component: Page,
+      })
+    `)
+    const r = await extract(code)
+    expect(r.env).toContain('const SIZE = 3')
+    expect(r.env).toContain('loader: () => SIZE')
+    expect(r.env).not.toContain('size: SIZE')
+    expect(r.env).toContain(
+      "export { Page } from './route.tsx?tsr-split=export~Page'",
+    )
+    const e = await r.extracted('Page')
+    expect(e?.code).toContain('const SIZE = 3')
+    expect(e?.code).toContain('const Page = { size: SIZE, render: () => SIZE }')
+    expect(e?.code).toContain('export { Page }')
+    expect(e?.code).not.toContain("from './route.tsx'")
+  })
+
   it('keeps an effectful declaration only an extracted export needs in the env module (it would run before its effects)', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -692,6 +718,8 @@ describe('extracted-export outputs', () => {
     expect(e?.code).toContain("import { createTheme } from './theme'")
     expect(e?.code).toContain('const theme = createTheme()')
     expect(e?.code).toContain('function Card() { return theme.card }')
+    // the output holds an effect now: not flagged side-effect free
+    expect(e?.sideEffectFree).toBe(false)
   })
 })
 

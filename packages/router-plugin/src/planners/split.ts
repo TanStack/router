@@ -406,24 +406,15 @@ export function routeSplitPlanner(): Planner {
         }
       }
 
-      // every exported pure, unwritten declaration may leave for an
-      // extracted-export output; the core keeps it in the route module when
-      // other route-module code reads it or no chunk needs it
+      // every exported binding but the route may leave for an
+      // extracted-export output; the core decides (a pure, unwritten
+      // declaration only chunks need moves, the route module re-exports it)
       for (const e of ctx.analysis.exports) {
         if (e.kind !== 'local' || e.local === null || e.typeOnly) {
           continue
         }
         const sym = e.local
         if (sym === route.routeSym) {
-          continue
-        }
-        const declaring = ctx.t1.declaringUnits.get(sym) ?? []
-        if (
-          declaring.length === 0 ||
-          declaring.some((u) => ctx.t1.units[u]!.kind !== 'declaration') ||
-          declaring.some((u) => ctx.t1.units[u]!.effectful) ||
-          ctx.t1.refs.writesOf(sym).length > 0
-        ) {
           continue
         }
         const name = symbols.name(renamedSymbol(ctx, sym))

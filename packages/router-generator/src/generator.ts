@@ -24,6 +24,7 @@ import type { CodeStyle } from './print/style'
 import type {
   FsRouteType,
   GetRoutesByFileMapResult,
+  GetRoutesByFileMapResultValue,
   RouteNode,
   RouteProps,
   TreeModel,
@@ -256,12 +257,7 @@ export class Generator {
     return done
   }
 
-  /**
-   * The route files of the tree (scanned and real paths) and their route
-   * ids. Contract: the map is replaced (a new identity) only by a
-   * generation that changed the tree's routes; the same map again is the
-   * same registry, which is how the plugins' contexts dedupe publications.
-   */
+  /** The route files of the tree and their route ids (`GetRoutesByFileMapResult`: a new snapshot only when the routes changed). */
   public getRoutesByFileMap(): GetRoutesByFileMapResult {
     return this.routesByFile
   }
@@ -743,7 +739,7 @@ export class Generator {
   }
 
   private computeRoutesByFile(): GetRoutesByFileMapResult {
-    const map: GetRoutesByFileMapResult = new Map()
+    const map = new Map<string, GetRoutesByFileMapResultValue>()
     const scan = this.scan!
     for (const node of filesOf(scan)) {
       const key = node.fullPath

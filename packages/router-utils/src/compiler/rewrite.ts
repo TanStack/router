@@ -211,7 +211,7 @@ export class RewriteSet {
     for (const claim of this.claims.values()) {
       claimed.push({
         range: this.regions.get(claim.region).range,
-        seq: 1e9 + claim.region,
+        seq: claimSeq(claim.region),
       })
     }
     for (const e of this.edits) {
@@ -256,7 +256,7 @@ export class RewriteSet {
         range: region.range,
         body: claim.placeholder,
         by: claim.by,
-        seq: 1e9 + claim.region,
+        seq: claimSeq(claim.region),
         claim: claim.region,
         internal: false,
       })
@@ -285,6 +285,11 @@ export class RewriteSet {
 export interface LivenessView {
   live: (ref: ClassifiedRef) => boolean
   isErased: (range: Range) => boolean
+}
+
+/** The sequence of a claim's placeholder edit: above every planner edit, so that an edit on exactly the claimed region nests inside it (or, scoped, replaces it). */
+function claimSeq(region: RegionId): number {
+  return 1e9 + region
 }
 
 function fragsEqual(a: ReadonlyArray<Frag>, b: ReadonlyArray<Frag>): boolean {

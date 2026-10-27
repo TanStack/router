@@ -543,7 +543,11 @@ export class AnalysisPlan implements PlanContext {
         segments,
       }
       edges[id] = dedupeEdges(recipeEdges)
-      sideEffects[id] = decl.sideEffectFree === true
+      // the flag is a property of the content: an effectful cluster placed
+      // in an opted-in output (it moved with its only needer) keeps it
+      sideEffects[id] =
+        decl.sideEffectFree === true &&
+        ![...included].some((c) => placement.clusters[c]!.effectful)
     }
 
     const fallbacks = this.fallbackRecords()
@@ -580,105 +584,25 @@ export class AnalysisPlan implements PlanContext {
     derived: boolean,
   ): Set<UnitId> {
     const set = new Set<UnitId>()
-    const typeUnits: Array<UnitId> = []
-    let includedValueUnits = 0
     for (const uid of item.units) {
       const u = this.t1.units[uid]!
-      if (u.kind === 'type') {
-        if (derived) {
-          // ambient value declarations (`declare enum`, `declare var`, …) are
-          // copied: erased by TypeScript, but a TS transform resolves the
-          // names through them (Oxc inlines `declare enum` members)
-          if (isAmbientValueDeclaration(u.node)) {
-            set.add(uid)
-          }
-          continue
+      if (u.kind === 'type' && derived) {
+        // ambient value declarations (`declare enum`, `declare var`, …) are
+        // copied: erased by TypeScript, but a TS transform resolves the
+        // names through them (Oxc inlines `declare enum` members)
+        if (isAmbientValueDeclaration(u.node)) {
+          set.add(uid)
         }
-        // inline `type` specifiers of a route module go everywhere (J2.5:
-        // under verbatimModuleSyntax TypeScript keeps the bare import, so the
-        // module would load); `import type` statements and other type units
-        // stay in the env module (erased by TypeScript)
-        const inlineTypeSpecifier =
-          this.routeModule &&
-          u.importIndex !== null &&
-          !this.analysis.imports[u.importIndex]!.typeOnly
-        const typeOnlyExport =
-          u.node.type === 'ExportSpecifier' && u.node.exportKind !== 'type'
-        // `export { X }` of a type-only binding goes with it: the route
-        // module no longer holds the import a TS transform erases it by; in
-        // other modules, when the inline type-only import it names is dropped
-        if (
-          inlineTypeSpecifier ||
-          (typeOnlyExport &&
-            (this.routeModule ||
-              this.exportsDroppedTypeImport(u, placement, included)))
-        ) {
-          continue
-        }
-        typeUnits.push(uid)
         continue
       }
+      // type units stay in the env module (erased by TypeScript), except
+      // the TypeScript-only specifiers placement removed (`importStays`)
       const c = placement.clusterOfRegion.get(u.region)
       if (c !== undefined && included.has(c)) {
-        set.add(uid)
-        includedValueUnits++
-      }
-    }
-    // Type units stay in the env module, except the inline type-only specifiers of an import
-    // statement with no included value specifier: `import { type X } from './m'` would keep
-    // loading the module (`import {} from './m'`), and type positions keep nothing alive
-    // (J4.12). A whole-declaration `import type` is erased downstream anyway and stays.
-    const dropTypes =
-      item.shape === 'import' &&
-      includedValueUnits === 0 &&
-      (item.node as { importKind?: string }).importKind !== 'type'
-    if (!dropTypes) {
-      for (const uid of typeUnits) {
         set.add(uid)
       }
     }
     return set
-  }
-
-  /** Whether an export specifier re-exports a binding declared only by inline type-only import specifiers of an import statement that is dropped. */
-  private exportsDroppedTypeImport(
-    unit: Unit,
-    placement: Placement,
-    included: ReadonlySet<number>,
-  ): boolean {
-    const { t1 } = this
-    const ref = t1.refs
-      .refsIn(unit.range)
-      .find((r) => r.kind === 'exportSpecifier')
-    if (!ref) {
-      return false
-    }
-    const decls = t1.declaringUnits.get(ref.sym)
-    if (!decls || decls.length === 0) {
-      return false
-    }
-    for (const d of decls) {
-      const du = t1.units[d]!
-      if (du.kind !== 'type' || du.importIndex === null) {
-        return false
-      }
-      const item = t1.items[du.item]!
-      if ((item.node as { importKind?: string }).importKind === 'type') {
-        return false
-      }
-      // dropped iff no value specifier of its import statement is included
-      for (const sibling of item.units) {
-        const su = t1.units[sibling]!
-        if (su.kind === 'type') {
-          continue
-        }
-        const c = placement.clusterOfRegion.get(su.region)
-        if (c !== undefined && included.has(c)) {
-          return false
-        }
-      }
-    }
-    return true
   }
 
   private renderEnv(
@@ -1199,16 +1123,7 @@ export class AnalysisPlan implements PlanContext {
       }
       const impUnits = units.filter((u) => u.importIndex === imp.index)
       const live = impUnits.filter((u) => u.kind !== 'type' && includedUnit(u))
-      if (
-        live.length === 0 &&
-        !(
-          output === 'env' &&
-          !this.routeModule &&
-          impUnits.length > 0 &&
-          impUnits.every((u) => u.kind !== 'type') &&
-          impUnits.some((u) => includedUnit(u))
-        )
-      ) {
+      if (live.length === 0) {
         continue
       }
       if (tree.isErasedAt(imp.declRange.start)) {
