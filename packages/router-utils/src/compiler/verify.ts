@@ -124,14 +124,22 @@ export function verifyPlan(
   // (d) every surviving effect unit is emitted exactly once across the
   // outputs that import from the env module (a copying output excepted),
   // unless placement removed its cluster (an augmentation of a binding our
-  // edits orphaned leaves with it): then nowhere
+  // edits orphaned leaves with it): then nowhere. An output holds the unit
+  // when a segment of it comes from the unit's range (a slice, or text
+  // standing for a reference there), outside the sub-regions other outputs
+  // claim (Hydrate children inside a statement render in their chunk).
   const placement = plan.placement
+  const claimedRanges = [...plan.rewrites.claims.values()].map(
+    (c) => t1.regions.get(c.region).range,
+  )
+  const inClaimed = (start: number, end: number) =>
+    claimedRanges.some((r) => start >= r.start && end <= r.end)
   for (const u of t1.units) {
     if (u.kind !== 'effect' && u.kind !== 'import-effect') {
       continue
     }
-    const probe = t1.items[u.item]!.nodeRange.start
-    if (envTree.isErasedAt(probe)) {
+    const { start, end } = t1.items[u.item]!.nodeRange
+    if (envTree.isErasedAt(start)) {
       continue
     }
     const cluster = placement?.clusterOfRegion.get(u.region)
@@ -141,18 +149,24 @@ export function verifyPlan(
         : 1
     let n = 0
     for (const { recipe } of outputs.values()) {
-      if (
-        !copies(recipe.kind) &&
-        recipe.segments.some(
-          (s) => s.k === 'slice' && s.start <= probe && probe < s.end,
-        )
-      ) {
+      if (copies(recipe.kind)) {
+        continue
+      }
+      const holds = recipe.segments.some((s) =>
+        s.k === 'slice'
+          ? s.start < end && s.end > start && !inClaimed(s.start, s.end)
+          : s.mapTo !== undefined &&
+            s.mapTo >= start &&
+            s.mapTo < end &&
+            !inClaimed(s.mapTo, s.mapTo + 1),
+      )
+      if (holds) {
         n++
       }
     }
     if (n !== expected) {
       problems.push(
-        `the effect at ${probe} is emitted ${n} times (expected ${expected})`,
+        `the effect at ${start} is emitted ${n} times (expected ${expected})`,
       )
     }
   }
