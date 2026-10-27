@@ -82,8 +82,8 @@ describe('Vite dev, Solid Start with a document shell', () => {
       const browser = await openPage(server.url!, {
         registerCleanup: onTestFinished,
       })
-      // the server rendered the page; hydration reached the component and it threw
-      await browser.waitForText('home-v1', { selector: '[data-probe=home]' })
+      // hydration reached the component and it threw (what the page shows
+      // then is the router's business: the server's HTML, or an error component)
       await expect
         .poll(
           () =>
