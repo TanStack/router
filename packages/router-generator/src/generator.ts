@@ -249,7 +249,12 @@ export class Generator {
     return done
   }
 
-  /** The route files of the tree (scanned and real paths) and their route ids. */
+  /**
+   * The route files of the tree (scanned and real paths) and their route
+   * ids. Contract: the map is replaced (a new identity) only by a
+   * generation that changed the tree's routes; the same map again is the
+   * same registry, which is how the plugins' contexts dedupe publications.
+   */
   public getRoutesByFileMap(): GetRoutesByFileMapResult {
     return this.routesByFile
   }
