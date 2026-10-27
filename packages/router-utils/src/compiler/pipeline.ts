@@ -21,6 +21,7 @@ import { SourceText } from './output-builder'
 import { ExportResolver } from './resolve'
 import { fingerprintSourceFor, resolveForAnalysis } from './host'
 import { registerCompilerStats } from './stats'
+import { VERIFY_OUTPUTS, verifyPlan } from './verify'
 import type { CacheEntry } from './cache'
 import type {
   EmitPlan,
@@ -481,9 +482,18 @@ async function runAttempt(
   if (!tier1Needed) {
     emitPlan = tier0Plan(t0, identity, env, key, rev)
   } else {
+    // Planning rounds: the core reports the regions a split would break
+    // (a chunk writing a binding the route module reads, a relocated read
+    // of mutated state, …) and the planners re-plan with them kept in
+    // place. A kept region can free the next one (a chain of writers), so
+    // the rounds continue until no new region is reported; each round keeps
+    // at least one more region of the module, so they end within the
+    // number of regions. Past that bound (a planner registering new regions
+    // every round) the module is planned with every sub-region kept in
+    // place, which is always correct, and a warning says so.
     let fallbacks: Array<FallbackRecord> = []
     let plan!: AnalysisPlan
-    for (let round = 0; round < 3; round++) {
+    const replan = () => {
       plan = new AnalysisPlan(t0, identity, env, prefetched, fallbacks)
       for (const p of planners) {
         if (p.prepare) {
@@ -494,23 +504,38 @@ async function runAttempt(
         p.plan(withConfig(plan, input.config.perPlanner[p.name]))
       }
       plan.resolve()
-      const fresh = plan
-        .fallbackRecords()
-        .filter(
-          (f) =>
-            !fallbacks.some(
-              (g) =>
-                g.range.start === f.range.start &&
-                g.range.end === f.range.end &&
-                g.reason === f.reason,
-            ),
-        )
-      if (fresh.length === 0 || round === 2) {
+    }
+    const kept = (f: FallbackRecord) =>
+      fallbacks.some(
+        (g) => g.range.start === f.range.start && g.range.end === f.range.end,
+      )
+    for (let round = 0; ; round++) {
+      replan()
+      const fresh = plan.fallbackRecords().filter((f) => !kept(f))
+      if (fresh.length === 0) {
+        break
+      }
+      if (round >= plan.t1.regions.regions.length) {
+        fallbacks = plan.t1.regions.regions
+          .filter((r) => r.kind !== 'unit')
+          .map((r) => ({ range: r.range, kind: r.kind, reason: 'exhausted' }))
+        replan()
+        plan.diagnostic({
+          severity: 'warning',
+          message:
+            'The compiler could not settle which parts of this module can be split: nothing of it is split.',
+          range: fresh[0]!.range,
+          by: 'core',
+          code: 'fallback-rounds-exhausted',
+        })
         break
       }
       fallbacks = [...fallbacks, ...fresh]
     }
     emitPlan = plan.freeze(key, rev)
+    if (VERIFY_OUTPUTS) {
+      verifyPlan(plan, emitPlan, input.code, identity)
+    }
   }
   // summary publication under the domain rule (no extra read: only when the raw revision is known and equal)
   const known = host.rawFacts.peekRevision(identity.canonicalId)
