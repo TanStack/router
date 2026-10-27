@@ -264,7 +264,7 @@ export function isObjectMutator(callee: Node): boolean {
  * behind the member-write classification of references (R67) and the
  * top-level augmentation units (`X.p = …` clusters with `X`).
  */
-export function writeTargets(node: Node): Array<Node> {
+export function writeTargets(node: Node): ReadonlyArray<Node> {
   switch (node.type) {
     case 'AssignmentExpression':
     case 'AssignmentPattern':
@@ -276,7 +276,7 @@ export function writeTargets(node: Node): Array<Node> {
     case 'RestElement':
       return [node.argument]
     case 'UnaryExpression':
-      return node.operator === 'delete' ? [node.argument] : []
+      return node.operator === 'delete' ? [node.argument] : NO_TARGETS
     case 'ArrayPattern':
       return node.elements.filter((e) => e !== null)
     case 'ObjectPattern':
@@ -284,7 +284,7 @@ export function writeTargets(node: Node): Array<Node> {
     case 'CallExpression': {
       const callee = unwrapExpression(node.callee)
       if (isObjectMutator(callee)) {
-        return node.arguments.length > 0 ? [node.arguments[0]!] : []
+        return node.arguments.length > 0 ? [node.arguments[0]!] : NO_TARGETS
       }
       if (
         callee.type === 'MemberExpression' &&
@@ -292,14 +292,17 @@ export function writeTargets(node: Node): Array<Node> {
         callee.property.type === 'Identifier' &&
         MUTATORS.has(callee.property.name)
       ) {
-        return [callee.object]
+        // the receiver, as the callee names it (`x.push`: the root is `x`)
+        return [node.callee]
       }
-      return []
+      return NO_TARGETS
     }
     default:
-      return []
+      return NO_TARGETS
   }
 }
+
+const NO_TARGETS: ReadonlyArray<Node> = []
 
 /**
  * Whether `node` (an identifier) is the root object of a member expression
@@ -307,24 +310,27 @@ export function writeTargets(node: Node): Array<Node> {
  * `Object.assign`-style call: the object it names is mutated.
  */
 export function writesMember(file: SourceFile, node: Node): boolean {
-  // the member chain (and wrappers) grown on `node`, innermost first
-  const chain: Array<Node> = [node]
+  // climb the member chain (and wrappers) grown on `node`
+  let member = false
   let n = node
   let parent = file.parentOf(n)
   for (; parent !== null; n = parent, parent = file.parentOf(n)) {
-    if (
-      (parent.type === 'MemberExpression' && parent.object === n) ||
-      WRAPPERS.has(parent.type)
-    ) {
-      chain.push(parent)
-    } else {
+    if (parent.type === 'MemberExpression' && parent.object === n) {
+      member = true
+    } else if (!WRAPPERS.has(parent.type)) {
       break
     }
   }
   if (parent === null) {
     return false
   }
-  if (chain.length === 1 && parent.type !== 'CallExpression') {
+  if (parent.type === 'CallExpression') {
+    // the receiver of a mutating method, or the first argument of an
+    // `Object.assign`-style call (the common argument position is neither)
+    if (parent.callee !== n && parent.arguments[0] !== n) {
+      return false
+    }
+  } else if (!member) {
     return false // a plain write of the binding, not of a member
   }
   // a destructuring property's target is written by the pattern around it
@@ -332,10 +338,7 @@ export function writesMember(file: SourceFile, node: Node): boolean {
     parent.type === 'Property' && parent.value === n
       ? file.parentOf(parent)
       : parent
-  if (construct === null) {
-    return false
-  }
-  return writeTargets(construct).some((t) => chain.includes(t))
+  return construct !== null && writeTargets(construct).includes(n)
 }
 
 /** The node types `unwrapExpression` looks through. */

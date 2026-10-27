@@ -205,22 +205,37 @@ export class RewriteSet {
       }
     }
     const edits: Array<TreeEdit> = []
-    /** Edits addressed to every output: on exactly a claimed region, they travel with it. */
-    const unscoped = new Set<TreeEdit>()
+    // An edit addressed to every output on exactly a claimed region travels
+    // with the region: it nests inside the claim (its seq above the claim's)
+    const claimed: Array<{ range: Range; seq: number }> = []
+    for (const claim of this.claims.values()) {
+      claimed.push({
+        range: this.regions.get(claim.region).range,
+        seq: 1e9 + claim.region,
+      })
+    }
     for (const e of this.edits) {
       if (RewriteSet.inScope(e.scope, output)) {
-        const edit: TreeEdit = {
+        let seq = e.seq
+        if (e.scope === 'all-outputs') {
+          for (const c of claimed) {
+            if (
+              c.range.start === e.range.start &&
+              c.range.end === e.range.end
+            ) {
+              seq = c.seq + 0.5
+              break
+            }
+          }
+        }
+        edits.push({
           range: e.range,
           body: e.body,
           by: e.by,
-          seq: e.seq,
+          seq,
           claim: null,
           internal: false,
-        }
-        edits.push(edit)
-        if (e.scope === 'all-outputs') {
-          unscoped.add(edit)
-        }
+        })
       }
     }
     for (const x of extra) {
@@ -237,20 +252,11 @@ export class RewriteSet {
       if (base.isErasedAt(region.range.start, null, region.range)) {
         continue
       }
-      const seq = 1e9 + claim.region
-      for (const e of unscoped) {
-        if (
-          e.range.start === region.range.start &&
-          e.range.end === region.range.end
-        ) {
-          e.seq = seq + 0.5
-        }
-      }
       edits.push({
         range: region.range,
         body: claim.placeholder,
         by: claim.by,
-        seq,
+        seq: 1e9 + claim.region,
         claim: claim.region,
         internal: false,
       })

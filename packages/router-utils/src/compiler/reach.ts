@@ -1173,8 +1173,13 @@ export function computePlacement(input: PlacementInput): Placement {
   // decision was taken over the final env roots.
   const remaining = new Map(extractCandidates)
   let liveEnv = new Set<ClusterId>()
-  for (let round = 0; ; round++) {
-    if (round > 0 || remaining.size > 0) {
+  // derived reach changes only with the candidates still extracted, or when
+  // a cluster a derived output reaches becomes an env root (it then reads
+  // what it evaluates in the env module)
+  let derivedStale = remaining.size > 0
+  for (;;) {
+    if (derivedStale) {
+      derivedStale = false
       const stop = new Set(remaining.keys())
       for (const [c, e] of extractCandidates) {
         if (remaining.has(c)) {
@@ -1206,10 +1211,12 @@ export function computePlacement(input: PlacementInput): Placement {
       if (!undecided(cl) || movable.has(cl.id)) {
         continue
       }
-      if (fromErased.has(cl.id) && !derivedNeeds(cl.id)) {
+      const needed = derivedNeeds(cl.id)
+      if (fromErased.has(cl.id) && !needed) {
         continue // orphaned by us: removable with its initialiser effects
       }
       envRoots.add(cl.id)
+      derivedStale ||= needed
       changed = true
     }
     if (changed) {
@@ -1224,6 +1231,7 @@ export function computePlacement(input: PlacementInput): Placement {
       for (const k of e.companions) {
         envRoots.add(k)
       }
+      derivedStale = true
       changed = true
     }
     if (!changed) {
