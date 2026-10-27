@@ -648,11 +648,12 @@ export class AnalysisPlan implements PlanContext {
         segments,
       }
       edges[id] = dedupeEdges(recipeEdges)
-      // the flag is a property of the content: an effectful cluster placed
-      // in an opted-in output (it moved with its only needer) keeps it
+      // the flag is a property of the content: a cluster with observable
+      // effects placed in an opted-in output (it moved with its only needer)
+      // keeps it; augmentations of what the output exports do not
       sideEffects[id] =
         decl.sideEffectFree === true &&
-        ![...included].some((c) => placement.clusters[c]!.effectful)
+        ![...included].some((c) => placement.clusters[c]!.sideEffects)
     }
 
     const fallbacks = this.fallbackRecords()

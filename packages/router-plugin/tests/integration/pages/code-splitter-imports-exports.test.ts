@@ -1287,3 +1287,115 @@ export const Route = createFileRoute('/')({
     ).toEqual(['<p>shared</p>', '<p>true</p>'])
   })
 })
+
+// An exported component the route file augments (`Page.displayName = …`,
+// static props, `preload`) leaves for its extracted module with its
+// augmentations, under the effect-order rule of every move: a surviving
+// effect before the augmentation keeps the component in the route module
+// (the extracted module would evaluate before that effect), one after keeps
+// its order. Other modules import the augmented component either way.
+describe('an exported component with augmentations', () => {
+  const augmented = [
+    {
+      name: 'a displayName',
+      code: `${head}export function Page() {
+  return <p title="MARK_PAGE">{Page.displayName}</p>
+}
+Page.displayName = 'PageDisplay'
+export const Route = createFileRoute('/')({ component: Page })
+`,
+      script: `const { Page } = await app('importer.ts')
+return [await render('component'), Page.displayName]`,
+      expected: ['<p title="MARK_PAGE">PageDisplay</p>', 'PageDisplay'],
+      extracted: true,
+    },
+    {
+      name: 'static props',
+      code: `${head}export const Page = () => <p title="MARK_PAGE">{Page.label}</p>
+Page.label = 'static'
+Page.count = 2
+export const Route = createFileRoute('/')({ component: Page })
+`,
+      script: `const { Page } = await app('importer.ts')
+return [await render('component'), Page.label, Page.count]`,
+      expected: ['<p title="MARK_PAGE">static</p>', 'static', 2],
+      extracted: true,
+    },
+    {
+      name: 'a preload',
+      code: `${head}export function Page() {
+  return <p title="MARK_PAGE">page</p>
+}
+Page.preload = () => import('./heavy')
+export const Route = createFileRoute('/')({ component: Page })
+`,
+      script: `const { Page } = await app('importer.ts')
+const heavy = await Page.preload()
+return [await render('component'), heavy.weight]`,
+      expected: ['<p title="MARK_PAGE">page</p>', 'heavy'],
+      extracted: true,
+    },
+    {
+      name: 'a displayName after a surviving effect (kept in the route module)',
+      code: `${head}import { see } from './see'
+see('before')
+export function Page() {
+  return <p title="MARK_PAGE">{Page.displayName}</p>
+}
+Page.displayName = 'PageDisplay'
+export const Route = createFileRoute('/')({ component: Page })
+`,
+      script: `const { Page } = await app('importer.ts')
+const { seen } = await app('see.ts')
+return [await render('component'), Page.displayName, seen]`,
+      expected: [
+        '<p title="MARK_PAGE">PageDisplay</p>',
+        'PageDisplay',
+        ['before'],
+      ],
+      extracted: false,
+    },
+    {
+      name: 'a displayName before a surviving effect (the effect keeps its order)',
+      code: `${head}import { see } from './see'
+export function Page() {
+  return <p title="MARK_PAGE">{Page.displayName}</p>
+}
+Page.displayName = 'PageDisplay'
+see('after')
+export const Route = createFileRoute('/')({ component: Page })
+`,
+      script: `const { Page } = await app('importer.ts')
+const { seen } = await app('see.ts')
+return [await render('component'), Page.displayName, seen]`,
+      expected: [
+        '<p title="MARK_PAGE">PageDisplay</p>',
+        'PageDisplay',
+        ['after'],
+      ],
+      extracted: true,
+    },
+  ]
+
+  it.each(augmented)(
+    'with $name loads with its chunk and keeps it',
+    async ({ code, script, expected, extracted }) => {
+      const route = await loadRoute(code, {
+        files: {
+          'see.ts': `export const seen: Array<unknown> = []
+export const see = (value: unknown) => seen.push(value)
+`,
+          'heavy.ts': `export const weight = 'heavy'\n`,
+          'importer.ts': `export { Page } from './route'\n`,
+        },
+      })
+      await expectValidModules(route)
+      expect(await route.run(script)).toEqual(expected)
+      expect(await route.isLazy('component')).toBe(true)
+      // the route module holds the component only when it kept it (its
+      // extracted module is a static dependency the dev server loads with
+      // it either way; a production build drops the unused re-export)
+      expect(holdsMarker(await route.transform(), 'MARK_PAGE')).toBe(!extracted)
+    },
+  )
+})

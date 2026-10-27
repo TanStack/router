@@ -259,6 +259,19 @@ ${component}`,
       `export const Page = () => <p>{'$MARK'}</p>
 ${component}`,
     ),
+    // The augmentation leaves with the component for its extracted module
+    // (compiler-level: "extracts an exported component with its
+    // augmentations"); whether the bundler keeps that module out of the
+    // entry is its side-effect analysis of the property write.
+    routeCase(
+      'an exported component with a displayName',
+      'exported-display-name',
+      `export function Page() {
+  return <p>{'$MARK'}{Page.displayName}</p>
+}
+Page.displayName = 'PageDisplay'
+${component}`,
+    ),
     exportedImportedByRoute,
   ]
 

@@ -118,7 +118,7 @@ export interface ToySplitOptions {
   deleteNodes?: Array<string>
   /** Whether to add a dev HMR-like hoist of an inline component (claim → chunk). */
   hoist?: boolean
-  /** Allow every exported pure declaration into an extracted-export output (§3.5.3). */
+  /** Allow every exported declaration but the route into an extracted-export output (§3.5.3). */
   extractExports?: boolean
   /**
    * An identifier option value is replaced by an env-scoped edit (the real
@@ -156,6 +156,9 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
             continue
           }
           const sym = e.local
+          if (unit.declares.includes(sym)) {
+            continue // the route itself stays, as the real splitter has it
+          }
           const name = ctx.symbols.name(sym)
           const out = ctx.declareOutput({
             kind: 'export',

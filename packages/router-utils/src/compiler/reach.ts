@@ -66,11 +66,22 @@ export interface Cluster {
   units: Array<UnitId>
   declares: Set<SymbolId>
   effectful: boolean
+  /**
+   * An effect observable without the cluster's declarations: an effectful
+   * initialiser, an effect statement other than an augmentation of its own
+   * declarations, an effectful generated unit. Such a cluster is never an
+   * extracted export (its module could never be dropped as unused) and
+   * clears an output's side-effect-free flag; a cluster whose effects only
+   * augment what it declares (`Page.displayName = …`) is unobservable while
+   * nothing imports it.
+   */
+  sideEffects: boolean
   exported: boolean
   /** Source position for ordering (min start of members). */
   start: number
-  /** Source position of the cluster's first effectful unit (an effectful cluster with a surviving effect after it stays eager); Infinity when none (generated units are compiler code). */
+  /** Source positions of the cluster's first and last effectful units (its effects keep their order with the surviving effects on either side); Infinity/-Infinity when none (generated units are compiler code). */
   firstEffect: number
+  lastEffect: number
   kind:
     | 'import'
     | 'import-effect'
@@ -622,9 +633,11 @@ export function computePlacement(input: PlacementInput): Placement {
         units: [],
         declares: new Set(),
         effectful: false,
+        sideEffects: false,
         exported: false,
         start: Infinity,
         firstEffect: Infinity,
+        lastEffect: -Infinity,
         kind: 'region',
         copyable: false,
         envPinned: false,
@@ -649,6 +662,7 @@ export function computePlacement(input: PlacementInput): Placement {
       if (u.effectful && !envTree.isErasedAt(items[u.item]!.nodeRange.start)) {
         cl.effectful = true
         cl.firstEffect = Math.min(cl.firstEffect, u.range.start)
+        cl.lastEffect = Math.max(cl.lastEffect, u.range.start)
       }
       cl.exported ||= u.exported.length > 0
     }
@@ -718,6 +732,13 @@ export function computePlacement(input: PlacementInput): Placement {
     if (cl.kind === 'type') {
       cl.envPinned = true
     }
+    cl.sideEffects =
+      cl.effectful &&
+      (cl.kind !== 'declaration' ||
+        cl.gens.some((g) => gens[g]!.effectful) ||
+        cl.units.some(
+          (u) => units[u]!.kind !== 'effect' && units[u]!.effectful,
+        ))
   }
   const clusterOfSym = new Map<SymbolId, ClusterId>()
   for (const [s, m] of declMember) {
@@ -883,10 +904,12 @@ export function computePlacement(input: PlacementInput): Placement {
 
   // ---- extracted exports: candidates and their export companions -------
   // Planners allow every local value export out; a candidate is one whose
-  // cluster is a pure, unwritten declaration (the one filter). Its
-  // companions are the export-specifier / `export default x` clusters that
-  // only read it. Neither is an env root for now: the decision (extract, or
-  // keep in the env module) is taken once env liveness is known.
+  // cluster is an unassigned declaration without observable effects (its
+  // augmentations, `Page.p = …`, travel with it under the effect-order rule
+  // of every move, `effectStays`). Its companions are the export-specifier /
+  // `export default x` clusters that only read it. Neither is an env root
+  // for now: the decision (extract, or keep in the env module) is taken once
+  // env liveness is known.
   const extractCandidates = new Map<
     ClusterId,
     { output: OutputId; syms: Set<SymbolId>; companions: Set<ClusterId> }
@@ -899,7 +922,7 @@ export function computePlacement(input: PlacementInput): Placement {
     const cl = clusters[c]!
     if (
       cl.kind !== 'declaration' ||
-      cl.effectful ||
+      cl.sideEffects ||
       cl.gens.length > 0 ||
       // a reassigned export stays: its writers would assign an import
       t1.mutation.isReassigned(sym) ||
@@ -1226,9 +1249,12 @@ export function computePlacement(input: PlacementInput): Placement {
       }
     }
   }
-  /** A candidate still leaves: a derived output needs it, the env module does not keep it and it reads nothing kept at its evaluation. */
+  /** A candidate still leaves: a derived output needs it, the env module does not keep it, it reads nothing kept at its evaluation and its effects, if any, keep their order (`decideMovable`). */
   const extractable = (c: ClusterId): boolean =>
-    !liveEnv.has(c) && needed.has(c) && !readsKeptEagerly(c)
+    !liveEnv.has(c) &&
+    needed.has(c) &&
+    !readsKeptEagerly(c) &&
+    (!clusters[c]!.effectful || movable.has(c))
 
   // ---- env roots and extraction: one fixed point -------------------------
   // The env module's roots and the extracted outputs are decided together,
@@ -1336,7 +1362,9 @@ export function computePlacement(input: PlacementInput): Placement {
     }
   }
   const extracted: Array<ExtractedExport> = []
-  for (const [c, e] of remaining) {
+  for (const [c, e] of [...remaining].sort(
+    ([a], [b]) => clusters[a]!.start - clusters[b]!.start,
+  )) {
     for (const k of e.companions) {
       deadClusters.add(k) // rendered as the env module's re-export glue
     }
@@ -1437,6 +1465,13 @@ export function computePlacement(input: PlacementInput): Placement {
         target.set(cl.id, to)
       }
     }
+    // an extraction candidate with effects (its augmentations) moves to its
+    // output under the same order rule
+    for (const [c, e] of remaining) {
+      if (clusters[c]!.effectful) {
+        target.set(c, e.output)
+      }
+    }
     for (let dropped = true; dropped; ) {
       dropped = false
       for (const [c, to] of target) {
@@ -1529,24 +1564,37 @@ export function computePlacement(input: PlacementInput): Placement {
   /**
    * Whether a surviving effectful unit (benign ones excepted) that does not
    * move to `to` with `cl` (`target`: the clusters moving, by output) would
-   * change order with `cl`'s first effect. A lazily imported output (a
-   * chunk) evaluates after the env module's body: an effect after `cl`'s
-   * in the source would then run before it. A static output (an extracted
+   * change order with `cl`'s effects. A lazily imported output (a chunk)
+   * evaluates after the env module's body: an effect after `cl`'s first in
+   * the source would then run before it. A static output (an extracted
    * export's module, re-exported by the env module) evaluates before the
-   * env module's body: every other surviving effect is on the wrong side.
+   * env module's body: an effect before `cl`'s last would then run after
+   * it. The static outputs evaluate in source order among themselves (the
+   * env module re-exports them in that order), so an effect moving to
+   * another static output keeps its order.
    */
   function effectStays(
     cl: Cluster,
     to: OutputId,
     target: ReadonlyMap<ClusterId, OutputId>,
   ): boolean {
-    const staticOutput = outputs.get(to)?.kind === 'export'
+    const isStatic = (o: OutputId | undefined) =>
+      o !== undefined && outputs.get(o)?.kind === 'export'
+    const staticOutput = isStatic(to)
     for (const u of effectsSurviving()) {
-      if (!staticOutput && u.range.start <= cl.firstEffect) {
+      if (
+        staticOutput
+          ? u.range.start >= cl.lastEffect
+          : u.range.start <= cl.firstEffect
+      ) {
         continue
       }
       const uc = clusterOfRegion.get(u.region)
-      if (uc === cl.id || (uc !== undefined && target.get(uc) === to)) {
+      if (uc === cl.id) {
+        continue
+      }
+      const ut = uc === undefined ? undefined : target.get(uc)
+      if (ut === to || (staticOutput && isStatic(ut))) {
         continue
       }
       return true

@@ -67,7 +67,11 @@ units that output contains. The same computation decides:
   initialisation is allowed; within-module order is preserved) when nothing outside it writes it eagerly, it
   observes no mutable state, its eager reads are imports (read lazily: the chunk loads after the route module),
   pure clusters or `const`s the route module keeps, and no surviving effect after its first one stays behind (for
-  an extracted export's module, which evaluates _before_ the route module's body, no other surviving effect at all).
+  an extracted export's module, which evaluates _before_ the route module's body, none before its last one; the
+  extracted modules evaluate in source order among themselves). An exported binding whose only effects augment
+  what it declares (`Page.displayName = …`, static props: unobservable while nothing imports it, so its module
+  stays droppable) leaves for its extracted module under the same rule: the augmentations travel with it, an
+  earlier surviving effect pins it and a later one keeps its order.
   A recognised framework call a planner names (the route factory chain) is no such effect only when its option
   values are pure, claimed (relocated) or erased: the core checks, the planner only names it. The env roots, the
   moving set and the extracted exports are one monotone fixed point: every round recomputes derived reach, env

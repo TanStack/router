@@ -779,6 +779,132 @@ describe('extracted-export outputs', () => {
     // the output holds an effect now: not flagged side-effect free
     expect(e?.sideEffectFree).toBe(false)
   })
+
+  // An exported binding's augmentations (`Page.displayName = …`, static
+  // props) and an effectful initialiser leave with it under the order rule
+  // of every move: the extracted module evaluates before the env module's
+  // body, so a surviving effect before the cluster's last one pins it, and
+  // one after keeps its order.
+  it('extracts an exported component with its augmentations', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      export function Page() { return Page.displayName }
+      Page.displayName = 'PageDisplay'
+      Page.preload = () => import('./heavy')
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await extract(code)
+    expect(r.env).not.toContain('displayName')
+    expect(r.env).not.toContain('preload')
+    expect(r.env).toContain(
+      "export { Page } from './route.tsx?tsr-split=export~Page'",
+    )
+    expect(r.chunk).toContain(
+      "import { Page } from './route.tsx?tsr-split=export~Page'",
+    )
+    const e = await r.extracted('Page')
+    expect(e?.code).toContain('function Page() { return Page.displayName }')
+    expect(e?.code).toContain("Page.displayName = 'PageDisplay'")
+    expect(e?.code).toContain("Page.preload = () => import('./heavy')")
+    expect(e?.code).toContain('export { Page }')
+    // its effects only augment `Page`: unobservable while nothing imports it
+    expect(e?.sideEffectFree).toBe(true)
+  })
+
+  it('keeps an augmented export a surviving effect precedes (the augmentation would run before it)', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { see } from './see'
+      see('before')
+      export function Page() { return 'page' }
+      Page.displayName = 'PageDisplay'
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await extract(code)
+    expect(r.env).toContain("see('before')")
+    expect(r.env).toContain('export function Page()')
+    expect(r.env).toContain("Page.displayName = 'PageDisplay'")
+    expect(r.env).not.toContain('export~')
+    expect(r.chunk).toContain("import { Page } from './route.tsx'")
+  })
+
+  it('extracts an augmented export a surviving effect follows (the effect keeps its order)', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { see } from './see'
+      export function Page() { return 'page' }
+      Page.displayName = 'PageDisplay'
+      see('after')
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await extract(code)
+    expect(r.env).toContain("see('after')")
+    expect(r.env).not.toContain('displayName')
+    expect(r.env).toContain(
+      "export { Page } from './route.tsx?tsr-split=export~Page'",
+    )
+    const e = await r.extracted('Page')
+    expect(e?.code).toContain("Page.displayName = 'PageDisplay'")
+    expect(e?.code).not.toContain("see('after')")
+  })
+
+  it('extracts two augmented exports, re-exported in source order', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      export function Card() { return 'card' }
+      Card.displayName = 'Card'
+      export function Page() { return Card() }
+      Page.displayName = 'Page'
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await extract(code)
+    expect(r.env).not.toContain('displayName')
+    const card = r.env.indexOf(
+      "export { Card } from './route.tsx?tsr-split=export~Card'",
+    )
+    const page = r.env.indexOf(
+      "export { Page } from './route.tsx?tsr-split=export~Page'",
+    )
+    expect(card).toBeGreaterThan(-1)
+    expect(page).toBeGreaterThan(card)
+    const e = await r.extracted('Page')
+    expect(e?.code).toContain("Page.displayName = 'Page'")
+    expect(e?.code).toContain(
+      "import { Card } from './route.tsx?tsr-split=export~Card'",
+    )
+    expect((await r.extracted('Card'))?.code).toContain(
+      "Card.displayName = 'Card'",
+    )
+  })
+
+  it('keeps an exported effectful initialiser only a chunk needs (its module could never be dropped as unused)', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { createTheme } from './theme'
+      export const theme = createTheme()
+      function Page() { return theme.page }
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await extract(code)
+    expect(r.env).toContain('export const theme = createTheme()')
+    expect(r.env).not.toContain('export~')
+    expect(r.chunk).toContain("import { theme } from './route.tsx'")
+  })
+
+  it('keeps an augmented export whose augmentation reads what the env module keeps at its evaluation', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      const config = { label: 'label' }
+      export const label = config.label
+      export function Page() { return 'page' }
+      Page.label = config.label
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await extract(code)
+    expect(r.env).toContain('export function Page()')
+    expect(r.env).toContain('Page.label = config.label')
+    expect(r.env).not.toContain('export~')
+  })
 })
 
 describe('a statement relying on the `;` that ends the one before it', () => {
