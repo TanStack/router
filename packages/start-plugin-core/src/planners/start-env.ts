@@ -838,7 +838,8 @@ function planStartEnv(
         continue
       }
     }
-    // provider: the handler stays in place next to a generated createServerRpc export
+    // provider: the chain stays in place next to a generated createServerRpc export; an
+    // in-place provider's handler moves to the handler module, loaded on the first call
     const serverRpc = glueImport(
       specs.serverRpc,
       'createServerRpc',

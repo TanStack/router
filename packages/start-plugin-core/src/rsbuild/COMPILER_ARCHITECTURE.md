@@ -24,7 +24,7 @@ compiler core (`@tanstack/router-utils/compiler`, [README](../../../router-utils
 ## One compile per module
 
 The loader runs for every JavaScript/TypeScript id of an environment, derived ids included (`?tsr-split=`,
-`?tss-hydrate=`, `?tss-serverfn-split`): each id compiles from the text Rspack hands it, derived ids hit the plan of
+`?tss-hydrate=`, `?tss-serverfn-split`, `?tss-serverfn-handler`): each id compiles from the text Rspack hands it, derived ids hit the plan of
 their file at the same revision. The planners run in the core's fixed order: `start-env` (server functions,
 environment separation), `hydrate`, `rsc-css` (modules of the RSC layer), `route-split` and `route-hmr` (client),
 `import-edges` (import protection). The loader composes its source map with the input map, names the absolute file
@@ -50,7 +50,11 @@ plugin rebuilds the environment's snapshot from every module of the compilation 
 persistent cache), the session rebuilds the registry from all snapshots, and the resolver virtual module is rewritten;
 at stage −10 its importers are rebuilt. The resolver is a manifest importing each provider module; production builds
 whose SSR environment is the provider list only client-referenced functions (the client compiles first:
-`MultiCompiler.setDependencies`). Custom ids (`generateFunctionId`) are placeholders in the outputs, allocated per
+`MultiCompiler.setDependencies`). When the SSR environment is the provider, a module defining server functions keeps
+their chains and `createServerRpc` exports, and its handlers move into its `?tss-serverfn-handler` derived module,
+which it imports once on the first call (direct or through the resolver): what only handlers read loads then, and
+what the module itself needs stays in it and is imported back (nothing evaluates twice). A handler that writes state
+its module reads, and the handlers of a module that awaits at its top level, stay in place. Custom ids (`generateFunctionId`) are placeholders in the outputs, allocated per
 rank (client first) and patched at `processAssets` before minification.
 
 ## Import protection
