@@ -60,6 +60,26 @@ describe('identity', () => {
     })
   })
 
+  it('keeps a trailing language key of a foreign query last', () => {
+    const sfc = '/app/Page.vue?vue&type=script&lang.ts'
+    const handler = deriveId(sfc, { kind: 'handler', value: '' })
+    expect(handler).toBe(
+      '/app/Page.vue?vue&type=script&tss-serverfn-handler&lang.ts',
+    )
+    expect(identify(handler)).toMatchObject({
+      canonicalId: sfc,
+      derived: { kind: 'handler', value: '' },
+      lang: 'ts',
+    })
+    expect(
+      deriveId('/app/Page.vue?lang.tsx#f', { kind: 'split', value: 'a' }),
+    ).toBe('/app/Page.vue?tsr-split=a&lang.tsx#f')
+    // `lang` with a value is an ordinary key
+    expect(deriveId('/app/x.ts?lang=ts', { kind: 'handler', value: '' })).toBe(
+      '/app/x.ts?lang=ts&tss-serverfn-handler',
+    )
+  })
+
   it('builds sibling specifiers with the query verbatim', () => {
     expect(
       siblingSpecifier('/app/dir/page.tsx?flavour=b&tsr-split=component'),

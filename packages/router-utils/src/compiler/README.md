@@ -18,7 +18,7 @@ re-parses, re-prints or reads another job's output. The plan yields:
 - the env module (the code returned for the requested id),
 - every derived module of the same source in that env: split chunks (`?tsr-split=…`), lazy shared modules,
   extracted exports (`?tsr-split=export~Name`), Hydrate chunks (`?tss-hydrate=…`), server-function provider modules
-  (`?tss-serverfn-split`),
+  (`?tss-serverfn-split`), server-function handler modules (`?tss-serverfn-handler`),
 - facts: surviving import edges (import protection), server-function registry entries, diagnostics, file
   dependencies, per-planner data.
 

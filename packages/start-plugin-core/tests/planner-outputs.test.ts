@@ -133,7 +133,7 @@ export const label = () => 'client'
     })
   })
 
-  test('provider: the handler stays in place next to a createServerRpc export', async () => {
+  test('provider: the chain stays next to a createServerRpc export, its handler loads on the first call', async () => {
     const out = (await compile(files, 'ssr'))!
     expect(out.code).toContain(
       "import { createServerRpc as tsrServerRpc } from '@tanstack/react-start/server-rpc'",
@@ -142,9 +142,21 @@ export const label = () => 'client'
       /const fn_createServerFn_handler = tsrServerRpc\(\{ id: '[^']+', name: 'fn', filename: 'module\.tsx' \}, \(opts\) => fn\.__executeServer\(opts\)\)\nexport \{ fn_createServerFn_handler \}/,
     )
     expect(out.code).toContain(
-      '.validator(schema).handler(fn_createServerFn_handler, async () => db.x())',
+      "const tsrLoadHandlers = () => (tsrHandlers ??= import('./module.tsx?tss-serverfn-handler'))",
     )
-    expect(out.code).toContain("from './db.server'")
+    expect(out.code).toContain(
+      '.validator(schema).handler(fn_createServerFn_handler, (...args) => tsrLoadHandlers().then((m) => m.tsrHandler$fn(...args)))',
+    )
+    expect(out.code).not.toContain('db.server')
+    const handlers = (await compile(
+      files,
+      'ssr',
+      '/app/module.tsx?tss-serverfn-handler',
+    ))!
+    expect(handlers.code).toBe(`import { db } from './db.server'
+const tsrHandler$fn = async () => db.x()
+export { tsrHandler$fn }
+`)
   })
 
   test('ssr caller with a separate provider: an ssr rpc stub keeps the validator', async () => {
@@ -285,10 +297,10 @@ export const wrapped = wrap(wrap(createServerFn().handler(async () => 'w')))
     expect(client.code).not.toContain('schema')
     const ssr = (await compile(files, 'ssr'))!
     expect(ssr.code).toContain(
-      '.handler(fn_createServerFn_handler, async ({ data }) => data)',
+      '.handler(fn_createServerFn_handler, (...args) => tsrLoadHandlers().then((m) => m.tsrHandler$fn(...args)))',
     )
     expect(ssr.code).toContain(
-      'wrap(wrap(createServerFn().handler(wrapped_createServerFn_handler, async',
+      'wrap(wrap(createServerFn().handler(wrapped_createServerFn_handler, (...args) =>',
     )
   })
 
@@ -338,8 +350,15 @@ export function make() {
     expect(client.code).not.toContain('db.server')
     const ssr = (await compile(files2, 'ssr'))!
     expect(ssr.code).toContain(
-      'const tsrServerFn$inner = createServerFn().handler(inner_make_createServerFn_handler, async () => db.inner())',
+      'const tsrServerFn$inner = createServerFn().handler(inner_make_createServerFn_handler, (...args) => tsrLoadHandlers().then((m) => m.tsrHandler$inner_make(...args)))',
     )
+    expect(ssr.code).not.toContain('db.server')
+    const handlers = (await compile(
+      files2,
+      'ssr',
+      '/app/module.tsx?tss-serverfn-handler',
+    ))!
+    expect(handlers.code).toContain('= async () => db.inner()')
     expect(ssr.code).toContain('const inner = tsrServerFn$inner')
     expect(ssr.code).toContain("name: 'inner'")
   })

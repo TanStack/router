@@ -435,8 +435,122 @@ import { db } from './db.server'
         expect(r.code).toContain('tsrSsrRpc')
         expect(r.code).not.toContain('db.q(1)')
       } else {
-        expect(r.code).toContain('db.q(1)')
+        // the in-place provider's handlers live in its handler module
+        expect(r.code).not.toContain('db.q(1)')
+        expect(await r.derived(`${FILE}?tss-serverfn-handler`)).toContain(
+          'db.q(1)',
+        )
       }
     }
+  })
+})
+
+// In-place provider (SSR = provider): handlers move to one lazy handler
+// module the defining module imports on the first call; what only they read
+// moves with them, what the defining module also reads stays and is
+// imported back (nothing evaluates twice).
+describe('lazy handler module of the in-place provider', () => {
+  const FNS = `import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'\n`
+  const files = {
+    '/app/src/db.server.ts': `export const db = { get: (x: unknown) => x }\n`,
+  }
+  const HANDLER_ID = `${FILE}?tss-serverfn-handler`
+
+  it('moves a handler and the imports only it reads', async () => {
+    const r = await compile(
+      `${FNS}import { db } from './db.server'
+let count = 0
+export const fn = createServerFn().handler(async () => db.get(count))
+export function read() { return count }
+`,
+      { env: ssrEnv, files },
+    )
+    expectValid(r.code)
+    expect(r.code).not.toContain('./db.server')
+    expect(r.code).toContain('?tss-serverfn-handler')
+    const h = await r.derived(HANDLER_ID)
+    expectValid(h)
+    expect(h).toContain(`from './db.server'`)
+    // module state the defining module also reads is imported from it, not copied
+    expect(h).not.toMatch(/let count/)
+    expect(h).toMatch(/import \{[^}]*\bcount\b[^}]*\} from '\.\/module\.tsx'/)
+  })
+
+  it('keeps a handler that writes module state the module also reads in place', async () => {
+    const r = await compile(
+      `${FNS}let count = 0
+export const fn = createServerFn().handler(async () => count++)
+export function read() { return count }
+`,
+      { env: ssrEnv },
+    )
+    expectValid(r.code)
+    expect(r.code).toContain('count++')
+    expect(r.code).not.toContain('?tss-serverfn-handler')
+  })
+
+  it('keeps the handlers of a module that awaits at its top level in place', async () => {
+    const r = await compile(
+      `${FNS}import { db } from './db.server'
+export const fn = createServerFn().handler(async () => db.get(1))
+export const first = await Promise.resolve(1)
+`,
+      { env: ssrEnv, files },
+    )
+    expectValid(r.code)
+    expect(r.code).toContain('./db.server')
+    expect(r.code).not.toContain('?tss-serverfn-handler')
+  })
+
+  it('moves a handler that is itself a createServerOnlyFn call, rewritten', async () => {
+    const r = await compile(
+      `${FNS}import { db } from './db.server'
+export const fn = createServerFn().handler(createServerOnlyFn(async () => db.get(2)))
+`,
+      { env: ssrEnv, files },
+    )
+    expectValid(r.code)
+    expect(r.code).not.toContain('createServerOnlyFn(')
+    const h = await r.derived(HANDLER_ID)
+    expectValid(h)
+    expect(h).not.toContain('createServerOnlyFn')
+    expect(h).toContain('db.get(2)')
+  })
+
+  it('moves the handler of a hoisted nested server fn', async () => {
+    const r = await compile(
+      `${FNS}import { db } from './db.server'
+export function makeFns() {
+  const inner = createServerFn().handler(async () => db.get(3))
+  return { inner }
+}
+`,
+      { env: ssrEnv, files },
+    )
+    expectValid(r.code)
+    expect(r.code).not.toContain('./db.server')
+    expect(r.code).toContain('?tss-serverfn-handler')
+    const h = await r.derived(HANDLER_ID)
+    expectValid(h)
+    expect(h).toContain(`from './db.server'`)
+    expect(h).toContain('db.get(3)')
+  })
+
+  it('derives the handler module of an SFC block before its language key', async () => {
+    const id = `${FILE}?vue&type=script&lang.ts`
+    const r = await compile(
+      `${FNS}import { db } from './db.server'
+export const fn = createServerFn().handler(async () => db.get(<number>4))
+`,
+      { env: ssrEnv, files, id },
+    )
+    expectValid(r.code)
+    expect(r.code).toContain(
+      `import('./module.tsx?vue&type=script&tss-serverfn-handler&lang.ts')`,
+    )
+    const h = await r.derived(
+      `${FILE}?vue&type=script&tss-serverfn-handler&lang.ts`,
+    )
+    expect(h).toContain('db.get(<number>4)')
   })
 })
