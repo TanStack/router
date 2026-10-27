@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { createTokenRegex, replaceBackslash } from '../utils'
+import { createTokenRegex, removeExt, replaceBackslash } from '../utils'
 import { getRouteNodes as physicalGetRouteNodes } from './physical/getRouteNodes'
 import { getRouteNodes as virtualGetRouteNodes } from './virtual/getRouteNodes'
 import { rootPathId } from './physical/rootPathId'
@@ -44,7 +44,10 @@ export async function scanRoutes(
     throw new Error(errorMessage)
   }
 
-  checkRouteFilesUsedOnce(new Set([result.rootRouteNode, ...result.routeNodes]))
+  checkRouteFilesUsedOnce(
+    new Set([result.rootRouteNode, ...result.routeNodes]),
+    config.addExtensions,
+  )
 
   return {
     rootRouteNode: result.rootRouteNode,
@@ -63,27 +66,47 @@ export async function scanRoutes(
  * A route file is one route: a virtual route config naming a file twice
  * (two `route()` entries, two `physical()` mounts of one directory, a
  * `__virtual.ts` entry for a file the directory scan routes too) is an error
- * naming the file (SPEC J1.7).
+ * naming the file (SPEC J1.7). The route tree imports a file by its path
+ * without the extension (unless `addExtensions` keeps it), so two files
+ * that differ only by their extension are one module: used for two routes,
+ * they are an error naming both files. (Two such files of ONE route are
+ * left to the route uniqueness check.)
  */
-function checkRouteFilesUsedOnce(nodes: ReadonlySet<RouteNode>) {
-  const routesByFile = new Map<string, Array<string>>()
+function checkRouteFilesUsedOnce(
+  nodes: ReadonlySet<RouteNode>,
+  addExtensions: Config['addExtensions'],
+) {
+  const usesByModule = new Map<string, Array<{ file: string; route: string }>>()
   for (const node of nodes) {
     if (node.isVirtual || node.isVirtualParentRoute) {
       continue
     }
-    const routes = routesByFile.get(node.fullPath) ?? []
-    routes.push(node.routePath ?? `/${rootPathId}`)
-    routesByFile.set(node.fullPath, routes)
+    const module = removeExt(node.fullPath, addExtensions)
+    const uses = usesByModule.get(module) ?? []
+    uses.push({
+      file: node.fullPath,
+      route: node.routePath ?? `/${rootPathId}`,
+    })
+    usesByModule.set(module, uses)
   }
-  const reused = [...routesByFile].filter(([, routes]) => routes.length > 1)
+  const reused = [...usesByModule.values()].filter(
+    (uses) =>
+      new Set(uses.map(({ file }) => file)).size < uses.length ||
+      new Set(uses.map(({ route }) => route)).size > 1,
+  )
   if (reused.length) {
+    const lines = reused.flatMap((uses) => {
+      const routesByFile = new Map<string, Array<string>>()
+      for (const { file, route } of uses) {
+        routesByFile.set(file, [...(routesByFile.get(file) ?? []), route])
+      }
+      return [...routesByFile].map(
+        ([file, routes]) =>
+          ` ${file}: ${routes.map((route) => `"${route}"`).join(', ')}`,
+      )
+    })
     throw new Error(
-      `A route file can be used for one route only. Files used for several routes:\n${reused
-        .map(
-          ([file, routes]) =>
-            ` ${file}: ${routes.map((route) => `"${route}"`).join(', ')}`,
-        )
-        .join('\n')}\n`,
+      `A route file can be used for one route only (files differing only by their extension are imported as one module). Files used for several routes:\n${lines.join('\n')}\n`,
     )
   }
 }

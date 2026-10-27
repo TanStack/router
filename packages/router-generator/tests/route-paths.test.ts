@@ -732,6 +732,33 @@ describe('conflicting routes', () => {
     },
   )
 
+  // Bug: two routes of a virtual route config on files with one name and two
+  // extensions (`x.ts`, `x.tsx`) pass the check above (two files), but the
+  // route tree imports both as `./routes/x`: one `Route` object updated with
+  // two ids, the router's duplicate route invariant at startup.
+  // Source: src/filesystem/scan.ts `checkRouteFilesUsedOnce()` (keyed by the
+  // file path with its extension; the tree's import specifiers drop it).
+  // Impact: the app fails at startup with no hint which files clash.
+  test('two routes of a virtual route config on files with one name and two extensions fail the generator with an error naming both files', async () => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/x.ts': fileRoute('/a'),
+      'src/routes/x.tsx': fileRoute('/b'),
+    })
+
+    const error = await captureThrow(() =>
+      generate(root, {
+        virtualRouteConfig: virtualRootRoute('__root.tsx', [
+          virtualRoute('/a', 'x.ts'),
+          virtualRoute('/b', 'x.tsx'),
+        ]),
+      }),
+    )
+    for (const file of ['src/routes/x.ts', 'src/routes/x.tsx']) {
+      expectDiagnostic(error, { severity: 'error', file, root })
+    }
+  })
+
   test('a route file a __virtual.ts subtree config uses while the directory scan also routes it fails the generator with an error naming it', async () => {
     const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
