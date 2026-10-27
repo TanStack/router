@@ -131,6 +131,42 @@ import { fn2 } from './a2'
   )
 })
 
+/**
+ * A Start app on Rsbuild's dev server with its HMR client: the harness
+ * entries, the router and a root route rendering the document, with a
+ * `hydrated` mark; the test adds `src/routes/index.tsx`.
+ */
+const hmrAppFiles = {
+  'harness/client-entry.ts': `import { createElement } from 'react'
+import { hydrateRoot } from 'react-dom/client'
+import { StartClient } from '@tanstack/react-start/client'
+hydrateRoot(document, createElement(StartClient))
+`,
+  'harness/server-entry.ts': `export { default } from '@tanstack/react-start/server-entry'\n`,
+  'src/router.ts': `import { createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+export const getRouter = () => createRouter({ routeTree })
+`,
+  'src/routes/__root.tsx': `import { HeadContent, Outlet, Scripts, createRootRoute, useHydrated } from '@tanstack/react-router'
+export const Route = createRootRoute({ component: Root })
+function Root() {
+  const hydrated = useHydrated()
+  return (
+    <html>
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        <div id="app"><Outlet /></div>
+        <span data-testid="hydrated">{hydrated ? 'hydrated' : 'hydrating'}</span>
+        <Scripts />
+      </body>
+    </html>
+  )
+}
+`,
+}
+
 describe('Rsbuild dev with HMR: editing a server fn module', () => {
   /**
    * `src/routes/index.tsx` declares a server fn whose handler returns
@@ -184,34 +220,7 @@ function Page() {
           },
         },
         files: {
-          'harness/client-entry.ts': `import { createElement } from 'react'
-import { hydrateRoot } from 'react-dom/client'
-import { StartClient } from '@tanstack/react-start/client'
-hydrateRoot(document, createElement(StartClient))
-`,
-          'harness/server-entry.ts': `export { default } from '@tanstack/react-start/server-entry'\n`,
-          'src/router.ts': `import { createRouter } from '@tanstack/react-router'
-import { routeTree } from './routeTree.gen'
-export const getRouter = () => createRouter({ routeTree })
-`,
-          'src/routes/__root.tsx': `import { HeadContent, Outlet, Scripts, createRootRoute, useHydrated } from '@tanstack/react-router'
-export const Route = createRootRoute({ component: Root })
-function Root() {
-  const hydrated = useHydrated()
-  return (
-    <html>
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <div id="app"><Outlet /></div>
-        <span data-testid="hydrated">{hydrated ? 'hydrated' : 'hydrating'}</span>
-        <Scripts />
-      </body>
-    </html>
-  )
-}
-`,
+          ...hmrAppFiles,
           'src/routes/index.tsx': route('V1'),
         },
       })
@@ -246,6 +255,79 @@ function Root() {
         label: update.includes('MARK_LABEL_V2'),
         handler: update.includes('MARK_HANDLER_V2'),
       }).toEqual({ label: true, handler: false })
+      expect(page.errors).toEqual([])
+    },
+    timeout,
+  )
+
+  // The modules only handlers import load on the first call (like a
+  // production build, start-build-lazy-handlers.test.ts), and an edit of
+  // one reaches the next call without a full reload.
+  test(
+    "a handler's server-only module loads on the first call, and an edit of it reaches the next call without a full reload",
+    async () => {
+      const db = (
+        version: string,
+      ) => `const g = globalThis as Record<string, unknown>
+g.__tssRsbuildDbLoads = ((g.__tssRsbuildDbLoads as number | undefined) ?? 0) + 1
+export const db = { x: () => 'MARK_DB_${version}' }
+`
+      const server = await startRsbuildStartDevServer({
+        hmr: true,
+        browser: true,
+        config: { tools: { htmlPlugin: false } },
+        files: {
+          ...hmrAppFiles,
+          'src/db.server.ts': db('V1'),
+          // (a module of its own: the handlers of one module load together)
+          'src/loads.ts': `import { createServerFn } from '@tanstack/react-start'
+export const loads = createServerFn().handler(async () =>
+  String((globalThis as Record<string, unknown>).__tssRsbuildDbLoads ?? 0),
+)
+`,
+          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
+import { useState } from 'react'
+import { db } from '../db.server'
+import { loads } from '../loads'
+const greet = createServerFn().handler(async () => db.x())
+export const Route = createFileRoute('/')({
+  loader: () => loads(),
+  component: Page,
+})
+function Page() {
+  const [result, setResult] = useState(Route.useLoaderData())
+  return (
+    <main>
+      <p data-testid="result">result {result}</p>
+      <button data-testid="loads" onClick={() => loads().then(setResult)}>loads</button>
+      <button data-testid="call" onClick={() => greet().then(setResult)}>call</button>
+    </main>
+  )
+}
+`,
+        },
+      })
+      expect(server.errors).toEqual([])
+      const page = await openPage(server.url!, {
+        registerCleanup: onTestFinished,
+      })
+      const result = (text: string) =>
+        page.waitForText(`result ${text}`, { selector: '[data-testid=result]' })
+      // The page's SSR ran the loader: the module defining the fns is
+      // loaded, the handler's server-only module is not
+      await result('0')
+      await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
+      await page.page.locator('[data-testid=call]').click()
+      await result('MARK_DB_V1')
+      await page.page.locator('[data-testid=loads]').click()
+      await result('1')
+
+      await server.edit({ 'src/db.server.ts': db('V2') })
+      expect(server.errors).toEqual([])
+      await page.page.locator('[data-testid=call]').click()
+      await result('MARK_DB_V2')
+      expect(page.loads()).toBe(1)
       expect(page.errors).toEqual([])
     },
     timeout,

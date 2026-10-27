@@ -17,7 +17,9 @@ import {
   callByIdPrelude,
   startBundlers,
 } from '../build-harness'
+import { createStartHost } from '../regression-helpers'
 import type { StartBuild } from '../build-harness'
+import type { StartHost } from '../regression-helpers'
 
 const timeout = 60_000
 
@@ -209,6 +211,63 @@ return { ready: tla.ready, again: await tla.tlaFn(), dep: globalThis.MARK_TLA_DE
         again: 'tla:MARK_TLA_DEP',
         dep: 1,
       })
+    },
+    timeout,
+  )
+})
+
+// `@vitejs/plugin-vue` serves an SFC's `<script lang="ts">` block in builds
+// as a module of its own (`Page.vue?vue&type=script&lang.ts`); its
+// handlers' server-only modules load on the first call like any module's.
+describe('vite build of a Vue app', () => {
+  let host: StartHost | undefined
+  afterAll(() => host?.close())
+
+  test(
+    'SSR: the server-only module of a handler in a <script lang="ts"> block is not loaded with the SFC',
+    async () => {
+      host = await createStartHost({ framework: 'vue', serve: false })
+      const startCase = await host.case({
+        'Page.vue': `<script lang="ts">
+import { createServerFn } from '@tanstack/vue-start'
+import { db } from './db.server'
+const input = <string>(globalThis as any).input
+export const fn = createServerFn().handler(async () => db.x(input))
+export default {}
+</script>
+
+<template>
+  <p>page</p>
+</template>
+`,
+        'db.server.ts': `export const db = { x: (input: string) => 'MARK_DB_SERVER:' + input }\n`,
+        'module.ts': `export { fn } from './Page.vue'\n`,
+      })
+      const build = await host.build()
+      const { chunks } = build.environments.ssr!
+      const byName = new Map(chunks.map((chunk) => [chunk.fileName, chunk]))
+      const page = startCase.file('Page.vue')
+      // (the SFC module itself, which imports its blocks)
+      const own = chunks.filter((chunk) => chunk.moduleIds.includes(page))
+      expect(own.length, 'SSR chunks of the SFC').toBeGreaterThan(0)
+      // the SFC's chunks and every chunk they import statically
+      const loaded = new Set(own)
+      for (const chunk of loaded) {
+        for (const name of chunk.imports) {
+          const next = byName.get(name)
+          if (next) {
+            loaded.add(next)
+          }
+        }
+      }
+      expect({
+        withTheSfc: [...loaded].some((chunk) =>
+          chunk.code.includes('MARK_DB_SERVER'),
+        ),
+        inTheBuild: chunks.some((chunk) =>
+          chunk.code.includes('MARK_DB_SERVER'),
+        ),
+      }).toEqual({ withTheSfc: false, inTheBuild: true })
     },
     timeout,
   )

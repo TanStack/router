@@ -231,6 +231,91 @@ export const greet = createServerFn().handler(() => db.x())
     },
     timeout,
   )
+
+  // A module both the server fn module and its handler read: an edit
+  // reaches the module's own code and the handler alike (one instance).
+  test(
+    'SSR: an edit of a module the server fn module and its handler share reaches both, without a full reload',
+    async () => {
+      const state = (version: string) =>
+        `export const label = 'MARK_STATE_${version}'\n`
+      const server = await startDevServer({
+        start: {},
+        files: {
+          ...startRequestFiles,
+          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+import { label } from './state'
+export const shown = label.toLowerCase()
+export const greet = createServerFn().handler(() => [shown, label])
+`,
+          'src/state.ts': state('V1'),
+        },
+      })
+      const call = async () => {
+        const { greet } = await server.import('/src/fns.ts')
+        return callServerFn(server, greet)
+      }
+      expect(await call()).toEqual(['mark_state_v1', 'MARK_STATE_V1'])
+
+      const messages = describeHmr(
+        await server.edit({ 'src/state.ts': state('V2') }),
+      )
+
+      expect(await call()).toEqual(['mark_state_v2', 'MARK_STATE_V2'])
+      expect(
+        messages.filter((message) => message.includes('full-reload')),
+      ).toEqual([])
+    },
+    timeout,
+  )
+})
+
+describe('Vite dev: when the modules of a server fn handler load', () => {
+  // Like a production build (start-build-lazy-handlers.test.ts): the
+  // modules only handlers import load on the first call, once, however
+  // many first calls run at the same time (server code calling the fn
+  // directly, pages calling it over HTTP) while they load.
+  // Source: issue #6451 (concurrent first calls of a server fn whose
+  // handler's imports load slowly).
+  test(
+    'SSR: the server-only module of a handler loads on the first call, once, for concurrent direct and HTTP calls',
+    async () => {
+      const marker = '__tssDevLazyHandlerLoads'
+      const global = globalThis as Record<string, unknown>
+      onTestFinished(() => {
+        delete global[marker]
+      })
+      const server = await startDevServer({
+        start: {},
+        files: {
+          ...startRequestFiles,
+          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+import { db } from './db.server'
+export const greet = createServerFn().handler(async () => db.x())
+`,
+          'src/db.server.ts': `const g = globalThis as Record<string, unknown>
+g.${marker} = ((g.${marker} as number | undefined) ?? 0) + 1
+await new Promise((resolve) => setTimeout(resolve, 100))
+export const db = { x: () => 'MARK_DB' }
+`,
+        },
+      })
+      const { greet } = await server.import('/src/fns.ts')
+      const before = global[marker] ?? 0
+      const results = await Promise.all([
+        ...Array.from({ length: 10 }, () =>
+          inDevRequest(server, () => greet()),
+        ),
+        ...Array.from({ length: 10 }, () => callServerFn(server, greet)),
+      ])
+      expect({
+        before,
+        results: [...new Set(results)],
+        after: global[marker],
+      }).toEqual({ before: 0, results: ['MARK_DB'], after: 1 })
+    },
+    timeout,
+  )
 })
 
 describe('Vite dev: editing what a route module imports', () => {
