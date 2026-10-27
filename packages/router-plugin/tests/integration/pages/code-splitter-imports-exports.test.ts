@@ -524,6 +524,58 @@ return [other.read(), options.loader(), await render('component')]`),
     await expectValidModules(route)
   })
 
+  // An extracted exported component's module is a static dependency of the
+  // route module (`export { Page } from './route?tsr-split=export~Page'`), so
+  // it evaluates before the route module's body: a declaration that moves
+  // with it must not read, at module evaluation, a binding the route module
+  // keeps (G3: no TDZ a user never wrote; found by differential fuzzing).
+  const keptBindings = [
+    {
+      name: 'a class',
+      kept: `class Model { static label = 'model' }
+export const label = Model.label`,
+      read: `const config = { model: Model }`,
+      value: 'config.model.label',
+      expected: 'model',
+    },
+    {
+      name: 'a const object',
+      kept: `const defaults = { label: 'defaults' }
+export const label = defaults.label`,
+      read: `const config = { ...defaults }`,
+      value: 'config.label',
+      expected: 'defaults',
+    },
+    {
+      name: 'an enum',
+      kept: `enum Mode { Fast = 'fast' }
+export const label = Mode.Fast`,
+      read: `const config = { mode: Mode.Fast }`,
+      value: 'config.mode',
+      expected: 'fast',
+    },
+  ]
+  it.each(keptBindings)(
+    'an exported component reading, through a declaration only it uses, $name the route module keeps',
+    async ({ kept, read, value, expected }) => {
+      const route = await loadRoute(
+        `${head}${kept}
+${read}
+export function Page() {
+  return <p>{${value}}</p>
+}
+export const Route = createFileRoute('/')({ component: Page })
+`,
+        { files: { 'importer.ts': `export { Page, label } from './route'\n` } },
+      )
+      expect(
+        await route.run(`const other = await app('importer.ts')
+return [await render('component'), other.label, typeof other.Page]`),
+      ).toEqual([`<p>${expected}</p>`, expected, 'function'])
+      await expectValidModules(route)
+    },
+  )
+
   // An exported split option keeps working and keeps its identity (the
   // component the route renders records itself with `see`: it is the one
   // other modules import), and the other options are still split.

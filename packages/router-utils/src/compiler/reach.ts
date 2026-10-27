@@ -1219,6 +1219,31 @@ export function computePlacement(input: PlacementInput): Placement {
       derivedStale ||= needed
       changed = true
     }
+    // static outputs: the env module re-exports an extracted export's module
+    // (`export { X } from …`), so that module and what it imports evaluate
+    // before the env module's body. A cluster such an output needs that
+    // reads, at its evaluation, a module binding the env module keeps would
+    // read it before its initialisation (a TDZ the user never wrote): it
+    // stays in the env module, an env root, and the extracted module imports
+    // it. (R29/R64/R67's "the chunk loads after the route module" holds for
+    // lazily imported outputs only; an effectful cluster moves to such an
+    // output only when no surviving effect precedes it: `earlierEffectStays`.)
+    for (const cl of clusters) {
+      if (
+        cl.kind !== 'declaration' ||
+        cl.copyable ||
+        liveEnv.has(cl.id) ||
+        envRoots.has(cl.id) ||
+        remaining.has(cl.id) ||
+        !neededByStaticOutput(cl.id) ||
+        !eagerlyReadsKept(cl.id)
+      ) {
+        continue
+      }
+      envRoots.add(cl.id)
+      derivedStale = true
+      changed = true
+    }
     if (changed) {
       continue
     }
@@ -1255,6 +1280,37 @@ export function computePlacement(input: PlacementInput): Placement {
       }
     }
     extracted.push({ cluster: c, output: e.output, syms: [...syms] })
+  }
+  /** Whether an extracted-export output (evaluated before the env module's body) reaches `c`. */
+  function neededByStaticOutput(c: ClusterId): boolean {
+    for (const [id, set] of derivedReach) {
+      if (set.has(c) && outputs.get(id)?.kind === 'export') {
+        return true
+      }
+    }
+    return false
+  }
+  /** Whether `c` reads, at its evaluation, a non-copyable module binding the env module keeps. */
+  function eagerlyReadsKept(c: ClusterId): boolean {
+    for (const r of clusters[c]!.regions) {
+      for (const ref of ownedRefs.get(r) ?? []) {
+        if (
+          !ref.eager ||
+          !READ_KINDS.has(ref.kind) ||
+          !symbols.isModuleLevel(ref.sym)
+        ) {
+          continue
+        }
+        const d = clusterOfSym.get(ref.sym)
+        if (d === undefined || d === c || clusters[d]!.copyable) {
+          continue
+        }
+        if (liveEnv.has(d) || envRoots.has(d) || clusters[d]!.envPinned) {
+          return true
+        }
+      }
+    }
+    return false
   }
   /** Whether a derived output reaches `c` (it cannot be removed). */
   function derivedNeeds(c: ClusterId): boolean {
@@ -1293,7 +1349,11 @@ export function computePlacement(input: PlacementInput): Placement {
     for (let dropped = true; dropped; ) {
       dropped = false
       for (const [c, to] of target) {
-        if (laterEffectStays(clusters[c]!, to, target)) {
+        if (
+          laterEffectStays(clusters[c]!, to, target) ||
+          (outputs.get(to)?.kind === 'export' &&
+            earlierEffectStays(clusters[c]!, to, target))
+        ) {
           target.delete(c)
           dropped = true
         }
@@ -1384,6 +1444,31 @@ export function computePlacement(input: PlacementInput): Placement {
   ): boolean {
     for (const u of survivingEffects) {
       if (u.range.start <= cl.firstEffect) {
+        continue
+      }
+      const uc = clusterOfRegion.get(u.region)
+      if (uc === cl.id || (uc !== undefined && target.get(uc) === to)) {
+        continue
+      }
+      return true
+    }
+    return false
+  }
+
+  /**
+   * The static-output counterpart of (d): an extracted export's module
+   * evaluates before the env module's body, so an effect moved there runs
+   * before every surviving effect of the env module. A surviving effectful
+   * unit before the first effect of `cl` that does not move to `to` with it
+   * keeps it in the env module.
+   */
+  function earlierEffectStays(
+    cl: Cluster,
+    to: OutputId,
+    target: ReadonlyMap<ClusterId, OutputId>,
+  ): boolean {
+    for (const u of survivingEffects) {
+      if (u.range.start >= cl.firstEffect) {
         continue
       }
       const uc = clusterOfRegion.get(u.region)

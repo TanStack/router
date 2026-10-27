@@ -441,6 +441,45 @@ describe('extracted-export outputs', () => {
     expect(e?.sideEffectFree).toBe(true)
   })
 
+  // The env module re-exports the extracted module (`export { Page } from
+  // …`), a static dependency: it evaluates before the env module's body.
+  it('keeps a declaration the extracted module would read eagerly from what the env module keeps (no TDZ)', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      class Model { static label = 'model' }
+      export const label = Model.label
+      const config = { model: Model }
+      export function Page() { return config.model.label }
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await extract(code)
+    expect(r.env).toContain('const config = { model: Model }')
+    expect(r.env).toContain(
+      "export { Page } from './route.tsx?tsr-split=export~Page'",
+    )
+    const e = await r.extracted('Page')
+    expect(e?.code).not.toContain('const config')
+    expect(e?.code).toContain("import { config } from './route.tsx'")
+    expect(e?.code).toContain('function Page() { return config.model.label }')
+  })
+
+  it('keeps an effectful declaration only an extracted export needs in the env module (it would run before its effects)', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { mark } from './mark'
+      mark('route')
+      const first = mark('page')
+      export function Page() { return first }
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await extract(code)
+    expect(r.env).toContain("mark('route')")
+    expect(r.env).toContain("const first = mark('page')")
+    const e = await r.extracted('Page')
+    expect(e?.code).not.toContain("mark('page')")
+    expect(e?.code).toContain("import { first } from './route.tsx'")
+  })
+
   it('re-exports every exported symbol of an extracted cluster (a let and the function writing it)', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
