@@ -591,14 +591,19 @@ export function computePlacement(input: PlacementInput): Placement {
 
   // symbols generated text reads: uses the semantic model does not see (a Solid `use:x`)
   const generatedReads = new Set<SymbolId>()
-  for (const frags of [
-    ...rewrites.edits.map((e) => e.body),
-    ...gens.map((g) => g.body),
-    ...[...rewrites.claims.values()].map((c) => c.placeholder),
-  ]) {
+  const readsGenerated = (frags: ReadonlyArray<Frag>) => {
     for (const s of symRefsOf(frags)) {
       generatedReads.add(s)
     }
+  }
+  for (const e of rewrites.edits) {
+    readsGenerated(e.body)
+  }
+  for (const g of gens) {
+    readsGenerated(g.body)
+  }
+  for (const c of rewrites.claims.values()) {
+    readsGenerated(c.placeholder)
   }
 
   // ---- materialise clusters ------------------------------------------------
@@ -684,7 +689,8 @@ export function computePlacement(input: PlacementInput): Placement {
     )
   }
   for (const cl of clusters) {
-    const kinds = new Set(cl.units.map((u) => units[u]!.kind))
+    const kinds = (...ks: Array<Unit['kind']>) =>
+      cl.units.some((u) => ks.includes(units[u]!.kind))
     if (cl.units.length === 0) {
       cl.kind = cl.gens.length > 0 ? 'gen' : 'region'
     } else if (
@@ -693,19 +699,15 @@ export function computePlacement(input: PlacementInput): Placement {
       )
     ) {
       cl.kind = 'effect'
-    } else if (kinds.has('import-effect')) {
+    } else if (kinds('import-effect')) {
       cl.kind = 'import-effect'
-    } else if (
-      kinds.has('export-specifier') ||
-      kinds.has('reexport') ||
-      kinds.has('export-default')
-    ) {
+    } else if (kinds('export-specifier', 'reexport', 'export-default')) {
       cl.kind = 'export'
-    } else if (kinds.has('declaration')) {
+    } else if (kinds('declaration')) {
       cl.kind = 'declaration'
-    } else if (kinds.has('import-specifier')) {
+    } else if (kinds('import-specifier')) {
       cl.kind = 'import'
-    } else if (kinds.has('type')) {
+    } else if (kinds('type')) {
       cl.kind = 'type'
     }
     cl.copyable =
@@ -1217,9 +1219,11 @@ export function computePlacement(input: PlacementInput): Placement {
   // what derived outputs need before any extraction (a chunk may reach a
   // candidate through another one)
   const needed = new Set<ClusterId>()
-  for (const set of derivedReach.values()) {
-    for (const c of set) {
-      needed.add(c)
+  if (extractCandidates.size > 0) {
+    for (const set of derivedReach.values()) {
+      for (const c of set) {
+        needed.add(c)
+      }
     }
   }
   /** A candidate still leaves: a derived output needs it, the env module does not keep it and it reads nothing kept at its evaluation. */
@@ -1296,7 +1300,7 @@ export function computePlacement(input: PlacementInput): Placement {
     // movable test holds for lazily imported outputs only; an effectful
     // cluster moves to a static output only when no other surviving effect
     // remains at all (`effectStays`).
-    for (const cl of clusters) {
+    for (const cl of remaining.size > 0 ? clusters : []) {
       if (
         cl.kind !== 'declaration' ||
         cl.copyable ||
@@ -1553,9 +1557,9 @@ export function computePlacement(input: PlacementInput): Placement {
   // ---- orphans: erased-only clusters the final env liveness does not reach ------
   // (after the extraction decision: a cancelled candidate is an env root again,
   // and what it reads is live, however an erased range also read it)
-  for (const cl of clusters) {
-    if (!liveEnv.has(cl.id) && fromErased.has(cl.id) && !cl.envPinned) {
-      orphaned.add(cl.id)
+  for (const c of fromErased) {
+    if (!liveEnv.has(c) && !clusters[c]!.envPinned) {
+      orphaned.add(c)
     }
   }
   /**
@@ -1623,27 +1627,23 @@ export function computePlacement(input: PlacementInput): Placement {
   }
 
   // ---- needers and homes -----------------------------------------------------
-  const needers = new Map<ClusterId, Set<OutputId>>()
-  for (const cl of clusters) {
-    const set = new Set<OutputId>()
-    if (liveEnv.has(cl.id)) {
-      set.add('env')
+  // the derived outputs reaching each cluster (the env module: `liveEnv`)
+  const derivedNeeders: Array<Array<OutputId>> = clusters.map(() => [])
+  for (const [id, r] of derivedReach) {
+    for (const c of r) {
+      derivedNeeders[c]!.push(id)
     }
-    for (const [id, r] of derivedReach) {
-      if (r.has(cl.id)) {
-        set.add(id)
-      }
-    }
-    needers.set(cl.id, set)
   }
   const home = new Map<ClusterId, Home>()
   const created: Array<OutputDecl> = []
   const sharedByKey = new Map<string, OutputId>()
   const keyOf = (o: OutputId) => outputs.get(o)?.key ?? o
   for (const cl of clusters) {
-    const S = needers.get(cl.id)!
-    const neededByDerived = [...S].some((o) => o !== 'env')
-    if (deadClusters.has(cl.id) || (orphaned.has(cl.id) && !neededByDerived)) {
+    const derived = derivedNeeders[cl.id]!
+    if (
+      deadClusters.has(cl.id) ||
+      (orphaned.has(cl.id) && derived.length === 0)
+    ) {
       // orphaned by an env erasure and needed by no derived output: gone;
       // still needed by a chunk (an erased option value named it): homed below
       home.set(cl.id, 'removed')
@@ -1658,11 +1658,10 @@ export function computePlacement(input: PlacementInput): Placement {
       home.set(cl.id, 'env')
       continue
     }
-    if (S.has('env')) {
-      home.set(cl.id, cl.copyable && S.size > 1 ? 'duplicate' : 'env')
+    if (liveEnv.has(cl.id)) {
+      home.set(cl.id, cl.copyable && derived.length > 0 ? 'duplicate' : 'env')
       continue
     }
-    const derived = [...S].filter((o) => o !== 'env')
     if (
       derived.length > 0 &&
       derived.every((o) => outputs.get(o)?.kind === 'provider')
@@ -1736,7 +1735,6 @@ export function computePlacement(input: PlacementInput): Placement {
   // ---- single-writer rule ------------------------------------------------------
   for (const [declRoot, writers] of writerConstraints) {
     const c = clusterOfMember(declRoot)
-    const S = needers.get(c)!
     const writerHomes = new Map<OutputId, RegionId>()
     for (const w of [...writers].sort(
       (a, b) => regions.get(a).range.start - regions.get(b).range.start,
@@ -1764,7 +1762,7 @@ export function computePlacement(input: PlacementInput): Placement {
       }
     }
     const [[g, w]] = derivedHomes as [[OutputId, RegionId]]
-    if (S.has('env') || writerHomes.has('env')) {
+    if (liveEnv.has(c) || writerHomes.has('env')) {
       const kind = outputs.get(g)?.kind
       fallbacks.push({
         region: w,
@@ -1829,15 +1827,17 @@ export function computePlacement(input: PlacementInput): Placement {
   }
   for (const cl of clusters) {
     const h = home.get(cl.id)!
-    const S = needers.get(cl.id)!
     if (h === 'removed') {
       continue
     }
     if (h === 'duplicate') {
       // a copy goes where it is rooted, and follows its direct readers (below): a needer that
       // reaches it only through a cluster it imports from elsewhere does not copy it
-      for (const o of S) {
-        if ((o === 'env' ? envRoots : derivedRoots.get(o))?.has(cl.id)) {
+      if (envRoots.has(cl.id)) {
+        included.get('env')!.add(cl.id)
+      }
+      for (const o of derivedNeeders[cl.id]!) {
+        if (derivedRoots.get(o)?.has(cl.id)) {
           included.get(o)!.add(cl.id)
         }
       }
