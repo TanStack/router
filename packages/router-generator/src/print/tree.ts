@@ -25,6 +25,32 @@ const componentPieces = [
   'pendingComponent',
 ] as const satisfies ReadonlyArray<RoutePieceName>
 
+/**
+ * The files the printed tree imports: the route files of the tree (the root
+ * route's, every route's and their pieces), the only files the generator
+ * keeps up.
+ */
+export function importedFiles(model: TreeModel): Set<string> {
+  const files = new Set([model.root.file])
+  for (const option of componentPieces) {
+    const file = model.root.pieces[option]
+    if (file) {
+      files.add(file)
+    }
+  }
+  for (const route of model.routes) {
+    if (!route.isAnchor && route.file) {
+      files.add(route.file)
+    }
+    for (const file of Object.values(route.pieces)) {
+      if (file) {
+        files.add(file)
+      }
+    }
+  }
+  return files
+}
+
 /** The name of the value a route has once its children are added. */
 function resolvedName(route: ModelRoute) {
   return route.children.length

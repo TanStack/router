@@ -16,7 +16,14 @@ import {
   rootRoute as virtualRootRoute,
   route as virtualRoute,
 } from '@tanstack/virtual-file-routes'
-import { createApp, fileRoute, generate, lazyFileRoute, rootRoute } from './app'
+import {
+  createApp,
+  fileRoute,
+  generate,
+  lazyFileRoute,
+  read,
+  rootRoute,
+} from './app'
 import { checkApp, page } from './real-router'
 import { matchesOf, routesOf, urlsOf } from './route-tree'
 import type { Config } from '../src'
@@ -579,6 +586,47 @@ describe('the root route', () => {
       'routes/__root.tsx',
     )
   })
+
+  // Bug: a file the route tree does not import is still kept up as a
+  // route: next to `__root.tsx`, a `__root/route.tsx` gets the id
+  // `/__root` (an empty one is scaffolded), and an empty `__root.lazy.tsx`
+  // is scaffolded, although neither is a route of the tree. The generator
+  // must only edit the route files the tree includes.
+  // Source: src/generator.ts (every scanned file is kept up, before the
+  // model decides which files the tree imports).
+  // Impact: the generator rewrites user files that are not routes.
+  test.each([
+    {
+      name: 'a __root/route.tsx file',
+      file: '__root/route.tsx',
+      content: fileRoute('/wrong'),
+    },
+    {
+      name: 'an empty __root/route.tsx file',
+      file: '__root/route.tsx',
+      content: '',
+    },
+    {
+      name: 'an empty __root.lazy.tsx file',
+      file: '__root.lazy.tsx',
+      content: '',
+    },
+  ])(
+    'the generator leaves $name alone: it is not part of the route tree',
+    async ({ file, content }) => {
+      const root = await createApp({
+        'src/routes/__root.tsx': rootRoute(),
+        'src/routes/about.tsx': fileRoute('/about'),
+        [`src/routes/${file}`]: content,
+      })
+      const { generatedRouteTree } = await generate(root)
+
+      expect(Object.values(await routesOf(generatedRouteTree))).not.toContain(
+        `routes/${file}`,
+      )
+      expect(await read(root, `src/routes/${file}`)).toBe(content)
+    },
+  )
 })
 
 describe('conflicting routes', () => {

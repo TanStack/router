@@ -8,7 +8,7 @@ import { replaceBackslash } from './utils'
 import { analyzeRouteFile } from './analyze/route-file'
 import { routerPackageOf, scaffoldRouteFile } from './scaffold/templates'
 import { buildTreeModel, checkRouteFullPathUniqueness } from './model/build'
-import { printTree } from './print/tree'
+import { importedFiles, printTree } from './print/tree'
 import { styleOf } from './print/style'
 import { formatWithPrettier } from './print/format'
 import {
@@ -53,6 +53,13 @@ interface FileState {
   /** The content last read (or written by the generator). */
   readonly content: string
   readonly stamp?: FileStamp
+  /**
+   * What the file's upkeep writes (a scaffold, an id or constructor fix):
+   * written only while the route tree imports the file. A file the tree
+   * leaves out is never edited.
+   */
+  readonly pending?: string
+  /** The facts of the file as its upkeep leaves it. */
   readonly facts: FileFacts
   /**
    * The route the file was kept up for (`roleOf`): a file is analysed again
@@ -467,6 +474,7 @@ export class Generator {
           this.rebuildModel()
           this.notifyPlugins()
         }
+        await this.writePending()
         return
       }
     }
@@ -474,6 +482,7 @@ export class Generator {
     // (until published: a failure here rebuilds on the next batch)
     this.stale = true
     this.rebuildModel()
+    await this.writePending()
     await this.publishTree()
     this.routesByFile = this.computeRoutesByFile()
     this.stale = false
@@ -500,6 +509,43 @@ export class Generator {
     for (const plugin of this.plugins) {
       plugin.onRouteTreeChanged?.({ model: this.model!, generator: this })
     }
+  }
+
+  /**
+   * Writes the upkeep of the route files the tree imports (SPEC J1.1, J1.3):
+   * the tree decides which files are routes, so a scanned file it leaves out
+   * (a `__root/route.tsx` beside `__root.tsx`, a lazy file of the root route,
+   * an unused duplicate) is never edited.
+   */
+  private async writePending() {
+    const treeFiles = importedFiles(this.model!)
+    await Promise.all(
+      [...this.files].map(async ([file, state]) => {
+        if (state.pending === undefined || !treeFiles.has(file)) {
+          return
+        }
+        if (state.content === '' && file === this.model!.root.file) {
+          this.logger.log(`🟡 Creating ${file}`)
+        }
+        try {
+          await this.publisher.write(file, state.pending, state.content)
+        } catch (error) {
+          if (error instanceof ConcurrentEditError) {
+            // Edited while we kept it up: handled again with its new content
+            this.queue.push({ type: 'update', path: file })
+            return
+          }
+          throw error
+        }
+        this.files.set(file, {
+          ...state,
+          content: state.pending,
+          pending: undefined,
+          // (the stamp of what it wrote)
+          stamp: (await stampOf(file)) ?? undefined,
+        })
+      }),
+    )
   }
 
   private async publishTree() {
@@ -568,32 +614,16 @@ export class Generator {
       this.files.set(key, { ...previous, stamp: stamp! })
       return
     }
-    try {
-      const state = await this.factsOf(node, isRoot, content, known)
-      this.files.set(key, {
-        ...state,
-        role,
-        // (rewritten by the generator: the stamp of what it wrote)
-        stamp:
-          (state.content === content ? stamp : await stampOf(file)) ??
-          undefined,
-      })
-    } catch (error) {
-      if (error instanceof ConcurrentEditError) {
-        // Edited while we kept it up: handled again with its new content
-        this.queue.push({ type: 'update', path: key })
-        return
-      }
-      throw error
-    }
+    const state = this.factsOf(node, isRoot, content, known)
+    this.files.set(key, { ...state, role, stamp: stamp! })
   }
 
-  private async factsOf(
+  private factsOf(
     node: RouteNode,
     isRoot: boolean,
     content: string,
     previous: FileState | undefined,
-  ): Promise<Omit<FileState, 'role'>> {
+  ): Omit<FileState, 'role'> {
     const file = node.fullPath
     const isVue = file.endsWith('.vue')
     const isPiece = pieceTypes.includes(node._fsRouteType)
@@ -610,10 +640,9 @@ export class Generator {
         noJsx: /\.[mc]?ts$/.test(file),
         style: this.style,
       })
-      this.logger.log(`🟡 Creating ${file}`)
-      await this.publisher.write(file, scaffold, content)
       return {
-        content: scaffold,
+        content,
+        pending: scaffold,
         facts: { included: true, props: undefined },
       }
     }
@@ -665,22 +694,21 @@ export class Generator {
     }
 
     if (analysis.kind === 'no-route') {
-      if (source !== content) {
-        await this.publisher.write(file, source, content)
-      }
       this.warnNoRouteExport(file)
-      return { content: source, facts: { included: false } }
+      return {
+        content,
+        pending: source !== content ? source : undefined,
+        facts: { included: false },
+      }
     }
 
     for (const diagnostic of analysis.diagnostics) {
       console.warn(formatDiagnostic(file, diagnostic))
     }
     const output = analysis.output ?? source
-    if (output !== content) {
-      await this.publisher.write(file, output, content)
-    }
     return {
-      content: output,
+      content,
+      pending: output !== content ? output : undefined,
       facts: { included: true, props: analysis.props },
     }
   }
