@@ -36,7 +36,7 @@ when their text names no Start, router or RSC API and no builder step.
 
 ## Environments and layers
 
-`client` and `ssr`; a separate provider environment only when the framework plugin asks for one without RSC. With
+`client` and `ssr`; the `ssr` environment is the server-function provider. With
 RSC, server-function provider modules are the `?tss-serverfn-split` derived outputs of their files, placed in the
 `react-server-components` layer by the resource-query rule (with the `react-server` conditions and the
 `'use server-entry'` directive); every module of that layer gets the RSC CSS loader. A file compiled in two layers is

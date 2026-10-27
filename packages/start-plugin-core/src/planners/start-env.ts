@@ -797,7 +797,14 @@ function planStartEnv(
         // claimed region overrides the placeholder there) instead of
         // importing the hoisted binding from the provider module, which
         // would evaluate the provider (and what its handlers import) in
-        // this env
+        // this env. The override is addressed to the env module: a chain
+        // inside a function that moves into a split chunk renders the
+        // placeholder there and the chunk imports the provider module. No
+        // environment loads such a chunk: a derived provider exists only in
+        // the Vite `rsc` environment, whose entry reaches route modules
+        // through their provider outputs alone (react-start-rsc
+        // `rsc-start-build.test.ts`, "a server fn nested in a function only
+        // the split component calls").
         const chain = rangeOf(site.chain.terminal)
         rewrites.add({
           range: chain,
