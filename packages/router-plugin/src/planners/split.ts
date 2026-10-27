@@ -10,8 +10,8 @@
  * properties in the env output only.
  */
 import {
-  deriveId,
   cleanOrphanedDeclarations,
+  deriveId,
   siblingSpecifier,
   stringLiteral,
 } from '@tanstack/router-utils/compiler'
