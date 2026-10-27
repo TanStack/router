@@ -1,8 +1,9 @@
 /**
  * A route module the compiler cannot parse is reported, not silently left
  * as it is (SPEC J2.8, J2.19): a TypeScript grammar error the bundler's
- * transpiler lets through (`text!: string = '…'`: a definite assignment
- * assertion with an initializer, which SWC accepts) leaves the route unsplit
+ * transpiler lets through (`let label!: string = '…'`: a definite assignment
+ * assertion with an initializer, which SWC accepts on a variable; since
+ * Rspack 2.2.9 it rejects the class-field form) leaves the route unsplit
  * and the build warns once, naming the route file. Rspack (SWC) is the row
  * where the bundler alone would have said nothing; Vite's own transpiler, and
  * the harness's webpack loader (Oxc), reject the file themselves.
@@ -20,11 +21,9 @@ test.each(['rspack'] as const)(
       minify: false,
       files: {
         'routes/__root.tsx': rootRoute,
-        'routes/index.tsx': `${head}class Label {
-  text!: string = 'MARK_LABEL'
-}
+        'routes/index.tsx': `${head}let label!: string = 'MARK_LABEL'
 function Page() {
-  return <p>MARK_COMPONENT {new Label().text}</p>
+  return <p>MARK_COMPONENT {label}</p>
 }
 export const Route = createFileRoute('/')({ component: Page })
 `,
