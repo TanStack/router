@@ -229,6 +229,8 @@ const second = register('second')
 const third = register('third')
 export const fn = createServerFn().handler(async () => [first, second, third])`,
   )
+  // before a call loads the module in the page
+  expect(await recordClientSideEffects(startCase)).toEqual([])
   const global = globalThis as Record<string, unknown>
   global[effectsKey] = []
   try {
@@ -246,7 +248,51 @@ export const fn = createServerFn().handler(async () => [first, second, third])`,
   } finally {
     delete global[effectsKey]
   }
-  expect(await recordClientSideEffects(startCase)).toEqual([])
+})
+
+// The same with a declaration the module keeps calling the same import, and
+// an effect between two augmentations of an object only the handler reads:
+// the server runs every one once, in source order; the client, which keeps
+// the augmented object, too.
+test('effectful declarations and augmentations a handler reads keep their order on the server', async () => {
+  const startCase = await effectCase(
+    await host(),
+    `import { createServerFn } from '@tanstack/react-start'
+import { register } from './registry'
+export const kept = register('kept')
+const tools = { name: register('tools') }
+;(tools as any).first = register('first')
+register('middle')
+;(tools as any).second = register('second')
+export const fn = createServerFn().handler(async () => [
+  kept,
+  tools.name,
+  (tools as any).first,
+  (tools as any).second,
+])`,
+  )
+  const calls = [
+    'register:kept',
+    'register:tools',
+    'register:first',
+    'register:middle',
+    'register:second',
+  ]
+  expect(await recordClientSideEffects(startCase)).toEqual(calls)
+  const global = globalThis as Record<string, unknown>
+  global[effectsKey] = []
+  try {
+    expect(await callFromClient(startCase, 'module.fn')).toEqual([
+      'registered',
+      'registered',
+      'registered',
+      'registered',
+    ])
+    await callFromClient(startCase, 'module.fn')
+    expect(global[effectsKey]).toEqual(calls)
+  } finally {
+    delete global[effectsKey]
+  }
 })
 
 // TypeScript erases type positions, so a declaration whose binding only

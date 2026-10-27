@@ -961,9 +961,7 @@ describe('effectful declarations only the split component reads', () => {
   /**
    * `state.ts`: `register(name)` records `name` in `ran` and returns it;
    * `recordFirst`, `recordSecond`, … are the same function under the names
-   * the cases below import, one per declaration (an import the route
-   * module or another chunk also reads keeps its readers in the route
-   * module by itself, R29 (c)).
+   * the cases below import, one per declaration.
    */
   const files = {
     'state.ts': `export const ran: Array<string> = []
@@ -1109,6 +1107,113 @@ ${record('second')}
       loaded: ['MARK_first'],
       rendered: ['MARK_first', 'MARK_second'],
       html: ['<p>MARK_second</p>', '<p>MARK_first</p>'],
+      eagerHolds: [],
+    })
+  })
+  it('keeps a component whose augmentations an effect separates, and the effect, in source order', async () => {
+    // moving `Page` with its augmentations would run `middle` before `first`
+    expect(
+      await observe(
+        `export const Route = createFileRoute('/')({ component: Page })
+function Page() {
+  return <p>{Page.first + Page.second}</p>
+}
+Page.first = recordFirst('MARK_first')
+recordMiddle('MARK_middle')
+Page.second = recordSecond('MARK_second')
+`,
+        ['component'],
+        [],
+      ),
+    ).toEqual({
+      loaded: ['MARK_first', 'MARK_middle', 'MARK_second'],
+      rendered: ['MARK_first', 'MARK_middle', 'MARK_second'],
+      html: ['<p>MARK_firstMARK_second</p>'],
+      eagerHolds: [],
+    })
+  })
+
+  it('keeps one before a later declarator of its statement that stays', async () => {
+    expect(
+      await observe(
+        `export const Route = createFileRoute('/')({ component: Page })
+const first = recordFirst('MARK_first'), middle = recordMiddle('MARK_middle')
+function Page() {
+  return <p>{first}</p>
+}
+`,
+        ['component'],
+        [],
+      ),
+    ).toEqual({
+      loaded: ['MARK_first', 'MARK_middle'],
+      rendered: ['MARK_first', 'MARK_middle'],
+      html: ['<p>MARK_first</p>'],
+      eagerHolds: [],
+    })
+  })
+
+  it('keeps one another one reads, and that one, in the route module', async () => {
+    expect(
+      await observe(
+        `export const Route = createFileRoute('/')({ component: Page })
+${record('first')}
+const second = [first, recordSecond('MARK_second')]
+function Page() {
+  return <p>{second.join(' ')}</p>
+}
+`,
+        ['component'],
+        [],
+      ),
+    ).toEqual({
+      loaded: ['MARK_first', 'MARK_second'],
+      rendered: ['MARK_first', 'MARK_second'],
+      html: ['<p>MARK_first MARK_second</p>'],
+      eagerHolds: [],
+    })
+  })
+
+  it('moves interleaved declarations and augmentations together, in source order', async () => {
+    expect(
+      await observe(
+        `export const Route = createFileRoute('/')({ component: Page })
+function Page() {
+  return <p>{first + Page.second + third}</p>
+}
+${record('first')}
+Page.second = recordSecond('MARK_second')
+${record('third')}
+`,
+        ['component'],
+        ['first', 'second', 'third'],
+      ),
+    ).toEqual({
+      loaded: [],
+      rendered: ['MARK_first', 'MARK_second', 'MARK_third'],
+      html: ['<p>MARK_firstMARK_secondMARK_third</p>'],
+      eagerHolds: [],
+    })
+  })
+
+  it('keeps the ones before one that moves to another chunk, and moves the last', async () => {
+    expect(
+      await observe(
+        `export const Route = createFileRoute('/')({
+  component: () => <p>{first + third}</p>,
+  errorComponent: () => <p>{second}</p>,
+})
+${record('first')}
+${record('second')}
+${record('third')}
+`,
+        ['errorComponent', 'component'],
+        ['third'],
+      ),
+    ).toEqual({
+      loaded: ['MARK_first', 'MARK_second'],
+      rendered: ['MARK_first', 'MARK_second', 'MARK_third'],
+      html: ['<p>MARK_second</p>', '<p>MARK_firstMARK_third</p>'],
       eagerHolds: [],
     })
   })
