@@ -1,7 +1,10 @@
 /**
  * The `start-env` planner (J4): Start's environment
- * separation on the core's plan. Server fns become client/SSR stubs or keep
- * their handler in place next to a generated `createServerRpc` export;
+ * separation on the core's plan. Server fns become client/SSR stubs, or
+ * keep their chain next to a generated `createServerRpc` export in the
+ * provider; an in-place provider (SSR) moves the handlers into one derived
+ * handler module it imports on the first call (what only handlers read
+ * loads then, once; everything else stays and is imported back);
  * middleware links, isomorphic implementations and env-only fns are
  * selected per env; `<ClientOnly>` children leave server envs; nested
  * server fns are hoisted on the server when that is safe, else refused at
@@ -14,6 +17,7 @@ import {
   cleanOrphanedDeclarations,
   identifierBase,
   isPureExpression,
+  siblingSpecifier,
   stringLiteral,
   unwrapExpression,
   walk,
@@ -466,6 +470,50 @@ function planStartEnv(
     return sym
   }
 
+  // ---- lazy handler module (in-place provider): one per defining module, loaded once on the first call
+  let handlerOut: OutputId | null = null
+  let handlerLoad: SymbolId | null = null
+  const lazyHandlerOutput = (): { out: OutputId; load: SymbolId } => {
+    if (handlerOut === null || handlerLoad === null) {
+      handlerOut = ctx.declareOutput({
+        kind: 'custom',
+        key: 'handler',
+        derived: { kind: 'handler', value: '' },
+      })
+      const memo = names.alloc('tsrHandlers')
+      const load = names.alloc('tsrLoadHandlers')
+      const spec = siblingSpecifier(handlerOut.slice('derived:'.length))
+      rewrites.addGenerated({
+        body: [
+          text(
+            'let ',
+            { sym: memo.sym },
+            '\nconst ',
+            { sym: load.sym },
+            ' = () => (',
+            { sym: memo.sym },
+            ' ??= import(',
+          ),
+          {
+            k: 'spec',
+            specifier: spec,
+            edgeKey: ctx.edgeKey(spec, 'dynamic', 'runtime'),
+            provenance: { origin: 'runtime' },
+            form: 'dynamic',
+          },
+          text('))\n'),
+        ],
+        declares: [memo.sym, load.sym],
+        effectful: false,
+        anchor: { k: 'after-header' },
+        home: 'auto',
+        by,
+      })
+      handlerLoad = load.sym
+    }
+    return { out: handlerOut, load: handlerLoad }
+  }
+
   // ---- 1. link stripping on the client (serverFn validators, middleware server/validator)
   for (const chain of analysis.chains) {
     if (chain.unsupported) {
@@ -557,6 +605,48 @@ function planStartEnv(
     }
   }
 
+  // Handlers that move to the lazy handler module (in-place provider). An env
+  // rewrite of exactly such a handler range (the handler is itself a
+  // createServerOnlyFn / createIsomorphicFn call) renders inside the
+  // handler module's unit instead of overriding the claim's placeholder.
+  const rangeKey = (r: Range) => `${r.start}:${r.end}`
+  const lazySites = new Set<ServerFnSite>()
+  const lazyRanges = new Set<string>()
+  const lazyEdits = new Map<string, { body: Array<Frag>; reason: string }>()
+  if (
+    role === 'provider' &&
+    !providerOut &&
+    sites.length > 0 &&
+    // a module that awaits at its top level could await one of its own server fns while it
+    // evaluates: the handler module imports it back and would wait for it forever
+    !hasTopLevelAwait(ctx)
+  ) {
+    for (const site of sites) {
+      const h = site.handler
+      // a core fallback (the handler writes module state other code reads) keeps it in place
+      if (
+        !ctx.fallbacks.some(
+          (f) =>
+            f.kind === 'custom' &&
+            f.range.start === h.start &&
+            f.range.end === h.end,
+        )
+      ) {
+        lazySites.add(site)
+        lazyRanges.add(rangeKey(rangeOf(h)))
+      }
+    }
+  }
+  /** Adds an env rewrite, unless it replaces exactly a lazy handler (then it applies in the handler module only). */
+  const envEdit = (range: Range, body: Array<Frag>, reason: string) => {
+    const k = rangeKey(range)
+    if (lazyRanges.has(k)) {
+      lazyEdits.set(k, { body, reason })
+      return
+    }
+    rewrites.add({ range, body, scope: 'all-outputs', by, reason })
+  }
+
   // ---- 3. isomorphic fns
   const wantLink = isServer ? 'server' : 'client'
   for (const chain of analysis.chains) {
@@ -583,37 +673,31 @@ function planStartEnv(
         chain.wrapped,
         chain.parent,
       )
-      rewrites.add({
-        range: rangeOf(X),
-        body: parens
+      envEdit(
+        rangeOf(X),
+        parens
           ? [text('('), slice(rangeOf(link.arg)), text(')')]
           : [slice(rangeOf(link.arg))],
-        scope: 'all-outputs',
-        by,
-        reason: `isomorphic ${wantLink} implementation`,
-      })
+        `isomorphic ${wantLink} implementation`,
+      )
       continue
     }
     if (chain.headIsFactoryCall) {
       const parens = needsParens('arrow', chain.wrapped, chain.parent)
-      rewrites.add({
-        range: rangeOf(X),
-        body: [text(parens ? '(() => {})' : '() => {}')],
-        scope: 'all-outputs',
-        by,
-        reason: 'isomorphic fn without an implementation for this environment',
-      })
+      envEdit(
+        rangeOf(X),
+        [text(parens ? '(() => {})' : '() => {}')],
+        'isomorphic fn without an implementation for this environment',
+      )
       continue
     }
     if (chain.links.length > 0) {
       // the implementation lives on the stored receiver (this module or another): strip this segment's links
-      rewrites.add({
-        range: rangeOf(X),
-        body: [slice(rangeOf(chain.head))],
-        scope: 'all-outputs',
-        by,
-        reason: 'isomorphic links of the other environment',
-      })
+      envEdit(
+        rangeOf(X),
+        [slice(rangeOf(chain.head))],
+        'isomorphic links of the other environment',
+      )
     }
   }
 
@@ -634,26 +718,22 @@ function planStartEnv(
         continue
       }
       const parens = needsParens(unwrapExpression(c.arg), wrapped, parent)
-      rewrites.add({
-        range: rangeOf(c.call),
-        body: parens
+      envEdit(
+        rangeOf(c.call),
+        parens
           ? [text('('), slice(rangeOf(c.arg)), text(')')]
           : [slice(rangeOf(c.arg))],
-        scope: 'all-outputs',
-        by,
-        reason: `${c.kind}-only implementation`,
-      })
+        `${c.kind}-only implementation`,
+      )
     } else {
       const message = `create${c.kind === 'server' ? 'Server' : 'Client'}OnlyFn() functions can only be called on the ${c.kind}!`
       const parens = needsParens('arrow', wrapped, parent)
       const stub = `() => { throw new Error(${stringLiteral(message, '"')}) }`
-      rewrites.add({
-        range: rangeOf(c.call),
-        body: [text(parens ? `(${stub})` : stub)],
-        scope: 'all-outputs',
-        by,
-        reason: `${c.kind}-only stub`,
-      })
+      envEdit(
+        rangeOf(c.call),
+        [text(parens ? `(${stub})` : stub)],
+        `${c.kind}-only stub`,
+      )
     }
   }
 
@@ -779,13 +859,55 @@ function planStartEnv(
       anchor = hoisted!.anchor
       commitHoist = hoisted!.commit
     }
-    rewrites.add({
-      range: { start: h.start, end: h.start },
-      body: [text({ sym: rpcLocal.sym }, ', ')],
-      scope: providerScope,
-      by,
-      reason: 'server rpc wrapper argument',
-    })
+    if (lazySites.has(site)) {
+      const { out, load } = lazyHandlerOutput()
+      const local = names.alloc(`tsrHandler$${identifierBase(site.stableKey)}`)
+      const owner = rewrites.addGenerated({
+        body: [
+          text('const ', { sym: local.sym }, ' = '),
+          slice(rangeOf(h)),
+          text('\nexport { ', { sym: local.sym }, ' }\n'),
+        ],
+        declares: [local.sym],
+        effectful: false,
+        anchor: { k: 'end' },
+        home: out,
+        by,
+      })
+      ctx.addRoot(out, { t: 'gen', id: owner })
+      const rewritten = lazyEdits.get(rangeKey(rangeOf(h)))
+      if (rewritten) {
+        // the handler is itself an env-only / isomorphic call: rewritten in the handler module only
+        rewrites.add({
+          range: rangeOf(h),
+          body: rewritten.body,
+          scope: [out],
+          by,
+          reason: rewritten.reason,
+        })
+      }
+      rewrites.claim({
+        region: ctx.region(rangeOf(h), 'custom'),
+        owner,
+        placeholder: [
+          text(
+            { sym: rpcLocal.sym },
+            ', (...args) => ',
+            { sym: load, ctx: 'callee' },
+            `().then((m) => m.${local.name}(...args))`,
+          ),
+        ],
+        by,
+      })
+    } else {
+      rewrites.add({
+        range: { start: h.start, end: h.start },
+        body: [text({ sym: rpcLocal.sym }, ', ')],
+        scope: providerScope,
+        by,
+        reason: 'server rpc wrapper argument',
+      })
+    }
     const gen = rewrites.addGenerated({
       body: [
         text(
@@ -857,6 +979,47 @@ function planStartEnv(
   cleanOrphanedDeclarations(ctx, envScope, by)
 
   ctx.setFacts(START_ENV, facts)
+}
+
+/**
+ * Whether the module awaits at its top level (`await`, `for await`) outside
+ * any function. Only top-level statements whose text has `await` are walked.
+ */
+function hasTopLevelAwait(ctx: PlanContext): boolean {
+  const code = ctx.analysis.source.code
+  const hit = { found: false }
+  const skipFn = (_n: Node, w: { skip: () => void }) => w.skip()
+  let at = -1
+  for (const statement of ctx.analysis.file.program.body) {
+    if (at < statement.start) {
+      at = code.indexOf('await', statement.start)
+    }
+    if (at === -1) {
+      return false
+    }
+    if (at >= statement.end) {
+      continue
+    }
+    walk(statement, {
+      FunctionDeclaration: skipFn,
+      FunctionExpression: skipFn,
+      ArrowFunctionExpression: skipFn,
+      AwaitExpression: (_n, w) => {
+        hit.found = true
+        w.stop()
+      },
+      ForOfStatement: (n, w) => {
+        if (n.await) {
+          hit.found = true
+          w.stop()
+        }
+      },
+    })
+    if (hit.found) {
+      return true
+    }
+  }
+  return false
 }
 
 function serverFnFact(

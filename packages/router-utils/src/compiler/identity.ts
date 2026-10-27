@@ -9,7 +9,13 @@
  */
 import { hash } from 'node:crypto'
 
-export type DerivedKind = 'split' | 'shared' | 'export' | 'hydrate' | 'provider'
+export type DerivedKind =
+  | 'split'
+  | 'shared'
+  | 'export'
+  | 'hydrate'
+  | 'provider'
+  | 'handler'
 
 export interface DerivedQuery {
   kind: DerivedKind
@@ -42,6 +48,7 @@ export const OWNED_QUERY_KEYS = {
   split: 'tsr-split',
   hydrate: 'tss-hydrate',
   provider: 'tss-serverfn-split',
+  handler: 'tss-serverfn-handler',
 } as const
 
 const OWNED_KEY_SET = new Set<string>(Object.values(OWNED_QUERY_KEYS))
@@ -77,6 +84,9 @@ function parseDerived(key: string, value: string): DerivedQuery | null {
   if (key === OWNED_QUERY_KEYS.provider) {
     return { kind: 'provider', value }
   }
+  if (key === OWNED_QUERY_KEYS.handler) {
+    return { kind: 'handler', value }
+  }
   if (key === OWNED_QUERY_KEYS.split) {
     if (value.startsWith('shared~')) {
       return { kind: 'shared', value: value.slice('shared~'.length) }
@@ -103,6 +113,8 @@ function ownedQueryPair(q: DerivedQuery): string {
       return q.value
         ? `${OWNED_QUERY_KEYS.provider}=${q.value}`
         : OWNED_QUERY_KEYS.provider
+    case 'handler':
+      return OWNED_QUERY_KEYS.handler
   }
 }
 
@@ -140,11 +152,23 @@ export function identify(hostId: string): SourceIdentity {
   }
 }
 
-/** Adds the owned key to the canonical id's existing query; never reorders or drops foreign keys. */
+/**
+ * Adds the owned key to the canonical id's existing query; never reorders or
+ * drops foreign keys. A trailing language key (`Page.vue?vue&type=script&lang.ts`,
+ * how `@vitejs/plugin-vue` serves an SFC block) stays last: other plugins
+ * pick the transform by the id's ending.
+ */
 export function deriveId(canonicalId: string, q: DerivedQuery): string {
   const { base, query, hash } = splitQuery(canonicalId)
   const pair = ownedQueryPair(q)
-  return `${base}?${query.length > 0 ? `${query}&` : ''}${pair}${hash}`
+  if (query.length === 0) {
+    return `${base}?${pair}${hash}`
+  }
+  const last = query.lastIndexOf('&') + 1
+  if (/^lang\.\w+$/.test(query.slice(last))) {
+    return `${base}?${query.slice(0, last)}${pair}&${query.slice(last)}${hash}`
+  }
+  return `${base}?${query}&${pair}${hash}`
 }
 
 /** The glue specifier a sibling output uses to import from `target` (same directory, hostile basenames allowed). */

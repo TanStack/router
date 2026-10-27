@@ -106,38 +106,6 @@ export const fn = createServerFn().handler(async () => new Repo().get())
     )
   }
 
-  // Found by the real-app differential corpus (lbogerd/tictaak-start: a
-  // route file whose server fn handlers import the database module, which
-  // throws at load without DATABASE_URL). Main's SSR output defines the fn
-  // with a stub and loads the handler, with its imports, on the first call;
-  // the PR keeps the handler in place (DESIGN 3.10.4 "ssr = provider"), so
-  // the handler's server-only imports load with the module that defines the
-  // fn: every page of that app answers 500 on the PR, main renders them.
-  // (Vite only: the placement is the compiler's, not the bundler's.)
-  if (bundler === 'vite') {
-    test(
-      'SSR: the server-only module of a server fn handler loads on the first call, not with the module defining the fn',
-      async () => {
-        const { ssr } = await buildStart({
-          bundler,
-          files: {
-            'db.server.ts': dbModule,
-            'fns.ts': `${head}import { db } from './db.server'
-export const fn = createServerFn().handler(async () => db.users())
-`,
-            'entry.ts': `export { fn } from './fns'\n`,
-          },
-        })
-        const { result } =
-          await ssr.run(`const before = globalThis.MARK_DB_LOADED ?? false
-const called = await entry.fn()
-return { before, called, after: globalThis.MARK_DB_LOADED ?? false }`)
-        expect(result).toEqual({ before: false, called: 'users', after: true })
-      },
-      timeout,
-    )
-  }
-
   /** A server fn module whose `auth` import a type still mentions. */
   const typeofFiles = (verbatimModuleSyntax: boolean) => ({
     'tsconfig.json': JSON.stringify({
