@@ -31,7 +31,6 @@ import {
   routerPlannerConfig,
   routerPlanners,
 } from '@tanstack/router-plugin/planners'
-import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import { namesStartSpecifier, startRecognizer } from '../compiler/recognizer'
 import { START_ENV, startPlanners } from '../planners'
 import { HYDRATE_PLANNER, createHydratePlanner } from '../planners/hydrate'
@@ -46,6 +45,7 @@ import { createImportProtection } from '../import-protection/session'
 import { rspackEdgeModuleIds } from '../import-protection/edge-modules'
 import { violationsOf } from '../import-protection/violations'
 import { normalizePath } from '../utils'
+import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type { ImportProtection } from '../import-protection/session'
 import type { ImportRewrite } from '../planners/edges'
 import type { HydratePlannerConfig } from '../planners/hydrate'
