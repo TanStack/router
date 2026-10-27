@@ -808,3 +808,25 @@ export const fn = createServerFn().handler(async () => [flag, conn, mode])`,
     }
   })
 })
+
+describe('a server-only initialiser only the handler writes', () => {
+  // The handler names the binding only to assign it: the client drops the
+  // initialiser with the handler (SPEC J4.11: a server-only initialiser
+  // never runs on the client), as it does when the handler reads it.
+  test('leaves the client with the handler', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `${head}import { connect } from './socket.server'
+let socket = connect()
+export const fn = createServerFn().handler(async () => {
+  socket = connect()
+  return 'reconnected'
+})
+export const label = 'client'
+`,
+      'socket.server.ts': `export const connect = () => ({ x: () => 'x' })\n`,
+    })
+    expectNotLoaded(await served.loads(), ['./socket.server'])
+    expect(await inPage(served, 'return module.label')).toEqual('client')
+    expect(await callFromClient(served, 'module.fn')).toBe('reconnected')
+  })
+})

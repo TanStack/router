@@ -93,6 +93,8 @@ export interface Fallback {
     | 'ordered-effect'
     | 'hydrate-writer'
     | 'env-declared'
+    /** The planning rounds did not settle: every sub-region is kept in place (reported by the pipeline). */
+    | 'exhausted'
   cluster: ClusterId
 }
 
@@ -252,18 +254,20 @@ export function computePlacement(input: PlacementInput): Placement {
   for (const claim of rewrites.claims.values()) {
     uf.union(memberOfRegion(claim.region), memberOfGen(claim.owner))
   }
-  // ---- writes: every top-level write of a module binding, one table ------
+  // ---- writes: every write of a module binding, one table -----------------
   /**
-   * A write of a module-level binding by top-level code: an assignment,
-   * update, delete or destructuring target (a `write` reference), or an
-   * augmentation unit (`X.p = …`, `X.push(…)`: `augment`, whose `sym` is the
-   * augmented binding). `live`: not inside a range the env module erases;
-   * `eager`: evaluated at module level, not inside a function (an
-   * augmentation always is); `owner`: the innermost region holding it (the
-   * unit's own region for an augmentation). The four rules that read
-   * writes derive from this table: clustering (a writer joins what it
-   * writes), ordered evaluation (eager readers of mutated bindings), the
-   * movable test's "nothing mutates it" and "it reads nothing mutated".
+   * The module's mutation model (`t1.mutation`: every assignment of a
+   * binding and every write of a member of one, eager or lazy) restricted
+   * to module-level bindings, with what placement adds: `live` (not inside a
+   * range the env module erases), `augment` (a top-level augmentation unit,
+   * `X.p = …`, `X.push(…)`, `X = …` as a statement: its `owner` is the
+   * unit's region). Every rule that asks what writes a binding reads this
+   * table: clustering (a live top-level writer joins what it writes),
+   * ordered evaluation (an eager reader of a binding written after it, or
+   * by lazy code, cannot move), the movable test's "nothing outside writes
+   * it" and the one predicate `mutatedOutside` ("something outside the
+   * reader writes what it reads eagerly") behind the movable test, the
+   * pure-cluster gate and the option-value fallbacks.
    */
   interface Write {
     sym: SymbolId
@@ -272,23 +276,32 @@ export function computePlacement(input: PlacementInput): Placement {
     live: boolean
     owner: RegionId | null
     augment: boolean
+    /** A member write (`x.p = …`, `x.push(…)`), not an assignment of the binding. */
+    member: boolean
   }
   const writes: Array<Write> = []
-  for (const ref of refs.all) {
-    if (
-      ref.kind !== 'write' ||
-      !symbols.isModuleLevel(ref.sym) ||
-      !declMember.has(ref.sym)
-    ) {
+  const writesOfSym = new Map<SymbolId, Array<Write>>()
+  const addWrite = (w: Write) => {
+    writes.push(w)
+    let list = writesOfSym.get(w.sym)
+    if (!list) {
+      list = []
+      writesOfSym.set(w.sym, list)
+    }
+    list.push(w)
+  }
+  for (const site of t1.mutation.all) {
+    if (!symbols.isModuleLevel(site.sym) || !declMember.has(site.sym)) {
       continue
     }
-    writes.push({
-      sym: ref.sym,
-      at: ref.range.start,
-      eager: ref.eager,
-      live: isLive(ref, 'env'),
-      owner: regions.innermostAt(ref.range.start, ref.range.end),
+    addWrite({
+      sym: site.sym,
+      at: site.range.start,
+      eager: site.eager,
+      live: !envTree.isErasedAt(site.range.start),
+      owner: regions.innermostAt(site.range.start, site.range.end),
       augment: false,
+      member: site.kind === 'member',
     })
   }
   for (const u of units) {
@@ -297,13 +310,14 @@ export function computePlacement(input: PlacementInput): Placement {
     }
     const live = !envTree.isErasedAt(items[u.item]!.nodeRange.start)
     for (const s of u.augments) {
-      writes.push({
+      addWrite({
         sym: s,
         at: u.range.start,
         eager: true,
         live,
         owner: u.region,
         augment: true,
+        member: false,
       })
     }
   }
@@ -314,7 +328,7 @@ export function computePlacement(input: PlacementInput): Placement {
   const regionWrittenSyms = new Set<SymbolId>()
   for (const w of writes) {
     const d = declMember.get(w.sym)
-    if (!w.live || d === undefined || w.owner === null) {
+    if (!w.live || w.member || d === undefined || w.owner === null) {
       continue
     }
     if (w.augment || regions.get(w.owner).kind === 'unit') {
@@ -450,60 +464,102 @@ export function computePlacement(input: PlacementInput): Placement {
     return into
   }
 
-  // ---- 5. ordered evaluation: eager readers of mutated clusters join them (a reader cannot move after the writes that follow it) ----
+  // ---- 5. ordered evaluation: eager readers of eagerly mutated clusters join them (a reader cannot move after the writes that follow it) ----
   // Every round that changes something merges two clusters, so the rounds
   // end (the union-find only grows) once no eager reader is left outside the
   // cluster it reads.
   const fallbacks: Array<Fallback> = []
-  const orderedEffectRegions = new Set<RegionId>()
+  // the eager live reads of written module bindings (a module without
+  // writes has nothing to order: most route modules)
+  const eagerReads: Array<ClassifiedRef> = []
+  if (writes.length > 0) {
+    for (const ref of refs.all) {
+      if (
+        ref.eager &&
+        writesOfSym.has(ref.sym) &&
+        READ_KINDS.has(ref.kind) &&
+        declMember.has(ref.sym) &&
+        isLive(ref, 'env')
+      ) {
+        eagerReads.push(ref)
+      }
+    }
+  }
   for (;;) {
     let changed = false
-    // mutated roots: clusters with an eager live top-level write/augmentation,
-    // and the position of their last mutation
+    // mutated roots: clusters with an eager live top-level write
     const mutated = new Set<number>()
-    const lastMutation = new Map<number, number>()
     for (const w of writes) {
       const d = declMember.get(w.sym)
-      if (!w.live || !w.eager || d === undefined) {
-        continue
+      if (w.live && w.eager && d !== undefined) {
+        mutated.add(uf.find(d))
       }
-      const root = uf.find(d)
-      mutated.add(root)
-      lastMutation.set(root, Math.max(lastMutation.get(root) ?? -1, w.at))
     }
     if (mutated.size === 0) {
       break
     }
-    for (const ref of refs.all) {
-      if (
-        !ref.eager ||
-        !READ_KINDS.has(ref.kind) ||
-        !isLive(ref, 'env') ||
-        !symbols.isModuleLevel(ref.sym)
-      ) {
-        continue
-      }
-      const d = declMember.get(ref.sym)
-      if (d === undefined || !mutated.has(uf.find(d))) {
+    for (const ref of eagerReads) {
+      const d = declMember.get(ref.sym)!
+      if (!mutated.has(uf.find(d))) {
         continue
       }
       const owner = regions.innermostAt(ref.range.start, ref.range.end)
-      if (owner === null || uf.find(owner) === uf.find(d)) {
-        continue
-      }
-      const region = regions.get(owner)
-      if (region.kind === 'unit') {
+      if (
+        owner !== null &&
+        regions.get(owner).kind === 'unit' &&
+        uf.find(owner) !== uf.find(d)
+      ) {
         uf.union(owner, d)
         changed = true
-      } else if ((lastMutation.get(uf.find(d)) ?? -1) > ref.range.start) {
-        // a relocated read (a claimed option value) must not move past a
-        // later mutation; one that follows every mutation reads the same
-        // state wherever it evaluates
-        orderedEffectRegions.add(owner)
       }
     }
     if (!changed) {
       break
+    }
+  }
+  /**
+   * The one mutation predicate: whether a read of `sym` evaluated at
+   * `readAt` by cluster `by` observes state something else writes. A
+   * surviving write by another cluster counts when it runs after the read
+   * (an eager write further down the module: a relocated read would move
+   * past it) or at an unknown time (a write inside a function: it may run
+   * before a lazy output evaluates the read). A write by the reading
+   * cluster itself does not (it travels with the read).
+   */
+  function mutatedOutside(sym: SymbolId, readAt: number, by: number): boolean {
+    const list = writesOfSym.get(sym)
+    if (list === undefined) {
+      return false
+    }
+    for (const w of list) {
+      if (!w.live || (w.eager && w.at <= readAt)) {
+        continue
+      }
+      if (w.owner === null || uf.find(memberOfWriter(w.owner)) !== by) {
+        return true
+      }
+    }
+    return false
+  }
+  /** The union-find member a write's region belongs to: a claimed region is its owner's. */
+  function memberOfWriter(owner: RegionId): number {
+    const claim = rewrites.claims.get(owner)
+    return claim ? memberOfGen(claim.owner) : owner
+  }
+  // a relocated read (a claimed option value) of state something writes
+  // after it, or at an unknown time, keeps the option in place
+  const orderedEffectRegions = new Set<RegionId>()
+  for (const ref of eagerReads) {
+    const owner = regions.innermostAt(ref.range.start, ref.range.end)
+    if (owner === null || regions.get(owner).kind === 'unit') {
+      continue
+    }
+    const by = uf.find(memberOfWriter(owner))
+    if (
+      uf.find(declMember.get(ref.sym)!) !== by &&
+      mutatedOutside(ref.sym, ref.range.start, by)
+    ) {
+      orderedEffectRegions.add(owner)
     }
   }
 
@@ -783,7 +839,7 @@ export function computePlacement(input: PlacementInput): Placement {
       cl.effectful ||
       cl.gens.length > 0 ||
       // a reassigned export stays: its writers would assign an import
-      refs.writesOf(sym).length > 0 ||
+      t1.mutation.isReassigned(sym) ||
       // a binding a sub-region writes (Hydrate children, a split option
       // value) must meet the single-writer rule below: pinning its cluster
       // to an extracted output would let the writer assign an import
@@ -954,7 +1010,9 @@ export function computePlacement(input: PlacementInput): Placement {
   const erasedSeeds = new Set<ClusterId>()
   for (const part of erasedParts) {
     for (const ref of refs.refsIn(part)) {
-      if (!READ_KINDS.has(ref.kind) || !symbols.isModuleLevel(ref.sym)) {
+      // a write names the binding too: an initialiser only an erased
+      // handler assigns is orphaned with it
+      if (!NEED_KINDS.has(ref.kind) || !symbols.isModuleLevel(ref.sym)) {
         continue
       }
       const d = clusterOfSym.get(ref.sym)
@@ -1047,46 +1105,45 @@ export function computePlacement(input: PlacementInput): Placement {
   const movable = new Set<ClusterId>()
   const orphaned = new Set<ClusterId>()
   const pure = (c: ClusterId) => !clusters[c]!.effectful
-  // Clusters mutated by their own top-level code: holding an augmentation
-  // unit (live or not), or a live write of one of their bindings by one of
-  // their units other than its declaring unit.
-  const mutatedClusters = new Set<ClusterId>()
-  // Clusters mutated by surviving top-level code outside themselves: an
-  // eager live write or augmentation whose region belongs to another cluster
-  // (a claimed option value, a unit the clustering did not merge).
-  const externallyMutated = new Set<ClusterId>()
-  for (const w of writes) {
-    const region = w.owner === null ? null : regions.get(w.owner)
-    if (region !== null && region.kind === 'unit' && region.unit !== null) {
-      const oc = clusterOfRegion.get(region.id)!
-      if (w.augment) {
-        mutatedClusters.add(oc)
-      } else if (
-        w.live &&
-        clusters[oc]!.declares.has(w.sym) &&
-        !units[region.unit]!.declares.includes(w.sym)
-      ) {
-        mutatedClusters.add(oc)
+  /**
+   * Whether a cluster eagerly reads a module binding something outside it
+   * writes (`mutatedOutside`): its value depends on when it evaluates, so
+   * it never moves to a lazy output, pure or not (`const initial = [n]`
+   * next to `function inc() { n++ }` keeps the source's `[0]`): it is an
+   * env root like an effectful cluster, and derived outputs import it.
+   */
+  const readsMutable = new Map<ClusterId, boolean>()
+  function readsMutableState(c: ClusterId): boolean {
+    if (writes.length === 0) {
+      return false
+    }
+    let hit = readsMutable.get(c)
+    if (hit === undefined) {
+      hit = false
+      const root = uf.find(
+        clusters[c]!.regions[0] ?? memberOfGen(clusters[c]!.gens[0]!),
+      )
+      for (const r of clusters[c]!.regions) {
+        for (const ref of ownedRefs.get(r) ?? []) {
+          if (
+            ref.eager &&
+            writesOfSym.has(ref.sym) &&
+            READ_KINDS.has(ref.kind) &&
+            clusterOfSym.get(ref.sym) !== c &&
+            isLive(ref, 'env') &&
+            mutatedOutside(ref.sym, ref.range.start, root)
+          ) {
+            hit = true
+            break
+          }
+        }
+        if (hit) {
+          break
+        }
       }
+      readsMutable.set(c, hit)
     }
-    if (!w.live || !w.eager) {
-      continue
-    }
-    const d = clusterOfSym.get(w.sym)
-    if (d === undefined) {
-      continue
-    }
-    const claim =
-      w.owner === null || w.augment ? undefined : rewrites.claims.get(w.owner)
-    const oc =
-      w.owner === null
-        ? undefined
-        : claim
-          ? clusterOfGen.get(claim.owner)
-          : clusterOfRegion.get(w.owner)
-    if (oc !== d) {
-      externallyMutated.add(d)
-    }
+    return hit
   }
   const survivingEffects = units.filter(
     (u) =>
@@ -1270,23 +1327,32 @@ export function computePlacement(input: PlacementInput): Placement {
     }
     return false
   }
-  /** Whether a derived output reaches `c` (it cannot be removed). */
+  /**
+   * Whether a derived output that imports from the env module reaches `c`
+   * (it cannot be removed). A provider output copies what it reaches (it is
+   * the module's own instance in another layer) and keeps nothing in the
+   * env module, where its handlers are stubs.
+   */
   function derivedNeeds(c: ClusterId): boolean {
-    for (const set of derivedReach.values()) {
-      if (set.has(c)) {
+    for (const [id, set] of derivedReach) {
+      if (set.has(c) && outputs.get(id)?.kind !== 'provider') {
         return true
       }
     }
     return false
   }
-  /** An effectful, unexported declaration cluster the env module does not keep (yet): it moves, is orphaned or becomes an env root. */
+  /**
+   * An unexported declaration cluster the env module does not keep (yet)
+   * whose evaluation time matters (effectful, or an eager reader of state
+   * something writes): it moves, is orphaned or becomes an env root.
+   */
   function undecided(cl: Cluster): boolean {
     return (
       !liveEnv.has(cl.id) &&
       cl.kind === 'declaration' &&
-      cl.effectful &&
       !cl.exported &&
-      !envRoots.has(cl.id)
+      !envRoots.has(cl.id) &&
+      (cl.effectful || readsMutableState(cl.id))
     )
   }
   /**
@@ -1333,11 +1399,20 @@ export function computePlacement(input: PlacementInput): Placement {
       return undefined
     }
     // (b) no ordered-evaluation constraint: nothing outside the cluster
-    // mutates it (its own top-level augmentations, `X.p = …`, travel with
-    // it: a binding and its writers are one cluster), and it reads nothing
-    // mutated
-    if (externallyMutated.has(cl.id)) {
-      return undefined
+    // writes it eagerly (its own top-level augmentations, `X.p = …`, travel
+    // with it: a binding and its writers are one cluster), and it reads
+    // nothing something else writes
+    const root = uf.find(cl.regions[0] ?? memberOfGen(cl.gens[0]!))
+    for (const s of cl.declares) {
+      for (const w of writesOfSym.get(s) ?? []) {
+        if (
+          w.live &&
+          w.eager &&
+          (w.owner === null || uf.find(memberOfWriter(w.owner)) !== root)
+        ) {
+          return undefined
+        }
+      }
     }
     for (const u of cl.units) {
       const unit = units[u]!
@@ -1366,27 +1441,23 @@ export function computePlacement(input: PlacementInput): Placement {
         if (d === undefined || d === cl.id) {
           continue
         }
-        if (mutatedClusters.has(d)) {
+        if (mutatedOutside(ref.sym, ref.range.start, root)) {
           return undefined
         }
         // (c) imports (read lazily: the chunk loads after the route module,
-        // whoever else reads them), pure module clusters, or a const the
-        // env module keeps whose members nothing writes (evaluated before
-        // the chunk loads, which imports that one instance)
+        // whoever else reads them), pure module clusters, or a `const` the
+        // env module keeps (evaluated before the chunk loads, which imports
+        // that one instance; a `let` still pins, however unwritten)
         if (
           clusters[d]!.kind !== 'import' &&
           !pure(d) &&
-          !(liveEnv.has(d) && unwrittenConst(ref.sym))
+          !(liveEnv.has(d) && symbols.isConst(ref.sym))
         ) {
           return undefined
         }
       }
     }
     return needs[0]
-  }
-  /** A `const` binding no code in the module writes a member of. */
-  function unwrittenConst(sym: SymbolId): boolean {
-    return symbols.isConst(sym) && !refs.refsOf(sym).some((r) => r.memberWrite)
   }
   /**
    * Whether a surviving effectful unit (benign ones excepted) that does not
@@ -1529,6 +1600,14 @@ export function computePlacement(input: PlacementInput): Placement {
       continue
     }
     const derived = [...S].filter((o) => o !== 'env')
+    if (
+      derived.length > 0 &&
+      derived.every((o) => outputs.get(o)?.kind === 'provider')
+    ) {
+      // only the module's own instance in another layer needs it: it lives there
+      home.set(cl.id, derived[0]!)
+      continue
+    }
     if (derived.length === 0) {
       // nobody needs it: a gen unit disappears; an import stays or leaves
       // by `importStays`; a pure unexported declaration that was not

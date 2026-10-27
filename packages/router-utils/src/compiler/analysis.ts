@@ -12,6 +12,7 @@ import { BindingFlags, walk } from 'yuku'
 import { analyzeHeader } from './header'
 import { SymbolTable } from './symbols'
 import { buildItems, buildUnits, writesMember } from './units'
+import { MutationModel } from './mutation'
 import { statementHasEffects } from './purity'
 import type { PurityContext } from './purity'
 import type { Header, Range } from './header'
@@ -207,10 +208,6 @@ export class RefIndex {
         ),
     )
   }
-
-  writesOf(sym: SymbolId): Array<ClassifiedRef> {
-    return this.refsOf(sym).filter((r) => r.kind === 'write')
-  }
 }
 
 export interface JsxInfo {
@@ -233,8 +230,17 @@ export interface Tier1 {
   names: ReadonlySet<string>
   exportNames: ReadonlySet<string>
   declaringUnits: ReadonlyMap<SymbolId, ReadonlyArray<UnitId>>
-  /** Whether `offset` sits inside a function (lazy evaluation). */
+  /** What writes each binding, and where (one model for every mutation rule). */
+  mutation: MutationModel
+  /**
+   * Whether code at `offset` evaluates lazily (not when the module loads):
+   * inside a function body other than one called where it is written (an
+   * immediately invoked function runs at module load, like a class static
+   * block or static field initialiser).
+   */
   isLazyAt: (offset: number) => boolean
+  /** Whether `offset` sits inside a function's scope (a declaration there is local to it, whenever it runs). */
+  inFunctionAt: (offset: number) => boolean
   parentOf: (node: Node) => Node | null
   nodeAt: (offset: number) => Node | null
   /** The innermost region owning a reference. */
@@ -718,40 +724,22 @@ export class ModuleAnalysis {
       (s) => this.importIndexOfStatement(s),
     )
 
-    // Outermost function ranges (lazy evaluation), from the scope table.
-    const fnRanges: Array<Range> = []
+    // Function ranges from the scope table: every function's scope (a
+    // declaration inside is local to it), and the lazily evaluated ones
+    // (an immediately invoked function runs where it is written). Each
+    // set is reduced to its outermost ranges and searched by offset.
+    const fnRanges: Array<{ start: number; end: number; node: Node }> = []
     for (const scope of file.scopes) {
       if (scope.kind === 'function') {
         const n = scope.node
-        fnRanges.push({ start: n.start, end: n.end })
+        fnRanges.push({ start: n.start, end: n.end, node: n })
       }
     }
     fnRanges.sort((a, b) => a.start - b.start || b.end - a.end)
-    const outer: Array<Range> = []
-    for (const r of fnRanges) {
-      const last = outer[outer.length - 1]
-      if (last && r.start >= last.start && r.end <= last.end) {
-        continue
-      }
-      outer.push(r)
-    }
-    const isLazyAt = (offset: number): boolean => {
-      let lo = 0
-      let hi = outer.length - 1
-      while (lo <= hi) {
-        const mid = (lo + hi) >> 1
-        const r = outer[mid]!
-        if (r.start <= offset) {
-          if (offset < r.end) {
-            return true
-          }
-          lo = mid + 1
-        } else {
-          hi = mid - 1
-        }
-      }
-      return false
-    }
+    const inFunctionAt = offsetTest(outermost(fnRanges))
+    const isLazyAt = offsetTest(
+      outermost(fnRanges.filter((r) => !isImmediatelyInvoked(file, r.node))),
+    )
 
     const refs: Array<ClassifiedRef> = []
     const freeRefs: Array<FreeRef> = []
@@ -880,6 +868,7 @@ export class ModuleAnalysis {
       (a, b) => a.range.start - b.range.start || a.range.end - b.range.end,
     )
     const refIndex = new RefIndex(refs, units)
+    const mutation = new MutationModel(refs)
 
     const exportNames = new Set<string>()
     for (const e of this.exports) {
@@ -900,7 +889,9 @@ export class ModuleAnalysis {
       names,
       exportNames,
       declaringUnits,
+      mutation,
       isLazyAt,
+      inFunctionAt,
       parentOf: (node) => file.parentOf(node),
       nodeAt: (offset) => file.nodeAt(offset),
       ownerOf: (ref) => {
@@ -933,6 +924,87 @@ export class ModuleAnalysis {
     return tier1
   }
 }
+
+/** The ranges of `ranges` (sorted by start, longest first) not nested in another one. */
+function outermost<TRange extends Range>(
+  ranges: ReadonlyArray<TRange>,
+): Array<TRange> {
+  const outer: Array<TRange> = []
+  for (const r of ranges) {
+    const last = outer[outer.length - 1]
+    if (last && r.start >= last.start && r.end <= last.end) {
+      continue
+    }
+    outer.push(r)
+  }
+  return outer
+}
+
+/** Whether an offset lies in one of `outer` (disjoint, sorted). */
+function offsetTest(outer: ReadonlyArray<Range>): (offset: number) => boolean {
+  return (offset) => {
+    let lo = 0
+    let hi = outer.length - 1
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1
+      const r = outer[mid]!
+      if (r.start <= offset) {
+        if (offset < r.end) {
+          return true
+        }
+        lo = mid + 1
+      } else {
+        hi = mid - 1
+      }
+    }
+    return false
+  }
+}
+
+/**
+ * Whether a function node is called where it is written: the callee of a
+ * call (`(() => …)()`, `(function () { … })()`, `(async () => …)()`), also
+ * through `.call`/`.apply`. Its body evaluates with the surrounding code
+ * (the part of an async one after its first `await` later, but nothing can
+ * be known about that: eager is the safe classification).
+ */
+function isImmediatelyInvoked(file: SourceFile, fn: Node): boolean {
+  let n: Node = fn
+  let parent = file.parentOf(n)
+  while (parent !== null && WRAPPER_TYPES.has(parent.type)) {
+    n = parent
+    parent = file.parentOf(n)
+  }
+  if (parent === null) {
+    return false
+  }
+  if (
+    parent.type === 'MemberExpression' &&
+    parent.object === n &&
+    !parent.computed &&
+    parent.property.type === 'Identifier' &&
+    (parent.property.name === 'call' || parent.property.name === 'apply')
+  ) {
+    n = parent
+    parent = file.parentOf(n)
+    while (parent !== null && WRAPPER_TYPES.has(parent.type)) {
+      n = parent
+      parent = file.parentOf(n)
+    }
+  }
+  return (
+    parent !== null && parent.type === 'CallExpression' && parent.callee === n
+  )
+}
+
+const WRAPPER_TYPES = new Set([
+  'ParenthesizedExpression',
+  'TSAsExpression',
+  'TSSatisfiesExpression',
+  'TSNonNullExpression',
+  'TSTypeAssertion',
+  'TSInstantiationExpression',
+])
 
 /** An import or re-export statement (it evaluates another module). */
 function loadsModule(stmt: Node): boolean {

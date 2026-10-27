@@ -1195,7 +1195,7 @@ function extract(
     if (
       solid &&
       symbols.isReassignable(c) &&
-      (t1.refs.writesOf(c).length > 0 || setters.some((s) => s.sym === c))
+      (t1.mutation.isReassigned(c) || setters.some((s) => s.sym === c))
     ) {
       // Solid passes a bare identifier by value; a binding assigned later
       // (`ref={el}` sets it, a reassigned let) is read through a getter

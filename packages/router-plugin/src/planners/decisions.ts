@@ -65,6 +65,7 @@ export type NotSplitReason =
   | 'ordered-effect'
   | 'hydrate-writer'
   | 'env-declared'
+  | 'exhausted'
   | 'this-reference'
   | 'reassigned'
   | 'loader-object'
@@ -495,7 +496,7 @@ function computeSplitPlan(
       if (
         valueSym !== null &&
         ctx.symbols.isModuleLevel(valueSym) &&
-        ctx.t1.refs.writesOf(valueSym).length > 0
+        ctx.t1.mutation.isReassigned(valueSym)
       ) {
         // the options object holds the binding's value at route creation; a
         // chunk re-exporting the live binding would render its latest value
@@ -577,6 +578,8 @@ function describeReason(reason: NotSplitReason): string {
       return 'it writes a binding captured by a hydration boundary.'
     case 'env-declared':
       return 'its value stays in the route module (declared by a top-level call or destructuring, or one with an exported binding it writes); a split chunk could only import it.'
+    case 'exhausted':
+      return 'the compiler could not settle which options of this route can be split; nothing of it is split.'
     case 'this-reference':
       return 'it reads `this`, the route options object it is called on, which a split chunk would not see. Write it as an arrow function or read the route instead.'
     case 'reassigned':

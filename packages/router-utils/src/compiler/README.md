@@ -56,20 +56,30 @@ units that output contains. The same computation decides:
   readers disappeared because a planner removed or moved them). Code already unreferenced in the source keeps
   running: an import nothing reads stays in the env module, so its module still evaluates there (a value import a
   route module uses only in type positions leaves it: TypeScript erases it anyway);
-- **effects**: expression statements and impure, still-referenced declarations are effect roots of the env module,
-  never duplicated or lost; an effectful, unexported cluster moves with its only needer (lazy initialisation is
-  allowed; within-module order is preserved) when nothing outside it mutates it, it reads nothing mutated, its eager
-  reads are imports (read lazily: the chunk loads after the route module), pure clusters or `const`s the route module
-  keeps whose members nothing writes, and no surviving effect after its first one stays behind (for an extracted
-  export's module, which evaluates _before_ the route module's body, no other surviving effect at all). The env
-  roots, the moving set and the extracted exports are one monotone fixed point: every round recomputes derived reach,
-  env liveness and the moving set (the evaluation-order condition is a greatest fixed point over it), roots the
-  effectful clusters that stay and that some output needs, then cancels extraction candidates the env module keeps
-  or that read, at their evaluation, a binding it keeps (a TDZ through the re-export cycle). Nothing is rooted after
-  homes are assigned (a dev-only check enforces it, and another that no extracted module reads the route module
-  eagerly). When a split would break single-writer or evaluation-order rules, the core reports a _fallback_
-  (`ctx.fallbackAt(range)` on the next round) and `compileModule` re-runs the planners once more with that region
-  kept in place (at most 3 rounds);
+- **effects and mutable state**: expression statements and impure, still-referenced declarations are effect roots
+  of the env module, never duplicated or lost. One model (`mutation.ts`, `t1.mutation`) holds every write of a
+  binding (assignment or member write, eager or lazy, wherever it is), and one predicate answers every rule that
+  asks about it: a read evaluated at module load _observes mutable state_ when something outside the reading
+  cluster writes the binding after it, or at an unknown time (inside a function). Such a reader never moves to a
+  lazy output, pure or not (`const initial = [n]` next to `function inc() { n++ }` keeps the source's `[0]`; an
+  immediately invoked function evaluates at module load and counts as eager); an option value that reads one is
+  kept in place (`ordered-effect`). An effectful, unexported cluster moves with its only needer (lazy
+  initialisation is allowed; within-module order is preserved) when nothing outside it writes it eagerly, it
+  observes no mutable state, its eager reads are imports (read lazily: the chunk loads after the route module),
+  pure clusters or `const`s the route module keeps, and no surviving effect after its first one stays behind (for
+  an extracted export's module, which evaluates _before_ the route module's body, no other surviving effect at all).
+  A recognised framework call a planner names (the route factory chain) is no such effect only when its option
+  values are pure, claimed (relocated) or erased: the core checks, the planner only names it. The env roots, the
+  moving set and the extracted exports are one monotone fixed point: every round recomputes derived reach, env
+  liveness and the moving set (the evaluation-order condition is a greatest fixed point over it), roots the
+  effectful clusters and the readers of mutable state that stay and that some output needs, then cancels extraction
+  candidates the env module keeps or that read, at their evaluation, a binding it keeps (a TDZ through the
+  re-export cycle). Nothing is rooted after homes are assigned (a dev-only check enforces it, and another that no
+  extracted module reads the route module eagerly). When a split would break single-writer or evaluation-order
+  rules, the core reports a _fallback_ (`ctx.fallbackAt(range)` on the next round) and `compileModule` re-runs the
+  planners with that region kept in place, until no new region is reported (a kept region can free the next one;
+  every round keeps one more, so the rounds end within the module's region count). Past that bound every
+  sub-region is kept in place, which is always correct, and a warning (`fallback-rounds-exhausted`) says so;
 - **pre-existing dead code**: a pure declaration cluster nothing reads is kept (code dead before the transform is
   never removed), including a dead pure cycle; the one exception is a dead pure cluster whose reads would pull a
   chunk's dependency into the env module (an unused function rendering the split component): it is dropped.
@@ -193,6 +203,12 @@ nothing per compile.
   changes. Use it on a report of stale or wrong output after an edit (HMR serving old code, a split that ignores a
   changed dependency, a dev/build mismatch): if `all` fixes it, an invalidation is missing; bisect with the single
   names to find the cache, then reproduce in `tests/cache.test.ts` or `tests/pipeline.test.ts`.
+- `TSR_COMPILER_VERIFY=1`: after every compile, each emitted output is re-parsed and checked against the plan's
+  invariants (`verify.ts`): no output assigns a binding it imports, every glue import names an export of its home
+  output, no output holds text its own edits erase, every surviving effect statement is emitted exactly once across
+  the outputs that import from the env module, and an extracted export's module never reads a binding of the env
+  module at its evaluation. A violation fails the compile. Every test run sets it (the shared run-directory setup and
+  the core's own config); unset, it costs one boolean per compile.
 - `TSR_COMPILER_STATS=1`: every cache owner (the compiler caches, the router and Start host sessions with their
   import-protection and server-function state, the route generator) registers a reader of its entry counts and
   approximate bytes in a process-global registry, held through a `WeakRef` so it retains nothing. Read it in the same

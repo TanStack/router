@@ -124,7 +124,7 @@ export function cleanOrphanedDeclarations(
         (parent.type === 'FunctionDeclaration' ||
           parent.type === 'ClassDeclaration') &&
         parent.id === decl &&
-        t1.isLazyAt(parent.start)
+        t1.inFunctionAt(parent.start)
       ) {
         const stmtParent = file.parentOf(parent)
         if (!stmtParent || stmtParent.type !== 'BlockStatement') {
@@ -185,7 +185,7 @@ function removeDeclarator(
   if (!statement || statement.type !== 'VariableDeclaration') {
     return false
   }
-  const moduleLevel = !ctx.t1.isLazyAt(declarator.start)
+  const moduleLevel = !ctx.t1.inFunctionAt(declarator.start)
   const effectsGo =
     declarator.init === null ||
     isPureExpression(ctx.analysis.purity, declarator.init) ||

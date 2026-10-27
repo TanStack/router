@@ -223,7 +223,7 @@ export function declaratorOf(
   ) {
     return null
   }
-  if (t1.refs.writesOf(sym).length > 0) {
+  if (t1.mutation.isReassigned(sym)) {
     return null
   }
   return { unit, init: unit.node.init }
