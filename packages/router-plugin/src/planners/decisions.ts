@@ -6,13 +6,13 @@
  */
 import { unwrapExpression, walk } from '@tanstack/router-utils/compiler'
 import { splitGroupingsSchema } from '../core/config'
-import { defaultCodeSplitGroupings } from '../core/constants'
 import {
   declaratorOf,
   identifierSymbol,
   isAlreadyLazy,
   isExportedSymbol,
   isFallbackLiteral,
+  liveInEnv,
   propertyKeyName,
   propertyRangeWithComma,
   recognizeRoute,
@@ -152,9 +152,9 @@ function effectiveGroupings(
       return fromPlugin
     }
   }
-  return cfg.defaultGroupings.length > 0
-    ? cfg.defaultGroupings
-    : defaultCodeSplitGroupings
+  // `[]` splits nothing unless `splitBehavior` or the route says so (as
+  // before this compiler: `defaultBehavior || default`)
+  return cfg.defaultGroupings
 }
 
 function methodPrefixOf(fn: Node): string {
@@ -496,7 +496,7 @@ function computeSplitPlan(
       if (
         valueSym !== null &&
         ctx.symbols.isModuleLevel(valueSym) &&
-        ctx.t1.mutation.isReassigned(valueSym)
+        ctx.t1.mutation.isReassigned(valueSym, liveInEnv(ctx))
       ) {
         // the options object holds the binding's value at route creation; a
         // chunk re-exporting the live binding would render its latest value

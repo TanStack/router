@@ -1,13 +1,14 @@
 /**
  * Extracted-export outputs (`?tsr-split=export~Name`) an entry chunk of a
- * client build holds. A route's own chunks never import such a module (they
- * copy the binding, `reach.ts`): one reaches the entry only when a module
- * loaded with the entry imports the binding through the route file (Rollup
- * and Rolldown), or when any module imports it through the route file and
- * the bundler cannot bypass the route module's re-export (webpack and
- * Rspack without `"sideEffects": false`). The export is then eager and the
- * route's chunk carries its copy: the build warns once per (file, export),
- * in every host (J2.8: the user is told, the build goes on).
+ * client build holds. A route's own chunks copy a pure export instead of
+ * importing its module, and import a stateful or effectful one from it
+ * only when they alone need it (`reach.ts`, R77): the module reaches the
+ * entry only when a module loaded with the entry imports the binding
+ * through the route file (Rollup and Rolldown), or when any module imports
+ * it through the route file and the bundler cannot bypass the route
+ * module's re-export (webpack and Rspack without `"sideEffects": false`).
+ * The export is then eager: the build warns once per (file, export), in
+ * every host (J2.8: the user is told, the build goes on).
  */
 import { identify } from './identity'
 
@@ -134,5 +135,5 @@ export function eagerExportWarning(
     bundler === 'webpack'
       ? 'Move it to its own module and import it from there, or declare "sideEffects": false in package.json so the bundler can bypass the route file, so the importer and the route share one instance.'
       : 'Move it to its own module and import it from there, so the importer and the route share one instance.'
-  return `[tanstack-router] The export \`${e.name}\` of "${e.file}" loads with the entry chunk: another module imports it through the route file, so the bundler keeps it with the route module, while the route's own chunk carries its copy. ${share}`
+  return `[tanstack-router] The export \`${e.name}\` of "${e.file}" loads with the entry chunk: another module imports it through the route file, so the bundler keeps it with the route module instead of leaving it to the split code that needs it. ${share}`
 }

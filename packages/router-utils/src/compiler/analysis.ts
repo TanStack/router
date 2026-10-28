@@ -13,7 +13,7 @@ import { analyzeHeader } from './header'
 import { SymbolTable, valueBinding } from './symbols'
 import { buildItems, buildUnits, writesMember } from './units'
 import { MutationModel } from './mutation'
-import { statementHasEffects } from './purity'
+import { seedNoSideEffectDeclarations, statementHasEffects } from './purity'
 import type { PurityContext } from './purity'
 import type { Header, Range } from './header'
 import type { SymbolId } from './symbols'
@@ -347,6 +347,7 @@ export class ModuleAnalysis {
       }
     }
     const body = file.program.body
+    seedNoSideEffectDeclarations(this.purity, noSideEffectCallees, body)
     for (let i = this.header.directiveCount; i < body.length; i++) {
       const stmt = body[i]!
       switch (stmt.type) {

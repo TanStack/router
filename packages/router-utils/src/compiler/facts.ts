@@ -396,13 +396,16 @@ export class RawFactsCache {
     if (!facts.opaque) {
       return facts
     }
-    // an opaque module's target facts are asked for (a mock of it): parsed now, once
+    // an opaque module's target facts are asked for (a mock of it): parsed
+    // now, once. Its summary stays null: the module is opaque to the
+    // summaries whether or not a mock asked about it, so the digest plans
+    // recorded (`null`) stays current and nothing is evicted by the question
     const e = this.entries.get(canonicalId)
-    if (e?.pending) {
-      return e.pending
-    }
     const text = await this.read(canonicalId)
-    const full = this.build(canonicalId, text, true)
+    const full: RawFacts = {
+      ...this.build(canonicalId, text, true),
+      summary: null,
+    }
     if (e && this.entries.get(canonicalId) === e && e.facts === facts) {
       e.facts = full
     }

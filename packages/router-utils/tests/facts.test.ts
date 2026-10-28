@@ -89,13 +89,20 @@ describe('RawFactsCache', () => {
     expect(lib.summary).toBe(null)
     expect(await cache.marker('/app/node_modules/lib/index.js')).toBe(null)
     expect(cache.stats(false)).toMatchObject({ rawFacts: 1, rawFactsOpaque: 1 })
-    // a mock of it asks for its target facts: parsed then, and kept
+    // a mock of it asks for its target facts: parsed then, and kept; the
+    // module stays opaque to the summaries (its summary digest never
+    // changes: no plan that summarised the package is evicted by the question)
+    const before = await cache.digestOf('/app/node_modules/lib/index.js')
     const target = await cache.getTarget('/app/node_modules/lib/index.js')
     expect(target.opaque).toBeUndefined()
     expect(target.targetFacts.exportNames).toEqual(['lib'])
-    expect(
-      (await cache.get('/app/node_modules/lib/index.js')).summary,
-    ).not.toBe(null)
+    expect((await cache.get('/app/node_modules/lib/index.js')).summary).toBe(
+      null,
+    )
+    expect(await cache.digestOf('/app/node_modules/lib/index.js')).toBe(before)
+    expect(await cache.targetDigestOf('/app/node_modules/lib/index.js')).toBe(
+      target.targetFacts.digest,
+    )
     expect(cache.stats(false)).toMatchObject({ rawFacts: 1, rawFactsOpaque: 0 })
     // a marker literal is never opaque: the marker is a parse's finding
     expect(await cache.marker('/app/node_modules/marked/index.js')).toBe(
@@ -194,6 +201,61 @@ describe('target facts of a marked module', () => {
     expect(effects.targetFacts.imports).toEqual(['./side-effect'])
     expect(effects.targetFacts.effectful).toBe(true)
     expect(effects.targetFacts.effectProvenance).toBe('own')
+  })
+})
+
+describe('target facts of an opaque module', () => {
+  it('are the parsed ones even when a read of the module is in flight (a change raced the question)', async () => {
+    const files: Record<string, string> = {
+      '/app/node_modules/lib/index.js': `export const lib = () => 1\n`,
+    }
+    const cache = new RawFactsCache({
+      readFile: (p) => Promise.resolve(files[p] ?? null),
+      loadVirtual: () => Promise.resolve(null),
+      opaque: (path) => path.includes('/node_modules/'),
+    })
+    await cache.get('/app/node_modules/lib/index.js')
+    cache.markStale('/app/node_modules/lib/index.js')
+    // the facts are re-read (opaque again) while a mock asks for the target facts
+    const [, target] = await Promise.all([
+      cache.get('/app/node_modules/lib/index.js'),
+      cache.getTarget('/app/node_modules/lib/index.js'),
+    ])
+    expect(target.targetFacts.exportNames).toEqual(['lib'])
+    expect(
+      (await cache.getTarget('/app/node_modules/lib/index.js')).targetFacts
+        .exportNames,
+    ).toEqual(['lib'])
+  })
+})
+
+describe('target facts: own effects', () => {
+  // `#__NO_SIDE_EFFECTS__` on a callee the module declares counts whatever
+  // the order of the declaration and the call (function declarations are
+  // hoisted); Tier 0 and the unit model classify the same statement alike
+  it('count a call of a `#__NO_SIDE_EFFECTS__` callee declared before or after it as pure', async () => {
+    const files: Record<string, string> = {
+      '/app/before.ts': `/* #__NO_SIDE_EFFECTS__ */ function make(s) { return s }\nexport const schema = make({})\n`,
+      '/app/after.ts': `export const schema = make({})\n/* #__NO_SIDE_EFFECTS__ */ function make(s) { return s }\n`,
+      '/app/plain.ts': `export const schema = make({})\nfunction make(s) { return s }\n`,
+    }
+    const cache = new RawFactsCache({
+      readFile: (p) => Promise.resolve(files[p] ?? null),
+      loadVirtual: () => Promise.resolve(null),
+    })
+    expect((await cache.get('/app/before.ts')).targetFacts).toMatchObject({
+      effectful: false,
+      codeEffects: false,
+    })
+    expect((await cache.get('/app/after.ts')).targetFacts).toMatchObject({
+      effectful: false,
+      codeEffects: false,
+    })
+    expect((await cache.get('/app/plain.ts')).targetFacts).toMatchObject({
+      effectful: true,
+      codeEffects: true,
+      effectProvenance: 'own',
+    })
   })
 })
 

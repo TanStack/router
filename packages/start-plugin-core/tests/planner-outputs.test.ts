@@ -363,6 +363,40 @@ export function make() {
     expect(ssr.code).toContain("name: 'inner'")
   })
 
+  // The nested site is judged against the stub of its enclosing handler
+  // whatever the order the analysis found the sites in (here the inner
+  // factory's import binding comes first): on the client the handler is a
+  // stub, so the nested fn is dead there and never registered as
+  // client-referenced (J4.2: only client-referenced fns are HTTP-callable).
+  test('a nested server fn inside a handler is not a client server fn, whichever import binding declares it', async () => {
+    const files3 = {
+      '/app/module.tsx': `import { createServerFn as inner } from '@tanstack/react-start'
+import { createServerFn } from '@tanstack/react-start'
+import { db } from './db.server'
+export const outer = createServerFn().handler(async () => {
+  const nested = inner().handler(async () => db.inner())
+  return nested()
+})
+`,
+      '/app/db.server.ts': `export const db = { inner: () => 'inner' }\n`,
+    }
+    const client = (await compile(files3, 'client'))!
+    expect(client.diagnostics).toEqual([])
+    expect(client.code).not.toContain('db.server')
+    expect(
+      (client.facts.planners[START_ENV] as StartEnvFacts).serverFns.map(
+        (fn) => fn.name,
+      ),
+    ).toEqual(['outer'])
+    const ssr = (await compile(files3, 'ssr'))!
+    expect(ssr.diagnostics).toEqual([])
+    expect(
+      (ssr.facts.planners[START_ENV] as StartEnvFacts).serverFns.map(
+        (fn) => fn.name,
+      ),
+    ).toEqual(['outer', 'nested'])
+  })
+
   test('a nested server fn capturing a local is refused at the capture', async () => {
     const out = (await compile(
       {

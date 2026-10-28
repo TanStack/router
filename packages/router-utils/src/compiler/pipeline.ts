@@ -510,9 +510,13 @@ async function runAttempt(
     // at least one more region of the module, so they end within the
     // number of regions. Past that bound (a planner registering new regions
     // every round) the module is planned with every sub-region kept in
-    // place, which is always correct, and a warning says so.
+    // place, which is always correct, and a warning says so. The bound is
+    // the region count after the first round: regions accumulate across
+    // rounds (one Tier 1 per module), so a planner registering a new region
+    // every round would move a bound read each round out of reach.
     let fallbacks: Array<FallbackRecord> = []
     let plan!: AnalysisPlan
+    let bound = 0
     for (let round = 0; ; round++) {
       plan = planRound(
         t0,
@@ -532,10 +536,13 @@ async function runAttempt(
                 g.range.start === f.range.start && g.range.end === f.range.end,
             ),
         )
+      if (round === 0) {
+        bound = plan.t1.regions.regions.length
+      }
       if (fresh.length === 0) {
         break
       }
-      if (round >= plan.t1.regions.regions.length) {
+      if (round >= bound) {
         fallbacks = plan.t1.regions.regions
           .filter((r) => r.kind !== 'unit')
           .map((r) => ({ range: r.range, kind: r.kind, reason: 'exhausted' }))

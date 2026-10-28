@@ -289,6 +289,8 @@ export function computePlacement(input: PlacementInput): Placement {
   const envTree = treeOf('env')
   const isLive = (ref: ClassifiedRef, o: OutputId) =>
     !treeOf(o).isErasedAt(ref.range.start)
+  /** R1: the mutation model as the env output sees it (writes inside erased code impose nothing). */
+  const liveInEnv = (ref: ClassifiedRef) => isLive(ref, 'env')
 
   // ---- owner index: refs by owning region --------------------------------
   const ownedRefs = new Map<RegionId, Array<ClassifiedRef>>()
@@ -985,7 +987,7 @@ export function computePlacement(input: PlacementInput): Placement {
       cl.sideEffects ||
       cl.gens.length > 0 ||
       // a reassigned export stays: its writers would assign an import
-      t1.mutation.isReassigned(sym) ||
+      t1.mutation.isReassigned(sym, liveInEnv) ||
       // a binding a sub-region writes (Hydrate children, a split option
       // value) must meet the single-writer rule below: pinning its cluster
       // to an extracted output would let the writer assign an import
@@ -1361,7 +1363,7 @@ export function computePlacement(input: PlacementInput): Placement {
     !clusters[c]!.effectful &&
     !readsMutableState(c) &&
     !claimHolders.has(c) &&
-    ![...clusters[c]!.declares].some((s) => t1.mutation.isMutated(s))
+    ![...clusters[c]!.declares].some((s) => t1.mutation.isMutated(s, liveInEnv))
 
   // ---- env roots and extraction: one fixed point -------------------------
   // The env module's roots and the extracted outputs are decided together,
@@ -1391,8 +1393,9 @@ export function computePlacement(input: PlacementInput): Placement {
       derivedStale = false
       const stop = new Set(remaining.keys())
       // a chunk's reach passes through the candidates it copies and stops
-      // at the others, which it imports; an extracted module's reach stops
-      // at every other candidate (it imports them)
+      // at the others, which it imports from their extracted module (one
+      // instance of state and effects, R77); an extracted module's reach
+      // stops at every other candidate (it imports them)
       const chunkStop = new Set([...stop].filter((c) => !copies(c)))
       for (const [c, e] of extractCandidates) {
         if (remaining.has(c)) {
@@ -1520,7 +1523,7 @@ export function computePlacement(input: PlacementInput): Placement {
     }
     const reason: KeptReason = cl.sideEffects
       ? 'effects'
-      : t1.mutation.isReassigned(sym) || regionWrittenSyms.has(sym)
+      : t1.mutation.isReassigned(sym, liveInEnv) || regionWrittenSyms.has(sym)
         ? 'reassigned'
         : liveEnv.has(c)
           ? 'live'

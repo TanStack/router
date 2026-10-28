@@ -146,7 +146,7 @@ Any of these lets the declaration load with the split chunk, from the least to t
 - **Create it on first use**, for example `let instance; const getConfetti = () => (instance ??= new JSConfetti())`: a function has no side effects when it is declared.
 - **Tell the compiler that the call has no side effects**, with one of these annotations:
   - `/* @__PURE__ */` before the call (`validateSearch: /* @__PURE__ */ type({ … })`), whatever the function is;
-  - `/* #__NO_SIDE_EFFECTS__ */` on a function declared in the route file itself: `/* #__NO_SIDE_EFFECTS__ */ function makeSchema(…) { … }` or `const makeSchema = /* #__NO_SIDE_EFFECTS__ */ (…) => …`, exported or not.
+  - `/* #__NO_SIDE_EFFECTS__ */` on a function declared in the route file itself: `/* #__NO_SIDE_EFFECTS__ */ function makeSchema(…) { … }` or `const makeSchema = /* #__NO_SIDE_EFFECTS__ */ (…) => …`, exported or not, declared before or after the call.
 
   The call then runs when the route file loads, which may be before the declaration: annotate only calls whose order does not matter.
 

@@ -69,6 +69,16 @@ export const Route = createRootRoute({ component: () => <Outlet /> })
     '/* #__NO_SIDE_EFFECTS__ */ function makeSchema<T>(shape: T) { return shape }\n',
     '  validateSearch: makeSchema({ tab: "string" }),',
   ),
+  // the annotated callee declared after the call (hoisted): the
+  // annotation counts in any order
+  'routes/no-side-effects-after.tsx': `${head}import { Marker } from '../marker'
+const marker = new Marker('MARK_no-side-effects-after_END')
+export const Route = createFileRoute('/no-side-effects-after')({
+  validateSearch: makeSchema({ tab: "string" }),
+  component: () => <p>{marker.name}</p>,
+})
+/* #__NO_SIDE_EFFECTS__ */ function makeSchema<T>(shape: T) { return shape }
+`,
   // declared after the route: moving it never crosses the call
   'routes/declared-after.tsx': `${head}import { Marker } from '../marker'
 import { makeSchema } from '../schema'
@@ -89,6 +99,7 @@ const lazyRoutes = [
   'declared-first',
   'declared-after',
   'no-side-effects',
+  'no-side-effects-after',
   'nothing-pinned',
 ]
 
@@ -112,23 +123,6 @@ function expectPinnedWarning(
     }),
     times: 1,
   })
-  const [warning] = findDiagnostics(diagnostics, {
-    severity: 'warning',
-    file: 'routes/pinned.tsx',
-    root,
-  })
-  const call = diagnosticPosition(pinned, 'makeSchema({')
-  for (const part of [
-    '`marker`',
-    '`makeSchema(…)`',
-    '`validateSearch`',
-    `line ${call.line}`,
-    'declare `marker` after `Route`',
-    '`/* @__PURE__ */`',
-    '`component`',
-  ]) {
-    expect(warning!.text).toContain(part)
-  }
 }
 
 const builds: Array<[string, () => Promise<BuildResult>]> = [

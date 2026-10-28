@@ -67,6 +67,58 @@ export function commentBefore(
   return c
 }
 
+/**
+ * Marks the module's own `#__NO_SIDE_EFFECTS__` callees (a function
+ * declaration, `const f = /* #__NO_SIDE_EFFECTS__ *\/ () => …`, exported or
+ * not) before any statement is classified: a function declaration is
+ * hoisted, so a call may precede it, and Tier 0 and the unit model must
+ * classify the same statement alike. The one seeding of local callees.
+ */
+export function seedNoSideEffectDeclarations(
+  ctx: PurityContext,
+  callees: Set<number>,
+  body: ReadonlyArray<Node>,
+): void {
+  if (!ctx.comments.some((c) => NSE_RE.test(c.value))) {
+    return
+  }
+  const mark = (id: Node) => {
+    const b = id.type === 'Identifier' ? ctx.file.rootScope.find(id.name) : null
+    if (b) {
+      callees.add(b.id)
+    }
+  }
+  for (const stmt of body) {
+    const decl =
+      stmt.type === 'ExportNamedDeclaration' ||
+      stmt.type === 'ExportDefaultDeclaration'
+        ? stmt.declaration
+        : stmt
+    if (!decl) {
+      continue
+    }
+    if (decl.type === 'FunctionDeclaration' && decl.id) {
+      if (
+        hasNoSideEffectsAnnotation(ctx, decl) ||
+        (decl !== stmt && hasNoSideEffectsAnnotation(ctx, stmt))
+      ) {
+        mark(decl.id)
+      }
+    } else if (decl.type === 'VariableDeclaration') {
+      for (const d of decl.declarations) {
+        if (
+          d.init &&
+          (d.init.type === 'ArrowFunctionExpression' ||
+            d.init.type === 'FunctionExpression') &&
+          hasNoSideEffectsAnnotation(ctx, d.init)
+        ) {
+          mark(d.id)
+        }
+      }
+    }
+  }
+}
+
 export function hasPureAnnotation(ctx: PurityContext, node: Node): boolean {
   const c = commentBefore(ctx.comments, ctx.file.source, node.start)
   return c !== null && PURE_RE.test(c.value)

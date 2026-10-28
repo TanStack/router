@@ -53,11 +53,13 @@ units that output contains. The same computation decides:
   chunks import it; one several groups need goes to a lazy shared module; copyable primitives and import specifiers
   are duplicated. An exported binding only split code needs leaves the route module for a side-effect-free extracted
   module (`?tsr-split=export~Name`) that the route module re-exports, so other modules importing it from the route
-  file still get one instance and the route module keeps none of its code or imports. A split chunk never imports
-  that module: when the binding is pure and never assigned (a function, class, component, pure constant), the chunk
-  carries its own copy, with the pure declarations and imports only they share; what has effects or state (an
-  effectful initialiser, an assigned `let`, a reader of mutable state, an augmented binding) is one instance that
-  the chunk imports, from the extracted module when only it needs it, else from the route module. Nothing but
+  file still get one instance and the route module keeps none of its code or imports. The rule for the route's own
+  chunks (R77): when the binding is pure and never assigned (a function, class, component, pure constant), the chunk
+  carries its own copy, with the pure declarations and imports only they share, and never imports the extracted
+  module; what has effects or state (an effectful initialiser, an assigned `let`, a reader of mutable state, an
+  augmented binding) is one instance that the chunk imports, from the extracted module when only it needs it, else
+  from the route module. Writes inside code the environment erases impose nothing (R1: the mutation model is read
+  through the env output's liveness). Nothing but
   importers of the route file reach the extracted module, so a bundler drops it when unused; the route's chunks
   never depend on where a bundler places it (Rolldown < 1.1.5 and a user `manualChunks` group that merges into the
   entry placed it with the entry). In dev nothing is bundled and the static re-export would only load the extracted
@@ -138,8 +140,8 @@ directives, never license comments.
   (TanStack's own audited APIs, e.g. `getRouteApi`; the router planner owns the table, Start's recognizer reuses it).
   Tier 0 recognises imports of such an export from the package itself by binding (renamed, or a namespace member);
   an app module re-exporting it is not followed, and a third party's purity is never assumed.
-- `RawFactsCache` owns the raw text per canonical id and serves summaries and import-protection _target facts_
-  (marker, export names, effect classification, evaluation and lazy imports) from one read.
+- `RawFactsCache` retains, per canonical id, the facts of one read and its revision, and serves summaries and
+  import-protection _target facts_ (marker, export names, effect classification, evaluation and lazy imports) from it.
 
 ## Pipeline (`pipeline.ts` `compileModule`)
 

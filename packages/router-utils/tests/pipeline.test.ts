@@ -5,6 +5,8 @@ import {
   MemoryHost,
   dedent,
   envInfo,
+  findRouteOptions,
+  propertyOf,
   toyEdgePolicyPlanner,
   toyEnvPlanner,
   toyHydratePlanner,
@@ -635,6 +637,56 @@ describe('slice gates: invalidation', () => {
     expect(hit!.code).toBe(fresh!.code)
   })
 
+  it('(d) overlapping save: r2 shares the resolution r1 waits for, and r1 never publishes over r2', async () => {
+    const gate = deferred<void>()
+    let suspended = false
+    const host = new MemoryHost({
+      files: {
+        '/app/consumer.ts': CONSUMER,
+        '/app/factory-inner.ts': FACTORY('createServerOnlyFn'),
+      },
+      recognizer: RECOGNIZER,
+      // r1's resolution of `./factory-inner` is slow; r2 asks the same pair
+      onResolve: async (specifier) => {
+        if (specifier === './factory-inner' && !suspended) {
+          suspended = true
+          await gate.promise
+        }
+      },
+    })
+    const r1 = CONSUMER
+    const r2 = `${CONSUMER}export const v2 = 2\n`
+    const planners = [toySummaryPlanner()]
+    const slow = host.compile('/app/consumer.ts', planners, { code: r1 })
+    await new Promise((r) => setTimeout(r, 5))
+    host.write('/app/consumer.ts', r2)
+    await invalidate(
+      host.caches,
+      { path: '/app/consumer.ts', kind: 'change' },
+      host,
+    )
+    const fresh = host.compile('/app/consumer.ts', planners, { code: r2 })
+    await new Promise((r) => setTimeout(r, 5))
+    // one question to the host for the pair: r2 waits on r1's answer
+    expect(
+      host.resolveCalls.filter((c) => c.specifier === './factory-inner'),
+    ).toHaveLength(1)
+    gate.resolve()
+    const [stale, published] = await Promise.all([slow, fresh])
+    expect(published!.code).toContain('export const v2 = 2')
+    expect(stale!.code).not.toContain('v2')
+    const key = {
+      env: 'client',
+      canonicalId: '/app/consumer.ts',
+      configKey: 'cfg',
+    }
+    const cache = host.caches.plans.get('client')!
+    expect(cache.get(key)!.plan.sourceLength).toBe(r2.length)
+    expect(
+      host.resolveCalls.filter((c) => c.specifier === './factory-inner'),
+    ).toHaveLength(1)
+  })
+
   it('(f) in-flight dependency-only edit restarts the compile; onViolation is asked once', async () => {
     const verdict = deferred<boolean>()
     const host = new MemoryHost({
@@ -895,3 +947,81 @@ function offsetOf(code: string, line: number, column: number): number {
   }
   return i + column
 }
+
+describe('planning rounds', () => {
+  // A planner that registers a new region every round and never reads the
+  // fallbacks it is handed (round r claims the r-th statement of the
+  // component into the chunk; each claim writes `a`, which the loader
+  // reads, so each round reports a fresh region). The rounds end at the
+  // bound (the region count after the first round) with every sub-region
+  // kept in place and one warning; a planner honours the exhausted
+  // fallbacks by splitting nothing.
+  it('end past the bound with everything kept in place and `fallback-rounds-exhausted`', async () => {
+    const statements = Array.from({ length: 12 }, (_, i) => `a = ${i + 1}`)
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      let a = 0
+      export const Route = createFileRoute('/')({
+        loader: () => a,
+        component: () => { ${statements.join('; ')}; return null },
+      })
+    `)
+    const runaway: Planner = {
+      name: 'toy-runaway',
+      tier: 1,
+      gate: () => true,
+      plan(ctx) {
+        const found = findRouteOptions(ctx)
+        if (!found) {
+          return
+        }
+        ctx.setRouteModule()
+        ctx.markBenignEffect(found.unit.id)
+        if (ctx.fallbacks.some((f) => f.reason === 'exhausted')) {
+          return
+        }
+        const component = propertyOf(found.options, 'component')!.value
+        const body = (
+          component as { body: { body: Array<{ start: number; end: number }> } }
+        ).body.body
+        const stmt = body[ctx.fallbacks.length]
+        if (!stmt) {
+          return
+        }
+        const output = ctx.declareOutput({
+          kind: 'split',
+          key: 'component',
+          derived: { kind: 'split', value: 'component' },
+        })
+        const range = { start: stmt.start, end: stmt.end }
+        const owner = ctx.rewrites.addGenerated({
+          body: [
+            { k: 'text', parts: ['export const moved = () => { '] },
+            { k: 'slice', range },
+            { k: 'text', parts: [' }\n'] },
+          ],
+          declares: [ctx.names.alloc('moved').sym],
+          effectful: false,
+          anchor: { k: 'end' },
+          home: output,
+          by: 'toy-runaway',
+        })
+        ctx.rewrites.claim({
+          region: ctx.region(range, 'custom'),
+          owner,
+          placeholder: [],
+          by: 'toy-runaway',
+        })
+      },
+    }
+    const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+    const out = await host.compile('/app/route.tsx', [runaway])
+    expect(out!.diagnostics).toMatchObject([
+      { severity: 'warning', code: 'fallback-rounds-exhausted', by: 'core' },
+    ])
+    expect(out!.code).toContain(
+      `component: () => { ${statements.join('; ')}; return null }`,
+    )
+    expect(out!.code).not.toContain('moved')
+  })
+})

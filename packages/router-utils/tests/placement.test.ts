@@ -574,6 +574,57 @@ describe('extracted-export outputs', () => {
     )
   })
 
+  // R1: the mutation model is read through the env output's liveness. A
+  // Start route file whose only write of an exported `let` is inside a
+  // server fn handler: on the client the handler is a stub, so nothing
+  // writes the binding there; it is extractable, the chunk copies it and
+  // the build does not say it is reassigned.
+  it('counts no write inside code the environment erases: the export leaves and nothing is reported', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { wrapServer } from 'toy-start'
+      export let hits = 0
+      export const bump = wrapServer(() => { hits++ })
+      function Page() { return hits }
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+    const planners = [
+      toyEnvPlanner(),
+      toySplitPlanner({ keys: ['component'], extractExports: true }),
+    ]
+    const out = await host.compile('/app/route.tsx', planners, build)
+    const chunk = await host.compile(
+      '/app/route.tsx?tsr-split=component',
+      planners,
+      build,
+    )
+    expect(out!.code).toContain(
+      "export { hits } from './route.tsx?tsr-split=export~hits'",
+    )
+    expect(out!.code).toContain('export const bump = tsrStub()')
+    expect(chunk!.code).toContain('let hits = 0')
+    expect(
+      out!.diagnostics.filter((d) => d.code?.startsWith('eager-')),
+    ).toEqual([])
+    // the server keeps the write: the export stays, reported once
+    const server = await host.compile('/app/route.tsx', planners, {
+      env: envInfo({
+        name: 'ssr',
+        type: 'server',
+        routerSplit: true,
+        mode: 'build',
+      }),
+    })
+    expect(server!.code).toContain('export let hits = 0')
+    expect(
+      server!.diagnostics.map((d) => [d.code, d.range?.start]),
+    ).toContainEqual([
+      expect.stringMatching(/^eager-export:/),
+      code.indexOf('hits = 0'),
+    ])
+  })
+
   it('keeps an exported declaration the env module reads, and an unread one', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -2821,6 +2872,23 @@ describe('declarations only split code needs that stay in the route module', () 
         .replace(
           'const confetti',
           '/* #__NO_SIDE_EFFECTS__ */ function type(shape) { return shape }\nconst confetti',
+        ),
+      // declared after the call (hoisted): the annotation counts in any
+      // order, for the option value and for a declaration's initialiser
+      pinned
+        .replace("import { type } from 'arktype'\n", '')
+        .concat(
+          '/* #__NO_SIDE_EFFECTS__ */ function type(shape) { return shape }\n',
+        ),
+      pinned
+        .replace("import { type } from 'arktype'\n", '')
+        .replace(
+          'export const Route',
+          "const search = type({ 'a?': 'string' })\nexport const Route",
+        )
+        .replace(/validateSearch: type\(\{[^}]*\}\)/, 'validateSearch: search')
+        .concat(
+          '/* #__NO_SIDE_EFFECTS__ */ function type(shape) { return shape }\n',
         ),
       dedent(`
         import { createFileRoute } from 'toy-router'

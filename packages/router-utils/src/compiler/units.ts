@@ -11,7 +11,6 @@ import { hasRuntimeValue } from './symbols'
 import { extendOverTrailingLine, isLicenseComment } from './header'
 import { unwrapExpression } from './source'
 import {
-  hasNoSideEffectsAnnotation,
   isPrimitiveLiteral,
   isPureClass,
   isPureDeclarator,
@@ -718,14 +717,6 @@ export function buildUnits(
             const b = file.bindingOf(d.id)
             u.copyable = b !== null && !b.references.some((r) => r.isWrite)
           }
-          if (
-            d.init &&
-            (d.init.type === 'ArrowFunctionExpression' ||
-              d.init.type === 'FunctionExpression') &&
-            hasNoSideEffectsAnnotation(purity, d.init)
-          ) {
-            markNoSideEffects(d.id)
-          }
           out.push(add(item, u))
         }
         break
@@ -742,12 +733,6 @@ export function buildUnits(
             }
           }
           u.declNameRanges.push({ start: decl.id.start, end: decl.id.end })
-          if (
-            hasNoSideEffectsAnnotation(purity, decl) ||
-            hasNoSideEffectsAnnotation(purity, item.node)
-          ) {
-            markNoSideEffects(decl.id)
-          }
         }
         out.push(add(item, u))
         break
@@ -808,13 +793,6 @@ export function buildUnits(
       }
     }
     return out
-  }
-
-  function markNoSideEffects(id: Node): void {
-    const b = file.bindingOf(id)
-    if (b) {
-      ;(purity.noSideEffectCallees as Set<number>).add(b.id)
-    }
   }
 
   function moduleSymOf(node: Node | null): SymbolId | null {

@@ -6,10 +6,11 @@
  * what they write, ordered evaluation, the movable test, the extraction
  * candidates, the split planner's identifier option values, the server-fn
  * hoist and the Hydrate setters. A view over the classified references
- * (nothing is built until a binding is asked about, and then once); erasure
- * (which writes survive in an output) and the region holding a write
- * (planners register sub-regions after the analysis) are the consumer's
- * business, so the model is pristine.
+ * (nothing is built until a binding is asked about, and then once). The
+ * model is pristine: erasure is the consumer's business, passed as the
+ * `live` filter of the predicates (R1: a write inside erased code imposes
+ * nothing), and the region holding a write (planners register sub-regions
+ * after the analysis) is read from the regions.
  */
 import type { ClassifiedRef, RefIndex } from './analysis'
 import type { SymbolId } from './symbols'
@@ -46,13 +47,23 @@ export class MutationModel {
     return hit
   }
 
-  /** The binding is assigned somewhere: its value is not the one its declaration gave it. */
-  isReassigned(sym: SymbolId): boolean {
-    return this.sitesOf(sym).some((r) => r.kind === 'write')
+  /**
+   * The binding is assigned somewhere (`live`: in code an output keeps):
+   * its value is not the one its declaration gave it.
+   */
+  isReassigned(sym: SymbolId, live?: (ref: ClassifiedRef) => boolean): boolean {
+    return this.sitesOf(sym).some(
+      (r) => r.kind === 'write' && (live === undefined || live(r)),
+    )
   }
 
-  /** The binding is assigned, or a member of what it names written, somewhere: a read of it depends on when it runs. */
-  isMutated(sym: SymbolId): boolean {
-    return this.sitesOf(sym).length > 0
+  /**
+   * The binding is assigned, or a member of what it names written,
+   * somewhere (`live`: in code an output keeps): a read of it depends on
+   * when it runs.
+   */
+  isMutated(sym: SymbolId, live?: (ref: ClassifiedRef) => boolean): boolean {
+    const sites = this.sitesOf(sym)
+    return live === undefined ? sites.length > 0 : sites.some(live)
   }
 }

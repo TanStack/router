@@ -61,8 +61,8 @@ export interface StartEnvConfig {
   providerDirective?: string
   /**
    * Every module defining server fns gets a derived provider module, not
-   * only `'use client'` ones (Rsbuild RSC: the provider is the `rsc` layer,
-   * selected by the `?tss-serverfn-split` query).
+   * only `'use client'` ones (RSC on Vite and Rsbuild: the provider is the
+   * `rsc` environment or layer, selected by the `?tss-serverfn-split` query).
    */
   alwaysDeriveProvider?: boolean
   /** Whether resolved ids are opaque packages (never read for summaries). */
@@ -551,7 +551,14 @@ function planStartEnv(
   // ---- 2. server fns
   const sites: Array<ServerFnSite> = []
   const keyCount = new Map<string, number>()
-  for (const chain of serverFnChains) {
+  // in source order (the analysis lists chains per import binding): an
+  // enclosing handler's site before a nested one, so the nested site is
+  // judged against the stub that replaced its handler (a nested server fn
+  // inside a stubbed handler is dead there, J4.6), and stable keys follow
+  // the source whatever the import order
+  for (const chain of [...serverFnChains].sort(
+    (a, b) => a.terminal.start - b.terminal.start,
+  )) {
     const handlerLink = chain.links.find((l) => l.method === 'handler')
     if (!handlerLink) {
       continue

@@ -9,6 +9,7 @@
  */
 import { digestOf, unwrapExpression } from '@tanstack/router-utils/compiler'
 import type {
+  ClassifiedRef,
   Diagnostic,
   ModuleAnalysis,
   PlanContext,
@@ -34,7 +35,7 @@ const FACTORIES: ReadonlySet<string> = new Set<RouteFactory>([
   'createLazyFileRoute',
 ])
 
-/** Packages whose `createFileRoute` & co. are the router's (Start re-exports them). */
+/** Packages whose `createFileRoute` & co. are the router's. */
 export const ROUTER_PACKAGE_RE =
   /^@tanstack\/(react|solid|vue)-(router|start)(\/|$)/
 
@@ -260,10 +261,15 @@ export function declaratorOf(
   ) {
     return null
   }
-  if (t1.mutation.isReassigned(sym)) {
+  if (t1.mutation.isReassigned(sym, liveInEnv(ctx))) {
     return null
   }
   return { unit, init: unit.node.init }
+}
+
+/** R1: the mutation model as the env output sees it (a write inside code the environment erases imposes nothing). */
+export function liveInEnv(ctx: PlanContext): (ref: ClassifiedRef) => boolean {
+  return ctx.liveness('env').live
 }
 
 function readGroupings(

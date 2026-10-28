@@ -239,6 +239,19 @@ describe('releasing an environment', () => {
     expect(stats(host)).toMatchObject({ plans: 1, planHits: 0 })
   })
 
+  it('drops its resolution memo: the next compile asks the host again, the other environment does not', async () => {
+    const host = new MemoryHost({ files })
+    await host.compile('/app/a.ts', planners())
+    await host.compile('/app/a.ts', planners(), { env: server })
+    const asked = host.resolveCalls.length
+    expect(asked).toBeGreaterThan(0)
+    releaseEnvironment(host.caches, env.name)
+    await host.compile('/app/a.ts', planners(), { env: server })
+    expect(host.resolveCalls).toHaveLength(asked)
+    await host.compile('/app/a.ts', planners())
+    expect(host.resolveCalls.length).toBeGreaterThan(asked)
+  })
+
   it('leaves nothing of the released plans reachable from the caches', async () => {
     const gc = (globalThis as { gc?: () => void }).gc
     expect(gc).toBeTypeOf('function')

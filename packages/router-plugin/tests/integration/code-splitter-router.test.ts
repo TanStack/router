@@ -225,3 +225,47 @@ export async function renderPreloaded() {
     expect(await renderPreloaded(true)).toEqual(preloaded)
   }, 120_000)
 })
+
+// `defaultBehavior: []` means what it did before this compiler: no route
+// option is split unless `splitBehavior` (or the route's own groupings)
+// says so.
+test('an empty `defaultBehavior` splits nothing but what `splitBehavior` asks for', async () => {
+  const app = await build({
+    bundler: 'vite',
+    env: 'client',
+    files: {
+      'routes/__root.tsx': rootRoute,
+      'routes/heavy.tsx': `${head}export const Route = createFileRoute('/heavy')({
+  component: () => <p>{'MARK_HEAVY'}</p>,
+})
+`,
+      'routes/light.tsx': `${head}export const Route = createFileRoute('/light')({
+  component: () => <p>{'MARK_LIGHT'}</p>,
+})
+`,
+      'entry.ts': entries.client,
+    },
+    pluginOptions: {
+      codeSplittingOptions: {
+        defaultBehavior: [],
+        splitBehavior: ({ routeId }) =>
+          routeId === '/heavy' ? [['component']] : undefined,
+      },
+    },
+  })
+  const { result } = await app.run(`const results = {}
+for (const [path, marker] of [['/heavy', 'MARK_HEAVY'], ['/light', 'MARK_LIGHT']]) {
+  results[path] = (await entry.renderAt(path, marker)).includes(marker)
+}
+return results`)
+  expect({
+    placement: {
+      heavy: app.where('MARK_HEAVY'),
+      light: app.where('MARK_LIGHT'),
+    },
+    rendered: result,
+  }).toEqual({
+    placement: { heavy: 'lazy', light: 'eager' },
+    rendered: { '/heavy': true, '/light': true },
+  })
+}, 120_000)
