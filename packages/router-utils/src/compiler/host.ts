@@ -6,6 +6,7 @@ import { isBuiltin } from 'node:module'
 import { posix } from 'node:path'
 import { OWNED_QUERY_KEYS, identify, planKeyString } from './identity'
 import {
+  PlanCache,
   UNRESOLVED_DEPENDENCY,
   fingerprintCurrent,
   fingerprintPath,
@@ -14,7 +15,6 @@ import type {
   DependencyFingerprint,
   DependencyLedger,
   FingerprintSource,
-  PlanCache,
 } from './cache'
 import type { ModuleAnalysis } from './analysis'
 import type { Diagnostic, WarningLedger } from './diagnostics'
@@ -183,11 +183,11 @@ export interface Planner {
 }
 
 /**
- * The caches of a compiler session: plans per environment and raw facts.
- * Resolutions are not cached (a cache measured no faster and complicated
- * invalidation): a compile records each answer in its
- * ledger, and validation asks the environment's resolver again once the
- * file set may have changed (`fileSetVersion`).
+ * The caches of a compiler session: plans per environment (with the
+ * environment's resolution memo, `PlanCache.resolutionsAt`) and raw facts.
+ * A compile records each resolution it used in its ledger, and validation
+ * asks the environment's resolver again once the file set may have changed
+ * (`fileSetVersion`).
  */
 export interface CompilerCaches {
   plans: Map<string, PlanCache>
@@ -195,11 +195,22 @@ export interface CompilerCaches {
   /**
    * Bumped when a file appeared or disappeared (`invalidate` add/unlink; a
    * host that gets no such events for files nothing imports bumps it per
-   * watch compilation). A plan's recorded resolutions are current while
-   * the version they were validated at is the current one: nothing a
-   * resolver answers changes without a file appearing or disappearing.
+   * watch compilation). A plan's recorded resolutions and an environment's
+   * resolution memo are current while the version they were validated or
+   * filled at is the current one: nothing a resolver answers changes
+   * without a file appearing or disappearing.
    */
   fileSetVersion: number
+}
+
+/** The plan cache of an environment (created at its first use). */
+export function planCacheFor(caches: CompilerCaches, env: string): PlanCache {
+  let cache = caches.plans.get(env)
+  if (!cache) {
+    cache = new PlanCache(env)
+    caches.plans.set(env, cache)
+  }
+  return cache
 }
 
 /** A query carrying one of the compiler-owned keys (derived module ids: `?tsr-split=`, `?tss-hydrate=`, `?tss-serverfn-split`). */
@@ -284,7 +295,7 @@ export async function invalidate(
     relevant: (fp: DependencyFingerprint) => boolean,
   ): Promise<void> => {
     const seen = new Set<string>()
-    const src = fingerprintSourceFor(caches, hostOf(cache.env), '')
+    const src = fingerprintSourceFor(caches, hostOf(cache.env), cache.env, '')
     for (const entry of cache.dependents.get(indexKey)) {
       const ks = `${cache.env}|${planKeyString(entry.key)}`
       if (seen.has(ks)) {
@@ -331,7 +342,7 @@ export async function invalidate(
         !(change.kind === 'change' && fp.kind === 'resolution'),
     )
     if (change.kind === 'add' || change.kind === 'unlink') {
-      // failed resolutions have no path; re-resolve them all (one host resolve per distinct entry)
+      // failed resolutions have no path; re-resolve them all (the memo asks the host once per distinct entry)
       await revalidate(
         cache,
         UNRESOLVED_DEPENDENCY,
@@ -371,6 +382,7 @@ export function isFinalBuild(
 export function fingerprintSourceFor(
   caches: CompilerCaches,
   host: HostServices,
+  env: string,
   configKey: string,
 ): FingerprintSource {
   return {
@@ -380,7 +392,7 @@ export function fingerprintSourceFor(
       (await caches.rawFacts.getTarget(id)).targetFacts.marker,
     routeRegistryDigest: (path) => host.routes?.digestFor(path) ?? null,
     resolution: (importer, specifier) =>
-      resolveForAnalysis(caches, host, importer, specifier),
+      resolveForAnalysis(caches, host, env, importer, specifier),
     configKey,
   }
 }
@@ -405,22 +417,58 @@ export function isAnalyzableSpecifier(specifier: string): boolean {
 /**
  * Resolves a specifier for the analysis through the host's resolver (the
  * environment's own); returns the canonical id of the target, or null
- * when nothing readable is behind it. Not cached: the caller records
- * the answer in its ledger.
+ * when nothing readable is behind it. The environment's memo answers a
+ * pair resolved before at the current file-set version, settling or
+ * settled (the compiles of a build ask for a barrel's re-exports once per
+ * importing module); unresolved pairs are not kept. The caller records the
+ * answer in its ledger.
  */
-export async function resolveForAnalysis(
+export function resolveForAnalysis(
   caches: CompilerCaches,
   host: HostServices,
+  env: string,
   importerCanonicalId: string,
   specifier: string,
 ): Promise<string | null> {
   if (caches.rawFacts.isKnownSpecifier(specifier)) {
     // known packages are recognised by specifier, never resolved
-    return specifier
+    return Promise.resolve(specifier)
   }
   if (!isAnalyzableSpecifier(specifier)) {
-    return null
+    return Promise.resolve(null)
   }
-  const r = await host.resolve(specifier, importerCanonicalId)
-  return r && !r.external ? identify(r.id).canonicalId : null
+  const memos = planCacheFor(caches, env).resolutionsAt(caches.fileSetVersion)
+  let memo = memos.get(importerCanonicalId)
+  if (!memo) {
+    memo = new Map()
+    memos.set(importerCanonicalId, memo)
+  }
+  const hit = memo.get(specifier)
+  if (hit !== undefined) {
+    return typeof hit === 'string' ? Promise.resolve(hit) : hit
+  }
+  const asked: Promise<string | null> = host
+    .resolve(specifier, importerCanonicalId)
+    .then((r) => {
+      const resolved = r && !r.external ? identify(r.id).canonicalId : null
+      if (memo.get(specifier) === asked) {
+        // the settled id replaces the promise; an unresolved specifier is
+        // asked again next time: the file may be about to appear (a file's
+        // `add` event re-resolves failed resolutions)
+        if (resolved === null) {
+          memo.delete(specifier)
+        } else {
+          memo.set(specifier, resolved)
+        }
+      }
+      return resolved
+    })
+  memo.set(specifier, asked)
+  // a failed resolver call is the caller's to report, and asked again next time
+  asked.catch(() => {
+    if (memo.get(specifier) === asked) {
+      memo.delete(specifier)
+    }
+  })
+  return asked
 }

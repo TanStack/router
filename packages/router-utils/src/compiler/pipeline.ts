@@ -15,14 +15,14 @@ import {
 import { parseModule } from './source'
 import { ModuleAnalysis } from './analysis'
 import { AnalysisPlan } from './plan'
-import { DependencyLedger, PlanCache, fingerprintCurrent } from './cache'
+import { DependencyLedger, fingerprintCurrent } from './cache'
 import { emitRecipe, substituteSpecifier } from './emit'
 import { SourceText } from './output-builder'
 import { ExportResolver } from './resolve'
-import { fingerprintSourceFor, resolveForAnalysis } from './host'
+import { fingerprintSourceFor, planCacheFor, resolveForAnalysis } from './host'
 import { registerCompilerStats } from './stats'
 import { VERIFY_OUTPUTS, verifyPlan } from './verify'
-import type { CacheEntry } from './cache'
+import type { CacheEntry, PlanCache } from './cache'
 import type {
   EmitPlan,
   EnvInfo,
@@ -97,11 +97,7 @@ export async function compileModule(
     return null
   }
   const env = input.env
-  let cache = caches.plans.get(env.name)
-  if (!cache) {
-    cache = new PlanCache(env.name)
-    caches.plans.set(env.name, cache)
-  }
+  const cache = planCacheFor(caches, env.name)
   const key: PlanKey = {
     env: env.name,
     canonicalId: identity.canonicalId,
@@ -120,8 +116,13 @@ export async function compileModule(
     cache.noteRevision(key, rev)
     const hit = cache.lookup(key, rev)
     if (hit) {
-      const src = fingerprintSourceFor(caches, host, input.config.configKey)
-      // resolutions validated at the current file-set version stand (no resolution cache, no re-asking either)
+      const src = fingerprintSourceFor(
+        caches,
+        host,
+        env.name,
+        input.config.configKey,
+      )
+      // resolutions validated at the current file-set version stand (not re-asked)
       const fileSetVersion = caches.fileSetVersion
       const resolutionsCurrent = hit.resolvedAt === fileSetVersion
       // every fingerprint at once: the checks are independent reads
@@ -207,7 +208,12 @@ export async function compileModule(
         }
         const plan = result.plan
         plan.dependencies = [...ledger.entries]
-        const src = fingerprintSourceFor(caches, host, input.config.configKey)
+        const src = fingerprintSourceFor(
+          caches,
+          host,
+          env.name,
+          input.config.configKey,
+        )
         const snapshotOk = await ledger.validateSnapshot(
           src,
           caches.fileSetVersion === fileSetVersion,
@@ -403,12 +409,25 @@ async function runAttempt(
     specifier: string,
     importer: string,
   ): Promise<string | null> => {
-    // one answer per attempt: the ledger's recorded resolution is reused (no resolution cache)
+    // one answer per attempt: the ledger's recorded resolution is reused
     const known = ledger.resolved(env.name, importer, specifier)
     if (known !== undefined) {
       return known
     }
-    const resolved = await resolveForAnalysis(caches, host, importer, specifier)
+    const resolved = await resolveForAnalysis(
+      caches,
+      host,
+      env.name,
+      importer,
+      specifier,
+    )
+    if (env.mode === 'dev') {
+      // a dev server's pending requests get in between the resolutions of
+      // one update, as they did while every resolution was resolver I/O: an
+      // analysis answered from the memo in microtasks alone makes a server
+      // function call during an edit wait for the whole update (+3 ms)
+      await new Promise((turn) => setImmediate(turn))
+    }
     ledger.record({
       kind: 'resolution',
       env: env.name,

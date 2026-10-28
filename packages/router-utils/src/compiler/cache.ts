@@ -317,6 +317,9 @@ export class DependencyLedger {
   }
 }
 
+/** One importer's resolutions: specifier → canonical id, or the resolver's pending answer. */
+export type ResolutionMemo = Map<string, string | Promise<string | null>>
+
 export interface CacheEntry {
   key: PlanKey
   revision: string
@@ -359,8 +362,29 @@ export class PlanCache {
   private readonly disabled = cacheDisabled('plans')
   /** Use counts for `compilerStats()`: validated plan hits. */
   readonly counters = { planHits: 0 }
+  /**
+   * The environment's resolutions, importer → specifier → the resolver's
+   * answer (settling, or the settled canonical id; unresolved pairs are not
+   * kept), shared by every compile and validation of the environment. The
+   * keys are the importer and specifier strings the compiles already hold.
+   * Nothing a resolver answers changes
+   * without a file appearing or disappearing, so the memo is good for one
+   * `fileSetVersion` and dropped as one at the next (`resolutionsAt`): the
+   * plans' resolution fingerprints have the same authority and no other.
+   */
+  private readonly resolutions = new Map<string, ResolutionMemo>()
+  private resolvedAt = -1
 
   constructor(readonly env: string) {}
+
+  /** The resolution memo at `fileSetVersion` (empty when the file set changed since it was filled). */
+  resolutionsAt(fileSetVersion: number): Map<string, ResolutionMemo> {
+    if (this.resolvedAt !== fileSetVersion) {
+      this.resolutions.clear()
+      this.resolvedAt = fileSetVersion
+    }
+    return this.resolutions
+  }
 
   generation(key: PlanKey): number {
     return this.generations.get(planKeyString(key)) ?? 0
@@ -504,8 +528,13 @@ export class PlanCache {
       }
     }
     const d = this.dependents.stats()
+    let resolutions = 0
+    for (const m of this.resolutions.values()) {
+      resolutions += m.size
+    }
     return {
       plans: this.entries.size,
+      resolutions,
       dependencies,
       generations: this.generations.size,
       latest: this.latest.size,
