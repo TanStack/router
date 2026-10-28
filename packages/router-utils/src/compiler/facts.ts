@@ -41,6 +41,12 @@ export interface RawFacts {
   rawRevision: string | null
   summary: ModuleSummary | null
   targetFacts: TargetFacts
+  /**
+   * Built from the text without a parse (`RawFactsOptions.opaque`): no
+   * summary, and target facts that are not the module's (`getTarget` parses
+   * when a consumer asks for them).
+   */
+  opaque?: true
 }
 
 export interface RawFactsOptions {
@@ -59,10 +65,32 @@ export interface RawFactsOptions {
   recognizer?: RecognizerTable
   summaryExtras?: SummaryExtraHook
   markerSpecifiers?: Record<string, 'server-only' | 'client-only'>
+  /**
+   * Whether a module is opaque to the summaries, by its path and text (an
+   * ordinary package: its exports carry no value a planner recognises). An
+   * opaque module is not parsed: its summary is null (`unknown` to a
+   * resolver), its marker is read from the text, and its target facts are
+   * parsed only when asked (`getTarget`).
+   */
+  opaque?: (path: string, text: string) => boolean
 }
 
 const isVirtualId = (canonicalId: string): boolean =>
   canonicalId.startsWith('\0') || canonicalId.startsWith('virtual:')
+
+/** The target facts of an opaque module before anyone asks for them: exists, no marker, otherwise unknown (effectful). */
+const OPAQUE_TARGET: Omit<TargetFacts, 'digest'> = {
+  exists: true,
+  marker: null,
+  exportNames: [],
+  stars: [],
+  imports: [],
+  lazyImports: [],
+  esm: false,
+  effectful: true,
+  codeEffects: true,
+  effectProvenance: null,
+}
 
 const MISSING_TARGET: Omit<TargetFacts, 'digest'> = {
   exists: false,
@@ -201,7 +229,7 @@ export class RawFactsCache {
     if (this.noFacts) {
       return this.isKnownSpecifier(canonicalId)
         ? this.knownFacts(canonicalId)
-        : this.build(canonicalId, await this.read(canonicalId), new Set())
+        : this.build(canonicalId, await this.read(canonicalId))
     }
     let e = this.entries.get(canonicalId)
     if (e && e.facts && !e.stale) {
@@ -224,14 +252,17 @@ export class RawFactsCache {
     const holder: { p: Promise<RawFacts> | null } = { p: null }
     holder.p = (async () => {
       const text = await this.read(canonicalId)
-      const built = this.build(canonicalId, text, new Set())
+      const built = this.build(canonicalId, text)
       // A file that stops parsing (saved mid-edit) keeps the last facts it
       // parsed to: its importers' decisions stand until it parses again (a
       // changed digest would evict their plans and hot-update modules that
       // cannot accept, e.g. a route tree, into a full reload). A file that
       // never parsed is unknown.
       const facts =
-        text !== null && built.summary === null && entry.facts?.summary
+        text !== null &&
+        built.summary === null &&
+        !built.opaque &&
+        entry.facts?.summary
           ? entry.facts
           : built
       // a newer read may have superseded this one
@@ -257,7 +288,13 @@ export class RawFactsCache {
     analysis: ModuleAnalysis,
   ): RawFacts | null {
     const e = this.entries.get(canonicalId)
-    if (e && e.facts && !e.stale && e.facts.rawRevision === rawRevision) {
+    if (
+      e &&
+      e.facts &&
+      !e.facts.opaque &&
+      !e.stale &&
+      e.facts.rawRevision === rawRevision
+    ) {
       return e.facts
     }
     const facts = this.fromAnalysis(canonicalId, rawRevision, analysis, null)
@@ -348,9 +385,23 @@ export class RawFactsCache {
   /** The facts J6 target facts are taken from (`get`, or a fresh read when the target-facts knob is off). */
   async getTarget(canonicalId: string): Promise<RawFacts> {
     if (this.noTargets && !this.isKnownSpecifier(canonicalId)) {
-      return this.build(canonicalId, await this.read(canonicalId), new Set())
+      return this.build(canonicalId, await this.read(canonicalId), true)
     }
-    return this.get(canonicalId)
+    const facts = await this.get(canonicalId)
+    if (!facts.opaque) {
+      return facts
+    }
+    // an opaque module's target facts are asked for (a mock of it): parsed now, once
+    const e = this.entries.get(canonicalId)
+    if (e?.pending) {
+      return e.pending
+    }
+    const text = await this.read(canonicalId)
+    const full = this.build(canonicalId, text, true)
+    if (e && this.entries.get(canonicalId) === e && e.facts === facts) {
+      e.facts = full
+    }
+    return full
   }
 
   async targetDigestOf(canonicalId: string): Promise<string> {
@@ -364,12 +415,14 @@ export class RawFactsCache {
     let pending = 0
     let empty = 0
     let markerless = 0
+    let opaque = 0
     let bytes = 0
     for (const e of this.entries.values()) {
       stale += e.stale ? 1 : 0
       pending += e.pending ? 1 : 0
       empty += e.facts ? 0 : 1
       markerless += !e.facts && e.markerless !== null ? 1 : 0
+      opaque += e.facts?.opaque ? 1 : 0
       if (withBytes && e.facts) {
         bytes += approxBytes(e.facts)
       }
@@ -381,6 +434,7 @@ export class RawFactsCache {
       rawFactsPending: pending,
       rawFactsEmpty: empty,
       rawFactsMarkerless: markerless,
+      rawFactsOpaque: opaque,
       ...this.counters,
       ...(withBytes && { rawFactsBytes: bytes }),
     }
@@ -441,10 +495,11 @@ export class RawFactsCache {
     return this.opts.readFile(id.path)
   }
 
+  /** The facts of a text; `full` parses an opaque module too (its target facts are asked for). */
   private build(
     canonicalId: string,
     text: string | null,
-    _seen: Set<string>,
+    full = false,
   ): RawFacts {
     if (text === null) {
       return {
@@ -456,6 +511,19 @@ export class RawFactsCache {
     }
     const id = identify(canonicalId)
     const rev = revision(text)
+    if (
+      !full &&
+      this.opts.opaque?.(id.path, text) &&
+      !this.mayHaveMarker(text)
+    ) {
+      return {
+        canonicalId,
+        rawRevision: rev,
+        summary: null,
+        targetFacts: { ...OPAQUE_TARGET, digest: digestOf(OPAQUE_TARGET) },
+        opaque: true,
+      }
+    }
     // a virtual module without an extension is JavaScript; a file without a language is not
     const parsed =
       id.lang === null && !isVirtualId(canonicalId)

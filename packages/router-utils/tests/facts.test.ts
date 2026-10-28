@@ -73,6 +73,41 @@ describe('RawFactsCache', () => {
     expect(await cache.marker('/app/a.ts')).toBe('server-only')
   })
 
+  it('an opaque module is not parsed: no summary, its marker from the text, target facts when asked', async () => {
+    const files: Record<string, string> = {
+      '/app/node_modules/lib/index.js': `export const lib = () => 1\n`,
+      '/app/node_modules/marked/index.js': `import 'server-only'\nexport const m = 1\n`,
+      '/app/src/a.ts': `export const a = 1\n`,
+    }
+    const cache = new RawFactsCache({
+      readFile: (p) => Promise.resolve(files[p] ?? null),
+      loadVirtual: () => Promise.resolve(null),
+      opaque: (path) => path.includes('/node_modules/'),
+    })
+    const lib = await cache.get('/app/node_modules/lib/index.js')
+    expect(lib.opaque).toBe(true)
+    expect(lib.summary).toBe(null)
+    expect(await cache.marker('/app/node_modules/lib/index.js')).toBe(null)
+    expect(cache.stats(false)).toMatchObject({ rawFacts: 1, rawFactsOpaque: 1 })
+    // a mock of it asks for its target facts: parsed then, and kept
+    const target = await cache.getTarget('/app/node_modules/lib/index.js')
+    expect(target.opaque).toBeUndefined()
+    expect(target.targetFacts.exportNames).toEqual(['lib'])
+    expect(
+      (await cache.get('/app/node_modules/lib/index.js')).summary,
+    ).not.toBe(null)
+    expect(cache.stats(false)).toMatchObject({ rawFacts: 1, rawFactsOpaque: 0 })
+    // a marker literal is never opaque: the marker is a parse's finding
+    expect(await cache.marker('/app/node_modules/marked/index.js')).toBe(
+      'server-only',
+    )
+    expect(
+      (await cache.get('/app/node_modules/marked/index.js')).opaque,
+    ).toBeUndefined()
+    // the app's own modules are never opaque
+    expect((await cache.get('/app/src/a.ts')).opaque).toBeUndefined()
+  })
+
   it('a change or deletion of a file reaches every identity at its path, and the bookkeeping is bounded by the live files', async () => {
     const files: Record<string, string> = {
       '/app/a.ts': 'export const a = 1\n',
