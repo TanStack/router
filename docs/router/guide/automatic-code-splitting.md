@@ -106,7 +106,15 @@ export const store = createStore()
 
 #### Top-level side effects keep their order
 
-A top-level declaration with side effects that only split code reads (for example `const confetti = new JSConfetti()`, used only by the component) moves into the split chunk and runs when the chunk loads. It stays in the main bundle, and runs when the route file loads, if a side effect written after it stays in the route file, such as an inline call in an option that is not split (`validateSearch: z.object({ … })`). Moving the declaration would run it after that call, and the route file's side effects keep the order they are written in. To have the declaration split, create the value the option uses before it:
+A top-level declaration with side effects that only split code reads (for example `const confetti = new JSConfetti()`, used only by the component) moves into the split chunk and runs when the chunk loads. It stays in the main bundle, and runs when the route file loads, if a side effect written after it stays in the route file, such as an inline call in an option that is not split (`validateSearch: z.object({ … })`). Moving the declaration would run it after that call, and the route file's side effects keep the order they are written in. The same declaration also stays when several split properties read it (its side effects run once), when the route file changes it at the top level (`registry.add(…)`), or when it reads, as the file loads, a value that has side effects and stays, or that the file changes later. The build (and the dev server) warns once for each such declaration, naming it, what keeps it and the line, for example:
+
+```
+`confetti` in "src/routes/account.tsx" stays in the route module because the call `type(…)` in
+`validateSearch` (line 14) runs after it and stays; declare that value before `confetti`, or mark the
+call `/* @__PURE__ */` if it has no side effects, so `confetti` can load with the split `component`.
+```
+
+To have the declaration split, create the value the option uses before it:
 
 ```tsx
 const searchSchema = z.object({ success: z.boolean().optional() })
@@ -118,6 +126,13 @@ export const Route = createFileRoute('/account')({
   component: AccountPage,
 })
 ```
+
+or tell the compiler that the call has no side effects, with one of these annotations:
+
+- `/* @__PURE__ */` before the call (`validateSearch: /* @__PURE__ */ type({ … })`), whatever the function is;
+- `/* #__NO_SIDE_EFFECTS__ */` on a function declared in the route file itself: `/* #__NO_SIDE_EFFECTS__ */ function makeSchema(…) { … }` or `const makeSchema = /* #__NO_SIDE_EFFECTS__ */ (…) => …`, exported or not.
+
+A `/* #__NO_SIDE_EFFECTS__ */` annotation on a function imported from another module (one of the app's or a package's) does not count here: the route file is split without reading the modules it imports. Annotate the call with `/* @__PURE__ */` instead, or create the value before the declaration.
 
 #### Route callbacks that read `this` are not split
 

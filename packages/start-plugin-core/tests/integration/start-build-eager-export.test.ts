@@ -6,9 +6,18 @@
  * file (here the app's router module), the bundler keeps that module with
  * the entry: the build warns once, naming the route file, on Vite and on
  * Rsbuild (SPEC J2.8; the router plugin's hosts do the same).
+ *
+ * An unexported declaration only the split component reads that a later
+ * effect pins in the route module (R31 (d) / R65: an inline
+ * `validateSearch: makeSchema({…})` call stays and runs after it) loads
+ * with the entry, and the build warns once for the client and server
+ * environments together, naming the declaration and the call (R78; every
+ * host and reason: router-plugin
+ * tests/integration/code-splitter-split-only-eager.test.ts).
  */
 import { describe, expect, test } from 'vitest'
 import {
+  diagnosticPosition,
   expectDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
@@ -69,6 +78,68 @@ describe.each(startBundlers)('a %s client build', (bundler) => {
         root: build.root,
         times: 1,
       })
+    },
+    timeout,
+  )
+})
+
+const pinned = `import { createFileRoute } from '@tanstack/react-router'
+import { Marker } from '../marker'
+import { makeSchema } from '../schema'
+const confetti = new Marker('MARK_CONFETTI')
+export const Route = createFileRoute('/account')({
+  validateSearch: makeSchema({ tab: 'string' }),
+  component: () => <p>{confetti.name}</p>,
+})
+`
+
+const pinnedFiles = {
+  ...files,
+  'src/routes/account.tsx': pinned,
+  'src/marker.ts': `export class Marker {
+  constructor(public name: string) {
+    ;((globalThis as any).marks ??= []).push(name)
+  }
+}
+`,
+  'src/schema.ts': 'export function makeSchema<T>(shape: T) { return shape }\n',
+}
+
+describe.each(startBundlers)('a %s build', (bundler) => {
+  test(
+    'keeps a declaration a later effect pins in the route module and warns once for every environment',
+    async () => {
+      const build = await buildStart({ bundler, files: pinnedFiles })
+      expect(build.client.where('MARK_CONFETTI')).toBe('eager')
+      // what the two environments' bundlers reported (Rsbuild's logger
+      // prints each bundler warning again in `build.diagnostics`)
+      const reported = [...build.client.warnings, ...build.ssr.warnings]
+      expectDiagnostic(reported, {
+        severity: 'warning',
+        file: 'src/routes/account.tsx',
+        root: build.root,
+        position: diagnosticPosition(pinned, 'confetti = new'),
+        times: 1,
+      })
+      const [warning] = findDiagnostics(reported, {
+        severity: 'warning',
+        file: 'src/routes/account.tsx',
+        root: build.root,
+      })
+      for (const part of [
+        '`confetti`',
+        '`makeSchema(…)`',
+        '`validateSearch`',
+        `line ${diagnosticPosition(pinned, 'makeSchema({').line}`,
+      ]) {
+        expect(warning!.text).toContain(part)
+      }
+      expect(
+        findDiagnostics(build.diagnostics, {
+          file: 'src/routes/card.tsx',
+          root: build.root,
+        }),
+      ).toEqual([])
     },
     timeout,
   )
