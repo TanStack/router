@@ -9,7 +9,12 @@ import { digestOf, identify, isCommonJsPath, revision } from './identity'
 import { parseModule } from './source'
 import { DEFAULT_MARKERS, ModuleAnalysis } from './analysis'
 import { buildSummary } from './summary'
-import { EMPTY_RECOGNIZER, isKnownSpecifier } from './values'
+import {
+  EMPTY_RECOGNIZER,
+  UNKNOWN,
+  isKnownSpecifier,
+  isPureCall,
+} from './values'
 import { approxBytes, cacheDisabled } from './stats'
 import type { ModuleSummary, SummaryExtraHook } from './summary'
 import type { AbstractValue, RecognizerTable } from './values'
@@ -104,6 +109,16 @@ export class RawFactsCache {
   /** The marker specifiers every analysis of this session uses (transform and raw reads agree). */
   get markerSpecifiers(): RawFactsOptions['markerSpecifiers'] {
     return this.opts.markerSpecifiers
+  }
+
+  /** The pure exports of the recognizer's known packages (R79), for the analyses of compiled modules. */
+  get pureCalls(): RecognizerTable['pureCalls'] {
+    return this.opts.recognizer?.pureCalls
+  }
+
+  /** Whether export `name` of `specifier` is a known package's pure call. */
+  isPureCall(specifier: string, name: string): boolean {
+    return isPureCall(this.opts.recognizer ?? EMPTY_RECOGNIZER, specifier, name)
   }
 
   /** The known (possibly stale-marked) revision, without reading. */
@@ -304,7 +319,7 @@ export class RawFactsCache {
     }
   }
 
-  /** The synthetic facts of a known package specifier: its factory exports, side-effect free. */
+  /** The synthetic facts of a known package specifier: its factory exports and its pure calls (`noSideEffects`). */
   private knownFacts(specifier: string): RawFacts {
     const table = this.opts.recognizer ?? EMPTY_RECOGNIZER
     const exportFacts: ModuleSummary['exports'] = {}
@@ -312,7 +327,14 @@ export class RawFactsCache {
       table.factories[specifier] ?? {},
     )) {
       const value: AbstractValue = { t: 'factory', kind }
-      exportFacts[name] = { kind: 'local', value, noSideEffects: true }
+      exportFacts[name] = { kind: 'local', value }
+    }
+    for (const name of table.pureCalls?.[specifier] ?? []) {
+      exportFacts[name] ??= {
+        kind: 'local',
+        value: UNKNOWN,
+        noSideEffects: true,
+      }
     }
     const exportNames = Object.keys(exportFacts).sort()
     const digest = digestOf({ known: specifier, exports: exportNames })
@@ -406,6 +428,7 @@ export class RawFactsCache {
     const analysis = new ModuleAnalysis(parsed.file, parsed.source, {
       path: id.path,
       markerSpecifiers: this.opts.markerSpecifiers,
+      pureCalls: this.opts.recognizer?.pureCalls,
     })
     return this.fromAnalysis(canonicalId, rev, analysis, null)
   }

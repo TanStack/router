@@ -20,6 +20,7 @@ import type { SymbolId } from './symbols'
 import type { RegionId, RegionTable, TopLevelItem, Unit, UnitId } from './units'
 import type { Node, Reference, SourceFile } from 'yuku'
 import type { SourceText } from './output-builder'
+import type { RecognizerTable } from './values'
 
 export type { Range } from './header'
 
@@ -253,6 +254,8 @@ export interface ModuleAnalysisOptions {
   path: string
   /** Bare import specifiers that mark a module (default: 'server-only' / 'client-only'). */
   markerSpecifiers?: Record<string, 'server-only' | 'client-only'>
+  /** The pure exports of known packages (`RecognizerTable.pureCalls`): their imports are pure callees. */
+  pureCalls?: RecognizerTable['pureCalls']
 }
 
 export const DEFAULT_MARKERS: Record<string, 'server-only' | 'client-only'> = {
@@ -288,10 +291,14 @@ export class ModuleAnalysis {
     this.source = source
     this.path = opts.path
     this.header = analyzeHeader(file)
+    const noSideEffectCallees = new Set<number>()
+    const pureNamespaces = new Map<number, ReadonlySet<string>>()
+    const pureCalls = opts.pureCalls
     this.purity = {
       file,
       comments: file.comments,
-      noSideEffectCallees: new Set<number>(),
+      noSideEffectCallees,
+      pureNamespaces,
     }
     const markers = opts.markerSpecifiers ?? DEFAULT_MARKERS
     const imports: Array<ImportEntry> = []
@@ -308,6 +315,20 @@ export class ModuleAnalysis {
       const local = record.local
       if (local) {
         importLocals.set(record.node.start, local.id as SymbolId)
+        // an import of a known package's pure export (R79): before any
+        // statement is classified (a call may precede its hoisted import)
+        const pure = pureCalls?.[record.specifier]
+        if (pure && !record.typeOnly) {
+          if (record.kind === 'namespace') {
+            pureNamespaces.set(local.id, pure)
+          } else if (
+            record.kind === 'named' &&
+            record.name !== null &&
+            pure.has(record.name)
+          ) {
+            noSideEffectCallees.add(local.id)
+          }
+        }
       }
     }
     const exportLocals = new Map<number, SymbolId>()

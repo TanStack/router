@@ -12,6 +12,8 @@ export type ResolveOutcome =
       k: 'found'
       origin: { canonicalId: string; local: string }
       value: AbstractValue
+      /** The export is a callee whose calls are pure when their arguments are. */
+      noSideEffects?: true
     }
   | { k: 'absent' }
   | { k: 'ambiguous' }
@@ -80,6 +82,7 @@ export class ExportResolver {
             k: 'found',
             origin: { canonicalId, local: name },
             value: fact.value,
+            ...(fact.noSideEffects && { noSideEffects: true }),
           }
           this.batch.memo.set(key, outcome)
           return { outcome, tainted: false }

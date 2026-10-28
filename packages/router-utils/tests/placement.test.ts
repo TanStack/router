@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { EMPTY_RECOGNIZER } from '../src/compiler'
 import {
   MemoryHost,
   dedent,
@@ -2940,5 +2941,155 @@ describe('declarations only split code needs that stay in the route module', () 
     )
     expect(r.env).toContain('const client = make()')
     expect(r.diagnostics).toEqual([])
+  })
+})
+
+// R79: a call of a known package's pure export (`RecognizerTable.pureCalls`)
+// with pure arguments is pure, recognised by import binding (renamed,
+// namespace member) and through a project module's re-exports; nothing of a
+// package is read to decide it.
+describe('pure calls of known packages', () => {
+  const recognizer = {
+    ...EMPTY_RECOGNIZER,
+    pureCalls: { 'toy-router': new Set(['getRouteApi']) },
+  }
+  async function compile(code: string, files: Record<string, string> = {}) {
+    const host = new MemoryHost({
+      files: { '/app/route.tsx': code, ...files },
+      recognizer,
+      resolve: (specifier, importer, all) => {
+        if (specifier === 'toy-lib') {
+          return '/app/node_modules/toy-lib/index.js'
+        }
+        if (!specifier.startsWith('./')) {
+          return null
+        }
+        const dir = importer.slice(0, importer.lastIndexOf('/'))
+        const path = `${dir}/${specifier.slice(2)}`
+        return [path, `${path}.ts`].find((p) => p in all) ?? null
+      },
+    })
+    const planners = [toySplitPlanner({ keys: ['component'] })]
+    const env = envInfo({ mode: 'build' })
+    const main = await host.compile('/app/route.tsx', planners, { env })
+    const chunk = await host.compile(
+      '/app/route.tsx?tsr-split=component',
+      planners,
+      { env },
+    )
+    return {
+      env: main?.code ?? '',
+      chunk: chunk?.code ?? '',
+      kept: (main?.diagnostics ?? [])
+        .filter((d) => d.code?.startsWith('eager-'))
+        .map((d) => /`(\w+)` in "/.exec(d.message)![1]!),
+    }
+  }
+  // tamery: `validateSearch: type({…})` stays and runs after both
+  const tamery = (imports: string, api: string) =>
+    dedent(`
+      import { createFileRoute } from 'toy-router'
+      ${imports}
+      import { type } from 'arktype'
+      import JSConfetti from 'js-confetti'
+      const confetti = new JSConfetti()
+      const { useParams } = ${api}
+      export const Route = createFileRoute('/')({
+        validateSearch: type({ 'a?': 'string' }),
+        component: () => [confetti, useParams()],
+      })
+    `)
+  // the route module keeps the API (its loader reads it) after `confetti`
+  const shared = (imports: string, api: string) =>
+    dedent(`
+      import { createFileRoute } from 'toy-router'
+      ${imports}
+      import JSConfetti from 'js-confetti'
+      const confetti = new JSConfetti()
+      const routeApi = ${api}
+      export const Route = createFileRoute('/')({
+        loader: () => routeApi.id,
+        component: () => [confetti, routeApi.useParams()],
+      })
+    `)
+  const direct = [
+    ["import { getRouteApi } from 'toy-router'", "getRouteApi('/x')"],
+    ["import { getRouteApi as g } from 'toy-router'", "g('/x')"],
+    ["import * as R from 'toy-router'", "R.getRouteApi('/x')"],
+  ] as const
+
+  it('moves a declaration calling one into the chunk: only an effect before it stays', async () => {
+    for (const [imports, api] of direct) {
+      const r = await compile(tamery(imports, api))
+      expect(r.env, api).not.toContain(api)
+      expect(r.chunk, api).toContain(`const { useParams } = ${api}`)
+      expect(r.env, api).toContain('const confetti = new JSConfetti()')
+      expect(r.kept, api).toEqual(['confetti'])
+    }
+  })
+
+  it('pins no earlier effect where the route module keeps it', async () => {
+    for (const [imports, api] of direct) {
+      const r = await compile(shared(imports, api))
+      expect(r.env, api).toContain(`const routeApi = ${api}`)
+      expect(r.env, api).not.toContain('new JSConfetti')
+      expect(r.chunk, api).toContain('const confetti = new JSConfetti()')
+      expect(r.kept, api).toEqual([])
+    }
+  })
+
+  it('follows the re-exports of project modules', async () => {
+    for (const lib of [
+      "export { getRouteApi } from 'toy-router'",
+      "export { getRouteApi as routeApi } from 'toy-router'",
+      "export * from 'toy-router'",
+      "import { getRouteApi } from 'toy-router'\nexport { getRouteApi }",
+      "export { getRouteApi } from './inner'",
+    ]) {
+      const name = lib.includes('as routeApi') ? 'routeApi' : 'getRouteApi'
+      const files = {
+        '/app/lib.ts': lib,
+        '/app/inner.ts': "export { getRouteApi } from 'toy-router'",
+      }
+      const imports = `import { ${name} } from './lib'`
+      const r = await compile(tamery(imports, `${name}('/x')`), files)
+      expect(r.chunk, lib).toContain(`const { useParams } = ${name}('/x')`)
+      expect(r.kept, lib).toEqual(['confetti'])
+      expect(
+        (await compile(shared(imports, `${name}('/x')`), files)).kept,
+        lib,
+      ).toEqual([])
+    }
+  })
+
+  it('keeps a call with an impure argument, of another export, or through a package an effect', async () => {
+    for (const [imports, api, files] of [
+      [
+        "import { getRouteApi } from 'toy-router'\nimport { id } from './lib'",
+        'getRouteApi(id())',
+        { '/app/lib.ts': "export const id = () => '/x'" },
+      ],
+      ["import { useRouteApi } from 'toy-router'", "useRouteApi('/x')", {}],
+      [
+        "import { getRouteApi } from './lib'",
+        "getRouteApi('/x')",
+        { '/app/lib.ts': 'export function getRouteApi(id) { return { id } }' },
+      ],
+      [
+        "import { getRouteApi } from 'toy-lib'",
+        "getRouteApi('/x')",
+        {
+          '/app/node_modules/toy-lib/index.js':
+            "export { getRouteApi } from 'toy-router'",
+        },
+      ],
+    ] as const) {
+      const r = await compile(tamery(imports, api), files)
+      expect(r.env, api).toContain(`const { useParams } = ${api}`)
+      expect(r.kept, api).toEqual(['confetti', 'useParams'])
+      expect((await compile(shared(imports, api), files)).kept, api).toEqual([
+        'confetti',
+      ])
+    }
   })
 })
