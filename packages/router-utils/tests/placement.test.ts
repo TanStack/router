@@ -1145,6 +1145,24 @@ describe('extracted-export outputs', () => {
     expect(e?.code).not.toContain("see('after')")
   })
 
+  it('extracts an augmented export a bare import precedes (module loading is hoisted: it is no effect before it)', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import './side.css'
+      export function Page() { return 'page' }
+      Page.displayName = 'PageDisplay'
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await extract(code)
+    expect(r.env).toContain("import './side.css'")
+    expect(r.env).not.toContain('displayName')
+    expect(r.env).toContain(
+      "export { Page } from './route.tsx?tsr-split=export~Page'",
+    )
+    const e = await r.extracted('Page')
+    expect(e?.code).toContain("Page.displayName = 'PageDisplay'")
+  })
+
   it('extracts two augmented exports, re-exported in source order', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -2990,6 +3008,23 @@ describe('declarations only split code needs that stay in the route module', () 
     expect(r.diagnostics).toMatchObject([{ code: 'eager-split:state' }])
     expect(r.diagnostics[0]!.message).toContain('`snapshot`')
     expect(r.diagnostics[0]!.message).not.toContain('side effects')
+  })
+
+  it('moves an effectful declaration a bare import follows (module loading is hoisted: no effect stays after it)', async () => {
+    const r = await kept(
+      dedent(`
+        import { createFileRoute } from 'toy-router'
+        import JSConfetti from 'js-confetti'
+        const confetti = new JSConfetti()
+        import './side.css'
+        export const Route = createFileRoute('/')({
+          component: () => confetti.addConfetti(),
+        })
+      `),
+    )
+    expect(r.env).toContain("import './side.css'")
+    expect(r.env).not.toContain('new JSConfetti()')
+    expect(r.diagnostics).toEqual([])
   })
 
   it('reports the same in dev', async () => {

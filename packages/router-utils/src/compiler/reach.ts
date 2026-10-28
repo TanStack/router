@@ -1305,11 +1305,16 @@ export function computePlacement(input: PlacementInput): Placement {
   // the surviving effects a moving cluster is ordered against (asked only
   // when one could move: most modules never need the benign check)
   let survivingEffects: Array<Unit> | null = null
+  // module loading is hoisted: a bare import or a re-export evaluates before
+  // the module body wherever it is written, so it is never an effect before
+  // or after a cluster
   const effectsSurviving = (): Array<Unit> =>
     (survivingEffects ??= units.filter(
       (u) =>
         u.effectful &&
         u.kind !== 'type' &&
+        u.kind !== 'import-effect' &&
+        u.kind !== 'reexport' &&
         unitSurvives(u.id) &&
         !isBenign(u.id),
     ))
