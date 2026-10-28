@@ -29,6 +29,85 @@ describe('RawFactsCache', () => {
     expect(cache.peekRevision('/app/a.ts')?.stale).toBe(false)
   })
 
+  it('marker(): a target without a marker literal is answered from its text, parsed only when its facts are asked', async () => {
+    const files: Record<string, string> = {
+      '/app/a.ts': `export const a = 1\n`,
+      '/app/s.ts': `import 'server-only'\nexport const s = 1\n`,
+      '/app/c.ts': `import x from 'client-only'\nexport const c = x\n`,
+    }
+    const cache = new RawFactsCache({
+      readFile: (p) => Promise.resolve(files[p] ?? null),
+      loadVirtual: () => Promise.resolve(null),
+    })
+    expect(await cache.marker('/app/a.ts')).toBe(null)
+    expect(await cache.marker('/app/missing.ts')).toBe(null)
+    expect(cache.stats(false)).toMatchObject({
+      rawFacts: 1,
+      rawFactsMarkerless: 1,
+      factsReads: 2,
+    })
+    // the scan knew the revision: a compile of the same text publishes its analysis
+    expect(cache.peekRevision('/app/a.ts')?.stale).toBe(false)
+    // the literal is there: parsed, and a bare marker import is the marker
+    expect(await cache.marker('/app/s.ts')).toBe('server-only')
+    // the literal is there but it is not a bare import: no marker (the parse decides)
+    expect(await cache.marker('/app/c.ts')).toBe(null)
+    expect(cache.stats(false)).toMatchObject({
+      rawFacts: 3,
+      rawFactsMarkerless: 1,
+    })
+    // asked again: no read
+    await cache.marker('/app/a.ts')
+    await cache.marker('/app/s.ts')
+    expect(cache.stats(false).factsReads).toBe(6)
+    // the full facts of a scanned target are built when asked, once
+    const facts = await cache.get('/app/a.ts')
+    expect(Object.keys(facts.summary!.exports)).toEqual(['a'])
+    expect(cache.stats(false)).toMatchObject({
+      rawFactsMarkerless: 0,
+      factsReads: 7,
+    })
+    // a change makes the next question read again
+    files['/app/a.ts'] = `import 'server-only'\nexport const a = 2\n`
+    cache.markStale('/app/a.ts')
+    expect(await cache.marker('/app/a.ts')).toBe('server-only')
+  })
+
+  it('an opaque module is not parsed: no summary, its marker from the text, target facts when asked', async () => {
+    const files: Record<string, string> = {
+      '/app/node_modules/lib/index.js': `export const lib = () => 1\n`,
+      '/app/node_modules/marked/index.js': `import 'server-only'\nexport const m = 1\n`,
+      '/app/src/a.ts': `export const a = 1\n`,
+    }
+    const cache = new RawFactsCache({
+      readFile: (p) => Promise.resolve(files[p] ?? null),
+      loadVirtual: () => Promise.resolve(null),
+      opaque: (path) => path.includes('/node_modules/'),
+    })
+    const lib = await cache.get('/app/node_modules/lib/index.js')
+    expect(lib.opaque).toBe(true)
+    expect(lib.summary).toBe(null)
+    expect(await cache.marker('/app/node_modules/lib/index.js')).toBe(null)
+    expect(cache.stats(false)).toMatchObject({ rawFacts: 1, rawFactsOpaque: 1 })
+    // a mock of it asks for its target facts: parsed then, and kept
+    const target = await cache.getTarget('/app/node_modules/lib/index.js')
+    expect(target.opaque).toBeUndefined()
+    expect(target.targetFacts.exportNames).toEqual(['lib'])
+    expect(
+      (await cache.get('/app/node_modules/lib/index.js')).summary,
+    ).not.toBe(null)
+    expect(cache.stats(false)).toMatchObject({ rawFacts: 1, rawFactsOpaque: 0 })
+    // a marker literal is never opaque: the marker is a parse's finding
+    expect(await cache.marker('/app/node_modules/marked/index.js')).toBe(
+      'server-only',
+    )
+    expect(
+      (await cache.get('/app/node_modules/marked/index.js')).opaque,
+    ).toBeUndefined()
+    // the app's own modules are never opaque
+    expect((await cache.get('/app/src/a.ts')).opaque).toBeUndefined()
+  })
+
   it('a change or deletion of a file reaches every identity at its path, and the bookkeeping is bounded by the live files', async () => {
     const files: Record<string, string> = {
       '/app/a.ts': 'export const a = 1\n',

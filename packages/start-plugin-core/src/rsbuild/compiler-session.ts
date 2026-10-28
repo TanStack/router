@@ -32,7 +32,7 @@ import {
   routerPlanners,
 } from '@tanstack/router-plugin/planners'
 import { namesStartSpecifier, startRecognizer } from '../compiler/recognizer'
-import { startCompileScope } from '../compiler/scope'
+import { opaquePackageModule, startCompileScope } from '../compiler/scope'
 import { START_ENV, startPlanners } from '../planners'
 import { HYDRATE_PLANNER, createHydratePlanner } from '../planners/hydrate'
 import { RSC_CSS } from '../planners/rsc-css'
@@ -220,6 +220,7 @@ export class StartRsbuildCompilerSession {
       recognizer: startRecognizer(),
       // every analysis of the session agrees on the marker specifiers
       markerSpecifiers: this.ip?.markerSpecifiers,
+      opaque: opaquePackageModule(this.ip),
     })
     this.caches = createCompilerCaches(this.rawFacts, 'start:rsbuild')
     registerCompilerStats('start:rsbuild:session', this, (o) =>

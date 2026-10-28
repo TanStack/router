@@ -128,6 +128,9 @@ export function startAnalysisOf(
   const values = new ValueAnalysis(file, {
     table,
     resolveImport: importResolverOf(prefetch),
+    // (the map, not the analysis: `cache` is keyed by the analysis, and a
+    // value referring to its key keeps both alive until a full GC)
+    declarations: ctx.analysis.declarations,
   })
   const result: StartAnalysis = {
     values,

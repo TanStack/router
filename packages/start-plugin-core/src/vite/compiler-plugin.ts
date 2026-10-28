@@ -34,6 +34,7 @@ import {
   registerCompilerStats,
   releaseEnvironment,
   resolveDerivedSibling,
+  revision,
   rollupEntryModuleIds,
 } from '@tanstack/router-utils/compiler'
 import { defaultCodeSplitGroupings } from '@tanstack/router-plugin'
@@ -53,7 +54,11 @@ import {
   VITE_ENVIRONMENT_NAMES,
 } from '../constants'
 import { namesStartSpecifier, startRecognizer } from '../compiler/recognizer'
-import { NODE_MODULES_RE, startCompileScope } from '../compiler/scope'
+import {
+  NODE_MODULES_RE,
+  opaquePackageModule,
+  startCompileScope,
+} from '../compiler/scope'
 import { HYDRATE_PLANNER, createHydratePlanner } from '../planners/hydrate'
 import { START_ENV, startPlanners } from '../planners'
 import { FunctionIdAllocator, decodeDevFunctionId } from '../server-fns/ids'
@@ -347,6 +352,7 @@ export function startCompilerPlugin(
       },
       recognizer,
       ...(ip && { markerSpecifiers: ip.markerSpecifiers }),
+      opaque: opaquePackageModule(ip),
     })
     const s: Session = {
       root: config.root,
@@ -1057,7 +1063,9 @@ export function startCompilerPlugin(
             registry.record(identity.canonicalId, facts.serverFns, env.type)
           }
           afterCompile(s, env, id, out, (error) => this.error(error))
-          outputDigests.set(`${environment.name}\0${id}`, digestOf(out.code))
+          if (s.mode === 'dev') {
+            outputDigests.set(`${environment.name}\0${id}`, revision(out.code))
+          }
           if (identity.derived === null && out.code === code) {
             return null
           }

@@ -5,6 +5,7 @@
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { describe, expect, test } from 'vitest'
+import { revision } from '@tanstack/router-utils/compiler'
 import { resolveImportProtectionConfig } from '../../src/import-protection/config'
 import { EdgeIndex, buildTrace } from '../../src/import-protection/graph-trace'
 import {
@@ -96,6 +97,47 @@ describe('traces', () => {
       { file: '/app/src/a.ts', specifier: './b' },
       { file: '/app/src/b.ts' },
     ])
+  })
+
+  test('a recorded offset is located in the raw file while that is the text the edge was judged in', () => {
+    const files: Record<string, string> = {
+      '/app/src/entry.ts': `export const zero = 0\nimport { a } from './a'\n`,
+      '/app/src/a.ts': `import { b } from './b'\n`,
+    }
+    const index = new EdgeIndex((file) => files[file] ?? null)
+    const entry = files['/app/src/entry.ts']!
+    index.set(
+      '/app/src/entry.ts',
+      [
+        {
+          resolved: '/app/src/a.ts',
+          specifier: './a',
+          offset: entry.indexOf("'./a'"),
+        },
+      ],
+      revision(entry),
+    )
+    // judged in another plugin's output: the raw file is not that text
+    index.set(
+      '/app/src/a.ts',
+      [{ resolved: '/app/src/b.ts', specifier: './b', offset: 18 }],
+      revision(`/* rewritten */\n${files['/app/src/a.ts']}`),
+    )
+    const trace = () =>
+      buildTrace(
+        '/app/src/b.ts',
+        graph(chain, ['/app/src/entry.ts']),
+        index,
+        20,
+      )
+    expect(trace()).toEqual([
+      { file: '/app/src/entry.ts', specifier: './a', line: 2, column: 19 },
+      { file: '/app/src/a.ts', specifier: './b' },
+      { file: '/app/src/b.ts' },
+    ])
+    // the file changed since: its offsets mean nothing any more
+    files['/app/src/entry.ts'] = `// edited\n${entry}`
+    expect(trace()[0]).toEqual({ file: '/app/src/entry.ts', specifier: './a' })
   })
 
   test('without a known entry, start at a module nothing imports; survive cycles; cut keeping the importer', () => {

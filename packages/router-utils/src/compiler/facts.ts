@@ -41,6 +41,12 @@ export interface RawFacts {
   rawRevision: string | null
   summary: ModuleSummary | null
   targetFacts: TargetFacts
+  /**
+   * Built from the text without a parse (`RawFactsOptions.opaque`): no
+   * summary, and target facts that are not the module's (`getTarget` parses
+   * when a consumer asks for them).
+   */
+  opaque?: true
 }
 
 export interface RawFactsOptions {
@@ -59,10 +65,32 @@ export interface RawFactsOptions {
   recognizer?: RecognizerTable
   summaryExtras?: SummaryExtraHook
   markerSpecifiers?: Record<string, 'server-only' | 'client-only'>
+  /**
+   * Whether a module is opaque to the summaries, by its path and text (an
+   * ordinary package: its exports carry no value a planner recognises). An
+   * opaque module is not parsed: its summary is null (`unknown` to a
+   * resolver), its marker is read from the text, and its target facts are
+   * parsed only when asked (`getTarget`).
+   */
+  opaque?: (path: string, text: string) => boolean
 }
 
 const isVirtualId = (canonicalId: string): boolean =>
   canonicalId.startsWith('\0') || canonicalId.startsWith('virtual:')
+
+/** The target facts of an opaque module before anyone asks for them: exists, no marker, otherwise unknown (effectful). */
+const OPAQUE_TARGET: Omit<TargetFacts, 'digest'> = {
+  exists: true,
+  marker: null,
+  exportNames: [],
+  stars: [],
+  imports: [],
+  lazyImports: [],
+  esm: false,
+  effectful: true,
+  codeEffects: true,
+  effectProvenance: null,
+}
 
 const MISSING_TARGET: Omit<TargetFacts, 'digest'> = {
   exists: false,
@@ -77,15 +105,17 @@ const MISSING_TARGET: Omit<TargetFacts, 'digest'> = {
   effectProvenance: null,
 }
 
+interface FactsEntry {
+  stale: boolean
+  facts: RawFacts | null
+  pending: Promise<RawFacts> | null
+  /** The revision at which the text holds no marker literal (`marker` answered without a parse). */
+  markerless: string | null
+  pendingMarker: Promise<TargetFacts['marker']> | null
+}
+
 export class RawFactsCache {
-  private readonly entries = new Map<
-    string,
-    {
-      stale: boolean
-      facts: RawFacts | null
-      pending: Promise<RawFacts> | null
-    }
-  >()
+  private readonly entries = new Map<string, FactsEntry>()
   /** Path → canonical ids of `entries` at it (`markStale`/`forget` without a scan). */
   private readonly byPath = new Map<string, Set<string>>()
   /** `TSR_COMPILER_NO_CACHE=facts|targets`: every read rebuilds (measurement knobs). */
@@ -116,10 +146,16 @@ export class RawFactsCache {
     canonicalId: string,
   ): { revision: string | null; stale: boolean } | null {
     const e = this.entries.get(canonicalId)
-    if (!e || !e.facts) {
+    if (!e) {
       return null
     }
-    return { revision: e.facts.rawRevision, stale: e.stale }
+    if (e.facts && !e.stale) {
+      return { revision: e.facts.rawRevision, stale: false }
+    }
+    if (e.markerless !== null) {
+      return { revision: e.markerless, stale: false }
+    }
+    return e.facts ? { revision: e.facts.rawRevision, stale: true } : null
   }
 
   has(canonicalId: string): boolean {
@@ -132,6 +168,8 @@ export class RawFactsCache {
       e.stale = true
       // a read in flight may hold the text from before the event: it is not published
       e.pending = null
+      e.markerless = null
+      e.pendingMarker = null
     }
   }
 
@@ -143,19 +181,14 @@ export class RawFactsCache {
   forget(path: string): void {
     for (const id of [...(this.byPath.get(path) ?? [])]) {
       // a read in flight is not published
-      this.entries.get(id)!.pending = null
+      const e = this.entries.get(id)!
+      e.pending = null
+      e.pendingMarker = null
       this.deleteEntry(id)
     }
   }
 
-  private setEntry(
-    canonicalId: string,
-    e: {
-      stale: boolean
-      facts: RawFacts | null
-      pending: Promise<RawFacts> | null
-    },
-  ): void {
+  private setEntry(canonicalId: string, e: FactsEntry): void {
     if (!this.entries.has(canonicalId)) {
       const path = identify(canonicalId).path
       let ids = this.byPath.get(path)
@@ -191,6 +224,7 @@ export class RawFactsCache {
     for (const [id, e] of this.entries) {
       if (!keep(id)) {
         e.pending = null
+        e.pendingMarker = null
         this.deleteEntry(id)
       }
     }
@@ -200,7 +234,7 @@ export class RawFactsCache {
     if (this.noFacts) {
       return this.isKnownSpecifier(canonicalId)
         ? this.knownFacts(canonicalId)
-        : this.build(canonicalId, await this.read(canonicalId), new Set())
+        : this.build(canonicalId, await this.read(canonicalId))
     }
     let e = this.entries.get(canonicalId)
     if (e && e.facts && !e.stale) {
@@ -209,28 +243,31 @@ export class RawFactsCache {
     }
     if (this.isKnownSpecifier(canonicalId)) {
       const facts = this.knownFacts(canonicalId)
-      this.setEntry(canonicalId, { stale: false, facts, pending: null })
+      this.setEntry(canonicalId, this.entryOf(facts))
       return facts
     }
     if (e?.pending) {
       return e.pending
     }
     if (!e) {
-      e = { stale: false, facts: null, pending: null }
+      e = this.entryOf(null)
       this.setEntry(canonicalId, e)
     }
     const entry = e
     const holder: { p: Promise<RawFacts> | null } = { p: null }
     holder.p = (async () => {
       const text = await this.read(canonicalId)
-      const built = this.build(canonicalId, text, new Set())
+      const built = this.build(canonicalId, text)
       // A file that stops parsing (saved mid-edit) keeps the last facts it
       // parsed to: its importers' decisions stand until it parses again (a
       // changed digest would evict their plans and hot-update modules that
       // cannot accept, e.g. a route tree, into a full reload). A file that
       // never parsed is unknown.
       const facts =
-        text !== null && built.summary === null && entry.facts?.summary
+        text !== null &&
+        built.summary === null &&
+        !built.opaque &&
+        entry.facts?.summary
           ? entry.facts
           : built
       // a newer read may have superseded this one
@@ -256,14 +293,93 @@ export class RawFactsCache {
     analysis: ModuleAnalysis,
   ): RawFacts | null {
     const e = this.entries.get(canonicalId)
-    if (e && e.facts && !e.stale && e.facts.rawRevision === rawRevision) {
+    if (
+      e &&
+      e.facts &&
+      !e.facts.opaque &&
+      !e.stale &&
+      e.facts.rawRevision === rawRevision
+    ) {
       return e.facts
     }
     const facts = this.fromAnalysis(canonicalId, rawRevision, analysis, null)
     if (!this.noFacts) {
-      this.setEntry(canonicalId, { stale: false, facts, pending: null })
+      this.setEntry(canonicalId, this.entryOf(facts))
     }
     return facts
+  }
+
+  private entryOf(facts: RawFacts | null): FactsEntry {
+    return {
+      stale: false,
+      facts,
+      pending: null,
+      markerless: null,
+      pendingMarker: null,
+    }
+  }
+
+  /**
+   * The marker of a target, and nothing else (what every import edge asks of
+   * its target): a text without a marker specifier's literal has no marker
+   * import, so it is not parsed; one with the literal gets its full facts.
+   * Served from the entry's facts when they are current.
+   */
+  async marker(canonicalId: string): Promise<TargetFacts['marker']> {
+    const e = this.entries.get(canonicalId)
+    if (e && !this.noTargets) {
+      if (e.facts && !e.stale) {
+        return e.facts.targetFacts.marker
+      }
+      // (`markerless` and a pending scan are of the text since the last `markStale`)
+      if (e.markerless !== null) {
+        return null
+      }
+      if (e.pendingMarker) {
+        return e.pendingMarker
+      }
+    }
+    if (this.isKnownSpecifier(canonicalId)) {
+      return null
+    }
+    const entry = e ?? this.entryOf(null)
+    if (!e && !this.noTargets) {
+      this.setEntry(canonicalId, entry)
+    }
+    const holder: { p: Promise<TargetFacts['marker']> | null } = { p: null }
+    holder.p = (async () => {
+      const text = await this.read(canonicalId)
+      if (text !== null && this.mayHaveMarker(text)) {
+        if (entry.pendingMarker === holder.p) {
+          entry.pendingMarker = null
+        }
+        return (await this.getTarget(canonicalId)).targetFacts.marker
+      }
+      if (entry.pendingMarker === holder.p) {
+        entry.pendingMarker = null
+        if (text !== null && !this.noTargets) {
+          entry.markerless = revision(text)
+        } else if (!entry.facts && this.entries.get(canonicalId) === entry) {
+          // a missing file is not kept (`forget`)
+          this.deleteEntry(canonicalId)
+        }
+      }
+      return null
+    })()
+    entry.pendingMarker = holder.p
+    return holder.p
+  }
+
+  /** Whether a text can hold a marker import: it contains a marker specifier's literal. */
+  private mayHaveMarker(text: string): boolean {
+    for (const spec of Object.keys(
+      this.opts.markerSpecifiers ?? DEFAULT_MARKERS,
+    )) {
+      if (text.includes(spec)) {
+        return true
+      }
+    }
+    return false
   }
 
   async digestOf(canonicalId: string): Promise<string | null> {
@@ -274,9 +390,23 @@ export class RawFactsCache {
   /** The facts J6 target facts are taken from (`get`, or a fresh read when the target-facts knob is off). */
   async getTarget(canonicalId: string): Promise<RawFacts> {
     if (this.noTargets && !this.isKnownSpecifier(canonicalId)) {
-      return this.build(canonicalId, await this.read(canonicalId), new Set())
+      return this.build(canonicalId, await this.read(canonicalId), true)
     }
-    return this.get(canonicalId)
+    const facts = await this.get(canonicalId)
+    if (!facts.opaque) {
+      return facts
+    }
+    // an opaque module's target facts are asked for (a mock of it): parsed now, once
+    const e = this.entries.get(canonicalId)
+    if (e?.pending) {
+      return e.pending
+    }
+    const text = await this.read(canonicalId)
+    const full = this.build(canonicalId, text, true)
+    if (e && this.entries.get(canonicalId) === e && e.facts === facts) {
+      e.facts = full
+    }
+    return full
   }
 
   async targetDigestOf(canonicalId: string): Promise<string> {
@@ -289,11 +419,15 @@ export class RawFactsCache {
     let stale = 0
     let pending = 0
     let empty = 0
+    let markerless = 0
+    let opaque = 0
     let bytes = 0
     for (const e of this.entries.values()) {
       stale += e.stale ? 1 : 0
       pending += e.pending ? 1 : 0
       empty += e.facts ? 0 : 1
+      markerless += !e.facts && e.markerless !== null ? 1 : 0
+      opaque += e.facts?.opaque ? 1 : 0
       if (withBytes && e.facts) {
         bytes += approxBytes(e.facts)
       }
@@ -304,6 +438,8 @@ export class RawFactsCache {
       rawFactsStale: stale,
       rawFactsPending: pending,
       rawFactsEmpty: empty,
+      rawFactsMarkerless: markerless,
+      rawFactsOpaque: opaque,
       ...this.counters,
       ...(withBytes && { rawFactsBytes: bytes }),
     }
@@ -364,10 +500,11 @@ export class RawFactsCache {
     return this.opts.readFile(id.path)
   }
 
+  /** The facts of a text; `full` parses an opaque module too (its target facts are asked for). */
   private build(
     canonicalId: string,
     text: string | null,
-    _seen: Set<string>,
+    full = false,
   ): RawFacts {
     if (text === null) {
       return {
@@ -379,6 +516,19 @@ export class RawFactsCache {
     }
     const id = identify(canonicalId)
     const rev = revision(text)
+    if (
+      !full &&
+      this.opts.opaque?.(id.path, text) &&
+      !this.mayHaveMarker(text)
+    ) {
+      return {
+        canonicalId,
+        rawRevision: rev,
+        summary: null,
+        targetFacts: { ...OPAQUE_TARGET, digest: digestOf(OPAQUE_TARGET) },
+        opaque: true,
+      }
+    }
     // a virtual module without an extension is JavaScript; a file without a language is not
     const parsed =
       id.lang === null && !isVirtualId(canonicalId)

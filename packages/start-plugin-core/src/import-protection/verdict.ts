@@ -153,4 +153,6 @@ export interface RspackImportProtectionBuildInfo {
   violations: Array<EdgeViolation>
   /** The module's resolved edges (the trace steps through a restored module). */
   edges?: Array<IndexedEdge>
+  /** The revision of the input the edges were judged in (their positions are located in the raw file at that revision). */
+  revision?: string
 }

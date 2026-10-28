@@ -216,7 +216,7 @@ Router-plugin paths below are under `router-plugin/tests/`; `pages/` means `inte
   needs.
 - **The split chunk copies a pure exported binding** (two instances: the route module's or its extracted module's,
   which importers of the route file get, and the chunk's own copy). By rule since R77 (2026-10-28; `router-plugin/
-  ARCHITECTURE-CODE-SPLITTING.md`): a chunk never imports the extracted module the route module re-exports, so the
+ARCHITECTURE-CODE-SPLITTING.md`): a chunk never imports the extracted module the route module re-exports, so the
   export stays lazy whatever the bundler's chunk assignment (Rolldown < 1.1.5, a user `manualChunks` group), at the
   price of a second instance of a stateless function, class or component; state, effects and augmented bindings are
   never copied. SPEC J2.4 (amended). Pins: `react-refresh-route-components.test.ts` and `known-bugs-dev-server.test.ts`
