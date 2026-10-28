@@ -33,7 +33,6 @@ export type SplitShape = 'init' | 'method' | 'shorthand'
 export interface SplitDecision {
   /** The route option (`component`, `loader`, …). */
   key: string
-  option: RouteOption
   /** The group this option loads with. */
   group: ReadonlyArray<string>
   /** `component`, `component~loader`: the chunk's owned query value. */
@@ -74,13 +73,10 @@ export interface NotSplit {
   key: string
   reason: NotSplitReason
   range: Range
-  /** The binding named in the warning, when the value is one. */
-  name: string | null
 }
 
 export interface SplitPlan {
   route: RouteModuleInfo
-  groupings: CodeSplitGroupings
   decisions: Array<SplitDecision>
   notSplit: Array<NotSplit>
   warnings: Array<Diagnostic>
@@ -401,7 +397,6 @@ function computeSplitPlan(
     }
     return {
       route,
-      groupings,
       decisions,
       notSplit,
       warnings,
@@ -436,7 +431,6 @@ function computeSplitPlan(
   if (!splitting) {
     return {
       route,
-      groupings,
       decisions,
       notSplit,
       warnings,
@@ -469,7 +463,6 @@ function computeSplitPlan(
           key,
           reason: target.refused,
           range: { start: option.value.start, end: option.value.end },
-          name: null,
         })
         continue
       }
@@ -484,7 +477,6 @@ function computeSplitPlan(
           key,
           reason: 'this-reference',
           range: target.region,
-          name: null,
         })
         continue
       }
@@ -504,7 +496,6 @@ function computeSplitPlan(
           key,
           reason: 'reassigned',
           range: target.region,
-          name: ctx.symbols.name(valueSym),
         })
         continue
       }
@@ -522,13 +513,11 @@ function computeSplitPlan(
           key,
           reason: fallback.reason,
           range: target.region,
-          name: valueSym !== null ? ctx.symbols.name(valueSym) : null,
         })
         continue
       }
       const decision: SplitDecision = {
         key,
-        option,
         group,
         groupKey,
         shape: target.shape,
@@ -558,7 +547,6 @@ function computeSplitPlan(
   }
   return {
     route,
-    groupings,
     decisions,
     notSplit,
     warnings,

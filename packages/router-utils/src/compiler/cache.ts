@@ -303,18 +303,6 @@ export class DependencyLedger {
   discard(): void {
     this.index.dropInFlight(this.key)
   }
-
-  /** Paths to watch (host `addDependency`). */
-  paths(): Array<string> {
-    const out = new Set<string>()
-    for (const fp of this.entries) {
-      const p = fingerprintPath(fp)
-      if (p !== null) {
-        out.add(p)
-      }
-    }
-    return [...out]
-  }
 }
 
 /** One importer's resolutions: specifier → canonical id, or the resolver's pending answer. */

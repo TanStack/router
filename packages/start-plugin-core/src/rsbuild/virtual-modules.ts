@@ -43,8 +43,8 @@ export interface VirtualModuleState {
   updateManifest: (clientBuild: NormalizedClientBuild) => void
   /** Call to update server fn resolver content after compilation discovers fns */
   updateServerFnResolver: () => void
-  /** Number of times the server fn resolver was written for an environment */
-  getServerFnResolverWriteCount: (environmentName: string) => number
+  /** Number of times the server fn resolver module was written (the server environment's) */
+  getServerFnResolverWriteCount: () => number
   /** Get the virtual path for a given module ID */
   getVirtualPath: (moduleId: string) => string
   /** Writes a virtual module file of an environment (queued until its compiler is ready). */
@@ -128,7 +128,6 @@ function serializeStartManifestData(
 function generateManifestModuleBuild(
   clientBuild: NormalizedClientBuild | undefined,
   publicBase: string,
-  _devClientEntryUrl: string,
   inlineCss: InlineCssOptions,
   scriptFormat: ScriptFormat,
 ): string {
@@ -227,7 +226,6 @@ export interface RegisterVirtualModulesOptions {
   getConfig: GetConfigFn
   /** The server fn resolver module content of the current registry. */
   resolverModule: () => string
-  ssrIsProvider: boolean
   serializationAdapters: Array<SerializationAdapterConfig> | undefined
   /**
    * Get the URL at which the rsbuild dev server serves the client entry JS.
@@ -294,31 +292,25 @@ export function registerVirtualModules(
   const pendingWrites = new Map<string, Map<string, string>>()
 
   let clientBuild: NormalizedClientBuild | undefined
-  const lastResolverContentByEnvironment: Record<string, string | undefined> =
-    {}
-  const resolverWriteCountByEnvironment: Record<string, number> = {}
+  // the server fn resolver module lives in the server environment only
+  let lastResolverContent: string | undefined
+  let resolverWriteCount = 0
   const hasSerializationAdapters = Boolean(opts.serializationAdapters?.length)
 
-  function needsServerFnResolver(environmentName: string): boolean {
-    return environmentName === RSBUILD_ENVIRONMENT_NAMES.server
-  }
-
-  function generateResolverContent(_environmentName: string): string {
-    return opts.resolverModule()
-  }
-
-  function writeResolverContent(environmentName: string, content: string) {
-    const changed =
-      content !== lastResolverContentByEnvironment[environmentName]
+  function writeResolverContent(content: string) {
+    const changed = content !== lastResolverContent
     if (changed) {
-      lastResolverContentByEnvironment[environmentName] = content
+      lastResolverContent = content
       // the count tells the resolver rebuild whether the content it last
       // rebuilt from is still current
-      resolverWriteCountByEnvironment[environmentName] =
-        (resolverWriteCountByEnvironment[environmentName] ?? 0) + 1
+      resolverWriteCount++
     }
     if (!isDev || changed) {
-      tryWriteModule(environmentName, pathsOf().serverFnResolver, content)
+      tryWriteModule(
+        RSBUILD_ENVIRONMENT_NAMES.server,
+        pathsOf().serverFnResolver,
+        content,
+      )
     }
   }
 
@@ -397,7 +389,6 @@ export function registerVirtualModules(
         : generateManifestModuleBuild(
             clientBuild,
             resolvedStartConfig.basePaths.publicBase,
-            devClientEntryUrl,
             startConfig.server.build.inlineCss,
             opts.scriptFormat,
           )
@@ -406,8 +397,8 @@ export function registerVirtualModules(
     }
 
     // Server fn resolver — SSR and provider environments
-    if (needsServerFnResolver(environmentName)) {
-      content[paths.serverFnResolver] = generateResolverContent(environmentName)
+    if (isServerEnv) {
+      content[paths.serverFnResolver] = opts.resolverModule()
     } else {
       // Client doesn't need the resolver but needs a valid module
       content[paths.serverFnResolver] = 'export {}'
@@ -536,13 +527,9 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
 
     generateManifestContent(newClientBuild: NormalizedClientBuild): string {
       const { resolvedStartConfig, startConfig } = opts.getConfig()
-      const devClientEntryUrl = opts.getDevClientEntryUrl(
-        resolvedStartConfig.basePaths.publicBase,
-      )
       return generateManifestModuleBuild(
         newClientBuild,
         resolvedStartConfig.basePaths.publicBase,
-        devClientEntryUrl,
         !isDev
           ? startConfig.server.build.inlineCss
           : { enabled: false, transformAssets: false },
@@ -583,22 +570,11 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
     },
 
     updateServerFnResolver() {
-      const updateEnvironment = (environmentName: string) => {
-        if (!needsServerFnResolver(environmentName)) {
-          return
-        }
-
-        writeResolverContent(
-          environmentName,
-          generateResolverContent(environmentName),
-        )
-      }
-
-      updateEnvironment(RSBUILD_ENVIRONMENT_NAMES.server)
+      writeResolverContent(opts.resolverModule())
     },
 
-    getServerFnResolverWriteCount(environmentName: string): number {
-      return resolverWriteCountByEnvironment[environmentName] ?? 0
+    getServerFnResolverWriteCount(): number {
+      return resolverWriteCount
     },
 
     getVirtualPath(moduleId: string): string {

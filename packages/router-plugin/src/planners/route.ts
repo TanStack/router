@@ -7,7 +7,7 @@
  * it with its kind and source ranges. Computed once per planning round and
  * shared by both planners through a memo keyed by the round's rewrite set.
  */
-import { digestOf, unwrapExpression } from '@tanstack/router-utils/compiler'
+import { unwrapExpression } from '@tanstack/router-utils/compiler'
 import type {
   ClassifiedRef,
   Diagnostic,
@@ -36,8 +36,7 @@ const FACTORIES: ReadonlySet<string> = new Set<RouteFactory>([
 ])
 
 /** Packages whose `createFileRoute` & co. are the router's. */
-export const ROUTER_PACKAGE_RE =
-  /^@tanstack\/(react|solid|vue)-(router|start)(\/|$)/
+export const ROUTER_PACKAGE_RE = /^@tanstack\/(react|solid|vue)-router(\/|$)/
 
 /**
  * The router's exports whose call is pure when its arguments are (R79), per
@@ -99,7 +98,7 @@ export interface RouteOption {
 }
 
 export type OptionsResolution =
-  | { kind: 'object'; node: Node; unit: Unit }
+  | { kind: 'object'; node: Node }
   | { kind: 'opaque'; reason: 'imported' | 'call' | 'other' }
   /** `createRootRoute()`: no options to split or remove */
   | { kind: 'none' }
@@ -415,14 +414,14 @@ function recognize(ctx: PlanContext): RouteRecognition {
   } else {
     const arg = unwrapExpression(argument)
     if (arg.type === 'ObjectExpression') {
-      options = { kind: 'object', node: arg, unit: routeUnit }
+      options = { kind: 'object', node: arg }
     } else if (arg.type === 'Identifier') {
       const b = file.referenceOf(arg)?.binding ?? null
       const sym = b ? symbols.ofBinding(b) : null
       const decl = sym !== null ? declaratorOf(ctx, sym) : null
       const init = decl ? unwrapExpression(decl.init) : null
       if (decl && init && init.type === 'ObjectExpression') {
-        options = { kind: 'object', node: init, unit: decl.unit }
+        options = { kind: 'object', node: init }
         optionsUnit = decl.unit
       } else if (sym !== null && symbols.isImport(sym)) {
         options = { kind: 'opaque', reason: 'imported' }
@@ -530,9 +529,9 @@ export function routerRouteId(routeId: string): string {
   return routeId === '/__root' ? '__root__' : routeId
 }
 
-/** Digest of a registry entry, for the route-registry dependency fingerprint. */
+/** The route-registry dependency fingerprint of a file: its route id (the entry's only fact). */
 export function routeEntryDigest(entry: RouteEntryFacts | null): string | null {
-  return entry ? digestOf({ routeId: entry.routeId }) : null
+  return entry ? entry.routeId : null
 }
 
 /** Whether `value` means "fall back to the parent" (`undefined`, `null`, a boolean): kept as written. */

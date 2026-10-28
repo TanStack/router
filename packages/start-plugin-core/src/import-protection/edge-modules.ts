@@ -191,9 +191,9 @@ export interface EdgeModuleContent {
   bare: boolean
 }
 
-/** The key of an edge module: its edge key and a hash of its content (a new content is a new module id). */
+/** The key of an edge module: a digest of its content, edge key included (a new content is a new module id). */
 export function edgeModuleKey(content: EdgeModuleContent): string {
-  return `${content.edgeKey}.${digestOf(content).slice(0, 10)}`
+  return digestOf(content)
 }
 
 /** Export names a mock can declare (`export { e as "…" }` needs well-formed Unicode). */

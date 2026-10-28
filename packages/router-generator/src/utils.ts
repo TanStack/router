@@ -54,20 +54,6 @@ export class RoutePrefixMap {
     }
     return null
   }
-
-  /**
-   * Check if a route exists at the given path.
-   */
-  has(routePath: string): boolean {
-    return this.prefixToRoute.has(routePath)
-  }
-
-  /**
-   * Get a route by exact path.
-   */
-  get(routePath: string): RouteNode | undefined {
-    return this.prefixToRoute.get(routePath)
-  }
 }
 
 export function multiSortBy<T>(
@@ -725,19 +711,4 @@ export function removeLastSegmentFromPath(routePath: string = '/'): string {
   const segments = routePath.split('/')
   segments.pop() // Remove the last segment
   return segments.join('/')
-}
-
-/**
- * Find parent route using RoutePrefixMap for O(k) lookups instead of O(n).
- */
-export function hasParentRoute(
-  prefixMap: RoutePrefixMap,
-  node: RouteNode,
-  routePathToCheck: string | undefined,
-): RouteNode | null {
-  if (!routePathToCheck || routePathToCheck === '/') {
-    return null
-  }
-
-  return prefixMap.findParent(routePathToCheck)
 }

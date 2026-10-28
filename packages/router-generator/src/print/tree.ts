@@ -72,7 +72,6 @@ export function printTree(model: TreeModel, options: PrintTreeOptions) {
   const { style, disableTypes } = options
   const q = (value: string) => lit(value, style.quote)
   const semi = style.semicolons ? ';' : ''
-  const memberSemi = style.semicolons ? ';' : ''
   const runtime = new Set<'createFileRoute' | 'lazyRouteComponent' | 'lazyFn'>()
 
   const specifierFor = (file: string) => {
@@ -180,7 +179,7 @@ export function printTree(model: TreeModel, options: PrintTreeOptions) {
         `interface ${name} {\n${route.children
           .map(
             (child) =>
-              `  ${child.variableName}Route: typeof ${resolvedName(child)}${memberSemi}`,
+              `  ${child.variableName}Route: typeof ${resolvedName(child)}${semi}`,
           )
           .join('\n')}\n}`,
       )

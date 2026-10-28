@@ -108,7 +108,7 @@ describe('rules', () => {
     const { out } = await a.compile('src/a.ts', 'client')
     expect(edgeImports(out!.code)).toHaveLength(1)
     expect(out!.code).toMatch(
-      /^import \{ secret \} from 'tanstack-start-ip:client\/edge\.[\w-]+\.[\w-]+'\n/,
+      /^import \{ secret \} from 'tanstack-start-ip:client\/edge\.[\w-]+'\n/,
     )
     expect(rec.calls).toHaveLength(1)
     const info = rec.calls[0]!

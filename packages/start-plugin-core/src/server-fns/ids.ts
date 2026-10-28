@@ -75,14 +75,6 @@ export class FunctionIdAllocator {
 
   constructor(private readonly generate: GenerateFunctionId | undefined) {}
 
-  has(token: string): boolean {
-    return this.final.has(token)
-  }
-
-  get(token: string): string | undefined {
-    return this.final.get(token)
-  }
-
   /** Allocates the entries of one rank (those not yet allocated), in sorted key order. */
   allocate(entries: Array<ServerFnKey>): void {
     const sorted = [...entries].sort(

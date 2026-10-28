@@ -12,7 +12,6 @@ import {
   countSlashSeparatedParts,
   createTokenRegex,
   determineNodePath,
-  hasParentRoute,
   isSegmentPathless,
   multiSortBy,
   removeGroups,
@@ -115,7 +114,7 @@ function handleNode(
   acc: Accumulator,
   prefixMap: RoutePrefixMap,
 ) {
-  let parentRoute = hasParentRoute(prefixMap, node, node.routePath)
+  let parentRoute = node.routePath ? prefixMap.findParent(node.routePath) : null
 
   // Check routeNodesByPath for a closer parent that may not be in prefixMap
   // (the prefixMap excludes lazy routes, while the routes the tree creates
@@ -485,7 +484,6 @@ export function buildTreeModel(input: TreeModelInput): TreeModel {
       filePath: rootNode.filePath,
       routePath: rootNode.routePath ?? `/${rootPathId}`,
       pieces: piecesOf(`/${rootPathId}`),
-      props: input.propsOf(rootNode),
     },
     routes,
     children: ownersLast(acc.routeTree.map((node) => models.get(node)!)),

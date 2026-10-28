@@ -52,11 +52,6 @@ export interface RawFacts {
 export interface RawFactsOptions {
   readFile: (path: string) => Promise<string | null>
   loadVirtual: (id: string) => Promise<string | null>
-  /** Resolves a relative import of a target to a canonical id (effect classification follows them). */
-  resolveRelative?: (
-    specifier: string,
-    importerCanonicalId: string,
-  ) => Promise<string | null>
   /** Whether a bare package specifier is side-effect free (`sideEffects: false`); unknown → effectful. */
   packageSideEffectFree?: (
     specifier: string,
@@ -302,7 +297,7 @@ export class RawFactsCache {
     ) {
       return e.facts
     }
-    const facts = this.fromAnalysis(canonicalId, rawRevision, analysis, null)
+    const facts = this.fromAnalysis(canonicalId, rawRevision, analysis)
     if (!this.noFacts) {
       this.setEntry(canonicalId, this.entryOf(facts))
     }
@@ -566,14 +561,13 @@ export class RawFactsCache {
       markerSpecifiers: this.opts.markerSpecifiers,
       pureCalls: this.opts.recognizer?.pureCalls,
     })
-    return this.fromAnalysis(canonicalId, rev, analysis, null)
+    return this.fromAnalysis(canonicalId, rev, analysis)
   }
 
   private fromAnalysis(
     canonicalId: string,
     rawRevision: string,
     analysis: ModuleAnalysis,
-    _unused: null,
   ): RawFacts {
     const summary = buildSummary(
       analysis,

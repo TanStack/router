@@ -31,15 +31,7 @@ export class WarningLedger {
     return true
   }
 
-  reset(path?: string): void {
-    if (path === undefined) {
-      this.seen.clear()
-      return
-    }
-    for (const key of this.seen) {
-      if (key.startsWith(`${path}\u0000`)) {
-        this.seen.delete(key)
-      }
-    }
+  reset(): void {
+    this.seen.clear()
   }
 }

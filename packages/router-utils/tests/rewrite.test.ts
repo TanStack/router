@@ -524,8 +524,6 @@ describe('claims, homes and substitution', () => {
       scope: 'all-outputs',
       by: 'env',
     })
-    expect(ctx.rewrites.claimLive(region, 'env')).toBe(false)
-    expect(ctx.rewrites.claimLive(region, h)).toBe(false)
     const plan = e.freeze()
     expect(e.render(h).code).toBe('export {}\n')
     expect(plan.edges[h]).toEqual([])

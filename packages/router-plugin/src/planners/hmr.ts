@@ -93,7 +93,6 @@ export function routeHmrPlanner(): Planner {
           .map((d) => d.region) ?? []
       const round = roundOf(ctx)
       const { names, symbols } = ctx
-      const code = ctx.analysis.source.code
       for (const option of route.props) {
         if (
           option.key === null ||
@@ -134,9 +133,9 @@ export function routeHmrPlanner(): Planner {
             record(name)
             continue
           }
-          const already = round.renamed.get(sym)
-          if (already !== undefined) {
-            record(symbols.name(already))
+          const renamed = ctx.nameOf(sym)
+          if (renamed !== name) {
+            record(renamed)
             continue
           }
           const units = ctx.t1.declaringUnits.get(sym) ?? []
@@ -157,7 +156,6 @@ export function routeHmrPlanner(): Planner {
             'route-hmr',
             splitRegions,
           )
-          round.renamed.set(sym, next.sym)
           record(next.name)
           continue
         }
@@ -210,7 +208,6 @@ export function routeHmrPlanner(): Planner {
           by: 'route-hmr',
         })
         round.unsplit[key] = hoisted.name
-        void code
       }
     },
     plan(ctx) {

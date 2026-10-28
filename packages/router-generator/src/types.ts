@@ -114,7 +114,6 @@ export interface TreeModel {
     readonly filePath: string
     readonly routePath: string
     readonly pieces: Readonly<Partial<Record<RoutePieceName, string>>>
-    readonly props: RouteProps | undefined
   }
   /** Every route but the root, in a deterministic order (parents before children within a depth). */
   readonly routes: ReadonlyArray<ModelRoute>

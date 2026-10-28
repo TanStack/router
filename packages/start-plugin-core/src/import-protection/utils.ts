@@ -55,20 +55,6 @@ export function normalizeFilePath(id: string): string {
   return result
 }
 
-/** Get a value from a Map, creating it with `factory` if absent. */
-export function getOrCreate<TKey, TValue>(
-  map: Map<TKey, TValue>,
-  key: TKey,
-  factory: () => TValue,
-): TValue {
-  let value = map.get(key)
-  if (value === undefined) {
-    value = factory()
-    map.set(key, value)
-  }
-  return value
-}
-
 /** Make a path relative to `root`, keeping non-rooted paths as-is. */
 export function relativizePath(p: string, root: string): string {
   if (!p.startsWith(root)) return p

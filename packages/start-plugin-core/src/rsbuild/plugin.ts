@@ -2,6 +2,7 @@ import { existsSync, readdirSync, realpathSync, statSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { joinURL } from 'ufo'
+import { rebuildModules } from '@tanstack/router-utils/compiler'
 import {
   applyResolvedBaseAndOutput,
   applyResolvedRouterBasepath,
@@ -78,7 +79,6 @@ export function tanStackStartRsbuild(
     parseConfig: parseStartConfig,
   })
   const { getConfig, resolvedStartConfig } = configContext
-  const ssrIsProvider = corePluginOpts.ssrIsProvider
   const scriptFormat = rsbuildClientOutputSchema.parse(
     startPluginOpts.rsbuild?.client?.output ?? 'module',
   ) satisfies ScriptFormat
@@ -342,7 +342,6 @@ export function tanStackStartRsbuild(
         getRoot: () => resolvedStartConfig.root,
         getConfig,
         resolverModule: () => compiler.resolverModule(),
-        ssrIsProvider,
         serializationAdapters: corePluginOpts.serializationAdapters,
         getDevClientEntryUrl: (publicBase: string) =>
           joinURL(publicBase, RSBUILD_CLIENT_ASSETS_DIR, 'js/index.js'),
@@ -357,7 +356,6 @@ export function tanStackStartRsbuild(
             return
           }
 
-          const environmentName = utils.environment.name
           config.plugins.push({
             apply(compiler: RspackCompiler) {
               tapServerFnResolverRebuild(compiler, {
@@ -366,13 +364,12 @@ export function tanStackStartRsbuild(
                   virtualModuleState.updateServerFnResolver()
                 },
                 getResolverWriteCount: () =>
-                  virtualModuleState.getServerFnResolverWriteCount(
-                    environmentName,
-                  ),
+                  virtualModuleState.getServerFnResolverWriteCount(),
                 rebuildResolver: (compilation) =>
-                  rebuildModulesContaining(
+                  rebuildModules(
                     compilation,
-                    virtualModuleState.serverFnResolverPath,
+                    new Set([virtualModuleState.serverFnResolverPath]),
+                    (r) => r,
                   ),
               })
             },
@@ -548,13 +545,12 @@ export function tanStackStartRsbuild(
                     virtualModuleState.updateServerFnResolver()
                   },
                   getResolverWriteCount: () =>
-                    virtualModuleState.getServerFnResolverWriteCount(
-                      RSBUILD_ENVIRONMENT_NAMES.server,
-                    ),
+                    virtualModuleState.getServerFnResolverWriteCount(),
                   rebuildResolver: (compilation) =>
-                    rebuildModulesContaining(
+                    rebuildModules(
                       compilation,
-                      virtualModuleState.serverFnResolverPath,
+                      new Set([virtualModuleState.serverFnResolverPath]),
+                      (r) => r,
                     ),
                 })
               },
@@ -581,9 +577,10 @@ export function tanStackStartRsbuild(
 
                       virtualModuleState.updateManifest(clientBuild)
 
-                      await rebuildModulesContaining(
+                      await rebuildModules(
                         compilation,
-                        virtualModuleState.manifestPath,
+                        new Set([virtualModuleState.manifestPath]),
+                        (r) => r,
                       )
                     },
                   )
@@ -795,31 +792,6 @@ function seedResolveModules(
       resolveModules.push(entry)
     }
   }
-}
-
-function rebuildModulesContaining(
-  compilation: RspackCompilationExtended,
-  identifierFragment: string,
-): Promise<void> {
-  const rebuilds: Array<Promise<void>> = []
-  for (const mod of compilation.modules) {
-    if (!mod.identifier().includes(identifierFragment)) {
-      continue
-    }
-
-    rebuilds.push(
-      new Promise<void>((resolve, reject) => {
-        compilation.rebuildModule(mod, (err: Error | null) => {
-          if (err) reject(err)
-          else resolve()
-        })
-      }),
-    )
-  }
-
-  return rebuilds.length === 0
-    ? Promise.resolve()
-    : Promise.all(rebuilds).then(() => undefined)
 }
 
 /**

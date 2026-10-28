@@ -57,7 +57,7 @@ export interface CompileRequest {
   /** The bundler's module id (path with query). */
   id: string
   code: string
-  env: { name: string; type: 'client' | 'server'; routerSplit?: boolean }
+  env: { name: string; type: 'client' | 'server' }
   wantMap: boolean
 }
 
@@ -122,9 +122,12 @@ export class RouterCompiler {
     this.planners = routerPlanners()
     const internals = contextInternals(opts.context)
     this.warnings = internals.warnings
+    const readFile = (p: string) =>
+      fs.promises.readFile(p, 'utf8').catch(() => null)
+    const loadVirtual = () => Promise.resolve(null)
     const rawFacts = new RawFactsCache({
-      readFile: (p) => fs.promises.readFile(p, 'utf8').catch(() => null),
-      loadVirtual: () => Promise.resolve(null),
+      readFile,
+      loadVirtual,
       // the router's pure APIs (R79)
       recognizer: { ...EMPTY_RECOGNIZER, pureCalls: routerPureCalls() },
     })
@@ -138,8 +141,8 @@ export class RouterCompiler {
     )
     this.host = {
       resolve: opts.resolve ?? (() => Promise.resolve(null)),
-      readFile: (p) => fs.promises.readFile(p, 'utf8').catch(() => null),
-      loadVirtual: () => Promise.resolve(null),
+      readFile,
+      loadVirtual,
       rawFacts,
       routes: this.registry,
       services: { routes: this.registry },
@@ -180,7 +183,7 @@ export class RouterCompiler {
       bundler: this.bundler,
       framework: this.plannerConfig.framework,
       conditions: [],
-      routerSplit: env.routerSplit ?? true,
+      routerSplit: true,
     }
   }
 

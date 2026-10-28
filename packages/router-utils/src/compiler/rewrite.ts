@@ -273,11 +273,6 @@ export class RewriteSet {
     return tree
   }
 
-  /** Whether a claim is live in `output` (its region's occurrence renders there: an erased ancestor suppresses it). */
-  claimLive(region: RegionId, output: OutputId): boolean {
-    return this.tree(output).hasClaim(region)
-  }
-
   liveness(output: OutputId): LivenessView {
     const tree = this.tree(output)
     return {

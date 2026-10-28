@@ -22,7 +22,7 @@ import { ExportResolver } from './resolve'
 import { fingerprintSourceFor, planCacheFor, resolveForAnalysis } from './host'
 import { registerCompilerStats } from './stats'
 import { VERIFY_OUTPUTS, verifyPlan } from './verify'
-import type { CacheEntry, PlanCache } from './cache'
+import type { CacheEntry } from './cache'
 import type {
   EmitPlan,
   EnvInfo,
@@ -45,8 +45,6 @@ import type {
 } from './host'
 
 export const MAX_ATTEMPTS = 3
-
-/** An attempt whose snapshot moved: compile again. */
 
 /** The caches of one compiler session; `label` names them in `compilerStats()`. */
 export function createCompilerCaches(
@@ -169,7 +167,6 @@ export async function compileModule(
           tier0Only,
           host,
           caches,
-          cache,
           ledger,
           verdictMemo,
           rev,
@@ -302,7 +299,10 @@ function emitFrom(
     edges: plan.edges[requested] ?? [],
     facts: plan.facts,
     diagnostics: plan.diagnostics,
-    dependencies: dependencyPaths(plan, caches),
+    // only the Rspack / webpack hosts read them (`addDependency`), once per compile: computed on demand
+    get dependencies() {
+      return dependencyPaths(plan, caches)
+    },
     // only the Rsbuild session reads it, once per compile: computed on demand
     get fingerprint() {
       return planFingerprint(entry)
@@ -369,7 +369,6 @@ async function runAttempt(
   tier0Only: boolean,
   host: HostServices,
   caches: CompilerCaches,
-  cache: PlanCache,
   ledger: DependencyLedger,
   verdictMemo: Map<string, Promise<unknown>>,
   rev: string,
@@ -609,7 +608,13 @@ async function runAttempt(
         targetFacts: targetFactsOf,
         targetMarker: targetMarkerOf,
         substitute: (edgeKey, specifier) => {
-          substituteSpecifier(recipe, edgeKey, specifier, input.code)
+          // one logical edge: every record of the key (a Tier 0 plan keeps
+          // one per statement)
+          for (const edge of emitPlan.edges[output] ?? []) {
+            if (edge.edgeKey === edgeKey) {
+              substituteSpecifier(recipe, edge, specifier, input.code)
+            }
+          }
         },
         memo: <T>(k: string, compute: () => Promise<T>): Promise<T> => {
           let p0 = verdictMemo.get(k) as Promise<T> | undefined
@@ -624,7 +629,6 @@ async function runAttempt(
       await p.policy(emitPlan, output, emitPlan.edges[output] ?? [], ctx)
     }
   }
-  void cache
   return { kind: 'plan', plan: emitPlan }
 }
 
@@ -643,40 +647,12 @@ function tier0Plan(
   ]
   const edgeKey = (raw: string, form: string) =>
     edgeKeyOf(env.name, env.layer, identity.canonicalId, raw, form)
-  const mark = (range: { start: number; end: number }, k: string) => {
-    for (let i = 0; i < segments.length; i++) {
-      const s = segments[i]!
-      if (
-        s.k === 'slice' &&
-        s.start <= range.start &&
-        s.end >= range.end &&
-        s.edgeKey === undefined
-      ) {
-        const parts: typeof segments = []
-        if (s.start < range.start) {
-          parts.push({ k: 'slice', start: s.start, end: range.start })
-        }
-        parts.push({
-          k: 'slice',
-          start: range.start,
-          end: range.end,
-          edgeKey: k,
-        })
-        if (range.end < s.end) {
-          parts.push({ k: 'slice', start: range.end, end: s.end })
-        }
-        segments.splice(i, 1, ...parts)
-        return
-      }
-    }
-  }
   for (const imp of t0.imports) {
     if (imp.typeOnly) {
       continue
     }
     const form = imp.bare ? 'bare' : 'static'
     const k = edgeKey(imp.specifier, form)
-    mark(imp.specifierRange, k)
     // binding edge iff a specifier is used as a value (an import whose
     // bindings are unused, or only used as types, is an evaluation edge)
     const names = t0.importEdgeNames(imp)
@@ -699,7 +675,6 @@ function tier0Plan(
     }
     const form = re.kind === 'star' ? 'star' : 'reexport'
     const k = edgeKey(re.specifier, form)
-    mark(re.specifierRange, k)
     edges.env!.push({
       output: 'env',
       importerId: identity.canonicalId,
@@ -715,7 +690,6 @@ function tier0Plan(
   }
   for (const dyn of t0.dynamicEdges) {
     const k = edgeKey(dyn.specifier, dyn.form)
-    mark(dyn.specifierRange, k)
     edges.env!.push({
       output: 'env',
       importerId: identity.canonicalId,
@@ -798,6 +772,7 @@ function withConfig(plan: AnalysisPlan, config: unknown): PlanContext {
     keep: (sym) => plan.keep(sym),
     setRouteModule: () => plan.setRouteModule(),
     liveness: (output) => plan.liveness(output),
+    nameOf: (sym) => plan.nameOf(sym),
     renameRefs: (sym, to, scope, by, except) =>
       plan.renameRefs(sym, to, scope, by, except),
     setFacts: (planner, data) => plan.setFacts(planner, data),

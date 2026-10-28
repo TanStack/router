@@ -9,6 +9,7 @@ import type {
   RouteIds,
 } from '@tanstack/router-core'
 import type { CodeSplitGroupings } from './constants'
+import type { HmrStyle } from '../planners/config'
 
 export const splitGroupingsSchema = z
   .array(
@@ -71,8 +72,6 @@ export type CodeSplittingOptions = {
    */
   addHmr?: boolean
 }
-
-export type HmrStyle = 'vite' | 'webpack'
 
 export type HmrOptions = {
   /**

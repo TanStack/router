@@ -185,6 +185,8 @@ export interface PlanContext {
   keep: (sym: SymbolId) => void
   setRouteModule: () => void
   liveness: (output: OutputId) => LivenessView
+  /** The binding name a symbol renders as (after module-wide renames). */
+  nameOf: (sym: SymbolId) => string
   renameRefs: (
     sym: SymbolId,
     to: RefTarget,
@@ -357,13 +359,13 @@ export class AnalysisPlan implements PlanContext {
     )
   }
 
-  /** Renames every reference and declaration of `sym` (context-aware; exports keep their public names). */
   /** The binding name a symbol renders as (after module-wide renames). */
   nameOf(sym: SymbolId): string {
     const to = this.renames.get(sym)
     return this.symbols.name(to ?? sym)
   }
 
+  /** Renames every reference and declaration of `sym` (context-aware; exports keep their public names). */
   renameRefs(
     sym: SymbolId,
     to: RefTarget,
@@ -819,6 +821,18 @@ export class AnalysisPlan implements PlanContext {
 
     const renderer = new Renderer(this, code)
     const extractedOutputs = new Set(placement.extracted.map((e) => e.output))
+    // the units of each import declaration, once for every output
+    const unitsOfImport = new Map<number, Array<Unit>>()
+    for (const u of this.t1.units) {
+      if (u.importIndex !== null) {
+        let list = unitsOfImport.get(u.importIndex)
+        if (!list) {
+          list = []
+          unitsOfImport.set(u.importIndex, list)
+        }
+        list.push(u)
+      }
+    }
 
     for (const [id, decl] of this.outputs) {
       // an extracted export the core kept in the env module produces no
@@ -846,13 +860,12 @@ export class AnalysisPlan implements PlanContext {
               included,
               exportNameOf,
             )
-      // source import edges: split the specifier literals into their own segments
       this.sourceEdges(
         id,
         importerId,
         included,
         renderer.tree,
-        segments,
+        unitsOfImport,
         recipeEdges,
       )
       outputs[id] = {
@@ -1429,12 +1442,13 @@ export class AnalysisPlan implements PlanContext {
   }
 
   /** Records this output's surviving source edges and isolates their specifier literals as segments. */
+  /** The source import edges of an output (every live import, re-export and dynamic edge of the included units). */
   private sourceEdges(
     output: OutputId,
     importerId: string,
     included: ReadonlySet<number>,
     tree: RenderTree,
-    segments: Array<Segment>,
+    unitsOfImport: ReadonlyMap<number, ReadonlyArray<Unit>>,
     into: Array<EdgeRecord>,
   ): void {
     const { analysis, t1 } = this
@@ -1447,8 +1461,9 @@ export class AnalysisPlan implements PlanContext {
       if (imp.typeOnly) {
         continue
       }
-      const impUnits = units.filter((u) => u.importIndex === imp.index)
-      const live = impUnits.filter((u) => u.kind !== 'type' && includedUnit(u))
+      const live = (unitsOfImport.get(imp.index) ?? []).filter(
+        (u) => u.kind !== 'type' && includedUnit(u),
+      )
       if (live.length === 0) {
         continue
       }
@@ -1482,15 +1497,10 @@ export class AnalysisPlan implements PlanContext {
         }
       }
       const form: EdgeForm = imp.bare ? 'bare' : 'static'
-      const edgeKey = this.edgeKey(imp.specifier, form)
-      const marked = markSegment(segments, imp.specifierRange, edgeKey)
-      if (!marked) {
-        continue
-      }
       into.push({
         output,
         importerId,
-        edgeKey,
+        edgeKey: this.edgeKey(imp.specifier, form),
         form,
         kind: names.length > 0 ? 'binding' : 'evaluation',
         specifier: imp.specifier,
@@ -1514,14 +1524,10 @@ export class AnalysisPlan implements PlanContext {
         continue
       }
       const form: EdgeForm = re.kind === 'star' ? 'star' : 'reexport'
-      const edgeKey = this.edgeKey(re.specifier, form)
-      if (!markSegment(segments, re.specifierRange, edgeKey)) {
-        continue
-      }
       into.push({
         output,
         importerId,
-        edgeKey,
+        edgeKey: this.edgeKey(re.specifier, form),
         form,
         kind: 'evaluation',
         specifier: re.specifier,
@@ -1532,14 +1538,10 @@ export class AnalysisPlan implements PlanContext {
       })
     }
     for (const dyn of analysis.dynamicEdges) {
-      const edgeKey = this.edgeKey(dyn.specifier, dyn.form)
-      if (!markSegment(segments, dyn.specifierRange, edgeKey)) {
-        continue
-      }
       into.push({
         output,
         importerId,
-        edgeKey,
+        edgeKey: this.edgeKey(dyn.specifier, dyn.form),
         form: dyn.form,
         kind: 'evaluation',
         specifier: dyn.specifier,
@@ -1567,34 +1569,6 @@ function isAmbientValueDeclaration(node: Node): boolean {
     default:
       return false
   }
-}
-
-/** Splits the slice segment containing `range` so the literal is its own segment carrying `edgeKey`. */
-function markSegment(
-  segments: Array<Segment>,
-  range: Range,
-  edgeKey: string,
-): boolean {
-  for (let i = 0; i < segments.length; i++) {
-    const s = segments[i]!
-    if (s.k !== 'slice' || s.start > range.start || s.end < range.end) {
-      continue
-    }
-    if (s.edgeKey !== undefined) {
-      return s.edgeKey === edgeKey
-    }
-    const parts: Array<Segment> = []
-    if (s.start < range.start) {
-      parts.push({ k: 'slice', start: s.start, end: range.start })
-    }
-    parts.push({ k: 'slice', start: range.start, end: range.end, edgeKey })
-    if (range.end < s.end) {
-      parts.push({ k: 'slice', start: range.end, end: s.end })
-    }
-    segments.splice(i, 1, ...parts)
-    return true
-  }
-  return false
 }
 
 function dedupeEdges(edges: Array<EdgeRecord>): Array<EdgeRecord> {

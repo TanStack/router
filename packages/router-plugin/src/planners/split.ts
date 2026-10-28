@@ -21,7 +21,6 @@ import {
   routeEntryDigest,
 } from './route'
 import { COMPONENT_KEYS, splitPlanOf } from './decisions'
-import { renamedSymbol } from './round'
 import type { RouteEntryFacts } from './route'
 import type { SplitDecision } from './decisions'
 import type { RouterPlannerConfig } from './config'
@@ -366,7 +365,7 @@ export function routeSplitPlanner(): Planner {
                     exported,
                     '.$$tsrRefreshId = ',
                     { sym: valueSym, ctx: 'homeId' },
-                    ` + ${stringLiteral(` ${symbols.name(renamedSymbol(ctx, valueSym))}`, '"')}\n`,
+                    ` + ${stringLiteral(` ${ctx.nameOf(valueSym)}`, '"')}\n`,
                   ]
                 : [
                     exported,
@@ -432,7 +431,7 @@ export function routeSplitPlanner(): Planner {
           ctx.keep(sym)
           continue
         }
-        const name = symbols.name(renamedSymbol(ctx, sym))
+        const name = ctx.nameOf(sym)
         const output = ctx.declareOutput({
           kind: 'export',
           key: `export~${name}`,

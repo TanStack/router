@@ -11,7 +11,7 @@ import type { Planner } from '@tanstack/router-utils/compiler'
 
 export type { RouterPlannerConfig, HmrStyle } from './config'
 export { RouteRegistryView } from './registry'
-export { routerPureCalls } from './route'
+export { routeEntryDigest, routerPureCalls } from './route'
 
 /**
  * The router planners in their fixed order. Pass the same

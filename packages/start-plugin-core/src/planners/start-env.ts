@@ -71,7 +71,6 @@ export interface StartEnvConfig {
 
 export interface StartEnvFacts {
   serverFns: Array<ServerFnFact>
-  useClient: boolean
 }
 
 type Role = 'client' | 'ssr-caller' | 'provider'
@@ -378,10 +377,24 @@ function planStartEnv(
   const role = roleOf(ctx, config)
   const isServer = role !== 'client'
   const by = START_ENV
+  /** A provider module accepts its own hot updates in development (J4.15): the handlers are read at the next call. */
+  const acceptHotUpdates = (home: OutputId | 'auto', leading: string) =>
+    rewrites.addGenerated({
+      body: [
+        text(
+          `${leading}if (import.meta.hot) {\n  import.meta.hot.accept(() => {})\n}\n`,
+        ),
+      ],
+      declares: [],
+      effectful: true,
+      anchor: { k: 'end' },
+      home,
+      by,
+    })
   const specs = runtimeSpecifiers(config.framework)
   const useClient = ma.header.directives.some((d) => d.value === 'use client')
   const rootRel = relativeRoot(config.root, ctx.identity.path)
-  const facts: StartEnvFacts = { serverFns: [], useClient }
+  const facts: StartEnvFacts = { serverFns: [] }
 
   const diag = (
     message: string,
@@ -414,18 +427,7 @@ function planStartEnv(
         .map((u) => ({ t: 'unit' as const, id: u.id })),
     })
     if (ctx.env.mode === 'dev') {
-      rewrites.addGenerated({
-        body: [
-          text(
-            'if (import.meta.hot) {\n  import.meta.hot.accept(() => {})\n}\n',
-          ),
-        ],
-        declares: [],
-        effectful: true,
-        anchor: { k: 'end' },
-        home: providerOut,
-        by,
-      })
+      acceptHotUpdates(providerOut, '')
     }
   }
   const envScope: EditScope = providerOut ? ['env'] : 'all-outputs'
@@ -934,19 +936,7 @@ function planStartEnv(
     ctx.env.mode === 'dev' &&
     facts.serverFns.length > 0
   ) {
-    const accept = rewrites.addGenerated({
-      body: [
-        text(
-          '\nif (import.meta.hot) {\n  import.meta.hot.accept(() => {})\n}\n',
-        ),
-      ],
-      declares: [],
-      effectful: true,
-      anchor: { k: 'end' },
-      home: 'auto',
-      by,
-    })
-    ctx.addRoot('env', { t: 'gen', id: accept })
+    ctx.addRoot('env', { t: 'gen', id: acceptHotUpdates('auto', '\n') })
   }
 
   // ---- 6. unsupported uses (leak-prone on the client)

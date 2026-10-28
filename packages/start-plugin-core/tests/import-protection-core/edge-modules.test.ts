@@ -116,7 +116,6 @@ describe('mock', () => {
     expect(mockModuleCode(pure, 'rt')).not.toContain('__fx(m)')
     expect(mockModuleCode(fx, 'rt')).toContain('__fx(m)')
     expect(edgeModuleKey(pure)).not.toBe(edgeModuleKey(fx))
-    expect(edgeModuleKey(pure).startsWith('k.')).toBe(true)
   })
 })
 

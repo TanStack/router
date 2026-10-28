@@ -151,10 +151,6 @@ export class ImportProtection {
     return env
   }
 
-  environments(): Iterable<ImportProtectionEnv> {
-    return this.envs.values()
-  }
-
   /**
    * Releases an environment's state once its build is finished (edges,
    * edge modules, verdicts): nothing later reads it, and a later compile in

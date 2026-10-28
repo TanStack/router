@@ -67,11 +67,6 @@ export class BuildVerdicts {
     return this._reports
   }
 
-  /** The verdict `onViolation` gave an edge in this logical build (undefined: not asked). */
-  verdictOf(edgeKey: string): boolean | void | undefined {
-    return this.verdicts.get(edgeKey)
-  }
-
   /**
    * One pass's decision. `live` are the violations of the surviving edge
    * modules (several per logical edge when several outputs import it);

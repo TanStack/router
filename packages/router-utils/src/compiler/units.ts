@@ -933,7 +933,6 @@ export function statementRecipe(
   }
   switch (item.shape) {
     case 'declarators': {
-      const first = units[kept[0]!]!
       const lastOfAll = units[item.units[item.units.length - 1]!]!
       const prefixStart = dropExport
         ? item.exportKeyword!.end
@@ -947,7 +946,6 @@ export function statementRecipe(
         }
         out.push(slice(units[u]!.range.start, units[u]!.range.end))
       })
-      void first
       out.push(slice(lastOfAll.range.end, item.range.end))
       return out
     }

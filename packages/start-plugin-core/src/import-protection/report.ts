@@ -112,15 +112,6 @@ export class DevReporter {
     }
   }
 
-  get pending(): number {
-    return this.queue.length
-  }
-
-  /** Forgets `log: 'once'` history (a new session: dev server restart). */
-  reset(): void {
-    this.printed.clear()
-  }
-
   close(): void {
     this.closed = true
     if (this.timer !== null) {

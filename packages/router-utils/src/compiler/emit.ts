@@ -6,7 +6,7 @@
 import { OutputBuilder } from './output-builder'
 import { specifierLiteral } from './strings'
 import type { RawSourceMap, SourceText } from './output-builder'
-import type { OutputRecipe, Segment } from './plan'
+import type { EdgeRecord, OutputRecipe, Segment } from './plan'
 
 export interface Emitted {
   code: string
@@ -38,28 +38,55 @@ export function emitRecipe(
   return b.finish()
 }
 
-/** Replaces the segment(s) carrying `edgeKey` with a new specifier literal (phase C substitution). */
+/**
+ * Replaces an edge's specifier literals with a new one (phase C
+ * substitution): the generated segments carrying its key, and the source
+ * literals at its locations, cut out of the slice holding them.
+ */
 export function substituteSpecifier(
   recipe: OutputRecipe,
-  edgeKey: string,
+  edge: EdgeRecord,
   specifier: string,
   code: string,
-): number {
-  let n = 0
-  for (let i = 0; i < recipe.segments.length; i++) {
-    const seg = recipe.segments[i]!
-    if (seg.edgeKey !== edgeKey) {
+): void {
+  const { edgeKey } = edge
+  const segments = recipe.segments
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i]!
+    if (seg.k === 'text' && seg.edgeKey === edgeKey) {
+      segments[i] = {
+        k: 'text',
+        text: specifierLiteral(specifier, seg.text),
+        mapTo: seg.mapTo,
+        edgeKey,
+      }
+    }
+  }
+  for (const loc of edge.locations) {
+    if (!('range' in loc)) {
       continue
     }
-    const original =
-      seg.k === 'slice' ? code.slice(seg.start, seg.end) : seg.text
-    const text = specifierLiteral(specifier, original)
-    const next: Segment =
-      seg.k === 'slice'
-        ? { k: 'text', text, mapTo: seg.start, edgeKey }
-        : { k: 'text', text, mapTo: seg.mapTo, edgeKey }
-    recipe.segments[i] = next
-    n++
+    const { start, end } = loc.range
+    const i = segments.findIndex(
+      (s) => s.k === 'slice' && s.start <= start && s.end >= end,
+    )
+    if (i === -1) {
+      continue
+    }
+    const s = segments[i]! as Extract<Segment, { k: 'slice' }>
+    const parts: Array<Segment> = []
+    if (s.start < start) {
+      parts.push({ k: 'slice', start: s.start, end: start })
+    }
+    parts.push({
+      k: 'text',
+      text: specifierLiteral(specifier, code.slice(start, end)),
+      mapTo: start,
+      edgeKey,
+    })
+    if (end < s.end) {
+      parts.push({ k: 'slice', start: end, end: s.end })
+    }
+    segments.splice(i, 1, ...parts)
   }
-  return n
 }

@@ -86,10 +86,6 @@ export class Queue<T> {
     })
   }
 
-  throttle(n: number) {
-    this.currentConcurrency = n
-  }
-
   onSettled(cb: () => void) {
     this.onSettles.push(cb)
     return () => {
@@ -131,20 +127,8 @@ export class Queue<T> {
     this.pending = []
   }
 
-  getActive() {
-    return this.active
-  }
-
-  getPending() {
-    return this.pending
-  }
-
   getAll() {
     return [...this.active, ...this.pending]
-  }
-
-  isRunning() {
-    return this.running
   }
 
   isSettled() {

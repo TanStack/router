@@ -29,6 +29,7 @@ import {
 } from '@tanstack/router-utils/compiler'
 import { defaultCodeSplitGroupings } from '@tanstack/router-plugin'
 import {
+  routeEntryDigest,
   routerPlannerConfig,
   routerPlanners,
 } from '@tanstack/router-plugin/planners'
@@ -445,17 +446,14 @@ export class StartRsbuildCompilerSession {
       loadVirtual: () => Promise.resolve(null),
       rawFacts: this.rawFacts,
       warnings: this.warnings,
-      routes: { digestFor: (p) => this.routeDigest(p) },
+      routes: {
+        digestFor: (p) => routeEntryDigest(this.opts.routes.lookup(p)),
+      },
       services: {
         routes: { lookup: (p: string) => this.opts.routes.lookup(p) },
         importRewrite: this.importRewrite(env),
       },
     }
-  }
-
-  private routeDigest(p: string): string | null {
-    const entry = this.opts.routes.lookup(p)
-    return entry ? digestOf({ routeId: entry.routeId }) : null
   }
 
   /**
@@ -481,7 +479,9 @@ export class StartRsbuildCompilerSession {
       loadVirtual: () => Promise.resolve(null),
       rawFacts: this.rawFacts,
       warnings: this.warnings,
-      routes: { digestFor: (p) => this.routeDigest(p) },
+      routes: {
+        digestFor: (p) => routeEntryDigest(this.opts.routes.lookup(p)),
+      },
     }
   }
 

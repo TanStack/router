@@ -46,14 +46,13 @@ describe('WarningLedger', () => {
     expect(reported.map(([, m]) => m)).toEqual(['x is unused', 'y is unused'])
   })
 
-  it('reset(path) forgets one file, reset() every file', () => {
+  it('reset() forgets every file', () => {
     const { warnings, reported } = ledger()
     warnings.once('/app/a.ts', warn('m', 'c'))
     warnings.once('/app/b.ts', warn('m', 'c'))
-    warnings.reset('/app/a.ts')
-    expect(warnings.once('/app/a.ts', warn('m', 'c'))).toBe(true)
     expect(warnings.once('/app/b.ts', warn('m', 'c'))).toBe(false)
     warnings.reset()
+    expect(warnings.once('/app/a.ts', warn('m', 'c'))).toBe(true)
     expect(warnings.once('/app/b.ts', warn('m', 'c'))).toBe(true)
     expect(reported.length).toBe(4)
   })

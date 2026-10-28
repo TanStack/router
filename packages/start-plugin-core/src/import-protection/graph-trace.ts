@@ -32,9 +32,6 @@ export interface IndexedEdge {
   specifier: string
   /** UTF-16 offset of the specifier in the importer's input text, when it is in that text. */
   offset?: number
-  /** 1-based original position of the specifier, when known without locating. */
-  line?: number
-  column?: number
 }
 
 /** The raw text of a source file for trace positions, or null (a virtual id, a missing file). */
@@ -89,17 +86,11 @@ export class EdgeIndex {
     return this.forward.get(importerId)?.revision ?? null
   }
 
-  /**
-   * The 1-based position of an edge's specifier: as recorded, else located
-   * in the raw file when it is still the text the edge was judged in.
-   */
+  /** The 1-based position of an edge's specifier, located in the raw file when it is still the text the edge was judged in. */
   position(
     importerId: string,
     edge: IndexedEdge,
   ): { line: number; column: number } | null {
-    if (edge.line !== undefined) {
-      return { line: edge.line, column: edge.column ?? 1 }
-    }
     const rev = this.revisionOf(importerId)
     if (edge.offset === undefined || rev === null) {
       return null
@@ -155,11 +146,6 @@ export class EdgeIndex {
 
   importers(targetId: string): Iterable<string> {
     return this.reverse.get(targetId) ?? []
-  }
-
-  clear(): void {
-    this.forward.clear()
-    this.reverse.clear()
   }
 }
 

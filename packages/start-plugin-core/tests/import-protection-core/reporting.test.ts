@@ -80,7 +80,7 @@ describe('traces', () => {
   test('run from the nearest entry to the importer, each step naming its import of the next', () => {
     const index = new EdgeIndex()
     index.set('/app/src/entry.ts', [
-      { resolved: '/app/src/a.ts', specifier: './a', line: 2, column: 15 },
+      { resolved: '/app/src/a.ts', specifier: './a' },
     ])
     index.set('/app/src/a.ts', [
       { resolved: '/app/src/b.ts', specifier: './b' },
@@ -93,7 +93,7 @@ describe('traces', () => {
         20,
       ),
     ).toEqual([
-      { file: '/app/src/entry.ts', specifier: './a', line: 2, column: 15 },
+      { file: '/app/src/entry.ts', specifier: './a' },
       { file: '/app/src/a.ts', specifier: './b' },
       { file: '/app/src/b.ts' },
     ])
