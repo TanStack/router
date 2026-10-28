@@ -692,17 +692,22 @@ export class AnalysisPlan implements PlanContext {
     const set = new Set<UnitId>()
     for (const uid of item.units) {
       const u = this.t1.units[uid]!
-      if (u.kind === 'type' && derived) {
-        // ambient value declarations (`declare enum`, `declare var`, …) are
-        // copied: erased by TypeScript, but a TS transform resolves the
-        // names through them (Oxc inlines `declare enum` members)
-        if (isAmbientValueDeclaration(u.node)) {
+      if (u.kind === 'type') {
+        // type units stay in the env module (erased by TypeScript) whatever
+        // their cluster, except the TypeScript-only specifiers placement
+        // dropped (`importStays`); ambient value declarations (`declare
+        // enum`, `declare var`, …) are copied: erased by TypeScript, but a
+        // TS transform resolves the names through them (Oxc inlines
+        // `declare enum` members)
+        if (
+          derived
+            ? isAmbientValueDeclaration(u.node)
+            : !placement.droppedTypeUnits.has(uid)
+        ) {
           set.add(uid)
         }
         continue
       }
-      // type units stay in the env module (erased by TypeScript), except
-      // the TypeScript-only specifiers placement removed (`importStays`)
       const c = placement.clusterOfRegion.get(u.region)
       if (c !== undefined && included.has(c)) {
         set.add(uid)

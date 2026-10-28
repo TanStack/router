@@ -55,7 +55,10 @@ units that output contains. The same computation decides:
 - **dead code, by provenance**: a declaration or import specifier is removed only if _our_ edits orphaned it (its
   readers disappeared because a planner removed or moved them). Code already unreferenced in the source keeps
   running: an import nothing reads stays in the env module, so its module still evaluates there (a value import a
-  route module uses only in type positions leaves it: TypeScript erases it anyway);
+  route module uses only in type positions leaves it: TypeScript erases it anyway). Type units stay in the env module
+  as written whatever their cluster (`import type { X }` next to a value `X` that moves stays whole and type-only),
+  never in a derived output; only the TypeScript-only specifiers (an inline `type` specifier, an `export { X }` of a
+  type-only binding) follow their statement's value specifiers (`importStays`);
 - **effects and mutable state**: expression statements and impure, still-referenced declarations are effect roots
   of the env module, never duplicated or lost. One model (`mutation.ts`, `t1.mutation`) holds every write of a
   binding (assignment or member write, eager or lazy, wherever it is), and one predicate answers every rule that

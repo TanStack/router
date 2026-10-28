@@ -387,6 +387,27 @@ export const getUser = createServerFn().handler(async () => User('Ada'))`,
   })
 })
 
+// TypeScript allows a type-only import and a value of the same name. The
+// client erases the handler, the only reader of `Badge`; the declaration
+// stays type-only (`import { Label }` would be a runtime import of a type
+// the module does not export, with the host's `verbatimModuleSyntax`).
+test('keeps a type-only import type-only when the client erases a value of the same name', async () => {
+  const served = await serveCase(await host(), {
+    'labels.ts': `export type Badge = { name: string }
+export type Label = string`,
+    'module.tsx': `import { createServerFn } from '@tanstack/react-start'
+import type { Badge, Label } from './labels'
+export type Kept = Label
+function Badge(name: string): Badge {
+  return { name }
+}
+export const getBadge = createServerFn().handler(async () => Badge('Ada'))`,
+  })
+  expect(await callFromClient(served, 'module.getBadge')).toEqual({
+    name: 'Ada',
+  })
+})
+
 // With the classic runtime the bundler compiles JSX to React.createElement
 // after this compiler ran, so an import the source only reads in types is
 // still needed by the JSX (SPEC J4.17, G12). Checked by rendering the

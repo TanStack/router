@@ -145,6 +145,8 @@ export interface Placement {
   created: Array<OutputDecl>
   /** Exported clusters homed in an extracted-export output (the env module re-exports them). */
   extracted: Array<ExtractedExport>
+  /** Type units the env module drops (`importStays`); every other type unit stays there, whatever its cluster. */
+  droppedTypeUnits: Set<UnitId>
 }
 
 class UnionFind {
@@ -1611,21 +1613,33 @@ export function computePlacement(input: PlacementInput): Placement {
     }
   }
   /**
-   * Whether an import specifier no output needs stays in the env module.
-   * Imports follow provenance like declarations: an import the source never
-   * read was dead before the transform and stays as written (its module
-   * still evaluates there); one our edits orphaned leaves with its readers,
-   * and so does one read only by a dead pure cluster we dropped (it would
-   * pull a chunk's dependency into the route module). A value import a
-   * route module uses only in type positions leaves (TypeScript erases it;
-   * the module is not loaded for types); plain modules keep it as written.
-   * The TypeScript-only forms (an inline `type` specifier, an `export { X }`
-   * of a type-only binding) follow the value specifiers of their statement
-   * and are decided after inclusion, below.
+   * Whether an import specifier no output needs stays in the env module, and
+   * whether a type unit stays there. Imports follow provenance like
+   * declarations: an import the source never read was dead before the
+   * transform and stays as written (its module still evaluates there); one
+   * our edits orphaned leaves with its readers, and so does one read only by
+   * a dead pure cluster we dropped (it would pull a chunk's dependency into
+   * the route module). A value import a route module uses only in type
+   * positions leaves (TypeScript erases it; the module is not loaded for
+   * types); plain modules keep it as written.
+   * Type units stay in the env module as written whatever their cluster
+   * (`import type { X }` next to a value `X` that moves stays type-only),
+   * except the TypeScript-only forms (an inline `type` specifier, an
+   * `export { X }` of a type-only binding): they follow the value specifiers
+   * of their statement, decided after inclusion.
    */
-  function importStays(cl: Cluster): boolean {
-    const unit = units[cl.units[0]!]!
+  function importStays(u: UnitId): boolean {
+    const unit = units[u]!
     if (unit.kind === 'type') {
+      const inlineImportSpecifier =
+        unit.importIndex !== null &&
+        (items[unit.item]!.node as { importKind?: string }).importKind !==
+          'type'
+      const typeOnlyExportSpecifier =
+        unit.node.type === 'ExportSpecifier' && unit.node.exportKind !== 'type'
+      if (!inlineImportSpecifier && !typeOnlyExportSpecifier) {
+        return true
+      }
       if (routeModule) {
         // the statement leaves with its value specifiers (an inline `type`
         // specifier alone keeps loading the module under
@@ -1633,7 +1647,7 @@ export function computePlacement(input: PlacementInput): Placement {
         // run time
         return false
       }
-      if (unit.importIndex !== null) {
+      if (inlineImportSpecifier) {
         return items[unit.item]!.units.some((sibling) => {
           const su = units[sibling]!
           const c = clusterOfRegion.get(su.region)
@@ -1651,17 +1665,10 @@ export function computePlacement(input: PlacementInput): Placement {
         ref === undefined ? [] : (t1.declaringUnits.get(ref.sym) ?? [])
       return (
         decls.length === 0 ||
-        decls.some((d) => {
-          const du = units[d]!
-          const c = clusterOfRegion.get(du.region)
-          return (
-            du.kind !== 'type' ||
-            du.importIndex === null ||
-            (c !== undefined && included.get('env')!.has(c))
-          )
-        })
+        decls.some((d) => units[d]!.kind !== 'type' || importStays(d))
       )
     }
+    const cl = clusters[clusterOfRegion.get(unit.region)!]!
     if (orphaned.has(cl.id)) {
       return false
     }
@@ -1725,7 +1732,7 @@ export function computePlacement(input: PlacementInput): Placement {
       // other source stays in the env module (harmless)
       const dead =
         cl.kind === 'gen' ||
-        (cl.kind === 'import' && !importStays(cl)) ||
+        (cl.kind === 'import' && !importStays(cl.units[0]!)) ||
         (cl.kind === 'declaration' && !cl.effectful && !cl.exported)
       home.set(cl.id, dead ? 'removed' : 'env')
       continue
@@ -1929,24 +1936,12 @@ export function computePlacement(input: PlacementInput): Placement {
     }
   }
   // ---- TypeScript-only specifiers: they follow their statement's value specifiers ----
-  for (const cl of clusters) {
-    if (cl.kind !== 'type' || cl.units.length !== 1 || cl.gens.length > 0) {
-      continue
+  const droppedTypeUnits = new Set<UnitId>()
+  units.forEach((unit, u) => {
+    if (unit.kind === 'type' && !importStays(u)) {
+      droppedTypeUnits.add(u)
     }
-    const unit = units[cl.units[0]!]!
-    const inlineImportSpecifier =
-      unit.importIndex !== null &&
-      (items[unit.item]!.node as { importKind?: string }).importKind !== 'type'
-    const typeOnlyExportSpecifier =
-      unit.node.type === 'ExportSpecifier' && unit.node.exportKind !== 'type'
-    if (
-      (inlineImportSpecifier || typeOnlyExportSpecifier) &&
-      !importStays(cl)
-    ) {
-      home.set(cl.id, 'removed')
-      included.get('env')!.delete(cl.id)
-    }
-  }
+  })
   if (process.env.NODE_ENV !== 'production') {
     // a static output (an extracted export's module) never reads, at its
     // evaluation, a non-copyable binding the env module keeps: the fixed
@@ -2059,5 +2054,6 @@ export function computePlacement(input: PlacementInput): Placement {
     fallbacks,
     created,
     extracted,
+    droppedTypeUnits,
   }
 }

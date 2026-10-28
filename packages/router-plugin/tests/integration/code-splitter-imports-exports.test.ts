@@ -86,4 +86,79 @@ export const Route = createFileRoute('/')({ component: Page })
       expect(run.html).toBe('<div id="root"><p>MARK_BADGE</p></div>')
     }, 60_000)
   })
+
+  // The neighbouring forms, each next to a component of the same name that
+  // moves to the chunk: `import type { X }`, `import type X from`, an inline
+  // `{ type X, y }`, and a type-only namespace import (TypeScript rejects a
+  // value of the namespace's name). Modules imported only for types never
+  // load in the client, whatever the app's tsconfig.
+  describe.each([
+    ['verbatimModuleSyntax', { verbatimModuleSyntax: true }],
+    ['isolatedModules', { isolatedModules: true }],
+    ['default options', {}],
+  ])(
+    'type-only imports next to split components, with %s (vite)',
+    (_, options) => {
+      const loaded = (name: string) =>
+        `;((globalThis as any).typesLoaded ??= []).push('${name}')\n`
+      const files = {
+        'tsconfig.json': JSON.stringify({
+          compilerOptions: { ...options, jsx: 'react-jsx' },
+        }),
+        'labels.ts': `${loaded('labels')}export type Badge = { name: string }
+export type Label = string
+`,
+        'chip.ts': `${loaded('chip')}type Chip = { size: number }
+export type { Chip as default }
+`,
+        'tags.ts': `${loaded('tags')}export type Tag = string
+`,
+        'pills.ts': `export type Pill = { color: string }
+export const pillText = 'MARK_PILL'
+`,
+      }
+      const route = `${head}import type { Badge, Label } from '../labels'
+import type Chip from '../chip'
+import type * as Tags from '../tags'
+import { type Pill, pillText } from '../pills'
+export type Kept = Label | Tags.Tag
+function Badge() {
+  return <b>MARK_BADGE</b>
+}
+function Chip() {
+  return <i>MARK_CHIP</i>
+}
+function Pill() {
+  return <s>{pillText}</s>
+}
+function Page(props: { tag?: Tags.Tag }) {
+  return (
+    <p>
+      <Badge />
+      <Chip />
+      <Pill />
+      {props.tag}
+    </p>
+  )
+}
+export const Route = createFileRoute('/')({ component: Page })
+`
+
+      it('builds a split route file, which renders without loading them', async () => {
+        const app = await build({
+          bundler: 'vite',
+          env: 'client',
+          files: routeApp(route, { env: 'client', files }),
+        })
+        const run = await app.run(
+          `await entry.mount(entry.Route.options.component)
+return globalThis.typesLoaded ?? null`,
+        )
+        expect({ loaded: run.result, html: run.html }).toEqual({
+          loaded: null,
+          html: '<div id="root"><p><b>MARK_BADGE</b><i>MARK_CHIP</i><s>MARK_PILL</s></p></div>',
+        })
+      }, 60_000)
+    },
+  )
 })

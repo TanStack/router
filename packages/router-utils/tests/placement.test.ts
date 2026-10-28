@@ -1852,6 +1852,64 @@ describe('needers and homes', () => {
     expect(r.chunks.component).not.toContain('type Local')
     expect(r.chunks.component).not.toContain('./t')
   })
+
+  it('keeps an `import type` statement whole and type-only when a value of the same name moves', async () => {
+    // TypeScript allows a type-only import and a value of the same name;
+    // `import { Label }` would be a runtime import of a type
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import type { Badge, Label } from './labels'
+      import type Chip from './chip'
+      export type Kept = Label
+      function Badge() { return 'badge' }
+      function Chip() { return 'chip' }
+      function Page() { return [Badge(), Chip()] }
+      export const Route = createFileRoute('/')({ component: Page })
+    `)
+    const r = await split(code)
+    expect(r.env).toContain("import type { Badge, Label } from './labels'")
+    expect(r.env).toContain("import type Chip from './chip'")
+    expect(r.env).not.toContain('function Badge')
+    expect(r.chunks.component).toContain('function Badge')
+    expect(r.chunks.component).toContain('function Chip')
+    expect(r.chunks.component).not.toContain('./labels')
+    expect(r.chunks.component).not.toContain('./chip')
+  })
+
+  it('drops an inline type specifier of a route module whatever its cluster (J2.5)', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { type Badge, label } from './labels'
+      function Badge() { return label }
+      function Page() { return Badge() }
+      export const Route = createFileRoute('/')({
+        loader: () => Badge(),
+        component: Page,
+      })
+    `)
+    const r = await split(code)
+    expect(r.env).toContain("import { label } from './labels'")
+    expect(r.env).toContain('function Badge')
+    expect(r.chunks.component).not.toContain('./labels')
+  })
+
+  it('keeps an `import type` statement type-only when the env erases a value of the same name', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/lib.ts': dedent(`
+          import { wrapServer } from 'toy-start'
+          import type { Badge, Label } from './labels'
+          export type Kept = Label
+          function Badge() { return 'badge' }
+          export const fn = wrapServer(() => Badge())
+        `),
+      },
+    })
+    const out = await host.compile('/app/lib.ts', [toyEnvPlanner()])
+    expect(out?.code).toContain("import type { Badge, Label } from './labels'")
+    expect(out?.code).not.toContain('function Badge')
+    expect(out?.edges.map((e) => e.specifier)).not.toContain('./labels')
+  })
 })
 
 describe('provider outputs (J4.14)', () => {
