@@ -768,6 +768,7 @@ function withConfig(plan: AnalysisPlan, config: unknown): PlanContext {
     addRoot: (output, root) => plan.addRoot(output, root),
     markBenignEffect: (unit) => plan.markBenignEffect(unit),
     extract: (sym, output) => plan.extract(sym, output),
+    keep: (sym) => plan.keep(sym),
     setRouteModule: () => plan.setRouteModule(),
     liveness: (output) => plan.liveness(output),
     renameRefs: (sym, to, scope, by, except) =>

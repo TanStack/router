@@ -120,6 +120,22 @@ export interface PlacementInput {
   isBenign: (unit: UnitId) => boolean
   /** Exported symbols a planner allows into an extracted-export output. */
   extractions?: ReadonlyMap<SymbolId, OutputId>
+  /**
+   * Whether extracted-export outputs are emitted (a build) or folded into
+   * the env module (dev: `env.mode !== 'build'`); the decision which exports
+   * leave, and which of them chunks copy, is the same either way.
+   */
+  extractedOutputs: boolean
+}
+
+/** Why an exported declaration a chunk needs stays in the env module (`Placement.kept`). */
+export type KeptReason = 'effects' | 'reassigned' | 'live' | 'reads' | 'order'
+
+export interface KeptExport {
+  sym: SymbolId
+  reason: KeptReason
+  /** The declaring unit's range, for a positioned diagnostic. */
+  range: { start: number; end: number }
 }
 
 export interface ExtractedExport {
@@ -145,6 +161,8 @@ export interface Placement {
   created: Array<OutputDecl>
   /** Exported clusters homed in an extracted-export output (the env module re-exports them). */
   extracted: Array<ExtractedExport>
+  /** Exported declarations a lazy output needs that stay in the env module, with the reason. */
+  kept: Array<KeptExport>
   /** Type units the env module drops (`importStays`); every other type unit stays there, whatever its cluster. */
   droppedTypeUnits: Set<UnitId>
 }
@@ -1257,6 +1275,29 @@ export function computePlacement(input: PlacementInput): Placement {
     needed.has(c) &&
     !readsKeptEagerly(c) &&
     (!clusters[c]!.effectful || movable.has(c))
+  // A chunk copies a pure extracted export instead of importing its module.
+  // The extracted module is re-exported by the route module (statically, for
+  // other importers) and would be imported by the lazy chunk: reachable from
+  // the entry and from a chunk at once, Rolldown < 1.1.5 and any Rolldown
+  // under a user chunk group that merges into the entry place it with the
+  // entry, and the export is eager again (tanstack.com, Vite 8.0.x). With the
+  // copy nobody imports the module unless another file imports the binding,
+  // and an unused side-effect-free module is tree-shaken, not placed. Only
+  // pure clusters nothing assigns or mutates are copied: state or an effect
+  // would run twice, and a mutated object would be two objects.
+  // Importers (rare) then get the extracted instance and the chunk its copy.
+  // In dev nothing is bundled: extraction exists only so a bundler can
+  // tree-shake the module when nothing imports the binding, while the route
+  // module's static re-export loads the extracted module (and its imports)
+  // eagerly on every page, one request level deeper than the route module's
+  // own imports (tanstack.com dev crawl +0.6 s). So in dev an extracted
+  // cluster stays in the route module as written (`extractedOutputs`), and
+  // chunks copy or import it exactly as in a build.
+  /** A candidate a chunk copies (pure, observing no mutable state, declaring nothing anything assigns or mutates). */
+  const copies = (c: ClusterId): boolean =>
+    !clusters[c]!.effectful &&
+    !readsMutableState(c) &&
+    ![...clusters[c]!.declares].some((s) => t1.mutation.isMutated(s))
 
   // ---- env roots and extraction: one fixed point -------------------------
   // The env module's roots and the extracted outputs are decided together,
@@ -1282,6 +1323,10 @@ export function computePlacement(input: PlacementInput): Placement {
     if (derivedStale) {
       derivedStale = false
       const stop = new Set(remaining.keys())
+      // a chunk's reach passes through the candidates it copies and stops
+      // at the others, which it imports; an extracted module's reach stops
+      // at every other candidate (it imports them)
+      const chunkStop = new Set([...stop].filter((c) => !copies(c)))
       for (const [c, e] of extractCandidates) {
         if (remaining.has(c)) {
           pinned.set(c, e.output)
@@ -1298,9 +1343,11 @@ export function computePlacement(input: PlacementInput): Placement {
           reach(
             id,
             roots,
-            own === undefined
-              ? stop
-              : new Set([...stop].filter((c) => c !== own)),
+            own !== undefined
+              ? new Set([...stop].filter((c) => c !== own))
+              : outputs.get(id)?.kind === 'export'
+                ? stop
+                : chunkStop,
           ),
         )
       }
@@ -1362,6 +1409,66 @@ export function computePlacement(input: PlacementInput): Placement {
     if (!changed) {
       break
     }
+  }
+  // exported declarations a lazy output needs that stay in the env module,
+  // with the reason (a planner reports them; `extractable` and the candidate
+  // filter above decided)
+  const kept: Array<KeptExport> = []
+  for (const [sym] of extractions) {
+    const c = clusterOfSym.get(sym)
+    if (c === undefined || remaining.has(c)) {
+      continue
+    }
+    const cl = clusters[c]!
+    if (cl.kind !== 'declaration' || cl.gens.length > 0) {
+      continue
+    }
+    let lazyNeeds = false
+    for (const [id, set] of derivedReach) {
+      const kind = outputs.get(id)?.kind
+      if (set.has(c) && kind !== 'export' && kind !== 'provider') {
+        lazyNeeds = true
+        break
+      }
+    }
+    if (!lazyNeeds) {
+      continue
+    }
+    const reason: KeptReason = cl.sideEffects
+      ? 'effects'
+      : t1.mutation.isReassigned(sym) || regionWrittenSyms.has(sym)
+        ? 'reassigned'
+        : liveEnv.has(c)
+          ? 'live'
+          : readsKeptEagerly(c)
+            ? 'reads'
+            : 'order'
+    const declaring = (t1.declaringUnits.get(sym) ?? [])[0]
+    const range =
+      declaring === undefined
+        ? regions.get(cl.regions[0]!).range
+        : units[declaring]!.range
+    kept.push({
+      sym,
+      reason,
+      range: { start: range.start, end: range.end },
+    })
+  }
+  const copied = new Set([...remaining.keys()].filter(copies))
+  if (!input.extractedOutputs) {
+    // dev: an extracted cluster stays in the env module as written (see
+    // `copies`); its export companions with it, its extracted output empty
+    for (const [c, e] of remaining) {
+      pinned.delete(c)
+      envRoots.add(c)
+      for (const k of e.companions) {
+        envRoots.add(k)
+      }
+      derivedRoots.set(e.output, new Set())
+      derivedReach.set(e.output, new Set())
+    }
+    remaining.clear()
+    liveEnv = reach('env', envRoots)
   }
   const extracted: Array<ExtractedExport> = []
   for (const [c, e] of [...remaining].sort(
@@ -1704,6 +1811,12 @@ export function computePlacement(input: PlacementInput): Placement {
       home.set(cl.id, 'removed')
       continue
     }
+    if (copied.has(cl.id)) {
+      // rooted in its extracted module (a build) or the env module (dev),
+      // copied into every chunk that reaches it
+      home.set(cl.id, 'duplicate')
+      continue
+    }
     const pin = pinned.get(cl.id)
     if (pin !== undefined) {
       home.set(cl.id, pin)
@@ -1756,6 +1869,13 @@ export function computePlacement(input: PlacementInput): Placement {
     }
     if (!pure(cl.id)) {
       home.set(cl.id, 'env')
+      continue
+    }
+    if (derived.some((o) => outputs.get(o)?.kind === 'export')) {
+      // a pure cluster an extracted module and a chunk both need is copied
+      // into each: a shared module the extracted module imported would be a
+      // static dependency of the route module, which no chunk may import
+      home.set(cl.id, 'duplicate')
       continue
     }
     const key = derived.map(keyOf).sort().join('+')
@@ -2054,6 +2174,7 @@ export function computePlacement(input: PlacementInput): Placement {
     fallbacks,
     created,
     extracted,
+    kept,
     droppedTypeUnits,
   }
 }

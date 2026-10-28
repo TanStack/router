@@ -18,6 +18,8 @@ import { isLineTerminator, pragmasOf } from './header'
 import type {
   Fallback,
   HeaderPolicy,
+  KeptExport,
+  KeptReason,
   OutputDecl,
   OutputKind,
   Placement,
@@ -180,6 +182,8 @@ export interface PlanContext {
    * derived outputs need it, and the env module re-exports it.
    */
   extract: (sym: SymbolId, output: OutputId) => void
+  /** Keeps an exported binding in the env module whatever another planner offered (the route itself). */
+  keep: (sym: SymbolId) => void
   setRouteModule: () => void
   liveness: (output: OutputId) => LivenessView
   renameRefs: (
@@ -210,6 +214,7 @@ export class AnalysisPlan implements PlanContext {
   readonly facts: Record<string, unknown> = {}
   readonly benignEffects = new Set<UnitId>()
   readonly extractions = new Map<SymbolId, OutputId>()
+  private readonly keptSyms = new Set<SymbolId>()
   routeModule = false
   placement: Placement | null = null
   /** Renamed directly-exported declarations: sym → export names. */
@@ -312,7 +317,14 @@ export class AnalysisPlan implements PlanContext {
     if (!this.outputs.has(output)) {
       throw new Error(`extract: unknown output ${output}`)
     }
-    this.extractions.set(sym, output)
+    if (!this.keptSyms.has(sym)) {
+      this.extractions.set(sym, output)
+    }
+  }
+
+  keep(sym: SymbolId): void {
+    this.keptSyms.add(sym)
+    this.extractions.delete(sym)
   }
 
   setRouteModule(): void {
@@ -453,12 +465,43 @@ export class AnalysisPlan implements PlanContext {
         return hit
       },
       extractions: this.extractions,
+      extractedOutputs: this.env.mode === 'build',
     })
     for (const created of placement.created) {
       this.outputs.set(created.id, created)
     }
+    for (const k of placement.kept) {
+      this.diagnostic(this.keptExportDiagnostic(k))
+    }
     this.placement = placement
     return placement
+  }
+
+  /**
+   * An exported declaration a chunk needs stays in the env module (it is
+   * neither extracted nor copied): the user is told why, once per file and
+   * reason (J2.8). The export names of the symbol are the module's own.
+   */
+  private keptExportDiagnostic(k: KeptExport): Diagnostic {
+    const names = this.analysis.exports.flatMap((e) =>
+      e.kind === 'local' && e.local === k.sym && !e.typeOnly
+        ? [`\`${e.name}\``]
+        : [],
+    )
+    const why: Record<KeptReason, string> = {
+      effects: 'its initialiser has side effects',
+      reassigned: 'it is reassigned',
+      live: `the ${this.routeModule ? 'route ' : ''}module itself reads it`,
+      reads: 'it reads, when it loads, a binding the module keeps',
+      order: 'an effect of the module keeps it in place',
+    }
+    return {
+      severity: 'warning',
+      message: `${this.routeModule ? '[tanstack-router] ' : ''}The export ${names.join(', ')} of "${this.identity.path}" stays in the ${this.routeModule ? 'route ' : ''}module (${why[k.reason]}), so the code split from it loads it with the module instead of lazily. Drop the export or move it to another module.`,
+      range: k.range,
+      by: 'core',
+      code: `eager-export:${k.reason}`,
+    }
   }
 
   /**

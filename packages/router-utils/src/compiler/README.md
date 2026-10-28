@@ -51,7 +51,21 @@ units that output contains. The same computation decides:
 
 - **placement**: a cluster only one split group needs goes to that chunk; one the route module needs stays there and
   chunks import it; one several groups need goes to a lazy shared module; copyable primitives and import specifiers
-  are duplicated;
+  are duplicated. An exported binding only split code needs leaves the route module for a side-effect-free extracted
+  module (`?tsr-split=export~Name`) that the route module re-exports, so other modules importing it from the route
+  file still get one instance and the route module keeps none of its code or imports. A split chunk never imports
+  that module: when the binding is pure and never assigned (a function, class, component, pure constant), the chunk
+  carries its own copy, with the pure declarations and imports only they share; what has effects or state (an
+  effectful initialiser, an assigned `let`, a reader of mutable state, an augmented binding) is one instance that
+  the chunk imports, from the extracted module when only it needs it, else from the route module. Nothing but
+  importers of the route file reach the extracted module, so a bundler drops it when unused; the route's chunks
+  never depend on where a bundler places it (Rolldown < 1.1.5 and a user `manualChunks` group that merges into the
+  entry placed it with the entry). In dev nothing is bundled and the static re-export would only load the extracted
+  module one request level deeper: the same clusters stay in the route module as written, and chunks copy or
+  import them exactly as in a build. An exported declaration a chunk needs that stays in the route module
+  (effects, reassigned, read by the route module, reading what it keeps, an effect keeping its order) is reported
+  once per export with the reason (`eager-export:<reason>`); every host also warns after a client build when an
+  extracted module landed in an entry chunk (another module imports the binding through the route file);
 - **dead code, by provenance**: a declaration or import specifier is removed only if _our_ edits orphaned it (its
   readers disappeared because a planner removed or moved them). Code already unreferenced in the source keeps
   running: an import nothing reads stays in the env module, so its module still evaluates there (a value import a
@@ -77,7 +91,8 @@ units that output contains. The same computation decides:
   extracted modules evaluate in source order among themselves). An exported binding whose only effects augment
   what it declares (`Page.displayName = …`, static props: unobservable while nothing imports it, so its module
   stays droppable) leaves for its extracted module under the same rule: the augmentations travel with it, an
-  earlier surviving effect pins it and a later one keeps its order.
+  earlier surviving effect pins it and a later one keeps its order (chunks import an augmented export: its
+  augmentation runs once).
   A recognised framework call a planner names (the route factory chain) is no such effect only when its option
   values are pure, claimed (relocated) or erased: the core checks, the planner only names it. The env roots, the
   moving set and the extracted exports are one monotone fixed point: every round recomputes derived reach, env

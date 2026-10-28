@@ -414,13 +414,18 @@ export function routeSplitPlanner(): Planner {
 
       // every exported binding but the route may leave for an
       // extracted-export output; the core decides (a pure, unwritten
-      // declaration only chunks need moves, the route module re-exports it)
+      // declaration only chunks need moves, the route module re-exports it,
+      // chunks copy it; in dev it stays in the route module: `reach.ts`)
       for (const e of ctx.analysis.exports) {
         if (e.kind !== 'local' || e.local === null || e.typeOnly) {
           continue
         }
         const sym = e.local
         if (sym === route.routeSym) {
+          // the route stays, whatever another planner offered (Hydrate
+          // offers every export): its chunks import it, and that is no
+          // kept export to report
+          ctx.keep(sym)
           continue
         }
         const name = symbols.name(renamedSymbol(ctx, sym))

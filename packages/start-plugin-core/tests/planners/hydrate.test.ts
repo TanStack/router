@@ -21,6 +21,7 @@ import type {
   SymbolId,
 } from '@tanstack/router-utils/compiler'
 
+const buildClientEnv = envInfo({ mode: 'build' })
 const ROOT = '/app'
 const FILE = '/app/src/page.tsx'
 const HASH = createHash('sha1')
@@ -789,9 +790,9 @@ export const Page = () => <Hydrate><p onClick={() => clicks++}>{clicks}</p></Hyd
     expect(client.chunks).toEqual({})
   })
 
-  // (Adjusted: the exported writer and its state are an extracted export
-  // only the chunk needs, so the live binding's home is that
-  // output, not the parent; main kept it in the parent.)
+  // (Adjusted: in a build the exported writer and its state are an extracted
+  // export only the chunk needs, so the live binding's home is that output,
+  // not the parent; in dev it stays in the parent, as on main; R77.)
   it('lets the children read a let the parent reassigns through the live binding', async () => {
     const code = `${REACT}let clicks = 0
 export function bump() { clicks++ }
@@ -800,20 +801,27 @@ export const Page = () => <Hydrate><p>{clicks}</p></Hydrate>
     const client = await compile(code)
     const [b] = client.facts.boundaries
     expect(client.chunks[b!.id]).toContain(
+      "import { clicks } from './page.tsx'",
+    )
+    expect(client.code).toContain('let clicks = 0')
+    expect(client.code).toContain('export function bump() { clicks++ }')
+    expect(client.code).toContain('export { clicks }')
+    const built = await compile(code, { env: buildClientEnv })
+    expect(built.chunks[b!.id]).toContain(
       "import { clicks } from './page.tsx?tsr-split=export~bump'",
     )
-    expect(client.code).toContain(
+    expect(built.code).toContain(
       "export { bump } from './page.tsx?tsr-split=export~bump'",
     )
-    expect(client.code).not.toContain('let clicks')
+    expect(built.code).not.toContain('let clicks')
   })
 
-  it('re-exports every exported binding of an extracted cluster (an exported let and its setter)', async () => {
+  it('re-exports every exported binding of an extracted cluster in a build (an exported let and its setter)', async () => {
     const code = `${REACT}export let theme = 'light'
 export const setTheme = (t: string) => { theme = t }
 export const Page = () => <Hydrate><p>{theme}</p></Hydrate>
 `
-    const client = await compile(code)
+    const client = await compile(code, { env: buildClientEnv })
     const [b] = client.facts.boundaries
     expect(client.chunks[b!.id]).toContain(
       "import { theme } from './page.tsx?tsr-split=export~setTheme'",
@@ -822,6 +830,34 @@ export const Page = () => <Hydrate><p>{theme}</p></Hydrate>
       "export { theme, setTheme } from './page.tsx?tsr-split=export~setTheme'",
     )
     expect(client.code).not.toContain('let theme')
+    const dev = await compile(code)
+    expect(dev.chunks[b!.id]).toContain("import { theme } from './page.tsx'")
+    expect(dev.code).toContain("export let theme = 'light'")
+  })
+
+  // A pure exported component only the children render: the chunk carries
+  // its own copy (R77); in a build the parent re-exports it from its
+  // extracted module for other importers, in dev it keeps it as written
+  it('copies a pure exported component the children render into the chunk', async () => {
+    const code = `${REACT}export function Card() { return <b>card</b> }
+export const Page = () => <Hydrate><Card /></Hydrate>
+`
+    const built = await compile(code, { env: buildClientEnv })
+    const [b] = built.facts.boundaries
+    expect(built.chunks[b!.id]).toContain(
+      'function Card() { return <b>card</b> }',
+    )
+    expect(built.chunks[b!.id]).not.toContain('export~Card')
+    expect(built.code).toContain(
+      "export { Card } from './page.tsx?tsr-split=export~Card'",
+    )
+    expect(built.code).not.toContain('function Card()')
+    const dev = await compile(code)
+    expect(dev.chunks[b!.id]).toContain(
+      'function Card() { return <b>card</b> }',
+    )
+    expect(dev.code).toContain('export function Card() { return <b>card</b> }')
+    expect(dev.code).not.toContain('export~')
   })
 
   it('reads the classic JSX pragma’s factory in a fragment-wrapped chunk', async () => {

@@ -516,9 +516,11 @@ function plan(ctx: PlanContext): void {
  * leave for an extracted-export output (`?tsr-split=export~<name>`, side-effect
  * free), which the parent re-exports; the core moves a pure, unwritten
  * declaration there only when the parent itself does not read it and a chunk
- * needs it, so a component a boundary renders and nothing else imports is not
- * in the eager code. The same outputs the route splitter declares for a route
- * module (one output per name: `declareOutput` is idempotent).
+ * needs it (the chunk carries its own copy; in dev the declaration stays in
+ * the parent: `reach.ts`), so a component a boundary renders and nothing
+ * else imports is not in the eager code. The same outputs the route splitter
+ * declares for a route module (one output per name: `declareOutput` is
+ * idempotent).
  */
 function extractExports(ctx: PlanContext): void {
   const symbols = ctx.symbols
