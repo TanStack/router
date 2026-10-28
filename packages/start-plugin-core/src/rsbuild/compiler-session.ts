@@ -713,7 +713,7 @@ export class StartRsbuildCompilerSession {
     return JSON.parse(composed.toString())
   }
 
-  /** Errors fail the module (positioned, 1-based line and column); warnings once per (file, reason) per run. */
+  /** Errors fail the module (positioned, 1-based line and column); warnings once per (file, reason and wording) per run. */
   private reportDiagnostics(
     ctx: LoaderContextLike,
     out: CompileOutput,
@@ -757,7 +757,14 @@ export class StartRsbuildCompilerSession {
       }
       if (d.severity === 'error') {
         errors.push(`${d.message}${where(d)}`)
-      } else if (this.warnings.once(file, d)) {
+      } else if (
+        // once per (file, reason and wording), as the Vite hosts: two
+        // declarations kept for one reason are two findings
+        this.warnings.once(
+          file,
+          d.code ? { ...d, code: `${d.code}\u0000${d.message}` } : d,
+        )
+      ) {
         const warning = new Error(`${d.message}${where(d)}`)
         warning.name = 'TanStackStartCompilerWarning'
         ctx.emitWarning(warning)
