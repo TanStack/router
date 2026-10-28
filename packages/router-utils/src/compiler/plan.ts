@@ -552,16 +552,36 @@ export class AnalysisPlan implements PlanContext {
     let fix: string
     switch (k.reason) {
       case 'order': {
+        // the least effort first: move the declaration below the effect
+        // (it then follows it, wherever it loads), or the effect's value
+        // above it; an annotation only where the effect is a call
         const effect = this.effectAt(k.effect!)
         because = `${describe(effect)} (${line(effect.node.start)}) runs after ${it} and ${k.effectStays ? 'stays' : 'does not move with it'}`
-        const pure =
+        const unit = this.t1.units[k.effect!]!
+        const after =
+          unit.declares.length > 0
+            ? unit.declares.map((s) => `\`${this.symbols.name(s)}\``).join(', ')
+            : 'it'
+        const fixes = [`declare ${subject} after ${after}`]
+        if (this.benignEffects.has(k.effect!)) {
+          fixes.push(`create that value in a \`const\` before ${subject}`)
+        }
+        if (
           effect.node.type === 'CallExpression' ||
           effect.node.type === 'NewExpression'
-            ? ', or mark the call `/* @__PURE__ */` if it has no side effects'
-            : ''
-        fix = this.benignEffects.has(k.effect!)
-          ? `declare that value before ${subject}${pure}`
-          : `declare ${subject} after it${pure}`
+        ) {
+          const local = this.localFunctionName(effect.node.callee)
+          const annotations = [
+            ...(local === null
+              ? []
+              : [`mark \`${local}\` \`/* #__NO_SIDE_EFFECTS__ */\``]),
+            'mark the call `/* @__PURE__ */`',
+          ]
+          annotations[annotations.length - 1] += ' if it has no side effects'
+          fixes.push(...annotations)
+        }
+        const last = fixes.pop()!
+        fix = fixes.length === 0 ? last : `${fixes.join(', ')}, or ${last}`
         break
       }
       case 'needers':
@@ -591,6 +611,25 @@ export class AnalysisPlan implements PlanContext {
       by: 'core',
       code: `eager-split:${k.reason}`,
     }
+  }
+
+  /** The name of a callee that is a function declared in this module (`function f`, `const f = () => …`), which `#__NO_SIDE_EFFECTS__` can mark. */
+  private localFunctionName(callee: Node): string | null {
+    const id = unwrapExpression(callee)
+    if (id.type !== 'Identifier') {
+      return null
+    }
+    const file = this.analysis.file
+    const b = file.referenceOf(id)?.binding
+    const decl = b?.scope === file.rootScope ? b.declarations[0] : undefined
+    const parent = decl ? file.parentOf(decl) : null
+    const fn =
+      parent?.type === 'FunctionDeclaration' ||
+      (parent?.type === 'VariableDeclarator' &&
+        parent.init !== null &&
+        (unwrapExpression(parent.init).type === 'ArrowFunctionExpression' ||
+          unwrapExpression(parent.init).type === 'FunctionExpression'))
+    return fn ? id.name : null
   }
 
   /** The expression that makes a unit an effect: for a recognised call a planner named, the option value or argument that is not pure (`firstImpure`). */

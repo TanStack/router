@@ -2792,8 +2792,8 @@ describe('declarations only split code needs that stay in the route module', () 
       '/app/route.tsx',
       'the call `type(…)` in `validateSearch`',
       `(line ${lineOf(pinned, 'type({')})`,
-      'declare that value before `confetti`',
-      '`/* @__PURE__ */`',
+      // the least effort first
+      'declare `confetti` after `Route`, create that value in a `const` before `confetti`, or mark the call `/* @__PURE__ */` if it has no side effects',
       'the split `component`',
     ]) {
       expect(message).toContain(part)
@@ -2810,6 +2810,10 @@ describe('declarations only split code needs that stay in the route module', () 
           "const search = type({ 'a?': 'string' })\nconst confetti",
         )
         .replace(/validateSearch: type\(\{[^}]*\}\)/, 'validateSearch: search'),
+      // declared after the route: it never crosses the call
+      pinned
+        .replace('const confetti = new JSConfetti()\n', '')
+        .concat('const confetti = new JSConfetti()\n'),
       // a callee declared without side effects in the route file
       pinned
         .replace("import { type } from 'arktype'\n", '')
@@ -2829,6 +2833,19 @@ describe('declarations only split code needs that stay in the route module', () 
       expect(r.env, code).not.toContain('new JSConfetti')
       expect(r.diagnostics, code).toEqual([])
     }
+  })
+
+  it('suggests #__NO_SIDE_EFFECTS__ for a callee the route file declares', async () => {
+    const code = pinned
+      .replace("import { type } from 'arktype'\n", '')
+      .replace(
+        'const confetti',
+        'function type(shape) { return shape }\nconst confetti',
+      )
+    const r = await kept(code)
+    expect(r.diagnostics[0]!.message).toContain(
+      '`const` before `confetti`, mark `type` `/* #__NO_SIDE_EFFECTS__ */`, or mark the call `/* @__PURE__ */` if it has no side effects',
+    )
   })
 
   it('reports a plain statement after it, an effect several split options need, writes and reads of state', async () => {

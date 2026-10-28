@@ -6,7 +6,8 @@
  * and the fix. Learned from a real app (tamery): `const confetti = new
  * JSConfetti()` stayed eager because an inline `validateSearch: type({…})`
  * call runs after it and stays in the route module. The same file with the
- * call annotated `/* @__PURE__ *\/`, with the schema declared first, or with
+ * declaration after the route, with the schema declared first, with the
+ * call annotated `/* @__PURE__ *\/`, or with
  * a callee declared `/* #__NO_SIDE_EFFECTS__ *\/` in the route file loads
  * the declaration with its chunk and reports nothing; neither does a route
  * whose split code needs nothing pinned. Every host: Vite, Rspack, webpack
@@ -68,6 +69,15 @@ export const Route = createRootRoute({ component: () => <Outlet /> })
     '/* #__NO_SIDE_EFFECTS__ */ function makeSchema<T>(shape: T) { return shape }\n',
     '  validateSearch: makeSchema({ tab: "string" }),',
   ),
+  // declared after the route: moving it never crosses the call
+  'routes/declared-after.tsx': `${head}import { Marker } from '../marker'
+import { makeSchema } from '../schema'
+export const Route = createFileRoute('/declared-after')({
+  validateSearch: makeSchema({ tab: "string" }),
+  component: () => <p>{marker.name}</p>,
+})
+const marker = new Marker('MARK_declared-after_END')
+`,
   'routes/nothing-pinned.tsx': route('nothing-pinned', '', ''),
   'entry.ts': `import { routeTree } from './routeTree.gen'
 export { routeTree }
@@ -77,6 +87,7 @@ export { routeTree }
 const lazyRoutes = [
   'pure-call',
   'declared-first',
+  'declared-after',
   'no-side-effects',
   'nothing-pinned',
 ]
@@ -112,6 +123,7 @@ function expectPinnedWarning(
     '`makeSchema(…)`',
     '`validateSearch`',
     `line ${call.line}`,
+    'declare `marker` after `Route`',
     '`/* @__PURE__ */`',
     '`component`',
   ]) {

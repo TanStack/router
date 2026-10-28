@@ -110,29 +110,51 @@ A top-level declaration with side effects that only split code reads (for exampl
 
 ```
 `confetti` in "src/routes/account.tsx" stays in the route module because the call `type(…)` in
-`validateSearch` (line 14) runs after it and stays; declare that value before `confetti`, or mark the
-call `/* @__PURE__ */` if it has no side effects, so `confetti` can load with the split `component`.
+`validateSearch` (line 14) runs after it and stays; declare `confetti` after `Route`, create that value
+in a `const` before `confetti`, or mark the call `/* @__PURE__ */` if it has no side effects, so
+`confetti` can load with the split `component`.
 ```
 
-To have the declaration split, create the value the option uses before it:
+Any of these lets the declaration load with the split chunk, from the least to the most effort:
 
-```tsx
-const searchSchema = z.object({ success: z.boolean().optional() })
-// ✅ split: no side effect after it stays in the route file
-const confetti = new JSConfetti()
+- **Declare it after the route.** A declaration written after `createFileRoute(…)({ … })` comes after the call in the file, so loading it later with the chunk keeps the order:
 
-export const Route = createFileRoute('/account')({
-  validateSearch: searchSchema,
-  component: AccountPage,
-})
-```
+  ```tsx
+  export const Route = createFileRoute('/account')({
+    validateSearch: type({ 'success?': 'boolean' }),
+    component: AccountPage,
+  })
 
-or tell the compiler that the call has no side effects, with one of these annotations:
+  // ✅ split: nothing that stays in the route file runs after it
+  const confetti = new JSConfetti()
+  ```
 
-- `/* @__PURE__ */` before the call (`validateSearch: /* @__PURE__ */ type({ … })`), whatever the function is;
-- `/* #__NO_SIDE_EFFECTS__ */` on a function declared in the route file itself: `/* #__NO_SIDE_EFFECTS__ */ function makeSchema(…) { … }` or `const makeSchema = /* #__NO_SIDE_EFFECTS__ */ (…) => …`, exported or not.
+- **Create the value the option uses before it**, in the same file or in a module of its own (`validateSearch: searchSchema`, imported or declared above):
 
-A `/* #__NO_SIDE_EFFECTS__ */` annotation on a function imported from another module (one of the app's or a package's) does not count here: the route file is split without reading the modules it imports. Annotate the call with `/* @__PURE__ */` instead, or create the value before the declaration.
+  ```tsx
+  const searchSchema = type({ 'success?': 'boolean' })
+  // ✅ split: no side effect after it stays in the route file
+  const confetti = new JSConfetti()
+
+  export const Route = createFileRoute('/account')({
+    validateSearch: searchSchema,
+    component: AccountPage,
+  })
+  ```
+
+- **Move the declaration to a module of its own** that only the component imports (`import { confetti } from '../-confetti'`): the import moves into the chunk with the component, so the module loads with it.
+- **Create it on first use**, for example `let instance; const getConfetti = () => (instance ??= new JSConfetti())`: a function has no side effects when it is declared.
+- **Tell the compiler that the call has no side effects**, with one of these annotations:
+  - `/* @__PURE__ */` before the call (`validateSearch: /* @__PURE__ */ type({ … })`), whatever the function is;
+  - `/* #__NO_SIDE_EFFECTS__ */` on a function declared in the route file itself: `/* #__NO_SIDE_EFFECTS__ */ function makeSchema(…) { … }` or `const makeSchema = /* #__NO_SIDE_EFFECTS__ */ (…) => …`, exported or not.
+
+  The call then runs when the route file loads, which may be before the declaration: annotate only calls whose order does not matter.
+
+These do not change what the route file keeps, because the route file is split without reading the modules it imports or the bundler's options:
+
+- `/* #__NO_SIDE_EFFECTS__ */` on a function imported from another module, one of the app's or a package's (for example valibot's functions): annotate the call with `/* @__PURE__ */` instead;
+- `"sideEffects": false` in the package.json of the function's package: it says that importing the package's modules has no side effects, not that calling their functions has none;
+- the bundler's list of pure functions (`treeshake.manualPureFunctions` of Rolldown and Rollup, esbuild's `pure`, Terser's `pure_funcs`).
 
 #### Route callbacks that read `this` are not split
 
