@@ -168,9 +168,12 @@ returned but not published.
 - `releaseEnvironment(caches, env)` is the end of an environment's lifetime: a production build releases an
   environment's plans as soon as that environment's build is finished (several environments build one after the
   other in one process). Raw facts are shared by the environments and stay.
-- Not cached: resolutions (storing them cost more than it saved; each compile records its answers in its ledger; validation asks the environment's
-  resolver again only once a file appeared or disappeared since the plan's resolutions were validated,
-  `CompilerCaches.fileSetVersion`) and emitted outputs (emission from a frozen recipe costs microseconds).
+- Resolutions: each compile records its answers in its ledger; validation asks the environment's resolver again
+  only once a file appeared or disappeared since the plan's resolutions were validated (`CompilerCaches.fileSetVersion`).
+  The environment's `PlanCache` memoises the resolver's answers per (importer, specifier) for one `fileSetVersion`
+  (the compiles of a build would otherwise ask for a barrel's re-exports once per importing module); the same version
+  bump drops the memo, and `releaseEnvironment` releases it with the plans.
+- Not cached: emitted outputs (emission from a frozen recipe costs microseconds).
 - Invariants: no Yuku object is reachable from any cache (`tests/heap.test.ts`); every cache is bounded by the live
   module set; derived outputs are pure functions of (env, source, config, summaries).
 

@@ -216,6 +216,7 @@ describe('resolution for analysis', () => {
     expect(host.resolveCalls).toEqual([])
     // a file appeared: the failed resolutions are re-asked by the event,
     // then the next validation of the plan asks the resolver again, once
+    // (an unresolved pair is never kept: the file may be about to appear)
     host.write('/app/other.ts', 'export {}\n')
     await invalidate(host.caches, { path: '/app/other.ts', kind: 'add' }, host)
     expect(host.resolveCalls.map((c) => c.specifier)).toEqual([
@@ -228,6 +229,120 @@ describe('resolution for analysis', () => {
     host.resolveCalls.length = 0
     await host.compile('/app/page.tsx?tsr-split=component', planners)
     expect(host.resolveCalls).toEqual([])
+  })
+
+  it('asks the host once per (importer, specifier) and environment, however many modules read a barrel', async () => {
+    // a two-level barrel: kit → 3 groups → 2 leaves each; `make` lives in the last leaf
+    const groups = ['atoms', 'molecules', 'organisms']
+    const files: Record<string, string> = {
+      '/app/kit.ts': groups.map((g) => `export * from './${g}'\n`).join(''),
+    }
+    for (const g of groups) {
+      files[`/app/${g}.ts`] =
+        `export * from './${g}/a'\nexport * from './${g}/b'\n`
+      files[`/app/${g}/a.ts`] = `export const ${g}A = 1\n`
+      files[`/app/${g}/b.ts`] =
+        g === 'organisms'
+          ? 'export const make = () => 1\n'
+          : `export const ${g}B = 1\n`
+    }
+    const pages = Array.from({ length: 12 }, (_, i) => `/app/page-${i}.tsx`)
+    for (const page of pages) {
+      files[page] = dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { make } from './kit'
+        export const Route = createFileRoute('/')({
+          component: () => make(),
+        })
+      `)
+    }
+    const host = new MemoryHost({ files })
+    const planners: Array<Planner> = [toySplitPlanner(), toySummaryPlanner()]
+    const envs = [envInfo(), envInfo({ name: 'ssr', type: 'server' })]
+    // every page of every environment at once, as a build compiles them
+    const outputs = await Promise.all(
+      envs.flatMap((env) =>
+        pages.map((page) => host.compile(page, planners, { env })),
+      ),
+    )
+    for (const out of outputs) {
+      expect(out!.dependencies).toContain('/app/organisms/b.ts')
+    }
+    // per environment: each page's own `./kit`, then the barrel's 3 + 6 re-export edges once
+    const edges = pages.length + 3 + 6
+    expect(host.resolveCalls).toHaveLength(2 * edges)
+    const perPair = new Map<string, number>()
+    for (const { importer, specifier } of host.resolveCalls) {
+      const k = `${importer} ${specifier}`
+      perPair.set(k, (perPair.get(k) ?? 0) + 1)
+    }
+    expect([...perPair.values()].every((n) => n === envs.length)).toBe(true)
+    expect(perPair.get('/app/kit.ts ./atoms')).toBe(2)
+  })
+
+  it('a file that appears, disappears or is renamed changes the resolutions of the modules that read it', async () => {
+    const files = {
+      '/app/page.tsx': dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { make } from './service'
+        import { helper } from './helper'
+        export const Route = createFileRoute('/')({
+          component: () => helper(make()),
+        })
+      `),
+      '/app/service/index.ts': 'export const make = () => "index"\n',
+      '/app/helper.ts': 'export const helper = (x: unknown) => x\n',
+    }
+    const host = new MemoryHost({ files })
+    const planners: Array<Planner> = [toySplitPlanner(), toySummaryPlanner()]
+    const first = await host.compile('/app/page.tsx', planners)
+    expect(first!.dependencies).toEqual([
+      '/app/service/index.ts',
+      '/app/helper.ts',
+    ])
+    // `./service` now resolves to the file that appeared before the
+    // directory: the plan's resolutions are asked again at the next request
+    host.write('/app/service.ts', 'export const make = () => "file"\n')
+    await invalidate(
+      host.caches,
+      { path: '/app/service.ts', kind: 'add' },
+      host,
+    )
+    const second = await host.compile('/app/page.tsx', planners)
+    expect(second!.dependencies).toEqual(['/app/service.ts', '/app/helper.ts'])
+    // the file disappears: back to the directory
+    delete host.files['/app/service.ts']
+    const removed = await invalidate(
+      host.caches,
+      { path: '/app/service.ts', kind: 'unlink' },
+      host,
+    )
+    expect(removed.dependents.map((k) => k.canonicalId)).toEqual([
+      '/app/page.tsx',
+    ])
+    const third = await host.compile('/app/page.tsx', planners)
+    expect(third!.dependencies).toEqual([
+      '/app/service/index.ts',
+      '/app/helper.ts',
+    ])
+    // a rename: `./helper` follows the new extension
+    delete host.files['/app/helper.ts']
+    host.write('/app/helper.tsx', files['/app/helper.ts'])
+    await invalidate(
+      host.caches,
+      { path: '/app/helper.ts', kind: 'unlink' },
+      host,
+    )
+    await invalidate(
+      host.caches,
+      { path: '/app/helper.tsx', kind: 'add' },
+      host,
+    )
+    const fourth = await host.compile('/app/page.tsx', planners)
+    expect(fourth!.dependencies).toEqual([
+      '/app/service/index.ts',
+      '/app/helper.tsx',
+    ])
   })
 })
 
@@ -469,24 +584,29 @@ describe('slice gates: invalidation', () => {
 
   it('(d) overlapping save: a slow r1 compile never publishes over r2', async () => {
     const gate = deferred<void>()
-    let suspendOnce = true
     const host = new MemoryHost({
       files: {
         '/app/consumer.ts': CONSUMER,
         '/app/factory-inner.ts': FACTORY('createServerOnlyFn'),
       },
       recognizer: RECOGNIZER,
-      // r1's phase A suspends on the dependency's resolution (its first fact acquisition)
-      onResolve: async (specifier) => {
-        if (specifier === './factory-inner' && suspendOnce) {
-          suspendOnce = false
+    })
+    const r1 = CONSUMER
+    const r2 = `${CONSUMER}export const v2 = 2\n`
+    // r1's phase A suspends in a planner's fact acquisition (the host's
+    // resolutions and reads are shared by r2, which must not wait)
+    const slowPlanner: Planner = {
+      name: 'toy-slow',
+      tier: 0,
+      gate: () => true,
+      async prefetch(t0) {
+        if (t0.source.code === r1) {
           await gate.promise
         }
       },
-    })
-    const planners = [toySummaryPlanner()]
-    const r1 = CONSUMER
-    const r2 = `${CONSUMER}export const v2 = 2\n`
+      plan() {},
+    }
+    const planners = [toySummaryPlanner(), slowPlanner]
     const slow = host.compile('/app/consumer.ts', planners, { code: r1 })
     await new Promise((r) => setTimeout(r, 5))
     // the file is saved and the host invalidates + transforms r2 while r1 is suspended on the summary read
