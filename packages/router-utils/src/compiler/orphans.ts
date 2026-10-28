@@ -296,13 +296,10 @@ function expressionStatement(code: string, init: Node): Array<Frag> {
 }
 
 /**
- * Removes the declarators `pruned` of a multi-declarator statement (the
- * removals of one statement are computed from its final kept set): when
+ * Removes the declarators `pruned` of a multi-declarator statement: when
  * every declarator is gone (pruned now, or erased by an earlier round) the
- * statement goes with its line; otherwise each run of gone declarators is
- * one range with the separator to its next kept declarator (or from its
- * previous one), so removals of neighbours never partially overlap, and a
- * later round's run encloses the earlier one it grew from.
+ * statement goes with its line; otherwise the gone runs go
+ * (`removeListItems`).
  */
 function removeDeclarators(
   ctx: PlanContext,
@@ -345,36 +342,16 @@ function removeDeclarators(
   const last = decls[decls.length - 1]!
   const keepLast = decls.every(gone)
   const isGone = (d: Node) => gone(d) && !(keepLast && d === last)
-  for (let i = 0; i < decls.length; i++) {
-    if (!isGone(decls[i]!)) {
-      continue
-    }
-    let j = i
-    while (j + 1 < decls.length && isGone(decls[j + 1]!)) {
-      j++
-    }
-    if (decls.slice(i, j + 1).some((d) => pruned.has(d))) {
-      const next = decls[j + 1]
-      const prev = decls[i - 1]
-      ctx.rewrites.add({
-        range: next
-          ? { start: decls[i]!.start, end: next.start }
-          : { start: prev!.end, end: decls[j]!.end },
-        body: [],
-        scope,
-        by,
-        reason: 'orphaned local declarator',
-      })
-    }
-    i = j
-  }
+  removeListItems(ctx, decls, isGone, pruned, null, {
+    scope,
+    by,
+    reason: 'orphaned local declarator',
+  })
 }
 
 /**
- * Removes the properties `pruned` of an object pattern: each run of
- * properties gone (pruned now, or erased by an earlier round) is one range
- * with the separator to its next kept property (or from its previous one),
- * so removals of neighbours never partially overlap.
+ * Removes the properties `pruned` of an object pattern (`removeListItems`;
+ * a pattern losing every property becomes `{}`).
  */
 function removePatternProperties(
   ctx: PlanContext,
@@ -389,27 +366,68 @@ function removePatternProperties(
   }
   const props = pattern.properties as ReadonlyArray<Node>
   const gone = (p: Node) => pruned.has(p) || live.isErased(rangeOf(p))
-  for (let i = 0; i < props.length; i++) {
-    if (!gone(props[i]!)) {
+  // the pattern's own `}` (its range covers a type annotation): past the
+  // last property, a trailing comma and the comments
+  const code = ctx.analysis.source.code
+  let closing = nextToken(code, props[props.length - 1]!.end)
+  if (code[closing] === ',') {
+    closing = nextToken(code, closing + 1)
+  }
+  removeListItems(ctx, props, gone, pruned, closing, {
+    scope,
+    by,
+    reason: 'orphaned pattern property',
+  })
+}
+
+/**
+ * Removes the gone items of a comma-separated list (declarators, pattern
+ * properties), computed from the list's final kept set: each run of gone
+ * items (pruned now, or erased by an earlier round) holding one pruned now
+ * is one range with the separator to its next kept item (or from its
+ * previous one), so removals of neighbours never partially overlap and a
+ * later round's run encloses the earlier one it grew from. When every item
+ * is gone the range runs from the first item to `closing` (the position of
+ * the list's closing bracket), so a trailing comma goes too; a list without
+ * a closing bracket never loses every item (its caller keeps one).
+ */
+function removeListItems(
+  ctx: PlanContext,
+  items: ReadonlyArray<Node>,
+  gone: (item: Node) => boolean,
+  pruned: ReadonlySet<Node>,
+  closing: number | null,
+  edit: { scope: EditScope; by: string; reason: string },
+): void {
+  const prunedNow = (from: number, to: number) =>
+    items.slice(from, to + 1).some((item) => pruned.has(item))
+  if (closing !== null && items.every(gone)) {
+    if (prunedNow(0, items.length - 1)) {
+      ctx.rewrites.add({
+        range: { start: items[0]!.start, end: closing },
+        body: [],
+        ...edit,
+      })
+    }
+    return
+  }
+  for (let i = 0; i < items.length; i++) {
+    if (!gone(items[i]!)) {
       continue
     }
     let j = i
-    while (j + 1 < props.length && gone(props[j + 1]!)) {
+    while (j + 1 < items.length && gone(items[j + 1]!)) {
       j++
     }
-    if (props.slice(i, j + 1).some((p) => pruned.has(p))) {
-      const next = props[j + 1]
-      const prev = props[i - 1]
+    if (prunedNow(i, j)) {
+      const next = items[j + 1]
+      const prev = items[i - 1]
       ctx.rewrites.add({
         range: next
-          ? { start: props[i]!.start, end: next.start }
-          : prev
-            ? { start: prev.end, end: props[j]!.end }
-            : { start: props[i]!.start, end: props[j]!.end },
+          ? { start: items[i]!.start, end: next.start }
+          : { start: prev!.end, end: items[j]!.end },
         body: [],
-        scope,
-        by,
-        reason: 'orphaned pattern property',
+        ...edit,
       })
     }
     i = j
@@ -542,6 +560,11 @@ function prunePatternElement(
 
 /** Whether the next token after `pos` (past whitespace and comments) is a comma. */
 function commaFollows(code: string, pos: number): boolean {
+  return code[nextToken(code, pos)] === ','
+}
+
+/** The offset of the next token at or after `pos` (past whitespace and comments), or the end of the code. */
+function nextToken(code: string, pos: number): number {
   let i = pos
   while (i < code.length) {
     const c = code[i]!
@@ -554,8 +577,8 @@ function commaFollows(code: string, pos: number): boolean {
       const close = code.indexOf('*/', i + 2)
       i = close === -1 ? code.length : close + 2
     } else {
-      return c === ','
+      break
     }
   }
-  return false
+  return i
 }

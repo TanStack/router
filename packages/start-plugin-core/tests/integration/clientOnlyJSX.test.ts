@@ -106,6 +106,37 @@ export function Page() {
     </div>
   )
 }`,
+  // Source: real app tanstack.com (`MobileNavbarAuthControls({ onNavigate,
+  // tabIndex, }: Props)`): props only the children read leave the pattern
+  // on the server; a pattern losing every property, written with a trailing
+  // comma, became `({ , })` (a parse error of the server build).
+  destructuredProps: `import { ClientOnly } from '@tanstack/react-router'
+export function Page({
+  label,
+  title,
+}: {
+  label: string
+  title: string
+}) {
+  return (
+    <div>
+      <ClientOnly fallback={<div>Loading...</div>}>
+        <span title={title}>{label}</span>
+      </ClientOnly>
+    </div>
+  )
+}`,
+  destructuredSomeProps: `import { ClientOnly } from '@tanstack/react-router'
+export function Page({ heading, label, title, }: { heading: string; label: string; title: string }) {
+  return (
+    <div>
+      <h1>{heading}</h1>
+      <ClientOnly fallback={<div>Loading...</div>}>
+        <span title={title}>{label}</span>
+      </ClientOnly>
+    </div>
+  )
+}`,
 }
 
 let app: HydrationApp
@@ -173,10 +204,22 @@ describe('<ClientOnly> in a hydrated page', () => {
       client:
         '<div><client-chart-el data-mark="MARK_CLIENT_CHART"></client-chart-el></div>',
     },
+    {
+      name: 'destructuredProps',
+      props: { label: 'Account', title: 'Signed in' },
+      server: '<div><div>Loading...</div></div>',
+      client: '<div><span title="Signed in">Account</span></div>',
+    },
+    {
+      name: 'destructuredSomeProps',
+      props: { heading: 'Menu', label: 'Account', title: 'Signed in' },
+      server: '<div><h1>Menu</h1><div>Loading...</div></div>',
+      client: '<div><h1>Menu</h1><span title="Signed in">Account</span></div>',
+    },
   ])(
     '$name: the server renders the fallback and the hydrated page the children',
-    async ({ name, server, client }) => {
-      const page = await app.hydrate(name)
+    async ({ name, props, server, client }) => {
+      const page = await app.hydrate(name, props ? { props } : undefined)
       expect(page.serverHtml).toBe(server)
       expect({
         html: page.html,

@@ -96,6 +96,46 @@ describe('destructured bindings only erased code read', () => {
   })
 })
 
+describe('parameter patterns only erased code read', () => {
+  // Source: real app tanstack.com (`({ onNavigate, tabIndex, }: Props)` with
+  // `<ClientOnly>` children on the server): a pattern losing every property
+  // keeps its braces and its type annotation, trailing comma and all.
+  it.each([
+    ['a trailing comma', '{ a, b, }: Props', '{ }: Props'],
+    ['no trailing comma', '{ a, b }: Props', '{ }: Props'],
+    ['defaults', "{ a = 'x', b = 'y', }: Props", '{ }: Props'],
+    ['a rest element alone', '{ ...a }: Props', '{ }: Props'],
+    ['a nested pattern', '{ p: { a, b, }, }: Props', '{ p: { }, }: Props'],
+    ['an array pattern', '[a, b,]: Props', '[, ,]: Props'],
+  ])(
+    'empties a pattern with %s, keeping its annotation',
+    async (_, pattern, after) => {
+      const names = pattern.includes('...') ? 'a' : 'a, b'
+      expect(
+        await client(`
+          import { wrapServer } from 'toy-start'
+          export function f(${pattern}) {
+            return wrapServer(() => [${names}])
+          }
+        `),
+      ).toBe(`export function f(${after}) {\n  return tsrStub()\n}\n`)
+    },
+  )
+
+  it('removes a run up to the next kept property, or from the previous one', async () => {
+    expect(
+      await client(`
+        import { wrapServer } from 'toy-start'
+        export function f({ a, b, c, }: Props, { d, e, f: g }: Props) {
+          return [a, wrapServer(() => [b, c, d, e]), g]
+        }
+      `),
+    ).toBe(
+      'export function f({ a, }: Props, { f: g }: Props) {\n  return [a, tsrStub(), g]\n}\n',
+    )
+  })
+})
+
 describe('function-local declarators only erased code read', () => {
   it('removes a pattern whose every binding is orphaned, with the import it read', async () => {
     expect(
