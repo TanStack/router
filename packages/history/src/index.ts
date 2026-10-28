@@ -639,7 +639,7 @@ export function createMemoryHistory(
 ): RouterHistory {
   const entries = opts.initialEntries
   let index =
-    opts.initialIndex !== undefined
+    opts.initialIndex !== undefined && !Number.isNaN(opts.initialIndex)
       ? Math.min(Math.max(opts.initialIndex, 0), entries.length - 1)
       : entries.length - 1
   const states = entries.map((_entry, index) =>

@@ -149,6 +149,7 @@ describe('createMemoryHistory', () => {
     [1, '/b'],
     [-1, '/a'],
     [5, '/c'],
+    [NaN, '/c'],
   ])('initialIndex %j starts at %j', (initialIndex, pathname) => {
     const history = createMemoryHistory({
       initialEntries: ['/a', '/b', '/c'],
