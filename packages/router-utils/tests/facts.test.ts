@@ -29,6 +29,50 @@ describe('RawFactsCache', () => {
     expect(cache.peekRevision('/app/a.ts')?.stale).toBe(false)
   })
 
+  it('marker(): a target without a marker literal is answered from its text, parsed only when its facts are asked', async () => {
+    const files: Record<string, string> = {
+      '/app/a.ts': `export const a = 1\n`,
+      '/app/s.ts': `import 'server-only'\nexport const s = 1\n`,
+      '/app/c.ts': `import x from 'client-only'\nexport const c = x\n`,
+    }
+    const cache = new RawFactsCache({
+      readFile: (p) => Promise.resolve(files[p] ?? null),
+      loadVirtual: () => Promise.resolve(null),
+    })
+    expect(await cache.marker('/app/a.ts')).toBe(null)
+    expect(await cache.marker('/app/missing.ts')).toBe(null)
+    expect(cache.stats(false)).toMatchObject({
+      rawFacts: 1,
+      rawFactsMarkerless: 1,
+      factsReads: 2,
+    })
+    // the scan knew the revision: a compile of the same text publishes its analysis
+    expect(cache.peekRevision('/app/a.ts')?.stale).toBe(false)
+    // the literal is there: parsed, and a bare marker import is the marker
+    expect(await cache.marker('/app/s.ts')).toBe('server-only')
+    // the literal is there but it is not a bare import: no marker (the parse decides)
+    expect(await cache.marker('/app/c.ts')).toBe(null)
+    expect(cache.stats(false)).toMatchObject({
+      rawFacts: 3,
+      rawFactsMarkerless: 1,
+    })
+    // asked again: no read
+    await cache.marker('/app/a.ts')
+    await cache.marker('/app/s.ts')
+    expect(cache.stats(false).factsReads).toBe(6)
+    // the full facts of a scanned target are built when asked, once
+    const facts = await cache.get('/app/a.ts')
+    expect(Object.keys(facts.summary!.exports)).toEqual(['a'])
+    expect(cache.stats(false)).toMatchObject({
+      rawFactsMarkerless: 0,
+      factsReads: 7,
+    })
+    // a change makes the next question read again
+    files['/app/a.ts'] = `import 'server-only'\nexport const a = 2\n`
+    cache.markStale('/app/a.ts')
+    expect(await cache.marker('/app/a.ts')).toBe('server-only')
+  })
+
   it('a change or deletion of a file reaches every identity at its path, and the bookkeeping is bounded by the live files', async () => {
     const files: Record<string, string> = {
       '/app/a.ts': 'export const a = 1\n',

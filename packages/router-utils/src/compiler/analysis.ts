@@ -278,6 +278,12 @@ export class ModuleAnalysis {
   readonly purity: PurityContext
   private tier1: Tier1 | null = null
   private readonly importByStatement = new Map<number, number>()
+  /**
+   * The declaration (declarator or function) of each top-level declared
+   * name, by the name's offset (`declaredIn`): what a value analysis asks
+   * of a module's exports, without `parentOf` (which indexes every node).
+   */
+  readonly declarations: ReadonlyMap<number, Node>
 
   constructor(
     file: SourceFile,
@@ -303,6 +309,8 @@ export class ModuleAnalysis {
     // the bindings import specifiers declare and exports name, from Yuku's
     // module records by node position: a node lookup (`bindingOf`) would
     // build the file's node index, which a Tier-0-only module never needs
+    const declarations = new Map<number, Node>()
+    this.declarations = declarations
     const importLocals = new Map<number, SymbolId>()
     for (const record of file.imports) {
       const local = record.local
@@ -499,6 +507,23 @@ export class ModuleAnalysis {
         default:
           break
       }
+      const declaration =
+        stmt.type === 'ExportNamedDeclaration' ||
+        stmt.type === 'ExportDefaultDeclaration'
+          ? stmt.declaration
+          : stmt
+      if (declaration?.type === 'VariableDeclaration') {
+        for (const d of declaration.declarations) {
+          if (d.id.type === 'Identifier') {
+            declarations.set(d.id.start, d)
+          }
+        }
+      } else if (
+        declaration?.type === 'FunctionDeclaration' &&
+        declaration.id
+      ) {
+        declarations.set(declaration.id.start, declaration)
+      }
       // module loading counts as an own effect, not as an effect of its own
       // code; a marker import declares the module's environment and loads
       // nothing
@@ -632,8 +657,9 @@ export class ModuleAnalysis {
    * value-space reference (a read, a JSX tag, an `export { x }`) starts where
    * `keep` holds; for a namespace binding, the member names read statically
    * (`ns.x`, `ns['x']`, `<ns.X/>`), `opaque` when the namespace is used any
-   * other way. A semantic query over the
-   * binding's references, no walk.
+   * other way (any other binding has no members to read: its first live
+   * reference answers). A semantic query over the binding's references, no
+   * walk.
    */
   importUses(
     local: SymbolId,
@@ -644,6 +670,7 @@ export class ModuleAnalysis {
     if (!b) {
       return uses
     }
+    const namespace = b.import?.kind === 'namespace'
     for (const ref of b.references) {
       if (ref.inTypePosition || ref.space === 'type') {
         continue
@@ -653,6 +680,9 @@ export class ModuleAnalysis {
         continue
       }
       uses.live = true
+      if (!namespace) {
+        return uses
+      }
       const parent = this.file.parentOf(node)
       const member =
         parent &&

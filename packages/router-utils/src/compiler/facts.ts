@@ -77,15 +77,17 @@ const MISSING_TARGET: Omit<TargetFacts, 'digest'> = {
   effectProvenance: null,
 }
 
+interface FactsEntry {
+  stale: boolean
+  facts: RawFacts | null
+  pending: Promise<RawFacts> | null
+  /** The revision at which the text holds no marker literal (`marker` answered without a parse). */
+  markerless: string | null
+  pendingMarker: Promise<TargetFacts['marker']> | null
+}
+
 export class RawFactsCache {
-  private readonly entries = new Map<
-    string,
-    {
-      stale: boolean
-      facts: RawFacts | null
-      pending: Promise<RawFacts> | null
-    }
-  >()
+  private readonly entries = new Map<string, FactsEntry>()
   /** Path → canonical ids of `entries` at it (`markStale`/`forget` without a scan). */
   private readonly byPath = new Map<string, Set<string>>()
   /** `TSR_COMPILER_NO_CACHE=facts|targets`: every read rebuilds (measurement knobs). */
@@ -111,10 +113,16 @@ export class RawFactsCache {
     canonicalId: string,
   ): { revision: string | null; stale: boolean } | null {
     const e = this.entries.get(canonicalId)
-    if (!e || !e.facts) {
+    if (!e) {
       return null
     }
-    return { revision: e.facts.rawRevision, stale: e.stale }
+    if (e.facts && !e.stale) {
+      return { revision: e.facts.rawRevision, stale: false }
+    }
+    if (e.markerless !== null) {
+      return { revision: e.markerless, stale: false }
+    }
+    return e.facts ? { revision: e.facts.rawRevision, stale: true } : null
   }
 
   has(canonicalId: string): boolean {
@@ -127,6 +135,8 @@ export class RawFactsCache {
       e.stale = true
       // a read in flight may hold the text from before the event: it is not published
       e.pending = null
+      e.markerless = null
+      e.pendingMarker = null
     }
   }
 
@@ -138,19 +148,14 @@ export class RawFactsCache {
   forget(path: string): void {
     for (const id of [...(this.byPath.get(path) ?? [])]) {
       // a read in flight is not published
-      this.entries.get(id)!.pending = null
+      const e = this.entries.get(id)!
+      e.pending = null
+      e.pendingMarker = null
       this.deleteEntry(id)
     }
   }
 
-  private setEntry(
-    canonicalId: string,
-    e: {
-      stale: boolean
-      facts: RawFacts | null
-      pending: Promise<RawFacts> | null
-    },
-  ): void {
+  private setEntry(canonicalId: string, e: FactsEntry): void {
     if (!this.entries.has(canonicalId)) {
       const path = identify(canonicalId).path
       let ids = this.byPath.get(path)
@@ -186,6 +191,7 @@ export class RawFactsCache {
     for (const [id, e] of this.entries) {
       if (!keep(id)) {
         e.pending = null
+        e.pendingMarker = null
         this.deleteEntry(id)
       }
     }
@@ -204,14 +210,14 @@ export class RawFactsCache {
     }
     if (this.isKnownSpecifier(canonicalId)) {
       const facts = this.knownFacts(canonicalId)
-      this.setEntry(canonicalId, { stale: false, facts, pending: null })
+      this.setEntry(canonicalId, this.entryOf(facts))
       return facts
     }
     if (e?.pending) {
       return e.pending
     }
     if (!e) {
-      e = { stale: false, facts: null, pending: null }
+      e = this.entryOf(null)
       this.setEntry(canonicalId, e)
     }
     const entry = e
@@ -256,9 +262,82 @@ export class RawFactsCache {
     }
     const facts = this.fromAnalysis(canonicalId, rawRevision, analysis, null)
     if (!this.noFacts) {
-      this.setEntry(canonicalId, { stale: false, facts, pending: null })
+      this.setEntry(canonicalId, this.entryOf(facts))
     }
     return facts
+  }
+
+  private entryOf(facts: RawFacts | null): FactsEntry {
+    return {
+      stale: false,
+      facts,
+      pending: null,
+      markerless: null,
+      pendingMarker: null,
+    }
+  }
+
+  /**
+   * The marker of a target, and nothing else (what every import edge asks of
+   * its target): a text without a marker specifier's literal has no marker
+   * import, so it is not parsed; one with the literal gets its full facts.
+   * Served from the entry's facts when they are current.
+   */
+  async marker(canonicalId: string): Promise<TargetFacts['marker']> {
+    const e = this.entries.get(canonicalId)
+    if (e && !this.noTargets) {
+      if (e.facts && !e.stale) {
+        return e.facts.targetFacts.marker
+      }
+      // (`markerless` and a pending scan are of the text since the last `markStale`)
+      if (e.markerless !== null) {
+        return null
+      }
+      if (e.pendingMarker) {
+        return e.pendingMarker
+      }
+    }
+    if (this.isKnownSpecifier(canonicalId)) {
+      return null
+    }
+    const entry = e ?? this.entryOf(null)
+    if (!e && !this.noTargets) {
+      this.setEntry(canonicalId, entry)
+    }
+    const holder: { p: Promise<TargetFacts['marker']> | null } = { p: null }
+    holder.p = (async () => {
+      const text = await this.read(canonicalId)
+      if (text !== null && this.mayHaveMarker(text)) {
+        if (entry.pendingMarker === holder.p) {
+          entry.pendingMarker = null
+        }
+        return (await this.getTarget(canonicalId)).targetFacts.marker
+      }
+      if (entry.pendingMarker === holder.p) {
+        entry.pendingMarker = null
+        if (text !== null && !this.noTargets) {
+          entry.markerless = revision(text)
+        } else if (!entry.facts && this.entries.get(canonicalId) === entry) {
+          // a missing file is not kept (`forget`)
+          this.deleteEntry(canonicalId)
+        }
+      }
+      return null
+    })()
+    entry.pendingMarker = holder.p
+    return holder.p
+  }
+
+  /** Whether a text can hold a marker import: it contains a marker specifier's literal. */
+  private mayHaveMarker(text: string): boolean {
+    for (const spec of Object.keys(
+      this.opts.markerSpecifiers ?? DEFAULT_MARKERS,
+    )) {
+      if (text.includes(spec)) {
+        return true
+      }
+    }
+    return false
   }
 
   async digestOf(canonicalId: string): Promise<string | null> {
@@ -284,11 +363,13 @@ export class RawFactsCache {
     let stale = 0
     let pending = 0
     let empty = 0
+    let markerless = 0
     let bytes = 0
     for (const e of this.entries.values()) {
       stale += e.stale ? 1 : 0
       pending += e.pending ? 1 : 0
       empty += e.facts ? 0 : 1
+      markerless += !e.facts && e.markerless !== null ? 1 : 0
       if (withBytes && e.facts) {
         bytes += approxBytes(e.facts)
       }
@@ -299,6 +380,7 @@ export class RawFactsCache {
       rawFactsStale: stale,
       rawFactsPending: pending,
       rawFactsEmpty: empty,
+      rawFactsMarkerless: markerless,
       ...this.counters,
       ...(withBytes && { rawFactsBytes: bytes }),
     }

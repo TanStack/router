@@ -437,7 +437,7 @@ async function runAttempt(
     return facts.targetFacts
   }
   const targetMarkerOf = async (canonicalId: string) => {
-    const { marker } = (await host.rawFacts.getTarget(canonicalId)).targetFacts
+    const marker = await host.rawFacts.marker(canonicalId)
     ledger.record({ kind: 'target-marker', canonicalId, marker })
     return marker
   }

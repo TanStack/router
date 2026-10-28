@@ -4,7 +4,7 @@
  * what importers can observe.
  */
 import { digestOf } from './identity'
-import { ValueAnalysis, stripSites } from './values'
+import { ValueAnalysis, declaredIn, stripSites } from './values'
 import type { AbstractValue, RecognizerTable } from './values'
 import type { ModuleAnalysis } from './analysis'
 
@@ -45,7 +45,8 @@ export function buildSummary(
   extra?: SummaryExtraHook,
 ): ModuleSummary {
   const file = analysis.file
-  const values = new ValueAnalysis(file, { table })
+  const { declarations } = analysis
+  const values = new ValueAnalysis(file, { table, declarations })
   const exportFacts: Record<string, ExportFact> = {}
   const stars: Array<string> = []
   const objectKeys: Record<string, Array<string>> = {}
@@ -60,7 +61,9 @@ export function buildSummary(
           value = values.valueOfBinding(e.local)
           const b = file.bindings[e.local]
           const decl = b?.declarations[0]
-          const parent = decl ? file.parentOf(decl) : null
+          const parent = decl
+            ? (declaredIn(declarations, decl) ?? file.parentOf(decl))
+            : null
           if (parent?.type === 'VariableDeclarator' && parent.init) {
             const init = parent.init
             if (init.type === 'ObjectExpression') {

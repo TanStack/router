@@ -34,6 +34,7 @@ import {
   registerCompilerStats,
   releaseEnvironment,
   resolveDerivedSibling,
+  revision,
   rollupEntryModuleIds,
 } from '@tanstack/router-utils/compiler'
 import { defaultCodeSplitGroupings } from '@tanstack/router-plugin'
@@ -1057,7 +1058,9 @@ export function startCompilerPlugin(
             registry.record(identity.canonicalId, facts.serverFns, env.type)
           }
           afterCompile(s, env, id, out, (error) => this.error(error))
-          outputDigests.set(`${environment.name}\0${id}`, digestOf(out.code))
+          if (s.mode === 'dev') {
+            outputDigests.set(`${environment.name}\0${id}`, revision(out.code))
+          }
           if (identity.derived === null && out.code === code) {
             return null
           }
