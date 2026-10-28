@@ -33,8 +33,9 @@ object:
 
 1. `onBeforeBuild`
 2. `onBeforeDevCompile`
-3. `modifyRspackConfig`
-4. `processAssets(..., { stage: 'report' })`
+3. `onBeforeEnvironmentCompile`
+4. `modifyRspackConfig`
+5. `processAssets(..., { stage: 'report' })`
 
 `modifyRspackConfig` installs both the virtual-modules plugin and the
 environment-scoped import-protection post-loader.

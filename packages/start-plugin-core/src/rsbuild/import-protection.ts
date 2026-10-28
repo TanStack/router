@@ -95,6 +95,9 @@ type ImportProtectionRsbuildPluginAPI = {
   context: Pick<RsbuildPluginAPI['context'], 'action'>
   onBeforeBuild: (handler: () => void) => void
   onBeforeDevCompile: (handler: () => void) => void
+  onBeforeEnvironmentCompile: (
+    handler: (params: { environment: { name: string } }) => void,
+  ) => void
   modifyRspackConfig: (
     handler: (
       config: ImportProtectionRspackConfig,
@@ -1546,6 +1549,14 @@ export function registerImportProtection(
     }
   })
 
+  api.onBeforeEnvironmentCompile(({ environment }) => {
+    if (scanStateByEnv.get(environment.name) === 'clean') {
+      scanStateByEnv.set(environment.name, 'incremental')
+    } else {
+      scanStateByEnv.delete(environment.name)
+    }
+  })
+
   api.modifyRspackConfig((rspackConfig, utils) => {
     const startedAt = perf ? performance.now() : 0
     applyUserConfig()
@@ -1593,11 +1604,6 @@ export function registerImportProtection(
         compiler.hooks.thisCompilation.tap(
           'TanStackStartImportProtectionVirtualModulesReady',
           () => {
-            if (scanStateByEnv.get(envName) === 'clean') {
-              scanStateByEnv.set(envName, 'incremental')
-            } else {
-              scanStateByEnv.delete(envName)
-            }
             shared.readyVmPlugins[envName] = true
             flushPendingWrites(shared, envName)
           },
