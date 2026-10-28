@@ -312,9 +312,13 @@ export function routeSplitPlanner(): Planner {
               : null
         const body: Array<Frag> = []
         // an identifier value is exported as it is (`export { Page as
-        // component }`: no alias for the minifier to keep); a member of it
-        // or any other value gets the chunk's own declaration
-        const direct = valueSym !== null && d.member === null
+        // component }`: no alias for the minifier to keep); a member of it,
+        // an imported binding or any other value gets the chunk's own
+        // declaration. (A chunk only re-exporting an import is no chunk to
+        // Rollup: it resolves the lazy import to the module owning the
+        // binding, often the entry, which then carries the export glue.)
+        const direct =
+          valueSym !== null && d.member === null && !symbols.isImport(valueSym)
         const exported: SymRef | string = direct
           ? { sym: valueSym }
           : split.name
@@ -328,7 +332,7 @@ export function routeSplitPlanner(): Planner {
               parts: [
                 `const ${split.name} = `,
                 { sym: valueSym },
-                `.${d.member}\n`,
+                d.member === null ? '\n' : `.${d.member}\n`,
               ],
             })
           }

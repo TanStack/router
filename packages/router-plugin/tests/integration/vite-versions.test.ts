@@ -100,6 +100,73 @@ console.log(await entry.render(entry.Route.options.component))`,
     expect(stdout.trim()).toBe('<p>MARK_COMPONENT</p>')
   }, 120_000)
 
+  // Bug: a route whose component is an imported binding (`component:
+  // Outlet`, or a component the root route imports too) lost its lazy
+  // chunk on Vite <= 7: Rollup resolved the route's lazy import to the
+  // entry chunk, which grew by the export glue of every such route.
+  // Source: src/planners/split.ts (the split module only re-exported the
+  // import, which Rollup forwards to the module owning the binding).
+  // Impact: a larger initial bundle than the released plugin's.
+  test('a production build gives a route component imported from a module the entry loads a lazy chunk of its own', async () => {
+    const vite = await load()
+    const app = await createApp({
+      dir: harnessDir,
+      prefix: `.vite${major}-imported-`,
+      files: {
+        'shared.tsx': `export function Shared() {\n  return <p>MARK_SHARED</p>\n}\n`,
+        'routes/__root.tsx': `import { Outlet, createRootRoute } from '@tanstack/react-router'
+import { Shared } from '../shared'
+export const Route = createRootRoute({
+  component: () => (
+    <>
+      <Shared />
+      <Outlet />
+    </>
+  ),
+})
+`,
+        'routes/index.tsx': route('MARK_V1'),
+        'routes/outlet.tsx': `${head}import { Outlet } from '@tanstack/react-router'
+export const Route = createFileRoute('/outlet')({ component: Outlet })
+`,
+        'routes/shared.tsx': `${head}import { Shared } from '../shared'
+export const Route = createFileRoute('/shared')({ component: Shared })
+`,
+        'index.html': files['index.html'],
+        'main.tsx': files['main.tsx'],
+      },
+      packageJson: { type: 'module' },
+      registerCleanup: onTestFinished,
+    })
+    const outDir = path.join(app.root, 'dist')
+    await vite.build({
+      root: app.root,
+      configFile: false,
+      logLevel: 'silent',
+      plugins: [tanstackRouter(pluginOptions(app.root))],
+      esbuild: { jsx: 'automatic' },
+      build: { outDir, manifest: true },
+    })
+    const manifest: Record<string, { file: string; isEntry?: boolean }> =
+      JSON.parse(
+        await readFile(path.join(outDir, '.vite/manifest.json'), 'utf8'),
+      )
+    const entry = Object.values(manifest).find((chunk) => chunk.isEntry)
+    const chunkOf = (file: string) =>
+      Object.entries(manifest).find(([source]) =>
+        source.startsWith(`routes/${file}?`),
+      )?.[1].file
+    const lazy = {
+      outlet: chunkOf('outlet.tsx'),
+      shared: chunkOf('shared.tsx'),
+    }
+    expect(lazy).toEqual({
+      outlet: expect.any(String),
+      shared: expect.any(String),
+    })
+    expect([lazy.outlet, lazy.shared]).not.toContain(entry?.file)
+  }, 120_000)
+
   test('a dev server splits the route component and hot-updates a route option edit in place', async () => {
     const vite = await load()
     const app = await createApp({
