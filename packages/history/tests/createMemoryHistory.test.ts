@@ -144,6 +144,19 @@ describe('createMemoryHistory', () => {
     expect(history.length).toBe(2)
   })
 
+  test.each([
+    [0, '/a'],
+    [1, '/b'],
+    [-1, '/a'],
+    [5, '/c'],
+  ])('initialIndex %j starts at %j', (initialIndex, pathname) => {
+    const history = createMemoryHistory({
+      initialEntries: ['/a', '/b', '/c'],
+      initialIndex,
+    })
+    expect(history.location.pathname).toBe(pathname)
+  })
+
   test('state', () => {
     const history = createMemoryHistory()
     history.push('/a', { i: 1 })
