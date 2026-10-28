@@ -32,7 +32,7 @@ as the map source, `addDependency`s every file the plan depended on, writes the 
 import-protection records into `module.buildInfo`, and fails the module on an error diagnostic.
 
 Dependency modules under `node_modules` that import protection does not check are passed through without a parse
-when their text names no Start, router or RSC API and no builder step.
+when their text names nothing the planners recognise (`compiler/scope.ts`, the rule the Vite host shares).
 
 ## Environments and layers
 

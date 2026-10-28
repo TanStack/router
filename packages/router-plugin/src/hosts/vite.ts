@@ -12,6 +12,7 @@
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import {
+  ASSET_QUERY_RE,
   OWNED_QUERY_RE,
   SourceText,
   deriveId,
@@ -377,7 +378,7 @@ export function createRouterCompilerVitePlugin(
     },
 
     transform: {
-      filter: { id: { include: JS_ID_RE } },
+      filter: { id: { include: JS_ID_RE, exclude: ASSET_QUERY_RE } },
       async handler(code, id, opts) {
         if (!compiler.wants(id)) {
           return null
