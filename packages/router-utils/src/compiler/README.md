@@ -58,7 +58,10 @@ units that output contains. The same computation decides:
   route module uses only in type positions leaves it: TypeScript erases it anyway). Type units stay in the env module
   as written whatever their cluster (`import type { X }` next to a value `X` that moves stays whole and type-only),
   never in a derived output; only the TypeScript-only specifiers (an inline `type` specifier, an `export { X }` of a
-  type-only binding) follow their statement's value specifiers (`importStays`);
+  type-only binding) follow their statement's value specifiers (`importStays`). A read the core synthesises from a
+  name rather than from a reference (the classic runtime's JSX factory `React` when no pragma names the runtime, a
+  Solid `use:` directive) binds only to a declaration with a runtime value (`valueBinding`): `import type * as
+  React` is never the factory;
 - **effects and mutable state**: expression statements and impure, still-referenced declarations are effect roots
   of the env module, never duplicated or lost. One model (`mutation.ts`, `t1.mutation`) holds every write of a
   binding (assignment or member write, eager or lazy, wherever it is), and one predicate answers every rule that
