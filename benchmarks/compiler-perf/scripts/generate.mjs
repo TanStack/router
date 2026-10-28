@@ -14,6 +14,13 @@
 //                 autoCodeSplitting, without any Start feature.
 // - solid-start, solid-router: the same apps written for Solid (signals,
 //                 <For>/<Show>, `class`, accessors for router hooks).
+// - react-start-deps: react-start plus a large generated dependency graph in
+//                 the app's node_modules (an icon barrel of 2,000 modules, a
+//                 chain of 400 utility modules, a Start library that calls
+//                 Start APIs and imports a 2 MB `?url` asset) that the routes
+//                 import, and tanstack.com's `manualChunks` group of Start's
+//                 runtime. Dependency-scope regressions of the compilers (what
+//                 is compiled, read or parsed under node_modules) show here.
 
 import crypto from 'node:crypto'
 import fs from 'node:fs'
@@ -27,10 +34,19 @@ export const appsRoot = path.join(benchRoot, 'apps')
 export const SEED = 20261024
 // Default variants. `ALL_VARIANTS` adds the Solid ones (`--variants`).
 export const VARIANTS = ['react-start', 'react-router']
-export const ALL_VARIANTS = [...VARIANTS, 'solid-start', 'solid-router']
+export const ALL_VARIANTS = [
+  ...VARIANTS,
+  'solid-start',
+  'solid-router',
+  'react-start-deps',
+]
 
-export const isStart = (variant) => variant.endsWith('-start')
+export const isStart = (variant) => variant.includes('-start')
 export const hasRsbuild = (variant) => variant === 'react-start'
+/** Whether the app imports the generated dependency graph (`react-start-deps`). */
+export const hasDeps = (variant) => variant.endsWith('-deps')
+const DEP_ICONS = 2000
+const DEP_UTILS = 400
 export const frameworkOf = (variant) => variant.split('-')[0]
 
 const SECTIONS = 10
@@ -91,6 +107,7 @@ export const PROBES = {
 
 PROBES['solid-start'] = PROBES['react-start']
 PROBES['solid-router'] = PROBES['react-router']
+PROBES['react-start-deps'] = PROBES['react-start']
 
 function mulberry32(seed) {
   let a = seed >>> 0
@@ -104,6 +121,7 @@ function mulberry32(seed) {
 }
 
 const pad = (n) => String(n).padStart(2, '0')
+const pad4 = (n) => String(n).padStart(4, '0')
 const WORDS = [
   'alpha',
   'bravo',
@@ -539,6 +557,17 @@ function routeSource(route, variant, rng, ctx) {
   extraImports.push(
     `import { formatLabel, makeItems } from '${imp('src/lib/format.ts')}'`,
   )
+  // the dependency graph: two icons through the barrel, the Start library
+  const deps = hasDeps(variant)
+  const icons = deps
+    ? [...new Set([rng.int(0, DEP_ICONS - 1), rng.int(0, DEP_ICONS - 1)])]
+    : []
+  if (deps) {
+    extraImports.push(
+      `import { ${icons.map((n) => `Icon${pad4(n)}`).join(', ')} } from '@bench/icons'`,
+    )
+    extraImports.push(`import { LibBadge } from '@bench/start-lib'`)
+  }
 
   // --- loader -------------------------------------------------------------
   const hasSearch = route.kind === 'leaf' && rng.chance(0.2)
@@ -785,6 +814,11 @@ ${probeKind === 'hydrate' ? '          <p data-probe="hydrate">probe-hydrate-v0<
         <span>{typeof window !== 'undefined' ? window.location.pathname : ''}</span>
       </ClientOnly>`)
   }
+  if (deps) {
+    body.push(
+      `      <p>${icons.map((n) => `<Icon${pad4(n)} />`).join('')}<LibBadge label="${name}" /></p>`,
+    )
+  }
   if (usesIso) {
     body.push(`      <button type="button" onClick={() => setCount(readViewport${isoN}() + runtimeLabel${isoN}().length)}>
         Measure
@@ -1008,6 +1042,115 @@ export default defineConfig({
 })
 `
 
+// tanstack.com's vite.config: a Rollup-style `manualChunks` function grouping
+// Start's client runtime, which Rolldown merges into the entry
+const startDepsViteConfig = startViteConfig.replace(
+  "  build: { outDir: process.env.COMPILER_PERF_OUT_DIR ?? 'dist' },",
+  `  build: {
+    outDir: process.env.COMPILER_PERF_OUT_DIR ?? 'dist',
+    rollupOptions: {
+      output: {
+        manualChunks: (id: string) =>
+          id.includes('/node_modules/@tanstack/react-start') ||
+          id.includes('/node_modules/@tanstack/start-')
+            ? 'tanstack-start'
+            : undefined,
+      },
+    },
+  },`,
+)
+
+/**
+ * The generated dependency graph of `react-start-deps`, written under the
+ * app's own node_modules: `@bench/icons` (a barrel of DEP_ICONS components,
+ * side-effect free, like an icon package), `@bench/utils` (a chain of
+ * DEP_UTILS modules each importing the next two) and `@bench/start-lib` (a
+ * Start library: a server function, a `<ClientOnly>` wrapper, a 2 MB `?url`
+ * asset, the utils chain).
+ */
+function dependencyFiles(rng) {
+  const files = new Map()
+  const pkg = (name, extra = {}) =>
+    JSON.stringify(
+      {
+        name,
+        version: '1.0.0',
+        type: 'module',
+        exports: { '.': './index.js' },
+        ...extra,
+      },
+      null,
+      2,
+    ) + '\n'
+  files.set(
+    'node_modules/@bench/icons/package.json',
+    pkg('@bench/icons', { sideEffects: false }),
+  )
+  const barrel = []
+  for (let n = 0; n < DEP_ICONS; n++) {
+    const id = pad4(n)
+    barrel.push(`export { Icon${id} } from './icons/Icon${id}.js'`)
+    files.set(
+      `node_modules/@bench/icons/icons/Icon${id}.js`,
+      `import { jsx } from 'react/jsx-runtime'
+export function Icon${id}(props) {
+  return jsx('svg', { 'data-icon': '${id}', viewBox: '0 0 ${rng.int(8, 64)} 16', ...props })
+}
+`,
+    )
+  }
+  files.set('node_modules/@bench/icons/index.js', barrel.join('\n') + '\n')
+  files.set('node_modules/@bench/utils/package.json', pkg('@bench/utils'))
+  files.set(
+    'node_modules/@bench/utils/index.js',
+    `export { u0000 as util } from './u0000.js'\n`,
+  )
+  for (let n = 0; n < DEP_UTILS; n++) {
+    const id = pad4(n)
+    const next = [(n + 1) % DEP_UTILS, (n + 2) % DEP_UTILS].map(pad4)
+    files.set(
+      `node_modules/@bench/utils/u${id}.js`,
+      `import { u${next[0]} } from './u${next[0]}.js'
+import { u${next[1]} } from './u${next[1]}.js'
+export function u${id}(depth) {
+  return depth <= 0 ? ${rng.int(1, 999)} : u${next[0]}(depth - 1) + u${next[1]}(depth - 2)
+}
+`,
+    )
+  }
+  files.set(
+    'node_modules/@bench/start-lib/package.json',
+    pkg('@bench/start-lib'),
+  )
+  // a binary asset a bundler serves by URL: never code, never read as text
+  let blob = ''
+  for (let i = 0; i < 2 * 1024 * 1024; i++) {
+    blob += String.fromCharCode(rng.int(1, 255))
+  }
+  files.set('node_modules/@bench/start-lib/engine.wasm', blob)
+  files.set(
+    'node_modules/@bench/start-lib/index.js',
+    `import { jsx } from 'react/jsx-runtime'
+import { createServerFn } from '@tanstack/react-start'
+import { ClientOnly } from '@tanstack/react-router'
+import { util } from '@bench/utils'
+import engineUrl from './engine.wasm?url'
+
+export const libStats = createServerFn({ method: 'GET' }).handler(async () => {
+  return { engine: engineUrl.length, depth: util(6) }
+})
+
+export function LibBadge({ label }) {
+  return jsx(ClientOnly, {
+    fallback: null,
+    children: jsx('span', { 'data-lib': engineUrl, children: label + util(3) }),
+  })
+}
+`,
+  )
+  return files
+}
+
 const routerViteConfig = `import path from 'node:path'
 import { defineConfig } from 'vite'
 import viteReact from '@vitejs/plugin-react'
@@ -1200,8 +1343,20 @@ export function generateFiles(variant) {
   const ctx = { inlineFns: 0 }
 
   files.set('tsconfig.json', solid ? solidTsconfig : tsconfig)
+  if (hasDeps(variant)) {
+    for (const [rel, content] of dependencyFiles(createRng(SEED + 1))) {
+      files.set(rel, content)
+    }
+  }
   if (start) {
-    files.set('vite.config.ts', solid ? solidStartViteConfig : startViteConfig)
+    files.set(
+      'vite.config.ts',
+      solid
+        ? solidStartViteConfig
+        : hasDeps(variant)
+          ? startDepsViteConfig
+          : startViteConfig,
+    )
     // Rsbuild needs @rsbuild/plugin-babel + plugin-solid for Solid; not set up.
     if (!solid) {
       files.set('rsbuild.config.ts', startRsbuildConfig)
