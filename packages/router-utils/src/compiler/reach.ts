@@ -1293,10 +1293,21 @@ export function computePlacement(input: PlacementInput): Placement {
   // own imports (tanstack.com dev crawl +0.6 s). So in dev an extracted
   // cluster stays in the route module as written (`extractedOutputs`), and
   // chunks copy or import it exactly as in a build.
-  /** A candidate a chunk copies (pure, observing no mutable state, declaring nothing anything assigns or mutates). */
+  // the clusters whose text holds a region another output claims (a
+  // component with a Hydrate boundary): one instance, imported, since its
+  // claimed region renders in the owner's output already
+  const claimHolders = new Set<ClusterId>()
+  for (const claim of rewrites.claims.values()) {
+    const parent = regions.get(claim.region).parent
+    if (parent !== null) {
+      claimHolders.add(clusterOfRegion.get(parent)!)
+    }
+  }
+  /** A candidate a chunk copies (pure, observing no mutable state, declaring nothing anything assigns or mutates, holding no claimed region). */
   const copies = (c: ClusterId): boolean =>
     !clusters[c]!.effectful &&
     !readsMutableState(c) &&
+    !claimHolders.has(c) &&
     ![...clusters[c]!.declares].some((s) => t1.mutation.isMutated(s))
 
   // ---- env roots and extraction: one fixed point -------------------------

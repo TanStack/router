@@ -860,6 +860,28 @@ export const Page = () => <Hydrate><Card /></Hydrate>
     expect(dev.code).not.toContain('export~')
   })
 
+  // A component holding a boundary is one instance its chunk imports (a copy
+  // in the chunk would carry the boundary's region next to the chunk's own
+  // declaration of it): the self-recursive tree of the page tests
+  it('imports an exported component holding a boundary from its extracted module instead of copying it', async () => {
+    const code = `${REACT}export function Tree({ node }) {
+  return <li>{node.label}<Hydrate><ul>{node.children.map((child) => <Tree node={child} />)}</ul></Hydrate></li>
+}
+`
+    const built = await compile(code, { env: buildClientEnv })
+    const [b] = built.facts.boundaries
+    expect(built.chunks[b!.id]).toContain(
+      "import { Tree } from './page.tsx?tsr-split=export~Tree'",
+    )
+    expect(built.chunks[b!.id]).not.toContain('function Tree')
+    expect(built.code).toContain(
+      "export { Tree } from './page.tsx?tsr-split=export~Tree'",
+    )
+    const dev = await compile(code)
+    expect(dev.chunks[b!.id]).toContain("import { Tree } from './page.tsx'")
+    expect(dev.chunks[b!.id]).not.toContain('function Tree')
+  })
+
   it('reads the classic JSX pragma’s factory in a fragment-wrapped chunk', async () => {
     const code = `/** @jsxRuntime classic */
 /** @jsx h */
