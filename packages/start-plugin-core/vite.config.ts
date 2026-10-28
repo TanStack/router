@@ -22,6 +22,8 @@ export default mergeConfig(
       './src/rsbuild/index.ts',
       './src/rsbuild/types.ts',
       './src/rsbuild/import-protection-loader.ts',
+      './src/rsbuild/mock-loader.ts',
+      './src/rsbuild/mock.ts',
       './src/rsbuild/start-compiler-metadata-loader.ts',
     ],
     srcDir: './src',

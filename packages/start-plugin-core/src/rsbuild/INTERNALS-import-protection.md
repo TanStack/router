@@ -8,7 +8,7 @@ import-protection core in `src/import-protection/INTERNALS.md`.
 Rsbuild owns:
 
 - post-transform enforcement through a Rspack post-loader
-- virtual-module transport through `VirtualModulesPlugin`
+- query-specific mock modules built through `mock-loader`
 - compilation-truth reporting in `processAssets`
 - final graph reconstruction from Rspack compilation data
 
@@ -36,8 +36,8 @@ object:
 3. `modifyRspackConfig`
 4. `processAssets(..., { stage: 'report' })`
 
-`modifyRspackConfig` installs both the virtual-modules plugin and the
-environment-scoped import-protection post-loader.
+`modifyRspackConfig` installs the mock loader and the environment-scoped
+import-protection post-loader.
 
 ## State Model
 
@@ -45,13 +45,6 @@ Per environment, Rsbuild keeps a smaller runtime state than Vite:
 
 - `resolveCache`
 - `seenViolations`
-
-Shared adapter state contains:
-
-- `virtualModules`
-- `vmPlugins`
-- `readyVmPlugins`
-- `pendingWrites`
 
 Notably absent compared to Vite:
 
@@ -83,30 +76,25 @@ parse, or analyze original source. Imports removed by the Start compiler are no
 longer part of this phase; imports with unsafe client/server usage remain in the
 transformed code and are checked normally.
 
-## Virtual Module Transport
+## Mock Module Transport
 
-Rsbuild reuses the shared mock generators, but not the Vite id transport.
+Rsbuild reuses the shared mock generators through `mock-loader.ts`. The
+import-protection post-loader only creates self-contained requests for the real,
+package-owned `mock.js` entry, with the mock kind, environment, and encoded
+payload in its query. The mock loader returns the module's source directly.
 
-Instead it writes environment-scoped virtual files under:
+Kinds are `silent`, `runtime`, and `edge`. Edge payloads retain the expected
+exports, runtime request, and violation metadata for compilation-time reporting.
+The mock entry is excluded from the import-protection post-loader.
 
-```text
-<root>/node_modules/.virtual/import-protection/<env>/
-```
+Persistent cache can restore either the importer or the mock independently.
+When a mock needs rebuilding, its real entry still resolves and its own loader
+regenerates it from the query. No importer-loader side effect needs replaying.
 
-The important forms are:
-
-- `mock-silent.mjs`
-- `mock-runtime-<base64>.mjs`
-- `mock-edge-<base64>.mjs`
-
-Writes may happen before the `VirtualModulesPlugin` instance is ready, so the
-adapter queues them and flushes during compilation setup.
-
-Persistent cache restores importers without rerunning the loader that writes
-their mocks. When the compiler uses a persistent cache, a `beforeResolve` hook
-therefore regenerates any requested mock in the environment's virtual directory
-from its file name, which fully encodes its contents. The hook is not registered
-otherwise because a JavaScript `beforeResolve` tap runs on every resolve.
+Mock resources retain their complete query in the diagnostic graph and source
+location lookup; using only the shared physical entry path would merge distinct
+edges and lose their payloads. Ordinary resources keep their physical paths for
+file rules and original-source lookup.
 
 ## Reporting Phase
 
@@ -204,6 +192,6 @@ When changing Rsbuild import protection, ask:
 
 1. Can the change be expressed in shared analysis/rewrite/mock codegen instead?
 2. If it is adapter-specific, is it really about post-transform enforcement,
-   virtual-file transport, or compilation-time reporting?
+   mock-module transport, or compilation-time reporting?
 3. Can final compilation truth answer the question more simply than adding a new
    pending state machine?

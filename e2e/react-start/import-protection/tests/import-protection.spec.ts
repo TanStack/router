@@ -3,7 +3,10 @@ import fs from 'node:fs'
 import os from 'node:os'
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
-import { getViolationArtifactName } from './violations.utils'
+import {
+  extractViolationsFromLog,
+  getViolationArtifactName,
+} from './violations.utils'
 import type { Violation } from './violations.utils'
 import type { Page } from '@playwright/test'
 import type { RsbuildPlugin } from '@rsbuild/core'
@@ -1039,7 +1042,11 @@ test('persistent cache restores import-protection mocks and violations', async (
   const build = async () => {
     const results: Record<
       string,
-      { errors: Array<string>; warnings: Array<string> }
+      {
+        errors: Array<string>
+        warnings: Array<string>
+        importerBuilt?: boolean
+      }
     > = {}
     const { content } = await loadConfig({ cwd: fixtureRoot })
     const rsbuild = await createRsbuild({
@@ -1056,7 +1063,22 @@ test('persistent cache restores import-protection mocks and violations', async (
             setup(api) {
               api.onAfterEnvironmentCompile(({ environment, stats }) => {
                 if (stats) {
+                  const modules = stats.toJson({
+                    all: false,
+                    modules: true,
+                    nestedModules: true,
+                    cachedModules: true,
+                    orphanModules: true,
+                  }).modules
+                  const importer = modules
+                    ?.flatMap((module) => [module, ...(module.modules ?? [])])
+                    .find((module) =>
+                      module.nameForCondition
+                        ?.replaceAll('\\', '/')
+                        .endsWith('/src/violations/leaky-server-import.ts'),
+                    )
                   results[environment.name] = {
+                    importerBuilt: importer?.built,
                     errors: stats.compilation.errors.map((e) => e.message),
                     warnings: stats.compilation.warnings
                       .map((w) => w.message)
@@ -1087,6 +1109,29 @@ test('persistent cache restores import-protection mocks and violations', async (
         warning.includes('secret.server'),
       ),
     ).toBe(true)
+    // A warm build must actually reuse the importer containing mock requests.
+    expect(cold.client?.importerBuilt).toBe(true)
+    expect(warm.client?.importerBuilt).toBe(false)
+
+    // These imports share a specifier but have different importer/usage metadata.
+    // Checking their presence prevents cold/warm equality hiding lost diagnostics.
+    const violations = extractViolationsFromLog(
+      warm.client!.warnings.join('\n'),
+    )
+    for (const importer of ['leaky-server-import', 'beforeload-server-leak']) {
+      const violation = violations.find(
+        (info) =>
+          info.type === 'specifier' &&
+          info.specifier === '@tanstack/react-start/server' &&
+          info.importer.includes(importer),
+      )
+      expect(violation).toBeDefined()
+      expect(violation!.importer).toMatch(/:\d+:\d+$/)
+      expect(
+        violation!.trace.some((step) => step.file.includes(importer)),
+      ).toBe(true)
+      expect(violation!.snippet?.lines.join('\n')).toContain('getRequest()')
+    }
   } finally {
     await fs.promises.rm(directory, { recursive: true, force: true })
   }
