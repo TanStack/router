@@ -10,7 +10,12 @@
  * split component rendered loaded eagerly with its icon imports. The shapes
  * that broke there run here in every configuration: an exported helper with
  * icon imports, `import type * as React` next to JSX, and a component with
- * destructured props (a trailing comma) around `<ClientOnly>`.
+ * destructured props (a trailing comma) around `<ClientOnly>`. (Rolldown
+ * < 1.1.5 itself cannot be pinned here: the repository's Vite resolves
+ * Rolldown >= 1.2, and the plugin's Vite-only hooks do not run under plain
+ * Rolldown. Its placement is covered by construction, since no chunk
+ * imports the extracted module, and by the chunk groups below, which merge
+ * the module into the entry on current Rolldown the same way.)
  *
  * Identity: importers of the route file share one instance (two routes'
  * split components import the same `Card`); the route's own chunk renders
