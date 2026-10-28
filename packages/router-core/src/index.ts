@@ -322,6 +322,8 @@ export {
   createControlledPromise,
   isPromise,
   isModuleNotFoundError,
+  watchPageUnload,
+  waitForPageToStay,
   DEFAULT_PROTOCOL_ALLOWLIST,
   escapeHtml,
   getUrlScheme,
