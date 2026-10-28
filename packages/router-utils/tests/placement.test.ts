@@ -2738,3 +2738,190 @@ describe('one mutation model: eager reads of state something writes', () => {
     expect(s.env).toContain('let socket = connect()')
   })
 })
+
+// R78: a declaration only split code needs that the movable test keeps in
+// the route module (R29 / R31 (d) / R65 / R67) is reported once, at its
+// cause, positioned at the declaration and naming why; nothing is reported
+// when it moves, or when the split code needs nothing pinned.
+describe('declarations only split code needs that stay in the route module', () => {
+  async function kept(
+    code: string,
+    keys = ['component'],
+    env: EnvInfo = envInfo({ mode: 'build' }),
+  ) {
+    const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+    const planners = [toySplitPlanner({ keys })]
+    const out = await host.compile('/app/route.tsx', planners, { env })
+    return {
+      env: out?.code ?? '',
+      diagnostics: (out?.diagnostics ?? []).filter((d) =>
+        d.code?.startsWith('eager-'),
+      ),
+    }
+  }
+  const lineOf = (code: string, needle: string) =>
+    code.slice(0, code.indexOf(needle)).split('\n').length
+
+  // tamery's account route: `validateSearch: type({…})` stays and runs
+  // after `confetti`
+  const pinned = dedent(`
+    import { createFileRoute } from 'toy-router'
+    import { type } from 'arktype'
+    import JSConfetti from 'js-confetti'
+    const confetti = new JSConfetti()
+    export const Route = createFileRoute('/')({
+      validateSearch: type({ 'a?': 'string' }),
+      component: () => confetti.addConfetti(),
+    })
+  `)
+
+  it('reports a declaration a later surviving effect keeps in place, naming the effect, its option and line', async () => {
+    const r = await kept(pinned)
+    expect(r.env).toContain('const confetti = new JSConfetti()')
+    expect(r.diagnostics).toMatchObject([
+      {
+        severity: 'warning',
+        code: 'eager-split:order',
+        by: 'core',
+        range: { start: pinned.indexOf('confetti = new') },
+      },
+    ])
+    const message = r.diagnostics[0]!.message
+    for (const part of [
+      '`confetti`',
+      '/app/route.tsx',
+      'the call `type(…)` in `validateSearch`',
+      `(line ${lineOf(pinned, 'type({')})`,
+      'declare that value before `confetti`',
+      '`/* @__PURE__ */`',
+      'the split `component`',
+    ]) {
+      expect(message).toContain(part)
+    }
+  })
+
+  it('reports nothing when the declaration moves, or when the split code needs nothing pinned', async () => {
+    for (const code of [
+      pinned.replace('type({', '/* @__PURE__ */ type({'),
+      // the schema declared first: no effect after `confetti` stays
+      pinned
+        .replace(
+          'const confetti',
+          "const search = type({ 'a?': 'string' })\nconst confetti",
+        )
+        .replace(/validateSearch: type\(\{[^}]*\}\)/, 'validateSearch: search'),
+      // a callee declared without side effects in the route file
+      pinned
+        .replace("import { type } from 'arktype'\n", '')
+        .replace(
+          'const confetti',
+          '/* #__NO_SIDE_EFFECTS__ */ function type(shape) { return shape }\nconst confetti',
+        ),
+      dedent(`
+        import { createFileRoute } from 'toy-router'
+        export const Route = createFileRoute('/')({
+          validateSearch: (s) => s,
+          component: () => 'page',
+        })
+      `),
+    ]) {
+      const r = await kept(code)
+      expect(r.env, code).not.toContain('new JSConfetti')
+      expect(r.diagnostics, code).toEqual([])
+    }
+  })
+
+  it('reports a plain statement after it, an effect several split options need, writes and reads of state', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import { make, wrap, log } from './lib'
+      const first = make()
+      log('ready')
+      let n = 0
+      const snapshot = [n]
+      function inc() { n++ }
+      const shared = make()
+      const registry = make()
+      registry.add(1)
+      const client = make()
+      const api = wrap(client)
+      export const Route = createFileRoute('/')({
+        component: () => [first, snapshot, inc(), shared, registry, api],
+        errorComponent: () => shared,
+      })
+    `)
+    const r = await kept(code, ['component', 'errorComponent'])
+    const byName: Record<string, (typeof r.diagnostics)[number]> =
+      Object.fromEntries(
+        r.diagnostics.map((d) => [/`(\w+)` in "/.exec(d.message)![1]!, d]),
+      )
+    expect(Object.keys(byName).sort()).toEqual([
+      'api',
+      'first',
+      'registry',
+      'shared',
+      'snapshot',
+    ])
+    expect(byName.first).toMatchObject({ code: 'eager-split:order' })
+    expect(byName.first!.message).toContain(
+      `the call \`log(…)\` (line ${lineOf(code, "log('ready')")}) runs after it and stays`,
+    )
+    expect(byName.shared).toMatchObject({ code: 'eager-split:needers' })
+    expect(byName.shared!.message).toContain('`component`, `errorComponent`')
+    expect(byName.registry).toMatchObject({ code: 'eager-split:written' })
+    expect(byName.registry!.message).toContain(
+      `(line ${lineOf(code, 'registry.add')})`,
+    )
+    expect(byName.snapshot).toMatchObject({ code: 'eager-split:state' })
+    expect(byName.snapshot!.message).toContain('reads `n`')
+    // `client` stays only because `api`, which stays, reads it: one
+    // warning, at the cause
+    expect(byName.api).toMatchObject({ code: 'eager-split:reads' })
+    expect(byName.api!.message).toContain(
+      'reads `client` when the module loads, and `client` has side effects',
+    )
+    for (const [name, d] of Object.entries(byName)) {
+      expect(d.range, name).toMatchObject({
+        start: code.indexOf(`${name} = `),
+      })
+    }
+  })
+
+  it('reports a reader of mutable state several split options need as such', async () => {
+    const r = await kept(
+      dedent(`
+        import { createFileRoute } from 'toy-router'
+        let n = 0
+        const snapshot = [n]
+        export function inc() { n++ }
+        export const Route = createFileRoute('/')({
+          component: () => snapshot,
+          errorComponent: () => snapshot,
+        })
+      `),
+      ['component', 'errorComponent'],
+    )
+    expect(r.diagnostics).toMatchObject([{ code: 'eager-split:state' }])
+    expect(r.diagnostics[0]!.message).toContain('`snapshot`')
+    expect(r.diagnostics[0]!.message).not.toContain('side effects')
+  })
+
+  it('reports the same in dev', async () => {
+    const r = await kept(pinned, ['component'], envInfo({ mode: 'dev' }))
+    expect(r.diagnostics).toMatchObject([{ code: 'eager-split:order' }])
+  })
+
+  it('does not report what the route module itself reads', async () => {
+    const r = await kept(
+      dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { make, log } from './lib'
+        const client = make()
+        log(client)
+        export const Route = createFileRoute('/')({ component: () => client })
+      `),
+    )
+    expect(r.env).toContain('const client = make()')
+    expect(r.diagnostics).toEqual([])
+  })
+})

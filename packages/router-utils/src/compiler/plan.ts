@@ -18,8 +18,7 @@ import { isLineTerminator, pragmasOf } from './header'
 import type {
   Fallback,
   HeaderPolicy,
-  KeptExport,
-  KeptReason,
+  KeptDeclaration,
   OutputDecl,
   OutputKind,
   Placement,
@@ -471,37 +470,141 @@ export class AnalysisPlan implements PlanContext {
       this.outputs.set(created.id, created)
     }
     for (const k of placement.kept) {
-      this.diagnostic(this.keptExportDiagnostic(k))
+      this.diagnostic(this.keptDiagnostic(k))
     }
     this.placement = placement
     return placement
   }
 
   /**
-   * An exported declaration a chunk needs stays in the env module (it is
-   * neither extracted nor copied): the user is told why, once per file and
-   * reason (J2.8). The export names of the symbol are the module's own.
+   * A declaration only split code needs stays in the env module, so it
+   * loads with the module instead of lazily (R77, R78): the user is told
+   * which, why and how to free it, once per declaration and wording (the
+   * hosts' ledgers), positioned at the declaration. An exported one is not
+   * extracted (its export names are the module's own); an unexported one is
+   * kept by the movable test, the cause named with its line.
    */
-  private keptExportDiagnostic(k: KeptExport): Diagnostic {
-    const names = this.analysis.exports.flatMap((e) =>
-      e.kind === 'local' && e.local === k.sym && !e.typeOnly
-        ? [`\`${e.name}\``]
-        : [],
-    )
-    const why: Record<KeptReason, string> = {
-      effects: 'its initialiser has side effects',
-      reassigned: 'it is reassigned',
-      live: `the ${this.routeModule ? 'route ' : ''}module itself reads it`,
-      reads: 'it reads, when it loads, a binding the module keeps',
-      order: 'an effect of the module keeps it in place',
+  private keptDiagnostic(k: KeptDeclaration): Diagnostic {
+    const tag = this.routeModule ? '[tanstack-router] ' : ''
+    const module = this.routeModule ? 'route module' : 'module'
+    const file = this.identity.path
+    const code = this.analysis.source.code
+    const text = (n: Node) => {
+      const t = code.slice(n.start, n.end)
+      return t.length > 40 || t.includes('\n')
+        ? `${t.slice(0, 37).split('\n')[0]}…`
+        : t
+    }
+    // `the call \`f(…)\` in \`validateSearch\``
+    const describe = ({ node, key }: { node: Node; key: string | null }) => {
+      const where = key === null ? '' : ` in \`${key}\``
+      switch (node.type) {
+        case 'CallExpression':
+          return `the call \`${text(node.callee)}(…)\`${where}`
+        case 'NewExpression':
+          return `\`new ${text(node.callee)}(…)\`${where}`
+        case 'AssignmentExpression':
+          return `the assignment to \`${text(node.left)}\`${where}`
+        default:
+          return `\`${text(node)}\`${where}`
+      }
+    }
+    if (k.exported) {
+      const names = this.analysis.exports.flatMap((e) =>
+        e.kind === 'local' && e.local === k.syms[0] && !e.typeOnly
+          ? [`\`${e.name}\``]
+          : [],
+      )
+      const why: Partial<Record<KeptDeclaration['reason'], string>> = {
+        effects: 'its initialiser has side effects',
+        reassigned: 'it is reassigned',
+        live: `the ${module} itself reads it`,
+        reads: 'it reads, when it loads, a binding the module keeps',
+        order:
+          k.effect === undefined
+            ? 'an effect of the module keeps it in place'
+            : `${describe(this.effectAt(k.effect))} runs after it and ${k.effectStays ? 'stays' : 'does not move with it'}`,
+      }
+      return {
+        severity: 'warning',
+        message: `${tag}The export ${names.join(', ')} of "${file}" stays in the ${module} (${why[k.reason]}), so the code split from it loads it with the module instead of lazily. Drop the export or move it to another module.`,
+        range: k.range,
+        by: 'core',
+        code: `eager-export:${k.reason}`,
+      }
+    }
+    const names = k.syms.map((s) => `\`${this.symbols.name(s)}\``)
+    const subject = names.join(', ')
+    const it = names.length === 1 ? 'it' : 'they'
+    const own = names.length === 1 ? 'its' : 'their'
+    const split = k.needers
+      .map((o) => {
+        const decl = this.outputs.get(o)!
+        return decl.kind === 'hydrate'
+          ? '`<Hydrate>` boundary'
+          : `\`${decl.key.split('~').join('`, `')}\``
+      })
+      .join(', ')
+    const line = (at: number) =>
+      `line ${this.analysis.source.locate(at).line + 1}`
+    const read = k.read === undefined ? '' : `\`${this.symbols.name(k.read)}\``
+    let because: string
+    let fix: string
+    switch (k.reason) {
+      case 'order': {
+        const effect = this.effectAt(k.effect!)
+        because = `${describe(effect)} (${line(effect.node.start)}) runs after ${it} and ${k.effectStays ? 'stays' : 'does not move with it'}`
+        const pure =
+          effect.node.type === 'CallExpression' ||
+          effect.node.type === 'NewExpression'
+            ? ', or mark the call `/* @__PURE__ */` if it has no side effects'
+            : ''
+        fix = this.benignEffects.has(k.effect!)
+          ? `declare that value before ${subject}${pure}`
+          : `declare ${subject} after it${pure}`
+        break
+      }
+      case 'needers':
+        because = `several split options read ${it} (${split}) and ${own} initialiser has side effects, which run once`
+        fix = `move ${subject} to its own module, or mark ${own} initialiser \`/* @__PURE__ */\` if it has none`
+        break
+      case 'written':
+        because = `the module changes ${it} outside ${own} declaration when it loads (${line(k.at!)})`
+        fix = `move ${subject} and what writes ${it} to their own module, or mark ${own} initialiser \`/* @__PURE__ */\` if it has no side effects`
+        break
+      case 'state':
+        because =
+          k.read === undefined
+            ? `${it} read${it === 'it' ? 's' : ''}, when the module loads, a binding the module changes`
+            : `${it} read${it === 'it' ? 's' : ''} ${read} when the module loads, and the module writes ${read}`
+        fix = `read ${k.read === undefined ? 'that binding' : read} inside the code that needs it, or move both to their own module`
+        break
+      default:
+        because = `${it} read${it === 'it' ? 's' : ''} ${read} when the module loads, and ${read} ${this.symbols.isConst(k.read!) ? 'has side effects' : 'is a `let`'}`
+        fix = `move ${subject} and ${read} to their own module, or mark ${read}'s initialiser \`/* @__PURE__ */\` if it has no side effects`
+        break
     }
     return {
       severity: 'warning',
-      message: `${this.routeModule ? '[tanstack-router] ' : ''}The export ${names.join(', ')} of "${this.identity.path}" stays in the ${this.routeModule ? 'route ' : ''}module (${why[k.reason]}), so the code split from it loads it with the module instead of lazily. Drop the export or move it to another module.`,
+      message: `${tag}${subject} in "${file}" stay${names.length === 1 ? 's' : ''} in the ${module} because ${because}; ${fix}, so ${subject} can load with the split ${split}.`,
       range: k.range,
       by: 'core',
-      code: `eager-export:${k.reason}`,
+      code: `eager-split:${k.reason}`,
     }
+  }
+
+  /** The expression that makes a unit an effect: for a recognised call a planner named, the option value or argument that is not pure (`firstImpure`). */
+  private effectAt(u: UnitId): { node: Node; key: string | null } {
+    const unit = this.t1.units[u]!
+    const option = this.benignEffects.has(u) ? this.firstImpure(unit) : null
+    const node =
+      option?.node ??
+      (unit.node.type === 'ExpressionStatement'
+        ? unit.node.expression
+        : unit.node.type === 'VariableDeclarator' && unit.node.init
+          ? unit.node.init
+          : unit.node)
+    return { node: unwrapExpression(node), key: option?.key ?? null }
   }
 
   /**
@@ -512,6 +615,15 @@ export class AnalysisPlan implements PlanContext {
    * one the env output erases not at all.
    */
   private benignUnit(unit: Unit): boolean {
+    return this.firstImpure(unit) === null
+  }
+
+  /**
+   * The value that makes a unit no benign call chain (`benignUnit`): the
+   * first impure argument, or option value with its property key; the
+   * unit's own expression when it is no call chain; null when benign.
+   */
+  private firstImpure(unit: Unit): { node: Node; key: string | null } | null {
     const node = unit.node
     const expr =
       node.type === 'VariableDeclarator'
@@ -522,7 +634,7 @@ export class AnalysisPlan implements PlanContext {
             ? node.declaration
             : null
     if (expr === null) {
-      return false
+      return { node, key: null }
     }
     const env = this.rewrites.tree('env')
     const claimed = (v: Node): boolean => {
@@ -534,7 +646,10 @@ export class AnalysisPlan implements PlanContext {
       }
       return false
     }
-    const benignValue = (v: Node): boolean => {
+    const impureIn = (
+      v: Node,
+      key: string | null,
+    ): { node: Node; key: string | null } | null => {
       const n = unwrapExpression(v)
       // the common values: a function, an identifier, a literal
       if (
@@ -543,41 +658,59 @@ export class AnalysisPlan implements PlanContext {
         n.type === 'Identifier' ||
         n.type === 'Literal'
       ) {
-        return true
+        return null
       }
       if (claimed(v) || env.isErasedAt(v.start)) {
-        return true
+        return null
       }
       if (n.type === 'ObjectExpression') {
-        return n.properties.every((p) =>
-          p.type === 'SpreadElement'
-            ? isPureExpression(this.analysis.purity, p)
-            : (!p.computed ||
-                isPureExpression(this.analysis.purity, p.key as Node)) &&
-              (p.kind !== 'init' ||
-                env.isErasedAt(p.start) ||
-                benignValue(p.value as Node)),
-        )
+        for (const p of n.properties) {
+          if (p.type === 'SpreadElement') {
+            if (!isPureExpression(this.analysis.purity, p)) {
+              return { node: p, key }
+            }
+            continue
+          }
+          if (
+            p.computed &&
+            !isPureExpression(this.analysis.purity, p.key as Node)
+          ) {
+            return { node: p.key as Node, key }
+          }
+          if (p.kind !== 'init' || env.isErasedAt(p.start)) {
+            continue
+          }
+          const found = impureIn(
+            p.value as Node,
+            p.computed ? key : propertyName(p.key as Node),
+          )
+          if (found !== null) {
+            return found
+          }
+        }
+        return null
       }
-      return isPureExpression(this.analysis.purity, v)
+      return isPureExpression(this.analysis.purity, v) ? null : { node: v, key }
     }
     let n: Node = unwrapExpression(expr)
     let calls = 0
     for (;;) {
       if (n.type === 'CallExpression') {
         calls++
-        if (
-          !n.arguments.every(
-            (a) => a.type !== 'SpreadElement' && benignValue(a),
-          )
-        ) {
-          return false
+        for (const a of n.arguments) {
+          const found =
+            a.type === 'SpreadElement'
+              ? { node: a, key: null }
+              : impureIn(a, null)
+          if (found !== null) {
+            return found
+          }
         }
         n = unwrapExpression(n.callee)
       } else if (n.type === 'MemberExpression' && !n.computed) {
         n = unwrapExpression(n.object)
       } else {
-        return calls > 0
+        return calls > 0 ? null : { node: expr, key: null }
       }
     }
   }
@@ -1888,4 +2021,13 @@ function needsLeadingSemicolon(
     '([`+-/<'.includes(code[item.nodeRange.start]!) &&
     !(previous?.intact && previous.item?.index === item.index - 1)
   )
+}
+
+/** The name of a non-computed property key (`validateSearch`, `'a-b'`), for diagnostics. */
+function propertyName(key: Node): string | null {
+  return key.type === 'Identifier'
+    ? key.name
+    : key.type === 'Literal'
+      ? String(key.value)
+      : null
 }

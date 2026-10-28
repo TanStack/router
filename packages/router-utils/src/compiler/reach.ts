@@ -128,14 +128,54 @@ export interface PlacementInput {
   extractedOutputs: boolean
 }
 
-/** Why an exported declaration a chunk needs stays in the env module (`Placement.kept`). */
-export type KeptReason = 'effects' | 'reassigned' | 'live' | 'reads' | 'order'
+/**
+ * Why a declaration only split code needs stays in the env module
+ * (`Placement.kept`). An exported one (an extraction candidate a chunk
+ * reaches): `effects` (an observable initialiser effect), `reassigned`,
+ * `live` (the env module reads it), `reads` (it reads, at its evaluation,
+ * a binding the env module keeps), `order` (an effect keeps its order). An
+ * unexported effectful one, or an eager reader of state (R29 / R31 (d) /
+ * R65 / R67): `order` (a surviving effect after its first one, `effect`),
+ * `needers` (several lazy outputs need it), `written` (it is written
+ * outside its declaration when the module loads, `at`), `state`
+ * (it reads, at its evaluation, `read`, which something writes), `reads`
+ * (it reads `read`, an effectful or `let` binding the env module keeps).
+ */
+export type KeptReason =
+  | 'effects'
+  | 'reassigned'
+  | 'live'
+  | 'reads'
+  | 'order'
+  | 'needers'
+  | 'written'
+  | 'state'
 
-export interface KeptExport {
-  sym: SymbolId
+export interface KeptDeclaration {
+  /** The declared symbols (one, an export's, for an exported declaration). */
+  syms: Array<SymbolId>
+  exported: boolean
   reason: KeptReason
   /** The declaring unit's range, for a positioned diagnostic. */
   range: { start: number; end: number }
+  /** The lazy outputs that need it. */
+  needers: Array<OutputId>
+  /** `order`: the surviving effect that keeps it in place. */
+  effect?: UnitId
+  /** Whether that effect still evaluates in the env module (else it moves to another output). */
+  effectStays?: boolean
+  /** `written`: where it is written. */
+  at?: number
+  /** `state`, `reads`: the binding it reads. */
+  read?: SymbolId
+}
+
+/** Why `decideMovable` leaves an undecided cluster out (`KeptDeclaration`'s cause). */
+interface Pin {
+  reason: KeptReason
+  effect?: UnitId
+  at?: number
+  read?: SymbolId
 }
 
 export interface ExtractedExport {
@@ -161,8 +201,8 @@ export interface Placement {
   created: Array<OutputDecl>
   /** Exported clusters homed in an extracted-export output (the env module re-exports them). */
   extracted: Array<ExtractedExport>
-  /** Exported declarations a lazy output needs that stay in the env module, with the reason. */
-  kept: Array<KeptExport>
+  /** Declarations only lazy outputs need that stay in the env module, with the reason (one per declaration, the cause of a cascade only). */
+  kept: Array<KeptDeclaration>
   /** Type units the env module drops (`importStays`); every other type unit stays there, whatever its cluster. */
   droppedTypeUnits: Set<UnitId>
 }
@@ -1051,6 +1091,9 @@ export function computePlacement(input: PlacementInput): Placement {
     return !envTree.isErasedAt(probe)
   }
   const envRoots = new Set<ClusterId>()
+  // declaration clusters an augmentation keeps as effect roots (their
+  // initialiser has effects), with its position (`kept`, `written`)
+  const augmentedRoots = new Map<ClusterId, number>()
   for (const u of units) {
     if (!unitSurvives(u.id)) {
       continue
@@ -1061,6 +1104,14 @@ export function computePlacement(input: PlacementInput): Placement {
       // cluster (movable, else an effect root below)
       if (!ownAugmentation(u, clusters[c]!)) {
         envRoots.add(c)
+        if (
+          u.augments.length > 0 &&
+          !clusters[c]!.exported &&
+          !augmentedRoots.has(c) &&
+          u.augments.every((s) => clusters[c]!.declares.has(s))
+        ) {
+          augmentedRoots.set(c, u.range.start)
+        }
       }
     } else if (
       u.kind === 'export-specifier' ||
@@ -1209,6 +1260,8 @@ export function computePlacement(input: PlacementInput): Placement {
     }
   }
   const movable = new Set<ClusterId>()
+  /** Why each undecided cluster `decideMovable` left out stays (the reported cause, `kept`). */
+  const pins = new Map<ClusterId, Pin>()
   const orphaned = new Set<ClusterId>()
   const pure = (c: ClusterId) => !clusters[c]!.effectful
   /**
@@ -1326,6 +1379,9 @@ export function computePlacement(input: PlacementInput): Placement {
   // final env roots.
   const remaining = new Map(extractCandidates)
   let liveEnv = new Set<ClusterId>()
+  // the undecided clusters a derived output needs that became env roots,
+  // with the cause (`kept`)
+  const pinnedNeeded = new Map<ClusterId, Pin>()
   // derived reach changes only with the candidates still extracted, or when
   // a cluster a derived output reaches becomes an env root (it then reads
   // what it evaluates in the env module)
@@ -1375,6 +1431,9 @@ export function computePlacement(input: PlacementInput): Placement {
         continue // orphaned by us: removable with its initialiser effects
       }
       envRoots.add(cl.id)
+      if (needed) {
+        pinnedNeeded.set(cl.id, pins.get(cl.id)!)
+      }
       derivedStale ||= needed
       changed = true
     }
@@ -1421,10 +1480,31 @@ export function computePlacement(input: PlacementInput): Placement {
       break
     }
   }
-  // exported declarations a lazy output needs that stay in the env module,
-  // with the reason (a planner reports them; `extractable` and the candidate
-  // filter above decided)
-  const kept: Array<KeptExport> = []
+  // what only lazy outputs need that stays in the env module, with the
+  // reason (a planner reports them; the decisions above were taken): the
+  // exported declarations a chunk reaches that are not extracted
+  // (`extractable` and the candidate filter decided), and the unexported
+  // clusters the movable test kept (R29 / R31 (d) / R65 / R67)
+  const lazyNeeders = (c: ClusterId): Array<OutputId> => {
+    const out: Array<OutputId> = []
+    for (const [id, set] of derivedReach) {
+      const kind = outputs.get(id)?.kind
+      if (set.has(c) && kind !== 'export' && kind !== 'provider') {
+        out.push(id)
+      }
+    }
+    return out
+  }
+  const declaringRange = (cl: Cluster, sym: SymbolId | undefined) => {
+    const declaring =
+      sym === undefined ? undefined : (t1.declaringUnits.get(sym) ?? [])[0]
+    const range =
+      declaring === undefined
+        ? regions.get(cl.regions[0]!).range
+        : units[declaring]!.range
+    return { start: range.start, end: range.end }
+  }
+  const kept: Array<KeptDeclaration> = []
   for (const [sym] of extractions) {
     const c = clusterOfSym.get(sym)
     if (c === undefined || remaining.has(c)) {
@@ -1434,15 +1514,8 @@ export function computePlacement(input: PlacementInput): Placement {
     if (cl.kind !== 'declaration' || cl.gens.length > 0) {
       continue
     }
-    let lazyNeeds = false
-    for (const [id, set] of derivedReach) {
-      const kind = outputs.get(id)?.kind
-      if (set.has(c) && kind !== 'export' && kind !== 'provider') {
-        lazyNeeds = true
-        break
-      }
-    }
-    if (!lazyNeeds) {
+    const needers = lazyNeeders(c)
+    if (needers.length === 0) {
       continue
     }
     const reason: KeptReason = cl.sideEffects
@@ -1454,16 +1527,79 @@ export function computePlacement(input: PlacementInput): Placement {
           : readsKeptEagerly(c)
             ? 'reads'
             : 'order'
-    const declaring = (t1.declaringUnits.get(sym) ?? [])[0]
-    const range =
-      declaring === undefined
-        ? regions.get(cl.regions[0]!).range
-        : units[declaring]!.range
+    const effect = reason === 'order' ? pins.get(c)?.effect : undefined
     kept.push({
-      sym,
+      syms: [sym],
+      exported: true,
       reason,
-      range: { start: range.start, end: range.end },
+      range: declaringRange(cl, sym),
+      needers,
+      ...(effect !== undefined && {
+        effect,
+        effectStays: !movable.has(clusterOfRegion.get(units[effect]!.region)!),
+      }),
     })
+  }
+  for (const [c, at] of augmentedRoots) {
+    if (derivedNeeds(c)) {
+      pinnedNeeded.set(c, { reason: 'written', at })
+    }
+  }
+  if (pinnedNeeded.size > 0) {
+    // reported once, at the cause: a cluster kept because another kept one
+    // reads it (the env-roots cascade) is not, nor one the env module needs
+    // through anything else (an extraction cancelled later)
+    const reachOf = new Map<ClusterId, Set<ClusterId>>()
+    for (const c of pinnedNeeded.keys()) {
+      reachOf.set(c, reach('env', [c]))
+    }
+    const envOwn = reach(
+      'env',
+      [...envRoots].filter((c) => !pinnedNeeded.has(c)),
+    )
+    for (const [c, pin] of pinnedNeeded) {
+      if (envOwn.has(c)) {
+        continue
+      }
+      let cascade = false
+      for (const [d, set] of reachOf) {
+        if (d !== c && set.has(c) && !reachOf.get(c)!.has(d)) {
+          cascade = true
+          break
+        }
+      }
+      // split code only: a chunk or a Hydrate chunk (an extracted export's
+      // module, a server-function provider are not split code)
+      const needers: Array<OutputId> = []
+      let other = false
+      for (const [id, set] of derivedReach) {
+        if (set.has(c)) {
+          const kind = outputs.get(id)?.kind
+          other ||= kind !== 'split' && kind !== 'hydrate'
+          needers.push(id)
+        }
+      }
+      if (cascade || other || needers.length === 0) {
+        continue
+      }
+      const cl = clusters[c]!
+      const syms = [...cl.declares].filter((s) => symbols.isModuleLevel(s))
+      kept.push({
+        syms,
+        exported: false,
+        reason: pin.reason,
+        range: declaringRange(cl, syms[0]),
+        needers,
+        ...(pin.effect !== undefined && {
+          effect: pin.effect,
+          effectStays: !movable.has(
+            clusterOfRegion.get(units[pin.effect]!.region)!,
+          ),
+        }),
+        ...(pin.at !== undefined && { at: pin.at }),
+        ...(pin.read !== undefined && { read: pin.read }),
+      })
+    }
   }
   const copied = new Set([...remaining.keys()].filter(copies))
   if (!input.extractedOutputs) {
@@ -1579,10 +1715,16 @@ export function computePlacement(input: PlacementInput): Placement {
    */
   function decideMovable(): void {
     const target = new Map<ClusterId, OutputId>()
+    pins.clear()
     for (const cl of clusters) {
-      const to = undecided(cl) ? movableTo(cl) : undefined
-      if (to !== undefined) {
+      if (!undecided(cl)) {
+        continue
+      }
+      const to = movableTo(cl)
+      if (typeof to === 'string') {
         target.set(cl.id, to)
+      } else {
+        pins.set(cl.id, to)
       }
     }
     // an extraction candidate with effects (its augmentations) moves to its
@@ -1595,8 +1737,10 @@ export function computePlacement(input: PlacementInput): Placement {
     for (let dropped = true; dropped; ) {
       dropped = false
       for (const [c, to] of target) {
-        if (effectStays(clusters[c]!, to, target)) {
+        const effect = effectStays(clusters[c]!, to, target)
+        if (effect !== undefined) {
           target.delete(c)
+          pins.set(c, { reason: 'order', effect: effect.id })
           dropped = true
         }
       }
@@ -1606,8 +1750,8 @@ export function computePlacement(input: PlacementInput): Placement {
       movable.add(c)
     }
   }
-  /** The only needer `cl` may move to, if any: one derived output, and no ordered-evaluation constraint. */
-  function movableTo(cl: Cluster): OutputId | undefined {
+  /** The only needer `cl` may move to (one derived output, and no ordered-evaluation constraint), else why not. */
+  function movableTo(cl: Cluster): OutputId | Pin {
     // (a) exactly one derived needer
     const needs: Array<OutputId> = []
     for (const [id, set] of derivedReach) {
@@ -1616,7 +1760,8 @@ export function computePlacement(input: PlacementInput): Placement {
       }
     }
     if (needs.length !== 1) {
-      return undefined
+      // a pure cluster is undecided only as a reader of mutable state
+      return { reason: cl.effectful ? 'needers' : 'state' }
     }
     // (b) no ordered-evaluation constraint: nothing outside the cluster
     // writes it eagerly (its own top-level augmentations, `X.p = …`, travel
@@ -1631,7 +1776,7 @@ export function computePlacement(input: PlacementInput): Placement {
             w.eager &&
             (w.owner === null || uf.find(memberOfWriter(w.owner)) !== root)
           ) {
-            return undefined
+            return { reason: 'written', at: w.at }
           }
         }
       }
@@ -1647,7 +1792,7 @@ export function computePlacement(input: PlacementInput): Placement {
       ) {
         continue
       }
-      return undefined
+      return { reason: 'written', at: unit.range.start }
     }
     for (const r of cl.regions) {
       for (const ref of ownedRefs.get(r) ?? []) {
@@ -1664,7 +1809,7 @@ export function computePlacement(input: PlacementInput): Placement {
           continue
         }
         if (mutatedOutside(ref.sym, ref.range.start, root)) {
-          return undefined
+          return { reason: 'state', read: ref.sym }
         }
         // (c) imports (read lazily: the chunk loads after the route module,
         // whoever else reads them), pure module clusters, or a `const` the
@@ -1675,11 +1820,11 @@ export function computePlacement(input: PlacementInput): Placement {
           !pure(d) &&
           !(liveEnv.has(d) && symbols.isConst(ref.sym))
         ) {
-          return undefined
+          return { reason: 'reads', read: ref.sym }
         }
       }
     }
-    return needs[0]
+    return needs[0]!
   }
   /**
    * Whether a surviving effectful unit (benign ones excepted) that does not
@@ -1697,7 +1842,7 @@ export function computePlacement(input: PlacementInput): Placement {
     cl: Cluster,
     to: OutputId,
     target: ReadonlyMap<ClusterId, OutputId>,
-  ): boolean {
+  ): Unit | undefined {
     const isStatic = (o: OutputId | undefined) =>
       o !== undefined && outputs.get(o)?.kind === 'export'
     const staticOutput = isStatic(to)
@@ -1717,9 +1862,9 @@ export function computePlacement(input: PlacementInput): Placement {
       if (ut === to || (staticOutput && isStatic(ut))) {
         continue
       }
-      return true
+      return u
     }
-    return false
+    return undefined
   }
 
   // ---- orphans: erased-only clusters the final env liveness does not reach ------

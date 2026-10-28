@@ -64,8 +64,14 @@ units that output contains. The same computation decides:
   module one request level deeper: the same clusters stay in the route module as written, and chunks copy or
   import them exactly as in a build. An exported declaration a chunk needs that stays in the route module
   (effects, reassigned, read by the route module, reading what it keeps, an effect keeping its order) is reported
-  once per export with the reason (`eager-export:<reason>`); every host also warns after a client build when an
-  extracted module landed in an entry chunk (another module imports the binding through the route file);
+  once per export with the reason (`eager-export:<reason>`), and so is an unexported declaration only split code
+  needs that the movable rule below keeps (`eager-split:<reason>`: `order`, a surviving effect after it, named
+  with its line and, in a recognised route call, its option; `needers`, several split outputs; `written`, changed
+  outside its declaration at load; `state`, reading what the module writes; `reads`, reading an effectful or `let`
+  binding the module keeps), once at the cause (a cluster kept only because another kept one reads it is not
+  reported; `Placement.kept`, worded by `AnalysisPlan`, deduped per file and wording by the hosts' ledgers); every
+  host also warns after a client build when an extracted module landed in an entry chunk (another module imports
+  the binding through the route file);
 - **dead code, by provenance**: a declaration or import specifier is removed only if _our_ edits orphaned it (its
   readers disappeared because a planner removed or moved them). Code already unreferenced in the source keeps
   running: an import nothing reads stays in the env module, so its module still evaluates there (a value import a
