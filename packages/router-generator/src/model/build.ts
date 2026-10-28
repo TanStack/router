@@ -366,13 +366,7 @@ export function buildTreeModel(input: TreeModelInput): TreeModel {
     (d) => (d.filePath.match(routeTokenFilenameRegex) ? -1 : 1),
     (d) => (d.routePath?.endsWith('/') ? -1 : 1),
     (d) => d.routePath,
-  ]).filter((d) => {
-    // Exclude the root route itself, but keep its pieces
-    if (d.routePath === `/${rootPathId}`) {
-      return pieceTypes.includes(d._fsRouteType)
-    }
-    return true
-  })
+  ])
 
   // Fresh nodes: only route files whose analysis found a route (file-less
   // virtual routes are not routes of the tree).

@@ -4,6 +4,7 @@
  * groups, pathless layouts, and token and param validation, read from the
  * evaluated route tree.
  */
+import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import {
   captureThrow,
@@ -679,6 +680,66 @@ describe('conflicting routes', () => {
         'routes/features/index.tsx': '/',
         'routes/features/contact.tsx': '/contact',
       })
+    },
+  )
+
+  // Bug: a physical() mount of the directory holding the virtual root route
+  // file (`rootRoute('__root.tsx', [physical('', '.')])`) fails the
+  // generator with "A route file can be used for one route only" naming the
+  // root file: the mount's scan finds it as its own root route, which the
+  // tree leaves out, but the duplicate file check counted it.
+  // Source: src/filesystem/scan.ts `scanRoutes()` (returned the mount's
+  // root file among the route files).
+  // Impact: the app's build and dev server fail on a config the released
+  // generator accepts.
+  test.each([
+    {
+      name: "physical('', '.')",
+      root: '__root.tsx',
+      mount: physical('', '.'),
+      files: ['index.tsx', 'posts/route.tsx', 'posts/index.tsx'],
+    },
+    {
+      name: "physical('.')",
+      root: '__root.tsx',
+      mount: physical('.'),
+      files: ['index.tsx', 'posts/route.tsx', 'posts/index.tsx'],
+    },
+    {
+      name: "physical('', 'app') of the root file's directory",
+      root: 'app/__root.tsx',
+      mount: physical('', 'app'),
+      files: ['app/index.tsx', 'app/posts/route.tsx', 'app/posts/index.tsx'],
+    },
+  ])(
+    'the root route file in a directory mounted by $name stays the root route only',
+    async ({ root: rootFile, mount, files }) => {
+      const routeFiles: Record<string, string> = {
+        [`src/routes/${rootFile}`]: rootRoute(),
+      }
+      for (const file of files) {
+        routeFiles[`src/routes/${file}`] = fileRoute('/wrong')
+      }
+      const root = await createApp(routeFiles)
+      const { generatedRouteTree } = await generate(root, {
+        virtualRouteConfig: virtualRootRoute(rootFile, [mount]),
+      })
+
+      const urls = await urlsOf(generatedRouteTree)
+      const routes = await routesOf(generatedRouteTree)
+      const dir = path.posix.dirname(rootFile)
+      const prefix = dir === '.' ? '' : `${dir}/`
+      expect(
+        Object.fromEntries(
+          Object.entries(routes).map(([id, file]) => [file, urls[id]]),
+        ),
+      ).toEqual({
+        [`routes/${rootFile}`]: '/',
+        [`routes/${prefix}index.tsx`]: '/',
+        [`routes/${prefix}posts/route.tsx`]: '/posts',
+        [`routes/${prefix}posts/index.tsx`]: '/posts/',
+      })
+      expect(await read(root, `src/routes/${rootFile}`)).toBe(rootRoute())
     },
   )
 

@@ -1,6 +1,9 @@
 import path from 'node:path'
 import { createTokenRegex, removeExt, replaceBackslash } from '../utils'
-import { getRouteNodes as physicalGetRouteNodes } from './physical/getRouteNodes'
+import {
+  isRootRouteFile,
+  getRouteNodes as physicalGetRouteNodes,
+} from './physical/getRouteNodes'
 import { getRouteNodes as virtualGetRouteNodes } from './virtual/getRouteNodes'
 import { rootPathId } from './physical/rootPathId'
 import type { Config } from '../config'
@@ -44,14 +47,18 @@ export async function scanRoutes(
     throw new Error(errorMessage)
   }
 
+  // A root route file is no route of the tree but its root: the routes
+  // directory's own (a `physical()` mount's, beside the virtual root route
+  // file it may be) or one in a `__root/` directory beside it.
+  const routeNodes = result.routeNodes.filter((node) => !isRootRouteFile(node))
   checkRouteFilesUsedOnce(
-    new Set([result.rootRouteNode, ...result.routeNodes]),
+    [result.rootRouteNode, ...routeNodes],
     config.addExtensions,
   )
 
   return {
     rootRouteNode: result.rootRouteNode,
-    routeNodes: result.routeNodes,
+    routeNodes,
     physicalDirectories: [
       ...new Set(
         result.physicalDirectories.map((dir) =>
@@ -73,7 +80,7 @@ export async function scanRoutes(
  * left to the route uniqueness check.)
  */
 function checkRouteFilesUsedOnce(
-  nodes: ReadonlySet<RouteNode>,
+  nodes: ReadonlyArray<RouteNode>,
   addExtensions: Config['addExtensions'],
 ) {
   const usesByModule = new Map<string, Array<{ file: string; route: string }>>()

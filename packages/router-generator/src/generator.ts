@@ -120,10 +120,7 @@ function filesOf(scan: ScanResult) {
   return [
     scan.rootRouteNode,
     ...scan.routeNodes.filter(
-      (node) =>
-        node !== scan.rootRouteNode &&
-        !node.isVirtual &&
-        !node.isVirtualParentRoute,
+      (node) => !node.isVirtual && !node.isVirtualParentRoute,
     ),
   ]
 }
