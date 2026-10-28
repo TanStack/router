@@ -1041,6 +1041,18 @@ export function compileCodeSplitVirtualRoute(
 
               splitMeta.shouldRemoveNode = false
               splitMeta.localExporterIdent = splitNode.id.name
+            } else if (t.isClassDeclaration(splitNode)) {
+              // declared as `class Layout extends React.Component {}`; like a
+              // function declaration it stays in place and is exported under
+              // the split name
+              if (!splitNode.id) {
+                throw new Error(
+                  `Class declaration for "${SPLIT_TYPE}" must have an identifier.`,
+                )
+              }
+
+              splitMeta.shouldRemoveNode = false
+              splitMeta.localExporterIdent = splitNode.id.name
             } else if (
               t.isFunctionExpression(splitNode) ||
               t.isArrowFunctionExpression(splitNode)
@@ -1171,6 +1183,52 @@ export function compileCodeSplitVirtualRoute(
             ]),
           ])
         })
+
+        // Exported split values stay in the reference file, so `removeExports`
+        // dropped their declarations from this module. Another split node in
+        // the same group may still refer to one of them (`loader: () =>
+        // Layout.name` next to an exported `Layout` component), so import those
+        // from the reference file.
+        if (knownExportedIdents.size > 0) {
+          programPath.scope.crawl()
+          const unresolvedExportedIdents = new Set<string>()
+          programPath.traverse({
+            ReferencedIdentifier(identPath) {
+              const { name } = identPath.node
+              if (
+                knownExportedIdents.has(name) &&
+                !identPath.scope.getBinding(name)
+              ) {
+                unresolvedExportedIdents.add(name)
+              }
+            },
+          })
+
+          if (unresolvedExportedIdents.size > 0) {
+            const [importPath] = programPath.unshiftContainer(
+              'body',
+              t.importDeclaration(
+                [...unresolvedExportedIdents].map((name) =>
+                  t.importSpecifier(t.identifier(name), t.identifier(name)),
+                ),
+                t.stringLiteral(
+                  removeSplitSearchParamFromFilename(opts.filename),
+                ),
+              ),
+            )
+
+            importPath.traverse({
+              Identifier(identPath) {
+                if (
+                  identPath.parentPath.isImportSpecifier() &&
+                  identPath.key === 'local'
+                ) {
+                  refIdents.add(identPath)
+                }
+              },
+            })
+          }
+        }
 
         // convert exports to imports from the original file
         programPath.traverse({
