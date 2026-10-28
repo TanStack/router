@@ -23,20 +23,17 @@ import {
 } from '../import-protection/utils'
 import {
   IMPORT_PROTECTION_BUILD_INFO_FIELD,
-  ensureMockEdgeModule,
-  ensureRuntimeMockModule,
-  ensureSilentMockModule,
   getOrCreateEnvState,
   getRulesForEnvironment,
   serializePattern,
   shouldCheckImporterWithCache,
 } from './import-protection'
+import { createMockModuleId, createRuntimeMockModuleId } from './mock-module'
 import type {
   EnvRuntimeState,
   ImportProtectionMarker,
   PerfCollector,
   PluginConfig,
-  SharedState,
 } from './import-protection'
 import type { ExtensionlessAbsoluteIdResolver } from '../import-protection/extensionlessAbsoluteIdResolver'
 import type { TransformResult } from '../import-protection/sourceLocation'
@@ -49,7 +46,6 @@ export interface ImportProtectionLoaderOptions {
   envStates: Map<string, EnvRuntimeState>
   extensionlessResolver: ExtensionlessAbsoluteIdResolver
   perf?: PerfCollector
-  shared: SharedState
   shouldCheckImporterCache: Map<string, boolean>
 }
 
@@ -123,7 +119,7 @@ async function transformImportProtection(
   options: ImportProtectionLoaderOptions,
 ): Promise<ImportProtectionTransformResult> {
   const startedAt = options.perf ? performance.now() : 0
-  const { config, envName, perf, shared } = options
+  const { config, envName, perf } = options
   perf?.count('transform.calls')
   perf?.count(`transform.env.${envName}`)
 
@@ -205,11 +201,9 @@ async function transformImportProtection(
         return generateSelfContainedMockModule(exportNames)
       }
 
-      const runtimeId = ensureRuntimeMockModule({
-        shared,
+      const runtimeId = createRuntimeMockModuleId({
         envName,
         mode: config.mockAccess,
-        env: envName,
         importer: file,
         specifier: relativeFile,
       })
@@ -251,30 +245,24 @@ async function transformImportProtection(
 
       const runtimeId =
         config.command === 'build'
-          ? ensureSilentMockModule(shared, envName)
-          : ensureRuntimeMockModule({
-              shared,
+          ? createMockModuleId('silent', envName)
+          : createRuntimeMockModuleId({
               envName,
               mode: config.mockAccess,
-              env: envName,
               importer: file,
               specifier: source,
             })
 
-      const replacement = ensureMockEdgeModule({
-        shared,
-        envName,
-        payload: {
-          exports: getExportsBySource().get(source) ?? [],
-          runtimeId,
-          violation: {
-            env: envName,
-            envType,
-            importer: file,
-            specifier: source,
-            ...(resolved ? { resolved } : {}),
-            patternText: serializePattern(specifierMatch.pattern),
-          },
+      const replacement = createMockModuleId('edge', envName, {
+        exports: getExportsBySource().get(source) ?? [],
+        runtimeId,
+        violation: {
+          env: envName,
+          envType,
+          importer: file,
+          specifier: source,
+          ...(resolved ? { resolved } : {}),
+          patternText: serializePattern(specifierMatch.pattern),
         },
       })
 
