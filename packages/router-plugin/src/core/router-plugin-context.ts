@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import { WarningLedger } from '@tanstack/router-utils/compiler'
 import type { GetRoutesByFileMapResult } from '@tanstack/router-generator'
 
@@ -75,22 +76,38 @@ export function onRoutesChanged(
   }
 }
 
-/** The paths whose registry entry differs between two registries. */
+/**
+ * The paths whose registry entry differs between two registries: the
+ * scanned path and, for a symlinked route file, its real path too (bundlers
+ * resolve modules to their real path, so that is where the compiler's plans
+ * live; the hosts invalidate every path listed).
+ */
 export function changedRoutePaths(
   next: GetRoutesByFileMapResult,
   previous: GetRoutesByFileMapResult,
 ): Array<string> {
-  const out: Array<string> = []
+  const out = new Set<string>()
+  const add = (path: string) => {
+    out.add(path)
+    try {
+      const real = fs.realpathSync.native(path).replace(/\\/g, '/')
+      if (real !== path) {
+        out.add(real)
+      }
+    } catch {
+      // gone: its plans are evicted at the scanned path, if any
+    }
+  }
   for (const [path, entry] of next) {
     const before = previous.get(path)
     if (!before || before.routeId !== entry.routeId) {
-      out.push(path)
+      add(path)
     }
   }
   for (const path of previous.keys()) {
     if (!next.has(path)) {
-      out.push(path)
+      add(path)
     }
   }
-  return out
+  return [...out]
 }

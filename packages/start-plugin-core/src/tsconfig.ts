@@ -4,8 +4,9 @@
  * such imports are edges import protection judges; otherwise TypeScript
  * erases them before bundling and judging them would report false positives.
  * Read from `<root>/tsconfig.json`, following `extends` (relative paths and
- * packages), as Vite's own TypeScript transform does. Comments and trailing
- * commas are allowed, as TypeScript allows them.
+ * packages), as the bundlers' TypeScript transforms do; the one reader of
+ * both hosts (Vite and Rsbuild). Comments and trailing commas are allowed,
+ * as TypeScript allows them.
  */
 import fs from 'node:fs'
 import { createRequire } from 'node:module'

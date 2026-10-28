@@ -7,9 +7,9 @@
  * plugin of each environment compiler, the generator session and the
  * client route tree transform.
  */
-import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { readVerbatimModuleSyntax } from '../tsconfig'
 import { StartRsbuildCompilerSession } from './compiler-session'
 import { createStartHostPlugin } from './host-plugin'
 import { createRsbuildRouteGenerator } from './router-generator'
@@ -64,12 +64,6 @@ export function registerStartCompiler(
     startPluginOpts: opts.startPluginOpts,
     dev,
   })
-  generator.onRoutesChanged((files) => {
-    for (const file of files) {
-      void session?.invalidate(file, 'registry')
-    }
-  })
-
   const ensureSession = (): StartRsbuildCompilerSession => {
     if (session) {
       return session
@@ -88,7 +82,7 @@ export function registerStartCompiler(
       routerConfig: () => opts.getConfig().startConfig.router,
       importProtection: () => opts.getConfig().startConfig.importProtection,
       routes: { lookup: (file) => generator.lookup(file) },
-      verbatimModuleSyntax: readsVerbatimModuleSyntax(resolvedStartConfig.root),
+      verbatimModuleSyntax: readVerbatimModuleSyntax(resolvedStartConfig.root),
       isEntry: opts.isEntry,
     })
     return session
@@ -192,14 +186,4 @@ function transformImportRules(value: unknown): Array<TransformImportRule> {
       typeof rule === 'object' &&
       typeof rule.libraryName === 'string',
   )
-}
-
-/** Whether the project's tsconfig keeps unused imports (`verbatimModuleSyntax`). */
-function readsVerbatimModuleSyntax(root: string): boolean {
-  try {
-    const text = readFileSync(path.join(root, 'tsconfig.json'), 'utf8')
-    return /"verbatimModuleSyntax"\s*:\s*true/.test(text)
-  } catch {
-    return false
-  }
 }

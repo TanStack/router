@@ -23,6 +23,7 @@ import {
   digestOf,
   identify,
   invalidate,
+  pathsOf,
   registerCompilerStats,
   releaseEnvironment,
 } from '@tanstack/router-utils/compiler'
@@ -563,6 +564,71 @@ export class StartRsbuildCompilerSession {
     return invalidate(this.caches, { path: normalizePath(file), kind }, (env) =>
       this.invalidationHost(env),
     )
+  }
+
+  /** The last file event invalidated per path (`kind:mtime:size`, or `unlink`). */
+  private readonly lastEvent = new Map<string, string>()
+
+  /**
+   * The invalidation of a watch cycle's file events, once per logical
+   * change: every environment compiler of the cycle reports the same
+   * modified and removed files, and a second invalidation of the same
+   * change would evict the plans the first compiler just rebuilt and
+   * restart the compiles in flight. `isKnown`: whether the compilation
+   * depended on the file before (else the event is a creation).
+   */
+  async invalidateFileEvents(
+    modified: ReadonlyArray<string>,
+    removed: ReadonlyArray<string>,
+    isKnown: (file: string) => boolean,
+  ): Promise<void> {
+    for (const file of modified) {
+      const kind = isKnown(file) ? 'change' : 'add'
+      const stat = fs.statSync(file, { throwIfNoEntry: false })
+      const stamp = stat ? `${kind}:${stat.mtimeMs}:${stat.size}` : kind
+      if (this.lastEvent.get(file) === stamp) {
+        continue
+      }
+      this.lastEvent.set(file, stamp)
+      await this.invalidate(file, kind)
+    }
+    for (const file of removed) {
+      if (this.lastEvent.get(file) === 'unlink') {
+        continue
+      }
+      this.lastEvent.set(file, 'unlink')
+      await this.invalidate(file, 'unlink')
+      this.ip?.forget(normalizePath(file))
+    }
+  }
+
+  /** Whether a compilation of any environment finished (the hosts set it at `done`). */
+  compiledOnce = false
+  private readonly registryInvalidations = new WeakMap<
+    ReadonlyArray<string>,
+    Promise<Array<string>>
+  >()
+
+  /**
+   * The one invalidation of a registry change (`files`: the publication's
+   * changed route files, the same array for every listener): the paths whose
+   * modules the environment compilers must build again (the files, and the
+   * evicted and dependent plans' files), once per publication.
+   */
+  registryChanged(files: ReadonlyArray<string>): Promise<Array<string>> {
+    let pending = this.registryInvalidations.get(files)
+    if (!pending) {
+      pending = Promise.all(
+        files.map((file) => this.invalidate(file, 'registry')),
+      ).then((results) => [
+        ...new Set([
+          ...files.map(normalizePath),
+          ...pathsOf(results.flatMap((r) => [...r.evicted, ...r.dependents])),
+        ]),
+      ])
+      this.registryInvalidations.set(files, pending)
+    }
+    return pending
   }
 
   /**

@@ -16,6 +16,7 @@ export type {
 export * from './strings'
 export * from './diagnostics'
 export * from './eager-exports'
+export * from './rebuild'
 export * from './symbols'
 export * from './header'
 export * from './purity'

@@ -213,7 +213,7 @@ export function planCacheFor(caches: CompilerCaches, env: string): PlanCache {
   return cache
 }
 
-/** A query carrying one of the compiler-owned keys (derived module ids: `?tsr-split=`, `?tss-hydrate=`, `?tss-serverfn-split`). */
+/** A query carrying one of the compiler-owned keys (`OWNED_QUERY_KEYS`: the derived module ids). */
 export const OWNED_QUERY_RE = new RegExp(
   `(?:^|[?&])(?:${Object.values(OWNED_QUERY_KEYS).join('|')})(?:=|&|$)`,
 )
@@ -260,7 +260,9 @@ export type InvalidationHosts = HostServices | ((env: string) => HostServices)
  * The ONE invalidation operation. Evicts the plans of the changed file
  * in every env, bumps generations (published and in-flight), marks raw facts
  * stale and re-validates dependents' fingerprints; the host hard-invalidates
- * `evicted ∪ dependents` in the same operation. File `add`/`unlink` events
+ * `evicted ∪ dependents` in the same operation (the Vite hosts through the
+ * module graph, the webpack family by reporting the files as changed to the
+ * watching compiler: `invalidateFiles`). File `add`/`unlink` events
  * also re-resolve every failed resolution of every env: a plan whose
  * unresolved specifier now resolves is a dependent. Each environment's
  * fingerprints are checked with that environment's host (its own resolver).

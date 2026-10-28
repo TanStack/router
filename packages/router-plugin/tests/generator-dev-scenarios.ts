@@ -587,6 +587,67 @@ export async function expectVirtualRouteConfigEdit(bundler: Bundler) {
   expect(await app.routes()).toEqual([rootLive, live('/'), live('/contact')])
 }
 
+/**
+ * An app whose virtual route config (`routes.ts`) does not list
+ * `routes/contact.tsx` at first, a module the index route imports (so the
+ * dev server compiled it as a plain module); when `linked`, the route file
+ * is a symlink to `linked/contact.tsx` (bundlers resolve it to the real
+ * path, the generator scans the link). Adding it to the config changes the
+ * route registry without changing the file: the dev server compiles it as
+ * a route (its component in its own chunk, loaded on navigation), and the
+ * app serves its page.
+ */
+export async function expectRegistryChangeRecompilesRoute(
+  bundler: Bundler,
+  linked: boolean,
+) {
+  const contact = route('/contact', 'MARK_CONTACT')
+  const app = await generatorDevApp({
+    bundler,
+    links: ['@tanstack/virtual-file-routes'],
+    pluginOptions: (root) => ({
+      virtualRouteConfig:
+        bundler === 'vite'
+          ? './routes.ts'
+          : path.relative(process.cwd(), path.join(root, 'routes.ts')),
+    }),
+    files: {
+      'routes.ts': virtualRouteConfig(`index('index.tsx')`),
+      'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { Route as ContactRoute } from './contact'
+export const Route = createFileRoute('/')({
+  component: () => <p>MARK_INDEX {ContactRoute.id}</p>,
+})
+`,
+      ...(linked
+        ? { 'linked/contact.tsx': contact }
+        : { 'routes/contact.tsx': contact }),
+    },
+    ...(linked && {
+      symlinks: { 'routes/contact.tsx': 'linked/contact.tsx' },
+    }),
+  })
+  await app.visit('/', 'MARK_INDEX')
+  expect(await app.routes()).toEqual([rootLive, live('/')])
+
+  await app.write({
+    'routes.ts': virtualRouteConfig(
+      `index('index.tsx'), route('/contact', 'contact.tsx')`,
+    ),
+  })
+  await waitForLiveRoute(app, '/contact')
+  await app.visit('/', 'MARK_INDEX')
+  // the route's component is in its own chunk now: nothing loaded holds it
+  expect(
+    (await app.scripts())
+      .filter((script) => scriptHolds(script, 'MARK_CONTACT'))
+      .map((script) => script.url),
+  ).toEqual([])
+  await app.navigate('/contact', 'MARK_CONTACT')
+  expect(await app.routes()).toEqual([rootLive, live('/'), live('/contact')])
+  expect(app.errors()).toEqual([])
+}
+
 /** A `__virtual.ts` subtree config of `children`. */
 const virtualSubtree = (children: string) =>
   `import { defineVirtualSubtreeConfig, index, route } from '@tanstack/virtual-file-routes'

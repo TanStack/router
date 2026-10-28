@@ -69,8 +69,12 @@ additional pass until no new veto appears; reports are published on the final pa
 
 ## Development invalidation
 
-`watchRun` runs the one invalidation operation of the compiler core for every modified (or created) and removed file;
-Rspack rebuilds the modules whose recorded dependencies changed, and the loader's cache hit returns the memoised
-output when a plan's fingerprints are unchanged. The generator runs before each compilation with the compiler's file
+`watchRun` runs the one invalidation operation of the compiler core once per logical change (the environment compilers
+of one watch cycle report the same modified and removed files; the session dedupes them by path, kind and mtime) and
+bumps `fileSetVersion` so recorded resolutions are re-asked once; Rspack rebuilds the modules whose recorded
+dependencies changed, and the loader's cache hit returns the memoised output when a plan's fingerprints are unchanged.
+A route-registry change (the generator published new route ids) evicts the plans of the files concerned; Rspack sees
+no file event for them, so each environment compiler is told they changed (`invalidateFiles`) and builds them again,
+rules re-matched, at the compilation it starts. The generator runs before each compilation with the compiler's file
 events (and its own watcher for files outside the bundle); when the client's pruned route set changes without the
 tree file changing, the client compiler rebuilds the tree module at `finishMake`.

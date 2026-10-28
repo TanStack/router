@@ -595,9 +595,11 @@ export const label = () => 'MARK_CLIENT_LABEL'
    */
   async function editFactoryIntoBuilder() {
     const server = await startDevServer({
+      start: {},
       plugins: [react()],
       bundledDev: { entry: 'src/a.tsx' },
       files: {
+        ...startRequestFiles,
         // Start's client entry, which the client bundle starts from
         'harness/client-entry.ts': `export * from '../src/a'\n`,
         'src/b.ts': plain,
@@ -623,6 +625,19 @@ export const fn = base.handler(async () => db.x())
       const server = await editFactoryIntoBuilder()
       await server.clientBundle()
       expect(server.logs.filter((log) => log.startsWith('error:'))).toEqual([])
+    },
+    timeout,
+  )
+
+  // The one invalidation of the edit reaches every environment: the SSR
+  // environment (not bundled) serves the importer compiled against the new
+  // `base`, a server fn whose handler runs.
+  test(
+    'a module whose factory becomes a server fn builder: SSR runs the importer as a server fn',
+    async () => {
+      const server = await editFactoryIntoBuilder()
+      const { fn } = await server.import('/src/a.tsx')
+      expect(await inDevRequest(server, () => fn())).toBe('MARK_DB_SECRET')
     },
     timeout,
   )

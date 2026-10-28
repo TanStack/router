@@ -12,6 +12,8 @@ import {
   eagerExportWarning,
   eagerExtractedExports,
   initialChunkResources,
+  invalidateFiles,
+  pathsOf,
 } from '@tanstack/router-utils/compiler'
 import { getConfig } from '../core/config'
 import {
@@ -23,12 +25,15 @@ import { LOADER_REGISTRY, createLoaderImpl } from './loader'
 import type { LoaderImpl } from './loader'
 import type { RouterPluginContext } from '../core/router-plugin-context'
 import type { Config } from '../core/config'
-import type { InitialChunksLike } from '@tanstack/router-utils/compiler'
+import type {
+  InitialChunksLike,
+  WatchingCompilerLike,
+} from '@tanstack/router-utils/compiler'
 
 export type WebpackPluginOptions = Partial<Config> | (() => Partial<Config>)
 
 /** The parts of a webpack / Rspack compiler the host uses. */
-export interface CompilerLike {
+export interface CompilerLike extends WatchingCompilerLike {
   name?: string
   context?: string
   options: {
@@ -42,6 +47,7 @@ export interface CompilerLike {
       tap: (name: string, fn: (compilation: CompilationLike) => void) => void
     }
     beforeRun: { tap: (name: string, fn: () => void) => void }
+    done: { tap: (name: string, fn: () => void) => void }
     watchRun: {
       tapPromise: (
         name: string,
@@ -128,8 +134,8 @@ function targetsServer(target: unknown): boolean {
 }
 
 /**
- * The router compiler as a webpack / Rspack plugin (route splitting and
- * route HMR in `development` mode on client compilers).
+ * The router compiler as a webpack / Rspack plugin (route splitting; route
+ * HMR on client compilers in every mode but `production`).
  */
 export function createRouterCompilerWebpackPlugin(
   options: WebpackPluginOptions | undefined,
@@ -183,11 +189,28 @@ export function createRouterCompilerWebpackPlugin(
           sideEffects: false,
         },
       )
+      // a registry change: the one invalidation operation evicts the plans
+      // of the route files whose entry changed; the bundler sees no file
+      // event for them, so it is told they changed and builds them again
+      // (rules re-matched: a file that was no route is one now). Before the
+      // first compilation finished nothing is stale (the registry's first
+      // publication lists every route; the modules are built with it).
+      let compiled = false
+      compiler.hooks.done.tap(PLUGIN_NAME, () => {
+        compiled = true
+      })
       const unsubscribe = onRoutesChanged(
         routerPluginContext,
         (next, previous) => {
           for (const file of changedRoutePaths(next, previous)) {
-            void session.invalidate(file, 'registry')
+            void session.invalidate(file, 'registry').then((res) => {
+              if (compiled) {
+                invalidateFiles(compiler, [
+                  file,
+                  ...pathsOf([...res.evicted, ...res.dependents], envName),
+                ])
+              }
+            })
           }
         },
       )

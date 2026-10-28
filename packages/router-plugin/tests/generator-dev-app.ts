@@ -183,6 +183,8 @@ export interface GeneratorDevAppOptions {
   pluginOptions?: Partial<Config> | ((root: string) => Partial<Config>)
   /** Workspace packages linked into the app's `node_modules`. */
   links?: Array<string>
+  /** Symbolic links in the app (link → target, both relative to its root). */
+  symlinks?: Record<string, string>
 }
 
 /**
@@ -208,7 +210,10 @@ export async function generatorDevApp(
     'routes/__root.tsx': rootRoute,
     ...options.files,
   }
-  const symlinks = workspacePackageLinks(options.links ?? [])
+  const symlinks = {
+    ...workspacePackageLinks(options.links ?? []),
+    ...options.symlinks,
+  }
   const app =
     bundler === 'vite'
       ? await viteApp(files, symlinks, options.pluginOptions)

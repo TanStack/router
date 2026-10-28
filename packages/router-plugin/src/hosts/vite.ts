@@ -143,8 +143,13 @@ export function createRouterCompilerVitePlugin(
   const resolveUserConfig = () =>
     typeof options === 'function' ? options() : getConfig(options, ROOT)
 
-  const hardInvalidate = (keys: Array<PlanKey>) => {
-    if (!server || keys.length === 0) {
+  /**
+   * Hard-invalidates the modules of the evicted and dependent plans (`keys`,
+   * in their environment) and of `paths` (in every environment): Vite
+   * re-transforms them on their next request.
+   */
+  const hardInvalidate = (keys: Array<PlanKey>, paths: Array<string> = []) => {
+    if (!server || (keys.length === 0 && paths.length === 0)) {
       return
     }
     const seen = new Set<unknown>()
@@ -156,15 +161,25 @@ export function createRouterCompilerVitePlugin(
     ).environments
     const fallback = (server as unknown as { moduleGraph?: ModuleGraphLike })
       .moduleGraph
-    for (const key of keys) {
-      const file = identify(key.canonicalId).path
-      const graph = environments?.[key.env]?.moduleGraph ?? fallback
-      const mods = graph?.getModulesByFile(file)
-      if (!graph || !mods) {
-        continue
-      }
-      for (const mod of mods) {
+    const graphs = environments
+      ? Object.values(environments).map((e) => e.moduleGraph)
+      : fallback
+        ? [fallback]
+        : []
+    const invalidateIn = (graph: ModuleGraphLike, file: string) => {
+      for (const mod of graph.getModulesByFile(file) ?? []) {
         graph.invalidateModule(mod, seen, now, true, false)
+      }
+    }
+    for (const key of keys) {
+      const graph = environments?.[key.env]?.moduleGraph ?? fallback
+      if (graph) {
+        invalidateIn(graph, identify(key.canonicalId).path)
+      }
+    }
+    for (const file of paths) {
+      for (const graph of graphs) {
+        invalidateIn(graph, file)
       }
     }
   }
@@ -173,8 +188,14 @@ export function createRouterCompilerVitePlugin(
     file: string,
     kind: 'change' | 'add' | 'unlink' | 'registry',
   ) => {
-    const res = await compiler.invalidate(normalizePath(file), kind)
-    hardInvalidate([...res.evicted, ...res.dependents])
+    const path = normalizePath(file)
+    const res = await compiler.invalidate(path, kind)
+    // a registry change: the file's own modules too (a file that was no
+    // route before has no plan to evict, and is one now)
+    hardInvalidate(
+      [...res.evicted, ...res.dependents],
+      kind === 'registry' ? [path] : [],
+    )
   }
 
   const plugin: Plugin = {

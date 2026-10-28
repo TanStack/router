@@ -13,6 +13,8 @@ import {
   eagerExportWarning,
   eagerExtractedExports,
   initialChunkResources,
+  invalidateFiles,
+  rebuildModules,
 } from '@tanstack/router-utils/compiler'
 import { RSPACK_BUILD_INFO_KEY } from '../import-protection/verdict'
 import {
@@ -192,17 +194,24 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         // deleted and recreated between edits): failed resolutions and missing-file facts are
         // re-read by the compiles of this compilation
         session.forgetMisses()
-        for (const file of modified) {
-          await session.invalidate(
-            file,
-            knownFiles && !knownFiles.has(file) ? 'add' : 'change',
-          )
-        }
-        for (const file of removed) {
-          await session.invalidate(file, 'unlink')
-          session.ip?.forget(normalizePath(file))
-        }
+        await session.invalidateFileEvents(
+          modified,
+          removed,
+          (file) => !knownFiles || knownFiles.has(file),
+        )
         await opts.generator.watchRun(modified, removed)
+      })
+      // a registry change (the generator published new route ids): Rspack sees
+      // no file event for the files concerned, so it is told they changed and
+      // builds them again. Before the first compilation finished nothing is
+      // stale (the first publication lists every route; the modules are
+      // built with it).
+      opts.generator.onRoutesChanged((files) => {
+        void session.registryChanged(files).then((paths) => {
+          if (session.compiledOnce) {
+            invalidateFiles(compiler, paths)
+          }
+        })
       })
 
       compiler.hooks.watchClose.tap(PLUGIN_NAME, () => {
@@ -210,6 +219,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       })
 
       compiler.hooks.done.tap(PLUGIN_NAME, (stats) => {
+        session.compiledOnce = true
         const deps = stats.compilation.fileDependencies
         knownFiles = new Set<string>(deps as Iterable<string>)
         if (session.opts.mode === 'dev') {
@@ -386,17 +396,11 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             if (version === clientTreeBuiltAt) {
               return
             }
-            const treePath = normalizePath(tree.path())
-            for (const m of compilation.modules) {
-              const resource = (m as unknown as ModuleLike).resource
-              if (resource && canonicalResource(resource) === treePath) {
-                await new Promise<void>((resolve, reject) => {
-                  compilation.rebuildModule(m, (error) =>
-                    error ? reject(error) : resolve(),
-                  )
-                })
-              }
-            }
+            await rebuildModules(
+              compilation,
+              new Set([normalizePath(tree.path())]),
+              canonicalResource,
+            )
             clientTreeBuiltAt = version
           },
         )
@@ -414,6 +418,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           }
           const ipEnv = ipEnvOf()
           if (ipEnv && session.opts.mode === 'dev') {
+            const unjudged = new Set<string>()
             for (const m of compilation.modules) {
               const module = m as unknown as ModuleLike
               const ip = module.buildInfo?.[RSPACK_BUILD_INFO_KEY]
@@ -423,12 +428,11 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 !env.compiled.has(module.resource) &&
                 ipEnv.unjudged(canonicalResource(module.resource), ip)
               ) {
-                await new Promise<void>((resolve, reject) => {
-                  compilation.rebuildModule(m, (error) =>
-                    error ? reject(error) : resolve(),
-                  )
-                })
+                unjudged.add(module.resource)
               }
+            }
+            if (unjudged.size > 0) {
+              await rebuildModules(compilation, unjudged, (r) => r)
             }
           }
           const snapshot = new Map<string, ServerFnBuildInfo>()

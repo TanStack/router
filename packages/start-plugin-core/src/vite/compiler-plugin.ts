@@ -80,8 +80,8 @@ import {
   rolldownGraphView,
 } from '../import-protection/witness'
 import { resolveViteId } from '../utils'
+import { readVerbatimModuleSyntax } from '../tsconfig'
 import { createVirtualModule } from './createVirtualModule'
-import { readVerbatimModuleSyntax } from './tsconfig'
 import type { ImportProtection } from '../import-protection/session'
 import type { HydratePlannerConfig } from '../planners/hydrate'
 import type { GenerateFunctionId } from '../server-fns/ids'
@@ -148,7 +148,7 @@ export interface StartCompilerPluginOptions {
 /** A caller environment's forward to the provider's resolver (behind the production gate, J4.2). */
 const SERVER_FN_FORWARD_VIRTUAL_ID = 'virtual:tanstack-start-server-fn-forward'
 
-/** A module naming no server-fn factory nor `.handler(` defines no server function (the Rsbuild session's text gate). */
+/** A module naming no server-fn factory nor `.handler(` defines no server function (a text gate before any analysis). */
 const SERVER_FN_TEXT_RE = /createServerFn|\.handler\s*\(/
 
 /** Specifiers of import protection's edge modules. */
@@ -292,7 +292,7 @@ export function startCompilerPlugin(
     return session
   }
 
-  /** Pre-bundled dependencies are opaque (a discovered Start library is never pre-bundled); everything else resolved is read. */
+  /** Pre-bundled dependencies are opaque (a Start library declaring the framework as a peer is never pre-bundled); everything else resolved is read. */
   const isOpaque = (canonicalId: string): boolean =>
     identify(canonicalId)
       .path.replace(/\\/g, '/')
@@ -885,11 +885,14 @@ export function startCompilerPlugin(
   ): InvalidateChange['kind'] =>
     event === 'delete' ? 'unlink' : event === 'create' ? 'add' : 'change'
 
+  /** The environment whose plugin runs `watchChange` (bundled dev): one invalidation per change, applied to every environment. */
+  const watchingEnv = opts.environments[0]?.name
   function perEnvPlugin(env: StartCompilerEnvironment): Plugin {
+    const watches = env.name === watchingEnv
     return {
       name: `tanstack-start:compiler:${env.name}`,
       enforce: 'pre',
-      perEnvironmentWatchChangeDuringDev: true,
+      perEnvironmentWatchChangeDuringDev: watches,
       applyToEnvironment(e) {
         return e.name === env.name
       },
@@ -934,7 +937,9 @@ export function startCompilerPlugin(
       async buildStart() {
         const s = requireSession()
         if (this.environment.mode === 'build' && env.type === 'client') {
-          // a new build: the registry of the previous one is gone (the client builds first)
+          // a new build: the registry of the previous one is gone (the client
+          // builds first; under RSC the rsc provider built before it and
+          // allocated its entries first: deterministic, not client-first)
           registry.clear()
           // one warning per file per run
           s.warnings.reset()
@@ -1120,23 +1125,35 @@ export function startCompilerPlugin(
           ? [...live, ...changed]
           : undefined
       },
-      async watchChange(id, change) {
-        const s = requireSession()
-        if (!s.bundledDev || this.environment.mode !== 'dev') {
-          return
-        }
-        const environment = this.environment
-        const kind = changeKindOf(change.event)
-        if (kind === 'unlink') {
-          s.ip?.forget(normalizePath(id))
-        }
-        const res = await invalidate(
-          s.caches,
-          { path: id, kind },
-          invalidationHosts(s, server, environment),
-        )
-        applyInvalidation(environment, { path: id, kind }, res, Date.now())
-      },
+      // bundled dev: the one invalidation of a file event, applied to every
+      // environment's module graph (Vite's `hotUpdate` is not called there;
+      // this hook runs in `watchingEnv` only)
+      ...(watches && {
+        async watchChange(id, change) {
+          const s = requireSession()
+          if (!s.bundledDev || this.environment.mode !== 'dev') {
+            return
+          }
+          const kind = changeKindOf(change.event)
+          if (kind === 'unlink') {
+            s.ip?.forget(normalizePath(id))
+          }
+          const res = await invalidate(
+            s.caches,
+            { path: id, kind },
+            invalidationHosts(s, server, this.environment),
+          )
+          const now = Date.now()
+          const environments = server
+            ? Object.values(server.environments).filter((e) =>
+                envNames.has(e.name),
+              )
+            : [this.environment]
+          for (const environment of environments) {
+            applyInvalidation(environment, { path: id, kind }, res, now)
+          }
+        },
+      }),
       renderChunk(code, chunk) {
         if (!allocator || !code.includes('__TSS_FN_ID_')) {
           return null

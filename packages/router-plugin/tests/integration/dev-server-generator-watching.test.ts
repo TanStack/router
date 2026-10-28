@@ -12,6 +12,7 @@
 import { test } from 'vitest'
 import {
   describeGeneratorWatching,
+  expectRegistryChangeRecompilesRoute,
   expectVirtualRouteConfigEdit,
   expectVirtualSubtreeEdit,
 } from '../generator-dev-scenarios'
@@ -46,3 +47,15 @@ test('an edit of the virtual route config file changes the live routes', async (
 test('an edit of a __virtual.ts file changes the live routes', async () => {
   await expectVirtualSubtreeEdit('vite')
 }, 45_000)
+
+// A route registry change without a file change (a route added to the
+// virtual route config) re-plans the route file (SPEC J1.10, J2.13), a
+// symlinked one too: the compiler's plans live at the real path the bundler
+// resolves to, while the generator scans the link.
+test.each([false, true])(
+  'a route added to the virtual route config is served as a route (symlinked: %s)',
+  async (linked) => {
+    await expectRegistryChangeRecompilesRoute('vite', linked)
+  },
+  45_000,
+)

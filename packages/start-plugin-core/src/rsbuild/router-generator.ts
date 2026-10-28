@@ -7,7 +7,6 @@
  * mounts). It publishes the route registry the route planners read and
  * serves the client's route tree without its server-only routes.
  */
-import { realpathSync } from 'node:fs'
 import path from 'node:path'
 import {
   Generator,
@@ -19,11 +18,11 @@ import {
   createRouterPluginContext,
   onRoutesChanged,
 } from '@tanstack/router-plugin/context'
+import { RouteRegistryView } from '@tanstack/router-plugin/planners'
 import { routesManifestPlugin } from '../start-router-plugin/generator-plugins/routes-manifest-plugin'
 import { prerenderRoutesPlugin } from '../start-router-plugin/generator-plugins/prerender-routes-plugin'
 import { buildRouteTreeFileFooterFromConfig } from '../start-router-plugin/route-tree-footer'
 import { createClientRouteTree } from '../start-router-plugin/client-route-tree'
-import { normalizePath } from '../utils'
 import type { GetConfigFn, TanStackStartCoreOptions } from '../types'
 import type { TanStackStartRsbuildInputConfig } from './schema'
 import type { RouteFileWatcher } from '@tanstack/router-generator'
@@ -59,10 +58,7 @@ export function createRsbuildRouteGenerator(opts: {
   let generator: Generator | undefined
   // the published registry (the context dedupes an unchanged publication)
   const context = createRouterPluginContext()
-  let byRealPath: Map<string, { routeId: string }> | null = null
-  onRoutesChanged(context, () => {
-    byRealPath = null
-  })
+  const registry = new RouteRegistryView(context)
   let watcher: Promise<RouteFileWatcher> | undefined
   let version = 0
 
@@ -120,29 +116,7 @@ export function createRsbuildRouteGenerator(opts: {
   }
 
   return {
-    lookup(file) {
-      const p = normalizePath(file)
-      const { routesByFile } = context
-      const entry = routesByFile.get(p)
-      if (entry) {
-        return { routeId: entry.routeId }
-      }
-      if (!byRealPath) {
-        // bundlers resolve a symlinked route file to its real path
-        byRealPath = new Map()
-        for (const [scanned, e] of routesByFile) {
-          try {
-            const real = normalizePath(realpathSync.native(scanned))
-            if (real !== scanned && !routesByFile.has(real)) {
-              byRealPath.set(real, { routeId: e.routeId })
-            }
-          } catch {
-            // gone
-          }
-        }
-      }
-      return byRealPath.get(p) ?? null
-    },
+    lookup: (file) => registry.lookup(file),
     beforeRun: () => settle(instance().run()),
     async watchRun(modified, removed) {
       const gen = instance()
