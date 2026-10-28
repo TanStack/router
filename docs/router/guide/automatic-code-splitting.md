@@ -104,6 +104,21 @@ export function PostsNotFoundComponent() {
 export const store = createStore()
 ```
 
+#### Top-level side effects keep their order
+
+A top-level declaration with side effects that only split code reads (for example `const confetti = new JSConfetti()`, used only by the component) moves into the split chunk and runs when the chunk loads. It stays in the main bundle, and runs when the route file loads, if a side effect written after it stays in the route file, such as an inline call in an option that is not split (`validateSearch: z.object({ … })`). Moving the declaration would run it after that call, and the route file's side effects keep the order they are written in. To have the declaration split, create the value the option uses before it:
+
+```tsx
+const searchSchema = z.object({ success: z.boolean().optional() })
+// ✅ split: no side effect after it stays in the route file
+const confetti = new JSConfetti()
+
+export const Route = createFileRoute('/account')({
+  validateSearch: searchSchema,
+  component: AccountPage,
+})
+```
+
 #### Route callbacks that read `this` are not split
 
 A route option written as a method or a function expression whose body reads `this` stays in the route file, and the build warns once, naming the file. Write such callbacks as arrow functions (or without `this`) to have them split.
