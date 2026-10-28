@@ -56,7 +56,7 @@ export type CodeSplittingOptions = {
 
   /**
    * The default/global configuration to control your code splitting behavior per route.
-   * @default [['component'],['pendingComponent'],['errorComponent'],['notFoundComponent']]
+   * @default [['component'],['errorComponent'],['notFoundComponent']]
    */
   defaultBehavior?: CodeSplitGroupings
 

@@ -64,7 +64,9 @@ export type GenerateFunctionId = (opts: {
 
 /**
  * One immutable allocation of final ids against a global occupied set:
- * the client rank first (sorted stable keys, frozen), then server-only
+ * the client rank first (sorted stable keys, frozen; under RSC the provider
+ * builds first and allocates its entries first: deterministic, not
+ * client-first), then server-only
  * entries appended; custom bases and suffix candidates are both checked.
  */
 export class FunctionIdAllocator {

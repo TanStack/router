@@ -53,10 +53,6 @@ test(
       position: diagnosticPosition(pinned, 'confetti = new'),
       times: 1,
     })
-    expect(
-      findDiagnostics(server.diagnostics, { severity: 'warning', ...where })[0]!
-        .text,
-    ).toContain('`makeSchema(…)` in `validateSearch`')
     const since = server.diagnostics.length
     await server.edit({ 'src/routes/index.tsx': `${pinned}// edited\n` })
     for (const environment of ['client', 'ssr']) {

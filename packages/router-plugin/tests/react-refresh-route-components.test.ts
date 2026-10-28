@@ -201,8 +201,8 @@ describe.each([true, false])(
 
     // With code splitting the chunk renders its own copy of a pure exported
     // component, while importers get the route module's instance (R77:
-    // known-bugs "the split chunk copies a pure exported binding"); the
-    // identity rows are pins there, and the rendering checks the control
+    // known-bugs "the split chunk copies a pure exported binding"): the
+    // rendering is asserted in both modes, the identity without splitting
     it.each(cases)(
       'keep a $name component exported as the route option value',
       async ({ declaration, options, exported }) => {
@@ -217,20 +217,7 @@ export const Route = createFileRoute('/page')({ ${options} })`,
       30_000,
     )
 
-    if (autoCodeSplitting) {
-      it.fails.each(cases.filter((c) => !c.options.includes(',')))(
-        'render the imported $name component instance in the split option',
-        async ({ declaration, options, exported }) => {
-          await expectExportedRouteOptions(
-            `${head}${declaration}
-export const Route = createFileRoute('/page')({ ${options} })`,
-            exported,
-            autoCodeSplitting,
-          )
-        },
-        30_000,
-      )
-    } else {
+    if (!autoCodeSplitting) {
       it.each(cases)(
         'render the imported $name component instance in the option',
         async ({ declaration, options, exported }) => {

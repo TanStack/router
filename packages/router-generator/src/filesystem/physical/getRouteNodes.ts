@@ -25,7 +25,7 @@ import type { Config } from '../../config'
 
 /**
  * Pre-compiled segment regexes for matching token patterns against route segments.
- * These are created once (in Generator constructor) and passed through to avoid
+ * These are created once per scan (`scanRoutes`) and passed through to avoid
  * repeated regex compilation during route crawling.
  */
 export interface TokenRegexBundle {

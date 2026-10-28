@@ -178,23 +178,9 @@ export async function render(component: any) {
   // they pass.
   // Impact: `instanceof` checks, registries and counters see two copies
   // once code splitting is on; module state is created twice.
-  // (R77: state is one instance now, but the chunk copies a pure exported
-  // function, class or component by rule: known-bugs "the split chunk copies
-  // a pure exported binding"; those rows stay pins, `copied`.)
+  // (R77: a pure exported function, class or component is copied by rule;
+  // state is one instance.)
   const exportedBindings = [
-    {
-      // An instance another module creates is an instance of the class the
-      // split component reads
-      name: 'class (instanceof)',
-      copied: true,
-      route: `export class Store {}
-function Page() {
-  return <p>{String((globalThis as any).__store instanceof Store)}</p>
-}`,
-      imports: 'Store',
-      setup: ';(globalThis as any).__store = new Store()',
-      expected: ['<p>true</p>'],
-    },
     {
       // One state: the entry's call is the first, the split component's the
       // second
@@ -226,42 +212,6 @@ function Page() {
       setup: 'increment()',
       expected: ['<p>2</p>', 1],
     },
-    {
-      name: 'function component',
-      copied: true,
-      route: `export function Card() {
-  return <b>card</b>
-}
-function Page() {
-  return <p>{String((globalThis as any).__Card === Card)}</p>
-}`,
-      imports: 'Card',
-      setup: ';(globalThis as any).__Card = Card',
-      expected: ['<p>true</p>'],
-    },
-    {
-      name: 'component and its private state',
-      copied: true,
-      route: `const registry = new Set<string>()
-function size() {
-  return registry.size
-}
-export function Card({ id }: { id: string }) {
-  registry.add(id)
-  return <b>{size()}</b>
-}
-function Page() {
-  return (
-    <p>
-      {String((globalThis as any).__Card === Card)}
-      <Card id="page" />
-    </p>
-  )
-}`,
-      imports: 'Card',
-      setup: ";(globalThis as any).__Card = Card\nCard({ id: 'entry' })",
-      expected: ['<p>true<b>2</b></p>'],
-    },
   ]
   const shareExported = async ({
     route,
@@ -288,12 +238,7 @@ return globalThis.__inits === undefined ? [html] : [html, globalThis.__inits]`,
     )
     expect(result).toEqual(expected)
   }
-  test.each(exportedBindings.filter((row) => !row.copied))(
-    'the split component and other modules share an exported $name',
-    shareExported,
-    30_000,
-  )
-  test.fails.each(exportedBindings.filter((row) => row.copied))(
+  test.each(exportedBindings)(
     'the split component and other modules share an exported $name',
     shareExported,
     30_000,

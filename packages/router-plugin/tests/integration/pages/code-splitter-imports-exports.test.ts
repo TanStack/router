@@ -699,15 +699,14 @@ export const see = (value: unknown) => seen.push(value)
   const runExported = (
     route: RouteApp,
     option: string,
-  ): Promise<[unknown, number, boolean]> =>
+  ): Promise<[unknown, number]> =>
     route.run(`const result = ${
       option === 'loader'
         ? `await (await load('loader'))()`
         : `await render(${JSON.stringify(option)})`
     }
 const { seen } = await app('see.ts')
-const { exported } = await app('importer.ts')
-return [result, seen.length, seen[0] === exported]`)
+return [result, seen.length]`)
   it.each(exportedOptions)(
     'keep working: $name',
     async ({ code, routeId, split, option, binding, value }) => {
@@ -732,24 +731,6 @@ return [result, seen.length, seen[0] === exported]`)
           times: 1,
         })
       }
-    },
-  )
-
-  // The function the route ran is the one another module of the app
-  // imports (SPEC J2.4, G9): one instance, not a copy. Pinned: the chunk
-  // renders its own copy of a pure exported binding by rule (R77;
-  // known-bugs "the split chunk copies a pure exported binding").
-  it.fails.each(exportedOptions)(
-    'render the instance other modules import: $name',
-    async ({ code, routeId, option, binding }) => {
-      const route = await loadRoute(code, {
-        routeId,
-        files: {
-          'see.ts': seeFile,
-          'importer.ts': `export { ${binding} as exported } from './route'\n`,
-        },
-      })
-      expect((await runExported(route, option))[2]).toBe(true)
     },
   )
 

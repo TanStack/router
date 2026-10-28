@@ -216,22 +216,15 @@ Router-plugin paths below are under `router-plugin/tests/`; `pages/` means `inte
   needs.
 - **The split chunk copies a pure exported binding** (two instances: the route module's or its extracted module's,
   which importers of the route file get, and the chunk's own copy). By rule since R77 (2026-10-28; `router-plugin/
-ARCHITECTURE-CODE-SPLITTING.md`): a chunk never imports the extracted module the route module re-exports, so the
-  export stays lazy whatever the bundler's chunk assignment (Rolldown < 1.1.5, a user `manualChunks` group), at the
-  price of a second instance of a stateless function, class or component; state, effects and augmented bindings are
-  never copied. SPEC J2.4 (amended). Pins: `react-refresh-route-components.test.ts` and `known-bugs-dev-server.test.ts`
-  "render the imported $name component instance in the split option"; `pages/known-bugs-code-splitter-bindings.test.ts`:
-  "an exported errorComponent written as `%s` is the instance its importers get", "an exported function that reads
-  Route is the one the split component calls", "a split option renders the default-exported component other modules
-  import"; `pages/code-splitter-imports-exports.test.ts` and `pages/code-splitter-dead-code.test.ts` rows asserting
-  `seen[0] === exported` (listed in the files). Fix: none planned; a bundler-independent way to share one instance
-  lazily would reopen the decision.
-- **Split chunks copy exported declarations they read instead of importing them** (two instances), or miss an
-  export written as `X as any`. SPEC J2.4. `integration/known-bugs-code-splitter-ssr-builds.test.ts`: "the split
-  component and other modules share an exported $name"; `integration/known-bugs-code-splitter-client-builds.test.ts`:
-  "an exported errorComponent written as `PostErrorComponent as any` is one instance in the client (vite build)";
-  `pages/known-bugs-code-splitter-bindings.test.ts`: "an exported errorComponent written as `%s` is the instance its
-  importers get". Fix: one instance for importers and chunks.
+ARCHITECTURE-CODE-SPLITTING.md`): a chunk never imports the extracted module of a pure export the route module
+  re-exports, so the export stays lazy whatever the bundler's chunk assignment (Rolldown < 1.1.5, a user `manualChunks`
+  group), at the price of a second instance of a stateless function, class or component; state, effects and augmented
+  bindings are never copied (one instance, imported). SPEC J2.4 (amended). No pins: the identity rows were deleted with
+  the decision (a by-rule outcome is not a bug); the rendering rows next to them remain
+  (`react-refresh-route-components.test.ts`, `known-bugs-dev-server.test.ts` "keep a $name component exported as the
+  route option value"; `pages/known-bugs-code-splitter-bindings.test.ts` "an exported errorComponent written as `%s`
+  renders, split or reported"). Fix: none planned; a bundler-independent way to share one instance lazily would reopen
+  the decision.
 - **Bindings that read `Route` are never shared**, so chunks copy them. SPEC J2.4.
   `pages/known-bugs-code-splitter-bindings.test.ts`: "an exported function that reads Route is the one the split
   component calls"; "a destructuring whose sibling reads Route keeps one cache for the loader and the component".

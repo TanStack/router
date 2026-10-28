@@ -7,7 +7,7 @@
 
 import { describe, expect, test } from 'vitest'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
-import { build, clientMountEntry, head, routeApp } from '../build-harness'
+import { build, head, routeApp } from '../build-harness'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
 
 /**
@@ -92,107 +92,6 @@ export const Route = createFileRoute('/')({
       reported,
     }).not.toEqual({ lazy: false, reported: false })
   }, 60_000)
-})
-
-describe('exported bindings', () => {
-  // Bug: same as above, in a real client build whose entry imports the
-  // exported component (`export { PostErrorComponent } from './routes/index'`): the component is
-  // in both the entry chunk and the split chunk, and the route renders the
-  // copy. One instance is the goal: the function the route renders on its
-  // error path is the one the entry imports, its module-level state is
-  // created once (SPEC J2.4, G9); and the option is split, or unsplit with
-  // a warning naming the route file (SPEC J2.8), whichever chunk holds it.
-  // Impact: the component's code ships twice and runs as two components.
-  // Whether the option is lazy or reported is the router transform's
-  // decision, so one bundler shows it (the Rspack and webpack
-  // cells were decided by the same transform as this Vite cell).
-  // (R77: the chunk copies a pure exported component by rule; the entry
-  // gets the extracted instance: known-bugs "the split chunk copies a pure
-  // exported binding".)
-  test.fails(
-    'an exported errorComponent written as `PostErrorComponent as any` is one instance in the client (vite build)',
-    async () => {
-      const app = await build({
-        bundler: 'vite',
-        env: 'client',
-        files: routeApp(
-          `${head}import { label, see } from '../see'
-const errorLabel = label('MARK_POST_ERROR_END')
-export const Route = createFileRoute('/')({
-  errorComponent: PostErrorComponent as any,
-  component: () => {
-    throw new Error('post failed')
-  },
-})
-export function PostErrorComponent() {
-  see(PostErrorComponent)
-  return <p>{errorLabel}</p>
-}
-`,
-          {
-            env: 'client',
-            files: {
-              'see.ts': `export const seen: Array<unknown> = []
-export let labels = 0
-export function see(component: unknown) {
-  seen.push(component)
-}
-export function label(text: string) {
-  labels++
-  return text
-}
-`,
-              // The client entry (`mount`, the route and the exported
-              // component) and the app rendered at `/` through the real router.
-              'entry.ts': `${clientMountEntry}export { PostErrorComponent } from './routes/index'
-import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
-import { routeTree } from './routeTree.gen'
-export { seen, labels } from './see'
-export async function renderAt(path: string, text: string) {
-  const router = createRouter({
-    routeTree,
-    history: createMemoryHistory({ initialEntries: [path] }),
-  })
-  const container = document.createElement('div')
-  document.body.appendChild(container)
-  const root = createRoot(container)
-  flushSync(() => root.render(createElement(RouterProvider, { router })))
-  for (let tries = 0; tries < 200 && !container.innerHTML.includes(text); tries++) {
-    await new Promise((resolve) => setTimeout(resolve, 10))
-  }
-  return container.innerHTML
-}
-`,
-            },
-          },
-        ),
-      })
-      const { result } = await app.run(
-        `const html = await entry.renderAt('/', 'MARK_POST_ERROR_END')
-return {
-  rendered: html.includes('MARK_POST_ERROR_END'),
-  oneInstance:
-    entry.seen.length > 0 &&
-    entry.seen.every((component) => component === entry.PostErrorComponent),
-  labels: entry.labels,
-  lazy: typeof entry.Route.options.errorComponent.preload === 'function',
-}`,
-      )
-      const { lazy, ...instance } = result as Record<string, unknown>
-      expect(instance).toEqual({ rendered: true, oneInstance: true, labels: 1 })
-      // Placement: split, or kept in the route with a report.
-      const reported =
-        findDiagnostics([...app.warnings, ...app.consoleMessages], {
-          severity: 'warning',
-          file: 'routes/index.tsx',
-          root: app.root,
-        }).length > 0
-      expect({ splitOrReported: lazy === true || reported }).toEqual({
-        splitOrReported: true,
-      })
-    },
-    60_000,
-  )
 })
 
 describe('code that reads a split binding', () => {

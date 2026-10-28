@@ -13,7 +13,11 @@
  * webpack and Rsbuild builds.
  */
 import { describe, expect, test } from 'vitest'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  diagnosticPosition,
+  expectDiagnostic,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { build, buildWithRsbuild, head } from '../build-harness'
 import type { BuildResult } from '@tanstack/compiler-test-utils/build-harness'
 
@@ -96,7 +100,7 @@ const builds: Array<[string, () => Promise<BuildResult>]> = [
   ['rsbuild', () => buildWithRsbuild({ files, registerCleanup: () => {} })],
 ]
 
-describe.each(builds)('a %s client build', (_name, create) => {
+describe.each(builds)('a %s client build', (name, create) => {
   test(
     'loads a pure router API call with the chunk that reads it and warns only of the effect before it',
     async () => {
@@ -107,18 +111,36 @@ describe.each(builds)('a %s client build', (_name, create) => {
           file: `routes/${file}.tsx`,
           root: app.root,
         })
+      /**
+       * A warning of a route at `needle`, once (where the channel prints
+       * positions; Vite's build log prints the message only: the route's
+       * `total` findings are counted there).
+       */
+      const expectWarningAt = (path: string, needle: string, total = 1) => {
+        expectDiagnostic(reported, {
+          severity: 'warning',
+          file: `routes/${path}.tsx`,
+          root: app.root,
+          ...(name !== 'vite' && {
+            position: diagnosticPosition(
+              files[`routes/${path}.tsx` as keyof typeof files],
+              needle,
+            ),
+          }),
+          times: name !== 'vite' ? 1 : total,
+        })
+      }
       for (const path of ['direct', 'renamed']) {
         expect(app.where(`MARK_api_${path}`), path).toBe('lazy')
         expect(app.where(`MARK_${path}_END`), path).toBe('eager')
-        const [warning, ...others] = warnings(path)
-        expect(warning!.text, path).toContain('`marker`')
-        expect(others, path).toEqual([])
+        // the effect before the API is the only finding
+        expectWarningAt(path, 'marker = new')
+        expect(warnings(path), path).toHaveLength(1)
       }
-      // an impure argument: the call stays an effect, kept and reported
+      // an impure argument: the call stays an effect, kept and reported too
       expect(app.where('MARK_api_impure')).toBe('eager')
-      expect(warnings('impure').map((w) => /`(\w+)`/.exec(w.text)![1])).toEqual(
-        expect.arrayContaining(['marker', 'useParams']),
-      )
+      expectWarningAt('impure', 'marker = new', 2)
+      expectWarningAt('impure', '{ useParams }', 2)
       expect(app.where('MARK_api_kept')).toBe('eager')
       expect(app.where('MARK_kept_END')).toBe('lazy')
       expect(warnings('kept')).toEqual([])

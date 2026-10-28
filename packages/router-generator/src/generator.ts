@@ -39,7 +39,11 @@ export type FileEvent = {
 }
 export type GeneratorEvent = FileEvent | { type: 'rerun' }
 
-/** What a route file contributes to the tree, from its last analysis. */
+/**
+ * What a route file contributes to the tree, from its last analysis that
+ * parsed (a file saved mid-edit keeps the facts of its last parse until it
+ * parses again).
+ */
 type FileFacts =
   | { included: false }
   | { included: true; props: RouteProps | undefined }
@@ -254,7 +258,7 @@ export class Generator {
     return done
   }
 
-  /** The route files of the tree and their route ids (`GetRoutesByFileMapResult`: a new snapshot only when the routes changed). */
+  /** The route files of the tree and their route ids (`GetRoutesByFileMapResult`: a new snapshot per publishing batch; the plugin context dedupes an unchanged one). */
   public getRoutesByFileMap(): GetRoutesByFileMapResult {
     return this.routesByFile
   }

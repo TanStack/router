@@ -11,7 +11,7 @@
  * `import.meta.hot.accept(` (Vite) / `import.meta.webpackHot.accept()`, the
  * `__tsrRouteHmr(routeId, Route, meta)` call that runs on every evaluation,
  * and, for React on Vite, the refresh anchor export. Production output
- * never sees this planner (the host registers it for dev client envs only).
+ * never sees this planner (its gate admits dev client envs only).
  */
 import {
   stringLiteral,

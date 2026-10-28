@@ -216,7 +216,12 @@ export class RouterCompiler {
           by: 'parse',
           code: 'parse',
         }
-        if (this.warnings.once(normalizePath(path), warning)) {
+        if (
+          this.warnings.once(normalizePath(path), {
+            ...warning,
+            code: `parse\u0000${warning.message}`,
+          })
+        ) {
           report(warning)
         }
         continue

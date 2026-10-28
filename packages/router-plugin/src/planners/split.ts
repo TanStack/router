@@ -354,9 +354,9 @@ export function routeSplitPlanner(): Planner {
           !(valueSym !== null && symbols.isImport(valueSym))
         ) {
           // identity = the module React Refresh registers the binding in
-          // (where placement puts the user's component: this chunk, the
-          // route module or its extracted-export module; a move is a new
-          // family) + the binding: the user's component when the value names
+          // (where placement puts the user's component: this chunk or the
+          // route module, nothing is extracted in dev (R77 dev); a move is a
+          // new family) + the binding: the user's component when the value names
           // one (a rename is a new family), else the chunk's own declaration
           body.push({
             k: 'text',

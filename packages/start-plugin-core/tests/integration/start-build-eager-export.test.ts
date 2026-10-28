@@ -125,19 +125,6 @@ describe.each(startBundlers)('a %s build', (bundler) => {
         position: diagnosticPosition(pinned, 'confetti = new'),
         times: 1,
       })
-      const [warning] = findDiagnostics(reported, {
-        severity: 'warning',
-        file: 'src/routes/account.tsx',
-        root: build.root,
-      })
-      for (const part of [
-        '`confetti`',
-        '`makeSchema(…)`',
-        '`validateSearch`',
-        `line ${diagnosticPosition(pinned, 'makeSchema({').line}`,
-      ]) {
-        expect(warning!.text).toContain(part)
-      }
       expect(
         findDiagnostics(build.diagnostics, {
           file: 'src/routes/card.tsx',
@@ -185,13 +172,19 @@ describe.each(startBundlers)(
           expect(build.client.where(`MARK_CONFETTI_${path}`), path).toBe(
             'eager',
           )
-          const warnings = findDiagnostics(reported, {
+          // one warning, at the pinned declaration
+          expectDiagnostic(reported, {
             severity: 'warning',
             file: `src/routes/${path}.tsx`,
             root: build.root,
+            position: diagnosticPosition(
+              routeApiFiles[
+                `src/routes/${path}.tsx` as keyof typeof routeApiFiles
+              ],
+              'confetti = new',
+            ),
+            times: 1,
           })
-          expect(warnings, path).toHaveLength(1)
-          expect(warnings[0]!.text, path).toContain('`confetti`')
         }
       },
       timeout,

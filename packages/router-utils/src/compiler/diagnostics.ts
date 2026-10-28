@@ -12,7 +12,8 @@ export interface Diagnostic {
 }
 
 /**
- * Reports each `(file, reason)` once per session through the host channel.
+ * Reports each `(file, key)` once per session through the host channel; the
+ * hosts key a warning by its code and wording.
  */
 export class WarningLedger {
   private readonly seen = new Set<string>()

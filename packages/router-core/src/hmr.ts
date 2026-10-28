@@ -10,7 +10,7 @@ import type { AnyRoute } from './route'
 export interface RouteHmrMeta {
   /** Compile-time binding names of the component options left in the route module. */
   unsplit?: Record<string, string>
-  /** React + Vite: the module id plugin-react uses and every export name of the module. */
+  /** React + Vite: the module id plugin-react uses and every module-level binding name of the module. */
   refreshExports?: { id: string; anchor: string; exports: Array<string> }
 }
 

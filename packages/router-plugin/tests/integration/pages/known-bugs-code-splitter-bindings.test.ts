@@ -385,68 +385,6 @@ export const Route = createFileRoute('/')({ ${options}component: ${binding} })
     },
   )
 
-  // Bug: the entry's `useTitle` and the one the split component calls are
-  // two functions: a binding that reads `Route` is never shared
-  // (`removeBindingsDependingOnRoute`), so the chunk declares a copy of the
-  // exported function. Importers of the route module and the route must
-  // share one instance (SPEC G9, J2.4): a copy in the chunk is
-  // this bug even when the function holds no state.
-  // Impact: code that relies on the identity of an exported hook or helper
-  // (memoisation, registries, `===` checks) sees two of them.
-  // (The title lives in `staticData`, typed by the documented
-  // `StaticDataRouteOption` augmentation.)
-  // (R77: the chunk copies a pure exported binding by rule; importers get
-  // the route module's instance: known-bugs "the split chunk copies a pure
-  // exported binding".)
-  test.fails(
-    'an exported function that reads Route is the one the split component calls',
-    async () => {
-      const route = await loadRoute(
-        `${head}import { see } from './see'
-declare module '@tanstack/react-router' {
-  interface StaticDataRouteOption {
-    title?: string
-  }
-}
-export function useTitle() {
-  return Route.options.staticData!.title
-}
-function Page() {
-  see(useTitle)
-  return <p>{useTitle()}</p>
-}
-export const Route = createFileRoute('/')({
-  staticData: { title: 'title' },
-  component: Page,
-})
-`,
-        {
-          files: {
-            'see.ts': `export const seen: Array<unknown> = []
-export const see = (value: unknown) => seen.push(value)
-`,
-            // Another module of the app imports the hook.
-            'importer.ts': `export { useTitle } from './route'\n`,
-          },
-        },
-      )
-      expect(
-        await route.run(`const { useTitle } = await app('importer.ts')
-const rendered = await render('component')
-const { seen } = await app('see.ts')
-return {
-  rendered,
-  imported: useTitle(),
-  sameInstance: seen.length === 1 && seen[0] === useTitle,
-}`),
-      ).toEqual({
-        rendered: '<p>title</p>',
-        imported: 'title',
-        sameInstance: true,
-      })
-    },
-  )
-
   // Bug: a split component that reads a `Route` declared with `const` and
   // exported later (`export { Route }`) gets a chunk that creates the route
   // again instead of importing it from the route module.
@@ -477,14 +415,11 @@ export { Route }
   // Source: React Compiler gating/gating-test-export-default-function.js;
   // #8504 (code-splitter-imports-exports.test.ts), where it passes.
   // Impact: the route cannot be built once code splitting is on.
-  // (R77: the chunk copies a pure exported binding by rule; importers get
-  // the route module's instance: known-bugs "the split chunk copies a pure
-  // exported binding".)
-  test.fails(
-    'a split option renders the default-exported component other modules import',
-    async () => {
-      const route = await loadRoute(
-        `${head}import type { ReactNode } from 'react'
+  // (The identity of the component is not asserted: the chunk copies a pure
+  // exported binding by rule, R77.)
+  test('a split option renders the default-exported component other modules import', async () => {
+    const route = await loadRoute(
+      `${head}import type { ReactNode } from 'react'
 import { see } from './see'
 export default function Bar(props: { children?: ReactNode }) {
   return <div>{props.children}</div>
@@ -495,24 +430,23 @@ function NoForget(props: { noForget?: string }) {
 }
 export const Route = createFileRoute('/')({ component: Bar, errorComponent: NoForget })
 `,
-        {
-          files: {
-            'see.ts': `export const seen: Array<unknown> = []
+      {
+        files: {
+          'see.ts': `export const seen: Array<unknown> = []
 export const see = (value: unknown) => seen.push(value)
 `,
-            // The component other modules import.
-            'importer.ts': `export { default } from './route'\n`,
-          },
+          // The component other modules import.
+          'importer.ts': `export { default } from './route'\n`,
         },
-      )
-      expect(
-        await route.run(`const rendered = await render('errorComponent', { noForget: 'x' })
+      },
+    )
+    expect(
+      await route.run(`const rendered = await render('errorComponent', { noForget: 'x' })
 const { default: imported } = await app('importer.ts')
 const { seen } = await app('see.ts')
-return { rendered, seen: seen.length, sameInstance: seen[0] === imported }`),
-      ).toEqual({ rendered: '<div>x</div>', seen: 1, sameInstance: true })
-    },
-  )
+return { rendered, seen: seen.length, imported: typeof imported }`),
+    ).toEqual({ rendered: '<div>x</div>', seen: 1, imported: 'function' })
+  })
 
   // Bug: the code splitter deletes the exported declaration of an option's
   // component from every chunk, so a split component that renders the
@@ -617,12 +551,11 @@ return [await options.loader(), load()]`),
    * `PostErrorComponent`, written as `value`, next to another module of the
    * app that imports `PostErrorComponent` from the route file (SPEC G9,
    * J2.4: through a real importer). `withAuth` (`./with-auth`) is an identity
-   * function. The component records the instance it runs as (`./see`).
-   * Returns what the route's errorComponent renders, whether it ran as the
-   * importer's instance, and whether the option is split or the user is told
-   * it is not (a warning naming the route file and the option). A host of
-   * its own: the control and the pin below load the same route, and each
-   * reads what compiling it reports.
+   * function. Returns what the route's errorComponent renders, and whether
+   * the option is split or the user is told it is not (a warning naming the
+   * route file and the option). A host of its own: each row reads what
+   * compiling its route reports. (Which instance the chunk renders is not
+   * asserted: the chunk copies a pure exported component by rule, R77.)
    */
   async function exportedErrorComponent(value: string) {
     const route = await loadRoute(
@@ -652,66 +585,33 @@ export const imported = PostErrorComponent
         },
       },
     )
-    const { rendered, sameInstance } = await route.run<{
-      rendered: string
-      sameInstance: boolean
-    }>(`const { imported } = await app('importer.ts')
-const rendered = await render('errorComponent')
-const { seen } = await app('see.ts')
-return { rendered, sameInstance: seen.length === 1 && seen[0] === imported }`)
+    const rendered = await route.run<string>(`await app('importer.ts')
+return render('errorComponent')`)
     return {
       rendered,
-      sameInstance,
       splitOrReported:
         (await route.isLazy('errorComponent')) ||
         (await reportsNotSplit(route)),
     }
   }
 
-  // The bare identifier.
-  // (R77: the chunk copies a pure exported binding by rule; importers get
-  // the route module's instance: known-bugs "the split chunk copies a pure
-  // exported binding".)
-  test.fails(
-    'an exported errorComponent named by the option is the instance its importers get',
-    async () => {
-      expect(await exportedErrorComponent('PostErrorComponent')).toMatchObject({
-        rendered: '<p>error</p>',
-        sameInstance: true,
-      })
-    },
-  )
-
-  // Bug: an exported component named by a split option is only recognised
-  // as an export when the option is a bare identifier. Written in another
-  // shape (`as any`, `as typeof X`, an HOC call such as `withAuth(X)` or
-  // `memo(X)`), the option is split and its chunk declares its own copy of
-  // the exported component, so the route renders another instance than the
-  // one other modules import (and no "not code-split" warning is shown).
-  // Either outcome of the bare identifier (one instance, split or unsplit
-  // with a warning) is fine (SPEC G9, J2.4, J2.8).
-  // Reach: the repository's examples (react and solid
-  // basic-virtual-file-based posts-detail.tsx) and e2e apps (react, solid
-  // and vue basic-file-based-code-splitting, virtual and rspack-virtual
-  // routes, solid-start virtual-routes) write `errorComponent:
-  // PostErrorComponent as any`; no other module imports it there, so they
-  // show no symptom.
-  // Source: compilers.ts:945-960 (the export check only handles a bare
-  // Identifier), :572-591, the copy via :1170-1242; fuzzing.
-  // Impact: code that relies on the identity of the component (`===`
-  // checks, registries, memoised props) sees two of them, and the component
-  // code ships twice (see the build pin below).
-  test.fails.each([
+  // An exported component named by a split option, as a bare identifier or
+  // in another shape (`as any`, `as typeof X`, an HOC call such as
+  // `withAuth(X)` or `memo(X)`): the option renders it, and is split or
+  // the user is told it is not (SPEC J2.4, J2.8). Reach: the repository's
+  // examples (react and solid basic-virtual-file-based posts-detail.tsx)
+  // and e2e apps write `errorComponent: PostErrorComponent as any`.
+  test.each([
+    'PostErrorComponent',
     'PostErrorComponent as any',
     'PostErrorComponent as typeof PostErrorComponent',
     'withAuth(PostErrorComponent)',
     'memo(PostErrorComponent)',
   ])(
-    'an exported errorComponent written as `%s` is the instance its importers get',
+    'an exported errorComponent written as `%s` renders, split or reported',
     async (value) => {
       expect(await exportedErrorComponent(value)).toEqual({
         rendered: '<p>error</p>',
-        sameInstance: true,
         splitOrReported: true,
       })
     },
