@@ -51,11 +51,11 @@ describe('page code in client builds', () => {
   const component = `export const Route = createFileRoute('$PATH')({ component: Page })`
 
   // Page code that loads with its chunk: code the route file does not
-  // export, and exported functions and classes (today the chunk declares its
-  // own copy, whose identity and state are pinned in "module state shared
-  // with split chunks" and "exported bindings", and the bundler drops the
-  // unused export of the route module). A fix must keep them out of the
-  // entry chunk.
+  // export, and exported functions and classes (the chunk declares its own
+  // copy of a pure one by rule, R77; state stays one instance, pinned in
+  // "module state shared with split chunks" and "exported bindings"; the
+  // bundler drops the unused extracted module of the route file). A fix
+  // must keep them out of the entry chunk.
   const controls: Array<Case> = [
     routeCase(
       'a const only a split component renders',
@@ -188,20 +188,22 @@ export const Route = createFileRoute('$PATH')({
     ),
   ]
 
-  // Bug: page code the route file exports as a variable, and an exported
-  // split component, stay in the route module, which the entry chunk loads,
-  // with everything they import: a split chunk imports exported variables
-  // from the route module instead of owning them, and an exported component
-  // is not split (the code splitter warns). Bundlers can only move the code
-  // out with the export unused, which the generated route tree (importing
-  // `Route` only) allows; whether our compiler or the bundler's
+  // Bug (main): page code the route file exports as a variable, and an
+  // exported split component, stay in the route module, which the entry
+  // chunk loads, with everything they import: a split chunk imports exported
+  // variables from the route module instead of owning them, and an exported
+  // component is not split (the code splitter warns). Bundlers can only move
+  // the code out with the export unused, which the generated route tree
+  // (importing `Route` only) allows; whether our compiler or the bundler's
   // tree-shaking does it is free, with or without `"sideEffects": false` or
   // a `/* @__PURE__ */` initialiser.
   // Source: #8504's exported-bindings chunks tests.
   // Impact: page code exported for tests or reuse loads with the entry chunk.
   // webpack and Rspack keep an export another module imports through the
   // route module in the entry chunk unless the package is side-effect free
-  // (vite: Rollup redirects the import to the split output)
+  // (vite: Rollup redirects the import to the extracted module, which only
+  // the importer loads; the route's own chunk carries its copy, R77). Every
+  // configuration: integration/code-splitter-exported-bindings-builds.test.ts.
   const exportedImportedByRoute = routeCase(
     "an exported component another route's split component renders",
     'exported-shared',
@@ -259,8 +261,9 @@ ${component}`,
       `export const Page = () => <p>{'$MARK'}</p>
 ${component}`,
     ),
-    // The augmentation leaves with the component for its extracted module
-    // (compiler-level: "extracts an exported component with its
+    // The augmentation leaves with the component for its extracted module,
+    // which the chunk imports (one instance of an augmented binding, R77;
+    // compiler-level: "extracts an exported component with its
     // augmentations"); whether the bundler keeps that module out of the
     // entry is its side-effect analysis of the property write.
     routeCase(
@@ -275,10 +278,10 @@ ${component}`,
     exportedImportedByRoute,
   ]
 
-  // Bug: an exported component that two split options render goes to a
-  // module both chunks import, which the route module re-exports, so it
-  // loads with the entry chunk unless the app declares `"sideEffects":
-  // false` (then the bundler drops the unused re-export).
+  // An exported component that two split options render: each chunk
+  // carries its own copy (R77), and the module the route module re-exports
+  // it from is imported by nobody, so every bundler drops it, with or
+  // without `"sideEffects": false`.
   // Source: review of #8504.
   const exportedSharedByOptions = routeCase(
     'an exported component two split options render',

@@ -106,12 +106,17 @@ describe('exported bindings', () => {
   // Whether the option is lazy or reported is the router transform's
   // decision, so one bundler shows it (the Rspack and webpack
   // cells were decided by the same transform as this Vite cell).
-  test('an exported errorComponent written as `PostErrorComponent as any` is one instance in the client (vite build)', async () => {
-    const app = await build({
-      bundler: 'vite',
-      env: 'client',
-      files: routeApp(
-        `${head}import { label, see } from '../see'
+  // (R77: the chunk copies a pure exported component by rule; the entry
+  // gets the extracted instance: known-bugs "the split chunk copies a pure
+  // exported binding".)
+  test.fails(
+    'an exported errorComponent written as `PostErrorComponent as any` is one instance in the client (vite build)',
+    async () => {
+      const app = await build({
+        bundler: 'vite',
+        env: 'client',
+        files: routeApp(
+          `${head}import { label, see } from '../see'
 const errorLabel = label('MARK_POST_ERROR_END')
 export const Route = createFileRoute('/')({
   errorComponent: PostErrorComponent as any,
@@ -124,10 +129,10 @@ export function PostErrorComponent() {
   return <p>{errorLabel}</p>
 }
 `,
-        {
-          env: 'client',
-          files: {
-            'see.ts': `export const seen: Array<unknown> = []
+          {
+            env: 'client',
+            files: {
+              'see.ts': `export const seen: Array<unknown> = []
 export let labels = 0
 export function see(component: unknown) {
   seen.push(component)
@@ -137,9 +142,9 @@ export function label(text: string) {
   return text
 }
 `,
-            // The client entry (`mount`, the route and the exported
-            // component) and the app rendered at `/` through the real router.
-            'entry.ts': `${clientMountEntry}export { PostErrorComponent } from './routes/index'
+              // The client entry (`mount`, the route and the exported
+              // component) and the app rendered at `/` through the real router.
+              'entry.ts': `${clientMountEntry}export { PostErrorComponent } from './routes/index'
 import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 export { seen, labels } from './see'
@@ -158,12 +163,12 @@ export async function renderAt(path: string, text: string) {
   return container.innerHTML
 }
 `,
+            },
           },
-        },
-      ),
-    })
-    const { result } = await app.run(
-      `const html = await entry.renderAt('/', 'MARK_POST_ERROR_END')
+        ),
+      })
+      const { result } = await app.run(
+        `const html = await entry.renderAt('/', 'MARK_POST_ERROR_END')
 return {
   rendered: html.includes('MARK_POST_ERROR_END'),
   oneInstance:
@@ -172,20 +177,22 @@ return {
   labels: entry.labels,
   lazy: typeof entry.Route.options.errorComponent.preload === 'function',
 }`,
-    )
-    const { lazy, ...instance } = result as Record<string, unknown>
-    expect(instance).toEqual({ rendered: true, oneInstance: true, labels: 1 })
-    // Placement: split, or kept in the route with a report.
-    const reported =
-      findDiagnostics([...app.warnings, ...app.consoleMessages], {
-        severity: 'warning',
-        file: 'routes/index.tsx',
-        root: app.root,
-      }).length > 0
-    expect({ splitOrReported: lazy === true || reported }).toEqual({
-      splitOrReported: true,
-    })
-  }, 60_000)
+      )
+      const { lazy, ...instance } = result as Record<string, unknown>
+      expect(instance).toEqual({ rendered: true, oneInstance: true, labels: 1 })
+      // Placement: split, or kept in the route with a report.
+      const reported =
+        findDiagnostics([...app.warnings, ...app.consoleMessages], {
+          severity: 'warning',
+          file: 'routes/index.tsx',
+          root: app.root,
+        }).length > 0
+      expect({ splitOrReported: lazy === true || reported }).toEqual({
+        splitOrReported: true,
+      })
+    },
+    60_000,
+  )
 })
 
 describe('code that reads a split binding', () => {

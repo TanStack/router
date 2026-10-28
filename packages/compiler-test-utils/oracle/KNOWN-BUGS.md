@@ -214,6 +214,18 @@ Router-plugin paths below are under `router-plugin/tests/`; `pages/` means `inte
   split chunk holds only what its option needs, not the other exports of the route file"; "split chunks do not
   re-export or declare the re-exports and default class of the route file". Fix: a chunk carries only what its group
   needs.
+- **The split chunk copies a pure exported binding** (two instances: the route module's or its extracted module's,
+  which importers of the route file get, and the chunk's own copy). By rule since R77 (2026-10-28; `router-plugin/
+  ARCHITECTURE-CODE-SPLITTING.md`): a chunk never imports the extracted module the route module re-exports, so the
+  export stays lazy whatever the bundler's chunk assignment (Rolldown < 1.1.5, a user `manualChunks` group), at the
+  price of a second instance of a stateless function, class or component; state, effects and augmented bindings are
+  never copied. SPEC J2.4 (amended). Pins: `react-refresh-route-components.test.ts` and `known-bugs-dev-server.test.ts`
+  "render the imported $name component instance in the split option"; `pages/known-bugs-code-splitter-bindings.test.ts`:
+  "an exported errorComponent written as `%s` is the instance its importers get", "an exported function that reads
+  Route is the one the split component calls", "a split option renders the default-exported component other modules
+  import"; `pages/code-splitter-imports-exports.test.ts` and `pages/code-splitter-dead-code.test.ts` rows asserting
+  `seen[0] === exported` (listed in the files). Fix: none planned; a bundler-independent way to share one instance
+  lazily would reopen the decision.
 - **Split chunks copy exported declarations they read instead of importing them** (two instances), or miss an
   export written as `X as any`. SPEC J2.4. `integration/known-bugs-code-splitter-ssr-builds.test.ts`: "the split
   component and other modules share an exported $name"; `integration/known-bugs-code-splitter-client-builds.test.ts`:

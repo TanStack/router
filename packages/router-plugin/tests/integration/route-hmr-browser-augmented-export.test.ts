@@ -1,10 +1,10 @@
 /**
- * An exported component the route file augments (`Page.displayName = …`) is
- * extracted with its augmentation into its own module, which the route
- * module re-exports and the split chunk imports (SPEC J2.4, J3.3): an edit
- * of the component applies in place through that module, with React
- * Refresh registering the component where it is declared, and the
- * augmentation is kept across edits.
+ * An exported component the route file augments (`Page.displayName = …`)
+ * stays in the route module in dev with its augmentation (in a build it is
+ * extracted into its own module with it; R77 dev), and the split chunk
+ * imports it (SPEC J2.4, J3.3): an edit of the component applies in place
+ * through the route module, with React Refresh registering the component
+ * where it is declared, and the augmentation is kept across edits.
  */
 import { expect, test } from 'vitest'
 import { inPlace } from '../route-hmr-edit'

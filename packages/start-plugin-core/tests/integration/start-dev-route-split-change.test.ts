@@ -1,11 +1,12 @@
 /**
  * Route edits after the route file's split layout changed and changed back,
  * on Start's Vite dev server (SPEC J3.3): once the route component was
- * exported and is not any more, the extracted-export module the earlier
- * layout produced is no longer imported, and a text edit must still apply
- * in place. Found by the HMR consistency fuzzer: the stale derived module
- * stayed in Vite's module graph with no importers, and the next edit of the
- * file full-reloaded the page.
+ * exported (in dev it then stays in the route module and the chunk carries
+ * a copy, R77 dev) and is not any more (it moves to the chunk), the modules
+ * the earlier layout produced change what they import, and a text edit must
+ * still apply in place. Found by the HMR consistency fuzzer: a stale derived
+ * module stayed in Vite's module graph with no importers, and the next edit
+ * of the file full-reloaded the page.
  */
 import react from '@vitejs/plugin-react'
 import { describe, expect, onTestFinished, test } from 'vitest'

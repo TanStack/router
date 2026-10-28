@@ -178,11 +178,15 @@ export async function render(component: any) {
   // they pass.
   // Impact: `instanceof` checks, registries and counters see two copies
   // once code splitting is on; module state is created twice.
-  test.each([
+  // (R77: state is one instance now, but the chunk copies a pure exported
+  // function, class or component by rule: known-bugs "the split chunk copies
+  // a pure exported binding"; those rows stay pins, `copied`.)
+  const exportedBindings = [
     {
       // An instance another module creates is an instance of the class the
       // split component reads
       name: 'class (instanceof)',
+      copied: true,
       route: `export class Store {}
 function Page() {
   return <p>{String((globalThis as any).__store instanceof Store)}</p>
@@ -224,6 +228,7 @@ function Page() {
     },
     {
       name: 'function component',
+      copied: true,
       route: `export function Card() {
   return <b>card</b>
 }
@@ -236,6 +241,7 @@ function Page() {
     },
     {
       name: 'component and its private state',
+      copied: true,
       route: `const registry = new Set<string>()
 function size() {
   return registry.size
@@ -256,28 +262,40 @@ function Page() {
       setup: ";(globalThis as any).__Card = Card\nCard({ id: 'entry' })",
       expected: ['<p>true<b>2</b></p>'],
     },
-  ])(
-    'the split component and other modules share an exported $name',
-    async ({ route, imports, setup, expected }) => {
-      const result = await buildAndRun(
-        `${head}${route}
+  ]
+  const shareExported = async ({
+    route,
+    imports,
+    setup,
+    expected,
+  }: (typeof exportedBindings)[number]) => {
+    const result = await buildAndRun(
+      `${head}${route}
 export const Route = createFileRoute('/')({ component: Page })
 `,
-        `const html = await entry.render(entry.Route.options.component)
+      `const html = await entry.render(entry.Route.options.component)
 return globalThis.__inits === undefined ? [html] : [html, globalThis.__inits]`,
-        {
-          files: {
-            'entry.ts': entryImporting(imports, setup),
-            'state.ts': `export function init<T>(value: T) {
+      {
+        files: {
+          'entry.ts': entryImporting(imports, setup),
+          'state.ts': `export function init<T>(value: T) {
   ;(globalThis as any).__inits = ((globalThis as any).__inits ?? 0) + 1
   return value
 }
 `,
-          },
         },
-      )
-      expect(result).toEqual(expected)
-    },
+      },
+    )
+    expect(result).toEqual(expected)
+  }
+  test.each(exportedBindings.filter((row) => !row.copied))(
+    'the split component and other modules share an exported $name',
+    shareExported,
+    30_000,
+  )
+  test.fails.each(exportedBindings.filter((row) => row.copied))(
+    'the split component and other modules share an exported $name',
+    shareExported,
     30_000,
   )
 })

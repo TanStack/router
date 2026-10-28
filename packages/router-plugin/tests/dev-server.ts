@@ -111,6 +111,13 @@ export async function expectExportedRouteOptions(
   route: string,
   exported: Record<string, Array<string>>,
   autoCodeSplitting: boolean,
+  /**
+   * Whether each option must render the very instance importers get
+   * (default). With code splitting the chunk renders its own copy of a pure
+   * exported component by rule (R77; pinned where it is asserted): the
+   * rendering checks alone are the control then.
+   */
+  sharedInstance = true,
 ) {
   const app = await loadRoute(`import { see } from './see'\n${route}`, {
     routeId: '/page',
@@ -163,10 +170,12 @@ return { exports: out, page: await renderRoute({ at: '/page' }), component: awai
       expect(entry.options[key]!.html, `${key} renders as ${name}`).toBe(
         entry.rendered,
       )
-      expect(
-        entry.options[key]!.sees,
-        `${key} renders the imported ${name} instance`,
-      ).toBe(true)
+      if (sharedInstance) {
+        expect(
+          entry.options[key]!.sees,
+          `${key} renders the imported ${name} instance`,
+        ).toBe(true)
+      }
     }
   }
   expect(result.page).toContain(result.component)

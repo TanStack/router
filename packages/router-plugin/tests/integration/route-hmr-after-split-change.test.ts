@@ -1,10 +1,12 @@
 /**
  * Route edits after the route file's split layout changed and changed back
- * (SPEC J3.3): the derived modules an earlier layout produced (an extracted
- * export, a split chunk) are no longer imported by the route module, and an
- * edit of the file must still apply in place. Found by the HMR consistency
- * fuzzer: the stale derived module stayed in Vite's module graph with no
- * importers, and the next edit of the file full-reloaded the page.
+ * (SPEC J3.3): the derived modules an earlier layout produced (a split chunk
+ * after `codeSplitGroupings: []`; the chunk's copy of a component once it is
+ * exported, since in dev an exported component stays in the route module,
+ * R77 dev) are no longer imported, or import other things, and an edit of
+ * the file must still apply in place. Found by the HMR consistency fuzzer:
+ * a stale derived module stayed in Vite's module graph with no importers,
+ * and the next edit of the file full-reloaded the page.
  */
 import { describe, expect, test } from 'vitest'
 import { inPlace } from '../route-hmr-edit'

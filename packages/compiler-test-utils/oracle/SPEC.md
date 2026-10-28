@@ -373,7 +373,11 @@ dir)` is not a conflict by itself.
   chunks: `Route`, module state, and every exported function, class or constant (importers of a route-module export
   and the route itself get the same object; a copy of an exported declaration in a chunk is a bug, even a
   "stateless" one such as an exported function that reads `Route`). Pure helpers with unobservable identity may be
-  copied or rewritten (§5.3). Prove identity through real consumers and effects, not declaration counts.
+  copied or rewritten (§5.3). Prove identity through real consumers and effects, not declaration counts. Amended
+  (R77, 2026-10-28): today's compiler copies a pure, unassigned exported binding into the chunk by rule, so that the
+  chunk never imports the module the route module re-exports it from (one instance for every importer of the route
+  file, a second one in the chunk); the identity rows that observe the copy are pins (KNOWN-BUGS "The split chunk
+  copies a pure exported binding"). State, effects and augmented bindings stay one instance.
 - **J2.5 Each chunk holds only what it needs.** The split option's code (and bindings only it uses) is absent from
   the route module. An import used only for types is dropped, so its module never loads in the client for that
   reason, with or without `verbatimModuleSyntax`. A compiler-emitted split module carries no unrelated source

@@ -395,9 +395,14 @@ export const Route = createFileRoute('/')({ ${options}component: ${binding} })
   // (memoisation, registries, `===` checks) sees two of them.
   // (The title lives in `staticData`, typed by the documented
   // `StaticDataRouteOption` augmentation.)
-  test('an exported function that reads Route is the one the split component calls', async () => {
-    const route = await loadRoute(
-      `${head}import { see } from './see'
+  // (R77: the chunk copies a pure exported binding by rule; importers get
+  // the route module's instance: known-bugs "the split chunk copies a pure
+  // exported binding".)
+  test.fails(
+    'an exported function that reads Route is the one the split component calls',
+    async () => {
+      const route = await loadRoute(
+        `${head}import { see } from './see'
 declare module '@tanstack/react-router' {
   interface StaticDataRouteOption {
     title?: string
@@ -415,18 +420,18 @@ export const Route = createFileRoute('/')({
   component: Page,
 })
 `,
-      {
-        files: {
-          'see.ts': `export const seen: Array<unknown> = []
+        {
+          files: {
+            'see.ts': `export const seen: Array<unknown> = []
 export const see = (value: unknown) => seen.push(value)
 `,
-          // Another module of the app imports the hook.
-          'importer.ts': `export { useTitle } from './route'\n`,
+            // Another module of the app imports the hook.
+            'importer.ts': `export { useTitle } from './route'\n`,
+          },
         },
-      },
-    )
-    expect(
-      await route.run(`const { useTitle } = await app('importer.ts')
+      )
+      expect(
+        await route.run(`const { useTitle } = await app('importer.ts')
 const rendered = await render('component')
 const { seen } = await app('see.ts')
 return {
@@ -434,12 +439,13 @@ return {
   imported: useTitle(),
   sameInstance: seen.length === 1 && seen[0] === useTitle,
 }`),
-    ).toEqual({
-      rendered: '<p>title</p>',
-      imported: 'title',
-      sameInstance: true,
-    })
-  })
+      ).toEqual({
+        rendered: '<p>title</p>',
+        imported: 'title',
+        sameInstance: true,
+      })
+    },
+  )
 
   // Bug: a split component that reads a `Route` declared with `const` and
   // exported later (`export { Route }`) gets a chunk that creates the route
@@ -471,9 +477,14 @@ export { Route }
   // Source: React Compiler gating/gating-test-export-default-function.js;
   // #8504 (code-splitter-imports-exports.test.ts), where it passes.
   // Impact: the route cannot be built once code splitting is on.
-  test('a split option renders the default-exported component other modules import', async () => {
-    const route = await loadRoute(
-      `${head}import type { ReactNode } from 'react'
+  // (R77: the chunk copies a pure exported binding by rule; importers get
+  // the route module's instance: known-bugs "the split chunk copies a pure
+  // exported binding".)
+  test.fails(
+    'a split option renders the default-exported component other modules import',
+    async () => {
+      const route = await loadRoute(
+        `${head}import type { ReactNode } from 'react'
 import { see } from './see'
 export default function Bar(props: { children?: ReactNode }) {
   return <div>{props.children}</div>
@@ -484,23 +495,24 @@ function NoForget(props: { noForget?: string }) {
 }
 export const Route = createFileRoute('/')({ component: Bar, errorComponent: NoForget })
 `,
-      {
-        files: {
-          'see.ts': `export const seen: Array<unknown> = []
+        {
+          files: {
+            'see.ts': `export const seen: Array<unknown> = []
 export const see = (value: unknown) => seen.push(value)
 `,
-          // The component other modules import.
-          'importer.ts': `export { default } from './route'\n`,
+            // The component other modules import.
+            'importer.ts': `export { default } from './route'\n`,
+          },
         },
-      },
-    )
-    expect(
-      await route.run(`const rendered = await render('errorComponent', { noForget: 'x' })
+      )
+      expect(
+        await route.run(`const rendered = await render('errorComponent', { noForget: 'x' })
 const { default: imported } = await app('importer.ts')
 const { seen } = await app('see.ts')
 return { rendered, seen: seen.length, sameInstance: seen[0] === imported }`),
-    ).toEqual({ rendered: '<div>x</div>', seen: 1, sameInstance: true })
-  })
+      ).toEqual({ rendered: '<div>x</div>', seen: 1, sameInstance: true })
+    },
+  )
 
   // Bug: the code splitter deletes the exported declaration of an option's
   // component from every chunk, so a split component that renders the
@@ -657,12 +669,18 @@ return { rendered, sameInstance: seen.length === 1 && seen[0] === imported }`)
   }
 
   // The bare identifier.
-  test('an exported errorComponent named by the option is the instance its importers get', async () => {
-    expect(await exportedErrorComponent('PostErrorComponent')).toMatchObject({
-      rendered: '<p>error</p>',
-      sameInstance: true,
-    })
-  })
+  // (R77: the chunk copies a pure exported binding by rule; importers get
+  // the route module's instance: known-bugs "the split chunk copies a pure
+  // exported binding".)
+  test.fails(
+    'an exported errorComponent named by the option is the instance its importers get',
+    async () => {
+      expect(await exportedErrorComponent('PostErrorComponent')).toMatchObject({
+        rendered: '<p>error</p>',
+        sameInstance: true,
+      })
+    },
+  )
 
   // Bug: an exported component named by a split option is only recognised
   // as an export when the option is a bare identifier. Written in another
@@ -683,7 +701,7 @@ return { rendered, sameInstance: seen.length === 1 && seen[0] === imported }`)
   // Impact: code that relies on the identity of the component (`===`
   // checks, registries, memoised props) sees two of them, and the component
   // code ships twice (see the build pin below).
-  test.each([
+  test.fails.each([
     'PostErrorComponent as any',
     'PostErrorComponent as typeof PostErrorComponent',
     'withAuth(PostErrorComponent)',

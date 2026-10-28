@@ -78,9 +78,16 @@ This means that it creates three separate lazy-loaded chunks for each route. Res
 
 For automatic code splitting to work, there are some rules in place to make sure that this process can happen reliably and predictably.
 
-#### Do not export route properties
+#### Exported route properties
 
-Route properties like `component`, `loader`, etc., should not be exported from the route file. Exporting these properties results in them being bundled into the main application bundle, which means that they will not be code-split.
+A route property such as `component` or `notFoundComponent` may be exported from the route file: it is still code-split. The split chunk carries its own copy of a pure function, class or component, while other modules that import it from the route file share one instance through a small module of its own, so exporting a page component for tests or reuse costs nothing in the main bundle.
+
+Two cases keep an exported binding in the main bundle, and the build (and the dev server) warns once, naming the file:
+
+- the binding has state or effects (an initialiser with side effects, a `let` the module reassigns, a value read from mutable state when the module loads, a component the file augments with `Page.displayName = …`), so one instance must exist and the route module keeps it;
+- another module loaded with the entry imports the binding through the route file, so the bundler keeps it with the route module.
+
+In both cases, move the binding to its own module and import it from there.
 
 ```tsx
 export const Route = createRoute('/posts')({
@@ -88,18 +95,13 @@ export const Route = createRoute('/posts')({
   notFoundComponent: PostsNotFoundComponent,
 })
 
-// ❌ Do NOT do this!
-// Exporting the notFoundComponent will prevent it from being code-split
-// and will be included in the main bundle.
+// ✅ split: the chunk carries its copy, importers share one instance
 export function PostsNotFoundComponent() {
-  // ❌
   // ...
 }
 
-function PostsNotFoundComponent() {
-  // ✅
-  // ...
-}
+// ⚠️ warns and stays in the main bundle: its initialiser has side effects
+export const store = createStore()
 ```
 
 #### Route callbacks that read `this` are not split

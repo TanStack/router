@@ -42,6 +42,23 @@ describe('route module exports with automatic code splitting', () => {
 export const Route = createFileRoute('/page')({ ${options} })`,
         exported,
         true,
+        false,
+      )
+    },
+    timeout,
+  )
+
+  // The split chunk renders its own copy of a pure exported component while
+  // importers get the route module's instance (R77; known-bugs "the split
+  // chunk copies a pure exported binding").
+  test.fails.each(exportedComponentsLostWhenSplit)(
+    'render the imported $name component instance in the split option',
+    async ({ declaration, options, exported }) => {
+      await expectExportedRouteOptions(
+        `${head}${declaration}
+export const Route = createFileRoute('/page')({ ${options} })`,
+        exported,
+        true,
       )
     },
     timeout,
