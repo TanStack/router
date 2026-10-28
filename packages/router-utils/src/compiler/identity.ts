@@ -179,10 +179,17 @@ export function siblingSpecifier(targetId: string): string {
   return `./${basename}${query.length > 0 ? `?${query}` : ''}${hash}`
 }
 
-/** Query-aware language of an id: `.vue?vue&type=script&lang.ts` → 'ts'; non-JS → null. */
+/** Bundler queries whose module is not the file's code (`?raw`, `?url`, `?inline`, `?worker`): the file is an asset of it. */
+export const ASSET_QUERY_RE =
+  /[?&](?:raw|url|inline|worker|sharedworker)(?:&|$)/
+
+/** Query-aware language of an id: `.vue?vue&type=script&lang.ts` → 'ts'; non-JS (or an asset query, `x.ts?raw`) → null. */
 export function langFromId(id: string): Lang | null {
   const { base, query } = splitQuery(id)
   if (query.length > 0) {
+    if (ASSET_QUERY_RE.test(`?${query}`)) {
+      return null
+    }
     const m = /(?:^|&)lang\.(tsx|ts|jsx|js|mjs|cjs|mts|cts)(?:$|&|=)/.exec(
       query,
     )

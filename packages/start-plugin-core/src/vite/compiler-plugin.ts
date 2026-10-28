@@ -14,6 +14,7 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import {
+  ASSET_QUERY_RE,
   OWNED_QUERY_RE,
   OutputBuilder,
   RawFactsCache,
@@ -49,6 +50,7 @@ import {
   VITE_ENVIRONMENT_NAMES,
 } from '../constants'
 import { namesStartSpecifier, startRecognizer } from '../compiler/recognizer'
+import { NODE_MODULES_RE, startCompileScope } from '../compiler/scope'
 import { HYDRATE_PLANNER, createHydratePlanner } from '../planners/hydrate'
 import { START_ENV, startPlanners } from '../planners'
 import { FunctionIdAllocator, decodeDevFunctionId } from '../server-fns/ids'
@@ -148,9 +150,9 @@ const IP_SPECIFIER_RE = /tanstack-start-ip:/
 const LATE_PASS_EXCLUDE: Array<RegExp> = [
   ...TRANSFORM_ID_REGEX,
   /^\0/,
-  /[\\/]node_modules[\\/]/,
+  NODE_MODULES_RE,
   /\.(?:css|scss|sass|less|styl|stylus|pcss|postcss|json|json5|yaml|yml|toml|html|svg|png|jpe?g|gif|webp|avif|ico|bmp|woff2?|ttf|otf|eot|mp[34]|webm|ogg|wav|flac|aac|pdf|txt|wasm|zip)(?:\?|$)/i,
-  /[?&](?:raw|url|inline|worker|sharedworker)(?:&|$)/,
+  ASSET_QUERY_RE,
 ]
 
 /** The specifier of a module id for the dev module runner: root-relative, or `/@fs/` for files outside the root. */
@@ -217,6 +219,8 @@ interface Session {
   mode: 'dev' | 'build'
   bundledDev: boolean
   ip: ImportProtection | null
+  /** Whether a module is compiled (`startCompileScope`). */
+  compiles: (path: string, code: string) => boolean
   rawFacts: RawFactsCache
   caches: CompilerCaches
   registry: RouteRegistryView
@@ -346,6 +350,7 @@ export function startCompilerPlugin(
       mode,
       bundledDev: config.bundledDev,
       ip,
+      compiles: startCompileScope(ip),
       rawFacts,
       caches: createCompilerCaches(rawFacts, 'start:vite'),
       registry: new RouteRegistryView(opts.routerPluginContext),
@@ -698,7 +703,7 @@ export function startCompilerPlugin(
       }
       seen.add(id)
       const identity = identify(id)
-      if (/[\\/]node_modules[\\/]/.test(identity.path)) {
+      if (NODE_MODULES_RE.test(identity.path)) {
         continue
       }
       const facts = await s.rawFacts.get(identity.canonicalId)
@@ -1003,13 +1008,15 @@ export function startCompilerPlugin(
         },
       },
       transform: {
-        filter: { id: { include: TRANSFORM_ID_REGEX } },
+        filter: {
+          id: { include: TRANSFORM_ID_REGEX, exclude: ASSET_QUERY_RE },
+        },
         async handler(code, id) {
           const identity = identify(id)
-          if (identity.lang === null) {
+          const s = requireSession()
+          if (identity.lang === null || !s.compiles(identity.path, code)) {
             return null
           }
-          const s = requireSession()
           const environment = this.environment
           const envInfo = envInfoOf(environment, env)
           const out = await compileModule(

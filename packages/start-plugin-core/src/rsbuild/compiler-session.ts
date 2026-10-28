@@ -32,6 +32,7 @@ import {
   routerPlanners,
 } from '@tanstack/router-plugin/planners'
 import { namesStartSpecifier, startRecognizer } from '../compiler/recognizer'
+import { startCompileScope } from '../compiler/scope'
 import { START_ENV, startPlanners } from '../planners'
 import { HYDRATE_PLANNER, createHydratePlanner } from '../planners/hydrate'
 import { RSC_CSS } from '../planners/rsc-css'
@@ -142,16 +143,6 @@ export interface LoaderOptions {
   pass?: 'late'
 }
 
-const NODE_MODULES_RE = /[\\/]node_modules[\\/]/
-/**
- * The cheap text gate of a dependency module (not an importer import
- * protection checks): a module naming no Start, router or RSC API and no
- * builder step cannot need a plan, so it is not parsed (a cheap gate
- * before parsing; the Start libraries an app depends on name them).
- */
-const START_TEXT_RE =
-  /createServerFn|createMiddleware|createIsomorphicFn|createServerOnlyFn|createClientOnlyFn|createStart|ClientOnly|Hydrate|createFileRoute|createRootRoute|createLazyFileRoute|\.handler\(|\.server\(|\.client\(|renderServerComponent|createCompositeComponent|renderToReadableStream/
-
 export interface EnvState {
   name: string
   type: 'client' | 'server'
@@ -184,6 +175,8 @@ export class StartRsbuildCompilerSession {
   >()
   /** Import protection of the session (null: `enabled: false`). */
   readonly ip: ImportProtection | null
+  /** Whether a module is compiled (`startCompileScope`). */
+  private readonly compiles: (path: string, code: string) => boolean
   private readonly plannersByKey = new Map<string, Array<Planner>>()
   private readonly routerCfg = new Map<
     'client' | 'server',
@@ -220,6 +213,7 @@ export class StartRsbuildCompilerSession {
     for (const env of opts.environments) {
       this.ip?.env(env.name, env.type)
     }
+    this.compiles = startCompileScope(this.ip)
     this.rawFacts = new RawFactsCache({
       readFile: (file) => this.readFile(file),
       loadVirtual: () => Promise.resolve(null),
@@ -595,12 +589,7 @@ export class StartRsbuildCompilerSession {
     if (late && !ip) {
       return passthrough
     }
-    if (
-      !late &&
-      NODE_MODULES_RE.test(identity.path) &&
-      !(ip?.inScope(identity.path) ?? false) &&
-      !START_TEXT_RE.test(source)
-    ) {
+    if (!late && !this.compiles(identity.path, source)) {
       return passthrough
     }
     const layer = ctx._module?.layer ?? undefined

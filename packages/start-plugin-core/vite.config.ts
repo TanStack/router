@@ -27,7 +27,10 @@ if (process.env.VITEST) {
  * would count too (Rspack keeps a closed compiler's last compilation, and
  * so its Start session, alive).
  */
-const aloneTests = ['integration/start-build-environment-release.test.ts']
+const aloneTests = [
+  'integration/start-build-environment-release.test.ts',
+  'integration/start-build-compile-scope.test.ts',
+]
 
 /** This package's build output (`dist`), as its `exports` name it. */
 const builtPackage = new RegExp(

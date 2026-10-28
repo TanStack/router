@@ -83,6 +83,8 @@ export interface HydratePlanFacts {
 }
 
 export const HYDRATE_PLANNER = 'hydrate'
+/** The boundary component the planner recognises (imported from a Start package). */
+export const HYDRATE_COMPONENT = 'Hydrate'
 
 const DEFAULT_PACKAGES: Readonly<Record<string, HydrateFramework>> = {
   '@tanstack/react-start': 'react',
@@ -144,9 +146,10 @@ function gate(t0: ModuleAnalysis, ctx: GateContext): boolean {
         packages[imp.specifier] !== undefined &&
         imp.specifiers.some(
           (s) =>
-            !s.typeOnly && (s.imported === 'Hydrate' || s.imported === '*'),
+            !s.typeOnly &&
+            (s.imported === HYDRATE_COMPONENT || s.imported === '*'),
         ),
-    ) && t0.source.code.includes('Hydrate')
+    ) && t0.source.code.includes(HYDRATE_COMPONENT)
   )
 }
 
@@ -221,7 +224,7 @@ function findBoundaries(
       if (s.typeOnly) {
         continue
       }
-      if (s.imported === 'Hydrate') {
+      if (s.imported === HYDRATE_COMPONENT) {
         for (const ref of t1.refs.refsOf(s.local)) {
           if (ref.ctx !== 'jsxOpen') {
             continue
@@ -245,7 +248,7 @@ function findBoundaries(
             member.type !== 'JSXMemberExpression' ||
             member.object.start !== ref.range.start ||
             member.object.type !== 'JSXIdentifier' ||
-            member.property.name !== 'Hydrate'
+            member.property.name !== HYDRATE_COMPONENT
           ) {
             continue
           }

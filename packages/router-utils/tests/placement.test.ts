@@ -383,7 +383,28 @@ describe('glue and renames (lane router)', () => {
         component: () => 'x',
       })`).replace(/\n$/, '')
     const r = await split(code)
-    expect(r.env.endsWith('})\n')).toBe(true)
+    // no end glue in the env output: it ends as the source does
+    expect(r.env.endsWith('})')).toBe(true)
+    const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+    const glue: Planner = {
+      name: 'toy-end-glue',
+      tier: 1,
+      gate: () => true,
+      plan(ctx) {
+        const sym = ctx.names.alloc('tsrEnd')
+        ctx.rewrites.addGenerated({
+          body: [{ k: 'text', parts: [`export const ${sym.name} = 1\n`] }],
+          declares: [sym.sym],
+          effectful: false,
+          anchor: { k: 'end' },
+          home: 'env',
+          by: 'toy-end-glue',
+        })
+        ctx.addRoot('env', { t: 'sym', id: sym.sym })
+      },
+    }
+    const out = await host.compile('/app/route.tsx', [glue])
+    expect(out!.code.endsWith('})\nexport const tsrEnd = 1\n')).toBe(true)
   })
 
   it('keeps a license comment above a moved component in the env module only (G12)', async () => {

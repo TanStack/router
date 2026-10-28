@@ -61,6 +61,9 @@ export interface RawFactsOptions {
   markerSpecifiers?: Record<string, 'server-only' | 'client-only'>
 }
 
+const isVirtualId = (canonicalId: string): boolean =>
+  canonicalId.startsWith('\0') || canonicalId.startsWith('virtual:')
+
 const MISSING_TARGET: Omit<TargetFacts, 'digest'> = {
   exists: false,
   marker: null,
@@ -342,12 +345,18 @@ export class RawFactsCache {
     }
   }
 
+  /** The module's text; '' for a file that is no JavaScript (an asset, `?url`): never read, `build` describes it unanalysed. */
   private async read(canonicalId: string): Promise<string | null> {
-    this.counters.factsReads++
-    if (canonicalId.startsWith('\0') || canonicalId.startsWith('virtual:')) {
+    if (isVirtualId(canonicalId)) {
+      this.counters.factsReads++
       return this.opts.loadVirtual(canonicalId)
     }
-    return this.opts.readFile(identify(canonicalId).path)
+    const id = identify(canonicalId)
+    if (id.lang === null) {
+      return ''
+    }
+    this.counters.factsReads++
+    return this.opts.readFile(id.path)
   }
 
   private build(
@@ -365,13 +374,16 @@ export class RawFactsCache {
     }
     const id = identify(canonicalId)
     const rev = revision(text)
-    const lang = id.lang ?? 'ts'
-    const parsed = parseModule(text, {
-      lang,
-      path: id.path,
-      sourceType: isCommonJsPath(id.path) ? 'commonjs' : undefined,
-    })
-    if (!parsed.ok) {
+    // a virtual module without an extension is JavaScript; a file without a language is not
+    const parsed =
+      id.lang === null && !isVirtualId(canonicalId)
+        ? null
+        : parseModule(text, {
+            lang: id.lang ?? 'ts',
+            path: id.path,
+            sourceType: isCommonJsPath(id.path) ? 'commonjs' : undefined,
+          })
+    if (!parsed?.ok) {
       const tf = {
         exists: true,
         marker: null,
