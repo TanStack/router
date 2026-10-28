@@ -95,6 +95,7 @@ export class MemoryApp {
       // package.json lookups join native paths (backslashes on Windows)
       readFile: (file) =>
         Promise.resolve(this.files[file.replace(/\\/g, '/')] ?? null),
+      readSource: (file) => this.files[file] ?? null,
       isEntry: opts.isEntry,
     })
     if (!ip) {
@@ -162,7 +163,7 @@ export class MemoryApp {
     env: string,
     extra: {
       planners?: Array<Planner>
-      inputMap?: InputSourceMap | null
+      inputMap?: InputSourceMap | null | (() => InputSourceMap | null)
       code?: string
     } = {},
   ): Promise<{

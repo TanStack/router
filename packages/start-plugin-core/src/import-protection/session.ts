@@ -34,7 +34,7 @@ import type {
   EdgeModuleIds,
   EdgeModuleRef,
 } from './edge-modules'
-import type { ImportGraphView } from './graph-trace'
+import type { ImportGraphView, SourceReader } from './graph-trace'
 import type { DevReporterOptions, ReportSink } from './report'
 import type { EnvType } from './rules'
 import type { DecideResult, RspackImportProtectionBuildInfo } from './verdict'
@@ -56,6 +56,8 @@ export interface CreateImportProtectionOptions {
   verbatimModuleSyntax?: boolean
   /** Reads a file (a package's `package.json` for `sideEffects`); default `node:fs`. */
   readFile?: (file: string) => Promise<string | null>
+  /** Reads a source file's raw text, synchronously (trace positions, `EdgeIndex`); default `node:fs`. */
+  readSource?: SourceReader
   /**
    * Whether a path is an entry of the app (router, start, client and server
    * entries): a marked entry compiled in the env its marker denies is its
@@ -93,6 +95,7 @@ export function createImportProtection(
         opts.ids ?? viteEdgeModuleIds,
         opts.readFile ?? readFileOrNull,
         opts.isEntry ?? (() => false),
+        opts.readSource,
       )
     : null
 }
@@ -122,6 +125,8 @@ export class ImportProtection {
     private readonly readFile: (file: string) => Promise<string | null>,
     /** Whether a path is an app entry (`CreateImportProtectionOptions.isEntry`). */
     readonly isEntry: (path: string) => boolean,
+    /** Raw source text for trace positions (`CreateImportProtectionOptions.readSource`). */
+    readonly readSource?: SourceReader,
   ) {
     this.planner = importEdgesPlanner(this)
   }
@@ -364,7 +369,7 @@ export interface DevCompileOutcome {
 /** One Start environment's import protection. */
 export class ImportProtectionEnv {
   /** Resolved edges of every judged importer (trace steps). */
-  readonly edges = new EdgeIndex()
+  readonly edges: EdgeIndex
   /** Build verdicts of the current logical build. */
   readonly build = new BuildVerdicts()
   /** The bundler's graph (dev: the dev server's module graph; build: set per pass by the witness reader). */
@@ -382,6 +387,7 @@ export class ImportProtectionEnv {
     readonly name: string,
     readonly type: EnvType,
   ) {
+    this.edges = new EdgeIndex(ip.readSource)
     this.build.onStateChange = (edgeKey) => {
       for (const [key, m] of this.modules) {
         if (m.content.edgeKey === edgeKey) {
@@ -507,7 +513,7 @@ export class ImportProtectionEnv {
       this.register(importerId, record.violations, false)
       // a module compiled in this process indexed its edges itself
       if (record.edges && !this.edges.has(importerId)) {
-        this.edges.set(importerId, record.edges)
+        this.edges.set(importerId, record.edges, record.revision ?? null)
       }
     }
   }
@@ -538,6 +544,7 @@ export class ImportProtectionEnv {
   } | null {
     const violations = violationsOf(out)
     const edges = this.edges.edgesOf(importerId)
+    const revision = this.edges.revisionOf(importerId)
     return violations.length > 0 || edges.length > 0
       ? {
           key: RSPACK_BUILD_INFO_KEY,
@@ -546,6 +553,7 @@ export class ImportProtectionEnv {
             env: this.name,
             violations,
             ...(edges.length > 0 && { edges }),
+            ...(revision !== null && { revision }),
           },
         }
       : null

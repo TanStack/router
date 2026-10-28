@@ -71,7 +71,8 @@ interface Judged {
   importerPath: string
   resolved: string | null
   rule: RuleRef | null
-  loc: OriginalLocation | null
+  /** Offset of the specifier in this compile's input text, when it is in that text. */
+  offset: number | undefined
 }
 
 interface TargetDescription {
@@ -195,18 +196,17 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
             }
           }
         }
-        let loc: OriginalLocation | null = null
+        let offset: number | undefined
         if (forwarded) {
           if (importerPath === ctx.identity.path) {
-            loc = locator.at(forwarded.span.start)
+            offset = forwarded.span.start
           }
         } else {
-          const first = e.locations.find(
+          offset = e.locations.find(
             (l): l is { range: { start: number; end: number } } => 'range' in l,
-          )
-          loc = first ? locator.at(first.range.start) : null
+          )?.range.start
         }
-        return { edge: e, raw, from, importerPath, resolved, rule, loc }
+        return { edge: e, raw, from, importerPath, resolved, rule, offset }
       }
 
       const judged = (await Promise.all(edges.map(judge))).filter(
@@ -220,13 +220,10 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
             (j): IndexedEdge => ({
               resolved: j.resolved!,
               specifier: j.raw,
-              ...(j.loc &&
-                j.loc.file === ctx.identity.path && {
-                  line: j.loc.line,
-                  column: j.loc.column,
-                }),
+              ...(j.offset !== undefined && { offset: j.offset }),
             }),
           ),
+        plan.revision,
       )
 
       const violations: Array<EdgeViolation> = []
@@ -234,6 +231,10 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
         if (j.rule === null) {
           continue
         }
+        // located now, through the input map (only a violation is located:
+        // the map is the bundler's to combine, and only while the hook runs)
+        const loc: OriginalLocation | null =
+          j.offset === undefined ? null : locator.at(j.offset)
         const behavior = config.behavior
         const substitute = config.mode === 'build' || behavior === 'mock'
         const base: EdgeViolation = {
@@ -245,8 +246,8 @@ export function importEdgesPlanner(ip: ImportProtection): Planner {
           importer: j.importerPath,
           importerId,
           resolved: j.resolved,
-          loc: j.loc,
-          snippet: j.loc && locator.frame(j.loc),
+          loc,
+          snippet: loc && locator.frame(loc),
           behavior,
           module: null,
         }
