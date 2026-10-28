@@ -41,6 +41,60 @@ function edgeImports(code: string): Array<string> {
   )
 }
 
+describe('locations', () => {
+  test('nothing is located when nothing is reported: the input map is never read', async () => {
+    const rec = recorder()
+    const a = app(
+      {
+        'src/ok.ts': `export const ok = 1\n`,
+        'src/secret.server.ts': SECRET,
+        'src/a.ts': `import { ok } from './ok'\nexport const read = () => ok\n`,
+        'src/b.ts': `import { ok } from './ok'\nimport { secret } from './secret.server'\nexport const read = () => ok + secret()\n`,
+      },
+      { onViolation: rec.onViolation },
+    )
+    let reads = 0
+    const inputMap = () => {
+      reads++
+      return null
+    }
+    await a.compile('src/a.ts', 'client', { inputMap })
+    expect(reads).toBe(0)
+    expect(rec.calls).toHaveLength(0)
+    // a violation is located through the map, as before
+    await a.compile('src/b.ts', 'client', { inputMap })
+    expect(reads).toBe(1)
+    expect(rec.calls.map((c) => c.importerLoc)).toEqual([
+      { file: `${ROOT}/src/b.ts`, line: 2, column: 24 },
+    ])
+  })
+
+  test('the steps of a trace are located in the raw files when the trace is built', async () => {
+    const rec = recorder()
+    const a = app(
+      {
+        'src/secret.server.ts': SECRET,
+        'src/entry.ts': `export const zero = 0\nexport * from './a'\n`,
+        'src/a.ts': `import { secret } from './secret.server'\nexport const read = () => secret()\n`,
+      },
+      { onViolation: rec.onViolation },
+    )
+    await a.compile('src/entry.ts', 'client')
+    await a.compile('src/a.ts', 'client')
+    expect(rec.calls.map((c) => c.trace)).toEqual([
+      [
+        { file: `${ROOT}/src/entry.ts`, specifier: './a', line: 2, column: 15 },
+        {
+          file: `${ROOT}/src/a.ts`,
+          specifier: './secret.server',
+          line: 1,
+          column: 24,
+        },
+      ],
+    ])
+  })
+})
+
 describe('rules', () => {
   test('a file rule: the client import of a *.server file is substituted by its mock, located at the specifier', async () => {
     const rec = recorder()

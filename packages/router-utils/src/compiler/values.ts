@@ -284,6 +284,24 @@ export interface ValueAnalysisOptions {
   table: RecognizerTable
   /** Cross-module lookups (phase A results); default keeps imports symbolic. */
   resolveImport?: ImportResolver
+  /** The module's top-level declarations by name offset (`ModuleAnalysis.declarations`): read before `parentOf`. */
+  declarations?: ReadonlyMap<number, Node>
+}
+
+/**
+ * The declaration (declarator or function declaration) a top-level name
+ * belongs to, from a module's `declarations`; null for a nested name.
+ */
+export function declaredIn(
+  declarations: ReadonlyMap<number, Node>,
+  name: Node,
+): Node | null {
+  const d = declarations.get(name.start)
+  return d !== undefined &&
+    (d.type === 'VariableDeclarator' || d.type === 'FunctionDeclaration') &&
+    d.id === name
+    ? d
+    : null
 }
 
 /**
@@ -324,7 +342,9 @@ export class ValueAnalysis {
     if (!decl) {
       return UNKNOWN
     }
-    const parent = this.file.parentOf(decl)
+    const parent =
+      (this.opts.declarations && declaredIn(this.opts.declarations, decl)) ??
+      this.file.parentOf(decl)
     if (!parent) {
       return UNKNOWN
     }

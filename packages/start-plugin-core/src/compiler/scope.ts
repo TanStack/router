@@ -25,21 +25,50 @@ const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')
 export function startCompileScope(
   ip: ImportProtection | null,
 ): (path: string, code: string) => boolean {
+  const startText = startTextTest(ip)
+  return (path, code) =>
+    !NODE_MODULES_RE.test(path) ||
+    (ip?.inScope(path) ?? false) ||
+    startText.test(code)
+}
+
+/** Whether a text names what the planners recognise (see `startCompileScope`). */
+function startTextTest(ip: ImportProtection | null): RegExp {
   const names = new Set(
     Object.values(startRecognizer().factories).flatMap((exports) =>
       Object.keys(exports),
     ),
   )
   names.add(HYDRATE_COMPONENT)
-  const startText = new RegExp(
+  return new RegExp(
     [
       ...names,
       String.raw`\.\s*(?:handler|server|client)\s*\(`,
       ...Object.keys(ip?.markerSpecifiers ?? {}).map(escape),
     ].join('|'),
   )
-  return (path, code) =>
-    !NODE_MODULES_RE.test(path) ||
-    (ip?.inScope(path) ?? false) ||
-    startText.test(code)
+}
+
+/** An ES re-export (`export * from`, `export * as ns from`, `export { … } from`): the module's exports are elsewhere. */
+const REEXPORT_RE =
+  /\bexport\s*(?:\*|\{[\s\S]*?\})(?:\s*as\s*[\w$]+)?\s*from\s*['"]/
+
+/**
+ * Whether a dependency module is opaque to the summaries (`RawFactsOptions.opaque`):
+ * an ordinary package's exports carry no Start value, so its text is never
+ * parsed for one. A module of `node_modules` is read when import protection
+ * checks it, when its text names what the planners recognise (the test of
+ * `startCompileScope`), or when it re-exports another module (a library's
+ * barrel: the values are behind it). The rest of a dependency graph stays
+ * unread.
+ */
+export function opaquePackageModule(
+  ip: ImportProtection | null,
+): (path: string, text: string) => boolean {
+  const startText = startTextTest(ip)
+  return (path, text) =>
+    NODE_MODULES_RE.test(path) &&
+    !(ip?.inScope(path) ?? false) &&
+    !startText.test(text) &&
+    !REEXPORT_RE.test(text)
 }

@@ -6,8 +6,17 @@
  * builds), joined with what our own compiles resolved (`EdgeIndex`: the
  * specifier and original position of each step, and edges the bundler has
  * not recorded yet). Cut at `maxTraceDepth`, keeping the importer.
+ *
+ * A step's position is located when the trace is built, from the raw file
+ * (the edge keeps the offset of its specifier in the compile's input text and
+ * the input's revision): a bundler's transform context, and so its input
+ * map, lives only while the hook runs, and a trace is a diagnostic nothing
+ * reports in most builds. An input another plugin rewrote (its revision is
+ * not the file's) locates nothing.
  */
-import { identify } from '@tanstack/router-utils/compiler'
+import fs from 'node:fs'
+import { identify, revision } from '@tanstack/router-utils/compiler'
+import { Locator } from './locate'
 import type { TraceStep } from './trace'
 
 /** The bundler's graph, as a trace needs it. Ids are bundler module ids. */
@@ -21,21 +30,44 @@ export interface IndexedEdge {
   resolved: string
   /** The specifier as written. */
   specifier: string
-  /** 1-based original position of the specifier, when known. */
+  /** UTF-16 offset of the specifier in the importer's input text, when it is in that text. */
+  offset?: number
+  /** 1-based original position of the specifier, when known without locating. */
   line?: number
   column?: number
 }
 
+/** The raw text of a source file for trace positions, or null (a virtual id, a missing file). */
+export type SourceReader = (path: string) => string | null
+
+function readSourceFile(path: string): string | null {
+  try {
+    return fs.readFileSync(path, 'utf8')
+  } catch {
+    return null
+  }
+}
+
 /**
  * Per environment: the resolved edges of every module our compiles judged
- * (importer id → its edges), replaced when the importer is judged again.
- * Bounded by the live modules; only feeds traces (diagnostics).
+ * (importer id → its edges, with the revision of the input they were judged
+ * in), replaced when the importer is judged again. Bounded by the live
+ * modules; only feeds traces (diagnostics).
  */
 export class EdgeIndex {
-  private readonly forward = new Map<string, Map<string, IndexedEdge>>()
+  private readonly forward = new Map<
+    string,
+    { byTarget: Map<string, IndexedEdge>; revision: string | null }
+  >()
   private readonly reverse = new Map<string, Set<string>>()
 
-  set(importerId: string, edges: ReadonlyArray<IndexedEdge>): void {
+  constructor(private readonly readSource: SourceReader = readSourceFile) {}
+
+  set(
+    importerId: string,
+    edges: ReadonlyArray<IndexedEdge>,
+    revision: string | null = null,
+  ): void {
     this.delete(importerId)
     const byTarget = new Map<string, IndexedEdge>()
     for (const e of edges) {
@@ -49,7 +81,35 @@ export class EdgeIndex {
       }
       importers.add(importerId)
     }
-    this.forward.set(importerId, byTarget)
+    this.forward.set(importerId, { byTarget, revision })
+  }
+
+  /** The revision of the input `importerId`'s edges were judged in (Rspack: recorded with them). */
+  revisionOf(importerId: string): string | null {
+    return this.forward.get(importerId)?.revision ?? null
+  }
+
+  /**
+   * The 1-based position of an edge's specifier: as recorded, else located
+   * in the raw file when it is still the text the edge was judged in.
+   */
+  position(
+    importerId: string,
+    edge: IndexedEdge,
+  ): { line: number; column: number } | null {
+    if (edge.line !== undefined) {
+      return { line: edge.line, column: edge.column ?? 1 }
+    }
+    const rev = this.revisionOf(importerId)
+    if (edge.offset === undefined || rev === null) {
+      return null
+    }
+    const file = traceFile(importerId)
+    const text = this.readSource(file)
+    if (text === null || revision(text) !== rev) {
+      return null
+    }
+    return new Locator(text, file, () => null).at(edge.offset)
   }
 
   delete(importerId: string): void {
@@ -57,7 +117,7 @@ export class EdgeIndex {
     if (!prev) {
       return
     }
-    for (const target of prev.keys()) {
+    for (const target of prev.byTarget.keys()) {
       const importers = this.reverse.get(target)
       importers?.delete(importerId)
       if (importers?.size === 0) {
@@ -73,7 +133,7 @@ export class EdgeIndex {
 
   /** The edges of an importer (Rspack: recorded in its `buildInfo` for a restored module's traces). */
   edgesOf(importerId: string): Array<IndexedEdge> {
-    return [...(this.forward.get(importerId)?.values() ?? [])]
+    return [...(this.forward.get(importerId)?.byTarget.values() ?? [])]
   }
 
   importerIds(): Iterable<string> {
@@ -90,7 +150,7 @@ export class EdgeIndex {
   }
 
   edge(importerId: string, targetId: string): IndexedEdge | undefined {
-    return this.forward.get(importerId)?.get(targetId)
+    return this.forward.get(importerId)?.byTarget.get(targetId)
   }
 
   importers(targetId: string): Iterable<string> {
@@ -181,9 +241,10 @@ export function buildTrace(
     const edge = to !== undefined ? index?.edge(id, to) : undefined
     if (edge) {
       step.specifier = edge.specifier
-      if (edge.line !== undefined) {
-        step.line = edge.line
-        step.column = edge.column
+      const at = index!.position(id, edge)
+      if (at !== null) {
+        step.line = at.line
+        step.column = at.column
       }
     }
     return step

@@ -376,8 +376,7 @@ export function fingerprintSourceFor(
   return {
     summaryDigest: (id) => caches.rawFacts.digestOf(id),
     targetDigest: (id) => caches.rawFacts.targetDigestOf(id),
-    targetMarker: async (id) =>
-      (await caches.rawFacts.getTarget(id)).targetFacts.marker,
+    targetMarker: (id) => caches.rawFacts.marker(id),
     routeRegistryDigest: (path) => host.routes?.digestFor(path) ?? null,
     resolution: (importer, specifier) =>
       resolveForAnalysis(caches, host, importer, specifier),
