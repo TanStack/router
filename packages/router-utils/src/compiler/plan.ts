@@ -556,7 +556,7 @@ export class AnalysisPlan implements PlanContext {
         // (it then follows it, wherever it loads), or the effect's value
         // above it; an annotation only where the effect is a call
         const effect = this.effectAt(k.effect!)
-        because = `${describe(effect)} (${line(effect.node.start)}) runs after ${it} and ${k.effectStays ? 'stays' : 'does not move with it'}`
+        because = `${describe(effect)} (${line(effect.node.start)}) runs after ${names.length === 1 ? 'it' : 'them'} and ${k.effectStays ? 'stays' : 'does not move with it'}`
         const unit = this.t1.units[k.effect!]!
         const after =
           unit.declares.length > 0
