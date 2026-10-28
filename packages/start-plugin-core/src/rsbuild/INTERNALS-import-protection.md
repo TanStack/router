@@ -33,8 +33,9 @@ object:
 
 1. `onBeforeBuild`
 2. `onBeforeDevCompile`
-3. `modifyRspackConfig`
-4. `processAssets(..., { stage: 'report' })`
+3. `onBeforeEnvironmentCompile`
+4. `modifyRspackConfig`
+5. `processAssets(..., { stage: 'report' })`
 
 `modifyRspackConfig` installs both the virtual-modules plugin and the
 environment-scoped import-protection post-loader.
@@ -108,11 +109,15 @@ adapter queues them and flushes during compilation setup.
 
 It reconstructs the final view of the compilation from Rspack data by:
 
-1. snapshotting each module and its outgoing connections
+1. snapshotting each module that can report a violation and its outgoing
+   connections
 2. collecting specifier and file violations plus possible marker modules
 3. deduplicating marker modules and validating their persisted metadata
-4. returning early when no violations remain
-5. building the `ImportGraph` and diagnostic indexes only when needed
+4. with `log: 'once'`, dropping violations this environment already reported,
+   because reporting would discard them after enrichment
+5. returning early when no violations remain
+6. snapshotting the remaining modules and building the `ImportGraph` and
+   diagnostic indexes only when needed
 
 Each `RspackModuleGraphNode` stores a module and its imported modules. Missing and
 errored target modules are skipped.
@@ -120,14 +125,29 @@ Connections are not filtered by `getActiveState()` because inactive connections
 can still carry diagnostic evidence. Duplicate connections to the same target
 module collapse to one.
 
-Snapshotting does not apply source-file eligibility. Intermediate modules remain
-available for entry-to-violation traces, while the scanner applies importer and
-rule checks. Normalized resource ids are used for rules, traces, and diagnostics;
-`resourceResolveData.path` is preferred for original-source lookup.
+Detection snapshots only modules that can report a violation: parseable source
+files that pass the importer checks. In large apps most modules live in
+`node_modules` and fail them, so a clean compilation never reads their
+connections. Normalized resource ids are used for rules, traces, and
+diagnostics; `resourceResolveData.path` is preferred for original-source lookup.
 
-When violations exist, the adapter replays the snapshot to build `ImportGraph`;
-it does not query outgoing connections again. A clean compilation avoids entry
+When violations exist, the adapter snapshots the remaining modules, because
+entry-to-violation traces pass through them, and replays the full snapshot in
+module order to build `ImportGraph`. A clean compilation avoids entry
 traversal, graph indexes, and module-source loading.
+
+A scan is clean when it leaves no violation to report: none were found, or, with
+`log: 'once'`, every one was already reported. In development, a compilation
+that directly follows a clean scan of the same environment first scans only
+`compilation.builtModules`, their direct importers (a rebuilt dependency can
+gain a marker without its importer changing), and entry modules, with the same
+eligibility filter. It falls back to the full scan when it finds an unreported
+violation, when the previous compilation skipped the report stage, or when a
+changed or removed file is not the resource of a rebuilt module. Such files,
+for example `package.json` import maps or `tsconfig.json` paths, can re-resolve
+imports in modules that were not rebuilt. Changed watched directories
+(`compilation.contextDependencies`, such as Tailwind content paths) are ignored
+because the changed files inside them are listed too.
 
 Diagnostic enrichment is lazy. The transform-result provider reads
 `module.originalSource().sourceAndMap()` when available. It gets original code

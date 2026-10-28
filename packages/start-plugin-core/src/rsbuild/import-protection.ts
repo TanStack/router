@@ -43,6 +43,10 @@ import {
   isFileExcluded,
   normalizeFilePath,
 } from '../import-protection/utils'
+import {
+  getRebuiltModulesAndImporters,
+  mayHaveReResolvedImports,
+} from './rebuilt-modules'
 import type {
   ImportProtectionBehavior,
   ImportProtectionOptions,
@@ -91,6 +95,9 @@ type ImportProtectionRsbuildPluginAPI = {
   context: Pick<RsbuildPluginAPI['context'], 'action'>
   onBeforeBuild: (handler: () => void) => void
   onBeforeDevCompile: (handler: () => void) => void
+  onBeforeEnvironmentCompile: (
+    handler: (params: { environment: { name: string } }) => void,
+  ) => void
   modifyRspackConfig: (
     handler: (
       config: ImportProtectionRspackConfig,
@@ -349,6 +356,37 @@ export function serializePattern(pattern: string | RegExp): string {
 
 function dedupeKey(info: ViolationInfo): string {
   return dedupeViolationKey(info)
+}
+
+/** The fields of the reported violation that identify it for deduplication. */
+function getViolationIdentity(candidate: CompilationViolation): {
+  type: CompilationViolation['type']
+  importer: string
+  specifier: string
+  resolved?: string
+} {
+  if (candidate.type === 'specifier') {
+    const { violation } = candidate.payload
+    return {
+      type: 'specifier',
+      importer: violation.importer,
+      specifier: violation.specifier,
+      resolved: violation.resolved,
+    }
+  }
+  if (candidate.type === 'marker') {
+    return {
+      type: 'marker',
+      importer: getModuleResource(candidate.importer),
+      specifier: candidate.source,
+    }
+  }
+  return {
+    type: 'file',
+    importer: getModuleResource(candidate.edge.importer),
+    specifier: candidate.source,
+    resolved: getModuleResource(candidate.edge.module),
+  }
 }
 
 export function getRsbuildResolvedImportProtectionCheck(
@@ -1342,6 +1380,8 @@ export function registerImportProtection(
   const perf = isPerfEnabled() ? createPerfCollector() : undefined
   const extensionlessResolver = new ExtensionlessAbsoluteIdResolver()
   const envStates = new Map<string, EnvRuntimeState>()
+  // `incremental` marks a compilation that directly follows a clean scan.
+  const scanStateByEnv = new Map<string, 'clean' | 'incremental'>()
   const shouldCheckImporterCache = new Map<string, boolean>()
   const config: PluginConfig = {
     enabled: true,
@@ -1473,6 +1513,14 @@ export function registerImportProtection(
     })
   }
 
+  // The scanner ignores every other importer, so skip reading its connections.
+  function canReportViolation(module: RspackModule): boolean {
+    const importer = getModuleResource(module)
+    return (
+      isImportProtectionSourceFile(importer) && shouldCheckImporter(importer)
+    )
+  }
+
   api.onBeforeBuild(() => {
     const startedAt = perf ? performance.now() : 0
     applyUserConfig()
@@ -1480,6 +1528,7 @@ export function registerImportProtection(
     extensionlessResolver.clear()
     shouldCheckImporterCache.clear()
     envStates.clear()
+    scanStateByEnv.clear()
     if (perf) {
       perf.time('onBeforeBuild', startedAt)
     }
@@ -1497,6 +1546,14 @@ export function registerImportProtection(
     }
     if (perf) {
       perf.time('onBeforeDevCompile', startedAt)
+    }
+  })
+
+  api.onBeforeEnvironmentCompile(({ environment }) => {
+    if (scanStateByEnv.get(environment.name) === 'clean') {
+      scanStateByEnv.set(environment.name, 'incremental')
+    } else {
+      scanStateByEnv.delete(environment.name)
     }
   })
 
@@ -1577,6 +1634,52 @@ export function registerImportProtection(
         const envType = getImportProtectionEnvType(config, envName)
         const envState = getOrCreateEnvState(envStates, envName)
         const matchers = getRulesForEnvironment(config, envName)
+        // `log: 'once'` never reports a violation twice, so skip seen ones early.
+        const isUnreported = (candidate: CompilationViolation) =>
+          config.logMode === 'always' ||
+          !envState.seenViolations.has(
+            dedupeViolationKey(getViolationIdentity(candidate)),
+          )
+
+        const canScanIncrementally =
+          scanStateByEnv.get(envName) === 'incremental' &&
+          api.context.action === 'dev' &&
+          !mayHaveReResolvedImports(context.compiler, context.compilation)
+        scanStateByEnv.delete(envName)
+        if (canScanIncrementally) {
+          const incrementalStartedAt = perf ? performance.now() : 0
+          const incrementalScanner = createCompilationViolationScanner({
+            config,
+            envType,
+            matchers,
+            shouldCheckImporter,
+          })
+          forEachEntryModule({
+            compilation: context.compilation,
+            visitModule: incrementalScanner.visitEntry,
+          })
+          const changedModules = getRebuiltModulesAndImporters(
+            context.compilation,
+          ).filter(canReportViolation)
+          forEachModules({
+            compilation: context.compilation,
+            modules: changedModules,
+            visitNode: incrementalScanner.visitNode,
+          })
+          const incrementalCandidates = incrementalScanner.finish()
+          if (perf) {
+            perf.time('processAssets.incremental', incrementalStartedAt)
+            perf.count(
+              'processAssets.incremental.modules',
+              changedModules.length,
+            )
+          }
+          if (!incrementalCandidates.some(isUnreported)) {
+            scanStateByEnv.set(envName, 'clean')
+            return
+          }
+        }
+
         const allModules = Array.from(context.compilation.modules)
         perf?.count('processAssets.modules.total', allModules.length)
 
@@ -1591,42 +1694,51 @@ export function registerImportProtection(
           visitModule: violationScanner.visitEntry,
         })
         const forEachStartedAt = perf ? performance.now() : 0
-        const moduleGraphNodes: Array<RspackModuleGraphNode> = []
+        const nodesByModule = new Map<RspackModule, RspackModuleGraphNode>()
         forEachModules({
           compilation: context.compilation,
-          modules: allModules,
+          modules: allModules.filter(canReportViolation),
           visitNode(node) {
-            moduleGraphNodes.push(node)
+            nodesByModule.set(node.module, node)
             violationScanner.visitNode(node)
           },
         })
         if (perf) {
           perf.time('processAssets.forEachModules', forEachStartedAt)
-          perf.count('processAssets.modules.collected', moduleGraphNodes.length)
-          perf.count(
-            'processAssets.imports.collected',
-            moduleGraphNodes.reduce(
-              (total, node) => total + node.imports.length,
-              0,
-            ),
-          )
+          perf.count('processAssets.modules.collected', nodesByModule.size)
+          let imports = 0
+          for (const node of nodesByModule.values()) {
+            imports += node.imports.length
+          }
+          perf.count('processAssets.imports.collected', imports)
         }
 
         const candidateStartedAt = perf ? performance.now() : 0
-        const candidates = violationScanner.finish()
+        const candidates = violationScanner.finish().filter(isUnreported)
         if (perf) {
           perf.time('processAssets.candidates.finish', candidateStartedAt)
           perf.count('processAssets.candidates', candidates.length)
         }
 
         if (candidates.length === 0) {
+          scanStateByEnv.set(envName, 'clean')
           return
         }
 
         const graphStartedAt = perf ? performance.now() : 0
+        // Traces run from entries through modules the scan skipped.
+        forEachModules({
+          compilation: context.compilation,
+          modules: allModules.filter((module) => !nodesByModule.has(module)),
+          visitNode(node) {
+            nodesByModule.set(node.module, node)
+          },
+        })
         const { importGraph, edgeIndex } = buildCompilationImportGraph({
           compilation: context.compilation,
-          nodes: moduleGraphNodes,
+          nodes: allModules.flatMap(
+            (module) => nodesByModule.get(module) ?? [],
+          ),
         })
         if (perf) {
           perf.time('processAssets.importGraph.build', graphStartedAt)
@@ -1650,61 +1762,35 @@ export function registerImportProtection(
         }
 
         for (const candidate of candidates) {
-          let info: ViolationInfo
-
-          if (candidate.type === 'specifier') {
-            const { payload } = candidate
-            info = await buildViolationInfo({
-              config,
-              provider: getProvider(),
-              importGraph,
-              edgeIndex,
-              perf,
-              envName,
-              envType,
-              importer: payload.violation.importer,
-              importerModule: candidate.edge.importer,
-              source: payload.violation.specifier,
-              resolved: payload.violation.resolved,
-              transformedSources: [getModuleResource(candidate.edge.module)],
-              type: 'specifier',
-              pattern: payload.violation.patternText,
-            })
-          } else if (candidate.type === 'marker') {
-            const importer = getModuleResource(candidate.importer)
-            info = await buildViolationInfo({
-              config,
-              provider: getProvider(),
-              importGraph,
-              edgeIndex,
-              perf,
-              envName,
-              envType,
-              importer,
-              importerModule: candidate.importer,
-              source: candidate.source,
-              type: 'marker',
-            })
-          } else {
-            const { edge, source } = candidate
-            const importer = getModuleResource(edge.importer)
-            const resolved = getModuleResource(edge.module)
-            info = await buildViolationInfo({
-              config,
-              provider: getProvider(),
-              importGraph,
-              edgeIndex,
-              perf,
-              envName,
-              envType,
-              importer,
-              importerModule: edge.importer,
-              source,
-              resolved,
-              type: 'file',
-              pattern: candidate.pattern,
-            })
-          }
+          const { type, importer, specifier, resolved } =
+            getViolationIdentity(candidate)
+          const info = await buildViolationInfo({
+            config,
+            provider: getProvider(),
+            importGraph,
+            edgeIndex,
+            perf,
+            envName,
+            envType,
+            type,
+            importer,
+            source: specifier,
+            resolved,
+            ...(candidate.type === 'specifier'
+              ? {
+                  importerModule: candidate.edge.importer,
+                  transformedSources: [
+                    getModuleResource(candidate.edge.module),
+                  ],
+                  pattern: candidate.payload.violation.patternText,
+                }
+              : candidate.type === 'marker'
+                ? { importerModule: candidate.importer }
+                : {
+                    importerModule: candidate.edge.importer,
+                    pattern: candidate.pattern,
+                  }),
+          })
 
           await reportViolation({
             config,
@@ -1714,6 +1800,11 @@ export function registerImportProtection(
             perf,
             info,
           })
+        }
+
+        // Every candidate is now reported, which `log: 'once'` never repeats.
+        if (config.logMode !== 'always') {
+          scanStateByEnv.set(envName, 'clean')
         }
       } finally {
         if (perf) {
