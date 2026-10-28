@@ -26,6 +26,7 @@ import {
   cleanOrphanedDeclarations,
   siblingSpecifier,
   unwrapExpression,
+  valueBinding,
 } from '@tanstack/router-utils/compiler'
 import type {
   ClassifiedRef,
@@ -752,9 +753,10 @@ function validate(
             node.name.type === 'JSXNamespacedName' &&
             node.name.namespace.name === 'use'
           ) {
-            const binding = analysis.file
-              .scopeOf(node)
-              .lookup(node.name.name.name, 'value')
+            const binding = valueBinding(
+              analysis.file.scopeOf(node),
+              node.name.name.name,
+            )
             scan.directives.push({
               nameRange: {
                 start: node.name.name.start,

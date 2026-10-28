@@ -10,6 +10,7 @@ import { ModuleAnalysis } from './analysis'
 import { emitRecipe } from './emit'
 import { SourceText } from './output-builder'
 import { parseModule } from './source'
+import { hasRuntimeValue } from './symbols'
 import type { SourceIdentity } from './identity'
 import type { AnalysisPlan, EmitPlan, OutputRecipe } from './plan'
 import type { OutputId } from './rewrite'
@@ -77,10 +78,24 @@ export function verifyPlan(
       if (home === undefined) {
         continue
       }
-      // (b) a glue import names an export of its home output
+      // (b) a glue import names an export of its home output that has a
+      // runtime value (an `export { X }` of a type-only binding is erased
+      // with it: the bundler sees no export)
       if (!home.analysis.exports.some((e) => e.kind === 'star')) {
+        const homeSymbols = home.analysis.t1().symbols
         const names = new Set(
-          home.analysis.exports.flatMap((e) => ('name' in e ? [e.name] : [])),
+          home.analysis.exports.flatMap((e) => {
+            if (!('name' in e) || ('typeOnly' in e && e.typeOnly)) {
+              return []
+            }
+            if (e.kind === 'local' && e.local !== null) {
+              const b = homeSymbols.binding(e.local)
+              if (b !== null && !hasRuntimeValue(b)) {
+                return []
+              }
+            }
+            return [e.name]
+          }),
         )
         for (const s of imp.specifiers) {
           if (s.imported !== '*' && !names.has(s.imported)) {

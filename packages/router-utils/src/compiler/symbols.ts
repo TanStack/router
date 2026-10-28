@@ -5,12 +5,46 @@
  * by anything that stores a `SymbolId`.
  */
 import { BindingFlags } from 'yuku'
-import type { Binding, SourceFile } from 'yuku'
+import type { Binding, Scope, SourceFile } from 'yuku'
 
 /** Runs in the bundler's process only: the environment is read once, not per binding. */
 const DEV = process.env.NODE_ENV !== 'production'
 
 export type SymbolId = number & { __sym: true }
+
+/** Binding flags of declarations with a runtime value. */
+const VALUE_BINDING_FLAGS =
+  BindingFlags.FunctionScopedVariable |
+  BindingFlags.BlockScopedVariable |
+  BindingFlags.Function |
+  BindingFlags.Class |
+  BindingFlags.RegularEnum |
+  BindingFlags.ConstEnum |
+  BindingFlags.ValueModule |
+  BindingFlags.ValueImport
+
+/**
+ * Whether a binding has a runtime value: a type-only import (`import type
+ * * as React`, `import { type X }`), an interface, a type alias or a
+ * type-only namespace has none, so no value read ever binds to it (a
+ * reference TypeScript erases keeps nothing alive and crosses no output).
+ */
+export function hasRuntimeValue(b: Binding): boolean {
+  return b.has(VALUE_BINDING_FLAGS)
+}
+
+/**
+ * The binding a value read of `name` written in `scope` would resolve to, or
+ * null when the name is unbound or bound to a declaration without a runtime
+ * value. Every read the compiler synthesises from a name rather than from a
+ * reference (the JSX factory of the classic runtime, a Solid `use:`
+ * directive) resolves through this, so a type-only binding of the name
+ * never becomes a value read.
+ */
+export function valueBinding(scope: Scope, name: string): Binding | null {
+  const b = scope.lookup(name, 'value')
+  return b !== null && hasRuntimeValue(b) ? b : null
+}
 
 export type SymbolKind = 'source' | 'generated' | 'ambient' | 'synthetic'
 

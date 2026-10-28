@@ -7,6 +7,7 @@
  * values, Hydrate children, nested chains).
  */
 import { BindingFlags, bindingIdentifiers } from 'yuku'
+import { hasRuntimeValue } from './symbols'
 import { extendOverTrailingLine, isLicenseComment } from './header'
 import { unwrapExpression } from './source'
 import {
@@ -22,17 +23,6 @@ import type { Header, Range } from './header'
 import type { Node, SourceFile } from 'yuku'
 import type { SymbolId, SymbolTable } from './symbols'
 import type { Frag } from './rewrite'
-
-/** Binding flags of declarations with a runtime value. */
-const VALUE_BINDING_FLAGS =
-  BindingFlags.FunctionScopedVariable |
-  BindingFlags.BlockScopedVariable |
-  BindingFlags.Function |
-  BindingFlags.Class |
-  BindingFlags.RegularEnum |
-  BindingFlags.ConstEnum |
-  BindingFlags.ValueModule |
-  BindingFlags.ValueImport
 
 export type UnitId = number
 export type RegionId = number
@@ -465,7 +455,7 @@ export function buildUnits(
       return false
     }
     const b = file.referenceOf(local)?.binding ?? null
-    return b !== null && !b.has(VALUE_BINDING_FLAGS)
+    return b !== null && !hasRuntimeValue(b)
   }
   const add = (
     item: TopLevelItem,

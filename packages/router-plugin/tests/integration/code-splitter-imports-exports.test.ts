@@ -87,6 +87,46 @@ export const Route = createFileRoute('/')({ component: Page })
     }, 60_000)
   })
 
+  // Source: real app tanstack.com (`ds.typography.tsx`): `import type * as
+  // React from 'react'` with JSX in the split component. Without a JSX
+  // pragma the classic runtime's factory `React` is a read of every element,
+  // but never of a binding without a runtime value: the chunk imported
+  // `React` from the route module, whose `export { React }` TypeScript
+  // erases (Rolldown: MISSING_EXPORT). A type-only default import of the
+  // name is the same shape.
+  describe.each([
+    ['a type-only namespace import', "import type * as React from 'react'"],
+    ['a type-only default import', "import type React from 'react'"],
+  ])(
+    '%s named React next to a split component with JSX (vite)',
+    (_, declaration) => {
+      const files = {
+        'tsconfig.json': JSON.stringify({
+          compilerOptions: { verbatimModuleSyntax: true, jsx: 'react-jsx' },
+        }),
+      }
+      const route = `${declaration}
+${head}function Page(props: { children?: React.ReactNode }) {
+  const note: React.ReactNode = 'MARK_NOTE'
+  return <p>{note}{props.children}</p>
+}
+export const Route = createFileRoute('/')({ component: Page })
+`
+
+      it('builds a split route file, which renders', async () => {
+        const app = await build({
+          bundler: 'vite',
+          env: 'client',
+          files: routeApp(route, { env: 'client', files }),
+        })
+        const run = await app.run(
+          `await entry.mount(entry.Route.options.component)`,
+        )
+        expect(run.html).toBe('<div id="root"><p>MARK_NOTE</p></div>')
+      }, 60_000)
+    },
+  )
+
   // The neighbouring forms, each next to a component of the same name that
   // moves to the chunk: `import type { X }`, `import type X from`, an inline
   // `{ type X, y }`, and a type-only namespace import (TypeScript rejects a

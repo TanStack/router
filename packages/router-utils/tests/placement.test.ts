@@ -1139,6 +1139,36 @@ describe('route-module specifics (lane router)', () => {
     expect(r.env).not.toContain("from 'react'")
   })
 
+  // Source: tanstack.com `ds.typography.tsx`: `import type * as React from
+  // 'react'` and JSX in the split component gave the chunk `import { React }`
+  // from the route module, which exported a type-only binding (Rolldown:
+  // MISSING_EXPORT). A binding without a runtime value is never the factory.
+  it.each([
+    ['a type-only namespace import', "import type * as React from 'react'"],
+    ['a type-only default import', "import type React from 'react'"],
+    ['a type-only named import', "import type { React } from 'react'"],
+    // (an inline `type` specifier follows its statement's value specifiers)
+    [
+      'an inline type specifier',
+      "import { type React, useId } from 'react'",
+      "import { useId } from 'react'",
+    ],
+    ['an interface', 'interface React { node: unknown }'],
+  ])(
+    'never reads %s named React as the JSX factory',
+    async (_, declaration, kept = declaration) => {
+      const code = dedent(`
+        ${declaration}
+        import { createFileRoute } from 'toy-router'
+        export const Route = createFileRoute('/')({ component: () => <p>classic</p> })
+      `)
+      const r = await split(code)
+      expect(r.chunks.component).not.toContain('React')
+      expect(r.env).not.toContain('export { React }')
+      expect(r.env).toContain(kept)
+    },
+  )
+
   it('copies ambient value declarations into derived outputs (erased by TypeScript, resolved by its transforms)', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -1164,6 +1194,18 @@ describe('route-module specifics (lane router)', () => {
     const r = await split(code)
     expect(r.chunks.component).toContain('function tip(')
     expect(r.env).not.toContain('function tip(')
+  })
+
+  it('reads no Solid use: directive whose name is bound to a type only', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      import type { tip } from './tips'
+      export const Route = createFileRoute('/')({ component: () => <p use:tip>tip</p> })
+    `)
+    const r = await split(code)
+    expect(r.chunks.component).not.toContain('tip }')
+    expect(r.env).toContain("import type { tip } from './tips'")
+    expect(r.env).not.toContain('export { tip }')
   })
 })
 

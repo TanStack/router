@@ -10,7 +10,7 @@
  */
 import { BindingFlags, walk } from 'yuku'
 import { analyzeHeader } from './header'
-import { SymbolTable } from './symbols'
+import { SymbolTable, valueBinding } from './symbols'
 import { buildItems, buildUnits, writesMember } from './units'
 import { MutationModel } from './mutation'
 import { statementHasEffects } from './purity'
@@ -809,12 +809,13 @@ export class ModuleAnalysis {
         return null
       }
       const root = name.split('.')[0]!
-      const b = file.rootScope.find(root)
+      const b = valueBinding(file.rootScope, root)
       return b ? symbols.ofBinding(b) : null
     }
     // Without a pragma the project's transform decides the runtime; a
-    // module-level `React` binding is read by every JSX element when it is
-    // classic (Babel's default factory), so it is counted as a read.
+    // module-level `React` binding with a runtime value (not `import type
+    // * as React`) is read by every JSX element when it is classic (Babel's
+    // default factory), so it is counted as a read.
     const factory =
       runtime === 'classic'
         ? rootSym(factoryName ?? 'React')
@@ -863,7 +864,7 @@ export class ModuleAnalysis {
           ) {
             return
           }
-          const b = file.scopeOf(n).lookup(name.name.name, 'value')
+          const b = valueBinding(file.scopeOf(n), name.name.name)
           if (!b || b.has(BindingFlags.Ambient)) {
             return
           }
