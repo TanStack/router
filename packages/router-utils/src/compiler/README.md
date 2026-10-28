@@ -155,7 +155,10 @@ returned but not published.
 | Start, Vite              | `start-plugin-core/src/vite/compiler-plugin.ts` (+ `planning.ts`, `bundled-dev.ts`): Start and router planners in one compile per module and env                                                                     |
 | Start, Rsbuild           | `start-plugin-core/src/rsbuild/` ([COMPILER_ARCHITECTURE.md](../../../start-plugin-core/src/rsbuild/COMPILER_ARCHITECTURE.md)): Rspack loaders per env/layer, facts in `buildInfo` replayed for the persistent cache |
 
-Hosts decide dev/build from the bundler's mode, never from `process.env.NODE_ENV` at plugin creation.
+Hosts decide dev/build from the bundler's mode, never from `process.env.NODE_ENV` at plugin creation. An id without
+a language (an asset, or an asset query: `ASSET_QUERY_RE`) is never compiled, and its facts are never read from its
+file. A host returns no transform for an env output equal to its input (an output ending where the source ends gets no
+line feed). Start's hosts compile a `node_modules` module only as `start-plugin-core/src/compiler/scope.ts` decides.
 
 ## Planners
 

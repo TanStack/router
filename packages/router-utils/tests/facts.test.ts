@@ -58,6 +58,39 @@ describe('RawFactsCache', () => {
   })
 })
 
+describe('facts of a module that is not JavaScript', () => {
+  it('are never read from its file: an asset, a stylesheet or a `?url` import is no module of ours', async () => {
+    const read: Array<string> = []
+    const cache = new RawFactsCache({
+      readFile: (p) => {
+        read.push(p)
+        return Promise.resolve('export const a = 1\n')
+      },
+      loadVirtual: () => Promise.resolve('export const v = 1\n'),
+    })
+    for (const id of [
+      '/app/node_modules/esbuild-wasm/esbuild.wasm?url',
+      '/app/styles.css',
+      '/app/data.ts?raw',
+    ]) {
+      const facts = await cache.get(id)
+      expect(facts.summary).toBeNull()
+      expect(facts.targetFacts).toMatchObject({
+        exists: true,
+        esm: false,
+        effectful: true,
+        exportNames: [],
+      })
+    }
+    expect(read).toEqual([])
+    // a module that is JavaScript is read, a virtual one loaded
+    expect((await cache.get('/app/a.ts')).summary).not.toBeNull()
+    expect((await cache.get('\0virtual:thing')).summary).not.toBeNull()
+    expect(read).toEqual(['/app/a.ts'])
+    expect(cache.stats(false)).toMatchObject({ factsReads: 2 })
+  })
+})
+
 describe('target facts of a marked module', () => {
   it('counts a marker import neither as an evaluation edge nor as an effect', async () => {
     const files: Record<string, string> = {

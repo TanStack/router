@@ -24,6 +24,16 @@ describe('identity', () => {
     expect(identify('/app/page.tsx?raw').derived).toBeNull()
   })
 
+  it("gives an asset query (`?raw`, `?url`, `?worker`) no language: its module is not the file's code", () => {
+    expect(langFromId('/app/page.tsx?raw')).toBeNull()
+    expect(langFromId('/app/page.ts?v=1&url')).toBeNull()
+    expect(langFromId('/app/worker.ts?worker')).toBeNull()
+    expect(langFromId('/app/esbuild.wasm?url')).toBeNull()
+    // the worker's own code is code
+    expect(langFromId('/app/worker.ts?worker_file&type=module')).toBe('ts')
+    expect(langFromId('/app/page.tsx?rawish')).toBe('tsx')
+  })
+
   it('never canonicalises virtual ids beyond owned keys', () => {
     const v = identify('\0virtual:thing?x=1')
     expect(v.canonicalId).toBe('\0virtual:thing?x=1')

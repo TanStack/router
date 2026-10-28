@@ -1,7 +1,7 @@
 /**
  * Recipe renderer: walks an `OutputRecipe` against the
  * source text and drives the `OutputBuilder`. Emission is on demand and the
- * module never ends inside a line comment.
+ * module never ends inside a line comment it did not end in already.
  */
 import { OutputBuilder } from './output-builder'
 import { specifierLiteral } from './strings'
@@ -19,16 +19,22 @@ export function emitRecipe(
   wantMap: boolean,
 ): Emitted {
   const b = new OutputBuilder(source, recipe.mapSource, { map: wantMap })
+  /** Whether the output ends with the source's own end (it then ends as the source does). */
+  let sourceEnd = false
   for (const seg of recipe.segments) {
     if (seg.k === 'slice') {
       if (seg.end > seg.start) {
         b.copy(seg.start, seg.end)
+        sourceEnd = seg.end === source.code.length
       }
-    } else {
+    } else if (seg.text.length > 0) {
       b.text(seg.text, seg.mapTo)
+      sourceEnd = false
     }
   }
-  b.newline()
+  if (!sourceEnd) {
+    b.newline()
+  }
   return b.finish()
 }
 

@@ -305,7 +305,7 @@ function emitFrom(
   }
 }
 
-/** Whether emitting `recipe` over `code` yields `code` itself (slices covering the whole text, ending in a line feed). */
+/** Whether emitting `recipe` over `code` yields `code` itself (slices covering the whole text). */
 function isIdentityRecipe(recipe: OutputRecipe, code: string): boolean {
   let at = 0
   for (const seg of recipe.segments) {
@@ -314,7 +314,7 @@ function isIdentityRecipe(recipe: OutputRecipe, code: string): boolean {
     }
     at = seg.end
   }
-  return at === code.length && code.charCodeAt(code.length - 1) === 10
+  return at === code.length
 }
 
 /** The plan's fingerprint (its text, configuration and dependencies), computed on first use. */

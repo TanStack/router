@@ -156,6 +156,24 @@ describe('slice gates: loading', () => {
   })
 })
 
+describe('unchanged text', () => {
+  it('an output equal to its input is the input itself, whatever its last line', async () => {
+    const files = {
+      // no trailing line feed, and a last line that is a comment
+      '/app/plain.ts': `import { other } from 'toy-start'\nexport const x = other() // end`,
+      '/app/edited.ts': `import { wrapServer } from 'toy-start'\nexport const f = wrapServer(() => 1)\nexport const y = 2`,
+    }
+    const host = new MemoryHost({ files })
+    const plain = await host.compile('/app/plain.ts', [toyEnvPlanner()])
+    expect(plain!.code).toBe(files['/app/plain.ts'])
+    expect(plain!.map).toBeNull()
+    // an edit before the source's end: the output ends as the source does
+    // (the orphaned import goes)
+    const edited = await host.compile('/app/edited.ts', [toyEnvPlanner()])
+    expect(edited!.code).toBe(`export const f = tsrStub()\nexport const y = 2`)
+  })
+})
+
 describe('resolution for analysis', () => {
   it('never asks the host about a Node builtin or a URL-scheme specifier (G16)', async () => {
     const files = {
