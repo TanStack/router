@@ -47,4 +47,43 @@ return globalThis.dbLoaded ?? null`,
       })
     }, 60_000)
   })
+
+  // Source: real app statelyai/jevspresso (diff corpus): `import type { Bar }`
+  // next to a component `function Bar`. TypeScript allows a type-only import
+  // and a value of the same name. The type-only declaration stays type-only in
+  // the route module whatever specifiers it keeps: with `verbatimModuleSyntax`
+  // a plain `import { Label }` is a runtime import of a type the module does
+  // not export, and the build fails.
+  describe('a type-only import whose name a split component also declares, with verbatimModuleSyntax (vite)', () => {
+    const files = {
+      'tsconfig.json': JSON.stringify({
+        compilerOptions: { verbatimModuleSyntax: true, jsx: 'react-jsx' },
+      }),
+      'labels.ts': `export type Badge = { name: string }
+export type Label = string
+`,
+    }
+    const route = `${head}import type { Badge, Label } from '../labels'
+export type Kept = Label
+function Badge() {
+  return <p>MARK_BADGE</p>
+}
+function Page() {
+  return <Badge />
+}
+export const Route = createFileRoute('/')({ component: Page })
+`
+
+    it('builds a split route file, which renders', async () => {
+      const app = await build({
+        bundler: 'vite',
+        env: 'client',
+        files: routeApp(route, { env: 'client', files }),
+      })
+      const run = await app.run(
+        `await entry.mount(entry.Route.options.component)`,
+      )
+      expect(run.html).toBe('<div id="root"><p>MARK_BADGE</p></div>')
+    }, 60_000)
+  })
 })
