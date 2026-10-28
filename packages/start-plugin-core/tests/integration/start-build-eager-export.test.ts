@@ -14,6 +14,11 @@
  * environments together, naming the declaration and the call (R78; every
  * host and reason: router-plugin
  * tests/integration/code-splitter-split-only-eager.test.ts).
+ *
+ * The router's pure APIs are no such effect (R79): tamery's `const {
+ * useSearch } = getRouteApi(…)` between the pinned declaration and the
+ * route loads with the chunk and is not reported, imported from the router
+ * package or through an app module re-exporting it under another name.
  */
 import { describe, expect, test } from 'vitest'
 import {
@@ -144,3 +149,60 @@ describe.each(startBundlers)('a %s build', (bundler) => {
     timeout,
   )
 })
+
+/** tamery's account route: the route's API between the pinned effect and the route. */
+const withRouteApi = (path: string, imports: string, api: string) =>
+  `import { createFileRoute } from '@tanstack/react-router'
+import { Marker } from '../marker'
+import { makeSchema } from '../schema'
+${imports}
+const confetti = new Marker('MARK_CONFETTI_${path}')
+const { useSearch } = ${api}
+export const Route = createFileRoute('/${path}')({
+  validateSearch: makeSchema({ tab: 'string' }),
+  component: () => <p>{confetti.name}{String(useSearch)}</p>,
+})
+`
+
+const routeApiFiles = {
+  ...pinnedFiles,
+  'src/routes/direct.tsx': withRouteApi(
+    'direct',
+    "import { getRouteApi } from '@tanstack/react-router'",
+    "getRouteApi('MARK_API_direct')",
+  ),
+  'src/routes/re-exported.tsx': withRouteApi(
+    're-exported',
+    "import { routeApiOf } from '../router-api'",
+    "routeApiOf('MARK_API_re-exported')",
+  ),
+  'src/router-api.ts':
+    "export { getRouteApi as routeApiOf } from '@tanstack/react-router'\n",
+}
+
+describe.each(startBundlers)(
+  'a %s build of routes reading their API',
+  (bundler) => {
+    test(
+      'loads the API with the chunk and warns of the effect before it only',
+      async () => {
+        const build = await buildStart({ bundler, files: routeApiFiles })
+        const reported = [...build.client.warnings, ...build.ssr.warnings]
+        for (const path of ['direct', 're-exported']) {
+          expect(build.client.where(`MARK_API_${path}`), path).toBe('lazy')
+          expect(build.client.where(`MARK_CONFETTI_${path}`), path).toBe(
+            'eager',
+          )
+          const warnings = findDiagnostics(reported, {
+            severity: 'warning',
+            file: `src/routes/${path}.tsx`,
+            root: build.root,
+          })
+          expect(warnings, path).toHaveLength(1)
+          expect(warnings[0]!.text, path).toContain('`confetti`')
+        }
+      },
+      timeout,
+    )
+  },
+)

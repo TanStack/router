@@ -6,11 +6,12 @@
  * absolute path as the map source. The static loader file
  * (`loader/index.cjs`) finds this implementation on the compiler.
  */
+import path from 'node:path'
 import remapping from '@jridgewell/remapping'
 import { SourceText, identify } from '@tanstack/router-utils/compiler'
 import { normalizePath, resourceId } from './session'
 import type { RouterCompiler } from './session'
-import type { Diagnostic } from '@tanstack/router-utils/compiler'
+import type { Diagnostic, HostServices } from '@tanstack/router-utils/compiler'
 
 /** What the loader uses of the webpack / Rspack loader context. */
 export interface LoaderContextLike {
@@ -22,6 +23,8 @@ export interface LoaderContextLike {
   emitError: (error: Error) => void
   _compiler?: unknown
   getOptions: () => { instance?: string }
+  /** The module's resolver (webpack 5 / Rspack: a promise without a callback). */
+  getResolve?: () => (context: string, request: string) => Promise<unknown>
 }
 
 export interface LoaderResult {
@@ -55,9 +58,29 @@ function diagnosticError(
   return error
 }
 
+/** The compiler host's resolver over a loader context's (null when nothing resolves). */
+export function loaderResolver(
+  ctx: LoaderContextLike,
+): HostServices['resolve'] | undefined {
+  const resolve = ctx.getResolve?.()
+  if (!resolve) {
+    return undefined
+  }
+  return async (specifier, importer) => {
+    try {
+      const r = await resolve(path.dirname(identify(importer).path), specifier)
+      return typeof r === 'string' ? { id: normalizePath(r) } : null
+    } catch {
+      return null
+    }
+  }
+}
+
 export function createLoaderImpl(
   compiler: RouterCompiler,
   env: { name: string; type: 'client' | 'server' },
+  /** Receives the loader's resolver, for the invalidations of `env`. */
+  onResolver?: (resolve: HostServices['resolve']) => void,
 ): LoaderImpl {
   return async (ctx, source, inputMap) => {
     const id = resourceId(ctx.resource)
@@ -74,11 +97,16 @@ export function createLoaderImpl(
     if (!compiler.appliesTo(env.type)) {
       return { code: source, map: inputMap }
     }
+    const resolve = loaderResolver(ctx)
+    if (resolve) {
+      onResolver?.(resolve)
+    }
     const out = await compiler.compile({
       id,
       code: source,
       env,
       wantMap: ctx.sourceMap !== false,
+      resolve,
     })
     if (!out) {
       return { code: source, map: inputMap }

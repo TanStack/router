@@ -38,6 +38,42 @@ const FACTORIES: ReadonlySet<string> = new Set<RouteFactory>([
 export const ROUTER_PACKAGE_RE =
   /^@tanstack\/(react|solid|vue)-(router|start)(\/|$)/
 
+/**
+ * The router's exports whose call is pure when its arguments are (R79), per
+ * framework package: each was read in every framework and constructs and
+ * returns a value (an identity, a closure, a `RouteApi`, a component), reads
+ * no global or module state, registers nothing and never throws. The core
+ * recognises them by import binding and re-export
+ * (`RecognizerTable.pureCalls`). Not pure: `redirect` and `notFound` (they
+ * mutate their argument and throw when asked to), `createSerializationAdapter`
+ * (throws on an invalid key in development), `createRouter`; the route
+ * factories are recognised as route units (their routes are the route tree's).
+ */
+const PURE_EXPORTS = [
+  'getRouteApi',
+  'linkOptions',
+  'createLink',
+  'createRouteMask',
+  'lazyRouteComponent',
+  'lazyFn',
+  'retainSearchParams',
+  'stripSearchParams',
+  'parseSearchWith',
+  'stringifySearchWith',
+]
+
+let pureCalls: Record<string, ReadonlySet<string>> | null = null
+
+/** `RecognizerTable.pureCalls` of the router packages (one table for every host). */
+export function routerPureCalls(): Record<string, ReadonlySet<string>> {
+  pureCalls ??= {
+    '@tanstack/react-router': new Set([...PURE_EXPORTS, 'createRouterConfig']),
+    '@tanstack/solid-router': new Set(PURE_EXPORTS),
+    '@tanstack/vue-router': new Set([...PURE_EXPORTS, 'createRouterConfig']),
+  }
+  return pureCalls
+}
+
 export type OptionKind =
   | 'init'
   | 'method'

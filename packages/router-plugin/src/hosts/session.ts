@@ -7,6 +7,7 @@
  */
 import fs from 'node:fs'
 import {
+  EMPTY_RECOGNIZER,
   RawFactsCache,
   collectionSizes,
   compileModule,
@@ -16,7 +17,11 @@ import {
   invalidate,
   registerCompilerStats,
 } from '@tanstack/router-utils/compiler'
-import { routerPlannerConfig, routerPlanners } from '../planners'
+import {
+  routerPlannerConfig,
+  routerPlanners,
+  routerPureCalls,
+} from '../planners'
 import { RouteRegistryView, normalizePath } from '../planners/registry'
 import { defaultCodeSplitGroupings } from '../core/constants'
 import { contextInternals } from '../core/router-plugin-context'
@@ -44,8 +49,6 @@ export interface RouterCompilerOptions {
   bundler: Bundler
   mode: 'dev' | 'build'
   hmrStyle: HmrStyle
-  /** Resolves a specifier from an importer (the bundler's resolver). */
-  resolve?: HostServices['resolve']
 }
 
 export interface CompileRequest {
@@ -54,6 +57,8 @@ export interface CompileRequest {
   code: string
   env: { name: string; type: 'client' | 'server'; routerSplit?: boolean }
   wantMap: boolean
+  /** The bundler's resolver in this compile (an import re-exporting a pure router API, R79); none: nothing resolves. */
+  resolve?: HostServices['resolve']
 }
 
 export { normalizePath }
@@ -120,6 +125,8 @@ export class RouterCompiler {
     const rawFacts = new RawFactsCache({
       readFile: (p) => fs.promises.readFile(p, 'utf8').catch(() => null),
       loadVirtual: () => Promise.resolve(null),
+      // the router packages are known by specifier, never resolved
+      recognizer: { ...EMPTY_RECOGNIZER, pureCalls: routerPureCalls() },
     })
     this.caches = createCompilerCaches(
       rawFacts,
@@ -130,7 +137,7 @@ export class RouterCompiler {
       collectionSizes({ warnings: o.warnings, registry: o.registry }, 3),
     )
     this.host = {
-      resolve: opts.resolve ?? (() => Promise.resolve(null)),
+      resolve: () => Promise.resolve(null),
       readFile: (p) => fs.promises.readFile(p, 'utf8').catch(() => null),
       loadVirtual: () => Promise.resolve(null),
       rawFacts,
@@ -187,9 +194,14 @@ export class RouterCompiler {
         config: { configKey: this.configKey, perPlanner: this.perPlanner },
         wantMap: req.wantMap,
       },
-      this.host,
+      this.hostWith(req.resolve),
       this.caches,
     )
+  }
+
+  /** The host services with a bundler's resolver. */
+  private hostWith(resolve: HostServices['resolve'] | undefined): HostServices {
+    return resolve ? { ...this.host, resolve } : this.host
   }
 
   /** Reports a compile's diagnostics once per (file, reason) through `report`. */
@@ -228,12 +240,15 @@ export class RouterCompiler {
     }
   }
 
-  /** The one invalidation operation for a file event. */
+  /** The one invalidation operation for a file event; `resolveIn` is an environment's resolver (its resolutions are re-validated with it). */
   invalidate(
     path: string,
     kind: InvalidateChange['kind'],
+    resolveIn?: (env: string) => HostServices['resolve'] | undefined,
   ): Promise<{ evicted: Array<PlanKey>; dependents: Array<PlanKey> }> {
-    return invalidate(this.caches, { path, kind }, this.host)
+    return invalidate(this.caches, { path, kind }, (env) =>
+      this.hostWith(resolveIn?.(env)),
+    )
   }
 
   /** The path of a module id (query stripped, slashes normalized). */
