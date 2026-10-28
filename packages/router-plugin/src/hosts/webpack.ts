@@ -23,10 +23,7 @@ import { LOADER_REGISTRY, createLoaderImpl } from './loader'
 import type { LoaderImpl } from './loader'
 import type { RouterPluginContext } from '../core/router-plugin-context'
 import type { Config } from '../core/config'
-import type {
-  HostServices,
-  InitialChunksLike,
-} from '@tanstack/router-utils/compiler'
+import type { InitialChunksLike } from '@tanstack/router-utils/compiler'
 
 export type WebpackPluginOptions = Partial<Config> | (() => Partial<Config>)
 
@@ -167,13 +164,9 @@ export function createRouterCompilerWebpackPlugin(
       const registry = ((compiler as unknown as Record<string, unknown>)[
         LOADER_REGISTRY
       ] ??= new Map<string, LoaderImpl>()) as Map<string, LoaderImpl>
-      // the loaders' resolver re-validates this compiler's resolutions
-      let resolve: HostServices['resolve'] | undefined
       registry.set(
         instance,
-        createLoaderImpl(session, { name: envName, type: envType }, (r) => {
-          resolve = r
-        }),
+        createLoaderImpl(session, { name: envName, type: envType }),
       )
       const isRouteFile = (resource: string) =>
         JS_FILE_RE.test(resource) &&
@@ -221,7 +214,7 @@ export function createRouterCompilerWebpackPlugin(
           (f) => [f, 'unlink'] as const,
         )
         for (const [file, kind] of [...changed, ...removed]) {
-          await session.invalidate(normalizePath(file), kind, () => resolve)
+          await session.invalidate(normalizePath(file), kind)
         }
       })
       compiler.hooks.watchClose.tap(PLUGIN_NAME, () => {

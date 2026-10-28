@@ -2945,9 +2945,8 @@ describe('declarations only split code needs that stay in the route module', () 
 })
 
 // R79: a call of a known package's pure export (`RecognizerTable.pureCalls`)
-// with pure arguments is pure, recognised by import binding (renamed,
-// namespace member) and through a project module's re-exports; nothing of a
-// package is read to decide it.
+// with pure arguments is pure, recognised by import binding to the package's
+// export (renamed, namespace member).
 describe('pure calls of known packages', () => {
   const recognizer = {
     ...EMPTY_RECOGNIZER,
@@ -2957,17 +2956,6 @@ describe('pure calls of known packages', () => {
     const host = new MemoryHost({
       files: { '/app/route.tsx': code, ...files },
       recognizer,
-      resolve: (specifier, importer, all) => {
-        if (specifier === 'toy-lib') {
-          return '/app/node_modules/toy-lib/index.js'
-        }
-        if (!specifier.startsWith('./')) {
-          return null
-        }
-        const dir = importer.slice(0, importer.lastIndexOf('/'))
-        const path = `${dir}/${specifier.slice(2)}`
-        return [path, `${path}.ts`].find((p) => p in all) ?? null
-      },
     })
     const planners = [toySplitPlanner({ keys: ['component'] })]
     const env = envInfo({ mode: 'build' })
@@ -3038,31 +3026,7 @@ describe('pure calls of known packages', () => {
     }
   })
 
-  it('follows the re-exports of project modules', async () => {
-    for (const lib of [
-      "export { getRouteApi } from 'toy-router'",
-      "export { getRouteApi as routeApi } from 'toy-router'",
-      "export * from 'toy-router'",
-      "import { getRouteApi } from 'toy-router'\nexport { getRouteApi }",
-      "export { getRouteApi } from './inner'",
-    ]) {
-      const name = lib.includes('as routeApi') ? 'routeApi' : 'getRouteApi'
-      const files = {
-        '/app/lib.ts': lib,
-        '/app/inner.ts': "export { getRouteApi } from 'toy-router'",
-      }
-      const imports = `import { ${name} } from './lib'`
-      const r = await compile(tamery(imports, `${name}('/x')`), files)
-      expect(r.chunk, lib).toContain(`const { useParams } = ${name}('/x')`)
-      expect(r.kept, lib).toEqual(['confetti'])
-      expect(
-        (await compile(shared(imports, `${name}('/x')`), files)).kept,
-        lib,
-      ).toEqual([])
-    }
-  })
-
-  it('keeps a call with an impure argument, of another export, or through a package an effect', async () => {
+  it('keeps a call with an impure argument or of another export an effect', async () => {
     for (const [imports, api, files] of [
       [
         "import { getRouteApi } from 'toy-router'\nimport { id } from './lib'",
@@ -3074,14 +3038,6 @@ describe('pure calls of known packages', () => {
         "import { getRouteApi } from './lib'",
         "getRouteApi('/x')",
         { '/app/lib.ts': 'export function getRouteApi(id) { return { id } }' },
-      ],
-      [
-        "import { getRouteApi } from 'toy-lib'",
-        "getRouteApi('/x')",
-        {
-          '/app/node_modules/toy-lib/index.js':
-            "export { getRouteApi } from 'toy-router'",
-        },
       ],
     ] as const) {
       const r = await compile(tamery(imports, api), files)

@@ -14,7 +14,6 @@ import {
 } from './identity'
 import { parseModule } from './source'
 import { ModuleAnalysis } from './analysis'
-import { seedPureImports } from './purity'
 import { AnalysisPlan } from './plan'
 import { DependencyLedger, PlanCache, fingerprintCurrent } from './cache'
 import { emitRecipe, substituteSpecifier } from './emit'
@@ -480,16 +479,6 @@ async function runAttempt(
 
   // ---- B: planning (sync) ------------------------------------------------------
   const tier1Needed = planners.some((p) => p.tier === 1)
-  if (tier1Needed) {
-    // the purity model's own phase A (R79), after the planners' (their
-    // resolutions are the ledger's), before Tier 1 classifies the units
-    await seedPureImports(t0, identity.canonicalId, {
-      resolveFrom,
-      resolveExport: (id, name) => resolver.resolve(id, name, env.conditions),
-      isKnownSpecifier: (s) => host.rawFacts.isKnownSpecifier(s),
-      isPureCall: (s, name) => host.rawFacts.isPureCall(s, name),
-    })
-  }
   let emitPlan: EmitPlan
   if (!tier1Needed) {
     emitPlan = tier0Plan(t0, identity, env, key, rev)

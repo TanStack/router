@@ -4,18 +4,15 @@
  * templates, `/*#__PURE__*\/` calls with pure arguments, calls with pure
  * arguments of `#__NO_SIDE_EFFECTS__` callee declarations and of the pure
  * exports of known packages (`RecognizerTable.pureCalls`, R79: by import
- * binding, namespace member or re-export), JSX with bound/intrinsic tags and
+ * binding or namespace member; re-exports are not followed), JSX with bound/intrinsic tags and
  * pure attributes and children. `import()` is impure. The same
  * classification yields Tier 0's `ownEffects` at statement granularity.
  */
 import { unwrapExpression } from './source'
-import type { ModuleAnalysis } from './analysis'
-import type { ResolveOutcome } from './resolve'
 import type {
   Comment,
   Expression,
   Node,
-  Reference,
   SourceFile,
   Statement,
   VariableDeclarator,
@@ -28,7 +25,7 @@ export interface PurityContext {
   /**
    * Bindings (ids) of callees whose calls are pure when their arguments are:
    * declared with `#__NO_SIDE_EFFECTS__`, or imports of a pure export of a
-   * known package (directly or through re-exports).
+   * known package.
    */
   noSideEffectCallees: ReadonlySet<number>
   /** Namespace imports (binding ids) of known packages → their pure exports. */
@@ -418,108 +415,4 @@ function isExpressionNode(n: Node): boolean {
     default:
       return false
   }
-}
-
-const NODE_MODULES_RE = /[\\/]node_modules[\\/]/
-
-export interface PureImportDeps {
-  /** Resolves a specifier from a module to a canonical id (records the resolution). */
-  resolveFrom: (specifier: string, importer: string) => Promise<string | null>
-  /** Resolves an export through re-exports over summaries (records them). */
-  resolveExport: (canonicalId: string, name: string) => Promise<ResolveOutcome>
-  isKnownSpecifier: (specifier: string) => boolean
-  isPureCall: (specifier: string, name: string) => boolean
-}
-
-/**
- * Phase A of the purity model (R79): an import of a project module that the
- * module calls at its evaluation joins its pure callees when it resolves,
- * through re-exports, to a known package's pure export (an import of the
- * known package itself is recognised by Tier 0). Packages are never read for
- * it: a third party's purity is never assumed. Runs before Tier 1 classifies
- * the units.
- */
-export async function seedPureImports(
-  t0: ModuleAnalysis,
-  importer: string,
-  deps: PureImportDeps,
-): Promise<void> {
-  const file = t0.file
-  const callees = t0.purity.noSideEffectCallees as Set<number>
-  const pureExport = async (
-    canonicalId: string,
-    name: string,
-  ): Promise<boolean> => {
-    // a local export of an import (`import { f } from …; export { f }`) is a
-    // symbolic reference to follow; bounded like any re-export chain
-    for (let hop = 0; hop < 16; hop++) {
-      if (NODE_MODULES_RE.test(canonicalId)) {
-        return false
-      }
-      const outcome = await deps.resolveExport(canonicalId, name)
-      if (outcome.k !== 'found') {
-        return false
-      }
-      if (outcome.noSideEffects) {
-        return true
-      }
-      const v = outcome.value
-      if (v.t !== 'importRef') {
-        return false
-      }
-      if (deps.isKnownSpecifier(v.specifier)) {
-        return deps.isPureCall(v.specifier, v.name)
-      }
-      const next = await deps.resolveFrom(
-        v.specifier,
-        outcome.origin.canonicalId,
-      )
-      if (next === null) {
-        return false
-      }
-      canonicalId = next
-      name = v.name
-    }
-    return false
-  }
-  const work: Array<Promise<void>> = []
-  for (const imp of t0.imports) {
-    if (imp.typeOnly || imp.bare || deps.isKnownSpecifier(imp.specifier)) {
-      continue
-    }
-    for (const spec of imp.specifiers) {
-      if (spec.typeOnly || spec.imported === '*' || spec.local < 0) {
-        continue
-      }
-      const binding = file.bindings[spec.local]
-      if (
-        !binding ||
-        !binding.references.some((r) => calledAtEvaluation(file, r))
-      ) {
-        continue
-      }
-      work.push(
-        (async () => {
-          const target = await deps.resolveFrom(imp.specifier, importer)
-          if (target !== null && (await pureExport(target, spec.imported))) {
-            callees.add(spec.local)
-          }
-        })(),
-      )
-    }
-  }
-  await Promise.all(work)
-}
-
-/** Whether a reference is the callee of a call the module evaluates when it loads (in no function). */
-function calledAtEvaluation(file: SourceFile, r: Reference): boolean {
-  if (r.inTypePosition || r.scope !== file.rootScope) {
-    return false
-  }
-  const parent = file.parentOf(r.node)
-  return (
-    parent !== null &&
-    parent.type === 'CallExpression' &&
-    unwrapExpression(parent.callee).start === r.node.start
-  )
 }

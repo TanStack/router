@@ -7,8 +7,8 @@
  * its six R78 warnings were `getRouteApi` destructurings an inline
  * `validateSearch: type({…})` call after them kept in the route module; the
  * effectful `confetti` before them stays and is the only warning. Recognised
- * by binding, not by name: a renamed import and an app module re-exporting
- * the API are recognised, an impure argument keeps the call an effect, and
+ * by binding to the router package's export, not by name: a renamed import
+ * is recognised, an impure argument keeps the call an effect, and
  * `Route.useParams()` inside the split component is unchanged. Vite, Rspack,
  * webpack and Rsbuild builds.
  */
@@ -49,7 +49,6 @@ export const Route = createRootRoute({ component: () => <Outlet /> })
 `,
   'schema.ts': 'export function makeSchema<T>(shape: T) { return shape }\n',
   'ids.ts': 'export function routeIdOf(id: string) { return id }\n',
-  'router-api.ts': "export { getRouteApi } from '@tanstack/react-router'\n",
   'routes/direct.tsx': pinnedAfter(
     'direct',
     "import { getRouteApi } from '@tanstack/react-router'",
@@ -59,11 +58,6 @@ export const Route = createRootRoute({ component: () => <Outlet /> })
     'renamed',
     "import { getRouteApi as routeApiOf } from '@tanstack/react-router'",
     "routeApiOf('MARK_api_renamed')",
-  ),
-  'routes/re-exported.tsx': pinnedAfter(
-    're-exported',
-    "import { getRouteApi } from '../router-api'",
-    "getRouteApi('MARK_api_re-exported')",
   ),
   'routes/impure.tsx': pinnedAfter(
     'impure',
@@ -113,7 +107,7 @@ describe.each(builds)('a %s client build', (_name, create) => {
           file: `routes/${file}.tsx`,
           root: app.root,
         })
-      for (const path of ['direct', 'renamed', 're-exported']) {
+      for (const path of ['direct', 'renamed']) {
         expect(app.where(`MARK_api_${path}`), path).toBe('lazy')
         expect(app.where(`MARK_${path}_END`), path).toBe('eager')
         const [warning, ...others] = warnings(path)

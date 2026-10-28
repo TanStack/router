@@ -76,8 +76,9 @@ export interface RecognizerTable {
   /**
    * specifier → exports whose call is pure when its arguments are (R79:
    * TanStack's own APIs, audited per package by the planner that supplies
-   * them). Recognised through import bindings and re-exports, never by
-   * spelling; nothing else is assumed pure.
+   * them). Recognised by import binding (renamed, or a namespace member),
+   * never by spelling; re-exports are not followed; nothing else is assumed
+   * pure.
    */
   pureCalls?: Record<string, ReadonlySet<string>>
 }
@@ -106,20 +107,7 @@ export function isKnownSpecifier(
   table: RecognizerTable,
   specifier: string,
 ): boolean {
-  return (
-    Object.prototype.hasOwnProperty.call(table.factories, specifier) ||
-    (table.pureCalls !== undefined &&
-      Object.prototype.hasOwnProperty.call(table.pureCalls, specifier))
-  )
-}
-
-/** Whether export `name` of known package `specifier` is a pure call (`pureCalls`). */
-export function isPureCall(
-  table: RecognizerTable,
-  specifier: string,
-  name: string,
-): boolean {
-  return table.pureCalls?.[specifier]?.has(name) === true
+  return Object.prototype.hasOwnProperty.call(table.factories, specifier)
 }
 
 export function isSymbolicValue(v: AbstractValue): boolean {

@@ -136,9 +136,8 @@ directives, never license comments.
 - **Pure calls** (`purity.ts`): a call with pure arguments is pure when its callee is declared
   `#__NO_SIDE_EFFECTS__` in the module, or is a known package's export the recognizer lists in `pureCalls`
   (TanStack's own audited APIs, e.g. `getRouteApi`; the router planner owns the table, Start's recognizer reuses it).
-  Tier 0 recognises imports of such an export by binding (renamed, or a namespace member); phase A follows an
-  import of a project module that the module calls at its evaluation through re-exports (summaries; packages are
-  never read: a third party's purity is never assumed) before Tier 1 classifies the units.
+  Tier 0 recognises imports of such an export from the package itself by binding (renamed, or a namespace member);
+  an app module re-exporting it is not followed, and a third party's purity is never assumed.
 - `RawFactsCache` owns the raw text per canonical id and serves summaries and import-protection _target facts_
   (marker, export names, effect classification, evaluation and lazy imports) from one read.
 

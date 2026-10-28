@@ -43,8 +43,9 @@ export const ROUTER_PACKAGE_RE =
  * framework package: each was read in every framework and constructs and
  * returns a value (an identity, a closure, a `RouteApi`, a component), reads
  * no global or module state, registers nothing and never throws. The core
- * recognises them by import binding and re-export
- * (`RecognizerTable.pureCalls`). Not pure: `redirect` and `notFound` (they
+ * recognises them by import binding from these packages (renamed, or a
+ * namespace member; app re-exports are not followed:
+ * `RecognizerTable.pureCalls`). Not pure: `redirect` and `notFound` (they
  * mutate their argument and throw when asked to), `createSerializationAdapter`
  * (throws on an invalid key in development), `createRouter`; the route
  * factories are recognised as route units (their routes are the route tree's).

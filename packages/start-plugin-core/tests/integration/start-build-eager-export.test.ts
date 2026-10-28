@@ -17,8 +17,7 @@
  *
  * The router's pure APIs are no such effect (R79): tamery's `const {
  * useSearch } = getRouteApi(…)` between the pinned declaration and the
- * route loads with the chunk and is not reported, imported from the router
- * package or through an app module re-exporting it under another name.
+ * route loads with the chunk and is not reported.
  */
 import { describe, expect, test } from 'vitest'
 import {
@@ -171,13 +170,6 @@ const routeApiFiles = {
     "import { getRouteApi } from '@tanstack/react-router'",
     "getRouteApi('MARK_API_direct')",
   ),
-  'src/routes/re-exported.tsx': withRouteApi(
-    're-exported',
-    "import { routeApiOf } from '../router-api'",
-    "routeApiOf('MARK_API_re-exported')",
-  ),
-  'src/router-api.ts':
-    "export { getRouteApi as routeApiOf } from '@tanstack/react-router'\n",
 }
 
 describe.each(startBundlers)(
@@ -188,7 +180,7 @@ describe.each(startBundlers)(
       async () => {
         const build = await buildStart({ bundler, files: routeApiFiles })
         const reported = [...build.client.warnings, ...build.ssr.warnings]
-        for (const path of ['direct', 're-exported']) {
+        for (const path of ['direct']) {
           expect(build.client.where(`MARK_API_${path}`), path).toBe('lazy')
           expect(build.client.where(`MARK_CONFETTI_${path}`), path).toBe(
             'eager',

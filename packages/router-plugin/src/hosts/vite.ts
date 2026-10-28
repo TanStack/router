@@ -35,7 +35,6 @@ import type { Config } from '../core/config'
 import type {
   CompilerCaches,
   Diagnostic,
-  HostServices,
   PlanKey,
 } from '@tanstack/router-utils/compiler'
 import type { Plugin, ViteDevServer } from 'vite'
@@ -97,23 +96,6 @@ interface ModuleGraphLike {
     isHmr: boolean,
     softInvalidate: boolean,
   ) => void
-}
-
-/** A resolution of Vite's (a plugin context's or a dev environment's container). */
-type ViteResolved = { id: string; external?: boolean | string } | null
-
-interface ResolverLike {
-  resolveId: (specifier: string, importer?: string) => Promise<ViteResolved>
-}
-
-/** A Vite resolution as the compiler's host answers it. */
-function resolved(r: ViteResolved): { id: string; external: boolean } | null {
-  return r
-    ? {
-        id: r.id,
-        external: r.external === true || typeof r.external === 'string',
-      }
-    : null
 }
 
 interface TransformEnvironment {
@@ -187,24 +169,11 @@ export function createRouterCompilerVitePlugin(
     }
   }
 
-  /** A dev environment's own resolver, for the resolutions of its plans. */
-  const resolveIn = (env: string): HostServices['resolve'] | undefined => {
-    const container = (
-      server as unknown as {
-        environments?: Record<string, { pluginContainer: ResolverLike }>
-      } | null
-    )?.environments?.[env]?.pluginContainer
-    return container
-      ? (specifier, importer) =>
-          container.resolveId(specifier, importer).then(resolved)
-      : undefined
-  }
-
   const invalidatePath = async (
     file: string,
     kind: 'change' | 'add' | 'unlink' | 'registry',
   ) => {
-    const res = await compiler.invalidate(normalizePath(file), kind, resolveIn)
+    const res = await compiler.invalidate(normalizePath(file), kind)
     hardInvalidate([...res.evicted, ...res.dependents])
   }
 
@@ -421,10 +390,6 @@ export function createRouterCompilerVitePlugin(
           code,
           env: { name: envName, type: envType },
           wantMap,
-          resolve: (specifier, importer) =>
-            this.resolve(specifier, importer, { skipSelf: true }).then(
-              resolved,
-            ),
         })
         if (!out) {
           return null
