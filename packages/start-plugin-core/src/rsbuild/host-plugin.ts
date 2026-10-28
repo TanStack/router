@@ -9,6 +9,11 @@
  * the custom server-fn id patching, and the client route tree rebuild when
  * its pruned routes change without the tree file changing.
  */
+import {
+  eagerExportWarning,
+  eagerExtractedExports,
+  initialChunkResources,
+} from '@tanstack/router-utils/compiler'
 import { RSPACK_BUILD_INFO_KEY } from '../import-protection/verdict'
 import {
   readRspackWitness,
@@ -224,6 +229,27 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       compiler.hooks.thisCompilation.tap(PLUGIN_NAME, (compilation) => {
         currentCompilation = compilation
         env.compiled.clear()
+        if (session.opts.mode === 'build' && environment.type === 'client') {
+          // an extracted-export output an initial chunk holds is eager
+          // whatever the splitter did: say so once per file and export (J2.8)
+          compilation.hooks.processAssets.tap(PLUGIN_NAME, () => {
+            const ids = initialChunkResources(compilation as never).map(
+              canonicalResource,
+            )
+            for (const e of eagerExtractedExports(ids)) {
+              const message = eagerExportWarning(e, 'webpack')
+              if (
+                session.warnings.once(e.file, {
+                  severity: 'warning',
+                  message,
+                  code: `eager-export\u0000${e.name}`,
+                })
+              ) {
+                compilation.warnings.push(new WebpackError(message))
+              }
+            }
+          })
+        }
         const ipEnv = ipEnvOf()
         if (ipEnv) {
           // Rspack's module graph is not readable while modules build (a loader asking for a

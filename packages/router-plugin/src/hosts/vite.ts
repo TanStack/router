@@ -16,10 +16,13 @@ import {
   OWNED_QUERY_RE,
   SourceText,
   deriveId,
+  eagerExportWarning,
+  eagerExtractedExports,
   identify,
   isFinalBuild,
   releaseEnvironment,
   resolveDerivedSibling,
+  rollupEntryModuleIds,
 } from '@tanstack/router-utils/compiler'
 import { getConfig } from '../core/config'
 import {
@@ -34,7 +37,7 @@ import type {
   Diagnostic,
   PlanKey,
 } from '@tanstack/router-utils/compiler'
-import type { Plugin, Rollup, ViteDevServer } from 'vite'
+import type { Plugin, ViteDevServer } from 'vite'
 
 export const CODE_SPLITTER_PLUGIN_NAME =
   'tanstack-router:code-splitter:compile-reference-file'
@@ -125,8 +128,6 @@ function logOf(d: Diagnostic, source: SourceText, file: string): DiagnosticLog {
  * The router compiler as a Vite plugin: route splitting (`autoCodeSplitting`)
  * and route HMR (`codeSplittingOptions.addHmr`, dev client envs only).
  */
-const EXTRACTED_EXPORT_RE = /[?&]tsr-split=export~([^&#]+)/
-
 export function createRouterCompilerVitePlugin(
   options: RouterPluginOptions = {},
   routerPluginContext: RouterPluginContext,
@@ -304,43 +305,10 @@ export function createRouterCompilerVitePlugin(
       if (environment && environment.config.consumer !== 'client') {
         return
       }
-      // extracted-export outputs that an entry chunk (or a chunk it imports
-      // statically) holds are eager whatever the splitter did: say so (J2.8)
-      const chunks = Object.values(bundle).filter(
-        (c): c is Rollup.OutputChunk => c.type === 'chunk',
-      )
-      const byName = new Map(chunks.map((c) => [c.fileName, c]))
-      const eager = new Set<string>()
-      const queue = chunks.filter((c) => c.isEntry).map((c) => c.fileName)
-      while (queue.length > 0) {
-        const name = queue.pop()!
-        // a chunk's imports also name what the build leaves external
-        // (`build.rolldownOptions.external`, a library build): not chunks
-        const chunk = byName.get(name)
-        if (!chunk || eager.has(name)) {
-          continue
-        }
-        eager.add(name)
-        queue.push(...chunk.imports)
-      }
-      const seen = new Set<string>()
-      for (const name of eager) {
-        for (const id of Object.keys(byName.get(name)!.modules)) {
-          const match = EXTRACTED_EXPORT_RE.exec(id)
-          if (!match) {
-            continue
-          }
-          const file = normalizePath(identify(id).path)
-          const exportName = decodeURIComponent(match[1]!)
-          const key = `${file}\0${exportName}`
-          if (seen.has(key)) {
-            continue
-          }
-          seen.add(key)
-          this.warn(
-            `[tanstack-router] The export \`${exportName}\` of "${file}" loads with the entry chunk, not with the route's split code: a module of the entry imports it through the route file. Move it to its own module so the route's chunks and the importer share it without the route file.`,
-          )
-        }
+      // an extracted-export output an entry chunk (or a chunk it imports
+      // statically) holds is eager whatever the splitter did: say so (J2.8)
+      for (const e of eagerExtractedExports(rollupEntryModuleIds(bundle))) {
+        this.warn(eagerExportWarning(e, 'rollup'))
       }
     },
 

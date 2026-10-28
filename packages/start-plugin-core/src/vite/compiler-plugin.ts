@@ -25,6 +25,8 @@ import {
   createCompilerCaches,
   deriveId,
   digestOf,
+  eagerExportWarning,
+  eagerExtractedExports,
   identify,
   invalidate,
   isAnalyzableSpecifier,
@@ -32,6 +34,7 @@ import {
   registerCompilerStats,
   releaseEnvironment,
   resolveDerivedSibling,
+  rollupEntryModuleIds,
 } from '@tanstack/router-utils/compiler'
 import { defaultCodeSplitGroupings } from '@tanstack/router-plugin'
 import { liveModules } from '@tanstack/router-plugin/vite'
@@ -1167,7 +1170,30 @@ export function startCompilerPlugin(
        */
       async generateBundle(_options, bundle) {
         const s = requireSession()
-        if (!s.ip || this.environment.mode !== 'build') {
+        if (this.environment.mode !== 'build') {
+          return
+        }
+        if (env.type === 'client') {
+          // an extracted-export output an entry chunk (or a chunk it imports
+          // statically) holds is eager whatever the splitter did: say so
+          // once per file and export (J2.8; a pass that writes nothing
+          // comes first under import protection's veto, the ledger dedups)
+          for (const e of eagerExtractedExports(
+            rollupEntryModuleIds(bundle as never),
+          )) {
+            const message = eagerExportWarning(e, 'rollup')
+            if (
+              s.warnings.once(e.file, {
+                severity: 'warning',
+                message,
+                code: `eager-export\u0000${e.name}`,
+              })
+            ) {
+              this.warn(message)
+            }
+          }
+        }
+        if (!s.ip) {
           return
         }
         const ipEnv = s.ip.env(env.name, env.type)
