@@ -154,7 +154,6 @@ export function createRouterCompilerWebpackPlugin(
         config: userConfig,
         bundler,
         mode,
-        hmrStyle: 'webpack',
       })
       const envType: 'client' | 'server' = targetsServer(
         compiler.options.target,

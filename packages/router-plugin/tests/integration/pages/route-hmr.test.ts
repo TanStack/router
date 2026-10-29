@@ -58,14 +58,9 @@ describe('the modules of a Solid or Vue route compiled with HMR', () => {
   // (resolved request provenance), and the route works with the
   // framework's router (source: add-hmr snapshot fixture
   // solid/arrow-function).
-  test.each([
-    { framework: 'solid', style: 'vite' },
-    { framework: 'solid', style: 'webpack' },
-    { framework: 'vue', style: 'vite' },
-    { framework: 'vue', style: 'webpack' },
-  ] as const)(
-    '$framework ($style style): import the router package of the framework and no React code',
-    async ({ framework, style }) => {
+  test.each(['solid', 'vue'] as const)(
+    '%s: import the router package of the framework and no React code',
+    async (framework) => {
       const route = await loadRoute(
         fileRoute(
           'data',
@@ -78,7 +73,6 @@ describe('the modules of a Solid or Vue route compiled with HMR', () => {
         {
           targetFramework: framework,
           hmr: true,
-          pluginOptions: { plugin: { hmr: { style } } },
         },
       )
       const { html, requests } = await route.run<{
@@ -199,48 +193,33 @@ describe('route modules compiled for the dev server', () => {
       },
     },
   ]
-  // The webpack style in Vite: Vite gives no `import.meta.webpackHot`
-  const webpackInVite: Array<Host> = [
-    { ...vite[0]!, name: 'a page (no webpack hot API, window)' },
-    {
-      ...vite[1]!,
-      name: 'the SSR module runner (no webpack hot API, no window)',
-    },
-  ]
-
   describe.each([
-    { style: 'vite', hosts: vite },
-    { style: 'webpack', hosts: webpackInVite },
-  ] as const)('$style style', ({ style, hosts }) => {
-    describe.each([
-      {
-        name: 'a split route',
-        route: fileRoute('data', 'component: PostsComponent,', posts('data')),
-        html: '<div>posts data</div>',
-      },
-      {
-        name: 'a root route',
-        route: `import { createRootRoute } from '@tanstack/react-router'
+    {
+      name: 'a split route',
+      route: fileRoute('data', 'component: PostsComponent,', posts('data')),
+      html: '<div>posts data</div>',
+    },
+    {
+      name: 'a root route',
+      route: `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute({
   loader: () => 'data',
   component: () => <div>root</div>,
 })`,
-        html: '<div>root</div>',
-      },
-    ])('$name', ({ route, html }) => {
-      it.each(hosts)('renders and loads in $name', async (host) => {
-        const options: RouteAppOptions = {
-          hmr: true,
-          pluginOptions: { plugin: { hmr: { style } } },
-          files: environmentProbe,
-          ...(host.noHmr && { plugins: { before: [withoutHmr] } }),
-        }
-        const loaded = await loadRoute(route, options)
-        expect(await runWhere(loaded, host)).toEqual({
-          data: 'data',
-          html,
-          environment: host.environment,
-        })
+      html: '<div>root</div>',
+    },
+  ])('$name', ({ route, html }) => {
+    it.each(vite)('renders and loads in $name', async (host) => {
+      const options: RouteAppOptions = {
+        hmr: true,
+        files: environmentProbe,
+        ...(host.noHmr && { plugins: { before: [withoutHmr] } }),
+      }
+      const loaded = await loadRoute(route, options)
+      expect(await runWhere(loaded, host)).toEqual({
+        data: 'data',
+        html,
+        environment: host.environment,
       })
     })
   })
@@ -349,8 +328,8 @@ describe('route HMR in a Vite dev server without automatic code splitting', () =
     `import { createFileRoute } from '@tanstack/${target}-router'
 export const Route = createFileRoute('/')({ loader: () => 'x' })`
 
-  // An edit of a `.ts` route file, the environment name, `plugin.hmr.style`
-  // alone, plugin options given as a function and a `tsr.config.json`
+  // An edit of a `.ts` route file, the environment name, plugin options
+  // given as a function and a `tsr.config.json`
   // target, on a real page: integration/route-hmr-browser-plugin.test.ts
   // (the environment the option names gets working route HMR) and
   // known-bugs-route-hmr.test.ts. Here: the environment

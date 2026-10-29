@@ -45,7 +45,7 @@ const TanStackRouterGeneratorRspack = (
 /**
  * The route compiler alone (route splitting, and route HMR in development).
  * Rspack uses webpack-compatible `import.meta.webpackHot` HMR, which the
- * compiler emits regardless of `plugin.hmr.style`.
+ * compiler emits for it.
  *
  * @example
  * ```ts

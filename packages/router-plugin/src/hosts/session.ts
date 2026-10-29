@@ -28,7 +28,6 @@ import { contextInternals } from '../core/router-plugin-context'
 import type { RouterPluginContext } from '../core/router-plugin-context'
 import type { Config } from '../core/config'
 import type { RouterPlannerConfig } from '../planners'
-import type { HmrStyle } from '../planners/config'
 import type { RouteEntryFacts } from '../planners/route'
 import type {
   CompileOutput,
@@ -49,7 +48,6 @@ export interface RouterCompilerOptions {
   config: Config
   bundler: Bundler
   mode: 'dev' | 'build'
-  hmrStyle: HmrStyle
 }
 
 export interface CompileRequest {
@@ -99,7 +97,11 @@ export class RouterCompiler {
       defaultGroupings: cs?.defaultBehavior ?? defaultCodeSplitGroupings,
       splitBehavior: cs?.splitBehavior,
       deleteNodes: cs?.deleteNodes ?? [],
-      hmr: { enabled: cs?.addHmr ?? true, style: opts.hmrStyle },
+      hmr: {
+        enabled: cs?.addHmr ?? true,
+        // the bundler's hot API: Vite's, or webpack's (Rspack too)
+        style: opts.bundler === 'vite' ? 'vite' : 'webpack',
+      },
     }
     this.perPlanner = routerPlannerConfig(this.plannerConfig)
     this.configKey = digestOf({

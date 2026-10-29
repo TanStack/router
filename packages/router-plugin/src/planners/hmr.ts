@@ -25,7 +25,7 @@ import {
   recognizeRoute,
   routerRouteId,
 } from './route'
-import { splitPlanOf } from './decisions'
+import { methodPrefixOf, splitPlanOf } from './decisions'
 import { prefetchRouteEntry, routeGate } from './split'
 import { roundOf } from './round'
 import type { RouterPlannerConfig } from './config'
@@ -169,11 +169,10 @@ export function routeHmrPlanner(): Planner {
         let placeholder: Array<Frag>
         if (option.kind === 'method') {
           const fn = value
-          const prefix =
-            fn.type === 'FunctionExpression'
-              ? `${fn.async ? 'async ' : ''}function${fn.generator ? '*' : ''} `
-              : ''
-          body.push({ k: 'text', parts: [`const ${hoisted.name} = ${prefix}`] })
+          body.push({
+            k: 'text',
+            parts: [`const ${hoisted.name} = ${methodPrefixOf(fn)}`],
+          })
           body.push({ k: 'slice', range: { start: fn.start, end: fn.end } })
           body.push({ k: 'text', parts: ['\n'] })
           region = { start: option.prop.start, end: option.prop.end }

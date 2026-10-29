@@ -126,7 +126,7 @@ on Vue, or environments Start did not create.
 - **Modes**: dev (Vite dev server incl. full-bundle mode, Rsbuild dev, webpack dev) and build, for each env the
   bundler or Start creates.
 - **Plugin options**: all of `router-plugin/src/core/config.ts` (`autoCodeSplitting`, `codeSplittingOptions.{
-splitBehavior, defaultBehavior, deleteNodes, addHmr }`, `plugin.hmr.style`, `plugin.vite.environmentName`), all of
+splitBehavior, defaultBehavior, deleteNodes, addHmr }`, `plugin.vite.environmentName`), all of
   `router-generator/src/config.ts`, and `tanstackStart({ router, serverFns.generateFunctionId, importProtection, rsc,
 srcDirectory, … })`. Which clauses a switch turns on or off: J2.21, J3.7, J6.3, J7.1.
 
@@ -487,8 +487,8 @@ dir)` is not a conflict by itself.
   paired build (the same splitter with `addHmr: false`) decides whether HMR support leaks into production.
 - **J3.8 Without an HMR runtime** (no `import.meta.hot`, or `hot` without `data`), the module still evaluates and
   `Route` works (the same module serves SSR in dev).
-- **J3.9 Both styles.** `plugin.hmr.style: 'vite'` (accept callbacks) and `'webpack'` (re-execution, used by the
-  rspack/webpack entries) satisfy J3.1–J3.4.
+- **J3.9 Both styles.** The Vite entry's (accept callbacks) and the rspack/webpack entries' (re-execution) satisfy
+  J3.1–J3.4.
 - **J3.10 Route tree edits in dev** (a new route file, a route kind change) reach the client tree and the page (reload
   allowed, J1.10).
 - **J3.11 An update the router on the page does not have.** With a second router created after the app's (the route

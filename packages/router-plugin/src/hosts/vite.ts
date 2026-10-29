@@ -210,7 +210,6 @@ export function createRouterCompilerVitePlugin(
         config: userConfig,
         bundler: 'vite',
         mode: config.command === 'build' ? 'build' : 'dev',
-        hmrStyle: userConfig.plugin?.hmr?.style ?? 'vite',
       })
       unsubscribe?.()
       unsubscribe = onRoutesChanged(routerPluginContext, (next, previous) => {

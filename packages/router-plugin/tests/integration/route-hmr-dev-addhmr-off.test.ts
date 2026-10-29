@@ -151,7 +151,7 @@ it(
 // The Rspack entry with `addHmr: false` (an Rsbuild dev server with the
 // framework's React Refresh): no route module accepts the edit, so the page
 // reloads to show it; with route HMR it applies in place (control:
-// route-hmr-browser-plugin.test.ts "plugin.hmr.style: vite (rsbuild)").
+// route-hmr-browser-plugin.test.ts "the Rspack entry (rsbuild)").
 // Source: plugin-options.test.ts "with addHmr: false, a development build
 // with the HMR plugin has no route HMR code" (which looked for the hot API's
 // accept call by a local name in the build).

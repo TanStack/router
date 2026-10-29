@@ -10,9 +10,7 @@
  * served code), code-splitter-route-options.test.ts "hot-update a root
  * route created with ..." and code-splitter-plugin-pipeline.test.ts "a route
  * created inside a function ... is hot-updated" (which ran the route HMR
- * code against a modelled hot API), plugin-options.test.ts "makes routes
- * accept hot updates through the bundler even when plugin.hmr.style is vite"
- * (which scanned a build for the hot API).
+ * code against a modelled hot API).
  */
 import { describe, it } from 'vitest'
 import {
@@ -59,16 +57,6 @@ describe.concurrent('the router plugin configured with', () => {
     options: Partial<RouteHmrPageOptions>
   }> = [
     {
-      // Source: route-hmr.test.ts "works with plugin.hmr.style alone".
-      name: 'plugin.hmr.style alone (vite)',
-      options: {
-        pluginOptions: {
-          autoCodeSplitting: false,
-          plugin: { hmr: { style: 'vite' } },
-        },
-      },
-    },
-    {
       // Source: route-hmr.test.ts "is limited to the environment
       // plugin.vite.environmentName names" (the excluded environment: the
       // pages/route-hmr.test.ts).
@@ -101,13 +89,10 @@ describe.concurrent('the router plugin configured with', () => {
       },
     })),
     {
-      // The Rspack entry uses Rspack's hot API whatever `plugin.hmr.style`
-      // says (src/rspack.ts). Source: plugin-options.test.ts.
-      name: 'plugin.hmr.style: vite (rsbuild)',
-      options: {
-        bundler: 'rsbuild',
-        pluginOptions: { plugin: { hmr: { style: 'vite' } } },
-      },
+      // The Rspack entry emits Rspack's hot API. Source:
+      // plugin-options.test.ts.
+      name: 'the Rspack entry (rsbuild)',
+      options: { bundler: 'rsbuild', pluginOptions: {} },
     },
   ]
 

@@ -112,7 +112,6 @@ describe.each(routes)('$name', ({ files, html }) => {
         files: { ...files, 'environment.ts': environment },
         pluginOptions: {
           codeSplittingOptions: { addHmr: true },
-          plugin: { hmr: { style: 'webpack' } },
         },
         configure: await withHotModuleReplacement(bundler),
       })

@@ -149,33 +149,34 @@ function effectiveGroupings(
   return cfg.defaultGroupings
 }
 
-function methodPrefixOf(fn: Node): string {
+/** The `function` keyword (with `async` and `*`) a method's function needs as a function expression. */
+export function methodPrefixOf(fn: Node): string {
   if (fn.type !== 'FunctionExpression') {
     return ''
   }
   return `${fn.async ? 'async ' : ''}function${fn.generator ? '*' : ''} `
 }
 
+type ObjectExpression = Extract<Node, { type: 'ObjectExpression' }>
+type Property = Extract<Node, { type: 'Property' }>
+
 /** The `handler` property of an object-form loader. */
-function handlerPropertyOf(object: Node): Node | null {
-  if (object.type !== 'ObjectExpression') {
-    return null
-  }
-  const handler = (object.properties as Array<Node>).find(
-    (p) =>
+function handlerPropertyOf(object: ObjectExpression): Property | null {
+  for (const p of object.properties) {
+    if (
       p.type === 'Property' &&
       !p.computed &&
       p.kind === 'init' &&
-      propertyKeyName(p) === 'handler',
-  )
-  return handler && handler.type === 'Property' ? handler : null
+      propertyKeyName(p) === 'handler'
+    ) {
+      return p
+    }
+  }
+  return null
 }
 
 /** The `handler` property of an object-form loader as the option to split. */
-function handlerOption(
-  ctx: PlanContext,
-  handler: Node & { type: 'Property' },
-): RouteOption {
+function handlerOption(ctx: PlanContext, handler: Property): RouteOption {
   const code = ctx.analysis.source.code
   return {
     key: 'handler',
@@ -221,7 +222,7 @@ function splitTarget(
     const init = decl ? unwrapExpression(decl.init) : null
     const handler =
       init && init.type === 'ObjectExpression' ? handlerPropertyOf(init) : null
-    if (init?.type === 'ObjectExpression' && handler?.type === 'Property') {
+    if (init?.type === 'ObjectExpression' && handler) {
       if (init.properties.length === 1) {
         member = 'handler'
       } else if (ctx.t1.refs.refsOf(sym!).length === 1) {
@@ -238,7 +239,7 @@ function splitTarget(
     const v = unwrapExpression(option.value)
     if (v.type === 'ObjectExpression') {
       const handler = handlerPropertyOf(v)
-      if (!handler || handler.type !== 'Property') {
+      if (!handler) {
         return null
       }
       prop = handlerOption(ctx, handler)

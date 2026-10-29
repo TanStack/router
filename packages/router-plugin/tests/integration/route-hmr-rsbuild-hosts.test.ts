@@ -96,12 +96,7 @@ export async function check() {
 }
 `
 
-async function host(options: {
-  route: string
-  root: boolean
-  style: 'webpack' | 'vite'
-  hmr: boolean
-}) {
+async function host(options: { route: string; root: boolean; hmr: boolean }) {
   const routerPlugin = (root: string): RsbuildPlugin => ({
     name: 'app:tanstack-router',
     setup(api) {
@@ -122,7 +117,6 @@ async function host(options: {
                 },
             autoCodeSplitting: true,
             codeSplittingOptions: { addHmr: true },
-            plugin: { hmr: { style: options.style } },
           }),
         )
       })
@@ -166,16 +160,14 @@ export const Route = createRootRoute({})
 
 const hosts = [
   {
-    name: 'a page with webpack hot API (webpack style)',
+    name: 'a page with webpack hot API',
     side: 'page',
-    style: 'webpack',
     hmr: true,
     environment: { hot: 'undefined', webpackHot: 'object', window: 'object' },
   },
   {
-    name: 'the server environment (no window; webpack style)',
+    name: 'the server environment (no window)',
     side: 'server',
-    style: 'webpack',
     hmr: true,
     environment: {
       hot: 'undefined',
@@ -184,9 +176,8 @@ const hosts = [
     },
   },
   {
-    name: 'a page of a dev server without HMR (no hot API, window; vite style)',
+    name: 'a page of a dev server without HMR (no hot API, window)',
     side: 'page',
-    style: 'vite',
     hmr: false,
     environment: {
       hot: 'undefined',
@@ -199,8 +190,8 @@ const hosts = [
 describe.each(routes)('$name', ({ route, root, html }) => {
   it.each(hosts)(
     'renders and loads in $name',
-    async ({ side, style, hmr, environment: seen }) => {
-      const app = await host({ route, root, style, hmr })
+    async ({ side, hmr, environment: seen }) => {
+      const app = await host({ route, root, hmr })
       const result =
         side === 'page'
           ? (await app.runClient('return window.check()')).result
