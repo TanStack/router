@@ -1,9 +1,9 @@
 /**
  * Start's Vite dev server reports a declaration only the split component
- * reads that a later effect pins in the route module (R31 (d) / R65: an
+ * reads that a later effect pins in the route module (an
  * inline `validateSearch: makeSchema({…})` call stays and runs after it)
  * once for the client and server environments together, positioned at the
- * declaration, and not again after an edit that keeps the finding (R78; the
+ * declaration, and not again after an edit that keeps the finding (the
  * builds: start-build-eager-export.test.ts).
  */
 import { expect, test } from 'vitest'

@@ -39,7 +39,7 @@ const FACTORIES: ReadonlySet<string> = new Set<RouteFactory>([
 export const ROUTER_PACKAGE_RE = /^@tanstack\/(react|solid|vue)-router(\/|$)/
 
 /**
- * The router's exports whose call is pure when its arguments are (R79), per
+ * The router's exports whose call is pure when its arguments are, per
  * framework package: each was read in every framework and constructs and
  * returns a value (an identity, a closure, a `RouteApi`, a component), reads
  * no global or module state, registers nothing and never throws. The core
@@ -223,7 +223,7 @@ export function declaratorOf(
   return { unit, init: unit.node.init }
 }
 
-/** R1: the mutation model as the env output sees it (a write inside code the environment erases imposes nothing). */
+/** The mutation model as the env output sees it (a write inside code the environment erases imposes nothing). */
 export function liveInEnv(ctx: PlanContext): (ref: ClassifiedRef) => boolean {
   return ctx.liveness('env').live
 }

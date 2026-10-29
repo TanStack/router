@@ -1,6 +1,6 @@
 /**
  * A declaration only split code needs that the evaluation-order rules keep
- * in the route module (R29 / R31 (d) / R65, R78) loads with the route
+ * in the route module (an effect after it stays there) loads with the route
  * instead of with its chunk, and the build or dev server says so once,
  * positioned at the declaration, naming the effect that pins it, its line
  * and the fix. Learned from a real app (tamery): `const confetti = new

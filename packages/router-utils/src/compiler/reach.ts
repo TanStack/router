@@ -133,8 +133,7 @@ export interface PlacementInput {
  * reaches): `effects` (an observable initialiser effect), `reassigned`,
  * `live` (the env module reads it), `reads` (it reads, at its evaluation,
  * a binding the env module keeps), `order` (an effect keeps its order). An
- * unexported effectful one, or an eager reader of state (R29 / R31 (d) /
- * R65 / R67): `order` (a surviving effect after its first one, `effect`),
+ * unexported effectful one, or an eager reader of state: `order` (a surviving effect after its first one, `effect`),
  * `needers` (several lazy outputs need it), `written` (it is written
  * outside its declaration when the module loads, `at`), `state`
  * (it reads, at its evaluation, `read`, which something writes), `reads`
@@ -287,7 +286,7 @@ export function computePlacement(input: PlacementInput): Placement {
   const envTree = treeOf('env')
   const isLive = (ref: ClassifiedRef, o: OutputId) =>
     !treeOf(o).isErasedAt(ref.range.start)
-  /** R1: the mutation model as the env output sees it (writes inside erased code impose nothing). */
+  /** The mutation model as the env output sees it (writes inside erased code impose nothing). */
   const liveInEnv = (ref: ClassifiedRef) => isLive(ref, 'env')
 
   // ---- owner index: refs by owning region --------------------------------
@@ -1393,7 +1392,7 @@ export function computePlacement(input: PlacementInput): Placement {
       const stop = new Set(remaining.keys())
       // a chunk's reach passes through the candidates it copies and stops
       // at the others, which it imports from their extracted module (one
-      // instance of state and effects, R77); an extracted module's reach
+      // instance of state and effects); an extracted module's reach
       // stops at every other candidate (it imports them)
       const chunkStop = new Set([...stop].filter((c) => !copies(c)))
       for (const [c, e] of extractCandidates) {
@@ -1486,7 +1485,7 @@ export function computePlacement(input: PlacementInput): Placement {
   // reason (a planner reports them; the decisions above were taken): the
   // exported declarations a chunk reaches that are not extracted
   // (`extractable` and the candidate filter decided), and the unexported
-  // clusters the movable test kept (R29 / R31 (d) / R65 / R67)
+  // clusters the movable test kept (evaluation order, writes, eager reads)
   const lazyNeeders = (c: ClusterId): Array<OutputId> => {
     const out: Array<OutputId> = []
     for (const [id, set] of derivedReach) {

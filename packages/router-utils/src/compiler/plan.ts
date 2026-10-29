@@ -466,7 +466,7 @@ export class AnalysisPlan implements PlanContext {
 
   /**
    * A declaration only split code needs stays in the env module, so it
-   * loads with the module instead of lazily (R77, R78): the user is told
+   * loads with the module instead of lazily: the user is told
    * which, why and how to free it, once per declaration and wording (the
    * hosts' ledgers), positioned at the declaration. An exported one is not
    * extracted (its export names are the module's own); an unexported one is

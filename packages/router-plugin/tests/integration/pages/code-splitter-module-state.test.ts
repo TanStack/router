@@ -1065,7 +1065,7 @@ export const Route = createFileRoute('/')({ component: withAuth(Page) })
 })
 
 // Effectful declarations only the split component reads move with it, each
-// one, as on main (DESIGN R29/R31: no effect that stays in the route module
+// one, as on main (no effect that stays in the route module
 // follows them once the later ones moved too; G3 allows the lazy
 // initialisation). Their effects still run in source order: an effect that
 // stays in the route module, or moves to another chunk, keeps the ones
@@ -1268,7 +1268,7 @@ function Page() {
     })
   })
 
-  // R67: a const the route module keeps (the loader reads it) evaluated
+  // A const the route module keeps (the loader reads it) is evaluated
   // before the chunk loads; the chunk imports that one instance
   it('moves one reading a const the route module keeps, which runs once', async () => {
     expect(
@@ -1404,8 +1404,8 @@ ${record('third')}
 // `SERIES_ROWS`/`ANIME_ROWS`, arrays of `apiQuery(…)` read only by the page,
 // next to `FILM_ROWS`/`q`, also `apiQuery(…)`, read by the loader too): main
 // moves the page-only ones into the chunk, the PR keeps them in the route
-// module (+~1 KB initial). DESIGN §3.4.2 R31 (c) only lets the move happen
-// for "import specifiers used by no other output".
+// module (+~1 KB initial): an import specifier moves only when no other
+// output uses it.
 describe('a page-only effectful declaration calling an import the route module also uses', () => {
   it('loads with the component', async () => {
     const route = await loadRoute(
@@ -1442,7 +1442,7 @@ function Page() {
 // object of `apiQuery(…)` calls the loader keeps in the route module. Main
 // moves `q` into a shared module both import (one evaluation) and
 // `SERIES_ROWS` into the page chunk; the PR kept `SERIES_ROWS` in the route
-// module (+727 B initial). R67: the chunk imports `q` from the route module.
+// module (+727 B initial). The chunk imports `q` from the route module.
 describe('a page-only effectful declaration reading a const object the loader keeps', () => {
   it('loads with the component, and the object is created once', async () => {
     const route = await loadRoute(

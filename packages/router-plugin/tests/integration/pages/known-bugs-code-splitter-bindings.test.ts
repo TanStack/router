@@ -417,7 +417,7 @@ export { Route }
   // #8504 (code-splitter-imports-exports.test.ts), where it passes.
   // Impact: the route cannot be built once code splitting is on.
   // (The identity of the component is not asserted: the chunk copies a pure
-  // exported binding by rule, R77.)
+  // exported binding by rule.)
   test('a split option renders the default-exported component other modules import', async () => {
     const route = await loadRoute(
       `${head}import type { ReactNode } from 'react'
@@ -556,7 +556,7 @@ return [await options.loader(), load()]`),
    * the option is split or the user is told it is not (a warning naming the
    * route file and the option). A host of its own: each row reads what
    * compiling its route reports. (Which instance the chunk renders is not
-   * asserted: the chunk copies a pure exported component by rule, R77.)
+   * asserted: the chunk copies a pure exported component by rule.)
    */
   async function exportedErrorComponent(value: string) {
     const route = await loadRoute(

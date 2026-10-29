@@ -2,20 +2,20 @@
  * An exported component of a route file only its split component renders
  * loads with the route's chunk in a Start client build (the chunk carries
  * its copy; the module the route module re-exports it from is dropped,
- * R77). When a module loaded with the entry imports it through the route
+ * by rule). When a module loaded with the entry imports it through the route
  * file (here the app's router module), the bundler keeps that module with
  * the entry: the build warns once, naming the route file, on Vite and on
  * Rsbuild (SPEC J2.8; the router plugin's hosts do the same).
  *
  * An unexported declaration only the split component reads that a later
- * effect pins in the route module (R31 (d) / R65: an inline
+ * effect pins in the route module (an inline
  * `validateSearch: makeSchema({…})` call stays and runs after it) loads
  * with the entry, and the build warns once for the client and server
- * environments together, naming the declaration and the call (R78; every
+ * environments together, naming the declaration and the call (every
  * host and reason: router-plugin
  * tests/integration/code-splitter-split-only-eager.test.ts).
  *
- * The router's pure APIs are no such effect (R79): tamery's `const {
+ * The router's pure APIs are no such effect: tamery's `const {
  * useSearch } = getRouteApi(…)` between the pinned declaration and the
  * route loads with the chunk and is not reported.
  */

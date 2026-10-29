@@ -1,7 +1,7 @@
 /**
  * An exported component the route file augments (`Page.displayName = …`)
  * stays in the route module in dev with its augmentation (in a build it is
- * extracted into its own module with it; R77 dev), and the split chunk
+ * extracted into its own module with it), and the split chunk
  * imports it (SPEC J2.4, J3.3): an edit of the component applies in place
  * through the route module, with React Refresh registering the component
  * where it is declared, and the augmentation is kept across edits.

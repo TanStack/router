@@ -1,10 +1,10 @@
 /**
- * The router's own APIs that are pure at module level (R79), first
+ * The router's own APIs that are pure at module level, first
  * `getRouteApi`, are no effect: a module-level `const { useParams } =
  * getRouteApi(…)` only the split component reads loads with its chunk, and
  * the API the route module keeps (its loader reads it) does not pin an
  * effectful declaration before it. Learned from a real app (tamery): five of
- * its six R78 warnings were `getRouteApi` destructurings an inline
+ * its six eager-split warnings were `getRouteApi` destructurings an inline
  * `validateSearch: type({…})` call after them kept in the route module; the
  * effectful `confetti` before them stays and is the only warning. Recognised
  * by binding to the router package's export, not by name: a renamed import

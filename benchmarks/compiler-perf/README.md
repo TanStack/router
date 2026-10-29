@@ -242,7 +242,7 @@ set; Node-side only, never in a bundle):
   plans again), `facts` (summaries and target facts re-read and re-parsed
   on every request), `targets` (target facts only), `all`. Outputs are
   identical with any knob (`stats.test.ts`). Resolutions and emitted
-  outputs are not cached (R54): nothing to switch off.
+  outputs are not cached: nothing to switch off.
 - `scripts/cache-knobs.mjs --out <dir>`: runs the harness per (round, knob),
   interleaved, and tabulates medians per knob against "all on".
 

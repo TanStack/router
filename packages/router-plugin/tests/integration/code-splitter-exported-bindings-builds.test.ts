@@ -1,6 +1,6 @@
 /**
  * Exported bindings a split component renders stay out of the entry chunk in
- * every bundler and chunking configuration (SPEC J2.5, J2.8; R77): the
+ * every bundler and chunking configuration (SPEC J2.5, J2.8): the
  * route's chunk carries its own copy, and the extracted module the route
  * module re-exports serves other importers of the route file only, so a
  * bundler drops it when nobody imports it, wherever its chunk assignment
@@ -19,7 +19,7 @@
  *
  * Identity: importers of the route file share one instance (two routes'
  * split components import the same `Card`); the route's own chunk renders
- * its copy (two instances by rule, R77). When another module imports a
+ * its copy (two instances by rule). When another module imports a
  * copied export through the route file and the bundler keeps the extracted
  * module with the entry (every bundler when the entry itself imports it;
  * webpack, Rspack and Rsbuild without `"sideEffects": false` for any

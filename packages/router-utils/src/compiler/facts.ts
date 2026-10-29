@@ -121,7 +121,7 @@ export class RawFactsCache {
     return this.opts.markerSpecifiers
   }
 
-  /** The pure exports of the recognizer's known packages (R79), for the analyses of compiled modules. */
+  /** The pure exports of the recognizer's known packages, for the analyses of compiled modules. */
   get pureCalls(): RecognizerTable['pureCalls'] {
     return this.opts.recognizer?.pureCalls
   }

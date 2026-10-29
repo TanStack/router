@@ -179,7 +179,7 @@ export async function render(component: any) {
   // they pass.
   // Impact: `instanceof` checks, registries and counters see two copies
   // once code splitting is on; module state is created twice.
-  // (R77: a pure exported function, class or component is copied by rule;
+  // (By rule a pure exported function, class or component is copied;
   // state is one instance.)
   const exportedBindings = [
     {

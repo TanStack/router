@@ -457,7 +457,7 @@ describe('extracted-export outputs', () => {
   // which serves other importers of the route file; the chunk copies it (and
   // the imports only they share) instead of importing that module, so the
   // module is imported by nobody unless another file imports the binding
-  // and the bundler drops it (R77).
+  // and the bundler drops it.
   it('moves an exported pure declaration only a chunk needs and re-exports it; the chunk copies it', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -572,7 +572,7 @@ describe('extracted-export outputs', () => {
     )
   })
 
-  // R1: the mutation model is read through the env output's liveness. A
+  // The mutation model is read through the env output's liveness. A
   // Start route file whose only write of an exported `let` is inside a
   // server fn handler: on the client the handler is a stub, so nothing
   // writes the binding there; it is extractable, the chunk copies it and
@@ -857,9 +857,9 @@ describe('extracted-export outputs', () => {
 
   it('keeps an effectful declaration only an extracted export and its copies read in the env module (one instance)', async () => {
     // both chunks copy `Card`, so `theme` has three needers and cannot move
-    // (R29 (a)): it stays in the route module, where the copies and the
+    // (it has several needers): it stays in the route module, where the copies and the
     // extracted module import it from (the one cost of copying over
-    // importing the extracted module, R77)
+    // importing the extracted module)
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { createTheme } from './theme'
@@ -1003,7 +1003,7 @@ describe('extracted-export outputs', () => {
     expect(r.diagnostics).toEqual([])
   })
 
-  // R77 dev: in dev the same clusters leave nothing: an extracted cluster
+  // In dev the same clusters leave nothing: an extracted cluster
   // stays in the env module as written, its companions with it, and the
   // chunk copies or imports it exactly as in a build
   describe('in dev', () => {
@@ -1712,7 +1712,7 @@ describe('ordered evaluation and movable effects', () => {
     expect(r.chunks.errorComponent).toContain("const b = other('b')")
   })
 
-  it('moves an initialiser whose import the route module also reads (R64)', async () => {
+  it('moves an initialiser whose import the route module also reads', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { make } from './make'
@@ -1748,7 +1748,7 @@ describe('ordered evaluation and movable effects', () => {
     expect(r.chunks.component).not.toContain('make(')
   })
 
-  it('moves an initialiser reading a const the route module keeps (R67)', async () => {
+  it('moves an initialiser reading a const the route module keeps', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { make } from './make'
@@ -1776,7 +1776,7 @@ describe('ordered evaluation and movable effects', () => {
     ['mutated by a method', 'const', 'q.list.push(1)'],
     ['mutated by Object.assign', 'const', 'Object.assign(q, {})'],
   ])(
-    'keeps an initialiser reading a kept binding that is %s eager (R67)',
+    'keeps an initialiser reading a kept binding that is %s eager',
     async (_, kind, loader) => {
       const code = dedent(`
         import { createFileRoute } from 'toy-router'
@@ -1794,7 +1794,7 @@ describe('ordered evaluation and movable effects', () => {
     },
   )
 
-  it('keeps an initialiser reading a kept const eager when a later effect stays (R67)', async () => {
+  it('keeps an initialiser reading a kept const eager when a later effect stays', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { make } from './make'
@@ -1813,7 +1813,7 @@ describe('ordered evaluation and movable effects', () => {
     expect(r.chunks.component).toContain("import { page } from './route.tsx'")
   })
 
-  it('keeps a cluster eager when an effect follows its first effectful item (R65)', async () => {
+  it('keeps a cluster eager when an effect follows its first effectful item', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { first, second } from './make'
@@ -2806,8 +2806,8 @@ describe('one mutation model: eager reads of state something writes', () => {
   })
 })
 
-// R78: a declaration only split code needs that the movable test keeps in
-// the route module (R29 / R31 (d) / R65 / R67) is reported once, at its
+// A declaration only split code needs that the movable test keeps in the
+// route module (evaluation order, writes, eager reads) is reported once, at its
 // cause, positioned at the declaration and naming why; nothing is reported
 // when it moves, or when the split code needs nothing pinned.
 describe('declarations only split code needs that stay in the route module', () => {
@@ -3044,7 +3044,7 @@ describe('declarations only split code needs that stay in the route module', () 
   })
 })
 
-// R79: a call of a known package's pure export (`RecognizerTable.pureCalls`)
+// A call of a known package's pure export (`RecognizerTable.pureCalls`)
 // with pure arguments is pure, recognised by import binding to the package's
 // export (renamed, namespace member).
 describe('pure calls of known packages', () => {

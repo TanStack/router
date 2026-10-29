@@ -86,7 +86,7 @@ export function startRecognizer(): RecognizerTable {
     },
     startKind: START_KINDS.start,
     startMembers: { createMiddleware: START_KINDS.middleware },
-    // the router's own pure APIs (R79): its table, not a copy
+    // the router's own pure APIs: its table, not a copy
     pureCalls: routerPureCalls(),
   }
   return table

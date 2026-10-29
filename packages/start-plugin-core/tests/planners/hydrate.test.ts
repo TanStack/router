@@ -784,7 +784,7 @@ export const Page = () => <Hydrate><p onClick={() => clicks++}>{clicks}</p></Hyd
 
   // (Adjusted: in a build the exported writer and its state are an extracted
   // export only the chunk needs, so the live binding's home is that output,
-  // not the parent; in dev it stays in the parent, as on main; R77.)
+  // not the parent; in dev it stays in the parent, as on main.)
   it('lets the children read a let the parent reassigns through the live binding', async () => {
     const code = `${REACT}let clicks = 0
 export function bump() { clicks++ }
@@ -828,7 +828,7 @@ export const Page = () => <Hydrate><p>{theme}</p></Hydrate>
   })
 
   // A pure exported component only the children render: the chunk carries
-  // its own copy (R77); in a build the parent re-exports it from its
+  // its own copy; in a build the parent re-exports it from its
   // extracted module for other importers, in dev it keeps it as written
   it('copies a pure exported component the children render into the chunk', async () => {
     const code = `${REACT}export function Card() { return <b>card</b> }

@@ -54,11 +54,11 @@ units that output contains. The same computation decides:
   are duplicated. An exported binding only split code needs leaves the route module for a side-effect-free extracted
   module (`?tsr-split=export~Name`) that the route module re-exports, so other modules importing it from the route
   file still get one instance and the route module keeps none of its code or imports. The rule for the route's own
-  chunks (R77): when the binding is pure and never assigned (a function, class, component, pure constant), the chunk
+  chunks: when the binding is pure and never assigned (a function, class, component, pure constant), the chunk
   carries its own copy, with the pure declarations and imports only they share, and never imports the extracted
   module; what has effects or state (an effectful initialiser, an assigned `let`, a reader of mutable state, an
   augmented binding) is one instance that the chunk imports, from the extracted module when only it needs it, else
-  from the route module. Writes inside code the environment erases impose nothing (R1: the mutation model is read
+  from the route module. Writes inside code the environment erases impose nothing (the mutation model is read
   through the env output's liveness). Nothing but
   importers of the route file reach the extracted module, so a bundler drops it when unused; the route's chunks
   never depend on where a bundler places it (Rolldown < 1.1.5 and a user `manualChunks` group that merges into the

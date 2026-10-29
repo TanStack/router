@@ -2,7 +2,7 @@
  * Extracted-export outputs (`?tsr-split=export~Name`) an entry chunk of a
  * client build holds. A route's own chunks copy a pure export instead of
  * importing its module, and import a stateful or effectful one from it
- * only when they alone need it (`reach.ts`, R77): the module reaches the
+ * only when they alone need it (`reach.ts`): the module reaches the
  * entry only when a module loaded with the entry imports the binding
  * through the route file (Rollup and Rolldown), or when any module imports
  * it through the route file and the bundler cannot bypass the route

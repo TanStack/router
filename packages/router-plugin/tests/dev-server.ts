@@ -114,7 +114,7 @@ export async function expectExportedRouteOptions(
   /**
    * Whether each option must render the very instance importers get
    * (default). With code splitting the chunk renders its own copy of a pure
-   * exported component by rule (R77): the rendering checks alone apply then.
+   * exported component by rule: the rendering checks alone apply then.
    */
   sharedInstance = true,
 ) {

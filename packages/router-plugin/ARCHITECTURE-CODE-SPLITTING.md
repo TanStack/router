@@ -32,7 +32,7 @@ For `posts.tsx` in a client environment:
 All of them come from one plan: whichever id the bundler asks first computes the plan, the others reuse it. Placement
 is decided by the core from what each output reads; the planners only say which option values are roots of which
 chunk. Module-level state therefore exists once: a binding the route module and a chunk both read stays in the route
-module and the chunk imports it. An exported pure binding only chunks need is the one exception by rule (R77): its
+module and the chunk imports it. An exported pure binding only chunks need is the one exception by rule: its
 extracted module serves other importers of the route file and is dropped when nobody imports it, while each chunk
 copies the binding, so the chunk never depends on where the bundler places a module the route module re-exports
 (Rolldown < 1.1.5 and a user `manualChunks` group merging into the entry made it eager). Importers of the route file

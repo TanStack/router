@@ -212,7 +212,7 @@ export class component extends Component { render() { see(component); return <p>
     ]
 
     // With code splitting the chunk renders its own copy of a pure exported
-    // component, while importers get the route module's instance (R77:
+    // component, while importers get the route module's instance (by rule:
     // known-bugs "the split chunk copies a pure exported binding"): the
     // rendering is asserted in both modes, the identity without splitting
     it.each(cases)(

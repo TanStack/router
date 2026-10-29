@@ -1298,8 +1298,8 @@ export const Route = createFileRoute('/')({
 // effect before the augmentation keeps the component in the route module
 // (the extracted module would evaluate before that effect), one after keeps
 // its order. Other modules import the augmented component either way, and
-// in dev the component stays in the route module whatever the order (R77
-// dev: nothing is bundled there).
+// in dev the component stays in the route module whatever the order
+// (nothing is bundled there).
 describe('an exported component with augmentations', () => {
   const augmented = [
     {
@@ -1465,7 +1465,7 @@ export const Route = createFileRoute('/')({ component: Page })
   })
 })
 
-// R77 dev: in dev a pure exported component only the split component
+// In dev a pure exported component only the split component
 // renders stays in the route module as written (no extracted module to
 // request one level deeper), and the route's chunk carries its own copy, as
 // in a build; other modules importing it from the route file get the route

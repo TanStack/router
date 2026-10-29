@@ -321,7 +321,7 @@ export class ModuleAnalysis {
       const local = record.local
       if (local) {
         importLocals.set(record.node.start, local.id as SymbolId)
-        // an import of a known package's pure export (R79): before any
+        // an import of a known package's pure export: before any
         // statement is classified (a call may precede its hoisted import)
         const pure = pureCalls?.[record.specifier]
         if (pure && !record.typeOnly) {

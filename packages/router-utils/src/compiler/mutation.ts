@@ -8,7 +8,7 @@
  * hoist and the Hydrate setters. A view over the classified references
  * (nothing is built until a binding is asked about, and then once). The
  * model is pristine: erasure is the consumer's business, passed as the
- * `live` filter of the predicates (R1: a write inside erased code imposes
+ * `live` filter of the predicates (a write inside erased code imposes
  * nothing), and the region holding a write (planners register sub-regions
  * after the analysis) is read from the regions.
  */

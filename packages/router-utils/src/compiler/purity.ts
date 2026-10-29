@@ -3,7 +3,7 @@
  * decorators/static effects, pure object/array literals, all-literal
  * templates, `/*#__PURE__*\/` calls with pure arguments, calls with pure
  * arguments of `#__NO_SIDE_EFFECTS__` callee declarations and of the pure
- * exports of known packages (`RecognizerTable.pureCalls`, R79: by import
+ * exports of known packages (`RecognizerTable.pureCalls`: by import
  * binding or namespace member; re-exports are not followed), JSX with bound/intrinsic tags and
  * pure attributes and children. `import()` is impure. The same
  * classification yields Tier 0's `ownEffects` at statement granularity.

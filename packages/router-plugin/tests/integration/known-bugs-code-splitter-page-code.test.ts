@@ -53,7 +53,7 @@ describe('page code in client builds', () => {
 
   // Page code that loads with its chunk: code the route file does not
   // export, and exported functions and classes (the chunk declares its own
-  // copy of a pure one by rule, R77; state stays one instance, pinned in
+  // copy of a pure one by rule; state stays one instance, pinned in
   // "module state shared with split chunks" and "exported bindings"; the
   // bundler drops the unused extracted module of the route file). A fix
   // must keep them out of the entry chunk.
@@ -203,7 +203,7 @@ export const Route = createFileRoute('$PATH')({
   // webpack and Rspack keep an export another module imports through the
   // route module in the entry chunk unless the package is side-effect free
   // (vite: Rollup redirects the import to the extracted module, which only
-  // the importer loads; the route's own chunk carries its copy, R77). Every
+  // the importer loads; the route's own chunk carries its copy). Every
   // configuration: integration/code-splitter-exported-bindings-builds.test.ts.
   const exportedImportedByRoute = routeCase(
     "an exported component another route's split component renders",
@@ -263,7 +263,7 @@ ${component}`,
 ${component}`,
     ),
     // The augmentation leaves with the component for its extracted module,
-    // which the chunk imports (one instance of an augmented binding, R77;
+    // which the chunk imports (one instance of an augmented binding;
     // compiler-level: "extracts an exported component with its
     // augmentations"); whether the bundler keeps that module out of the
     // entry is its side-effect analysis of the property write.
@@ -280,7 +280,7 @@ ${component}`,
   ]
 
   // An exported component that two split options render: each chunk
-  // carries its own copy (R77), and the module the route module re-exports
+  // carries its own copy, and the module the route module re-exports
   // it from is imported by nobody, so every bundler drops it, with or
   // without `"sideEffects": false`.
   // Source: review of #8504.
