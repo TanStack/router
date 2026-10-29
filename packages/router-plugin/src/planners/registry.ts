@@ -1,12 +1,10 @@
 /**
  * The route registry as the router planner reads it (`HostServices.routes`:
  * `lookup` for the planner, `digestFor` for plan validation): the
- * generator's `routesByFile` by normalized path, with a lookup by the real
- * path of a symlinked route file (bundlers resolve modules to their real
- * path, the generator scans the link). Shared by the
+ * generator's `routesByFile` by normalized path (a symlinked route file is
+ * listed under its real path too, where bundlers resolve it). Shared by the
  * standalone router hosts and Start's hosts.
  */
-import fs from 'node:fs'
 import { normalizePath } from '@tanstack/router-utils/compiler'
 import { routeEntryDigest } from './route'
 import type { RouterPluginContext } from '../core/router-plugin-context'
@@ -14,40 +12,11 @@ import type { RouteEntryFacts } from './route'
 import type { RouteRegistry } from '@tanstack/router-utils/compiler'
 
 export class RouteRegistryView implements RouteRegistry {
-  /** The registry's entries by the real path of their (symlinked) files, per registry. */
-  private realPaths: {
-    registry: RouterPluginContext['routesByFile']
-    byRealPath: Map<string, { routeId: string }>
-  } | null = null
-
   constructor(private readonly context: RouterPluginContext) {}
 
-  /**
-   * The registry entry of a file, by its normalized path: the path the
-   * generator scanned, or the real path of a symlinked route file.
-   */
+  /** The registry entry of a file, by its normalized path (scanned or real). */
   lookup(path: string): RouteEntryFacts | null {
-    const p = normalizePath(path)
-    const registry = this.context.routesByFile
-    let entry: { routeId: string } | undefined = registry.get(p)
-    if (!entry) {
-      if (this.realPaths?.registry !== registry) {
-        const byRealPath = new Map<string, { routeId: string }>()
-        for (const [file, e] of registry) {
-          let real: string
-          try {
-            real = normalizePath(fs.realpathSync.native(file))
-          } catch {
-            continue
-          }
-          if (real !== file && !registry.has(real)) {
-            byRealPath.set(real, { routeId: e.routeId })
-          }
-        }
-        this.realPaths = { registry, byRealPath }
-      }
-      entry = this.realPaths.byRealPath.get(p)
-    }
+    const entry = this.context.routesByFile.get(normalizePath(path))
     return entry ? { routeId: entry.routeId } : null
   }
 

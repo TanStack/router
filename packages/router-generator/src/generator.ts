@@ -71,6 +71,12 @@ interface FileState {
    * when the scan gives it another route, its content unchanged (SPEC J1.1).
    */
   readonly role: string
+  /**
+   * The file's real path, when it is not the scanned one (a symlinked file
+   * or root): bundlers resolve modules to it, so the registry lists the file
+   * under both.
+   */
+  readonly realPath?: string
 }
 
 /** What a file's analysis depends on besides its content. */
@@ -190,8 +196,6 @@ export class Generator {
   /** A batch failed after the scan changed: the next one rebuilds the tree. */
   private stale = false
   private routesByFile: GetRoutesByFileMapResult = new Map()
-  /** The real paths of the scan roots, for those that differ. */
-  private realRoots: Array<[scanned: string, real: string]> = []
 
   private queue: Array<GeneratorEvent> = []
   private waiters: Array<{
@@ -441,7 +445,6 @@ export class Generator {
         ),
       )
       changes.routes = true
-      this.realRoots = await this.realRootsOf(scan)
     } else {
       const byKey = new Map(
         filesOf(this.scan!).map((node) => [node.fullPath, node]),
@@ -604,12 +607,14 @@ export class Generator {
       this.files.set(key, { content: '', facts: { included: false }, role })
       return
     }
+    const real = replaceBackslash(await fsp.realpath(file).catch(() => file))
+    const realPath = real === file ? undefined : real
     if (previous && previous.content === content) {
-      this.files.set(key, { ...previous, stamp: stamp! })
+      this.files.set(key, { ...previous, stamp: stamp!, realPath })
       return
     }
     const state = this.factsOf(node, isRoot, content, known)
-    this.files.set(key, { ...state, role, stamp: stamp! })
+    this.files.set(key, { ...state, role, stamp: stamp!, realPath })
   }
 
   private factsOf(
@@ -724,32 +729,24 @@ export class Generator {
     console.warn(message)
   }
 
-  private async realRootsOf(scan: ScanResult) {
-    const roots = [this.routesDirectory, ...scan.physicalDirectories]
-    const real = await Promise.all(
-      roots.map(async (dir): Promise<[string, string] | undefined> => {
-        const resolved = await fsp.realpath(dir).catch(() => dir)
-        const normalized = replaceBackslash(resolved)
-        return normalized === dir ? undefined : [dir, normalized]
-      }),
-    )
-    return real.filter((entry) => entry !== undefined)
-  }
-
   private computeRoutesByFile(): GetRoutesByFileMapResult {
     const map = new Map<string, GetRoutesByFileMapResultValue>()
-    const scan = this.scan!
-    for (const node of filesOf(scan)) {
-      const key = node.fullPath
-      if (!this.files.get(key)?.facts.included) {
+    const real: Array<[string, GetRoutesByFileMapResultValue]> = []
+    for (const node of filesOf(this.scan!)) {
+      const state = this.files.get(node.fullPath)
+      if (!state?.facts.included) {
         continue
       }
       const value = { routeId: node.routePath ?? `/${rootPathId}` }
-      map.set(key, value)
-      for (const [scanned, real] of this.realRoots) {
-        if (isUnder(key, scanned)) {
-          map.set(real + key.slice(scanned.length), value)
-        }
+      map.set(node.fullPath, value)
+      if (state.realPath) {
+        real.push([state.realPath, value])
+      }
+    }
+    // a real path that is another scanned route file is that file's
+    for (const [file, value] of real) {
+      if (!map.has(file)) {
+        map.set(file, value)
       }
     }
     return map
