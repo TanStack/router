@@ -250,8 +250,8 @@ nothing per compile.
 - `TSR_COMPILER_VERIFY=1`: after every compile, each emitted output is re-parsed and checked against the plan's
   invariants (`verify.ts`): no output assigns a binding it imports, every glue import names an export of its home
   output, no output holds text its own edits erase, every surviving effect statement is emitted exactly once across
-  the outputs that import from the env module, and an extracted export's module never reads a binding of the env
-  module at its evaluation. A violation fails the compile. Every test run sets it (the shared run-directory setup and
+  the outputs that import from the env module, an extracted export's module never reads a binding of the env
+  module at its evaluation, and no output reads a module binding of the source it neither declares nor imports. A violation fails the compile. Every test run sets it (the shared run-directory setup and
   the core's own config); unset, it costs one boolean per compile.
 - `TSR_COMPILER_STATS=1`: every cache owner (the compiler caches, the router and Start host sessions with their
   import-protection and server-function state, the route generator) registers a reader of its entry counts and

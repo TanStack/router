@@ -243,15 +243,18 @@ export class RewriteSet {
         })
       }
     }
+    // Claims: live iff the region's occurrence is not erased by a planner
+    // edit strictly enclosing it. An edit scoped to this output on exactly
+    // the region replaces the placeholder here (it sorts before the claim);
+    // one addressed to every output nests inside the claim and renders where
+    // the region does, inside its owner. The internal edits (`extra`) never
+    // decide it: placement drops a statement it does not place, not the
+    // claimed regions in it, which render inside their owners wherever those
+    // are placed (as reach saw them).
+    const base = new RenderTree(edits, this.regions)
     for (const x of extra) {
       edits.push(x)
     }
-    // Claims: live iff the region's occurrence is not erased by an edit
-    // strictly enclosing it. An edit scoped to this output on exactly the
-    // region replaces the placeholder here (it sorts before the claim); one
-    // addressed to every output nests inside the claim and renders where the
-    // region does, inside its owner.
-    const base = new RenderTree(edits, this.regions)
     for (const claim of this.claims.values()) {
       const region = this.regions.get(claim.region)
       if (base.isErasedAt(region.range.start, null, region.range)) {

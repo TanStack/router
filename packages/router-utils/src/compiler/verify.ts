@@ -15,6 +15,7 @@ import { hasRuntimeValue } from './symbols'
 import type { SourceIdentity } from './identity'
 import type { AnalysisPlan, EmitPlan, OutputRecipe } from './plan'
 import type { OutputId } from './rewrite'
+import type { SymbolId } from './symbols'
 import type { OutputKind } from './reach'
 
 export const VERIFY_OUTPUTS = process.env.TSR_COMPILER_VERIFY === '1'
@@ -59,6 +60,17 @@ export function verifyPlan(
       }),
       recipe,
     })
+  }
+  // the names of the source's module bindings no source read takes for a global
+  const moduleNames = new Set<string>()
+  for (let s = 0; s < t1.symbols.size; s++) {
+    const sym = s as SymbolId
+    if (t1.symbols.kind(sym) === 'source' && t1.symbols.isModuleLevel(sym)) {
+      moduleNames.add(t1.symbols.name(sym))
+    }
+  }
+  for (const f of t1.freeRefs) {
+    moduleNames.delete(f.name)
   }
   for (const [id, { analysis, recipe }] of outputs) {
     const out = analysis.t1()
@@ -135,6 +147,16 @@ export function verifyPlan(
           )
         }
       }
+    }
+    // (g) no output reads a module binding of the source it neither declares
+    // nor imports (the read would fall through to a global)
+    const unbound = new Set(
+      out.freeRefs.filter((f) => moduleNames.has(f.name)).map((f) => f.name),
+    )
+    for (const name of unbound) {
+      problems.push(
+        `${id}: reads ${name}, which it neither declares nor imports`,
+      )
     }
   }
   // (d) every surviving effect unit is emitted exactly once across the

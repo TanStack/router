@@ -83,12 +83,26 @@ for await (const result of [tlaForFn()]) {
   results.push(result)
 }
 `,
+  // a route whose split component defines a server fn: the chain is hoisted
+  // into the route module, the component moves to its chunk
+  'route-dep.server.ts': counted('MARK_ROUTE_DEP'),
+  'src/routes/nested.tsx': `import { createFileRoute } from '@tanstack/react-router'
+${head}import { value } from '../../route-dep.server'
+function Page() {
+  const load = createServerFn().handler(async () => value)
+  ;(globalThis as any).__routeLoad = load
+  return 'MARK_ROUTE_PAGE'
+}
+export const Route = createFileRoute('/nested')({ component: Page })
+`,
   'client-entry.ts': `export * from './fns'
 export { callBroken } from './broken'
 export const loadTla = () => import('./tla')
 export const loadTlaFor = () => import('./tla-for')
+export { getRouter } from './src/router'
 `,
   'ssr-entry.ts': `export * from './client-entry'
+export { renderPath } from './harness/render'
 ${callByIdExports}`,
 }
 
@@ -185,6 +199,32 @@ return { before, called: await fn(), after: counts('deep') }`)
         before: { deep: 0 },
         called: 'MARK_DEEP',
         after: { deep: 1 },
+      })
+    },
+    timeout,
+  )
+
+  test(
+    "SSR: a server fn nested in a route's split component runs, directly and over HTTP, loading its handler's module on the first call",
+    async () => {
+      const { result } = await build.ssr
+        .run(`${callByIdPrelude}${counters}const { routeTree } = entry.getRouter()
+const rendered = await entry.renderPath(routeTree, '/nested')
+const load = globalThis.__routeLoad
+const before = counts('route_dep')
+return {
+  rendered: rendered.includes('MARK_ROUTE_PAGE'),
+  before,
+  called: await load(),
+  overHttp: await callById(serverFnId(load)),
+  after: counts('route_dep'),
+}`)
+      expect(result).toEqual({
+        rendered: true,
+        before: { route_dep: 0 },
+        called: 'MARK_ROUTE_DEP',
+        overHttp: 'MARK_ROUTE_DEP',
+        after: { route_dep: 1 },
       })
     },
     timeout,
