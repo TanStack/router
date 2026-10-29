@@ -75,6 +75,13 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
       config.routeTreeFileHeader = ['// prepend1', '// prepend2']
       config.routeTreeFileFooter = ['// append1', '// append2']
       break
+    case 'isolated-declarations-root-components':
+      config.target = 'vue'
+      config.isolatedDeclarations = true
+      break
+    case 'isolated-declarations-root-components-off':
+      config.target = 'vue'
+      break
     case 'isolated-declarations-flat':
     case 'isolated-declarations-nested':
     case 'isolated-declarations-pathless-layout':

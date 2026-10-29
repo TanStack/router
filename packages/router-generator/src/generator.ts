@@ -920,6 +920,9 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       })
     }
 
+    const rootRouteReference = rootRouteUpdate
+      ? 'rootRouteUpdated'
+      : 'rootRouteImport'
     const routeTree = [
       `const rootRouteChildren${config.disableTypes ? '' : `: RootRouteChildren`} = {
   ${acc.routeTree
@@ -929,8 +932,8 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     )
     .join(',')}
 }`,
-      isolatedDeclarations && !rootRouteUpdate
-        ? `const rootRouteWithChildren: ReturnType<typeof rootRouteImport._addFileChildren<RootRouteChildren>> = rootRouteImport._addFileChildren(rootRouteChildren)
+      isolatedDeclarations
+        ? `${rootRouteUpdate ? `const rootRouteUpdated: typeof rootRouteImport = rootRouteImport${rootRouteUpdate}\n` : ''}const rootRouteWithChildren: ReturnType<typeof ${rootRouteReference}._addFileChildren<RootRouteChildren>> = ${rootRouteReference}._addFileChildren(rootRouteChildren)
 export const routeTree: ReturnType<typeof rootRouteWithChildren._addFileTypes<FileRouteTypes>> = rootRouteWithChildren._addFileTypes<FileRouteTypes>()`
         : `export const routeTree = rootRouteImport${rootRouteUpdate}._addFileChildren(rootRouteChildren)${config.disableTypes ? '' : `._addFileTypes<FileRouteTypes>()`}`,
     ].join('\n')

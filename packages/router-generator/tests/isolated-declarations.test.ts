@@ -1,17 +1,18 @@
-import { readFile } from 'node:fs/promises'
+import { readFile, rm } from 'node:fs/promises'
 import path from 'node:path'
 import * as ts from 'typescript'
-import { expect, it } from 'vitest'
+import { expect, it, onTestFinished } from 'vitest'
 import { Generator, getConfig } from '../src'
 import type { Config } from '../src'
 
-const typedFixtures = [
-  'isolated-declarations-flat',
-  'isolated-declarations-nested',
-  'isolated-declarations-pathless-layout',
-  'isolated-declarations-lazy',
-  'isolated-declarations-unformatted',
-]
+const typedFixtures: Record<string, Partial<Config>> = {
+  'isolated-declarations-flat': {},
+  'isolated-declarations-nested': {},
+  'isolated-declarations-pathless-layout': {},
+  'isolated-declarations-lazy': {},
+  'isolated-declarations-unformatted': { enableRouteTreeFormatting: false },
+  'isolated-declarations-root-components': { target: 'vue' },
+}
 
 function fixtureDirectory(fixture: string) {
   return path.join(process.cwd(), 'tests', 'generator', fixture)
@@ -27,19 +28,20 @@ async function generateTree(
     root,
     `routeTree.${variant}.gen.${options.disableTypes ? 'js' : 'ts'}`,
   )
+  onTestFinished(() => rm(generatedRouteTree, { force: true }))
   const config = getConfig({
     disableLogging: true,
     routesDirectory: path.join(root, 'routes'),
     generatedRouteTree,
     isolatedDeclarations: variant === 'isolated',
-    enableRouteTreeFormatting: fixture !== 'isolated-declarations-unformatted',
+    ...typedFixtures[fixture],
     ...options,
   })
   await new Generator({ config, root }).run()
   return generatedRouteTree
 }
 
-it.each(typedFixtures)(
+it.each(Object.keys(typedFixtures))(
   'the "%s" route tree compiles with isolatedDeclarations and keeps its type',
   async (fixture) => {
     const isolatedFile = await generateTree(fixture, 'isolated')
@@ -48,6 +50,14 @@ it.each(typedFixtures)(
       fixtureDirectory(fixture),
       'route-tree-types.check.ts',
     )
+    const isVue = typedFixtures[fixture]?.target === 'vue'
+    const vueShimFile = path.join(fixtureDirectory(fixture), 'vue-shim.d.ts')
+    const vueShimSource = `
+declare module '*.vue' {
+  const component: import('@tanstack/vue-router').SyncRouteComponent<Record<string, never>>
+  export default component
+}
+`
     const checkSource = `
 import { routeTree as isolated } from './routeTree.isolated.gen'
 import { routeTree as inferred } from './routeTree.inferred.gen'
@@ -61,7 +71,15 @@ export const sameRouteTreeType: Equals<typeof isolated, typeof inferred> = true
       noEmit: true,
       strict: true,
       skipLibCheck: true,
-      jsx: ts.JsxEmit.ReactJSX,
+      jsx: isVue ? ts.JsxEmit.Preserve : ts.JsxEmit.ReactJSX,
+      ...(isVue && {
+        jsxImportSource: 'vue',
+        paths: {
+          '@tanstack/vue-router': [
+            path.resolve(process.cwd(), '../vue-router/src/index.tsx'),
+          ],
+        },
+      }),
       module: ts.ModuleKind.ESNext,
       moduleResolution: ts.ModuleResolutionKind.Bundler,
       target: ts.ScriptTarget.ES2022,
@@ -70,10 +88,15 @@ export const sameRouteTreeType: Equals<typeof isolated, typeof inferred> = true
     const readSource = host.readFile
     const fileExists = host.fileExists
     host.fileExists = (fileName) =>
-      fileName === checkFile || fileExists(fileName)
+      fileName === checkFile ||
+      (isVue && fileName === vueShimFile) ||
+      fileExists(fileName)
     host.readFile = (fileName) => {
       if (fileName === checkFile) {
         return checkSource
+      }
+      if (isVue && fileName === vueShimFile) {
+        return vueShimSource
       }
       const text = readSource(fileName)
       if (fileName === isolatedFile || fileName === inferredFile) {
@@ -82,27 +105,39 @@ export const sameRouteTreeType: Equals<typeof isolated, typeof inferred> = true
       return text
     }
     const program = ts.createProgram(
-      [isolatedFile, inferredFile, checkFile],
+      [isolatedFile, inferredFile, checkFile, ...(isVue ? [vueShimFile] : [])],
       compilerOptions,
       host,
     )
     const isolatedTree = program.getSourceFile(isolatedFile)!
     const inferredTree = program.getSourceFile(inferredFile)!
+    expect(isolatedTree.text).not.toContain('@ts-nocheck')
+    expect(inferredTree.text).not.toContain('@ts-nocheck')
     const errors = [
+      ...program.getOptionsDiagnostics(),
+      ...program.getGlobalDiagnostics(),
       ...program.getSyntacticDiagnostics(),
       ...program.getSemanticDiagnostics(),
       ...program.getDeclarationDiagnostics(isolatedTree),
-    ].map((diagnostic) => {
-      const file = diagnostic.file
-      const line =
-        file && diagnostic.start !== undefined
-          ? file.getLineAndCharacterOfPosition(diagnostic.start).line + 1
-          : 0
-      const fileName = file
-        ? path.relative(fixtureDirectory(fixture), file.fileName)
-        : '<program>'
-      return `${fileName}:${line} TS${diagnostic.code} ${ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')}`
-    })
+    ]
+      .filter(
+        (diagnostic) =>
+          !diagnostic.file ||
+          diagnostic.file.fileName.startsWith(
+            fixtureDirectory(fixture) + path.sep,
+          ),
+      )
+      .map((diagnostic) => {
+        const file = diagnostic.file
+        const line =
+          file && diagnostic.start !== undefined
+            ? file.getLineAndCharacterOfPosition(diagnostic.start).line + 1
+            : 0
+        const fileName = file
+          ? path.relative(fixtureDirectory(fixture), file.fileName)
+          : '<program>'
+        return `${fileName}:${line} TS${diagnostic.code} ${ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')}`
+      })
     const inferredDeclarationCodes = program
       .getDeclarationDiagnostics(inferredTree)
       .map((diagnostic) => diagnostic.code)
