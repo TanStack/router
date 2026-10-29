@@ -2,7 +2,7 @@ import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import { generateSerializationAdaptersModule } from '../serialization-adapters-module'
 import { buildStartManifest } from '../start-manifest-plugin/manifestBuilder'
 import { escapeRegExp } from '../utils'
-import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
+import { RSBUILD_ENVIRONMENT_NAMES, virtualPath } from './planning'
 import type {
   RsbuildPluginAPI,
   rspack as rspackNamespaceType,
@@ -31,13 +31,6 @@ const DEV_START_MANIFEST_GLOBAL = '__TSS_DEV_START_MANIFEST__'
  * VirtualModulesPlugin resolves module paths relative to compiler.context.
  * Prefix them under the app root so they are unique and watcher-friendly.
  */
-function virtualPath(root: string, moduleId: string): string {
-  // VirtualModulesPlugin resolves paths relative to compiler.context (root).
-  // Use a recognizable prefix to avoid collisions with real files.
-  const sanitized = moduleId.replace(/[:#]/g, '_')
-  return `${root}/node_modules/.virtual/${sanitized}.js`
-}
-
 export interface VirtualModuleState {
   /** Call to update manifest content after client build completes */
   updateManifest: (clientBuild: NormalizedClientBuild) => void
