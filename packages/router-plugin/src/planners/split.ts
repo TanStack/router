@@ -10,6 +10,8 @@
  * properties in the env output only.
  */
 import {
+  listEnd,
+  removeListItems,
   siblingSpecifier,
   stringLiteral,
 } from '@tanstack/router-utils/compiler'
@@ -28,6 +30,7 @@ import type {
   SymbolId,
   Unit,
 } from '@tanstack/router-utils/compiler'
+import type { Node } from 'yuku'
 
 /** Applies the round's split plan: `deleteNodes`, split options, extracted exports. */
 export function planSplit(ctx: PlanContext, round: RouterRound): void {
@@ -37,53 +40,24 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
   ctx.describeModule({ name: 'route module', tag: '[tanstack-router]' })
   ctx.markBenignEffect(route.routeUnit.id)
 
-  // deleteNodes: the properties are erased in the env output only (J2.14);
-  // consecutive deleted properties form one edit (their comma ranges
-  // overlap), the last property of the object takes its leading comma, and
-  // a run that is the whole object takes its trailing comma (`{ server:
-  // {…}, }` erased to `{ , }` is a syntax error)
+  // deleteNodes: the properties are erased in the env output only (J2.14),
+  // each run of them with its commas (`{ server: {…}, }` erased to `{ , }`
+  // is no syntax)
   if (
     plan.deleted.length > 0 &&
     route.options.kind === 'object' &&
     route.options.node.type === 'ObjectExpression'
   ) {
-    const code = ctx.analysis.source.code
-    const objectEnd = route.options.node.end
-    const props = route.options.node.properties as Array<{
-      start: number
-      end: number
-    }>
-    const deleted = new Set(plan.deleted.map((d) => d.prop))
-    let i = 0
-    while (i < props.length) {
-      if (!deleted.has(props[i] as never)) {
-        i++
-        continue
-      }
-      let j = i
-      while (j + 1 < props.length && deleted.has(props[j + 1] as never)) {
-        j++
-      }
-      const last = j === props.length - 1
-      const start = last && i > 0 ? props[i - 1]!.end : props[i]!.start
-      let end = last ? props[j]!.end : props[j + 1]!.start
-      if (last && i === 0) {
-        let k = end
-        while (k < objectEnd && /\s/.test(code[k]!)) {
-          k++
-        }
-        if (code[k] === ',') {
-          end = k + 1
-        }
-      }
-      ctx.rewrites.add({
-        range: { start, end },
-        body: [],
-        scope: ['env'],
-        by: ROUTER_PLANNER,
-      })
-      i = j + 1
-    }
+    const props = route.options.node.properties as ReadonlyArray<Node>
+    const deleted = new Set<Node>(plan.deleted.map((d) => d.prop))
+    removeListItems(
+      ctx,
+      props,
+      (p) => deleted.has(p),
+      deleted,
+      listEnd(ctx.analysis.source.code, props),
+      { scope: ['env'], by: ROUTER_PLANNER },
+    )
   }
 
   if (plan.decisions.length === 0) {

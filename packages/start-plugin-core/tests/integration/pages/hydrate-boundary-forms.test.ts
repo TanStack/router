@@ -129,6 +129,16 @@ export function Page() {
 }`,
     },
     {
+      // Prettier's default trailing comma, on the only property
+      name: 'a spread used once, holding only the fallback, with a trailing comma',
+      code: `const props = {
+  fallback: <p>fallback-marker</p>,
+}
+export function Page() {
+  return <Hydrate when={visible()} {...props}><p>child</p></Hydrate>
+}`,
+    },
+    {
       // Source: hydrateWhenSplitFalse.tsx fixture (main)
       name: 'a module-level element',
       moduleLevel: true,

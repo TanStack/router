@@ -23,6 +23,8 @@
 import { hash } from 'node:crypto'
 import { relative } from 'node:path'
 import {
+  listEnd,
+  removeListItems,
   siblingSpecifier,
   unwrapExpression,
   valueBinding,
@@ -1279,10 +1281,20 @@ function stripFallback(ctx: PlanContext, b: Boundary): void {
     }
     const obj = spreadObject(ctx, a.argument)
     if (obj) {
-      for (const p of obj.properties) {
-        if (isNamedProperty(p, 'fallback')) {
-          erase(propertyRange(obj, p))
-        }
+      // with their commas (a lone `fallback: …,` leaves `{}`, not `{ , }`)
+      const props = obj.properties as ReadonlyArray<Node>
+      const fallbacks = new Set(
+        props.filter((p) => isNamedProperty(p, 'fallback')),
+      )
+      if (fallbacks.size > 0) {
+        removeListItems(
+          ctx,
+          props,
+          (p) => fallbacks.has(p),
+          fallbacks,
+          listEnd(ctx.analysis.source.code, props),
+          { scope: 'all-outputs', by: HYDRATE_PLANNER },
+        )
       }
     }
   }
@@ -1357,21 +1369,6 @@ function isNamedProperty(p: Node, name: string): boolean {
     return k.quasis[0]!.value.cooked === name
   }
   return false
-}
-
-/** A property's range with its separating comma (one edit per removed property). */
-function propertyRange(obj: ObjectExpression, prop: Node): Range {
-  const props = obj.properties as ReadonlyArray<Node>
-  const i = props.findIndex((p) => p.start === prop.start)
-  const next = props[i + 1]
-  if (next) {
-    return { start: prop.start, end: next.start }
-  }
-  const prev = props[i - 1]
-  if (prev) {
-    return { start: prev.end, end: prop.end }
-  }
-  return { start: prop.start, end: prop.end }
 }
 
 /** Whether the opening tag may pass `name` (an attribute, or a spread that may carry it). */
