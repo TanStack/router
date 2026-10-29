@@ -425,17 +425,18 @@ function removePatternProperties(
 }
 
 /**
- * Removes the gone items of a comma-separated list (declarators, pattern
- * properties), computed from the list's final kept set: each run of gone
- * items (pruned now, or erased by an earlier round) holding one pruned now
- * is one range with the separator to its next kept item (or from its
+ * Removes the gone items of a comma-separated list (declarators, pattern or
+ * object properties), computed from the list's final kept set: each run of
+ * gone items (pruned now, or erased by an earlier round) holding one pruned
+ * now is one range with the separator to its next kept item (or from its
  * previous one), so removals of neighbours never partially overlap and a
  * later round's run encloses the earlier one it grew from. When every item
- * is gone the range runs from the first item to `closing` (the position of
- * the list's closing bracket), so a trailing comma goes too; a list without
- * a closing bracket never loses every item (its caller keeps one).
+ * is gone the range runs from the first item to `closing` (the list's
+ * closing bracket, or `listEnd`), so a trailing comma goes too; a list
+ * without a closing bracket never loses every item (its caller keeps one).
+ * A planner removing items passes them as both `gone` and `pruned`.
  */
-function removeListItems(
+export function removeListItems(
   ctx: PlanContext,
   items: ReadonlyArray<Node>,
   gone: (item: Node) => boolean,
@@ -594,6 +595,13 @@ function prunePatternElement(
     return true
   }
   return false
+}
+
+/** Where a list ends: after its last item and the comma that may follow it (`closing` of `removeListItems`; `{ , }` is no syntax). */
+export function listEnd(code: string, items: ReadonlyArray<Node>): number {
+  const last = items[items.length - 1]!
+  const next = nextToken(code, last.end)
+  return code[next] === ',' ? next + 1 : last.end
 }
 
 /** Whether the next token after `pos` (past whitespace and comments) is a comma. */
