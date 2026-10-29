@@ -1841,9 +1841,10 @@ class Renderer {
       const seg = out[i]!
       const text =
         seg.k === 'slice' ? this.code.slice(seg.start, seg.end) : seg.text
-      const m = /\S/.exec(text)
+      // the first token's first character: a comment (`/* @__PURE__ */`) is no `/`
+      const m = /^(?:\s|\/\*[\s\S]*?\*\/|\/\/.*)*(\S)/.exec(text)
       if (m) {
-        first = m[0]
+        first = m[1]!
       }
     }
     if (first === '' || !'([`+-/<'.includes(first)) {

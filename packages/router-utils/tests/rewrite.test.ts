@@ -875,4 +875,28 @@ describe('replacements at a statement start', () => {
     expect(out).toContain('baz;\n  (() => 4)()\n  ;(() => 5)()\n')
     expect(out).toContain('{\n  (() => 6)()\n}')
   })
+
+  it('reads the first token past a leading comment', () => {
+    const code = dedent(`
+      const x = foo
+      wrap(1)
+      const y = bar
+      wrap(2)
+    `)
+    const e = engine(code)
+    const replace = (call: string, replacement: string) => {
+      const start = code.indexOf(call)
+      e.ctx.rewrites.add({
+        range: { start, end: start + call.length },
+        body: [{ k: 'text', parts: [replacement] }],
+        scope: 'all-outputs',
+        by: 'toy',
+      })
+    }
+    replace('wrap(1)', '/* @__PURE__ */ lazy(1)')
+    replace('wrap(2)', '/* @__PURE__ */ (0, lazy)(2)')
+    const out = e.render().code
+    expect(out).toContain('const x = foo\n/* @__PURE__ */ lazy(1)\n')
+    expect(out).toContain('const y = bar\n;/* @__PURE__ */ (0, lazy)(2)\n')
+  })
 })
