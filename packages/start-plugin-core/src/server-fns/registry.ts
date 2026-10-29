@@ -32,6 +32,11 @@ export interface ServerFnFact {
   providerDerived: boolean
 }
 
+interface ServerFnEnv {
+  name: string
+  type: 'client' | 'server'
+}
+
 /** An environment's snapshots: the facts of each defining module (by canonical id) that reported some. */
 interface EnvSnapshots {
   type: 'client' | 'server'
@@ -68,25 +73,29 @@ export class ServerFnRegistry {
 
   /** Replaces the snapshot of `definingCanonicalId` in an env with the facts of its compile (`null`: none). */
   set(
-    env: { name: string; type: 'client' | 'server' },
+    env: ServerFnEnv,
     definingCanonicalId: string,
     facts: ReadonlyArray<ServerFnFact> | null,
   ): void {
-    const modules = this.envs.get(env.name)?.modules
-    if (modules?.get(definingCanonicalId) === (facts ?? undefined)) {
+    let snapshots = this.envs.get(env.name)
+    if (snapshots?.modules.get(definingCanonicalId) === (facts ?? undefined)) {
       return
     }
+    if (!snapshots) {
+      snapshots = { type: env.type, modules: new Map() }
+      this.envs.set(env.name, snapshots)
+    }
     if (facts) {
-      this.snapshotsOf(env).set(definingCanonicalId, facts)
+      snapshots.modules.set(definingCanonicalId, facts)
     } else {
-      modules?.delete(definingCanonicalId)
+      snapshots.modules.delete(definingCanonicalId)
     }
     this.byId = null
   }
 
   /** Replaces every snapshot of an env (the Rsbuild replay of a compilation's modules). */
   replace(
-    env: { name: string; type: 'client' | 'server' },
+    env: ServerFnEnv,
     modules: Map<string, ReadonlyArray<ServerFnFact>>,
   ): void {
     this.envs.set(env.name, { type: env.type, modules })
@@ -103,18 +112,6 @@ export class ServerFnRegistry {
         }
       }
     }
-  }
-
-  private snapshotsOf(env: {
-    name: string
-    type: 'client' | 'server'
-  }): Map<string, ReadonlyArray<ServerFnFact>> {
-    let snapshots = this.envs.get(env.name)
-    if (!snapshots) {
-      snapshots = { type: env.type, modules: new Map() }
-      this.envs.set(env.name, snapshots)
-    }
-    return snapshots.modules
   }
 
   private view(): Map<string, ServerFnEntry> {
