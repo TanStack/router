@@ -43,11 +43,15 @@ emits its own output. Nothing depends on transform order.
 - **Generated code declares its reads** (`SymRef`s); nothing is re-parsed to find them. Names come from one
   allocator per file over every name in every scope (`names.ts`), so a name means the same thing in every output.
 
-### Reachability = splitting = dead-code removal (`reach.ts`)
+### Reachability = splitting = dead-code removal (`reach.ts`, `placement/`)
 
 Per output: roots → closure over _live_ value references (not inside removed ranges; type positions never keep
 anything alive) at cluster granularity (a binding with all its writers and augmentations travels together) → the
-units that output contains. The same computation decides:
+units that output contains. `computePlacement` composes seven stages, each a function of what the previous ones
+produced: `clusters` (clusters, the write table, ordered evaluation), `reads` (what each cluster reads per output,
+`reach`), `roots` (the roots planners and the module declare, extraction candidates, provenance), `settle` (the env
+roots, the movable test and the extracted exports: one fixed point), `kept`, `homes` (homes, the single-writer
+rule) and `inclusion` (what each output contains, imports and exports). The same computation decides:
 
 - **placement**: a cluster only one split group needs goes to that chunk; one the route module needs stays there and
   chunks import it; one several groups need goes to a lazy shared module; copyable primitives and import specifiers
@@ -71,7 +75,8 @@ units that output contains. The same computation decides:
   with its line and, in a recognised route call, its option; `needers`, several split outputs; `written`, changed
   outside its declaration at load; `state`, reading what the module writes; `reads`, reading an effectful or `let`
   binding the module keeps), once at the cause (a cluster kept only because another kept one reads it is not
-  reported; `Placement.kept`, worded by `AnalysisPlan`, deduped per file and wording by the hosts' ledgers); every
+  reported; `Placement.kept`, worded by `kept-diagnostics.ts` with the words the planners give their outputs and
+  modules, deduped per file and wording by the hosts' ledgers); every
   host also warns after a client build when an extracted module landed in an entry chunk (another module imports
   the binding through the route file);
 - **dead code, by provenance**: a declaration or import specifier is removed only if _our_ edits orphaned it (its
@@ -80,7 +85,10 @@ units that output contains. The same computation decides:
   route module uses only in type positions leaves it: TypeScript erases it anyway). Type units stay in the env module
   as written whatever their cluster (`import type { X }` next to a value `X` that moves stays whole and type-only),
   never in a derived output; only the TypeScript-only specifiers (an inline `type` specifier, an `export { X }` of a
-  type-only binding) follow their statement's value specifiers (`importStays`). A read the core synthesises from a
+  type-only binding) follow their statement's value specifiers (`importStays`). Below the units, function-local
+  declarators and destructuring leaves only erased code read go too (`orphans.ts`): the core runs that cleanup once
+  after every planner, removing each in every output when edits addressed to every output orphaned it, else in the
+  env module only. A read the core synthesises from a
   name rather than from a reference (the classic runtime's JSX factory `React` when no pragma names the runtime, a
   Solid `use:` directive) binds only to a declaration with a runtime value (`valueBinding`):
   `import type * as React` is never the factory;
@@ -145,12 +153,12 @@ directives, never license comments.
 
 ## Pipeline (`pipeline.ts` `compileModule`)
 
-| phase | what                                                                                                                                                                                                                                                             |
-| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A     | identify (canonical id = host id minus compiler-owned query keys), validated plan-cache lookup, parse, Tier 0 analysis (imports/exports/edges/effects), each planner's `gate`, async `prefetch` (resolutions, summaries, target facts; may withdraw the planner) |
-| B     | synchronous `plan` of every planner in order on an `AnalysisPlan`, `resolve()` (claims, clusters, roots, homes, glue, per-output edges), `freeze()` into a plain-data `EmitPlan`                                                                                 |
-| C     | per-output edge `policy` (import protection substitutes specifiers), snapshot validation of every dependency, publication to the cache                                                                                                                           |
-| D     | emission of the requested output, on demand                                                                                                                                                                                                                      |
+| phase | what                                                                                                                                                                                                                                                                |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A     | identify (canonical id = host id minus compiler-owned query keys), validated plan-cache lookup, parse, Tier 0 analysis (imports/exports/edges/effects), each planner's `gate`, async `prefetch` (resolutions, summaries, target facts; may withdraw the planner)    |
+| B     | synchronous `plan` of every planner in order on an `AnalysisPlan`, `resolve()` (function-scope orphans, claims, clusters, roots, homes, glue), `freeze()` (`freeze.ts`) into a plain-data `EmitPlan` with per-output edges (`edges.ts`, one builder for both tiers) |
+| C     | per-output edge `policy` (import protection substitutes specifiers), snapshot validation of every dependency, publication to the cache                                                                                                                              |
+| D     | emission of the requested output, on demand                                                                                                                                                                                                                         |
 
 Tier 1 (units, symbols, classified references) is built only when a planner needs it. Phase C restarts the compile
 (up to 3 attempts) when a dependency changed underneath it; a compile overtaken by a newer revision of its own file is
