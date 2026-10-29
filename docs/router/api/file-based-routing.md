@@ -213,10 +213,7 @@ By default, this value is set to `false`.
 
 When enabled, the generator adds explicit type annotations so the generated route tree passes TypeScript's `isolatedDeclarations` check without changing its types.
 
-This option reports an error for routes without a route file and for deprecated `.loader` files:
-
-- For a route without a route file, add a file that exports `export const Route = createFileRoute('/your-route')()` for that route's path.
-- For a `.loader` file, move the loader into the route file.
+This option reports an error for routes without a route file. To fix it, add a route file for that path containing `export const Route = createFileRoute('/path')()`.
 
 This option has no effect when `disableTypes` is `true`.
 

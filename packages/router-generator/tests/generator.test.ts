@@ -86,6 +86,7 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
     case 'isolated-declarations-nested':
     case 'isolated-declarations-pathless-layout':
     case 'isolated-declarations-lazy':
+    case 'isolated-declarations-virtual':
       config.isolatedDeclarations = true
       break
     case 'isolated-declarations-unformatted':
@@ -365,6 +366,9 @@ async function postprocess(folderName: string) {
 }
 
 function shouldThrow(folderName: string) {
+  if (folderName === 'isolated-declarations-virtual') {
+    return 'isolatedDeclarations: "posts/$postId.lazy.tsx" has no route file'
+  }
   if (folderName === 'duplicate-fullPath') {
     return `Conflicting configuration paths were found for the following routes: "/", "/".`
   }
@@ -393,12 +397,12 @@ describe('generator works', async () => {
       const generator = new Generator({ config, root: folderRoot })
       const error = shouldThrow(folderName)
       if (error) {
-        try {
-          await generator.run()
-        } catch (e) {
-          expect(e).toBeInstanceOf(Error)
-          expect((e as Error).message.startsWith(error)).toBeTruthy()
-        }
+        const runError = await generator.run().then(
+          () => undefined,
+          (e: unknown) => e,
+        )
+        expect(runError).toBeInstanceOf(Error)
+        expect((runError as Error).message.startsWith(error)).toBe(true)
       } else {
         await generator.run()
 
