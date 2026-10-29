@@ -26,7 +26,6 @@ export function engine(
   opts: {
     id?: string
     env?: Partial<EnvInfo>
-    fallbacks?: PlanContext['fallbacks']
   } = {},
 ): Engine {
   const id = opts.id ?? '/app/route.tsx'
@@ -42,13 +41,7 @@ export function engine(
     path: identity.path,
   })
   const env = envInfo(opts.env)
-  const plan = new AnalysisPlan(
-    analysis,
-    identity,
-    env,
-    new Map(),
-    opts.fallbacks ?? [],
-  )
+  const plan = new AnalysisPlan(analysis, identity, env, new Map(), [])
   let frozen: EmitPlan | null = null
   const freeze = () => {
     if (!frozen) {

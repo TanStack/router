@@ -64,7 +64,6 @@ export type EdgeForm =
 type EdgeLocation = { range: Range } | { segment: number }
 
 export interface EdgeRecord {
-  output: OutputId
   /** The output's own canonical id. */
   importerId: string
   edgeKey: string
@@ -143,8 +142,6 @@ export interface PlanContext {
   readonly symbols: SymbolTable
   /** Phase A results, by planner name. */
   readonly prefetched: ReadonlyMap<string, unknown>
-  /** Fallbacks reported by the core in a previous planning round. */
-  readonly fallbacks: ReadonlyArray<FallbackRecord>
   /** The core's fallback of a previous round on exactly `range` (of `kind`, when given). */
   fallbackAt: (range: Range, kind?: RegionKind) => FallbackRecord | undefined
   region: (range: Range, kind: Exclude<RegionKind, 'unit'>) => RegionId

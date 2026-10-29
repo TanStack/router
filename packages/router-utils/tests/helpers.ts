@@ -195,14 +195,11 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
             : (ctx.t1.declaringUnits.get(valueSym) ?? []).map(
                 (u) => ctx.t1.regions.get(ctx.t1.units[u]!.region).range,
               )
-        const fallback = ctx.fallbacks.find(
-          (f) =>
-            (f.range.start === valueRange.start &&
-              f.range.end === valueRange.end) ||
-            declaringRanges.some(
-              (r) => r.start === f.range.start && r.end === f.range.end,
-            ),
-        )
+        const fallback =
+          ctx.fallbackAt(valueRange) ??
+          declaringRanges
+            .map((r) => ctx.fallbackAt(r))
+            .find((f) => f !== undefined)
         if (fallback) {
           reasons[key] = fallback.reason
           ctx.setFacts('toy-split', { notSplittable: key, reasons })

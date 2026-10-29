@@ -158,8 +158,6 @@ export function seedRoots(
     switch (r.t) {
       case 'unit':
         return clusterOfRegion.get(units[r.id]!.region)
-      case 'region':
-        return clusterOfRegion.get(r.id)
       case 'gen':
         return clusterOfGen.get(r.id)
       case 'sym':

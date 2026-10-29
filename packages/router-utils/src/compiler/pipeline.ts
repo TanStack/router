@@ -601,7 +601,7 @@ function tier0Plan(
     edgeKeyOf(env.name, env.layer, identity.canonicalId, raw, form)
   const edges: EmitPlan['edges'] = {
     env: dedupeEdges(
-      sourceEdges(t0, edgeKey, 'env', identity.canonicalId, wholeModule(t0)),
+      sourceEdges(t0, edgeKey, identity.canonicalId, wholeModule(t0)),
     ),
   }
   return {
@@ -652,7 +652,6 @@ function withConfig(plan: AnalysisPlan, config: unknown): PlanContext {
     names: plan.names,
     symbols: plan.symbols,
     prefetched: plan.prefetched,
-    fallbacks: plan.fallbacks,
     fallbackAt: (range, kind) => plan.fallbackAt(range, kind),
     region: (range, kind) => plan.region(range, kind),
     declareOutput: (spec) => plan.declareOutput(spec),

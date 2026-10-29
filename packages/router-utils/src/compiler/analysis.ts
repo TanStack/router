@@ -217,8 +217,6 @@ interface JsxInfo {
 
 export interface Tier1 {
   items: ReadonlyArray<TopLevelItem>
-  /** The range after the last item (trailing comments), kept in the env output only. */
-  tail: Range
   units: ReadonlyArray<Unit>
   regions: RegionTable
   symbols: SymbolTable
@@ -856,7 +854,7 @@ export class ModuleAnalysis {
     }
     const file = this.file
     const symbols = new SymbolTable(file)
-    const { items, tail } = buildItems(file, this.header)
+    const items = buildItems(file, this.header)
     const { units, regions, declaringUnits } = buildUnits(
       file,
       items,
@@ -996,7 +994,6 @@ export class ModuleAnalysis {
 
     const tier1: Tier1 = {
       items,
-      tail,
       units,
       regions,
       symbols,

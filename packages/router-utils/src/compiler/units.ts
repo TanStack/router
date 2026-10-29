@@ -357,10 +357,7 @@ function rootIdentifier(node: Node): Node | null {
 export function buildItems(
   file: SourceFile,
   header: Header,
-): {
-  items: Array<TopLevelItem>
-  tail: Range
-} {
+): Array<TopLevelItem> {
   const code = file.source
   const body = file.program.body
   const items: Array<TopLevelItem> = []
@@ -423,7 +420,7 @@ export function buildItems(
     })
     prevEnd = end
   }
-  return { items, tail: { start: prevEnd, end: code.length } }
+  return items
 }
 
 interface UnitBuildResult {

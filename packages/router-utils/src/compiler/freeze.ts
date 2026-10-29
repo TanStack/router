@@ -115,7 +115,6 @@ export function freezePlan(plan: AnalysisPlan, revision: string): EmitPlan {
       ...sourceEdges(
         plan.analysis,
         (raw, form) => plan.edgeKey(raw, form),
-        id,
         importerId,
         outputView(plan, included, renderer.tree, segments, unitsOfImport),
       ),
@@ -946,7 +945,6 @@ class Renderer {
             edgeKey: f.edgeKey,
           })
           this.edges.push({
-            output: this.output,
             importerId: this.importerId,
             edgeKey: f.edgeKey,
             form: f.form ?? 'static',

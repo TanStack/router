@@ -1021,9 +1021,9 @@ function offsetOf(code: string, line: number, column: number): number {
 }
 
 describe('planning rounds', () => {
-  // A planner that registers a new region every round and never reads the
-  // fallbacks it is handed (round r claims the r-th statement of the
-  // component into the chunk; each claim writes `a`, which the loader
+  // A planner that registers a new region every round and never honours the
+  // fallbacks it is handed (each round claims the component's first
+  // statement without a fallback into the chunk; each claim writes `a`, which the loader
   // reads, so each round reports a fresh region). The rounds end at the
   // bound (the region count after the first round) with every sub-region
   // kept in place and one warning; a planner honours the exhausted
@@ -1049,14 +1049,14 @@ describe('planning rounds', () => {
         }
         ctx.setRouteModule()
         ctx.markBenignEffect(found.unit.id)
-        if (ctx.fallbacks.some((f) => f.reason === 'exhausted')) {
-          return
-        }
         const component = propertyOf(found.options, 'component')!.value
         const body = (
           component as { body: { body: Array<{ start: number; end: number }> } }
         ).body.body
-        const stmt = body[ctx.fallbacks.length]
+        if (body.some((s) => ctx.fallbackAt(s)?.reason === 'exhausted')) {
+          return
+        }
+        const stmt = body.find((s) => ctx.fallbackAt(s) === undefined)
         if (!stmt) {
           return
         }

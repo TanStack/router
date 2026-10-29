@@ -26,7 +26,6 @@ import type { GenUnitId, OutputId, RewriteSet } from './rewrite'
 
 export type RootRef =
   | { t: 'unit'; id: UnitId }
-  | { t: 'region'; id: RegionId }
   | { t: 'gen'; id: GenUnitId }
   /** A module binding a derived output's root reads as its value (J2.8: reported when its effects keep it in the env module). */
   | { t: 'sym'; id: SymbolId }

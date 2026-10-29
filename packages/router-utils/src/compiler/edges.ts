@@ -7,7 +7,6 @@
  */
 import type { ImportEntry, ModuleAnalysis } from './analysis'
 import type { EdgeForm, EdgeRecord } from './plan'
-import type { OutputId } from './rewrite'
 import type { SymbolId } from './symbols'
 
 /** What of the module's source renders in an output. */
@@ -40,7 +39,6 @@ export function wholeModule(analysis: ModuleAnalysis): EdgeView {
 export function sourceEdges(
   analysis: ModuleAnalysis,
   edgeKey: (rawSpecifier: string, form: EdgeForm) => string,
-  output: OutputId,
   importerId: string,
   view: EdgeView,
 ): Array<EdgeRecord> {
@@ -53,7 +51,6 @@ export function sourceEdges(
     names: Array<string>,
   ) => {
     into.push({
-      output,
       importerId,
       edgeKey: edgeKey(specifier, form),
       form,
