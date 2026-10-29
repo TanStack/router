@@ -14,13 +14,12 @@
  * API:
  * - `inlineSourceMap(code)`: the map of a `//# sourceMappingURL=data:`
  *   comment (what dev servers serve), or `undefined`.
- * - `positionAt(code, offset)` and `offsetAt(code, position)`.
+ * - `positionAt(code, offset)`.
  * - `findNodes(code, predicate, options?)` and `tokenOffsets(code, query,
  *   options?)`: offsets of parsed syntax (identifiers, string values, a
  *   `throw`), whatever the printing.
  * - `originalPositionOf(map, generated)`: the original `{ source, line,
  *   column }` of a generated position, or `undefined` when unmapped.
- * - `originalPositions(map)`: every original position the map points at.
  * - `traceStack(stack, mapOf)`: the frames of an executed throw's stack,
  *   each resolved through the map `mapOf` gives for its file.
  * - `expectMapsTo(map, generated, expected)`: asserts a generated position
@@ -29,11 +28,7 @@
  *   belongs to), `expected.line` and, when given, `expected.column`.
  */
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import {
-  TraceMap,
-  eachMapping,
-  originalPositionFor,
-} from '@jridgewell/trace-mapping'
+import { TraceMap, originalPositionFor } from '@jridgewell/trace-mapping'
 import { parseSync } from 'vite'
 import { expect } from 'vitest'
 import { mentionsFile } from './diagnostics'
@@ -105,23 +100,6 @@ export function positionAt(code: string, offset: number): Position {
     lineStart = match.index + match[0].length
   }
   return { line, column: offset - lineStart }
-}
-
-/** The offset of `position` in `code`. */
-export function offsetAt(code: string, position: Position): number {
-  let line = 1
-  let lineStart = 0
-  for (const match of code.matchAll(lineTerminators)) {
-    if (line === position.line) {
-      break
-    }
-    line++
-    lineStart = match.index + match[0].length
-  }
-  if (line !== position.line) {
-    throw new Error(`line ${position.line} is not in the code`)
-  }
-  return lineStart + position.column
 }
 
 /** A parsed syntax node (ESTree, with offsets). */
@@ -237,21 +215,6 @@ export function originalPositionOf(
     line: original.line,
     column: original.column,
   }
-}
-
-/** Every original position the mappings of `map` point at. */
-export function originalPositions(map: AnySourceMap): Array<OriginalPosition> {
-  const positions: Array<OriginalPosition> = []
-  eachMapping(traceMap(map), (mapping) => {
-    if (mapping.source !== null) {
-      positions.push({
-        source: mapping.source,
-        line: mapping.originalLine,
-        column: mapping.originalColumn,
-      })
-    }
-  })
-  return positions
 }
 
 /** A frame of a stack trace, resolved through its file's map. */

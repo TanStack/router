@@ -47,7 +47,6 @@ const describe = (outDir: string) =>
     sourcemap: true,
     warnings: [],
     consoleMessages: [],
-    duration: 0,
     dispose: async () => {},
   })
 

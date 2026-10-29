@@ -135,7 +135,6 @@ test(
       parsedModules: build.parsedModules.web,
       warnings: [],
       consoleMessages: [],
-      duration: 0,
       dispose: async () => {},
     })
   },

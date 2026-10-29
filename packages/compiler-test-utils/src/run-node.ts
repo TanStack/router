@@ -17,8 +17,6 @@ export interface RunNodeOptions {
   env?: NodeJS.ProcessEnv
   /** How long the program may run, in milliseconds. Default 30 000. */
   timeout?: number
-  /** Largest stdout/stderr accepted, in bytes. Default 64 MiB. */
-  maxBuffer?: number
 }
 
 export interface RunNodeResult {
@@ -69,7 +67,8 @@ export function runNodeProgram(
       {
         cwd: options.cwd,
         env: options.env,
-        maxBuffer: options.maxBuffer ?? 64 * 1024 * 1024,
+        // (the largest stdout/stderr accepted)
+        maxBuffer: 64 * 1024 * 1024,
         timeout,
         killSignal: 'SIGKILL',
       },

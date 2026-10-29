@@ -10,7 +10,6 @@ import {
   expectRelocatable,
   reorderedRecords,
   reorderings,
-  withoutRoot,
 } from '../src/determinism'
 
 describe('reorderings', () => {
@@ -73,7 +72,7 @@ describe('expectRelocatable', () => {
         checked.push(root)
         expect(observation.callerId).toBe(observation.id)
       },
-      portable: (observation, root) => withoutRoot(observation.file, root),
+      portable: (observation, root) => observation.file.slice(root.length),
     })
     expect(checked).toEqual(['/a', '/deeper/b'])
   })
@@ -90,26 +89,5 @@ describe('expectRelocatable', () => {
         portable: (observation) => observation.file,
       }),
     ).rejects.toThrow()
-  })
-})
-
-test('withoutRoot replaces every spelling of the root, in values and keys', () => {
-  expect(
-    withoutRoot(
-      {
-        '/app/src/a.ts': [
-          'file:///app/src/a.ts:1:2',
-          '\\app\\src\\a.ts',
-          '/application/x',
-        ],
-      },
-      '/app',
-    ),
-  ).toEqual({
-    '<root>/src/a.ts': [
-      '<root>/src/a.ts:1:2',
-      '<root>\\src\\a.ts',
-      '/application/x',
-    ],
   })
 })

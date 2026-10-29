@@ -432,7 +432,6 @@ export async function createPluginHost(
                 (diagnostic) => diagnostic.severity === 'warning',
               ),
               consoleMessages: [],
-              duration: 0,
               dispose: async () => {},
             })
           },

@@ -31,7 +31,7 @@ package. What the suite is and how to read it: [oracle/README.md](oracle/README.
 - `./outcome` (`waitForOutcome`): wait for an edit's outcome within one bound.
 - `./diagnostic-channel`, `./diagnostics` (`expectDiagnostic`, `expectNoProblems`): every reporting channel merged;
   checks by severity, file and position.
-- `./importers` (`importerSource`, `loadMarker`, `expectNotLoaded`): real importers and load markers.
+- `./importers` (`loadMarker`, `loadedModulesExpression`, `expectNotLoaded`): load markers.
 - `./free-names`, `./known-globals`: a module's free names (Yuku), minus the environment's globals.
 - `./global-trap`: trap a page's dev-only globals (SPEC G7).
 - `./source-maps`: map assertions through `@jridgewell/trace-mapping`.
@@ -86,7 +86,7 @@ moving page tests to `integration-pages`), not re-budgeted or sharded.
 ## Setup facts
 
 - Framework packages and tools are test-only devDependencies (`solid-js`, `vite-plugin-solid`, `@rsbuild/plugin-react`,
-  `@rsbuild/plugin-solid` ≥ 1.2.2, `@vitejs/plugin-react`, `@vitejs/plugin-vue`, `miniflare`, …).
+  `@rsbuild/plugin-solid` ≥ 1.2.2, `@vitejs/plugin-react`, `@vitejs/plugin-vue`, …).
 - The integration targets build `@tanstack/react-start` first (linked at test time).
 - `@tanstack/compiler-vite-versions` (private, test-only) holds the other Vite majors the router plugin supports as
   aliased packages (`vite6`, `vite7`) for router-plugin's `integration/vite-versions.test.ts`. They live in their own

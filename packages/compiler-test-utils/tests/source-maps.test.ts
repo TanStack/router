@@ -13,9 +13,7 @@ import {
   expectMapsTo,
   findNodes,
   inlineSourceMap,
-  offsetAt,
   originalPositionOf,
-  originalPositions,
   positionAt,
   tokenOffsets,
   traceStack,
@@ -34,14 +32,10 @@ export function fail(reason: Reason = 'MARK_FAIL'): string {
 const throwLine = 6
 
 describe('positions', () => {
-  test('positionAt and offsetAt count every JavaScript line terminator', () => {
+  test('positionAt counts every JavaScript line terminator', () => {
     const code = 'a\r\nb\rc\u2028d\u2029e\nf'
     expect(positionAt(code, code.indexOf('e'))).toEqual({ line: 5, column: 0 })
     expect(positionAt(code, code.indexOf('f'))).toEqual({ line: 6, column: 0 })
-    for (const char of 'abcdef') {
-      const offset = code.indexOf(char)
-      expect(offsetAt(code, positionAt(code, offset))).toBe(offset)
-    }
   })
 
   test('tokens are found by parsing, whatever the quotes or spacing', () => {
@@ -92,9 +86,6 @@ describe.each([
         .column,
     })
     expect(original.source).toContain('fail.ts')
-    expect(
-      originalPositions(map).some((position) => position.line === throwLine),
-    ).toBe(true)
   })
 
   test('an executed throw resolves through its stack', async () => {

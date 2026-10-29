@@ -36,11 +36,7 @@
  * - `expectRelocatable(roots, observe, { check, portable? })`: runs
  *   `observe` at each root, applies `check(observation, root)` to each and,
  *   when given, asserts `portable(observation, root)` agrees across roots.
- * - `withoutRoot(value, root)`: `value` with every spelling of `root`
- *   (posix, Windows separators, `file://` URL) in its strings replaced by
- *   `<root>`, for portable projections of paths and diagnostics.
  */
-import { pathToFileURL } from 'node:url'
 import { expect } from 'vitest'
 
 /** A named order of the same items. */
@@ -142,48 +138,4 @@ export async function expectRelocatable<TObservation>(
     }
   }
   return observations
-}
-
-/**
- * `value` with each spelling of `root` in its strings (and object keys)
- * replaced by `<root>`.
- */
-export function withoutRoot<T>(value: T, root: string): T {
-  const posix = root.replaceAll('\\', '/').replace(/\/+$/, '')
-  const spellings = [
-    ...new Set([
-      pathToFileURL(posix).href,
-      posix,
-      posix.replaceAll('/', '\\'),
-      root.replace(/[\\/]+$/, ''),
-    ]),
-  ].sort((a, b) => b.length - a.length)
-  // A spelling counts only where the root ends (not `/app` in `/apple`).
-  const pattern = new RegExp(
-    `(?:${spellings.map((spelling) => spelling.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})(?![\\w.-])`,
-    'g',
-  )
-  const replace = (text: string) => text.replace(pattern, '<root>')
-  const visit = (current: unknown): unknown => {
-    if (typeof current === 'string') {
-      return replace(current)
-    }
-    if (Array.isArray(current)) {
-      return current.map(visit)
-    }
-    if (
-      typeof current === 'object' &&
-      current !== null &&
-      Object.getPrototypeOf(current) === Object.prototype
-    ) {
-      return Object.fromEntries(
-        Object.entries(current).map(([key, item]) => [
-          replace(key),
-          visit(item),
-        ]),
-      )
-    }
-    return current
-  }
-  return visit(value) as T
 }

@@ -452,7 +452,6 @@ export async function buildWithRsbuild(
         })
       },
     }
-    const started = performance.now()
     await withBuildEnvironment(nodeEnv, consoleMessages, async () => {
       try {
         const rsbuild = await createRsbuild({
@@ -526,7 +525,6 @@ export async function buildWithRsbuild(
       parsedModules: parsed,
       warnings,
       consoleMessages,
-      duration: performance.now() - started,
       dispose: app.dispose,
       entryGlobal: rsbuildEntryGlobal,
     })

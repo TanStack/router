@@ -467,7 +467,7 @@ const harnessEntries = (root: string) => ({
 /**
  * Builds the app with Start's plugin of `bundler` (client, then SSR) and
  * describes the output of each environment. Both results share the build's
- * duration and console messages; warnings are per environment.
+ * console messages; warnings are per environment.
  */
 export async function buildStart(
   options: StartBuildOptions,
@@ -590,10 +590,8 @@ async function buildAt(
       diagnostics = described()
     }
   }
-  let started = performance.now()
   let outputs: Outputs | undefined
   for (let index = 0; index < builds; index++) {
-    started = performance.now()
     try {
       outputs = await build()
     } catch (error) {
@@ -608,7 +606,6 @@ async function buildAt(
     throw new Error('buildAt: no build')
   }
   const built = outputs
-  const duration = performance.now() - started
   const describe = (env: Env) =>
     describeBuild({
       bundler: bundler === 'vite' ? 'vite' : 'rspack',
@@ -622,7 +619,6 @@ async function buildAt(
       sourcemap: target.sourcemap,
       warnings: warnings[env],
       consoleMessages,
-      duration,
       dispose: app.dispose,
       entryGlobal,
     })

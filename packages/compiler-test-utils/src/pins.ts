@@ -2,11 +2,10 @@
  * Known-bug pins as ordinary tests. A pin (`test.fails`, `it.fails`, their
  * `.each`/`.for` forms, `{ fails: true }`) asserts the correct outcome of a
  * bug today's compiler has (oracle/KNOWN-BUGS.md), and passes while that
- * outcome fails. With `COMPILER_TESTS_PINS=run`, every pin runs as an
- * ordinary test (`./pins-setup`), and the few tables that mark known bugs by
- * today's behaviour instead of `.fails` treat every cell as fixed
- * (`runPins`). One run then shows which pins a compiler passes: the run's
- * report lists them (`reportPins`); the pins it still fails are failures.
+ * outcome fails. With `COMPILER_TESTS_PINS=run` (`runPins`), every pin runs
+ * as an ordinary test (`./pins-setup`). One run then shows which pins a
+ * compiler passes: the run's report lists them (`reportPins`); the pins it
+ * still fails are failures.
  */
 import path from 'node:path'
 import type { TestModule, Vitest } from 'vitest/node'

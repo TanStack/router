@@ -209,8 +209,6 @@ export interface BuildResult {
    * severity (`./diagnostic-channel`; informational output is not kept).
    */
   consoleMessages: Array<ChannelDiagnostic>
-  /** Build time in milliseconds. */
-  duration: number
   /** Chunks whose code contains `marker`, split into eager and lazy. */
   locate: (marker: string | RegExp) => {
     eager: Array<string>
@@ -459,7 +457,6 @@ async function bundle(
   }
   const warnings: Array<ChannelDiagnostic> = []
   const consoleMessages: Array<ChannelDiagnostic> = []
-  const started = performance.now()
   const output = await withBuildEnvironment(
     target.nodeEnv === undefined ? mode : target.nodeEnv,
     consoleMessages,
@@ -471,7 +468,6 @@ async function bundle(
       )
     },
   )
-  const duration = performance.now() - started
   return describeBuild({
     bundler,
     env,
@@ -483,7 +479,6 @@ async function bundle(
     parsedModules: config.parsedModules,
     warnings,
     consoleMessages,
-    duration,
     dispose,
   })
 }
@@ -1077,7 +1072,6 @@ export interface DescribeBuildInput {
   parsedModules?: ParsedModules
   warnings: Array<ChannelDiagnostic>
   consoleMessages: Array<ChannelDiagnostic>
-  duration: number
   dispose: () => Promise<void>
   /**
    * For an entry that exports nothing (an application entry): the global
@@ -1184,7 +1178,6 @@ export async function describeBuild(
     lazy: [...emitted].filter((fileName) => !eager.has(fileName)),
     warnings: input.warnings,
     consoleMessages: input.consoleMessages,
-    duration: input.duration,
     locate,
     where: (marker) => {
       const found = locate(marker)

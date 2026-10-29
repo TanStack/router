@@ -473,7 +473,6 @@ describe('client runs in the browser', () => {
       ],
       warnings: [],
       consoleMessages: [],
-      duration: 0,
       dispose: app.dispose,
       entryGlobal: '__entry',
     })

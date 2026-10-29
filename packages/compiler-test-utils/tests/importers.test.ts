@@ -3,23 +3,8 @@
  * a plain module any real app can contain, and load markers record the
  * modules that evaluated in any realm.
  */
-import { afterEach, describe, expect, test } from 'vitest'
-import {
-  importerSource,
-  loadMarker,
-  loadedModulesExpression,
-  resetLoadedModules,
-} from '../src/importers'
-
-afterEach(() => {
-  resetLoadedModules()
-})
-
-describe('importerSource', () => {
-  test('is a plain module any real app can contain', () => {
-    expect(importerSource('./route', ['Route'])).toContain(`from "./route"`)
-  })
-})
+import { describe, expect, test } from 'vitest'
+import { loadMarker, loadedModulesExpression } from '../src/importers'
 
 describe('load markers', () => {
   test('loadedModulesExpression reads the records in any realm', () => {
