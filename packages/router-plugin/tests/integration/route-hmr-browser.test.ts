@@ -62,8 +62,6 @@ const statefulRoutes: Array<{
   path: string
   route: (version: string) => string
   shows: (version: string) => string
-  /** The route's loader is split from the route module. */
-  splitLoader?: boolean
 }> = [
   {
     name: 'an arrow function component',
@@ -123,7 +121,6 @@ function Failed() {
   codeSplitGroupings: [['loader'], ['component']],`,
       ),
     shows: (v) => `own chunk ${v} count`,
-    splitLoader: true,
   },
   {
     name: 'a loader in the component chunk',
@@ -141,7 +138,6 @@ function Failed() {
   codeSplitGroupings: [['component', 'loader']],`,
       ),
     shows: (v) => `component chunk ${v} count`,
-    splitLoader: true,
   },
   {
     name: 'a value the loader and the component share',
@@ -353,18 +349,8 @@ describe.concurrent.each(['vite', 'rsbuild'] as const)(
               ).toEqual(inPlace)
             }
 
-            // Other shapes of route files. (A loader split from the route
-            // module on Rsbuild: pinned in known-bugs-route-hmr.test.ts.)
-            for (const {
-              name,
-              path,
-              route,
-              shows,
-              splitLoader,
-            } of statefulRoutes) {
-              if (bundler === 'rsbuild' && autoCodeSplitting && splitLoader) {
-                continue
-              }
+            // Other shapes of route files.
+            for (const { name, path, route, shows } of statefulRoutes) {
               await navigate(app, `/${path}`)
               await app.page.waitForText(`${shows('v1')} 0`, {
                 selector: '#app',
