@@ -4,7 +4,12 @@
  */
 import { isBuiltin } from 'node:module'
 import { posix } from 'node:path'
-import { OWNED_QUERY_KEYS, identify, planKeyString } from './identity'
+import {
+  OWNED_QUERY_KEYS,
+  identify,
+  normalizePath,
+  planKeyString,
+} from './identity'
 import {
   PlanCache,
   UNRESOLVED_DEPENDENCY,
@@ -225,7 +230,7 @@ export function resolveDerivedSibling(
   if (basename.includes('/')) {
     return null
   }
-  const dir = posix.dirname(identify(importer).path.replace(/\\/g, '/'))
+  const dir = posix.dirname(normalizePath(identify(importer).path))
   return `${dir}/${basename}${specifier.slice(q)}`
 }
 
@@ -347,19 +352,6 @@ export async function invalidate(
  */
 export function releaseEnvironment(caches: CompilerCaches, env: string): void {
   caches.plans.delete(env)
-}
-
-/**
- * Whether a Vite environment build (its `build` config) is the last one of
- * the logical build, after which `releaseEnvironment` is due: a written
- * bundle outside watch mode. A `write: false` build may be a scan that
- * builds the environment again (an RSC client scan), and a watch build
- * rebuilds it: their plans stay.
- */
-export function isFinalBuild(
-  build: { write?: boolean; watch?: unknown } | undefined,
-): boolean {
-  return build !== undefined && build.write !== false && !build.watch
 }
 
 export function fingerprintSourceFor(

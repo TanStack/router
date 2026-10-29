@@ -10,8 +10,8 @@
  * The export is then eager: the build warns once per (file, export) per
  * run, in every host (J2.8: the user is told, the build goes on).
  */
-import { identify } from './identity'
-import type { WarningLedger } from './diagnostics'
+import { identify, normalizePath } from '../identity'
+import type { WarningLedger } from '../diagnostics'
 
 interface EagerExtractedExport {
   /** The route file's path, with forward slashes. */
@@ -37,7 +37,7 @@ function eagerExtractedExports(
     if (!match) {
       continue
     }
-    const file = identify(id).path.replace(/\\/g, '/')
+    const file = normalizePath(identify(id).path)
     const name = decodeURIComponent(match[1]!)
     const key = `${file}\0${name}`
     if (seen.has(key)) {

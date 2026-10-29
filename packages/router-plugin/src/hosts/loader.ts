@@ -7,9 +7,12 @@
  * recorder, in the emitted maps (`emittedMapTexts`). The static loader file
  * (`loader/index.cjs`) finds this implementation on the compiler.
  */
-import remapping from '@jridgewell/remapping'
-import { identify } from '@tanstack/router-utils/compiler'
-import { normalizePath, resourceId } from './session'
+import {
+  composeLoaderMap,
+  identify,
+  normalizePath,
+  webpackResourceId,
+} from '@tanstack/router-utils/compiler'
 import type { RouterCompiler } from './session'
 import type {
   Diagnostic,
@@ -59,7 +62,7 @@ export function createLoaderImpl(
   recordMapText: RecordMapText | null,
 ): LoaderImpl {
   return async (ctx, source, inputMap) => {
-    const id = resourceId(ctx.resource)
+    const id = webpackResourceId(ctx.resource)
     const identity = identify(id)
     if (identity.lang === null || !compiler.wants(id)) {
       return { code: source, map: inputMap }
@@ -92,31 +95,15 @@ export function createLoaderImpl(
     if (identity.derived === null && out.code === source) {
       return { code: source, map: inputMap }
     }
-    let map: unknown = out.map ?? undefined
-    if (out.map && inputMap) {
-      const input =
-        typeof inputMap === 'string'
-          ? (JSON.parse(inputMap) as Parameters<typeof remapping>[0])
-          : (inputMap as Parameters<typeof remapping>[0])
-      const ours = {
-        ...out.map,
-        sources: [ctx.resourcePath],
-      } as unknown as Parameters<typeof remapping>[0]
-      const composed = remapping([ours, input] as never, () => null)
-      map = JSON.parse(composed.toString())
-    } else if (out.map) {
-      // the file's text: in the map, or in the emitted maps
-      if (recordMapText) {
-        recordMapText(ctx.resourcePath, source)
-        map = { ...out.map, sources: [ctx.resourcePath] }
-      } else {
-        map = {
-          ...out.map,
-          sources: [ctx.resourcePath],
-          sourcesContent: [source],
-        }
-      }
+    return {
+      code: out.code,
+      map: composeLoaderMap(
+        out.map,
+        ctx.resourcePath,
+        source,
+        inputMap,
+        recordMapText,
+      ),
     }
-    return { code: out.code, map }
   }
 }

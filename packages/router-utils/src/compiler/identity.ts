@@ -116,6 +116,11 @@ function ownedQueryPair(q: DerivedQuery): string {
   }
 }
 
+/** A path with forward slashes, as the hosts and planners compare paths. */
+export function normalizePath(path: string): string {
+  return path.replace(/\\/g, '/')
+}
+
 /** Maps a host id to its canonical identity. Never canonicalises virtual ids beyond their owned keys. */
 export function identify(hostId: string): SourceIdentity {
   const { base, query, hash } = splitQuery(hostId)

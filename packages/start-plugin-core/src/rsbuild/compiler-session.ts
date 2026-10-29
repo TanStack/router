@@ -11,20 +11,22 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import remapping from '@jridgewell/remapping'
 import {
   RawFactsCache,
   WarningLedger,
   collectionSizes,
   compileModule,
+  composeLoaderMap,
   createCompilerCaches,
   deriveId,
   digestOf,
   identify,
   invalidate,
+  normalizePath,
   pathsOf,
   registerCompilerStats,
   releaseEnvironment,
+  webpackResourceId,
 } from '@tanstack/router-utils/compiler'
 import {
   ROUTER_PLANNER,
@@ -47,7 +49,6 @@ import {
 } from '../server-fns/resolver'
 import { createImportProtection } from '../import-protection/session'
 import { rspackEdgeModuleIds } from '../import-protection/edge-modules'
-import { normalizePath } from '../utils'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type { ImportProtection } from '../import-protection/session'
 import type { ImportRewrite } from '../planners/edges'
@@ -69,7 +70,6 @@ import type {
   InvalidateChange,
   PlanKey,
   Planner,
-  RawSourceMap,
   RecordMapText,
   RouteRegistry,
 } from '@tanstack/router-utils/compiler'
@@ -709,38 +709,14 @@ export class StartRsbuildCompilerSession {
     }
     return {
       code: out.code,
-      map: this.composeMap(ctx, out.map, source, inputMap, env.recordMapText),
+      map: composeLoaderMap(
+        out.map,
+        ctx.resourcePath,
+        source,
+        inputMap,
+        env.recordMapText,
+      ),
     }
-  }
-
-  private composeMap(
-    ctx: LoaderContextLike,
-    map: RawSourceMap | null,
-    source: string,
-    inputMap: unknown,
-    recordMapText: RecordMapText | null,
-  ): unknown {
-    if (!map) {
-      return undefined
-    }
-    const ours = { ...map, sources: [ctx.resourcePath] }
-    if (!inputMap) {
-      // the file's text: in the map, or in the emitted maps
-      if (recordMapText) {
-        recordMapText(ctx.resourcePath, source)
-        return ours
-      }
-      return { ...ours, sourcesContent: [source] }
-    }
-    const input =
-      typeof inputMap === 'string'
-        ? (JSON.parse(inputMap) as Parameters<typeof remapping>[0])
-        : (inputMap as Parameters<typeof remapping>[0])
-    const composed = remapping(
-      [ours as unknown as Parameters<typeof remapping>[0], input] as never,
-      () => null,
-    )
-    return JSON.parse(composed.toString())
   }
 
   /** Reports a compile's diagnostics: warnings to the loader context, the errors thrown together (the module fails). */
@@ -851,10 +827,7 @@ export class StartRsbuildCompilerSession {
  * dropped.
  */
 export function canonicalResource(resource: string): string {
-  // Rspack and webpack escape a `#` of the file path in `resource` (`\u200b#`
-  // and `\0#`; `resourcePath` is unescaped): a project path with a `#` (`C#`,
-  // `project #2`) must give the file's path
-  const normalized = normalizePath(resource.replace(/[\0\u200b]#/g, '#'))
+  const normalized = webpackResourceId(resource)
   const q = normalized.indexOf('?')
   if (q === -1) {
     return normalized

@@ -165,7 +165,7 @@ export interface OutputBuilderOptions {
  * module refreshing the route) where only the edited output changed. The
  * source is the file `sources` names: Vite's dev server reads it from there,
  * Rollup and Rolldown take the module's code; the webpack-family hosts add
- * the text (`emitted-maps.ts`).
+ * the text (`hosts/emitted-maps.ts`).
  */
 export interface RawSourceMap {
   version: 3

@@ -13,6 +13,7 @@ import {
   emittedMapTexts,
   initialChunkResources,
   invalidateFiles,
+  normalizePath,
   rebuildModules,
   warnEagerExports,
 } from '@tanstack/router-utils/compiler'
@@ -21,7 +22,6 @@ import {
   readRspackWitness,
   rspackGraphView,
 } from '../import-protection/witness'
-import { normalizePath } from '../utils'
 import {
   SERVER_FN_BUILD_INFO_FIELD,
   canonicalResource,

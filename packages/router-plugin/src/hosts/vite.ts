@@ -17,6 +17,7 @@ import {
   deriveId,
   identify,
   isFinalBuild,
+  normalizePath,
   releaseEnvironment,
   resolveDerivedSibling,
   rollupEntryModuleIds,
@@ -27,7 +28,7 @@ import {
   changedRoutePaths,
   onRoutesChanged,
 } from '../core/router-plugin-context'
-import { JS_ID_RE, RouterCompiler, normalizePath } from './session'
+import { JS_ID_RE, RouterCompiler } from './session'
 import type { RouterPluginContext } from '../core/router-plugin-context'
 import type { Config } from '../core/config'
 import type {

@@ -19,6 +19,7 @@ import {
   canonicalJson,
   digestOf,
   isValidIdentifier,
+  normalizePath,
   stringLiteral,
 } from '@tanstack/router-utils/compiler'
 import { CLIENT_ENV_SUGGESTIONS, SERVER_ENV_SUGGESTIONS } from './trace'
@@ -130,7 +131,7 @@ const CONTENT_QUERY = 'tss-ip='
  * (`ImportProtection.define`).
  */
 export function rspackEdgeModuleIds(dir: string): EdgeModuleIds {
-  const base = dir.replace(/\\/g, '/').replace(/\/$/, '')
+  const base = normalizePath(dir).replace(/\/$/, '')
   const prefix = `${base}/`
   const ids: EdgeModuleIds = {
     specifier: (ref) => `${prefix}${edgeModuleName(ref)}.mjs`,
@@ -159,7 +160,7 @@ export function rspackEdgeModuleIds(dir: string): EdgeModuleIds {
         : null
     },
     parse(resource) {
-      const s = stripQuery(resource).replace(/\\/g, '/')
+      const s = normalizePath(stripQuery(resource))
       if (!s.startsWith(prefix) || !s.endsWith('.mjs')) {
         return null
       }

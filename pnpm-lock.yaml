@@ -14845,9 +14845,6 @@ importers:
 
   packages/router-plugin:
     dependencies:
-      '@jridgewell/remapping':
-        specifier: ^2.3.5
-        version: 2.3.5
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
@@ -15011,6 +15008,9 @@ importers:
 
   packages/router-utils:
     dependencies:
+      '@jridgewell/remapping':
+        specifier: ^2.3.5
+        version: 2.3.5
       pathe:
         specifier: 'catalog:'
         version: 2.0.3
@@ -15434,9 +15434,6 @@ importers:
 
   packages/start-plugin-core:
     dependencies:
-      '@jridgewell/remapping':
-        specifier: ^2.3.5
-        version: 2.3.5
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core

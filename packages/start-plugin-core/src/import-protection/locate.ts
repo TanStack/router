@@ -6,7 +6,7 @@
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { SourceText } from '@tanstack/router-utils/compiler'
+import { SourceText, normalizePath } from '@tanstack/router-utils/compiler'
 import type { InputSourceMap } from '@tanstack/router-utils/compiler'
 
 export interface OriginalLocation {
@@ -147,16 +147,16 @@ function resolveSource(
 ): string {
   if (source.startsWith('file://')) {
     try {
-      return fileURLToPath(source).replace(/\\/g, '/')
+      return normalizePath(fileURLToPath(source))
     } catch {
       return source
     }
   }
   const joined = sourceRoot ? path.posix.join(sourceRoot, source) : source
   if (path.isAbsolute(joined)) {
-    return joined.replace(/\\/g, '/')
+    return normalizePath(joined)
   }
-  return path.resolve(path.dirname(mapFile), joined).replace(/\\/g, '/')
+  return normalizePath(path.resolve(path.dirname(mapFile), joined))
 }
 
 /**

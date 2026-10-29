@@ -133,7 +133,6 @@
     "node": ">=22.12.0"
   },
   "dependencies": {
-    "@jridgewell/remapping": "^2.3.5",
     "@tanstack/router-core": "workspace:*",
     "@tanstack/router-generator": "workspace:*",
     "@tanstack/router-plugin": "workspace:*",

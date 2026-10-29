@@ -15,6 +15,7 @@
 import {
   identifierBase,
   isPureExpression,
+  normalizePath,
   revision,
   siblingSpecifier,
   stringLiteral,
@@ -989,9 +990,8 @@ function serverFnFact(
 }
 
 function relativeRoot(root: string, path: string): string {
-  const norm = (p: string) => p.replace(/\\/g, '/')
-  const r = norm(root).replace(/\/+$/, '')
-  const p = norm(path)
+  const r = normalizePath(root).replace(/\/+$/, '')
+  const p = normalizePath(path)
   if (p.startsWith(`${r}/`)) {
     return p.slice(r.length + 1)
   }

@@ -1,5 +1,5 @@
 import fs from 'node:fs'
-import { WarningLedger } from '@tanstack/router-utils/compiler'
+import { WarningLedger, normalizePath } from '@tanstack/router-utils/compiler'
 import type { GetRoutesByFileMapResult } from '@tanstack/router-generator'
 
 export type RouterPluginContext = {
@@ -85,7 +85,7 @@ export function changedRoutePaths(
   const add = (path: string) => {
     out.add(path)
     try {
-      const real = fs.realpathSync.native(path).replace(/\\/g, '/')
+      const real = normalizePath(fs.realpathSync.native(path))
       if (real !== path) {
         out.add(real)
       }

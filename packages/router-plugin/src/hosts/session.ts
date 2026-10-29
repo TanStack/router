@@ -26,7 +26,7 @@ import {
   routerPlannerConfigFrom,
   routerPureCalls,
 } from '../planners'
-import { RouteRegistryView, normalizePath } from '../planners/registry'
+import { RouteRegistryView } from '../planners/registry'
 import { contextInternals } from '../core/router-plugin-context'
 import type { RouterPluginContext } from '../core/router-plugin-context'
 import type { Config } from '../core/config'
@@ -61,21 +61,8 @@ export interface CompileRequest {
   wantMap: boolean
 }
 
-export { normalizePath }
-
 /** JS module ids the compiler may transform (query allowed). */
 export const JS_ID_RE = /\.[cm]?[jt]sx?(\?|$)/
-
-/**
- * The module id of a webpack / Rspack `resource`, slashes normalized. The
- * bundlers escape a `#` of the file path in `resource` (webpack as `\0#`,
- * Rspack as `\u200b#`; `resourcePath` is unescaped), so that their request
- * parsing reads it as a fragment only when meant as one: a project path with
- * a `#` (`C#`, `project #2`) must match the registry's file paths.
- */
-export function resourceId(resource: string): string {
-  return normalizePath(resource.replace(/[\0\u200b]#/g, '#'))
-}
 
 /** The derived outputs the router planner declares (`?tsr-split=`). */
 const ROUTER_DERIVED_KINDS = new Set(['split', 'shared', 'export'])

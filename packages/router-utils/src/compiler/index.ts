@@ -15,9 +15,6 @@ export type {
 } from './output-builder'
 export * from './strings'
 export * from './diagnostics'
-export * from './eager-exports'
-export * from './rebuild'
-export * from './emitted-maps'
 export * from './symbols'
 export * from './header'
 export * from './purity'
@@ -33,6 +30,8 @@ export * from './facts'
 export * from './host'
 export * from './pipeline'
 export * from './stats'
+// bundler-shaped helpers of the hosts
+export * from './hosts/index'
 /** Yuku's walker and node type, for planners (the core owns the yuku dependency). */
 export { walk } from 'yuku'
 export type { Node as YukuNode } from 'yuku'

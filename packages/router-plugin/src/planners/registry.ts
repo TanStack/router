@@ -7,14 +7,11 @@
  * standalone router hosts and Start's hosts.
  */
 import fs from 'node:fs'
+import { normalizePath } from '@tanstack/router-utils/compiler'
 import { routeEntryDigest } from './route'
 import type { RouterPluginContext } from '../core/router-plugin-context'
 import type { RouteEntryFacts } from './route'
 import type { RouteRegistry } from '@tanstack/router-utils/compiler'
-
-export function normalizePath(p: string): string {
-  return p.replace(/\\/g, '/')
-}
 
 export class RouteRegistryView implements RouteRegistry {
   /** The registry's entries by the real path of their (symlinked) files, per registry. */

@@ -29,6 +29,7 @@ import {
   invalidate,
   isAnalyzableSpecifier,
   isFinalBuild,
+  normalizePath,
   registerCompilerStats,
   releaseEnvironment,
   resolveDerivedSibling,
@@ -168,15 +169,13 @@ const LATE_PASS_EXCLUDE: Array<RegExp> = [
 
 /** The specifier of a module id for the dev module runner: root-relative, or `/@fs/` for files outside the root. */
 function toDevSpecifier(id: string, root: string): string {
-  const normalizedRoot = root.replace(/\\/g, '/').replace(/\/$/, '')
-  const normalized = id.replace(/\\/g, '/')
+  const normalizedRoot = normalizePath(root).replace(/\/$/, '')
+  const normalized = normalizePath(id)
   if (normalized.startsWith(`${normalizedRoot}/`)) {
     return normalized.slice(normalizedRoot.length)
   }
   return normalized.startsWith('/') ? `/@fs${normalized}` : `/@fs/${normalized}`
 }
-
-const normalizePath = (p: string): string => p.replace(/\\/g, '/')
 
 /**
  * The source entry of a pre-bundled dependency, when `id` is the dependency
@@ -306,9 +305,7 @@ export function startCompilerPlugin(
 
   /** Pre-bundled dependencies are opaque (a Start library declaring the framework as a peer is never pre-bundled); everything else resolved is read. */
   const isOpaque = (canonicalId: string): boolean =>
-    identify(canonicalId)
-      .path.replace(/\\/g, '/')
-      .includes('/node_modules/.vite/')
+    normalizePath(identify(canonicalId).path).includes('/node_modules/.vite/')
 
   const envOf = (name: string): StartCompilerEnvironment | undefined =>
     opts.environments.find((e) => e.name === name)

@@ -10,8 +10,8 @@
  * (same loaders), for hosts that must re-run a module's build at `finishMake`.
  */
 import path from 'node:path'
-import { identify } from './identity'
-import type { PlanKey } from './identity'
+import { identify } from '../identity'
+import type { PlanKey } from '../identity'
 
 /** A compilation of the webpack family (`TModule`: its module type). */
 interface RebuildCompilationLike<TModule = unknown> {

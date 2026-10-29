@@ -8,6 +8,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import picomatch from 'picomatch'
+import { normalizePath } from '@tanstack/router-utils/compiler'
 import { importEdgesPlanner } from '../planners/edges'
 import { resolveImportProtectionConfig } from './config'
 import {
@@ -289,7 +290,7 @@ export class ImportProtection {
     if (value === true) {
       return false
     }
-    const rel = path.relative(dir, file).replace(/\\/g, '/')
+    const rel = normalizePath(path.relative(dir, file))
     return !value.some((pattern) => {
       const p = pattern.replace(/^\.\//, '')
       return p.includes('/')

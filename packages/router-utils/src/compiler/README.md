@@ -133,7 +133,7 @@ word and punctuator of copied text, so positions in every output (derived module
 line:column. Lines follow every ECMAScript line terminator. Hosts compose the map with the bundler's input map. The
 map names the file without its text (`sourcesContent`): Vite reads it, Rollup and Rolldown take the module's code, and
 the webpack-family hosts put it in the module map in production and in the emitted map files in development
-(`emitted-maps.ts`: the bundler hashes a module with its map, and the whole file in every output's map would hot-update
+(`hosts/emitted-maps.ts`: the bundler hashes a module with its map, and the whole file in every output's map would hot-update
 every output of an edited file). The header (hashbang, pragmas, license, directives) is handled by `header.ts`; derived outputs copy pragmas and
 directives, never license comments.
 
@@ -199,6 +199,10 @@ returned but not published.
 | Router, esbuild          | `router-plugin/src/esbuild.ts`: generator only; `autoCodeSplitting` throws                                                                                                                                           |
 | Start, Vite              | `start-plugin-core/src/vite/compiler-plugin.ts` (+ `planning.ts`, `bundled-dev.ts`): Start planners and the router planner in one compile per module and env                                                         |
 | Start, Rsbuild           | `start-plugin-core/src/rsbuild/` ([COMPILER_ARCHITECTURE.md](../../../start-plugin-core/src/rsbuild/COMPILER_ARCHITECTURE.md)): Rspack loaders per env/layer, facts in `buildInfo` replayed for the persistent cache |
+
+The bundler-shaped helpers the hosts share (a Vite build's last pass, a webpack-family loader's map and module id,
+rebuilds and invalidated files, eager extracted exports, emitted maps' text) live in `hosts/`, exported apart from the
+core model, which uses none of them.
 
 Hosts decide dev/build from the bundler's mode, never from `process.env.NODE_ENV` at plugin creation. An id without
 a language (an asset, or an asset query: `ASSET_QUERY_RE`) is never compiled, and its facts are never read from its

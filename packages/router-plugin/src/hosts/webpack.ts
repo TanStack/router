@@ -12,15 +12,17 @@ import {
   emittedMapTexts,
   initialChunkResources,
   invalidateFiles,
+  normalizePath,
   pathsOf,
   warnEagerExports,
+  webpackResourceId,
 } from '@tanstack/router-utils/compiler'
 import { getConfig } from '../core/config'
 import {
   changedRoutePaths,
   onRoutesChanged,
 } from '../core/router-plugin-context'
-import { RouterCompiler, normalizePath, resourceId } from './session'
+import { RouterCompiler } from './session'
 import { LOADER_REGISTRY, createLoaderImpl } from './loader'
 import type { LoaderImpl } from './loader'
 import type { RouterPluginContext } from '../core/router-plugin-context'
@@ -222,7 +224,7 @@ export function createRouterCompilerWebpackPlugin(
             // an extracted-export output an initial chunk holds is eager
             // whatever the splitter did: say so (J2.8)
             warnEagerExports(
-              initialChunkResources(compilation).map(resourceId),
+              initialChunkResources(compilation).map(webpackResourceId),
               'webpack',
               session.warnings,
               (m) => compilation.warnings.push(new WebpackError(m)),
